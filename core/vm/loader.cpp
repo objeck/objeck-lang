@@ -1165,6 +1165,31 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   }
 
 
+  // Every jump lands just past a LBL (StackInstr::JumpTargetIndex). The interpreter
+  // and the AMD64 JIT resume at the target index, the ARM64 JIT keys on the LBL one
+  // before it (JumpTargetLabelIndex); they agree only while that instruction is a LBL.
+  for(long j = 0; j < count; ++j) {
+    const StackInstr& jump = mthd_instrs[j];
+    long target = -1;
+    switch(jump.GetType()) {
+    case JMP:
+    case TRY_START:
+    case JMP_TABLE_SLOT:
+      target = jump.JumpTargetIndex();
+      break;
+
+    case JMP_TABLE:
+      target = jump.JumpDefaultTargetIndex();
+      break;
+
+    default:
+      continue;
+    }
+    if(target < 1 || mthd_instrs[target - 1].GetType() != LBL) {
+      VerifyFailed(cls, method, j, L"jump target is not just past a label");
+    }
+  }
+
   // Control must not run past the last instruction: the interpreter would read
   // the word after the array.
   if(count > 0) {

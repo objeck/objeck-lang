@@ -820,7 +820,7 @@
 
       case JMP:
         if(op2 >= 0 && !PopKind(stack, ip, RK_INT)) return false;
-        if(!Flow(ip, op1, stack, andor)) return false;
+        if(!Flow(ip, instr->JumpTargetIndex(), stack, andor)) return false;
         falls_through = op2 >= 0;
         break;
 
@@ -837,7 +837,7 @@
 
       case TRY_START:
         // a handler resumes with the stack as it was here (PushTryHandler)
-        if(!Flow(ip, op1, stack, andor)) return false;
+        if(!Flow(ip, instr->JumpTargetIndex(), stack, andor)) return false;
         break;
 
       case RTRN: {
@@ -958,9 +958,9 @@
           return Fail(ip, L"a select table that runs past the method");
         }
         for(long i = 1; i <= range; ++i) {
-          if(!Flow(ip, instrs[ip + i].GetOperand(), stack, andor)) return false;
+          if(!Flow(ip, instrs[ip + i].JumpTargetIndex(), stack, andor)) return false;
         }
-        if(!Flow(ip, instr->GetOperand3(), stack, andor)) return false;
+        if(!Flow(ip, instr->JumpDefaultTargetIndex(), stack, andor)) return false;
         falls_through = false;
       }
         break;

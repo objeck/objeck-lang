@@ -1880,6 +1880,12 @@ def verifier_cases(image):
     cases = []
     _, at = first(lambda o, a, c, k: o == op["JMP"])[:2]
     cases.append(("a jump target outside its method", "jump target outside the method", put(image, at, "<i", 1000000)))
+    # a jump operand is the index just past its LBL (StackInstr::JumpTargetIndex); the
+    # interpreter, the AMD64 JIT and the ARM64 JIT agree on it only while that holds
+    _, at, code, _ = first(lambda o, a, c, k: o == op["JMP"])
+    past_no_label = next(i for i in range(1, len(code)) if code[i - 1][0] != op["LBL"])
+    cases.append(("a jump that lands just past no label", "jump target is not just past a label",
+                  put(image, at, "<i", past_no_label)))
     _, at = first(lambda o, a, c, k: o == op["STOR_INT_VAR"] and operand(a, 1) == locl)[:2]
     cases.append(("a local beyond its frame", "local variable id beyond the frame", put(image, at, "<i", 100000)))
     _, at = first(lambda o, a, c, k: o == op["MTHD_CALL"])[:2]
