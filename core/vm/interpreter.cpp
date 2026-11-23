@@ -32,6 +32,7 @@
 #include "interpreter.h"
 #include "vm_options.h"
 #include "dispatch.h"
+#include "instr_profile.h"
 
 // IEEE comparison semantics for this translation unit.
 //
@@ -301,6 +302,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     }
     StackInstr* instr = &instrs[ip++];
     ctx.instr = instr;
+#ifdef OBJECK_INSTR_PROFILE
+    InstrProfile::Count(instrs, (long)(ip - 1), (int)instr->GetType());
+#endif
 
 #ifdef _DEBUGGER
     // Null only when no debugger exists in the process (a plain obr build with
