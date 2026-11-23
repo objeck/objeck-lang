@@ -123,6 +123,30 @@ class TwoAccepts from Thread {
 	}
 }
 
+# One DTLS client connect on its own thread. The handshake blocks on the peer,
+# with retransmissions, for up to a minute; on a slow or loaded runner a lost
+# first flight used to spend the whole 60 s test budget in one call. On its own
+# thread the test can give up on it, retry on a fresh socket, and report.
+class DtlsClient from Thread {
+	@address : String;
+	@port : Int;
+	@done : Bool;
+
+	New(address : String, port : Int) {
+		Parent("dtls-client");
+		@address := address;
+		@port := port;
+		@done := false;
+	}
+
+	method : public : IsDone() ~ Bool { return @done; }
+
+	method : public : Run(param : Base) ~ Nil {
+		DTLSSocket->New(@address, @port)->Close();
+		@done := true;
+	}
+}
+
 class DualStackServers {
 	@failed : Int;
 
@@ -166,6 +190,27 @@ class DualStackServers {
 ");
 		};
 		socket->Close();
+	}
+
+	# Connects a DTLS client, giving each of two attempts 8 s. A hung attempt's
+	# thread is abandoned (it ends with the process), so a stuck handshake fails
+	# the check in about 16 s instead of hanging the test until its 60 s timeout.
+	method : DtlsConnect(address : String, port : Int) ~ Bool {
+		for(attempt := 0; attempt < 2; attempt += 1;) {
+			client := DtlsClient->New(address, port);
+			client->Execute(Nil);
+			waited := 0;
+			while(<>client->IsDone() & waited < 8000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+			if(client->IsDone()) {
+				return true;
+			};
+			"  dtls client to {$address} timed out (attempt {$attempt})"->ErrorLine();
+		};
+
+		return false;
 	}
 
 	# Joins the server, unless a client never arrived: then it is still in Accept
@@ -258,8 +303,8 @@ class DualStackServers {
 		server := Start(2);
 		Check("DTLS: the server listens", server <> Nil);
 		if(server <> Nil) {
-			DTLSSocket->New("127.0.0.1", server->GetPort())->Close();
-			DTLSSocket->New("::1", server->GetPort())->Close();
+			Check("DTLS: an IPv4 client completes its handshake", DtlsConnect("127.0.0.1", server->GetPort()));
+			Check("DTLS: an IPv6 client completes its handshake", DtlsConnect("::1", server->GetPort()));
 			Finish(server, "DTLS");
 		};
 
@@ -270,5 +315,7 @@ class DualStackServers {
 			Runtime->Exit(1);
 		};
 		"PASS: TCP, TLS and DTLS servers take IPv4 and IPv6 clients"->PrintLine();
+		# an abandoned client thread must not hold the process open
+		Runtime->Exit(0);
 	}
 }
