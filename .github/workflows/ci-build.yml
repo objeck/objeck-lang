@@ -1124,6 +1124,28 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_array_copy.py "%BIN%"
 
+    # A library built with `-debug` carries a line number in every instruction.
+    # The .obl writer puts it after the type byte and the reader took it before,
+    # so the library linked into scrambled code and the program was refused at
+    # load. Every shipped library is built without -debug, so nothing reached it.
+    - name: a library built with -debug links and runs (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_debug_symbols.py "$BIN"
+
+    - name: a library built with -debug links and runs (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_debug_symbols.py "%BIN%"
+
     # An .obe compiled by another toolchain version is refused by the loader
     # before it runs; the message must name both versions, say which side is
     # stale and say to recompile. Built by patching a fresh .obe's VER_NUM, so
