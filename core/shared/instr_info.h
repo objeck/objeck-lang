@@ -159,7 +159,7 @@ namespace instructions {
     { instructions::NAME, #NAME, Role::R_##o1, Role::R_##o2, Role::R_##o3, Wide::W_##wide, pops, pushes, flags, note }
 
     // One row per enumerator of InstructionType, in enum order.
-    inline constexpr InstrInfo kInstrInfo[] = {
+    constexpr InstrInfo kInstrInfo[] = {   // C++14: no inline variables (the native-library projects build below C++17)
       // ---- loads ----
       OBJK_ROW(LOAD_INT_LIT,          NONE, NONE, NONE, I64, 0, 1, 0, "push an Int literal (operand7)"),
       OBJK_ROW(LOAD_CHAR_LIT,         CHAR, NONE, NONE, NONE, 0, 1, 0, "push a Char literal"),
@@ -332,7 +332,7 @@ namespace instructions {
 
 #undef OBJK_ROW
 
-    inline constexpr size_t kInstrCount = sizeof(kInstrInfo) / sizeof(kInstrInfo[0]);
+    constexpr size_t kInstrCount = sizeof(kInstrInfo) / sizeof(kInstrInfo[0]);
 
     // Exactly one row per enumerator, in enum order: a new opcode needs its row
     // here, in the same place, or this file does not compile.
