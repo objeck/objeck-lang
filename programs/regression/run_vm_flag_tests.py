@@ -328,6 +328,17 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     and OBJECK_GC_ROOTS=conservative, under which the collector scans an Int[]
     the old way, must make every one of those runs FAIL, so the heap tag is
     shown to be what keeps the element intact.
+ 32. A call whose arguments already fill most of the register pool still compiles.
+    Handing a trap its arguments took three registers beside them to find the
+    operand stack's top, and reading its result back took two, so an array
+    literal of five to eight strings (every element held in a register until the
+    array is built) ran the pool dry at the trap: "compile failed ... no free
+    integer register", the whole method left to the interpreter, the most
+    common such reason in the regression suite. One register does each now.
+    With OBJECK_JIT_REPORT=1 and --jit=1, jit_trap_register_pressure.obs passes,
+    its five- and six-string literal methods and its mixed-argument method
+    report "compiled" (AMD64; the ARM64 JIT is a separate file), and its stdout
+    is byte for byte what --jit=off prints.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -693,6 +704,8 @@ def main():
     check_float_limits_compiled(obc, obr, env, bin_dir)
 
     check_array_index_registers(obc, obr, env, bin_dir)
+
+    check_trap_register_pressure(obc, obr, env, bin_dir)
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
 
@@ -1541,6 +1554,35 @@ def check_array_index_registers(obc, obr, env, bin_dir):
         check(f"JitArrayIndexRegisters:{method} is compiled", line in text, f"report={report!r}")
     leaks = [l for l in text.splitlines() if "JitArrayIndexRegisters:" in l and "out of balance" in l]
     check("no JitArrayIndexRegisters method leaks a register", not leaks, f"report={leaks!r}")
+
+
+def check_trap_register_pressure(obc, obr, env, bin_dir):
+    # ---- 32. a call whose arguments fill most of the register pool still compiles ---
+    src = os.path.join(SCRIPT_DIR, "jit_trap_register_pressure.obs")
+    dest = os.path.join(SCRIPT_DIR, "jit_trap_register_pressure.obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check("trap register pressure fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    pass_line = b"PASS: array literals compile and read back"
+    report_env = dict(env)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+    rc, jit_out, err = run([obr, "--jit=1", dest], env=report_env, cwd=bin_dir, timeout=300)
+    text = err.decode(errors="replace")
+    check("the trap register pressure fixture passes compiled", rc == 0 and pass_line in jit_out,
+          f"rc={rc} out={jit_out[-300:]!r} stderr={text[-300:]!r}")
+    rc, off_out, err = run([obr, "--jit=off", dest], env=env, cwd=bin_dir, timeout=300)
+    check("the trap register pressure fixture passes interpreted", rc == 0 and pass_line in off_out,
+          f"rc={rc} out={off_out[-300:]!r}")
+    check("the trap register pressure fixture prints the same compiled and interpreted",
+          jit_out == off_out, f"jit={jit_out[-400:]!r} off={off_out[-400:]!r}")
+    # the ARM64 JIT is a separate file and keeps its own limits
+    if platform.machine().upper() in ("AMD64", "X86_64"):
+        for method in ("L5:i,", "L6:i,", "Mixed:i,o.System.String,"):
+            line = f"[jit] JitTrapRegisterPressure:{method}: compiled"
+            report = [l for l in text.splitlines() if f"JitTrapRegisterPressure:{method}:" in l]
+            check(f"JitTrapRegisterPressure:{method} is compiled", line in text, f"report={report!r}")
 
 
 def check_jit_off_interprets_native(obc, obr, env, bin_dir):
