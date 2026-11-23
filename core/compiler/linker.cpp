@@ -167,6 +167,10 @@ static char* InflateLibrary(const char* buffer, size_t buffer_size, unsigned lon
   // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
   // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
   uint32_t uncmp_hint = 0;
+  // too short to hold even the size prefix and a zlib header: nothing to inflate
+  if(!buffer || buffer_size < 6) {
+    return nullptr;
+  }
   const char* src;
   unsigned long src_size;
   const bool zlib_at_4 = buffer_size >= 6 &&
@@ -1041,16 +1045,19 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
           free(buffer);
           throw CompilerFatal(L"Unable to allocate memory for file: '" + filename + L"'");
         }
+        const size_t compressed_size = buffer_size;
+        buffer_size = cached->inflated.size();
         if(LibraryCacheVerify()) {
           // checks what is handed out, not the entry it was copied from
           unsigned long fresh_len = 0;
-          char* fresh = InflateLibrary(buffer, buffer_size, fresh_len);
+          char* fresh = InflateLibrary(buffer, compressed_size, fresh_len);
           if(!fresh || fresh_len != cached->inflated.size() || memcmp(fresh, out, fresh_len) != 0) {
             fwprintf(stderr, L"[lsp-lib-cache] MISMATCH %ls\n", filename.c_str());
             if(fresh) {
               free(out);
               out = fresh;
               fresh = nullptr;
+              buffer_size = fresh_len;
             }
           }
           free(fresh);
@@ -1073,6 +1080,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
       std::shared_ptr<InflatedLibrary> entry = std::make_shared<InflatedLibrary>();
       entry->compressed.assign(buffer, buffer_size);
       entry->inflated.assign(out, dest_len);
+      buffer_size = dest_len;
       {
         std::lock_guard<std::mutex> lock(inflated_mutex);
         inflated_libraries[filename] = entry;
@@ -1094,6 +1102,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
       throw CompilerFatal(L"Unable to uncompress file: " + filename);
     }
 
+    buffer_size = dest_len;
     free(buffer);
     buffer = nullptr;
     return out;
@@ -1172,7 +1181,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_float_strings = ReadInt();
     for(int i = 0; i < num_float_strings; ++i) {
       frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(sizeof(FLOAT_VALUE));
       holder->value = new FLOAT_VALUE[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadDouble();
@@ -1192,7 +1201,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_bool_strings = ReadInt();
     for(int i = 0; i < num_bool_strings; ++i) {
       frontend::BoolStringHolder* holder = new frontend::BoolStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(1);
       holder->value = new bool[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadByte();
@@ -1212,7 +1221,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_byte_strings = ReadInt();
     for(int i = 0; i < num_byte_strings; ++i) {
       frontend::ByteStringHolder* holder = new frontend::ByteStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(1);
       holder->value = new char[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadByte();
@@ -1232,7 +1241,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_int_strings = ReadInt();
     for(int i = 0; i < num_int_strings; ++i) {
       frontend::IntStringHolder* holder = new frontend::IntStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(sizeof(INT64_VALUE));
       holder->value = new INT64_VALUE[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadInt64();
@@ -1807,30 +1816,34 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
     case TRAP_RTRN: {
       // links a copied literal to its string table, for code generation
-      const INT64_VALUE id = keep ? instrs.back()->GetOperand7() : -1;
+      const INT64_VALUE id = (keep && !instrs.empty()) ? instrs.back()->GetOperand7() : -1;
+      if((id == instructions::CPY_CHAR_STR_ARY || id == instructions::CPY_INT_STR_ARY || id == instructions::CPY_BOOL_STR_ARY ||
+          id == instructions::CPY_BYTE_STR_ARY || id == instructions::CPY_FLOAT_STR_ARY) && instrs.size() < 2) {
+        Corrupt(L"a copied literal without its array");
+      }
       if(id == instructions::CPY_CHAR_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        CharStringInstruction* str_instr = char_strings[cpy_instr->GetOperand7()];
+        CharStringInstruction* str_instr = PoolEntry(char_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_INT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        IntStringInstruction* str_instr = int_strings[cpy_instr->GetOperand7()];
+        IntStringInstruction* str_instr = PoolEntry(int_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_BOOL_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        BoolStringInstruction* str_instr = bool_strings[cpy_instr->GetOperand7()];
+        BoolStringInstruction* str_instr = PoolEntry(bool_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_BYTE_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        ByteStringInstruction* str_instr = byte_strings[cpy_instr->GetOperand7()];
+        ByteStringInstruction* str_instr = PoolEntry(byte_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_FLOAT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        FloatStringInstruction* str_instr = float_strings[cpy_instr->GetOperand7()];
+        FloatStringInstruction* str_instr = PoolEntry(float_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       emit(line_num, TRAP_RTRN, ReadInt());
