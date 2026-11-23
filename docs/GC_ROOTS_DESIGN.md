@@ -18,7 +18,7 @@ written, and nothing below had landed. **Phases 0 to 6 have since merged (#1511 
 | 5 (narrower than designed) | 2026-11-01 | #1511 (`632e0702f7`) | v2026.10.3 |
 | stable instance IDs | 2026-10-30 | #1472 (`8c3d0e2e56`) | v2026.10.2 |
 
-Phase 2 has no status block of its own below: it did what §7 says (the collector skips an interpreter operand-stack word, and an and/or slot, that the map types `Int` or `Float`, on a thread whose frames the maps account for; everything else is still marked and relocated). Two later fixes bear on it: `9054c5276e` (2026-10-31) stops typing the words above the first frame that compiled code sits under, and #1475/#1476 (section 27 of `run_vm_flag_tests.py`) corrected the maps for compiled code that calls back into the interpreter. **Two items the table-of-phases below promised did not land:** the randomized `gc_root_coverage` test (§9) was never written (`grep -r gc_root_coverage` finds only this page), and the `jit_inline_local_root` test was dropped, as §3.2 predicted. Neither the verifier modes nor the audit replace the first: the audit shows the maps agree with the live stacks on the regression suite, which is weaker than a generated adversarial program.
+Phase 2 has no status block of its own below: it did what §7 says (the collector skips an interpreter operand-stack word, and an and/or slot, that the map types `Int` or `Float`, on a thread whose frames the maps account for; everything else is still marked and relocated). Two later fixes bear on it: `9054c5276e` (2026-10-31) stops typing the words above the first frame that compiled code sits under, and #1475/#1476 (section 27 of `run_vm_flag_tests.py`) corrected the maps for compiled code that calls back into the interpreter. **Two items the table-of-phases below promised had not landed when the phases did:** the randomized `gc_root_coverage` test (§9) and the `jit_inline_local_root` test, which was dropped, as §3.2 predicted. The first now exists as `tools/gc_roots/` (see §9): a seeded generator and a differential runner, not the in-suite test the table describes, because the audit shows only that the maps agree with the live stacks on the regression suite, which is weaker than a generated adversarial program.
 
 **Status, 2026-10-30.** The user chose the full redesign over a targeted fix.
 - **Phase 0 is merged** (#1455): `--jit=off` now compiles nothing.
@@ -492,9 +492,11 @@ pattern this design replaces. It stays on the evidence branch unless the user de
 | `jit_stale_spill_slot` (rewritten without `native`, so `--jit=off` is a true control; checks both the s0 and s3 paths) | §3.1 | phase 3 (AMD64), extended in 4 |
 | `gc_int_not_relocated`, the §3.3 reproducer, all four configurations at `--nursery=64k` | §3.3 | phase 2 (interpreter), phase 3 (JIT) |
 | `jit_inline_local_root` | nothing today (§3.2) | not landed; phase 5 deleted the code it would test |
-| **`gc_root_coverage`, randomized** (below) | the whole class | **never written** (design only); the audit and the fixtures in `run_vm_flag_tests.py` sections 24 to 28 and 31 stand in |
+| **`gc_root_coverage`, randomized** (below) | the whole class | built as `tools/gc_roots/` (generator `gen_roots.py`, runner `run_roots.py`, [README](../tools/gc_roots/README.md)); an advisory 30-seed step in `ci-build.yml`, a larger local mode; the audit and the fixtures in `run_vm_flag_tests.py` sections 24 to 28 and 31 remain |
 
-`gc_root_coverage` generates, from a seed (printed on failure, reproducible with `--seed`), methods
+**As built** (`tools/gc_roots/`): the generator is `gen_roots.py --seed N`, the runner compares every configuration with an uncollected interpreter run (`run_roots.py`), and a failing seed is reproduced with `--start N --count 1` and minimized with `--reduce N`. The generated programs follow the plan below, with these differences: the oracle is agreement with an uncollected run rather than per-value checks, the heap verifier is `OBJECK_GC_VERIFY=checkmark` on the `jit1v` configuration only, and address-valued `Int`s (`Runtime->TestAddressOf`) are opt-in (`--addr on`) because an interpreted method under compiled frames, which `?->` regions force, is still scanned conservatively (§12).
+
+`gc_root_coverage` was to generate, from a seed (printed on failure, reproducible with `--seed`), methods
 that:
 
 - keep a random mix of `Int` values (including `GetInstanceID()`), objects, arrays and closures pending

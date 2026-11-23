@@ -1009,6 +1009,54 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
 
+    # GC root coverage (advisory): 30 generated programs that keep references live in loops,
+    # pending expression temporaries, inlined callees, ?-> regions, fields and threads, run
+    # interpreted, default-JIT, compile-everything and under a 64k nursery with the roots audit
+    # and the heap verifier; every run must print what an uncollected run printed.
+    # tools/gc_roots/README.md. Advisory until it has run clean long enough to rule out flakiness.
+    - name: GC root coverage, 30 seeds (advisory, POSIX)
+      if: runner.os != 'Windows'
+      continue-on-error: true
+      timeout-minutes: 20
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
+        rc=0
+        python3 tools/gc_roots/run_roots.py --bin "$BIN" --mode ci --count 30 --start "$(date -u +%Y%m%d)" -j 4 --out gc_roots_out || rc=$?
+        if [ "$rc" != "0" ]; then
+          echo "::warning title=GC root coverage::advisory run diverged or failed (exit $rc); not blocking. Seeds: $(cat gc_roots_out/summary.json 2>/dev/null | tr -d '\n ')"
+          cat gc_roots_out/seed_*/report.txt 2>/dev/null | head -60 || true
+        fi
+        exit $rc
+
+    - name: GC root coverage, 30 seeds (advisory, Windows)
+      if: runner.os == 'Windows'
+      continue-on-error: true
+      timeout-minutes: 20
+      shell: pwsh
+      run: |
+        $bin = "core\release\deploy-${{ matrix.arch }}\bin"
+        if (-not (Test-Path $bin)) { $bin = "core\release\deploy\bin" }
+        $start = [int](Get-Date -UFormat %Y%m%d)
+        python tools/gc_roots/run_roots.py --bin $bin --mode ci --count 30 --start $start -j 4 --out gc_roots_out
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) {
+          Write-Output "::warning title=GC root coverage::advisory run diverged or failed (exit $rc); not blocking."
+          Get-ChildItem gc_roots_out -Recurse -Filter report.txt -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { Get-Content $_.FullName | Select-Object -First 12 }
+        }
+        exit $rc
+
+    - name: Upload GC root coverage findings
+      if: always()
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: gc-roots-findings-${{ runner.os }}-${{ matrix.arch }}
+        path: gc_roots_out/
+        if-no-files-found: ignore
+        retention-days: 14
+
     # Negative testing of the compiler front end. Valid programs are broken in sixteen ways and
     # hostile files (deep nesting, random bytes, 20000 errors, a call nested 30 deep to a method
     # that does not exist) are compiled: no crash, no hang, and the error must be on or beside
