@@ -1,0 +1,75 @@
+#~
+Output printed just before the VM ends the process must reach the reader.
+
+Driven by run_vm_flag_tests.py (check_vm_exit_flush), one mode per run, with stdout
+a pipe (so the C library buffers it) and stderr a pipe. Each mode prints a few
+thousand lines and then a last piece with no newline, and ends the process:
+
+  exit    Runtime->Exit(3) with a second thread still running
+  error   a Nil dereference with a second thread still running
+  oom     the collector's fatal out-of-memory exit (a hook, inert unless the VM
+          runs with OBJECK_GC_TEST_HOOKS=1)
+
+With another thread alive the VM ends the process with _Exit, which runs no atexit
+handler and flushes nothing itself (#877), so every exit path has to flush before it.
+The out-of-memory exit used to flush stderr only, and lost whatever stdout had not
+yet been written.
+
+With no mode this prints a plain PASS line, so the regression runner can run it.
+~#
+use System.Concurrency;
+
+class FlushBusy from Thread {
+  New() {
+    Parent("flush-busy");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    total := 0;
+    for(i := 0; i < 2000000000; i += 1;) {
+      total += i % 7;
+    };
+    total->PrintLine();
+  }
+}
+
+class FlushHolder {
+  @value : Int;
+  New() { @value := 1; }
+  method : public : Value() ~ Int { return @value; }
+}
+
+class VmExitFlush {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 0) {
+      "PASS: vm_exit_flush"->PrintLine();
+      return;
+    };
+
+    mode := args[0];
+    if(mode->Equals("error") | mode->Equals("exit")) {
+      busy := FlushBusy->New();
+      busy->Execute(Nil);
+      Thread->Sleep(200);
+    };
+
+    each(i : 3000) {
+      "line {$i} of output printed before the VM ends the process"->PrintLine();
+    };
+    "tail-without-newline"->Print();
+
+    if(mode->Equals("exit")) {
+      Runtime->Exit(3);
+    }
+    else if(mode->Equals("error")) {
+      holder : FlushHolder := Nil;
+      holder->Value()->PrintLine();
+    }
+    else if(mode->Equals("oom")) {
+      Runtime->SetProperty("runtime.test.collector_oom", "1");
+    };
+
+    "FAIL: the process did not end"->PrintLine();
+    Runtime->Exit(9);
+  }
+}

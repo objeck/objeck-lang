@@ -548,6 +548,11 @@ class MemoryManager {
   static void Initialize(StackProgram* p, size_t m);
   // VmExit (common.h): end the process with 'status' from any VM thread.
   [[noreturn]] static void Exit(int status);
+  // test hook: the collector's fatal out-of-memory exit (see memory.cpp)
+  [[noreturn]] static void TestCollectorOutOfMemory();
+  // The one place the process ends (see memory.cpp): flushes every stream, then exit()
+  // when run_teardown, else _Exit.
+  [[noreturn]] static void EndProcess(int status, bool run_teardown);
   // Nursery limit for the next Initialize; the caller has validated it
   // (vm_options.h: 64k..128m). 0 restores the default.
   static void SetNurserySize(size_t size) { nursery_size_request = size; }

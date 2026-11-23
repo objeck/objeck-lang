@@ -53,8 +53,8 @@ static bool GcTraceEnabled() {
 // handler. _Exit: no destructors or atexit handlers run while the heap is half-promoted.
 [[noreturn]] static void FatalCollectorOutOfMemory(size_t bytes) {
   fwprintf(stderr, L">>> garbage collector: out of memory promoting a live object (%zu bytes) <<<\n", bytes);
-  fflush(stderr);
-  std::_Exit(1);
+  // what the program printed before this still reaches its reader
+  MemoryManager::EndProcess(1, false);
 }
 
 // exit() runs the process's teardown on the calling thread while every other
@@ -68,19 +68,47 @@ static bool GcTraceEnabled() {
 // thread, exit() runs as before, atexit handlers included.
 void MemoryManager::Exit(int status)
 {
-  if(mutator_count.load(std::memory_order_acquire) > 1) {
-    std::wcout.flush();
-    std::cout.flush();
-    std::wcerr.flush();
-    std::cerr.flush();
-    fflush(nullptr);
-    if(gc_stats_enabled) {
-      PrintGcStats();
-      std::wcerr.flush();
-    }
-    std::_Exit(status);
+  EndProcess(status, mutator_count.load(std::memory_order_acquire) <= 1);
+}
+
+// The one place the VM ends the process. Every VM-initiated exit (a trap's error, a
+// loader or interpreter failure, Runtime->Exit, the collector's out-of-memory report)
+// goes through VmExit -> MemoryManager::Exit or FatalCollectorOutOfMemory, and both
+// arrive here. run_teardown is true only when no other mutator is registered: exit()
+// then runs atexit handlers and static destructors as it always did. Otherwise, and
+// always for the collector's fatal error (the heap is half promoted), the process
+// ends with _Exit, so everything a destructor or atexit handler would have written
+// is written here: the C++ and C streams, and the GC statistics line.
+static void FlushOutputStreams()
+{
+  // a flush can throw (a full disk, a stream in a failed state); the process is
+  // ending either way, so a later stream is still tried
+  try { std::wcout.flush(); } catch(...) {}
+  try { std::cout.flush(); } catch(...) {}
+  try { std::wcerr.flush(); } catch(...) {}
+  try { std::cerr.flush(); } catch(...) {}
+  fflush(nullptr);
+}
+
+[[noreturn]] void MemoryManager::EndProcess(int status, bool run_teardown)
+{
+  if(run_teardown) {
+    exit(status);
   }
-  exit(status);
+
+  FlushOutputStreams();
+  if(gc_stats_enabled) {
+    PrintGcStats();
+    FlushOutputStreams();
+  }
+  std::_Exit(status);
+}
+
+// Runtime->TestCollectorOutOfMemory (OBJECK_GC_TEST_HOOKS=1 only): the collector's
+// fatal out-of-memory exit, which cannot be reached on demand otherwise
+void MemoryManager::TestCollectorOutOfMemory()
+{
+  FatalCollectorOutOfMemory(0);
 }
 
 [[noreturn]] void VmExit(int status)
