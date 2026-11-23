@@ -975,26 +975,24 @@ std::vector<LibraryMethod*> LibraryClass::GetUnqualifiedMethods(const std::wstri
 
 void LibraryClass::AddMethod(LibraryMethod* method)
 {
-  const std::wstring& encoded_name = method->GetName();
+  // A name that is not 'Class:Method:params' cannot belong to any real library (a damaged one can
+  // produce it). Check it BEFORE the method goes into `methods`: it used to be inserted first and
+  // deleted after, which left a dangling pointer in the map that ~LibraryClass deleted again.
+  const std::wstring encoded_name = method->GetName();
+  const size_t start = encoded_name.find(':');
+  const size_t end = start == std::wstring::npos ? std::wstring::npos : encoded_name.find(':', start + 1);
+  if(start == std::wstring::npos || end == std::wstring::npos) {
+    delete method;
+    return;
+  }
+
+  // (a second method with the same encoded name was never inserted here and is still looked up by its
+  // unqualified name below, as before; it is only leaked, which a valid library never causes)
   methods.insert(std::pair<const std::wstring, LibraryMethod*>(encoded_name, method));
 
   // add to unqualified names to list
-  const size_t start = encoded_name.find(':');
-  if(start != std::wstring::npos) {
-    const size_t end = encoded_name.find(':', start + 1);
-    if(end != std::wstring::npos) {
-      const std::wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-      unqualified_methods.insert(std::pair<std::wstring, LibraryMethod*>(unqualified_name, method));
-    }
-    else {
-      delete method;
-      method = nullptr;
-    }
-  }
-  else {
-    delete method;
-    method = nullptr;
-  }
+  const std::wstring unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+  unqualified_methods.insert(std::pair<std::wstring, LibraryMethod*>(unqualified_name, method));
 }
 
 /****************************
