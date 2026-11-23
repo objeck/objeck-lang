@@ -1768,6 +1768,18 @@ jobs:
           python3 tools/cicd/check_trap_handlers.py --test
           python3 tools/cicd/check_trap_handlers.py
 
+      # What an opcode carries was written out by hand in the writer, both readers,
+      # the label passes, the inliner and the loader's checks, and nothing compared
+      # them. core/shared/instr_info.h is the one description; this fails when a site
+      # disagrees with it (docs/INSTRUCTION_SET.md). ADVISORY for now: continue-on-error
+      # keeps a mismatch from reddening the job while the first findings are triaged.
+      # The --test run breaks each site in memory and fails unless the checker notices.
+      - name: The instruction table agrees with every site that restates it (advisory)
+        continue-on-error: true
+        run: |
+          python3 tools/cicd/check_instr_table.py --test
+          python3 tools/cicd/check_instr_table.py
+
       # Same class of guard, for a rule that was previously prose only. A native
       # library may store an object it ALLOCATED anywhere -- those go straight to
       # the old generation and never move. An object it RECEIVED may be young, so
