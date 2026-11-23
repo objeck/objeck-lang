@@ -1,0 +1,88 @@
+name: Libraries from source (prototype)
+
+# PROTOTYPE for docs/DESIGN_OBL_FROM_SOURCE.md. Proves that a tree with NO committed
+# core/lib/*.obl can build every library from source and pass the regression suite,
+# and measures how the rebuilt files compare with the ones git carries today.
+#
+# It does not change what CI or the release ship. It runs on demand and on a PR that
+# touches this file or the library build list.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/obl-from-source.yml'
+      - 'core/compiler/build_libs.sh'
+      - 'core/compiler/update_version.sh'
+      - 'tools/cicd/obl_from_source.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  libs-from-source:
+    name: Build libraries from source, run the regression suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Same package set as ci-build.yml's linux-x64 leg.
+      - name: Install Linux dependencies
+        run: |
+          sudo bash tools/cicd/apt_harden.sh
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libopencv-dev \
+            libmbedtls-dev \
+            unixodbc-dev \
+            libsqliteodbc \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-ttf-dev \
+            libsdl2-mixer-dev \
+            libegl1 \
+            libegl-mesa0 \
+            libgl1-mesa-dri \
+            libreadline-dev \
+            libeigen3-dev \
+            libmp3lame-dev \
+            expect
+
+      - name: QUIC dependencies
+        uses: ./.github/actions/quic-deps
+
+      # The experiment. obl_from_source.sh keeps a copy of the committed set for the
+      # comparison, deletes every core/lib/*.obl, then runs the same two steps ci-build.yml's
+      # linux-x64 leg runs (update_version.sh: sys_obc -> lang.obl -> obc -> every library in
+      # build_libs.sh order; deploy_posix.sh: assemble the tree). Nothing in the build may
+      # reach for a committed .obl, or it fails here with "Unable to read library".
+      - name: Delete every committed .obl, build the libraries from source, deploy
+        run: bash tools/cicd/obl_from_source.sh build
+
+      # Information, not a gate: byte-compare the rebuilt files with the committed ones.
+      # tools/cicd/local_linux.sh makes the same comparison locally for everything but
+      # lang.obl. A non-empty list means the committed copy was stale, not that the build is wrong.
+      - name: Rebuilt libraries vs the committed set
+        run: bash tools/cicd/obl_from_source.sh compare
+
+      - name: Run regression tests
+        working-directory: ./programs/regression
+        run: |
+          chmod +x run_regression.sh
+          ./run_regression.sh x64
+
+      # The release ships what this tree holds, so prove it names the toolchain version.
+      - name: Rebuilt libraries carry the toolchain version
+        run: python3 tools/cicd/check_obl_versions.py
+
+      - name: Upload the rebuilt libraries (what a CI "libs" job would hand to the other legs)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: obl-from-source
+          path: core/lib/*.obl
+          retention-days: 3
