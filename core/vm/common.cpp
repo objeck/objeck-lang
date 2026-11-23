@@ -109,6 +109,7 @@ static bool h3_valid_header_name(const std::string& n)
 #endif
 #include "interpreter.h"
 #include "../shared/version.h"
+#include "../shared/cpu_count.h"
 
 #ifdef _WIN32
 #include "arch/win32/win32.h"
@@ -4794,7 +4795,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
                                                                p = MemoryManager::GetParkedCount();
                                                     return (size_t)(a > p ? a - p : 0); } },
     { L"runtime.alloc.since_gc",   []() -> size_t { return MemoryManager::GetAllocSinceGc(); } },
-    { L"runtime.cpu.count",        []() -> size_t { return (size_t)std::thread::hardware_concurrency(); } },
+    { L"runtime.cpu.count",        []() -> size_t { return (size_t)UsableCpuCount(); } },
     { L"runtime.cpu.time",         []() -> size_t { return GetProcessCpuTimeMs(); } },
     { L"runtime.uptime_ms",        []() -> size_t { return (size_t)MemoryManager::GetUptimeMs(); } },
     { L"runtime.process.handles",  []() -> size_t { return CountProcessHandles(); } },

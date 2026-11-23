@@ -582,7 +582,7 @@ Monitor-&gt;MemoryOverhead()-&gt;PrintLine();     # RSS - live heap (fragmentati
       <tr><td data-label="key"><code>runtime.alloc.since_gc</code></td><td data-label="meaning">bytes allocated since the last collection</td></tr>
       <tr><td data-label="key"><code>runtime.threads.active</code> / <code>.parked</code> / <code>.running</code></td><td data-label="meaning">mutator threads (<code>.parked</code> includes STW/blocked)</td></tr>
       <tr><td data-label="key"><code>runtime.gc.stw</code></td><td data-label="meaning">1 while a collection is stopping the world</td></tr>
-      <tr><td data-label="key"><code>runtime.cpu.count</code> / <code>.time</code> / <code>runtime.uptime_ms</code></td><td data-label="meaning">logical cores / process CPU ms / uptime</td></tr>
+      <tr><td data-label="key"><code>runtime.cpu.count</code> / <code>.time</code> / <code>runtime.uptime_ms</code></td><td data-label="meaning">CPUs this process may use (affinity mask and cgroup quota; <code>OBJECK_CPU_COUNT=&lt;n&gt;</code> overrides) / process CPU ms / uptime</td></tr>
       <tr><td data-label="key"><code>runtime.process.handles</code></td><td data-label="meaning">kernel handles (Windows) or open file descriptors (elsewhere) the process holds</td></tr>
       <tr><td data-label="key"><code>runtime.call.depth_max</code></td><td data-label="meaning">the deepest calls may nest, in frames (<code>--call-depth</code>, default 16384)</td></tr>
      </tbody>

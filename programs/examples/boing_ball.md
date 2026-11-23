@@ -95,7 +95,7 @@ Read via `System.Runtime->GetProperty(key)->ToInt()`. Implemented in the VM's
 | `runtime.memory.allocated` | GC-tracked live heap, bytes |
 | `runtime.memory.max`       | current heap threshold (`mem_max_size`), bytes |
 | `runtime.gc.minor` / `.major` / `.total` | collection counts |
-| `runtime.cpu.count`        | logical cores |
+| `runtime.cpu.count`        | CPUs this process may use |
 | `runtime.cpu.time`         | process CPU time, ms (sample over an interval for %) |
 
 More keys ship beside these, among them `runtime.threads.active` / `.parked` /
