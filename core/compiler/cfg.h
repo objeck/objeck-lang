@@ -163,6 +163,8 @@ namespace backend {
 
     // true when the environment variable OBJECK_CFG_VERIFY is set to 1
     static bool VerifyRequested();
+    // the file OBJECK_CFG_DUMP names, or empty: the optimizer writes every method's final graph there (tools/cicd/cfg_oracle.py)
+    static std::string DumpPath();
 
    private:
     const std::vector<IntermediateInstruction*>& instrs;

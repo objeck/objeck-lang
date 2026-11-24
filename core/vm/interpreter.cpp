@@ -34,6 +34,7 @@
 #include "vm_options.h"
 #include "dispatch.h"
 #include "instr_profile.h"
+#include "cfg_trace.h"
 
 // IEEE comparison semantics for this translation unit.
 //
@@ -303,6 +304,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     }
     StackInstr* instr = &instrs[ip++];
     ctx.instr = instr;
+#ifdef OBJECK_CFG_TRACE
+    CfgTrace::Step(*stack_frame, ip - 1);
+#endif
 #ifdef OBJECK_INSTR_PROFILE
     InstrProfile::Count(instrs, (long)(ip - 1), (int)instr->GetType());
 #endif
@@ -556,6 +560,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     long recovery_ip = CheckTryRecovery();
     if(recovery_ip >= 0) {
       ip = recovery_ip;
+#ifdef OBJECK_CFG_TRACE
+      CfgTrace::Trap(*stack_frame, recovery_ip);
+#endif
       ctx.instrs = (*stack_frame)->method->GetInstructions();
     }
 
