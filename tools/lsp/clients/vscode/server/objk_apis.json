@@ -1,5 +1,5 @@
 {
-	"version": "0.0.0",
+	"version": "2026.11.3",
 	"class-details": {
 		"API.Anthropic.Chat": {
 			"description": "A chat session. It keeps the message history, including tool calls and results.",
