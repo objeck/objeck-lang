@@ -3200,7 +3200,9 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
   std::set<long> tried;
   for(int round = 0; round < 512; ++round) {
     Cfg cfg(instrs);
-    if(!cfg.WellFormed() || cfg.Loops().empty()) {
+    // an irreducible edge means some cycle is not a natural loop, so a loop's block set
+    // may miss writes that happen on it: leave such a method alone
+    if(!cfg.WellFormed() || cfg.Loops().empty() || cfg.IrreducibleEdges() != 0) {
       break;
     }
     cfg.ComputeLiveness();
