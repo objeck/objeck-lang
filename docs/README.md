@@ -138,7 +138,7 @@ Several things in this directory are **build inputs or shipped artifacts**, not 
 | `readme.html`, `readme.txt` | The release notes, rendered for shipping. `deploy_windows.cmd` copies `readme.html` into the install tree, where `style/` sits beside it and it displays properly. The source of truth is [CHANGELOG.md](../CHANGELOG.md) |
 | `web/` | The **published site**. This is what GitHub Pages builds: see `.github/workflows/jekyll-gh-pages.yml`, which sets `source: ./docs/web`. Nothing else in this directory is published |
 | `style/`, `images/`, `syntax/` | Assets for the above, and editor syntax definitions |
-| `api.zip` | Pre-built API docs, unpacked into the install tree by the ARM64 deploy, which cannot run the doc generator while cross-compiling |
+| `api.zip` | Generated API docs (gitignored; the release build makes it, `tools/cicd/gen_api_docs.sh`), unpacked into the install tree by every deploy except Windows x64, which runs `code_doc` itself |
 | `eula.rtf` | Licence text for the installer |
 
 If you want the rendered documentation rather than the sources, use the published site rather than this directory.

@@ -304,7 +304,7 @@ cp core/release/linux/install-desktop.sh core/release/linux/objeck.desktop.in \
    core/release/linux/objeck.png core/release/deploy
 chmod +x core/release/deploy/bin/objeck-shell core/release/deploy/install-desktop.sh
 
-unzip -q docs/api.zip -d core/release/deploy/doc
+sh core/release/include_api_docs.sh core/release/deploy/doc || exit 1
 
 ui_step "examples"
 # copy examples
