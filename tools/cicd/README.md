@@ -20,6 +20,7 @@ Each fails (exit 1) when two things that must agree by hand have drifted. Severa
 | Script | Keeps in agreement |
 |---|---|
 | `check_trap_handlers.py` | `traps.h`, scanner, parser, emitter and `ProcessTrap` for every trap and intrinsic ([ADDING_AN_INTRINSIC](../../docs/ADDING_AN_INTRINSIC.md)) |
+| `check_instr_table.py` | `core/shared/instr_info.h` (one row per opcode) vs the opcode enum, the `.obe`/`.obl` writer and both readers, the optimizer's label and slot passes, the inliner, the loader's jump-target check and the dispatch table ([INSTRUCTION_SET](../../docs/INSTRUCTION_SET.md)); advisory in CI for now |
 | `check_version_templates.py`, `check_obl_versions.py` | generated version files vs their `.in` templates; every committed `.obl` vs `VER_NUM` |
 | `check_doc_lists.py`, `check_doc_fences.py`, `check_docs_deps.py`, `check_doc_links.py` | library lists vs `lib_src`; doc-comment code fences; install instructions vs `runtime_deps.json`; Markdown links and anchors vs the tree (known breaks in `doc_links_known.txt`) |
 | `check_api_index.py`, `check_examples_index.py`, `check_sdl_natives.py`, `check_openai_image_dispatch.py` | the editor API index, the shipped example index, SDL bindings and OpenAI image calls vs their sources; the first and last need a built toolchain. `check_sdl_natives.py` is run by no workflow and not by `local_ci.py`: run it by hand |
