@@ -1153,21 +1153,8 @@ void Library::LoadFile(const std::wstring &file_name)
     if(magic_num == MAGIC_NUM_EXE) {
       throw CompilerFatal(L"Unable to use executable '" + file_name + L"' as linked library.");
     }
-    else if(magic_num == MAGIC_NUM_LIB_UNQUALIFIED_ENUMS) {
-      throw CompilerFatal(L"Library '" + file_name + L"' was built before enums were named with their bundle.\n\tRebuild it with this toolchain.");
-    }
-    else if(magic_num == MAGIC_NUM_LIB_NO_GENERIC_MARKS) {
-      throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their methods' type parameters.\n\tRebuild it with this toolchain.");
-    }
-    else if(magic_num == MAGIC_NUM_LIB_NO_PARAM_NAMES) {
-      throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain.");
-    }
-    else if(magic_num == MAGIC_NUM_LIB_UNTYPED_INT_ARRAYS) {
-      std::wcerr << L"Library '" << file_name << L"' was built before an Int[] and an object array were allocated with distinct opcodes (its object arrays would be read as Int[]).\n\tRebuild it with this toolchain." << std::endl;
-      exit(1);
-    }
     else if(magic_num != MAGIC_NUM_LIB) {
-      throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.");
+      throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.\n\tIf it is a library built by an older layout of this toolchain, rebuild it with this toolchain.");
     }
 
     // read float strings
@@ -1528,11 +1515,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
   const unsigned long num_instrs = ReadUnsigned();
   for(unsigned long i = 0; i < num_instrs; ++i) {
+    // the writer's order (IntermediateInstruction::Write), and the .obe loader's:
+    // the type byte, then the line number. Reading the line first scrambled every
+    // instruction of a library built with -debug.
+    const int type = ReadByte();
     if(is_debug) {
       line_num = ReadInt();
-    }    
+    }
 
-    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       emit(line_num, LOAD_INT_LIT, ReadInt64());
