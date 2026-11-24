@@ -4415,9 +4415,9 @@ namespace frontend {
       return true;
     }
 
-    const std::vector<std::wstring> GetLibUses();
+    const std::vector<std::wstring>& GetLibUses();
 
-    const std::vector<std::wstring> GetLibUses(const std::wstring &f) {
+    const std::vector<std::wstring>& GetLibUses(const std::wstring &f) {
       return lib_use_mapping[f];
     }
 

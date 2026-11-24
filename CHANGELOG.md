@@ -14,6 +14,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Security
 
+- **The OpenAI, Gemini and Anthropic clients no longer hand out an API key while TLS certificate checking is off**: with `OBJECK_TLS_INSECURE_SKIP_VERIFY` set, `EndPoint->GetApiKey()` returns `Nil` and `GetLastError()` says why, instead of sending the key to a server nobody authenticated. `OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1` allows the combination for testing against a local server. With checking on nothing changes. Tests: `api_key_insecure_tls_anthropic`, `_openai` and `_gemini`.
 - **`Cipher.Encrypt->AES256` writes a new authenticated format**: AES-256-GCM, a key from PBKDF2-HMAC-SHA256 (210,000 iterations, count stored in the header), a random 16-byte salt and a random 12-byte nonce per message, under a `OBKC` magic and version byte. The old format used a fixed salt, a key that was the raw password zero-padded or truncated to 32 bytes, an IV derived from the password alone, and no authentication, so identical inputs gave identical output, bytes past 32 of a password were ignored, and a modified ciphertext was not detected. `Cipher.Decrypt->AES256` reads the new format (returning `Nil` for a wrong password or any modified or truncated message) and still reads the old format, which is deprecated and no longer produced; re-encrypt old data. Output is 53 bytes longer than the plaintext (it was up to 16). New test: `programs/regression/cipher_aes_versioned.obs`.
 
 ### Fixed

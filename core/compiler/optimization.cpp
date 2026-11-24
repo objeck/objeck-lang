@@ -936,12 +936,265 @@ int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
   return -1;
 }
 
+//
+// ------------------- Integer identities and strength reduction -------------------
+//
+// Operands are stack code: a binary operator pops the left operand (pushed
+// LAST, on top) and the right operand (pushed first), so `x - 3` is
+// `LOAD_INT_LIT 3; <x>; SUB_INT`. An operand is a "simple span" when it is
+// straight-line code made only of local Int loads, literals and non-calling
+// integer operators; such a span is found by walking backwards and counting how
+// many values are still owed. Nothing here crosses a label, jump or call, so a
+// literal found directly below a span is exactly that operator's right operand.
+//
+// Integer arithmetic wraps and shift counts are masked (shared/int_ops.h), so:
+//   x + 0, x - 0, x * 1, x or 0, x xor 0, x and -1, x << 0, x >> 0   ->  x
+//   x * 0, x and 0                      -> 0 (x is still evaluated, then dropped)
+//   x * 2^k                             -> x << k           (exact modulo 2^64)
+//   (x + a) + b, (x * a) * b, and/or/xor chains            -> one literal
+// Division and remainder are left alone: an arithmetic shift rounds toward
+// negative infinity where `/` truncates toward zero, and the stack machine has
+// no way to reuse the dividend for the sign correction.
+namespace {
+  // how many operands the instruction pops when it is allowed inside a simple
+  // span; -1 when it is not allowed. Every allowed instruction pushes one value.
+  int SpanPops(IntermediateInstruction* instr)
+  {
+    switch(instr->GetType()) {
+    case LOAD_INT_LIT:
+      return 0;
+
+    case LOAD_INT_VAR:
+      return instr->GetOperand2() == LOCL ? 0 : -1;
+
+    case ADD_INT:
+    case SUB_INT:
+    case MUL_INT:
+    case DIV_INT:
+    case MOD_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
+    case SHL_INT:
+    case SHR_INT:
+      return 2;
+
+    default:
+      return -1;
+    }
+  }
+
+  // index of the first instruction of the operand that ends at `end`, or -1
+  long SpanStart(std::vector<IntermediateInstruction*>& out, long end)
+  {
+    long owed = 1;
+    for(long j = end; j >= 0; --j) {
+      const int pops = SpanPops(out[j]);
+      if(pops < 0) {
+        return -1;
+      }
+      owed += pops - 1;
+      if(owed == 0) {
+        return j;
+      }
+    }
+
+    return -1;
+  }
+
+  bool IsIntLit(IntermediateInstruction* instr)
+  {
+    return instr->GetType() == LOAD_INT_LIT;
+  }
+
+  bool IsCommutative(InstructionType type)
+  {
+    return type == ADD_INT || type == MUL_INT || type == BIT_AND_INT || type == BIT_OR_INT || type == BIT_XOR_INT;
+  }
+
+  // push `instr` (a binary integer operator) after simplifying it against the
+  // operands already in `out`
+  void EmitIntOp(std::vector<IntermediateInstruction*>& out, IntermediateInstruction* instr, int line)
+  {
+    IntermediateFactory* factory = IntermediateFactory::Instance();
+
+    while(true) {
+      const InstructionType type = instr->GetType();
+      switch(type) {
+      case ADD_INT:
+      case SUB_INT:
+      case MUL_INT:
+      case BIT_AND_INT:
+      case BIT_OR_INT:
+      case BIT_XOR_INT:
+      case SHL_INT:
+      case SHR_INT:
+        break;
+
+      default:
+        out.push_back(instr);
+        return;
+      }
+
+      const long top = (long)out.size() - 1;
+      if(top < 1) {
+        out.push_back(instr);
+        return;
+      }
+
+      long start = SpanStart(out, top);
+      if(start < 0) {
+        out.push_back(instr);
+        return;
+      }
+
+      // a literal LEFT operand of a commutative operator moves under the other
+      // operand, so every literal operand is the right one below
+      if(IsCommutative(type) && start == top && IsIntLit(out[top]) && top >= 1 && !IsIntLit(out[top - 1])) {
+        const long other = SpanStart(out, top - 1);
+        if(other >= 0) {
+          IntermediateInstruction* lit = out[top];
+          out.erase(out.begin() + top);
+          out.insert(out.begin() + other, lit);
+          start = other + 1;
+        }
+      }
+
+      if(start < 1 || !IsIntLit(out[start - 1])) {
+        out.push_back(instr);
+        return;
+      }
+
+      const long lit_pos = start - 1;
+      const INT64_VALUE c = out[lit_pos]->GetOperand7();
+      const bool single = (start == top);   // the other operand is one instruction
+
+      switch(type) {
+      case ADD_INT:
+      case SUB_INT:
+      case BIT_OR_INT:
+      case BIT_XOR_INT:
+        if(c == 0) {
+          out.erase(out.begin() + lit_pos);
+          return;
+        }
+        break;
+
+      case BIT_AND_INT:
+        if(c == -1) {
+          out.erase(out.begin() + lit_pos);
+          return;
+        }
+        break;
+
+      case SHL_INT:
+      case SHR_INT:
+        if((c & 63) == 0) {
+          out.erase(out.begin() + lit_pos);
+          return;
+        }
+        break;
+
+      default:
+        break;
+      }
+
+      if(type == MUL_INT || type == BIT_AND_INT) {
+        const INT64_VALUE zero = 0;
+        if(c == zero) {
+          if(single) {
+            // a lone load or literal has no effect: drop it with the literal
+            out.erase(out.begin() + lit_pos, out.begin() + lit_pos + 2);
+            out.push_back(factory->MakeIntLitInstruction(line, zero));
+          }
+          else {
+            out.erase(out.begin() + lit_pos);
+            out.push_back(factory->MakeInstruction(line, POP_INT));
+            out.push_back(factory->MakeIntLitInstruction(line, zero));
+          }
+          return;
+        }
+      }
+
+      if(type == MUL_INT && c == 1) {
+        out.erase(out.begin() + lit_pos);
+        return;
+      }
+
+      // (y OP a) OP b -> y OP (a OP b) for + * and or xor: the other operand is
+      // itself a literal-then-operand expression of the same operator
+      if(top - 1 > start && out[top]->GetType() != LOAD_INT_LIT && IsCommutative(type)) {
+        IntermediateInstruction* inner = out[top];
+        const InstructionType inner_type = inner->GetType();
+        const bool same = inner_type == type;
+        // (y << k) is y * 2^k, so a multiplication folds into it as well
+        const bool shifted = type == MUL_INT && inner_type == SHL_INT;
+        if((same || shifted) && IsIntLit(out[start])) {
+          const long y = SpanStart(out, top - 1);
+          if(y == start + 1) {
+            const INT64_VALUE a = out[start]->GetOperand7();
+            INT64_VALUE merged = 0;
+            bool ok = true;
+            if(shifted) {
+              // the shift count is the literal below the operand: a mod 64
+              merged = (a >= 0 && a <= 62) ? objeck_int::Mul(c, (INT64_VALUE)1 << a) : 0;
+              ok = (a >= 0 && a <= 62);
+            }
+            else {
+              switch(type) {
+              case ADD_INT:     merged = objeck_int::Add(c, a); break;
+              case MUL_INT:     merged = objeck_int::Mul(c, a); break;
+              case BIT_AND_INT: merged = c & a; break;
+              case BIT_OR_INT:  merged = c | a; break;
+              default:          merged = c ^ a; break;
+              }
+            }
+            if(ok) {
+              // [lit c][lit a][y..][inner]  ->  [lit merged][y..][op]
+              out.pop_back();
+              out.erase(out.begin() + start);
+              out[lit_pos] = factory->MakeIntLitInstruction(line, merged);
+              instr = shifted ? factory->MakeInstruction(line, MUL_INT) : inner;
+              continue;
+            }
+          }
+        }
+      }
+
+      // multiplication by a power of two is a shift
+      if(type == MUL_INT && c >= 2 && (c & (c - 1)) == 0) {
+        int k = 0;
+        while(((INT64_VALUE)1 << k) != c) {
+          k++;
+        }
+        out[lit_pos] = factory->MakeIntLitInstruction(line, (INT64_VALUE)k);
+        out.push_back(factory->MakeInstruction(line, SHL_INT, (long)k));
+        return;
+      }
+
+      out.push_back(instr);
+      return;
+    }
+  }
+
+  std::vector<IntermediateInstruction*> SimplifyIntOps(std::vector<IntermediateInstruction*> in, int line)
+  {
+    std::vector<IntermediateInstruction*> out;
+    out.reserve(in.size());
+    for(IntermediateInstruction* instr : in) {
+      EmitIntOp(out, instr, line);
+    }
+
+    return out;
+  }
+}
+
 IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
   std::deque<IntermediateInstruction*> working_stack;
 
-  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  std::vector<IntermediateInstruction*> input_instrs = SimplifyIntOps(inputs->GetInstructions(), cur_line_num);
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {

@@ -41,8 +41,12 @@ OPENCV_VERSION=4.12.0
 OPENCV_URL=https://github.com/opencv/opencv/archive/refs/tags/$OPENCV_VERSION.tar.gz
 OPENCV_SHA256=44c106d5bb47efec04e531fd93008b3fcd1d27138985c5baf4eafac0e1ec9e9d
 ORT_VERSION=1.30.0
-ORT_URL=https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/onnxruntime-osx-arm64-$ORT_VERSION.tgz
-ORT_SHA256=6ebb5062a934537c352937821f9fe9718e7de1a2db1122a93dd363ffd53a7012
+# microsoft/onnxruntime vanished from GitHub (the repo, its releases and its API all return 404), so
+# the release tarball this script used is gone. The same build ships in Microsoft's NuGet package: its
+# osx-arm64 dylib has the install name @rpath/libonnxruntime.1.dylib and minimum macOS 14.0 that the
+# checks below assert. The package is a zip.
+ORT_URL=https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/$ORT_VERSION/microsoft.ml.onnxruntime.$ORT_VERSION.nupkg
+ORT_SHA256=30df119bd9164eaa187666d93147448fdd4a9a1a3caf83f1505daf7af2d1c5d2
 MBEDTLS_VERSION=3.6.4
 MBEDTLS_URL=https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-$MBEDTLS_VERSION/mbedtls-$MBEDTLS_VERSION.tar.bz2
 MBEDTLS_SHA256=ec35b18a6c593cf98c3e30db8b98ff93e8940a8c4e690e66b41dfc011d678110
@@ -159,14 +163,14 @@ licenses opencv "$OCV_SRC" LICENSE \
 
 # ---- ONNX Runtime ---------------------------------------------------------------
 step "ONNX Runtime $ORT_VERSION (prebuilt)"
-tarball=$(fetch onnxruntime "$ORT_URL" "$ORT_SHA256" | tail -1)
-tar xzf "$tarball" -C "$WORK"
-ORT_DIR="$WORK/onnxruntime-osx-arm64-$ORT_VERSION"
+package=$(fetch onnxruntime "$ORT_URL" "$ORT_SHA256" | tail -1)
+ORT_DIR="$WORK/onnxruntime-nuget-$ORT_VERSION"
+rm -rf "$ORT_DIR" && mkdir -p "$ORT_DIR"
+unzip -q "$package" -d "$ORT_DIR" || { echo "ERROR: onnxruntime package would not unzip" >&2; exit 1; }
 mkdir -p "$STAGE/onnxruntime/lib"
-cp -R "$ORT_DIR/include" "$STAGE/onnxruntime/include"
-# One real file under the name the bindings link; the archive also carries a
-# byte-identical libonnxruntime.dylib copy and a 73 MB dSYM, neither shipped.
-cp "$ORT_DIR/lib/libonnxruntime.$ORT_VERSION.dylib" "$STAGE/onnxruntime/lib/libonnxruntime.1.dylib"
+cp -R "$ORT_DIR/build/native/include" "$STAGE/onnxruntime/include"
+# The package's dylib is already named for its install name (@rpath/libonnxruntime.1.dylib).
+cp "$ORT_DIR/runtimes/osx-arm64/native/libonnxruntime.dylib" "$STAGE/onnxruntime/lib/libonnxruntime.1.dylib"
 licenses onnxruntime "$ORT_DIR" LICENSE ThirdPartyNotices.txt
 
 # ---- mbedTLS ----------------------------------------------------------------------
