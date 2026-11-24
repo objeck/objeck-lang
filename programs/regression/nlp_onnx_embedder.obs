@@ -395,7 +395,7 @@ class NlpOnnxEmbedder {
 		# reduced precision and misses by 0.001251 on an M4 Max, with the old and the new ONNX Runtime alike.
 		cpu_config := Map->New()<String, String>;
 		cpu_config->Insert("ep", "cpu");
-		embedder := BertEmbedder->New("data/bert/tiny_bert_fixed.onnx", "data/bert/vocab.txt", 16, cpu_config);
+		embedder := BertEmbedder->New("data/bert/tiny_bert_fixed.onnx", @tokenizer, 16, cpu_config);
 		Check("max_len 16 opens it", embedder->IsOpen());
 		if(<>embedder->IsOpen()) {
 			return;
