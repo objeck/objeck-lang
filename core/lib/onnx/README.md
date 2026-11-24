@@ -81,6 +81,10 @@ Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=
 
 `Session->Run` copies every input to the device and every output back on each call. `DeviceTensor` and `BoundSession` (`device_tensor.h`, `onnx.obs`) allocate tensors once in the provider's memory (`ep=cuda`, `ep=tensorrt`; host memory for `ep=cpu`), bind them to the model's inputs and outputs by name, and run on them in place: ResNet-34 at batch 32 on an RTX 4090 went from 48.9 ms to 6.1 ms per run with the data resident. A bound run is bit-identical to `Session->Run` on the same provider. The CUDA runtime calls it needs (a copy, a stream) are looked up from the cudart library the CUDA provider already loaded, so building the library still needs no CUDA. A session closed while tensors still use it is released after the last of them (`session_registry.h`). See `docs/ai_sections/onnx_gpu.md`.
 
+### Half precision and 8-bit
+
+`Session->Run` converts to whatever the model declares (FP32, FP16, BF16, FP64, INT8 to INT64, UINT8 to UINT64, BOOL). The FP16 and BF16 conversions round to nearest, ties to even, straight from the `Float`; integers saturate at the type's range. `Half`, `BFloat16` and `Quantization` (`onnx.obs`) expose the conversions, `DeviceTensor->UploadBits` / `DownloadBits` move raw element patterns, and `programs/tests/onnx_gpu/make_models.py` produces FP16 and INT8 (QDQ) variants of an FP32 model. See `docs/ai_sections/onnx_gpu.md`.
+
 ## Quick Start
 
 ```objeck

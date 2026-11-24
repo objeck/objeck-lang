@@ -217,6 +217,7 @@ static size_t elem_type_size(ONNXTensorElementDataType type) {
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:   return 4;
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE:  return 8;
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: return 2;
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16: return 2;
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:    return 1;
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:   return 1;
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16:   return 2;
@@ -233,6 +234,7 @@ static size_t elem_type_size(ONNXTensorElementDataType type) {
 static bool elem_type_from_name(const std::wstring& name, ONNXTensorElementDataType& type) {
    static const ONNXTensorElementDataType all[] = {
       ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16,
+      ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16,
       ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8,
       ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32,
       ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8,
@@ -351,6 +353,13 @@ static bool raw_to_doubles(ONNXTensorElementDataType type, const void* src, doub
       const uint16_t* typed = reinterpret_cast<const uint16_t*>(src);
       for(size_t i = 0; i < count; ++i) {
          dst[i] = (double)half_to_float_u16(typed[i]);
+      }
+      return true;
+   }
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16: {
+      const uint16_t* typed = reinterpret_cast<const uint16_t*>(src);
+      for(size_t i = 0; i < count; ++i) {
+         dst[i] = (double)bf16_to_float_u16(typed[i]);
       }
       return true;
    }

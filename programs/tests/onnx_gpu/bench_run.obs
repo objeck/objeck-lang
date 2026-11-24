@@ -12,6 +12,9 @@ line per way.
     bound_copy      IO binding, but the host data still travels every iteration:
                     Upload every input, Run, Download every output into buffers
                     allocated once. The like-for-like comparison with `run`.
+    bound_bits      As bound_copy, but an FP16 or BF16 tensor travels as the 16-bit patterns
+                    (Half->Pack once, UploadBits / DownloadBits in the loop): no conversion
+                    per element per iteration. Identical to bound_copy for other types.
     bound_resident  IO binding with the data resident on the device: Run only.
                     Preallocated outputs. What a pipeline whose input is produced
                     on the GPU and whose output is consumed there pays.
@@ -94,13 +97,16 @@ class BenchRun {
 				times := TimeRun(true);
 			}
 			else if(mode->Equals("bound_copy")) {
-				times := TimeBound(true, false);
+				times := TimeBound(true, false, false);
+			}
+			else if(mode->Equals("bound_bits")) {
+				times := TimeBound(true, false, true);
 			}
 			else if(mode->Equals("bound_resident")) {
-				times := TimeBound(false, false);
+				times := TimeBound(false, false, false);
 			}
 			else if(mode->Equals("bound_dynout")) {
-				times := TimeBound(false, true);
+				times := TimeBound(false, true, false);
 			}
 			else {
 				">>> unknown mode '{$mode}' <<<"->ErrorLine();
@@ -212,7 +218,7 @@ class BenchRun {
 		return times;
 	}
 
-	method : TimeBound(copy : Bool, dynamic_outputs : Bool) ~ Float[] {
+	method : TimeBound(copy : Bool, dynamic_outputs : Bool, bits : Bool) ~ Float[] {
 		bound := BoundSession->New(@session);
 		if(<>bound->IsOpen()) {
 			"the IO binding did not open"->ErrorLine();
@@ -225,6 +231,8 @@ class BenchRun {
 		in_values := Vector->New()<Buf>;
 		out_tensors := Vector->New()<DeviceTensor>;
 		out_hosts := Vector->New()<Buf>;
+		in_packed := Vector->New()<Buf>;
+		out_packed := Vector->New()<Buf>;
 
 		each(spec in in_specs) {
 			shape := Resolve(spec);
@@ -234,6 +242,7 @@ class BenchRun {
 			bound->BindInput(spec->GetName(), tensor);
 			in_tensors->AddBack(tensor);
 			in_values->AddBack(Buf->New(values));
+			in_packed->AddBack(Buf->New(Pack(spec->GetDatatype(), values)));
 		};
 
 		each(spec in out_specs) {
@@ -246,6 +255,7 @@ class BenchRun {
 				bound->BindOutput(spec->GetName(), tensor);
 				out_tensors->AddBack(tensor);
 				out_hosts->AddBack(Buf->New(Float->New[Count(shape)]));
+				out_packed->AddBack(Buf->New(Int->New[Count(shape)]));
 			};
 		};
 
@@ -255,7 +265,12 @@ class BenchRun {
 			timer->Start();
 			if(copy) {
 				for(k := 0; k < in_tensors->Size(); k += 1;) {
-					in_tensors->Get(k)->Upload(in_values->Get(k)->Get());
+					if(bits & in_packed->Get(k)->GetBits() <> Nil) {
+						in_tensors->Get(k)->UploadBits(in_packed->Get(k)->GetBits());
+					}
+					else {
+						in_tensors->Get(k)->Upload(in_values->Get(k)->Get());
+					};
 				};
 			};
 
@@ -266,7 +281,12 @@ class BenchRun {
 
 			if(copy) {
 				for(k := 0; k < out_tensors->Size(); k += 1;) {
-					out_tensors->Get(k)->Download(out_hosts->Get(k)->Get());
+					if(bits & out_tensors->Get(k)->GetDatatype()->Equals("FP16")) {
+						out_tensors->Get(k)->DownloadBits(out_packed->Get(k)->GetBits());
+					}
+					else {
+						out_tensors->Get(k)->Download(out_hosts->Get(k)->Get());
+					};
 				};
 			};
 			timer->End();
@@ -286,6 +306,18 @@ class BenchRun {
 		return times;
 	}
 
+
+	# the raw 16-bit patterns of an FP16 or BF16 input, packed once; Nil for any other type
+	method : Pack(datatype : String, values : Float[]) ~ Int[] {
+		if(datatype->Equals("FP16")) {
+			return Half->Pack(values);
+		};
+		if(datatype->Equals("BF16")) {
+			return BFloat16->Pack(values);
+		};
+
+		return Nil;
+	}
 
 	# the first output of Run against the first output of the bound run
 	method : Check() ~ Nil {
@@ -317,9 +349,18 @@ class BenchRun {
 # a Float[] cannot be a generic argument, so vectors of arrays hold these
 class Buf {
 	@values : Float[];
+	@bits : Int[];
 
 	New(values : Float[]) {
 		@values := values;
+	}
+
+	New(bits : Int[]) {
+		@bits := bits;
+	}
+
+	method : public : GetBits() ~ Int[] {
+		return @bits;
 	}
 
 	method : public : Get() ~ Float[] {

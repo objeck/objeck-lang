@@ -95,4 +95,92 @@ At batch 32 the normal path spends about 43 of its 49 ms outside the model: a 32
 
 **GPU memory does not grow.** 10,000 bound runs of each of `bound_resident`, `bound_dynout` and `bound_copy` (30,000 runs in one process, ResNet-34 batch 1) were watched with `nvidia-smi` every 2 seconds: the process settled at about 3.1 GiB after the first run and stayed within a 60 MiB band (3,077 to 3,136 MiB) to the end, and the card returned to its starting 2,245 MiB when the process exited.
 
+### Half precision and 8-bit models
+
+**You never have to say what type a model wants.** `Session->Run` reads the model's own declaration and converts: an FP16 input is rounded from the `Float` you gave, an FP16 output comes back as `Float`, and the same for BF16, INT8, UINT8, INT32 and the rest. The conversions are exact where the type allows and *correctly rounded* where it does not: to nearest, ties to even, taken straight from the `Float` (rounding through FP32 first would round twice), with overflow to the infinity of the right sign, subnormals, signed zeros and NaNs preserved. Integer inputs truncate toward zero and **saturate** at the type's range (a 300 sent to an INT8 input is 127, not an undefined cast).
+
+For a program that wants the bit patterns themselves there are three small classes:
+
+```objeck
+use API.Onnx, Collection;
+
+Half->ToBits(1.0)->PrintLine();                # 15360  (0x3C00)
+Half->Round(0.1)->PrintLine();                 # 0.0999755859375, the nearest binary16
+Half->FromBits(31743)->PrintLine();            # 65504, the largest finite half
+BFloat16->ToBits(3.0)->PrintLine();            # 16448  (0x4040)
+
+packed := Half->Pack(pixels);                  # Float[] -> Int[] of 16-bit patterns, once
+input->UploadBits(packed);                     # raw patterns to a device tensor: no per-element conversion
+output->DownloadBits(patterns);                # and back
+values := Half->Unpack(patterns);              # Int[] -> Float[]
+
+# a model with an INT8 input: scale and zero point are the ones it was quantized with
+quantized := Quantization->ToInt8(features, 0.0078125, 0);      # Float[] of whole numbers, saturated
+```
+
+`Half` and `BFloat16` have `ToBits`, `FromBits`, `Round`, `Pack` and `Unpack`; `Quantization` has `ToInt8`, `ToUInt8` and `Dequantize`. `DeviceTensor->UploadBits(Int[])` and `DownloadBits(Int[])` move raw element patterns (the low 8, 16, 32 or 64 bits of each `Int`, by the tensor's element size) for any element type.
+
+**What is asserted.** `programs/regression/onnx_float16.obs` needs no GPU and no model file: it checks a table of known patterns, the round trip of **all 65,536** half and bfloat16 patterns (every non-NaN pattern must come back unchanged, every NaN must stay a NaN), and **every interval between neighbouring finite values** (the midpoint must go to the neighbour with the even pattern, a hair above to the upper one, a hair below to the lower one: that pins the rounding in the normal range, the subnormal range and at the overflow edge, for 31,744 half and 32,640 bfloat16 intervals). It then writes a 407-byte model (Cast, Mul, Cast; FP16, BF16, INT8 and UINT8 in and out, listed as hex in the test so no model file is tracked) and checks what the conversion did to real numbers, through `Session->Run` and through a bound run with raw patterns, on `ep=cpu` and, where a GPU session opens, `ep=cuda`: `0.1` fed to an FP16 input is `0.0999755859375` before the model sees it, so the answer is exactly `0.199951171875`; 65520 overflows to infinity; 1e38 stays finite in BF16; 300 and -300 saturate to 127 and -128. (Before this change the FP32-to-FP16 helper rounded ties up instead of to even and went through FP32 for a `Float` input; the integer stores were an unchecked C++ cast.)
+
+#### Making an FP16 or INT8 model
+
+Both are produced offline, from the FP32 model, with Python; `programs/tests/onnx_gpu/make_models.py` does it for an image model:
+
+```sh
+pip install onnx onnxruntime onnxconverter-common numpy sympy
+python programs/tests/onnx_gpu/make_models.py resnet34.onnx out_dir
+```
+
+- **FP16** is `onnxconverter_common.float16.convert_float_to_float16(model, keep_io_types=False)`: weights and activations in half precision, FP16 inputs and outputs. The script also writes `_fp16_io32` (a `Cast` at each edge, so the model takes and returns FP32 and replaces the original without changing a caller). Half the weight memory, and on a GPU with tensor cores most of the speed-up. A model that overflows half range (activations beyond 65504) needs `op_block_list` for the offending operators or BF16 instead.
+- **INT8** is `onnxruntime.quantization.quantize_static` in **QDQ** format (`QuantizeLinear`/`DequantizeLinear` pairs around `Conv` and `MatMul`) with per-channel weights; a model older than opset 13 is upgraded first (the script does this: the ONNX model zoo's ResNet is opset 7). Calibrate on a few hundred *representative* inputs. `make_models.py` calibrates on synthetic data so it runs anywhere: **that is enough for speed numbers and not for accuracy**, and `compare_models.obs` shows what it costs. QDQ is the format TensorRT turns into int8 kernels; a dynamically quantized model (`QLinearConv`, `MatMulInteger`) runs only on the CPU provider.
+
+#### Measured: ResNet-34, FP32 against FP16 against INT8, `ep=cuda`
+
+Same card and runtime as above, 10 warm-up and 40 timed runs, `ep=cuda`, the CUDA provider with its default options (TF32 convolutions on). `run` is `Session->Run`; `bound_copy` the binding with the same host traffic; `bound_resident` the data left on the device. FP16 is `resnet34_fp16` (FP16 in and out); the host traffic for it is the cost of rounding every element to half, which `bound_bits` (pre-packed patterns, `UploadBits`) cuts.
+
+| model | batch | provider | mode | median ms | p95 ms | images/s |
+|---|---:|---|---|---:|---:|---:|
+| resnet34 FP32 | 1 | cuda | run | 3.75 | 5.39 | 267 |
+| resnet34 FP32 | 1 | cuda | bound_resident | 2.16 | 3.79 | 464 |
+| resnet34 FP16 | 1 | cuda | run | 4.50 | 5.61 | 222 |
+| resnet34 FP16 | 1 | cuda | bound_resident | 2.90 | 5.23 | 345 |
+| resnet34 FP16 (FP32 in/out) | 1 | cuda | bound_resident | 3.54 | 5.08 | 282 |
+| resnet34 INT8 QDQ | 1 | cuda | bound_resident | 9.13 | 16.95 | 110 |
+| resnet34 FP32 | 8 | cuda | run | 13.56 | 15.67 | 590 |
+| resnet34 FP32 | 8 | cuda | bound_resident | 2.60 | 3.92 | 3,075 |
+| resnet34 FP16 | 8 | cuda | run | 13.29 | 14.77 | 602 |
+| resnet34 FP16 | 8 | cuda | bound_resident | 2.74 | 4.65 | 2,916 |
+| resnet34 FP16 (FP32 in/out) | 8 | cuda | bound_resident | 3.42 | 6.36 | 2,341 |
+| resnet34 INT8 QDQ | 8 | cuda | bound_resident | 8.65 | 15.45 | 925 |
+| resnet34 FP32 | 32 | cuda | run | 44.64 | 45.50 | 717 |
+| resnet34 FP32 | 32 | cuda | bound_copy | 9.15 | 9.73 | 3,496 |
+| resnet34 FP32 | 32 | cuda | bound_resident | 5.81 | 6.36 | 5,505 |
+| resnet34 FP16 | 32 | cuda | run | 45.19 | 48.27 | 708 |
+| resnet34 FP16 | 32 | cuda | bound_copy | 10.95 | 11.37 | 2,923 |
+| resnet34 FP16 | 32 | cuda | bound_bits | 10.37 | 10.88 | 3,085 |
+| resnet34 FP16 | 32 | cuda | bound_resident | 4.05 | 4.50 | 7,895 |
+| resnet34 FP16 (FP32 in/out) | 32 | cuda | run | 42.56 | 45.42 | 752 |
+| resnet34 FP16 (FP32 in/out) | 32 | cuda | bound_copy | 7.27 | 7.80 | 4,402 |
+| resnet34 FP16 (FP32 in/out) | 32 | cuda | bound_resident | 4.17 | 4.81 | 7,682 |
+| resnet34 INT8 QDQ | 32 | cuda | bound_resident | 10.07 | 15.84 | 3,176 |
+
+What this says, honestly:
+
+- **FP16 helps where the GPU is the bottleneck and not before.** Batch 32 with the data resident: 5.81 ms (FP32) to 4.05 ms (FP16), a 1.4x speed-up and 7,895 images/s. At batch 1 and 8 the model is too small for half precision to show (the kernels are launch-bound) and FP16 is no faster, within noise. Through plain `Session->Run` it is not faster at any batch, because the run is dominated by converting millions of `Float`s on the host, which FP16 makes slightly *more* expensive (rounding each one to half). The place to use an FP16 model is a binding, with the data resident or pre-packed (`bound_bits`), or the FP32-in/out wrapper (`_fp16_io32`), whose host traffic is plain FP32: 7.27 ms with copies at batch 32 against 10.95 ms for the FP16-IO model.
+- **INT8 QDQ is slower than FP32 on the CUDA provider** (9 to 10 ms against 2 to 6 ms). The CUDA provider executes each `QuantizeLinear` and `DequantizeLinear` as its own kernel around FP32 convolutions; it does not fuse them into int8 convolutions. That is not a defect in the quantization, it is the wrong provider for it: quantized models are for the CPU provider (see the next row) and for TensorRT, which is the next section.
+- On the CPU provider, the same INT8 QDQ model runs 30 ms (batch 1) and 181 ms (batch 8) against 26 ms and 111 ms for FP32 here, on a 16-core CPU shared with other work, so the CPU numbers are the least stable in this document; do not read a ranking into them.
+
+#### How far a variant drifts
+
+`programs/tests/onnx_gpu/compare_models.obs` runs two models on the same inputs and compares the first output. ResNet-34, 16 deterministic synthetic inputs, FP32 on the CPU provider against:
+
+| variant | max abs diff | mean abs diff | max diff / max logit | top-1 agrees |
+|---|---:|---:|---:|---:|
+| FP32 on `cuda` (TF32 convolutions) | 0.0063 | 0.00079 | 0.0006 | 16 / 16 |
+| FP16 on `cuda` | 0.0336 | 0.0038 | 0.0031 | 16 / 16 |
+| FP16 (FP32 in/out) on `cuda` | 0.0336 | 0.0038 | 0.0031 | 16 / 16 |
+| INT8 QDQ on `cuda`, **calibrated on random data** | 4.78 | 0.19 | 0.44 | 5 / 16 |
+
+The INT8 row is what synthetic calibration costs: a model calibrated on a handful of random images and fed a synthetic ramp is a speed fixture, not a classifier. Calibrate on real data before you read an accuracy off it.
+
 **Rebuilding the numbers.** `programs/tests/onnx_gpu/run_bench.sh` runs the whole matrix and prints the table rows; see its README.

@@ -3133,6 +3133,291 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 			return array_args[0]->As(API.Onnx.RunResult);
 		}
 	}
+	# Calls the native converter for Half and BFloat16
+	class : private : FloatBits {
+		@fn_onnx_convert_float16 : static : String;
+
+		# kind 0 = binary16, 1 = bfloat16
+		function : Pack(kind : Int, values : Float[]) ~ Int[] {
+			if(values = Nil) {
+				return Nil;
+			};
+
+			bits := Int->New[values->Size()];
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(kind);
+			array_args[2] := IntRef->New(0);
+			array_args[3] := FloatArrayRef->New(values);
+			array_args[4] := IntArrayRef->New(bits);
+
+			if(@fn_onnx_convert_float16 = Nil) { @fn_onnx_convert_float16 := "onnx_convert_float16"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_convert_float16, array_args);
+			if(array_args[0]->As(IntRef)->Get() = 0) {
+				return Nil;
+			};
+
+			return bits;
+		}
+
+		function : Unpack(kind : Int, bits : Int[]) ~ Float[] {
+			if(bits = Nil) {
+				return Nil;
+			};
+
+			values := Float->New[bits->Size()];
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(kind);
+			array_args[2] := IntRef->New(1);
+			array_args[3] := IntArrayRef->New(bits);
+			array_args[4] := FloatArrayRef->New(values);
+
+			if(@fn_onnx_convert_float16 = Nil) { @fn_onnx_convert_float16 := "onnx_convert_float16"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_convert_float16, array_args);
+			if(array_args[0]->As(IntRef)->Get() = 0) {
+				return Nil;
+			};
+
+			return values;
+		}
+
+		function : PackOne(kind : Int, value : Float) ~ Int {
+			one := Float->New[1];
+			one[0] := value;
+			bits := Pack(kind, one);
+			if(bits = Nil) {
+				return 0;
+			};
+
+			return bits[0];
+		}
+
+		function : UnpackOne(kind : Int, pattern : Int) ~ Float {
+			one := Int->New[1];
+			one[0] := pattern;
+			values := Unpack(kind, one);
+			if(values = Nil) {
+				return 0.0;
+			};
+
+			return values[0];
+		}
+	}
+
+	#~
+	IEEE 754 binary16 (FP16), converted exactly as a GPU or an FP16 model would.
+
+	A model whose input or output is FP16 needs no help from this class:
+	`Session->Run` and `DeviceTensor->Upload` convert from the model's declared type.
+	It is for a program that wants the 16-bit patterns themselves, or to know what a
+	value becomes in half precision: to pack a whole array once and reuse it, to
+	upload with `UploadBits` and skip the conversion in the loop, to read an FP16
+	result with `DownloadBits`, or to check a half-precision result.
+
+	Rounding is to nearest, ties to even, from the Float itself (not through FP32, which
+	would round twice): 65519.99 is 65504, the largest finite half; 65520 and above is
+	infinity; below half of the smallest subnormal (2^-24) is a signed zero; a NaN stays
+	a NaN and an infinity stays an infinity, with their signs.
+
+	```
+	bits := Half->ToBits(1.0);              # 15360, 0x3C00
+	value := Half->FromBits(bits);          # 1.0
+	rounded := Half->Round(0.1);            # 0.0999755859375, the nearest half
+	packed := Half->Pack(pixels);           # Float[] to Int[]
+	back := Half->Unpack(packed);
+	```
+	~#
+	class Half {
+		#~
+		The 16-bit pattern of a value.
+		@param value the value
+		@return the half-precision bits, 0 to 65535
+		~#
+		function : ToBits(value : Float) ~ Int {
+			return FloatBits->PackOne(0, value);
+		}
+
+		#~
+		The value of a 16-bit pattern. Only the low 16 bits of the Int are read.
+		@param bits half-precision bits
+		@return the value
+		~#
+		function : FromBits(bits : Int) ~ Float {
+			return FloatBits->UnpackOne(0, bits);
+		}
+
+		#~
+		The nearest half-precision value, as a Float.
+		@param value the value
+		@return the value after a trip through binary16
+		~#
+		function : Round(value : Float) ~ Float {
+			return FromBits(ToBits(value));
+		}
+
+		#~
+		Patterns for every element.
+		@param values the values
+		@return one 16-bit pattern per element, or Nil for a Nil array
+		~#
+		function : Pack(values : Float[]) ~ Int[] {
+			return FloatBits->Pack(0, values);
+		}
+
+		#~
+		Values for every pattern.
+		@param bits half-precision bits, one per element
+		@return one value per element, or Nil for a Nil array
+		~#
+		function : Unpack(bits : Int[]) ~ Float[] {
+			return FloatBits->Unpack(0, bits);
+		}
+	}
+
+	#~
+	bfloat16 (BF16): the top 16 bits of an FP32 with its own rounding. The range of
+	FP32 and the precision of about two decimal digits. Same calls and the same
+	rounding rules as `Half`, with the range of FP32: 3.4e38 is finite, and a value
+	only becomes infinity past the largest bfloat16.
+	~#
+	class BFloat16 {
+		#~
+		The 16-bit pattern of a value.
+		@param value the value
+		@return the bfloat16 bits, 0 to 65535
+		~#
+		function : ToBits(value : Float) ~ Int {
+			return FloatBits->PackOne(1, value);
+		}
+
+		#~
+		The value of a 16-bit pattern. Only the low 16 bits of the Int are read.
+		@param bits bfloat16 bits
+		@return the value
+		~#
+		function : FromBits(bits : Int) ~ Float {
+			return FloatBits->UnpackOne(1, bits);
+		}
+
+		#~
+		The nearest bfloat16 value, as a Float.
+		@param value the value
+		@return the value after a trip through bfloat16
+		~#
+		function : Round(value : Float) ~ Float {
+			return FromBits(ToBits(value));
+		}
+
+		#~
+		Patterns for every element.
+		@param values the values
+		@return one 16-bit pattern per element, or Nil for a Nil array
+		~#
+		function : Pack(values : Float[]) ~ Int[] {
+			return FloatBits->Pack(1, values);
+		}
+
+		#~
+		Values for every pattern.
+		@param bits bfloat16 bits, one per element
+		@return one value per element, or Nil for a Nil array
+		~#
+		function : Unpack(bits : Int[]) ~ Float[] {
+			return FloatBits->Unpack(1, bits);
+		}
+	}
+
+	#~
+	Linear 8-bit quantization of Float values, for a model whose input or output is
+	INT8 or UINT8 (a quantized network exported with quantized inputs).
+
+	  q = clamp(round(x / scale) + zero_point, low, high)        x = (q - zero_point) * scale
+
+	Rounding is to nearest, ties away from zero, and the result SATURATES at the
+	type's range rather than wrapping. The values come back as Floats holding whole
+	numbers, which is what `Tensor` and `DeviceTensor->Upload` take for an INT8 or UINT8
+	input. The scale and the zero point are the ones the model was quantized with
+	(they are in the model: look at the QuantizeLinear node's inputs, or the script
+	that quantized it); a model that quantizes its own FP32 input internally needs none
+	of this.
+	~#
+	class Quantization {
+		#~
+		Quantizes to a signed 8-bit range, -128 to 127.
+		@param values the real values
+		@param scale the step between neighbouring quantized values
+		@param zero_point the quantized value that stands for 0
+		@return whole numbers in -128 to 127
+		~#
+		function : ToInt8(values : Float[], scale : Float, zero_point : Int) ~ Float[] {
+			return Quantize(values, scale, zero_point, -128.0, 127.0);
+		}
+
+		#~
+		Quantizes to an unsigned 8-bit range, 0 to 255.
+		@param values the real values
+		@param scale the step between neighbouring quantized values
+		@param zero_point the quantized value that stands for 0
+		@return whole numbers in 0 to 255
+		~#
+		function : ToUInt8(values : Float[], scale : Float, zero_point : Int) ~ Float[] {
+			return Quantize(values, scale, zero_point, 0.0, 255.0);
+		}
+
+		#~
+		Back to real values.
+		@param quantized whole numbers, as an INT8 or UINT8 tensor reads out
+		@param scale the step the model used
+		@param zero_point the quantized value that stood for 0
+		@return (q - zero_point) * scale for every element
+		~#
+		function : Dequantize(quantized : Float[], scale : Float, zero_point : Int) ~ Float[] {
+			if(quantized = Nil) {
+				return Nil;
+			};
+
+			values := Float->New[quantized->Size()];
+			zero := zero_point->ToFloat();
+			for(i := 0; i < quantized->Size(); i += 1;) {
+				values[i] := (quantized[i] - zero) * scale;
+			};
+
+			return values;
+		}
+
+		function : Quantize(values : Float[], scale : Float, zero_point : Int, low : Float, high : Float) ~ Float[] {
+			if(values = Nil | scale <= 0.0) {
+				return Nil;
+			};
+
+			quantized := Float->New[values->Size()];
+			zero := zero_point->ToFloat();
+			for(i := 0; i < values->Size(); i += 1;) {
+				scaled := values[i] / scale;
+				# nearest whole number, ties away from zero
+				rounded := 0.0;
+				if(scaled >= 0.0) {
+					rounded := Float->Floor(scaled + 0.5);
+				}
+				else {
+					rounded := Float->Ceil(scaled - 0.5);
+				};
+
+				q := rounded + zero;
+				if(q < low) {
+					q := low;
+				};
+				if(q > high) {
+					q := high;
+				};
+				quantized[i] := q;
+			};
+
+			return quantized;
+		}
+	}
+
 	#~
 	A tensor that lives in the execution provider's memory.
 
@@ -3159,6 +3444,8 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 		@fn_onnx_device_free : static : String;
 		@fn_onnx_device_upload : static : String;
 		@fn_onnx_device_download : static : String;
+		@fn_onnx_device_upload_bits : static : String;
+		@fn_onnx_device_download_bits : static : String;
 		@fn_onnx_device_meta : static : String;
 		@handle : Int;
 		@session : Session;
@@ -3267,6 +3554,7 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 			if(code = 11) { return "FP64"; };
 			if(code = 12) { return "UINT32"; };
 			if(code = 13) { return "UINT64"; };
+			if(code = 16) { return "BF16"; };
 			return "UNSUPPORTED";
 		}
 
@@ -3389,6 +3677,52 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 
 			if(@fn_onnx_device_download = Nil) { @fn_onnx_device_download := "onnx_device_download"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_download, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Copies raw element patterns into the tensor, with no conversion: for an FP16 or
+		BF16 tensor the 16-bit patterns `Half->Pack` makes, for INT8 or UINT8 the byte,
+		for INT32 or FP32 the 32 bits. The low bits of each Int are stored, by the
+		element size of the tensor. Packing once and uploading the patterns each
+		iteration skips the conversion that `Upload` does.
+		@param bits one pattern per element, exactly GetCount() of them
+		@return true when the copy succeeded
+		~#
+		method : public : UploadBits(bits : Int[]) ~ Bool {
+			if(@handle = 0 | bits = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntArrayRef->New(bits);
+
+			if(@fn_onnx_device_upload_bits = Nil) { @fn_onnx_device_upload_bits := "onnx_device_upload_bits"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_upload_bits, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Copies the tensor's raw element patterns into an Int[] the caller owns (the
+		counterpart of UploadBits): an FP16 result comes back as the 16-bit patterns
+		`Half->Unpack` reads.
+		@param into exactly GetCount() elements
+		@return true when the copy succeeded
+		~#
+		method : public : DownloadBits(into : Int[]) ~ Bool {
+			if(@handle = 0 | into = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntArrayRef->New(into);
+
+			if(@fn_onnx_device_download_bits = Nil) { @fn_onnx_device_download_bits := "onnx_device_download_bits"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_download_bits, array_args);
 			return array_args[0]->As(IntRef)->Get() <> 0;
 		}
 

@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <sstream>
 #include <mutex>
+#include <limits>
 
 #include <opencv2/opencv.hpp>
 
@@ -90,23 +91,93 @@ static inline std::wstring format_rate(double value) {
 // FP16 conversion utilities
 //
 
-// Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
-static inline uint16_t f32_to_f16(float f) {
-   uint32_t x; std::memcpy(&x, &f, sizeof(x));
-   uint32_t sign = (x >> 16) & 0x8000u;
-   uint32_t mant = x & 0x007FFFFFu;
-   int32_t  exp = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
-   if(exp <= 0) {
-      if(exp < -10) return (uint16_t)sign;
-      mant = (mant | 0x00800000u) >> (1 - exp);
-      return (uint16_t)(sign | ((mant + 0x00001000u) >> 13));
+// Converts a double to a small IEEE-style binary float (1 sign bit, ebits exponent
+// bits, mbits mantissa bits), rounding to nearest, ties to even, straight from the
+// double: going through a float first would round twice. This is the one routine for
+// IEEE binary16 (5, 10) and bfloat16 (8, 7).
+//
+//   - overflow, including a value that rounds up past the largest finite one, is
+//     infinity with the sign kept (65520 is the first double that becomes +Inf in
+//     binary16; 65519.99 is still 65504),
+//   - a result below the normal range is a subnormal, rounded the same way, and one
+//     below half the smallest subnormal is a signed zero (so -0.0 stays -0.0),
+//   - a NaN stays a NaN: the top payload bits are kept and the quiet bit is set, so
+//     it can never collapse to an infinity.
+//
+// The result carries bits in the low (1 + ebits + mbits) bits.
+static inline uint32_t double_to_small_float(double d, int ebits, int mbits) {
+   const int bias = (1 << (ebits - 1)) - 1;
+   const uint32_t emax = (1u << ebits) - 1;
+
+   uint64_t x;
+   std::memcpy(&x, &d, sizeof(x));
+   const uint32_t sign = (uint32_t)(x >> 63) << (ebits + mbits);
+   const int exp64 = (int)((x >> 52) & 0x7FF);
+   const uint64_t mant = x & 0xFFFFFFFFFFFFFULL;
+
+   if(exp64 == 0x7FF) {
+      if(mant) {
+         const uint32_t payload = (uint32_t)(mant >> (52 - mbits)) | (1u << (mbits - 1));
+         return sign | (emax << mbits) | payload;
+      }
+      return sign | (emax << mbits);
    }
-   else if(exp >= 31) {
-      return (uint16_t)(sign | 0x7C00u | (mant ? 0x01u : 0u));
+   if(exp64 == 0) {
+      return sign;   // zero, or a double subnormal: far below the smallest of either format
+   }
+
+   const int e = exp64 - 1023 + bias;
+   if(e >= (int)emax) {
+      return sign | (emax << mbits);
+   }
+
+   // the 53-bit significand with its implicit bit, shifted down to mbits (+ 1 implicit)
+   const uint64_t significand = mant | (1ULL << 52);
+   int shift = 52 - mbits;
+   uint64_t base_exponent = 0;
+   if(e > 0) {
+      base_exponent = (uint64_t)(e - 1);   // the implicit bit of q below adds the missing one
    }
    else {
-      return (uint16_t)(sign | (exp << 10) | ((mant + 0x00001000u) >> 13));
+      shift += 1 - e;
+      if(shift > 63) {
+         return sign;
+      }
    }
+
+   uint64_t q = significand >> shift;
+   const uint64_t remainder = significand & ((1ULL << shift) - 1);
+   const uint64_t halfway = 1ULL << (shift - 1);
+   if(remainder > halfway || (remainder == halfway && (q & 1))) {
+      q++;
+   }
+
+   const uint64_t bits = (base_exponent << mbits) + q;
+   if(bits >= ((uint64_t)emax << mbits)) {
+      return sign | (emax << mbits);
+   }
+   return sign | (uint32_t)bits;
+}
+
+// IEEE-754 binary16 from a double or a float, round-to-nearest-even
+static inline uint16_t f64_to_f16(double d) {
+   return (uint16_t)double_to_small_float(d, 5, 10);
+}
+
+static inline uint16_t f32_to_f16(float f) {
+   return f64_to_f16((double)f);
+}
+
+// bfloat16 (the top half of a float32, with its own rounding) from a double
+static inline uint16_t f64_to_bf16(double d) {
+   return (uint16_t)double_to_small_float(d, 8, 7);
+}
+
+static inline float bf16_to_float_u16(uint16_t b) {
+   const uint32_t x = (uint32_t)b << 16;
+   float out;
+   std::memcpy(&out, &x, sizeof(out));
+   return out;
 }
 
 // IEEE 754 half-precision float16 -> float32 converter
@@ -3185,6 +3256,7 @@ static const wchar_t* elem_type_name(ONNXTensorElementDataType type) {
    switch(type) {
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:   return L"FP32";
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: return L"FP16";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16: return L"BF16";
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE:  return L"FP64";
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:    return L"INT8";
    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16:   return L"INT16";
@@ -3225,12 +3297,48 @@ static size_t* make_int_array(VMContext& context, const std::vector<int64_t>& va
    return array;
 }
 
+// A double to an integer type: truncated toward zero, and SATURATED at the type's range
+// (a NaN is 0). A plain C++ cast of an out-of-range double is undefined behaviour, which
+// is what an INT8 or UINT8 input fed 300.0 used to be.
+template <typename T>
+static inline T saturate_cast(double value) {
+   if(value != value) {
+      return (T)0;
+   }
+   const double lowest = (double)std::numeric_limits<T>::lowest();
+   const double highest = (double)std::numeric_limits<T>::max();
+   if(value <= lowest) {
+      return std::numeric_limits<T>::lowest();
+   }
+   if(value >= highest) {
+      return std::numeric_limits<T>::max();
+   }
+   return (T)value;
+}
+
 template <typename T>
 static void store_elements(std::vector<uint8_t>& block, const double* src, size_t count) {
    block.resize(count * sizeof(T));
    T* dst = reinterpret_cast<T*>(block.data());
    for(size_t i = 0; i < count; ++i) {
-      dst[i] = (T)src[i];
+      dst[i] = saturate_cast<T>(src[i]);
+   }
+}
+
+template <>
+inline void store_elements<float>(std::vector<uint8_t>& block, const double* src, size_t count) {
+   block.resize(count * sizeof(float));
+   float* dst = reinterpret_cast<float*>(block.data());
+   for(size_t i = 0; i < count; ++i) {
+      dst[i] = (float)src[i];
+   }
+}
+
+template <>
+inline void store_elements<double>(std::vector<uint8_t>& block, const double* src, size_t count) {
+   block.resize(count * sizeof(double));
+   if(count > 0) {
+      std::memcpy(block.data(), src, count * sizeof(double));
    }
 }
 
@@ -3293,7 +3401,16 @@ static bool fill_input_block(std::vector<uint8_t>& block, ONNXTensorElementDataT
       block.resize(count * sizeof(uint16_t));
       uint16_t* dst = reinterpret_cast<uint16_t*>(block.data());
       for(size_t i = 0; i < count; ++i) {
-         dst[i] = f32_to_f16((float)src[i]);
+         dst[i] = f64_to_f16(src[i]);   // from the double itself: one rounding, not two
+      }
+      return true;
+   }
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16: {
+      block.resize(count * sizeof(uint16_t));
+      uint16_t* dst = reinterpret_cast<uint16_t*>(block.data());
+      for(size_t i = 0; i < count; ++i) {
+         dst[i] = f64_to_bf16(src[i]);
       }
       return true;
    }
@@ -3372,6 +3489,14 @@ static bool read_output_block(const Ort::Value& value, ONNXTensorElementDataType
       const uint16_t* src = reinterpret_cast<const uint16_t*>(value.GetTensorRawData());
       for(size_t i = 0; i < count; ++i) {
          dst[i] = (double)half_to_float_u16(src[i]);
+      }
+      return true;
+   }
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16: {
+      const uint16_t* src = reinterpret_cast<const uint16_t*>(value.GetTensorRawData());
+      for(size_t i = 0; i < count; ++i) {
+         dst[i] = (double)bf16_to_float_u16(src[i]);
       }
       return true;
    }
