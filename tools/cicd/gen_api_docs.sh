@@ -159,8 +159,8 @@ fi
 # Content, not just shape: assert the pages carry THIS release's version.
 # A well-formed archive built against the wrong version passes every
 # structural check, which is precisely how the stale docs went unnoticed.
-PAGE=$(find api -name '*.html' | head -1)
-STAMP=$(grep -o 'class="version">v[0-9.]*' "$PAGE" | head -1 | sed 's/.*>//')
+PAGE=$(find api -name '*.html' | awk 'NR==1')
+STAMP=$(grep -o 'class="version">v[0-9.]*' "$PAGE" | awk 'NR==1' | sed 's/.*>//')
 if [ -z "$STAMP" ]; then
   echo "::error::no version stamp found in $PAGE -- treat as failure, not a pass"
   exit 1
