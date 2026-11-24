@@ -1,0 +1,21 @@
+# EXPECT_RUNTIME_ERROR
+#~
+Multiplying by a literal zero must still evaluate the other operand.
+
+The optimizer rewrites `x * 0` to 0. When the other operand is not a lone load
+(here a division) it is still evaluated and its value dropped, so a division by
+zero inside it traps as it does at -opt s0. A rewrite that deleted the operand
+along with the multiply would print 0 and exit normally.
+
+The harness passes this only on a non-zero exit WITH output (the trap message).
+~#
+
+class ArithMulZeroTrap {
+  function : Main(args : String[]) ~ Nil {
+    # read from an array so the divisor is not a compile-time constant
+    zeros := Int->New[1];
+    z := zeros[0];
+    x := (5 / z) * 0;
+    x->PrintLine();
+  }
+}
