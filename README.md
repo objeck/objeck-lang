@@ -709,6 +709,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs) — chat, vision, realtime audio, image generation, embeddings, moderation, batch
 - [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs) — chat, vision, search grounding, files, context caching, batch embeddings
 - [Anthropic](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/anthropic.obs) — Claude chat with system prompts, tool use, streaming and structured output; tested against recorded responses and a local mock server, not the live API
+- [MCP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/mcp.obs) — Model Context Protocol server (stdio and streamable HTTP) and client: tools, resources, prompts, cancellation and progress, and a bridge that hands a server's tools to the Claude, OpenAI and Gemini clients; tested against a scripted Python client, not against Claude Desktop
 - [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs) — local LLM chat, vision, and embeddings; recommended models: `llama3.2`, `phi3`, `llava` ([get models →](docs/MODELS.md#ollama-models))
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) — tokenization, TF-IDF, text similarity, sentiment analysis
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) — computer vision: detection, transforms, video

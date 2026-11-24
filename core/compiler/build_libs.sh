@@ -70,6 +70,8 @@ $OBC -src lib_src/openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt 
 $OBC -src lib_src/gemini.obs -lib misc,json,net,net_server,cipher -tar lib -opt s3 -dest ../lib/gemini.obl
 $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl
 $OBC -src lib_src/anthropic.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/anthropic.obl
+# Model Context Protocol server (stdio and streamable HTTP) and client, and the bridge that hands a server's tools to the AI clients. After net_server, whose HTTP handler it extends
+$OBC -src lib_src/mcp.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest ../lib/mcp.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 # Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
 $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl

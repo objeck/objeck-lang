@@ -72,6 +72,9 @@
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"ParseBody": {
 					"descriptions": ["**Parse a response body. Nil, with the last error set, when the body is not JSON or is an error object ({\"type\":\"error\",\"error\":{\"type\":...,\"message\":...}}).**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
 				},
@@ -345,6 +348,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"ParseBody": {
 					"descriptions": ["**Parses a response body, recording a failure as the last error (the error was only printed before, so GetLastError() never reported it). A body that is not JSON, or that carries an 'error' object, yields Nil.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
@@ -890,6 +896,501 @@
 			"functions": {
 				"ParseResponse": {
 					"descriptions": ["**Parses a response body, setting the last error when it is not JSON.\n\nInference servers answer errors as JSON too -- v2 uses {\"error\": \"...\"}\n-- so a body that will not parse means something else went wrong (an HTML error page from a proxy, a truncated response) and the body itself is the most useful thing to report.**\n\n```function : ParseResponse(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpCall": {
+			"description": "What a tool, resource or prompt handler is called with: the arguments, and the means to report progress and to learn that the client cancelled the request",
+			"functions": {
+				"GetArguments": {
+					"descriptions": ["**Gets the arguments, an object that is never Nil**\n\n```method : public : GetArguments() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetBool": {
+					"descriptions": ["**Gets a boolean argument**\n\n```method : public : GetBool(name:String, default:Bool) ~ Bool```\n\n\n\nname: String\n\ndefault: Bool\n\nreturn: Bool"]
+				},
+				"GetFloat": {
+					"descriptions": ["**Gets a number argument**\n\n```method : public : GetFloat(name:String, default:Float) ~ Float```\n\n\n\nname: String\n\ndefault: Float\n\nreturn: Float"]
+				},
+				"GetInt": {
+					"descriptions": ["**Gets an integer argument**\n\n```method : public : GetInt(name:String, default:Int) ~ Int```\n\n\n\nname: String\n\ndefault: Int\n\nreturn: Int"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the name of the tool or prompt being called**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetProgress": {
+					"descriptions": ["**Gets the last progress value reported**\n\n```method : public : GetProgress() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetString": {
+					"descriptions": ["**Gets a string argument**\n\n```method : public : GetString(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"Has": {
+					"descriptions": ["**Tells whether the arguments hold a name**\n\n```method : public : Has(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"IsCancelled": {
+					"descriptions": ["**Tells whether the client cancelled this request (notifications/cancelled). A long-running handler polls this and returns early; no reply is sent for a cancelled request**\n\n```method : public : IsCancelled() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"ReportProgress": {
+					"descriptions": ["**Sends a progress notification, when the client asked for them by giving the request a progress token and the transport can carry them (stdio and in-process; the HTTP transport answers with plain JSON and drops them)**\n\n```method : public : ReportProgress(progress:Float, total:Float, message:String) ~ Nil```\n\n\n\nprogress: Float\n\ntotal: Float\n\nmessage: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.MCP.McpClient": {
+			"description": "An MCP client. It initializes the connection, lists and calls a server's tools, reads its resources and gets its prompts. A call that fails returns Nil (or false) and GetError() and GetErrorCode() say why; a tool that ran and failed is not that: it returns a McpToolResult whose IsError() is true",
+			"functions": {
+				"CallTool": {
+					"descriptions": ["**Calls a tool**\n\n```method : public : CallTool(name:String, arguments:String) ~ McpToolResult```\n\n\n\nname: String\n\narguments: String\n\nreturn: McpToolResult", "**Calls a tool**\n\n```method : public : CallTool(name:String, arguments:JsonElement) ~ McpToolResult```\n\n\n\nname: String\n\narguments: JsonElement\n\nreturn: McpToolResult", "**Calls a tool and asks for progress notifications with a progress token (they reach a loopback transport's GetNotifications())**\n\n```method : public : CallTool(name:String, arguments:JsonElement, progress_token:String) ~ McpToolResult```\n\n\n\nname: String\n\narguments: JsonElement\n\nprogress_token: String\n\nreturn: McpToolResult"]
+				},
+				"Cancel": {
+					"descriptions": ["**Tells the server to stop working on a request (notifications/cancelled)**\n\n```method : public : Cancel(request_id:Int, reason:String) ~ Nil```\n\n\n\nrequest_id: Int\n\nreason: String\n\nreturn: Nil"]
+				},
+				"Close": {
+					"descriptions": ["**Ends the connection**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Command": {
+					"descriptions": ["**A client of a server program run once per request**\n\n```function : Command(command:String) ~ McpClient```\n\n\n\ncommand: String\n\nreturn: McpClient"]
+				},
+				"GetCapabilities": {
+					"descriptions": ["**Gets the server's capabilities**\n\n```method : public : GetCapabilities() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why the last call failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorCode": {
+					"descriptions": ["**Gets the JSON-RPC code of the last failure, 0 if the transport failed before a reply came**\n\n```method : public : GetErrorCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetInstructions": {
+					"descriptions": ["**Gets the server's instructions**\n\n```method : public : GetInstructions() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLastRequestId": {
+					"descriptions": ["**Gets the id of the last request sent, for Cancel**\n\n```method : public : GetLastRequestId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPrompt": {
+					"descriptions": ["**Gets a prompt**\n\n```method : public : GetPrompt(name:String, arguments:JsonElement) ~ McpPromptResult```\n\n\n\nname: String\n\narguments: JsonElement\n\nreturn: McpPromptResult"]
+				},
+				"GetProtocolVersion": {
+					"descriptions": ["**Gets the revision the server chose**\n\n```method : public : GetProtocolVersion() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetServerName": {
+					"descriptions": ["**Gets the server name**\n\n```method : public : GetServerName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetServerVersion": {
+					"descriptions": ["**Gets the server version**\n\n```method : public : GetServerVersion() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Http": {
+					"descriptions": ["**A client of a server at an HTTP endpoint**\n\n```function : Http(url:String) ~ McpClient```\n\n\n\nurl: String\n\nreturn: McpClient"]
+				},
+				"InProcess": {
+					"descriptions": ["**A client of a server in this process**\n\n```function : InProcess(service:McpService) ~ McpClient```\n\n\n\nservice: McpService\n\nreturn: McpClient"]
+				},
+				"Initialize": {
+					"descriptions": ["**Sends initialize, checks the revision the server chose, and sends notifications/initialized**\n\n```method : public : Initialize(name:String, version:String) ~ Bool```\n\n\n\nname: String\n\nversion: String\n\nreturn: Bool"]
+				},
+				"ListPrompts": {
+					"descriptions": ["**Lists the server's prompts**\n\n```method : public : ListPrompts() ~ Vector&lt;McpPrompt&gt;```\n\n\n\nreturn: Vector&lt;McpPrompt&gt;"]
+				},
+				"ListResourceTemplates": {
+					"descriptions": ["**Lists the server's resource templates**\n\n```method : public : ListResourceTemplates() ~ Vector&lt;McpResource&gt;```\n\n\n\nreturn: Vector&lt;McpResource&gt;"]
+				},
+				"ListResources": {
+					"descriptions": ["**Lists the server's resources**\n\n```method : public : ListResources() ~ Vector&lt;McpResource&gt;```\n\n\n\nreturn: Vector&lt;McpResource&gt;"]
+				},
+				"ListTools": {
+					"descriptions": ["**Lists the server's tools. The result can be handed to McpToolBridge**\n\n```method : public : ListTools() ~ Vector&lt;McpTool&gt;```\n\n\n\nreturn: Vector&lt;McpTool&gt;"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(transport:McpTransport)```\n\n\n\ntransport: McpTransport"]
+				},
+				"Ping": {
+					"descriptions": ["**Sends a ping**\n\n```method : public : Ping() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"ReadResource": {
+					"descriptions": ["**Reads a resource**\n\n```method : public : ReadResource(uri:String) ~ Vector&lt;McpContents&gt;```\n\n\n\nuri: String\n\nreturn: Vector&lt;McpContents&gt;"]
+				}
+			}
+		},
+		"API.MCP.McpCollector": {
+			"description": "A sink that keeps what it is sent, so a test or an in-process client can read the notifications a call produced",
+			"functions": {
+				"Clear": {
+					"descriptions": ["**Forgets the messages collected so far**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetMessages": {
+					"descriptions": ["**Gets the messages collected so far**\n\n```method : public : GetMessages() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				}
+			}
+		},
+		"API.MCP.McpCommandTransport": {
+			"description": "A transport to a server program, run once per request: the command is started with the handshake and the request on its standard input and the reply is read from its standard output. The runtime has no process with pipes, so a conversation cannot stay open; a server that keeps state between requests, a long call, progress and cancellation need the HTTP transport. The command is run by the system shell, so it can name the obr runtime and the .obe file of the server",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(command:String)```\n\n\n\ncommand: String"]
+				}
+			}
+		},
+		"API.MCP.McpContents": {
+			"description": "The content of a resource: text, or a base64 blob",
+			"functions": {
+				"FromJson": {
+					"descriptions": ["**Reads an entry of a resources/read result**\n\n```function : FromJson(json:JsonElement) ~ McpContents```\n\n\n\njson: JsonElement\n\nreturn: McpContents"]
+				},
+				"GetBlob": {
+					"descriptions": ["**Gets the blob**\n\n```method : public : GetBlob() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMimeType": {
+					"descriptions": ["**Gets the media type**\n\n```method : public : GetMimeType() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Gets the text**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetUri": {
+					"descriptions": ["**Gets the URI**\n\n```method : public : GetUri() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(uri:String, mime_type:String, text:String, blob:String)```\n\n\n\nuri: String\n\nmime_type: String\n\ntext: String\n\nblob: String"]
+				},
+				"OfBlob": {
+					"descriptions": ["**A binary resource**\n\n```function : OfBlob(uri:String, mime_type:String, base64:String) ~ McpContents```\n\n\n\nuri: String\n\nmime_type: String\n\nbase64: String\n\nreturn: McpContents"]
+				},
+				"OfText": {
+					"descriptions": ["**A text resource**\n\n```function : OfText(uri:String, mime_type:String, text:String) ~ McpContents```\n\n\n\nuri: String\n\nmime_type: String\n\ntext: String\n\nreturn: McpContents"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts to an entry of a resources/read result**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpHttpHandler": {
+			"description": "The HTTP side of the streamable HTTP transport; McpService->ServeHttp starts it",
+			"functions": {
+
+			}
+		},
+		"API.MCP.McpHttpTransport": {
+			"description": "A transport over streamable HTTP: each message is a POST to one URL. It sends the Accept, MCP-Protocol-Version and Mcp-Session-Id headers, keeps the session the server hands out at initialize, and reads a reply that arrives as application/json or as a server-sent event stream",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(url:String)```\n\n\n\nurl: String"]
+				}
+			}
+		},
+		"API.MCP.McpLoopback": {
+			"description": "A transport to a server in the same process: messages go straight to McpService->Handle. Progress notifications the server sends are kept and read with GetNotifications()",
+			"functions": {
+				"GetNotifications": {
+					"descriptions": ["**Gets the notifications the server sent**\n\n```method : public : GetNotifications() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(service:McpService)```\n\n\n\nservice: McpService"]
+				}
+			}
+		},
+		"API.MCP.McpPrompt": {
+			"description": "A prompt template the server offers: a name, a description, named arguments, and the function that expands it to messages. The function takes a McpCall, whose arguments are the strings the client gave, and returns a McpPromptResult",
+			"functions": {
+				"AddArgument": {
+					"descriptions": ["**Declares an argument**\n\n```method : public : AddArgument(name:String, description:String, required:Bool) ~ Nil```\n\n\n\nname: String\n\ndescription: String\n\nrequired: Bool\n\nreturn: Nil"]
+				},
+				"FromJson": {
+					"descriptions": ["**Reads a prompts/list entry**\n\n```function : FromJson(json:JsonElement) ~ McpPrompt```\n\n\n\njson: JsonElement\n\nreturn: McpPrompt"]
+				},
+				"GetArguments": {
+					"descriptions": ["**Gets the declared arguments as a JSON array**\n\n```method : public : GetArguments() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetDescription": {
+					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRequired": {
+					"descriptions": ["**Gets the names of the required arguments**\n\n```method : public : GetRequired() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, handler:Func2Ref&lt;McpCall,McpPromptResult&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nhandler: Func2Ref&lt;McpCall,McpPromptResult&gt;"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts to a prompts/list entry**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpPromptResult": {
+			"description": "The messages a prompt expands to",
+			"functions": {
+				"AddMessage": {
+					"descriptions": ["**Adds a text message**\n\n```method : public : AddMessage(role:String, text:String) ~ Nil```\n\n\n\nrole: String\n\ntext: String\n\nreturn: Nil"]
+				},
+				"FromJson": {
+					"descriptions": ["**Reads a prompts/get result**\n\n```function : FromJson(json:JsonElement) ~ McpPromptResult```\n\n\n\njson: JsonElement\n\nreturn: McpPromptResult"]
+				},
+				"GetDescription": {
+					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMessages": {
+					"descriptions": ["**Gets the messages as a JSON array of {role, content}**\n\n```method : public : GetMessages() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(description:String)```\n\n\n\ndescription: String"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts to a prompts/get result**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpProtocol": {
+			"description": "Protocol constants: the revision this library implements, the revisions it negotiates down to, and the JSON-RPC error codes it answers with",
+			"functions": {
+				"InternalError": {
+					"descriptions": ["**JSON-RPC: the server failed**\n\n```function : InternalError() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"InvalidParams": {
+					"descriptions": ["**JSON-RPC: the parameters are missing or wrong**\n\n```function : InvalidParams() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"InvalidRequest": {
+					"descriptions": ["**JSON-RPC: not a valid request object**\n\n```function : InvalidRequest() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsSupported": {
+					"descriptions": ["**Tells whether a protocol revision can be spoken: 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05**\n\n```function : IsSupported(version:String) ~ Bool```\n\n\n\nversion: String\n\nreturn: Bool"]
+				},
+				"MethodNotFound": {
+					"descriptions": ["**JSON-RPC: no such rpc**\n\n```function : MethodNotFound() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ParseError": {
+					"descriptions": ["**JSON-RPC: the text is not JSON**\n\n```function : ParseError() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ResourceNotFound": {
+					"descriptions": ["**MCP: the resource does not exist**\n\n```function : ResourceNotFound() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Version": {
+					"descriptions": ["**The protocol revision this library implements**\n\n```function : Version() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.MCP.McpResource": {
+			"description": "A resource the server offers, or (with a \"{\" in the URI) a resource template. It is read through its handler, which takes the URI and returns a McpContents, or from a fixed text given to the constructor",
+			"functions": {
+				"FromJson": {
+					"descriptions": ["**Reads a list entry**\n\n```function : FromJson(json:JsonElement) ~ McpResource```\n\n\n\njson: JsonElement\n\nreturn: McpResource"]
+				},
+				"GetDescription": {
+					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMimeType": {
+					"descriptions": ["**Gets the media type**\n\n```method : public : GetMimeType() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetUri": {
+					"descriptions": ["**Gets the URI or URI template**\n\n```method : public : GetUri() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsTemplate": {
+					"descriptions": ["**Tells whether this is a template**\n\n```method : public : IsTemplate() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Matches": {
+					"descriptions": ["**Tells whether a URI names this resource**\n\n```method : public : Matches(uri:String) ~ Bool```\n\n\n\nuri: String\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a resource whose content comes from a function**\n\n```New(uri:String, name:String, description:String, mime_type:String, handler:Func2Ref&lt;String,McpContents&gt;)```\n\n\n\nuri: String\n\nname: String\n\ndescription: String\n\nmime_type: String\n\nhandler: Func2Ref&lt;String,McpContents&gt;", "**Constructor for a resource with fixed text**\n\n```New(uri:String, name:String, description:String, mime_type:String, text:String)```\n\n\n\nuri: String\n\nname: String\n\ndescription: String\n\nmime_type: String\n\ntext: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the resource**\n\n```method : public : Read(uri:String) ~ McpContents```\n\n\n\nuri: String\n\nreturn: McpContents"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts to a resources/list or resources/templates/list entry**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpService": {
+			"description": "An MCP server. Register tools, resources and prompts, then serve: ServeStdio() answers on standard input and output until it ends, ServeHttp(port) listens for the streamable HTTP transport, and Handle(message, sink) answers one message for any other transport. A tool call runs on a thread of its own, so the server hears a cancellation while it works",
+			"functions": {
+				"AddPrompt": {
+					"descriptions": ["**Registers a prompt**\n\n```method : public : AddPrompt(prompt:McpPrompt) ~ Nil```\n\n\n\nprompt: McpPrompt\n\nreturn: Nil"]
+				},
+				"AddResource": {
+					"descriptions": ["**Registers a resource or resource template**\n\n```method : public : AddResource(resource:McpResource) ~ Nil```\n\n\n\nresource: McpResource\n\nreturn: Nil"]
+				},
+				"AddTool": {
+					"descriptions": ["**Registers a tool**\n\n```method : public : AddTool(tool:McpTool) ~ Nil```\n\n\n\ntool: McpTool\n\nreturn: Nil", "**Registers a tool**\n\n```method : public : AddTool(name:String, description:String, schema:String, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ Bool```\n\n\n\nname: String\n\ndescription: String\n\nschema: String\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: Bool"]
+				},
+				"AllowOrigin": {
+					"descriptions": ["**Allows an Origin the HTTP transport would refuse. Without a call, only requests with no Origin header or a loopback one (localhost, 127.0.0.1, [::1]) are answered, which stops a web page from reaching a server on the local machine through the browser**\n\n```method : public : AllowOrigin(origin:String) ~ Nil```\n\n\n\norigin: String\n\nreturn: Nil"]
+				},
+				"GetBoundPort": {
+					"descriptions": ["**Gets the port the HTTP transport is bound to**\n\n```method : public : GetBoundPort() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Handle": {
+					"descriptions": ["**Answers one message. Parse errors, invalid requests, unknown methods and bad parameters are answered with the JSON-RPC error; a notification, and a request that was cancelled, are answered with Nil**\n\n```method : public : Handle(text:String, sink:McpSink) ~ String```\n\n\n\ntext: String\n\nsink: McpSink\n\nreturn: String"]
+				},
+				"HandleJson": {
+					"descriptions": ["**Answers one parsed message**\n\n```method : public : HandleJson(root:JsonElement, sink:McpSink) ~ JsonElement```\n\n\n\nroot: JsonElement\n\nsink: McpSink\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, version:String)```\n\n\n\nname: String\n\nversion: String"]
+				},
+				"ServeHttp": {
+					"descriptions": ["**Serves the streamable HTTP transport on the loopback address and blocks until WebServer->Stop(). POST carries one JSON-RPC message and is answered with application/json, or 202 when it needs no answer; GET answers 405 (the server starts no stream of its own); DELETE ends a session. Only one HTTP server runs in a process**\n\n```method : public : ServeHttp(port:Int) ~ Nil```\n\n\n\nport: Int\n\nreturn: Nil", "**Serves the streamable HTTP transport on an address; see ServeHttp(port)**\n\n```method : public : ServeHttp(address:String, port:Int) ~ Nil```\n\n\n\naddress: String\n\nport: Int\n\nreturn: Nil"]
+				},
+				"ServeStdio": {
+					"descriptions": ["**Serves the stdio transport: reads newline-delimited JSON-RPC messages from standard input and writes replies, one per line, to standard output, until standard input ends. Nothing else may be written to standard output; log with ErrorLine, which goes to standard error**\n\n```method : public : ServeStdio() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetInstructions": {
+					"descriptions": ["**Sets the instructions the client may show the model**\n\n```method : public : SetInstructions(instructions:String) ~ Nil```\n\n\n\ninstructions: String\n\nreturn: Nil"]
+				},
+				"SetSessions": {
+					"descriptions": ["**Turns on or off the \"Mcp-Session-Id\" session the HTTP transport hands out at initialize and then requires (on by default)**\n\n```method : public : SetSessions(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetTitle": {
+					"descriptions": ["**Sets a human-readable server title**\n\n```method : public : SetTitle(title:String) ~ Nil```\n\n\n\ntitle: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.MCP.McpSink": {
+			"description": "A place the server writes the messages it sends on its own: progress notifications, and every reply on the stdio transport",
+			"functions": {
+				"Send": {
+					"descriptions": ["**Sends one JSON-RPC message**\n\n```method : public : virutal : Send(message:String) ~ Nil```\n\n\n\nmessage: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.MCP.McpStdio": {
+			"description": "Reads newline-delimited messages from standard input, a byte at a time, so a message may be of any length up to the limit. A longer line is read to its end and answered as a parse error, so the next message is read intact",
+			"functions": {
+				"GetLimit": {
+					"descriptions": ["**Gets the longest message ReadMessage returns whole**\n\n```function : GetLimit() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ReadMessage": {
+					"descriptions": ["**Reads the next message from standard input, skipping blank lines**\n\n```function : ReadMessage() ~ String```\n\n\n\nreturn: String"]
+				},
+				"SetLimit": {
+					"descriptions": ["**Sets the longest message ReadMessage returns whole, in bytes**\n\n```function : SetLimit(limit:Int) ~ Nil```\n\n\n\nlimit: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.MCP.McpStdoutSink": {
+			"description": "A sink that writes each message to standard output as one line and flushes it",
+			"functions": {
+
+			}
+		},
+		"API.MCP.McpTool": {
+			"description": "A tool: a name, a description, the JSON Schema of its input and the function that runs it. The function takes a McpCall and returns a McpToolResult; one that raises an error is reported as a failed result",
+			"functions": {
+				"FromJson": {
+					"descriptions": ["**Reads a tools/list entry**\n\n```function : FromJson(json:JsonElement) ~ McpTool```\n\n\n\njson: JsonElement\n\nreturn: McpTool"]
+				},
+				"GetDescription": {
+					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInputSchema": {
+					"descriptions": ["**Gets the input schema**\n\n```method : public : GetInputSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the tool name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTitle": {
+					"descriptions": ["**Gets the title**\n\n```method : public : GetTitle() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, schema:JsonElement, handler:Func2Ref&lt;McpCall,McpToolResult&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;"]
+				},
+				"SetTitle": {
+					"descriptions": ["**Sets a human-readable title**\n\n```method : public : SetTitle(title:String) ~ Nil```\n\n\n\ntitle: String\n\nreturn: Nil"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts the tool to its tools/list entry**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpToolBridge": {
+			"description": "Turns the tools of a connected server into the tool definitions the Anthropic, OpenAI and Gemini clients take, and runs the calls those models make through the server",
+			"functions": {
+				"GetFunctions": {
+					"descriptions": ["**Gets the tools as the map of function type and function the Gemini GenerateContent and the OpenAI chat calls take: each function takes the model's arguments as JSON, calls the tool on the server, and returns {\"result\": text} or, for a tool that failed, {\"error\": text}**\n\n```method : public : GetFunctions() ~ Map&lt;String,Pair&lt;FunctionType,Func2Ref&lt;JsonElement,JsonElement&gt;&gt;&gt;```\n\n\n\nreturn: Map&lt;String,Pair&lt;FunctionType,Func2Ref&lt;JsonElement,JsonElement&gt;&gt;&gt;"]
+				},
+				"GetTools": {
+					"descriptions": ["**Gets the server's tools: name, description and input schema of each, in the shape of a tool definition**\n\n```method : public : GetTools() ~ Vector&lt;McpTool&gt;```\n\n\n\nreturn: Vector&lt;McpTool&gt;"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; lists the server's tools**\n\n```New(client:McpClient)```\n\n\n\nclient: McpClient"]
+				},
+				"Run": {
+					"descriptions": ["**Runs a tool call a model asked for**\n\n```method : public : Run(name:String, input:JsonElement) ~ String```\n\n\n\nname: String\n\ninput: JsonElement\n\nreturn: String"]
+				},
+				"ToAnthropicJson": {
+					"descriptions": ["**Gets the tool definitions as the JSON array the Anthropic Messages API takes ({\"name\",\"description\",\"input_schema\"})**\n\n```method : public : ToAnthropicJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"ToFunctionType": {
+					"descriptions": ["**Gets one tool as a FunctionType, which the OpenAI and Gemini clients take with a function that runs it. The properties of the input schema are mapped to their types (string, number, integer, boolean, object; an array property is mapped to its item type as an array)**\n\n```method : public : ToFunctionType(tool:McpTool) ~ FunctionType```\n\n\n\ntool: McpTool\n\nreturn: FunctionType"]
+				},
+				"ToOpenAiJson": {
+					"descriptions": ["**Gets the tool definitions as the JSON array OpenAI function calling takes ({\"type\":\"function\",\"function\":{name, description, parameters}})**\n\n```method : public : ToOpenAiJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpToolResult": {
+			"description": "The result of a tool call: content items (text, images), an optional structured value, and whether the tool failed. A tool failure is reported with is_error set, in the result, not as a protocol error, so the model can read what went wrong and try again",
+			"functions": {
+				"AddImage": {
+					"descriptions": ["**Adds an image item**\n\n```method : public : AddImage(base64:String, mime_type:String) ~ Nil```\n\n\n\nbase64: String\n\nmime_type: String\n\nreturn: Nil"]
+				},
+				"AddText": {
+					"descriptions": ["**Adds a text item**\n\n```method : public : AddText(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"Error": {
+					"descriptions": ["**A failed result with one text item that says what went wrong**\n\n```function : Error(text:String) ~ McpToolResult```\n\n\n\ntext: String\n\nreturn: McpToolResult"]
+				},
+				"FromJson": {
+					"descriptions": ["**Reads a tools/call result**\n\n```function : FromJson(json:JsonElement) ~ McpToolResult```\n\n\n\njson: JsonElement\n\nreturn: McpToolResult"]
+				},
+				"GetContent": {
+					"descriptions": ["**Gets the content items as a JSON array**\n\n```method : public : GetContent() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetStructured": {
+					"descriptions": ["**Gets the structured value**\n\n```method : public : GetStructured() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetText": {
+					"descriptions": ["**Gets the text items joined with newlines**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsError": {
+					"descriptions": ["**Tells whether the tool failed**\n\n```method : public : IsError() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Json": {
+					"descriptions": ["**A successful result carrying a structured value, which is also written out as a text item for clients that read only text**\n\n```function : Json(value:JsonElement) ~ McpToolResult```\n\n\n\nvalue: JsonElement\n\nreturn: McpToolResult"]
+				},
+				"New": {
+					"descriptions": ["**Constructor, an empty successful result**\n\n```New()```\n\n"]
+				},
+				"SetError": {
+					"descriptions": ["**Marks the result as a tool failure, or clears the mark**\n\n```method : public : SetError(is_error:Bool) ~ Nil```\n\n\n\nis_error: Bool\n\nreturn: Nil"]
+				},
+				"SetStructured": {
+					"descriptions": ["**Sets the structured value; when no item was added, its text form becomes the text item**\n\n```method : public : SetStructured(value:JsonElement) ~ Nil```\n\n\n\nvalue: JsonElement\n\nreturn: Nil"]
+				},
+				"Text": {
+					"descriptions": ["**A successful result with one text item**\n\n```function : Text(text:String) ~ McpToolResult```\n\n\n\ntext: String\n\nreturn: McpToolResult"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts the result to the JSON of a tools/call result**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpTransport": {
+			"description": "How a client reaches a server. A transport sends one JSON-RPC message and returns the reply text, or sends one that has no reply",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Ends the connection**\n\n```method : public : virutal : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why the last call failed**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Notify": {
+					"descriptions": ["**Sends a notification**\n\n```method : public : virutal : Notify(message:String) ~ Nil```\n\n\n\nmessage: String\n\nreturn: Nil"]
+				},
+				"Request": {
+					"descriptions": ["**Sends a request and waits for its reply**\n\n```method : public : virutal : Request(message:String, id:String) ~ String```\n\n\n\nmessage: String\n\nid: String\n\nreturn: String"]
+				},
+				"SetProtocolVersion": {
+					"descriptions": ["**Tells the transport the revision negotiated at initialize**\n\n```method : public : virutal : SetProtocolVersion(version:String) ~ Nil```\n\n\n\nversion: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -1966,6 +2467,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"NoReply": {
 					"descriptions": ["**Checks whether a request got an answer, recording the failure as the last error if not. A refused or dropped connection is a Nil response over HTTP and a response with status 0 and no content over HTTPS.**\n\n```function : NoReply(response:Web.HTTP.Response) ~ Bool```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: Bool"]
@@ -9653,7 +10157,7 @@
 			}
 		},
 		"Query.RegEx.RegEx": {
-			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {least} or {least, most}; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
+			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {n} exactly n, {least, most} a range, or {least,} at least; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
 			"functions": {
 				"Find": {
 					"descriptions": ["**Finds all non-empty, non-overlapping occurrences**\n\n```method : public : Find(stream_in:String) ~ Vector&lt;Result&gt;```\n\n\n\nstream_in: String\n\nreturn: Vector&lt;Result&gt;\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"1 cat, 2 dogs, 3 birds\")<Result>;\neach(r := results) {\n  r->GetValue()->PrintLine();\n};\n```"]
@@ -15680,6 +16184,9 @@
 				"OperatingPoints": {
 					"descriptions": ["**Operating points of a scored classifier, one row per distinct score, from the highest score down: [threshold, false positives, true positives].\n\nEvery metric below is a walk over this. It exists because the functions above take already-thresholded Bool predictions, which throw away exactly what these questions need: a single Bool array fixes one operating point, and cannot answer what the recall would be at a different false-alarm rate.\n\nInstances that share a score share an operating point. Splitting them would invent an ordering the scores do not express and let a metric read better than the model earned.**\n\n```function : OperatingPoints(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
 				},
+				"PairedBootstrapDifference": {
+					"descriptions": ["**A paired bootstrap interval for how much better one detector is than another at thresholds that were chosen beforehand.\n\nBootstrap resamples one detector's scores and recomputes a metric that may itself pick a threshold. This answers the comparison question instead: the two detectors scored the SAME instances, each has a threshold frozen before the test set was looked at (for example by ThresholdAtFpr on out-of-fold scores), and the question is whether detector B's recall is really higher than detector A's. Each resample draws instances once and applies both detectors to that one draw, so the noise the two share cancels in the difference and the interval is the interval of the difference, not two intervals to compare by eye.\n\nThe statistic is B minus A. An instance is flagged when its score is >= the detector's threshold, as in AtThreshold. A resample with no positive instance (recall) or no negative instance (false-positive rate) has no value and is left out; the usable count says how many survived.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int, level:Float) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nlevel: Float\n\nreturn: ConfInterval", "**The same at the conventional 95% level.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nreturn: ConfInterval"]
+				},
 				"Percentile": {
 					"descriptions": ["**A percentile of a set of values, by linear interpolation.\n\nUsed for bootstrap intervals, and exposed because a caller resampling a statistic this bundle does not implement still needs the interval.\n\np is clamped rather than rejected: 0.0 gives the minimum and 1.0 the maximum, which is what a caller asking for them wants.**\n\n```function : Percentile(values:Float[], p:Float) ~ Float```\n\n\n\nvalues: Float[]\n\np: Float\n\nreturn: Float"]
 				},
@@ -17615,6 +18122,9 @@
 				"GetMetric": {
 					"descriptions": ["**The ranking this index was created with.**\n\n```method : public : GetMetric() ~ VectorMetric```\n\n\n\nreturn: VectorMetric"]
 				},
+				"GetThreads": {
+					"descriptions": ["**Gets how many threads a search may use.**\n\n```method : public : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"IsValid": {
 					"descriptions": ["**Whether the index was created with a usable dimension.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -17629,6 +18139,9 @@
 				},
 				"Search": {
 					"descriptions": ["**The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;VectorHit&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;VectorHit&gt;"]
+				},
+				"SetThreads": {
+					"descriptions": ["**Sets how many threads a search may use. A search over a large index (about 8 MB of vectors or more) is split into that many parts, each scanned on its own thread, and their best results merged; the answer, ties included, is the same as a single-threaded search. Smaller indexes are always searched on the calling thread. The default is 1.**\n\n```method : public : SetThreads(threads:Int) ~ Nil```\n\n\n\nthreads: Int\n\nreturn: Nil"]
 				},
 				"Size": {
 					"descriptions": ["**Number of vectors stored.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -18299,7 +18812,7 @@
 					"descriptions": ["**Calculates Jaccard similarity between two sets of tokens**\n\n```function : JaccardSimilarity(tokens1:String[], tokens2:String[]) ~ Float```\n\n\n\ntokens1: String[]\n\ntokens2: String[]\n\nreturn: Float\n\n```\nt1 := [\"cat\", \"sat\", \"mat\"];\nt2 := [\"cat\", \"sat\", \"log\"];\njaccard := TextSimilarity->JaccardSimilarity(t1, t2);\n\"Jaccard: {$jaccard}\"->PrintLine();\n```"]
 				},
 				"LevenshteinDistance": {
-					"descriptions": ["**Calculates Levenshtein distance (edit distance) between two strings**\n\n```function : LevenshteinDistance(str1:String, str2:String) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Int\n\n```\ndist := TextSimilarity->LevenshteinDistance(\"kitten\", \"sitting\");\n\"Edit distance: {$dist}\"->PrintLine();\n```"]
+					"descriptions": ["**Calculates Levenshtein distance (edit distance) between two strings**\n\n```function : LevenshteinDistance(str1:String, str2:String) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Int\n\n```\ndist := TextSimilarity->LevenshteinDistance(\"kitten\", \"sitting\");\n\"Edit distance: {$dist}\"->PrintLine();\n```", "**Edit distance with a ceiling, for comparing one string with many. Only the cells within max_distance of the diagonal are computed and the work stops as soon as a whole row is past the ceiling, so a far-off pair costs a few cells.**\n\n```function : LevenshteinDistance(str1:String, str2:String, max_distance:Int) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nmax_distance: Int\n\nreturn: Int\n\n```\nif(TextSimilarity->LevenshteinDistance(\"opentelemetry\", \"opentelemetri\", 2) <= 2) {\n  \"close\"->PrintLine();\n};\n```"]
 				},
 				"NormalizedEditDistance": {
 					"descriptions": ["**Calculates normalized edit distance (0.0 = identical, 1.0 = completely different)**\n\n```function : NormalizedEditDistance(str1:String, str2:String) ~ Float```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Float\n\n```\nnd := TextSimilarity->NormalizedEditDistance(\"kitten\", \"sitting\");\n\"Normalized distance: {$nd}\"->PrintLine();\n```"]
@@ -20894,11 +21407,17 @@
 				"GetBoundPort": {
 					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body set by SetMaxBodyBytes**\n\n```function : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"Serve": {
 					"descriptions": ["**NOT IMPLEMENTED: starting a HTTP server from a configuration file. The call reports this on standard error and returns without serving; it used to load the file and then silently serve nothing. Use Serve(callback, port) or Serve(callback, port, is_debug) for HTTP, or ServeSecure(filename) for HTTPS, which does read a configuration file.**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"ServeSecure": {
 					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface; see ServeSecure(callback, address, port, cert, cert_key, cert_key_passwd).**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Call before Serve. Zero (or less), the default, allows 8388608 (8 MiB). A WebServerConfig that sets its own limit takes precedence.**\n\n```function : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"SetMaxConnections": {
 					"descriptions": ["**Sets the most connections served at once; a connection beyond it is answered 503 and closed. Call before Serve. Zero, the default, allows 1024.**\n\n```function : SetMaxConnections(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
@@ -20932,6 +21451,9 @@
 				"GetFilename": {
 					"descriptions": ["**Gets the configuration filename**\n\n```method : public : GetFilename() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body this configuration accepts**\n\n```method : public : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetPort": {
 					"descriptions": ["**Gets the server port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -20958,6 +21480,9 @@
 				},
 				"ProcessPost": {
 					"descriptions": ["**Callback for POST requests**\n\n```method : public : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Zero (or less), the default, defers to WebServer->SetMaxBodyBytes and then to 8388608 (8 MiB).**\n\n```method : public : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"ToString": {
 					"descriptions": ["**Gets the string representation of the configuration**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -21607,6 +22132,126 @@
 		"Wire": [
 			{
 				"bundle": "API.Inference",
+				"file": ""
+			}
+		],
+		"McpCall": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpClient": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpCollector": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpCommandTransport": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpContents": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpHttpHandler": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpHttpTransport": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpLoopback": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpPrompt": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpPromptResult": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpProtocol": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpResource": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpService": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpSink": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpStdio": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpStdoutSink": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpTool": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpToolBridge": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpToolResult": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpTransport": [
+			{
+				"bundle": "API.MCP",
 				"file": ""
 			}
 		],

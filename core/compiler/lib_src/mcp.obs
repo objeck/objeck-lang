@@ -1,0 +1,3232 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection, Data.JSON, Data.JSON.Scheme, System.Concurrency;
+
+#~
+Model Context Protocol (MCP) server and client, pinned to protocol revision 2025-11-25 (2025-06-18, 2025-03-26 and 2024-11-05 are negotiated down to). A server registers tools, resources and prompts and answers JSON-RPC 2.0 over standard input and output (newline-delimited, the stdio transport) or over the streamable HTTP transport; a client connects over HTTP, to a server in the same process, or to a server program started once per request, lists and calls its tools, reads its resources and prompts, and can hand the tools to the Anthropic, OpenAI and Gemini clients. Compile with -lib mcp, and link gen_collect, json, net, net_server, cipher and misc as well.
+~#
+bundle API.MCP {
+	#~
+	Protocol constants: the revision this library implements, the revisions it negotiates down to, and the JSON-RPC error codes it answers with
+	~#
+	class McpProtocol {
+		#~
+		The protocol revision this library implements
+		@return revision date string
+		~#
+		function : Version() ~ String {
+			return "2025-11-25";
+		}
+
+		#~
+		Tells whether a protocol revision can be spoken: 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05
+		@param version revision date string
+		@return true if supported
+		~#
+		function : IsSupported(version : String) ~ Bool {
+			if(version = Nil) {
+				return false;
+			};
+			return version->Equals("2025-11-25") | version->Equals("2025-06-18") | version->Equals("2025-03-26") | version->Equals("2024-11-05");
+		}
+
+		#~
+		JSON-RPC: the text is not JSON
+		@return -32700
+		~#
+		function : ParseError() ~ Int {
+			return -32700;
+		}
+
+		#~
+		JSON-RPC: not a valid request object
+		@return -32600
+		~#
+		function : InvalidRequest() ~ Int {
+			return -32600;
+		}
+
+		#~
+		JSON-RPC: no such rpc
+		@return -32601
+		~#
+		function : MethodNotFound() ~ Int {
+			return -32601;
+		}
+
+		#~
+		JSON-RPC: the parameters are missing or wrong
+		@return -32602
+		~#
+		function : InvalidParams() ~ Int {
+			return -32602;
+		}
+
+		#~
+		JSON-RPC: the server failed
+		@return -32603
+		~#
+		function : InternalError() ~ Int {
+			return -32603;
+		}
+
+		#~
+		MCP: the resource does not exist
+		@return -32002
+		~#
+		function : ResourceNotFound() ~ Int {
+			return -32002;
+		}
+	}
+
+	# Builds JSON-RPC 2.0 messages
+	class : private : McpMessage {
+		function : NullId() ~ JsonElement {
+			return JsonElement->New(JsonElement->JsonType->NULL);
+		}
+
+		function : Error(id : JsonElement, code : Int, message : String) ~ JsonElement {
+			reply := JsonElement->New(JsonElement->JsonType->OBJECT);
+			reply->Insert("jsonrpc", "2.0");
+			if(id = Nil) {
+				reply->Insert("id", NullId());
+			}
+			else {
+				reply->Insert("id", id);
+			};
+
+			err := JsonElement->New(JsonElement->JsonType->OBJECT);
+			err->Insert("code", code);
+			err->Insert("message", message);
+			reply->Insert("error", err);
+			return reply;
+		}
+
+		function : Result(id : JsonElement, result : JsonElement) ~ JsonElement {
+			reply := JsonElement->New(JsonElement->JsonType->OBJECT);
+			reply->Insert("jsonrpc", "2.0");
+			reply->Insert("id", id);
+			reply->Insert("result", result);
+			return reply;
+		}
+
+		function : Notification(rpc : String, params : JsonElement) ~ JsonElement {
+			note := JsonElement->New(JsonElement->JsonType->OBJECT);
+			note->Insert("jsonrpc", "2.0");
+			note->Insert("method", rpc);
+			if(params <> Nil) {
+				note->Insert("params", params);
+			};
+			return note;
+		}
+
+		function : Request(id : Int, rpc : String, params : JsonElement) ~ JsonElement {
+			request := JsonElement->New(JsonElement->JsonType->OBJECT);
+			request->Insert("jsonrpc", "2.0");
+			request->Insert("id", id);
+			request->Insert("method", rpc);
+			if(params <> Nil) {
+				request->Insert("params", params);
+			};
+			return request;
+		}
+
+		# a string field, Nil when absent or not a string
+		function : Str(json : JsonElement, name : String) ~ String {
+			if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			elem := json->Get(name);
+			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->STRING) {
+				return Nil;
+			};
+			return elem->GetString();
+		}
+
+		function : IsId(id : JsonElement) ~ Bool {
+			if(id = Nil) {
+				return false;
+			};
+			return id->GetType() = JsonElement->JsonType->STRING | id->GetType() = JsonElement->JsonType->NUMBER;
+		}
+
+		# Parses a message, Nil for text that is not JSON. The parser reads a bare word as a string and
+		# ignores what follows the first value, so the first and last characters are checked as well
+		function : Parse(text : String) ~ JsonElement {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			trimmed := text->Trim();
+			if(trimmed->Size() = 0) {
+				return Nil;
+			};
+
+			first := trimmed->Get(0);
+			last := trimmed->Get(trimmed->Size() - 1);
+			if(first = '{' & last <> '}') {
+				return Nil;
+			};
+			if(first = '[' & last <> ']') {
+				return Nil;
+			};
+
+			root := JsonParser->TextToElement(trimmed);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			if(root->GetType() = JsonElement->JsonType->STRING & first <> '"') {
+				return Nil;
+			};
+			return root;
+		}
+
+		# the text from an offset to its end
+		function : Tail(text : String, offset : Int) ~ String {
+			return text->SubString(offset, text->Size() - offset);
+		}
+
+		function : EmptyObject() ~ JsonElement {
+			return JsonElement->New(JsonElement->JsonType->OBJECT);
+		}
+	}
+
+	#~
+	A place the server writes the messages it sends on its own: progress notifications, and every reply on the stdio transport
+	~#
+	class McpSink {
+		New() {
+		}
+
+		#~
+		Sends one JSON-RPC message
+		@param message message text, one line
+		~#
+		method : virtual : public : Send(message : String) ~ Nil;
+	}
+
+	#~
+	A sink that keeps what it is sent, so a test or an in-process client can read the notifications a call produced
+	~#
+	class McpCollector from McpSink {
+		@messages : Vector<String>;
+		@mutex : ThreadMutex;
+
+		New() {
+			Parent();
+			@messages := Vector->New()<String>;
+			@mutex := ThreadMutex->New("mcp_collector");
+		}
+
+		method : public : Send(message : String) ~ Nil {
+			critical(@mutex) {
+				@messages->AddBack(message);
+			};
+		}
+
+		#~
+		Gets the messages collected so far
+		@return messages, oldest first
+		~#
+		method : public : GetMessages() ~ Vector<String> {
+			copy := Vector->New()<String>;
+			critical(@mutex) {
+				each(message in @messages) {
+					copy->AddBack(message);
+				};
+			};
+			return copy;
+		}
+
+		#~
+		Forgets the messages collected so far
+		~#
+		method : public : Clear() ~ Nil {
+			critical(@mutex) {
+				@messages := Vector->New()<String>;
+			};
+		}
+	}
+
+	#~
+	A sink that writes each message to standard output as one line and flushes it
+	~#
+	class McpStdoutSink from McpSink {
+		@mutex : ThreadMutex;
+
+		New() {
+			Parent();
+			@mutex := ThreadMutex->New("mcp_stdout");
+		}
+
+		method : public : Send(message : String) ~ Nil {
+			critical(@mutex) {
+				System.IO.Console->WriteString(message);
+				System.IO.Console->WriteString("\n");
+				System.IO.Console->Flush();
+			};
+		}
+	}
+
+	#~
+	Reads newline-delimited messages from standard input, a byte at a time, so a message may be of any length up to the limit. A longer line is read to its end and answered as a parse error, so the next message is read intact. On Windows the console default delivers standard input as UTF-16 (two bytes a character) unless the VM runs with OBJECK_STDIO=binary; the first two bytes tell the two apart (JSON starts with an ASCII character, so a zero second byte is UTF-16) and the reader decodes either
+	~#
+	class McpStdio {
+		@limit : static : Int;
+		@mode : static : Int;
+		@queue : static : Int[];
+		@queued : static : Int;
+
+		#~
+		Sets the longest message ReadMessage returns whole, in characters. Call it before the first read
+		@param limit characters, at least 1024
+		~#
+		function : SetLimit(limit : Int) ~ Nil {
+			if(limit >= 1024) {
+				@limit := limit;
+			};
+		}
+
+		#~
+		Gets the longest message ReadMessage returns whole
+		@return characters
+		~#
+		function : GetLimit() ~ Int {
+			if(@limit < 1024) {
+				@limit := 4194304;
+			};
+			return @limit;
+		}
+
+		#~
+		Reads the next message from standard input, skipping blank lines
+		@return the line without its line ending, or Nil at the end of input
+		~#
+		function : ReadMessage() ~ String {
+			while(true) {
+				line := ReadLine();
+				if(line = Nil) {
+					return Nil;
+				};
+
+				if(line->Size() > 0) {
+					return line;
+				};
+			};
+
+			return Nil;
+		}
+
+		# the next byte, -1 at the end of input; bytes pushed back by the mode check come first
+		function : private : NextByte() ~ Int {
+			if(@queued > 0) {
+				value := @queue[0];
+				@queue[0] := @queue[1];
+				@queued -= 1;
+				return value;
+			};
+
+			chunk := Byte->New[1];
+			if(System.IO.Console->ReadBuffer(0, 1, chunk) <= 0) {
+				return -1;
+			};
+			return chunk[0]->As(Int);
+		}
+
+		# the first two bytes decide the mode: 1 is UTF-8 (or ASCII), 2 is UTF-16LE, 0 is not yet known
+		function : private : DetectMode() ~ Bool {
+			first := NextByte();
+			if(first < 0) {
+				return false;
+			};
+
+			second := NextByte();
+			@queue := Int->New[2];
+			@queue[0] := first;
+			@queue[1] := second;
+			@queued := 2;
+			if(second < 0) {
+				@queued := 1;
+			};
+
+			@mode := 1;
+			if(first <> 0 & second = 0) {
+				@mode := 2;
+			};
+			return true;
+		}
+
+		# one line, Nil at the end of input, empty for a blank line
+		function : private : ReadLine() ~ String {
+			if(@mode = 0 & <>DetectMode()) {
+				return Nil;
+			};
+
+			if(@mode = 2) {
+				return ReadWideLine();
+			};
+			return ReadNarrowLine();
+		}
+
+		function : private : ReadNarrowLine() ~ String {
+			limit := GetLimit();
+			bytes := Byte->New[256];
+			length := 0;
+			too_long := false;
+
+			while(true) {
+				value := NextByte();
+				if(value < 0) {
+					# the end of input: a last line with no line ending is still a message
+					if(length = 0 & <>too_long) {
+						return Nil;
+					};
+					break;
+				};
+
+				if(value = 10) {
+					break;
+				};
+
+				if(too_long) {
+					continue;
+				};
+
+				if(length >= limit) {
+					# keep reading to the end of the line, so the next message starts clean
+					too_long := true;
+					continue;
+				};
+
+				if(length = bytes->Size()) {
+					grown := Byte->New[length * 2];
+					Runtime->Copy(grown, 0, bytes, 0, length);
+					bytes := grown;
+				};
+				bytes[length] := value->As(Byte);
+				length += 1;
+			};
+
+			if(too_long) {
+				# cut at the limit, so it fails to parse and is answered with an error
+				return "{";
+			};
+
+			exact := Byte->New[length];
+			Runtime->Copy(exact, 0, bytes, 0, length);
+			return String->New(exact->ToUnicode())->Trim();
+		}
+
+		# a line of UTF-16LE: two bytes a character
+		function : private : ReadWideLine() ~ String {
+			limit := GetLimit();
+			text := String->New();
+			length := 0;
+			too_long := false;
+			seen := false;
+
+			while(true) {
+				low := NextByte();
+				if(low < 0) {
+					if(<>seen) {
+						return Nil;
+					};
+					break;
+				};
+				seen := true;
+
+				high := NextByte();
+				if(high < 0) {
+					break;
+				};
+
+				unit := low + high * 256;
+				if(unit = 10) {
+					break;
+				};
+
+				if(too_long) {
+					continue;
+				};
+
+				if(length >= limit) {
+					too_long := true;
+					continue;
+				};
+
+				text->Append(unit->As(Char));
+				length += 1;
+			};
+
+			if(too_long) {
+				return "{";
+			};
+			return text->Trim();
+		}
+	}
+
+	#~
+	The result of a tool call: content items (text, images), an optional structured value, and whether the tool failed. A tool failure is reported with is_error set, in the result, not as a protocol error, so the model can read what went wrong and try again
+	~#
+	class McpToolResult {
+		@content : JsonElement;
+		@structured : JsonElement;
+		@is_error : Bool;
+
+		#~
+		Constructor, an empty successful result
+		~#
+		New() {
+			@content := JsonElement->New(JsonElement->JsonType->ARRAY);
+			@is_error := false;
+		}
+
+		#~
+		A successful result with one text item
+		@param text the text
+		@return result
+		~#
+		function : Text(text : String) ~ McpToolResult {
+			result := McpToolResult->New();
+			result->AddText(text);
+			return result;
+		}
+
+		#~
+		A failed result with one text item that says what went wrong
+		@param text the explanation
+		@return result with IsError() true
+		~#
+		function : Error(text : String) ~ McpToolResult {
+			result := McpToolResult->New();
+			result->AddText(text);
+			result->SetError(true);
+			return result;
+		}
+
+		#~
+		A successful result carrying a structured value, which is also written out as a text item for clients that read only text
+		@param value structured value
+		@return result
+		~#
+		function : Json(value : JsonElement) ~ McpToolResult {
+			result := McpToolResult->New();
+			result->SetStructured(value);
+			return result;
+		}
+
+		#~
+		Adds a text item
+		@param text the text
+		~#
+		method : public : AddText(text : String) ~ Nil {
+			if(text = Nil) {
+				text := "";
+			};
+			item := JsonElement->New(JsonElement->JsonType->OBJECT);
+			item->Insert("type", "text");
+			item->Insert("text", text);
+			@content->Add(item);
+		}
+
+		#~
+		Adds an image item
+		@param base64 the image, base64 encoded
+		@param mime_type media type such as image/png
+		~#
+		method : public : AddImage(base64 : String, mime_type : String) ~ Nil {
+			item := JsonElement->New(JsonElement->JsonType->OBJECT);
+			item->Insert("type", "image");
+			item->Insert("data", base64);
+			item->Insert("mimeType", mime_type);
+			@content->Add(item);
+		}
+
+		#~
+		Sets the structured value; when no item was added, its text form becomes the text item
+		@param value JSON object
+		~#
+		method : public : SetStructured(value : JsonElement) ~ Nil {
+			@structured := value;
+			if(value <> Nil & @content->Size() = 0) {
+				AddText(value->ToString());
+			};
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Load(content : JsonElement) ~ Nil {
+			@content := content;
+		}
+
+		#~
+		Marks the result as a tool failure, or clears the mark
+		@param is_error true for a failure
+		~#
+		method : public : SetError(is_error : Bool) ~ Nil {
+			@is_error := is_error;
+		}
+
+		#~
+		Tells whether the tool failed
+		@return true for a failure
+		~#
+		method : public : IsError() ~ Bool {
+			return @is_error;
+		}
+
+		#~
+		Gets the structured value
+		@return value, Nil if none
+		~#
+		method : public : GetStructured() ~ JsonElement {
+			return @structured;
+		}
+
+		#~
+		Gets the content items as a JSON array
+		@return array of {type, ...} objects
+		~#
+		method : public : GetContent() ~ JsonElement {
+			return @content;
+		}
+
+		#~
+		Gets the text items joined with newlines
+		@return text, empty if there are none
+		~#
+		method : public : GetText() ~ String {
+			text := "";
+			for(i := 0; i < @content->Size(); i += 1;) {
+				item := @content->Get(i);
+				kind := McpMessage->Str(item, "type");
+				if(kind <> Nil & kind->Equals("text")) {
+					if(text->Size() > 0) {
+						text += "\n";
+					};
+					text += McpMessage->Str(item, "text");
+				};
+			};
+			return text;
+		}
+
+		#~
+		Converts the result to the JSON of a tools/call result
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("content", @content);
+			if(@structured <> Nil) {
+				json->Insert("structuredContent", @structured);
+			};
+			json->Insert("isError", @is_error);
+			return json;
+		}
+
+		#~
+		Reads a tools/call result
+		@param json the JSON object of the result
+		@return result, Nil if json is not an object
+		~#
+		function : FromJson(json : JsonElement) ~ McpToolResult {
+			if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			result := McpToolResult->New();
+			content := json->Get("content");
+			if(content <> Nil & content->GetType() = JsonElement->JsonType->ARRAY) {
+				result->Load(content);
+			};
+
+			structured := json->Get("structuredContent");
+			if(structured <> Nil & structured->GetType() = JsonElement->JsonType->OBJECT) {
+				result->SetStructured(structured);
+			};
+
+			flag := json->Get("isError");
+			if(flag <> Nil & flag->GetType() = JsonElement->JsonType->TRUE) {
+				result->SetError(true);
+			};
+			return result;
+		}
+	}
+
+	#~
+	What a tool, resource or prompt handler is called with: the arguments, and the means to report progress and to learn that the client cancelled the request
+	~#
+	class McpCall {
+		@name : String;
+		@arguments : JsonElement;
+		@id : JsonElement;
+		@token : JsonElement;
+		@sink : McpSink;
+		@cancelled : Bool;
+		@progress : Float;
+
+		#~
+		@hidden
+		~#
+		New(name : String, arguments : JsonElement, id : JsonElement, token : JsonElement, sink : McpSink) {
+			@name := name;
+			@arguments := arguments;
+			if(@arguments = Nil) {
+				@arguments := McpMessage->EmptyObject();
+			};
+			@id := id;
+			@token := token;
+			@sink := sink;
+			@progress := -1.0;
+		}
+
+		#~
+		Gets the name of the tool or prompt being called
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the arguments, an object that is never Nil
+		@return JSON object
+		~#
+		method : public : GetArguments() ~ JsonElement {
+			return @arguments;
+		}
+
+		#~
+		Tells whether the arguments hold a name
+		@param name argument name
+		@return true if present and not null
+		~#
+		method : public : Has(name : String) ~ Bool {
+			elem := @arguments->Get(name);
+			return elem <> Nil & elem->GetType() <> JsonElement->JsonType->NULL;
+		}
+
+		#~
+		Gets a string argument
+		@param name argument name
+		@return the string, Nil if absent or not a string
+		~#
+		method : public : GetString(name : String) ~ String {
+			return McpMessage->Str(@arguments, name);
+		}
+
+		#~
+		Gets an integer argument
+		@param name argument name
+		@param default value when absent or not a number
+		@return the value
+		~#
+		method : public : GetInt(name : String, default : Int) ~ Int {
+			elem := @arguments->Get(name);
+			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->NUMBER) {
+				return default;
+			};
+			return elem->GetInt();
+		}
+
+		#~
+		Gets a number argument
+		@param name argument name
+		@param default value when absent or not a number
+		@return the value
+		~#
+		method : public : GetFloat(name : String, default : Float) ~ Float {
+			elem := @arguments->Get(name);
+			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->NUMBER) {
+				return default;
+			};
+			return elem->GetFloat();
+		}
+
+		#~
+		Gets a boolean argument
+		@param name argument name
+		@param default value when absent or not a boolean
+		@return the value
+		~#
+		method : public : GetBool(name : String, default : Bool) ~ Bool {
+			elem := @arguments->Get(name);
+			if(elem = Nil) {
+				return default;
+			};
+			if(elem->GetType() = JsonElement->JsonType->TRUE) {
+				return true;
+			};
+			if(elem->GetType() = JsonElement->JsonType->FALSE) {
+				return false;
+			};
+			return default;
+		}
+
+		#~
+		Tells whether the client cancelled this request (notifications/cancelled). A long-running handler polls this and returns early; no reply is sent for a cancelled request
+		@return true if cancelled
+		~#
+		method : public : IsCancelled() ~ Bool {
+			return @cancelled;
+		}
+
+		#~
+		Sends a progress notification, when the client asked for them by giving the request a progress token and the transport can carry them (stdio and in-process; the HTTP transport answers with plain JSON and drops them)
+		@param progress work done so far; it must grow with each call
+		@param total work in all, or a negative number when unknown
+		@param message what is being done, or Nil
+		~#
+		method : public : ReportProgress(progress : Float, total : Float, message : String) ~ Nil {
+			@progress := progress;
+			if(@token = Nil | @sink = Nil) {
+				return;
+			};
+
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("progressToken", @token);
+			params->Insert("progress", progress);
+			if(total >= 0.0) {
+				params->Insert("total", total);
+			};
+			if(message <> Nil) {
+				params->Insert("message", message);
+			};
+			@sink->Send(McpMessage->Notification("notifications/progress", params)->ToString());
+		}
+
+		#~
+		Gets the last progress value reported
+		@return progress, -1 if none was
+		~#
+		method : public : GetProgress() ~ Float {
+			return @progress;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Cancel() ~ Nil {
+			@cancelled := true;
+		}
+	}
+
+	#~
+	A tool: a name, a description, the JSON Schema of its input and the function that runs it. The function takes a McpCall and returns a McpToolResult; one that raises an error is reported as a failed result
+	~#
+	class McpTool {
+		@name : String;
+		@title : String;
+		@description : String;
+		@schema : JsonElement;
+		@handler : Func2Ref<McpCall, McpToolResult>;
+
+		#~
+		Constructor
+		@param name tool name
+		@param description what the tool does, for the model
+		@param schema JSON Schema of the input, an object schema: {"type":"object","properties":{...},"required":[...]}
+		@param handler the function that runs the tool, Nil for a description read from a server
+		~#
+		New(name : String, description : String, schema : JsonElement, handler : Func2Ref<McpCall, McpToolResult>) {
+			@name := name;
+			@description := description;
+			@schema := schema;
+			if(@schema = Nil) {
+				@schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
+			};
+			@handler := handler;
+		}
+
+		#~
+		Sets a human-readable title
+		@param title title
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			@title := title;
+		}
+
+		#~
+		Gets the tool name
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the title
+		@return title, Nil if none
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		#~
+		Gets the description
+		@return description
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Gets the input schema
+		@return JSON Schema object
+		~#
+		method : public : GetInputSchema() ~ JsonElement {
+			return @schema;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : GetHandler() ~ Func2Ref<McpCall, McpToolResult> {
+			return @handler;
+		}
+
+		#~
+		Converts the tool to its tools/list entry
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("name", @name);
+			if(@title <> Nil) {
+				json->Insert("title", @title);
+			};
+			if(@description <> Nil) {
+				json->Insert("description", @description);
+			};
+			json->Insert("inputSchema", @schema);
+			return json;
+		}
+
+		#~
+		Reads a tools/list entry
+		@param json JSON object
+		@return tool without a handler, Nil if json has no name
+		~#
+		function : FromJson(json : JsonElement) ~ McpTool {
+			name := McpMessage->Str(json, "name");
+			if(name = Nil) {
+				return Nil;
+			};
+
+			tool := McpTool->New(name, McpMessage->Str(json, "description"), json->Get("inputSchema"), Nil);
+			tool->SetTitle(McpMessage->Str(json, "title"));
+			return tool;
+		}
+	}
+
+	#~
+	The content of a resource: text, or a base64 blob
+	~#
+	class McpContents {
+		@uri : String;
+		@mime_type : String;
+		@text : String;
+		@blob : String;
+
+		#~
+		Constructor
+		@param uri resource URI
+		@param mime_type media type
+		@param text text, or Nil for a blob
+		@param blob base64 data, or Nil for text
+		~#
+		New(uri : String, mime_type : String, text : String, blob : String) {
+			@uri := uri;
+			@mime_type := mime_type;
+			@text := text;
+			@blob := blob;
+		}
+
+		#~
+		A text resource
+		@param uri resource URI
+		@param mime_type media type
+		@param text the text
+		@return contents
+		~#
+		function : OfText(uri : String, mime_type : String, text : String) ~ McpContents {
+			return McpContents->New(uri, mime_type, text, Nil);
+		}
+
+		#~
+		A binary resource
+		@param uri resource URI
+		@param mime_type media type
+		@param base64 the data, base64 encoded
+		@return contents
+		~#
+		function : OfBlob(uri : String, mime_type : String, base64 : String) ~ McpContents {
+			return McpContents->New(uri, mime_type, Nil, base64);
+		}
+
+		#~
+		Gets the URI
+		@return URI
+		~#
+		method : public : GetUri() ~ String {
+			return @uri;
+		}
+
+		#~
+		Gets the media type
+		@return media type
+		~#
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
+		#~
+		Gets the text
+		@return text, Nil for a blob
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Gets the blob
+		@return base64 data, Nil for text
+		~#
+		method : public : GetBlob() ~ String {
+			return @blob;
+		}
+
+		#~
+		Converts to an entry of a resources/read result
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("uri", @uri);
+			if(@mime_type <> Nil) {
+				json->Insert("mimeType", @mime_type);
+			};
+			if(@text <> Nil) {
+				json->Insert("text", @text);
+			}
+			else if(@blob <> Nil) {
+				json->Insert("blob", @blob);
+			}
+			else {
+				json->Insert("text", "");
+			};
+			return json;
+		}
+
+		#~
+		Reads an entry of a resources/read result
+		@param json JSON object
+		@return contents, Nil if json has no uri
+		~#
+		function : FromJson(json : JsonElement) ~ McpContents {
+			uri := McpMessage->Str(json, "uri");
+			if(uri = Nil) {
+				return Nil;
+			};
+			return McpContents->New(uri, McpMessage->Str(json, "mimeType"), McpMessage->Str(json, "text"), McpMessage->Str(json, "blob"));
+		}
+	}
+
+	#~
+	A resource the server offers, or (with a "{" in the URI) a resource template. It is read through its handler, which takes the URI and returns a McpContents, or from a fixed text given to the constructor
+	~#
+	class McpResource {
+		@uri : String;
+		@name : String;
+		@description : String;
+		@mime_type : String;
+		@text : String;
+		@handler : Func2Ref<String, McpContents>;
+
+		#~
+		Constructor for a resource whose content comes from a function
+		@param uri resource URI; with a "{name}" in it, a template: a read matches by the text before the first "{"
+		@param name resource name
+		@param description what it is
+		@param mime_type media type
+		@param handler function that takes the URI and returns the contents, Nil if there are none
+		~#
+		New(uri : String, name : String, description : String, mime_type : String, handler : Func2Ref<String, McpContents>) {
+			@uri := uri;
+			@name := name;
+			@description := description;
+			@mime_type := mime_type;
+			@handler := handler;
+		}
+
+		#~
+		Constructor for a resource with fixed text
+		@param uri resource URI
+		@param name resource name
+		@param description what it is
+		@param mime_type media type
+		@param text the text
+		~#
+		New(uri : String, name : String, description : String, mime_type : String, text : String) {
+			@uri := uri;
+			@name := name;
+			@description := description;
+			@mime_type := mime_type;
+			@text := text;
+		}
+
+		#~
+		Gets the URI or URI template
+		@return URI
+		~#
+		method : public : GetUri() ~ String {
+			return @uri;
+		}
+
+		#~
+		Gets the name
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the description
+		@return description
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Gets the media type
+		@return media type
+		~#
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
+		#~
+		Tells whether this is a template
+		@return true if the URI has a "{"
+		~#
+		method : public : IsTemplate() ~ Bool {
+			return @uri->Has('{');
+		}
+
+		#~
+		Tells whether a URI names this resource
+		@param uri URI asked for
+		@return true if it matches
+		~#
+		method : public : Matches(uri : String) ~ Bool {
+			if(<>IsTemplate()) {
+				return @uri->Equals(uri);
+			};
+
+			prefix := @uri->SubString(0, @uri->Find('{'));
+			return uri->Size() > prefix->Size() & uri->StartsWith(prefix);
+		}
+
+		#~
+		Reads the resource
+		@param uri URI asked for
+		@return contents, Nil if there are none
+		~#
+		method : public : Read(uri : String) ~ McpContents {
+			if(@text <> Nil) {
+				return McpContents->OfText(uri, @mime_type, @text);
+			};
+
+			if(@handler = Nil) {
+				return Nil;
+			};
+
+			fn := @handler->Get();
+			return fn(uri);
+		}
+
+		#~
+		Converts to a resources/list or resources/templates/list entry
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(IsTemplate()) {
+				json->Insert("uriTemplate", @uri);
+			}
+			else {
+				json->Insert("uri", @uri);
+			};
+			json->Insert("name", @name);
+			if(@description <> Nil) {
+				json->Insert("description", @description);
+			};
+			if(@mime_type <> Nil) {
+				json->Insert("mimeType", @mime_type);
+			};
+			return json;
+		}
+
+		#~
+		Reads a list entry
+		@param json JSON object
+		@return resource without content, Nil if json has no uri
+		~#
+		function : FromJson(json : JsonElement) ~ McpResource {
+			uri := McpMessage->Str(json, "uri");
+			if(uri = Nil) {
+				uri := McpMessage->Str(json, "uriTemplate");
+			};
+			if(uri = Nil) {
+				return Nil;
+			};
+
+			handler : Func2Ref<String, McpContents>;
+			return McpResource->New(uri, McpMessage->Str(json, "name"), McpMessage->Str(json, "description"), McpMessage->Str(json, "mimeType"), handler);
+		}
+	}
+
+	#~
+	The messages a prompt expands to
+	~#
+	class McpPromptResult {
+		@description : String;
+		@messages : JsonElement;
+
+		#~
+		Constructor
+		@param description what the prompt is, or Nil
+		~#
+		New(description : String) {
+			@description := description;
+			@messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+		}
+
+		#~
+		Adds a text message
+		@param role "user" or "assistant"
+		@param text the text
+		~#
+		method : public : AddMessage(role : String, text : String) ~ Nil {
+			content := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content->Insert("type", "text");
+			content->Insert("text", text);
+
+			message := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message->Insert("role", role);
+			message->Insert("content", content);
+			@messages->Add(message);
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Load(messages : JsonElement) ~ Nil {
+			@messages := messages;
+		}
+
+		#~
+		Gets the description
+		@return description
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Gets the messages as a JSON array of {role, content}
+		@return array
+		~#
+		method : public : GetMessages() ~ JsonElement {
+			return @messages;
+		}
+
+		#~
+		Converts to a prompts/get result
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(@description <> Nil) {
+				json->Insert("description", @description);
+			};
+			json->Insert("messages", @messages);
+			return json;
+		}
+
+		#~
+		Reads a prompts/get result
+		@param json JSON object
+		@return result, Nil if json is not an object with messages
+		~#
+		function : FromJson(json : JsonElement) ~ McpPromptResult {
+			if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			messages := json->Get("messages");
+			if(messages = Nil | messages->GetType() <> JsonElement->JsonType->ARRAY) {
+				return Nil;
+			};
+
+			result := McpPromptResult->New(McpMessage->Str(json, "description"));
+			result->Load(messages);
+			return result;
+		}
+	}
+
+	#~
+	A prompt template the server offers: a name, a description, named arguments, and the function that expands it to messages. The function takes a McpCall, whose arguments are the strings the client gave, and returns a McpPromptResult
+	~#
+	class McpPrompt {
+		@name : String;
+		@description : String;
+		@args : JsonElement;
+		@required : Vector<String>;
+		@handler : Func2Ref<McpCall, McpPromptResult>;
+
+		#~
+		Constructor
+		@param name prompt name
+		@param description what the prompt is for
+		@param handler function that expands the prompt, Nil for a description read from a server
+		~#
+		New(name : String, description : String, handler : Func2Ref<McpCall, McpPromptResult>) {
+			@name := name;
+			@description := description;
+			@handler := handler;
+			@args := JsonElement->New(JsonElement->JsonType->ARRAY);
+			@required := Vector->New()<String>;
+		}
+
+		#~
+		Declares an argument
+		@param name argument name
+		@param description what it is
+		@param required true if a client must give it
+		~#
+		method : public : AddArgument(name : String, description : String, required : Bool) ~ Nil {
+			arg := JsonElement->New(JsonElement->JsonType->OBJECT);
+			arg->Insert("name", name);
+			if(description <> Nil) {
+				arg->Insert("description", description);
+			};
+			arg->Insert("required", required);
+			@args->Add(arg);
+			if(required) {
+				@required->AddBack(name);
+			};
+		}
+
+		#~
+		Gets the name
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the description
+		@return description
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Gets the declared arguments as a JSON array
+		@return array of {name, description, required}
+		~#
+		method : public : GetArguments() ~ JsonElement {
+			return @args;
+		}
+
+		#~
+		Gets the names of the required arguments
+		@return names
+		~#
+		method : public : GetRequired() ~ Vector<String> {
+			return @required;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : GetHandler() ~ Func2Ref<McpCall, McpPromptResult> {
+			return @handler;
+		}
+
+		#~
+		Converts to a prompts/list entry
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("name", @name);
+			if(@description <> Nil) {
+				json->Insert("description", @description);
+			};
+			if(@args->Size() > 0) {
+				json->Insert("arguments", @args);
+			};
+			return json;
+		}
+
+		#~
+		Reads a prompts/list entry
+		@param json JSON object
+		@return prompt without a handler, Nil if json has no name
+		~#
+		function : FromJson(json : JsonElement) ~ McpPrompt {
+			name := McpMessage->Str(json, "name");
+			if(name = Nil) {
+				return Nil;
+			};
+
+			prompt := McpPrompt->New(name, McpMessage->Str(json, "description"), Nil);
+			args := json->Get("arguments");
+			if(args <> Nil & args->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < args->Size(); i += 1;) {
+					arg := args->Get(i);
+					arg_name := McpMessage->Str(arg, "name");
+					if(arg_name <> Nil) {
+						required := false;
+						flag := arg->Get("required");
+						if(flag <> Nil & flag->GetType() = JsonElement->JsonType->TRUE) {
+							required := true;
+						};
+						prompt->AddArgument(arg_name, McpMessage->Str(arg, "description"), required);
+					};
+				};
+			};
+			return prompt;
+		}
+	}
+
+	# A call that runs on a thread of its own, so the reader keeps reading and can hear a cancellation
+	class : private : McpJob {
+		@service : McpService;
+		@text : String;
+		@sink : McpSink;
+
+		New(service : McpService, text : String, sink : McpSink) {
+			@service := service;
+			@text := text;
+			@sink := sink;
+		}
+
+		method : public : Run() ~ Nil {
+			reply := @service->Handle(@text, @sink);
+			if(reply <> Nil) {
+				@sink->Send(reply);
+			};
+			@service->JobDone();
+		}
+	}
+
+	# The thread that runs a McpJob
+	class : private : McpWorker from Thread {
+		New() {
+			Parent();
+		}
+
+		method : public : Run(arg : System.Base) ~ Nil {
+			job := arg->As(McpJob);
+			job->Run();
+		}
+	}
+
+	#~
+	An MCP server. Register tools, resources and prompts, then serve: ServeStdio() answers on standard input and output until it ends, ServeHttp(port) listens for the streamable HTTP transport, and Handle(message, sink) answers one message for any other transport. A tool call runs on a thread of its own, so the server hears a cancellation while it works
+	```
+	use API.MCP, Data.JSON, System.IO;
+
+	class Echo {
+	  function : Main(args : String[]) ~ Nil {
+	    server := McpService->New("echo", "1.0.0");
+	    server->AddTool("echo", "Repeat the text back",
+	      "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}",
+	      Func2Ref->New(Echo->Run(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+	    server->ServeStdio();
+	  }
+
+	  function : Run(call : McpCall) ~ McpToolResult {
+	    return McpToolResult->Text(call->GetString("text"));
+	  }
+	}
+	```
+	~#
+	class McpService {
+		@name : String;
+		@title : String;
+		@version : String;
+		@instructions : String;
+		@tools : Vector<McpTool>;
+		@resources : Vector<McpResource>;
+		@prompts : Vector<McpPrompt>;
+		@inflight : Hash<String, McpCall>;
+		@mutex : ThreadMutex;
+		@active : Int;
+		@sessions : Hash<String, String>;
+		@use_sessions : Bool;
+		@origins : Vector<String>;
+		@http_server : Bool;
+
+		#~
+		Constructor
+		@param name server name, shown to the client
+		@param version server version
+		~#
+		New(name : String, version : String) {
+			@name := name;
+			@version := version;
+			@tools := Vector->New()<McpTool>;
+			@resources := Vector->New()<McpResource>;
+			@prompts := Vector->New()<McpPrompt>;
+			@inflight := Hash->New()<String, McpCall>;
+			@sessions := Hash->New()<String, String>;
+			@origins := Vector->New()<String>;
+			@use_sessions := true;
+			@mutex := ThreadMutex->New("mcp_service");
+		}
+
+		#~
+		Sets the instructions the client may show the model
+		@param instructions text
+		~#
+		method : public : SetInstructions(instructions : String) ~ Nil {
+			@instructions := instructions;
+		}
+
+		#~
+		Sets a human-readable server title
+		@param title title
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			@title := title;
+		}
+
+		#~
+		Registers a tool
+		@param tool the tool
+		~#
+		method : public : AddTool(tool : McpTool) ~ Nil {
+			@tools->AddBack(tool);
+		}
+
+		#~
+		Registers a tool
+		@param name tool name
+		@param description what the tool does, for the model
+		@param schema JSON Schema of the input as JSON text
+		@param handler function that runs the tool
+		@return true if added, false if the schema is not JSON
+		~#
+		method : public : AddTool(name : String, description : String, schema : String, handler : Func2Ref<McpCall, McpToolResult>) ~ Bool {
+			schema_json := JsonParser->TextToElement(schema);
+			if(schema_json = Nil) {
+				return false;
+			};
+
+			@tools->AddBack(McpTool->New(name, description, schema_json, handler));
+			return true;
+		}
+
+		#~
+		Registers a resource or resource template
+		@param resource the resource
+		~#
+		method : public : AddResource(resource : McpResource) ~ Nil {
+			@resources->AddBack(resource);
+		}
+
+		#~
+		Registers a prompt
+		@param prompt the prompt
+		~#
+		method : public : AddPrompt(prompt : McpPrompt) ~ Nil {
+			@prompts->AddBack(prompt);
+		}
+
+		#~
+		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default)
+		@param on true for sessions
+		~#
+		method : public : SetSessions(on : Bool) ~ Nil {
+			@use_sessions := on;
+		}
+
+		#~
+		Allows an Origin the HTTP transport would refuse. Without a call, only requests with no Origin header or a loopback one (localhost, 127.0.0.1, [::1]) are answered, which stops a web page from reaching a server on the local machine through the browser
+		@param origin the Origin header value, such as https://app.example.com
+		~#
+		method : public : AllowOrigin(origin : String) ~ Nil {
+			@origins->AddBack(origin);
+		}
+
+		#~
+		Serves the stdio transport: reads newline-delimited JSON-RPC messages from standard input and writes replies, one per line, to standard output, until standard input ends. Nothing else may be written to standard output; log with ErrorLine, which goes to standard error
+		~#
+		method : public : ServeStdio() ~ Nil {
+			sink := McpStdoutSink->New();
+			while(true) {
+				line := McpStdio->ReadMessage();
+				if(line = Nil) {
+					break;
+				};
+
+				if(line->Find("\"tools/call\"") > -1) {
+					critical(@mutex) {
+						@active += 1;
+					};
+					worker := McpWorker->New();
+					worker->Execute(McpJob->New(@self, line, sink));
+				}
+				else {
+					reply := Handle(line, sink);
+					if(reply <> Nil) {
+						sink->Send(reply);
+					};
+				};
+			};
+
+			# standard input is closed: let the calls in progress finish and answer
+			waited := 0;
+			while(@active > 0 & waited < 600000) {
+				Thread->Sleep(5);
+				waited += 5;
+			};
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : JobDone() ~ Nil {
+			critical(@mutex) {
+				@active -= 1;
+			};
+		}
+
+		#~
+		Serves the streamable HTTP transport on the loopback address and blocks until WebServer->Stop(). POST carries one JSON-RPC message and is answered with application/json, or 202 when it needs no answer; GET answers 405 (the server starts no stream of its own); DELETE ends a session. Only one HTTP server runs in a process
+		@param port port to listen on, 0 for one the system chooses (see GetBoundPort)
+		~#
+		method : public : ServeHttp(port : Int) ~ Nil {
+			ServeHttp("127.0.0.1", port);
+		}
+
+		#~
+		Serves the streamable HTTP transport on an address; see ServeHttp(port)
+		@param address local address to bind, "" for every interface
+		@param port port to listen on, 0 for one the system chooses
+		~#
+		method : public : ServeHttp(address : String, port : Int) ~ Nil {
+			McpHttpHandler->SetService(@self);
+			@http_server := true;
+			Web.HTTP.Server.WebServer->Serve(McpHttpHandler->New()->GetClass(), address, port);
+			@http_server := false;
+		}
+
+		#~
+		Gets the port the HTTP transport is bound to
+		@return port, 0 until it is listening
+		~#
+		method : public : GetBoundPort() ~ Int {
+			return Web.HTTP.Server.WebServer->GetBoundPort();
+		}
+
+		#~
+		Answers one message. Parse errors, invalid requests, unknown methods and bad parameters are answered with the JSON-RPC error; a notification, and a request that was cancelled, are answered with Nil
+		@param text one JSON-RPC message
+		@param sink where progress notifications go, Nil to drop them
+		@return the reply as one line of JSON, Nil if there is none
+		~#
+		method : public : Handle(text : String, sink : McpSink) ~ String {
+			root := McpMessage->Parse(text);
+			if(root = Nil) {
+				return McpMessage->Error(Nil, McpProtocol->ParseError(), "Parse error")->ToString();
+			};
+
+			reply := HandleJson(root, sink);
+			if(reply = Nil) {
+				return Nil;
+			};
+			return reply->ToString();
+		}
+
+		#~
+		Answers one parsed message
+		@param root the message
+		@param sink where progress notifications go, Nil to drop them
+		@return the reply, Nil if there is none
+		~#
+		method : public : HandleJson(root : JsonElement, sink : McpSink) ~ JsonElement {
+			if(root->GetType() = JsonElement->JsonType->ARRAY) {
+				return McpMessage->Error(Nil, McpProtocol->InvalidRequest(), "Invalid Request: batches are not supported");
+			};
+
+			if(root->GetType() <> JsonElement->JsonType->OBJECT) {
+				return McpMessage->Error(Nil, McpProtocol->InvalidRequest(), "Invalid Request: a message is a JSON object");
+			};
+
+			id := root->Get("id");
+			has_id := id <> Nil;
+			if(has_id & <>McpMessage->IsId(id)) {
+				return McpMessage->Error(Nil, McpProtocol->InvalidRequest(), "Invalid Request: id must be a string or a number");
+			};
+
+			# a response to a request this server sent: it sends none
+			if(<>root->Has("method") & (root->Has("result") | root->Has("error"))) {
+				return Nil;
+			};
+
+			version := McpMessage->Str(root, "jsonrpc");
+			if(version = Nil | <>version->Equals("2.0")) {
+				return McpMessage->Error(id, McpProtocol->InvalidRequest(), "Invalid Request: jsonrpc must be \"2.0\"");
+			};
+
+			rpc := McpMessage->Str(root, "method");
+			if(rpc = Nil | rpc->Size() = 0) {
+				return McpMessage->Error(id, McpProtocol->InvalidRequest(), "Invalid Request: rpc must be a non-empty string");
+			};
+
+			params := root->Get("params");
+			if(params <> Nil & params->GetType() <> JsonElement->JsonType->OBJECT) {
+				if(has_id) {
+					return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: params must be an object");
+				};
+				return Nil;
+			};
+
+			if(params = Nil) {
+				params := McpMessage->EmptyObject();
+			};
+
+			if(<>has_id) {
+				Notify(rpc, params);
+				return Nil;
+			};
+
+			return Dispatch(id, rpc, params, sink);
+		}
+
+		# a notification: nothing is answered, whatever it is
+		method : Notify(rpc : String, params : JsonElement) ~ Nil {
+			if(rpc->Equals("notifications/cancelled")) {
+				request_id := params->Get("requestId");
+				if(request_id <> Nil) {
+					key := request_id->ToString();
+					critical(@mutex) {
+						call := @inflight->Find(key);
+						if(call <> Nil) {
+							call->Cancel();
+						};
+					};
+				};
+			};
+		}
+
+		method : Dispatch(id : JsonElement, rpc : String, params : JsonElement, sink : McpSink) ~ JsonElement {
+			if(rpc->Equals("initialize")) {
+				return Initialize(id, params);
+			}
+			else if(rpc->Equals("ping")) {
+				return McpMessage->Result(id, McpMessage->EmptyObject());
+			}
+			else if(rpc->Equals("tools/list")) {
+				tools := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(tool in @tools) {
+					tools->Add(tool->ToJson());
+				};
+				result := JsonElement->New(JsonElement->JsonType->OBJECT);
+				result->Insert("tools", tools);
+				return McpMessage->Result(id, result);
+			}
+			else if(rpc->Equals("tools/call")) {
+				return CallTool(id, params, sink);
+			}
+			else if(rpc->Equals("resources/list")) {
+				resources := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(resource in @resources) {
+					if(<>resource->IsTemplate()) {
+						resources->Add(resource->ToJson());
+					};
+				};
+				result := JsonElement->New(JsonElement->JsonType->OBJECT);
+				result->Insert("resources", resources);
+				return McpMessage->Result(id, result);
+			}
+			else if(rpc->Equals("resources/templates/list")) {
+				templates := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(resource in @resources) {
+					if(resource->IsTemplate()) {
+						templates->Add(resource->ToJson());
+					};
+				};
+				result := JsonElement->New(JsonElement->JsonType->OBJECT);
+				result->Insert("resourceTemplates", templates);
+				return McpMessage->Result(id, result);
+			}
+			else if(rpc->Equals("resources/read")) {
+				return ReadResource(id, params);
+			}
+			else if(rpc->Equals("prompts/list")) {
+				prompts := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(prompt in @prompts) {
+					prompts->Add(prompt->ToJson());
+				};
+				result := JsonElement->New(JsonElement->JsonType->OBJECT);
+				result->Insert("prompts", prompts);
+				return McpMessage->Result(id, result);
+			}
+			else if(rpc->Equals("prompts/get")) {
+				return GetPrompt(id, params);
+			};
+
+			return McpMessage->Error(id, McpProtocol->MethodNotFound(), "Method not found: {$rpc}");
+		}
+
+		method : Initialize(id : JsonElement, params : JsonElement) ~ JsonElement {
+			requested := McpMessage->Str(params, "protocolVersion");
+			if(requested = Nil) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: protocolVersion is required");
+			};
+
+			client_info := params->Get("clientInfo");
+			if(params->Get("capabilities") = Nil | client_info = Nil | client_info->GetType() <> JsonElement->JsonType->OBJECT) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: capabilities and clientInfo are required");
+			};
+
+			# the same revision when it is one we speak, else our latest
+			version := McpProtocol->Version();
+			if(McpProtocol->IsSupported(requested)) {
+				version := requested;
+			};
+
+			capabilities := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(@tools->Size() > 0) {
+				tools_cap := JsonElement->New(JsonElement->JsonType->OBJECT);
+				tools_cap->Insert("listChanged", false);
+				capabilities->Insert("tools", tools_cap);
+			};
+			if(@resources->Size() > 0) {
+				resources_cap := JsonElement->New(JsonElement->JsonType->OBJECT);
+				resources_cap->Insert("subscribe", false);
+				resources_cap->Insert("listChanged", false);
+				capabilities->Insert("resources", resources_cap);
+			};
+			if(@prompts->Size() > 0) {
+				prompts_cap := JsonElement->New(JsonElement->JsonType->OBJECT);
+				prompts_cap->Insert("listChanged", false);
+				capabilities->Insert("prompts", prompts_cap);
+			};
+
+			info := JsonElement->New(JsonElement->JsonType->OBJECT);
+			info->Insert("name", @name);
+			if(@title <> Nil) {
+				info->Insert("title", @title);
+			};
+			info->Insert("version", @version);
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("protocolVersion", version);
+			result->Insert("capabilities", capabilities);
+			result->Insert("serverInfo", info);
+			if(@instructions <> Nil) {
+				result->Insert("instructions", @instructions);
+			};
+			return McpMessage->Result(id, result);
+		}
+
+		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink) ~ JsonElement {
+			name := McpMessage->Str(params, "name");
+			if(name = Nil) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: name is required");
+			};
+
+			tool : McpTool;
+			each(candidate in @tools) {
+				if(candidate->GetName()->Equals(name)) {
+					tool := candidate;
+				};
+			};
+			if(tool = Nil) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Unknown tool: {$name}");
+			};
+
+			arguments := params->Get("arguments");
+			if(arguments = Nil | arguments->GetType() = JsonElement->JsonType->NULL) {
+				arguments := McpMessage->EmptyObject();
+			};
+			if(arguments->GetType() <> JsonElement->JsonType->OBJECT) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: arguments must be an object");
+			};
+
+			# a bad argument is a failure the model can read and correct, not a protocol error
+			problem := McpSchema->Check(tool->GetInputSchema(), arguments);
+			if(problem <> Nil) {
+				return McpMessage->Result(id, McpToolResult->Error("Invalid arguments for {$name}: {$problem}")->ToJson());
+			};
+
+			token : JsonElement;
+			meta := params->Get("_meta");
+			if(meta <> Nil & meta->GetType() = JsonElement->JsonType->OBJECT) {
+				token := meta->Get("progressToken");
+			};
+
+			call := McpCall->New(name, arguments, id, token, sink);
+			key := id->ToString();
+			critical(@mutex) {
+				@inflight->Insert(key, call);
+			};
+
+			result : McpToolResult;
+			try {
+				fn := tool->GetHandler()->Get();
+				result := fn(call);
+			}
+			on(e : Error) {
+				reason := e->GetMessage();
+				result := McpToolResult->Error("Tool {$name} failed: {$reason}");
+			};
+
+			critical(@mutex) {
+				@inflight->Remove(key);
+			};
+
+			# the client gave up on the request: no reply is sent
+			if(call->IsCancelled()) {
+				return Nil;
+			};
+
+			if(result = Nil) {
+				result := McpToolResult->Error("Tool {$name} returned no result");
+			};
+			return McpMessage->Result(id, result->ToJson());
+		}
+
+		method : ReadResource(id : JsonElement, params : JsonElement) ~ JsonElement {
+			uri := McpMessage->Str(params, "uri");
+			if(uri = Nil) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: uri is required");
+			};
+
+			resource : McpResource;
+			each(candidate in @resources) {
+				if(resource = Nil & candidate->Matches(uri)) {
+					resource := candidate;
+				};
+			};
+
+			contents : McpContents;
+			failure : String;
+			if(resource <> Nil) {
+				try {
+					contents := resource->Read(uri);
+				}
+				on(e : Error) {
+					failure := e->GetMessage();
+				};
+			};
+
+			if(failure <> Nil) {
+				return McpMessage->Error(id, McpProtocol->InternalError(), "Internal error: {$failure}");
+			};
+
+			if(contents = Nil) {
+				error := McpMessage->Error(id, McpProtocol->ResourceNotFound(), "Resource not found");
+				data := JsonElement->New(JsonElement->JsonType->OBJECT);
+				data->Insert("uri", uri);
+				error->Get("error")->Insert("data", data);
+				return error;
+			};
+
+			list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			list->Add(contents->ToJson());
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("contents", list);
+			return McpMessage->Result(id, result);
+		}
+
+		method : GetPrompt(id : JsonElement, params : JsonElement) ~ JsonElement {
+			name := McpMessage->Str(params, "name");
+			if(name = Nil) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: name is required");
+			};
+
+			prompt : McpPrompt;
+			each(candidate in @prompts) {
+				if(candidate->GetName()->Equals(name)) {
+					prompt := candidate;
+				};
+			};
+			if(prompt = Nil) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Unknown prompt: {$name}");
+			};
+
+			arguments := params->Get("arguments");
+			if(arguments = Nil | arguments->GetType() = JsonElement->JsonType->NULL) {
+				arguments := McpMessage->EmptyObject();
+			};
+			if(arguments->GetType() <> JsonElement->JsonType->OBJECT) {
+				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: arguments must be an object");
+			};
+
+			each(required in prompt->GetRequired()) {
+				if(<>arguments->Has(required)) {
+					return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: missing required argument: {$required}");
+				};
+			};
+
+			result : McpPromptResult;
+			failure : String;
+			try {
+				fn := prompt->GetHandler()->Get();
+				result := fn(McpCall->New(name, arguments, id, Nil, Nil));
+			}
+			on(e : Error) {
+				failure := e->GetMessage();
+			};
+
+			if(failure <> Nil) {
+				return McpMessage->Error(id, McpProtocol->InternalError(), "Internal error: {$failure}");
+			};
+
+			if(result = Nil) {
+				return McpMessage->Error(id, McpProtocol->InternalError(), "Internal error: prompt {$name} returned no messages");
+			};
+			return McpMessage->Result(id, result->ToJson());
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : UsesSessions() ~ Bool {
+			return @use_sessions;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : NewSession() ~ String {
+			session := System.Runtime->GetUuid();
+			critical(@mutex) {
+				@sessions->Insert(session, "open");
+			};
+			return session;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : HasSession(session : String) ~ Bool {
+			found := false;
+			critical(@mutex) {
+				found := @sessions->Has(session);
+			};
+			return found;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : EndSession(session : String) ~ Bool {
+			found := false;
+			critical(@mutex) {
+				found := @sessions->Has(session);
+				if(found) {
+					@sessions->Remove(session);
+				};
+			};
+			return found;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : IsOriginAllowed(origin : String) ~ Bool {
+			if(origin = Nil) {
+				return true;
+			};
+
+			each(allowed in @origins) {
+				if(allowed->Equals(origin)) {
+					return true;
+				};
+			};
+
+			# loopback origins, with or without a port
+			rest := origin;
+			scheme := rest->Find("://");
+			if(scheme > -1) {
+				rest := McpMessage->Tail(rest, scheme + 3);
+			};
+			host := rest;
+			if(host->StartsWith("[")) {
+				close := host->Find(']');
+				if(close > -1) {
+					host := host->SubString(0, close + 1);
+				};
+			}
+			else {
+				colon := host->Find(':');
+				if(colon > -1) {
+					host := host->SubString(0, colon);
+				};
+			};
+			slash := host->Find('/');
+			if(slash > -1) {
+				host := host->SubString(0, slash);
+			};
+
+			return host->Equals("localhost") | host->Equals("127.0.0.1") | host->Equals("[::1]");
+		}
+	}
+
+	# Checks arguments against the part of a JSON Schema that matters to a model: required names and property types
+	class : private : McpSchema {
+		# Nil when the arguments fit, else what is wrong
+		function : Check(schema : JsonElement, args : JsonElement) ~ String {
+			if(schema = Nil | schema->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			required := schema->Get("required");
+			if(required <> Nil & required->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < required->Size(); i += 1;) {
+					name := required->Get(i)->GetString();
+					if(<>args->Has(name)) {
+						return "missing required argument '{$name}'";
+					};
+				};
+			};
+
+			props := schema->Get("properties");
+			if(props = Nil | props->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			names := props->GetNames();
+			each(name in names) {
+				value := args->Get(name);
+				if(value <> Nil) {
+					kind := McpMessage->Str(props->Get(name), "type");
+					if(kind <> Nil & <>Fits(kind, value)) {
+						return "argument '{$name}' must be of type {$kind}";
+					};
+				};
+			};
+			return Nil;
+		}
+
+		function : Fits(kind : String, value : JsonElement) ~ Bool {
+			type := value->GetType();
+			if(kind->Equals("string")) {
+				return type = JsonElement->JsonType->STRING;
+			}
+			else if(kind->Equals("number")) {
+				return type = JsonElement->JsonType->NUMBER;
+			}
+			else if(kind->Equals("integer")) {
+				if(type <> JsonElement->JsonType->NUMBER) {
+					return false;
+				};
+				text := value->GetValue();
+				return <>text->Has('.') & <>text->Has('e') & <>text->Has('E');
+			}
+			else if(kind->Equals("boolean")) {
+				return type = JsonElement->JsonType->TRUE | type = JsonElement->JsonType->FALSE;
+			}
+			else if(kind->Equals("object")) {
+				return type = JsonElement->JsonType->OBJECT;
+			}
+			else if(kind->Equals("array")) {
+				return type = JsonElement->JsonType->ARRAY;
+			}
+			else if(kind->Equals("null")) {
+				return type = JsonElement->JsonType->NULL;
+			};
+			return true;
+		}
+	}
+
+	#~
+	The HTTP side of the streamable HTTP transport; McpService->ServeHttp starts it
+	~#
+	class McpHttpHandler from Web.HTTP.Server.HttpRequestHandler {
+		@service : static : McpService;
+
+		New() {
+			Parent();
+		}
+
+		#~
+		@hidden
+		~#
+		function : SetService(service : McpService) ~ Nil {
+			@service := service;
+		}
+
+		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+			response->SetHeader("Allow", "POST, DELETE");
+			response->SetCodeContent(405, "");
+			return false;
+		}
+
+		method : ProcessDelete(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			if(@service = Nil | <>@service->IsOriginAllowed(request->GetHeader("origin"))) {
+				response->SetCodeContent(403, "");
+				return;
+			};
+
+			session := request->GetHeader("mcp-session-id");
+			if(session <> Nil & @service->EndSession(session)) {
+				response->SetCodeContent(200, "");
+			}
+			else {
+				response->SetCodeContent(404, "");
+			};
+		}
+
+		method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+			if(@service = Nil) {
+				response->SetCodeContent(503, "");
+				return false;
+			};
+
+			# a web page must not reach this server through the visitor's browser
+			if(<>@service->IsOriginAllowed(request->GetHeader("origin"))) {
+				response->SetCodeContent(403, "");
+				return false;
+			};
+
+			version := request->GetHeader("mcp-protocol-version");
+			if(version <> Nil & <>McpProtocol->IsSupported(version)) {
+				response->SetCodeTypeContent(400, "application/json", McpMessage->Error(Nil, McpProtocol->InvalidRequest(), "Unsupported MCP-Protocol-Version: {$version}")->ToString());
+				return false;
+			};
+
+			body := request->GetContent();
+			root : JsonElement;
+			if(body <> Nil) {
+				root := McpMessage->Parse(body);
+			};
+
+			if(root = Nil) {
+				response->SetCodeTypeContent(400, "application/json", McpMessage->Error(Nil, McpProtocol->ParseError(), "Parse error")->ToString());
+				return false;
+			};
+
+			rpc := McpMessage->Str(root, "method");
+			is_initialize := rpc <> Nil & rpc->Equals("initialize");
+
+			if(@service->UsesSessions() & <>is_initialize) {
+				session := request->GetHeader("mcp-session-id");
+				if(session = Nil) {
+					response->SetCodeTypeContent(400, "application/json", McpMessage->Error(root->Get("id"), McpProtocol->InvalidRequest(), "Missing Mcp-Session-Id header")->ToString());
+					return false;
+				};
+
+				if(<>@service->HasSession(session)) {
+					response->SetCodeTypeContent(404, "application/json", McpMessage->Error(root->Get("id"), McpProtocol->InvalidRequest(), "Unknown session")->ToString());
+					return false;
+				};
+			};
+
+			reply := @service->HandleJson(root, Nil);
+			if(reply = Nil) {
+				response->SetCodeContent(202, "");
+				return false;
+			};
+
+			# a request that was not a request at all is a bad request, not a failed one
+			status := 200;
+			err := reply->Get("error");
+			if(err <> Nil) {
+				code := err->Get("code")->GetInt();
+				if(code = McpProtocol->InvalidRequest() | code = McpProtocol->ParseError()) {
+					status := 400;
+				};
+			};
+
+			if(is_initialize & status = 200 & @service->UsesSessions()) {
+				response->SetHeader("Mcp-Session-Id", @service->NewSession());
+			};
+
+			response->SetCodeTypeContent(status, "application/json", reply->ToString());
+			return false;
+		}
+	}
+
+	#~
+	How a client reaches a server. A transport sends one JSON-RPC message and returns the reply text, or sends one that has no reply
+	~#
+	class McpTransport {
+		New() {
+		}
+
+		#~
+		Sends a request and waits for its reply
+		@param message the request, as JSON text
+		@param id the request id, as JSON text
+		@return the reply as JSON text, Nil if none arrived
+		~#
+		method : virtual : public : Request(message : String, id : String) ~ String;
+
+		#~
+		Sends a notification
+		@param message the notification, as JSON text
+		~#
+		method : virtual : public : Notify(message : String) ~ Nil;
+
+		#~
+		Tells the transport the revision negotiated at initialize
+		@param version revision date string
+		~#
+		method : virtual : public : SetProtocolVersion(version : String) ~ Nil;
+
+		#~
+		Ends the connection
+		~#
+		method : virtual : public : Close() ~ Nil;
+
+		#~
+		Gets why the last call failed
+		@return reason, Nil if it did not
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	A transport to a server in the same process: messages go straight to McpService->Handle. Progress notifications the server sends are kept and read with GetNotifications()
+	~#
+	class McpLoopback from McpTransport {
+		@service : McpService;
+		@sink : McpCollector;
+
+		#~
+		Constructor
+		@param service the server
+		~#
+		New(service : McpService) {
+			Parent();
+			@service := service;
+			@sink := McpCollector->New();
+		}
+
+		method : public : Request(message : String, id : String) ~ String {
+			return @service->Handle(message, @sink);
+		}
+
+		method : public : Notify(message : String) ~ Nil {
+			@service->Handle(message, @sink);
+		}
+
+		method : public : SetProtocolVersion(version : String) ~ Nil {
+		}
+
+		method : public : Close() ~ Nil {
+		}
+
+		method : public : GetError() ~ String {
+			return Nil;
+		}
+
+		#~
+		Gets the notifications the server sent
+		@return messages as JSON text, oldest first
+		~#
+		method : public : GetNotifications() ~ Vector<String> {
+			return @sink->GetMessages();
+		}
+	}
+
+	#~
+	A transport over streamable HTTP: each message is a POST to one URL. It sends the Accept, MCP-Protocol-Version and Mcp-Session-Id headers, keeps the session the server hands out at initialize, and reads a reply that arrives as application/json or as a server-sent event stream
+	~#
+	class McpHttpTransport from McpTransport {
+		@url : String;
+		@client : Web.HTTP.HttpClient;
+		@session : String;
+		@last_error : String;
+		@version_set : Bool;
+
+		#~
+		Constructor
+		@param url the server's MCP endpoint, such as http://127.0.0.1:8080/mcp
+		~#
+		New(url : String) {
+			Parent();
+			@url := url;
+			@client := Web.HTTP.HttpClient->New();
+			@client->AddHeader("Accept", "application/json, text/event-stream");
+		}
+
+		method : public : Request(message : String, id : String) ~ String {
+			@last_error := Nil;
+			response := Post(message);
+			if(response = Nil) {
+				return Nil;
+			};
+
+			headers := @client->GetResponseHeaders();
+			if(headers <> Nil) {
+				session := headers->Find("mcp-session-id");
+				if(session <> Nil & @session = Nil) {
+					@session := session;
+					@client->AddHeader("Mcp-Session-Id", session);
+				};
+			};
+
+			content := response->GetContent();
+			if(content = Nil | content->Size() = 0) {
+				return Nil;
+			};
+
+			text := String->New(content);
+			kind := response->GetType();
+			if(kind <> Nil & kind->StartsWith("text/event-stream")) {
+				return FromEvents(text, id);
+			};
+			return text;
+		}
+
+		method : public : Notify(message : String) ~ Nil {
+			@last_error := Nil;
+			Post(message);
+		}
+
+		method : Post(message : String) ~ Web.HTTP.Response {
+			response := @client->Post(Web.HTTP.Url->New(@url), message->ToByteArray(), "application/json");
+			if(response = Nil) {
+				@last_error := "no response from {$@url}";
+				return Nil;
+			};
+
+			code := response->GetCode();
+			if(code <> 200 & code <> 202) {
+				body := "";
+				if(response->GetContent() <> Nil) {
+					body := String->New(response->GetContent());
+				};
+
+				# a JSON-RPC error body is the reply, whatever the status
+				if(code = 400 & body->Find("\"error\"") > -1) {
+					return response;
+				};
+
+				@last_error := "HTTP {$code} from {$@url}";
+				return Nil;
+			};
+			return response;
+		}
+
+		# the data of the event that carries the reply to the request
+		method : FromEvents(text : String, id : String) ~ String {
+			lines := text->ReplaceAll("\r", "");
+			data := "";
+			start := 0;
+			while(start <= lines->Size()) {
+				end := lines->Find(start, '\n');
+				if(end < 0) {
+					end := lines->Size();
+				};
+
+				line := lines->SubString(start, end - start);
+				start := end + 1;
+
+				if(line->StartsWith("data:")) {
+					value := McpMessage->Tail(line, 5);
+					if(value->StartsWith(" ")) {
+						value := McpMessage->Tail(value, 1);
+					};
+					data += value;
+				}
+				else if(line->Size() = 0 & data->Size() > 0) {
+					json := JsonParser->TextToElement(data);
+					data := "";
+					if(json <> Nil & json->Has("id") & json->Get("id")->ToString()->Equals(id)) {
+						return json->ToString();
+					};
+				};
+			};
+
+			if(data->Size() > 0) {
+				json := JsonParser->TextToElement(data);
+				if(json <> Nil & json->Has("id") & json->Get("id")->ToString()->Equals(id)) {
+					return json->ToString();
+				};
+			};
+			return Nil;
+		}
+
+		method : public : SetProtocolVersion(version : String) ~ Nil {
+			@client->AddHeader("MCP-Protocol-Version", version);
+		}
+
+		method : public : Close() ~ Nil {
+			if(@session <> Nil) {
+				@client->Delete(Web.HTTP.Url->New(@url));
+			};
+			@session := Nil;
+		}
+
+		method : public : GetError() ~ String {
+			return @last_error;
+		}
+	}
+
+	#~
+	A transport to a server program, run once per request: the command is started with the handshake and the request on its standard input and the reply is read from its standard output. The runtime has no process with pipes, so a conversation cannot stay open; a server that keeps state between requests, a long call, progress and cancellation need the HTTP transport. The command is run by the system shell, so it can name the obr runtime and the .obe file of the server
+	```
+	client := McpClient->New(McpCommandTransport->New("obr server.obe --stdio"));
+	```
+	~#
+	class McpCommandTransport from McpTransport {
+		@command : String;
+		@init_request : String;
+		@init_note : String;
+		@last_error : String;
+		@serial : Int;
+
+		#~
+		Constructor
+		@param command shell command line that starts the server and has it read standard input
+		~#
+		New(command : String) {
+			Parent();
+			@command := command;
+		}
+
+		method : public : Request(message : String, id : String) ~ String {
+			@last_error := Nil;
+			root := JsonParser->TextToElement(message);
+			rpc := McpMessage->Str(root, "method");
+
+			input := "";
+			if(rpc <> Nil & rpc->Equals("initialize")) {
+				@init_request := message;
+				input := message + "\n";
+			}
+			else {
+				if(@init_request = Nil) {
+					@last_error := "initialize has not been sent";
+					return Nil;
+				};
+
+				# the server starts afresh: it is told who we are again, under an id of its own
+				init := JsonParser->TextToElement(@init_request);
+				init->Insert("id", "mcp-handshake");
+				input := init->ToString() + "\n";
+				input += McpMessage->Notification("notifications/initialized", Nil)->ToString() + "\n";
+				input += message + "\n";
+			};
+
+			return Run(input, id);
+		}
+
+		method : public : Notify(message : String) ~ Nil {
+			# nothing to send: a notification only means something to a conversation
+		}
+
+		method : Run(input : String, id : String) ~ String {
+			@serial += 1;
+			path := "{$System.Runtime->GetTempDir()}/mcp_{$System.Runtime->GetProcessId()}_{$@serial}.in";
+			writer := System.IO.Filesystem.FileWriter->New(path);
+			writer->WriteString(input);
+			writer->Close();
+
+			output := System.Runtime->CommandOutput("{$@command} < \"{$path}\"");
+			System.IO.Filesystem.File->Delete(path);
+
+			if(output = Nil) {
+				@last_error := "could not run: {$@command}";
+				return Nil;
+			};
+
+			lines := output->GetOutput();
+			if(lines = Nil) {
+				@last_error := "no output from: {$@command}";
+				return Nil;
+			};
+
+			each(line in lines) {
+				trimmed := line->Trim();
+				if(trimmed->StartsWith("{")) {
+					json := JsonParser->TextToElement(trimmed);
+					if(json <> Nil & json->Has("id") & json->Get("id")->ToString()->Equals(id)) {
+						return trimmed;
+					};
+				};
+			};
+
+			@last_error := "no reply to request {$id} from: {$@command}";
+			return Nil;
+		}
+
+		method : public : SetProtocolVersion(version : String) ~ Nil {
+		}
+
+		method : public : Close() ~ Nil {
+		}
+
+		method : public : GetError() ~ String {
+			return @last_error;
+		}
+	}
+
+	#~
+	An MCP client. It initializes the connection, lists and calls a server's tools, reads its resources and gets its prompts. A call that fails returns Nil (or false) and GetError() and GetErrorCode() say why; a tool that ran and failed is not that: it returns a McpToolResult whose IsError() is true
+	```
+	client := McpClient->Http("http://127.0.0.1:8080/mcp");
+	if(client->Initialize("my-app", "1.0")) {
+	  result := client->CallTool("add", "{\"a\":2,\"b\":3}");
+	  result->GetText()->PrintLine();
+	};
+	client->Close();
+	```
+	~#
+	class McpClient {
+		@transport : McpTransport;
+		@next_id : Int;
+		@error : String;
+		@error_code : Int;
+		@server_name : String;
+		@server_version : String;
+		@instructions : String;
+		@version : String;
+		@capabilities : JsonElement;
+		@last_id : Int;
+
+		#~
+		Constructor
+		@param transport how to reach the server
+		~#
+		New(transport : McpTransport) {
+			@transport := transport;
+			@next_id := 1;
+		}
+
+		#~
+		A client of a server at an HTTP endpoint
+		@param url the MCP endpoint
+		@return client
+		~#
+		function : Http(url : String) ~ McpClient {
+			return McpClient->New(McpHttpTransport->New(url));
+		}
+
+		#~
+		A client of a server in this process
+		@param service the server
+		@return client
+		~#
+		function : InProcess(service : McpService) ~ McpClient {
+			return McpClient->New(McpLoopback->New(service));
+		}
+
+		#~
+		A client of a server program run once per request
+		@param command shell command line
+		@return client
+		~#
+		function : Command(command : String) ~ McpClient {
+			return McpClient->New(McpCommandTransport->New(command));
+		}
+
+		#~
+		Sends initialize, checks the revision the server chose, and sends notifications/initialized
+		@param name client name
+		@param version client version
+		@return true if the server answered and its revision is one this library speaks
+		~#
+		method : public : Initialize(name : String, version : String) ~ Bool {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("protocolVersion", McpProtocol->Version());
+			params->Insert("capabilities", McpMessage->EmptyObject());
+			info := JsonElement->New(JsonElement->JsonType->OBJECT);
+			info->Insert("name", name);
+			info->Insert("version", version);
+			params->Insert("clientInfo", info);
+
+			result := Call("initialize", params);
+			if(result = Nil) {
+				return false;
+			};
+
+			@version := McpMessage->Str(result, "protocolVersion");
+			if(<>McpProtocol->IsSupported(@version)) {
+				Fail(McpProtocol->InvalidRequest(), "the server answered with revision {$@version}, which this client does not speak");
+				return false;
+			};
+
+			@capabilities := result->Get("capabilities");
+			server := result->Get("serverInfo");
+			@server_name := McpMessage->Str(server, "name");
+			@server_version := McpMessage->Str(server, "version");
+			@instructions := McpMessage->Str(result, "instructions");
+
+			@transport->SetProtocolVersion(@version);
+			@transport->Notify(McpMessage->Notification("notifications/initialized", Nil)->ToString());
+			return true;
+		}
+
+		#~
+		Gets the server name
+		@return name
+		~#
+		method : public : GetServerName() ~ String {
+			return @server_name;
+		}
+
+		#~
+		Gets the server version
+		@return version
+		~#
+		method : public : GetServerVersion() ~ String {
+			return @server_version;
+		}
+
+		#~
+		Gets the server's instructions
+		@return text, Nil if none
+		~#
+		method : public : GetInstructions() ~ String {
+			return @instructions;
+		}
+
+		#~
+		Gets the revision the server chose
+		@return revision date string
+		~#
+		method : public : GetProtocolVersion() ~ String {
+			return @version;
+		}
+
+		#~
+		Gets the server's capabilities
+		@return JSON object
+		~#
+		method : public : GetCapabilities() ~ JsonElement {
+			return @capabilities;
+		}
+
+		#~
+		Gets why the last call failed
+		@return reason, Nil if it did not
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the JSON-RPC code of the last failure, 0 if the transport failed before a reply came
+		@return code
+		~#
+		method : public : GetErrorCode() ~ Int {
+			return @error_code;
+		}
+
+		#~
+		Gets the id of the last request sent, for Cancel
+		@return id
+		~#
+		method : public : GetLastRequestId() ~ Int {
+			return @last_id;
+		}
+
+		#~
+		Sends a ping
+		@return true if the server answered
+		~#
+		method : public : Ping() ~ Bool {
+			return Call("ping", Nil) <> Nil;
+		}
+
+		#~
+		Lists the server's tools. The result can be handed to McpToolBridge
+		@return tools without handlers, Nil on failure
+		~#
+		method : public : ListTools() ~ Vector<McpTool> {
+			result := Call("tools/list", Nil);
+			if(result = Nil) {
+				return Nil;
+			};
+
+			tools := Vector->New()<McpTool>;
+			list := result->Get("tools");
+			if(list <> Nil & list->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < list->Size(); i += 1;) {
+					tool := McpTool->FromJson(list->Get(i));
+					if(tool <> Nil) {
+						tools->AddBack(tool);
+					};
+				};
+			};
+			return tools;
+		}
+
+		#~
+		Calls a tool
+		@param name tool name
+		@param arguments the arguments as JSON object text, Nil for none
+		@return the result, Nil if the call failed as a request; a tool that failed returns a result with IsError() true
+		~#
+		method : public : CallTool(name : String, arguments : String) ~ McpToolResult {
+			args := McpMessage->EmptyObject();
+			if(arguments <> Nil) {
+				args := JsonParser->TextToElement(arguments);
+				if(args = Nil) {
+					Fail(McpProtocol->InvalidParams(), "arguments are not JSON");
+					return Nil;
+				};
+			};
+			return CallTool(name, args);
+		}
+
+		#~
+		Calls a tool
+		@param name tool name
+		@param arguments the arguments, a JSON object
+		@return the result, Nil if the call failed as a request
+		~#
+		method : public : CallTool(name : String, arguments : JsonElement) ~ McpToolResult {
+			return CallTool(name, arguments, Nil);
+		}
+
+		#~
+		Calls a tool and asks for progress notifications with a progress token (they reach a loopback transport's GetNotifications())
+		@param name tool name
+		@param arguments the arguments, a JSON object
+		@param progress_token token, Nil for none
+		@return the result, Nil if the call failed as a request
+		~#
+		method : public : CallTool(name : String, arguments : JsonElement, progress_token : String) ~ McpToolResult {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("name", name);
+			params->Insert("arguments", arguments);
+			if(progress_token <> Nil) {
+				meta := JsonElement->New(JsonElement->JsonType->OBJECT);
+				meta->Insert("progressToken", progress_token);
+				params->Insert("_meta", meta);
+			};
+
+			result := Call("tools/call", params);
+			if(result = Nil) {
+				return Nil;
+			};
+			return McpToolResult->FromJson(result);
+		}
+
+		#~
+		Tells the server to stop working on a request (notifications/cancelled)
+		@param request_id id of the request, from GetLastRequestId() on another thread
+		@param reason why, or Nil
+		~#
+		method : public : Cancel(request_id : Int, reason : String) ~ Nil {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("requestId", request_id);
+			if(reason <> Nil) {
+				params->Insert("reason", reason);
+			};
+			@transport->Notify(McpMessage->Notification("notifications/cancelled", params)->ToString());
+		}
+
+		#~
+		Lists the server's resources
+		@return resources without content, Nil on failure
+		~#
+		method : public : ListResources() ~ Vector<McpResource> {
+			return ListResources("resources/list", "resources");
+		}
+
+		#~
+		Lists the server's resource templates
+		@return templates, Nil on failure
+		~#
+		method : public : ListResourceTemplates() ~ Vector<McpResource> {
+			return ListResources("resources/templates/list", "resourceTemplates");
+		}
+
+		method : ListResources(rpc : String, field : String) ~ Vector<McpResource> {
+			result := Call(rpc, Nil);
+			if(result = Nil) {
+				return Nil;
+			};
+
+			resources := Vector->New()<McpResource>;
+			list := result->Get(field);
+			if(list <> Nil & list->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < list->Size(); i += 1;) {
+					resource := McpResource->FromJson(list->Get(i));
+					if(resource <> Nil) {
+						resources->AddBack(resource);
+					};
+				};
+			};
+			return resources;
+		}
+
+		#~
+		Reads a resource
+		@param uri resource URI
+		@return its contents, Nil on failure (GetErrorCode() is -32002 for a resource that does not exist)
+		~#
+		method : public : ReadResource(uri : String) ~ Vector<McpContents> {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("uri", uri);
+			result := Call("resources/read", params);
+			if(result = Nil) {
+				return Nil;
+			};
+
+			contents := Vector->New()<McpContents>;
+			list := result->Get("contents");
+			if(list <> Nil & list->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < list->Size(); i += 1;) {
+					item := McpContents->FromJson(list->Get(i));
+					if(item <> Nil) {
+						contents->AddBack(item);
+					};
+				};
+			};
+			return contents;
+		}
+
+		#~
+		Lists the server's prompts
+		@return prompts without handlers, Nil on failure
+		~#
+		method : public : ListPrompts() ~ Vector<McpPrompt> {
+			result := Call("prompts/list", Nil);
+			if(result = Nil) {
+				return Nil;
+			};
+
+			prompts := Vector->New()<McpPrompt>;
+			list := result->Get("prompts");
+			if(list <> Nil & list->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < list->Size(); i += 1;) {
+					prompt := McpPrompt->FromJson(list->Get(i));
+					if(prompt <> Nil) {
+						prompts->AddBack(prompt);
+					};
+				};
+			};
+			return prompts;
+		}
+
+		#~
+		Gets a prompt
+		@param name prompt name
+		@param arguments the argument values as a JSON object of strings, Nil for none
+		@return the prompt's messages, Nil on failure
+		~#
+		method : public : GetPrompt(name : String, arguments : JsonElement) ~ McpPromptResult {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("name", name);
+			if(arguments <> Nil) {
+				params->Insert("arguments", arguments);
+			};
+
+			result := Call("prompts/get", params);
+			if(result = Nil) {
+				return Nil;
+			};
+			return McpPromptResult->FromJson(result);
+		}
+
+		#~
+		Ends the connection
+		~#
+		method : public : Close() ~ Nil {
+			@transport->Close();
+		}
+
+		# one request; the result object, or Nil with the error kept
+		method : Call(rpc : String, params : JsonElement) ~ JsonElement {
+			@error := Nil;
+			@error_code := 0;
+
+			id := @next_id;
+			@next_id += 1;
+			@last_id := id;
+
+			text := @transport->Request(McpMessage->Request(id, rpc, params)->ToString(), id->ToString());
+			if(text = Nil) {
+				reason := @transport->GetError();
+				if(reason = Nil) {
+					reason := "no reply to {$rpc}";
+				};
+				Fail(0, reason);
+				return Nil;
+			};
+
+			reply := JsonParser->TextToElement(text);
+			if(reply = Nil | reply->GetType() <> JsonElement->JsonType->OBJECT) {
+				Fail(McpProtocol->ParseError(), "the reply to {$rpc} is not JSON");
+				return Nil;
+			};
+
+			err := reply->Get("error");
+			if(err <> Nil) {
+				code := McpProtocol->InternalError();
+				code_json := err->Get("code");
+				if(code_json <> Nil & code_json->GetType() = JsonElement->JsonType->NUMBER) {
+					code := code_json->GetInt();
+				};
+
+				message := McpMessage->Str(err, "message");
+				if(message = Nil) {
+					message := "error";
+				};
+				Fail(code, message);
+				return Nil;
+			};
+
+			result := reply->Get("result");
+			if(result = Nil) {
+				Fail(McpProtocol->InvalidRequest(), "the reply to {$rpc} has no result");
+				return Nil;
+			};
+			return result;
+		}
+
+		method : Fail(code : Int, reason : String) ~ Nil {
+			@error_code := code;
+			@error := reason;
+		}
+	}
+
+	#~
+	Turns the tools of a connected server into the tool definitions the Anthropic, OpenAI and Gemini clients take, and runs the calls those models make through the server
+	```
+	client := McpClient->Http("http://127.0.0.1:8080/mcp");
+	client->Initialize("agent", "1.0");
+	bridge := McpToolBridge->New(client);
+
+	# Anthropic: API.Anthropic.Tool->New(name, description, schema) for each
+	each(tool in bridge->GetTools()) {
+	  anthropic_tool := API.Anthropic.Tool->New(tool->GetName(), tool->GetDescription(), tool->GetInputSchema());
+	};
+
+	# Gemini and OpenAI: the same map their GenerateContent and Chat calls take
+	funcs := bridge->GetFunctions();
+
+	# run a call the model asked for
+	text := bridge->Run("add", input_json);
+	```
+	~#
+	class McpToolBridge {
+		@client : McpClient;
+		@tools : Vector<McpTool>;
+
+		#~
+		Constructor; lists the server's tools
+		@param client an initialized client
+		~#
+		New(client : McpClient) {
+			@client := client;
+			@tools := client->ListTools();
+			if(@tools = Nil) {
+				@tools := Vector->New()<McpTool>;
+			};
+		}
+
+		#~
+		Gets the server's tools: name, description and input schema of each, in the shape of a tool definition
+		@return tools
+		~#
+		method : public : GetTools() ~ Vector<McpTool> {
+			return @tools;
+		}
+
+		#~
+		Gets the tool definitions as the JSON array the Anthropic Messages API takes ({"name","description","input_schema"})
+		@return JSON array
+		~#
+		method : public : ToAnthropicJson() ~ JsonElement {
+			list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(tool in @tools) {
+				item := JsonElement->New(JsonElement->JsonType->OBJECT);
+				item->Insert("name", tool->GetName());
+				if(tool->GetDescription() <> Nil) {
+					item->Insert("description", tool->GetDescription());
+				};
+				item->Insert("input_schema", tool->GetInputSchema());
+				list->Add(item);
+			};
+			return list;
+		}
+
+		#~
+		Gets the tool definitions as the JSON array OpenAI function calling takes ({"type":"function","function":{name, description, parameters}})
+		@return JSON array
+		~#
+		method : public : ToOpenAiJson() ~ JsonElement {
+			list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(tool in @tools) {
+				func := JsonElement->New(JsonElement->JsonType->OBJECT);
+				func->Insert("name", tool->GetName());
+				if(tool->GetDescription() <> Nil) {
+					func->Insert("description", tool->GetDescription());
+				};
+				func->Insert("parameters", tool->GetInputSchema());
+
+				item := JsonElement->New(JsonElement->JsonType->OBJECT);
+				item->Insert("type", "function");
+				item->Insert("function", func);
+				list->Add(item);
+			};
+			return list;
+		}
+
+		#~
+		Gets one tool as a FunctionType, which the OpenAI and Gemini clients take with a function that runs it. The properties of the input schema are mapped to their types (string, number, integer, boolean, object; an array property is mapped to its item type as an array)
+		@param tool the tool
+		@return function type
+		~#
+		method : public : ToFunctionType(tool : McpTool) ~ FunctionType {
+			params := Map->New()<String, ParameterType>;
+			schema := tool->GetInputSchema();
+			props := schema->Get("properties");
+			if(props <> Nil & props->GetType() = JsonElement->JsonType->OBJECT) {
+				each(name in props->GetNames()) {
+					params->Insert(name, ToParameterType(props->Get(name)));
+				};
+			};
+
+			required := Vector->New()<String>;
+			required_json := schema->Get("required");
+			if(required_json <> Nil & required_json->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < required_json->Size(); i += 1;) {
+					required->AddBack(required_json->Get(i)->GetString());
+				};
+			};
+
+			required_names := String->New[required->Size()];
+			each(i : required) {
+				required_names[i] := required->Get(i);
+			};
+
+			description := tool->GetDescription();
+			if(description = Nil) {
+				description := "";
+			};
+			return FunctionType->New(tool->GetName(), params, required_names, description);
+		}
+
+		method : ToParameterType(prop : JsonElement) ~ ParameterType {
+			kind := McpMessage->Str(prop, "type");
+			description := McpMessage->Str(prop, "description");
+			is_array := false;
+
+			if(kind <> Nil & kind->Equals("array")) {
+				is_array := true;
+				kind := McpMessage->Str(prop->Get("items"), "type");
+			};
+
+			type := ParameterType->Type->STRING;
+			if(kind <> Nil) {
+				if(kind->Equals("number")) {
+					type := ParameterType->Type->NUMBER;
+				}
+				else if(kind->Equals("integer")) {
+					type := ParameterType->Type->INTEGER;
+				}
+				else if(kind->Equals("object")) {
+					type := ParameterType->Type->OBJECT;
+				}
+				else if(kind->Equals("boolean")) {
+					type := ParameterType->Type->BOOLEAN;
+				};
+			};
+
+			return ParameterType->New(type, is_array, description);
+		}
+
+		#~
+		Gets the tools as the map of function type and function the Gemini GenerateContent and the OpenAI chat calls take: each function takes the model's arguments as JSON, calls the tool on the server, and returns {"result": text} or, for a tool that failed, {"error": text}
+		@return map of tool name to function type and function
+		~#
+		method : public : GetFunctions() ~ Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>> {
+			funcs := Map->New()<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>;
+			each(tool in @tools) {
+				funcs->Insert(tool->GetName(), Pair->New(ToFunctionType(tool), McpBridgeFunction->Make(@client, tool->GetName()))<FunctionType, Func2Ref<JsonElement, JsonElement>>);
+			};
+			return funcs;
+		}
+
+		#~
+		Runs a tool call a model asked for
+		@param name tool name
+		@param input the model's arguments, a JSON object
+		@return the text of the result, "error: ..." for a tool that failed or a call that could not be made
+		~#
+		method : public : Run(name : String, input : JsonElement) ~ String {
+			result := @client->CallTool(name, input);
+			if(result = Nil) {
+				reason := @client->GetError();
+				return "error: {$reason}";
+			};
+
+			text := result->GetText();
+			if(result->IsError()) {
+				return "error: {$text}";
+			};
+			return text;
+		}
+	}
+
+	# Binds a client and a tool name to a function a model client can call. A lambda cannot call an instance method, so it calls a static function that finds the client by the key it was made with
+	class : private : McpBridgeFunction {
+		@clients : static : Hash<String, McpClient>;
+		@count : static : Int;
+
+		function : Make(client : McpClient, name : String) ~ Func2Ref<JsonElement, JsonElement> {
+			if(@clients = Nil) {
+				@clients := Hash->New()<String, McpClient>;
+			};
+
+			@count += 1;
+			key := "{$@count}:{$name}";
+			@clients->Insert(key, client);
+			return Func2Ref->New(\(input) => McpBridgeFunction->Invoke(key, input))<JsonElement, JsonElement>;
+		}
+
+		function : Invoke(key : String, input : JsonElement) ~ JsonElement {
+			reply := JsonElement->New(JsonElement->JsonType->OBJECT);
+			client := @clients->Find(key);
+			if(client = Nil) {
+				reply->Insert("error", "the MCP client is gone");
+				return reply;
+			};
+
+			name := McpMessage->Tail(key, key->Find(':') + 1);
+			if(input = Nil) {
+				input := McpMessage->EmptyObject();
+			};
+
+			result := client->CallTool(name, input);
+			if(result = Nil) {
+				reason := client->GetError();
+				reply->Insert("error", reason);
+			}
+			else if(result->IsError()) {
+				reply->Insert("error", result->GetText());
+			}
+			else {
+				reply->Insert("result", result->GetText());
+			};
+			return reply;
+		}
+	}
+}
