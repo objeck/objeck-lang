@@ -17,6 +17,8 @@ Each library typically consists of:
 - **gemini.obs** - Google Gemini API integration with schema support
 - **anthropic.obs** - Anthropic Messages API client (Claude): chat, tool use, streaming, structured output
 - **ollama.obs** - Ollama local LLM integration
+- **rag.obs** - Retrieval-augmented generation kit (`System.ML.Rag`): `RagChunker` (size, paragraph, sentence), the `RagEmbedder` / `RagGenerator` interfaces, a hashing toy embedder and a stub generator for offline use, `RagIndex` (a `VectorIndex` with source and offset, `Store`/`Load`), grounded prompts that cite sources as [n], and `RagPipeline`. Needs only `gen_collect` and `ml_vector`
+- **rag_adapters.obs** - Adapters that plug BERT, CLIP, Ollama, OpenAI, Gemini and Anthropic into the RAG kit (`rag_adapters.obl`, after the libraries it links)
 - **opencv.obs** - OpenCV computer vision library
 - **models.obs** - Backend-neutral inference types shared by `onnx` and `inference`: `Tensor`, `TensorSpec`, `EndPoint`, `Engine` (`API.Models`)
 - **onnx.obs** - ONNX Runtime for cross-platform ML inference (`API.Onnx`); build order puts `models` before it

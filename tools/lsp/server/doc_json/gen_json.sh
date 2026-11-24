@@ -99,6 +99,8 @@ rm -f *.obe
 	$LIB_SRC/gemini.obs \
 	$LIB_SRC/ollama.obs \
 	$LIB_SRC/anthropic.obs \
+	$LIB_SRC/rag.obs \
+	$LIB_SRC/rag_adapters.obs \
 	$LIB_SRC/models.obs \
 	$LIB_SRC/opencv.obs \
 	$LIB_SRC/onnx.obs $LIB_SRC/inference.obs \

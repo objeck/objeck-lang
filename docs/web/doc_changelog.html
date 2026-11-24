@@ -151,6 +151,7 @@
      <li><code>restartFrame</code> and <code>terminateThreads</code> are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.</li>
     </ul>
      </li>
+     <li><strong><code>rag</code> and <code>rag_adapters</code>: a retrieval-augmented generation kit (<code>System.ML.Rag</code>)</strong>: <code>RagChunker</code> splits text by size with overlap, or packs whole paragraphs or sentences (offsets and ids are kept); <code>RagIndex</code> stores chunk vectors in a <code>VectorIndex</code> with source and offset and saves to and loads from one file; <code>RagPromptBuilder</code> numbers the retrieved chunks as sources and asks the model to cite them as [n]; <code>RagPipeline-&gt;AddText</code> and <code>-&gt;Answer</code> tie it together and <code>RagAnswer-&gt;GetCitations</code> reads the citations back. <code>RagEmbedder</code> and <code>RagGenerator</code> are the two small interfaces to implement; <code>rag</code> ships a hashing bag-of-words embedder and a stub generator so a whole pipeline (and <code>programs/examples/rag_demo.obs</code>) runs offline with no key or model, and <code>rag_adapters</code> has adapters over <code>BertEmbedder</code>, the CLIP image tower, Ollama, OpenAI and Gemini embeddings and Ollama, OpenAI, Anthropic and Gemini generation. The group <code>@rag</code> expands to both and everything they link.</li>
     </ul>
     <h4 id="documentation">Documentation</h4>
     <ul>
@@ -159,6 +160,7 @@
     <h4 id="tests">Tests</h4>
     <ul>
      <li>New regression tests: <code>regex_lazy_dfa</code>, <code>regex_replace_escapes</code>, <code>regex_threads</code>, <code>ml_vector_parallel</code>, <code>ml_knn_exact</code> and <code>nlp_levenshtein_bounded</code>, and thirteen <code>collect_*</code> tests for the collections above (<code>collect_deque</code>, <code>collect_multiset</code>, <code>collect_union_find</code>, <code>collect_trie</code>, <code>collect_ordered_hash</code>, <code>collect_bimap</code>, <code>collect_priority_map</code>, <code>collect_fenwick</code>, <code>collect_bloom</code>, <code>collect_vector_ops</code>, <code>collect_sort_stable</code>, <code>collect_nil_guards</code>, <code>collect_stack_deep</code>).</li>
+     <li>New regression tests for the RAG kit: <code>rag_chunking_test</code> (empty, shorter than a chunk, exact multiples, overlap, paragraphs, sentences, CRLF, accented and CJK text), <code>rag_index_test</code> (nearest neighbours under the toy embedder, the index, the save/load round trip and damaged files), <code>rag_pipeline_test</code> (prompt text, citations, the pipeline end to end, failures) and <code>rag_adapters_ollama_test</code> (the Ollama adapters against a fake server on loopback).</li>
     </ul>
     <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
     <h4 id="fixed-1">Fixed</h4>

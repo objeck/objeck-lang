@@ -17314,6 +17314,460 @@
 				}
 			}
 		},
+		"System.ML.Rag.RagAnswer": {
+			"description": "The result of RagPipeline->Answer: the question, the generated text, the sources that were put in the prompt (numbered from 1 in the order of the list) and the prompt itself.",
+			"functions": {
+				"GetCitations": {
+					"descriptions": ["**The source numbers the text cites, as [n] or [n, m]: each once, in order of first appearance, and only numbers that name a source.**\n\n```method : public : GetCitations() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetCitedSources": {
+					"descriptions": ["**The sources the text cites.**\n\n```method : public : GetCitedSources() ~ Vector&lt;RagMatch&gt;```\n\n\n\nreturn: Vector&lt;RagMatch&gt;"]
+				},
+				"GetPrompt": {
+					"descriptions": ["**The prompt that was sent.**\n\n```method : public : GetPrompt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetQuestion": {
+					"descriptions": ["**The question.**\n\n```method : public : GetQuestion() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSources": {
+					"descriptions": ["**The sources in the prompt; source n of the text is element n - 1.**\n\n```method : public : GetSources() ~ Vector&lt;RagMatch&gt;```\n\n\n\nreturn: Vector&lt;RagMatch&gt;"]
+				},
+				"GetText": {
+					"descriptions": ["**The generated text.**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates an answer.**\n\n```New(question:String, text:String, sources:Vector&lt;RagMatch&gt;, prompt:String)```\n\n\n\nquestion: String\n\ntext: String\n\nsources: Vector&lt;RagMatch&gt;\n\nprompt: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagAnthropicGenerator": {
+			"description": "Generates with a Claude model over the Anthropic Messages API: each call is a fresh single-turn chat, the prompt being the user message.",
+			"functions": {
+				"Generate": {
+					"descriptions": ["**Generates the reply.**\n\n```method : public : Generate(prompt:String) ~ String```\n\n\n\nprompt: String\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates a generator that may reply with up to 1024 tokens.**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use.**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ Nil```\n\n\n\nmax_tokens: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Rag.RagBertEmbedder": {
+			"description": "Embeds text with a BERT-family ONNX model (System.NLP.Onnx.BertEmbedder). The model stays open and owned by the caller: close it with its own Close(). Not thread-safe.",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds texts with the embedder's pooling.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors, or 0 when the model has not said yet.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Wraps an opened embedder.**\n\n```New(bert:System.NLP.Onnx.BertEmbedder)```\n\n\n\nbert: System.NLP.Onnx.BertEmbedder"]
+				}
+			}
+		},
+		"System.ML.Rag.RagChunk": {
+			"description": "One piece of a source text: where it came from, where it starts, and its text.",
+			"functions": {
+				"GetId": {
+					"descriptions": ["**The chunk's id, the key of its vector in the index.**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLength": {
+					"descriptions": ["**Length of the chunk text in characters.**\n\n```method : public : GetLength() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOffset": {
+					"descriptions": ["**Where the chunk starts in its source text, in characters from 0.**\n\n```method : public : GetOffset() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSource": {
+					"descriptions": ["**The document the chunk came from.**\n\n```method : public : GetSource() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**The chunk text.**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates a chunk.**\n\n```New(id:String, source:String, offset:Int, text:String)```\n\n\n\nid: String\n\nsource: String\n\noffset: Int\n\ntext: String"]
+				},
+				"ToString": {
+					"descriptions": ["**A short description: id, offset and length.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagChunker": {
+			"description": "Cuts a text into RagChunk pieces. Three modes (RagSplit): SIZE cuts windows of size characters that overlap by overlap characters; PARAGRAPH and SENTENCE keep paragraphs (separated by a blank line) or sentences (ended by . ! or ? and a space or the end) whole and pack as many as fit in size characters into a chunk, so a chunk never starts or ends in the middle of one. A single paragraph or sentence longer than size is cut by SIZE, with the overlap. Chunk text is the original text, so offset + length never passes the end of the source.\n\nEvery chunk's id is the source name, \"#\" and the chunk's number from 0 in that call. A text that is empty or only whitespace gives no chunks. A chunker built with a bad size or overlap is not valid: IsValid() is false, GetError() says why and every call gives an empty vector.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Why the chunker is not valid.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMode": {
+					"descriptions": ["**How this chunker cuts.**\n\n```method : public : GetMode() ~ RagSplit```\n\n\n\nreturn: RagSplit"]
+				},
+				"GetOverlap": {
+					"descriptions": ["**The SIZE overlap in characters.**\n\n```method : public : GetOverlap() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSize": {
+					"descriptions": ["**The largest chunk in characters.**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether size and overlap are usable.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Creates a chunker in SIZE mode.**\n\n```New(size:Int, overlap:Int)```\n\n\n\nsize: Int\n\noverlap: Int", "**Creates a chunker with the given mode.**\n\n```New(size:Int, overlap:Int, mode:RagSplit)```\n\n\n\nsize: Int\n\noverlap: Int\n\nmode: RagSplit"]
+				},
+				"Split": {
+					"descriptions": ["**Cuts a text in this chunker's mode.**\n\n```method : public : Split(source:String, text:String) ~ Vector&lt;RagChunk&gt;```\n\n\n\nsource: String\n\ntext: String\n\nreturn: Vector&lt;RagChunk&gt;"]
+				},
+				"SplitBySize": {
+					"descriptions": ["**Cuts a text into windows of size characters that overlap by overlap characters, whatever the mode. The last window ends at the end of the text, and there is no trailing window that the one before already holds: ten characters with size 5 and overlap 0 are two chunks, with size 5 and overlap 2 are 0-5, 3-8 and 5-10. A window of only whitespace is dropped.**\n\n```method : public : SplitBySize(source:String, text:String) ~ Vector&lt;RagChunk&gt;```\n\n\n\nsource: String\n\ntext: String\n\nreturn: Vector&lt;RagChunk&gt;"]
+				},
+				"SplitParagraphs": {
+					"descriptions": ["**Packs whole paragraphs (separated by a blank line) into chunks of up to size characters, whatever the mode.**\n\n```method : public : SplitParagraphs(source:String, text:String) ~ Vector&lt;RagChunk&gt;```\n\n\n\nsource: String\n\ntext: String\n\nreturn: Vector&lt;RagChunk&gt;"]
+				},
+				"SplitSentences": {
+					"descriptions": ["**Packs whole sentences into chunks of up to size characters, whatever the mode.**\n\n```method : public : SplitSentences(source:String, text:String) ~ Vector&lt;RagChunk&gt;```\n\n\n\nsource: String\n\ntext: String\n\nreturn: Vector&lt;RagChunk&gt;"]
+				}
+			}
+		},
+		"System.ML.Rag.RagClipImageEmbedder": {
+			"description": "Embeds images with a CLIP image tower (System.ML.Clip.ClipEncoder). The \"text\" it is given is the path of an image file, so an index built with it holds pictures, and a search is by example: embed a query image the same way and ask for its nearest neighbours. (The text tower is not part of the CLIP support, so a written query cannot be matched with pictures.) Vectors are scaled to length 1.",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds image files.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors, or 0 when the model has not said yet.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Wraps an opened encoder.**\n\n```New(clip:System.ML.Clip.ClipEncoder)```\n\n\n\nclip: System.ML.Clip.ClipEncoder"]
+				}
+			}
+		},
+		"System.ML.Rag.RagEmbedder": {
+			"description": "Turns texts into vectors. Implement it to plug in any embedding model; the library rag_adapters has implementations over BERT, CLIP, Ollama, OpenAI and Gemini. A failure returns Nil and GetError() says why. Every vector from one embedder has the same length, and the same text always gives the same vector.",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds texts.**\n\n```method : public : virutal : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors, or 0 when it is not known until the first Embed.**\n\n```method : public : virutal : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagGeminiEmbedder": {
+			"description": "Embeds text with a Gemini embedding model, a batch to a request (API.Google.Gemini.Model->BatchEmbedContent).",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds texts.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors: 0 until the first Embed.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates an embedder.**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagGeminiGenerator": {
+			"description": "Generates with a Gemini model (generateContent): the prompt is one user message and the reply is the text of the first candidate.",
+			"functions": {
+				"Generate": {
+					"descriptions": ["**Generates the reply.**\n\n```method : public : Generate(prompt:String) ~ String```\n\n\n\nprompt: String\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates a generator.**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagGenerator": {
+			"description": "Turns a prompt into text. Implement it to plug in any language model; the library rag_adapters has implementations over Ollama, OpenAI, Anthropic and Gemini. A failure returns Nil and GetError() says why.",
+			"functions": {
+				"Generate": {
+					"descriptions": ["**Generates the reply to a prompt.**\n\n```method : public : virutal : Generate(prompt:String) ~ String```\n\n\n\nprompt: String\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagHashEmbedder": {
+			"description": "A toy embedder for tests and offline demos: a hashed bag of words. Text is lower-cased and split into words (ASCII letters and digits, and any character above 127); each word that is not a common English stop word adds 1 to the bucket its hash picks out of dim buckets. Two texts that share words get close vectors, texts that share none get orthogonal ones (barring a bucket collision), so a search ranks by shared vocabulary. It knows nothing about meaning: \"car\" and \"automobile\" are unrelated. The same text always gives the same vector, on every platform.",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds texts.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**The number of buckets.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Always \"\": the toy embedder does not fail.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates an embedder with 256 buckets.**\n\n```New()```\n\n", "**Creates an embedder.**\n\n```New(dim:Int)```\n\n\n\ndim: Int"]
+				},
+				"Words": {
+					"descriptions": ["**The words of a text as this embedder sees them: lower case, stop words dropped.**\n\n```method : public : Words(text:String) ~ Vector&lt;String&gt;```\n\n\n\ntext: String\n\nreturn: Vector&lt;String&gt;"]
+				}
+			}
+		},
+		"System.ML.Rag.RagIndex": {
+			"description": "A vector index that remembers where each vector came from: a VectorIndex of chunk vectors plus the RagChunk (source, offset, text) behind every id, so a search returns chunks, not bare ids, and a whole index saves to and loads from one file. Adding a chunk whose id is already present replaces it. Nothing here ends the program: a refused call returns false, -1 or Nil and GetError() says why.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a chunk and its vector; a chunk with the same id is replaced.**\n\n```method : public : Add(chunk:RagChunk, vector:Float[]) ~ Bool```\n\n\n\nchunk: RagChunk\n\nvector: Float[]\n\nreturn: Bool"]
+				},
+				"Contains": {
+					"descriptions": ["**Whether a chunk id is held.**\n\n```method : public : Contains(id:String) ~ Bool```\n\n\n\nid: String\n\nreturn: Bool"]
+				},
+				"GetChunk": {
+					"descriptions": ["**Looks a chunk up by id.**\n\n```method : public : GetChunk(id:String) ~ RagChunk```\n\n\n\nid: String\n\nreturn: RagChunk"]
+				},
+				"GetChunks": {
+					"descriptions": ["**Every chunk, in the order they were added.**\n\n```method : public : GetChunks() ~ Vector&lt;RagChunk&gt;```\n\n\n\nreturn: Vector&lt;RagChunk&gt;"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call was refused.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMetric": {
+					"descriptions": ["**How vectors are ranked.**\n\n```method : public : GetMetric() ~ VectorMetric```\n\n\n\nreturn: VectorMetric"]
+				},
+				"GetVector": {
+					"descriptions": ["**The vector stored for a chunk.**\n\n```method : public : GetVector(id:String) ~ Float[]```\n\n\n\nid: String\n\nreturn: Float[]"]
+				},
+				"IsValid": {
+					"descriptions": ["**Whether the index was created with a usable dimension.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Reads an index written by Store. A file that is missing, is not an index, is from a newer format, or fails its CRC32 (truncated or damaged) gives Nil rather than ending the program.**\n\n```function : Load(filename:String) ~ RagIndex```\n\n\n\nfilename: String\n\nreturn: RagIndex"]
+				},
+				"New": {
+					"descriptions": ["**Creates an empty index.**\n\n```New(dim:Int, metric:VectorMetric)```\n\n\n\ndim: Int\n\nmetric: VectorMetric"]
+				},
+				"Remove": {
+					"descriptions": ["**Removes a chunk.**\n\n```method : public : Remove(id:String) ~ Bool```\n\n\n\nid: String\n\nreturn: Bool"]
+				},
+				"RemoveSource": {
+					"descriptions": ["**Removes every chunk that came from a source.**\n\n```method : public : RemoveSource(source:String) ~ Int```\n\n\n\nsource: String\n\nreturn: Int"]
+				},
+				"Search": {
+					"descriptions": ["**The k chunks closest to a query vector, closest first.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;RagMatch&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;RagMatch&gt;"]
+				},
+				"SetThreads": {
+					"descriptions": ["**Sets how many threads a search may use on a large index (see VectorIndex->SetThreads).**\n\n```method : public : SetThreads(threads:Int) ~ Nil```\n\n\n\nthreads: Int\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Number of chunks held.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Store": {
+					"descriptions": ["**Writes the index to one file: a 12-byte header (the tag ORAG, a format byte, three reserved zero bytes, a CRC32 of the body), then the body (dimension, metric, count, and for each chunk its id, source, offset, text and vector).**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.Rag.RagMatch": {
+			"description": "A chunk found by a search: the chunk, its score and its place in the results.",
+			"functions": {
+				"GetChunk": {
+					"descriptions": ["**The chunk.**\n\n```method : public : GetChunk() ~ RagChunk```\n\n\n\nreturn: RagChunk"]
+				},
+				"GetRank": {
+					"descriptions": ["**The place in the results, 1 for the closest.**\n\n```method : public : GetRank() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetScore": {
+					"descriptions": ["**The score.**\n\n```method : public : GetScore() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Creates a match.**\n\n```New(chunk:RagChunk, score:Float, rank:Int)```\n\n\n\nchunk: RagChunk\n\nscore: Float\n\nrank: Int"]
+				}
+			}
+		},
+		"System.ML.Rag.RagOllamaEmbedder": {
+			"description": "Embeds text with an Ollama embedding model over /api/embed, a batch to a request. The server is the one API.Ollama.EndPoint->SetHost names (http://localhost:11434 by default). Pull the model first, for example `ollama pull nomic-embed-text`.",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds texts.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors: 0 until the first Embed.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates an embedder.**\n\n```New(model:String)```\n\n\n\nmodel: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagOllamaGenerator": {
+			"description": "Generates with an Ollama model over /api/generate. The prompt is sent as one prompt, with no chat history. Replies are not streamed.",
+			"functions": {
+				"Generate": {
+					"descriptions": ["**Generates the reply.**\n\n```method : public : Generate(prompt:String) ~ String```\n\n\n\nprompt: String\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates a generator.**\n\n```New(model:String)```\n\n\n\nmodel: String"]
+				},
+				"SetOptions": {
+					"descriptions": ["**Sets request options such as the temperature. A grounded answer usually wants a low one.**\n\n```method : public : SetOptions(options:API.Ollama.Options) ~ Nil```\n\n\n\noptions: API.Ollama.Options\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Rag.RagOpenAIEmbedder": {
+			"description": "Embeds text with an OpenAI embedding model, one request per text.",
+			"functions": {
+				"Embed": {
+					"descriptions": ["**Embeds texts.**\n\n```method : public : Embed(texts:String[]) ~ Float[,]```\n\n\n\ntexts: String[]\n\nreturn: Float[,]"]
+				},
+				"GetDimension": {
+					"descriptions": ["**Length of the vectors: 0 until the first Embed.**\n\n```method : public : GetDimension() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates an embedder.**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagOpenAIGenerator": {
+			"description": "Generates with an OpenAI chat model (Chat Completions): the prompt is one user message.",
+			"functions": {
+				"Generate": {
+					"descriptions": ["**Generates the reply.**\n\n```method : public : Generate(prompt:String) ~ String```\n\n\n\nprompt: String\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Creates a generator.**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				}
+			}
+		},
+		"System.ML.Rag.RagPipeline": {
+			"description": "Ties the pieces together: adds documents (split, embed, index) and answers questions (embed the question, retrieve the top k chunks, build a grounded prompt, call the generator). The index is created from the first embedding, or supplied with SetIndex to carry on from a saved one. A failure returns Nil, false or -1 and GetError() says which step failed.",
+			"functions": {
+				"AddChunks": {
+					"descriptions": ["**Embeds chunks and indexes them.**\n\n```method : public : AddChunks(chunks:Vector&lt;RagChunk&gt;) ~ Int```\n\n\n\nchunks: Vector&lt;RagChunk&gt;\n\nreturn: Int"]
+				},
+				"AddText": {
+					"descriptions": ["**Splits a document, embeds the chunks and indexes them. Chunks that an earlier AddText for the same source added are removed first, so adding a document again updates it.**\n\n```method : public : AddText(source:String, text:String) ~ Int```\n\n\n\nsource: String\n\ntext: String\n\nreturn: Int"]
+				},
+				"Answer": {
+					"descriptions": ["**Answers a question from the indexed documents: retrieves, builds the grounded prompt, calls the generator. With nothing retrieved, the generator is not called and the answer is the no-answer text with no sources.**\n\n```method : public : Answer(question:String) ~ RagAnswer```\n\n\n\nquestion: String\n\nreturn: RagAnswer"]
+				},
+				"GetChunker": {
+					"descriptions": ["**The chunker AddText uses.**\n\n```method : public : GetChunker() ~ RagChunker```\n\n\n\nreturn: RagChunker"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetIndex": {
+					"descriptions": ["**The index, or Nil before the first document is added.**\n\n```method : public : GetIndex() ~ RagIndex```\n\n\n\nreturn: RagIndex"]
+				},
+				"GetPromptBuilder": {
+					"descriptions": ["**The prompt builder.**\n\n```method : public : GetPromptBuilder() ~ RagPromptBuilder```\n\n\n\nreturn: RagPromptBuilder"]
+				},
+				"GetTopK": {
+					"descriptions": ["**How many chunks a question retrieves.**\n\n```method : public : GetTopK() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Creates a pipeline that splits by paragraph (500 characters, overlap 50 when a paragraph is cut), ranks by cosine similarity and retrieves 4 chunks.**\n\n```New(embedder:RagEmbedder, generator:RagGenerator)```\n\n\n\nembedder: RagEmbedder\n\ngenerator: RagGenerator", "**Creates a pipeline with its own chunker and metric.**\n\n```New(embedder:RagEmbedder, generator:RagGenerator, chunker:RagChunker, metric:VectorMetric)```\n\n\n\nembedder: RagEmbedder\n\ngenerator: RagGenerator\n\nchunker: RagChunker\n\nmetric: VectorMetric"]
+				},
+				"Retrieve": {
+					"descriptions": ["**Finds the chunks closest to a question.**\n\n```method : public : Retrieve(question:String) ~ Vector&lt;RagMatch&gt;```\n\n\n\nquestion: String\n\nreturn: Vector&lt;RagMatch&gt;"]
+				},
+				"SetBatchSize": {
+					"descriptions": ["**How many chunks are embedded in one call to the embedder.**\n\n```method : public : SetBatchSize(size:Int) ~ Nil```\n\n\n\nsize: Int\n\nreturn: Nil"]
+				},
+				"SetChunker": {
+					"descriptions": ["**Replaces the chunker used by AddText.**\n\n```method : public : SetChunker(chunker:RagChunker) ~ Nil```\n\n\n\nchunker: RagChunker\n\nreturn: Nil"]
+				},
+				"SetIndex": {
+					"descriptions": ["**Uses an existing index, for example one read with RagIndex->Load. The embedder must produce vectors of the index's dimension (checked when it is known; a mismatch shows up on the first Embed otherwise).**\n\n```method : public : SetIndex(index:RagIndex) ~ Bool```\n\n\n\nindex: RagIndex\n\nreturn: Bool"]
+				},
+				"SetMinScore": {
+					"descriptions": ["**Drops retrieved chunks that score below a floor, so a question the documents do not cover reaches the generator with no sources, and Answer returns the no-answer text without calling it. Ignored for the L2 metric, whose score is a distance.**\n\n```method : public : SetMinScore(score:Float) ~ Nil```\n\n\n\nscore: Float\n\nreturn: Nil"]
+				},
+				"SetNoAnswerText": {
+					"descriptions": ["**The text Answer returns when nothing was retrieved.**\n\n```method : public : SetNoAnswerText(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"SetPromptBuilder": {
+					"descriptions": ["**Replaces the prompt builder.**\n\n```method : public : SetPromptBuilder(builder:RagPromptBuilder) ~ Nil```\n\n\n\nbuilder: RagPromptBuilder\n\nreturn: Nil"]
+				},
+				"SetTopK": {
+					"descriptions": ["**How many chunks a question retrieves.**\n\n```method : public : SetTopK(k:Int) ~ Nil```\n\n\n\nk: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Rag.RagPromptBuilder": {
+			"description": "Builds the prompt that grounds a model in retrieved chunks: an instruction, the sources numbered [1], [2], ... one per line (line breaks inside a chunk become spaces), then the question. The instruction tells the model to answer only from the sources and to cite the ones it uses as [n]. Change the wording with SetInstruction, and cap the context with SetMaxContext.",
+			"functions": {
+				"Build": {
+					"descriptions": ["**Builds the prompt.**\n\n```method : public : Build(question:String, matches:Vector&lt;RagMatch&gt;) ~ String```\n\n\n\nquestion: String\n\nmatches: Vector&lt;RagMatch&gt;\n\nreturn: String"]
+				},
+				"GetInstruction": {
+					"descriptions": ["**The text that opens the prompt.**\n\n```method : public : GetInstruction() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMaxContext": {
+					"descriptions": ["**The cap on source text.**\n\n```method : public : GetMaxContext() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Creates a builder with the default instruction and no cap on the context.**\n\n```New()```\n\n"]
+				},
+				"Select": {
+					"descriptions": ["**The matches that fit under the cap, which are the sources a Build prompt numbers.**\n\n```method : public : Select(matches:Vector&lt;RagMatch&gt;) ~ Vector&lt;RagMatch&gt;```\n\n\n\nmatches: Vector&lt;RagMatch&gt;\n\nreturn: Vector&lt;RagMatch&gt;"]
+				},
+				"SetInstruction": {
+					"descriptions": ["**Sets the text that opens the prompt.**\n\n```method : public : SetInstruction(instruction:String) ~ Nil```\n\n\n\ninstruction: String\n\nreturn: Nil"]
+				},
+				"SetMaxContext": {
+					"descriptions": ["**Caps the characters of source text in a prompt. The closest sources are kept whole, in order, until the next would pass the cap; the first source is always kept.**\n\n```method : public : SetMaxContext(chars:Int) ~ Nil```\n\n\n\nchars: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Rag.RagStubGenerator": {
+			"description": "A generator for tests and offline demos that needs no model: it answers with the sentence of source [1] that shares the most words with the question (the first one on a tie) and cites it, \"... [1]\", or says it does not know when the prompt has no sources. It keeps the last prompt and a call count so a test can see what the pipeline sent.",
+			"functions": {
+				"Generate": {
+					"descriptions": ["**Answers from source [1] of the prompt.**\n\n```method : public : Generate(prompt:String) ~ String```\n\n\n\nprompt: String\n\nreturn: String"]
+				},
+				"GetCalls": {
+					"descriptions": ["**How many times Generate was called.**\n\n```method : public : GetCalls() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**The failure reason: \"\" or what SetFail set up.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLastPrompt": {
+					"descriptions": ["**The prompt of the last call.**\n\n```method : public : GetLastPrompt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"SetFail": {
+					"descriptions": ["**Makes every later call fail, to test the failure path of a pipeline.**\n\n```method : public : SetFail(fail:Bool) ~ Nil```\n\n\n\nfail: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.ML.Report.ReplicateCell": {
 			"description": "The values one metric took under one setting, per seed.",
 			"functions": {
@@ -24326,6 +24780,126 @@
 				"file": ""
 			}
 		],
+		"RagAnswer": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagAnthropicGenerator": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagBertEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagChunk": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagChunker": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagClipImageEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagGeminiEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagGeminiGenerator": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagGenerator": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagHashEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagIndex": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagMatch": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagOllamaEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagOllamaGenerator": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagOpenAIEmbedder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagOpenAIGenerator": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagPipeline": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagPromptBuilder": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
+		"RagStubGenerator": [
+			{
+				"bundle": "System.ML.Rag",
+				"file": ""
+			}
+		],
 		"ReplicateCell": [
 			{
 				"bundle": "System.ML.Report",
@@ -26849,6 +27423,18 @@
 			"items": [
 				{ "name": "VALID", "value": "0", "description": "" },
 				{ "name": "SAME", "value": "1", "description": "" }
+			]
+		},
+		"System.ML.Rag.RagSplit": {
+			"name": "RagSplit",
+			"bundle": "System.ML.Rag",
+			"class": "",
+			"kind": "enum",
+			"description": "How RagChunker cuts a text.",
+			"items": [
+				{ "name": "SIZE", "value": "0", "description": "" },
+				{ "name": "PARAGRAPH", "value": "1", "description": "" },
+				{ "name": "SENTENCE", "value": "2", "description": "" }
 			]
 		},
 		"System.ML.VectorSearch.VectorMetric": {

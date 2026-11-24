@@ -48,6 +48,7 @@ All notable changes to Objeck will be documented in this file.
   - `disassemble` (`supportsDisassembleRequest`) lists the VM bytecode of the method a frame is in (opcode, operands, the callee of a call, the source line); stack frames carry an `instructionPointerReference` to start from.
   - Events: `invalidated` after `setVariable`, `setExpression` and `goto` for a client that declares `supportsInvalidatedEvent`; `progressStart`, `progressUpdate` and `progressEnd` around launch and program start-up for a client that declares `supportsProgressReporting`.
   - `restartFrame` and `terminateThreads` are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.
+- **`rag` and `rag_adapters`: a retrieval-augmented generation kit (`System.ML.Rag`)**: `RagChunker` splits text by size with overlap, or packs whole paragraphs or sentences (offsets and ids are kept); `RagIndex` stores chunk vectors in a `VectorIndex` with source and offset and saves to and loads from one file; `RagPromptBuilder` numbers the retrieved chunks as sources and asks the model to cite them as [n]; `RagPipeline->AddText` and `->Answer` tie it together and `RagAnswer->GetCitations` reads the citations back. `RagEmbedder` and `RagGenerator` are the two small interfaces to implement; `rag` ships a hashing bag-of-words embedder and a stub generator so a whole pipeline (and `programs/examples/rag_demo.obs`) runs offline with no key or model, and `rag_adapters` has adapters over `BertEmbedder`, the CLIP image tower, Ollama, OpenAI and Gemini embeddings and Ollama, OpenAI, Anthropic and Gemini generation. The group `@rag` expands to both and everything they link.
 
 ### Documentation
 
@@ -56,6 +57,7 @@ All notable changes to Objeck will be documented in this file.
 ### Tests
 
 - New regression tests: `regex_lazy_dfa`, `regex_replace_escapes`, `regex_threads`, `ml_vector_parallel`, `ml_knn_exact` and `nlp_levenshtein_bounded`, and thirteen `collect_*` tests for the collections above (`collect_deque`, `collect_multiset`, `collect_union_find`, `collect_trie`, `collect_ordered_hash`, `collect_bimap`, `collect_priority_map`, `collect_fenwick`, `collect_bloom`, `collect_vector_ops`, `collect_sort_stable`, `collect_nil_guards`, `collect_stack_deep`).
+- New regression tests for the RAG kit: `rag_chunking_test` (empty, shorter than a chunk, exact multiples, overlap, paragraphs, sentences, CRLF, accented and CJK text), `rag_index_test` (nearest neighbours under the toy embedder, the index, the save/load round trip and damaged files), `rag_pipeline_test` (prompt text, citations, the pipeline end to end, failures) and `rag_adapters_ollama_test` (the Ollama adapters against a fake server on loopback).
 
 ## [v2026.11.2] - 2026-11-21
 
