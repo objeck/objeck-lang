@@ -31,6 +31,7 @@
 
 #include "optimization.h"
 #include "cfg.h"
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <unordered_map>
@@ -59,6 +60,47 @@ namespace {
   };
 
   CfgVerifyStats cfg_verify_stats;
+
+  // OBJECK_CFG_DUMP=<file> appends every method's final graph (the one JumpToLocation is
+  // about to resolve) to the file: one 'M' line per method, one 'B' line per block with its
+  // instruction range, reachability, normal successors and handler successors. The dynamic
+  // oracle (tools/cicd/cfg_oracle.py) checks the VM's executed transitions against it.
+  void DumpMethodCfg(IntermediateMethod* method, const std::vector<IntermediateBlock*>& blocks)
+  {
+    static const std::string path = Cfg::DumpPath();
+    if(path.empty()) {
+      return;
+    }
+    std::ofstream out(path.c_str(), std::ios::app);
+    const std::wstring wname = method->GetName();
+    const std::string name(wname.begin(), wname.end());
+    if(blocks.size() != 1) {
+      out << "X " << name << " blocks=" << blocks.size() << std::endl;
+      return;
+    }
+    const std::vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+    Cfg cfg(instrs);
+    if(!cfg.WellFormed()) {
+      out << "X " << name << " not-well-formed: " << cfg.Problem() << std::endl;
+      return;
+    }
+    out << "M " << name << " " << instrs.size() << " " << cfg.Size() << std::endl;
+    for(const Cfg::Block& b : cfg.Blocks()) {
+      size_t last = b.last;
+      while(last > b.first && instrs[last]->GetType() == JMP_TABLE_SLOT) {
+        --last;
+      }
+      out << "B " << b.id << " " << b.first << " " << b.last << " " << last << " " << (b.reachable ? 1 : 0) << " " << (instrs[b.first]->GetType() == LBL ? 1 : 0) << " n";
+      for(int s : b.normal) {
+        out << " " << s;
+      }
+      out << " h";
+      for(int s : b.handlers) {
+        out << " " << s;
+      }
+      out << std::endl;
+    }
+  }
 
   void VerifyMethodCfg(IntermediateMethod* method, const std::vector<IntermediateBlock*>& blocks, const char* stage)
   {
@@ -186,6 +228,7 @@ void ItermediateOptimizer::Optimize()
 #ifdef _DEBUG
         GetLogger() << L"Optimizing jumps, pass 4: name='" << current_method->GetName() << "'" << std::endl;
 #endif
+        DumpMethodCfg(current_method, current_method->GetBlocks());
         current_method->SetBlocks(JumpToLocation(current_method->GetBlocks()));
 
       }
