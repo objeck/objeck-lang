@@ -27,6 +27,7 @@ All notable changes to Objeck will be documented in this file.
 - **`KNearestNeighbors->Query` with a k below 1, a Nil query or a Nil matrix** ended with an allocation error; it now returns no neighbors.
 - **`Stack` crashed near 500,000 entries and reported a stale `Size()` after `Empty()`**: it is now array-backed.
 - **A `Nil` key or value lookup in the collections ended the program**: it now reports not-found.
+- **Threads making the first call of the same long-running method could run it 20x slower**: a method with a loop is compiled on its first call, one thread claimed the compile, and a thread that arrived while it was in flight found no native code and interpreted its whole call; compiled code is picked up only at the next call, which a long first call never makes. A two-thread run took about 10 s instead of 0.5 s in 15% of runs, a three-thread run in 35%. The thread that loses the compile race now waits for the compile (milliseconds). Both the AMD64 and ARM64 JITs share the fix. `jit_first_call_race` covers it.
 
 ### Added
 

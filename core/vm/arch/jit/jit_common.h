@@ -305,6 +305,8 @@ protected:
 public:
 
   static bool TryAutoJitCompile(StackMethod* callee);
+  // blocks (bounded) while another thread compiles `callee`; see jit_common.cpp
+  static void WaitForCompile(StackMethod* callee);
   static void PatchCallSites(StackMethod* callee, long patch_value);
 
   // True if the method contains a trap that reads or writes interpreter
