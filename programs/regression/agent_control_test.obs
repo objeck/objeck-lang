@@ -736,7 +736,7 @@ class AgentControlTest {
     File->Delete(path);
     agent := Agent->New(ScriptedBackend->New(script), registry);
     agent->SetTrace(buffer);
-    result := agent->Run("go");
+    agent->Run("go");
     Check("a plain run's events, in order", Same(buffer->Kinds(), "run_start,model_start,model_end,tool_start,tool_end,model_start,model_end,run_end"));
 
     first := buffer->First("tool_start");
@@ -754,7 +754,7 @@ class AgentControlTest {
     agent2 := Agent->New(ScriptedBackend->New(hello), Nil);
     agent2->SetTrace(AgentTraceWriter->New(path));
     agent2->SetBudget(AgentBudget->New()->SetMaxSteps(5));
-    result2 := agent2->Run("go");
+    agent2->Run("go");
     text := FileReader->ReadFile(path);
     lines := text->Trim()->Split('\n');
     Check("one line per event", lines->Size() = 5);
