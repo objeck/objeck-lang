@@ -26,6 +26,7 @@ All notable changes to Objeck will be documented in this file.
 - **`KNearestNeighbors->Query` with a k below 1, a Nil query or a Nil matrix** ended with an allocation error; it now returns no neighbors.
 - **`Stack` crashed near 500,000 entries and reported a stale `Size()` after `Empty()`**: it is now array-backed.
 - **A `Nil` key or value lookup in the collections ended the program**: it now reports not-found.
+- **A `select` statement compiled to different jump targets depending on the C++ compiler that built `obc`**: the label ids of a 2- or 3-value subtree were taken from three `++` in one argument list, an unspecified order (g++ right to left, Apple clang left to right). The emitted code is equivalent, but the same library source built on Apple silicon differed from the x64 build in eight libraries. The order is now fixed to what g++ produced, so no committed `.obl` changes; `programs/regression/check_select_label_order.py` compares a listing against an x64 golden on every platform leg.
 
 ### Added
 

@@ -123,6 +123,7 @@
      <li><strong><code>KNearestNeighbors-&gt;Query</code> with a k below 1, a Nil query or a Nil matrix</strong> ended with an allocation error; it now returns no neighbors.</li>
      <li><strong><code>Stack</code> crashed near 500,000 entries and reported a stale <code>Size()</code> after <code>Empty()</code></strong>: it is now array-backed.</li>
      <li><strong>A <code>Nil</code> key or value lookup in the collections ended the program</strong>: it now reports not-found.</li>
+     <li><strong>A <code>select</code> statement compiled to different jump targets depending on the C++ compiler that built <code>obc</code></strong>: the label ids of a 2- or 3-value subtree were taken from three <code>++</code> in one argument list, an unspecified order (g++ right to left, Apple clang left to right). The emitted code is equivalent, but the same library source built on Apple silicon differed from the x64 build in eight libraries. The order is now fixed to what g++ produced, so no committed <code>.obl</code> changes; <code>programs/regression/check_select_label_order.py</code> compares a listing against an x64 golden on every platform leg.</li>
     </ul>
     <h4 id="added">Added</h4>
     <ul>

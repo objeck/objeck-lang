@@ -275,3 +275,6 @@ programs/regression/probe/results/
 # happened on v2026.10.0: the run left 78 MB of signed installers sitting
 # untracked in the repository root, exactly where `git add -A` would take them.
 sign-staging/
+
+# the one assembly listing that is committed: the golden of check_select_label_order.py
+!programs/regression/select_label_order.golden.obm

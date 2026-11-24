@@ -67,18 +67,23 @@ SelectNode* SelectArrayTree::Divide(int start, int end)
     if(size == 1) {
       return new SelectNode(++emitter->conditional_label, values[start]);
     }
+    // The label ids are handed out in a FIXED order. These used to be three `++conditional_label`
+    // in one argument list, whose evaluation order C++ leaves unspecified: g++ evaluates the
+    // arguments right to left (right child, left child, then the node), Apple clang left to
+    // right, so the same source compiled to different jump operands on arm64 (8 of the 61
+    // libraries). The order below is what g++ produced, so no committed .obl changes.
     else if(size == 2) {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
-                                        new SelectNode(++emitter->conditional_label, values[start]),
-                                        new SelectNode(++emitter->conditional_label, values[start + 1]));
-      return node;  
+      SelectNode* right = new SelectNode(++emitter->conditional_label, values[start + 1]);
+      SelectNode* left = new SelectNode(++emitter->conditional_label, values[start]);
+      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], left, right);
+      return node;
     }
     else {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, 
-                                        values[start + 1], values[start + 2],
-                                        new SelectNode(++emitter->conditional_label, values[start]),
-                                        new SelectNode(++emitter->conditional_label, values[start + 2]));
-      return node;  
+      SelectNode* right = new SelectNode(++emitter->conditional_label, values[start + 2]);
+      SelectNode* left = new SelectNode(++emitter->conditional_label, values[start]);
+      SelectNode* node = new SelectNode(++emitter->conditional_label,
+                                        values[start + 1], values[start + 2], left, right);
+      return node;
     }
   }
   else {
