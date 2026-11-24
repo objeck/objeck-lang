@@ -34,7 +34,7 @@ The statement "the `.obe` embeds what it links" is checked in [File formats](#fi
 | `core/compiler/` | `obc`: scanner, parser, analyzer, intermediate emitter, optimizer, linker, file emitter. `lib_src/` holds the standard-library sources (`.obs`). `build_libs.sh` compiles them |
 | `core/vm/` | `obr`: loader and verifier, interpreter, trap handlers (`common.cpp`), native-library API (`lib_api.h`). `arch/` is the collector, `arch/jit/` the two JITs |
 | `core/shared/` | headers and code every executable includes: opcodes (`instrs.h`), trap ids (`traps.h`), the version header, byte streams and zlib (`sys.h`) |
-| `core/lib/` | the shipped libraries: the committed `.obl` files, and one directory per native module (`sdl`, `onnx`, `opencv`, `odbc`, `diags` and others) |
+| `core/lib/` | the shipped libraries: the built `.obl` files (not committed; `core/compiler/build_libs.sh` lists them), and one directory per native module (`sdl`, `onnx`, `opencv`, `odbc`, `diags` and others) |
 | `core/debugger/`, `core/repl/` | `obd` (command line and DAP) and `obi` |
 | `core/module/` | the compiler and VM packaged as one static library (`module.a`) that `obi` links |
 | `core/utils/` | `obu` (updater), `obb` (application builder) and `obn` (the launcher it copies in), the Windows and macOS launcher apps |
@@ -187,7 +187,7 @@ A method is compiled on its call count reaching the threshold (default 10, `--ji
 **Rules.**
 - A new library is added in `build_libs.sh` and in the doc-build lists that `tools/cicd/check_doc_lists.py` verifies against `lib_src`.
 - Doc comments are `#~ ... ~#` immediately before a class, method, function, enum or constructor; `code_doc` builds the API reference from them, and `tools/cicd/check_doc_fences.py` guards the code-fence rule. [DOC_COVERAGE.md](DOC_COVERAGE.md) measures which public members have one.
-- `.obl` files are tied to the toolchain version (see File formats); a source change that must reach users means rebuilding and committing the `.obl`.
+- `.obl` files are tied to the toolchain version (see File formats); they are build products, not committed (`libs.yml` builds them from `lib_src` once per CI run), so a source change reaches users with no `.obl` edit.
 - Report failure the way the library you are editing does, until [ERROR_CONVENTIONS.md](ERROR_CONVENTIONS.md) (a proposal) is adopted.
 
 **Deeper.** [core/lib/README.md](../core/lib/README.md); [COLLECTIONS_GUIDE.md](COLLECTIONS_GUIDE.md); [AI.md](AI.md), [MODELS.md](MODELS.md), [QUERY_DESIGN.md](QUERY_DESIGN.md), [opengl.md](opengl.md).

@@ -36,8 +36,7 @@ COPY core/vm/ core/vm/
 # Builds obr's static HTTP/2 + HTTP/3 libraries
 COPY tools/deps/ tools/deps/
 
-# Pre-built standard libraries (.obl files)
-COPY core/lib/*.obl core/lib/
+# Library configuration (the .obl are build products, built below)
 COPY core/lib/*.ini core/lib/
 
 # ============================================
@@ -46,6 +45,9 @@ COPY core/lib/*.ini core/lib/
 WORKDIR /build/objeck/core/compiler
 RUN cp make/Makefile.amd64 Makefile && \
     make clean && make -j$(nproc) OBJECK_LIB_PATH=///".///"
+
+# Every standard library, built from source (sys_obc -> lang.obl -> obc -> build_libs.sh)
+RUN sh ./update_version.sh
 
 # ============================================
 # HTTP/2 + HTTP/3 libraries, linked statically into obr

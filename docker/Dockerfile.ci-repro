@@ -29,8 +29,7 @@ COPY core/vm/*.cpp /build/core/vm/
 COPY core/vm/*.h /build/core/vm/
 COPY core/vm/arch /build/core/vm/arch
 
-# Copy the pre-built .obl files and .ini from core/lib (just the files, not subdirs)
-COPY core/lib/*.obl /build/core/lib/
+# Copy the .ini from core/lib (the .obl are build products: rebuilt below)
 COPY core/lib/*.ini /build/core/lib/
 
 # Copy lib source files needed to rebuild .obl files

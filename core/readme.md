@@ -203,10 +203,8 @@ After bootstrap, build the native toolchain for your target platform:
 
 #### WSL-to-Windows Handoff
 For Windows development using WSL for bootstrap:
-1. Run bootstrap in WSL: `cd core/compiler && bash update_version.sh`
-2. Commit and push the updated compiler and `.obl` files
-3. Pull on the Windows side
-4. Run the Windows platform build: `deploy_windows.cmd x64`
+1. Libraries are build products, not committed: on Windows run `core\compiler\build_libs_windows.cmd` (or `cd core/compiler && bash update_version.sh` in WSL)
+2. Run the Windows platform build: `deploy_windows.cmd x64`
 
 #### Development Iteration
 - **Primary development:** WSL/Linux using POSIX Makefiles (fastest iteration)

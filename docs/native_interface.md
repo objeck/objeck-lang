@@ -660,9 +660,10 @@ Collected from things that have actually gone wrong here.
 - **`.obs` files are marked binary in `.gitattributes`.** `git diff` shows you
   nothing. Review by reading the file, and expect that two branches touching the
   same `.obs` cannot be merged in parallel — stack them.
-- **A changed `.obs` requires committing the rebuilt `.obl`.** The `.obl` files
-  under `core/lib/` are tracked, and a stale one fails on the platforms that do
-  not rebuild it — usually as a pile of "undefined method" errors on macOS.
+- **A changed `.obs` needs no committed `.obl`.** The `.obl` files under `core/lib/`
+  are build products (`.gitignore`d): CI's `libs` job builds them from the sources
+  and every other job downloads that result. Locally, `core/compiler/update_version.sh`
+  (or `core\compiler\build_libs_windows.cmd`) rebuilds them.
 - **Never widen an existing trap's arity.** Append a new trap after `EXIT`
   instead. The bytecode is positional and the loader has its own parser.
 - **`String[]` is indexed directly**, without the `[0]` holder indirection the

@@ -27,6 +27,6 @@ There is no executable here. `make -f make/Makefile.amd64` (also `Makefile.arm64
 
 ## Rules
 
-- A change to `instrs.h`, `traps.h` or the file layout is a format change: bump the magic in `version.in` if old files would be misread, rebuild and commit every `core/lib/*.obl`, and say so in the pull request.
+- A change to `instrs.h`, `traps.h` or the file layout is a format change: bump the magic in `version.in` if old files would be misread, bump the version so every `core/lib/*.obl` is rebuilt (CI does it; nothing is committed), and say so in the pull request.
 - Do not put anything here that only one executable uses.
 - Keep platform headers behind `#ifdef`, as `sys.h` does: every executable includes these files.
