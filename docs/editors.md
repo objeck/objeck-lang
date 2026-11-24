@@ -86,6 +86,7 @@ of them — the list is not VS Code specific:
 
 - Hover information
 - Inlay hints (parameter names at call sites)
+- Inline values while paused in the debugger (locals, parameters and instance variables beside the code)
 - Semantic tokens (highlighting that knows classes from interfaces from enums)
 - Document highlight (every occurrence of the symbol at the cursor)
 - Folding ranges and expand-selection
@@ -95,7 +96,9 @@ of them — the list is not VS Code specific:
 - Code completion with signature help
 - Rename
 - Code actions (quick fixes)
-- Document and range formatting
+- Document and range formatting, and re-indenting a line as you type `}`, `;` or Enter
+- Linked editing (typing in a local variable or parameter edits all of its uses in the method)
+- Moving or renaming a source file or directory updates the `build.json` that lists it
 - Diagnostics (compile errors and warnings) as you type
 
 ---
