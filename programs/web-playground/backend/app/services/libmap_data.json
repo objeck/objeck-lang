@@ -284,6 +284,18 @@
     "Query.Structured.Vision": ["Detection", "Detector", "ImageHeader", "VisionSource", "YoloDetector"]
    }
   },
+  "rag": {
+   "deps": ["gen_collect", "ml_vector"],
+   "bundles": {
+    "System.ML.Rag": ["RagAnswer", "RagChunk", "RagChunker", "RagEmbedder", "RagGenerator", "RagHashEmbedder", "RagIndex", "RagMatch", "RagPipeline", "RagPromptBuilder", "RagSplit", "RagStubGenerator"]
+   }
+  },
+  "rag_adapters": {
+   "deps": ["gen_collect", "ml_vector", "rag", "net", "net_server", "json", "cipher", "misc", "openai", "gemini", "ollama", "anthropic", "models", "opencv", "onnx", "nlp", "nlp_onnx", "ml_verify", "ml_clip"],
+   "bundles": {
+    "System.ML.Rag": ["RagAnthropicGenerator", "RagBertEmbedder", "RagClipImageEmbedder", "RagGeminiEmbedder", "RagGeminiGenerator", "RagOllamaEmbedder", "RagOllamaGenerator", "RagOpenAIEmbedder", "RagOpenAIGenerator"]
+   }
+  },
   "regex": {
    "deps": ["gen_collect"],
    "bundles": {

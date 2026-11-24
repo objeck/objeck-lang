@@ -69,7 +69,7 @@ _BLOCK_REASONS: dict[str, str] = {}
 for _libs, _reason in (
     (("net", "net_h2", "net_quic", "net_server", "web_server", "json_rpc", "rss",
       "query_server", "ai_hub"), "the sandbox has no network access"),
-    (("openai", "gemini", "ollama", "anthropic", "inference"), "it needs network access to a hosted model"),
+    (("openai", "gemini", "ollama", "anthropic", "rag_adapters", "inference"), "it needs network access to a hosted model"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("ml_cnn",), "it reads image files through OpenCV and trains on many threads"),
@@ -271,6 +271,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "query_ml": ("Query ML", "Models as query sources"),
     "ml": ("ML", "Machine learning and matrix math"),
     "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
+    "rag": ("Retrieval (RAG)", "Retrieval-augmented generation kit: chunking, a local vector index, grounded prompts with citations and a pipeline, offline with a toy embedder"),
     "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
     "ml_verify": ("Verification", "False acceptance and rejection rates, the equal error rate, ROC and DET points and cosine similarity for a matching system such as face verification"),
     "ml_report": ("Reports", "Replicate statistics (mean, deviation, t interval, paired test) and a report builder that writes Markdown or one printable HTML file"),
