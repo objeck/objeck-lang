@@ -89,7 +89,7 @@ namespace {
       while(last > b.first && instrs[last]->GetType() == JMP_TABLE_SLOT) {
         --last;
       }
-      out << "B " << b.id << " " << b.first << " " << b.last << " " << last << " " << (b.reachable ? 1 : 0) << " n";
+      out << "B " << b.id << " " << b.first << " " << b.last << " " << last << " " << (b.reachable ? 1 : 0) << " " << (instrs[b.first]->GetType() == LBL ? 1 : 0) << " n";
       for(int s : b.normal) {
         out << " " << s;
       }
