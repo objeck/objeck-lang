@@ -19,6 +19,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Fixed
 
+- **Dead-store elimination no longer drops a store a handler reads**: `x := 1; try { w := 10 / z; x := 2; } on(e : Error) { return x; }` lost `x := 1` at `-opt s1` and above, so the handler saw 0 when the division raised. Dead stores now come from the control-flow graph, which counts a handler's reads through its whole try region (and native and thread instructions as reading every local); the straight-line scan stays only as a fallback and is skipped when the code has a try region. New test `opt_dead_store_liveness`.
 - **`{n}` in a regular expression meant `{n,}`**: `a{2}` matched `aaa`. It is now exactly n. This is in the released v2026.11.2 `regex.obl`.
 - **`RegEx->ReplaceAll` matched against already-replaced text**: a replacement could create or remove a `\b`, so `\bx` on `xx` with `-` gave `--` instead of `-x`. It now builds the result in one pass over the original input.
 - **`^a`, `^a+`, `^a$`, `^$` and `a|$` were rejected** as "stray token" or a missing operand; the anchor was only applied when a second operand followed.
@@ -26,6 +27,7 @@ All notable changes to Objeck will be documented in this file.
 - **`KNearestNeighbors->Query` with a k below 1, a Nil query or a Nil matrix** ended with an allocation error; it now returns no neighbors.
 - **`Stack` crashed near 500,000 entries and reported a stale `Size()` after `Empty()`**: it is now array-backed.
 - **A `Nil` key or value lookup in the collections ended the program**: it now reports not-found.
+- **Threads making the first call of the same long-running method could run it 20x slower**: a method with a loop is compiled on its first call, one thread claimed the compile, and a thread that arrived while it was in flight found no native code and interpreted its whole call; compiled code is picked up only at the next call, which a long first call never makes. A two-thread run took about 10 s instead of 0.5 s in 15% of runs, a three-thread run in 35%. The thread that loses the compile race now waits for the compile (milliseconds). Both the AMD64 and ARM64 JITs share the fix. `jit_first_call_race` covers it.
 
 ### Added
 
@@ -48,6 +50,7 @@ All notable changes to Objeck will be documented in this file.
   - `disassemble` (`supportsDisassembleRequest`) lists the VM bytecode of the method a frame is in (opcode, operands, the callee of a call, the source line); stack frames carry an `instructionPointerReference` to start from.
   - Events: `invalidated` after `setVariable`, `setExpression` and `goto` for a client that declares `supportsInvalidatedEvent`; `progressStart`, `progressUpdate` and `progressEnd` around launch and program start-up for a client that declares `supportsProgressReporting`.
   - `restartFrame` and `terminateThreads` are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.
+- **`API.Agent`, a provider-neutral tool-use loop** (`-lib agent,net,json,cipher,misc`): hand a chat model Objeck functions as tools and get the final answer. `AgentTool` (name, description, a JSON Schema for the arguments, a handler: an `AgentToolHandler` object or a `Func2Ref`) and `ToolRegistry` (with allow and deny lists) describe the tools; `ChatBackend` is the one interface a model sits behind, with `AnthropicBackend`, `OpenAIBackend` (Chat Completions, so compatible servers work), `GeminiBackend` and `OllamaBackend` translating tool definitions, calls and results to each provider's wire shape, and `ScriptedBackend` for tests and offline demos. `Agent->Run` sends the conversation, runs the calls the model asks for, and loops to a final answer, checking each call's arguments against the schema first and turning a failing handler, an unknown tool, a denied or declined call and a step-limit overrun into error results the model can read. A tool marked dangerous needs an `AgentApprover`; an `AgentObserver` hears each step as it happens; the returned `AgentResult` is the transcript (text and JSON). API keys are masked from every error message and transcript. `AgentTools` has a calculator, a clock and a file reader confined to one directory. Tested without a key or network: `agent_loop_test`, `agent_backend_test` (recorded bodies and requests for all four providers) and `agent_http_test` (a local HTTPS server). Example: `programs/examples/agent_demo.obs`.
 
 ### Documentation
 

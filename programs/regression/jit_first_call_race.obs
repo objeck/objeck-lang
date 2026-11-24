@@ -1,0 +1,205 @@
+#~
+Auto-JIT first-call race. Several threads make their FIRST call of the same method at
+once, and the method is hot only through a long loop inside that one call (a thread's
+Run, a compute kernel). The loop makes the method compile on its first call; one thread
+claims the compile and the others used to find "another thread is compiling", return
+without native code and interpret their whole call -- compiled code is picked up only
+at the NEXT call and a long loop in a first call never makes one -- about 20x slower.
+It was intermittent (15% of 2-thread runs, 35% of 3-thread runs); with 6 threads
+nearly every run hit it. Now a thread that loses the race waits for the compile.
+
+The test times a cold call on the main thread (compile included) as its warm baseline,
+then races 6 threads into a second method of the same shape and compares the two by
+ratio, so the bound follows the machine. Must run with the JIT enabled (it is also run
+with OBJECK_JIT_THRESHOLD=1); do not add a JIT opt-out marker.
+~#
+
+use System.Concurrency;
+
+class WarmKernel {
+	@steps : Int;
+	New(steps : Int) { @steps := steps; }
+
+	method : public : Compute(seed : Int) ~ Int {
+		x := seed + 12345;
+		y := seed;
+		for(s := 0; s < @steps; s += 1;) {
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+		};
+		return x + y;
+	}
+}
+
+# the same code as WarmKernel, a different method, so its first call is still cold
+class RaceKernel {
+	@steps : Int;
+	New(steps : Int) { @steps := steps; }
+
+	method : public : Compute(seed : Int) ~ Int {
+		x := seed + 12345;
+		y := seed;
+		for(s := 0; s < @steps; s += 1;) {
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+			x := (x * 1103515245 + 12345) % 2147483648;
+			y := (y + x * 69069 + 1) % 4294967296;
+		};
+		return x + y;
+	}
+}
+
+class RaceWorker from Thread {
+	@kernel : RaceKernel;
+	@seed : Int;
+	@result : Int;
+	@ms : Int;
+	@@gate : static : Int;
+
+	New(kernel : RaceKernel, seed : Int) {
+		Parent(seed->ToString());
+		@kernel := kernel;
+		@seed := seed;
+	}
+
+	function : Open() ~ Nil { @@gate := 1; }
+
+	method : public : Result() ~ Int { return @result; }
+	method : public : Ms() ~ Int { return @ms; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		# every thread waits here until all are running, so they reach Compute() together
+		spin := 0;
+		while(@@gate = 0) { spin += 1; };
+		started := Runtime->GetProperty("runtime.uptime_ms")->ToInt();
+		@result := @kernel->Compute(@seed);
+		@ms := Runtime->GetProperty("runtime.uptime_ms")->ToInt() - started;
+	}
+}
+
+class JitFirstCallRace {
+	function : Main(args : String[]) ~ Nil {
+		steps := 7000000;
+		threads := 6;
+
+		# cold single-thread baseline: compile on the first call plus the run
+		t0 := Runtime->GetProperty("runtime.uptime_ms")->ToInt();
+		expected := WarmKernel->New(steps)->Compute(1);
+		base_ms := Runtime->GetProperty("runtime.uptime_ms")->ToInt() - t0;
+		if(base_ms < 1) { base_ms := 1; };
+
+		kernel := RaceKernel->New(steps);
+		workers := RaceWorker->New[threads];
+		for(i := 0; i < threads; i += 1;) { workers[i] := RaceWorker->New(kernel, 1); };
+
+		for(i := 0; i < threads; i += 1;) { workers[i]->Execute(Nil); };
+		# let every thread reach the gate, then open it for all at once
+		Thread->Sleep(200);
+		RaceWorker->Open();
+		for(i := 0; i < threads; i += 1;) { workers[i]->Join(); };
+		race_ms := 0;
+		for(i := 0; i < threads; i += 1;) {
+			if(workers[i]->Ms() > race_ms) { race_ms := workers[i]->Ms(); };
+		};
+
+		ok := true;
+		for(i := 0; i < threads; i += 1;) {
+			if(workers[i]->Result() <> expected) {
+				"FAIL: thread {$i} result mismatch"->PrintLine();
+				ok := false;
+			};
+		};
+
+		# the threads share the cores: with fewer cores than threads they run in waves
+		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
+		if(cpus < 1) { cpus := 1; };
+		waves := (threads + cpus - 1) / cpus;
+		# a thread that interprets its call is ~20x the baseline; 5x a wave is generous
+		limit := (5 * waves * base_ms) + 300;
+
+		if(race_ms > limit) {
+			"FAIL: racing threads took {$race_ms} ms (limit {$limit} ms, cold single-thread baseline {$base_ms} ms, {$cpus} cpus)"->PrintLine();
+			for(i := 0; i < threads; i += 1;) {
+				"  thread {$i}: {$(workers[i]->Ms())} ms"->PrintLine();
+			};
+			ok := false;
+		};
+
+		if(ok) { "PASS: first-call race - every thread ran compiled code"->PrintLine(); }
+		else { Runtime->Exit(1); };
+	}
+}

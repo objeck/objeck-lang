@@ -109,6 +109,40 @@ Three more things are keyed on the level or the build kind, not listed above:
 - After the per-method passes, `Optimize()` runs two whole-program walks: `CleanLabelsLocation` at `s2` and above (library classes included), and `JumpToLocation` (rewrites jump targets to instruction offsets) on every non-library build at every level, `s0` included.
 - The default is `s3`, and an `-opt` value other than `s0`..`s3` is rejected by the option parser; the optimizer itself treats anything that is not `s0`..`s2` as `s3`.
 
+### The control-flow graph (`core/compiler/cfg.h`) and LICM
+
+A method's code is one flat instruction list, so most passes guess control flow for
+themselves and reset their state at every label and jump. `Cfg` is the one description of
+it: basic blocks, edges, dominators (Cooper-Harvey-Kennedy), natural loops with their
+preheaders, and a liveness query for local slots. It is pure analysis -- a pass that edits
+the list builds a new `Cfg` -- and it reads labels as the optimizer sees them, before
+`JumpToLocation`.
+
+- Leaders are the first instruction, every `LBL`, and the instruction after a `JMP`,
+  `RTRN`, `TRY_START`, `TRY_END` or a `JMP_TABLE` with its slots. A `JMP_TABLE` has an edge to
+  every slot and to its default.
+- A `TRY_START`..`TRY_END` region's handler is an edge from **every** block of the region
+  (a trap can leave anywhere in it), found by walking the edges, not the layout: a `return`,
+  `break` or `continue` inside a region closes it with a `TRY_END` of its own.
+- A handler's live-in counts as live through the whole region, so a store that a handler
+  could observe is never treated as dead or movable.
+- `OBJECK_CFG_VERIFY=1 obc ...` builds the graph of every method the optimizer sees, before
+  and after its passes, and checks the invariants (`Cfg::Verify`: blocks cover every
+  instruction once, edges leave a block's end and arrive at a leader, the dominator tree
+  agrees with an independent dataflow computation, every loop header dominates its
+  latches); the summary goes to stderr. `make cfg_test && ./cfg_test` (in `core/compiler`,
+  amd64 makefile) runs the hand-built cases.
+
+`LICM` (s2+) finds loops from the graph (so a `do`/`while`, whose back edge is a conditional
+jump, and a loop with a `continue` count) and moves a store `t := <expr>` of local loads,
+literals and non-trapping arithmetic to the loop's preheader when its operands are not
+written in the loop, it is the only store to `t` there, `t` is **not live at the loop
+header**, and no handler reachable from the loop reads `t`. That one liveness test replaces
+the old pass's list of special cases (a read before the store, an `if` or `continue` around
+it, a zero-trip loop, a read after the loop). `arr->Size()` of an array the loop never
+reassigns is cached only when it is read at the top of the loop's header, ahead of anything
+the loop could do first, because a Nil array traps there.
+
 ### What `-tar lib` does and does not skip
 
 A **library build** stops after `DeadBlockElimination` (`is_lib` in the early return of
