@@ -29,6 +29,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Added
 
+- **`tools/hpc/alderaan`: Objeck on a Slurm cluster with Singularity/Apptainer and no root** (the CU Denver Alderaan cluster, CentOS 8, glibc 2.28). A portable Linux tarball built on AlmaLinux 8 (obr max GLIBC_2.26, C++ runtime and TLS/QUIC static), Apptainer definition files and a Docker route for a portable and a full (ONNX, OpenCV) image, `objeck_slurm.py` (a parameter sweep to an sbatch job array with `--array=0-N%K`, `singularity exec`, a `local` mode with a process pool, results collected into one CSV, resubmission of unfinished elements) and a strong, weak, throughput and multi-node scaling harness with speedup and efficiency tables. See `docs/hpc_alderaan.md`. New test `hpc_scale_kernel`; the helper's tests run in CI's tools job.
 - **Nine collection types** in `gen_collect`: `Deque` (ring buffer, O(1) at both ends), `MultiSet`, `UnionFind`, `Trie`, `OrderedHash`, `BiMap`, `PriorityMap` (an indexed priority queue with decrease-key), `FenwickTree` (prefix and range sums) and `BloomFilter`. `Vector` and `CompareVector` gain `Insert`, `Slice` and `AddAll`, and `CompareVector` gains `Swap`.
 - **`VectorIndex->SetThreads(n)` and `GetThreads()`** (see Performance).
 - **`TextSimilarity->LevenshteinDistance(a, b, max_distance)`**: the exact distance when it is at most `max_distance`, otherwise `max_distance + 1`; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. `SpellChecker->Suggest` uses it.

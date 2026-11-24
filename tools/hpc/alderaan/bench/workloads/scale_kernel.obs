@@ -1,0 +1,106 @@
+#~
+A CPU-bound kernel for strong and weak scaling runs.
+
+Usage: obr scale_kernel.obe <threads> <units> [steps]
+
+`units` independent work units are dealt out to `threads` worker threads
+(unit u goes to thread u % threads). Every unit does `steps` iterations of an
+integer congruential generator seeded from its own number, and the program
+prints the sum over all units. That sum depends on `units` and `steps` only,
+never on the thread count, so a run at any core count can be checked against a
+single-threaded run.
+
+  strong scaling : fixed `units`, threads = 1, 2, 4, ...
+  weak scaling   : units = base * threads, threads = 1, 2, 4, ...
+
+Output (one line, parsed by the harness and by objeck-slurm):
+
+  RESULT checksum=<n> threads=<n> units=<n> steps=<n> cpus=<runtime.cpu.count> kernel_ms=<n>
+~#
+use System.Concurrency;
+
+class ScaleKernel {
+	function : Main(args : String[]) ~ Nil {
+		threads := 1;
+		units := 64;
+		steps := 200000;
+		if(args->Size() > 0) {
+			threads := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			units := args[1]->ToInt();
+		};
+		if(args->Size() > 2) {
+			steps := args[2]->ToInt();
+		};
+		if(threads < 1) {
+			threads := 1;
+		};
+
+		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
+		started := Runtime->GetProperty("runtime.uptime_ms")->ToInt();
+
+		sums := Int->New[threads];
+
+		# Warm the JIT on the main thread first (one unit, 100 steps, thread 0's slot, rewritten
+		# below). Without it two threads enter Compute() together and the one that loses the
+		# compile race can run the whole call in the interpreter: about 1 run in 4 took 20 s
+		# instead of 1 s with two threads (see docs/hpc_alderaan.md).
+		if(args->Size() < 4 | <>args[3]->Equals("nowarm")) {
+			KernelWorker->New(0, 1, 1, 100, sums)->Run(Nil);
+		};
+
+		workers := KernelWorker->New[threads];
+		each(i : workers) {
+			workers[i] := KernelWorker->New(i, threads, units, steps, sums);
+		};
+		each(i : workers) {
+			workers[i]->Execute(Nil);
+		};
+		each(i : workers) {
+			workers[i]->Join();
+		};
+
+		total := 0;
+		each(i : sums) {
+			total += sums[i];
+		};
+
+		elapsed := Runtime->GetProperty("runtime.uptime_ms")->ToInt() - started;
+		"RESULT checksum={$total} threads={$threads} units={$units} steps={$steps} cpus={$cpus} kernel_ms={$elapsed}"->PrintLine();
+	}
+}
+
+class KernelWorker from Thread {
+	@index : Int;
+	@threads : Int;
+	@units : Int;
+	@steps : Int;
+	@sums : Int[];
+
+	New(index : Int, threads : Int, units : Int, steps : Int, sums : Int[]) {
+		Parent(index->ToString());
+		@index := index;
+		@threads := threads;
+		@units := units;
+		@steps := steps;
+		@sums := sums;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@sums[@index] := Compute();
+	}
+
+	method : native : Compute() ~ Int {
+		sum := 0;
+		for(u := @index; u < @units; u += @threads;) {
+			x := u + 12345;
+			for(s := 0; s < @steps; s += 1;) {
+				x := (x * 1103515245 + 12345) % 2147483648;
+			};
+			sum += x % 1000003;
+		};
+
+		return sum;
+	}
+}
