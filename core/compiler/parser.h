@@ -240,6 +240,13 @@ class Parser {
   void ProcessError(const std::wstring &msg);
   void ProcessError(const std::wstring &msg, ParseNode * node);
   void ProcessError(const std::wstring &msg, const ScannerTokenType sync);
+  // an error at the top of a file, where a file that has lost its structure to an earlier
+  // syntax error reads as garbage: once one was reported it says nothing more (see
+  // syntax_error_seen). Carried by the call, not read back out of the message text.
+  void ProcessTopLevelError(const std::wstring &msg);
+  void ProcessTopLevelError(const std::wstring &msg, const ScannerTokenType sync);
+  // each file starts with none of the previous file's recovery state
+  void ResetErrorState();
   // reports the scanner's reason when the current token was rejected; true if it did
   // 'panic' also holds back the errors that follow until the next ';' (for a parse that
   // skips ahead); a parse that recovers on the spot passes false
@@ -254,7 +261,7 @@ class Parser {
   // true when an error here would only repeat a string that never ended
   bool IsEchoOfLexicalError();
   void EnterSyntaxQuiet();
-  void ReportSyntaxError(const std::wstring &msg);
+  void ReportSyntaxError(const std::wstring &msg, bool top_level = false);
   // A diagnosis the parser makes of a rejected token itself, in place of the scanner's
   // reason: reported at the place the scanner found wrong, with the source line.
   void ProcessTokenError(const std::wstring &msg, const ScannerTokenType sync);

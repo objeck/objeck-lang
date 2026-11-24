@@ -33,6 +33,7 @@ class FormatterRegressionTest {
 		TestOperatorSpacing();
 		TestNilSafeOperators();
 		TestNestedBlocks();
+		TestLineDepths();
 
 		p := @passed;
 		f := @failed;
@@ -247,5 +248,43 @@ class FormatterRegressionTest {
 		};
 		Check("Nested: brace balance", open_count = close_count);
 		Check("Nested: has 4 brace pairs", open_count = 4);
+	}
+
+	function : TestLineDepths() ~ Nil {
+		"\n>> Line depths (on-type formatting)..."->PrintLine();
+
+		# line 1 is the first. Line comments and a multi-line comment sit in the
+		# middle: the scanner numbers the lines after a line comment one short,
+		# and a block comment by the line it ends on, and the depths must not.
+		src := "class Foo {\n  # a line comment\n  method : public : Do() ~ Nil {\n    #~\n    block\n    ~#\n    if(true) {\n      x := 1;\n\n  }\n  # another\n  y := 2;\n}\n}\n";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		formatter := CodeFormatter->New(options);
+		depths := formatter->LineDepths(src, 14);
+
+		Check("Depths: scans", depths <> Nil);
+		Check("Depths: class line is 0", depths[1] = 0);
+		Check("Depths: a line comment takes the depth around it", depths[2] = 1);
+		Check("Depths: the method's line", depths[3] = 1);
+		Check("Depths: a block comment is left alone", depths[4] = -1 & depths[5] = -1 & depths[6] = -1);
+		Check("Depths: the line after a block comment", depths[7] = 2);
+		Check("Depths: inside the if", depths[8] = 3);
+		Check("Depths: a blank line has the depth around it", depths[9] = 3);
+		Check("Depths: a closing brace is one level out", depths[10] = 2);
+		Check("Depths: after a line comment the lines still count", depths[11] = 2 & depths[12] = 2);
+		Check("Depths: the last closing brace is 0", depths[14] = 0);
+
+		# a function type's '\' has no token; the formatter stops at it, the depths step over it
+		backslash := "class Foo {\n  method : public : Do() ~ Nil {\n    f : \\Funcs->Op := Twice(Int) ~ Int;\n  }\n}\n";
+		slashed := formatter->LineDepths(backslash, 5);
+		Check("Depths: a function type does not end the scan", slashed <> Nil & slashed[3] = 2 & slashed[4] = 1);
+
+		Check("Indent: spaces, two levels", formatter->IndentFor(2)->Equals("    "));
+		Check("Indent: none", formatter->IndentFor(0)->Equals(""));
+
+		tabs := CodeFormatter->New(Map->New()<String, String>);
+		Check("Indent: tabs without a width", tabs->IndentFor(2)->Equals("\t\t"));
 	}
 }
