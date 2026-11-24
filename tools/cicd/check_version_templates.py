@@ -23,6 +23,9 @@ Exit 0 when every generated file matches its rendered template, 1 otherwise.
 import difflib
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
@@ -76,6 +79,17 @@ def check_rc_generation():
             full = os.path.join(dirpath, name)
             if name == "objeck.in":
                 count += 1
+                # The MSYS2 makefiles render the same file with core/shared/gen_rc.sh;
+                # it must succeed on every template and stamp the current version.
+                if shutil.which("sh"):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        out = os.path.join(tmp, "objeck.rc")
+                        r = subprocess.run(["sh", os.path.join(ROOT, "core", "shared", "gen_rc.sh"), full, out,
+                                            os.path.join(ROOT, "core", "shared", "version.h")],
+                                           capture_output=True, text=True)
+                        if r.returncode != 0 or not os.path.exists(out) or PLACEHOLDER.search(read(out)):
+                            print(f"ERROR  gen_rc.sh failed on {rel(full)}: {r.stderr.strip()}")
+                            failures += 1
                 unknown = sorted(set(PLACEHOLDER.findall(read(full))) - RC_PLACEHOLDERS)
                 if unknown:
                     print(f"ERROR  {rel(full)} uses {' '.join(unknown)}, which gen_rc.ps1 does not substitute")
