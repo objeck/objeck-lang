@@ -313,6 +313,14 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     // the active debugger now, so breakpoints inside a thread body fire.
     if(debugger) {
       debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
+      // DAP goto: a stopped thread told to set its next statement continues from
+      // there. The debugger has checked that the target is in this method.
+      long goto_ip;
+      if(debugger->TakeGotoIp(goto_ip)) {
+        ip = goto_ip;
+        instr = &instrs[ip++];
+        ctx.instr = instr;
+      }
     }
     (*stack_frame)->cur_ip = ip;
     DispatchResult result = instr_dispatch[instr->GetType()](ctx);
