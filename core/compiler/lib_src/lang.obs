@@ -12323,6 +12323,9 @@ bundle System.IO.Net {
 		@address : System.String;
 		@port : Int;
 		@connect_timeout : Int;
+		# read by the VM (TcpReadLimits): the deadline, then the longest wait for the peer
+		@deadline : Int;
+		@read_timeout : Int;
 
 		#~
 		Connects to an address, trying each one the name resolves to (IPv6 and
@@ -12352,6 +12355,40 @@ bundle System.IO.Net {
 			@port := port;
 			@connect_timeout := connect_timeout;
 			SOCK_TCP_CONNECT;
+		}
+
+		#~
+		Connects as New(address, port, connect_timeout) does, and gives the socket a
+		deadline: reads on it fail once deadline milliseconds have passed from the start
+		of the connect, however slowly the peer sends its bytes (a receive timeout alone
+		starts again with every byte). The connect itself is cut short by it too, and so
+		is the wait for any further address to try. If the connect fails, IsOpen() is
+		false and GetLastError() says why ("timed out" when the time ran out).
+		@param address network address
+		@param port network port
+		@param connect_timeout connect timeout in milliseconds (0 = blocking)
+		@param deadline milliseconds from now after which reads fail (0 = no deadline)
+		~#
+		New(address : System.String, port : Int, connect_timeout : Int, deadline : Int) {
+			Parent();
+			@address := address;
+			@port := port;
+			@connect_timeout := connect_timeout;
+			@deadline := deadline;
+			SOCK_TCP_CONNECT;
+		}
+
+		#~
+		Sets the socket's deadline: from now, reads on it fail once ms milliseconds have
+		passed, however slowly the peer sends its bytes. Unlike a receive timeout, which
+		starts again with every byte received, it does not reset. A read that reaches it
+		returns what it has, and GetLastError() says "timed out". Setting a new deadline
+		replaces the old, and 0 clears it. Only reads are held to it: set a send timeout
+		(SetSendTimeout) for writes.
+		@param ms milliseconds from now (0 = no deadline)
+		~#
+		method : public : SetDeadline(ms : Int) ~ Nil {
+			SOCK_TCP_SET_DEADLINE;
 		}
 
 		#~
@@ -12667,6 +12704,10 @@ bundle System.IO.Net {
 		@address : System.String;
 		@port : Int;
 		@pem : String;
+		# read by the VM (SockTcpSslConnect): milliseconds, 0 for none
+		@connect_timeout : Int;
+		@deadline : Int;
+		@read_timeout : Int;
 
 		#~
 		Connects and completes a TLS handshake. The server's certificate is
@@ -12690,6 +12731,48 @@ bundle System.IO.Net {
 			@pem := pem;
 
 			SOCK_TCP_SSL_CONNECT;
+		}
+
+		#~
+		Connects and completes a TLS handshake as New(address, port, pem) does, within
+		limits. connect_timeout bounds the TCP connect, and the handshake, each: a peer
+		that accepts and then says nothing fails the connect with "timed out" after that
+		long. read_timeout is how long a read waits for the peer, the handshake's included
+		(the default is 300 seconds), and starts again with every byte. deadline bounds
+		the connect, the handshake and every read afterwards, from the start of the
+		connect, however slowly the peer sends its bytes. A connect that fails leaves
+		IsOpen() false and GetLastError() saying why.
+		@param address network address
+		@param port network port
+		@param pem PEM file of the certificates to trust, in place of the bundled
+		certificate authorities (Nil for the bundled)
+		@param connect_timeout connect and handshake timeout in milliseconds (0 = none)
+		@param read_timeout read timeout in milliseconds (0 = the default)
+		@param deadline milliseconds from now after which the connect and reads fail (0 = no deadline)
+		~#
+		New(address : System.String, port : Int, pem : String, connect_timeout : Int, read_timeout : Int, deadline : Int) {
+			Parent();
+			@address := address;
+			@port := port;
+			@pem := pem;
+			@connect_timeout := connect_timeout;
+			@read_timeout := read_timeout;
+			@deadline := deadline;
+
+			SOCK_TCP_SSL_CONNECT;
+		}
+
+		#~
+		Sets the socket's deadline: from now, reads on it fail once ms milliseconds have
+		passed, however slowly the peer sends its bytes. Unlike a receive timeout, which
+		starts again with every byte received, it does not reset. A read that reaches it
+		fails, and GetLastError() says "timed out". Setting a new deadline replaces the
+		old, and 0 clears it. Only reads are held to it: set a send timeout
+		(SetSendTimeout) for writes.
+		@param ms milliseconds from now (0 = no deadline)
+		~#
+		method : public : SetDeadline(ms : Int) ~ Nil {
+			SOCK_TCP_SET_DEADLINE;
 		}
 
 		#~

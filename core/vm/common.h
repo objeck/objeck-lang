@@ -60,6 +60,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <atomic>
+#include <chrono>
+#include <climits>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -395,6 +397,51 @@ struct SocketError {
 // (defined in common.cpp; see dtls_last_error below for why not inline)
 extern thread_local SocketError socket_last_error;
 
+//
+// The receive timeouts a client socket starts with, in milliseconds, before a
+// program sets one (TCPSocket->SetRecvTimeout, HttpClient->SetReadTimeout). A
+// plain TCP client gets 30 seconds. A TLS client gets 300: API.OpenAI and
+// API.Google wait on non-streaming HTTPS requests while a model reasons, often
+// silently for longer than 30 seconds. OBJECK_TLS_RECV_TIMEOUT overrides the TLS
+// default. 0 means no timeout. Web.HTTP.HttpClient->DEFAULT_READ_TIMEOUT_MS and
+// Web.HTTP.HttpsClient->DEFAULT_READ_TIMEOUT_MS are these values.
+//
+const int TCP_DEFAULT_RECV_TIMEOUT_MS = 30000;
+const int TLS_DEFAULT_RECV_TIMEOUT_MS = 300000;
+
+//
+// A monotonic clock in milliseconds, for socket deadlines: a deadline is an
+// instant on this clock, never a wall-clock time, so a clock that steps (NTP,
+// a VM resuming) cannot stretch or cut it. 0 is never a deadline, it means none.
+//
+inline long long SocketNowMs() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count() + 1;
+}
+
+//
+// How long the next blocking read may wait: the shorter of read_ms (0 is no
+// per-read limit) and the time left until deadline_ms (0 is no deadline). -1 is
+// no bound at all, 0 is a deadline already past, above 0 the milliseconds to
+// wait. Every blocking read checks this first, so a peer that sends a byte at a
+// time cannot keep a read going past the deadline: each wait is cut to what is
+// left, not restarted.
+//
+inline int SocketWaitBudget(long long deadline_ms, int read_ms) {
+  long long wait = read_ms > 0 ? read_ms : -1;
+  if(deadline_ms > 0) {
+    const long long left = deadline_ms - SocketNowMs();
+    if(left <= 0) {
+      return 0;
+    }
+    if(wait < 0 || left < wait) {
+      wait = left;
+    }
+  }
+
+  return wait > INT_MAX ? INT_MAX : (int)wait;
+}
+
 // the OS reason behind an mbedTLS NET_* failure (connect, bind, listen) in
 // tls_last_error or dtls_last_error, for the text of GetLastError()
 extern thread_local SocketError tls_socket_error;
@@ -413,6 +460,11 @@ struct SecureSocketCtx {
   // the address connected to, when it is one (see TlsVerifyIpSan)
   TlsIpName ip_name;
   int last_error;
+  // reads fail once the monotonic clock (SocketNowMs) passes deadline_ms; 0 is no
+  // deadline. read_ms bounds each wait for the peer; 0 is no per-read limit.
+  // Both are used by TlsBioRecv.
+  long long deadline_ms;
+  int read_ms;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -426,7 +478,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -451,6 +503,15 @@ struct SecureSocketCtx {
 // (defined in common.cpp; not an inline variable, which native libraries
 // built as C++14 cannot compile)
 extern thread_local int dtls_last_error;
+
+//
+// TLS record I/O for mbedtls_ssl_set_bio, whose context is the SecureSocketCtx:
+// TlsBioRecv waits for the peer no longer than the socket's deadline and read
+// timeout allow, and reports a read that timed out as MBEDTLS_ERR_SSL_TIMEOUT,
+// whether the deadline or SO_RCVTIMEO ended it. (defined in common.cpp)
+//
+int TlsBioSend(void* ctx, const unsigned char* buf, size_t len);
+int TlsBioRecv(void* ctx, unsigned char* buf, size_t len);
 
 //
 // DTLS record I/O for mbedtls_ssl_set_bio, whose context is the
@@ -2899,6 +2960,7 @@ class TrapProcessor {
   static bool SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetConnTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetDeadline(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   // SSL socket options
