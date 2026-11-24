@@ -4137,8 +4137,10 @@ void JitArm64::add_reg_reg(Register src, Register dest) {
 }
 
 void JitArm64::add_imm_reg(int64_t imm, Register reg) {
-  if(imm < 0) {
-    sub_imm_reg(abs(imm), reg);
+  // The minimum Int has no positive counterpart (-imm is INT64_MIN again), so negating it into the
+  // other helper bounced the two between each other forever. It goes through a register below.
+  if(imm < 0 && imm != (-9223372036854775807LL - 1)) {
+    sub_imm_reg(-imm, reg);
   }
   else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG_JIT_JIT
@@ -4213,8 +4215,9 @@ void JitArm64::sub_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitArm64::sub_imm_reg(int64_t imm, Register reg) {
-  if(imm < 0) {
-    add_imm_reg(abs(imm), reg);
+  // see add_imm_reg: the minimum Int cannot be negated, it is loaded into a register instead
+  if(imm < 0 && imm != (-9223372036854775807LL - 1)) {
+    add_imm_reg(-imm, reg);
   }
   else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG_JIT_JIT
