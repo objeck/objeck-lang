@@ -305,6 +305,27 @@ class RagIndexTest {
 		plain->Store(path);
 		Check("a VectorIndex file is refused", RagIndex->Load(path) = Nil);
 
+		# many chunks whose source and text are built by interpolation: a string built that way once
+		# came back from the file with an extra character on macOS arm64 (source "doc0.txt" read
+		# back as nine characters)
+		many := RagIndex->New(3, VectorMetric->COSINE);
+		each(i : 60) {
+			many->Add(RagChunk->New("m{$i}", "doc{$i}.txt", i, "text {$i} " + 233->As(Char) + " end"), [1.0, i->As(Float), 2.0]);
+		};
+		many->Store(path);
+		reread := RagIndex->Load(path);
+		exact := reread <> Nil & reread->Size() = 60;
+		if(exact) {
+			each(i : 60) {
+				c := reread->GetChunk("m{$i}");
+				if(c = Nil | <>c->GetSource()->Equals("doc{$i}.txt") | <>c->GetText()->Equals("text {$i} " + 233->As(Char) + " end")) {
+					exact := false;
+					"    m{$i}: source or text changed in the file"->PrintLine();
+				};
+			};
+		};
+		Check("interpolated sources and texts come back exactly", exact);
+
 		# an empty index round trips too
 		empty := RagIndex->New(9, VectorMetric->L2);
 		Check("an empty index stores", empty->Store(path));
