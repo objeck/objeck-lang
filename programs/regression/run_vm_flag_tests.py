@@ -728,6 +728,7 @@ def main():
     check_signal_dispatch(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
+    check_thread_fault_isolation(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
 
@@ -2656,6 +2657,65 @@ def check_vm_exit_flush(obc, obr, env, bin_dir):
             if message:
                 check(f"vm exit {jit}, {what}: the VM's message is on stderr",
                       message.encode() in err, f"err={err[-200:]!r}")
+
+
+def check_thread_fault_isolation(obc, obr, env, bin_dir):
+    # ---- an error nothing catches: the process, or just the thread ----------------
+    # --thread-faults=exit (the default) ends the program from whichever thread
+    # raised the error. --thread-faults=isolate (or OBJECK_THREAD_FAULTS=isolate)
+    # ends only a spawned thread: its bystanders finish, Join reports the fault and
+    # the program exits 0. The main thread, Runtime->Exit and the flag's validation
+    # never change. docs/research/thread_fault_isolation.md; the in-language checks
+    # (every error kind, locks, 1000 repeats) are thread_fault_isolation.obs.
+    dest = compile_fixture(obc, "vm_thread_fault_modes", env, bin_dir)
+    if not dest:
+        return
+
+    def go(flags, mode, extra_env=None):
+        e = dict(env)
+        e.pop("OBJECK_THREAD_FAULTS", None)
+        if extra_env:
+            e.update(extra_env)
+        rc, out, err = run([obr] + flags + [dest, mode], env=e, cwd=SCRIPT_DIR, timeout=120)
+        return rc, out.decode(errors="replace"), err.decode(errors="replace")
+
+    for jit in ("--jit=off", "--jit=1", None):
+        label = jit or "default"
+        jflags = [jit] if jit else []
+
+        for mode, what in (("worker-fault", "a divide by zero"), ("worker-nil", "a Nil dereference in compiled code")):
+            rc, out, err = go(jflags, mode)
+            check(f"{label}: {what} in a worker ends the program by default",
+                  rc != 0 and rc != -999 and "main continues" not in out and "UNREACHABLE" not in out,
+                  f"rc={rc} out={out[-120:]!r}")
+
+            for how, flags, extra in (("--thread-faults=isolate", ["--thread-faults=isolate"], None),
+                                      ("OBJECK_THREAD_FAULTS=isolate", [], {"OBJECK_THREAD_FAULTS": "isolate"})):
+                rc, out, err = go(jflags + flags, mode, extra)
+                detail = f"rc={rc} out={out[-200:]!r} err={err[-200:]!r}"
+                check(f"{label}: {what} in a worker under {how} ends only the worker",
+                      rc == 0 and "steady finished: true" in out and "main continues" in out
+                      and "UNREACHABLE" not in out, detail)
+                check(f"{label}: and is reported on stderr and by Join under {how}",
+                      ">>> " in err and "Unwinding local stack" in err
+                      and ("fault reported: " + ("Divide by zero" if mode == "worker-fault" else "Attempting")) in out,
+                      detail)
+
+            rc, out, err = go(jflags + ["--thread-faults=exit"], mode, {"OBJECK_THREAD_FAULTS": "isolate"})
+            check(f"{label}: --thread-faults=exit beats OBJECK_THREAD_FAULTS=isolate",
+                  rc != 0 and "main continues" not in out, f"rc={rc} out={out[-120:]!r}")
+
+        rc, out, err = go(jflags + ["--thread-faults=isolate"], "main-fault")
+        check(f"{label}: a main-thread error still ends the program under isolation",
+              rc != 0 and rc != -999 and "UNREACHABLE" not in out and "Divide by zero" in err, f"rc={rc} out={out[-120:]!r}")
+
+        rc, out, err = go(jflags + ["--thread-faults=isolate"], "worker-exit")
+        check(f"{label}: Runtime->Exit in a worker still ends the program under isolation, with its status",
+              rc == 7 and "main continues" not in out, f"rc={rc} out={out[-120:]!r}")
+
+    rc, out, err = go(["--thread-faults=bogus"], "worker-fault")
+    check("--thread-faults=bogus is refused, naming the values",
+          rc != 0 and "--thread-faults: expected 'exit' or 'isolate'" in (out + err), f"rc={rc} out={out[-120:]!r} err={err[-200:]!r}")
 
 
 def check_stw_watchdog(obc, obr, env, bin_dir):

@@ -169,7 +169,24 @@ namespace Runtime {
       std::vector<long> call_stack_pos;
       int pos = 0;
       long recovery_ip = -1;
+
+      // Thread-fault isolation (OBJECK_THREAD_FAULTS=isolate, --thread-faults).
+      // A spawned thread then starts with a sentinel handler at the bottom of
+      // this stack, THREAD_FAULT_IP, saved at call depth -1 (below any bridge,
+      // so a bridge always hands it outward as a status, like a Try() beneath
+      // compiled frames). An error nothing else catches is "recovered" into
+      // that sentinel: it is reported as it always was, and the thread ends
+      // instead of the process. 'isolated' is true while the sentinel is
+      // pushed; 'faulted' once it has been taken; 'fault_reported' stops the
+      // report being printed twice as the error travels outward through bridges.
+      bool isolated = false;
+      bool fault_reported = false;
+      bool faulted = false;
+      std::wstring fault_message;
     };
+
+    // the sentinel's handler address: never a real instruction index
+    static const long THREAD_FAULT_IP = 0x7FFFFFFE;
 
     //
     // This thread's handler state. Reachable from anywhere on the thread,
@@ -384,6 +401,38 @@ namespace Runtime {
       return TryState().pos > 0;
     }
 
+    //
+    // Thread-fault isolation (see TryHandlerState; docs/research/thread_fault_isolation.md)
+    //
+    // Whether a spawned thread's uncaught runtime error ends only that thread.
+    // Off by default: the process ends, as it always has.
+    static bool ThreadFaultIsolation();
+    static void SetThreadFaultIsolation(bool isolate);
+    // Called on a spawned thread before it runs: pushes the sentinel handler
+    static void EnterIsolatedThread();
+    // Called by the thread body once Execute returns: true when the thread
+    // ended by a fault, which it has then recorded for Join
+    static bool ThreadEndedInFault(std::wstring& message);
+    // The registry Thread->Join reads: threads that ended in a fault
+    static void RecordThreadFault(size_t key, const std::wstring& message);
+    static void ForgetThreadFault(size_t key);
+    static void TakeThreadFault(size_t key);
+    static size_t ThreadFaultCount();
+    static std::wstring LastThreadFault();
+    // the fault of the thread this thread last joined ("" when it ended normally)
+    static std::wstring& JoinedThreadFault();
+    // the key a thread is known by in that registry: the id Join derives from its handle
+    static size_t CurrentThreadKey();
+#ifdef _WIN32
+    static size_t ThreadKey(HANDLE handle);
+#else
+    static size_t ThreadKey(pthread_t handle);
+#endif
+    // Ends this interpreter's run after a fault: releases the frames that remain
+    void FinishThreadFault();
+    // Prints the thread's fault as the process-ending path prints it
+    void ReportThreadFault();
+
     // JIT callback support: frame allocation/deallocation
     static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
     static void ReleaseStackFrame(StackFrame* frame);
@@ -433,6 +482,14 @@ namespace Runtime {
         }
         TryHandlerState& state = TryState();
 
+        // The thread's own sentinel is the only handler left: this error will end
+        // the thread (see TryHandlerState). Reported once, here, where the frames
+        // it unwinds are still on the stack to list.
+        const bool thread_fault = state.isolated && state.pos == 1;
+        if(thread_fault && !state.fault_reported) {
+          ReportThreadFault();
+        }
+
         // the handler is beneath this bridge's compiled caller: leave it for
         // that caller's status path (see bridge_call_pos)
         if(bridge_call_pos >= 0 && state.call_stack_pos[state.pos - 1] < bridge_call_pos) {
@@ -474,6 +531,14 @@ namespace Runtime {
           *stack_pos = GetTryHandlerStackPos();
         }
         long saved_call_pos = state.call_stack_pos[state.pos - 1];
+        if(saved_call_pos < 0) {
+          // the thread's sentinel: unwind to the entry frame, which FinishThreadFault releases
+          saved_call_pos = 0;
+        }
+        if(thread_fault) {
+          state.isolated = false;
+          state.faulted = true;
+        }
         PopTryHandler();
         while(*call_stack_pos > saved_call_pos) {
           StackFrame* current = *stack_frame;

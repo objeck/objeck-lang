@@ -4883,6 +4883,18 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     return false;
   }
 
+  // Thread-fault isolation (OBJECK_THREAD_FAULTS=isolate): the text of the error
+  // that ended the thread this thread last joined ("" when it ended normally), and
+  // of the most recent thread to end that way. The counts are in the table below.
+  if(key == L"runtime.thread.join.fault") {
+    out = Runtime::StackInterpreter::JoinedThreadFault();
+    return true;
+  }
+  if(key == L"runtime.threads.fault.last") {
+    out = Runtime::StackInterpreter::LastThreadFault();
+    return true;
+  }
+
   // Table-driven dispatch: one row per key, each a non-capturing lambda (a plain
   // function pointer). std::wstring can't be switch()ed, and this keeps the
   // val=…/to_wstring boilerplate in one place and adding a metric to one row.
@@ -4961,6 +4973,10 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.threads.running",  []() -> size_t { const long a = MemoryManager::GetMutatorCount(),
                                                                p = MemoryManager::GetParkedCount();
                                                     return (size_t)(a > p ? a - p : 0); } },
+    // threads that ended in an uncaught error under thread-fault isolation, and
+    // whether that mode is on (1) or an uncaught error ends the process (0)
+    { L"runtime.threads.faulted",  []() -> size_t { return Runtime::StackInterpreter::ThreadFaultCount(); } },
+    { L"runtime.threads.isolation",[]() -> size_t { return Runtime::StackInterpreter::ThreadFaultIsolation() ? 1 : 0; } },
     { L"runtime.alloc.since_gc",   []() -> size_t { return MemoryManager::GetAllocSinceGc(); } },
     { L"runtime.cpu.count",        []() -> size_t { return (size_t)UsableCpuCount(); } },
     { L"runtime.cpu.time",         []() -> size_t { return GetProcessCpuTimeMs(); } },
@@ -5137,6 +5153,24 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
       }();
       if(hooks) {
         MemoryManager::TestCollectorOutOfMemory();
+      }
+      return true;
+    }
+
+    // Thread-fault isolation, from the program: Runtime->SetProperty(
+    // "runtime.threads.isolation", "isolate") makes every thread started from now on
+    // end alone on an uncaught error; "exit" restores the default (the process ends).
+    // The same switch as OBJECK_THREAD_FAULTS and --thread-faults.
+    if(!wcscmp(key, L"runtime.threads.isolation")) {
+      if(!wcscmp(value, L"isolate") || !wcscmp(value, L"1")) {
+        Runtime::StackInterpreter::SetThreadFaultIsolation(true);
+      }
+      else if(!wcscmp(value, L"exit") || !wcscmp(value, L"0")) {
+        Runtime::StackInterpreter::SetThreadFaultIsolation(false);
+      }
+      else {
+        return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER,
+                         std::wstring(L"runtime.threads.isolation: expected 'isolate' or 'exit', got '") + value + L"'");
       }
       return true;
     }
@@ -8426,6 +8460,15 @@ void ThreadMutexCreate(size_t* instance)
   instance[1] = (size_t)mutex;
 }
 
+// The locks this thread holds, in the order it took them. Kept so a thread that
+// ends in a fault (thread-fault isolation) can release them: a lock owned by a
+// thread that is gone would otherwise block every other thread that wants it.
+static std::vector<NativeThreadMutex*>& HeldThreadMutexes()
+{
+  static thread_local std::vector<NativeThreadMutex*> held;
+  return held;
+}
+
 void ThreadMutexLock(size_t* instance)
 {
   NativeThreadMutex* mutex = (NativeThreadMutex*)instance[1];
@@ -8445,6 +8488,23 @@ void ThreadMutexLock(size_t* instance)
     MemoryManager::EndBlocking();
   }
 #endif
+  HeldThreadMutexes().push_back(mutex);
+}
+
+size_t ThreadMutexReleaseAll()
+{
+  std::vector<NativeThreadMutex*>& held = HeldThreadMutexes();
+  const size_t count = held.size();
+  while(!held.empty()) {
+    NativeThreadMutex* mutex = held.back();
+    held.pop_back();
+#ifdef _WIN32
+    LeaveCriticalSection(mutex);
+#else
+    pthread_mutex_unlock(mutex);
+#endif
+  }
+  return count;
 }
 
 void ThreadMutexUnlock(size_t* instance)
@@ -8452,6 +8512,13 @@ void ThreadMutexUnlock(size_t* instance)
   NativeThreadMutex* mutex = (NativeThreadMutex*)instance[1];
   if(!mutex) {
     return;
+  }
+  std::vector<NativeThreadMutex*>& held = HeldThreadMutexes();
+  for(size_t i = held.size(); i > 0; --i) {
+    if(held[i - 1] == mutex) {
+      held.erase(held.begin() + (long)(i - 1));
+      break;
+    }
   }
 #ifdef _WIN32
   LeaveCriticalSection(mutex);

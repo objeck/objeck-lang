@@ -894,6 +894,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       VmExit(1);
     }
 
+    // what this Join reports about the thread (thread-fault isolation)
+    Runtime::StackInterpreter::JoinedThreadFault().clear();
+
     // The handle is read BEFORE parking: while parked, another thread's collection
     // can promote this Thread object and leave the local 'instance' pointing into the
     // recycled nursery, so instance[0] would be whatever reused that memory (#874).
@@ -943,6 +946,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
+    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
 #ifdef __linux__
     // the stack the VM allocated for it (ProcessAsyncMethodCall)
     Runtime::ThreadStacks::Release(vm_thread);
@@ -951,6 +955,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     MemoryManager::EndBlocking();
 
 #ifdef _WIN32
+    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a
