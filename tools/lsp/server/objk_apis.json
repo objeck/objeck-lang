@@ -1,5 +1,5 @@
 {
-	"version": "2026.11.3",
+	"version": "0.0.0",
 	"class-details": {
 		"API.Anthropic.Chat": {
 			"description": "A chat session. It keeps the message history, including tool calls and results.",
@@ -71,6 +71,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"ParseBody": {
 					"descriptions": ["**Parse a response body. Nil, with the last error set, when the body is not JSON or is an error object ({\"type\":\"error\",\"error\":{\"type\":...,\"message\":...}}).**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
@@ -345,6 +348,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"ParseBody": {
 					"descriptions": ["**Parses a response body, recording a failure as the last error (the error was only printed before, so GetLastError() never reported it). A body that is not JSON, or that carries an 'error' object, yields Nil.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
@@ -1966,6 +1972,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"NoReply": {
 					"descriptions": ["**Checks whether a request got an answer, recording the failure as the last error if not. A refused or dropped connection is a Nil response over HTTP and a response with status 0 and no content over HTTPS.**\n\n```function : NoReply(response:Web.HTTP.Response) ~ Bool```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: Bool"]
@@ -9653,7 +9662,7 @@
 			}
 		},
 		"Query.RegEx.RegEx": {
-			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {least} or {least, most}; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
+			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {n} exactly n, {least, most} a range, or {least,} at least; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
 			"functions": {
 				"Find": {
 					"descriptions": ["**Finds all non-empty, non-overlapping occurrences**\n\n```method : public : Find(stream_in:String) ~ Vector&lt;Result&gt;```\n\n\n\nstream_in: String\n\nreturn: Vector&lt;Result&gt;\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"1 cat, 2 dogs, 3 birds\")<Result>;\neach(r := results) {\n  r->GetValue()->PrintLine();\n};\n```"]
@@ -15680,6 +15689,9 @@
 				"OperatingPoints": {
 					"descriptions": ["**Operating points of a scored classifier, one row per distinct score, from the highest score down: [threshold, false positives, true positives].\n\nEvery metric below is a walk over this. It exists because the functions above take already-thresholded Bool predictions, which throw away exactly what these questions need: a single Bool array fixes one operating point, and cannot answer what the recall would be at a different false-alarm rate.\n\nInstances that share a score share an operating point. Splitting them would invent an ordering the scores do not express and let a metric read better than the model earned.**\n\n```function : OperatingPoints(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
 				},
+				"PairedBootstrapDifference": {
+					"descriptions": ["**A paired bootstrap interval for how much better one detector is than another at thresholds that were chosen beforehand.\n\nBootstrap resamples one detector's scores and recomputes a metric that may itself pick a threshold. This answers the comparison question instead: the two detectors scored the SAME instances, each has a threshold frozen before the test set was looked at (for example by ThresholdAtFpr on out-of-fold scores), and the question is whether detector B's recall is really higher than detector A's. Each resample draws instances once and applies both detectors to that one draw, so the noise the two share cancels in the difference and the interval is the interval of the difference, not two intervals to compare by eye.\n\nThe statistic is B minus A. An instance is flagged when its score is >= the detector's threshold, as in AtThreshold. A resample with no positive instance (recall) or no negative instance (false-positive rate) has no value and is left out; the usable count says how many survived.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int, level:Float) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nlevel: Float\n\nreturn: ConfInterval", "**The same at the conventional 95% level.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nreturn: ConfInterval"]
+				},
 				"Percentile": {
 					"descriptions": ["**A percentile of a set of values, by linear interpolation.\n\nUsed for bootstrap intervals, and exposed because a caller resampling a statistic this bundle does not implement still needs the interval.\n\np is clamped rather than rejected: 0.0 gives the minimum and 1.0 the maximum, which is what a caller asking for them wants.**\n\n```function : Percentile(values:Float[], p:Float) ~ Float```\n\n\n\nvalues: Float[]\n\np: Float\n\nreturn: Float"]
 				},
@@ -16431,6 +16443,224 @@
 				},
 				"ZScores": {
 					"descriptions": ["**Per-feature z values (signed) for each row.**\n\n```method : public : ZScores(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				}
+			}
+		},
+		"System.ML.Boost.BoostModel": {
+			"description": "The engine behind GradientBoostingRegressor and GradientBoostingClassifier: the hyper-parameters and their setters, the tree grower, the boosting loop, importances, staged predictions and persistence. Use the two subclasses; the methods named Grow, FitCore and Raw are the engine's and are public only because the subclasses live in other classes.",
+			"functions": {
+				"FitCore": {
+					"descriptions": ["**Engine entry point: fits the ensemble on targets already turned into numbers (class indices for the classifier).**\n\n```method : public : FitCore(X:Float[,], y:Float[], w:Float[], Xv:Float[,], yv:Float[], obj:Int, outputs:Int) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nw: Float[]\n\nXv: Float[,]\n\nyv: Float[]\n\nobj: Int\n\noutputs: Int\n\nreturn: Bool"]
+				},
+				"FromBytes": {
+					"descriptions": ["**Engine: reads what ToBytes wrote into this object.**\n\n```method : public : FromBytes(data:Byte[], kind:Int) ~ Int[]```\n\n\n\ndata: Byte[]\n\nkind: Int\n\nreturn: Int[]"]
+				},
+				"FromHex": {
+					"descriptions": ["**The bytes of a hex text, or Nil when it is not one.**\n\n```function : FromHex() ~ Byte[]```\n\n\n\ntext: String\n\nreturn: Byte[]"]
+				},
+				"GetBestIteration": {
+					"descriptions": ["**The stage with the lowest validation loss when early stopping was on, otherwise the last stage; -1 when unfitted.**\n\n```method : public : GetBestIteration() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call was refused, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEstimators": {
+					"descriptions": ["**Boosting stages a fit may add.**\n\n```method : public : GetEstimators() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFeatureImportances": {
+					"descriptions": ["**Total loss reduction of the splits on each feature, divided by the total, so the values sum to 1.0 (all 0.0 when no tree split).**\n\n```method : public : GetFeatureImportances() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetFitSeconds": {
+					"descriptions": ["**Seconds the last Fit took.**\n\n```method : public : GetFitSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetGainTotals": {
+					"descriptions": ["**Total loss reduction of the splits on each feature, not normalized.**\n\n```method : public : GetGainTotals() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetLeafCount": {
+					"descriptions": ["**Total number of leaves over all trees.**\n\n```method : public : GetLeafCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLearningRate": {
+					"descriptions": ["**The learning rate.**\n\n```method : public : GetLearningRate() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNumStages": {
+					"descriptions": ["**Stages the fitted model holds (after an early stop, the stages up to the best one).**\n\n```method : public : GetNumStages() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSplitCounts": {
+					"descriptions": ["**How many splits use each feature, over all trees.**\n\n```method : public : GetSplitCounts() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetStopped": {
+					"descriptions": ["**Whether the last fit stopped early.**\n\n```method : public : GetStopped() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"GetTrainLoss": {
+					"descriptions": ["**Mean training loss after each stage that was run (the stages cut off by early stopping included): mean squared error, mean absolute error, mean Huber loss, or log loss.**\n\n```method : public : GetTrainLoss() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetValidationLoss": {
+					"descriptions": ["**Mean validation loss after each stage that was run, empty when the fit had no validation rows.**\n\n```method : public : GetValidationLoss() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"Grow": {
+					"descriptions": ["**Engine: grows one tree on the gradients and Hessians in the working arrays, over the sampled rows and the allowed columns.**\n\n```method : public : Grow() ~ BoostTree```\n\n\n\nX: Float[,]\n\nsample: Int[]\n\ncolmask: Bool[]\n\nreturn: BoostTree"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has succeeded.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with the defaults of scikit-learn's GradientBoosting: 100 stages, learning rate 0.1, depth 3.**\n\n```New()```\n\n", "**Constructor**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int"]
+				},
+				"RawScores": {
+					"descriptions": ["**Engine: raw scores (before the sigmoid or softmax) for each row and output, from the first stages stages.**\n\n```method : public : RawScores(X:Float[,], stages:Int) ~ Float[]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Float[]"]
+				},
+				"SetColumnSample": {
+					"descriptions": ["**Fraction of the features each tree may split on, drawn per tree with the model's seed (default 1.0).**\n\n```method : public : SetColumnSample(fraction:Float) ~ Bool```\n\n\n\nfraction: Float\n\nreturn: Bool"]
+				},
+				"SetEarlyStopping": {
+					"descriptions": ["**Stops adding stages once the validation loss has not improved for patience stages, and cuts the model back to its best stage. The validation rows are the last fraction of a seeded shuffle of the training rows, unless Fit is given a validation set of its own. A patience of 0 (the default) turns early stopping off.**\n\n```method : public : SetEarlyStopping(patience:Int, validation_fraction:Float) ~ Bool```\n\n\n\npatience: Int\n\nvalidation_fraction: Float\n\nreturn: Bool"]
+				},
+				"SetHistogram": {
+					"descriptions": ["**Finds splits on a histogram of at most max_bins bins per feature instead of on the sorted values (0, the default, is the exact search). A feature with no more distinct values than bins loses nothing; otherwise the bin edges sit at the quantiles of its distinct values.**\n\n```method : public : SetHistogram(max_bins:Int) ~ Bool```\n\n\n\nmax_bins: Int\n\nreturn: Bool"]
+				},
+				"SetLambda": {
+					"descriptions": ["**L2 penalty on the leaf values: a leaf holds -G / (H + lambda) times the learning rate, with G and H the sums of the first and second derivative of the loss over its rows (default 0.0). The absolute and Huber losses fit leaves by their own rule and ignore it.**\n\n```method : public : SetLambda(lambda:Float) ~ Bool```\n\n\n\nlambda: Float\n\nreturn: Bool"]
+				},
+				"SetMinChildWeight": {
+					"descriptions": ["**Smallest sum of second derivatives a child may hold (default 0.0; for squared loss this is a row count).**\n\n```method : public : SetMinChildWeight(weight:Float) ~ Bool```\n\n\n\nweight: Float\n\nreturn: Bool"]
+				},
+				"SetMinSamplesLeaf": {
+					"descriptions": ["**Smallest number of training rows a leaf may hold (default 1).**\n\n```method : public : SetMinSamplesLeaf(rows:Int) ~ Bool```\n\n\n\nrows: Int\n\nreturn: Bool"]
+				},
+				"SetMinSplitGain": {
+					"descriptions": ["**Smallest loss reduction that justifies a split; a node whose best split gains no more than this stays a leaf (XGBoost's gamma; default 0.0). The gain is 0.5 * (GL^2/(HL+lambda) + GR^2/(HR+lambda) - G^2/(H+lambda)).**\n\n```method : public : SetMinSplitGain(gain:Float) ~ Bool```\n\n\n\ngain: Float\n\nreturn: Bool"]
+				},
+				"SetSubsample": {
+					"descriptions": ["**Fraction of the rows each stage is fitted on, drawn without replacement with the model's seed (stochastic gradient boosting; default 1.0).**\n\n```method : public : SetSubsample(fraction:Float) ~ Bool```\n\n\n\nfraction: Float\n\nreturn: Bool"]
+				},
+				"StagedRaw": {
+					"descriptions": ["**Engine: raw scores after every stage.**\n\n```method : public : StagedRaw(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"ToBytes": {
+					"descriptions": ["**Engine: the model as bytes: a header, the starting scores, the hyper-parameters worth keeping, the loss history and every tree.**\n\n```method : public : ToBytes(kind:Int, classes:Int[]) ~ Byte[]```\n\n\n\nkind: Int\n\nclasses: Int[]\n\nreturn: Byte[]"]
+				},
+				"ToHex": {
+					"descriptions": ["**Hex text of a byte array, for Export.**\n\n```function : ToHex() ~ String```\n\n\n\ndata: Byte[]\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Boost.BoostTree": {
+			"description": "One regression tree of a boosted ensemble, stored as flat arrays (node 0 is the root, a child always has a larger index than its parent, a node whose feature is -1 is a leaf). A row goes left when its value is at most the threshold; a missing value (NaN) goes the way the split learned. Leaf values already include the learning rate.",
+			"functions": {
+				"Eval": {
+					"descriptions": ["**The tree's output for a row.**\n\n```method : public : Eval(X:Float[,], r:Int) ~ Float```\n\n\n\nX: Float[,]\n\nr: Int\n\nreturn: Float"]
+				},
+				"GetDepth": {
+					"descriptions": ["**The depth of the deepest leaf (a single leaf has depth 0).**\n\n```method : public : GetDepth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFeature": {
+					"descriptions": ["**The feature a node splits on, or -1 for a leaf.**\n\n```method : public : GetFeature() ~ Int```\n\n\n\ni: Int\n\nreturn: Int"]
+				},
+				"GetGain": {
+					"descriptions": ["**The gain of the split at a node (0.0 for a leaf).**\n\n```method : public : GetGain() ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"GetLeafCount": {
+					"descriptions": ["**Number of leaves.**\n\n```method : public : GetLeafCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNodeCount": {
+					"descriptions": ["**Number of nodes.**\n\n```method : public : GetNodeCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetValue": {
+					"descriptions": ["**The value of a node (meaningful for a leaf).**\n\n```method : public : GetValue() ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"Leaf": {
+					"descriptions": ["**The index of the leaf a row falls in.**\n\n```method : public : Leaf(X:Float[,], r:Int) ~ Int```\n\n\n\nX: Float[,]\n\nr: Int\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(count:Int)```\n\n\n\ncount: Int"]
+				},
+				"SetNode": {
+					"descriptions": ["**Fills in one node.**\n\n```method : public : SetNode() ~ Nil```\n\n\n\ni: Int\n\nfeat: Int\n\nthr: Float\n\nleft: Int\n\nright: Int\n\ndleft: Bool\n\nval: Float\n\ngain: Float\n\nreturn: Nil"]
+				},
+				"SetValue": {
+					"descriptions": ["**Replaces the value of a leaf.**\n\n```method : public : SetValue() ~ Nil```\n\n\n\ni: Int\n\nval: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Boost.GradientBoostingClassifier": {
+			"description": "Gradient boosted classification trees: binary (logistic loss, one tree per stage) and multiclass (softmax, one tree per class per stage, with XGBoost's Hessian 2 p (1 - p)).\n\nThe starting scores are the log odds (binary) or log priors (multiclass) of the training labels. Class labels are any Ints; they are sorted and PredictProba's columns follow GetClasses(). GradientBoostingClassifier implements ScoreModel, so a binary one drops into CrossValidation and the lab's experiments; PredictScore is the probability of the larger label. Settings, missing values and early stopping are as in GradientBoostingRegressor.",
+			"functions": {
+				"Export": {
+					"descriptions": ["**The model as a text of hex digits.**\n\n```method : public : Export() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits on binary labels (false is class 0, true class 1), as ScoreModel asks.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool", "**Fits on class labels; two classes use the logistic loss, more use softmax.**\n\n```method : public : Fit(X:Float[,], y:Int[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nreturn: Bool", "**Fits with a weight for each row.**\n\n```method : public : Fit(X:Float[,], y:Int[], w:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nw: Float[]\n\nreturn: Bool", "**Fits and watches a validation set of the caller's own for early stopping (the patience must be above 0). Validation labels the training set does not have are refused.**\n\n```method : public : Fit(X:Float[,], y:Int[], Xv:Float[,], yv:Int[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nXv: Float[,]\n\nyv: Int[]\n\nreturn: Bool"]
+				},
+				"GetClasses": {
+					"descriptions": ["**The class labels, sorted; the columns of PredictProba.**\n\n```method : public : GetClasses() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"Import": {
+					"descriptions": ["**Reads a model written by Export.**\n\n```function : Import(text:String) ~ GradientBoostingClassifier```\n\n\n\ntext: String\n\nreturn: GradientBoostingClassifier"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a model written by Store.**\n\n```function : Load(filename:String) ~ GradientBoostingClassifier```\n\n\n\nfilename: String\n\nreturn: GradientBoostingClassifier"]
+				},
+				"LogLoss": {
+					"descriptions": ["**Mean log loss of the predicted probabilities on a labelled set.**\n\n```method : public : LogLoss(X:Float[,], y:Int[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with 100 stages, learning rate 0.1, depth 3, seed 1.**\n\n```New()```\n\n", "**Constructor**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**The most probable class of every row.**\n\n```method : public : Predict(X:Float[,]) ~ Int[]```\n\n\n\nX: Float[,]\n\nreturn: Int[]", "**The most probable class of every row from the first stages stages only.**\n\n```method : public : Predict(X:Float[,], stages:Int) ~ Int[]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Int[]"]
+				},
+				"PredictProba": {
+					"descriptions": ["**Class probabilities for every row, one column per class (GetClasses order); each row sums to 1.0.**\n\n```method : public : PredictProba(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]", "**Class probabilities from the first stages stages only.**\n\n```method : public : PredictProba(X:Float[,], stages:Int) ~ Float[,]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Float[,]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**Probability of the larger class, for a binary model (ScoreModel). A multiclass model gives the probability of its last class.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Score": {
+					"descriptions": ["**Fraction of rows whose predicted class equals the label.**\n\n```method : public : Score(X:Float[,], y:Int[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nreturn: Float"]
+				},
+				"StagedPredict": {
+					"descriptions": ["**The predicted class after each stage: row s holds what Predict(X, s + 1) gives, so the last row equals Predict(X).**\n\n```method : public : StagedPredict(X:Float[,]) ~ Int[,]```\n\n\n\nX: Float[,]\n\nreturn: Int[,]"]
+				},
+				"Store": {
+					"descriptions": ["**Writes the model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.Boost.GradientBoostingRegressor": {
+			"description": "Gradient boosted regression trees.\n\nEach stage fits a regression tree to the gradient of the loss and adds it, scaled by the learning rate, to the running prediction. Trees are grown level by level with XGBoost's second-order gain, so a leaf holds -G / (H + lambda): with lambda 0.0 and squared loss that is the mean residual, as in scikit-learn's GradientBoostingRegressor. The starting prediction is the mean of the targets (the median for the absolute and Huber losses). A NaN in a feature is a missing value and follows the direction each split learned; targets may not be NaN.",
+			"functions": {
+				"Export": {
+					"descriptions": ["**The model as a text of hex digits.**\n\n```method : public : Export() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the ensemble.**\n\n```method : public : Fit(X:Float[,], y:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nreturn: Bool", "**Fits the ensemble with a weight for each row.**\n\n```method : public : Fit(X:Float[,], y:Float[], w:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nw: Float[]\n\nreturn: Bool", "**Fits the ensemble and watches a validation set of the caller's own for early stopping (see SetEarlyStopping; the patience must be above 0 for it to stop).**\n\n```method : public : Fit(X:Float[,], y:Float[], Xv:Float[,], yv:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nXv: Float[,]\n\nyv: Float[]\n\nreturn: Bool"]
+				},
+				"GetLoss": {
+					"descriptions": ["**The loss being minimized.**\n\n```method : public : GetLoss() ~ BoostLoss```\n\n\n\nreturn: BoostLoss"]
+				},
+				"Import": {
+					"descriptions": ["**Reads a model written by Export.**\n\n```function : Import(text:String) ~ GradientBoostingRegressor```\n\n\n\ntext: String\n\nreturn: GradientBoostingRegressor"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a model written by Store.**\n\n```function : Load(filename:String) ~ GradientBoostingRegressor```\n\n\n\nfilename: String\n\nreturn: GradientBoostingRegressor"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with squared loss, 100 stages, learning rate 0.1, depth 3, seed 1.**\n\n```New()```\n\n", "**Constructor with squared loss.**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int", "**Constructor**\n\n```New(loss:BoostLoss, num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nloss: BoostLoss\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts every row with all the stages.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]", "**Predicts every row with the first stages stages only.**\n\n```method : public : Predict(X:Float[,], stages:Int) ~ Float[]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Float[]"]
+				},
+				"Score": {
+					"descriptions": ["**Mean loss of the model on a labelled set: mean squared error, mean absolute error or mean Huber loss, as the model's loss says.**\n\n```method : public : Score(X:Float[,], y:Float[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nreturn: Float"]
+				},
+				"SetHuber": {
+					"descriptions": ["**The Huber loss is quadratic within delta of the target and linear beyond. With delta 0.0 (the default) it is re-estimated at every stage as the alpha quantile of the absolute residuals (scikit-learn's rule).**\n\n```method : public : SetHuber(delta:Float, alpha:Float) ~ Bool```\n\n\n\ndelta: Float\n\nalpha: Float\n\nreturn: Bool"]
+				},
+				"StagedPredict": {
+					"descriptions": ["**The prediction after each stage: row s holds what Predict(X, s + 1) gives, so the last row equals Predict(X).**\n\n```method : public : StagedPredict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Store": {
+					"descriptions": ["**Writes the model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -17615,6 +17845,9 @@
 				"GetMetric": {
 					"descriptions": ["**The ranking this index was created with.**\n\n```method : public : GetMetric() ~ VectorMetric```\n\n\n\nreturn: VectorMetric"]
 				},
+				"GetThreads": {
+					"descriptions": ["**Gets how many threads a search may use.**\n\n```method : public : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"IsValid": {
 					"descriptions": ["**Whether the index was created with a usable dimension.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -17629,6 +17862,9 @@
 				},
 				"Search": {
 					"descriptions": ["**The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;VectorHit&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;VectorHit&gt;"]
+				},
+				"SetThreads": {
+					"descriptions": ["**Sets how many threads a search may use. A search over a large index (about 8 MB of vectors or more) is split into that many parts, each scanned on its own thread, and their best results merged; the answer, ties included, is the same as a single-threaded search. Smaller indexes are always searched on the calling thread. The default is 1.**\n\n```method : public : SetThreads(threads:Int) ~ Nil```\n\n\n\nthreads: Int\n\nreturn: Nil"]
 				},
 				"Size": {
 					"descriptions": ["**Number of vectors stored.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -18299,7 +18535,7 @@
 					"descriptions": ["**Calculates Jaccard similarity between two sets of tokens**\n\n```function : JaccardSimilarity(tokens1:String[], tokens2:String[]) ~ Float```\n\n\n\ntokens1: String[]\n\ntokens2: String[]\n\nreturn: Float\n\n```\nt1 := [\"cat\", \"sat\", \"mat\"];\nt2 := [\"cat\", \"sat\", \"log\"];\njaccard := TextSimilarity->JaccardSimilarity(t1, t2);\n\"Jaccard: {$jaccard}\"->PrintLine();\n```"]
 				},
 				"LevenshteinDistance": {
-					"descriptions": ["**Calculates Levenshtein distance (edit distance) between two strings**\n\n```function : LevenshteinDistance(str1:String, str2:String) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Int\n\n```\ndist := TextSimilarity->LevenshteinDistance(\"kitten\", \"sitting\");\n\"Edit distance: {$dist}\"->PrintLine();\n```"]
+					"descriptions": ["**Calculates Levenshtein distance (edit distance) between two strings**\n\n```function : LevenshteinDistance(str1:String, str2:String) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Int\n\n```\ndist := TextSimilarity->LevenshteinDistance(\"kitten\", \"sitting\");\n\"Edit distance: {$dist}\"->PrintLine();\n```", "**Edit distance with a ceiling, for comparing one string with many. Only the cells within max_distance of the diagonal are computed and the work stops as soon as a whole row is past the ceiling, so a far-off pair costs a few cells.**\n\n```function : LevenshteinDistance(str1:String, str2:String, max_distance:Int) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nmax_distance: Int\n\nreturn: Int\n\n```\nif(TextSimilarity->LevenshteinDistance(\"opentelemetry\", \"opentelemetri\", 2) <= 2) {\n  \"close\"->PrintLine();\n};\n```"]
 				},
 				"NormalizedEditDistance": {
 					"descriptions": ["**Calculates normalized edit distance (0.0 = identical, 1.0 = completely different)**\n\n```function : NormalizedEditDistance(str1:String, str2:String) ~ Float```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Float\n\n```\nnd := TextSimilarity->NormalizedEditDistance(\"kitten\", \"sitting\");\n\"Normalized distance: {$nd}\"->PrintLine();\n```"]
@@ -20894,11 +21130,17 @@
 				"GetBoundPort": {
 					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body set by SetMaxBodyBytes**\n\n```function : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"Serve": {
 					"descriptions": ["**NOT IMPLEMENTED: starting a HTTP server from a configuration file. The call reports this on standard error and returns without serving; it used to load the file and then silently serve nothing. Use Serve(callback, port) or Serve(callback, port, is_debug) for HTTP, or ServeSecure(filename) for HTTPS, which does read a configuration file.**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"ServeSecure": {
 					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface; see ServeSecure(callback, address, port, cert, cert_key, cert_key_passwd).**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Call before Serve. Zero (or less), the default, allows 8388608 (8 MiB). A WebServerConfig that sets its own limit takes precedence.**\n\n```function : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"SetMaxConnections": {
 					"descriptions": ["**Sets the most connections served at once; a connection beyond it is answered 503 and closed. Call before Serve. Zero, the default, allows 1024.**\n\n```function : SetMaxConnections(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
@@ -20932,6 +21174,9 @@
 				"GetFilename": {
 					"descriptions": ["**Gets the configuration filename**\n\n```method : public : GetFilename() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body this configuration accepts**\n\n```method : public : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetPort": {
 					"descriptions": ["**Gets the server port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -20958,6 +21203,9 @@
 				},
 				"ProcessPost": {
 					"descriptions": ["**Callback for POST requests**\n\n```method : public : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Zero (or less), the default, defers to WebServer->SetMaxBodyBytes and then to 8388608 (8 MiB).**\n\n```method : public : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"ToString": {
 					"descriptions": ["**Gets the string representation of the configuration**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -24170,6 +24418,30 @@
 				"file": ""
 			}
 		],
+		"BoostModel": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
+		"BoostTree": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
+		"GradientBoostingClassifier": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
+		"GradientBoostingRegressor": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
 		"ClipEncoder": [
 			{
 				"bundle": "System.ML.Clip",
@@ -26816,6 +27088,18 @@
 				{ "name": "MAX", "value": "0", "description": "" },
 				{ "name": "MEAN", "value": "1", "description": "" },
 				{ "name": "RMS", "value": "2", "description": "" }
+			]
+		},
+		"System.ML.Boost.BoostLoss": {
+			"name": "BoostLoss",
+			"bundle": "System.ML.Boost",
+			"class": "",
+			"kind": "enum",
+			"description": "The loss a GradientBoostingRegressor minimizes.",
+			"items": [
+				{ "name": "SQUARED", "value": "0", "description": "" },
+				{ "name": "ABSOLUTE", "value": "1", "description": "" },
+				{ "name": "HUBER", "value": "2", "description": "" }
 			]
 		},
 		"System.ML.Clip.ClipPreprocessor#Resize": {
