@@ -180,14 +180,7 @@ if [ "$FROM" -le 4 ]; then
   KEY="${OBJECK_ORG_KEY:-$HOME/.ssh/google_compute_engine}"
   KEYARG=(); [ -f "$KEY" ] && KEYARG=(--key "$KEY")
   DRYARG=(); [ "$DRY" = 1 ] && DRYARG=(--dry-run)
-  # docs/api.zip is not committed: it is the api-docs artifact of the tag's release build.
-  RUN_ID="$(gh run list --repo "$REPO" --workflow release-build.yml --branch "$TAG" --status success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null)"
-  [ -n "$RUN_ID" ] || die "no successful release-build run found for $TAG, so there is no api-docs artifact to upload"
-  rm -rf "$WT/api-docs"; mkdir -p "$WT/api-docs"
-  gh run download "$RUN_ID" --repo "$REPO" -n api-docs -D "$WT/api-docs" >/dev/null 2>&1 || die "could not download the api-docs artifact of run $RUN_ID (artifacts expire after 7 days; regenerate with tools/cicd/gen_api_docs.sh)"
-  [ -f "$WT/api-docs/api.zip" ] || die "the api-docs artifact of run $RUN_ID has no api.zip"
-  note "api docs: run $RUN_ID, api-docs/api.zip"
-  bash "$WT/core/release/deploy_website.sh" --source "$WT/api-docs/api.zip" --version "$VERSION" --host "${OBJECK_ORG_HOST:-playground.objeck.org}" "${KEYARG[@]}" "${DRYARG[@]}" || die "the site upload refused (its message above says why)"
+  bash "$WT/core/release/deploy_website.sh" --source "$WT/docs/api.zip" --version "$VERSION" --host "${OBJECK_ORG_HOST:-playground.objeck.org}" "${KEYARG[@]}" "${DRYARG[@]}" || die "the site upload refused (its message above says why)"
 fi
 
 # ============================================================================================ 5. verify

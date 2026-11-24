@@ -85,10 +85,6 @@ core/release/deploy-x64/
 core/release/deploy-arm64/
 core/release/test-x64/
 core/release/x64/
-# The generated API reference. Never committed: release-build.yml generates it once per run
-# (tools/cicd/gen_api_docs.sh) and hands it to the build jobs as the api-docs artifact.
-docs/api.zip
-docs/api/
 # docker/build.cmd copies a deploy tree here for the image, then removes it
 docker/deploy/
 

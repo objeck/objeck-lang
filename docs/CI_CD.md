@@ -142,7 +142,8 @@ After publishing, the Windows installers are signed, the playground is deployed 
 **Triggers:**
 - Git tag matching `v*.*.*` (automatic)
 - Manual workflow dispatch from a branch (a dry run: it builds and uploads
-  artifacts, but Release Publish skips it)
+  artifacts, but Release Publish skips it and it never pushes `docs/api.zip`
+  to master)
 
 **Jobs:**
 
@@ -165,11 +166,10 @@ After publishing, the Windows installers are signed, the playground is deployed 
    - Package the VS Code extension (`vsce package`; the `.vsix` goes into the ZIP and is not published to the Marketplace)
    - Create LSP ZIP archive
 
-4. **Build Docs Job** (runs before the Build jobs, which need it):
-   - Generate API documentation with the correct version (`tools/cicd/gen_api_docs.sh`)
-   - Package it as `docs/api.zip` and upload it as the `api-docs` artifact. It is not committed
-     to git; each Build job downloads the artifact before deploying (windows-x64 makes its own),
-     and Release Publish deploys the same artifact to objeck.org
+4. **Build Docs Job:**
+   - Generate API documentation with correct version
+   - Package as ZIP
+   - On a tag build, commit it to master as `docs/api.zip`
 
 5. **macOS Install Test Job:**
    - Install the `.pkg` on clean `macos-14` and `macos-26` runners; a failure fails the run, so Release Publish does not publish it
@@ -261,7 +261,7 @@ Jobs 3-5 each run when their secrets are set. When they are not, a job passes on
 
 Two steps, and the first is the one that gets forgotten.
 
-**1. Regenerate**, or download the release build's artifact (`gh run download <build run> -n api-docs`); `docs/api.zip` is not committed:
+**1. Regenerate**, because `docs/api.zip` is committed by hand and drifts:
 
 ```
 cmd /c "cd /d <repo>\core\release & <repo>\core\release\code_doc64.cmd x64 deploy"

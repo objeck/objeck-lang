@@ -313,7 +313,7 @@ if [ "$DO_API" = 0 ]; then
 fi
 
 # ---------------------------------------------------------------- source -----
-# Prefer the freshly generated tree. A docs/api.zip left over from an old deploy (not committed any more) was produced by hand
+# Prefer the freshly generated tree. The committed api.zip is produced by hand
 # and drifts: on 2026-10-11 it was stamped v2026.10.0 (correct -- the bump was
 # 10-01) while its CONTENT predated API.Inference (#1051, 10-08) and API.Models
 # (#1062, 10-09), so it carried the right version and was missing two whole

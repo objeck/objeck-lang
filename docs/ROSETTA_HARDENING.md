@@ -245,7 +245,7 @@ misses would have shipped a library that was half-registered and looked fine.
 | `core/compiler/build_libs.sh` | one `$OBC` line, in dependency order. The single source of truth -- POSIX `update_version.sh` and the Windows CI runners both drive it |
 | `core/lib/math.obl` | built **and committed**; `.obl` files are tracked and the deploy copies them rather than rebuilding |
 | `.github/workflows/ci-build.yml` | the `obr code_doc.obe` list |
-| `tools/cicd/gen_api_docs.sh` (run by `release-build.yml`) | the same list again |
+| `.github/workflows/release-build.yml` | the same list again |
 | `core/release/code_doc64.in` | the same list again -- edit the `.in`, never the generated file |
 | `core/release/code_doc64.cmd` | **and the generated file too.** Editing only the template leaves the committed output stale until the next Windows deploy regenerates it |
 | `tools/lsp/server/doc_json/gen_json.{sh,cmd}` | the same list, twice more -- this is what the editor API index is built from |
