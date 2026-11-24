@@ -234,15 +234,35 @@ class RagIndexTest {
 			each(i : 5) {
 				a := index->GetChunk("c{$i}");
 				b := loaded->GetChunk("c{$i}");
-				if(b = Nil | <>a->GetText()->Equals(b->GetText()) | <>a->GetSource()->Equals(b->GetSource()) | a->GetOffset() <> b->GetOffset()) {
+				if(b = Nil) {
+					"    c{$i}: missing after load"->PrintLine();
 					same := false;
 				}
 				else {
+					if(<>a->GetText()->Equals(b->GetText())) {
+						"    c{$i}: text differs: {$a->GetText()->Size()} characters became {$b->GetText()->Size()}"->PrintLine();
+						same := false;
+					};
+					if(<>a->GetSource()->Equals(b->GetSource())) {
+						"    c{$i}: source differs: {$a->GetSource()->Size()} characters became {$b->GetSource()->Size()}"->PrintLine();
+						same := false;
+					};
+					if(a->GetOffset() <> b->GetOffset()) {
+						"    c{$i}: offset differs: {$a->GetOffset()} became {$b->GetOffset()}"->PrintLine();
+						same := false;
+					};
 					va := index->GetVector("c{$i}");
 					vb := loaded->GetVector("c{$i}");
-					each(j : va) {
-						if(va[j] <> vb[j]) {
-							same := false;
+					if(vb = Nil | va->Size() <> vb->Size()) {
+						"    c{$i}: vector length differs"->PrintLine();
+						same := false;
+					}
+					else {
+						each(j : va) {
+							if(va[j] <> vb[j]) {
+								"    c{$i}: vector[{$j}] {$va[j]} became {$vb[j]}"->PrintLine();
+								same := false;
+							};
 						};
 					};
 				};
