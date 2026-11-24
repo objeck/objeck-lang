@@ -47,6 +47,29 @@
 					"type": "string",
 					"default": "/usr/local/objeck",
 					"description": "Objeck Posix install directory"
+				},
+				"objeck.inlineCompletion.provider": {
+					"type": "string",
+					"enum": ["none", "ollama", "anthropic", "openai", "gemini"],
+					"default": "none",
+					"markdownDescription": "Ghost-text code suggestions from a language model. **Off by default: with `none` no code is sent anywhere.** `ollama` asks a local Ollama server (see `#objeck.inlineCompletion.ollamaHost#`). `anthropic`, `openai` and `gemini` send the text around the cursor to that company's API and need a key already configured the way the Objeck library reads it (`ANTHROPIC_API_KEY` or `anthropic_api_key.dat`, `openai_api_key.dat`, the Gemini key file); the key is refused while `OBJECK_TLS_INSECURE_SKIP_VERIFY` is set. Takes effect without a restart."
+				},
+				"objeck.inlineCompletion.model": {
+					"type": "string",
+					"default": "",
+					"description": "Model name for the provider. Empty uses the provider's default (ollama: qwen2.5-coder:1.5b, anthropic: claude-haiku-4-5, openai: gpt-4o-mini, gemini: gemini-2.5-flash)."
+				},
+				"objeck.inlineCompletion.ollamaHost": {
+					"type": "string",
+					"default": "http://localhost:11434",
+					"markdownDescription": "URL of the Ollama server. **A host other than this machine receives the code around your cursor.**"
+				},
+				"objeck.inlineCompletion.timeoutMs": {
+					"type": "number",
+					"default": 3000,
+					"minimum": 200,
+					"maximum": 30000,
+					"description": "Longest wait for a suggestion, in milliseconds. A provider that is slower than this is ignored for that request."
 				}
 			}
 		},

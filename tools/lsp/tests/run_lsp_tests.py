@@ -60,7 +60,7 @@ EXPECTED_CAPS = [
     "documentHighlightProvider", "foldingRangeProvider",
     "selectionRangeProvider", "typeDefinitionProvider",
     "implementationProvider", "inlayHintProvider", "callHierarchyProvider",
-    "typeHierarchyProvider", "semanticTokensProvider",
+    "typeHierarchyProvider", "semanticTokensProvider", "inlineCompletionProvider",
 ]
 
 
@@ -2192,6 +2192,223 @@ def check_pull_diagnostics(obr, server_obe, apis_json, bin_dir):
         c.close()
 
 
+class FakeOllama:
+    """A local stand-in for Ollama's /api/generate: no network, no keys.
+
+    mode 'ok' answers 'reply'; 'error' answers HTTP 500; 'hang' never answers
+    (until stop). 'requests' holds the JSON bodies it was sent."""
+
+    def __init__(self):
+        import http.server
+        outer = self
+        self.mode = "ok"
+        self.reply = ""
+        self.requests = []
+        self.release = threading.Event()
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length)
+                try:
+                    outer.requests.append(json.loads(body))
+                except ValueError:
+                    outer.requests.append(None)
+                if outer.mode == "hang":
+                    outer.release.wait(60)
+                    return
+                if outer.mode == "error":
+                    data = b'{"error":"model exploded"}'
+                    self.send_response(500)
+                else:
+                    data = json.dumps({"model": "fake", "response": outer.reply,
+                                       "done": True}).encode()
+                    self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        self.port = self.server.server_address[1]
+        self.url = f"http://127.0.0.1:{self.port}"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def stop(self):
+        self.release.set()
+        self.server.shutdown()
+        self.server.server_close()
+
+
+def check_inline_completion(obr, server_obe, apis_json, bin_dir):
+    """textDocument/inlineCompletion (LSP 3.18): off by default, local first, and
+    never an error. Driven against a fake Ollama on loopback."""
+    text = ("class Demo {\n  function : Main(args : String[]) ~ Nil {\n"
+            "    total := 0;\n    \n  }\n}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_inline.obs"))
+    where = {"textDocument": {"uri": uri}, "position": {"line": 3, "character": 4},
+             "context": {"triggerKind": 2}}
+    fake = FakeOllama()
+
+    def session(options, env=None):
+        saved = {}
+        for k, v in (env or {}).items():
+            saved[k] = os.environ.get(k)
+            os.environ[k] = v
+        try:
+            c = LspClient(obr, server_obe, apis_json, bin_dir)
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+        init = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
+        if options is not None:
+            init["initializationOptions"] = {"inlineCompletion": options}
+        resp = c.request("initialize", init, timeout=90)
+        c.notify("initialized", {})
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        return c, resp
+
+    def items_of(resp):
+        result = result_of(resp)
+        return result.get("items") if isinstance(result, dict) else None
+
+    try:
+        # --- off by default: nothing is asked of anyone ------------------------
+        c, init = session(None)
+        try:
+            caps = (result_of(init) or {}).get("capabilities") or {}
+            log_result("inlineCompletionProvider is advertised", caps.get("inlineCompletionProvider") is True,
+                       f"got: {caps.get('inlineCompletionProvider')}")
+            resp = c.request("textDocument/inlineCompletion", where)
+            log_result("provider none (the default) answers an empty list, not an error",
+                       items_of(resp) == [], f"got: {resp}")
+            log_result("and sends nothing anywhere", fake.requests == [])
+
+            # a configuration change turns it on, and back off
+            fake.reply = "total += 1;"
+            c.notify("workspace/didChangeConfiguration", {"settings": {"objeck": {"inlineCompletion": {
+                "provider": "ollama", "ollamaHost": fake.url, "model": "tiny-model"}}}})
+            resp = c.request("textDocument/inlineCompletion", where)
+            got = items_of(resp) or []
+            log_result("didChangeConfiguration enables ollama", len(got) == 1
+                       and got[0].get("insertText", "").strip() == "total += 1;", f"got: {resp}")
+            c.notify("workspace/didChangeConfiguration", {"settings": {"inlineCompletion": {"provider": "none"}}})
+            before = len(fake.requests)
+            resp = c.request("textDocument/inlineCompletion", where)
+            log_result("and a later change turns it off again",
+                       items_of(resp) == [] and len(fake.requests) == before, f"got: {resp}")
+        finally:
+            c.close()
+
+        # --- ollama against the fake -------------------------------------------
+        fake.requests.clear()
+        fake.reply = "```objeck\n    total += 1;\n    total += 2;\n\n    other();\n```"
+        c, init = session({"provider": "ollama", "ollamaHost": fake.url + "/", "model": "tiny-model"})
+        try:
+            resp = c.request("textDocument/inlineCompletion", where)
+            got = items_of(resp) or []
+            item = got[0] if got else {}
+            rng = item.get("range") or {}
+            log_result("ollama: one item, the fake's text trimmed to the first statement",
+                       len(got) == 1 and item.get("insertText", "").strip() == "total += 1;",
+                       f"got: {resp}")
+            log_result("the range is the cursor position",
+                       rng.get("start") == {"line": 3, "character": 4} and rng.get("end") == {"line": 3, "character": 4},
+                       f"got: {rng}")
+            sent = fake.requests[0] if fake.requests else {}
+            prompt = sent.get("prompt", "")
+            log_result("the request names the model and carries the text around the cursor",
+                       sent.get("model") == "tiny-model" and "total := 0;" in prompt
+                       and "<CURSOR>" in prompt and prompt.rstrip().endswith("}") and sent.get("stream") is False,
+                       f"got: {json.dumps(sent)[:300]}")
+
+            # a block comes back whole, and no more than the first one
+            fake.reply = "if(total = 0) {\n      total := 5;\n    };\n    next();"
+            got = items_of(c.request("textDocument/inlineCompletion", where)) or []
+            log_result("a block is kept to its closing line",
+                       len(got) == 1 and got[0].get("insertText", "").count("\n") == 2
+                       and "next" not in got[0].get("insertText", ""), f"got: {got}")
+
+            # nothing to say is an empty list too
+            fake.reply = "   \n\n"
+            log_result("a blank reply is an empty list", items_of(c.request("textDocument/inlineCompletion", where)) == [])
+
+            # a 500 is an empty list, not an error
+            fake.mode = "error"
+            resp = c.request("textDocument/inlineCompletion", where)
+            log_result("an HTTP 500 answers an empty list, not an error", items_of(resp) == [], f"got: {resp}")
+            fake.mode = "ok"
+            log_result("the server still answers afterward",
+                       c.request("textDocument/hover", position_in(text, uri, "total", 1), timeout=10) is not None)
+        finally:
+            c.close()
+
+        # --- a hung provider times out ----------------------------------------
+        fake.mode = "hang"
+        fake.requests.clear()
+        c, init = session({"provider": "ollama", "ollamaHost": fake.url, "timeoutMs": 600})
+        try:
+            start = time.time()
+            resp = c.request("textDocument/inlineCompletion", where, timeout=15)
+            took = time.time() - start
+            log_result("a hung provider times out to an empty list", items_of(resp) == [] and took < 5,
+                       f"took {took:.1f}s, got: {resp}")
+            start = time.time()
+            resp = c.request("textDocument/inlineCompletion", where, timeout=15)
+            log_result("and a request while it is still stuck is answered at once, empty",
+                       items_of(resp) == [] and time.time() - start < 1.0 and len(fake.requests) == 1,
+                       f"got: {resp}, {len(fake.requests)} requests")
+            log_result("other requests are not held up", c.request("textDocument/documentSymbol",
+                       {"textDocument": {"uri": uri}}, timeout=10) is not None)
+        finally:
+            c.close()
+
+        # --- cancellation ------------------------------------------------------
+        fake.requests.clear()
+        c, init = session({"provider": "ollama", "ollamaHost": fake.url, "timeoutMs": 20000})
+        try:
+            c.rid += 1
+            rid = c.rid
+            c._write({"jsonrpc": "2.0", "id": rid, "method": "textDocument/inlineCompletion", "params": where})
+            time.sleep(0.5)
+            c.notify("$/cancelRequest", {"id": rid})
+            start = time.time()
+            resp = c.response_to(rid, timeout=10)
+            log_result("$/cancelRequest ends the wait with RequestCancelled",
+                       resp is not None and (resp.get("error") or {}).get("code") == -32800
+                       and time.time() - start < 5, f"got: {resp}")
+        finally:
+            c.close()
+
+        # --- cloud providers: no key, no request; and no key under insecure TLS ---
+        c, init = session({"provider": "anthropic"},
+                          env={"ANTHROPIC_API_KEY": "sk-test-not-real",
+                               "OBJECK_TLS_INSECURE_SKIP_VERIFY": "1"})
+        try:
+            resp = c.request("textDocument/inlineCompletion", where, timeout=30)
+            log_result("a cloud provider refuses its key while certificate checking is off",
+                       items_of(resp) == [], f"got: {resp}")
+        finally:
+            c.close()
+
+        c, init = session({"provider": "no-such-provider"})
+        try:
+            resp = c.request("textDocument/inlineCompletion", where)
+            log_result("an unknown provider is none", items_of(resp) == [], f"got: {resp}")
+        finally:
+            c.close()
+    finally:
+        fake.stop()
+
+
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
     """The base protocol, not the language features (#1215)."""
     init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
@@ -3584,6 +3801,7 @@ def main():
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
+    check_inline_completion(obr, server_obe, apis_json, bin_dir)
     check_utf16_only_client(obr, server_obe, apis_json, bin_dir)
     check_analyzer_enum_items(obr, server_obe, apis_json, bin_dir)
 

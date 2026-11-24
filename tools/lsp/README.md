@@ -197,6 +197,7 @@ graph LR
 | Folding Range | `textDocument/foldingRange` |
 | Selection Range | `textDocument/selectionRange` |
 | Inlay Hint | `textDocument/inlayHint` |
+| Inline Completion | `textDocument/inlineCompletion` (ghost text from a model; off by default, see below) |
 | Semantic Tokens | `textDocument/semanticTokens/full`, `/full/delta`, `/range` |
 | Call Hierarchy | `textDocument/prepareCallHierarchy`, `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls` |
 | Type Hierarchy | `textDocument/prepareTypeHierarchy`, `typeHierarchy/supertypes`, `typeHierarchy/subtypes` |
@@ -217,8 +218,40 @@ graph LR
 | Watch File Changes | `workspace/didChangeWatchedFiles` |
 | Workspace Folder Changes | `workspace/didChangeWorkspaceFolders` |
 | Find Symbol | `workspace/symbol` |
+| Configuration | `workspace/didChangeConfiguration` (the `objeck.inlineCompletion` section) |
 
 </details>
+
+## Inline completion (ghost text), off by default
+
+`textDocument/inlineCompletion` (LSP 3.18) suggests the next statement as ghost text from a
+language model. **It is off by default, and with the provider `none` nothing leaves your machine.**
+Code is sent to a model only after you choose a provider:
+
+| Provider | Where the code goes | Key |
+|----------|---------------------|-----|
+| `none` (default) | nowhere | none |
+| `ollama` | a local Ollama server, `http://localhost:11434` unless `ollamaHost` says otherwise (a host that is not this machine receives the code) | none |
+| `anthropic` | Anthropic's API | `ANTHROPIC_API_KEY` or `anthropic_api_key.dat`, as the `API.Anthropic` library reads it |
+| `openai` | OpenAI's API | `openai_api_key.dat`, as `API.OpenAI` reads it |
+| `gemini` | Google's API | the key file `API.Google.Gemini` reads |
+
+The server asks a provider with the text before the cursor (at most 4,000 characters) and a short
+suffix (500), takes the first statement or block of the answer, and replies with one item at the
+cursor. It uses the Objeck AI libraries' own HTTP clients, so a cloud provider is subject to their
+rules: the key is refused while `OBJECK_TLS_INSECURE_SKIP_VERIFY` is set. A provider that does not
+answer within `timeoutMs` (3 seconds) is ignored for that request, `$/cancelRequest` ends the wait,
+and any failure is an empty list, never an error.
+
+Settings, under `objeck.inlineCompletion` in VS Code (any client can send them as
+`initializationOptions.inlineCompletion` or in `workspace/didChangeConfiguration`):
+
+| Setting | Default | |
+|---------|---------|-|
+| `provider` | `none` | `none`, `ollama`, `anthropic`, `openai` or `gemini` |
+| `model` | the provider's | ollama `qwen2.5-coder:1.5b`, anthropic `claude-haiku-4-5`, openai `gpt-4o-mini`, gemini `gemini-2.5-flash` |
+| `ollamaHost` | `http://localhost:11434` | the Ollama server |
+| `timeoutMs` | `3000` | 200 to 30000 |
 
 ## Development
 
@@ -231,8 +264,8 @@ cd clients/vscode && npm run compile
 **Building the LSP server** (requires [Objeck](https://github.com/objeck/objeck-lang)):
 ```sh
 cd server
-obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs \
-    -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
+obc -src frameworks.obs,proxy.obs,server.obs,inline_completion.obs,format_code/scanner.obs,format_code/formatter.obs \
+    -lib diags,net,json,regex,cipher,net_server,misc,ollama,anthropic,openai,gemini -dest objeck_lsp.obe
 ```
 
 **Testing the server:** `python tests/run_lsp_tests.py <objeck>/bin [server_dir]`.
