@@ -1,0 +1,189 @@
+#~
+Agent demo: give a chat model Objeck functions as tools and get the final answer (API.Agent).
+
+Offline, no key and no network: a scripted fake model asks for tools, the loop runs them, and the program
+prints each step as it happens.
+
+  obc -src agent_demo.obs -lib agent,net,json,cipher,misc -dest agent_demo.obe
+  obr agent_demo.obe
+
+Against a real model: name the provider and the model, then the question. The key comes from the
+environment (ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY) or a key file in the working directory
+(anthropic_api_key.dat, openai_api_key.dat, gemini_api_key.dat); Ollama needs no key.
+
+  export ANTHROPIC_API_KEY=...
+  obr agent_demo.obe anthropic claude-sonnet-5-5 "What is 17 * 23, and what is the weather in Paris?"
+  obr agent_demo.obe openai gpt-5 "..."
+  obr agent_demo.obe gemini gemini-2.5-flash "..."
+  obr agent_demo.obe ollama llama3.2 "..."
+
+The send_email tool only prints; it is marked dangerous, so the loop asks the approver before it runs.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection;
+
+# Prints each step as it happens
+class Printer implements AgentObserver {
+  New() {
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+    if(reply->GetText()->Size() > 0) {
+      text := reply->GetText();
+      "  [{$step_index}] model: {$text}"->PrintLine();
+    };
+
+    calls := reply->GetToolCalls();
+    i := 0;
+    while(i < calls->Size()) {
+      call := calls->Get(i);
+      description := call->ToString();
+      "  [{$step_index}] model asks for {$description}"->PrintLine();
+      i += 1;
+    };
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+    status := result->GetStatus();
+    content := result->GetContent();
+    "  [{$step_index}] {$(result->GetToolName())} -> {$status}: {$content}"->PrintLine();
+  }
+}
+
+# Lets mail go to example.com only; a real program would ask the user
+class MailApprover implements AgentApprover {
+  New() {
+  }
+
+  method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+    to := call->GetArgument("to");
+    allowed := to <> Nil & to->EndsWith("@example.com");
+    verdict := "declined";
+    if(allowed) {
+      verdict := "approved";
+    };
+    "  (approver) {$(tool->GetName())} to {$to}: {$verdict}"->PrintLine();
+    return allowed;
+  }
+}
+
+class SendEmail implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    to := arguments->Get("to")->GetString();
+    "  (pretend) sending an email to {$to}"->PrintLine();
+    return "sent";
+  }
+}
+
+class AgentDemo {
+  function : Weather(arguments : JsonElement) ~ String {
+    city := arguments->Get("city")->GetString();
+    if(city->Equals("Paris")) {
+      return "18C and sunny";
+    };
+    if(city->Equals("Oslo")) {
+      return "2C and snowing";
+    };
+    Runtime->Raise(Error->New("no weather station for {$city}"));
+    return "";
+  }
+
+  function : Tools() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+    registry->Add(AgentTools->CurrentTime());
+
+    weather_schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"a city name\"}},\"required\":[\"city\"],\"additionalProperties\":false}");
+    registry->Add(AgentTool->New("get_weather", "Gets the current weather for a city", weather_schema, Func2Ref->New(AgentDemo->Weather(JsonElement) ~ String)<JsonElement, String>));
+
+    mail_schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"to\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"}},\"required\":[\"to\",\"body\"],\"additionalProperties\":false}");
+    registry->Add(AgentTool->New("send_email", "Sends an email", mail_schema, SendEmail->New())->SetDangerous(true));
+    return registry;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() >= 3) {
+      Live(args[0], args[1], args[2]);
+    }
+    else {
+      Offline();
+    };
+  }
+
+  # a scripted model, so the demo runs anywhere
+  function : Offline() ~ Nil {
+    "== Offline: a scripted model asks for two tools at once"->PrintLine();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("call_1", "calculator", JsonParser->TextToElement("{\"expression\":\"17 * 23\"}")));
+    calls->AddBack(AgentToolCall->New("call_2", "get_weather", JsonParser->TextToElement("{\"city\":\"Paris\"}")));
+
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->AskAll(calls));
+    script->AddBack(AgentReply->Say("17 * 23 is 391, and Paris is 18C and sunny."));
+
+    agent := Agent->New(ScriptedBackend->New(script), Tools());
+    agent->SetObserver(Printer->New());
+    result := agent->Run("What is 17 * 23, and what is the weather in Paris?");
+    "answer: {$(result->GetText())}"->PrintLine();
+
+    "== Offline: a failing tool, a bad call and an email nobody approved"->PrintLine();
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("call_1", "get_weather", "{\"city\":\"Atlantis\"}"));
+    script->AddBack(AgentReply->Ask("call_2", "calculator", "{\"expression\":\"1 / 0\"}"));
+    script->AddBack(AgentReply->Ask("call_3", "get_weather", "{\"town\":\"Oslo\"}"));
+    script->AddBack(AgentReply->Ask("call_4", "send_email", "{\"to\":\"boss@elsewhere.org\",\"body\":\"hi\"}"));
+    script->AddBack(AgentReply->Ask("call_5", "send_email", "{\"to\":\"ada@example.com\",\"body\":\"hello\"}"));
+    script->AddBack(AgentReply->Say("Atlantis has no weather station, 1/0 is undefined, and the email to ada@example.com went out."));
+
+    agent := Agent->New(ScriptedBackend->New(script), Tools());
+    agent->SetObserver(Printer->New());
+    agent->SetApprover(MailApprover->New());
+    result := agent->Run("Try a few things.");
+    "answer: {$(result->GetText())}"->PrintLine();
+    "tool calls: {$(result->GetToolCallCount())}, steps: {$(result->GetSteps()->Size())}, status: {$(result->GetStatus())}"->PrintLine();
+
+    "== The whole transcript"->PrintLine();
+    result->ToString()->PrintLine();
+  }
+
+  # a real model: provider, model, question
+  function : Live(provider : String, model : String, question : String) ~ Nil {
+    backend : ChatBackend;
+    if(provider->Equals("anthropic")) {
+      backend := AnthropicBackend->New(model, Nil);
+    }
+    else if(provider->Equals("openai")) {
+      backend := OpenAIBackend->New(model, Nil);
+    }
+    else if(provider->Equals("gemini")) {
+      backend := GeminiBackend->New(model, Nil);
+    }
+    else if(provider->Equals("ollama")) {
+      backend := OllamaBackend->New(model);
+    }
+    else {
+      "unknown provider '{$provider}': use anthropic, openai, gemini or ollama"->ErrorLine();
+      Runtime->Exit(1);
+    };
+
+    agent := Agent->New(backend, Tools());
+    agent->SetSystem("You are a helpful assistant. Use the tools when they help, and answer briefly.");
+    agent->SetMaxSteps(8);
+    agent->SetToolTimeout(10000);
+    agent->SetObserver(Printer->New());
+    agent->SetApprover(MailApprover->New());
+
+    result := agent->Run(question);
+    if(result->IsCompleted()) {
+      "answer: {$(result->GetText())}"->PrintLine();
+    }
+    else {
+      "the run did not finish: {$(result->GetError())}"->ErrorLine();
+      Runtime->Exit(1);
+    };
+  }
+}

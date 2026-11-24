@@ -103,6 +103,7 @@ set -o pipefail
   "$SRC/gemini.obs" \
   "$SRC/ollama.obs" \
   "$SRC/anthropic.obs" \
+  "$SRC/agent.obs" \
   "$SRC/json_rpc.obs" \
   "$SRC/models.obs" \
   "$SRC/opencv.obs" \
