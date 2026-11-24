@@ -186,7 +186,8 @@ namespace Runtime {
     };
 
     // the sentinel's handler address: never a real instruction index
-    static const long THREAD_FAULT_IP = 0x7FFFFFFE;
+    // (an enumerator, not a static const long: that would need a definition where it is bound to a reference)
+    enum : long { THREAD_FAULT_IP = 0x7FFFFFFE };
 
     //
     // This thread's handler state. Reachable from anywhere on the thread,
