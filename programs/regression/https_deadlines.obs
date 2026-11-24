@@ -1,0 +1,406 @@
+#~
+# HttpsClient takes a connect timeout, a read timeout and a deadline for a whole request
+#
+# The TLS twin of http_deadlines. HttpsClient had no way to bound a request either: a TLS read
+# waited 300 s (OBJECK_TLS_RECV_TIMEOUT changes it for every client in the process) and started
+# the wait again with every byte, so a server that dribbled its reply kept a request alive for as
+# long as it liked, and a server that accepted the TCP connection and never answered the
+# ClientHello left the handshake waiting out that same timeout. HttpsClient now has
+# SetConnectTimeout (the TCP connect and the handshake, each), SetReadTimeout (one wait) and
+# SetDeadline (the connect, the handshake, the send and every read, from the start of the call),
+# which holds inside a blocked TLS read. A request that ends on one is response code 0, with the
+# reason in GetError() and GetErrorCode().
+#
+#   - a TLS server that dribbles a body a byte every 100 ms: a 1 s deadline ends it at ~1 s
+#   - one that finishes the handshake and never answers: a read timeout, and a deadline
+#   - a plain TCP server that never answers the ClientHello: a connect timeout, and a deadline,
+#     end the handshake
+#   - the dribble with no deadline, with a read timeout shorter than the whole of it, and with a
+#     deadline longer than it takes, succeeds
+#   - a fast request with every limit set is unaffected
+#
+# The certificate is made with openssl, as tls_client_recv_timeout does. Every server is on loopback.
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.IO.Net, System.IO.Filesystem, System.Concurrency, System.Time, Web.HTTP;
+
+class TlsWire {
+	# the request's head: false when the peer sent nothing
+	function : ReadHead(socket : TCPSecureSocket) ~ Bool {
+		first := socket->ReadLine();
+		if(first = Nil | first->Size() = 0) {
+			return false;
+		};
+
+		line : String := Nil;
+		do {
+			line := socket->ReadLine();
+		}
+		while(line <> Nil & line->Size() > 0);
+		return true;
+	}
+}
+
+# Answers a TLS connection: kind 0 a body a byte at a time, 1 at once, 2 not at all. The
+# handshake runs in the first read (TCPSecureSocketServer->Accept leaves it to the connection's
+# thread), so every kind reads the request first: kind 2 has completed the handshake and
+# then says nothing
+class TlsResponder from Thread {
+	@client : TCPSecureSocket;
+	@kind : Int;
+	@count : Int;
+	@delay_ms : Int;
+
+	New(client : TCPSecureSocket, kind : Int, count : Int, delay_ms : Int) {
+		Parent("tls-responder");
+		@client := client;
+		@kind := kind;
+		@count := count;
+		@delay_ms := delay_ms;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		if(TlsWire->ReadHead(@client)) {
+			if(@kind = 2) {
+				while(true) {
+					Thread->Sleep(1000);
+				};
+			}
+			else if(@kind = 1) {
+				@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: close\r\n\r\nhello");
+			}
+			else {
+				@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$@count}\r\nConnection: close\r\n\r\n");
+				for(i := 0; i < @count; i += 1;) {
+					if(<>@client->WriteByte(120)) {
+						break;
+					};
+					Thread->Sleep(@delay_ms);
+				};
+			};
+		};
+		@client->Close();
+	}
+}
+
+# Takes TLS connections and hands each to a TlsResponder of the given kind
+class TlsAcceptor from Thread {
+	@server : TCPSecureSocketServer;
+	@kind : Int;
+	@count : Int;
+	@delay_ms : Int;
+
+	New(server : TCPSecureSocketServer, kind : Int, count : Int, delay_ms : Int) {
+		Parent("tls-acceptor");
+		@server := server;
+		@kind := kind;
+		@count := count;
+		@delay_ms := delay_ms;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				TlsResponder->New(client, @kind, @count, @delay_ms)->Execute(Nil);
+			};
+		};
+	}
+}
+
+# Takes TCP connections and never answers the ClientHello
+class QuietPlainAcceptor from Thread {
+	@server : TCPSocketServer;
+	@held : Vector<TCPSocket>;
+
+	New(server : TCPSocketServer) {
+		Parent("quiet-plain");
+		@server := server;
+		@held := Vector->New()<TCPSocket>;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				@held->AddBack(client);
+			};
+		};
+	}
+}
+
+class HttpsDeadlines {
+	@failed : Int;
+	@pem : String;
+	@key : String;
+
+	function : Main(args : String[]) ~ Nil {
+		HttpsDeadlines->New()->Run();
+	}
+
+	New() {
+		@failed := 0;
+	}
+
+	method : Run() ~ Nil {
+		name := "https-deadlines-{$Runtime->GetProcessId()}";
+		@pem := "{$name}-cert.pem";
+		@key := "{$name}-key.pem";
+		File->Delete(@pem);
+		File->Delete(@key);
+		if(<>MakeServerCert(@pem, @key, "/CN=objeck-https-deadlines-test", "IP:127.0.0.1")) {
+			"FAIL: openssl could not make the test certificate"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		Dribbles();
+		Quiet();
+		Handshakes();
+		Fast();
+
+		File->Delete(@pem);
+		File->Delete(@key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: HttpsClient connect timeout, read timeout and deadline"->PrintLine();
+		Runtime->Exit(0);
+	}
+
+	method : Serve(kind : Int, count : Int, delay_ms : Int) ~ Int {
+		server := TCPSecureSocketServer->New(@pem, @key, "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			"FAIL: the TLS test server did not listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		TlsAcceptor->New(server, kind, count, delay_ms)->Execute(Nil);
+		return server->GetPort();
+	}
+
+	method : UrlFor(port : Int) ~ Web.HTTP.Url {
+		return Web.HTTP.Url->New("https://127.0.0.1:{$port}/x");
+	}
+
+	method : Get(client : HttpsClient, port : Int) ~ Web.HTTP.Response {
+		return client->Get(UrlFor(port), "text/plain", @pem);
+	}
+
+	method : Elapsed(timer : Timer) ~ Float {
+		timer->End();
+		return timer->GetElapsedTime();
+	}
+
+	method : Code(response : Web.HTTP.Response) ~ Int {
+		return response <> Nil ? response->GetCode() : -1;
+	}
+
+	method : DeadlineCode() ~ Int {
+		return RequestLimits->Error->DEADLINE_EXCEEDED->As(Int);
+	}
+
+	method : ReadCode() ~ Int {
+		return RequestLimits->Error->READ_TIMEOUT->As(Int);
+	}
+
+	method : ConnectCode() ~ Int {
+		return RequestLimits->Error->CONNECT_TIMEOUT->As(Int);
+	}
+
+	method : Dribbles() ~ Nil {
+		# 600 bytes would take a minute; the deadline ends it at one second
+		port := Serve(0, 600, 100);
+		client := HttpsClient->New();
+		client->SetDeadline(1000);
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("body dribble: the request fails (code {$Code(response)})", response <> Nil & response->GetCode() = 0);
+		Check("body dribble: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("body dribble: the reason is on the response too", response->GetErrorCode() = DeadlineCode() & response->GetError() <> Nil);
+		Check("body dribble: at about the deadline, not a minute later ({$seconds} s)", seconds > 0.8 & seconds < 6.0);
+
+		# the static helper takes a deadline too (no pem, so it is the failure that is checked)
+		timer := Timer->New(true);
+		response := HttpsClient->QuickGet(UrlFor(port), 1000);
+		seconds := Elapsed(timer);
+		Check("QuickGet with a deadline: ends, not as a success", response = Nil | response->GetCode() = 0);
+		Check("QuickGet with a deadline: ends soon ({$seconds} s)", seconds < 6.0);
+
+		# 12 bytes, 100 ms apart: 1.2 s in all, and it is a good reply
+		port := Serve(0, 12, 100);
+		client := HttpsClient->New();
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("no deadline: the slow reply is complete (code {$Code(response)})", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+		Check("no deadline: nothing ended it", client->GetErrorCode() = 0 & client->GetError() = Nil);
+		Check("no deadline: it took the time the server did ({$seconds} s)", seconds > 1.0);
+
+		# a deadline of 0 is none
+		client := HttpsClient->New();
+		client->SetDeadline(0);
+		response := Get(client, port);
+		Check("deadline 0: the slow reply is complete", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+
+		# a deadline the reply fits in
+		client := HttpsClient->New();
+		client->SetDeadline(10000);
+		response := Get(client, port);
+		Check("long deadline: the slow reply is complete", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+		Check("long deadline: nothing ended it", client->GetErrorCode() = 0);
+
+		# a read timeout shorter than the whole reply but longer than the gap between bytes
+		# starts again with each byte, so it does not end this
+		client := HttpsClient->New();
+		client->SetReadTimeout(500);
+		response := Get(client, port);
+		Check("read timeout: restarts with each byte, the slow reply is complete", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+	}
+
+	# a TLS server that finishes the handshake and then says nothing
+	method : Quiet() ~ Nil {
+		port := Serve(2, 0, 0);
+
+		client := HttpsClient->New();
+		client->SetReadTimeout(500);
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("read timeout: the request fails (code {$Code(response)})", response <> Nil & response->GetCode() = 0);
+		Check("read timeout: it ends on the read timeout ({$client->GetErrorCode()})", client->GetErrorCode() = ReadCode());
+		Check("read timeout: after the timeout, not the default 300 s ({$seconds} s)", seconds > 0.4 & seconds < 6.0);
+
+		client := HttpsClient->New();
+		client->SetReadTimeout(20000);
+		client->SetDeadline(600);
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("deadline under the read timeout: the request fails", response <> Nil & response->GetCode() = 0);
+		Check("deadline under the read timeout: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("deadline under the read timeout: at about the deadline ({$seconds} s)", seconds > 0.5 & seconds < 6.0);
+
+		# a POST too
+		client := HttpsClient->New();
+		client->SetDeadline(600);
+		timer := Timer->New(true);
+		response := client->Post(UrlFor(port), "ping"->ToByteArray(), "text/plain", @pem);
+		seconds := Elapsed(timer);
+		Check("post to a quiet server: the request fails on the deadline", response <> Nil & response->GetCode() = 0 & client->GetErrorCode() = DeadlineCode());
+		Check("post to a quiet server: at about the deadline ({$seconds} s)", seconds > 0.5 & seconds < 6.0);
+	}
+
+	# a server that takes the TCP connection and never answers the ClientHello
+	method : Handshakes() ~ Nil {
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>server->Listen(16)) {
+			Fail("the quiet server did not listen");
+			return;
+		};
+		port := server->GetPort();
+		QuietPlainAcceptor->New(server)->Execute(Nil);
+
+		client := HttpsClient->New();
+		client->SetConnectTimeout(500);
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("connect timeout: the request fails (code {$Code(response)})", response <> Nil & response->GetCode() = 0);
+		Check("connect timeout: it ends on the connect timeout ({$client->GetErrorCode()})", client->GetErrorCode() = ConnectCode());
+		Check("connect timeout: GetError says why ('{$client->GetError()}')", client->GetError() <> Nil & client->GetError()->Has("connect timed out"));
+		Check("connect timeout: after the timeout, not the default 300 s ({$seconds} s)", seconds > 0.4 & seconds < 6.0);
+
+		client := HttpsClient->New();
+		client->SetDeadline(600);
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("deadline: the handshake is cut short (code {$Code(response)})", response <> Nil & response->GetCode() = 0);
+		Check("deadline: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("deadline: at about the deadline ({$seconds} s)", seconds > 0.5 & seconds < 6.0);
+
+		# a refused connect is not a timeout (Windows takes about two seconds to report one)
+		closed := TCPSocketServer->New("127.0.0.1", 0);
+		closed->Listen(1);
+		closed_port := closed->GetPort();
+		closed->Close();
+		client := HttpsClient->New();
+		client->SetConnectTimeout(10000);
+		timer := Timer->New(true);
+		response := Get(client, closed_port);
+		seconds := Elapsed(timer);
+		Check("refused: the request does not succeed", response = Nil | response->GetCode() = 0);
+		Check("refused: it is not reported as a timeout ({$client->GetErrorCode()})", client->GetErrorCode() = 0);
+		Check("refused: soon ({$seconds} s)", seconds < 8.0);
+	}
+
+	method : Fast() ~ Nil {
+		port := Serve(1, 0, 0);
+
+		client := HttpsClient->New();
+		client->SetConnectTimeout(5000);
+		client->SetReadTimeout(5000);
+		client->SetDeadline(10000);
+		Check("getters", client->GetConnectTimeout() = 5000 & client->GetReadTimeout() = 5000 & client->GetDeadline() = 10000);
+		timer := Timer->New(true);
+		response := Get(client, port);
+		seconds := Elapsed(timer);
+		Check("fast: answered (code {$Code(response)})", response <> Nil & response->GetCode() = 200);
+		Check("fast: the body", response <> Nil & response->GetContent() <> Nil & String->New(response->GetContent())->Equals("hello"));
+		Check("fast: nothing was cut short", client->GetErrorCode() = 0 & client->GetError() = Nil);
+		Check("fast: quickly ({$seconds} s)", seconds < 5.0);
+
+		plain := HttpsClient->New();
+		Check("defaults: no connect timeout, no deadline", plain->GetConnectTimeout() = 0 & plain->GetDeadline() = 0);
+		Check("defaults: the read timeout is the named constant", plain->GetReadTimeout() = HttpsClient->Timeout->DEFAULT_READ_MS->As(Int) & plain->GetReadTimeout() = 300000);
+		response := Get(plain, port);
+		Check("defaults: answered", response <> Nil & response->GetCode() = 200 & plain->GetErrorCode() = 0);
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			Fail(name);
+		};
+	}
+
+	method : Fail(name : String) ~ Nil {
+		"  FAIL: {$name}"->PrintLine();
+		@failed += 1;
+	}
+
+	# A self-signed certificate valid from 2025 rather than from the second it is made: a clock
+	# that steps back (WSL2's does, by seconds) would see one that is not valid yet. Before
+	# OpenSSL 3.4 only `openssl ca` can set the start, so it signs the request, in a scratch
+	# directory removed afterwards (see tls_client_recv_timeout).
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}
