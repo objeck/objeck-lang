@@ -198,6 +198,9 @@ graph LR
 | Selection Range | `textDocument/selectionRange` |
 | Inlay Hint | `textDocument/inlayHint` |
 | Inline Completion | `textDocument/inlineCompletion` (ghost text from a model; off by default, see below) |
+| Inline Value | `textDocument/inlineValue` (locals and parameters as variable lookups, instance variables as expressions, while debugging) |
+| Linked Editing Range | `textDocument/linkedEditingRange` (every occurrence of a local or parameter in its method) |
+| On-Type Formatting | `textDocument/onTypeFormatting` (`}`, `;` and new line re-indent the line to the formatter's depth) |
 | Semantic Tokens | `textDocument/semanticTokens/full`, `/full/delta`, `/range` |
 | Call Hierarchy | `textDocument/prepareCallHierarchy`, `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls` |
 | Type Hierarchy | `textDocument/prepareTypeHierarchy`, `typeHierarchy/supertypes`, `typeHierarchy/subtypes` |
@@ -219,6 +222,7 @@ graph LR
 | Workspace Folder Changes | `workspace/didChangeWorkspaceFolders` |
 | Find Symbol | `workspace/symbol` |
 | Configuration | `workspace/didChangeConfiguration` (the `objeck.inlineCompletion` section) |
+| Rename Files | `workspace/willRenameFiles` (`build.json` follows a source file, or a directory of them, that is renamed or moved) |
 
 </details>
 

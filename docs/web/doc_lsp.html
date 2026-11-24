@@ -252,6 +252,9 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Feature">Selection Range</td><td data-label="Method"><code>textDocument/selectionRange</code></td></tr>
       <tr><td data-label="Feature">Inlay Hint</td><td data-label="Method"><code>textDocument/inlayHint</code></td></tr>
       <tr><td data-label="Feature">Inline Completion</td><td data-label="Method"><code>textDocument/inlineCompletion</code> (ghost text from a model; off by default, see below)</td></tr>
+      <tr><td data-label="Feature">Inline Value</td><td data-label="Method"><code>textDocument/inlineValue</code> (locals and parameters as variable lookups, instance variables as expressions, while debugging)</td></tr>
+      <tr><td data-label="Feature">Linked Editing Range</td><td data-label="Method"><code>textDocument/linkedEditingRange</code> (every occurrence of a local or parameter in its method)</td></tr>
+      <tr><td data-label="Feature">On-Type Formatting</td><td data-label="Method"><code>textDocument/onTypeFormatting</code> (<code>}</code>, <code>;</code> and new line re-indent the line to the formatter's depth)</td></tr>
       <tr><td data-label="Feature">Semantic Tokens</td><td data-label="Method"><code>textDocument/semanticTokens/full</code>, <code>/full/delta</code>, <code>/range</code></td></tr>
       <tr><td data-label="Feature">Call Hierarchy</td><td data-label="Method"><code>textDocument/prepareCallHierarchy</code>, <code>callHierarchy/incomingCalls</code>, <code>callHierarchy/outgoingCalls</code></td></tr>
       <tr><td data-label="Feature">Type Hierarchy</td><td data-label="Method"><code>textDocument/prepareTypeHierarchy</code>, <code>typeHierarchy/supertypes</code>, <code>typeHierarchy/subtypes</code></td></tr>
@@ -279,6 +282,7 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Feature">Workspace Folder Changes</td><td data-label="Method"><code>workspace/didChangeWorkspaceFolders</code></td></tr>
       <tr><td data-label="Feature">Find Symbol</td><td data-label="Method"><code>workspace/symbol</code></td></tr>
       <tr><td data-label="Feature">Configuration</td><td data-label="Method"><code>workspace/didChangeConfiguration</code> (the <code>objeck.inlineCompletion</code> section)</td></tr>
+      <tr><td data-label="Feature">Rename Files</td><td data-label="Method"><code>workspace/willRenameFiles</code> (<code>build.json</code> follows a source file, or a directory of them, that is renamed or moved)</td></tr>
      </tbody>
     </table>
     <div class="raw"></details></div>
