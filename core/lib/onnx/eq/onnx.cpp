@@ -432,6 +432,18 @@ extern "C" {
             session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          }
 
+         // A CUDA graph records one stream of kernels; the parallel executor this library
+         // defaults the CUDA provider to launches on several, and the recording fails
+         // (the first run fails with a CUDA error from cuda_call.cc, measured on ORT 1.24.2).
+         // So a session that asks for a graph runs sequentially unless it says otherwise below.
+         if(tuning == "cuda") {
+            const auto graph_option = provider_options.find("enable_cuda_graph");
+            int graph_flag = 0;
+            if(graph_option != provider_options.end() && parse_flag(graph_option->second, graph_flag) && graph_flag) {
+               session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+            }
+         }
+
          // What the program asked for wins over the defaults chosen above
          apply_session_options(session_options, tuning_options);
 

@@ -167,7 +167,7 @@ Same card and runtime as above, 10 warm-up and 40 timed runs, `ep=cuda`, the CUD
 What this says, honestly:
 
 - **FP16 helps where the GPU is the bottleneck and not before.** Batch 32 with the data resident: 5.81 ms (FP32) to 4.05 ms (FP16), a 1.4x speed-up and 7,895 images/s. At batch 1 and 8 the model is too small for half precision to show (the kernels are launch-bound) and FP16 is no faster, within noise. Through plain `Session->Run` it is not faster at any batch, because the run is dominated by converting millions of `Float`s on the host, which FP16 makes slightly *more* expensive (rounding each one to half). The place to use an FP16 model is a binding, with the data resident or pre-packed (`bound_bits`), or the FP32-in/out wrapper (`_fp16_io32`), whose host traffic is plain FP32: 7.27 ms with copies at batch 32 against 10.95 ms for the FP16-IO model.
-- **INT8 QDQ is slower than FP32 on the CUDA provider** (9 to 10 ms against 2 to 6 ms). The CUDA provider executes each `QuantizeLinear` and `DequantizeLinear` as its own kernel around FP32 convolutions; it does not fuse them into int8 convolutions. That is not a defect in the quantization, it is the wrong provider for it: quantized models are for the CPU provider (see the next row) and for TensorRT, which is the next section.
+- **INT8 QDQ is slower than FP32 on the CUDA provider** (9 to 10 ms against 2 to 6 ms). The CUDA provider executes each `QuantizeLinear` and `DequantizeLinear` as its own kernel around FP32 convolutions; it does not fuse them into int8 convolutions. That is not a defect in the quantization, it is the wrong provider for it: quantized models are for the CPU provider (see the next row) and for TensorRT, which is the next section. (These INT8 rows were taken with an earlier `make_models.py` that quantized every Conv, MatMul and Gemm and the biases; the script now quantizes only `Conv`, symmetric, with unquantized biases, the form TensorRT's explicit-quantization path accepts. The conclusion about the CUDA provider does not change; the TensorRT rows below use the current script.)
 - On the CPU provider, the same INT8 QDQ model runs 30 ms (batch 1) and 181 ms (batch 8) against 26 ms and 111 ms for FP32 here, on a 16-core CPU shared with other work, so the CPU numbers are the least stable in this document; do not read a ranking into them.
 
 #### How far a variant drifts
@@ -182,5 +182,126 @@ What this says, honestly:
 | INT8 QDQ on `cuda`, **calibrated on random data** | 4.78 | 0.19 | 0.44 | 5 / 16 |
 
 The INT8 row is what synthetic calibration costs: a model calibrated on a handful of random images and fed a synthetic ramp is a speed fixture, not a classifier. Calibrate on real data before you read an accuracy off it.
+
+### Session and provider options
+
+The config map handed to a `Session` is one flat `String`-to-`String` map. The keys:
+
+| Key | Meaning |
+|---|---|
+| `ep` | the provider: `cpu`, `cuda`, `tensorrt` (`trt`), `dml`, `qnn`, `vitisai`, `coreml` |
+| `intra_op_threads`, `inter_op_threads` | threads ONNX Runtime may use inside one operator / across operators (0 = its own choice) |
+| `graph_optimization` | `disable`, `basic`, `extended`, `all` |
+| `execution_mode` | `sequential` or `parallel` |
+| `mem_pattern`, `cpu_mem_arena` | `0` or `1` |
+| `session_config.<key>` | a raw ONNX Runtime session config entry, `<key>` verbatim, e.g. `session_config.session.disable_prepacking=1` |
+| anything else | an option of the provider chosen by `ep` |
+
+A session option with a value it cannot read is **refused** (the session does not open and says why), exactly as a provider option ONNX Runtime does not know is (`Unknown provider option`, an invalid `device_id`): nothing is dropped silently. Key names are not case sensitive. What you ask for wins over this library's per-provider defaults (the CUDA provider defaults to the parallel executor with the memory pattern off).
+
+```objeck
+config := Map->New()<String, String>;
+config->Insert("ep", "cuda");
+config->Insert("device_id", "0");
+config->Insert("cudnn_conv_algo_search", "HEURISTIC");   # CUDA provider options go straight through
+config->Insert("gpu_mem_limit", "2147483648");           # bytes the provider's arena may take
+config->Insert("intra_op_threads", "4");
+session := Session->New("model.onnx", config);
+```
+
+**CUDA provider options** worth knowing (the full list is ONNX Runtime's): `device_id`; `gpu_mem_limit` (bytes) and `arena_extend_strategy` (`kNextPowerOfTwo`, `kSameAsRequested`) for the memory arena; `cudnn_conv_algo_search` (`EXHAUSTIVE`, the default; `HEURISTIC`; `DEFAULT`); `cudnn_conv_use_max_workspace`; `use_tf32` (on by default on Ampere and newer, `0` for strict FP32); `enable_cuda_graph`; `do_copy_in_default_stream`; `tunable_op_enable`.
+
+**Measured on ResNet-34, `ep=cuda`, data resident, median ms (batch 1 / 8 / 32)**, 60 runs, the box shared with other work for this part of the run (load average 11 to 14), so read differences under 20% as noise:
+
+| options | batch 1 | batch 8 | batch 32 |
+|---|---:|---:|---:|
+| defaults (`EXHAUSTIVE`, TF32 on, parallel executor) | 2.98 | 3.26 | 6.39 |
+| `execution_mode=sequential` | 2.84 | 2.93 | 6.25 |
+| `cudnn_conv_algo_search=HEURISTIC` | 3.43 | 3.56 | 6.73 |
+| `cudnn_conv_algo_search=DEFAULT` | **8.34** | **9.32** | **15.55** |
+| `use_tf32=0` | 2.14 | 2.54 | 6.42 |
+
+`DEFAULT` skips cuDNN's algorithm search and is 2.5 to 3x slower than the search; `HEURISTIC` is within noise of `EXHAUSTIVE` and starts faster (no search at the first run of each shape). TF32 off costs nothing measurable on this model and brings the GPU within 1e-5 of the CPU instead of 1e-2. The executor mode makes no measurable difference for a single-chain network.
+
+**Arena and memory.** `gpu_mem_limit` caps the provider's arena, not the process: ResNet-34 at batch 32 held 1.0 to 1.3 GiB of GPU memory over the card's idle level with or without `gpu_mem_limit=536870912` and `arena_extend_strategy=kSameAsRequested` (the CUDA context, cuDNN and cuBLAS workspaces live outside the arena), and ran at the same speed (6.49 against 6.39 ms). Use it to keep several sessions from each growing to the whole card, not to shrink one.
+
+### CUDA graphs
+
+A CUDA graph records the kernels of a run once and replays them with a single launch: it removes the per-kernel launch cost, which is most of a small model's time. It needs fixed shapes, every node on the GPU, and the input and output tensors to stay at the same addresses, which is exactly what a bound `DeviceTensor` is:
+
+```objeck
+config->Insert("ep", "cuda");
+config->Insert("enable_cuda_graph", "1");          # ep=tensorrt: cuda_graph=1
+session := Session->New("model.onnx", config);
+
+input := DeviceTensor->ForInput(session, "data", [1, 3, 224, 224]);
+output := DeviceTensor->ForOutput(session, "output", [1, 1000]);
+bound := BoundSession->New(session);
+bound->BindInput("data", input);
+bound->BindOutput("output", output);
+for(i := 0; i < frames; i += 1;) {
+  input->Upload(frame[i]);        # refill IN PLACE: the replayed graph reads this address
+  bound->Run();                   # the first runs record the graph, the rest replay it
+};
+```
+
+A session that asks for a graph runs the CUDA provider **sequentially** unless it says otherwise: the parallel executor this library defaults the CUDA provider to launches on several streams and the recording fails (measured: the first run errors with a CUDA call failure). `onnx_gpu_options` checks that six runs, a refill in place and a return to the first image all answer the CPU's, for both providers.
+
+| ResNet-34, data resident, median ms | batch 1 | batch 8 | batch 32 |
+|---|---:|---:|---:|
+| `ep=cuda` | 2.98 | 3.26 | 6.39 |
+| `ep=cuda`, CUDA graph | **0.89** (1,122/s) | 2.34 | 5.87 |
+| `ep=tensorrt` FP16 | 0.99 | 2.34 | 1.88 |
+| `ep=tensorrt` FP16, CUDA graph | **0.86** (1,157/s) | 0.99 | 1.40 |
+
+A graph is a 3x win at batch 1 on the CUDA provider (launch-bound), and nothing at batch 32 (kernel-bound).
+
+### TensorRT
+
+`ep=tensorrt` compiles the model, or the parts of it TensorRT supports, into an engine for this GPU. It needs the NVIDIA driver, CUDA 12, cuDNN 9 and **TensorRT 10** libraries beside a GPU ONNX Runtime that carries the TensorRT provider (`OnnxRuntime->HasProvider("tensorrt")`). A runtime without it **refuses** the session with the usual message and never runs the model on another provider; one that has the provider but cannot load TensorRT says so from ONNX Runtime's own error. `ep=trt` is accepted as a short spelling.
+
+```objeck
+config := Map->New()<String, String>;
+config->Insert("ep", "tensorrt");
+config->Insert("fp16", "1");                  # half precision kernels where TensorRT can
+config->Insert("cuda_graph", "1");            # replay the captured kernels (see above)
+session := Session->New("resnet34.onnx", config);
+```
+
+| Key | ONNX Runtime option | Default |
+|---|---|---|
+| `fp16=1` | `trt_fp16_enable` | off |
+| `int8=1` | `trt_int8_enable`; the model must be QDQ-quantized (or give `trt_int8_calibration_table_name`) | off |
+| `engine_cache=0\|1` | `trt_engine_cache_enable` | **on** |
+| `engine_cache_path=` | `trt_engine_cache_path` | a per-user directory, one subdirectory per precision setting |
+| `timing_cache=0\|1` | `trt_timing_cache_enable` | on with the engine cache |
+| `workspace_mb=n` | `trt_max_workspace_size` | ONNX Runtime's |
+| `opt_level=0..5` | `trt_builder_optimization_level` | ONNX Runtime's |
+| `cuda_graph=1` | `trt_cuda_graph_enable` | off |
+| `cuda_fallback=0\|1` | append the CUDA provider after TensorRT for what TensorRT cannot take | **on** |
+| `cuda.<option>` | an option of that fallback CUDA provider, e.g. `cuda.gpu_mem_limit` | |
+| `trt_*` | any other TensorRT provider option, unchanged | |
+
+TensorRT builds an engine the first time it sees a model, a precision and an input shape, and an engine is tied to the model, the GPU, the TensorRT version and the settings above. **Engines are cached by default** (`~/.cache/objeck-onnx/tensorrt_cache/fp16-0_int8-0` on Linux, `%LOCALAPPDATA%\objeck-onnx\tensorrt_cache\...` on Windows, `~/Library/Caches/...` on macOS), in a subdirectory per precision setting so that an FP32 engine is never reused for `fp16=1`. Measured, ResNet-34 FP16, batch 1, from `Session->New` to the first finished run: **27.6 s cold, 2.3 s with the cache** (the engine file is 44 MB). Pass `engine_cache=0` to turn it off, or `engine_cache_path` to choose the directory (the test checks the engine lands there). Delete the directory after upgrading TensorRT or ONNX Runtime.
+
+TensorRT takes the parts of the model it supports; the rest would fall to the CPU. So the CUDA provider is appended after it, and only a node neither can run executes on the CPU (`cuda_fallback=0` leaves it out). Unknown `trt_` options are refused by ONNX Runtime, as is `device_id=99`.
+
+**Measured, ResNet-34, data resident (`bound_resident`), median ms and images/s**, 60 runs, same card. FP32 is the original model, `INT8 QDQ` the Conv-only QDQ model from `make_models.py` (symmetric, calibrated on synthetic data: a speed fixture):
+
+| model / settings | provider | batch 1 | batch 8 | batch 32 |
+|---|---|---:|---:|---:|
+| FP32 | cuda | 2.98 (336/s) | 3.26 (2,452/s) | 6.39 (5,010/s) |
+| FP32 | tensorrt | 1.14 (877/s) | 4.75 (1,684/s) | 5.17 (6,187/s) |
+| FP32, `fp16=1` | tensorrt | 0.99 (1,012/s) | 2.34 (3,414/s) | 1.88 (16,990/s) |
+| FP32, `fp16=1`, `cuda_graph=1` | tensorrt | 0.86 (1,157/s) | 0.99 (8,091/s) | 1.40 (22,878/s) |
+| INT8 QDQ, `int8=1` | tensorrt | 1.46 (684/s) | 3.16 (2,534/s) | 2.19 (14,619/s) |
+| INT8 QDQ, `int8=1`, `fp16=1` | tensorrt | 1.36 (736/s) | 1.66 (4,828/s) | 1.90 (16,804/s) |
+| INT8 QDQ, `int8=1`, `fp16=1`, `cuda_graph=1` | tensorrt | **0.57 (1,751/s)** | **0.71 (11,315/s)** | **1.28 (24,943/s)** |
+
+The single-image medians at batch 8 are the least stable here (a p95 of 8 ms for one of them), see `bench_run` output for each row's p95; the trend is not in doubt: **TensorRT FP16 with a CUDA graph is 3.3x to 4.5x the plain CUDA provider** (22,878 against 5,010 images/s at batch 32), and an INT8 QDQ model on TensorRT with FP16 and a graph reaches 24,943 images/s, 5x. On plain FP32 TensorRT is not clearly better than the CUDA provider's cuDNN kernels at batch 8 and 32. Through `Session->Run`, with host copies, none of this shows (every `run` row is 12 to 66 ms at batch 8 to 32), which is the argument for binding.
+
+A YOLO11 segmentation model (`yolov11.onnx`, 640x640, batch 1, data resident): `ep=cuda` 6.24 ms, `ep=tensorrt` 2.85 ms (350 images/s), `ep=tensorrt` with `fp16=1` 3.52 ms with a p95 of 5.8 ms (within noise of the FP32 engine at this size).
+
+**What was not checked.** `int8=1` with a calibration table (the implicit-quantization route) rather than a QDQ model; DLA (`trt_dla_enable`); dynamic-shape profiles (`trt_profile_*_shapes`), so each new batch size builds a new engine the first time; the Windows TensorRT DLLs (this host has no CUDA 12, cuDNN 9 or TensorRT 10 on Windows, and the build of `libobjk_onnx` for Windows was checked to compile only).
 
 **Rebuilding the numbers.** `programs/tests/onnx_gpu/run_bench.sh` runs the whole matrix and prints the table rows; see its README.
