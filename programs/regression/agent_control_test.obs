@@ -1,0 +1,842 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+Run control for API.Agent, against a scripted fake model (no key, no network): the cancellation token
+(before the first step, between steps, between tool calls, during a slow model call, linked to a parent),
+each budget (steps, model calls, tool calls, tokens, cost, wall-clock deadline) and its stop reason, the
+tool modes (IN_THREAD, BOUNDED_THREAD with an abandoned worker, PROCESS with a hung, a failing and a
+chatty child), the trace events and the JSON-lines trace file, retries, and the safety of a worker that
+finishes after the run moved on. Waits are generous so a loaded CI machine does not fail them.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.IO.Filesystem, System.Concurrency;
+
+class FastHandler implements AgentToolHandler {
+  @count : static : Int;
+
+  New() {
+  }
+
+  function : GetCount() ~ Int {
+    return @count;
+  }
+
+  function : Reset() ~ Nil {
+    @count := 0;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    @count += 1;
+    return "fast";
+  }
+}
+
+class SleepHandler implements AgentToolHandler {
+  @millis : Int;
+  @text : String;
+
+  New(millis : Int, text : String) {
+    @millis := millis;
+    @text := text;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(@millis);
+    return @text;
+  }
+}
+
+class LateHandler implements AgentToolHandler {
+  @finished : static : Int;
+
+  New() {
+  }
+
+  function : GetFinished() ~ Int {
+    return @finished;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(700);
+    @finished += 1;
+    return "late result that must never be seen";
+  }
+}
+
+class CrashHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    zero := 0;
+    return (10 / zero)->ToString();
+  }
+}
+
+class PollHandler implements AgentCancelableHandler {
+  @saw : static : Bool;
+
+  New() {
+  }
+
+  function : Saw() ~ Bool {
+    return @saw;
+  }
+
+  method : public : Run(arguments : JsonElement, cancel : AgentCancel) ~ String {
+    waited := 0;
+    while(waited < 5000 & <>cancel->IsCancelled()) {
+      Thread->Sleep(10);
+      waited += 10;
+    };
+
+    if(cancel->IsCancelled()) {
+      @saw := true;
+      return "stopped early";
+    };
+    return "ran to the end";
+  }
+}
+
+class Canceller from Thread {
+  @token : AgentCancel;
+  @millis : Int;
+
+  New(token : AgentCancel, millis : Int) {
+    Parent("canceller");
+    @token := token;
+    @millis := millis;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    Thread->Sleep(@millis);
+    @token->Cancel("stopped by the test");
+  }
+}
+
+class CancelOnReply implements AgentObserver {
+  @token : AgentCancel;
+  @after_reply : Int;
+  @after_tool : Int;
+
+  New(token : AgentCancel, after_reply : Int, after_tool : Int) {
+    @token := token;
+    @after_reply := after_reply;
+    @after_tool := after_tool;
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+    if(step_index = @after_reply) {
+      @token->Cancel();
+    };
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+    if(step_index = @after_tool) {
+      @token->Cancel();
+    };
+  }
+}
+
+class TraceObserver implements AgentObserver, AgentTraceSink {
+  @kinds : String;
+
+  New() {
+    @kinds := "";
+  }
+
+  method : public : GetKinds() ~ String {
+    return @kinds;
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+  }
+
+  method : public : OnEvent(event : AgentEvent) ~ Nil {
+    @kinds->Append(event->GetKind());
+    @kinds->Append(' ');
+  }
+}
+
+# fails a number of times with a key in the message, then answers
+class FlakyBackend implements ChatBackend {
+  @failures : Int;
+  @asked : Int;
+  @last_error : String;
+
+  New(failures : Int) {
+    @failures := failures;
+  }
+
+  method : public : GetName() ~ String {
+    return "flaky";
+  }
+
+  method : public : GetAsked() ~ Int {
+    return @asked;
+  }
+
+  method : public : GetLastError() ~ String {
+    return @last_error;
+  }
+
+  method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+    @asked += 1;
+    if(@asked <= @failures) {
+      @last_error := "HTTP 503 for key sk-ant-api03-abcdefghijklmnop1234567890";
+      return Nil;
+    };
+    return AgentReply->Say("recovered");
+  }
+}
+
+class AgentControlTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  function : Windows() ~ Bool {
+    return Directory->GetSlash() = '\\';
+  }
+
+  function : Now() ~ System.Time.Timer {
+    return System.Time.Timer->New(true);
+  }
+
+  function : Millis(timer : System.Time.Timer) ~ Int {
+    return (timer->GetElapsedTime() * 1000.0)->As(Int);
+  }
+
+  function : EmptySchema() ~ JsonElement {
+    return Json("{\"type\":\"object\",\"properties\":{}}");
+  }
+
+  function : Tool(name : String, handler : AgentToolHandler) ~ AgentTool {
+    return AgentTool->New(name, "a test tool", EmptySchema(), handler);
+  }
+
+  function : Registry(tool : AgentTool) ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    registry->Add(tool);
+    return registry;
+  }
+
+  function : Ask(id : String, name : String) ~ AgentReply {
+    return AgentReply->Ask(id, name, "{}");
+  }
+
+  function : Counted(reply : AgentReply, input : Int, output : Int) ~ AgentReply {
+    return AgentReply->New(reply->GetText(), reply->GetToolCalls(), reply->GetStopReason(), input, output);
+  }
+
+  function : FastAgent(script : Vector<AgentReply>) ~ Agent {
+    FastHandler->Reset();
+    return Agent->New(ScriptedBackend->New(script), Registry(Tool("fast", FastHandler->New())));
+  }
+
+  function : Script3() ~ Vector<AgentReply> {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Ask("c1", "fast"));
+    script->AddBack(Ask("c2", "fast"));
+    script->AddBack(Ask("c3", "fast"));
+    script->AddBack(AgentReply->Say("done"));
+    return script;
+  }
+
+  # ---- the cancellation token
+
+  function : TestToken() ~ Nil {
+    "-- the cancellation token"->PrintLine();
+    token := AgentCancel->New();
+    Check("a new token is not cancelled", <>token->IsCancelled() & token->GetReason() = Nil);
+    token->Cancel("first");
+    token->Cancel("second");
+    Check("Cancel is sticky and keeps the first reason", token->IsCancelled() & Same(token->GetReason(), "first"));
+
+    parent := AgentCancel->New();
+    child := AgentCancel->New(parent);
+    Check("a child is live while its parent is", <>child->IsCancelled());
+    parent->Cancel("parent said so");
+    Check("a child is cancelled with its parent", child->IsCancelled() & Same(child->GetReason(), "parent said so"));
+
+    sibling := AgentCancel->New();
+    kid := AgentCancel->New(sibling);
+    kid->Cancel();
+    Check("cancelling a child leaves its parent alone", kid->IsCancelled() & <>sibling->IsCancelled());
+
+    shared := AgentCancel->New();
+    thread := Canceller->New(shared, 50);
+    thread->Execute(Nil);
+    thread->Join();
+    Check("another thread can cancel", shared->IsCancelled() & Same(shared->GetReason(), "stopped by the test"));
+  }
+
+  function : TestCancelBeforeFirstStep() ~ Nil {
+    "-- cancel before the first step"->PrintLine();
+    backend := ScriptedBackend->New(Script3());
+    FastHandler->Reset();
+    agent := Agent->New(backend, Registry(Tool("fast", FastHandler->New())));
+    token := AgentCancel->New();
+    token->Cancel("never started");
+    agent->SetCancel(token);
+    result := agent->Run("go");
+    Check("the stop reason is cancelled", Same(result->GetStopReason(), "cancelled") & Same(result->GetStatus(), "cancelled"));
+    Check("the model was never asked", backend->GetAskedCount() = 0 & result->GetSteps()->Size() = 0 & result->GetModelCalls() = 0);
+    Check("the run is not completed and says why", <>result->IsCompleted() & Has(result->GetError(), "never started"));
+    Check("the user message is in the conversation", agent->GetConversation()->Size() = 1);
+
+    # the same agent can run again once the token is replaced
+    agent->SetCancel(AgentCancel->New());
+    again := agent->Run("go again");
+    Check("a fresh token runs again", again->GetSteps()->Size() > 0);
+  }
+
+  function : TestCancelBetweenSteps() ~ Nil {
+    "-- cancel between steps and between tool calls"->PrintLine();
+    backend := ScriptedBackend->New(Script3());
+    FastHandler->Reset();
+    agent := Agent->New(backend, Registry(Tool("fast", FastHandler->New())));
+    token := AgentCancel->New();
+    agent->SetCancel(token);
+    agent->SetObserver(CancelOnReply->New(token, 0, 1));
+    result := agent->Run("go");
+    Check("cancelled after the first step's tool call", Same(result->GetStopReason(), "cancelled"));
+    Check("one model call, one tool call", backend->GetAskedCount() = 1 & FastHandler->GetCount() = 1 & result->GetSteps()->Size() = 1);
+    Check("the conversation stays valid", agent->GetConversation()->Size() = 3);
+
+    # cancelled while a reply with several calls is being answered
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("a", "fast", Json("{}")));
+    calls->AddBack(AgentToolCall->New("b", "fast", Json("{}")));
+    calls->AddBack(AgentToolCall->New("c", "fast", Json("{}")));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->AskAll(calls));
+    script->AddBack(AgentReply->Say("never"));
+    backend2 := ScriptedBackend->New(script);
+    FastHandler->Reset();
+    agent2 := Agent->New(backend2, Registry(Tool("fast", FastHandler->New())));
+    token2 := AgentCancel->New();
+    agent2->SetCancel(token2);
+    agent2->SetObserver(CancelOnReply->New(token2, 0, 1));
+    result2 := agent2->Run("go");
+    results := result2->GetSteps()->Get(0)->GetResults();
+    Check("the first call ran, the rest were skipped", results->Size() = 3 & Same(results->Get(0)->GetStatus(), "ok") & Same(results->Get(1)->GetStatus(), "skipped") & Same(results->Get(2)->GetStatus(), "skipped"));
+    Check("only one handler ran", FastHandler->GetCount() = 1 & Same(result2->GetStopReason(), "cancelled"));
+    Check("every call is answered in the conversation", agent2->GetConversation()->Size() = 5);
+
+    # cancelled after the first reply, before any tool ran
+    backend3 := ScriptedBackend->New(Script3());
+    FastHandler->Reset();
+    agent3 := Agent->New(backend3, Registry(Tool("fast", FastHandler->New())));
+    token3 := AgentCancel->New();
+    agent3->SetCancel(token3);
+    agent3->SetObserver(CancelOnReply->New(token3, 1, 0));
+    result3 := agent3->Run("go");
+    Check("cancelled before the first tool call runs", FastHandler->GetCount() = 0 & Same(result3->GetStopReason(), "cancelled") & Same(result3->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "skipped"));
+  }
+
+  function : TestCancelDuringModelCall() ~ Nil {
+    "-- cancel and deadline during a slow model call"->PrintLine();
+    # a deadline-aware backend returns by itself when the run's deadline passes
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Say("too slow"));
+    slow := ScriptedBackend->New(script)->SetDelayMs(4000);
+    agent := Agent->New(slow, Nil);
+    agent->SetBudget(AgentBudget->New()->SetMaxWallMs(250));
+    timer := Now();
+    result := agent->Run("go");
+    elapsed := Millis(timer);
+    Check("the deadline ends a blocked call (deadline-aware backend)", Same(result->GetStopReason(), "deadline") & elapsed < 3000);
+    Check("the backend was asked once", slow->GetAskedCount() = 1);
+
+    # a backend that cannot be interrupted is abandoned when the model call runs on a worker
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(AgentReply->Say("too slow"));
+    stuck := ScriptedBackend->New(script2)->SetDelayMs(1500);
+    agent2 := Agent->New(stuck, Nil);
+    token := AgentCancel->New();
+    agent2->SetCancel(token);
+    agent2->SetBoundedModelCalls(true);
+    Canceller->New(token, 150)->Execute(Nil);
+    timer2 := Now();
+    result2 := agent2->Run("go");
+    elapsed2 := Millis(timer2);
+    Check("a cancel returns promptly from a blocked call (bounded model call)", Same(result2->GetStopReason(), "cancelled") & elapsed2 < 1300);
+    Check("nothing from the abandoned call reaches the transcript", result2->GetSteps()->Size() = 0 & Same(result2->GetText(), ""));
+
+    # the per-call limit is an error, not a deadline
+    script3 := Vector->New()<AgentReply>;
+    script3->AddBack(AgentReply->Say("too slow"));
+    agent3 := Agent->New(ScriptedBackend->New(script3)->SetDelayMs(1500), Nil);
+    agent3->SetBoundedModelCalls(true);
+    agent3->SetBudget(AgentBudget->New()->SetModelCallMs(150));
+    timer3 := Now();
+    result3 := agent3->Run("go");
+    Check("a per-call limit ends the run with an error", Same(result3->GetStopReason(), "error") & Has(result3->GetError(), "150") & Millis(timer3) < 1300);
+  }
+
+  # ---- budgets
+
+  function : TestBudgets() ~ Nil {
+    "-- budgets and stop reasons"->PrintLine();
+    agent := FastAgent(Script3());
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(2));
+    result := agent->Run("go");
+    Check("steps: budget_steps after two replies", Same(result->GetStopReason(), "budget_steps") & result->GetSteps()->Size() = 2 & FastHandler->GetCount() = 2);
+    Check("steps: the status is the same word", Same(result->GetStatus(), "budget_steps") & Has(result->GetError(), "step budget"));
+
+    agent2 := FastAgent(Script3());
+    agent2->SetBudget(AgentBudget->New()->SetMaxModelCalls(2));
+    result2 := agent2->Run("go");
+    Check("model calls: budget_model_calls", Same(result2->GetStopReason(), "budget_model_calls") & result2->GetModelCalls() = 2);
+
+    agent3 := FastAgent(Script3());
+    agent3->SetBudget(AgentBudget->New()->SetMaxToolCalls(2));
+    result3 := agent3->Run("go");
+    Check("tool calls: budget_tool_calls", Same(result3->GetStopReason(), "budget_tool_calls") & FastHandler->GetCount() = 2 & result3->GetToolCallCount() = 3);
+    skipped := result3->GetSteps()->Get(2)->GetResults()->Get(0);
+    Check("tool calls: the call over budget is skipped, not run", Same(skipped->GetStatus(), "skipped"));
+
+    tokens := Vector->New()<AgentReply>;
+    tokens->AddBack(Counted(Ask("t1", "fast"), 60, 50));
+    tokens->AddBack(AgentReply->Say("never"));
+    agent4 := FastAgent(tokens);
+    agent4->SetBudget(AgentBudget->New()->SetMaxTokens(100));
+    result4 := agent4->Run("go");
+    Check("tokens: budget_tokens", Same(result4->GetStopReason(), "budget_tokens") & result4->GetTotalTokens() = 110 & FastHandler->GetCount() = 0);
+
+    final := Vector->New()<AgentReply>;
+    final->AddBack(Counted(AgentReply->Say("an answer is an answer"), 500, 500));
+    agent5 := FastAgent(final);
+    agent5->SetBudget(AgentBudget->New()->SetMaxTokens(100));
+    result5 := agent5->Run("go");
+    Check("tokens: a final answer over budget still completes", Same(result5->GetStopReason(), "completed") & result5->IsCompleted());
+
+    cost := Vector->New()<AgentReply>;
+    cost->AddBack(Counted(Ask("m1", "fast"), 1000, 1000));
+    cost->AddBack(AgentReply->Say("never"));
+    agent6 := FastAgent(cost);
+    agent6->SetBudget(AgentBudget->New()->SetMaxCost(0.01)->SetPrice(3.0, 15.0));
+    result6 := agent6->Run("go");
+    Check("cost: budget_cost", Same(result6->GetStopReason(), "budget_cost"));
+    diff := result6->GetCost() - 0.018;
+    if(diff < 0.0) {
+      diff := 0.0 - diff;
+    };
+    Check("cost: priced from the table (3 and 15 per million)", diff < 0.0000001);
+
+    prices := AgentPrices->New()->Add("small", 1.0, 2.0)->Add("big", 10.0, 20.0);
+    budget := AgentBudget->New()->SetPrices(prices, "big");
+    unit := budget->Cost(1000000, 1000000);
+    Check("a price table picks a model's row", unit > 29.99 & unit < 30.01 & prices->Find("nope") = -1 & prices->Find("small") = 0);
+
+    legacy := FastAgent(Script3());
+    legacy->SetMaxSteps(2);
+    result7 := legacy->Run("go");
+    Check("the old step limit keeps its status and gains a stop reason", Same(result7->GetStatus(), "max_steps") & Same(result7->GetStopReason(), "budget_steps"));
+
+    plain := FastAgent(Script3());
+    result8 := plain->Run("go");
+    Check("no budget, no token: a normal run completes", Same(result8->GetStopReason(), "completed") & result8->GetSteps()->Size() = 4);
+
+    failing := Agent->New(ScriptedBackend->New(Nil), Nil);
+    result9 := failing->Run("go");
+    Check("a backend failure is the error stop reason", Same(result9->GetStopReason(), "error") & Same(result9->GetStatus(), "error"));
+  }
+
+  function : TestBudgetComposesWithCancel() ~ Nil {
+    "-- budgets compose with the token"->PrintLine();
+    agent := FastAgent(Script3());
+    token := AgentCancel->New();
+    agent->SetCancel(token);
+    agent->SetBudget(AgentBudget->New()->SetMaxToolCalls(5)->SetMaxSteps(9));
+    agent->SetObserver(CancelOnReply->New(token, 2, 0));
+    result := agent->Run("go");
+    Check("the token wins while the budget still has room", Same(result->GetStopReason(), "cancelled") & result->GetSteps()->Size() = 2);
+
+    agent2 := FastAgent(Script3());
+    agent2->SetCancel(AgentCancel->New());
+    agent2->SetBudget(AgentBudget->New()->SetMaxSteps(1));
+    result2 := agent2->Run("go");
+    Check("the budget wins while the token is live", Same(result2->GetStopReason(), "budget_steps"));
+
+    # the run's own token is linked to the agent's, so a tool sees the deadline through it
+    parent := AgentCancel->New();
+    agent3 := Agent->New(ScriptedBackend->New(Script3()), Registry(AgentTool->New("fast", "poll", EmptySchema(), PollHandler->New())));
+    agent3->SetCancel(parent);
+    Canceller->New(parent, 150)->Execute(Nil);
+    timer := Now();
+    result3 := agent3->Run("go");
+    Check("a cooperative handler gets the token and stops early", PollHandler->Saw() & Same(result3->GetStopReason(), "cancelled") & Millis(timer) < 3000);
+
+    # a deadline reaches a cooperative handler through the same token
+    agent4 := Agent->New(ScriptedBackend->New(Script3()), Registry(AgentTool->New("fast", "poll", EmptySchema(), PollHandler->New())));
+    agent4->SetBudget(AgentBudget->New()->SetMaxWallMs(200));
+    agent4->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    timer4 := Now();
+    result4 := agent4->Run("go");
+    Check("a deadline ends the run while a tool is running", Same(result4->GetStopReason(), "deadline") & Millis(timer4) < 3000);
+    Check("the interrupted tool call is a timeout result", Same(result4->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "timeout"));
+  }
+
+  # ---- tool modes
+
+  function : TestBoundedThread() ~ Nil {
+    "-- BOUNDED_THREAD"->PrintLine();
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Ask("h1", "hang"));
+    script->AddBack(Ask("f1", "fast"));
+    script->AddBack(AgentReply->Say("moved on"));
+    registry := ToolRegistry->New();
+    registry->Add(Tool("hang", SleepHandler->New(1500, "far too late"))->SetTimeout(200)->SetMode(AgentTool->Mode->BOUNDED_THREAD));
+    registry->Add(Tool("fast", FastHandler->New())->SetMode(AgentTool->Mode->BOUNDED_THREAD));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    timer := Now();
+    result := agent->Run("go");
+    elapsed := Millis(timer);
+    hung := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("a hung tool is a timeout result", Same(hung->GetStatus(), "timeout") & Has(hung->GetContent(), "200 ms"));
+    Check("the loop did not wait for the tool", elapsed < 1300);
+    Check("the run carried on and completed", result->IsCompleted() & Same(result->GetText(), "moved on"));
+    Check("a fast tool in a worker returns its result", Same(result->GetSteps()->Get(1)->GetResults()->Get(0)->GetContent(), "fast"));
+
+    # a worker thread's errors are caught like an in-thread tool's
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(Ask("x1", "boom"));
+    script2->AddBack(AgentReply->Say("fine"));
+    agent2 := Agent->New(ScriptedBackend->New(script2), Registry(Tool("boom", CrashHandler->New())));
+    agent2->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    result2 := agent2->Run("go");
+    Check("a fault in a worker is an error result", Same(result2->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "error") & result2->IsCompleted());
+
+    # the agent's default mode applies to every tool, and a limit from the agent applies too
+    script3 := Vector->New()<AgentReply>;
+    script3->AddBack(Ask("s1", "slow"));
+    script3->AddBack(AgentReply->Say("ok"));
+    agent3 := Agent->New(ScriptedBackend->New(script3), Registry(Tool("slow", SleepHandler->New(1500, "late"))));
+    agent3->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    agent3->SetToolTimeout(150);
+    timer3 := Now();
+    result3 := agent3->Run("go");
+    Check("the agent's tool timeout bounds a worker", Same(result3->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "timeout") & Millis(timer3) < 1300);
+
+    # IN_THREAD is what it always was: the call finishes, then is reported as a timeout
+    script4 := Vector->New()<AgentReply>;
+    script4->AddBack(Ask("s2", "slow"));
+    script4->AddBack(AgentReply->Say("ok"));
+    agent4 := Agent->New(ScriptedBackend->New(script4), Registry(Tool("slow", SleepHandler->New(300, "late"))));
+    agent4->SetToolTimeout(100);
+    result4 := agent4->Run("go");
+    slow := result4->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("IN_THREAD still reports a timeout after the fact", Same(slow->GetStatus(), "timeout") & slow->GetMillis() >= 250);
+
+    # a cancel interrupts a hung tool
+    script5 := Vector->New()<AgentReply>;
+    script5->AddBack(Ask("h2", "hang"));
+    script5->AddBack(AgentReply->Say("never"));
+    agent5 := Agent->New(ScriptedBackend->New(script5), Registry(Tool("hang", SleepHandler->New(1500, "late"))->SetMode(AgentTool->Mode->BOUNDED_THREAD)));
+    token := AgentCancel->New();
+    agent5->SetCancel(token);
+    Canceller->New(token, 150)->Execute(Nil);
+    timer5 := Now();
+    result5 := agent5->Run("go");
+    cancelled := result5->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("a cancel interrupts a tool in a worker", Same(cancelled->GetStatus(), "cancelled") & Same(result5->GetStopReason(), "cancelled") & Millis(timer5) < 1300);
+  }
+
+  function : TestAbandonedWorker() ~ Nil {
+    "-- an abandoned worker cannot corrupt the transcript"->PrintLine();
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Ask("l1", "late"));
+    script->AddBack(AgentReply->Say("the end"));
+    registry := Registry(Tool("late", LateHandler->New())->SetTimeout(100)->SetMode(AgentTool->Mode->BOUNDED_THREAD));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    result := agent->Run("go");
+    before := result->ToString();
+    size := agent->GetConversation()->Size();
+    json := result->ToJson()->ToString();
+    Check("the late tool is reported as a timeout", Has(before, "timeout") & LateHandler->GetFinished() = 0);
+
+    Thread->Sleep(1500);
+    Check("the abandoned worker did finish later", LateHandler->GetFinished() = 1);
+    Check("the transcript text did not change", Same(before, result->ToString()) & Same(json, result->ToJson()->ToString()));
+    Check("the conversation did not change", agent->GetConversation()->Size() = size);
+    Check("the late result never appears", <>Has(result->ToString(), "never be seen") & <>Has(json, "never be seen"));
+
+    # the same agent runs again with a clean slate for the new call
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(Ask("l2", "late"));
+    script2->AddBack(AgentReply->Say("again"));
+    agent2 := Agent->New(ScriptedBackend->New(script2), registry);
+    result2 := agent2->Run("go");
+    Check("another run on the same tool is independent", Has(result2->ToString(), "timeout") & result2->IsCompleted());
+    Thread->Sleep(900);
+  }
+
+  # ---- PROCESS mode
+
+  function : HangCommand() ~ String {
+    if(Windows()) {
+      return "ping -n 60 127.0.0.1";
+    };
+    return "sleep 60";
+  }
+
+  function : FailCommand() ~ String {
+    if(Windows()) {
+      return "powershell -NoProfile -Command \"[Console]::Error.WriteLine('boom'); exit 7\"";
+    };
+    return "sh -c 'echo boom >&2; exit 7'";
+  }
+
+  function : CrashCommand() ~ String {
+    if(Windows()) {
+      return "powershell -NoProfile -Command \"[Environment]::FailFast('crash')\"";
+    };
+    return "sh -c 'kill -SEGV $$'";
+  }
+
+  function : EchoCommand() ~ String {
+    if(Windows()) {
+      return "findstr \"^\"";
+    };
+    return "cat";
+  }
+
+  function : EnvCommand() ~ String {
+    if(Windows()) {
+      return "set";
+    };
+    return "env";
+  }
+
+  function : PwdCommand() ~ String {
+    if(Windows()) {
+      return "cd";
+    };
+    return "pwd";
+  }
+
+  function : FloodCommand() ~ String {
+    if(Windows()) {
+      return "powershell -NoProfile -Command \"while($true){'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}\"";
+    };
+    return "yes";
+  }
+
+  function : ProcessResult(command : AgentProcess, limit : Int, token : AgentCancel, cancel_after : Int) ~ AgentToolResult {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("p1", "child", "{\"text\":\"hello child\"}"));
+    script->AddBack(AgentReply->Say("done"));
+    schema := Json("{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}}}");
+    tool := AgentTool->New("child", "runs a child process", schema, command);
+    if(limit > 0) {
+      tool->SetTimeout(limit);
+    };
+
+    agent := Agent->New(ScriptedBackend->New(script), Registry(tool));
+    if(token <> Nil) {
+      agent->SetCancel(token);
+      if(cancel_after > 0) {
+        Canceller->New(token, cancel_after)->Execute(Nil);
+      };
+    };
+
+    last := agent->Run("go");
+    return last->GetSteps()->Get(0)->GetResults()->Get(0);
+  }
+
+  function : TestProcess() ~ Nil {
+    "-- PROCESS"->PrintLine();
+    echoed := ProcessResult(AgentProcess->New(EchoCommand()), 0, Nil, 0);
+    Check("the child reads the arguments as JSON on stdin", Same(echoed->GetStatus(), "ok") & Has(echoed->GetContent(), "hello child") & Has(echoed->GetContent(), "text"));
+
+    timer := Now();
+    hung := ProcessResult(AgentProcess->New(HangCommand()), 1500, Nil, 0);
+    elapsed := Millis(timer);
+    Check("a hung child is killed at the tool's limit", Same(hung->GetStatus(), "timeout") & Has(hung->GetContent(), "1500 ms"));
+    Check("the agent did not wait for the child", elapsed < 25000);
+
+    failed := ProcessResult(AgentProcess->New(FailCommand()), 0, Nil, 0);
+    Check("a failing child is an error result with its stderr", Same(failed->GetStatus(), "error") & Has(failed->GetContent(), "code 7") & Has(failed->GetContent(), "boom"));
+
+    crashed := ProcessResult(AgentProcess->New(CrashCommand()), 0, Nil, 0);
+    Check("a crashing child cannot take the agent down", Same(crashed->GetStatus(), "error") & Has(crashed->GetContent(), "exited with code"));
+
+    # the output cap
+    flood := ProcessResult(AgentProcess->New(FloodCommand())->SetMaxOutput(4000), 20000, Nil, 0);
+    Check("a child that floods its output is stopped", Same(flood->GetStatus(), "error") & Has(flood->GetContent(), "output limit"));
+
+    # a cancel kills the child
+    token := AgentCancel->New();
+    timer2 := Now();
+    stopped := ProcessResult(AgentProcess->New(HangCommand()), 0, token, 1200);
+    Check("a cancel kills a running child", Same(stopped->GetStatus(), "cancelled") & Millis(timer2) < 25000);
+  }
+
+  function : TestProcessSandbox() ~ Nil {
+    "-- PROCESS environment and working directory"->PrintLine();
+    Runtime->SetEnvironmentVariable("OBJK_AGENT_SECRET", "s3cret-value-9876");
+    plain := ProcessResult(AgentProcess->New(EnvCommand()), 0, Nil, 0);
+    Check("the child's environment is the allow list only", Same(plain->GetStatus(), "ok") & <>Has(plain->GetContent(), "OBJK_AGENT_SECRET") & Has(plain->GetContent(), "PATH"));
+
+    shared := ProcessResult(AgentProcess->New(EnvCommand())->AllowEnv("OBJK_AGENT_SECRET"), 0, Nil, 0);
+    Check("an allowed variable reaches the child", Has(shared->GetContent(), "OBJK_AGENT_SECRET") & Has(shared->GetContent(), "s3cret-value-9876"));
+
+    scratch := AgentProcess->New(PwdCommand())->GetScratchDir();
+    here := ProcessResult(AgentProcess->New(PwdCommand()), 0, Nil, 0);
+    Check("the child starts in the scratch directory", Same(here->GetStatus(), "ok") & Has(here->GetContent(), scratch->SubString(scratch->Size() - 4, 4)));
+
+    home := Windows() ? "C:\\Windows" : "/etc";
+    refused := ProcessResult(AgentProcess->New(PwdCommand())->SetWorkDir(home), 0, Nil, 0);
+    Check("a directory off the allow list is refused", Same(refused->GetStatus(), "error") & Has(refused->GetContent(), "not allowed"));
+
+    allowed := ProcessResult(AgentProcess->New(PwdCommand())->SetWorkDir(home)->AllowDirectory(home), 0, Nil, 0);
+    Check("a directory on the allow list runs", Same(allowed->GetStatus(), "ok"));
+
+    climb := ProcessResult(AgentProcess->New(PwdCommand())->SetWorkDir("{$scratch}/../.."), 0, Nil, 0);
+    Check("climbing out of the scratch directory is refused", Same(climb->GetStatus(), "error") & Has(climb->GetContent(), "not allowed"));
+  }
+
+  # ---- the trace
+
+  function : TestTrace() ~ Nil {
+    "-- the trace"->PrintLine();
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("k1", "fast", "{\"note\":\"key sk-ant-api03-abcdefghijklmnop1234567890 inside\"}"));
+    script->AddBack(AgentReply->Say("traced"));
+    schema := Json("{\"type\":\"object\",\"properties\":{\"note\":{\"type\":\"string\"}}}");
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("fast", "a test tool", schema, FastHandler->New()));
+    buffer := AgentTraceBuffer->New();
+    path := "agent_control_trace.jsonl";
+    File->Delete(path);
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    agent->SetTrace(buffer);
+    result := agent->Run("go");
+    Check("a plain run's events, in order", Same(buffer->Kinds(), "run_start,model_start,model_end,tool_start,tool_end,model_start,model_end,run_end"));
+
+    first := buffer->First("tool_start");
+    Check("tool_start names the tool and its mode", Same(first->Get("tool"), "fast") & Same(first->Get("mode"), "in_thread") & first->GetStep() = 0);
+    done := buffer->First("tool_end");
+    Check("tool_end carries the status", Same(done->Get("status"), "ok") & done->GetMillis() >= first->GetMillis());
+    last := buffer->First("run_end");
+    Check("run_end carries the stop reason and counts", Same(last->Get("stop_reason"), "completed") & Same(last->Get("model_calls"), "2") & Same(last->Get("tool_calls"), "1"));
+    Check("events are numbered from 1", buffer->GetEvents()->Get(0)->GetSeq() = 1 & buffer->GetEvents()->Get(7)->GetSeq() = 8);
+    Check("a key in an argument is redacted in the event", <>Has(first->ToString(), "abcdefghijklmnop") & Has(first->ToString(), "[REDACTED]"));
+
+    # the same events as JSON lines in a file
+    hello := Vector->New()<AgentReply>;
+    hello->AddBack(AgentReply->Say("hi"));
+    agent2 := Agent->New(ScriptedBackend->New(hello), Nil);
+    agent2->SetTrace(AgentTraceWriter->New(path));
+    agent2->SetBudget(AgentBudget->New()->SetMaxSteps(5));
+    result2 := agent2->Run("go");
+    text := FileReader->ReadFile(path);
+    lines := text->Trim()->Split('\n');
+    Check("one line per event", lines->Size() = 5);
+    Check("each line is JSON with its event name", Same(Json(lines[0])->Get("event")->GetString(), "run_start") & Same(Json(lines[4])->Get("event")->GetString(), "run_end"));
+    Check("the budget check is traced", Same(Json(lines[1])->Get("event")->GetString(), "budget_check") & Same(Json(lines[1])->Get("exhausted")->GetString(), "none"));
+    File->Delete(path);
+
+    # an observer that also takes events gets them, without a separate sink
+    watcher := TraceObserver->New();
+    script3 := Vector->New()<AgentReply>;
+    script3->AddBack(AgentReply->Say("hi"));
+    agent3 := Agent->New(ScriptedBackend->New(script3), Nil);
+    agent3->SetObserver(watcher);
+    agent3->Run("go");
+    Check("an AgentObserver that is also an AgentTraceSink receives the events", Same(watcher->GetKinds(), "run_start model_start model_end run_end "));
+
+    # events of a stopped run
+    stopped := FastAgent(Script3());
+    stopped->SetBudget(AgentBudget->New()->SetMaxToolCalls(1));
+    halted := AgentTraceBuffer->New();
+    stopped->SetTrace(halted);
+    stopped->Run("go");
+    Check("a halt is traced with its reason", Same(halted->First("halt")->Get("reason"), "budget_tool_calls") & Same(halted->First("run_end")->Get("stop_reason"), "budget_tool_calls"));
+    Check("budget checks are traced once per loop pass", halted->Count("budget_check") = 2);
+  }
+
+  function : TestRetries() ~ Nil {
+    "-- model retries"->PrintLine();
+    flaky := FlakyBackend->New(2);
+    agent := Agent->New(flaky, Nil);
+    agent->SetModelRetries(3, 0);
+    buffer := AgentTraceBuffer->New();
+    agent->SetTrace(buffer);
+    result := agent->Run("go");
+    Check("two failures then an answer", result->IsCompleted() & Same(result->GetText(), "recovered") & flaky->GetAsked() = 3 & result->GetModelCalls() = 3);
+    Check("each retry is traced", buffer->Count("model_retry") = 2 & buffer->Count("model_start") = 3);
+    Check("the failed call's error is in the trace, redacted", <>Has(buffer->First("model_end")->ToString(), "abcdefghijklmnop") & Has(buffer->First("model_end")->Get("error"), "503"));
+
+    flaky2 := FlakyBackend->New(5);
+    agent2 := Agent->New(flaky2, Nil);
+    agent2->SetModelRetries(1, 0);
+    result2 := agent2->Run("go");
+    Check("retries run out into an error", Same(result2->GetStopReason(), "error") & flaky2->GetAsked() = 2 & <>Has(result2->GetError(), "abcdefghijklmnop"));
+
+    flaky3 := FlakyBackend->New(5);
+    agent3 := Agent->New(flaky3, Nil);
+    agent3->SetModelRetries(10, 0);
+    agent3->SetBudget(AgentBudget->New()->SetMaxModelCalls(3));
+    result3 := agent3->Run("go");
+    Check("retries count against the model call budget", Same(result3->GetStopReason(), "budget_model_calls") & flaky3->GetAsked() = 3);
+
+    flaky4 := FlakyBackend->New(1);
+    token := AgentCancel->New();
+    agent4 := Agent->New(flaky4, Nil);
+    agent4->SetCancel(token);
+    agent4->SetModelRetries(5, 5000);
+    Canceller->New(token, 200)->Execute(Nil);
+    timer := Now();
+    result4 := agent4->Run("go");
+    Check("a cancel cuts a retry wait short", Same(result4->GetStopReason(), "cancelled") & Millis(timer) < 3000 & flaky4->GetAsked() = 1);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestToken();
+    TestCancelBeforeFirstStep();
+    TestCancelBetweenSteps();
+    TestCancelDuringModelCall();
+    TestBudgets();
+    TestBudgetComposesWithCancel();
+    TestBoundedThread();
+    TestAbandonedWorker();
+    TestTrace();
+    TestRetries();
+    TestProcess();
+    TestProcessSandbox();
+    Thread->Sleep(1700);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

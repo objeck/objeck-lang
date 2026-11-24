@@ -4,6 +4,12 @@
 		"API.Agent.Agent": {
 			"description": "The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back, until the model answers without a tool call, the step limit is reached or the backend fails. The conversation is kept, so Run can be called again to carry on; Reset starts over.\n\nEvery call goes through the same gates, in order: the tool must exist (unknown otherwise), the registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema (invalid), a dangerous tool, or any tool when SetApproveAll is on, must be approved (refused), and the handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes an error result the model can read and the loop carries on.",
 			"functions": {
+				"GetBudget": {
+					"descriptions": ["**Gets the budget**\n\n```method : public : GetBudget() ~ AgentBudget```\n\n\n\nreturn: AgentBudget"]
+				},
+				"GetCancel": {
+					"descriptions": ["**Gets the cancellation token**\n\n```method : public : GetCancel() ~ AgentCancel```\n\n\n\nreturn: AgentCancel"]
+				},
 				"GetConversation": {
 					"descriptions": ["**Gets the conversation so far**\n\n```method : public : GetConversation() ~ AgentConversation```\n\n\n\nreturn: AgentConversation"]
 				},
@@ -14,7 +20,7 @@
 					"descriptions": ["**Forgets the conversation; the system prompt stays**\n\n```method : public : Reset() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Run": {
-					"descriptions": ["**Runs the loop for one user message**\n\n```method : public : Run(prompt:String) ~ AgentResult```\n\n\n\nprompt: String\n\nreturn: AgentResult"]
+					"descriptions": ["**Runs the loop for one user message. Before every step and between tool calls it checks the cancellation token and the budget; the run then ends with a stop reason (see AgentResult) and the conversation stays valid, because the calls that did not run are answered as skipped.**\n\n```method : public : Run(prompt:String) ~ AgentResult```\n\n\n\nprompt: String\n\nreturn: AgentResult"]
 				},
 				"SetApproveAll": {
 					"descriptions": ["**Asks the approver about every call, not only those to dangerous tools. Calls are refused while there is no approver.**\n\n```method : public : SetApproveAll(approve_all:Bool) ~ Agent```\n\n\n\napprove_all: Bool\n\nreturn: Agent"]
@@ -22,11 +28,23 @@
 				"SetApprover": {
 					"descriptions": ["**Sets who approves dangerous tools. A dangerous tool is refused while there is none.**\n\n```method : public : SetApprover(approver:AgentApprover) ~ Agent```\n\n\n\napprover: AgentApprover\n\nreturn: Agent"]
 				},
+				"SetBoundedModelCalls": {
+					"descriptions": ["**Runs every model call on a worker thread, so the loop can return at a cancellation or the run's deadline even when the backend cannot be interrupted (the call is then abandoned, with the leak BOUNDED_THREAD describes, and its late reply is dropped). A backend that is deadline aware does not need it. Default off.**\n\n```method : public : SetBoundedModelCalls(bounded:Bool) ~ Agent```\n\n\n\nbounded: Bool\n\nreturn: Agent"]
+				},
+				"SetBudget": {
+					"descriptions": ["**Sets the limits of each Run: steps, wall-clock time, model calls, tool calls, tokens and cost**\n\n```method : public : SetBudget(budget:AgentBudget) ~ Agent```\n\n\n\nbudget: AgentBudget\n\nreturn: Agent"]
+				},
+				"SetCancel": {
+					"descriptions": ["**Sets the cancellation token every Run checks: before each step, between tool calls and while it waits for a model call or a tool in a worker thread or child process**\n\n```method : public : SetCancel(cancel:AgentCancel) ~ Agent```\n\n\n\ncancel: AgentCancel\n\nreturn: Agent"]
+				},
 				"SetMaxResultChars": {
 					"descriptions": ["**Sets the longest tool result sent to the model, in characters (default 20000); longer results are cut**\n\n```method : public : SetMaxResultChars(max_chars:Int) ~ Agent```\n\n\n\nmax_chars: Int\n\nreturn: Agent"]
 				},
 				"SetMaxSteps": {
 					"descriptions": ["**Sets the most model calls one Run may make (default 10)**\n\n```method : public : SetMaxSteps(max_steps:Int) ~ Agent```\n\n\n\nmax_steps: Int\n\nreturn: Agent"]
+				},
+				"SetModelRetries": {
+					"descriptions": ["**Sets how many times a failed model call is tried again before the run ends with an error (default 0)**\n\n```method : public : SetModelRetries(retries:Int, delay_ms:Int) ~ Agent```\n\n\n\nretries: Int\n\ndelay_ms: Int\n\nreturn: Agent"]
 				},
 				"SetObserver": {
 					"descriptions": ["**Sets who hears about steps as they happen**\n\n```method : public : SetObserver(observer:AgentObserver) ~ Agent```\n\n\n\nobserver: AgentObserver\n\nreturn: Agent"]
@@ -34,8 +52,14 @@
 				"SetSystem": {
 					"descriptions": ["**Sets the system prompt**\n\n```method : public : SetSystem(system:String) ~ Agent```\n\n\n\nsystem: String\n\nreturn: Agent"]
 				},
+				"SetToolMode": {
+					"descriptions": ["**Sets how tools run unless a tool sets its own mode (default IN_THREAD, as before)**\n\n```method : public : SetToolMode(mode:AgentTool-&gt;Mode) ~ Agent```\n\n\n\nmode: AgentTool-&gt;Mode\n\nreturn: Agent"]
+				},
 				"SetToolTimeout": {
 					"descriptions": ["**Sets the longest a tool may take, in milliseconds; a tool's own limit wins. 0, the default, means no limit. A running handler cannot be interrupted, so a call that overruns is reported as a timeout and its result is dropped.**\n\n```method : public : SetToolTimeout(timeout_ms:Int) ~ Agent```\n\n\n\ntimeout_ms: Int\n\nreturn: Agent"]
+				},
+				"SetTrace": {
+					"descriptions": ["**Sets who receives the trace events of a run**\n\n```method : public : SetTrace(sink:AgentTraceSink) ~ Agent```\n\n\n\nsink: AgentTraceSink\n\nreturn: Agent"]
 				}
 			}
 		},
@@ -44,6 +68,90 @@
 			"functions": {
 				"Approve": {
 					"descriptions": ["**Asked after the arguments pass validation and before the handler runs**\n\n```method : public : virutal : Approve(call:AgentToolCall, tool:AgentTool) ~ Bool```\n\n\n\ncall: AgentToolCall\n\ntool: AgentTool\n\nreturn: Bool"]
+				}
+			}
+		},
+		"API.Agent.AgentBudget": {
+			"description": "What one Run may use. Every limit is off (0) until it is set; the first one reached ends the run with a matching stop reason: budget_steps, budget_model_calls, budget_tool_calls, budget_tokens, budget_cost or deadline (the wall-clock limit). The counters start at zero on every Run. Tokens count only what the backend reports, so a backend that reports none never trips the token or cost limit.",
+			"functions": {
+				"Cost": {
+					"descriptions": ["**Prices a number of tokens**\n\n```method : public : Cost(input_tokens:Int, output_tokens:Int) ~ Float```\n\n\n\ninput_tokens: Int\n\noutput_tokens: Int\n\nreturn: Float"]
+				},
+				"GetMaxCost": {
+					"descriptions": ["**Gets the cost limit**\n\n```method : public : GetMaxCost() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMaxModelCalls": {
+					"descriptions": ["**Gets the model call limit**\n\n```method : public : GetMaxModelCalls() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxSteps": {
+					"descriptions": ["**Gets the step limit**\n\n```method : public : GetMaxSteps() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxTokens": {
+					"descriptions": ["**Gets the token limit**\n\n```method : public : GetMaxTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxToolCalls": {
+					"descriptions": ["**Gets the tool call limit**\n\n```method : public : GetMaxToolCalls() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxWallMs": {
+					"descriptions": ["**Gets the wall-clock limit**\n\n```method : public : GetMaxWallMs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetModelCallMs": {
+					"descriptions": ["**Gets the per-call model limit**\n\n```method : public : GetModelCallMs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: no limits**\n\n```New()```\n\n"]
+				},
+				"SetMaxCost": {
+					"descriptions": ["**Limits the cost of one Run; set the prices with SetPrice or SetPrices**\n\n```method : public : SetMaxCost(max_cost:Float) ~ AgentBudget```\n\n\n\nmax_cost: Float\n\nreturn: AgentBudget"]
+				},
+				"SetMaxModelCalls": {
+					"descriptions": ["**Limits the model calls of one Run, retries included**\n\n```method : public : SetMaxModelCalls(max_calls:Int) ~ AgentBudget```\n\n\n\nmax_calls: Int\n\nreturn: AgentBudget"]
+				},
+				"SetMaxSteps": {
+					"descriptions": ["**Limits the model replies (steps) of one Run**\n\n```method : public : SetMaxSteps(max_steps:Int) ~ AgentBudget```\n\n\n\nmax_steps: Int\n\nreturn: AgentBudget"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Limits the tokens (read plus written) of one Run**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ AgentBudget```\n\n\n\nmax_tokens: Int\n\nreturn: AgentBudget"]
+				},
+				"SetMaxToolCalls": {
+					"descriptions": ["**Limits the tool calls of one Run that actually run**\n\n```method : public : SetMaxToolCalls(max_calls:Int) ~ AgentBudget```\n\n\n\nmax_calls: Int\n\nreturn: AgentBudget"]
+				},
+				"SetMaxWallMs": {
+					"descriptions": ["**Limits the whole Run's wall-clock time: the total deadline. It also bounds every model call (for a backend that is deadline aware) and every tool wait.**\n\n```method : public : SetMaxWallMs(millis:Int) ~ AgentBudget```\n\n\n\nmillis: Int\n\nreturn: AgentBudget"]
+				},
+				"SetModelCallMs": {
+					"descriptions": ["**Sets how long one model call may take, apart from the run's deadline**\n\n```method : public : SetModelCallMs(millis:Int) ~ AgentBudget```\n\n\n\nmillis: Int\n\nreturn: AgentBudget"]
+				},
+				"SetPrice": {
+					"descriptions": ["**Sets one price for every model**\n\n```method : public : SetPrice(input_per_million:Float, output_per_million:Float) ~ AgentBudget```\n\n\n\ninput_per_million: Float\n\noutput_per_million: Float\n\nreturn: AgentBudget"]
+				},
+				"SetPrices": {
+					"descriptions": ["**Takes the price of one model from a table**\n\n```method : public : SetPrices(prices:AgentPrices, model:String) ~ AgentBudget```\n\n\n\nprices: AgentPrices\n\nmodel: String\n\nreturn: AgentBudget"]
+				}
+			}
+		},
+		"API.Agent.AgentCancel": {
+			"description": "A cancellation token. Any thread may call Cancel(); the loop checks the token before every step and between tool calls and passes it to handlers that take one. A token can be linked to a parent: it counts as cancelled when its parent is.",
+			"functions": {
+				"Cancel": {
+					"descriptions": ["**Cancels the token; safe from any thread and safe to call twice**\n\n```method : public : Cancel() ~ Nil```\n\n\n\nreturn: Nil", "**Cancels the token with a reason**\n\n```method : public : Cancel(reason:String) ~ Nil```\n\n\n\nreason: String\n\nreturn: Nil"]
+				},
+				"GetReason": {
+					"descriptions": ["**Gets why the token was cancelled**\n\n```method : public : GetReason() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsCancelled": {
+					"descriptions": ["**Says whether the token or a parent was cancelled**\n\n```method : public : IsCancelled() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n", "**Constructor for a token that is cancelled when its parent is**\n\n```New(parent:AgentCancel)```\n\n\n\nparent: AgentCancel"]
+				}
+			}
+		},
+		"API.Agent.AgentCancelableHandler": {
+			"description": "Runs a tool that wants the run's cancellation token. The handler can poll IsCancelled() in a long loop and return early; the token also reports a passed deadline, so a cooperative tool stops for either.",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Runs the tool**\n\n```method : public : virutal : Run(arguments:JsonElement, cancel:AgentCancel) ~ String```\n\n\n\narguments: JsonElement\n\ncancel: AgentCancel\n\nreturn: String"]
 				}
 			}
 		},
@@ -79,6 +187,14 @@
 				}
 			}
 		},
+		"API.Agent.AgentDeadlineAware": {
+			"description": "An optional extension for a ChatBackend: the loop tells it how long the next call may take, and a backend that can honor a total deadline returns promptly (a Nil reply with GetLastError set) when the time passes. A backend that does not implement it is simply never told.",
+			"functions": {
+				"SetDeadlineMs": {
+					"descriptions": ["**Sets the longest the next Chat may take**\n\n```method : public : virutal : SetDeadlineMs(millis:Int) ~ Nil```\n\n\n\nmillis: Int\n\nreturn: Nil"]
+				}
+			}
+		},
 		"API.Agent.AgentEntry": {
 			"description": "One item of a conversation: what the user said, what the model said (with its tool calls), or what a tool returned",
 			"functions": {
@@ -111,6 +227,38 @@
 				}
 			}
 		},
+		"API.Agent.AgentEvent": {
+			"description": "One event of a run's trace: a sequence number, the milliseconds since the run began, a kind, the step it belongs to and the kind's own fields",
+			"functions": {
+				"Get": {
+					"descriptions": ["**Gets one field as text**\n\n```method : public : Get(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetData": {
+					"descriptions": ["**Gets the kind's own fields**\n\n```method : public : GetData() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetKind": {
+					"descriptions": ["**Gets the kind**\n\n```method : public : GetKind() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMillis": {
+					"descriptions": ["**Gets the time of the event**\n\n```method : public : GetMillis() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSeq": {
+					"descriptions": ["**Gets the sequence number**\n\n```method : public : GetSeq() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStep": {
+					"descriptions": ["**Gets the step**\n\n```method : public : GetStep() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(seq:Int, millis:Int, kind:String, step:Int, data:JsonElement)```\n\n\n\nseq: Int\n\nmillis: Int\n\nkind: String\n\nstep: Int\n\ndata: JsonElement"]
+				},
+				"ToJson": {
+					"descriptions": ["**Writes the event as one JSON object with API keys removed**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"ToString": {
+					"descriptions": ["**Writes the event as one line of JSON, the trace file format**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
 		"API.Agent.AgentObserver": {
 			"description": "Receives the steps of a run as they happen, for a progress display or a log",
 			"functions": {
@@ -119,6 +267,122 @@
 				},
 				"OnToolResult": {
 					"descriptions": ["**Called after each tool call finishes, including calls that were refused or failed**\n\n```method : public : virutal : OnToolResult(step_index:Int, result:AgentToolResult) ~ Nil```\n\n\n\nstep_index: Int\n\nresult: AgentToolResult\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.Agent.AgentPrices": {
+			"description": "Per-model prices for the cost budget, in currency units per million tokens",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds or replaces the price of a model**\n\n```method : public : Add(model:String, input_per_million:Float, output_per_million:Float) ~ AgentPrices```\n\n\n\nmodel: String\n\ninput_per_million: Float\n\noutput_per_million: Float\n\nreturn: AgentPrices"]
+				},
+				"Find": {
+					"descriptions": ["**Finds a model's row**\n\n```method : public : Find(model:String) ~ Int```\n\n\n\nmodel: String\n\nreturn: Int"]
+				},
+				"GetInput": {
+					"descriptions": ["**Gets the price of tokens read**\n\n```method : public : GetInput(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float"]
+				},
+				"GetOutput": {
+					"descriptions": ["**Gets the price of tokens written**\n\n```method : public : GetOutput(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				}
+			}
+		},
+		"API.Agent.AgentProcess": {
+			"description": "A tool that runs in a child process: the tool's arguments go to the child as JSON on standard input, whatever the child writes to standard output is the result, and an exit code other than 0 is a failure. The child is started through a small watchdog (a shell script on POSIX, PowerShell on Windows) that kills it, and everything it started on Windows, when the agent's time limit passes or the run is cancelled, so a hung or crashing child cannot take the agent down. The child sees only the environment variables on the allow list (PATH, plus the system ones Windows needs, by default) and runs in a working directory that must be the scratch directory or a directory on the directory allow list. Output past the cap is cut. On POSIX a grandchild the child started may outlive a kill.",
+			"functions": {
+				"AllowDirectory": {
+					"descriptions": ["**Allows a directory as a working directory**\n\n```method : public : AllowDirectory(dir:String) ~ AgentProcess```\n\n\n\ndir: String\n\nreturn: AgentProcess"]
+				},
+				"AllowEnv": {
+					"descriptions": ["**Lets an environment variable of the agent's process through to the child**\n\n```method : public : AllowEnv(name:String) ~ AgentProcess```\n\n\n\nname: String\n\nreturn: AgentProcess"]
+				},
+				"CheckWorkDir": {
+					"descriptions": ["**Checks the working directory against the allow list**\n\n```method : public : CheckWorkDir() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ForObjeck": {
+					"descriptions": ["**A process that runs an Objeck program with the VM beside the running one**\n\n```function : ForObjeck(program:String) ~ AgentProcess```\n\n\n\nprogram: String\n\nreturn: AgentProcess"]
+				},
+				"GetCommand": {
+					"descriptions": ["**Gets the command line**\n\n```method : public : GetCommand() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEnvNames": {
+					"descriptions": ["**Gets the allowed environment names**\n\n```method : public : GetEnvNames() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetMaxOutput": {
+					"descriptions": ["**Gets the output cap**\n\n```method : public : GetMaxOutput() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetScratchDir": {
+					"descriptions": ["**Gets the scratch directory**\n\n```method : public : GetScratchDir() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWorkDir": {
+					"descriptions": ["**Gets the working directory, or the scratch directory when none was set**\n\n```method : public : GetWorkDir() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(command:String)```\n\n\n\ncommand: String"]
+				},
+				"Prepare": {
+					"descriptions": ["**Prepares one run of the child with the arguments it will read on standard input**\n\n```method : public : Prepare(arguments:String) ~ AgentProcessRun```\n\n\n\narguments: String\n\nreturn: AgentProcessRun"]
+				},
+				"Quote": {
+					"descriptions": ["**Quotes a path or argument for the command line of this system**\n\n```function : Quote(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"SetMaxOutput": {
+					"descriptions": ["**Sets the most output kept, in bytes (default 65536). POSIX also stops a child that writes far more.**\n\n```method : public : SetMaxOutput(bytes:Int) ~ AgentProcess```\n\n\n\nbytes: Int\n\nreturn: AgentProcess"]
+				},
+				"SetScratchDir": {
+					"descriptions": ["**Sets the directory for the files a run makes (default: the system's temporary directory)**\n\n```method : public : SetScratchDir(dir:String) ~ AgentProcess```\n\n\n\ndir: String\n\nreturn: AgentProcess"]
+				},
+				"SetWorkDir": {
+					"descriptions": ["**Sets the working directory of the child. It must be the scratch directory or inside it or inside a directory on the allow list, otherwise the call is refused.**\n\n```method : public : SetWorkDir(dir:String) ~ AgentProcess```\n\n\n\ndir: String\n\nreturn: AgentProcess"]
+				}
+			}
+		},
+		"API.Agent.AgentProcessResult": {
+			"description": "What a child process produced: its exit code and output, and whether it was stopped",
+			"functions": {
+				"Describe": {
+					"descriptions": ["**Describes a failure in a sentence**\n\n```method : public : Describe() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the start of standard error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetExitCode": {
+					"descriptions": ["**Gets the exit code**\n\n```method : public : GetExitCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOutput": {
+					"descriptions": ["**Gets standard output**\n\n```method : public : GetOutput() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsCancelled": {
+					"descriptions": ["**Says whether the process was killed because the run was cancelled**\n\n```method : public : IsCancelled() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOk": {
+					"descriptions": ["**Says whether the process ended on its own with exit code 0**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsTimedOut": {
+					"descriptions": ["**Says whether the process was killed for its time**\n\n```method : public : IsTimedOut() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsTruncated": {
+					"descriptions": ["**Says whether the output reached its cap**\n\n```method : public : IsTruncated() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(exit_code:Int, timed_out:Bool, cancelled:Bool, truncated:Bool, output:String, error_text:String)```\n\n\n\nexit_code: Int\n\ntimed_out: Bool\n\ncancelled: Bool\n\ntruncated: Bool\n\noutput: String\n\nerror_text: String"]
+				}
+			}
+		},
+		"API.Agent.AgentProcessRun": {
+			"description": "One run of an AgentProcess. Execute blocks until the child ends, so a caller that wants to cancel it runs Execute on another thread and calls Stop; the agent loop does this.",
+			"functions": {
+				"Execute": {
+					"descriptions": ["**Starts the child, waits for it and collects the result**\n\n```method : public : Execute() ~ AgentProcessResult```\n\n\n\nreturn: AgentProcessResult"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; use AgentProcess->Prepare**\n\n```New(process:AgentProcess, arguments:String, seq:Int)```\n\n\n\nprocess: AgentProcess\n\narguments: String\n\nseq: Int"]
+				},
+				"Stop": {
+					"descriptions": ["**Kills the child; safe from any thread, and safe after the child ended**\n\n```method : public : Stop(reason:String) ~ Nil```\n\n\n\nreason: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -166,11 +430,20 @@
 		"API.Agent.AgentResult": {
 			"description": "The outcome of Agent->Run: the final text, how the run ended, and every step",
 			"functions": {
+				"GetCost": {
+					"descriptions": ["**Gets what the run cost by the budget's price table**\n\n```method : public : GetCost() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetElapsedMs": {
+					"descriptions": ["**Gets how long the run took**\n\n```method : public : GetElapsedMs() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetError": {
 					"descriptions": ["**Gets the error of a run that did not finish**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetInputTokens": {
 					"descriptions": ["**Counts the tokens the run read**\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetModelCalls": {
+					"descriptions": ["**Counts the model calls of the run, retries and failed calls included**\n\n```method : public : GetModelCalls() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetOutputTokens": {
 					"descriptions": ["**Counts the tokens the run wrote**\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
@@ -181,11 +454,17 @@
 				"GetSteps": {
 					"descriptions": ["**Gets the steps**\n\n```method : public : GetSteps() ~ Vector&lt;AgentStep&gt;```\n\n\n\nreturn: Vector&lt;AgentStep&gt;"]
 				},
+				"GetStopReason": {
+					"descriptions": ["**Gets why the run stopped, in one vocabulary: completed, cancelled, deadline, budget_steps (the step limit, SetMaxSteps or the budget's), budget_model_calls, budget_tool_calls, budget_tokens, budget_cost or error. GetStatus gives the same word, except max_steps for the SetMaxSteps limit.**\n\n```method : public : GetStopReason() ~ String```\n\n\n\nreturn: String"]
+				},
 				"GetText": {
 					"descriptions": ["**Gets the final answer**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetToolCallCount": {
 					"descriptions": ["**Counts the tool calls of the run**\n\n```method : public : GetToolCallCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTotalTokens": {
+					"descriptions": ["**Counts the tokens the run read and wrote**\n\n```method : public : GetTotalTokens() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"IsCompleted": {
 					"descriptions": ["**Says whether the model gave a final answer**\n\n```method : public : IsCompleted() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -232,8 +511,14 @@
 				"GetDescription": {
 					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetMode": {
+					"descriptions": ["**Gets the tool's own mode**\n\n```method : public : GetMode() ~ AgentTool-&gt;Mode```\n\n\n\nreturn: AgentTool-&gt;Mode"]
+				},
 				"GetName": {
 					"descriptions": ["**Gets the name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetProcess": {
+					"descriptions": ["**Gets the child process of a process tool**\n\n```method : public : GetProcess() ~ AgentProcess```\n\n\n\nreturn: AgentProcess"]
 				},
 				"GetSchema": {
 					"descriptions": ["**Gets the argument schema**\n\n```method : public : GetSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
@@ -241,20 +526,32 @@
 				"GetTimeout": {
 					"descriptions": ["**Gets the tool's time limit**\n\n```method : public : GetTimeout() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"HasMode": {
+					"descriptions": ["**Says whether SetMode was called**\n\n```method : public : HasMode() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"Invoke": {
 					"descriptions": ["**Runs the handler; errors it raises are not caught here (Agent does that)**\n\n```method : public : Invoke(arguments:JsonElement) ~ String```\n\n\n\narguments: JsonElement\n\nreturn: String"]
+				},
+				"InvokeWith": {
+					"descriptions": ["**Runs the handler with the run's cancellation token; errors it raises are not caught here**\n\n```method : public : InvokeWith(arguments:JsonElement, cancel:AgentCancel) ~ String```\n\n\n\narguments: JsonElement\n\ncancel: AgentCancel\n\nreturn: String"]
 				},
 				"IsDangerous": {
 					"descriptions": ["**Says whether the tool needs approval**\n\n```method : public : IsDangerous() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
+				"IsProcess": {
+					"descriptions": ["**Says whether the tool runs in a child process**\n\n```method : public : IsProcess() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
-					"descriptions": ["**Constructor for a handler object**\n\n```New(name:String, description:String, schema:JsonElement, handler:AgentToolHandler)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: AgentToolHandler", "**Constructor for a function that returns text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,String&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,String&gt;", "**Constructor for a function that returns JSON; the result is sent to the model as JSON text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,JsonElement&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,JsonElement&gt;"]
+					"descriptions": ["**Constructor for a handler that takes the run's cancellation token**\n\n```New(name:String, description:String, schema:JsonElement, handler:AgentCancelableHandler)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: AgentCancelableHandler", "**Constructor for a tool that runs in a child process. The arguments go to the child as JSON on standard input and its standard output is the result. The tool always runs in PROCESS mode.**\n\n```New(name:String, description:String, schema:JsonElement, process:AgentProcess)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nprocess: AgentProcess", "**Constructor for a handler object**\n\n```New(name:String, description:String, schema:JsonElement, handler:AgentToolHandler)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: AgentToolHandler", "**Constructor for a function that returns text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,String&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,String&gt;", "**Constructor for a function that returns JSON; the result is sent to the model as JSON text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,JsonElement&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,JsonElement&gt;"]
 				},
 				"SetDangerous": {
 					"descriptions": ["**Marks the tool as dangerous: every call needs the agent's approver to say yes, and with no approver the call is refused**\n\n```method : public : SetDangerous(dangerous:Bool) ~ AgentTool```\n\n\n\ndangerous: Bool\n\nreturn: AgentTool"]
 				},
+				"SetMode": {
+					"descriptions": ["**Sets how the loop runs this tool, overriding the agent's default (see Mode)**\n\n```method : public : SetMode(mode:AgentTool-&gt;Mode) ~ AgentTool```\n\n\n\nmode: AgentTool-&gt;Mode\n\nreturn: AgentTool"]
+				},
 				"SetTimeout": {
-					"descriptions": ["**Sets the longest the tool may take, in milliseconds. A running handler cannot be interrupted: a call that takes longer is reported to the model as a timeout and its result is discarded.**\n\n```method : public : SetTimeout(timeout_ms:Int) ~ AgentTool```\n\n\n\ntimeout_ms: Int\n\nreturn: AgentTool"]
+					"descriptions": ["**Sets the longest the tool may take, in milliseconds. In IN_THREAD mode a running handler cannot be interrupted: a call that takes longer is reported to the model as a timeout and its result is discarded. In BOUNDED_THREAD and PROCESS mode the loop stops waiting at the limit.**\n\n```method : public : SetTimeout(timeout_ms:Int) ~ AgentTool```\n\n\n\ntimeout_ms: Int\n\nreturn: AgentTool"]
 				}
 			}
 		},
@@ -290,7 +587,7 @@
 			}
 		},
 		"API.Agent.AgentToolResult": {
-			"description": "What one tool call produced. The status says how it ended: ok, error (the handler failed), invalid (the arguments broke the schema), unknown (no such tool), denied (an allow or deny list excludes it), refused (the approver said no, or a dangerous tool had no approver), timeout, or skipped (the step limit was reached before it ran).",
+			"description": "What one tool call produced. The status says how it ended: ok, error (the handler failed), invalid (the arguments broke the schema), unknown (no such tool), denied (an allow or deny list excludes it), refused (the approver said no, or a dangerous tool had no approver), timeout (over its time limit, or the run's deadline passed while it ran), cancelled (the run was cancelled while it ran), or skipped (the step limit, a budget, a deadline or a cancellation came before it ran).",
 			"functions": {
 				"GetArguments": {
 					"descriptions": ["**Gets the arguments the model sent**\n\n```method : public : GetArguments() ~ String```\n\n\n\nreturn: String"]
@@ -335,6 +632,42 @@
 				},
 				"SafePath": {
 					"descriptions": ["**Joins a relative path onto a directory, or refuses it**\n\n```function : SafePath(sandbox:String, path:String) ~ String```\n\n\n\nsandbox: String\n\npath: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentTraceBuffer": {
+			"description": "Keeps the events of a run in memory, for a test or a report",
+			"functions": {
+				"Count": {
+					"descriptions": ["**Counts the events of one kind**\n\n```method : public : Count(kind:String) ~ Int```\n\n\n\nkind: String\n\nreturn: Int"]
+				},
+				"First": {
+					"descriptions": ["**Finds the first event of one kind**\n\n```method : public : First(kind:String) ~ AgentEvent```\n\n\n\nkind: String\n\nreturn: AgentEvent"]
+				},
+				"GetEvents": {
+					"descriptions": ["**Gets the events**\n\n```method : public : GetEvents() ~ Vector&lt;AgentEvent&gt;```\n\n\n\nreturn: Vector&lt;AgentEvent&gt;"]
+				},
+				"Kinds": {
+					"descriptions": ["**Lists the kinds in order**\n\n```method : public : Kinds() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				}
+			}
+		},
+		"API.Agent.AgentTraceSink": {
+			"description": "Receives the structured events of a run (run_start, budget_check, model_start, model_end, model_retry, tool_start, tool_end, halt, run_end). An AgentObserver that also implements this interface gets them too.",
+			"functions": {
+				"OnEvent": {
+					"descriptions": ["**Called for each event, in order, on the thread that runs the loop**\n\n```method : public : virutal : OnEvent(event:AgentEvent) ~ Nil```\n\n\n\nevent: AgentEvent\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.Agent.AgentTraceWriter": {
+			"description": "Writes the events of a run to a file, one JSON object per line (JSON lines), with API keys removed. The file is opened for append on every event, so a crash loses at most the event being written.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(path:String)```\n\n\n\npath: String"]
 				}
 			}
 		},
@@ -470,8 +803,11 @@
 				"Add": {
 					"descriptions": ["**Adds a reply to the end of the script**\n\n```method : public : Add(reply:AgentReply) ~ ScriptedBackend```\n\n\n\nreply: AgentReply\n\nreturn: ScriptedBackend"]
 				},
+				"GetAskedCount": {
+					"descriptions": ["**Gets how many times the model was asked, including calls that ran out of time or script**\n\n```method : public : GetAskedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetCallCount": {
-					"descriptions": ["**Gets how many times the model was asked**\n\n```method : public : GetCallCount() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**Gets how many replies the model has given**\n\n```method : public : GetCallCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetLastConversation": {
 					"descriptions": ["**Gets the conversation as it was the last time the model was asked (the live object, so it keeps growing)**\n\n```method : public : GetLastConversation() ~ AgentConversation```\n\n\n\nreturn: AgentConversation"]
@@ -481,6 +817,9 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(script:Vector&lt;AgentReply&gt;)```\n\n\n\nscript: Vector&lt;AgentReply&gt;"]
+				},
+				"SetDelayMs": {
+					"descriptions": ["**Makes every call take this long before it answers, to test cancellation and deadlines. The wait is in short slices, and ends early with no reply when a deadline set with SetDeadlineMs passes.**\n\n```method : public : SetDelayMs(millis:Int) ~ ScriptedBackend```\n\n\n\nmillis: Int\n\nreturn: ScriptedBackend"]
 				}
 			}
 		},
@@ -21914,7 +22253,31 @@
 				"file": ""
 			}
 		],
+		"AgentBudget": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentCancel": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentCancelableHandler": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
 		"AgentConversation": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentDeadlineAware": [
 			{
 				"bundle": "API.Agent",
 				"file": ""
@@ -21926,7 +22289,37 @@
 				"file": ""
 			}
 		],
+		"AgentEvent": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
 		"AgentObserver": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentPrices": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentProcess": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentProcessResult": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentProcessRun": [
 			{
 				"bundle": "API.Agent",
 				"file": ""
@@ -21981,6 +22374,24 @@
 			}
 		],
 		"AgentTools": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentTraceBuffer": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentTraceSink": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentTraceWriter": [
 			{
 				"bundle": "API.Agent",
 				"file": ""
@@ -27703,6 +28114,18 @@
 				{ "name": "OPTIONS", "value": "6", "description": "" },
 				{ "name": "TRACE", "value": "7", "description": "" },
 				{ "name": "PATCH", "value": "8", "description": "" }
+			]
+		},
+		"API.Agent.AgentTool#Mode": {
+			"name": "Mode",
+			"bundle": "API.Agent",
+			"class": "API.Agent.AgentTool",
+			"kind": "enum",
+			"description": "How the loop runs a tool's handler. IN_THREAD runs it on the loop's own thread, which cannot be interrupted: a call over its limit is reported as a timeout only after it returns. BOUNDED_THREAD runs it on a worker thread and waits at most the tool's time limit, the run's deadline and cancellation: when one passes, the worker is abandoned (a thread cannot be killed, so a hung handler keeps its thread and whatever it holds until it returns, if it ever does) and its late result is dropped. PROCESS applies to a tool made from an AgentProcess, which runs in a child process that is killed on timeout or cancellation; a tool that is not process-backed falls back to BOUNDED_THREAD.",
+			"items": [
+				{ "name": "IN_THREAD", "value": "0", "description": "" },
+				{ "name": "BOUNDED_THREAD", "value": "1", "description": "" },
+				{ "name": "PROCESS", "value": "2", "description": "" }
 			]
 		}
 	}
