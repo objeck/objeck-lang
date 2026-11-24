@@ -2,11 +2,15 @@
 String->New(Byte[]) must decode exactly the bytes of the array.
 
 A Byte[] is not NUL-terminated. The converter used to hand the bare pointer to a routine that reads
-until a zero byte, so an exact-length array was decoded together with whatever followed it in memory:
-a string built from 8 bytes came back 9, 10, 33 or 73 characters long, differing from run to run
-(rag_index_test on Apple Silicon and Windows ARM64). A zero byte INSIDE the array still ends the string,
-as it always did (a padded read buffer). Dirty memory is made first, so the bytes after an array are
-not zero.
+until a zero byte, and the deserializer allocated its Byte[] with no spare element after the data, so a
+string made from an exact-length array picked up whatever followed it in memory: 8 bytes ("doc0.txt")
+came back as 9, 10, 33 or 73 characters, differing from run to run. On x64 the bytes after an array are
+usually zero, so only ARM64 (Apple Silicon, Windows ARM64) showed it, as the first byte of the next heap
+block's header ("doc0.txt8").
+
+The same shape is run here as in rag_index_test: strings are serialized, read back with ReadByteArray
+and turned into Strings, many times over, with the allocations that surround it in between. A zero byte
+INSIDE the array still ends the string (a padded read buffer), as it always did.
 ~#
 class BytesToStringLength {
   @failures : static : Int;
@@ -18,34 +22,31 @@ class BytesToStringLength {
     };
   }
 
-  # leave non-zero garbage behind in memory the next arrays may reuse
-  function : Dirty() ~ Nil {
-    for(round := 0; round < 200; round += 1;) {
-      junk := Byte->New[64 + round % 7];
-      for(i := 0; i < junk->Size(); i += 1;) {
-        junk[i] := 0x41 + (i % 26);
-      };
-    };
-  }
-
-  function : Exact(text : String) ~ Bool {
-    bytes := Byte->New[text->Size()];
-    for(i := 0; i < text->Size(); i += 1;) {
-      bytes[i] := text->Get(i)->As(Byte);
-    };
-    back := String->New(bytes);
-    return back <> Nil & back->Equals(text);
-  }
-
   function : Main(args : String[]) ~ Nil {
     @failures := 0;
 
-    texts := ["doc0.txt", "a", "abcdefg", "abcdefgh", "abcdefghi", "0123456789abcdef", "exactly-sixteen!", "x y z"];
+    names := ["doc0.txt", "doc1.txt", "a", "abcdefgh", "abcdefghi", "0123456789abcdef", "exactly-sixteen!", "xyz"];
     for(round := 0; round < 400; round += 1;) {
-      Dirty();
-      for(t := 0; t < texts->Size(); t += 1;) {
-        if(<>Exact(texts[t])) {
-          "  [FAIL] round {$round}: '{$texts[t]}' did not round-trip"->PrintLine();
+      serializer := System.IO.Serializer->New();
+      for(i := 0; i < names->Size(); i += 1;) {
+        serializer->Write(names[i]->ToByteArray());
+        serializer->Write(i * 7);
+        serializer->Write(Float->New[8]);
+      };
+      body := serializer->Serialize();
+
+      deserializer := System.IO.Deserializer->New(body);
+      for(i := 0; i < names->Size(); i += 1;) {
+        bytes := deserializer->ReadByteArray();
+        offset := deserializer->ReadInt();
+        vector := deserializer->ReadFloatArray();
+        back := String->New(bytes);
+        if(back = Nil | <>back->Equals(names[i]) | offset <> i * 7 | vector->Size() <> 8) {
+          shown := "<nil>";
+          if(back <> Nil) {
+            shown := back;
+          };
+          "  [FAIL] round {$round}: '{$names[i]}' came back as '{$shown}' ({$shown->Size()} characters)"->PrintLine();
           @failures += 1;
           if(@failures > 5) {
             "FAIL: {$@failures} check(s) failed"->PrintLine();

@@ -2257,12 +2257,14 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     }
 
     size_t* dest_array;
+    // One spare element after the data, as NEW_BYTE_ARY / NEW_CHAR_ARY and ConvertUnicodeToBytes allocate: a
+    // deserialized Byte[] or Char[] that something later reads as a C string must end in a zero.
     if(type == BYTE_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + 1 + ((dest_array_dim + 2) * sizeof(size_t)),
                                                 instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + 1 + ((dest_array_dim + 2) * sizeof(size_t)),
                                                 instructions::CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
