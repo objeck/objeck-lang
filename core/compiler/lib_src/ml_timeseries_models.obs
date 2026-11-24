@@ -1,0 +1,1391 @@
+#~~
+# Objeck machine learning library: time series forecasters (interfaces, baselines, exponential smoothing)
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+The forecasting models of System.ML.TimeSeries: the Forecaster interface, ForecastResult, the baselines and exponential smoothing (simple, Holt with optional damping, Holt-Winters additive and multiplicative). ARIMA and the automatic selectors are in ml_timeseries_arima.obs.
+~#
+bundle System.ML.TimeSeries {
+	#~
+	A forecast: the point forecasts and a central prediction interval for each step ahead.
+	~#
+	class ForecastResult {
+		@error : String;
+		@mean : Float[];
+		@lower : Float[];
+		@upper : Float[];
+		@sd : Float[];
+		@level : Float;
+
+		New(error : String) {
+			@error := error;
+			@level := Float->NaN();
+		}
+
+		New(mean : Float[], sd : Float[], level : Float) {
+			@error := "";
+			@mean := mean;
+			@sd := sd;
+			@level := level;
+			z := TsMath->IntervalZ(level);
+			h := mean->Size();
+			@lower := Float->New[h];
+			@upper := Float->New[h];
+			each(i : h) {
+				@lower[i] := mean[i] - z * sd[i];
+				@upper[i] := mean[i] + z * sd[i];
+			};
+		}
+
+		#~
+		A forecast with intervals supplied by the caller (for models whose intervals are not symmetric).
+		~#
+		New(mean : Float[], lower : Float[], upper : Float[], sd : Float[], level : Float) {
+			@error := "";
+			@mean := mean;
+			@lower := lower;
+			@upper := upper;
+			@sd := sd;
+			@level := level;
+		}
+
+		#~
+		@return false when the forecast could not be made; GetError() says why
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		@return the number of steps ahead (0 when invalid)
+		~#
+		method : public : Size() ~ Int {
+			if(@mean = Nil) {
+				return 0;
+			};
+
+			return @mean->Size();
+		}
+
+		#~
+		@return the point forecasts, step 1 first
+		~#
+		method : public : GetMean() ~ Float[] {
+			return @mean;
+		}
+
+		#~
+		@return the lower bound of the prediction interval for each step
+		~#
+		method : public : GetLower() ~ Float[] {
+			return @lower;
+		}
+
+		#~
+		@return the upper bound of the prediction interval for each step
+		~#
+		method : public : GetUpper() ~ Float[] {
+			return @upper;
+		}
+
+		#~
+		@return the standard deviation of the forecast error at each step
+		~#
+		method : public : GetSd() ~ Float[] {
+			return @sd;
+		}
+
+		#~
+		@return the nominal coverage of the interval, for example 0.95
+		~#
+		method : public : GetLevel() ~ Float {
+			return @level;
+		}
+	}
+
+	#~
+	A model that is fitted to a series and then forecasts it. The baselines, ExponentialSmoothing, ArimaModel and the two automatic selectors implement it, and so does anything you write: Evaluation->RollingOrigin works with any Forecaster.
+	~#
+	interface Forecaster {
+		#~
+		Fits the model to a series.
+		@param y the series (no missing values)
+		@return true on success; on false GetError says why
+		~#
+		method : virtual : public : Fit(y : TimeSeries) ~ Bool;
+
+		#~
+		Forecasts h steps beyond the end of the fitted series.
+		@param h steps ahead (>= 1)
+		@param level coverage of the prediction interval, strictly between 0 and 1 (for example 0.95)
+		@return the forecast, whose IsValid() is false when the model is not fitted or an argument is bad
+		~#
+		method : virtual : public : Forecast(h : Int, level : Float) ~ ForecastResult;
+
+		#~
+		The one-step-ahead in-sample forecasts, one per observation; NaN where the model has no forecast (the first observations of a lagged model).
+		~#
+		method : virtual : public : GetFitted() ~ Float[];
+
+		#~
+		The in-sample one-step errors, observation minus fitted (NaN where the fitted value is).
+		~#
+		method : virtual : public : GetResiduals() ~ Float[];
+
+		#~
+		@return "" or the reason the last Fit or Forecast failed
+		~#
+		method : virtual : public : GetError() ~ String;
+
+		#~
+		@return true after a successful Fit
+		~#
+		method : virtual : public : IsFitted() ~ Bool;
+
+		#~
+		A new, unfitted model with the same settings (cross-validation fits one per fold).
+		~#
+		method : virtual : public : Copy() ~ Forecaster;
+
+		#~
+		A short description of the model, for example "ARIMA(1,1,0)".
+		~#
+		method : virtual : public : GetName() ~ String;
+	}
+
+	#~
+	A function of a parameter vector, for NelderMead.
+	~#
+	interface Objective {
+		method : virtual : public : Evaluate(x : Float[]) ~ Float;
+	}
+
+	#~
+	The Nelder-Mead simplex minimizer (reflection 1, expansion 2, contraction 0.5, shrink 0.5), fully deterministic: the initial simplex is x0 plus one step along each axis, and ties are broken by index.
+	~#
+	class NelderMead {
+		@best_x : Float[];
+		@best_f : Float;
+		@evals : Int;
+
+		New() {
+			@best_f := Float->NaN();
+		}
+
+		#~
+		Minimizes the objective.
+		@param obj the function
+		@param x0 the starting point
+		@param step the size of the initial simplex along each axis
+		@param max_evals evaluation budget
+		@param tol stop when the spread of the simplex values is below tol * (1 + |best|)
+		@return the best point (also GetBest / GetValue)
+		~#
+		method : public : Minimize(obj : Objective, x0 : Float[], step : Float, max_evals : Int, tol : Float) ~ Float[] {
+			n := x0->Size();
+			np1 := n + 1;
+			pts := Float->New[np1, n];
+			fv := Float->New[np1];
+			each(i : np1) {
+				each(j : n) {
+					pts[i, j] := x0[j];
+				};
+				if(i > 0) {
+					pts[i, i - 1] := pts[i, i - 1] + step;
+				};
+			};
+
+			@evals := 0;
+			each(i : np1) {
+				fv[i] := Eval(obj, Row(pts, i, n));
+			};
+
+			while(@evals < max_evals) {
+				# order: best index lo, worst hi, second worst nh
+				lo := 0;
+				hi := 0;
+				each(i : np1) {
+					if(fv[i] < fv[lo]) {
+						lo := i;
+					};
+					if(fv[i] > fv[hi]) {
+						hi := i;
+					};
+				};
+
+				nh := lo;
+				each(i : np1) {
+					if(i <> hi & fv[i] >= fv[nh]) {
+						nh := i;
+					};
+				};
+
+				if((fv[hi] - fv[lo])->Abs() <= tol * (1.0 + fv[lo]->Abs())) {
+					break;
+				};
+
+				# centroid of all but the worst
+				cen := Float->New[n];
+				each(i : np1) {
+					if(i <> hi) {
+						each(j : n) {
+							cen[j] += pts[i, j] / n->As(Float);
+						};
+					};
+				};
+
+				xr := Float->New[n];
+				each(j : n) {
+					xr[j] := cen[j] + (cen[j] - pts[hi, j]);
+				};
+				fr := Eval(obj, xr);
+
+				if(fr < fv[lo]) {
+					xe := Float->New[n];
+					each(j : n) {
+						xe[j] := cen[j] + 2.0 * (cen[j] - pts[hi, j]);
+					};
+					fe := Eval(obj, xe);
+					if(fe < fr) {
+						SetRow(pts, hi, xe, n);
+						fv[hi] := fe;
+					}
+					else {
+						SetRow(pts, hi, xr, n);
+						fv[hi] := fr;
+					};
+				}
+				else if(fr < fv[nh]) {
+					SetRow(pts, hi, xr, n);
+					fv[hi] := fr;
+				}
+				else {
+					xc := Float->New[n];
+					if(fr < fv[hi]) {
+						each(j : n) {
+							xc[j] := cen[j] + 0.5 * (xr[j] - cen[j]);
+						};
+					}
+					else {
+						each(j : n) {
+							xc[j] := cen[j] + 0.5 * (pts[hi, j] - cen[j]);
+						};
+					};
+					fc := Eval(obj, xc);
+
+					if(fc < TsMath->Min2(fr, fv[hi])) {
+						SetRow(pts, hi, xc, n);
+						fv[hi] := fc;
+					}
+					else {
+						# shrink toward the best
+						each(i : np1) {
+							if(i <> lo) {
+								each(j : n) {
+									pts[i, j] := pts[lo, j] + 0.5 * (pts[i, j] - pts[lo, j]);
+								};
+								fv[i] := Eval(obj, Row(pts, i, n));
+							};
+						};
+					};
+				};
+			};
+
+			lo := 0;
+			each(i : np1) {
+				if(fv[i] < fv[lo]) {
+					lo := i;
+				};
+			};
+
+			@best_x := Row(pts, lo, n);
+			@best_f := fv[lo];
+
+			return @best_x;
+		}
+
+		method : Eval(obj : Objective, x : Float[]) ~ Float {
+			@evals += 1;
+			v := obj->Evaluate(x);
+			if(v <> v) {
+				return 1.0e300;
+			};
+
+			return v;
+		}
+
+		method : Row(pts : Float[,], i : Int, n : Int) ~ Float[] {
+			r := Float->New[n];
+			each(j : n) {
+				r[j] := pts[i, j];
+			};
+
+			return r;
+		}
+
+		method : SetRow(pts : Float[,], i : Int, x : Float[], n : Int) ~ Nil {
+			each(j : n) {
+				pts[i, j] := x[j];
+			};
+		}
+
+		#~
+		@return the best point of the last Minimize
+		~#
+		method : public : GetBest() ~ Float[] {
+			return @best_x;
+		}
+
+		#~
+		@return the objective value at the best point
+		~#
+		method : public : GetValue() ~ Float {
+			return @best_f;
+		}
+
+		#~
+		@return how many times the objective was evaluated
+		~#
+		method : public : GetEvaluations() ~ Int {
+			return @evals;
+		}
+	}
+
+	#~
+	Shared helpers for the models: input checks and information criteria. All static.
+	~#
+	class ModelKit {
+		#~
+		The reason a series cannot be fitted, or "" when it can.
+		@param y the series
+		@param min_n the fewest observations the model needs
+		~#
+		function : CheckSeries(y : TimeSeries, min_n : Int) ~ String {
+			if(y = Nil) {
+				return "the series is Nil";
+			};
+
+			e := y->Check();
+			if(e->Size() > 0) {
+				return e;
+			};
+
+			if(y->Size() < min_n) {
+				n := y->Size();
+				return "need at least {$min_n} observations but the series has {$n}";
+			};
+
+			return "";
+		}
+
+		#~
+		The reason a forecast request is bad, or "".
+		~#
+		function : CheckRequest(h : Int, level : Float) ~ String {
+			if(h < 1) {
+				return "the horizon must be at least 1";
+			};
+
+			if(level <> level | level <= 0.0 | level >= 1.0) {
+				return "the interval level must be strictly between 0 and 1";
+			};
+
+			return "";
+		}
+
+		#~
+		The Gaussian log-likelihood at the maximum-likelihood variance: -n/2 (ln(2 pi sse / n) + 1).
+		~#
+		function : GaussianLogLik(sse : Float, n : Int) ~ Float {
+			nf := n->As(Float);
+			return -0.5 * nf * ((2.0 * Float->Pi() * sse / nf)->Log() + 1.0);
+		}
+
+		#~
+		Akaike: -2 logLik + 2 k.
+		~#
+		function : Aic(loglik : Float, k : Int) ~ Float {
+			return -2.0 * loglik + 2.0 * k->As(Float);
+		}
+
+		#~
+		Small-sample corrected Akaike: AIC + 2 k (k + 1) / (n - k - 1); infinite when n - k - 1 <= 0.
+		~#
+		function : Aicc(loglik : Float, k : Int, n : Int) ~ Float {
+			if(n - k - 1 <= 0) {
+				return Float->Inf();
+			};
+
+			return Aic(loglik, k) + 2.0 * k->As(Float) * (k + 1)->As(Float) / (n - k - 1)->As(Float);
+		}
+
+		#~
+		Bayesian: -2 logLik + k ln n.
+		~#
+		function : Bic(loglik : Float, k : Int, n : Int) ~ Float {
+			return -2.0 * loglik + k->As(Float) * n->As(Float)->Log();
+		}
+
+		function : Nans(n : Int) ~ Float[] {
+			out := Float->New[n];
+			each(i : n) {
+				out[i] := Float->NaN();
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	The simple benchmark forecasters. Every other model should beat them; MASE (ForecastMetrics->Mase) is scaled by the naive one.
+
+	- NAIVE: every forecast is the last value (a random walk).
+	- SEASONAL_NAIVE: the value one period before the forecast time (parameter: the period).
+	- DRIFT: the last value plus the average change of the whole series, per step.
+	- MEAN: the mean of the whole series.
+	- MOVING_AVERAGE: the mean of the last k values, flat (parameter: k).
+
+	Prediction intervals follow Hyndman and Athanasopoulos (Forecasting: Principles and Practice, 3rd ed., section 5.5): the forecast standard deviation is the residual standard deviation s times sqrt(h) for naive, sqrt(floor((h-1)/m) + 1) for seasonal naive, sqrt(h (1 + h/T)) for drift, sqrt(1 + 1/T) for the mean and sqrt(1 + 1/k) for the moving average. s is sqrt(sum of squared one-step errors / (N - K)) with N the number of errors and K = 1 for DRIFT and MEAN, otherwise 0. The errors are those of the one-step forecasts: y[t-1] (naive), y[t-m] (seasonal naive), y[t-1] plus the drift (drift), the series mean (mean) and the mean of the k values before t (moving average).
+	~#
+	class BaselineForecaster implements Forecaster {
+		#~
+		Which baseline.
+		~#
+		enum Kind {
+			NAIVE,
+			SEASONAL_NAIVE,
+			DRIFT,
+			MEAN,
+			MOVING_AVERAGE
+		}
+
+		@kind : BaselineForecaster->Kind;
+		@param : Int;
+		@y : Float[];
+		@fitted : Float[];
+		@resid : Float[];
+		@sigma : Float;
+		@slope : Float;
+		@ok : Bool;
+		@error : String;
+
+		#~
+		A baseline that needs no parameter (NAIVE, DRIFT, MEAN).
+		~#
+		New(kind : BaselineForecaster->Kind) {
+			@kind := kind;
+			@param := 1;
+			@error := "";
+		}
+
+		#~
+		A baseline with its parameter: the period for SEASONAL_NAIVE (>= 1) or the window k for MOVING_AVERAGE (>= 1).
+		~#
+		New(kind : BaselineForecaster->Kind, param : Int) {
+			@kind := kind;
+			@param := param;
+			@error := "";
+		}
+
+		method : public : Fit(y : TimeSeries) ~ Bool {
+			@ok := false;
+			min_n := 2;
+			if(@kind = BaselineForecaster->Kind->SEASONAL_NAIVE) {
+				if(@param < 1) {
+					@error := "the period must be at least 1";
+					return false;
+				};
+				min_n := @param + 1;
+			}
+			else if(@kind = BaselineForecaster->Kind->MOVING_AVERAGE) {
+				if(@param < 1) {
+					@error := "the window must be at least 1";
+					return false;
+				};
+				min_n := @param + 1;
+			};
+
+			@error := ModelKit->CheckSeries(y, min_n);
+			if(@error->Size() > 0) {
+				return false;
+			};
+
+			@y := y->GetValues();
+			n := @y->Size();
+			@fitted := ModelKit->Nans(n);
+			@resid := ModelKit->Nans(n);
+			@slope := (@y[n - 1] - @y[0]) / (n - 1)->As(Float);
+
+			total := 0.0;
+			each(i : n) {
+				total += @y[i];
+			};
+			mean := total / n->As(Float);
+
+			each(t : n) {
+				f := Float->NaN();
+				if(@kind = BaselineForecaster->Kind->NAIVE) {
+					if(t >= 1) {
+						f := @y[t - 1];
+					};
+				}
+				else if(@kind = BaselineForecaster->Kind->SEASONAL_NAIVE) {
+					if(t >= @param) {
+						f := @y[t - @param];
+					};
+				}
+				else if(@kind = BaselineForecaster->Kind->DRIFT) {
+					if(t >= 1) {
+						f := @y[t - 1] + @slope;
+					};
+				}
+				else if(@kind = BaselineForecaster->Kind->MEAN) {
+					f := mean;
+				}
+				else {
+					if(t >= @param) {
+						s := 0.0;
+						each(k : @param) {
+							s += @y[t - 1 - k];
+						};
+						f := s / @param->As(Float);
+					};
+				};
+
+				@fitted[t] := f;
+				if(f = f) {
+					@resid[t] := @y[t] - f;
+				};
+			};
+
+			sse := 0.0;
+			cnt := 0;
+			each(t : n) {
+				if(@resid[t] = @resid[t]) {
+					sse += @resid[t] * @resid[t];
+					cnt += 1;
+				};
+			};
+
+			k := 0;
+			if(@kind = BaselineForecaster->Kind->DRIFT | @kind = BaselineForecaster->Kind->MEAN) {
+				k := 1;
+			};
+
+			if(cnt - k < 1) {
+				@error := "too few observations to estimate the residual spread";
+				return false;
+			};
+
+			@sigma := (sse / (cnt - k)->As(Float))->Sqrt();
+			@ok := true;
+
+			return true;
+		}
+
+		method : public : Forecast(h : Int, level : Float) ~ ForecastResult {
+			if(<>@ok) {
+				@error := "not fitted";
+				return ForecastResult->New(@error);
+			};
+
+			e := ModelKit->CheckRequest(h, level);
+			if(e->Size() > 0) {
+				@error := e;
+				return ForecastResult->New(e);
+			};
+
+			n := @y->Size();
+			mean := Float->New[h];
+			sd := Float->New[h];
+			each(i : h) {
+				step := i + 1;
+				hf := step->As(Float);
+				mult := 1.0;
+				if(@kind = BaselineForecaster->Kind->NAIVE) {
+					mean[i] := @y[n - 1];
+					mult := hf->Sqrt();
+				}
+				else if(@kind = BaselineForecaster->Kind->SEASONAL_NAIVE) {
+					mean[i] := @y[n - @param + (step - 1) % @param];
+					mult := ((step - 1) / @param + 1)->As(Float)->Sqrt();
+				}
+				else if(@kind = BaselineForecaster->Kind->DRIFT) {
+					mean[i] := @y[n - 1] + hf * @slope;
+					mult := (hf * (1.0 + hf / n->As(Float)))->Sqrt();
+				}
+				else if(@kind = BaselineForecaster->Kind->MEAN) {
+					mean[i] := @fitted[0];
+					mult := (1.0 + 1.0 / n->As(Float))->Sqrt();
+				}
+				else {
+					s := 0.0;
+					each(k : @param) {
+						s += @y[n - 1 - k];
+					};
+					mean[i] := s / @param->As(Float);
+					mult := (1.0 + 1.0 / @param->As(Float))->Sqrt();
+				};
+
+				sd[i] := @sigma * mult;
+			};
+
+			@error := "";
+			return ForecastResult->New(mean, sd, level);
+		}
+
+		method : public : GetFitted() ~ Float[] {
+			return @fitted;
+		}
+
+		method : public : GetResiduals() ~ Float[] {
+			return @resid;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : IsFitted() ~ Bool {
+			return @ok;
+		}
+
+		method : public : Copy() ~ Forecaster {
+			return BaselineForecaster->New(@kind, @param);
+		}
+
+		method : public : GetName() ~ String {
+			if(@kind = BaselineForecaster->Kind->NAIVE) {
+				return "Naive";
+			};
+			if(@kind = BaselineForecaster->Kind->SEASONAL_NAIVE) {
+				return "SeasonalNaive({$@param})";
+			};
+			if(@kind = BaselineForecaster->Kind->DRIFT) {
+				return "Drift";
+			};
+			if(@kind = BaselineForecaster->Kind->MEAN) {
+				return "Mean";
+			};
+
+			return "MovingAverage({$@param})";
+		}
+
+		#~
+		@return the residual standard deviation s of the interval rule above (NaN before Fit)
+		~#
+		method : public : GetSigma() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @sigma;
+		}
+
+		#~
+		@return the drift per step, (last - first) / (n - 1) (NaN before Fit)
+		~#
+		method : public : GetDrift() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @slope;
+		}
+	}
+
+	#~
+	Exponential smoothing: simple (SES), Holt's linear trend with optional damping, and Holt-Winters with an additive or multiplicative seasonal component.
+
+	The recursions, for observation y[t] with level l, trend b and seasonal s[t-m] (period m), smoothing parameters alpha, beta, gamma in (0, 1) and damping phi in (0.8, 0.98) (phi = 1 without damping), are those of statsmodels' ExponentialSmoothing and of the forecast package's Holt-Winters:
+	base = l[t-1] + phi b[t-1]            (the one-step forecast is base, base + s[t-m] or base * s[t-m])
+	l[t] = alpha (y[t] - s[t-m]) + (1 - alpha) base            (multiplicative: alpha y[t] / s[t-m] + ...)
+	b[t] = beta (l[t] - l[t-1]) + (1 - beta) phi b[t-1]
+	s[t] = gamma (y[t] - base) + (1 - gamma) s[t-m]            (multiplicative: gamma y[t] / base + ...)
+	and the h-step forecast is l + (phi + ... + phi^h) b plus (or times) the seasonal value of that position.
+
+	Fitting. The initial level, trend and seasonal states are set by a documented rule (they are not optimized): without trend or season the level starts at y[0] (trend at 0); with a trend and no season a least-squares line through the first min(n, 10) points gives the slope as the initial trend and the level one step before its start; with a season (n >= 2 periods) the trend is the difference between the means of the first two periods divided by the period, the level is the first period's mean moved back by half a period plus one step, and each seasonal value is the average over the first two periods of the detrended observation (difference or ratio), centered to mean 0 (additive) or 1 (multiplicative). The smoothing parameters minimize the sum of squared one-step errors by Nelder-Mead on a logistic transform of the parameters (to keep them inside their bounds), from three fixed starting points, then polished from the best; the result is deterministic. SetParameters fixes the parameters instead (no optimization), which is how the recursions are checked against other software.
+
+	Intervals. The recursions are the innovations form with e[t] = y[t] - forecast: l += alpha e, b += alpha beta e, s += gamma e. For the additive models the h-step forecast variance is sigma^2 (1 + sum over j = 1 .. h-1 of c[j]^2) with c[j] = alpha (1 + beta (phi + ... + phi^j)) plus gamma when j is a multiple of m, and sigma^2 = SSE / n (Hyndman, Koehler, Ord and Snyder 2008, section 6.3, for the additive-error models). For a multiplicative season there is no such closed form; the same sum is used on the relative scale (sigma is the root mean square of e / forecast, and the sd is that times the point forecast), which is an approximation. The prediction-interval coverage check in the tests measures how good it is.
+
+	Information criteria use the Gaussian log-likelihood at SSE / n with k = the free smoothing parameters, plus the initial states (1 level, 1 trend, m - 1 seasonal) plus 1 for the variance.
+	~#
+	class ExponentialSmoothing implements Forecaster, Objective {
+		#~
+		The seasonal component.
+		~#
+		enum Season {
+			NONE,
+			ADDITIVE,
+			MULTIPLICATIVE
+		}
+
+		@trend : Bool;
+		@damped : Bool;
+		@season : ExponentialSmoothing->Season;
+		@period : Int;
+		@fixed : Bool;
+		@alpha : Float;
+		@beta : Float;
+		@gamma : Float;
+		@phi : Float;
+		@y : Float[];
+		@n : Int;
+		@fitted : Float[];
+		@resid : Float[];
+		@l0 : Float;
+		@b0 : Float;
+		@s0 : Float[];
+		@lt : Float;
+		@bt : Float;
+		@st : Float[];
+		@sse : Float;
+		@sigma2 : Float;
+		@loglik : Float;
+		@nparams : Int;
+		@ok : Bool;
+		@error : String;
+
+		#~
+		Simple exponential smoothing (level only).
+		~#
+		New() {
+			@trend := false;
+			@damped := false;
+			@season := ExponentialSmoothing->Season->NONE;
+			@period := 1;
+			@error := "";
+		}
+
+		#~
+		A configured model.
+		@param trend true for an additive trend (Holt)
+		@param damped true to damp the trend (ignored without a trend)
+		@param season the seasonal component
+		@param period observations per cycle (>= 2 when season is not NONE)
+		~#
+		New(trend : Bool, damped : Bool, season : ExponentialSmoothing->Season, period : Int) {
+			@trend := trend;
+			@damped := trend & damped;
+			@season := season;
+			@period := period;
+			@error := "";
+		}
+
+		#~
+		Simple exponential smoothing.
+		~#
+		function : Simple() ~ ExponentialSmoothing {
+			return ExponentialSmoothing->New();
+		}
+
+		#~
+		Holt's linear trend method.
+		@param damped true for the damped trend
+		~#
+		function : Holt(damped : Bool) ~ ExponentialSmoothing {
+			return ExponentialSmoothing->New(true, damped, ExponentialSmoothing->Season->NONE, 1);
+		}
+
+		#~
+		Holt-Winters with an additive trend.
+		@param period observations per cycle
+		@param multiplicative true for the multiplicative seasonal component
+		~#
+		function : HoltWinters(period : Int, multiplicative : Bool) ~ ExponentialSmoothing {
+			s := ExponentialSmoothing->Season->ADDITIVE;
+			if(multiplicative) {
+				s := ExponentialSmoothing->Season->MULTIPLICATIVE;
+			};
+
+			return ExponentialSmoothing->New(true, false, s, period);
+		}
+
+		#~
+		Fixes the smoothing parameters; Fit then only runs the recursions. Pass any value for a parameter the configuration does not use.
+		@param alpha level smoothing in (0, 1]
+		@param beta trend smoothing in [0, 1]
+		@param gamma seasonal smoothing in [0, 1]
+		@param phi damping in (0, 1]
+		@return this model
+		~#
+		method : public : SetParameters(alpha : Float, beta : Float, gamma : Float, phi : Float) ~ ExponentialSmoothing {
+			@fixed := true;
+			@alpha := alpha;
+			@beta := beta;
+			@gamma := gamma;
+			@phi := phi;
+			if(<>@damped) {
+				@phi := 1.0;
+			};
+
+			return @self;
+		}
+
+		method : IsSeasonal() ~ Bool {
+			return @season <> ExponentialSmoothing->Season->NONE;
+		}
+
+		method : IsMult() ~ Bool {
+			return @season = ExponentialSmoothing->Season->MULTIPLICATIVE;
+		}
+
+		method : public : Fit(y : TimeSeries) ~ Bool {
+			@ok := false;
+			min_n := 2;
+			if(@trend) {
+				min_n := 3;
+			};
+
+			if(IsSeasonal()) {
+				if(@period < 2) {
+					@error := "a seasonal model needs a period of at least 2";
+					return false;
+				};
+				min_n := 2 * @period;
+			};
+
+			@error := ModelKit->CheckSeries(y, min_n);
+			if(@error->Size() > 0) {
+				if(IsSeasonal() & y <> Nil & y->Size() < min_n) {
+					n := y->Size();
+					@error := "need at least two full periods ({$min_n} observations) but the series has {$n}";
+				};
+				return false;
+			};
+
+			@y := y->GetValues();
+			@n := @y->Size();
+			if(IsMult()) {
+				each(i : @n) {
+					if(@y[i] <= 0.0) {
+						@error := "multiplicative seasonality needs every value > 0 (index {$i})";
+						return false;
+					};
+				};
+			};
+
+			InitStates();
+
+			free := 1;
+			if(@trend) {
+				free += 1;
+			};
+			if(IsSeasonal()) {
+				free += 1;
+			};
+			if(@damped) {
+				free += 1;
+			};
+
+			if(<>@fixed) {
+				best : Float[];
+				best_f := Float->Inf();
+				starts := Float->New[3, 4];
+				starts[0, 0] := 0.3; starts[0, 1] := 0.1; starts[0, 2] := 0.1; starts[0, 3] := 0.95;
+				starts[1, 0] := 0.7; starts[1, 1] := 0.3; starts[1, 2] := 0.3; starts[1, 3] := 0.9;
+				starts[2, 0] := 0.1; starts[2, 1] := 0.02; starts[2, 2] := 0.02; starts[2, 3] := 0.98;
+
+				nm := NelderMead->New();
+				each(s : 3) {
+					x0 := Float->New[free];
+					idx := 0;
+					x0[idx] := ExponentialSmoothing->Encode(starts[s, 0], 0.0001, 0.9999);
+					idx += 1;
+					if(@trend) {
+						x0[idx] := ExponentialSmoothing->Encode(starts[s, 1], 0.0001, 0.9999);
+						idx += 1;
+					};
+					if(IsSeasonal()) {
+						x0[idx] := ExponentialSmoothing->Encode(starts[s, 2], 0.0001, 0.9999);
+						idx += 1;
+					};
+					if(@damped) {
+						x0[idx] := ExponentialSmoothing->Encode(starts[s, 3], 0.8, 0.98);
+					};
+
+					x := nm->Minimize(@self, x0, 0.5, 400 * free, 1.0e-12);
+					if(nm->GetValue() < best_f) {
+						best_f := nm->GetValue();
+						best := x;
+					};
+				};
+
+				# polish from the best
+				x := nm->Minimize(@self, best, 0.05, 400 * free, 1.0e-14);
+				if(nm->GetValue() < best_f) {
+					best := x;
+				};
+
+				Decode(best);
+			};
+
+			@sse := Run(@alpha, @beta, @gamma, @phi, true);
+			if(@sse >= 1.0e299) {
+				@error := "the recursions diverged for these parameters";
+				return false;
+			};
+
+			@sigma2 := @sse / @n->As(Float);
+			@nparams := free + 2;
+			if(@trend) {
+				@nparams += 1;
+			};
+			if(IsSeasonal()) {
+				@nparams += @period - 1;
+			};
+			@loglik := ModelKit->GaussianLogLik(@sse, @n);
+			@ok := true;
+			@error := "";
+
+			return true;
+		}
+
+		# parameter value in (lo, hi) to an unconstrained number
+		function : Encode(v : Float, lo : Float, hi : Float) ~ Float {
+			p := (v - lo) / (hi - lo);
+			if(p < 1.0e-9) {
+				p := 1.0e-9;
+			};
+			if(p > 1.0 - 1.0e-9) {
+				p := 1.0 - 1.0e-9;
+			};
+
+			return (p / (1.0 - p))->Log();
+		}
+
+		function : Squash(u : Float, lo : Float, hi : Float) ~ Float {
+			if(u > 35.0) {
+				u := 35.0;
+			};
+			if(u < -35.0) {
+				u := -35.0;
+			};
+
+			return lo + (hi - lo) / (1.0 + (0.0 - u)->Exp());
+		}
+
+		# unconstrained vector to the four parameters
+		method : Decode(u : Float[]) ~ Nil {
+			idx := 0;
+			@alpha := ExponentialSmoothing->Squash(u[idx], 0.0001, 0.9999);
+			idx += 1;
+			@beta := 0.0;
+			@gamma := 0.0;
+			@phi := 1.0;
+			if(@trend) {
+				@beta := ExponentialSmoothing->Squash(u[idx], 0.0001, 0.9999);
+				idx += 1;
+			};
+			if(IsSeasonal()) {
+				@gamma := ExponentialSmoothing->Squash(u[idx], 0.0001, 0.9999);
+				idx += 1;
+			};
+			if(@damped) {
+				@phi := ExponentialSmoothing->Squash(u[idx], 0.8, 0.98);
+			};
+		}
+
+		#~
+		The sum of squared one-step errors at an unconstrained parameter vector (the NelderMead objective).
+		~#
+		method : public : Evaluate(u : Float[]) ~ Float {
+			Decode(u);
+			return Run(@alpha, @beta, @gamma, @phi, false);
+		}
+
+		method : InitStates() ~ Nil {
+			m := @period;
+			@s0 := Nil;
+			@b0 := 0.0;
+			if(IsSeasonal()) {
+				mean1 := 0.0;
+				mean2 := 0.0;
+				each(i : m) {
+					mean1 += @y[i];
+					mean2 += @y[m + i];
+				};
+				mean1 /= m->As(Float);
+				mean2 /= m->As(Float);
+				tr := (mean2 - mean1) / m->As(Float);
+
+				@s0 := Float->New[m];
+				total := 0.0;
+				each(i : m) {
+					lv1 := mean1 + tr * (i->As(Float) - (m - 1)->As(Float) / 2.0);
+					lv2 := lv1 + tr * m->As(Float);
+					if(IsMult()) {
+						@s0[i] := 0.5 * (@y[i] / lv1 + @y[m + i] / lv2);
+					}
+					else {
+						@s0[i] := 0.5 * ((@y[i] - lv1) + (@y[m + i] - lv2));
+					};
+					total += @s0[i];
+				};
+
+				avg := total / m->As(Float);
+				each(i : m) {
+					if(IsMult()) {
+						@s0[i] := @s0[i] / avg;
+					}
+					else {
+						@s0[i] := @s0[i] - avg;
+					};
+				};
+
+				if(@trend) {
+					@b0 := tr;
+					@l0 := mean1 - tr * ((m - 1)->As(Float) / 2.0 + 1.0);
+				}
+				else {
+					@l0 := mean1;
+				};
+			}
+			else if(@trend) {
+				k := TsMath->IMin(@n, 10);
+				sx := 0.0;
+				sy := 0.0;
+				sxx := 0.0;
+				sxy := 0.0;
+				each(i : k) {
+					xi := i->As(Float);
+					sx += xi;
+					sy += @y[i];
+					sxx += xi * xi;
+					sxy += xi * @y[i];
+				};
+
+				kf := k->As(Float);
+				slope := (kf * sxy - sx * sy) / (kf * sxx - sx * sx);
+				icpt := (sy - slope * sx) / kf;
+				@b0 := slope;
+				@l0 := icpt - slope;
+			}
+			else {
+				@l0 := @y[0];
+			};
+		}
+
+		# runs the recursions; returns the SSE (1e300 when they diverge); keep stores fitted values and final states
+		method : Run(alpha : Float, beta : Float, gamma : Float, phi : Float, keep : Bool) ~ Float {
+			l := @l0;
+			b := @b0;
+			m := @period;
+			seasonal := IsSeasonal();
+			mult := IsMult();
+			s : Float[];
+			if(seasonal) {
+				s := Float->Copy(@s0);
+			};
+
+			if(keep) {
+				@fitted := Float->New[@n];
+				@resid := Float->New[@n];
+			};
+
+			sse := 0.0;
+			each(t : @n) {
+				base := l + phi * b;
+				yt := @y[t];
+				seas := 0.0;
+				f := base;
+				if(seasonal) {
+					seas := s[t % m];
+					if(mult) {
+						f := base * seas;
+					}
+					else {
+						f := base + seas;
+					};
+				};
+
+				e := yt - f;
+				sse += e * e;
+				if(keep) {
+					@fitted[t] := f;
+					@resid[t] := e;
+				};
+
+				lnew : Float;
+				if(seasonal & mult) {
+					if(seas = 0.0) {
+						return 1.0e300;
+					};
+					lnew := alpha * (yt / seas) + (1.0 - alpha) * base;
+				}
+				else if(seasonal) {
+					lnew := alpha * (yt - seas) + (1.0 - alpha) * base;
+				}
+				else {
+					lnew := alpha * yt + (1.0 - alpha) * base;
+				};
+
+				if(seasonal) {
+					if(mult) {
+						if(base = 0.0) {
+							return 1.0e300;
+						};
+						s[t % m] := gamma * (yt / base) + (1.0 - gamma) * seas;
+					}
+					else {
+						s[t % m] := gamma * (yt - base) + (1.0 - gamma) * seas;
+					};
+				};
+
+				if(@trend) {
+					b := beta * (lnew - l) + (1.0 - beta) * phi * b;
+				};
+
+				l := lnew;
+				if(l <> l | sse <> sse) {
+					return 1.0e300;
+				};
+			};
+
+			if(keep) {
+				@lt := l;
+				@bt := b;
+				@st := s;
+			};
+
+			return sse;
+		}
+
+		method : public : Forecast(h : Int, level : Float) ~ ForecastResult {
+			if(<>@ok) {
+				@error := "not fitted";
+				return ForecastResult->New(@error);
+			};
+
+			e := ModelKit->CheckRequest(h, level);
+			if(e->Size() > 0) {
+				@error := e;
+				return ForecastResult->New(e);
+			};
+
+			m := @period;
+			mean := Float->New[h];
+			sd := Float->New[h];
+			sigma := @sigma2->Sqrt();
+			if(IsMult()) {
+				# relative scale: root mean square of e / fitted
+				acc := 0.0;
+				each(t : @n) {
+					r := @resid[t] / @fitted[t];
+					acc += r * r;
+				};
+				sigma := (acc / @n->As(Float))->Sqrt();
+			};
+
+			phisum := 0.0;
+			phipow := 1.0;
+			vsum := 0.0;
+			each(i : h) {
+				step := i + 1;
+				phipow *= @phi;
+				phisum += phipow;
+				f := @lt + phisum * @bt;
+				if(IsSeasonal()) {
+					sv := @st[(@n + step - 1) % m];
+					if(IsMult()) {
+						f := f * sv;
+					}
+					else {
+						f := f + sv;
+					};
+				};
+				mean[i] := f;
+
+				if(i > 0) {
+					# add c[i]^2, where c[j] is the weight of an innovation j steps back
+					cj := @alpha;
+					if(@trend) {
+						ps := 0.0;
+						pp := 1.0;
+						each(q : i) {
+							pp *= @phi;
+							ps += pp;
+						};
+						cj := @alpha * (1.0 + @beta * ps);
+					};
+					if(IsSeasonal() & i % m = 0) {
+						cj += @gamma;
+					};
+					vsum += cj * cj;
+				};
+
+				v := sigma * (1.0 + vsum)->Sqrt();
+				if(IsMult()) {
+					v := v * f->Abs();
+				};
+				sd[i] := v;
+			};
+
+			@error := "";
+			return ForecastResult->New(mean, sd, level);
+		}
+
+		method : public : GetFitted() ~ Float[] {
+			return @fitted;
+		}
+
+		method : public : GetResiduals() ~ Float[] {
+			return @resid;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : IsFitted() ~ Bool {
+			return @ok;
+		}
+
+		method : public : Copy() ~ Forecaster {
+			c := ExponentialSmoothing->New(@trend, @damped, @season, @period);
+			if(@fixed) {
+				c->SetParameters(@alpha, @beta, @gamma, @phi);
+			};
+
+			return c;
+		}
+
+		method : public : GetName() ~ String {
+			t := "N";
+			if(@damped) {
+				t := "Ad";
+			}
+			else if(@trend) {
+				t := "A";
+			};
+
+			if(@season = ExponentialSmoothing->Season->ADDITIVE) {
+				return "ES({$t},A,{$@period})";
+			};
+			if(@season = ExponentialSmoothing->Season->MULTIPLICATIVE) {
+				return "ES({$t},M,{$@period})";
+			};
+
+			return "ES({$t},N)";
+		}
+
+		method : public : GetAlpha() ~ Float {
+			return @alpha;
+		}
+
+		method : public : GetBeta() ~ Float {
+			return @beta;
+		}
+
+		method : public : GetGamma() ~ Float {
+			return @gamma;
+		}
+
+		method : public : GetPhi() ~ Float {
+			return @phi;
+		}
+
+		#~
+		@return the sum of squared one-step errors (NaN before Fit)
+		~#
+		method : public : GetSse() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @sse;
+		}
+
+		#~
+		@return SSE / n, the variance used for AIC and the (additive) intervals (NaN before Fit)
+		~#
+		method : public : GetSigma2() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @sigma2;
+		}
+
+		#~
+		@return the number of parameters counted by the information criteria
+		~#
+		method : public : GetNumParams() ~ Int {
+			return @nparams;
+		}
+
+		method : public : GetLogLik() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @loglik;
+		}
+
+		method : public : GetAic() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return ModelKit->Aic(@loglik, @nparams);
+		}
+
+		method : public : GetAicc() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return ModelKit->Aicc(@loglik, @nparams, @n);
+		}
+
+		method : public : GetBic() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return ModelKit->Bic(@loglik, @nparams, @n);
+		}
+
+		#~
+		@return the initial level (the level before the first observation)
+		~#
+		method : public : GetInitialLevel() ~ Float {
+			return @l0;
+		}
+
+		#~
+		@return the initial trend
+		~#
+		method : public : GetInitialTrend() ~ Float {
+			return @b0;
+		}
+
+		#~
+		@return the initial seasonal values, one per position in the cycle (Nil without a season)
+		~#
+		method : public : GetInitialSeasonal() ~ Float[] {
+			return @s0;
+		}
+
+		#~
+		@return the level after the last observation
+		~#
+		method : public : GetFinalLevel() ~ Float {
+			return @lt;
+		}
+
+		#~
+		@return the trend after the last observation
+		~#
+		method : public : GetFinalTrend() ~ Float {
+			return @bt;
+		}
+	}
+}

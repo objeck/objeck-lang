@@ -72,6 +72,9 @@
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"ParseBody": {
 					"descriptions": ["**Parse a response body. Nil, with the last error set, when the body is not JSON or is an error object ({\"type\":\"error\",\"error\":{\"type\":...,\"message\":...}}).**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
 				},
@@ -345,6 +348,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"ParseBody": {
 					"descriptions": ["**Parses a response body, recording a failure as the last error (the error was only printed before, so GetLastError() never reported it). A body that is not JSON, or that carries an 'error' object, yields Nil.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
@@ -1966,6 +1972,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"NoReply": {
 					"descriptions": ["**Checks whether a request got an answer, recording the failure as the last error if not. A refused or dropped connection is a Nil response over HTTP and a response with status 0 and no content over HTTPS.**\n\n```function : NoReply(response:Web.HTTP.Response) ~ Bool```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: Bool"]
@@ -9653,7 +9662,7 @@
 			}
 		},
 		"Query.RegEx.RegEx": {
-			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {least} or {least, most}; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
+			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .</li> <li>optional &#8208; ?</li> <li>zero or more repetitions &#8208; *</li> <li>one or more repetitions &#8208; +</li> <li>repeat &#8208; {n} exactly n, {least, most} a range, or {least,} at least; a count is at most 1000, least may not exceed most, and a pattern that expands to more than 100000 instructions (nested repeats multiply) is not accepted: IsOk() is false</li> <li>start of input &#8208; ^</li> <li>end of input &#8208; $</li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li> <li>(?:one|two) &#8208; non-capturing group</li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li> <li>[^abc] &#8208; negated character class</li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li> </ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w</li> <li>not word &#8208; \\W</li> <li>digit &#8208; \\d</li> <li>not digit &#8208; \\D</li> <li>white space &#8208; \\s</li> <li>not white space &#8208; \\S</li> <li>word boundary &#8208; \\b</li> <li>not a word boundary &#8208; \\B</li> <li>newline, carriage return, tab &#8208; \\n \\r \\t</li> </ul>",
 			"functions": {
 				"Find": {
 					"descriptions": ["**Finds all non-empty, non-overlapping occurrences**\n\n```method : public : Find(stream_in:String) ~ Vector&lt;Result&gt;```\n\n\n\nstream_in: String\n\nreturn: Vector&lt;Result&gt;\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"1 cat, 2 dogs, 3 birds\")<Result>;\neach(r := results) {\n  r->GetValue()->PrintLine();\n};\n```"]
@@ -15680,6 +15689,9 @@
 				"OperatingPoints": {
 					"descriptions": ["**Operating points of a scored classifier, one row per distinct score, from the highest score down: [threshold, false positives, true positives].\n\nEvery metric below is a walk over this. It exists because the functions above take already-thresholded Bool predictions, which throw away exactly what these questions need: a single Bool array fixes one operating point, and cannot answer what the recall would be at a different false-alarm rate.\n\nInstances that share a score share an operating point. Splitting them would invent an ordering the scores do not express and let a metric read better than the model earned.**\n\n```function : OperatingPoints(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
 				},
+				"PairedBootstrapDifference": {
+					"descriptions": ["**A paired bootstrap interval for how much better one detector is than another at thresholds that were chosen beforehand.\n\nBootstrap resamples one detector's scores and recomputes a metric that may itself pick a threshold. This answers the comparison question instead: the two detectors scored the SAME instances, each has a threshold frozen before the test set was looked at (for example by ThresholdAtFpr on out-of-fold scores), and the question is whether detector B's recall is really higher than detector A's. Each resample draws instances once and applies both detectors to that one draw, so the noise the two share cancels in the difference and the interval is the interval of the difference, not two intervals to compare by eye.\n\nThe statistic is B minus A. An instance is flagged when its score is >= the detector's threshold, as in AtThreshold. A resample with no positive instance (recall) or no negative instance (false-positive rate) has no value and is left out; the usable count says how many survived.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int, level:Float) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nlevel: Float\n\nreturn: ConfInterval", "**The same at the conventional 95% level.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nreturn: ConfInterval"]
+				},
 				"Percentile": {
 					"descriptions": ["**A percentile of a set of values, by linear interpolation.\n\nUsed for bootstrap intervals, and exposed because a caller resampling a statistic this bundle does not implement still needs the interval.\n\np is clamped rather than rejected: 0.0 gives the minimum and 1.0 the maximum, which is what a caller asking for them wants.**\n\n```function : Percentile(values:Float[], p:Float) ~ Float```\n\n\n\nvalues: Float[]\n\np: Float\n\nreturn: Float"]
 				},
@@ -17577,6 +17589,637 @@
 				}
 			}
 		},
+		"System.ML.TimeSeries.Acf": {
+			"description": "Autocorrelation and the Ljung-Box portmanteau test.",
+			"functions": {
+				"Autocovariance": {
+					"descriptions": ["**The sample autocovariance at lags 0 to nlags (divisor n).**\n\n```function : Autocovariance(x:Float[], nlags:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nnlags: Int\n\nreturn: Float[]"]
+				},
+				"Bound": {
+					"descriptions": ["**The approximate 95% half-width of the autocorrelation of white noise, 1.96 / sqrt(n); bars beyond it are significant.**\n\n```function : Bound(n:Int) ~ Float```\n\n\n\nn: Int\n\nreturn: Float"]
+				},
+				"Compute": {
+					"descriptions": ["**The sample autocorrelation at lags 0 to nlags: r[k] = sum (x[t] - mean)(x[t+k] - mean) / sum (x[t] - mean)^2 (the biased estimator, as statsmodels' acf with adjusted=False). r[0] is 1.**\n\n```function : Compute(x:Float[], nlags:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nnlags: Int\n\nreturn: Float[]"]
+				},
+				"FromAcf": {
+					"descriptions": ["**Durbin-Levinson: partial autocorrelations from autocorrelations.**\n\n```function : FromAcf(r:Float[]) ~ Float[]```\n\n\n\nr: Float[]\n\nreturn: Float[]"]
+				},
+				"LjungBox": {
+					"descriptions": ["**The Ljung-Box portmanteau test that the autocorrelations up to a lag are all zero (use it on model residuals).**\n\n```function : LjungBox(x:Float[], lags:Int, fitted:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nlags: Int\n\nfitted: Int\n\nreturn: Float[]"]
+				},
+				"Partial": {
+					"descriptions": ["**The partial autocorrelation at lags 0 to nlags by the Durbin-Levinson recursion on the sample autocorrelations (Yule-Walker, as statsmodels' pacf with method \"ywm\"). p[0] is 1.**\n\n```function : Partial(x:Float[], nlags:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nnlags: Int\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.AdfResult": {
+			"description": "The result of Stationarity->Adf.",
+			"functions": {
+				"GetCritical": {
+					"descriptions": ["**The MacKinnon critical value for a test size.**\n\n```method : public : GetCritical(size:Float) ~ Float```\n\n\n\nsize: Float\n\nreturn: Float"]
+				},
+				"GetLags": {
+					"descriptions": ["****\n\n```method : public : GetLags() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetObservations": {
+					"descriptions": ["****\n\n```method : public : GetObservations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRegression": {
+					"descriptions": ["****\n\n```method : public : GetRegression() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetStatistic": {
+					"descriptions": ["**The test statistic: the t ratio of the coefficient on the lagged level. More negative is stronger evidence against a unit root.**\n\n```method : public : GetStatistic() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsStationary": {
+					"descriptions": ["**Whether the unit-root null is rejected, so the series looks stationary.**\n\n```method : public : IsStationary(size:Float) ~ Bool```\n\n\n\nsize: Float\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.ArimaModel": {
+			"description": "ARIMA(p, d, q): an autoregressive moving-average model of order (p, q) for the series after d ordinary differences and D seasonal differences (lag = the period).\n\nWith w the differenced series and mu its mean (a constant mean is included by default only when nothing is differenced, because a differenced series has no level to speak of; SetIncludeMean overrides), the model is (w[t] - mu) = sum phi[i] (w[t-i] - mu) + e[t] + sum theta[j] e[t-j].\n\nEstimation is conditional least squares (CSS): the errors e[t] are computed recursively from the data, taking e[t] = 0 for the first max(p, start) observations, and the sum of their squares is minimized. A pure autoregression (q = 0) is linear in the coefficients, so it is solved exactly by ordinary least squares on the lagged values with an intercept (mu = c / (1 - sum phi)), which is what statsmodels' AutoReg computes. When q > 0 the start is the Hannan-Rissanen estimate (a long autoregression gives estimates of the errors, then a regression of w on its own lags and the lagged error estimates gives phi, theta and the intercept) and a Levenberg-Marquardt iteration with a central-difference Jacobian polishes it to the CSS minimum. There is no random start and no hidden state: the same series gives the same coefficients on every platform.\n\nThe residual variance is SSE / N with N = (length after differencing) - start; the Gaussian log-likelihood is -N/2 (ln(2 pi sigma^2) + 1), and k = p + q + 1 (the mean, if any) + 1 (the variance) feeds AIC = -2 logLik + 2k, AICc = AIC + 2k(k+1)/(N-k-1) and BIC = -2 logLik + k ln N. These are CONDITIONAL likelihoods: compare models with the same d, D and start only (AutoArima does, fixing the start at the largest p it tries).\n\nForecasts are made on the differenced series with future errors set to 0 and then integrated back (SeriesTransform->Integrate). The forecast error variance is sigma^2 (psi[0]^2 + ... + psi[h-1]^2), where psi are the moving-average weights of the full operator theta(B) / (phi(B) (1-B)^d (1-B^m)^D), so intervals widen with the differencing, as they should. Coefficient uncertainty is not included (the usual approximation).\n\nNo check forces the fitted model to be stationary or invertible; IsStationary and IsInvertible report it (a pure autoregression fitted by least squares can come out slightly non-stationary on a series that is not).",
+			"functions": {
+				"GetAr": {
+					"descriptions": ["****\n\n```method : public : GetAr() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetIntercept": {
+					"descriptions": ["****\n\n```method : public : GetIntercept() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetIterations": {
+					"descriptions": ["****\n\n```method : public : GetIterations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMa": {
+					"descriptions": ["****\n\n```method : public : GetMa() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetMean": {
+					"descriptions": ["****\n\n```method : public : GetMean() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNumParams": {
+					"descriptions": ["****\n\n```method : public : GetNumParams() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetObservations": {
+					"descriptions": ["****\n\n```method : public : GetObservations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSigma2": {
+					"descriptions": ["****\n\n```method : public : GetSigma2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSse": {
+					"descriptions": ["****\n\n```method : public : GetSse() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsInvertible": {
+					"descriptions": ["****\n\n```method : public : IsInvertible() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsStationary": {
+					"descriptions": ["****\n\n```method : public : IsStationary() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**ARIMA(p, d, q) with no seasonal differencing.**\n\n```New(p:Int, d:Int, q:Int)```\n\n\n\np: Int\n\nd: Int\n\nq: Int", "**ARIMA(p, d, q) with seasonal differencing.**\n\n```New(p:Int, d:Int, q:Int, sdiff:Int, period:Int)```\n\n\n\np: Int\n\nd: Int\n\nq: Int\n\nsdiff: Int\n\nperiod: Int"]
+				},
+				"SetCssStart": {
+					"descriptions": ["**Sets the first observation of the differenced series that enters the sum of squares (at least p). Models fitted with the same start have comparable information criteria.**\n\n```method : public : SetCssStart(start:Int) ~ ArimaModel```\n\n\n\nstart: Int\n\nreturn: ArimaModel"]
+				},
+				"SetIncludeMean": {
+					"descriptions": ["**Forces the constant mean on or off (the default is on only when d = 0 and D = 0).**\n\n```method : public : SetIncludeMean(include:Bool) ~ ArimaModel```\n\n\n\ninclude: Bool\n\nreturn: ArimaModel"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.AutoArima": {
+			"description": "Automatic ARIMA selection over a small grid.\n\n1. D: when a period of at least 2 is given and seasonal differencing is allowed, the seasonal strength of the classical decomposition decides (above 0.64: one seasonal difference). 2. d: repeated ADF tests (5%, constant, Schwert lags) on the seasonally differenced series pick the number of ordinary differences, up to maxD. 3. p in 0 to maxP and q in 0 to maxQ: every ArimaModel is fitted with the same CSS start (maxP), so the criteria are comparable; a candidate whose fitted autoregressive part is not stationary or whose moving-average part is not invertible is dropped (as auto.arima does: conditional least squares can reach such solutions by exploiting the start-up values, and they forecast badly); the one with the smallest criterion (AICc by default) wins. A constant mean is included when the total number of differences (d + D) is 0 or 1 (a drift, or a seasonal drift, as auto.arima allows); with two or more it would be a polynomial trend and is left out. The winner is refitted state and forecasts through the Forecaster interface; GetCandidates lists what was tried.",
+			"functions": {
+				"GetBest": {
+					"descriptions": ["****\n\n```method : public : GetBest() ~ ArimaModel```\n\n\n\nreturn: ArimaModel"]
+				},
+				"GetBestCriterion": {
+					"descriptions": ["****\n\n```method : public : GetBestCriterion() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCandidateCriteria": {
+					"descriptions": ["**The criterion value of every model tried, in order.**\n\n```method : public : GetCandidateCriteria() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetCandidateNames": {
+					"descriptions": ["**The names of the models tried, in order (the same order as GetCandidateCriteria).**\n\n```method : public : GetCandidateNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetCandidates": {
+					"descriptions": ["**The models tried, in order, with their criterion values.**\n\n```method : public : GetCandidates() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"New": {
+					"descriptions": ["**Defaults: p, q up to 3, d up to 2, AICc, no seasonal differencing.**\n\n```New()```\n\n", "****\n\n```New(max_p:Int, max_q:Int, max_d:Int, period:Int, criterion:SelectionCriterion-&gt;Kind)```\n\n\n\nmax_p: Int\n\nmax_q: Int\n\nmax_d: Int\n\nperiod: Int\n\ncriterion: SelectionCriterion-&gt;Kind"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.AutoEts": {
+			"description": "Automatic exponential smoothing: fits simple smoothing, Holt, damped Holt and, when a period of at least 2 is given and the series covers two periods, the additive (and, for a positive series, multiplicative) Holt-Winters variants with and without a trend, and keeps the one with the smallest AICc (AIC or BIC on request). The candidates are fitted to the same series, so their criteria are comparable (same n and the same Gaussian likelihood).",
+			"functions": {
+				"GetBest": {
+					"descriptions": ["****\n\n```method : public : GetBest() ~ ExponentialSmoothing```\n\n\n\nreturn: ExponentialSmoothing"]
+				},
+				"GetBestCriterion": {
+					"descriptions": ["****\n\n```method : public : GetBestCriterion() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCandidateCriteria": {
+					"descriptions": ["**The criterion value of every model tried, in order.**\n\n```method : public : GetCandidateCriteria() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetCandidateNames": {
+					"descriptions": ["**The names of the models tried, in order (the same order as GetCandidateCriteria).**\n\n```method : public : GetCandidateNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetCandidates": {
+					"descriptions": ["**The models tried, in order, with their criterion values.**\n\n```method : public : GetCandidates() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"New": {
+					"descriptions": ["**No seasonal candidates, AICc.**\n\n```New()```\n\n", "****\n\n```New(period:Int, criterion:SelectionCriterion-&gt;Kind)```\n\n\n\nperiod: Int\n\ncriterion: SelectionCriterion-&gt;Kind"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.BaselineForecaster": {
+			"description": "The simple benchmark forecasters. Every other model should beat them; MASE (ForecastMetrics->Mase) is scaled by the naive one.\n\n- NAIVE: every forecast is the last value (a random walk).\n- SEASONAL_NAIVE: the value one period before the forecast time (parameter: the period).\n- DRIFT: the last value plus the average change of the whole series, per step.\n- MEAN: the mean of the whole series.\n- MOVING_AVERAGE: the mean of the last k values, flat (parameter: k).\n\nPrediction intervals follow Hyndman and Athanasopoulos (Forecasting: Principles and Practice, 3rd ed., section 5.5): the forecast standard deviation is the residual standard deviation s times sqrt(h) for naive, sqrt(floor((h-1)/m) + 1) for seasonal naive, sqrt(h (1 + h/T)) for drift, sqrt(1 + 1/T) for the mean and sqrt(1 + 1/k) for the moving average. s is sqrt(sum of squared one-step errors / (N - K)) with N the number of errors and K = 1 for DRIFT and MEAN, otherwise 0. The errors are those of the one-step forecasts: y[t-1] (naive), y[t-m] (seasonal naive), y[t-1] plus the drift (drift), the series mean (mean) and the mean of the k values before t (moving average).",
+			"functions": {
+				"GetDrift": {
+					"descriptions": ["****\n\n```method : public : GetDrift() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSigma": {
+					"descriptions": ["****\n\n```method : public : GetSigma() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**A baseline that needs no parameter (NAIVE, DRIFT, MEAN).**\n\n```New()```\n\n\n\nkind: BaselineForecaster-&gt;Kind", "**A baseline with its parameter: the period for SEASONAL_NAIVE (>= 1) or the window k for MOVING_AVERAGE (>= 1).**\n\n```New()```\n\n\n\nkind: BaselineForecaster-&gt;Kind\n\nparam: Int"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.CvResult": {
+			"description": "The result of Evaluation->RollingOrigin.",
+			"functions": {
+				"GetCoverage": {
+					"descriptions": ["****\n\n```method : public : GetCoverage() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetErrors": {
+					"descriptions": ["**The forecast errors, actual - forecast: one row per origin, one column per step ahead.**\n\n```method : public : GetErrors() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetFolds": {
+					"descriptions": ["****\n\n```method : public : GetFolds() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetHorizon": {
+					"descriptions": ["****\n\n```method : public : GetHorizon() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLevel": {
+					"descriptions": ["****\n\n```method : public : GetLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMae": {
+					"descriptions": ["****\n\n```method : public : GetMae() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMaeByHorizon": {
+					"descriptions": ["****\n\n```method : public : GetMaeByHorizon() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetMape": {
+					"descriptions": ["****\n\n```method : public : GetMape() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMase": {
+					"descriptions": ["****\n\n```method : public : GetMase() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMeanWidth": {
+					"descriptions": ["****\n\n```method : public : GetMeanWidth() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRmse": {
+					"descriptions": ["****\n\n```method : public : GetRmse() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRmseByHorizon": {
+					"descriptions": ["****\n\n```method : public : GetRmseByHorizon() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSkipped": {
+					"descriptions": ["****\n\n```method : public : GetSkipped() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSmape": {
+					"descriptions": ["****\n\n```method : public : GetSmape() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Decomposition": {
+			"description": "The result of SeriesTransform->Decompose.",
+			"functions": {
+				"GetFigure": {
+					"descriptions": ["****\n\n```method : public : GetFigure() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetRemainder": {
+					"descriptions": ["****\n\n```method : public : GetRemainder() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSeasonal": {
+					"descriptions": ["****\n\n```method : public : GetSeasonal() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetTrend": {
+					"descriptions": ["****\n\n```method : public : GetTrend() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"SeasonalStrength": {
+					"descriptions": ["**The strength of seasonality, 1 - Var(remainder) / Var(seasonal + remainder) (additive; the multiplicative remainder is taken as its log), clipped to 0 to 1 (Wang, Smith and Hyndman 2006). Above about 0.64 a seasonal difference is usually worth taking.**\n\n```method : public : SeasonalStrength() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Evaluation": {
+			"description": "Rolling-origin (walk-forward, \"time series cross-validation\") evaluation: the model is fitted on the first `initial` observations and asked for `horizon` forecasts, which are scored against the next `horizon` observations; the origin then moves forward by `step` and the model is fitted again on the longer series, until fewer than `horizon` observations remain after the origin. Training data always precede the test data, and the model is refitted at every origin through Forecaster->Copy.",
+			"functions": {
+				"RollingOrigin": {
+					"descriptions": ["****\n\n```function : RollingOrigin(model:Forecaster, y:TimeSeries, initial:Int, horizon:Int, step:Int, level:Float, period:Int) ~ CvResult```\n\n\n\nmodel: Forecaster\n\ny: TimeSeries\n\ninitial: Int\n\nhorizon: Int\n\nstep: Int\n\nlevel: Float\n\nperiod: Int\n\nreturn: CvResult"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.ExponentialSmoothing": {
+			"description": "Exponential smoothing: simple (SES), Holt's linear trend with optional damping, and Holt-Winters with an additive or multiplicative seasonal component.\n\nThe recursions, for observation y[t] with level l, trend b and seasonal s[t-m] (period m), smoothing parameters alpha, beta, gamma in (0, 1) and damping phi in (0.8, 0.98) (phi = 1 without damping), are those of statsmodels' ExponentialSmoothing and of the forecast package's Holt-Winters: base = l[t-1] + phi b[t-1] (the one-step forecast is base, base + s[t-m] or base * s[t-m]) l[t] = alpha (y[t] - s[t-m]) + (1 - alpha) base (multiplicative: alpha y[t] / s[t-m] + ...) b[t] = beta (l[t] - l[t-1]) + (1 - beta) phi b[t-1] s[t] = gamma (y[t] - base) + (1 - gamma) s[t-m] (multiplicative: gamma y[t] / base + ...) and the h-step forecast is l + (phi + ... + phi^h) b plus (or times) the seasonal value of that position.\n\nFitting. The initial level, trend and seasonal states are set by a documented rule (they are not optimized): without trend or season the level starts at y[0] (trend at 0); with a trend and no season a least-squares line through the first min(n, 10) points gives the slope as the initial trend and the level one step before its start; with a season (n >= 2 periods) the trend is the difference between the means of the first two periods divided by the period, the level is the first period's mean moved back by half a period plus one step, and each seasonal value is the average over the first two periods of the detrended observation (difference or ratio), centered to mean 0 (additive) or 1 (multiplicative). The smoothing parameters minimize the sum of squared one-step errors by Nelder-Mead on a logistic transform of the parameters (to keep them inside their bounds), from three fixed starting points, then polished from the best; the result is deterministic. SetParameters fixes the parameters instead (no optimization), which is how the recursions are checked against other software.\n\nIntervals. The recursions are the innovations form with e[t] = y[t] - forecast: l += alpha e, b += alpha beta e, s += gamma e. For the additive models the h-step forecast variance is sigma^2 (1 + sum over j = 1 .. h-1 of c[j]^2) with c[j] = alpha (1 + beta (phi + ... + phi^j)) plus gamma when j is a multiple of m, and sigma^2 = SSE / n (Hyndman, Koehler, Ord and Snyder 2008, section 6.3, for the additive-error models). For a multiplicative season there is no such closed form; the same sum is used on the relative scale (sigma is the root mean square of e / forecast, and the sd is that times the point forecast), which is an approximation. The prediction-interval coverage check in the tests measures how good it is.\n\nInformation criteria use the Gaussian log-likelihood at SSE / n with k = the free smoothing parameters, plus the initial states (1 level, 1 trend, m - 1 seasonal) plus 1 for the variance.",
+			"functions": {
+				"Evaluate": {
+					"descriptions": ["**The sum of squared one-step errors at an unconstrained parameter vector (the NelderMead objective).**\n\n```method : public : Evaluate() ~ Float```\n\n\n\nu: Float[]\n\nreturn: Float"]
+				},
+				"GetFinalLevel": {
+					"descriptions": ["****\n\n```method : public : GetFinalLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFinalTrend": {
+					"descriptions": ["****\n\n```method : public : GetFinalTrend() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetInitialLevel": {
+					"descriptions": ["****\n\n```method : public : GetInitialLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetInitialSeasonal": {
+					"descriptions": ["****\n\n```method : public : GetInitialSeasonal() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetInitialTrend": {
+					"descriptions": ["****\n\n```method : public : GetInitialTrend() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNumParams": {
+					"descriptions": ["****\n\n```method : public : GetNumParams() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSigma2": {
+					"descriptions": ["****\n\n```method : public : GetSigma2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSse": {
+					"descriptions": ["****\n\n```method : public : GetSse() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Holt": {
+					"descriptions": ["**Holt's linear trend method.**\n\n```function : Holt(damped:Bool) ~ ExponentialSmoothing```\n\n\n\ndamped: Bool\n\nreturn: ExponentialSmoothing"]
+				},
+				"HoltWinters": {
+					"descriptions": ["**Holt-Winters with an additive trend.**\n\n```function : HoltWinters(period:Int, multiplicative:Bool) ~ ExponentialSmoothing```\n\n\n\nperiod: Int\n\nmultiplicative: Bool\n\nreturn: ExponentialSmoothing"]
+				},
+				"New": {
+					"descriptions": ["**Simple exponential smoothing (level only).**\n\n```New()```\n\n", "**A configured model.**\n\n```New(trend:Bool, damped:Bool, season:ExponentialSmoothing-&gt;Season, period:Int)```\n\n\n\ntrend: Bool\n\ndamped: Bool\n\nseason: ExponentialSmoothing-&gt;Season\n\nperiod: Int"]
+				},
+				"SetParameters": {
+					"descriptions": ["**Fixes the smoothing parameters; Fit then only runs the recursions. Pass any value for a parameter the configuration does not use.**\n\n```method : public : SetParameters(alpha:Float, beta:Float, gamma:Float, phi:Float) ~ ExponentialSmoothing```\n\n\n\nalpha: Float\n\nbeta: Float\n\ngamma: Float\n\nphi: Float\n\nreturn: ExponentialSmoothing"]
+				},
+				"Simple": {
+					"descriptions": ["**Simple exponential smoothing.**\n\n```function : Simple() ~ ExponentialSmoothing```\n\n\n\nreturn: ExponentialSmoothing"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.ForecastMetrics": {
+			"description": "Point-forecast accuracy metrics. Every function takes the actual values and the forecasts (same length, at least one) and returns NaN for bad input or when the metric is undefined; none ends the program.",
+			"functions": {
+				"Coverage": {
+					"descriptions": ["**The fraction of actual values inside their prediction interval (lower <= actual <= upper): the empirical coverage to compare with the nominal level.**\n\n```function : Coverage() ~ Float```\n\n\n\nactual: Float[]\n\nlower: Float[]\n\nupper: Float[]\n\nreturn: Float"]
+				},
+				"Mae": {
+					"descriptions": ["**Mean absolute error.**\n\n```function : Mae() ~ Float```\n\n\n\nactual: Float[]\n\nforecast: Float[]\n\nreturn: Float"]
+				},
+				"Mape": {
+					"descriptions": ["**Mean absolute percentage error, in percent: 100 mean(|actual - forecast| / |actual|).**\n\n```function : Mape() ~ Float```\n\n\n\nactual: Float[]\n\nforecast: Float[]\n\nreturn: Float"]
+				},
+				"Mase": {
+					"descriptions": ["**Mean absolute scaled error (Hyndman and Koehler 2006): the MAE of the forecasts divided by the in-sample MAE of the seasonal naive forecast on the training series, mean |train[t] - train[t - m]|. Below 1 is better than the (seasonal) naive method.**\n\n```function : Mase(actual:Float[], forecast:Float[], train:Float[], m:Int) ~ Float```\n\n\n\nactual: Float[]\n\nforecast: Float[]\n\ntrain: Float[]\n\nm: Int\n\nreturn: Float"]
+				},
+				"Me": {
+					"descriptions": ["**Mean error (bias): the mean of actual - forecast.**\n\n```function : Me() ~ Float```\n\n\n\nactual: Float[]\n\nforecast: Float[]\n\nreturn: Float"]
+				},
+				"MeanWidth": {
+					"descriptions": ["**The mean width of the prediction intervals.**\n\n```function : MeanWidth() ~ Float```\n\n\n\nlower: Float[]\n\nupper: Float[]\n\nreturn: Float"]
+				},
+				"Rmse": {
+					"descriptions": ["**Root mean squared error.**\n\n```function : Rmse() ~ Float```\n\n\n\nactual: Float[]\n\nforecast: Float[]\n\nreturn: Float"]
+				},
+				"Smape": {
+					"descriptions": ["**Symmetric MAPE, in percent: 100 mean(2 |actual - forecast| / (|actual| + |forecast|)), so it lies in 0 to 200. A term whose actual and forecast are both 0 counts as 0.**\n\n```function : Smape() ~ Float```\n\n\n\nactual: Float[]\n\nforecast: Float[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.ForecastResult": {
+			"description": "A forecast: the point forecasts and a central prediction interval for each step ahead.",
+			"functions": {
+				"GetLevel": {
+					"descriptions": ["****\n\n```method : public : GetLevel() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLower": {
+					"descriptions": ["****\n\n```method : public : GetLower() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetMean": {
+					"descriptions": ["****\n\n```method : public : GetMean() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSd": {
+					"descriptions": ["****\n\n```method : public : GetSd() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetUpper": {
+					"descriptions": ["****\n\n```method : public : GetUpper() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsValid": {
+					"descriptions": ["****\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A forecast with intervals supplied by the caller (for models whose intervals are not symmetric).**\n\n```New()```\n\n\n\nmean: Float[]\n\nlower: Float[]\n\nupper: Float[]\n\nsd: Float[]\n\nlevel: Float"]
+				},
+				"Size": {
+					"descriptions": ["****\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Forecaster": {
+			"description": "A model that is fitted to a series and then forecasts it. The baselines, ExponentialSmoothing, ArimaModel and the two automatic selectors implement it, and so does anything you write: Evaluation->RollingOrigin works with any Forecaster.",
+			"functions": {
+				"Copy": {
+					"descriptions": ["**A new, unfitted model with the same settings (cross-validation fits one per fold).**\n\n```method : public : virutal : Copy() ~ Forecaster```\n\n\n\nreturn: Forecaster"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the model to a series.**\n\n```method : public : virutal : Fit(y:TimeSeries) ~ Bool```\n\n\n\ny: TimeSeries\n\nreturn: Bool"]
+				},
+				"Forecast": {
+					"descriptions": ["**Forecasts h steps beyond the end of the fitted series.**\n\n```method : public : virutal : Forecast(h:Int, level:Float) ~ ForecastResult```\n\n\n\nh: Int\n\nlevel: Float\n\nreturn: ForecastResult"]
+				},
+				"GetError": {
+					"descriptions": ["****\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFitted": {
+					"descriptions": ["**The one-step-ahead in-sample forecasts, one per observation; NaN where the model has no forecast (the first observations of a lagged model).**\n\n```method : public : virutal : GetFitted() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetName": {
+					"descriptions": ["**A short description of the model, for example \"ARIMA(1,1,0)\".**\n\n```method : public : virutal : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetResiduals": {
+					"descriptions": ["**The in-sample one-step errors, observation minus fitted (NaN where the fitted value is).**\n\n```method : public : virutal : GetResiduals() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["****\n\n```method : public : virutal : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Frequency": {
+			"description": "Common seasonal periods.",
+			"functions": {
+				"Daily": {
+					"descriptions": ["**Daily data with a weekly cycle.**\n\n```function : Daily() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Hourly": {
+					"descriptions": ["**Hourly data with a daily cycle.**\n\n```function : Hourly() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.ModelKit": {
+			"description": "Shared helpers for the models: input checks and information criteria. All static.",
+			"functions": {
+				"Aic": {
+					"descriptions": ["**Akaike: -2 logLik + 2 k.**\n\n```function : Aic() ~ Float```\n\n\n\nloglik: Float\n\nk: Int\n\nreturn: Float"]
+				},
+				"Aicc": {
+					"descriptions": ["**Small-sample corrected Akaike: AIC + 2 k (k + 1) / (n - k - 1); infinite when n - k - 1 <= 0.**\n\n```function : Aicc() ~ Float```\n\n\n\nloglik: Float\n\nk: Int\n\nn: Int\n\nreturn: Float"]
+				},
+				"Bic": {
+					"descriptions": ["**Bayesian: -2 logLik + k ln n.**\n\n```function : Bic() ~ Float```\n\n\n\nloglik: Float\n\nk: Int\n\nn: Int\n\nreturn: Float"]
+				},
+				"CheckRequest": {
+					"descriptions": ["**The reason a forecast request is bad, or \"\".**\n\n```function : CheckRequest() ~ String```\n\n\n\nh: Int\n\nlevel: Float\n\nreturn: String"]
+				},
+				"CheckSeries": {
+					"descriptions": ["**The reason a series cannot be fitted, or \"\" when it can.**\n\n```function : CheckSeries(y:TimeSeries, min_n:Int) ~ String```\n\n\n\ny: TimeSeries\n\nmin_n: Int\n\nreturn: String"]
+				},
+				"GaussianLogLik": {
+					"descriptions": ["**The Gaussian log-likelihood at the maximum-likelihood variance: -n/2 (ln(2 pi sse / n) + 1).**\n\n```function : GaussianLogLik() ~ Float```\n\n\n\nsse: Float\n\nn: Int\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.NelderMead": {
+			"description": "The Nelder-Mead simplex minimizer (reflection 1, expansion 2, contraction 0.5, shrink 0.5), fully deterministic: the initial simplex is x0 plus one step along each axis, and ties are broken by index.",
+			"functions": {
+				"GetBest": {
+					"descriptions": ["****\n\n```method : public : GetBest() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetEvaluations": {
+					"descriptions": ["****\n\n```method : public : GetEvaluations() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetValue": {
+					"descriptions": ["****\n\n```method : public : GetValue() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Minimize": {
+					"descriptions": ["**Minimizes the objective.**\n\n```method : public : Minimize(obj:Objective, x0:Float[], step:Float, max_evals:Int, tol:Float) ~ Float[]```\n\n\n\nobj: Objective\n\nx0: Float[]\n\nstep: Float\n\nmax_evals: Int\n\ntol: Float\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Objective": {
+			"description": "A function of a parameter vector, for NelderMead.",
+			"functions": {
+
+			}
+		},
+		"System.ML.TimeSeries.OlsFit": {
+			"description": "The result of TsMath->Ols.",
+			"functions": {
+				"GetCoef": {
+					"descriptions": ["****\n\n```method : public : GetCoef() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSigma2": {
+					"descriptions": ["****\n\n```method : public : GetSigma2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSse": {
+					"descriptions": ["****\n\n```method : public : GetSse() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStdErr": {
+					"descriptions": ["**The standard error of coefficient i: sqrt(sigma2 * (X'X)^-1[i, i]).**\n\n```method : public : GetStdErr(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Rng": {
+			"description": "A small deterministic pseudo-random source (xorshift64 with the 13, 7, 17 triple, and Box-Muller normals). The same seed gives the same uniform numbers on every platform, which is what the tests and Simulate need: it uses only shifts, xor and masks, so there is no integer overflow to differ between compilers (the normals add one log, sqrt, sin and cos each, so they agree with another platform's libm to the last digit or two). It is not meant for cryptography.",
+			"functions": {
+				"New": {
+					"descriptions": ["****\n\n```New(seed:Int)```\n\n\n\nseed: Int"]
+				},
+				"NextFloat": {
+					"descriptions": ["**The next uniform number in [0, 1), with 53 bits of resolution.**\n\n```method : public : NextFloat() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"NextGaussian": {
+					"descriptions": ["**The next standard normal number (Box-Muller).**\n\n```method : public : NextGaussian() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.SelectionCriterion": {
+			"description": "Which information criterion a selector minimizes.",
+			"functions": {
+
+			}
+		},
+		"System.ML.TimeSeries.SeriesTransform": {
+			"description": "Transformations of a numeric array. Every function returns a new array and returns Nil (or an array of NaN where stated) instead of ending the program.",
+			"functions": {
+				"BoxCox": {
+					"descriptions": ["**The Box-Cox transform: (x^lambda - 1) / lambda, or log(x) when lambda is 0.**\n\n```function : BoxCox(x:Float[], lambda:Float) ~ Float[]```\n\n\n\nx: Float[]\n\nlambda: Float\n\nreturn: Float[]"]
+				},
+				"BoxCoxLambda": {
+					"descriptions": ["**The maximum-likelihood Box-Cox power, found by a grid search over [-1, 2] in steps of 0.01 (the profile log-likelihood is -n/2 log(variance of the transformed series) + (lambda - 1) * sum log x). The grid keeps it deterministic; it agrees with a continuous optimizer to within the step.**\n\n```function : BoxCoxLambda(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"Decompose": {
+					"descriptions": ["**Classical seasonal decomposition (the method of R's decompose and statsmodels' seasonal_decompose).\n\nThe trend is a centered moving average of one period (for an even period the two end points get half weight), so it is NaN for the first and last period / 2 observations. The detrended series is x - trend (additive) or x / trend (multiplicative); the seasonal figure is its mean at each position in the cycle (index mod period, ignoring NaN), then centered to mean 0 (additive) or mean 1 (multiplicative); the remainder is x - trend - seasonal or x / (trend * seasonal).**\n\n```function : Decompose(x:Float[], period:Int, multiplicative:Bool) ~ Decomposition```\n\n\n\nx: Float[]\n\nperiod: Int\n\nmultiplicative: Bool\n\nreturn: Decomposition"]
+				},
+				"Diff": {
+					"descriptions": ["**Lag-l differences, applied order times: y[t] = x[t] - x[t - lag]. Each pass shortens the series by lag.**\n\n```function : Diff(x:Float[], lag:Int, order:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nlag: Int\n\norder: Int\n\nreturn: Float[]"]
+				},
+				"DropNaN": {
+					"descriptions": ["**A copy of an array without its NaN values (the leading NaNs of GetResiduals and GetFitted, or gaps), for functions such as Acf->Compute that need finite input.**\n\n```function : DropNaN(x:Float[]) ~ Float[]```\n\n\n\nx: Float[]\n\nreturn: Float[]"]
+				},
+				"Integrate": {
+					"descriptions": ["**Integrates forecasts: continues a series whose differences were forecast. Given the last lag * order values of the original series and the forecast differences, returns the forecasts on the original scale (same length as the differences).**\n\n```function : Integrate(diffs:Float[], tail:Float[], lag:Int, order:Int) ~ Float[]```\n\n\n\ndiffs: Float[]\n\ntail: Float[]\n\nlag: Int\n\norder: Int\n\nreturn: Float[]"]
+				},
+				"InvBoxCox": {
+					"descriptions": ["**The inverse of BoxCox.**\n\n```function : InvBoxCox(y:Float[], lambda:Float) ~ Float[]```\n\n\n\ny: Float[]\n\nlambda: Float\n\nreturn: Float[]"]
+				},
+				"LagMatrix": {
+					"descriptions": ["**The lag matrix for an autoregression: row r holds x[r + nlags - 1], ..., x[r] (column j is lag j + 1) and LagTarget gives the value to predict, x[r + nlags].**\n\n```function : LagMatrix(x:Float[], nlags:Int) ~ Float[,]```\n\n\n\nx: Float[]\n\nnlags: Int\n\nreturn: Float[,]"]
+				},
+				"LagTarget": {
+					"descriptions": ["**The target column that goes with LagMatrix.**\n\n```function : LagTarget(x:Float[], nlags:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nnlags: Int\n\nreturn: Float[]"]
+				},
+				"Log": {
+					"descriptions": ["**Natural log of every value.**\n\n```function : Log(x:Float[]) ~ Float[]```\n\n\n\nx: Float[]\n\nreturn: Float[]"]
+				},
+				"RollingMean": {
+					"descriptions": ["**A trailing rolling mean: out[i] is the mean of x[i - window + 1 .. i]; the first window - 1 entries are NaN. A NaN inside a window gives NaN.**\n\n```function : RollingMean(x:Float[], window:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nwindow: Int\n\nreturn: Float[]"]
+				},
+				"RollingStd": {
+					"descriptions": ["**A trailing rolling sample standard deviation (divisor window - 1, as pandas does); the first window - 1 entries are NaN.**\n\n```function : RollingStd(x:Float[], window:Int) ~ Float[]```\n\n\n\nx: Float[]\n\nwindow: Int\n\nreturn: Float[]"]
+				},
+				"Undiff": {
+					"descriptions": ["**The inverse of Diff. The differences alone do not determine the series: the first lag * order original values supply the initial conditions.**\n\n```function : Undiff(d:Float[], original:Float[], lag:Int, order:Int) ~ Float[]```\n\n\n\nd: Float[]\n\noriginal: Float[]\n\nlag: Int\n\norder: Int\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Simulate": {
+			"description": "Series generators for tests and examples. Deterministic: the same seed gives the same series.",
+			"functions": {
+				"Arma": {
+					"descriptions": ["**An ARMA process: x[t] = c + sum phi[i] x[t-i] + e[t] + sum theta[j] e[t-j], e ~ Normal(0, sigma^2), after a burn-in of 200 draws that is discarded.**\n\n```function : Arma(phi:Float[], theta:Float[], c:Float, sigma:Float, n:Int, seed:Int) ~ Float[]```\n\n\n\nphi: Float[]\n\ntheta: Float[]\n\nc: Float\n\nsigma: Float\n\nn: Int\n\nseed: Int\n\nreturn: Float[]"]
+				},
+				"MultSeasonal": {
+					"descriptions": ["**A series with a multiplicative seasonal cycle: y[t] = (level + slope t) (1 + amp sin(2 pi t / period)) (1 + sigma z[t]), z the standard normal draws of Rng(seed) in order.**\n\n```function : MultSeasonal(n:Int, level:Float, slope:Float, amp:Float, period:Int, sigma:Float, seed:Int) ~ Float[]```\n\n\n\nn: Int\n\nlevel: Float\n\nslope: Float\n\namp: Float\n\nperiod: Int\n\nsigma: Float\n\nseed: Int\n\nreturn: Float[]"]
+				},
+				"RandomWalk": {
+					"descriptions": ["**A random walk with drift: y[t] = y[t-1] + drift + sigma z[t] with y[-1] = 0, z the standard normal draws of Rng(seed) in order.**\n\n```function : RandomWalk(n:Int, drift:Float, sigma:Float, seed:Int) ~ Float[]```\n\n\n\nn: Int\n\ndrift: Float\n\nsigma: Float\n\nseed: Int\n\nreturn: Float[]"]
+				},
+				"TrendSeasonal": {
+					"descriptions": ["**A series with a linear trend, one sine seasonal cycle and Gaussian noise: y[t] = level + slope t + amp sin(2 pi t / period) + sigma z[t], z standard normal draws of Rng(seed) in order.**\n\n```function : TrendSeasonal(n:Int, level:Float, slope:Float, amp:Float, period:Int, sigma:Float, seed:Int) ~ Float[]```\n\n\n\nn: Int\n\nlevel: Float\n\nslope: Float\n\namp: Float\n\nperiod: Int\n\nsigma: Float\n\nseed: Int\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.Stationarity": {
+			"description": "Stationarity checks.\n\nThe augmented Dickey-Fuller test regresses the first difference on the lagged level, the deterministic terms and k lagged differences, and takes the t ratio of the lagged level as the statistic. Its null is a unit root (non-stationary), so a statistic BELOW the critical value rejects it. The critical values are MacKinnon's response surface (the 2010 update for \"c\" and \"ct\", the 1996 values for \"n\"): cv(N) = b0 + b1/N + b2/N^2 + b3/N^3 with N the number of observations in the regression; the coefficients are those statsmodels' mackinnoncrit uses, and for N = infinity they are b0: 1%, 5%, 10% = -3.430, -2.862, -2.567 (\"c\"), -3.959, -3.410, -3.127 (\"ct\"), -2.566, -1.941, -1.617 (\"n\"). There is no p-value. The lag count is yours, or with lags = -1 it is chosen as statsmodels' adfuller(autolag=\"AIC\") does: the regressions with 0 to maxlag lagged differences are fitted on the same rows, the one with the smallest AIC (n ln(SSE / n) + 2 k) wins, and the test is rerun on all the rows that many lags allow; maxlag is ceil(12 (n / 100)^(1/4)), at most n / 2 - (deterministic terms) - 1 (the Schwert rule).",
+			"functions": {
+				"Adf": {
+					"descriptions": ["**The augmented Dickey-Fuller test.**\n\n```function : Adf(x:Float[], lags:Int, regression:String) ~ AdfResult```\n\n\n\nx: Float[]\n\nlags: Int\n\nregression: String\n\nreturn: AdfResult"]
+				},
+				"Critical": {
+					"descriptions": ["**MacKinnon critical values at 1%, 5% and 10%.**\n\n```function : Critical(regression:String, nobs:Int) ~ Float[]```\n\n\n\nregression: String\n\nnobs: Int\n\nreturn: Float[]"]
+				},
+				"DefaultLags": {
+					"descriptions": ["**The largest lag count the automatic choice considers: the Schwert rule ceil(12 (n / 100)^(1/4)), at most n / 2 - ntrend - 1 so the regression keeps enough rows (statsmodels' adfuller does the same).**\n\n```function : DefaultLags(n:Int, ntrend:Int) ~ Int```\n\n\n\nn: Int\n\nntrend: Int\n\nreturn: Int"]
+				},
+				"SuggestDiff": {
+					"descriptions": ["**How many ordinary differences make the series stationary, by repeated ADF tests (constant, 5% level, default lags): the first d in 0 to maxd whose differenced series rejects the unit root.**\n\n```function : SuggestDiff(x:Float[], maxd:Int) ~ Int```\n\n\n\nx: Float[]\n\nmaxd: Int\n\nreturn: Int"]
+				},
+				"SuggestSeasonalDiff": {
+					"descriptions": ["**Whether a seasonal difference looks worthwhile: the seasonal strength of the classical decomposition exceeds 0.64.**\n\n```function : SuggestSeasonalDiff(x:Float[], period:Int) ~ Int```\n\n\n\nx: Float[]\n\nperiod: Int\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.TimeSeries": {
+			"description": "A series of observations: values, optional timestamps and the seasonal period.\n\nValues are Floats; a missing value is NaN. Timestamps are Ints (epoch seconds, days, or any counter) and give the series a regular step when they are evenly spaced. The seasonal period (12 for monthly data with a yearly cycle, 7 for daily data with a weekly one) is a hint the models use when you do not pass one: 1 means none.\n\nMissing values. The models refuse a series with a NaN (Fit returns false and GetError names the position). Impute returns a series with the gaps handled by a TimeSeries->Missing policy: LINEAR interpolates inside the series and holds the nearest value at either end, FORWARD carries the last value (a leading gap takes the first value), MEAN and ZERO fill with the mean of the observed values or 0, DROP removes the observations (timestamps go with them, so the series is then irregular) and ERROR returns Nil.",
+			"functions": {
+				"Check": {
+					"descriptions": ["**Whether the series can be handed to a model: at least one value and every one finite.**\n\n```method : public : Check() ~ String```\n\n\n\nreturn: String"]
+				},
+				"CountMissing": {
+					"descriptions": ["**The number of NaN values.**\n\n```method : public : CountMissing() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"FutureTimestamps": {
+					"descriptions": ["**The timestamps of the h observations after the end, continuing the step.**\n\n```method : public : FutureTimestamps(h:Int) ~ Int[]```\n\n\n\nh: Int\n\nreturn: Int[]"]
+				},
+				"Get": {
+					"descriptions": ["**One value.**\n\n```method : public : Get(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"GetPeriod": {
+					"descriptions": ["**The seasonal period hint (1 when none).**\n\n```method : public : GetPeriod() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStep": {
+					"descriptions": ["**The timestamp step of a regular series.**\n\n```method : public : GetStep() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTimestamps": {
+					"descriptions": ["**A copy of the timestamps, or Nil when the series has none.**\n\n```method : public : GetTimestamps() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetValues": {
+					"descriptions": ["**A copy of the values.**\n\n```method : public : GetValues() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"HasMissing": {
+					"descriptions": ["**True when any value is NaN.**\n\n```method : public : HasMissing() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Impute": {
+					"descriptions": ["**A series with the missing values handled.**\n\n```method : public : Impute(policy:TimeSeries-&gt;Missing) ~ TimeSeries```\n\n\n\npolicy: TimeSeries-&gt;Missing\n\nreturn: TimeSeries"]
+				},
+				"IsRegular": {
+					"descriptions": ["**True when the timestamps are evenly spaced (a series without timestamps is regular by definition).**\n\n```method : public : IsRegular() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A series without timestamps. The values are copied.**\n\n```New(values:Float[])```\n\n\n\nvalues: Float[]", "**A series with one timestamp per value (strictly increasing). Both arrays are copied.**\n\n```New(values:Float[], times:Int[])```\n\n\n\nvalues: Float[]\n\ntimes: Int[]"]
+				},
+				"SetPeriod": {
+					"descriptions": ["**Sets the seasonal period hint.**\n\n```method : public : SetPeriod(period:Int) ~ TimeSeries```\n\n\n\nperiod: Int\n\nreturn: TimeSeries"]
+				},
+				"Size": {
+					"descriptions": ["**The number of observations.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Slice": {
+					"descriptions": ["**A sub-series: observations from start (inclusive) to stop (exclusive).**\n\n```method : public : Slice(start:Int, stop:Int) ~ TimeSeries```\n\n\n\nstart: Int\n\nstop: Int\n\nreturn: TimeSeries"]
+				}
+			}
+		},
+		"System.ML.TimeSeries.TsMath": {
+			"description": "Numerical helpers shared by the library: special functions, linear solves and least squares. All static.",
+			"functions": {
+				"ChiSquareCdf": {
+					"descriptions": ["**Chi-square cumulative distribution function.**\n\n```function : ChiSquareCdf(x:Float, k:Float) ~ Float```\n\n\n\nx: Float\n\nk: Float\n\nreturn: Float"]
+				},
+				"FirstBad": {
+					"descriptions": ["**The index of the first non-finite value.**\n\n```function : FirstBad(x:Float[]) ~ Int```\n\n\n\nx: Float[]\n\nreturn: Int"]
+				},
+				"GammaP": {
+					"descriptions": ["**Regularized lower incomplete gamma function P(a, x).**\n\n```function : GammaP(a:Float, x:Float) ~ Float```\n\n\n\na: Float\n\nx: Float\n\nreturn: Float"]
+				},
+				"IntervalZ": {
+					"descriptions": ["**The two-sided normal multiplier for a central interval, for example 1.96 for level 0.95.**\n\n```function : IntervalZ(level:Float) ~ Float```\n\n\n\nlevel: Float\n\nreturn: Float"]
+				},
+				"Invert": {
+					"descriptions": ["**The inverse of a square matrix by Gauss-Jordan elimination.**\n\n```function : Invert(a:Float[,]) ~ Float[,]```\n\n\n\na: Float[,]\n\nreturn: Float[,]"]
+				},
+				"IsBad": {
+					"descriptions": ["**True for NaN, +Infinity and -Infinity.**\n\n```function : IsBad(v:Float) ~ Bool```\n\n\n\nv: Float\n\nreturn: Bool"]
+				},
+				"LogGamma": {
+					"descriptions": ["**Natural log of the gamma function (Lanczos, g = 7), accurate to about 1e-14 for positive arguments.**\n\n```function : LogGamma(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"Mean": {
+					"descriptions": ["**Arithmetic mean.**\n\n```function : Mean(x:Float[]) ~ Float```\n\n\n\nx: Float[]\n\nreturn: Float"]
+				},
+				"NormalCdf": {
+					"descriptions": ["**Standard normal cumulative distribution function.**\n\n```function : NormalCdf(z:Float) ~ Float```\n\n\n\nz: Float\n\nreturn: Float"]
+				},
+				"NormalQuantile": {
+					"descriptions": ["**Standard normal quantile (inverse CDF), by bisection on NormalCdf, accurate to about 1e-15.**\n\n```function : NormalQuantile(p:Float) ~ Float```\n\n\n\np: Float\n\nreturn: Float"]
+				},
+				"Ols": {
+					"descriptions": ["**Ordinary least squares y = X b by the normal equations. Used for small designs (autoregressions, the ADF regression).**\n\n```function : Ols(x:Float[,], y:Float[]) ~ OlsFit```\n\n\n\nx: Float[,]\n\ny: Float[]\n\nreturn: OlsFit"]
+				},
+				"Solve": {
+					"descriptions": ["**Solves A x = b by Gaussian elimination with partial pivoting. A and b are not changed.**\n\n```function : Solve(a:Float[,], b:Float[]) ~ Float[]```\n\n\n\na: Float[,]\n\nb: Float[]\n\nreturn: Float[]"]
+				},
+				"Variance": {
+					"descriptions": ["**Variance with a divisor of n - ddof.**\n\n```function : Variance(x:Float[], ddof:Int) ~ Float```\n\n\n\nx: Float[]\n\nddof: Int\n\nreturn: Float"]
+				}
+			}
+		},
 		"System.ML.VectorSearch.VectorHit": {
 			"description": "One search result: the id of a stored vector and its score. For COSINE and DOT a higher score is closer; for L2 the score is the Euclidean distance, so a lower score is closer. Hits come back closest first either way.",
 			"functions": {
@@ -17615,6 +18258,9 @@
 				"GetMetric": {
 					"descriptions": ["**The ranking this index was created with.**\n\n```method : public : GetMetric() ~ VectorMetric```\n\n\n\nreturn: VectorMetric"]
 				},
+				"GetThreads": {
+					"descriptions": ["**Gets how many threads a search may use.**\n\n```method : public : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"IsValid": {
 					"descriptions": ["**Whether the index was created with a usable dimension.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -17629,6 +18275,9 @@
 				},
 				"Search": {
 					"descriptions": ["**The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;VectorHit&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;VectorHit&gt;"]
+				},
+				"SetThreads": {
+					"descriptions": ["**Sets how many threads a search may use. A search over a large index (about 8 MB of vectors or more) is split into that many parts, each scanned on its own thread, and their best results merged; the answer, ties included, is the same as a single-threaded search. Smaller indexes are always searched on the calling thread. The default is 1.**\n\n```method : public : SetThreads(threads:Int) ~ Nil```\n\n\n\nthreads: Int\n\nreturn: Nil"]
 				},
 				"Size": {
 					"descriptions": ["**Number of vectors stored.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -18299,7 +18948,7 @@
 					"descriptions": ["**Calculates Jaccard similarity between two sets of tokens**\n\n```function : JaccardSimilarity(tokens1:String[], tokens2:String[]) ~ Float```\n\n\n\ntokens1: String[]\n\ntokens2: String[]\n\nreturn: Float\n\n```\nt1 := [\"cat\", \"sat\", \"mat\"];\nt2 := [\"cat\", \"sat\", \"log\"];\njaccard := TextSimilarity->JaccardSimilarity(t1, t2);\n\"Jaccard: {$jaccard}\"->PrintLine();\n```"]
 				},
 				"LevenshteinDistance": {
-					"descriptions": ["**Calculates Levenshtein distance (edit distance) between two strings**\n\n```function : LevenshteinDistance(str1:String, str2:String) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Int\n\n```\ndist := TextSimilarity->LevenshteinDistance(\"kitten\", \"sitting\");\n\"Edit distance: {$dist}\"->PrintLine();\n```"]
+					"descriptions": ["**Calculates Levenshtein distance (edit distance) between two strings**\n\n```function : LevenshteinDistance(str1:String, str2:String) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Int\n\n```\ndist := TextSimilarity->LevenshteinDistance(\"kitten\", \"sitting\");\n\"Edit distance: {$dist}\"->PrintLine();\n```", "**Edit distance with a ceiling, for comparing one string with many. Only the cells within max_distance of the diagonal are computed and the work stops as soon as a whole row is past the ceiling, so a far-off pair costs a few cells.**\n\n```function : LevenshteinDistance(str1:String, str2:String, max_distance:Int) ~ Int```\n\n\n\nstr1: String\n\nstr2: String\n\nmax_distance: Int\n\nreturn: Int\n\n```\nif(TextSimilarity->LevenshteinDistance(\"opentelemetry\", \"opentelemetri\", 2) <= 2) {\n  \"close\"->PrintLine();\n};\n```"]
 				},
 				"NormalizedEditDistance": {
 					"descriptions": ["**Calculates normalized edit distance (0.0 = identical, 1.0 = completely different)**\n\n```function : NormalizedEditDistance(str1:String, str2:String) ~ Float```\n\n\n\nstr1: String\n\nstr2: String\n\nreturn: Float\n\n```\nnd := TextSimilarity->NormalizedEditDistance(\"kitten\", \"sitting\");\n\"Normalized distance: {$nd}\"->PrintLine();\n```"]
@@ -20894,11 +21543,17 @@
 				"GetBoundPort": {
 					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body set by SetMaxBodyBytes**\n\n```function : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"Serve": {
 					"descriptions": ["**NOT IMPLEMENTED: starting a HTTP server from a configuration file. The call reports this on standard error and returns without serving; it used to load the file and then silently serve nothing. Use Serve(callback, port) or Serve(callback, port, is_debug) for HTTP, or ServeSecure(filename) for HTTPS, which does read a configuration file.**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"ServeSecure": {
 					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface; see ServeSecure(callback, address, port, cert, cert_key, cert_key_passwd).**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Call before Serve. Zero (or less), the default, allows 8388608 (8 MiB). A WebServerConfig that sets its own limit takes precedence.**\n\n```function : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"SetMaxConnections": {
 					"descriptions": ["**Sets the most connections served at once; a connection beyond it is answered 503 and closed. Call before Serve. Zero, the default, allows 1024.**\n\n```function : SetMaxConnections(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
@@ -20932,6 +21587,9 @@
 				"GetFilename": {
 					"descriptions": ["**Gets the configuration filename**\n\n```method : public : GetFilename() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body this configuration accepts**\n\n```method : public : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetPort": {
 					"descriptions": ["**Gets the server port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -20958,6 +21616,9 @@
 				},
 				"ProcessPost": {
 					"descriptions": ["**Callback for POST requests**\n\n```method : public : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Zero (or less), the default, defers to WebServer->SetMaxBodyBytes and then to 8388608 (8 MiB).**\n\n```method : public : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"ToString": {
 					"descriptions": ["**Gets the string representation of the configuration**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -24362,6 +25023,156 @@
 				"file": ""
 			}
 		],
+		"Acf": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"AdfResult": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"ArimaModel": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"AutoArima": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"AutoEts": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"BaselineForecaster": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"CvResult": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Decomposition": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Evaluation": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"ExponentialSmoothing": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"ForecastMetrics": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"ForecastResult": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Forecaster": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Frequency": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"ModelKit": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"NelderMead": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Objective": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"OlsFit": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Rng": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"SelectionCriterion": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"SeriesTransform": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Simulate": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"Stationarity": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"TimeSeries": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
+		"TsMath": [
+			{
+				"bundle": "System.ML.TimeSeries",
+				"file": ""
+			}
+		],
 		"VectorHit": [
 			{
 				"bundle": "System.ML.VectorSearch",
@@ -26849,6 +27660,47 @@
 			"items": [
 				{ "name": "VALID", "value": "0", "description": "" },
 				{ "name": "SAME", "value": "1", "description": "" }
+			]
+		},
+		"System.ML.TimeSeries.BaselineForecaster#Kind": {
+			"name": "Kind",
+			"bundle": "System.ML.TimeSeries",
+			"class": "System.ML.TimeSeries.BaselineForecaster",
+			"kind": "enum",
+			"description": "Which baseline.",
+			"items": [
+				{ "name": "NAIVE", "value": "0", "description": "" },
+				{ "name": "SEASONAL_NAIVE", "value": "1", "description": "" },
+				{ "name": "DRIFT", "value": "2", "description": "" },
+				{ "name": "MEAN", "value": "3", "description": "" },
+				{ "name": "MOVING_AVERAGE", "value": "4", "description": "" }
+			]
+		},
+		"System.ML.TimeSeries.ExponentialSmoothing#Season": {
+			"name": "Season",
+			"bundle": "System.ML.TimeSeries",
+			"class": "System.ML.TimeSeries.ExponentialSmoothing",
+			"kind": "enum",
+			"description": "The seasonal component.",
+			"items": [
+				{ "name": "NONE", "value": "0", "description": "" },
+				{ "name": "ADDITIVE", "value": "1", "description": "" },
+				{ "name": "MULTIPLICATIVE", "value": "2", "description": "" }
+			]
+		},
+		"System.ML.TimeSeries.TimeSeries#Missing": {
+			"name": "Missing",
+			"bundle": "System.ML.TimeSeries",
+			"class": "System.ML.TimeSeries.TimeSeries",
+			"kind": "enum",
+			"description": "How Impute treats a missing (NaN) value.",
+			"items": [
+				{ "name": "ERROR", "value": "0", "description": "" },
+				{ "name": "DROP", "value": "1", "description": "" },
+				{ "name": "LINEAR", "value": "2", "description": "" },
+				{ "name": "FORWARD", "value": "3", "description": "" },
+				{ "name": "MEAN", "value": "4", "description": "" },
+				{ "name": "ZERO", "value": "5", "description": "" }
 			]
 		},
 		"System.ML.VectorSearch.VectorMetric": {

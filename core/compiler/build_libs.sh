@@ -34,6 +34,8 @@ $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
 # Verification metrics (FAR, FRR, EER, ROC/DET points) and cosine similarity. Needs only gen_collect, so it links no vision library
 $OBC -src lib_src/ml_verify.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_verify.obl
+# Time series forecasting (System.ML.TimeSeries): a TimeSeries container, transforms, baselines, exponential smoothing, ARIMA, automatic selection, accuracy metrics and rolling-origin cross-validation. Pure Objeck, needs only gen_collect
+$OBC -src lib_src/ml_timeseries.obs,lib_src/ml_timeseries_models.obs,lib_src/ml_timeseries_arima.obs,lib_src/ml_timeseries_eval.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_timeseries.obl
 # Convolutional networks (the layers are native, in libobjk_ml). Reads images through opencv, scores with ml, writes history tables with ml_lab
 $OBC -src lib_src/ml_cnn.obs -lib gen_collect,csv,json,cipher,ml,ml_lab,opencv -tar lib -opt s3 -dest ../lib/ml_cnn.obl
 # Plotting: scatter, histogram, line and bar charts as SVG. Needs only gen_collect, no display, no SDL

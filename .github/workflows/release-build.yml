@@ -1138,6 +1138,10 @@ jobs:
             ../../../compiler/lib_src/ml_vector.obs \
             ../../../compiler/lib_src/ml_report.obs \
             ../../../compiler/lib_src/ml_verify.obs \
+            ../../../compiler/lib_src/ml_timeseries.obs \
+            ../../../compiler/lib_src/ml_timeseries_models.obs \
+            ../../../compiler/lib_src/ml_timeseries_arima.obs \
+            ../../../compiler/lib_src/ml_timeseries_eval.obs \
             ../../../compiler/lib_src/ml_cnn.obs \
             ../../../compiler/lib_src/nlp_topics_text.obs \
             ../../../compiler/lib_src/nlp_topics_lda.obs \
