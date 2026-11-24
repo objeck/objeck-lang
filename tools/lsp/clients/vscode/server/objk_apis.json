@@ -1343,6 +1343,38 @@
 				}
 			}
 		},
+		"API.Onnx.BoundSession": {
+			"description": "A session's inputs and outputs bound to device tensors, so a run reads and writes memory that is already on the device.\n\nBind each input to a DeviceTensor you fill with `Upload`, and each output either to a DeviceTensor you preallocated (`BindOutput`) or to ONNX Runtime's own device memory (`BindOutputToDevice`, read with `GetOutput`). `Run` then executes the model with no host copy and, for a preallocated output, no allocation. Update an input by uploading into the same tensor again; the binding stays valid and is reused by every `Run`.\n\nA BoundSession belongs to one thread at a time. For several threads, give each thread its own BoundSession and tensors: the Session underneath is shared.",
+			"functions": {
+				"BindInput": {
+					"descriptions": ["**Points a model input at a device tensor.**\n\n```method : public : BindInput(name:String, tensor:DeviceTensor) ~ Bool```\n\n\n\nname: String\n\ntensor: DeviceTensor\n\nreturn: Bool"]
+				},
+				"BindOutput": {
+					"descriptions": ["**Points a model output at a preallocated device tensor: no allocation per run.**\n\n```method : public : BindOutput(name:String, tensor:DeviceTensor) ~ Bool```\n\n\n\nname: String\n\ntensor: DeviceTensor\n\nreturn: Bool"]
+				},
+				"BindOutputToDevice": {
+					"descriptions": ["**Lets ONNX Runtime allocate a model output in device memory on each run, for an output whose shape is not known in advance. Read it with GetOutput.**\n\n```method : public : BindOutputToDevice(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"Clear": {
+					"descriptions": ["**Unbinds every input and output, to bind a different set.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Close": {
+					"descriptions": ["**Releases the binding. The device tensors stay valid; close them separately.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetOutput": {
+					"descriptions": ["**The tensor a bound output holds after the last run. For an output bound with BindOutputToDevice this is ONNX Runtime's allocation for that run; for a preallocated output it is a handle onto the same memory. Close it when done.**\n\n```method : public : GetOutput(name:String) ~ DeviceTensor```\n\n\n\nname: String\n\nreturn: DeviceTensor"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the binding was created.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Creates an IO binding for a session.**\n\n```New(session:Session)```\n\n\n\nsession: Session"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the model on the bound tensors. The calling thread is parked for the length of the inference, so a garbage collection in another thread does not wait for it.**\n\n```method : public : Run() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
 		"API.Onnx.DeepLabClassification": {
 			"description": "DeepLab classification result for a single segmented class with coverage and polygons",
 			"functions": {
@@ -1403,6 +1435,50 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
+				}
+			}
+		},
+		"API.Onnx.DeviceTensor": {
+			"description": "A tensor that lives in the execution provider's memory.\n\nA normal `Session->Run` copies every input from host memory to the device and every output back, and allocates for both, on every call. A DeviceTensor is allocated once, filled with `Upload`, bound to a model input or output by a `BoundSession`, and read back with `Download` only when the program wants the numbers. With `ep=cuda` or `ep=tensorrt` the memory is on the GPU; with `ep=cpu` it is ordinary host memory, so the same program runs (and gives the same answers) on a machine with no GPU. Other providers are refused.\n\nClose it when done: the memory is the provider's, not the garbage collector's. A session that is closed while device tensors still use it is released once the last of them is closed.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Frees the memory. Safe to call more than once.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Download": {
+					"descriptions": ["**Copies the tensor into a Float[] the caller already owns, so a loop that reads a result every iteration allocates nothing.**\n\n```method : public : Download(into:Float[]) ~ Bool```\n\n\n\ninto: Float[]\n\nreturn: Bool", "**Copies the tensor into a new Float[].**\n\n```method : public : Download() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"ForInput": {
+					"descriptions": ["**Allocates a tensor for a model input, taking its element type from the model.**\n\n```function : ForInput(session:Session, name:String, shape:Int[]) ~ DeviceTensor```\n\n\n\nsession: Session\n\nname: String\n\nshape: Int[]\n\nreturn: DeviceTensor"]
+				},
+				"ForOutput": {
+					"descriptions": ["**Allocates a tensor for a model output, taking its element type from the model. Preallocating an output avoids the allocation ONNX Runtime would otherwise make on every run; the shape must be the one the run will produce.**\n\n```function : ForOutput(session:Session, name:String, shape:Int[]) ~ DeviceTensor```\n\n\n\nsession: Session\n\nname: String\n\nshape: Int[]\n\nreturn: DeviceTensor"]
+				},
+				"GetCount": {
+					"descriptions": ["**How many elements.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDatatype": {
+					"descriptions": ["**The element type, as the model spells it.**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetHandle": {
+					"descriptions": ["**The native handle. Internal: BoundSession binds by it.**\n\n```method : public : GetHandle() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetShape": {
+					"descriptions": ["**Dimensions, outermost first.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"IsOnDevice": {
+					"descriptions": ["**Whether the memory is on the GPU (true) or in host memory (ep=cpu).**\n\n```method : public : IsOnDevice() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the tensor was allocated.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Allocates a tensor of an element type and shape in the session's device memory.**\n\n```New(session:Session, datatype:String, shape:Int[])```\n\n\n\nsession: Session\n\ndatatype: String\n\nshape: Int[]", "**Wraps a native tensor ONNX Runtime allocated (an output of a BoundSession). Internal.**\n\n```New(session:Session, handle:Int)```\n\n\n\nsession: Session\n\nhandle: Int"]
+				},
+				"ToTensor": {
+					"descriptions": ["**Copies the tensor into a Tensor, the form Session->Run returns.**\n\n```method : public : ToTensor(name:String) ~ Tensor```\n\n\n\nname: String\n\nreturn: Tensor"]
+				},
+				"Upload": {
+					"descriptions": ["**Copies values into the tensor, converting to its element type.**\n\n```method : public : Upload(values:Float[]) ~ Bool```\n\n\n\nvalues: Float[]\n\nreturn: Bool", "**Copies a Tensor's elements into the device tensor.**\n\n```method : public : Upload(tensor:Tensor) ~ Bool```\n\n\n\ntensor: Tensor\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -1732,6 +1808,9 @@
 			"functions": {
 				"Close": {
 					"descriptions": ["**Releases the model.\n\nZeroing the handle afterwards is what makes a second Close safe and makes IsOpen report the truth from then on.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetHandle": {
+					"descriptions": ["**The native session handle, for the classes that attach to it (DeviceTensor, BoundSession). 0 once the session is closed.**\n\n```method : public : GetHandle() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetModelInfo": {
 					"descriptions": ["**What the model takes in and gives back. Read once and cached: a model's signature does not change under us.**\n\n```method : public : GetModelInfo() ~ ModelInfo```\n\n\n\nreturn: ModelInfo"]
@@ -21354,6 +21433,12 @@
 		}
 	},
 	"class-bundle-names": {
+		"BoundSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": ""
+			}
+		],
 		"Chat": [
 			{
 				"bundle": "API.Anthropic",
@@ -21365,6 +21450,12 @@
 			},
 			{
 				"bundle": "API.Ollama",
+				"file": ""
+			}
+		],
+		"DeviceTensor": [
+			{
+				"bundle": "API.Onnx",
 				"file": ""
 			}
 		],
