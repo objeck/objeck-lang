@@ -292,6 +292,8 @@ cd core/release
 4. Binaries: core\release\deploy-x64\bin\
 ```
 
+**Version resources.** The five `objeck.rc` files (compiler, VM, debugger, REPL, launcher builder) are not in the repository. Each project renders its own from the `objeck.in` beside it, stamping `VERSION_STRING` from `core/shared/version.h`, as a build step (`core/shared/rc_version.targets`, which calls `gen_rc.ps1`), so a fresh clone builds with plain `MSBuild core\release\objeck.sln` or from the Visual Studio IDE with no preparatory step. The MSYS2 makefiles do the same with `core/shared/gen_rc.sh`. Edit the `objeck.in`, never an `objeck.rc`.
+
 #### ARM64 Build
 Build natively on an ARM64 Windows machine, as CI's `windows-11-arm` leg does with VS 2022 before running every test on what it built, or cross-compile on an x64 machine, as the release build does with VS 2026. A cross-compiled tree cannot run on the machine that built it.
 
