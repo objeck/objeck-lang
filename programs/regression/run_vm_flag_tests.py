@@ -725,6 +725,7 @@ def main():
 
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
+    check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
@@ -2573,6 +2574,40 @@ def compile_fixture(obc, name, env, bin_dir):
     rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
     check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
     return dest if rc == 0 and os.path.exists(dest) else None
+
+
+def check_vm_exit_flush(obc, obr, env, bin_dir):
+    # ---- every VM-initiated exit flushes what the program printed ------------------
+    # vm_exit_flush.obs prints 3000 lines and a last piece with no newline, then ends
+    # the process three ways. stdout is a pipe here, so the C library holds the bytes
+    # until something flushes them. With a second thread alive the VM ends the process
+    # with _Exit (#877), which flushes nothing itself.
+    dest = compile_fixture(obc, "vm_exit_flush", env, bin_dir)
+    if not dest:
+        return
+    expected = "".join(f"line {i} of output printed before the VM ends the process\n"
+                       for i in range(3000)).encode() + b"tail-without-newline"
+    hooks_env = dict(env)
+    hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
+    cases = (
+        ("exit", "Runtime->Exit(3) with a second thread running", lambda rc: rc == 3, ""),
+        ("error", "a Nil dereference with a second thread running", lambda rc: rc != 0 and rc != -999, ""),
+        ("oom", "the collector's fatal out-of-memory exit", lambda rc: rc == 1,
+         "garbage collector: out of memory"),
+    )
+    for jit in ("--jit=off", "--jit=1"):
+        for mode, what, status_ok, message in cases:
+            rc, out, err = run([obr, jit, dest, mode], env=hooks_env, cwd=SCRIPT_DIR, timeout=120)
+            # Windows writes a newline as CR LF (3000 lines make 3000 extra bytes): compare the text
+            out = out.replace(b"\r\n", b"\n")
+            check(f"vm exit {jit}, {what}: every byte printed before it is delivered",
+                  out.startswith(expected) and b"FAIL" not in out,
+                  f"rc={rc} got {len(out)} of {len(expected)} bytes, ends {out[-60:]!r} err={err[-200:]!r}")
+            check(f"vm exit {jit}, {what}: the exit status",
+                  status_ok(rc), f"rc={rc} err={err[-200:]!r}")
+            if message:
+                check(f"vm exit {jit}, {what}: the VM's message is on stderr",
+                      message.encode() in err, f"err={err[-200:]!r}")
 
 
 def check_stw_watchdog(obc, obr, env, bin_dir):
