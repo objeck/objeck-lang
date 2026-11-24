@@ -495,6 +495,9 @@ std::vector<std::wstring> alt_error_method_names;
   void CheckAmbiguousUse(const std::wstring &name);
   // an enum another class of the current bundle declares, by its short name
   Enum* SearchBundleClassEnums(const std::wstring &eenum_name);
+  // 'Klass#Name' enums of one bundle by short name, in class order; filled on first use (the loop over every
+  // class of the bundle ran once per type lookup, which is quadratic in a bundle's class count)
+  std::unordered_map<const void*, std::unordered_map<std::wstring, std::vector<Enum*> > > bundle_enum_cache;
   // the error for an ambiguous name and its "'Bundle.Name' (where)" candidates
   std::wstring AmbiguousUseMessage(const std::wstring &name, const std::vector<std::wstring> &candidates);
   // the named bundle declared in 'file_name' around 'line_num', or null
