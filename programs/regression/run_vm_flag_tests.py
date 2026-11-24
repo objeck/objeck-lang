@@ -339,6 +339,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     its five- and six-string literal methods and its mixed-argument method
     report "compiled" (AMD64; the ARM64 JIT is a separate file), and its stdout
     is byte for byte what --jit=off prints.
+ 33. A native library may declare the ABI it was built against by exporting
+    objk_lib_abi (lib_api.h, OBJK_DECLARE_LIB_ABI). The VM checks it right after
+    the library loads, before load_lib: a library that needs a newer VMContext
+    than the VM provides, or comes from another toolchain version (VER_NUM), is
+    refused with a non-zero exit and a message naming the library and both
+    sides' versions; a matching one loads, and so does a library with no export
+    (every library shipped today). native_callback/callback_lib.cpp is built four
+    ways for this (no export, matching, newer ABI, other toolchain) and
+    vm_native_abi.obs loads each.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -696,6 +705,7 @@ def main():
     check_gc_threshold_scales(obc, obr, env, bin_dir)
 
     check_native_callback_depth(obc, obr, env, bin_dir)
+    check_native_abi_declaration(obc, obr, env, bin_dir)
 
     check_thread_stack_pages(obc, obr, env, bin_dir)
 
@@ -714,6 +724,9 @@ def main():
     check_compiler_fatal(obc, obr, env, bin_dir)
 
     check_gc_roots_audit(obc, obr, env, bin_dir)
+
+    check_vm_exit_flush(obc, obr, env, bin_dir)
+    check_stw_watchdog(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
 
@@ -1305,8 +1318,8 @@ def check_gc_threshold_scales(obc, obr, env, bin_dir):
                           m is not None and int(m.group(1)) <= 200, f"stderr={text[-240:]!r}")
 
 
-def build_callback_library(out_dir):
-    """Builds native_callback/callback_lib.cpp as <out_dir>/libobjk_callback_test.
+def build_callback_library(out_dir, name="libobjk_callback_test", defines=()):
+    """Builds native_callback/callback_lib.cpp as <out_dir>/<name>, with -D<define> for each of defines.
 
     Returns (path, None) on success, (None, reason) when no C++ compiler is
     available (a skip), and raises RuntimeError when one is and the build fails.
@@ -1326,24 +1339,24 @@ def build_callback_library(out_dir):
         if not vcvarsall or not os.path.exists(vcvarsall):
             return None, "no Visual C++ toolset"
         target = "arm64" if platform.machine().upper() in ("ARM64", "AARCH64") else "x64"
-        out = os.path.join(out_dir, "libobjk_callback_test.dll")
-        script = os.path.join(out_dir, "build_callback.cmd")
+        out = os.path.join(out_dir, name + ".dll")
+        script = os.path.join(out_dir, "build_" + name + ".cmd")
         with open(script, "w") as f:
             f.write("@echo off\r\n")
             f.write(f'call "{vcvarsall}" {target} >nul\r\n')
             f.write(f'cd /d "{out_dir}"\r\n')
-            f.write(f'cl /nologo /LD /EHsc /O2 /std:c++17 /DWIN32 /DNDEBUG /D_CONSOLE '
+            f.write(f'cl /nologo /LD /EHsc /O2 /std:c++17 /DWIN32 /DNDEBUG /D_CONSOLE {" ".join("/D" + d for d in defines)} '
                     f'/I "{os.path.join(repo, "core", "lib", "zlib", "win")}" '
                     f'/I "{os.path.join(repo, "core", "lib", "crypto", "win", "include")}" '
-                    f'"{src}" /Fe:libobjk_callback_test.dll\r\n')
+                    f'"{src}" /Fe:{name}.dll\r\n')
         p = subprocess.run(["cmd", "/c", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     else:
         cxx = shutil.which("c++") or shutil.which("g++") or shutil.which("clang++")
         if not cxx:
             return None, "no C++ compiler"
         ext = ".dylib" if sys.platform == "darwin" else ".so"
-        out = os.path.join(out_dir, "libobjk_callback_test" + ext)
-        cmd = [cxx, "-std=c++17", "-O2", "-fPIC", "-shared", "-o", out, src]
+        out = os.path.join(out_dir, name + ext)
+        cmd = [cxx, "-std=c++17", "-O2", "-fPIC", "-shared"] + ["-D" + d for d in defines] + ["-o", out, src]
         if sys.platform == "darwin":
             cmd[1:1] = ["-undefined", "dynamic_lookup"]
             # lib_api.h includes the VM's headers, which include mbedtls's
@@ -1362,6 +1375,60 @@ def build_callback_library(out_dir):
     if p.returncode != 0 or not os.path.exists(out):
         raise RuntimeError(p.stdout.decode(errors="replace")[-1500:])
     return out, None
+
+
+def check_native_abi_declaration(obc, obr, env, bin_dir):
+    # ---- 33. a native library's optional ABI declaration is verified on load ----------
+    # A library that exports objk_lib_abi (lib_api.h) is refused when it needs a newer
+    # VMContext than the VM provides or comes from another toolchain version, with a
+    # message naming both sides; a matching one, and one with no export at all (every
+    # library shipped today), load as before.
+    root = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+    ver_num = int(re.search(r"#define\s+VER_NUM\s+(\d+)", open(os.path.join(root, "core", "shared", "version.h")).read()).group(1))
+    abi_ver = int(re.search(r"#define\s+APITOOLS_ABI_VERSION\s+\(\(size_t\)(\d+)\)",
+                            open(os.path.join(root, "core", "vm", "lib_api.h")).read()).group(1))
+    scratch = tempfile.mkdtemp(prefix="objeck-abi-")
+    try:
+        native_dir = os.path.join(scratch, "lib", "native")
+        os.makedirs(native_dir)
+        variants = [
+            ("libobjk_abi_none", [], True, None),
+            ("libobjk_abi_ok", ["OBJK_TEST_ABI_VERSION=%d" % abi_ver, "OBJK_TEST_TOOLCHAIN=%d" % ver_num], True, None),
+            ("libobjk_abi_newer", ["OBJK_TEST_ABI_VERSION=%d" % (abi_ver + 1), "OBJK_TEST_TOOLCHAIN=%d" % ver_num], False,
+             "ABI version %d" % (abi_ver + 1)),
+            ("libobjk_abi_toolchain", ["OBJK_TEST_ABI_VERSION=%d" % abi_ver, "OBJK_TEST_TOOLCHAIN=%d" % (ver_num - 1)], False,
+             "toolchain %d" % (ver_num - 1)),
+        ]
+        for name, defines, _, _ in variants:
+            try:
+                lib, reason = build_callback_library(native_dir, name, defines)
+            except RuntimeError as e:
+                check("the ABI test library %s builds" % name, False, str(e))
+                return
+            if not lib:
+                print(f"  [SKIP] native ABI declaration: {reason}")
+                return
+
+        src = os.path.join(SCRIPT_DIR, "native_callback", "vm_native_abi.obs")
+        dest = os.path.join(scratch, "vm_native_abi.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("native ABI fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        lib_flag = "--lib-path=" + os.path.join(scratch, "lib")
+        for name, _, accepted, wanted in variants:
+            rc, out, err = run([obr, lib_flag, dest, name], env=env, cwd=bin_dir)
+            text = err.decode(errors="replace")
+            detail = f"rc={rc} out={out[-160:]!r} stderr={text[-400:]!r}"
+            if accepted:
+                check(f"{name}: loads (exit 0, IsLoaded true)", rc == 0 and out.strip().endswith(b"loaded true"), detail)
+            else:
+                check(f"{name}: refused with a non-zero exit, nothing loaded", rc != 0 and b"loaded" not in out, detail)
+                check(f"{name}: the message names the library, both versions and what to do",
+                      "incompatible" in text and name in text and wanted in text and
+                      ("ABI version %d" % abi_ver) in text and ("toolchain %d" % ver_num) in text and "rebuild" in text, detail)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def check_native_callback_depth(obc, obr, env, bin_dir):
@@ -1914,6 +1981,12 @@ def verifier_cases(image):
     cases = []
     _, at = first(lambda o, a, c, k: o == op["JMP"])[:2]
     cases.append(("a jump target outside its method", "jump target outside the method", put(image, at, "<i", 1000000)))
+    # a jump operand is the index just past its LBL (StackInstr::JumpTargetIndex); the
+    # interpreter, the AMD64 JIT and the ARM64 JIT agree on it only while that holds
+    _, at, code, _ = first(lambda o, a, c, k: o == op["JMP"])
+    past_no_label = next(i for i in range(1, len(code)) if code[i - 1][0] != op["LBL"])
+    cases.append(("a jump that lands just past no label", "jump target is not just past a label",
+                  put(image, at, "<i", past_no_label)))
     _, at = first(lambda o, a, c, k: o == op["STOR_INT_VAR"] and operand(a, 1) == locl)[:2]
     cases.append(("a local beyond its frame", "local variable id beyond the frame", put(image, at, "<i", 100000)))
     _, at = first(lambda o, a, c, k: o == op["MTHD_CALL"])[:2]
@@ -2492,6 +2565,89 @@ def verify_section(obc, obr, env, bin_dir):
     check("OBJECK_GC_VERIFY=sometimes is refused with a message naming what was expected",
           rc != 0 and b"expected a positive collection period or 'checkmark'" in err,
           f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
+
+
+def compile_fixture(obc, name, env, bin_dir):
+    # compile programs/regression/<name>.obs next to itself; the .obe path, or None
+    src = os.path.join(SCRIPT_DIR, name + ".obs")
+    dest = os.path.join(SCRIPT_DIR, name + ".obe")
+    rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+    check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    return dest if rc == 0 and os.path.exists(dest) else None
+
+
+def check_vm_exit_flush(obc, obr, env, bin_dir):
+    # ---- every VM-initiated exit flushes what the program printed ------------------
+    # vm_exit_flush.obs prints 3000 lines and a last piece with no newline, then ends
+    # the process three ways. stdout is a pipe here, so the C library holds the bytes
+    # until something flushes them. With a second thread alive the VM ends the process
+    # with _Exit (#877), which flushes nothing itself.
+    dest = compile_fixture(obc, "vm_exit_flush", env, bin_dir)
+    if not dest:
+        return
+    expected = "".join(f"line {i} of output printed before the VM ends the process\n"
+                       for i in range(3000)).encode() + b"tail-without-newline"
+    hooks_env = dict(env)
+    hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
+    cases = (
+        ("exit", "Runtime->Exit(3) with a second thread running", lambda rc: rc == 3, ""),
+        ("error", "a Nil dereference with a second thread running", lambda rc: rc != 0 and rc != -999, ""),
+        ("oom", "the collector's fatal out-of-memory exit", lambda rc: rc == 1,
+         "garbage collector: out of memory"),
+    )
+    for jit in ("--jit=off", "--jit=1"):
+        for mode, what, status_ok, message in cases:
+            rc, out, err = run([obr, jit, dest, mode], env=hooks_env, cwd=SCRIPT_DIR, timeout=120)
+            # Windows writes a newline as CR LF (3000 lines make 3000 extra bytes): compare the text
+            out = out.replace(b"\r\n", b"\n")
+            check(f"vm exit {jit}, {what}: every byte printed before it is delivered",
+                  out.startswith(expected) and b"FAIL" not in out,
+                  f"rc={rc} got {len(out)} of {len(expected)} bytes, ends {out[-60:]!r} err={err[-200:]!r}")
+            check(f"vm exit {jit}, {what}: the exit status",
+                  status_ok(rc), f"rc={rc} err={err[-200:]!r}")
+            if message:
+                check(f"vm exit {jit}, {what}: the VM's message is on stderr",
+                      message.encode() in err, f"err={err[-200:]!r}")
+
+
+def check_stw_watchdog(obc, obr, env, bin_dir):
+    # ---- the stop-the-world watchdog (OBJECK_STW_WATCHDOG_MS) -----------------------
+    # stw_watchdog.obs stalls a worker in a call that never parks (a hook that needs
+    # OBJECK_GC_TEST_HOOKS=1) while main forces a collection, so the collector waits
+    # about 1.5 s. A watchdog set to 150 ms must say so on stderr, once, naming the
+    # worker's method, and the program must still finish. Without the variable the same
+    # run prints nothing extra: the wait is the one it always was.
+    dest = compile_fixture(obc, "stw_watchdog", env, bin_dir)
+    if not dest:
+        return
+    hooks_env = dict(env)
+    hooks_env["OBJECK_GC_TEST_HOOKS"] = "1"
+    hooks_env.pop("OBJECK_STW_WATCHDOG_MS", None)
+    watch_env = dict(hooks_env)
+    watch_env["OBJECK_STW_WATCHDOG_MS"] = "150"
+    for jit in ("--jit=off", "--jit=1"):
+        rc, out, err = run([obr, jit, "--nursery=256k", dest], env=watch_env, cwd=SCRIPT_DIR, timeout=120)
+        text = err.decode(errors="replace")
+        check(f"stw watchdog {jit}: the program still finishes", rc == 0 and b"PASS: stw_watchdog" in out,
+              f"rc={rc} out={out[-200:]!r} err={text[-300:]!r}")
+        check(f"stw watchdog {jit}: the stalled wait is reported", "[stw-watchdog] a collection has waited" in text,
+              f"stderr={text[-400:]!r}")
+        check(f"stw watchdog {jit}: the report names the thread that has not parked and its method",
+              text.count("has not parked") == 1 and "StallWorker" in text, f"stderr={text[-400:]!r}")
+        check(f"stw watchdog {jit}: the report is made once and the wait goes on",
+              text.count("[stw-watchdog] a collection has waited") == 1 and "Still waiting" in text,
+              f"stderr={text[-400:]!r}")
+    rc, out, err = run([obr, "--jit=off", "--nursery=256k", dest], env=hooks_env, cwd=SCRIPT_DIR, timeout=120)
+    check("stw watchdog off by default: same program, same output, nothing on stderr",
+          rc == 0 and b"PASS: stw_watchdog" in out and b"[stw-watchdog]" not in err,
+          f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+    quiet_env = dict(env)
+    quiet_env.pop("OBJECK_GC_TEST_HOOKS", None)
+    quiet_env["OBJECK_STW_WATCHDOG_MS"] = "150"
+    rc, out, err = run([obr, "--jit=off", "--nursery=256k", dest], env=quiet_env, cwd=SCRIPT_DIR, timeout=120)
+    check("stw watchdog on, no stall: nothing is reported",
+          rc == 0 and b"PASS: stw_watchdog" in out and b"[stw-watchdog]" not in err,
+          f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
 
 
 def finish():

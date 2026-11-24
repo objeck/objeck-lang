@@ -15,6 +15,7 @@
 #include <numeric>
 #include <iomanip>
 #include <sstream>
+#include <mutex>
 
 #include <opencv2/opencv.hpp>
 
@@ -51,9 +52,23 @@
 //
 // A raw pointer has no static destructor, so the Env is simply leaked at
 // process exit. The process is being torn down anyway; nothing is reclaimed
-// that the kernel would not reclaim. unload_lib below stays the one place the
-// Env is released, and it runs while the process is still alive.
-Ort::Env* env = nullptr;
+// that the kernel would not reclaim.
+//
+// The Env is created lazily by get_env() under a mutex: Objeck threads may race
+// to create the first session, and a bare check-then-new would build two Envs
+// and leak one. It is NEVER deleted, not even by unload_lib: Ort::Session objects
+// the VM still holds reference it, and freeing it underneath them is a
+// use-after-free. A later load_lib simply reuses the same Env.
+static Ort::Env* env = nullptr;
+static std::mutex env_mutex;
+
+static Ort::Env* get_env() {
+   std::lock_guard<std::mutex> guard(env_mutex);
+   if(!env) {
+      env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx");
+   }
+   return env;
+}
 
 //
 // Reporting utilities

@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "interpreter.h"
+#include "../shared/version.h"
 #include "vm_options.h"
 #include "dispatch.h"
 #include "instr_profile.h"
@@ -522,10 +523,10 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 
     case JMP:
       if(instr->GetOperand2() < 0) {
-        ip = instr->GetOperand();
+        ip = instr->JumpTargetIndex();
       }
       else if((INT64_VALUE)op_stack[--(*stack_pos)] == instr->GetOperand2()) {
-        ip = instr->GetOperand();
+        ip = instr->JumpTargetIndex();
       }
       continue;
 
@@ -3161,6 +3162,52 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
  ********************************/
 
 typedef void (*ext_load_def)(VMContext& callbacks);
+
+// The one place a VMContext is built, for the load call and for every function call
+static void InitVMContext(VMContext& context, size_t* args, size_t* op_stack, size_t* stack_pos)
+{
+  context.data_array = args;
+  context.op_stack = op_stack;
+  context.stack_pos = stack_pos;
+  context.call_method_by_name = APITools_MethodCall;
+  context.call_method_by_id = APITools_MethodCallId;
+  context.alloc_managed_array = MemoryManager::AllocateArray;
+  context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
+  context.write_barrier = MemoryManager::JitWriteBarrier;
+  context.blocking_abi = APITOOLS_BLOCKING_ABI;
+  context.begin_blocking = MemoryManager::BeginBlocking;
+  context.end_blocking = MemoryManager::EndBlocking;
+  context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
+  context.struct_size = sizeof(VMContext);
+}
+
+// A native library may export "objk_lib_abi" (see lib_api.h) to say which VMContext
+// version and toolchain it was built against. A library without it is accepted as
+// before. One that has it is refused, before load_lib runs, when it needs a newer
+// VMContext than this VM provides (fields appended since would be read as garbage)
+// or comes from another toolchain version (the VM's traps and structures change
+// between versions; a library built before a bump is easy to miss).
+typedef void (*ext_abi_def)(size_t* abi_version, int* toolchain_version);
+static bool NativeLibraryAbiAccepted(ext_abi_def ext_abi, const std::wstring& lib_name)
+{
+  if(!ext_abi) {
+    return true;
+  }
+
+  size_t lib_abi = 0;
+  int lib_toolchain = 0;
+  (*ext_abi)(&lib_abi, &lib_toolchain);
+  if(lib_abi <= APITOOLS_ABI_VERSION && lib_toolchain == VER_NUM) {
+    return true;
+  }
+
+  std::wcerr << L">>> Runtime error: native library '" << lib_name << L"' is incompatible with this runtime <<<" << std::endl
+             << L"\tthe library was built for VMContext ABI version " << lib_abi << L", toolchain " << lib_toolchain << std::endl
+             << L"\tthis runtime provides VMContext ABI version " << APITOOLS_ABI_VERSION << L", toolchain " << VER_NUM << std::endl
+             << L"\t-> rebuild the library with this toolchain's lib_api.h" << std::endl;
+  return false;
+}
+
 void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -3277,6 +3324,17 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   }
   instance[1] = (size_t)dll_handle;
 
+  // optional ABI declaration, checked before the library runs any code of its own
+  if(!NativeLibraryAbiAccepted((ext_abi_def)GetProcAddress(dll_handle, "objk_lib_abi"), post_path_str)) {
+    FreeLibrary(dll_handle);
+    instance[1] = 0;
+#ifdef _NO_HALT
+    return;
+#else
+    VmExit(1);
+#endif
+  }
+
   // call load function
   ext_load_def ext_load = (ext_load_def)GetProcAddress(dll_handle, "load_lib");
   if(!ext_load) {
@@ -3291,19 +3349,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 
   // call function
   VMContext context{};
-  context.data_array = nullptr;
-  context.op_stack = nullptr;
-  context.stack_pos = nullptr;
-  context.call_method_by_id = APITools_MethodCallId;
-  context.call_method_by_name = APITools_MethodCall;
-  context.alloc_managed_array = MemoryManager::AllocateArray;
-  context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
-  context.write_barrier = MemoryManager::JitWriteBarrier;
-  context.blocking_abi = APITOOLS_BLOCKING_ABI;
-  context.begin_blocking = MemoryManager::BeginBlocking;
-  context.end_blocking = MemoryManager::EndBlocking;
-  context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
-  context.struct_size = sizeof(VMContext);
+  InitVMContext(context, nullptr, nullptr, nullptr);
   (*ext_load)(context);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
@@ -3316,6 +3362,19 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #endif
   }
   instance[1] = (size_t)dll_handle;
+
+  // optional ABI declaration, checked before the library runs any code of its own
+  ext_abi_def ext_abi = (ext_abi_def)dlsym(dll_handle, "objk_lib_abi");
+  dlerror();  // the symbol is optional: its absence is not an error to report below
+  if(!NativeLibraryAbiAccepted(ext_abi, post_path_str)) {
+    dlclose(dll_handle);
+    instance[1] = 0;
+#ifdef _NO_HALT
+    return;
+#else
+    VmExit(1);
+#endif
+  }
 
   // call load function
   ext_load_def ext_load = (ext_load_def)dlsym(dll_handle, "load_lib");
@@ -3330,19 +3389,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   }
   // call function
   VMContext context{};
-  context.data_array = nullptr;
-  context.op_stack = nullptr;
-  context.stack_pos = nullptr;
-  context.call_method_by_id = APITools_MethodCallId;
-  context.call_method_by_name = APITools_MethodCall;
-  context.alloc_managed_array = MemoryManager::AllocateArray;
-  context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
-  context.write_barrier = MemoryManager::JitWriteBarrier;
-  context.blocking_abi = APITOOLS_BLOCKING_ABI;
-  context.begin_blocking = MemoryManager::BeginBlocking;
-  context.end_blocking = MemoryManager::EndBlocking;
-  context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
-  context.struct_size = sizeof(VMContext);
+  InitVMContext(context, nullptr, nullptr, nullptr);
   (*ext_load)(context);
 #endif
 }
@@ -3610,19 +3657,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     }
     // call function
     VMContext context{};
-    context.data_array = args;
-    context.op_stack = op_stack;
-    context.stack_pos = stack_pos;
-    context.call_method_by_name = APITools_MethodCall;
-    context.call_method_by_id = APITools_MethodCallId;
-    context.alloc_managed_array = MemoryManager::AllocateArray;
-    context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
-    context.write_barrier = MemoryManager::JitWriteBarrier;
-    context.blocking_abi = APITOOLS_BLOCKING_ABI;
-    context.begin_blocking = MemoryManager::BeginBlocking;
-    context.end_blocking = MemoryManager::EndBlocking;
-    context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
-    context.struct_size = sizeof(VMContext);
+    InitVMContext(context, args, op_stack, stack_pos);
     (*ext_func)(context);
     SharedLibraryCallbackFailure(stack_pos);
   }
@@ -3643,19 +3678,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     }
     // call function
     VMContext context{};
-    context.data_array = args;
-    context.op_stack = op_stack;
-    context.stack_pos = stack_pos;
-    context.call_method_by_name = APITools_MethodCall;
-    context.call_method_by_id = APITools_MethodCallId;
-    context.alloc_managed_array = MemoryManager::AllocateArray;
-    context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
-    context.write_barrier = MemoryManager::JitWriteBarrier;
-    context.blocking_abi = APITOOLS_BLOCKING_ABI;
-    context.begin_blocking = MemoryManager::BeginBlocking;
-    context.end_blocking = MemoryManager::EndBlocking;
-    context.abi_version = APITOOLS_ABI_TAG | APITOOLS_ABI_VERSION;
-    context.struct_size = sizeof(VMContext);
+    InitVMContext(context, args, op_stack, stack_pos);
     (*ext_func)(context);
     SharedLibraryCallbackFailure(stack_pos);
   }

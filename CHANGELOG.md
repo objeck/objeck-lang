@@ -12,6 +12,10 @@ All notable changes to Objeck will be documented in this file.
 - **`TextSimilarity->LevenshteinDistance` keeps two rows**: 20,000 pairs of 38 characters 0.683 s to 0.118 s.
 - **`Vector` and `CompareVector` grow by doubling, and their comparator sorts share one merge sort**: appends no longer copy the whole array each time the capacity is reached.
 
+### Security
+
+- **`Cipher.Encrypt->AES256` writes a new authenticated format**: AES-256-GCM, a key from PBKDF2-HMAC-SHA256 (210,000 iterations, count stored in the header), a random 16-byte salt and a random 12-byte nonce per message, under a `OBKC` magic and version byte. The old format used a fixed salt, a key that was the raw password zero-padded or truncated to 32 bytes, an IV derived from the password alone, and no authentication, so identical inputs gave identical output, bytes past 32 of a password were ignored, and a modified ciphertext was not detected. `Cipher.Decrypt->AES256` reads the new format (returning `Nil` for a wrong password or any modified or truncated message) and still reads the old format, which is deprecated and no longer produced; re-encrypt old data. Output is 53 bytes longer than the plaintext (it was up to 16). New test: `programs/regression/cipher_aes_versioned.obs`.
+
 ### Fixed
 
 - **`{n}` in a regular expression meant `{n,}`**: `a{2}` matched `aaa`. It is now exactly n. This is in the released v2026.11.2 `regex.obl`.
