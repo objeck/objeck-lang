@@ -69,7 +69,7 @@ _BLOCK_REASONS: dict[str, str] = {}
 for _libs, _reason in (
     (("net", "net_h2", "net_quic", "net_server", "web_server", "json_rpc", "rss",
       "query_server", "ai_hub"), "the sandbox has no network access"),
-    (("openai", "gemini", "ollama", "anthropic", "agent", "inference"), "it needs network access to a hosted model"),
+    (("openai", "gemini", "ollama", "anthropic", "agent", "actor_agents", "inference"), "it needs network access to a hosted model"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("ml_cnn",), "it reads image files through OpenCV and trains on many threads"),
@@ -283,6 +283,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "misc": ("Utilities", "Dates, parsing and formatting helpers"),
     "diags": ("Diagnostics", "Parse and analyze Objeck code"),
     "concurrent": ("Concurrency", "Tasks, semaphores and latches"),
+    "actor": ("Actors", "Actors with mailboxes, links, monitors, supervisors and restart policies, on threads"),
 }
 
 

@@ -56,6 +56,7 @@ rm -f *.obe
 	$LIB_SRC/sdl_gl.obs \
 	$LIB_SRC/gen_collect.obs \
 	$LIB_SRC/concurrent.obs \
+	$LIB_SRC/actor.obs \
 	$LIB_SRC/net_common.obs \
 	$LIB_SRC/net.obs \
 	$LIB_SRC/net_secure.obs \
@@ -100,6 +101,7 @@ rm -f *.obe
 	$LIB_SRC/ollama.obs \
 	$LIB_SRC/anthropic.obs \
 	$LIB_SRC/agent.obs \
+	$LIB_SRC/actor_agents.obs \
 	$LIB_SRC/models.obs \
 	$LIB_SRC/opencv.obs \
 	$LIB_SRC/onnx.obs $LIB_SRC/inference.obs \

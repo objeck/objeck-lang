@@ -1,0 +1,253 @@
+# EXTRA_LIBS: gen_collect,concurrent,actor,actor_agents,agent,net,json,cipher,misc
+#~
+Agents as actors (actor_agents): an API.Agent agent behind a ScriptedBackend, so no key and no
+network are involved. A Call returns the AgentResult; a job delivers it to a mailbox; the
+conversation carries over between prompts; with fail_on_error a run that does not complete fails
+the actor and its supervisor restarts it with a fresh agent (new conversation); in a team of two
+agents under one supervisor, one agent's failure leaves the other's conversation alone.
+~#
+use API.Agent;
+use System.Actor;
+use System.Concurrency;
+use Collection;
+
+class Builds {
+  @mutex : ThreadMutex;
+  @changed : Condition;
+  @count : Int;
+
+  New() {
+    @mutex := ThreadMutex->New("builds");
+    @changed := Condition->New();
+  }
+
+  method : public : Add() ~ Int {
+    n := 0;
+    critical(@mutex) {
+      @count += 1;
+      n := @count;
+      @changed->Broadcast();
+    };
+    return n;
+  }
+
+  method : public : Await(n : Int) ~ Bool {
+    deadline := ActorClock->Now() + 10000;
+    ok := false;
+    critical(@mutex) {
+      done := false;
+      while(done = false) {
+        if(@count >= n) {
+          ok := true;
+          done := true;
+        }
+        else {
+          remaining := deadline - ActorClock->Now();
+          if(remaining <= 0) {
+            done := true;
+          }
+          else {
+            @changed->Wait(@mutex, remaining);
+          };
+        };
+      };
+    };
+    return ok;
+  }
+
+  method : public : Get() ~ Int {
+    n := 0;
+    critical(@mutex) {
+      n := @count;
+    };
+    return n;
+  }
+}
+
+# A calculator agent: asks the calculator tool, then answers with the number
+class CalcBuilder implements AgentBuilder {
+  @builds : Builds;
+  @answers : Vector<String>;
+
+  New(builds : Builds, answers : Vector<String>) {
+    @builds := builds;
+    @answers := answers;
+  }
+
+  method : public : Build() ~ Agent {
+    @builds->Add();
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "calculator", "{\"expression\":\"6*7\"}"));
+    each(i : @answers) {
+      script->AddBack(AgentReply->Say(@answers->Get(i)));
+    };
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+    return Agent->New(ScriptedBackend->New(script), registry);
+  }
+}
+
+# an agent whose first incarnation has no model reply to give (a failed run), and whose later
+# incarnations answer
+class FlakyBuilder implements AgentBuilder {
+  @builds : Builds;
+
+  New(builds : Builds) {
+    @builds := builds;
+  }
+
+  method : public : Build() ~ Agent {
+    n := @builds->Add();
+    script := Vector->New()<AgentReply>;
+    if(n > 1) {
+      script->AddBack(AgentReply->Say("recovered, build {$n}"));
+    };
+    return Agent->New(ScriptedBackend->New(script), ToolRegistry->New());
+  }
+}
+
+class NilBuilder implements AgentBuilder {
+  New() {
+  }
+
+  method : public : Build() ~ Agent {
+    return Nil;
+  }
+}
+
+class AgentActorTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Answers(a : String) ~ Vector<String> {
+    v := Vector->New()<String>;
+    v->AddBack(a);
+    return v;
+  }
+
+  function : Basics() ~ Nil {
+    "one agent actor:"->PrintLine();
+    builds := Builds->New();
+    answers := Answers("The answer is 42.");
+    answers->AddBack("A second reply.");
+    actor := Actor->New("calc", AgentActorBehavior->New(CalcBuilder->New(builds, answers), false))->Start();
+
+    r := actor->Call("what is 6 times 7?", 10000);
+    Check("a call returns the agent's result", r->IsOk());
+    result := r->GetValue()->As(AgentResult);
+    Check("the run completed with the scripted answer", result->IsCompleted() & result->GetText()->Equals("The answer is 42."));
+    Check("the calculator tool ran in the loop", result->GetSteps()->Size() >= 1);
+
+    # a job puts the result in a mailbox of the caller's choosing
+    inbox := Mailbox->New();
+    actor->Send(AgentJob->New("and again?", inbox));
+    item := inbox->Receive(10000);
+    Check("a job's result arrives in its reply mailbox as data mail", item <> Nil & item->TypeOf(Mail));
+    second := item->As(Mail)->GetPayload()->As(AgentResult);
+    Check("the conversation carried over: the second scripted reply", second->IsCompleted() & second->GetText()->Equals("A second reply."));
+
+    # a plain prompt from an actor is answered to the sender
+    probe := Mailbox->New();
+    asker := Actor->New("asker", ForwardTo->New(probe))->Start();
+    actor->Send("a third prompt", asker, -1);
+    got := probe->Receive(10000);
+    Check("the script ran out: the result is a failure, delivered all the same", got <> Nil & got->As(AgentResult)->IsCompleted() = false);
+    Check("it names the error", got->As(AgentResult)->GetError() <> Nil);
+
+    Check("one agent was built", builds->Get() = 1);
+    bad := actor->Call(IntRef->New(5), 5000);
+    Check("a payload that is not a prompt fails the call, not the actor", bad->GetStatus() = CallResult->Status->FAILED & actor->IsRunning());
+
+    actor->Stop();
+    Check("it stops cleanly", actor->Join(10000)->GetKind() = ExitReason->Kind->STOPPED);
+    asker->Stop();
+    asker->Join(10000);
+  }
+
+  function : Restart() ~ Nil {
+    "a failed run restarts the agent:"->PrintLine();
+    builds := Builds->New();
+    sup := Supervisor->New("agents", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    sup->AddChild(ChildSpec->New("flaky", AgentActorFactory->New(FlakyBuilder->New(builds), true), ChildSpec->Restart->PERMANENT, 2000));
+    sup->Start();
+    Check("the agent was built once", builds->Await(1));
+    first := sup->GetChild("flaky");
+
+    r1 := first->Call("hello", 10000);
+    Check("the failed result still reaches the caller", r1->IsOk() & r1->GetValue()->As(AgentResult)->IsCompleted() = false);
+    Check("the actor failed", first->Join(10000)->GetKind() = ExitReason->Kind->FAILED);
+    Check("the supervisor built a new agent", builds->Await(2));
+    sup->GetRestartCount();
+
+    second := sup->GetChild("flaky");
+    Check("a new actor", second <> Nil & second <> first);
+    r2 := second->Call("hello again", 10000);
+    Check("the fresh agent answers", r2->IsOk() & r2->GetValue()->As(AgentResult)->GetText()->Equals("recovered, build 2"));
+    sup->Stop();
+    sup->Join(10000);
+
+    # a builder that makes no agent fails the actor at Init
+    nil_actor := Actor->New("nil", AgentActorBehavior->New(NilBuilder->New(), false))->Start();
+    r := nil_actor->Join(10000);
+    Check("an agent builder that returns Nil fails the actor", r->GetKind() = ExitReason->Kind->FAILED & r->GetError()->Find("no agent") > -1);
+  }
+
+  function : Team() ~ Nil {
+    "a team of two agents:"->PrintLine();
+    builds_a := Builds->New();
+    builds_b := Builds->New();
+    sup := Supervisor->New("team", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    sup->AddChild(ChildSpec->New("planner", AgentActorFactory->New(CalcBuilder->New(builds_a, Answers("plan one")), false), ChildSpec->Restart->PERMANENT, 2000));
+    sup->AddChild(ChildSpec->New("coder", AgentActorFactory->New(FlakyBuilder->New(builds_b), true), ChildSpec->Restart->PERMANENT, 2000));
+    sup->Start();
+    planner := sup->GetChild("planner");
+    coder := sup->GetChild("coder");
+    Check("both agents run", planner->IsRunning() & coder->IsRunning());
+
+    coder->Call("write it", 10000);
+    coder->Join(10000);
+    Check("the coder's failure was restarted", builds_b->Await(2));
+    sup->GetRestartCount();
+    Check("the planner was not touched: same actor, still running", sup->GetChild("planner") = planner & planner->IsRunning() & builds_a->Get() = 1);
+    r := planner->Call("plan", 10000);
+    Check("the planner still answers", r->IsOk() & r->GetValue()->As(AgentResult)->GetText()->Equals("plan one"));
+    sup->Stop();
+    Check("the team stops together", sup->Join(10000)->GetKind() = ExitReason->Kind->STOPPED & planner->IsExited());
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    Basics();
+    Restart();
+    Team();
+    if(@failures > 0) {
+      "{$@failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "all agent actor checks passed"->PrintLine();
+  }
+}
+
+# forwards a result it receives as data mail to a mailbox
+class ForwardTo implements ActorBehavior {
+  @sink : Mailbox;
+
+  New(sink : Mailbox) {
+    @sink := sink;
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->DATA) {
+      @sink->Send(mail->GetPayload());
+    };
+    return true;
+  }
+}

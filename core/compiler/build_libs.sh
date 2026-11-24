@@ -13,6 +13,8 @@ OBC=${1:?usage: build_libs.sh <path-to-obc>}
 
 $OBC -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 $OBC -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/concurrent.obl
+# Actors with supervision (mailboxes, links, monitors, supervisors, registry). Needs gen_collect and concurrent (TaskScope)
+$OBC -src lib_src/actor.obs -lib gen_collect,concurrent -tar lib -opt s3 -dest ../lib/actor.obl
 $OBC -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 $OBC -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 # Exact arithmetic. Depends on nothing but lang.
@@ -71,6 +73,8 @@ $OBC -src lib_src/gemini.obs -lib misc,json,net,net_server,cipher -tar lib -opt 
 $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl
 $OBC -src lib_src/anthropic.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/anthropic.obl
 $OBC -src lib_src/agent.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/agent.obl
+# API.Agent agents as supervised actors; kept apart from actor so actor itself links nothing heavy
+$OBC -src lib_src/actor_agents.obs -lib gen_collect,concurrent,actor,agent,net,json,cipher,misc -tar lib -opt s3 -dest ../lib/actor_agents.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 # Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
 $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl
