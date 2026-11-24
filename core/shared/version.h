@@ -34,24 +34,22 @@
 #include "instrs.h"
 #include "traps.h"
 
-// Since 0xffbf a program allocates an Int[] and an object array with distinct
-// opcodes (NEW_INT_ARY, NEW_OBJ_ARY: GC roots phase 6); an .obe written before
-// that would have every object array read as an Int[] and must be recompiled.
+// The magic says what kind of file this is and which layout it has. Every reader
+// first requires the file's VER_NUM to equal this toolchain's exactly, so a file
+// from any other build is refused before its magic is looked at; only these two
+// values are ever accepted, and an older magic is just "not a file of ours".
+//
+// History, for the next person who changes a layout without changing its look:
+// since 0xffbf a program allocates an Int[] and an object array with distinct
+// opcodes (NEW_INT_ARY, NEW_OBJ_ARY: GC roots phase 6). A library records its
+// methods' parameter names and which take defaults, so a caller can name a
+// library method's arguments (#1244) (0xffb7); where a method's own type
+// parameters stand in its signature (#1242) (0xffb8); a bundle-level enum named
+// with its bundle, as a class is ('Query.Structured.ColumnType'), in its own
+// entry and in every signature (0xffb9); and, since 0xffba, the same distinct
+// array opcodes as a program.
 #define MAGIC_NUM_EXE 0xffbf
-#define MAGIC_NUM_EXE_UNTYPED_INT_ARRAYS 0xffbe // bitmask 'e'
-// A library records its methods' parameter names and which take defaults, so
-// a caller can name a library method's arguments (#1244). An .obl written
-// before that carries the old signature and must be rebuilt. Since 0xffb8 it
-// also records where a method's own type parameters stand in its signature (#1242).
-// Since 0xffb9 a bundle-level enum is named with its bundle, as a class is
-// ('Query.Structured.ColumnType'), in its own entry and in every signature.
-// Since 0xffba an Int[] and an object array are allocated with distinct
-// opcodes (NEW_INT_ARY, NEW_OBJ_ARY: GC roots phase 6).
 #define MAGIC_NUM_LIB 0xffba
-#define MAGIC_NUM_LIB_UNTYPED_INT_ARRAYS 0xffb9
-#define MAGIC_NUM_LIB_UNQUALIFIED_ENUMS 0xffb8
-#define MAGIC_NUM_LIB_NO_GENERIC_MARKS 0xffb7
-#define MAGIC_NUM_LIB_NO_PARAM_NAMES 0xffb6 // bitmask 'k'
 
 #define VER_NUM 2026113
 #define VERSION_STRING L"2026.11.3"

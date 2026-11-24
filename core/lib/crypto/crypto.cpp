@@ -35,6 +35,10 @@
 #include <mbedtls/md.h>
 #include <mbedtls/cipher.h>
 #include <mbedtls/base64.h>
+#include <mbedtls/gcm.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/platform_util.h>
 
 #include "../../vm/lib_api.h"
 
@@ -200,6 +204,159 @@ static void hash_file(VMContext& context, mbedtls_md_type_t md_type, int digest_
   mbedtls_md_free(&md);
 }
 
+//
+// Versioned AES-256 format (see crypto_encrypt_aes256)
+//
+#define CIPHER_VERSION                1
+#define CIPHER_SALT_LEN               16
+#define CIPHER_NONCE_LEN              12
+#define CIPHER_TAG_LEN                16
+#define CIPHER_HEADER_LEN             (4 + 1 + 4 + CIPHER_SALT_LEN + CIPHER_NONCE_LEN)
+#define CIPHER_PBKDF2_ITERATIONS      210000u
+#define CIPHER_PBKDF2_MAX_ITERATIONS  4000000u
+static const unsigned char CIPHER_MAGIC[4] = { 'O', 'B', 'K', 'C' };
+
+// fill buffer from the CSPRNG (mbedTLS CTR_DRBG seeded from the OS entropy source)
+static bool random_bytes(unsigned char* buf, size_t len) {
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context drbg;
+  mbedtls_entropy_init(&entropy);
+  mbedtls_ctr_drbg_init(&drbg);
+
+  static const unsigned char pers[] = "objeck-cipher";
+  bool ok = mbedtls_ctr_drbg_seed(&drbg, mbedtls_entropy_func, &entropy, pers, sizeof(pers) - 1) == 0 &&
+            mbedtls_ctr_drbg_random(&drbg, buf, len) == 0;
+
+  mbedtls_ctr_drbg_free(&drbg);
+  mbedtls_entropy_free(&entropy);
+  return ok;
+}
+
+// PBKDF2-HMAC-SHA256 (RFC 8018), built on mbedtls_md_hmac_* so it compiles
+// against both mbedTLS 2.x and 3.x (the library's own PBKDF2 entry points differ)
+static bool pbkdf2_sha256(const unsigned char* password, size_t password_len,
+                          const unsigned char* salt, size_t salt_len,
+                          unsigned int iterations,
+                          unsigned char* out, size_t out_len)
+{
+  const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  if(!md_info || iterations < 1) {
+    return false;
+  }
+
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  if(mbedtls_md_setup(&ctx, md_info, 1) != 0) {
+    mbedtls_md_free(&ctx);
+    return false;
+  }
+
+  const size_t hlen = SHA256_DIGEST_LEN;
+  unsigned char u[SHA256_DIGEST_LEN];
+  unsigned char t[SHA256_DIGEST_LEN];
+  bool ok = mbedtls_md_hmac_starts(&ctx, password, password_len) == 0;
+
+  for(unsigned int block = 1; ok && (size_t)(block - 1) * hlen < out_len; ++block) {
+    unsigned char counter[4] = { (unsigned char)(block >> 24), (unsigned char)(block >> 16),
+                                 (unsigned char)(block >> 8), (unsigned char)block };
+
+    ok = mbedtls_md_hmac_reset(&ctx) == 0 &&
+         mbedtls_md_hmac_update(&ctx, salt, salt_len) == 0 &&
+         mbedtls_md_hmac_update(&ctx, counter, 4) == 0 &&
+         mbedtls_md_hmac_finish(&ctx, u) == 0;
+    if(!ok) {
+      break;
+    }
+    memcpy(t, u, hlen);
+
+    for(unsigned int i = 1; i < iterations; ++i) {
+      ok = mbedtls_md_hmac_reset(&ctx) == 0 &&
+           mbedtls_md_hmac_update(&ctx, u, hlen) == 0 &&
+           mbedtls_md_hmac_finish(&ctx, u) == 0;
+      if(!ok) {
+        break;
+      }
+      for(size_t j = 0; j < hlen; ++j) {
+        t[j] ^= u[j];
+      }
+    }
+
+    const size_t offset = (size_t)(block - 1) * hlen;
+    const size_t n = (out_len - offset < hlen) ? out_len - offset : hlen;
+    memcpy(out + offset, t, n);
+  }
+
+  mbedtls_platform_zeroize(u, sizeof(u));
+  mbedtls_platform_zeroize(t, sizeof(t));
+  mbedtls_md_free(&ctx);
+  return ok;
+}
+
+//
+// Legacy AES-256-CBC decryption (decrypt-only, for data written by older
+// releases): key is the raw password zero-padded/truncated to 32 bytes, IV is
+// derived from the password with a fixed salt, and there is no authentication.
+//
+static void legacy_decrypt_aes256(VMContext& context, const unsigned char* key, long key_size,
+                                  const unsigned char* input, long input_size, size_t* output_holder)
+{
+  static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
+
+  unsigned char iv[32];
+  unsigned char key_derived[32];
+  if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_derived, 32, iv, 16) != 32) {
+    output_holder[0] = 0;
+    return;
+  }
+
+  unsigned char key_padded[32];
+  memset(key_padded, 0, 32);
+  memcpy(key_padded, key, (key_size < 32) ? key_size : 32);
+
+  mbedtls_cipher_context_t ctx;
+  mbedtls_cipher_init(&ctx);
+
+  const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CBC);
+  if(!cipher_info || mbedtls_cipher_setup(&ctx, cipher_info) != 0 ||
+     mbedtls_cipher_set_padding_mode(&ctx, MBEDTLS_PADDING_PKCS7) != 0 ||
+     mbedtls_cipher_setkey(&ctx, key_padded, 256, MBEDTLS_DECRYPT) != 0 ||
+     mbedtls_cipher_set_iv(&ctx, iv, 16) != 0 ||
+     mbedtls_cipher_reset(&ctx) != 0) {
+    mbedtls_cipher_free(&ctx);
+    output_holder[0] = 0;
+    return;
+  }
+
+  int alloc_size = input_size + AES_BLOCK_LEN;
+  unsigned char* output = (unsigned char*)calloc(alloc_size, sizeof(unsigned char));
+  if(!output) {
+    mbedtls_cipher_free(&ctx);
+    output_holder[0] = 0;
+    return;
+  }
+
+  size_t olen = 0;
+  size_t finish_olen = 0;
+  if(mbedtls_cipher_update(&ctx, input, input_size, output, &olen) != 0 ||
+     mbedtls_cipher_finish(&ctx, output + olen, &finish_olen) != 0) {
+    mbedtls_cipher_free(&ctx);
+    free(output);
+    output_holder[0] = 0;
+    return;
+  }
+
+  mbedtls_cipher_free(&ctx);
+
+  const int total_size = (int)(olen + finish_olen);
+  size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
+  unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+  memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
+  output_holder[0] = (size_t)output_byte_array;
+
+  free(output);
+}
+
+
 extern "C" {
   //
   // initialize library
@@ -280,7 +437,18 @@ extern "C" {
   }
 
   //
-  // AES-256 encryption
+  // AES-256 encryption (versioned format, AES-256-GCM)
+  //
+  // Output layout (all multi-byte integers big-endian):
+  //   "OBKC"              4  magic
+  //   version             1  format version (1)
+  //   iterations          4  PBKDF2-HMAC-SHA256 iteration count
+  //   salt               16  random per message
+  //   nonce              12  random per message
+  //   ciphertext          n  same length as the plaintext
+  //   tag                16  GCM authentication tag
+  // The header (everything before the ciphertext) is the GCM additional
+  // authenticated data, so the iteration count and salt cannot be altered.
   //
 #ifdef _WIN32
   __declspec(dllexport)
@@ -296,102 +464,58 @@ extern "C" {
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
 
     size_t* output_holder = APITools_GetArray(context, 0);
+    output_holder[0] = 0;
 
-    // TODO: add salt
-    static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
-
-    // derive IV via EVP_BytesToKey (matches original OpenSSL behavior)
-    unsigned char iv[32];
-    unsigned char key_derived[32];
-    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_derived, 32, iv, 16) != 32) {
-      output_holder[0] = 0;
+    // header: magic, version, iterations, salt, nonce
+    unsigned char header[CIPHER_HEADER_LEN];
+    memcpy(header, CIPHER_MAGIC, 4);
+    header[4] = CIPHER_VERSION;
+    header[5] = (unsigned char)((CIPHER_PBKDF2_ITERATIONS >> 24) & 0xFF);
+    header[6] = (unsigned char)((CIPHER_PBKDF2_ITERATIONS >> 16) & 0xFF);
+    header[7] = (unsigned char)((CIPHER_PBKDF2_ITERATIONS >> 8) & 0xFF);
+    header[8] = (unsigned char)(CIPHER_PBKDF2_ITERATIONS & 0xFF);
+    if(!random_bytes(header + 9, CIPHER_SALT_LEN + CIPHER_NONCE_LEN)) {
       return;
     }
 
-    // use raw password bytes as key (matches original OpenSSL EVP_EncryptInit_ex behavior)
-    unsigned char key_padded[32];
-    memset(key_padded, 0, 32);
-    memcpy(key_padded, key, (key_size < 32) ? key_size : 32);
-
-    // encrypt
-    mbedtls_cipher_context_t ctx;
-    mbedtls_cipher_init(&ctx);
-
-    const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CBC);
-    if(!cipher_info) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
+    unsigned char aes_key[32];
+    if(!pbkdf2_sha256(key, key_size, header + 9, CIPHER_SALT_LEN, CIPHER_PBKDF2_ITERATIONS, aes_key, 32)) {
       return;
     }
 
-    if(mbedtls_cipher_setup(&ctx, cipher_info) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_set_padding_mode(&ctx, MBEDTLS_PADDING_PKCS7) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_setkey(&ctx, key_padded, 256, MBEDTLS_ENCRYPT) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_set_iv(&ctx, iv, 16) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_reset(&ctx) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    int alloc_size = input_size + AES_BLOCK_LEN;
-    unsigned char* output = (unsigned char*)calloc(alloc_size, sizeof(unsigned char));
+    const size_t total_size = CIPHER_HEADER_LEN + (size_t)input_size + CIPHER_TAG_LEN;
+    unsigned char* output = (unsigned char*)calloc(total_size, sizeof(unsigned char));
     if(!output) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
+      mbedtls_platform_zeroize(aes_key, sizeof(aes_key));
       return;
     }
+    memcpy(output, header, CIPHER_HEADER_LEN);
 
-    size_t olen = 0;
-    if(mbedtls_cipher_update(&ctx, input, input_size, output, &olen) != 0) {
-      mbedtls_cipher_free(&ctx);
-      free(output);
-      output_holder[0] = 0;
-      return;
+    mbedtls_gcm_context gcm;
+    mbedtls_gcm_init(&gcm);
+    bool ok = mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, aes_key, 256) == 0 &&
+      mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT, (size_t)input_size,
+                                header + 9 + CIPHER_SALT_LEN, CIPHER_NONCE_LEN,
+                                header, CIPHER_HEADER_LEN,
+                                input, output + CIPHER_HEADER_LEN,
+                                CIPHER_TAG_LEN, output + CIPHER_HEADER_LEN + input_size) == 0;
+    mbedtls_gcm_free(&gcm);
+    mbedtls_platform_zeroize(aes_key, sizeof(aes_key));
+
+    if(ok) {
+      size_t* output_byte_array = APITools_MakeByteArray(context, (int)total_size);
+      unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+      memcpy(output_byte_array_buffer, output, total_size);
+      output_holder[0] = (size_t)output_byte_array;
     }
-
-    size_t finish_olen = 0;
-    if(mbedtls_cipher_finish(&ctx, output + olen, &finish_olen) != 0) {
-      mbedtls_cipher_free(&ctx);
-      free(output);
-      output_holder[0] = 0;
-      return;
-    }
-
-    mbedtls_cipher_free(&ctx);
-
-    // copy output
-    const int total_size = (int)(olen + finish_olen);
-    size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
 
     free(output);
   }
 
   //
-  // AES-256 decryption
+  // AES-256 decryption. Input with the versioned header is authenticated
+  // (AES-256-GCM); a bad tag, wrong password or truncated input yields Nil and
+  // never plaintext. Input without the header is the legacy AES-256-CBC format.
   //
 #ifdef _WIN32
   __declspec(dllexport)
@@ -407,98 +531,56 @@ extern "C" {
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
 
     size_t* output_holder = APITools_GetArray(context, 0);
+    output_holder[0] = 0;
 
-    // TODO: add salt
-    static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
+    if(input_size >= 4 && memcmp(input, CIPHER_MAGIC, 4) == 0) {
+      // versioned format; once the magic matches there is no fallback to legacy
+      if(input_size < CIPHER_HEADER_LEN + CIPHER_TAG_LEN || input[4] != CIPHER_VERSION) {
+        return;
+      }
 
-    // derive IV via EVP_BytesToKey (matches original OpenSSL behavior)
-    unsigned char iv[32];
-    unsigned char key_derived[32];
-    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_derived, 32, iv, 16) != 32) {
-      output_holder[0] = 0;
-      return;
-    }
+      const unsigned int iterations = ((unsigned int)input[5] << 24) | ((unsigned int)input[6] << 16) |
+                                      ((unsigned int)input[7] << 8) | (unsigned int)input[8];
+      if(iterations < 1 || iterations > CIPHER_PBKDF2_MAX_ITERATIONS) {
+        return;
+      }
 
-    // use raw password bytes as key (matches original OpenSSL EVP_DecryptInit_ex behavior)
-    unsigned char key_padded[32];
-    memset(key_padded, 0, 32);
-    memcpy(key_padded, key, (key_size < 32) ? key_size : 32);
+      unsigned char aes_key[32];
+      if(!pbkdf2_sha256(key, key_size, input + 9, CIPHER_SALT_LEN, iterations, aes_key, 32)) {
+        return;
+      }
 
-    // decrypt
-    mbedtls_cipher_context_t ctx;
-    mbedtls_cipher_init(&ctx);
+      const size_t plain_size = (size_t)input_size - CIPHER_HEADER_LEN - CIPHER_TAG_LEN;
+      unsigned char* output = (unsigned char*)calloc(plain_size + 1, sizeof(unsigned char));
+      if(!output) {
+        mbedtls_platform_zeroize(aes_key, sizeof(aes_key));
+        return;
+      }
 
-    const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CBC);
-    if(!cipher_info) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
+      mbedtls_gcm_context gcm;
+      mbedtls_gcm_init(&gcm);
+      bool ok = mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, aes_key, 256) == 0 &&
+        mbedtls_gcm_auth_decrypt(&gcm, plain_size,
+                                 input + 9 + CIPHER_SALT_LEN, CIPHER_NONCE_LEN,
+                                 input, CIPHER_HEADER_LEN,
+                                 input + input_size - CIPHER_TAG_LEN, CIPHER_TAG_LEN,
+                                 input + CIPHER_HEADER_LEN, output) == 0;
+      mbedtls_gcm_free(&gcm);
+      mbedtls_platform_zeroize(aes_key, sizeof(aes_key));
 
-    if(mbedtls_cipher_setup(&ctx, cipher_info) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
+      if(ok) {
+        size_t* output_byte_array = APITools_MakeByteArray(context, (int)plain_size);
+        unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+        memcpy(output_byte_array_buffer, output, plain_size);
+        output_holder[0] = (size_t)output_byte_array;
+      }
 
-    if(mbedtls_cipher_set_padding_mode(&ctx, MBEDTLS_PADDING_PKCS7) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_setkey(&ctx, key_padded, 256, MBEDTLS_DECRYPT) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_set_iv(&ctx, iv, 16) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(mbedtls_cipher_reset(&ctx) != 0) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    int alloc_size = input_size + AES_BLOCK_LEN;
-    unsigned char* output = (unsigned char*)calloc(alloc_size, sizeof(unsigned char));
-    if(!output) {
-      mbedtls_cipher_free(&ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    size_t olen = 0;
-    if(mbedtls_cipher_update(&ctx, input, input_size, output, &olen) != 0) {
-      mbedtls_cipher_free(&ctx);
+      mbedtls_platform_zeroize(output, plain_size);
       free(output);
-      output_holder[0] = 0;
       return;
     }
 
-    size_t finish_olen = 0;
-    if(mbedtls_cipher_finish(&ctx, output + olen, &finish_olen) != 0) {
-      mbedtls_cipher_free(&ctx);
-      free(output);
-      output_holder[0] = 0;
-      return;
-    }
-
-    mbedtls_cipher_free(&ctx);
-
-    // copy output
-    const int total_size = (int)(olen + finish_olen);
-    size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
-
-    free(output);
+    legacy_decrypt_aes256(context, key, key_size, input, input_size, output_holder);
   }
 
   //

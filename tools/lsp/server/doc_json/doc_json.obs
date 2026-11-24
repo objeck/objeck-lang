@@ -45,7 +45,9 @@ class JsonMaker {
 
 		classes_bundle := Vector->New()<Foo>;
 
-		buffer := "{\n\t\"class-details\": {\n\t";
+		# the release the index was generated for; the server compares it with its own
+		# version and tells the editor when they differ
+		buffer := "{\n\t\"version\": \"{$@version}\",\n\t\"class-details\": {\n\t";
 		emitted_bundle := false;
 		each(i : bundle_pairs) {
 			bundle_pair := bundle_pairs->Get(i);
