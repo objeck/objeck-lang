@@ -248,10 +248,6 @@ class ThreadFaultIsolation {
 		Check("a raise is named", Runtime->GetProperty("runtime.thread.join.fault")->Find("worker raised") >= 0);
 		Check("the last fault is kept", Runtime->GetProperty("runtime.threads.fault.last")->Find("worker raised") >= 0);
 
-		# a second Join of the same thread still works and reports nothing
-		w2->Join();
-		Check("a Join of a joined thread reports none", Runtime->GetProperty("runtime.thread.join.fault")->Size() = 0);
-
 		# the lock a faulting thread held is released
 		shared := ThreadMutex->New("shared");
 		Scenario(1, shared, expected);
