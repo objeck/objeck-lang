@@ -72,7 +72,8 @@ namespace {
       return;
     }
     std::ofstream out(path.c_str(), std::ios::app);
-    const std::string name(method->GetName().begin(), method->GetName().end());
+    const std::wstring wname = method->GetName();
+    const std::string name(wname.begin(), wname.end());
     if(blocks.size() != 1) {
       out << "X " << name << " blocks=" << blocks.size() << std::endl;
       return;
