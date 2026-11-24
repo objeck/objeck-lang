@@ -658,7 +658,7 @@ each(candidate in candidates) {
 				};
 
 				each(part_json in parts_json) {
-					part : Part;
+					part : Part := Nil;
 
 					# text part
 					if(part_json->Has("text")) {
@@ -1821,7 +1821,7 @@ candidate->GetAllText()->PrintLine();
 				
 				parts := Vector->New()<Part>;
 				each(part_json in parts_json) {
-					part : Part;
+					part : Part := Nil;
 
 					# text part
 					if(part_json->Has("text")) {
@@ -1844,7 +1844,10 @@ candidate->GetAllText()->PrintLine();
 						};
 					};
 
-					parts->AddBack(part);
+					# a part of a kind this library does not model is left out, not added as the part before it
+					if(part <> Nil) {
+						parts->AddBack(part);
+					};
 				};
 
 				contents->AddBack(Content->New(parts, role));
