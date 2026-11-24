@@ -13,7 +13,11 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
-objeck.res:
+# objeck.rc is a gitignored build output (see core/shared/gen_rc.sh)
+vs/builder/objeck.rc: vs/builder/objeck.in ../../shared/version.h
+	sh ../../shared/gen_rc.sh vs/builder/objeck.in vs/builder/objeck.rc ../../shared/version.h
+
+objeck.res: vs/builder/objeck.rc
 	windres vs/builder/objeck.rc -O coff -o objeck.res
 
 # Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make

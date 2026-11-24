@@ -16,7 +16,11 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 ../module/module.a:
 	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64
 
-objeck.res:
+# objeck.rc is a gitignored build output (see core/shared/gen_rc.sh)
+vs/objeck.rc: vs/objeck.in ../shared/version.h
+	sh ../shared/gen_rc.sh vs/objeck.in vs/objeck.rc ../shared/version.h
+
+objeck.res: vs/objeck.rc
 	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
 
 # Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make

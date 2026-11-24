@@ -295,6 +295,7 @@
     <Xml Include="manifest.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="../../shared/rc_version.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
