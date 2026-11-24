@@ -1,0 +1,192 @@
+# EXTRA_LIBS: telemetry,gen_collect,json
+#~
+System.Telemetry SeriesStats and SampleRing against numbers worked out by hand: count, minimum,
+maximum, mean, sample standard deviation, nearest-rank quantiles, the warm-up discard, rejected
+input, the ring buffer of the last N samples, the switch from exact to sketch quantiles,
+Welford stability on a large offset, merging two series, and a JSON round trip.
+
+Floats are compared with a tolerance, never for equality, except for values the library keeps
+exactly (an extreme, an exact quantile of a small series).
+~#
+use System.Telemetry;
+use Collection;
+
+class TelemetryStatsTest {
+	@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# the classic eight: mean 5, population variance 4, sample variance 32 / 7
+		s := SeriesStats->New();
+		data := [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+		for(i := 0; i < data->Size(); i += 1;) {
+			s->Add(data[i]);
+		};
+		Check("count 8", s->GetCount() = 8);
+		Check("min 2", s->GetMin() = 2.0);
+		Check("max 9", s->GetMax() = 9.0);
+		Near("mean 5", s->GetMean(), 5.0, 1.0e-12);
+		Near("sample variance 32/7", s->GetVariance(), 32.0 / 7.0, 1.0e-12);
+		Near("sample stddev sqrt(32/7)", s->GetStdDev(), Float->Sqrt(32.0 / 7.0), 1.0e-12);
+		Check("a small series is exact", s->IsExact() & s->GetRelativeError() = 0.0);
+		# sorted 2 4 4 4 5 5 7 9; nearest rank ceil(q * 8)
+		Check("p50 is rank 4 = 4", s->GetP50() = 4.0);
+		Check("p95 is rank 8 = 9", s->GetP95() = 9.0);
+		Check("p99 is rank 8 = 9", s->GetP99() = 9.0);
+		Check("p99.9 is rank 8 = 9", s->GetP999() = 9.0);
+		Check("q 0.25 is rank 2 = 4", s->Quantile(0.25) = 4.0);
+		Check("q 0.75 is rank 6 = 5", s->Quantile(0.75) = 5.0);
+		Check("q 0.125 is rank 1 = 2", s->Quantile(0.125) = 2.0);
+		Check("q 0 is the minimum", s->Quantile(0.0) = 2.0);
+		Check("q 1 is the maximum", s->Quantile(1.0) = 9.0);
+
+		# degenerate series
+		e := SeriesStats->New();
+		Check("empty: mean NaN", e->GetMean() <> e->GetMean());
+		Check("empty: stddev NaN", e->GetStdDev() <> e->GetStdDev());
+		Check("empty: p50 NaN", e->GetP50() <> e->GetP50());
+		e->Add(3.0);
+		Check("one sample: stddev NaN (needs two)", e->GetStdDev() <> e->GetStdDev());
+		Check("one sample: mean, min, max, p50 and p99.9 are the sample", e->GetMean() = 3.0 & e->GetMin() = 3.0 & e->GetMax() = 3.0 & e->GetP50() = 3.0 & e->GetP999() = 3.0);
+		e->Add(3.0);
+		Near("two equal samples: stddev 0", e->GetStdDev(), 0.0, 1.0e-12);
+
+		# rejected input is counted and never reaches the statistics
+		r := SeriesStats->New();
+		Check("NaN refused", r->Add(Float->NaN()) = false);
+		Check("negative refused", r->Add(-0.5) = false);
+		Check("infinity refused", r->Add(Float->Inf()) = false);
+		Check("3 rejected, 0 counted", r->GetRejected() = 3 & r->GetCount() = 0);
+		Check("zero is a valid latency", r->Add(0.0) & r->GetCount() = 1);
+
+		# warm-up: the first two samples are discarded and do not shape any statistic
+		w := SeriesStats->New(2);
+		w->Add(Float->NaN());
+		Check("a rejected sample does not use up the warm-up", w->Add(100.0) = false & w->GetDiscarded() = 1);
+		Check("second warm-up sample discarded", w->Add(90.0) = false & w->GetDiscarded() = 2);
+		Check("third sample counted", w->Add(10.0) & w->Add(20.0) & w->Add(30.0));
+		Check("warm-up: 2 discarded, 3 counted", w->GetDiscarded() = 2 & w->GetCount() = 3);
+		Near("warm-up: mean 20", w->GetMean(), 20.0, 1.0e-12);
+		Near("warm-up: stddev 10", w->GetStdDev(), 10.0, 1.0e-12);
+		Check("warm-up: min 10, max 30, median 20", w->GetMin() = 10.0 & w->GetMax() = 30.0 & w->GetP50() = 20.0);
+
+		# ring buffer
+		ring := SampleRing->New(4);
+		Check("new ring is empty", ring->Size() = 0 & ring->Capacity() = 4);
+		ring->Add(1.0);
+		ring->Add(2.0);
+		Check("before it wraps: oldest first", ring->Size() = 2 & ring->Get(0) = 1.0 & ring->Get(1) = 2.0);
+		for(i := 3; i <= 6; i += 1;) {
+			ring->Add(i->As(Float));
+		};
+		held := ring->ToArray();
+		Check("after 6 adds the last 4 are held, oldest first", ring->Size() = 4 & held[0] = 3.0 & held[1] = 4.0 & held[2] = 5.0 & held[3] = 6.0);
+		Check("total added counts the overwritten ones", ring->TotalAdded() = 6);
+		Check("out of range is NaN", ring->Get(4) <> ring->Get(4) & ring->Get(-1) <> ring->Get(-1));
+		small := SampleRing->New(1);
+		small->Add(7.0);
+		small->Add(8.0);
+		Check("a ring of one holds the latest", small->Size() = 1 & small->Get(0) = 8.0);
+		ring->Clear();
+		Check("clear empties it", ring->Size() = 0 & ring->TotalAdded() = 0);
+		Check("a ring of capacity 0 is made capacity 1", SampleRing->New(0)->Capacity() = 1);
+
+		# the ring of a series holds the last raw samples (warm-up excluded)
+		ser := SeriesStats->New(1, 0.01, 3, 512);
+		for(i := 1; i <= 7; i += 1;) {
+			ser->Add(i->As(Float));
+		};
+		last := ser->GetRing()->ToArray();
+		Check("series ring holds 5, 6, 7", last->Size() = 3 & last[0] = 5.0 & last[1] = 6.0 & last[2] = 7.0);
+
+		# exact up to the limit, sketch beyond it
+		lim := SeriesStats->New(0, 0.01, 4, 4);
+		for(i := 1; i <= 4; i += 1;) {
+			lim->Add(i->As(Float) * 10.0);
+		};
+		Check("at the limit still exact", lim->IsExact() & lim->GetP50() = 20.0);
+		lim->Add(50.0);
+		Check("past the limit: sketch, relative error reported", lim->IsExact() = false & lim->GetRelativeError() = 0.01);
+		Near("past the limit: p50 is rank 3 = 30 within 1 percent", lim->GetP50(), 30.0, 0.3);
+		Check("past the limit the extremes stay exact", lim->Quantile(0.0) = 10.0 & lim->Quantile(1.0) = 50.0);
+
+		# Welford: a large offset must not destroy the small variance
+		big := SeriesStats->New();
+		big->Add(1000000000.0 + 1.0);
+		big->Add(1000000000.0 + 2.0);
+		big->Add(1000000000.0 + 3.0);
+		Near("offset 1e9: stddev 1", big->GetStdDev(), 1.0, 1.0e-6);
+		Near("offset 1e9: mean", big->GetMean(), 1000000002.0, 1.0e-6);
+
+		# merge: two halves equal the whole
+		whole := SeriesStats->New();
+		a := SeriesStats->New();
+		b := SeriesStats->New();
+		for(i := 1; i <= 40; i += 1;) {
+			x := i->As(Float) * 0.7 + (i % 5)->As(Float);
+			whole->Add(x);
+			if(i <= 15) {
+				a->Add(x);
+			}
+			else {
+				b->Add(x);
+			};
+		};
+		Check("merge works", a->Merge(b));
+		Check("merged count", a->GetCount() = whole->GetCount());
+		Near("merged mean", a->GetMean(), whole->GetMean(), 1.0e-12);
+		Near("merged stddev", a->GetStdDev(), whole->GetStdDev(), 1.0e-12);
+		Check("merged min and max", a->GetMin() = whole->GetMin() & a->GetMax() = whole->GetMax());
+		Check("merged small series is still exact, same quantiles", a->IsExact() & a->GetP50() = whole->GetP50() & a->GetP95() = whole->GetP95());
+		odd := SeriesStats->New(0, 0.05, 4, 512);
+		odd->Add(1.0);
+		Check("merging a series of another accuracy is refused, and changes nothing", a->Merge(odd) = false & a->GetCount() = 40);
+
+		# JSON round trip, small (exact) and large (sketch)
+		back := SeriesStats->FromJson(Data.JSON.JsonParser->TextToElement(whole->ToJson()->ToString()), 512);
+		Check("exact series reads back", back <> Nil);
+		if(back <> Nil) {
+			Check("exact series: count, extremes, quantiles", back->GetCount() = 40 & back->IsExact() & back->GetMin() = whole->GetMin() & back->GetMax() = whole->GetMax() & back->GetP50() = whole->GetP50() & back->GetP99() = whole->GetP99());
+			Near("exact series: mean", back->GetMean(), whole->GetMean(), 1.0e-12);
+			Near("exact series: stddev", back->GetStdDev(), whole->GetStdDev(), 1.0e-9);
+		};
+		large := SeriesStats->New(3);
+		for(i := 1; i <= 3000; i += 1;) {
+			large->Add(1.0 + (i % 97)->As(Float) * 0.25);
+		};
+		back2 := SeriesStats->FromJson(Data.JSON.JsonParser->TextToElement(large->ToJson()->ToString()), 512);
+		Check("sketch series reads back", back2 <> Nil);
+		if(back2 <> Nil) {
+			Check("sketch series: count, discarded, quantiles", back2->GetCount() = 2997 & back2->GetDiscarded() = 3 & back2->IsExact() = false & back2->GetP50() = large->GetP50() & back2->GetP95() = large->GetP95() & back2->GetP999() = large->GetP999());
+			Near("sketch series: stddev", back2->GetStdDev(), large->GetStdDev(), 1.0e-9);
+		};
+		Check("JSON that is not a series is refused", SeriesStats->FromJson(Data.JSON.JsonParser->TextToElement("{\"x\":1}"), 512) = Nil);
+
+		# the cost of one measurement is a few microseconds at most, and never negative
+		cost := Telemetry->MeasureOverhead(200);
+		Check("overhead series has 200 samples, all non-negative", cost <> Nil & cost->GetCount() = 200 & cost->GetMin() >= 0.0);
+		Check("measuring nothing takes under a millisecond at the median", cost->GetP50() < 1.0);
+		Check("overhead of 0 iterations is refused", Telemetry->MeasureOverhead(0) = Nil);
+
+		if(@failures > 0) {
+			"telemetry_stats: {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"telemetry_stats: ok"->PrintLine();
+	}
+
+	function : Near(name : String, got : Float, want : Float, tol : Float) ~ Nil {
+		Check("{$name} (got {$got}, want {$want})", got = got & Float->Abs(got - want) <= tol);
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+}

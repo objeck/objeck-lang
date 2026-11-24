@@ -87,6 +87,7 @@ rm -f *.obe
 	$LIB_SRC/plot.obs \
 	$LIB_SRC/plot_sdl.obs \
 	$LIB_SRC/stats.obs \
+	$LIB_SRC/telemetry.obs \
 	$LIB_SRC/ai_search.obs \
 	$LIB_SRC/ai_game.obs \
 	$LIB_SRC/ai_optimize.obs \
