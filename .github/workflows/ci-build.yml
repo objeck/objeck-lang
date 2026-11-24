@@ -1009,6 +1009,54 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
 
+    # GC root coverage (advisory): 30 generated programs that keep references live in loops,
+    # pending expression temporaries, inlined callees, ?-> regions, fields and threads, run
+    # interpreted, default-JIT, compile-everything and under a 64k nursery with the roots audit
+    # and the heap verifier; every run must print what an uncollected run printed.
+    # tools/gc_roots/README.md. Advisory until it has run clean long enough to rule out flakiness.
+    - name: GC root coverage, 30 seeds (advisory, POSIX)
+      if: runner.os != 'Windows'
+      continue-on-error: true
+      timeout-minutes: 20
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
+        rc=0
+        python3 tools/gc_roots/run_roots.py --bin "$BIN" --mode ci --count 30 --start "$(date -u +%Y%m%d)" -j 4 --out gc_roots_out || rc=$?
+        if [ "$rc" != "0" ]; then
+          echo "::warning title=GC root coverage::advisory run diverged or failed (exit $rc); not blocking. Seeds: $(cat gc_roots_out/summary.json 2>/dev/null | tr -d '\n ')"
+          cat gc_roots_out/seed_*/report.txt 2>/dev/null | head -60 || true
+        fi
+        exit $rc
+
+    - name: GC root coverage, 30 seeds (advisory, Windows)
+      if: runner.os == 'Windows'
+      continue-on-error: true
+      timeout-minutes: 20
+      shell: pwsh
+      run: |
+        $bin = "core\release\deploy-${{ matrix.arch }}\bin"
+        if (-not (Test-Path $bin)) { $bin = "core\release\deploy\bin" }
+        $start = [int](Get-Date -UFormat %Y%m%d)
+        python tools/gc_roots/run_roots.py --bin $bin --mode ci --count 30 --start $start -j 4 --out gc_roots_out
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) {
+          Write-Output "::warning title=GC root coverage::advisory run diverged or failed (exit $rc); not blocking."
+          Get-ChildItem gc_roots_out -Recurse -Filter report.txt -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { Get-Content $_.FullName | Select-Object -First 12 }
+        }
+        exit $rc
+
+    - name: Upload GC root coverage findings
+      if: always()
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: gc-roots-findings-${{ runner.os }}-${{ matrix.arch }}
+        path: gc_roots_out/
+        if-no-files-found: ignore
+        retention-days: 14
+
     # Negative testing of the compiler front end. Valid programs are broken in sixteen ways and
     # hostile files (deep nesting, random bytes, 20000 errors, a call nested 30 deep to a method
     # that does not exist) are compiled: no crash, no hang, and the error must be on or beside
@@ -1124,6 +1172,28 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_array_copy.py "%BIN%"
 
+    # A library built with `-debug` carries a line number in every instruction.
+    # The .obl writer puts it after the type byte and the reader took it before,
+    # so the library linked into scrambled code and the program was refused at
+    # load. Every shipped library is built without -debug, so nothing reached it.
+    - name: a library built with -debug links and runs (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_debug_symbols.py "$BIN"
+
+    - name: a library built with -debug links and runs (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_debug_symbols.py "%BIN%"
+
     # An .obe compiled by another toolchain version is refused by the loader
     # before it runs; the message must name both versions, say which side is
     # stale and say to recompile. Built by patching a fresh .obe's VER_NUM, so
@@ -1149,6 +1219,43 @@ jobs:
     # OBJECK_TLS_INSECURE_SKIP_VERIFY disables certificate verification process-wide; the first
     # secure client connection prints one stderr warning.
     - name: obr warns once when TLS verification is switched off (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_tls_insecure_warning.py "$BIN"
+
+    - name: obr warns once when TLS verification is switched off (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_tls_insecure_warning.py "%BIN%"
+
+    # A jump to a label the optimizer cannot find, or a label defined twice, is an internal
+    # compiler error and must stop the build, not be read through a dangling iterator.
+    # The label pass has a test hook (OBJECK_TEST_LABEL_FAULT) that simulates both.
+    - name: obc refuses a lost or duplicated jump label (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_label_fatal.py "$BIN"
+
+    - name: obc refuses a lost or duplicated jump label (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_label_fatal.py "%BIN%"
 
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
@@ -1159,10 +1266,6 @@ jobs:
         ARCH="${{ matrix.arch }}"
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
-        python3 check_tls_insecure_warning.py "$BIN"
-
-    - name: obr warns once when TLS verification is switched off (Windows)
-
         python3 check_lib_path_anchor.py "$BIN"
 
     - name: obc and obr find their libraries from another working directory (Windows)
@@ -1172,8 +1275,6 @@ jobs:
       run: |
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_tls_insecure_warning.py "%BIN%"
-
         python check_lib_path_anchor.py "%BIN%"
 
     # Named arguments reach a library method through the parameter names its .obl
@@ -1797,6 +1898,18 @@ jobs:
         run: |
           python3 tools/cicd/check_trap_handlers.py --test
           python3 tools/cicd/check_trap_handlers.py
+
+      # What an opcode carries was written out by hand in the writer, both readers,
+      # the label passes, the inliner and the loader's checks, and nothing compared
+      # them. core/shared/instr_info.h is the one description; this fails when a site
+      # disagrees with it (docs/INSTRUCTION_SET.md). ADVISORY for now: continue-on-error
+      # keeps a mismatch from reddening the job while the first findings are triaged.
+      # The --test run breaks each site in memory and fails unless the checker notices.
+      - name: The instruction table agrees with every site that restates it (advisory)
+        continue-on-error: true
+        run: |
+          python3 tools/cicd/check_instr_table.py --test
+          python3 tools/cicd/check_instr_table.py
 
       # Same class of guard, for a rule that was previously prose only. A native
       # library may store an object it ALLOCATED anywhere -- those go straight to

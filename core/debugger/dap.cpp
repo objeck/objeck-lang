@@ -186,6 +186,24 @@ void DapAdapter::RedirectProgramStdio()
   dap_out_fd = DUP(FILENO(stdout));
   dap_in_fd = DUP(FILENO(stdin));
 
+  // The protocol reader owns the editor's stdin through dap_in_fd. Leaving fd 0
+  // pointing at the same pipe let a debuggee that reads the console (ReadLine,
+  // stdin.Read) take bytes of the next DAP request, corrupting the stream, and
+  // starve the adapter of them. Point fd 0 at the null device instead: the
+  // program sees end-of-input and the protocol stream is only ever read by us.
+#ifdef _WIN32
+  const int null_in_fd = _open("NUL", _O_RDONLY | _O_BINARY);
+#else
+  const int null_in_fd = open("/dev/null", O_RDONLY);
+#endif
+  if(null_in_fd >= 0) {
+    DUP2(null_in_fd, FILENO(stdin));
+    if(null_in_fd != FILENO(stdin)) {
+      CLOSE(null_in_fd);
+    }
+    clearerr(stdin);
+  }
+
   // Capture program stdout
   if(PIPE(prog_stdout_pipe) == 0) {
     std::wcout.flush();

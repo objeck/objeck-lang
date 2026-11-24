@@ -1,0 +1,49 @@
+#~
+Fixture for the stop-the-world watchdog (OBJECK_STW_WATCHDOG_MS), driven by
+run_vm_flag_tests.py (check_stw_watchdog).
+
+A worker thread stands in for a native call that blocks without
+MemoryManager::BeginBlocking: Runtime->SetProperty("runtime.test.stall_ms", ...)
+sleeps with the thread still counted as running (a hook that is inert unless the VM
+runs with OBJECK_GC_TEST_HOOKS=1). Main waits until the worker is inside that call,
+then allocates until a collection runs; the collection cannot start until the worker
+wakes, so it waits the whole stall. With the watchdog on, that wait is reported on
+stderr once, naming the worker's method; the program still finishes and prints PASS.
+
+Run bare, with no hook variable, the stall is skipped and this is a plain two-thread
+allocation test that prints the same PASS line.
+~#
+use System.Concurrency;
+
+class StallNode {
+  @next : StallNode;
+  @pad : Int;
+
+  New(next : StallNode, pad : Int) { @next := next; @pad := pad; }
+}
+
+class StallWorker from Thread {
+  New() {
+    Parent("stall-worker");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    Runtime->SetProperty("runtime.test.stall_ms", "1500");
+  }
+}
+
+class StwWatchdog {
+  function : Main(args : String[]) ~ Nil {
+    worker := StallWorker->New();
+    worker->Execute(Nil);
+    # let the worker reach its stall before anything allocates
+    Thread->Sleep(300);
+
+    head : StallNode := Nil;
+    for(i := 0; i < 3000000; i += 1;) {
+      head := StallNode->New((i % 1000 = 0) ? Nil : head, i);
+    };
+    worker->Join();
+    "PASS: stw_watchdog"->PrintLine();
+  }
+}
