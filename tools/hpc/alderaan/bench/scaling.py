@@ -381,11 +381,9 @@ def cmd_run(args):
     for sname in args.suites:
         if sname not in SUITES:
             raise HarnessError("unknown suite %s (have %s)" % (sname, ", ".join(SUITES)))
-        # one case list per suite; the order of cores is shuffled between repetitions so a
-        # drifting clock or a noisy neighbour does not line up with one core count
+        ref = None   # first checksum of the suite: every core count must reproduce it
         for case in Suite(sname, args).cases(cores_list):
             usable = probe_usable_cpus(obr, case["work"][0][1])
-            ref = None
             for rep in range(args.warmup + args.reps):
                 wall, user, sys_, results = run_group(obr, case["work"])
                 if rep < args.warmup:
