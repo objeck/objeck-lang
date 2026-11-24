@@ -1,6 +1,524 @@
 {
 	"version": "2026.11.3",
 	"class-details": {
+		"API.Agent.Agent": {
+			"description": "The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back, until the model answers without a tool call, the step limit is reached or the backend fails. The conversation is kept, so Run can be called again to carry on; Reset starts over.\n\nEvery call goes through the same gates, in order: the tool must exist (unknown otherwise), the registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema (invalid), a dangerous tool, or any tool when SetApproveAll is on, must be approved (refused), and the handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes an error result the model can read and the loop carries on.",
+			"functions": {
+				"GetConversation": {
+					"descriptions": ["**Gets the conversation so far**\n\n```method : public : GetConversation() ~ AgentConversation```\n\n\n\nreturn: AgentConversation"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(backend:ChatBackend, registry:ToolRegistry)```\n\n\n\nbackend: ChatBackend\n\nregistry: ToolRegistry"]
+				},
+				"Reset": {
+					"descriptions": ["**Forgets the conversation; the system prompt stays**\n\n```method : public : Reset() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the loop for one user message**\n\n```method : public : Run(prompt:String) ~ AgentResult```\n\n\n\nprompt: String\n\nreturn: AgentResult"]
+				},
+				"SetApproveAll": {
+					"descriptions": ["**Asks the approver about every call, not only those to dangerous tools. Calls are refused while there is no approver.**\n\n```method : public : SetApproveAll(approve_all:Bool) ~ Agent```\n\n\n\napprove_all: Bool\n\nreturn: Agent"]
+				},
+				"SetApprover": {
+					"descriptions": ["**Sets who approves dangerous tools. A dangerous tool is refused while there is none.**\n\n```method : public : SetApprover(approver:AgentApprover) ~ Agent```\n\n\n\napprover: AgentApprover\n\nreturn: Agent"]
+				},
+				"SetMaxResultChars": {
+					"descriptions": ["**Sets the longest tool result sent to the model, in characters (default 20000); longer results are cut**\n\n```method : public : SetMaxResultChars(max_chars:Int) ~ Agent```\n\n\n\nmax_chars: Int\n\nreturn: Agent"]
+				},
+				"SetMaxSteps": {
+					"descriptions": ["**Sets the most model calls one Run may make (default 10)**\n\n```method : public : SetMaxSteps(max_steps:Int) ~ Agent```\n\n\n\nmax_steps: Int\n\nreturn: Agent"]
+				},
+				"SetObserver": {
+					"descriptions": ["**Sets who hears about steps as they happen**\n\n```method : public : SetObserver(observer:AgentObserver) ~ Agent```\n\n\n\nobserver: AgentObserver\n\nreturn: Agent"]
+				},
+				"SetSystem": {
+					"descriptions": ["**Sets the system prompt**\n\n```method : public : SetSystem(system:String) ~ Agent```\n\n\n\nsystem: String\n\nreturn: Agent"]
+				},
+				"SetToolTimeout": {
+					"descriptions": ["**Sets the longest a tool may take, in milliseconds; a tool's own limit wins. 0, the default, means no limit. A running handler cannot be interrupted, so a call that overruns is reported as a timeout and its result is dropped.**\n\n```method : public : SetToolTimeout(timeout_ms:Int) ~ Agent```\n\n\n\ntimeout_ms: Int\n\nreturn: Agent"]
+				}
+			}
+		},
+		"API.Agent.AgentApprover": {
+			"description": "Decides whether a tool marked dangerous (or any tool, when the agent is told to ask every time) may run",
+			"functions": {
+				"Approve": {
+					"descriptions": ["**Asked after the arguments pass validation and before the handler runs**\n\n```method : public : virutal : Approve(call:AgentToolCall, tool:AgentTool) ~ Bool```\n\n\n\ncall: AgentToolCall\n\ntool: AgentTool\n\nreturn: Bool"]
+				}
+			}
+		},
+		"API.Agent.AgentConversation": {
+			"description": "The conversation a backend turns into a request: an optional system prompt and the entries so far",
+			"functions": {
+				"AddAssistant": {
+					"descriptions": ["**Adds the model's reply, with its tool calls**\n\n```method : public : AddAssistant(reply:AgentReply, provider:String) ~ Nil```\n\n\n\nreply: AgentReply\n\nprovider: String\n\nreturn: Nil"]
+				},
+				"AddToolResult": {
+					"descriptions": ["**Adds the result of one tool call**\n\n```method : public : AddToolResult(call_id:String, tool_name:String, content:String, is_error:Bool) ~ Nil```\n\n\n\ncall_id: String\n\ntool_name: String\n\ncontent: String\n\nis_error: Bool\n\nreturn: Nil"]
+				},
+				"AddUser": {
+					"descriptions": ["**Adds a user message**\n\n```method : public : AddUser(text:String) ~ Nil```\n\n\n\ntext: String\n\nreturn: Nil"]
+				},
+				"Clear": {
+					"descriptions": ["**Forgets every entry; the system prompt stays**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetEntries": {
+					"descriptions": ["**Gets the entries**\n\n```method : public : GetEntries() ~ Vector&lt;AgentEntry&gt;```\n\n\n\nreturn: Vector&lt;AgentEntry&gt;"]
+				},
+				"GetSystem": {
+					"descriptions": ["**Gets the system prompt**\n\n```method : public : GetSystem() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				},
+				"SetSystem": {
+					"descriptions": ["**Sets the system prompt**\n\n```method : public : SetSystem(system:String) ~ Nil```\n\n\n\nsystem: String\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Gets the number of entries**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"API.Agent.AgentEntry": {
+			"description": "One item of a conversation: what the user said, what the model said (with its tool calls), or what a tool returned",
+			"functions": {
+				"GetCallId": {
+					"descriptions": ["**Gets the id of the call a tool entry answers**\n\n```method : public : GetCallId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetProvider": {
+					"descriptions": ["**Gets the provider that made the raw payload**\n\n```method : public : GetProvider() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRaw": {
+					"descriptions": ["**Gets the provider's own form of an assistant entry**\n\n```method : public : GetRaw() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetRole": {
+					"descriptions": ["**Gets the role**\n\n```method : public : GetRole() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Gets the text**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetToolCalls": {
+					"descriptions": ["**Gets the tool calls of an assistant entry**\n\n```method : public : GetToolCalls() ~ Vector&lt;AgentToolCall&gt;```\n\n\n\nreturn: Vector&lt;AgentToolCall&gt;"]
+				},
+				"GetToolName": {
+					"descriptions": ["**Gets the name of the tool a tool entry answers**\n\n```method : public : GetToolName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsError": {
+					"descriptions": ["**Says whether a tool entry reports a failure**\n\n```method : public : IsError() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(role:String, text:String)```\n\n\n\nrole: String\n\ntext: String"]
+				}
+			}
+		},
+		"API.Agent.AgentObserver": {
+			"description": "Receives the steps of a run as they happen, for a progress display or a log",
+			"functions": {
+				"OnReply": {
+					"descriptions": ["**Called after the model answers, before its tool calls run**\n\n```method : public : virutal : OnReply(step_index:Int, reply:AgentReply) ~ Nil```\n\n\n\nstep_index: Int\n\nreply: AgentReply\n\nreturn: Nil"]
+				},
+				"OnToolResult": {
+					"descriptions": ["**Called after each tool call finishes, including calls that were refused or failed**\n\n```method : public : virutal : OnToolResult(step_index:Int, result:AgentToolResult) ~ Nil```\n\n\n\nstep_index: Int\n\nresult: AgentToolResult\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.Agent.AgentReply": {
+			"description": "What a model sent back: text, tool calls, and why it stopped",
+			"functions": {
+				"Ask": {
+					"descriptions": ["**A reply that asks for one tool call**\n\n```function : Ask(id:String, name:String, arguments:String) ~ AgentReply```\n\n\n\nid: String\n\nname: String\n\narguments: String\n\nreturn: AgentReply"]
+				},
+				"AskAll": {
+					"descriptions": ["**A reply that asks for several tool calls at once**\n\n```function : AskAll(calls:Vector&lt;AgentToolCall&gt;) ~ AgentReply```\n\n\n\ncalls: Vector&lt;AgentToolCall&gt;\n\nreturn: AgentReply"]
+				},
+				"GetInputTokens": {
+					"descriptions": ["**Gets the tokens read**\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOutputTokens": {
+					"descriptions": ["**Gets the tokens written**\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRaw": {
+					"descriptions": ["**Gets the provider's own form of the reply**\n\n```method : public : GetRaw() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetStopReason": {
+					"descriptions": ["**Gets the stop reason, in one vocabulary for every provider**\n\n```method : public : GetStopReason() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Gets the text**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetToolCalls": {
+					"descriptions": ["**Gets the tool calls**\n\n```method : public : GetToolCalls() ~ Vector&lt;AgentToolCall&gt;```\n\n\n\nreturn: Vector&lt;AgentToolCall&gt;"]
+				},
+				"HasToolCalls": {
+					"descriptions": ["**Says whether the model asked for tools**\n\n```method : public : HasToolCalls() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(text:String, calls:Vector&lt;AgentToolCall&gt;, stop:String, input_tokens:Int, output_tokens:Int)```\n\n\n\ntext: String\n\ncalls: Vector&lt;AgentToolCall&gt;\n\nstop: String\n\ninput_tokens: Int\n\noutput_tokens: Int"]
+				},
+				"Say": {
+					"descriptions": ["**A reply that is plain text**\n\n```function : Say(text:String) ~ AgentReply```\n\n\n\ntext: String\n\nreturn: AgentReply"]
+				},
+				"SetRaw": {
+					"descriptions": ["**The provider's own form of the reply, kept so a backend can send it back exactly (Gemini needs its thought signatures returned)**\n\n```method : public : SetRaw(raw:JsonElement) ~ Nil```\n\n\n\nraw: JsonElement\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.Agent.AgentResult": {
+			"description": "The outcome of Agent->Run: the final text, how the run ended, and every step",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Gets the error of a run that did not finish**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInputTokens": {
+					"descriptions": ["**Counts the tokens the run read**\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOutputTokens": {
+					"descriptions": ["**Counts the tokens the run wrote**\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStatus": {
+					"descriptions": ["**Gets how the run ended**\n\n```method : public : GetStatus() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSteps": {
+					"descriptions": ["**Gets the steps**\n\n```method : public : GetSteps() ~ Vector&lt;AgentStep&gt;```\n\n\n\nreturn: Vector&lt;AgentStep&gt;"]
+				},
+				"GetText": {
+					"descriptions": ["**Gets the final answer**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetToolCallCount": {
+					"descriptions": ["**Counts the tool calls of the run**\n\n```method : public : GetToolCallCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsCompleted": {
+					"descriptions": ["**Says whether the model gave a final answer**\n\n```method : public : IsCompleted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				},
+				"ToJson": {
+					"descriptions": ["**Writes the transcript as JSON, with API keys removed**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"ToString": {
+					"descriptions": ["**Writes the transcript as text, one line per event, with API keys removed**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentSchema": {
+			"description": "Checks arguments against the JSON Schema of a tool. It covers the parts tool schemas use: type (one name or a list), properties, required, additionalProperties set to false, enum, const, minimum, maximum, minLength, maxLength, minItems, maxItems, items, anyOf and oneOf. Other keywords, pattern and format among them, are not checked.",
+			"functions": {
+				"Check": {
+					"descriptions": ["**Checks a value against a schema**\n\n```function : Check(schema:JsonElement, value:JsonElement) ~ String```\n\n\n\nschema: JsonElement\n\nvalue: JsonElement\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentStep": {
+			"description": "One round of a run: the model's reply and the tool results that followed it",
+			"functions": {
+				"GetIndex": {
+					"descriptions": ["**Gets the step number**\n\n```method : public : GetIndex() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetReply": {
+					"descriptions": ["**Gets the model's reply**\n\n```method : public : GetReply() ~ AgentReply```\n\n\n\nreturn: AgentReply"]
+				},
+				"GetResults": {
+					"descriptions": ["**Gets the tool results of this step**\n\n```method : public : GetResults() ~ Vector&lt;AgentToolResult&gt;```\n\n\n\nreturn: Vector&lt;AgentToolResult&gt;"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(index:Int, reply:AgentReply)```\n\n\n\nindex: Int\n\nreply: AgentReply"]
+				}
+			}
+		},
+		"API.Agent.AgentTool": {
+			"description": "A function the model may call: its name, a description the model reads, a JSON Schema for the arguments, and the handler.",
+			"functions": {
+				"GetDescription": {
+					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSchema": {
+					"descriptions": ["**Gets the argument schema**\n\n```method : public : GetSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetTimeout": {
+					"descriptions": ["**Gets the tool's time limit**\n\n```method : public : GetTimeout() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Invoke": {
+					"descriptions": ["**Runs the handler; errors it raises are not caught here (Agent does that)**\n\n```method : public : Invoke(arguments:JsonElement) ~ String```\n\n\n\narguments: JsonElement\n\nreturn: String"]
+				},
+				"IsDangerous": {
+					"descriptions": ["**Says whether the tool needs approval**\n\n```method : public : IsDangerous() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a handler object**\n\n```New(name:String, description:String, schema:JsonElement, handler:AgentToolHandler)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: AgentToolHandler", "**Constructor for a function that returns text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,String&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,String&gt;", "**Constructor for a function that returns JSON; the result is sent to the model as JSON text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,JsonElement&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,JsonElement&gt;"]
+				},
+				"SetDangerous": {
+					"descriptions": ["**Marks the tool as dangerous: every call needs the agent's approver to say yes, and with no approver the call is refused**\n\n```method : public : SetDangerous(dangerous:Bool) ~ AgentTool```\n\n\n\ndangerous: Bool\n\nreturn: AgentTool"]
+				},
+				"SetTimeout": {
+					"descriptions": ["**Sets the longest the tool may take, in milliseconds. A running handler cannot be interrupted: a call that takes longer is reported to the model as a timeout and its result is discarded.**\n\n```method : public : SetTimeout(timeout_ms:Int) ~ AgentTool```\n\n\n\ntimeout_ms: Int\n\nreturn: AgentTool"]
+				}
+			}
+		},
+		"API.Agent.AgentToolCall": {
+			"description": "A tool call the model made",
+			"functions": {
+				"GetArgument": {
+					"descriptions": ["**Gets one argument as text**\n\n```method : public : GetArgument(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetArguments": {
+					"descriptions": ["**Gets the arguments**\n\n```method : public : GetArguments() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetId": {
+					"descriptions": ["**Gets the call id**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the tool name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(id:String, name:String, arguments:JsonElement)```\n\n\n\nid: String\n\nname: String\n\narguments: JsonElement"]
+				},
+				"ToString": {
+					"descriptions": ["**Describes the call**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentToolHandler": {
+			"description": "Runs one tool. Implement this for a tool that needs state; a plain function can be wrapped with Func2Ref instead.",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Runs the tool**\n\n```method : public : virutal : Run(arguments:JsonElement) ~ String```\n\n\n\narguments: JsonElement\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentToolResult": {
+			"description": "What one tool call produced. The status says how it ended: ok, error (the handler failed), invalid (the arguments broke the schema), unknown (no such tool), denied (an allow or deny list excludes it), refused (the approver said no, or a dangerous tool had no approver), timeout, or skipped (the step limit was reached before it ran).",
+			"functions": {
+				"GetArguments": {
+					"descriptions": ["**Gets the arguments the model sent**\n\n```method : public : GetArguments() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetCallId": {
+					"descriptions": ["**Gets the call id**\n\n```method : public : GetCallId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetContent": {
+					"descriptions": ["**Gets the result, or the error text, as the model saw it**\n\n```method : public : GetContent() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMillis": {
+					"descriptions": ["**Gets how long the handler ran**\n\n```method : public : GetMillis() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStatus": {
+					"descriptions": ["**Gets the status**\n\n```method : public : GetStatus() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetToolName": {
+					"descriptions": ["**Gets the tool name**\n\n```method : public : GetToolName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOk": {
+					"descriptions": ["**Says whether the call succeeded**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(call_id:String, tool_name:String, arguments:String, content:String, status:String, millis:Int)```\n\n\n\ncall_id: String\n\ntool_name: String\n\narguments: String\n\ncontent: String\n\nstatus: String\n\nmillis: Int"]
+				}
+			}
+		},
+		"API.Agent.AgentTools": {
+			"description": "Ready-made tools: a calculator, the current time and a file reader confined to one directory. They are examples and are safe to give a model; none is marked dangerous.",
+			"functions": {
+				"AddAll": {
+					"descriptions": ["**Adds the calculator, the clock and a file reader for a directory to a registry**\n\n```function : AddAll(registry:ToolRegistry, sandbox:String) ~ Nil```\n\n\n\nregistry: ToolRegistry\n\nsandbox: String\n\nreturn: Nil"]
+				},
+				"Calculator": {
+					"descriptions": ["**A calculator: + - * / % ^, parentheses, pi, e, and sqrt, abs, sin, cos, tan, ln, log10, exp, floor, ceil, round**\n\n```function : Calculator() ~ AgentTool```\n\n\n\nreturn: AgentTool"]
+				},
+				"CurrentTime": {
+					"descriptions": ["**The current date and time in UTC, optionally shifted by whole hours**\n\n```function : CurrentTime() ~ AgentTool```\n\n\n\nreturn: AgentTool"]
+				},
+				"ReadFile": {
+					"descriptions": ["**Reads a text file from under a directory. The path must be relative and may not contain .. or start with a slash or a drive letter; the checks are on the text of the path, so a symbolic link inside the directory can still lead out of it. Results over 64000 characters are cut.**\n\n```function : ReadFile(sandbox:String) ~ AgentTool```\n\n\n\nsandbox: String\n\nreturn: AgentTool"]
+				},
+				"SafePath": {
+					"descriptions": ["**Joins a relative path onto a directory, or refuses it**\n\n```function : SafePath(sandbox:String, path:String) ~ String```\n\n\n\nsandbox: String\n\npath: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AnthropicBackend": {
+			"description": "The Anthropic Messages API. The conversation becomes messages with content blocks: a model's tool calls are tool_use blocks, and the results of one reply's calls go back together in one user message as tool_result blocks that name the call's id. The key is the argument, else ANTHROPIC_API_KEY, else the first line of anthropic_api_key.dat in the working directory.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for a conversation, public so it can be inspected without a server**\n\n```method : public : BuildRequest(conversation:AgentConversation, tools:Vector&lt;AgentTool&gt;) ~ JsonElement```\n\n\n\nconversation: AgentConversation\n\ntools: Vector&lt;AgentTool&gt;\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; it does not contact the server**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses**\n\n```method : public : ParseBody(body:String) ~ AgentReply```\n\n\n\nbody: String\n\nreturn: AgentReply"]
+				},
+				"SetBaseUrl": {
+					"descriptions": ["**Sets the API base URL, for a gateway or proxy**\n\n```method : public : SetBaseUrl(base_url:String) ~ AnthropicBackend```\n\n\n\nbase_url: String\n\nreturn: AnthropicBackend"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents**\n\n```method : public : SetCertificate(pem:String) ~ AnthropicBackend```\n\n\n\npem: String\n\nreturn: AnthropicBackend"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use (default 4096)**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ AnthropicBackend```\n\n\n\nmax_tokens: Int\n\nreturn: AnthropicBackend"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ AnthropicBackend```\n\n\n\ntemperature: Float\n\nreturn: AnthropicBackend"]
+				}
+			}
+		},
+		"API.Agent.ChatBackend": {
+			"description": "One model, behind the one method the loop needs. A backend turns the neutral conversation and tool list into its provider's request, sends it and turns the response back into an AgentReply.",
+			"functions": {
+				"Chat": {
+					"descriptions": ["**Sends the conversation and returns the model's next reply**\n\n```method : public : virutal : Chat(conversation:AgentConversation, tools:Vector&lt;AgentTool&gt;) ~ AgentReply```\n\n\n\nconversation: AgentConversation\n\ntools: Vector&lt;AgentTool&gt;\n\nreturn: AgentReply"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Says why the last Chat returned Nil**\n\n```method : public : virutal : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Names the provider**\n\n```method : public : virutal : GetName() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.GeminiBackend": {
+			"description": "The Google Gemini API (generateContent). Tool calls are functionCall parts and results go back as functionResponse parts in one user turn. A tool schema is trimmed to the keywords Gemini's Schema knows (for one, additionalProperties is dropped) and a tool with no arguments is sent without parameters. The model's own parts are kept and sent back unchanged, which Gemini needs for its thought signatures. The key travels in the x-goog-api-key header, not the URL, and comes from the argument, else GOOGLE_API_KEY or GEMINI_API_KEY, else the first line of gemini_api_key.dat in the working directory.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for a conversation, public so it can be inspected without a server**\n\n```method : public : BuildRequest(conversation:AgentConversation, tools:Vector&lt;AgentTool&gt;) ~ JsonElement```\n\n\n\nconversation: AgentConversation\n\ntools: Vector&lt;AgentTool&gt;\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; it does not contact the server**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses**\n\n```method : public : ParseBody(body:String) ~ AgentReply```\n\n\n\nbody: String\n\nreturn: AgentReply"]
+				},
+				"SetBaseUrl": {
+					"descriptions": ["**Sets the API base URL, for a gateway or proxy**\n\n```method : public : SetBaseUrl(base_url:String) ~ GeminiBackend```\n\n\n\nbase_url: String\n\nreturn: GeminiBackend"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents**\n\n```method : public : SetCertificate(pem:String) ~ GeminiBackend```\n\n\n\npem: String\n\nreturn: GeminiBackend"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use; unset by default**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ GeminiBackend```\n\n\n\nmax_tokens: Int\n\nreturn: GeminiBackend"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ GeminiBackend```\n\n\n\ntemperature: Float\n\nreturn: GeminiBackend"]
+				}
+			}
+		},
+		"API.Agent.OllamaBackend": {
+			"description": "A local Ollama server (POST /api/chat over plain HTTP, default http://localhost:11434). Ollama gives tool calls no ids, so one is made up for each and a result goes back as a tool message that names the tool. The model must support tools.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for a conversation, public so it can be inspected without a server**\n\n```method : public : BuildRequest(conversation:AgentConversation, tools:Vector&lt;AgentTool&gt;) ~ JsonElement```\n\n\n\nconversation: AgentConversation\n\ntools: Vector&lt;AgentTool&gt;\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; it does not contact the server**\n\n```New(model:String)```\n\n\n\nmodel: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses**\n\n```method : public : ParseBody(body:String) ~ AgentReply```\n\n\n\nbody: String\n\nreturn: AgentReply"]
+				},
+				"SetHost": {
+					"descriptions": ["**Sets the server address**\n\n```method : public : SetHost(host:String) ~ OllamaBackend```\n\n\n\nhost: String\n\nreturn: OllamaBackend"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use (num_predict); unset by default**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ OllamaBackend```\n\n\n\nmax_tokens: Int\n\nreturn: OllamaBackend"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ OllamaBackend```\n\n\n\ntemperature: Float\n\nreturn: OllamaBackend"]
+				}
+			}
+		},
+		"API.Agent.OpenAIBackend": {
+			"description": "The OpenAI Chat Completions API (POST /chat/completions), which many compatible servers also speak: set the base URL to use one. Tools are function tools; a model's calls arrive with string arguments that are parsed here, and each result goes back as a tool message that carries the call's id. The key is the argument, else OPENAI_API_KEY, else the first line of openai_api_key.dat in the working directory.",
+			"functions": {
+				"BuildRequest": {
+					"descriptions": ["**Builds the request body for a conversation, public so it can be inspected without a server**\n\n```method : public : BuildRequest(conversation:AgentConversation, tools:Vector&lt;AgentTool&gt;) ~ JsonElement```\n\n\n\nconversation: AgentConversation\n\ntools: Vector&lt;AgentTool&gt;\n\nreturn: JsonElement"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; it does not contact the server**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Reads a response body without a server, for tests and for replaying recorded responses**\n\n```method : public : ParseBody(body:String) ~ AgentReply```\n\n\n\nbody: String\n\nreturn: AgentReply"]
+				},
+				"SetBaseUrl": {
+					"descriptions": ["**Sets the API base URL, for a compatible server or gateway**\n\n```method : public : SetBaseUrl(base_url:String) ~ OpenAIBackend```\n\n\n\nbase_url: String\n\nreturn: OpenAIBackend"]
+				},
+				"SetCertificate": {
+					"descriptions": ["**Pins the certificate a gateway or test server presents**\n\n```method : public : SetCertificate(pem:String) ~ OpenAIBackend```\n\n\n\npem: String\n\nreturn: OpenAIBackend"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens a reply may use (sent as max_completion_tokens); unset by default**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ OpenAIBackend```\n\n\n\nmax_tokens: Int\n\nreturn: OpenAIBackend"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature; unset by default because some models only accept their own**\n\n```method : public : SetTemperature(temperature:Float) ~ OpenAIBackend```\n\n\n\ntemperature: Float\n\nreturn: OpenAIBackend"]
+				}
+			}
+		},
+		"API.Agent.Redactor": {
+			"description": "Removes API keys from text before it is logged, shown or kept in an error. Keys are found by value (every key a backend has used is registered) and by shape (sk-..., AIza..., and the token after Bearer).",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Registers a secret so it is masked wherever it appears**\n\n```function : Add(secret:String) ~ Nil```\n\n\n\nsecret: String\n\nreturn: Nil"]
+				},
+				"Scrub": {
+					"descriptions": ["**Masks keys in a text**\n\n```function : Scrub(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.ScriptedBackend": {
+			"description": "A fake model that replays a script: each Chat call returns the next reply in the list. It is for testing tools and the loop without a network or a key, and it is what the offline demo runs on. It remembers what it was shown, so a test can check the conversation the loop built.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a reply to the end of the script**\n\n```method : public : Add(reply:AgentReply) ~ ScriptedBackend```\n\n\n\nreply: AgentReply\n\nreturn: ScriptedBackend"]
+				},
+				"GetCallCount": {
+					"descriptions": ["**Gets how many times the model was asked**\n\n```method : public : GetCallCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLastConversation": {
+					"descriptions": ["**Gets the conversation as it was the last time the model was asked (the live object, so it keeps growing)**\n\n```method : public : GetLastConversation() ~ AgentConversation```\n\n\n\nreturn: AgentConversation"]
+				},
+				"GetOfferedTools": {
+					"descriptions": ["**Gets the names of the tools offered the last time the model was asked**\n\n```method : public : GetOfferedTools() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(script:Vector&lt;AgentReply&gt;)```\n\n\n\nscript: Vector&lt;AgentReply&gt;"]
+				}
+			}
+		},
+		"API.Agent.ToolRegistry": {
+			"description": "The tools an agent knows, with an allow list and a deny list. A tool the lists exclude is not shown to the model and a call to it is refused. With no allow list every registered tool is allowed; a name on the deny list is always refused.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a tool; one with the same name is replaced**\n\n```method : public : Add(tool:AgentTool) ~ ToolRegistry```\n\n\n\ntool: AgentTool\n\nreturn: ToolRegistry"]
+				},
+				"Allow": {
+					"descriptions": ["**Adds a name to the allow list. Once the list has a name, only listed tools are allowed.**\n\n```method : public : Allow(name:String) ~ ToolRegistry```\n\n\n\nname: String\n\nreturn: ToolRegistry"]
+				},
+				"Deny": {
+					"descriptions": ["**Adds a name to the deny list**\n\n```method : public : Deny(name:String) ~ ToolRegistry```\n\n\n\nname: String\n\nreturn: ToolRegistry"]
+				},
+				"Find": {
+					"descriptions": ["**Finds a tool by name**\n\n```method : public : Find(name:String) ~ AgentTool```\n\n\n\nname: String\n\nreturn: AgentTool"]
+				},
+				"GetAll": {
+					"descriptions": ["**Gets every registered tool**\n\n```method : public : GetAll() ~ Vector&lt;AgentTool&gt;```\n\n\n\nreturn: Vector&lt;AgentTool&gt;"]
+				},
+				"GetPermitted": {
+					"descriptions": ["**Gets the tools the model is shown**\n\n```method : public : GetPermitted() ~ Vector&lt;AgentTool&gt;```\n\n\n\nreturn: Vector&lt;AgentTool&gt;"]
+				},
+				"Names": {
+					"descriptions": ["**Lists the registered tool names, for an error message**\n\n```method : public : Names() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				},
+				"Permits": {
+					"descriptions": ["**Says whether a tool may be offered and run**\n\n```method : public : Permits(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"Size": {
+					"descriptions": ["**Gets the number of registered tools**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"API.Anthropic.Chat": {
 			"description": "A chat session. It keeps the message history, including tool calls and results.",
 			"functions": {
@@ -71,6 +589,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"ParseBody": {
 					"descriptions": ["**Parse a response body. Nil, with the last error set, when the body is not JSON or is an error object ({\"type\":\"error\",\"error\":{\"type\":...,\"message\":...}}).**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
@@ -345,6 +866,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"ParseBody": {
 					"descriptions": ["**Parses a response body, recording a failure as the last error (the error was only printed before, so GetLastError() never reported it). A body that is not JSON, or that carries an 'error' object, yields Nil.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
@@ -1966,6 +2490,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InsecureTlsBlocksKey": {
+					"descriptions": ["**True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and nothing says that sending an API key that way is intended. Setting OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local server, never for a real key.**\n\n```function : InsecureTlsBlocksKey() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"NoReply": {
 					"descriptions": ["**Checks whether a request got an answer, recording the failure as the last error if not. A refused or dropped connection is a Nil response over HTTP and a response with status 0 and no content over HTTPS.**\n\n```function : NoReply(response:Web.HTTP.Response) ~ Bool```\n\n\n\nresponse: Web.HTTP.Response\n\nreturn: Bool"]
@@ -15680,6 +16207,9 @@
 				"OperatingPoints": {
 					"descriptions": ["**Operating points of a scored classifier, one row per distinct score, from the highest score down: [threshold, false positives, true positives].\n\nEvery metric below is a walk over this. It exists because the functions above take already-thresholded Bool predictions, which throw away exactly what these questions need: a single Bool array fixes one operating point, and cannot answer what the recall would be at a different false-alarm rate.\n\nInstances that share a score share an operating point. Splitting them would invent an ordering the scores do not express and let a metric read better than the model earned.**\n\n```function : OperatingPoints(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
 				},
+				"PairedBootstrapDifference": {
+					"descriptions": ["**A paired bootstrap interval for how much better one detector is than another at thresholds that were chosen beforehand.\n\nBootstrap resamples one detector's scores and recomputes a metric that may itself pick a threshold. This answers the comparison question instead: the two detectors scored the SAME instances, each has a threshold frozen before the test set was looked at (for example by ThresholdAtFpr on out-of-fold scores), and the question is whether detector B's recall is really higher than detector A's. Each resample draws instances once and applies both detectors to that one draw, so the noise the two share cancels in the difference and the interval is the interval of the difference, not two intervals to compare by eye.\n\nThe statistic is B minus A. An instance is flagged when its score is >= the detector's threshold, as in AtThreshold. A resample with no positive instance (recall) or no negative instance (false-positive rate) has no value and is left out; the usable count says how many survived.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int, level:Float) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nlevel: Float\n\nreturn: ConfInterval", "**The same at the conventional 95% level.**\n\n```function : PairedBootstrapDifference(scores_a:Float[], threshold_a:Float, scores_b:Float[], threshold_b:Float, actuals:Bool[], use_fpr:Bool, reps:Int, seed:Int) ~ ConfInterval```\n\n\n\nscores_a: Float[]\n\nthreshold_a: Float\n\nscores_b: Float[]\n\nthreshold_b: Float\n\nactuals: Bool[]\n\nuse_fpr: Bool\n\nreps: Int\n\nseed: Int\n\nreturn: ConfInterval"]
+				},
 				"Percentile": {
 					"descriptions": ["**A percentile of a set of values, by linear interpolation.\n\nUsed for bootstrap intervals, and exposed because a caller resampling a statistic this bundle does not implement still needs the interval.\n\np is clamped rather than rejected: 0.0 gives the minimum and 1.0 the maximum, which is what a caller asking for them wants.**\n\n```function : Percentile(values:Float[], p:Float) ~ Float```\n\n\n\nvalues: Float[]\n\np: Float\n\nreturn: Float"]
 				},
@@ -17615,6 +18145,9 @@
 				"GetMetric": {
 					"descriptions": ["**The ranking this index was created with.**\n\n```method : public : GetMetric() ~ VectorMetric```\n\n\n\nreturn: VectorMetric"]
 				},
+				"GetThreads": {
+					"descriptions": ["**Gets how many threads a search may use.**\n\n```method : public : GetThreads() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"IsValid": {
 					"descriptions": ["**Whether the index was created with a usable dimension.**\n\n```method : public : IsValid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -17629,6 +18162,9 @@
 				},
 				"Search": {
 					"descriptions": ["**The k closest vectors to a query, closest first. Fewer than k come back when the index holds fewer, and none when the query is refused (Nil, the wrong length, a NaN, an infinite or out-of-range value, k below 1) or the index is empty; GetError() says which. COSINE scores a vector or query of length zero as 0.**\n\n```method : public : Search(query:Float[], k:Int) ~ Vector&lt;VectorHit&gt;```\n\n\n\nquery: Float[]\n\nk: Int\n\nreturn: Vector&lt;VectorHit&gt;"]
+				},
+				"SetThreads": {
+					"descriptions": ["**Sets how many threads a search may use. A search over a large index (about 8 MB of vectors or more) is split into that many parts, each scanned on its own thread, and their best results merged; the answer, ties included, is the same as a single-threaded search. Smaller indexes are always searched on the calling thread. The default is 1.**\n\n```method : public : SetThreads(threads:Int) ~ Nil```\n\n\n\nthreads: Int\n\nreturn: Nil"]
 				},
 				"Size": {
 					"descriptions": ["**Number of vectors stored.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -21471,11 +22007,17 @@
 				"GetBoundPort": {
 					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body set by SetMaxBodyBytes**\n\n```function : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"Serve": {
 					"descriptions": ["**NOT IMPLEMENTED: starting a HTTP server from a configuration file. The call reports this on standard error and returns without serving; it used to load the file and then silently serve nothing. Use Serve(callback, port) or Serve(callback, port, is_debug) for HTTP, or ServeSecure(filename) for HTTPS, which does read a configuration file.**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"ServeSecure": {
 					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests on one local address instead of every interface; see ServeSecure(callback, address, port, cert, cert_key, cert_key_passwd).**\n\n```function : ServeSecure(callback:Class, address:String, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Call before Serve. Zero (or less), the default, allows 8388608 (8 MiB). A WebServerConfig that sets its own limit takes precedence.**\n\n```function : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"SetMaxConnections": {
 					"descriptions": ["**Sets the most connections served at once; a connection beyond it is answered 503 and closed. Call before Serve. Zero, the default, allows 1024.**\n\n```function : SetMaxConnections(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
@@ -21509,6 +22051,9 @@
 				"GetFilename": {
 					"descriptions": ["**Gets the configuration filename**\n\n```method : public : GetFilename() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetMaxBodyBytes": {
+					"descriptions": ["**Gets the largest request body this configuration accepts**\n\n```method : public : GetMaxBodyBytes() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetPort": {
 					"descriptions": ["**Gets the server port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -21535,6 +22080,9 @@
 				},
 				"ProcessPost": {
 					"descriptions": ["**Callback for POST requests**\n\n```method : public : ProcessPost(request:Web.HTTP.Server.Request, response:Web.HTTP.Server.Response) ~ Bool```\n\n\n\nrequest: Web.HTTP.Server.Request\n\nresponse: Web.HTTP.Server.Response\n\nreturn: Bool"]
+				},
+				"SetMaxBodyBytes": {
+					"descriptions": ["**Sets the largest request body accepted, in bytes; a request whose Content-Length is larger is answered 413 Content Too Large before its body is read. Zero (or less), the default, defers to WebServer->SetMaxBodyBytes and then to 8388608 (8 MiB).**\n\n```method : public : SetMaxBodyBytes(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil"]
 				},
 				"ToString": {
 					"descriptions": ["**Gets the string representation of the configuration**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -21931,6 +22479,138 @@
 		}
 	},
 	"class-bundle-names": {
+		"Agent": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentApprover": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentConversation": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentEntry": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentObserver": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentReply": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentResult": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentSchema": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentStep": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentTool": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentToolCall": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentToolHandler": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentToolResult": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AgentTools": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"AnthropicBackend": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"ChatBackend": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"GeminiBackend": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"OllamaBackend": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"OpenAIBackend": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"Redactor": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"ScriptedBackend": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
+		"ToolRegistry": [
+			{
+				"bundle": "API.Agent",
+				"file": ""
+			}
+		],
 		"Chat": [
 			{
 				"bundle": "API.Anthropic",
