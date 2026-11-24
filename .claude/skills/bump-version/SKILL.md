@@ -100,7 +100,10 @@ This generates from `.in` templates:
 > the two occasions they were flipped early.
 
 > **Also bump the language server's reported version and the VS Code lockfile by hand.**
-> `tools/lsp/server/server.obs` hard-codes `serverInfo->Insert("version", "<VERSION>")`, and
+> `tools/lsp/server/server.obs` hard-codes the server version in `LintService->ServerVersion()`,
+> the top-level `"version"` of both `objk_apis.json` copies (`tools/lsp/server/` and
+> `tools/lsp/clients/vscode/server/`) must match it (the server warns the editor when the index
+> is for another release, and the LSP suite gates it), and
 > `tools/lsp/clients/vscode/package-lock.json` repeats the extension version twice (the
 > top-level `version` and `packages[""].version`); `update_version.ps1` writes `package.json`
 > only. The `tools` CI job's LSP suite fails when `serverInfo` disagrees with `version.h` --

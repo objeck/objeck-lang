@@ -876,6 +876,11 @@ namespace Runtime {
     static void* AsyncMethodCall(void* arg);
 #endif
 
+    // Runs a registered signal handler (Runtime->SetSignal) with 'signal_id' as its
+    // argument, on the calling thread, which becomes a mutator for the duration. Called
+    // from the signal dispatch thread (common.cpp), never from a signal handler.
+    static void RunSignalMethod(StackMethod* method, long signal_id);
+
     StackInterpreter(StackFrame** c, long* cp) {
 #ifdef _DEBUGGER
       debugger = nullptr;   // see the note in StackInterpreter()
@@ -918,6 +923,7 @@ namespace Runtime {
       stack_frame_monitor->call_stack_pos = call_stack_pos;
       stack_frame_monitor->op_stack = nullptr;
       stack_frame_monitor->stack_pos = nullptr;
+      stack_frame_monitor->thread_id = MemoryManager::CurrentThreadId();
 
       stack_frame = new StackFrame*;
       // Published before any collection can read it: the mark phase dereferences
@@ -953,6 +959,7 @@ namespace Runtime {
       stack_frame_monitor->cur_frame = stack_frame;
       stack_frame_monitor->op_stack = nullptr;
       stack_frame_monitor->stack_pos = nullptr;
+      stack_frame_monitor->thread_id = MemoryManager::CurrentThreadId();
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
 
@@ -986,6 +993,7 @@ namespace Runtime {
       stack_frame_monitor->cur_frame = stack_frame;
       stack_frame_monitor->op_stack = nullptr;
       stack_frame_monitor->stack_pos = nullptr;
+      stack_frame_monitor->thread_id = MemoryManager::CurrentThreadId();
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
 #endif

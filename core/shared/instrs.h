@@ -220,3 +220,7 @@ namespace instructions {
     LOCL
   };
 }
+
+// One row per enumerator above: operands, stack effect, flags. A new opcode needs its
+// row there or the build fails (docs/INSTRUCTION_SET.md).
+#include "instr_info.h"

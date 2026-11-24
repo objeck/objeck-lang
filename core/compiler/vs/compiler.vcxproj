@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\shared\logger.cpp" />
     <ClCompile Include="..\compiler.cpp" />
+    <ClCompile Include="..\cfg.cpp" />
     <ClCompile Include="..\context.cpp" />
     <ClCompile Include="..\emit.cpp" />
     <ClCompile Include="..\intermediate.cpp" />
@@ -195,6 +196,7 @@
     <ClInclude Include="..\..\shared\traps.h" />
     <ClInclude Include="..\..\shared\version.h" />
     <ClInclude Include="..\compiler.h" />
+    <ClInclude Include="..\cfg.h" />
     <ClInclude Include="..\context.h" />
     <ClInclude Include="..\emit.h" />
     <ClInclude Include="..\intermediate.h" />

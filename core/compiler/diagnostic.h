@@ -88,19 +88,34 @@ namespace frontend {
   // place of its own copy of the code that built the "file:(line,pos): message"
   // string and the multimap it went into.
   //
-  // Diagnostics stay in the order they have always printed: by line, and in the
-  // order raised within a line. Unique* drops repeats of the same text, which a
+  // Diagnostics print by file, then by line, and in the order raised within a line.
+  // A file's place is the order its first diagnostic arrived in, which is the order
+  // the files were given: a build of several files used to be keyed by line alone,
+  // so the errors of every file interleaved (a.obs:3, b.obs:3, a.obs:7, ...) and a
+  // cap on the output cut one file's errors in among another's. A single-file build
+  // prints exactly as before. Unique* drops repeats of the same text, which a
   // diagnostic raised from more than one resolution path produces, before any cap
   // is applied (an undefined method call can be reported three times at one
   // position, and identical copies pushed real errors off the end of the output).
+  //
+  // The column is not part of the key: two errors on one line print in the order
+  // they were raised, which is the order the tests that match them were written for.
   class DiagnosticSink {
-    std::multimap<int, Diagnostic> errors;
-    std::multimap<int, Diagnostic> warnings;
+    typedef std::pair<int, int> Key; // (file's place, line)
+    std::multimap<Key, Diagnostic> errors;
+    std::multimap<Key, Diagnostic> warnings;
+    std::map<std::wstring, int> file_places;
 
-    static std::vector<Diagnostic> Unique(const std::multimap<int, Diagnostic>& all) {
+    Key MakeKey(const std::wstring& file, int line) {
+      const int next_place = static_cast<int>(file_places.size());
+      const int place = file_places.insert(std::make_pair(file, next_place)).first->second;
+      return Key(place, line);
+    }
+
+    static std::vector<Diagnostic> Unique(const std::multimap<Key, Diagnostic>& all) {
       std::set<std::wstring> seen;
       std::vector<Diagnostic> unique;
-      for(std::multimap<int, Diagnostic>::const_iterator iter = all.begin(); iter != all.end(); ++iter) {
+      for(std::multimap<Key, Diagnostic>::const_iterator iter = all.begin(); iter != all.end(); ++iter) {
         if(seen.insert(iter->second.Format()).second) {
           unique.push_back(iter->second);
         }
@@ -114,7 +129,7 @@ namespace frontend {
 #ifdef _DEBUG
       GetLogger() << L"\tError: " << file << L":(" << line << L',' << pos << L"): " << message << std::endl;
 #endif
-      errors.insert(std::pair<int, Diagnostic>(line, Diagnostic(DIAG_ERROR, file, line, pos, message)));
+      errors.insert(std::make_pair(MakeKey(file, line), Diagnostic(DIAG_ERROR, file, line, pos, message)));
     }
 
     // an error about a whole file: reported at its first character, sorted first
@@ -122,14 +137,14 @@ namespace frontend {
 #ifdef _DEBUG
       GetLogger() << L"\tError: " << message << std::endl;
 #endif
-      errors.insert(std::pair<int, Diagnostic>(1, Diagnostic(DIAG_ERROR, file, 1, 1, message)));
+      errors.insert(std::make_pair(MakeKey(file, 1), Diagnostic(DIAG_ERROR, file, 1, 1, message)));
     }
 
     void Warning(const std::wstring& file, int line, int pos, const std::wstring& message) {
 #ifdef _DEBUG
       GetLogger() << L"\tWarning: " << file << L":(" << line << L',' << pos << L"): " << message << std::endl;
 #endif
-      warnings.insert(std::pair<int, Diagnostic>(line, Diagnostic(DIAG_WARNING, file, line, pos, message)));
+      warnings.insert(std::make_pair(MakeKey(file, line), Diagnostic(DIAG_WARNING, file, line, pos, message)));
     }
 
     bool HasErrors() const {

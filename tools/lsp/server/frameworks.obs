@@ -43,6 +43,8 @@ bundle LSP {
 		@progress_pending_id : String;
 		@progress_pending_token : String;
 		@progress_count : Int;
+		# set by the connection's thread when it ends; the TCP accept loop reads it
+		@finished : Bool;
 
 		# JSON-RPC / LSP error codes
 		consts ErrorCode {
@@ -52,7 +54,16 @@ bundle LSP {
 			SERVER_NOT_INITIALIZED := -32002,
 			REQUEST_FAILED := -32803,
 			REQUEST_CANCELLED := -32800,
-			CONTENT_MODIFIED := -32801
+			CONTENT_MODIFIED := -32801,
+			INVALID_PARAMS := -32602
+		}
+
+		# The largest message body the server will allocate for. The length comes
+		# from the peer's Content-Length header, so without a cap one header line
+		# asks the VM for any amount of memory. 64 MB, as the debug adapter
+		# (core/debugger/dap.cpp) allows; a source file is a few hundred KB at most.
+		consts Framing {
+			MAX_MESSAGE := 67108864
 		}
 
 		# Diagnostics are published once no message has arrived for this many idle
@@ -114,6 +125,8 @@ bundle LSP {
 			else if(@pipe <> Nil) {
 				@pipe->Close();
 			};
+
+			@finished := true;
 		}
 
 		# called by the reader thread; Nil means the stream has closed
@@ -139,6 +152,89 @@ bundle LSP {
 
 		method : public : IsQuitting() ~ Bool {
 			return @quit;
+		}
+
+		#
+		# textDocument/inlineCompletion; the work is in inline_completion.obs. The
+		# provider's request runs on its own thread and this waits for it at most the
+		# configured timeout, stopping early when the client cancels or edits the
+		# document (what arrived meanwhile waits in the inbox). Every failure is an
+		# empty list; only a cancel is answered with an error, as LSP asks.
+		#
+		method : CallbackInlineCompletion(id : Int, params : JsonElement) ~ Nil {
+			items := JsonElement->New(JsonElement->JsonType->ARRAY);
+			uri := FindString(params, "textDocument/uri");
+			line_json := FindJson(params, "position/line");
+			char_json := FindJson(params, "position/character");
+			document := @workspace->GetDocument(uri);
+			job : InlineCompletionJob := Nil;
+			text : String := Nil;
+			if(document <> Nil & line_json <> Nil & char_json <> Nil) {
+				text := document->GetText();
+				job := InlineCompletion->Begin(text, line_json->GetInt(), char_json->GetInt());
+			};
+
+			if(job <> Nil) {
+				abandoned := 0;
+				waited := 0;
+				limit := InlineCompletionSettings->GetTimeoutMs();
+				while(<>job->IsDone() & waited < limit & abandoned = 0) {
+					abandoned := InlineAbandoned(uri);
+					System.Concurrency.Thread->Sleep(10);
+					waited += 10;
+				};
+
+				if(abandoned = 1) {
+					WriteRpcError(id, LspWorker->ErrorCode->REQUEST_CANCELLED->As(Int), "Request cancelled");
+					return;
+				};
+
+				if(abandoned = 0 & job->IsDone()) {
+					index := InlineCompletion->IndexOf(text, line_json->GetInt(), char_json->GetInt());
+					suggestion := InlineCompletion->Shape(job->GetResult(), InlineCompletion->LinePrefix(text, index));
+					if(<>suggestion->IsEmpty()) {
+						item := JsonElement->New(JsonElement->JsonType->OBJECT);
+						item->Insert("insertText", suggestion);
+						range := item->AddChild("range");
+						range->AddChild("start")->Insert("line", line_json->GetInt());
+						range->Get("start")->Insert("character", char_json->GetInt());
+						range->AddChild("end")->Insert("line", line_json->GetInt());
+						range->Get("end")->Insert("character", char_json->GetInt());
+						items->Add(item);
+					};
+				};
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("items", items);
+			WriteRpcResponse(id, result);
+		}
+
+		# 1 when the client has cancelled the request being answered, 2 when it has
+		# edited or closed the document since, else 0; the inbox is only looked at.
+		method : InlineAbandoned(uri : String) ~ Int {
+			found := 0;
+			critical(@inbox_mutex) {
+				each(i : @inbox) {
+					queued := @inbox->Get(i);
+					queued_method := queued->GetMethod();
+					if(found = 0 & queued_method <> Nil & queued->IsNotification()) {
+						if(queued_method->Equals("$/cancelRequest")) {
+							cancel_id := FindJson(queued->GetParams(), "id");
+							if(cancel_id <> Nil & @reply_id <> Nil & cancel_id->ToString()->Equals(@reply_id->ToString())) {
+								found := 1;
+							};
+						}
+						else if(queued_method->Equals("textDocument/didChange") | queued_method->Equals("textDocument/didClose")) {
+							if(uri <> Nil & uri->Equals(FindString(queued->GetParams(), "textDocument/uri"))) {
+								found := 2;
+							};
+						};
+					};
+				};
+			};
+
+			return found;
 		}
 
 		#
@@ -397,6 +493,22 @@ bundle LSP {
 		}
 
 		#
+		# window/showMessage: what the user must see, not just the output channel.
+		# Same types as LogMessage.
+		#
+		method : public : ShowMessage(type : Int, message : String) ~ Nil {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("type", type);
+			params->Insert("message", message);
+			WriteRpcRequest("window/showMessage", params);
+		}
+
+		# true once Run has returned and the connection is closed
+		method : public : IsFinished() ~ Bool {
+			return @finished;
+		}
+
+		#
 		# Columns between the client's UTF-16 units and the server's Chars, where a
 		# Char is a whole code point (Linux, macOS) and the client takes only
 		# UTF-16 -- VS Code among them. A character outside the BMP is one Char and
@@ -506,11 +618,200 @@ bundle LSP {
 			return text_lines->Get(line);
 		}
 
+		# The value at 'a/b/c', or Nil when any step is missing or not an object.
+		# FindElements walked on regardless, and a member that was a string where an
+		# object belongs reached the next lookup as a nil dereference.
 		function : FindJson(params : JsonElement, path : String) ~ JsonElement {
-			if(params = Nil | params->GetType() <> JsonElement->JsonType->OBJECT) {
+			element := params;
+			steps := path->Split("/");
+			each(i : steps) {
+				if(element = Nil | element->GetType() <> JsonElement->JsonType->OBJECT) {
+					return Nil;
+				};
+				element := element->Get(steps[i]);
+			};
+
+			return element;
+		}
+
+		#
+		# Parameter checks. Objeck cannot catch a nil dereference: one in a handler
+		# halts the VM and the editor is left with no language features, so a request
+		# with a missing or mistyped field has to be refused BEFORE a handler reads it.
+		# A spec is 'path:kind' entries separated by commas; kinds are s string, n
+		# number, b boolean, a array, o object; a leading '?' makes the entry optional
+		# (absent is fine, present must match).
+		#
+		function : KindMatches(found : JsonElement, kind : Char) ~ Bool {
+			if(found = Nil) {
+				return false;
+			};
+
+			type := found->GetType();
+			if(kind = 's') {
+				return type = JsonElement->JsonType->STRING;
+			}
+			else if(kind = 'n') {
+				return type = JsonElement->JsonType->NUMBER;
+			}
+			else if(kind = 'b') {
+				return type = JsonElement->JsonType->TRUE | type = JsonElement->JsonType->FALSE;
+			}
+			else if(kind = 'a') {
+				return type = JsonElement->JsonType->ARRAY;
+			};
+
+			return type = JsonElement->JsonType->OBJECT;
+		}
+
+		# The first entry of the spec that 'params' does not satisfy, or Nil.
+		function : CheckSpec(params : JsonElement, spec : String) ~ String {
+			entries := spec->Split(",");
+			each(i : entries) {
+				entry := entries[i];
+				is_optional := entry->StartsWith("?");
+				if(is_optional) {
+					entry := entry->SubString(1, entry->Size() - 1);
+				};
+
+				colon := entry->FindLast(':');
+				path := entry->SubString(colon);
+				kind := entry->Get(colon + 1);
+
+				found := FindJson(params, path);
+				if(found = Nil & is_optional) {
+					continue;
+				};
+
+				if(<>KindMatches(found, kind)) {
+					return path;
+				};
+			};
+
+			return Nil;
+		}
+
+		# The same spec for every element of an array that is known to be one.
+		function : CheckEach(items : JsonElement, spec : String, owner : String) ~ String {
+			if(items = Nil | items->GetType() <> JsonElement->JsonType->ARRAY) {
 				return Nil;
 			};
-			return params->FindElements(path);
+
+			each(i : items) {
+				bad := CheckSpec(items->Get(i), spec);
+				if(bad <> Nil) {
+					return "{$owner}[{$i}]/{$bad}";
+				};
+			};
+
+			return Nil;
+		}
+
+		# What each method reads without looking first. Nil for a method that reads
+		# nothing, or that already checks what it reads.
+		function : ParamsSpec(method_id : String) ~ String {
+			position := "textDocument/uri:s,position/line:n,position/character:n";
+			item := "item/uri:s,item/range/start/line:n,item/range/start/character:n";
+			format := "textDocument/uri:s,options/tabSize:n,options/insertSpaces:b";
+			uri := "textDocument/uri:s";
+
+			select(method_id) {
+				label "textDocument/completion" { return position; }
+				label "textDocument/hover" { return position; }
+				label "textDocument/definition" { return position; }
+				label "textDocument/declaration" { return position; }
+				label "textDocument/references" { return position; }
+				label "textDocument/typeDefinition" { return position; }
+				label "textDocument/implementation" { return position; }
+				label "textDocument/signatureHelp" { return position; }
+				label "textDocument/prepareRename" { return position; }
+				label "textDocument/documentHighlight" { return position; }
+				label "textDocument/prepareCallHierarchy" { return position; }
+				label "textDocument/prepareTypeHierarchy" { return position; }
+				label "textDocument/rename" { return "{$position},newName:s"; }
+				label "callHierarchy/incomingCalls" { return item; }
+				label "callHierarchy/outgoingCalls" { return item; }
+				label "typeHierarchy/supertypes" { return item; }
+				label "typeHierarchy/subtypes" { return item; }
+				label "textDocument/formatting" { return format; }
+				label "textDocument/rangeFormatting" {
+					return "{$format},range/start/line:n,range/start/character:n,range/end/line:n,range/end/character:n";
+				}
+				label "textDocument/codeAction" {
+					return "{$uri},range/start/line:n,range/start/character:n,context/diagnostics:a";
+				}
+				label "textDocument/inlayHint" { return "{$uri},range/start/line:n,range/end/line:n"; }
+				label "textDocument/inlineCompletion" { return position; }
+				label "textDocument/inlineValue" {
+					return "{$uri},range/start/line:n,range/start/character:n,range/end/line:n,range/end/character:n";
+				}
+				label "textDocument/linkedEditingRange" { return position; }
+				label "textDocument/onTypeFormatting" { return "{$position},ch:s,options/tabSize:n,options/insertSpaces:b"; }
+				label "workspace/willRenameFiles" { return "files:a"; }
+				label "textDocument/semanticTokens/range" { return "{$uri},range/start/line:n,range/end/line:n"; }
+				label "textDocument/selectionRange" { return "{$uri},positions:a"; }
+				label "textDocument/semanticTokens/full" { return uri; }
+				label "textDocument/semanticTokens/full/delta" { return uri; }
+				label "textDocument/foldingRange" { return uri; }
+				label "textDocument/documentSymbol" { return uri; }
+				label "textDocument/documentLink" { return uri; }
+				label "textDocument/codeLens" { return uri; }
+				label "workspace/symbol" { return "query:s"; }
+				label "textDocument/didOpen" { return "{$uri},textDocument/text:s,?textDocument/version:n"; }
+				label "textDocument/didChange" { return "{$uri},contentChanges:a,?textDocument/version:n"; }
+				label "textDocument/didSave" { return "{$uri},?text:s"; }
+				label "textDocument/didClose" { return uri; }
+				label "workspace/didChangeWatchedFiles" { return "changes:a"; }
+				label "workspace/didChangeWorkspaceFolders" { return "event:o,?event/added:a,?event/removed:a"; }
+				other { return Nil; }
+			};
+
+			return Nil;
+		}
+
+		#
+		# Nil when the parameters have what the method reads, else the path of the
+		# field that is missing or of the wrong kind. The elements of the arrays the
+		# handlers walk are checked too.
+		#
+		function : InvalidParam(method_id : String, params : JsonElement) ~ String {
+			spec := ParamsSpec(method_id);
+			if(spec = Nil) {
+				return Nil;
+			};
+
+			bad := CheckSpec(params, spec);
+			if(bad <> Nil) {
+				return bad;
+			};
+
+			select(method_id) {
+				label "textDocument/codeAction" {
+					return CheckEach(FindJson(params, "context/diagnostics"), "range/start/line:n,range/start/character:n,range/end/line:n,range/end/character:n,message:s", "context/diagnostics");
+				}
+				label "textDocument/selectionRange" {
+					return CheckEach(FindJson(params, "positions"), "line:n,character:n", "positions");
+				}
+				label "workspace/willRenameFiles" {
+					return CheckEach(FindJson(params, "files"), "oldUri:s,newUri:s", "files");
+				}
+				label "workspace/didChangeWatchedFiles" {
+					return CheckEach(FindJson(params, "changes"), "uri:s,type:n", "changes");
+				}
+				label "textDocument/didChange" {
+					return CheckEach(FindJson(params, "contentChanges"), "text:s,?range/start/line:n,?range/start/character:n", "contentChanges");
+				}
+				label "workspace/didChangeWorkspaceFolders" {
+					added_bad := CheckEach(FindJson(params, "event/added"), "uri:s,name:s", "event/added");
+					if(added_bad <> Nil) {
+						return added_bad;
+					};
+					return CheckEach(FindJson(params, "event/removed"), "uri:s,name:s", "event/removed");
+				}
+				other { return Nil; }
+			};
+
+			return Nil;
 		}
 
 		function : FindString(params : JsonElement, path : String) ~ String {
@@ -565,6 +866,10 @@ bundle LSP {
 		method : virtual : CallbackIncomingCalls(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackOutgoingCalls(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackInlayHint(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackInlineValue(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackLinkedEditingRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackOnTypeFormatting(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackWillRenameFiles(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil;
@@ -614,6 +919,14 @@ bundle LSP {
 			method_id := request->GetMethod();
 			@reply_id := request->GetIdJson();
 
+			# Handlers read params without looking, so a request that sent none (or sent
+			# a null, an array, a string) gets an empty object: the checks below then
+			# name what is missing instead of a handler dereferencing Nil.
+			params := request->GetParams();
+			if(params = Nil | params->GetType() <> JsonElement->JsonType->OBJECT) {
+				params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+
 			# notification
 			if(request->IsNotification()) {
 				if(@is_debug) {
@@ -625,37 +938,49 @@ bundle LSP {
 					return;
 				};
 
+				# A notification has no reply to carry an error, so one with missing
+				# fields is dropped and logged.
+				bad_param := InvalidParam(method_id, params);
+				if(bad_param <> Nil) {
+					System.IO.Filesystem.Logger->Instance()->Error("*** Dropped '{$method_id}': missing or invalid '{$bad_param}' ***");
+					return;
+				};
+
 				select(method_id) {
 					label "initialized" {
-						NotifyInitialized(request->GetParams());
+						NotifyInitialized(params);
 					}
 					
 					label "$/cancelRequest" {
-						NotifyCancel(request->GetParams());
+						NotifyCancel(params);
 					}
 					
 					label "workspace/didChangeWatchedFiles" {
-						NotifyDidChangeWatchedFiles(request->GetParams());
+						NotifyDidChangeWatchedFiles(params);
 					}
 					
 					label "textDocument/didOpen" {
-						NotifyDidOpen(request->GetParams());
+						NotifyDidOpen(params);
 					}
 					
 					label "textDocument/didChange" {
-						NotifyDidChange(request->GetParams());
+						NotifyDidChange(params);
 					}
 					
 					label "textDocument/didSave" {
-						NotifyDidSave(request->GetParams());
+						NotifyDidSave(params);
 					}
 					
 					label "textDocument/didClose" {
-						NotifyDidClose(request->GetParams());
+						NotifyDidClose(params);
 					}
 					
 					label "workspace/didChangeWorkspaceFolders" {
-						NotifyDidChangeWorkspace(request->GetParams());
+						NotifyDidChangeWorkspace(params);
+					}
+
+					label "workspace/didChangeConfiguration" {
+						InlineCompletionSettings->ConfigureFromSettings(FindJson(params, "settings"));
 					}
 
 					label "exit" {
@@ -688,143 +1013,169 @@ bundle LSP {
 					return;
 				};
 
+				bad_param := InvalidParam(method_id, params);
+				if(bad_param <> Nil) {
+					WriteRpcError(id, LspWorker->ErrorCode->INVALID_PARAMS->As(Int), "Invalid params: missing or invalid '{$bad_param}'");
+					return;
+				};
+
 				select(method_id) {
 					label "initialize" {
 						@initialize_seen := true;
-						CallbackInitialize(id, request->GetParams());
+						CallbackInitialize(id, params);
 					}
 					
 					label "textDocument/completion" {
-						CallbackCompletion(id, request->GetParams());
+						CallbackCompletion(id, params);
 					}
 					
 					label "textDocument/hover" {
-						CallbackHover(id, request->GetParams());
+						CallbackHover(id, params);
 					}
 					
 					label "textDocument/codeAction" {
-						CallbackCodeAction(id, request->GetParams());
+						CallbackCodeAction(id, params);
 					}
 					
 					label "completionItem/resolve" {
-						CallbackResolve(id, request->GetParams());
+						CallbackResolve(id, params);
 					}
 					
 					label "textDocument/rename" {
-						CallbackRename(id, request->GetParams());
+						CallbackRename(id, params);
 					}
 
 					label "textDocument/prepareRename" {
-						CallbackPrepareRename(id, request->GetParams());
+						CallbackPrepareRename(id, params);
 					}
 					
 					label "textDocument/documentSymbol" {
-						CallbackDocumentSymbol(id, request->GetParams());
+						CallbackDocumentSymbol(id, params);
 					}
 					
 					label "workspace/symbol" {
-						CallbackWorkspaceSymbol(id, request->GetParams());
+						CallbackWorkspaceSymbol(id, params);
 					}
 					
 					label "textDocument/references" {
-						CallbackReferences(id, request->GetParams());
+						CallbackReferences(id, params);
 					}
 					
 					label "textDocument/declaration" {
-						CallbackDeclaration(id, request->GetParams());
+						CallbackDeclaration(id, params);
 					}
 					
 					label "textDocument/definition" {
-						CallbackDefinition(id, request->GetParams());
+						CallbackDefinition(id, params);
 					}
 					
 					label "textDocument/signatureHelp" {
-						CallbackSignatureHelp(id, request->GetParams());
+						CallbackSignatureHelp(id, params);
 					}
 					
 					label "shutdown" {
-						CallbackShutdown(id, request->GetParams());
+						CallbackShutdown(id, params);
 					}
 					
 					label "textDocument/formatting" {
-						CallbackFormatDocument(id, request->GetParams());
+						CallbackFormatDocument(id, params);
 					}
 
 					
 					label "textDocument/rangeFormatting" {
-						CallbackFormatRange(id, request->GetParams());
+						CallbackFormatRange(id, params);
 					}
 
 					label "textDocument/documentHighlight" {
-						CallbackDocumentHighlight(id, request->GetParams());
+						CallbackDocumentHighlight(id, params);
 					}
 
 					label "textDocument/foldingRange" {
-						CallbackFoldingRange(id, request->GetParams());
+						CallbackFoldingRange(id, params);
 					}
 
 					label "textDocument/selectionRange" {
-						CallbackSelectionRange(id, request->GetParams());
+						CallbackSelectionRange(id, params);
 					}
 
 					label "textDocument/typeDefinition" {
-						CallbackTypeDefinition(id, request->GetParams());
+						CallbackTypeDefinition(id, params);
 					}
 
 					label "textDocument/implementation" {
-						CallbackImplementation(id, request->GetParams());
+						CallbackImplementation(id, params);
 					}
 
 					label "textDocument/prepareCallHierarchy" {
-						CallbackPrepareCallHierarchy(id, request->GetParams());
+						CallbackPrepareCallHierarchy(id, params);
 					}
 
 					label "callHierarchy/incomingCalls" {
-						CallbackIncomingCalls(id, request->GetParams());
+						CallbackIncomingCalls(id, params);
 					}
 
 					label "callHierarchy/outgoingCalls" {
-						CallbackOutgoingCalls(id, request->GetParams());
+						CallbackOutgoingCalls(id, params);
 					}
 
 					label "textDocument/inlayHint" {
-						CallbackInlayHint(id, request->GetParams());
+						CallbackInlayHint(id, params);
+					}
+
+					label "textDocument/inlineCompletion" {
+						CallbackInlineCompletion(id, params);
+					}
+
+					label "textDocument/inlineValue" {
+						CallbackInlineValue(id, params);
+					}
+
+					label "textDocument/linkedEditingRange" {
+						CallbackLinkedEditingRange(id, params);
+					}
+
+					label "textDocument/onTypeFormatting" {
+						CallbackOnTypeFormatting(id, params);
+					}
+
+					label "workspace/willRenameFiles" {
+						CallbackWillRenameFiles(id, params);
 					}
 
 					label "textDocument/semanticTokens/full" {
-						CallbackSemanticTokensFull(id, request->GetParams());
+						CallbackSemanticTokensFull(id, params);
 					}
 
 					label "textDocument/semanticTokens/range" {
-						CallbackSemanticTokensRange(id, request->GetParams());
+						CallbackSemanticTokensRange(id, params);
 					}
 
 					label "textDocument/semanticTokens/full/delta" {
-						CallbackSemanticTokensDelta(id, request->GetParams());
+						CallbackSemanticTokensDelta(id, params);
 					}
 
 					label "textDocument/codeLens" {
-						CallbackCodeLens(id, request->GetParams());
+						CallbackCodeLens(id, params);
 					}
 
 					label "textDocument/diagnostic" {
-						CallbackDocumentDiagnostic(id, request->GetParams());
+						CallbackDocumentDiagnostic(id, params);
 					}
 
 					label "textDocument/documentLink" {
-						CallbackDocumentLink(id, request->GetParams());
+						CallbackDocumentLink(id, params);
 					}
 
 					label "textDocument/prepareTypeHierarchy" {
-						CallbackPrepareTypeHierarchy(id, request->GetParams());
+						CallbackPrepareTypeHierarchy(id, params);
 					}
 
 					label "typeHierarchy/supertypes" {
-						CallbackTypeHierarchySupertypes(id, request->GetParams());
+						CallbackTypeHierarchySupertypes(id, params);
 					}
 
 					label "typeHierarchy/subtypes" {
-						CallbackTypeHierarchySubtypes(id, request->GetParams());
+						CallbackTypeHierarchySubtypes(id, params);
 					}
 
 					other {
@@ -855,6 +1206,7 @@ bundle LSP {
 		#
 		method : ReadString() ~ String {
 			length := -1;
+			bad_length : String;
 			while(true) {
 				line := ReadHeaderLine();
 				if(line = Nil) {
@@ -862,13 +1214,31 @@ bundle LSP {
 				};
 
 				if(line->IsEmpty()) {
+					# A Content-Length that is not a plain number, or is more than we
+					# will allocate, leaves no way to find where the next message
+					# starts, so the stream is ended. It used to go straight to
+					# Byte->New[length]: a negative or huge value halted the whole VM.
+					if(bad_length <> Nil) {
+						System.IO.Filesystem.Logger->Instance()->Error("*** Bad Content-Length '{$bad_length}', closing the connection ***");
+						return Nil;
+					};
+
 					# end of the header block; a blank line before any header means
 					# the stream is gone (a closed console or socket reads as empty)
 					if(length < 0) {
 						return Nil;
 					};
 
+					max_length := LspWorker->Framing->MAX_MESSAGE->As(Int);
+					if(length > max_length) {
+						System.IO.Filesystem.Logger->Instance()->Error("*** Content-Length {$length} is over the {$max_length} byte limit, closing the connection ***");
+						return Nil;
+					};
+
 					text := ReadBody(length);
+					if(text = Nil) {
+						System.IO.Filesystem.Logger->Instance()->Error("*** The stream ended before the {$length} byte message body was complete ***");
+					};
 					if(@is_debug & text <> Nil) {
 						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
 					};
@@ -879,12 +1249,35 @@ bundle LSP {
 				if(index > 0) {
 					name := line->SubString(index)->Trim()->ToLower();
 					if(name->Equals("content-length")) {
-						length := line->SubString(index + 1, line->Size() - index - 1)->Trim()->ToInt();
+						value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+						length := ParseLength(value);
+						if(length < 0) {
+							bad_length := value;
+						};
 					};
 				};
 			};
 
 			return Nil;
+		}
+
+		# A Content-Length value: digits only, at most ten of them. Anything else
+		# (a sign, a fraction, text, nothing) is -1. ToInt would read "abc" as 0 and
+		# "-5" as -5.
+		function : ParseLength(value : String) ~ Int {
+			size := value->Size();
+			if(size = 0 | size > 10) {
+				return -1;
+			};
+
+			for(i := 0; i < size; i += 1;) {
+				digit := value->Get(i);
+				if(digit < '0' | digit > '9') {
+					return -1;
+				};
+			};
+
+			return value->ToInt();
 		}
 
 		# A header line without its line ending, or Nil when the stream has closed.
@@ -915,7 +1308,11 @@ bundle LSP {
 			# socket
 			if(@socket <> Nil) {
 				buffer := Byte->New[length];
-				@socket->ReadBuffer(0, buffer->Size(), buffer);
+				# the read blocks until the body is complete or the peer has gone; a
+				# short count is a truncated message, not a message
+				if(@socket->ReadBuffer(0, length, buffer) <> length) {
+					return Nil;
+				};
 				return String->New(buffer->ToUnicode());
 			}
 			# pipe
@@ -929,7 +1326,9 @@ bundle LSP {
 
 			# stdin
 			buffer := Char->New[length];
-			Console->ReadBuffer(0, buffer->Size(), buffer);
+			if(Console->ReadBuffer(0, buffer->Size(), buffer) <= 0) {
+				return Nil;
+			};
 			return String->New(buffer);
 		}
 
@@ -1535,6 +1934,39 @@ bundle LSP {
 			return reloaded;
 		}
 
+		#
+		# workspace/willRenameFiles: a WorkspaceEdit for each folder's build.json that
+		# lists a file, or a directory of files, that is being renamed or moved; Nil
+		# when no build.json does.
+		#
+		method : public : WillRenameFiles(files : JsonElement) ~ JsonElement {
+			changes := JsonElement->New(JsonElement->JsonType->OBJECT);
+			found := false;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(j : files) {
+					file := files->Get(j);
+					folder->RenameEdits(file->Get("oldUri")->GetValue(), file->Get("newUri")->GetValue(), edits);
+				};
+
+				if(edits->Size() > 0) {
+					build_uri := String->New(folder->GetUri());
+					build_uri += "/build.json";
+					changes->Insert(build_uri, edits);
+					found := true;
+				};
+			};
+
+			if(<>found) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("changes", changes);
+			return result;
+		}
+
 		method : public : HasFolders() ~ Bool {
 			return @folders->Size() > 0;
 		}
@@ -1995,6 +2427,87 @@ bundle LSP {
 			};
 
 			return false;
+		}
+
+		#
+		# workspace/willRenameFiles: the edits to this folder's build.json that
+		# keep it naming a file, or the files in a directory, that is being moved.
+		# build.json's "files" is the one place a source file's path is written down
+		# -- 'use' names a bundle, never a file -- and the folder's program loses the
+		# file when the entry goes stale. Each edit replaces the path inside the
+		# string's quotes and is added to 'edits'; a file that moves out of the
+		# folder has no relative path to write and is left alone.
+		#
+		method : public : RenameEdits(old_uri : String, new_uri : String, edits : JsonElement) ~ Nil {
+			if(@file_strs = Nil | old_uri = Nil | new_uri = Nil | <>System.IO.Filesystem.File->Exists(@build_file)) {
+				return;
+			};
+
+			text := System.IO.Filesystem.FileReader->ReadFile(@build_file);
+			if(text = Nil) {
+				return;
+			};
+
+			folder_prefix := String->New(@local_path);
+			folder_prefix += '/';
+			old_path := LocalPath(old_uri);
+			new_path := LocalPath(new_uri);
+			if(<>new_path->StartsWith(folder_prefix)) {
+				return;
+			};
+
+			each(i : @file_strs) {
+				listed := String->New(folder_prefix);
+				listed += @file_strs[i];
+
+				# the file itself, or a file inside the directory that moves
+				moved : String := Nil;
+				if(listed->Equals(old_path)) {
+					moved := new_path;
+				}
+				else if(listed->StartsWith(old_path + "/")) {
+					moved := new_path + listed->SubString(old_path->Size(), listed->Size() - old_path->Size());
+				};
+
+				if(moved <> Nil) {
+					renamed := moved->SubString(folder_prefix->Size(), moved->Size() - folder_prefix->Size());
+					# the new path is written as a JSON string
+					if(renamed->Find('"') < 0 & renamed->Find('\\') < 0 & <>renamed->Equals(@file_strs[i])) {
+						quoted := "\"";
+						quoted += @file_strs[i];
+						quoted += '"';
+
+						offset := text->Find(0, quoted);
+						while(offset > -1) {
+							start := offset + 1;
+							line := 0;
+							line_start := 0;
+							for(j := 0; j < start; j += 1;) {
+								if(text->Get(j) = '\n') {
+									line += 1;
+									line_start := j + 1;
+								};
+							};
+
+							edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+							start_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							start_json->Insert("line", line);
+							start_json->Insert("character", start - line_start);
+							end_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							end_json->Insert("line", line);
+							end_json->Insert("character", start - line_start + @file_strs[i]->Size());
+							range := JsonElement->New(JsonElement->JsonType->OBJECT);
+							range->Insert("start", start_json);
+							range->Insert("end", end_json);
+							edit->Insert("range", range);
+							edit->Insert("newText", renamed);
+							edits->Add(edit);
+
+							offset := text->Find(offset + quoted->Size(), quoted);
+						};
+					};
+				};
+			};
 		}
 
 		# every file the build.json lists: the open text where it is open, else disk
@@ -2913,6 +3426,296 @@ bundle LSP {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs(@uri));
+		}
+
+		#
+		# textDocument/inlineValue: what an editor paused in the debugger shows
+		# beside the code. The variables come from the analyzer's own symbol
+		# classification (the rows semanticTokens answers from), so a name that
+		# resolves to a local, a parameter or an instance variable is asked for and
+		# anything else -- a class, a method, text in a string -- is not. A local or
+		# parameter is a variable lookup; an instance variable ('@total'), a member
+		# of the current object, is an expression for the debugger to evaluate.
+		# Objeck reads a member only through a call, and a call is never evaluated
+		# for a hint, so there is no longer chain to offer: '@total' is the whole
+		# of a member chain.
+		#
+		method : public : InlineValue(start_line : Int, start_char : Int, end_line : Int, end_char : Int) ~ JsonElement {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			values := JsonElement->New(JsonElement->JsonType->ARRAY);
+			last_line := -1;
+			last_char := -1;
+			for(i := 0; i < rows->Size(); i += 5;) {
+				line := rows[i];
+				column := rows[i + 1];
+				length := rows[i + 2];
+				kind := rows[i + 3];
+
+				# property, variable and parameter
+				if(kind <> 7 & kind <> 8 & kind <> 9) {
+					continue;
+				};
+
+				if(line < start_line | line > end_line | (line = start_line & column < start_char) |
+						(line = end_line & column + length > end_char)) {
+					continue;
+				};
+
+				# the analyzer may list one reference twice
+				if(line = last_line & column = last_char) {
+					continue;
+				};
+
+				index := GetDocumentIndex(line, column);
+				if(index < 0 | index + length > @text->Size() | length < 1) {
+					continue;
+				};
+
+				name := @text->SubString(index, length);
+				if(<>(IsIdentifierChar(name->Get(0)) | name->Get(0) = '@')) {
+					continue;
+				};
+
+				last_line := line;
+				last_char := column;
+
+				value := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(kind = 7) {
+					value->Insert("range", MakeLineRange(line, column, line, column + length));
+					value->Insert("expression", name);
+				}
+				else {
+					value->Insert("range", MakeLineRange(line, column, line, column + length));
+					value->Insert("variableName", name);
+					value->Insert("caseSensitiveLookup", true);
+				};
+				values->Add(value);
+			};
+
+			return values;
+		}
+
+		#
+		# textDocument/linkedEditingRange: every occurrence of the local variable or
+		# parameter under the cursor, so that typing in one types in all. Nil for
+		# anything else -- an instance variable, a method, a class, a keyword --
+		# because renaming those changes code outside this scope and is the rename
+		# request's job. The analyzer's own symbol classification decides what the
+		# name is (the rows semanticTokens answers from), and its documentHighlight
+		# resolves the occurrences in the name's method. That leaves out a
+		# parameter's declaration, which the classification supplies.
+		#
+		method : public : LinkedEditingRange(line_pos : Int, char_pos : Int) ~ JsonElement {
+			span := IdentifierAt(line_pos, char_pos);
+			if(span = Nil | @text->Get(span[0]) = '@') {
+				return Nil;
+			};
+
+			name := @text->SubString(span[0], span[1] - span[0]);
+			if(name->Get(0)->IsDigit() | IsReserved(name)) {
+				return Nil;
+			};
+
+			proxy := @workspace->GetProxy(@uri, false);
+			libs := @workspace->GetLibs(@uri);
+			rows := proxy->SemanticTokenRows(@uri, libs);
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			# the analyzer's token for the name under the cursor: a variable or a parameter
+			start_char := char_pos - (GetDocumentIndex(line_pos, char_pos) - span[0]);
+			cursor_row := -1;
+			for(j := 0; j < rows->Size(); j += 5;) {
+				if(rows[j] = line_pos & rows[j + 1] = start_char & rows[j + 2] = name->Size()) {
+					cursor_row := j;
+				};
+			};
+
+			if(cursor_row < 0 | (rows[cursor_row + 3] <> 8 & rows[cursor_row + 3] <> 9)) {
+				return Nil;
+			};
+
+			ranges := JsonElement->New(JsonElement->JsonType->ARRAY);
+			seen := Set->New()<String>;
+			query_line := line_pos;
+			query_char := start_char;
+
+			if(rows[cursor_row + 3] = 9) {
+				# the parameter's declaration: the nearest one at or before the cursor
+				decl_row := -1;
+				for(j := cursor_row; j >= 0 & decl_row < 0; j -= 5;) {
+					if(rows[j + 3] = 9 & rows[j + 4] % 2 = 1 & TokenIs(rows, j, name)) {
+						decl_row := j;
+					};
+				};
+
+				if(decl_row < 0) {
+					return Nil;
+				};
+
+				decl_line := rows[decl_row];
+				decl_char := rows[decl_row + 1];
+				seen->Insert("{$decl_line}:{$decl_char}");
+				ranges->Add(MakeLineRange(decl_line, decl_char, decl_line, decl_char + name->Size()));
+
+				# on the declaration the uses are asked about from the first one
+				if(decl_row = cursor_row) {
+					query_line := -1;
+					next_row := decl_row + 5;
+					done := false;
+					while(<>done & next_row < rows->Size()) {
+						if(rows[next_row + 3] = 9 & TokenIs(rows, next_row, name)) {
+							if(rows[next_row + 4] % 2 = 1) {
+								# the next parameter of that name: this one is unused
+								done := true;
+							}
+							else {
+								query_line := rows[next_row];
+								query_char := rows[next_row + 1];
+								done := true;
+							};
+						};
+						next_row += 5;
+					};
+				};
+			};
+
+			highlights : JsonElement := Nil;
+			if(query_line > -1) {
+				highlights := proxy->DocumentHighlight(query_line, query_char, @uri, libs);
+			};
+
+			if(highlights <> Nil) {
+				if(highlights->GetType() <> JsonElement->JsonType->ARRAY) {
+					return Nil;
+				};
+
+				each(i : highlights) {
+					range := highlights->Get(i)->Get("range");
+					range_line := range->FindElements("start/line")->GetInt();
+					range_start := range->FindElements("start/character")->GetInt();
+					range_end := range->FindElements("end/character")->GetInt();
+
+					# one name on one line, spelled as the cursor's
+					if(range->FindElements("end/line")->GetInt() <> range_line | range_end - range_start <> name->Size()) {
+						return Nil;
+					};
+
+					index := GetDocumentIndex(range_line, range_start);
+					if(index < 0 | index + name->Size() > @text->Size() | <>name->Equals(@text->SubString(index, name->Size()))) {
+						return Nil;
+					};
+
+					# each occurrence is a variable or a parameter to the analyzer too
+					classified := false;
+					for(j := 0; j < rows->Size(); j += 5;) {
+						if(rows[j] = range_line & rows[j + 1] = range_start) {
+							if(rows[j + 3] <> 8 & rows[j + 3] <> 9) {
+								return Nil;
+							};
+							classified := true;
+						};
+					};
+
+					if(<>classified) {
+						return Nil;
+					};
+
+					key := "{$range_line}:{$range_start}";
+					if(<>seen->Has(key)) {
+						seen->Insert(key);
+						ranges->Add(MakeLineRange(range_line, range_start, range_line, range_end));
+					};
+				};
+			};
+
+			# the cursor is in one of them
+			at_cursor := false;
+			each(i : ranges) {
+				range := ranges->Get(i);
+				if(range->FindElements("start/line")->GetInt() = line_pos & range->FindElements("start/character")->GetInt() = start_char) {
+					at_cursor := true;
+				};
+			};
+
+			if(ranges->Size() = 0 | <>at_cursor) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("ranges", ranges);
+			result->Insert("wordPattern", "[A-Za-z_][A-Za-z0-9_]*");
+			return result;
+		}
+
+		# the analyzer's token at rows[row] spells this name
+		method : TokenIs(rows : Int[], row : Int, name : String) ~ Bool {
+			if(rows[row + 2] <> name->Size()) {
+				return false;
+			};
+
+			index := GetDocumentIndex(rows[row], rows[row + 1]);
+			return index > -1 & index + name->Size() <= @text->Size() & name->Equals(@text->SubString(index, name->Size()));
+		}
+
+		#
+		# textDocument/onTypeFormatting, after '}', ';' or a new line: the line at
+		# the cursor is indented to the depth the formatter gives it. The formatter
+		# (CodeFormatter) indents by brace nesting alone and rewrites every line of
+		# a document it formats, so only this line's leading whitespace is
+		# replaced; what the user has typed on it is left as it is.
+		#
+		method : public : OnTypeFormatting(line_pos : Int, trigger : String, tab_spaces : Int, insert_spaces : Bool) ~ JsonElement {
+			edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(@text = Nil | trigger = Nil | <>(trigger->Equals("}") | trigger->Equals(";") | trigger->Equals("\n"))) {
+				return edits;
+			};
+
+			end_ranges := GetDocumentEnd();
+			line_count := end_ranges[0] + 1;
+			if(line_pos < 0 | line_pos >= line_count) {
+				return edits;
+			};
+
+			# the same options FormatDocument gives the formatter
+			options := Map->New()<String, String>;
+			options->Insert("function-space", "false");
+			if(insert_spaces) {
+				options->Insert("ident-space", tab_spaces->ToString());
+			};
+			formatter := CodeFormatter->New(options);
+
+			depths := formatter->LineDepths(@text, line_count);
+			if(depths = Nil | depths[line_pos + 1] < 0) {
+				return edits;
+			};
+
+			line_text := LineText(line_pos);
+			current := 0;
+			while(current < line_text->Size() & (line_text->Get(current) = ' ' | line_text->Get(current) = '\t')) {
+				current += 1;
+			};
+
+			indent := formatter->IndentFor(depths[line_pos + 1]);
+			existing := current > 0 ? line_text->SubString(0, current) : "";
+			if(<>indent->Equals(existing)) {
+				edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+				edit->Insert("range", MakeLineRange(line_pos, 0, line_pos, current));
+				edit->Insert("newText", indent);
+				edits->Add(edit);
+			};
+
+			return edits;
 		}
 
 		#
