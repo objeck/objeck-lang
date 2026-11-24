@@ -803,7 +803,7 @@ Or read keys directly: `System.Runtime->GetProperty(key)->ToInt()`.
 | `runtime.alloc.since_gc` | bytes allocated since the last collection |
 | `runtime.threads.active` / `.parked` / `.running` | mutator threads (`.parked` includes STW/blocked) |
 | `runtime.gc.stw` | 1 while a collection is stopping the world |
-| `runtime.cpu.count` / `.time` / `runtime.uptime_ms` | logical cores / process CPU ms / uptime |
+| `runtime.cpu.count` / `.time` / `runtime.uptime_ms` | CPUs this process may use (affinity mask and cgroup quota; `OBJECK_CPU_COUNT=<n>` overrides) / process CPU ms / uptime |
 | `runtime.process.handles` | kernel handles (Windows) or open file descriptors (elsewhere) the process holds |
 | `runtime.call.depth_max` | the deepest calls may nest, in frames (`--call-depth`, default 16384) |
 

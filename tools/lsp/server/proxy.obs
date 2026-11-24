@@ -18,6 +18,13 @@ bundle LSP {
 		@enum_keys : static : Map<String, Vector<String>>;
 		@doc_bundles : static : Set<String>;
 		@doc_path : static : String;
+		# why the API index could not be used (Nil when it loaded), and the server
+		# version it was generated for (Nil when it does not say)
+		@docs_error : static : String;
+		@docs_version : static : String;
+		# the one lock for the shared caches above: the LRU cache reorders on a
+		# read, so two connections (TCP mode) cannot both use it unguarded
+		@docs_mutex : static : System.Concurrency.ThreadMutex;
 		@is_debug : Bool;
 
 		# the program these texts make: rows of [uri, text]
@@ -32,7 +39,19 @@ bundle LSP {
 		function : Init(doc_path : String) ~ Nil {
 			@doc_path := doc_path;
 			@doc_json_cache := Cache->New(Cache->Type->LRU, 16)<String, JsonElement>;
+			@docs_mutex := System.Concurrency.ThreadMutex->New("lsp-docs");
 			LoadDocsFile();
+		}
+
+		# Why the API index failed to load, or Nil. The server still runs without it
+		# (no documentation on hover or completion), so the user has to be told.
+		function : GetDocsError() ~ String {
+			return @docs_error;
+		}
+
+		# The version stamped into the API index, or Nil for one that predates it.
+		function : GetDocsVersion() ~ String {
+			return @docs_version;
 		}
 
 		method : public : GetDiagnostics(was_parsed : BoolRef, uri : String, sys_path : String) ~ JsonElement {
@@ -884,7 +903,11 @@ bundle LSP {
 		}
 
 		method : public : GetDocumentation(klass_name : String, method_name : String) ~ JsonElement {
-			klass_detail_json := @doc_json_cache->Find(klass_name);
+			klass_detail_json : JsonElement;
+			critical(@docs_mutex) {
+				klass_detail_json := @doc_json_cache->Find(klass_name);
+			};
+
 			if(klass_detail_json <> Nil) {
 				if(method_name = Nil) {
 					return klass_detail_json->Get("description");
@@ -899,7 +922,9 @@ bundle LSP {
 			else {
 				klass_detail_json := @klass_details_json->Get(klass_name);
 				if(klass_detail_json <> Nil) {
-					@doc_json_cache->Insert(klass_name, klass_detail_json);
+					critical(@docs_mutex) {
+						@doc_json_cache->Insert(klass_name, klass_detail_json);
+					};
 
 					if(method_name = Nil) {
 						return klass_detail_json->Get("description");
@@ -916,40 +941,83 @@ bundle LSP {
 			return Nil;
 		}
 
+		#
+		# The API index (objk_apis.json). A missing file, one that is not JSON, and one
+		# without the expected sections were not handled alike: a missing file went
+		# to the parser as Nil, a bad one ended the process with only a line on
+		# stderr, which an editor throws away. Now each is logged, kept in
+		# GetDocsError() for window/showMessage at 'initialized', and the server runs
+		# on with an empty index -- hover and completion lose their documentation,
+		# the diagnostics and navigation do not.
+		#
 		function : LoadDocsFile() ~ Nil {
-			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@doc_path));
-			if(parser->Parse()) {
-				@klass_details_json := parser->GetRoot()->Get("class-details");
-				@klass_bundles_json := parser->GetRoot()->Get("class-bundle-names");
-				@enum_details_json := parser->GetRoot()->Get("enum-details");
+			@docs_error := Nil;
+			@docs_version := Nil;
 
-				@enum_keys := Map->New()<String, Vector<String>>;
-				if(@enum_details_json <> Nil & @enum_details_json->GetType() = JsonElement->JsonType->OBJECT) {
-					enum_names := @enum_details_json->GetNames();
-					each(i : enum_names) {
-						key := enum_names->Get(i);
-						name_json := @enum_details_json->Get(key)->Get("name");
-						if(name_json <> Nil) {
-							short_name := name_json->GetString();
-							keys := @enum_keys->Find(short_name);
-							if(keys = Nil) {
-								keys := Vector->New()<String>;
-								@enum_keys->Insert(short_name, keys);
-							};
-							keys->AddBack(key);
+			if(@doc_path = Nil | <>System.IO.Filesystem.File->Exists(@doc_path)) {
+				DocsFailed("The API index '{$@doc_path}' was not found");
+				return;
+			};
+
+			text := System.IO.Filesystem.FileReader->ReadFile(@doc_path);
+			if(text = Nil | text->IsEmpty()) {
+				DocsFailed("The API index '{$@doc_path}' is empty or could not be read");
+				return;
+			};
+
+			parser := JsonParser->New(text);
+			if(<>parser->Parse() | parser->GetRoot() = Nil) {
+				DocsFailed("The API index '{$@doc_path}' is not valid JSON");
+				return;
+			};
+
+			root := parser->GetRoot();
+			if(root->GetType() <> JsonElement->JsonType->OBJECT | root->Get("class-details") = Nil | root->Get("class-bundle-names") = Nil) {
+				DocsFailed("The API index '{$@doc_path}' has no class-details or class-bundle-names section");
+				return;
+			};
+
+			version_json := root->Get("version");
+			if(version_json <> Nil & version_json->GetType() = JsonElement->JsonType->STRING) {
+				@docs_version := version_json->GetString();
+			};
+
+			@klass_details_json := root->Get("class-details");
+			@klass_bundles_json := root->Get("class-bundle-names");
+			@enum_details_json := root->Get("enum-details");
+
+			@enum_keys := Map->New()<String, Vector<String>>;
+			if(@enum_details_json <> Nil & @enum_details_json->GetType() = JsonElement->JsonType->OBJECT) {
+				enum_names := @enum_details_json->GetNames();
+				each(i : enum_names) {
+					key := enum_names->Get(i);
+					name_json := @enum_details_json->Get(key)->Get("name");
+					if(name_json <> Nil) {
+						short_name := name_json->GetString();
+						keys := @enum_keys->Find(short_name);
+						if(keys = Nil) {
+							keys := Vector->New()<String>;
+							@enum_keys->Insert(short_name, keys);
 						};
+						keys->AddBack(key);
 					};
 				};
-
-				if(@klass_details_json = Nil | @klass_bundles_json = Nil) {
-					"### Unable to process JSON configuration file: {$@doc_path}"->ErrorLine();
-					Runtime->Exit(1);
-				};
-			}
-			else {
-				"### Unable to process JSON configuration file: {$@doc_path}"->ErrorLine();
-				Runtime->Exit(1);
 			};
+
+			BuildDocBundles();
+		}
+
+		function : DocsFailed(reason : String) ~ Nil {
+			@docs_error := reason;
+			System.IO.Filesystem.Logger->Instance()->Error("*** {$reason}; running without API documentation ***");
+			"### {$reason}; running without API documentation"->ErrorLine();
+
+			# the lookups all treat a missing entry as 'not documented'
+			@klass_details_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@klass_bundles_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@enum_details_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@enum_keys := Map->New()<String, Vector<String>>;
+			BuildDocBundles();
 		}
 
 		method : public : CodeAction(uri : String, start_range_line : Int, start_range_char : Int, var_name : String, build_file : String, position_is_class : Bool)  ~ JsonElement {
@@ -1997,21 +2065,23 @@ bundle LSP {
 
 		# Every 'use' bundle the API reference documents, from the index's class names.
 		function : HasDocumentedBundle(bundle_name : String) ~ Bool {
-			if(@doc_bundles = Nil) {
-				@doc_bundles := Set->New()<String>;
-				names := @klass_details_json->GetNames();
-				if(names <> Nil) {
-					each(i : names) {
-						name := names->Get(i);
-						dot := name->FindLast('.');
-						if(dot > 0) {
-							@doc_bundles->Insert(name->SubString(dot));
-						};
+			return @doc_bundles <> Nil & @doc_bundles->Has(bundle_name);
+		}
+
+		# Built once, while the index loads and only one thread exists. It used to be
+		# built on first use, which two connections could do at the same time.
+		function : BuildDocBundles() ~ Nil {
+			@doc_bundles := Set->New()<String>;
+			names := @klass_details_json->GetNames();
+			if(names <> Nil) {
+				each(i : names) {
+					name := names->Get(i);
+					dot := name->FindLast('.');
+					if(dot > 0) {
+						@doc_bundles->Insert(name->SubString(dot));
 					};
 				};
 			};
-
-			return @doc_bundles->Has(bundle_name);
 		}
 
 		method : public : SemanticTokens(uri : String, sys_path : String) ~ JsonElement {

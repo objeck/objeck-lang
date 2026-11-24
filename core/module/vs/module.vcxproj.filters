@@ -57,6 +57,9 @@
     <ClInclude Include="..\..\compiler\linker.h">
       <Filter>Header Files\Compiler</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\compiler\cfg.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\compiler\optimization.h">
       <Filter>Header Files\Compiler</Filter>
     </ClInclude>
@@ -99,6 +102,9 @@
       <Filter>Source Files\Compiler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\compiler\linker.cpp">
+      <Filter>Source Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\cfg.cpp">
       <Filter>Source Files\Compiler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\compiler\optimization.cpp">

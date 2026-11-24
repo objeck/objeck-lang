@@ -248,6 +248,21 @@ def check_vm_wiring(root):
 
     errors = []
     found = len(decls)
+
+    # The VM builds its VMContext in ONE helper (InitVMContext) that every site
+    # calls. A site that calls the helper is wired if, and only if, the helper
+    # itself sets write_barrier, so the helper's body is checked once and a call
+    # to it is accepted at each site. (A site that builds its context by hand
+    # still needs its own assignment, as before.)
+    helper_sets_barrier = False
+    for index, line in enumerate(lines):
+        if re.match(r"^\s*static\s+void\s+InitVMContext\s*\(", line):
+            end = index + 1
+            while end < len(lines) and lines[end].rstrip() != "}":
+                end += 1
+            helper_sets_barrier = "write_barrier" in "\n".join(lines[index:end])
+            break
+
     for position, index in enumerate(decls):
         # The assignments follow immediately, so 20 lines is generous for seven
         # fields -- but the window must also stop at the NEXT construction, or one
@@ -257,6 +272,8 @@ def check_vm_wiring(root):
         if position + 1 < len(decls):
             limit = min(limit, decls[position + 1])
         window = "\n".join(lines[index:limit])
+        if helper_sets_barrier and re.search(r"\bInitVMContext\s*\(", window):
+            continue
         if "write_barrier" not in window:
             errors.append("core/vm/interpreter.cpp:%d: this VMContext never sets "
                           "write_barrier, so every barrier in every native library "

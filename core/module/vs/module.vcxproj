@@ -172,6 +172,7 @@
     <ClInclude Include="..\..\compiler\emit.h" />
     <ClInclude Include="..\..\compiler\intermediate.h" />
     <ClInclude Include="..\..\compiler\linker.h" />
+    <ClInclude Include="..\..\compiler\cfg.h" />
     <ClInclude Include="..\..\compiler\optimization.h" />
     <ClInclude Include="..\..\compiler\parser.h" />
     <ClInclude Include="..\..\compiler\scanner.h" />
@@ -195,6 +196,7 @@
     <ClCompile Include="..\..\compiler\emit.cpp" />
     <ClCompile Include="..\..\compiler\intermediate.cpp" />
     <ClCompile Include="..\..\compiler\linker.cpp" />
+    <ClCompile Include="..\..\compiler\cfg.cpp" />
     <ClCompile Include="..\..\compiler\optimization.cpp" />
     <ClCompile Include="..\..\compiler\parser.cpp" />
     <ClCompile Include="..\..\compiler\scanner.cpp" />

@@ -20,8 +20,8 @@ Both scripts compile the server and place `objeck_lsp.obe` alongside the script.
 
 **Manual build** (requires Objeck in PATH):
 ```sh
-obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs \
-    -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
+obc -src frameworks.obs,proxy.obs,server.obs,inline_completion.obs,format_code/scanner.obs,format_code/formatter.obs \
+    -lib diags,net,json,regex,cipher,net_server,misc,ollama,anthropic,openai,gemini -dest objeck_lsp.obe
 ```
 
 ## Run
@@ -36,6 +36,10 @@ obr objeck_lsp.obe objk_apis.json pipe
 # TCP socket transport
 obr objeck_lsp.obe objk_apis.json 6013
 ```
+
+The TCP transport listens on `127.0.0.1` only (IPv4 loopback, so a client must connect to `127.0.0.1`, not `localhost` where that resolves to `::1`) and serves at most 8 connections at once; a ninth is closed immediately. A message whose `Content-Length` is not a plain number, or is over 64 MB, ends that connection.
+
+If `objk_apis.json` is missing or unreadable the server still runs, without hover and completion documentation, and tells the editor with a `window/showMessage` error at `initialized`. It also warns when the server, the running Objeck, or the index's `version` stamp are not the same release.
 
 Required environment variables:
 ```sh

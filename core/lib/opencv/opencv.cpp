@@ -105,12 +105,18 @@ extern "C" {
 #endif
    void unload_lib() {
       // a batch still decoding must finish before the library goes
-      std::lock_guard<std::mutex> lock(batch_mutex);
-      for(std::map<size_t, BatchJob*>::iterator it = batch_jobs.begin(); it != batch_jobs.end(); ++it) {
+      // Take the jobs out under the lock, then join with the lock RELEASED: joining
+      // while holding batch_mutex would deadlock against any thread that needs the
+      // mutex to finish (opencv_batch_free, batch_find, a new batch).
+      std::map<size_t, BatchJob*> jobs;
+      {
+         std::lock_guard<std::mutex> lock(batch_mutex);
+         jobs.swap(batch_jobs);
+      }
+      for(std::map<size_t, BatchJob*>::iterator it = jobs.begin(); it != jobs.end(); ++it) {
          batch_join(it->second);
          delete it->second;
       }
-      batch_jobs.clear();
    }
 
    // Get video property

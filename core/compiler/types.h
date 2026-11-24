@@ -93,6 +93,20 @@ class CompilerFatal : public std::runtime_error {
   }
 };
 
+// A function value packs the callee as FUNC_VALUE_TAG | class id << 16 | method id; the VM
+// reads each id back as an unsigned 16-bit field. Ids are plain ints in the compiler, and
+// the old int16_t casts sign-extended any id >= 32768 into the class and tag bits.
+// A class or method past 65535 cannot be encoded: refuse it instead of mis-calling.
+inline INT64_VALUE PackFunctionValue(const int cls_id, const int method_id)
+{
+  if(cls_id < 0 || cls_id > 0xFFFF || method_id < 0 || method_id > 0xFFFF) {
+    throw CompilerFatal(L"Error: a function reference cannot encode class id " + std::to_wstring(cls_id) +
+                        L", method id " + std::to_wstring(method_id) +
+                        L": at most 65536 classes and 65536 methods per class can be referenced as function values");
+  }
+  return FUNC_VALUE_TAG | ((INT64_VALUE)cls_id << 16) | (INT64_VALUE)method_id;
+}
+
 namespace frontend {
   /****************************
    * ParseNode base class

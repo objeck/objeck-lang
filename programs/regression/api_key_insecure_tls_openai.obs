@@ -1,0 +1,64 @@
+# EXTRA_LIBS: openai,json,net,net_server,cipher,misc
+#~
+OpenAI client's API key is not handed out while TLS certificate checking is off.
+
+OBJECK_TLS_INSECURE_SKIP_VERIFY turns certificate checking off for every secure client socket in the
+process, so a key sent that way goes to a server nobody authenticated. EndPoint->GetApiKey() returns
+Nil, and says why through GetLastError(), unless OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 says the
+combination is intended (testing against a local server). With checking on, nothing changes.
+No network and no real key: the key is a placeholder.
+~#
+
+use API.OpenAI;
+
+class ApiKeyInsecureTlsOpenAI {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    key := "placeholder-not-a-real-key";
+    EndPoint->SetApiKey(key);
+
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "");
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_ALLOW_API_KEYS", "");
+    Check("checking on (variable unset): the key is returned", Same(EndPoint->GetApiKey(), key));
+
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "0");
+    Check("variable 0 is not insecure mode: the key is returned", Same(EndPoint->GetApiKey(), key));
+
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
+    refused := EndPoint->GetApiKey();
+    Check("checking off: no key", refused = Nil);
+    reason := EndPoint->GetLastError();
+    Check("checking off: the reason names the variable", reason <> Nil & reason->Find("OBJECK_TLS_INSECURE_SKIP_VERIFY") > -1);
+
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "yes");
+    Check("any yes/true/1 spelling counts as insecure mode", EndPoint->GetApiKey() = Nil);
+
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_ALLOW_API_KEYS", "1");
+    Check("checking off but explicitly allowed: the key is returned", Same(EndPoint->GetApiKey(), key));
+
+    Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_ALLOW_API_KEYS", "0");
+    Check("allow=0 does not allow", EndPoint->GetApiKey() = Nil);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

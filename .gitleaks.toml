@@ -64,6 +64,10 @@ regexes = [
   '''mysecretkey123456789012345678901''',
   '''a9993e364706816aba3e25717850c26c9cd0d89d''',
   '''da39a3ee5e6b4b0d3255bfef95601890afd80709''',
+  # the hex alphabet, used as a 16-byte test block in programs/regression/cipher_aes_versioned.obs
+  # (generic-api-key read it as a key next to a variable named key); it appears in the PR's first commit
+  # even though a later commit builds the block from bytes, and gitleaks scans every commit of a PR
+  '''0123456789abcdef''',
 ]
 
 # The seventeen historical commits behind the 326 findings a FULL-HISTORY scan

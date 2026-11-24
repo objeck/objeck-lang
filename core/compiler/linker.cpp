@@ -167,6 +167,10 @@ static char* InflateLibrary(const char* buffer, size_t buffer_size, unsigned lon
   // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
   // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
   uint32_t uncmp_hint = 0;
+  // too short to hold even the size prefix and a zlib header: nothing to inflate
+  if(!buffer || buffer_size < 6) {
+    return nullptr;
+  }
   const char* src;
   unsigned long src_size;
   const bool zlib_at_4 = buffer_size >= 6 &&
@@ -322,9 +326,11 @@ void Linker::ResolveExternalMethodCalls()
             if(lib_klass) {
               LibraryMethod* lib_method = lib_klass->GetMethod(instr->GetOperand6());
               if(lib_method) {
-                const int16_t lib_method_id = lib_method->GetId();
-                const int16_t lib_cls_id = lib_method->GetLibraryClass()->GetId();
-                const INT64_VALUE lib_method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)lib_cls_id << 16) | lib_method_id;
+                // this pass walks every library class, called or not; a class nothing calls has
+                // no id (-1) and is never emitted, so the value it would carry is unused
+                const int lib_cls_id = (int)lib_method->GetLibraryClass()->GetId();
+                const INT64_VALUE lib_method_cls_id = (lib_cls_id < 0 || lib_method->GetId() < 0) ? 0 :
+                  PackFunctionValue(lib_cls_id, (int)lib_method->GetId());
                 instr->SetType(instructions::LOAD_INT_LIT);
                 instr->SetOperand7(lib_method_cls_id);
               }
@@ -476,8 +482,12 @@ LibraryAlias* Linker::SearchAliasLibraries(const std::wstring& name, const std::
     return alias;
   }
 
+  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
   for(size_t i = 0; i < uses.size(); ++i) {
-    hit = alias_map.find(uses[i] + L"." + name);
+    qualified.assign(uses[i]);
+    qualified += L'.';
+    qualified += name;
+    hit = alias_map.find(qualified);
     alias = hit != alias_map.end() ? hit->second : nullptr;
     if(alias) {
       return alias;
@@ -496,8 +506,12 @@ LibraryClass* Linker::SearchClassLibraries(const std::wstring& name, const std::
     return klass;
   }
 
+  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
   for(size_t i = 0; i < uses.size(); ++i) {
-    hit = klass_map.find(uses[i] + L"." + name);
+    qualified.assign(uses[i]);
+    qualified += L'.';
+    qualified += name;
+    hit = klass_map.find(qualified);
     klass = hit != klass_map.end() ? hit->second : nullptr;
     if(klass) {
       return klass;
@@ -528,8 +542,12 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::ve
     return eenum;
   }
 
+  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
   for(size_t i = 0; i < uses.size(); ++i) {
-    hit = enum_map.find(uses[i] + L"." + name);
+    qualified.assign(uses[i]);
+    qualified += L'.';
+    qualified += name;
+    hit = enum_map.find(qualified);
     eenum = hit != enum_map.end() ? hit->second : nullptr;
     if(eenum) {
       return eenum;
@@ -971,26 +989,24 @@ std::vector<LibraryMethod*> LibraryClass::GetUnqualifiedMethods(const std::wstri
 
 void LibraryClass::AddMethod(LibraryMethod* method)
 {
-  const std::wstring& encoded_name = method->GetName();
+  // A name that is not 'Class:Method:params' cannot belong to any real library (a damaged one can
+  // produce it). Check it BEFORE the method goes into `methods`: it used to be inserted first and
+  // deleted after, which left a dangling pointer in the map that ~LibraryClass deleted again.
+  const std::wstring encoded_name = method->GetName();
+  const size_t start = encoded_name.find(':');
+  const size_t end = start == std::wstring::npos ? std::wstring::npos : encoded_name.find(':', start + 1);
+  if(start == std::wstring::npos || end == std::wstring::npos) {
+    delete method;
+    return;
+  }
+
+  // (a second method with the same encoded name was never inserted here and is still looked up by its
+  // unqualified name below, as before; it is only leaked, which a valid library never causes)
   methods.insert(std::pair<const std::wstring, LibraryMethod*>(encoded_name, method));
 
   // add to unqualified names to list
-  const size_t start = encoded_name.find(':');
-  if(start != std::wstring::npos) {
-    const size_t end = encoded_name.find(':', start + 1);
-    if(end != std::wstring::npos) {
-      const std::wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-      unqualified_methods.insert(std::pair<std::wstring, LibraryMethod*>(unqualified_name, method));
-    }
-    else {
-      delete method;
-      method = nullptr;
-    }
-  }
-  else {
-    delete method;
-    method = nullptr;
-  }
+  const std::wstring unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+  unqualified_methods.insert(std::pair<std::wstring, LibraryMethod*>(unqualified_name, method));
 }
 
 /****************************
@@ -1041,16 +1057,19 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
           free(buffer);
           throw CompilerFatal(L"Unable to allocate memory for file: '" + filename + L"'");
         }
+        const size_t compressed_size = buffer_size;
+        buffer_size = cached->inflated.size();
         if(LibraryCacheVerify()) {
           // checks what is handed out, not the entry it was copied from
           unsigned long fresh_len = 0;
-          char* fresh = InflateLibrary(buffer, buffer_size, fresh_len);
+          char* fresh = InflateLibrary(buffer, compressed_size, fresh_len);
           if(!fresh || fresh_len != cached->inflated.size() || memcmp(fresh, out, fresh_len) != 0) {
             fwprintf(stderr, L"[lsp-lib-cache] MISMATCH %ls\n", filename.c_str());
             if(fresh) {
               free(out);
               out = fresh;
               fresh = nullptr;
+              buffer_size = fresh_len;
             }
           }
           free(fresh);
@@ -1073,6 +1092,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
       std::shared_ptr<InflatedLibrary> entry = std::make_shared<InflatedLibrary>();
       entry->compressed.assign(buffer, buffer_size);
       entry->inflated.assign(out, dest_len);
+      buffer_size = dest_len;
       {
         std::lock_guard<std::mutex> lock(inflated_mutex);
         inflated_libraries[filename] = entry;
@@ -1094,6 +1114,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
       throw CompilerFatal(L"Unable to uncompress file: " + filename);
     }
 
+    buffer_size = dest_len;
     free(buffer);
     buffer = nullptr;
     return out;
@@ -1151,28 +1172,15 @@ void Library::LoadFile(const std::wstring &file_name)
     if(magic_num == MAGIC_NUM_EXE) {
       throw CompilerFatal(L"Unable to use executable '" + file_name + L"' as linked library.");
     }
-    else if(magic_num == MAGIC_NUM_LIB_UNQUALIFIED_ENUMS) {
-      throw CompilerFatal(L"Library '" + file_name + L"' was built before enums were named with their bundle.\n\tRebuild it with this toolchain.");
-    }
-    else if(magic_num == MAGIC_NUM_LIB_NO_GENERIC_MARKS) {
-      throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their methods' type parameters.\n\tRebuild it with this toolchain.");
-    }
-    else if(magic_num == MAGIC_NUM_LIB_NO_PARAM_NAMES) {
-      throw CompilerFatal(L"Library '" + file_name + L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain.");
-    }
-    else if(magic_num == MAGIC_NUM_LIB_UNTYPED_INT_ARRAYS) {
-      std::wcerr << L"Library '" << file_name << L"' was built before an Int[] and an object array were allocated with distinct opcodes (its object arrays would be read as Int[]).\n\tRebuild it with this toolchain." << std::endl;
-      exit(1);
-    }
     else if(magic_num != MAGIC_NUM_LIB) {
-      throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.");
+      throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.\n\tIf it is a library built by an older layout of this toolchain, rebuild it with this toolchain.");
     }
 
     // read float strings
     const int num_float_strings = ReadInt();
     for(int i = 0; i < num_float_strings; ++i) {
       frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(sizeof(FLOAT_VALUE));
       holder->value = new FLOAT_VALUE[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadDouble();
@@ -1192,7 +1200,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_bool_strings = ReadInt();
     for(int i = 0; i < num_bool_strings; ++i) {
       frontend::BoolStringHolder* holder = new frontend::BoolStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(1);
       holder->value = new bool[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadByte();
@@ -1212,7 +1220,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_byte_strings = ReadInt();
     for(int i = 0; i < num_byte_strings; ++i) {
       frontend::ByteStringHolder* holder = new frontend::ByteStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(1);
       holder->value = new char[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadByte();
@@ -1232,7 +1240,7 @@ void Library::LoadFile(const std::wstring &file_name)
     const int num_int_strings = ReadInt();
     for(int i = 0; i < num_int_strings; ++i) {
       frontend::IntStringHolder* holder = new frontend::IntStringHolder;
-      holder->length = ReadInt();
+      holder->length = ReadCount(sizeof(INT64_VALUE));
       holder->value = new INT64_VALUE[holder->length];
       for(int j = 0; j < holder->length; ++j) {
         holder->value[j] = ReadInt64();
@@ -1526,11 +1534,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
   const unsigned long num_instrs = ReadUnsigned();
   for(unsigned long i = 0; i < num_instrs; ++i) {
+    // the writer's order (IntermediateInstruction::Write), and the .obe loader's:
+    // the type byte, then the line number. Reading the line first scrambled every
+    // instruction of a library built with -debug.
+    const int type = ReadByte();
     if(is_debug) {
       line_num = ReadInt();
-    }    
+    }
 
-    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       emit(line_num, LOAD_INT_LIT, ReadInt64());
@@ -1807,30 +1818,34 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
     case TRAP_RTRN: {
       // links a copied literal to its string table, for code generation
-      const INT64_VALUE id = keep ? instrs.back()->GetOperand7() : -1;
+      const INT64_VALUE id = (keep && !instrs.empty()) ? instrs.back()->GetOperand7() : -1;
+      if((id == instructions::CPY_CHAR_STR_ARY || id == instructions::CPY_INT_STR_ARY || id == instructions::CPY_BOOL_STR_ARY ||
+          id == instructions::CPY_BYTE_STR_ARY || id == instructions::CPY_FLOAT_STR_ARY) && instrs.size() < 2) {
+        Corrupt(L"a copied literal without its array");
+      }
       if(id == instructions::CPY_CHAR_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        CharStringInstruction* str_instr = char_strings[cpy_instr->GetOperand7()];
+        CharStringInstruction* str_instr = PoolEntry(char_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_INT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        IntStringInstruction* str_instr = int_strings[cpy_instr->GetOperand7()];
+        IntStringInstruction* str_instr = PoolEntry(int_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_BOOL_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        BoolStringInstruction* str_instr = bool_strings[cpy_instr->GetOperand7()];
+        BoolStringInstruction* str_instr = PoolEntry(bool_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_BYTE_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        ByteStringInstruction* str_instr = byte_strings[cpy_instr->GetOperand7()];
+        ByteStringInstruction* str_instr = PoolEntry(byte_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_FLOAT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        FloatStringInstruction* str_instr = float_strings[cpy_instr->GetOperand7()];
+        FloatStringInstruction* str_instr = PoolEntry(float_strings, cpy_instr->GetOperand7());
         str_instr->instrs.push_back(cpy_instr);
       }
       emit(line_num, TRAP_RTRN, ReadInt());
