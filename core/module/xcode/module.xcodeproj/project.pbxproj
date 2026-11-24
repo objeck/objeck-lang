@@ -41,10 +41,12 @@
 		ED9AB5B02A41402D00C0A8DA /* linker.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9AB59C2A41402D00C0A8DA /* linker.h */; };
 		ED9AB5B12A41402D00C0A8DA /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB59D2A41402D00C0A8DA /* types.cpp */; };
 		ED9AB5B22A41402D00C0A8DA /* optimization.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9AB59E2A41402D00C0A8DA /* optimization.h */; };
+		CFC0A10000000000000000B4 /* cfg.h in Headers */ = {isa = PBXBuildFile; fileRef = CFC0A10000000000000000B3 /* cfg.h */; };
 		ED9AB5B32A41402D00C0A8DA /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB59F2A41402D00C0A8DA /* parser.cpp */; };
 		ED9AB5B42A41402D00C0A8DA /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB5A02A41402D00C0A8DA /* tree.cpp */; };
 		ED9AB5B52A41402D00C0A8DA /* tree.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9AB5A12A41402D00C0A8DA /* tree.h */; };
 		ED9AB5B62A41402D00C0A8DA /* optimization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB5A22A41402D00C0A8DA /* optimization.cpp */; };
+		CFC0A10000000000000000B1 /* cfg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CFC0A10000000000000000B2 /* cfg.cpp */; };
 		ED9AB5B72A41402D00C0A8DA /* linker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB5A32A41402D00C0A8DA /* linker.cpp */; };
 		ED9AB5B82A41402D00C0A8DA /* compiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB5A42A41402D00C0A8DA /* compiler.cpp */; };
 		ED9AB5B92A41402D00C0A8DA /* intermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9AB5A52A41402D00C0A8DA /* intermediate.h */; };
@@ -91,10 +93,12 @@
 		ED9AB59C2A41402D00C0A8DA /* linker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = linker.h; path = ../../../compiler/linker.h; sourceTree = "<group>"; };
 		ED9AB59D2A41402D00C0A8DA /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../../compiler/types.cpp; sourceTree = "<group>"; };
 		ED9AB59E2A41402D00C0A8DA /* optimization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = optimization.h; path = ../../../compiler/optimization.h; sourceTree = "<group>"; };
+		CFC0A10000000000000000B3 /* cfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfg.h; path = ../../../compiler/cfg.h; sourceTree = "<group>"; };
 		ED9AB59F2A41402D00C0A8DA /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../../../compiler/parser.cpp; sourceTree = "<group>"; };
 		ED9AB5A02A41402D00C0A8DA /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../../../compiler/tree.cpp; sourceTree = "<group>"; };
 		ED9AB5A12A41402D00C0A8DA /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../../../compiler/tree.h; sourceTree = "<group>"; };
 		ED9AB5A22A41402D00C0A8DA /* optimization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = optimization.cpp; path = ../../../compiler/optimization.cpp; sourceTree = "<group>"; };
+		CFC0A10000000000000000B2 /* cfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cfg.cpp; path = ../../../compiler/cfg.cpp; sourceTree = "<group>"; };
 		ED9AB5A32A41402D00C0A8DA /* linker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = linker.cpp; path = ../../../compiler/linker.cpp; sourceTree = "<group>"; };
 		ED9AB5A42A41402D00C0A8DA /* compiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = compiler.cpp; path = ../../../compiler/compiler.cpp; sourceTree = "<group>"; };
 		ED9AB5A52A41402D00C0A8DA /* intermediate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = intermediate.h; path = ../../../compiler/intermediate.h; sourceTree = "<group>"; };
@@ -182,7 +186,9 @@
 				ED9AB5A32A41402D00C0A8DA /* linker.cpp */,
 				ED9AB59C2A41402D00C0A8DA /* linker.h */,
 				ED9AB5A22A41402D00C0A8DA /* optimization.cpp */,
+				CFC0A10000000000000000B2 /* cfg.cpp */,
 				ED9AB59E2A41402D00C0A8DA /* optimization.h */,
+				CFC0A10000000000000000B3 /* cfg.h */,
 				ED9AB59F2A41402D00C0A8DA /* parser.cpp */,
 				ED9AB5962A41402D00C0A8DA /* parser.h */,
 				ED9AB5982A41402D00C0A8DA /* scanner.cpp */,
@@ -217,6 +223,7 @@
 				ED2B998C2A41394A000B6CD8 /* jit_arm_a64.h in Headers */,
 				ED9AB5902A413FA400C0A8DA /* version.h in Headers */,
 				ED9AB5B22A41402D00C0A8DA /* optimization.h in Headers */,
+				CFC0A10000000000000000B4 /* cfg.h in Headers */,
 				ED9AB5AF2A41402D00C0A8DA /* context.h in Headers */,
 				ED2B99822A413913000B6CD8 /* interpreter.h in Headers */,
 				ED2095822A41DE170084045A /* jit_common.h in Headers */,
@@ -303,6 +310,7 @@
 				ED2B998B2A41394A000B6CD8 /* jit_arm_a64.cpp in Sources */,
 				ED9AB5AC2A41402D00C0A8DA /* scanner.cpp in Sources */,
 				ED9AB5B62A41402D00C0A8DA /* optimization.cpp in Sources */,
+				CFC0A10000000000000000B1 /* cfg.cpp in Sources */,
 				ED9AB5BB2A41402D00C0A8DA /* context.cpp in Sources */,
 				ED2B997C2A413913000B6CD8 /* loader.cpp in Sources */,
 				ED9AB5B12A41402D00C0A8DA /* types.cpp in Sources */,

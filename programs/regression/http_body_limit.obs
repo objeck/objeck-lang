@@ -1,0 +1,177 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+#~
+# The request body limit is configurable (WebServer->SetMaxBodyBytes)
+#
+# A body of exactly the limit is served (200, and the handler sees every byte); a
+# Content-Length one over it is refused 413 before any of the body is read. The limit
+# was a fixed 16 MiB written twice; it is now one setting with an 8 MiB default, read on
+# every request, so the test lowers it to 1000 bytes, then restores the default.
+#
+# The over-limit request sends a Content-Length header and no body: the refusal comes
+# from the header alone, so no unread bytes are left to turn the close into a reset.
+~#
+class BodyLimitHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "get");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		size := 0;
+		content := request->GetContentBytes();
+		if(content <> Nil) {
+			size := content->Size();
+		};
+		response->SetCodeContent(200, "size={$size}");
+		return false;
+	}
+}
+
+class HttpBodyLimitTest {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : StartServer() ~ Bool {
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(BodyLimitHandler->New()->GetClass(), 0, false);
+				HttpBodyLimitTest->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
+	}
+
+	# Sends the request on its own connection and returns "<status line>|<body>"
+	function : Send(request : String) ~ String {
+		socket := TCPSocket->New("127.0.0.1", @port);
+		if(socket->IsOpen() = false) {
+			return "no connection";
+		};
+		socket->SetRecvTimeout(5000);
+		socket->WriteString(request);
+
+		status := socket->ReadLine();
+		if(status = Nil | status->Size() = 0) {
+			socket->Close();
+			return "closed";
+		};
+
+		length := 0;
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0 & line->SubString(colon)->ToLower()->Equals("content-length")) {
+				length := line->SubString(colon + 1, line->Size() - colon - 1)->Trim()->ToInt();
+			};
+			line := socket->ReadLine();
+		};
+
+		body := "";
+		if(length > 0) {
+			buffer := Byte->New[length];
+			read := socket->ReadBuffer(0, length, buffer);
+			if(read > 0) {
+				body := buffer->ToString();
+			};
+		};
+		socket->Close();
+
+		return "{$status}|{$body}";
+	}
+
+	function : Repeat(text : String, count : Int) ~ String {
+		out := "";
+		each(i : count) {
+			out += text;
+		};
+		return out;
+	}
+
+	# a POST carrying a body of the given size
+	function : Post(size : Int) ~ String {
+		body := Repeat("x", size);
+		return Send("POST /p HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: {$size}\r\n\r\n{$body}");
+	}
+
+	# a POST that only announces a body of the given size
+	function : PostHeaderOnly(size : Int) ~ String {
+		return Send("POST /p HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: {$size}\r\n\r\n");
+	}
+
+	function : Expect(actual : String, wanted : String, context : String) ~ Nil {
+		if(actual->StartsWith(wanted) = false) {
+			Fail("{$context}: got '{$actual}', expected it to start '{$wanted}'");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+
+		# the configuration carries its own limit too
+		config := WebServerConfig->New("none.json");
+		if(config->GetMaxBodyBytes() <> 0) {
+			Fail("a new configuration has no limit of its own");
+		};
+		config->SetMaxBodyBytes(123);
+		if(config->GetMaxBodyBytes() <> 123) {
+			Fail("the configuration limit reads back");
+		};
+
+		WebServer->SetMaxBodyBytes(1000);
+		if(StartServer() = false) {
+			Fail("test server never started listening");
+			Runtime->Exit(1);
+		};
+
+		ok := "HTTP/1.1 200 OK|";
+		too_large := "HTTP/1.1 413";
+
+		# at and under the limit
+		Expect(Post(1), "{$ok}size=1", "a one byte body");
+		Expect(Post(999), "{$ok}size=999", "a body just under the limit");
+		Expect(Post(1000), "{$ok}size=1000", "a body exactly at the limit");
+
+		# over it: refused from the header, before the body is read
+		Expect(PostHeaderOnly(1001), too_large, "a body one byte over the limit");
+		Expect(PostHeaderOnly(16777216), too_large, "a body of 16 MiB");
+
+		# the server is still serving after the refusals
+		Expect(Post(10), "{$ok}size=10", "a request after the refusals");
+
+		# zero restores the default (8 MiB): the 1000 byte limit no longer applies
+		WebServer->SetMaxBodyBytes(0);
+		Expect(Post(2000), "{$ok}size=2000", "a 2000 byte body under the default limit");
+		Expect(PostHeaderOnly(8388609), too_large, "a body one byte over the default limit");
+
+		WebServer->Stop();
+		if(@passed) {
+			"PASS: request body limit"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

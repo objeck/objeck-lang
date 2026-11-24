@@ -141,6 +141,44 @@ static bool read_string_array(VMContext& context, size_t index, std::vector<std:
    return true;
 }
 
+// Per-user cache directory for QNN compiled contexts. It used to be "./qnn_cache",
+// i.e. relative to whatever the working directory happened to be, which scatters
+// caches and fails in read-only directories. Falls back to the old relative path
+// only if no per-user location can be found or created.
+static std::string qnn_cache_dir() {
+   std::string base;
+#ifdef _WIN32
+   // getenv_s: the Windows ARM64 project does not suppress C4996, an error in this build
+   char local[1024] = {0};
+   size_t local_len = 0;
+   if(getenv_s(&local_len, local, sizeof(local), "LOCALAPPDATA") == 0 && local_len > 1) {
+      base = std::string(local) + "/objeck-onnx/qnn_cache";
+   }
+#elif defined(__APPLE__)
+   const char* home = getenv("HOME");
+   if(home && *home) {
+      base = std::string(home) + "/Library/Caches/objeck-onnx/qnn_cache";
+   }
+#else
+   const char* xdg = getenv("XDG_CACHE_HOME");
+   const char* home = getenv("HOME");
+   if(xdg && *xdg) {
+      base = std::string(xdg) + "/objeck-onnx/qnn_cache";
+   }
+   else if(home && *home) {
+      base = std::string(home) + "/.cache/objeck-onnx/qnn_cache";
+   }
+#endif
+   if(!base.empty()) {
+      std::error_code ec;
+      std::filesystem::create_directories(base, ec);
+      if(!ec) {
+         return base;
+      }
+   }
+   return "./qnn_cache";
+}
+
 extern "C" {
    // initialize library
 #ifdef _WIN32
@@ -148,9 +186,7 @@ extern "C" {
 #endif
    void load_lib(VMContext& context) {
       cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
-      if(!env) {
-         env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx");
-      }
+      get_env();
    }
 
    // release library
@@ -158,10 +194,10 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void unload_lib() {
-      // Released here, and only here: the VM calls unload_lib from a live
-      // process, unlike the static destructor a smart pointer would have used.
-      delete env;
-      env = nullptr;
+      // Deliberately NOT freeing the Ort::Env: sessions created from it can still be
+      // alive in the VM (they are owned by Objeck objects), and deleting the Env under
+      // them is a use-after-free. It is a one-per-process allocation that the OS
+      // reclaims at exit; a later load_lib reuses it via get_env().
    }
 
    // List available ONNX execution providers
@@ -345,10 +381,11 @@ extern "C" {
             }
             if(provider_options.find("qnn_context_cache_enable") == provider_options.end()) {
                provider_options["qnn_context_cache_enable"] = "1";
-               provider_options["qnn_context_cache_path"] = "./qnn_cache";
+               const std::string qnn_dir = qnn_cache_dir();
+               provider_options["qnn_context_cache_path"] = qnn_dir;
                provider_options["profiling_level"] = "off";
                provider_options["ep.context_enable"] = "1";
-               provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
+               provider_options["ep.context_file_path"] = qnn_dir + "/model_ctx.onnx";
                provider_options["ep.context_embed_mode"] = "1";
             }
             session_options.AppendExecutionProvider("QNN", provider_options);
@@ -381,9 +418,7 @@ extern "C" {
             session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          }
 
-         if(!env) {
-            env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx");
-         }
+         Ort::Env* ort_env = get_env();
 
 #if defined(ONNX_EP_COREML)
          // Persist the compiled CoreML model across runs. Without
@@ -416,7 +451,7 @@ extern "C" {
          const Ort::Session* session = nullptr;
          try {
             if(ep == "coreml") session_options.AppendExecutionProvider("CoreML", provider_options);
-            session = new Ort::Session(*env, model_path.c_str(), session_options);
+            session = new Ort::Session(*ort_env, model_path.c_str(), session_options);
          }
          catch(const std::exception& e) {
             if(explicit_ep && ep == "coreml") {
@@ -427,10 +462,10 @@ extern "C" {
             Ort::SessionOptions cpu_options;
             cpu_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
             cpu_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-            session = new Ort::Session(*env, model_path.c_str(), cpu_options);
+            session = new Ort::Session(*ort_env, model_path.c_str(), cpu_options);
          }
 #else
-         const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
+         const Ort::Session* session = new Ort::Session(*ort_env, model_path.c_str(), session_options);
 #endif
 
          APITools_SetIntValue(context, 0, (size_t)session);
