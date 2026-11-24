@@ -2314,7 +2314,7 @@ Type* ContextAnalyzer::ResolveAlias(const std::wstring& name, const std::wstring
       if(!alias) {
         std::vector<std::wstring> candidates;
         std::set<std::wstring> seen;
-        const std::vector<std::wstring> uses = program->GetLibUses(fn);
+        const std::vector<std::wstring>& uses = program->GetLibUses(fn);
         for(size_t i = 0; i < uses.size(); ++i) {
           const std::wstring full_name = uses[i] + L'.' + alias_name;
           if(uses[i].empty() || uses[i].back() == L'#' || !seen.insert(full_name).second) {
@@ -11384,7 +11384,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* lib_
     lib_parent = parent->GetLibraryParent();
   }
 
-  const std::vector<std::wstring> uses = program->GetLibUses(current_class->GetFileName());
+  const std::vector<std::wstring>& uses = program->GetLibUses(current_class->GetFileName());
   for(int guard = 0; lib_parent && guard < 256; ++guard) {
     if(lib_parent->GetName() == lib_class_name) {
       return false;
@@ -13125,9 +13125,13 @@ Class* ContextAnalyzer::SearchProgramClasses(const std::wstring& klass_name)
   if(!klass) {
     klass = program->GetClass(bundle->GetName() + L"." + klass_name);
     if(!klass) {
-      std::vector<std::wstring> uses = program->GetLibUses();
+      const std::vector<std::wstring>& uses = program->GetLibUses();
+      std::wstring qualified; // one buffer for every probe (a miss allocated a string per use)
       for(size_t i = 0; !klass && i < uses.size(); ++i) {
-        klass = program->GetClass(uses[i] + L"." + klass_name);
+        qualified.assign(uses[i]);
+        qualified += L'.';
+        qualified += klass_name;
+        klass = program->GetClass(qualified);
       }
     }
   }
@@ -13142,9 +13146,13 @@ Enum* ContextAnalyzer::SearchProgramEnums(const std::wstring& eenum_name)
   if(!eenum) {
     eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
     if(!eenum) {
-      std::vector<std::wstring> uses = program->GetLibUses();
+      const std::vector<std::wstring>& uses = program->GetLibUses();
+      std::wstring qualified; // one buffer for every probe (a miss allocated a string per use)
       for(size_t i = 0; !eenum && i < uses.size(); ++i) {
-        eenum = program->GetEnum(uses[i] + L"." + eenum_name);
+        qualified.assign(uses[i]);
+        qualified += L'.';
+        qualified += eenum_name;
+        eenum = program->GetEnum(qualified);
       }
 
       if(!eenum) {
@@ -13178,13 +13186,27 @@ Enum* ContextAnalyzer::SearchBundleClassEnums(const std::wstring& eenum_name)
     }
   }
 
-  Enum* found = nullptr;
+  // the bundle's classes and enums are all parsed before analysis, so the matches for a name never change
+  std::unordered_map<std::wstring, std::vector<Enum*> >& bundle_cache = bundle_enum_cache[bundle];
+  std::unordered_map<std::wstring, std::vector<Enum*> >::iterator cached = bundle_cache.find(eenum_name);
+  if(cached == bundle_cache.end()) {
+    std::vector<Enum*> bundle_matches;
+    const std::vector<Class*> classes = bundle->GetClasses();
+    for(size_t i = 0; i < classes.size(); ++i) {
+      Enum* eenum = program->GetEnum(classes[i]->GetName() + L'#' + eenum_name);
+      if(eenum) {
+        bundle_matches.push_back(eenum);
+      }
+    }
+    cached = bundle_cache.insert(std::make_pair(eenum_name, bundle_matches)).first;
+  }
+
+  const std::vector<Enum*>& matches = cached->second;
+  Enum* found = matches.empty() ? nullptr : matches[0];
   std::vector<std::wstring> candidates;
-  const std::vector<Class*> classes = bundle->GetClasses();
-  for(size_t i = 0; i < classes.size(); ++i) {
-    Enum* eenum = program->GetEnum(classes[i]->GetName() + L'#' + eenum_name);
-    if(eenum) {
-      found = found ? found : eenum;
+  if(matches.size() > 1) {
+    for(size_t i = 0; i < matches.size(); ++i) {
+      Enum* eenum = matches[i];
       candidates.push_back(L"'" + FormatTypeString(eenum->GetName()) + L"' (" + eenum->GetFileName() + L':' + ToString(eenum->GetLineNumber()) + L')');
     }
   }
@@ -13219,8 +13241,11 @@ std::wstring ContextAnalyzer::SearchScopedEnumName(const std::wstring& eenum_nam
 
   // program classes
   LibraryClass* lib_klass = nullptr;
+  std::wstring scoped_name; // reused for every probe: this runs for each type name resolved
   for(int guard = 0; klass && guard < 256; ++guard) {
-    const std::wstring scoped_name = klass->GetName() + L'#' + eenum_name;
+    scoped_name.assign(klass->GetName());
+    scoped_name += L'#';
+    scoped_name += eenum_name;
     if(program->GetEnum(scoped_name)) {
       return scoped_name;
     }
@@ -13229,11 +13254,16 @@ std::wstring ContextAnalyzer::SearchScopedEnumName(const std::wstring& eenum_nam
   }
 
   // library parents
-  const std::vector<std::wstring> uses = program->GetLibUses();
+  const std::vector<std::wstring>& uses = program->GetLibUses();
   for(int guard = 0; lib_klass && guard < 256; ++guard) {
-    const std::wstring scoped_name = lib_klass->GetName() + L'#' + eenum_name;
-    LibraryEnum* lib_eenum = linker->SearchEnumLibraries(scoped_name, uses);
-    if(lib_eenum && lib_eenum->GetName() == scoped_name) {
+    scoped_name.assign(lib_klass->GetName());
+    scoped_name += L'#';
+    scoped_name += eenum_name;
+    // only an enum of exactly this name counts, so look it up directly: SearchEnumLibraries
+    // would also probe "use.Name" for every use of the program, which can never match
+    const std::unordered_map<std::wstring, LibraryEnum*>& enum_map = linker->GetAllEnumsMap();
+    std::unordered_map<std::wstring, LibraryEnum*>::const_iterator lib_hit = enum_map.find(scoped_name);
+    if(lib_hit != enum_map.end() && lib_hit->second && lib_hit->second->GetName() == scoped_name) {
       return scoped_name;
     }
 
@@ -13273,7 +13303,7 @@ const std::vector<std::wstring>& ContextAnalyzer::UseCandidates(const std::wstri
   std::set<std::wstring> seen;
   const std::unordered_map<std::wstring, LibraryClass*>& lib_classes = linker->GetAllClassesMap();
   const std::unordered_map<std::wstring, LibraryEnum*>& lib_enums = linker->GetAllEnumsMap();
-  const std::vector<std::wstring> uses = program->GetLibUses(file_name);
+  const std::vector<std::wstring>& uses = program->GetLibUses(file_name);
   for(size_t i = 0; i < uses.size(); ++i) {
     const std::wstring& use = uses[i];
     if(use.empty() || use.back() == L'#') {
@@ -13432,7 +13462,7 @@ void ContextAnalyzer::ResolveAliasType(Type* type, const std::wstring& file_name
   }
   else if(type->GetType() == CLASS_TYPE && !IsRowTypeName(type->GetName())) {
     const std::wstring type_name = type->GetName();
-    const std::vector<std::wstring> uses = program->GetLibUses(file_name);
+    const std::vector<std::wstring>& uses = program->GetLibUses(file_name);
     if(Class* klass = SearchProgramClasses(type_name)) {
       type->SetName(klass->GetName());
     }
@@ -13776,7 +13806,7 @@ void ContextAnalyzer::GetCompletionEnumItems(ParsedProgram* program, Class* cont
   }
 
   const std::wstring file_name = context_klass ? context_klass->GetFileName() : L"";
-  const std::vector<std::wstring> uses = program->GetLibUses(file_name);
+  const std::vector<std::wstring>& uses = program->GetLibUses(file_name);
   const std::wstring nested_suffix = L'#' + var_str;
 
   Enum* eenum = nullptr;
