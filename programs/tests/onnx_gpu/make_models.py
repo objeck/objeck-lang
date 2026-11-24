@@ -119,8 +119,11 @@ def main():
     quant_pre_process(upgraded, prepared)
     path = os.path.join(out_dir, stem + "_int8_qdq.onnx")
     quantize_static(prepared, path, CalibrationData(name, shape, 8),
-                    quant_format=QuantFormat.QDQ, per_channel=True,
-                    weight_type=QuantType.QInt8, activation_type=QuantType.QInt8)
+                    quant_format=QuantFormat.QDQ, per_channel=True, op_types_to_quantize=["Conv"],
+                    weight_type=QuantType.QInt8, activation_type=QuantType.QInt8,
+                    # symmetric ranges and an unquantized bias are what TensorRT's explicit
+                    # quantization path accepts; the other providers run the same model
+                    extra_options={"ActivationSymmetric": True, "WeightSymmetric": True, "QuantizeBias": False})
     os.remove(prepared)
     os.remove(upgraded)
     print("wrote", path, os.path.getsize(path) // 1024, "KiB")

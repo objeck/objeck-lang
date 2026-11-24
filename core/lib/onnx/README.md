@@ -85,6 +85,10 @@ Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=
 
 `Session->Run` converts to whatever the model declares (FP32, FP16, BF16, FP64, INT8 to INT64, UINT8 to UINT64, BOOL). The FP16 and BF16 conversions round to nearest, ties to even, straight from the `Float`; integers saturate at the type's range. `Half`, `BFloat16` and `Quantization` (`onnx.obs`) expose the conversions, `DeviceTensor->UploadBits` / `DownloadBits` move raw element patterns, and `programs/tests/onnx_gpu/make_models.py` produces FP16 and INT8 (QDQ) variants of an FP32 model. See `docs/ai_sections/onnx_gpu.md`.
 
+### TensorRT, session options and CUDA graphs
+
+`ep=tensorrt` (`session_options.h`) appends the TensorRT provider, then the CUDA provider for what TensorRT cannot take, with the engine cache on by default in a per-user directory. Session-level keys in the config map (`intra_op_threads`, `inter_op_threads`, `graph_optimization`, `execution_mode`, `mem_pattern`, `cpu_mem_arena`, `session_config.<key>`) are checked and refused when unreadable; every other key is a provider option. `enable_cuda_graph=1` (CUDA) and `cuda_graph=1` (TensorRT) replay the recorded kernels for a bound run. A runtime that lacks the provider refuses the session. Keys, defaults and measurements: `docs/ai_sections/onnx_gpu.md`.
+
 ## Quick Start
 
 ```objeck
