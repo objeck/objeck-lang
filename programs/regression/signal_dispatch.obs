@@ -1,0 +1,75 @@
+#~
+Signal handlers registered with Runtime->SetSignal run on a VM thread, not inside the
+operating system's signal handler.
+
+Driven by run_vm_flag_tests.py (check_signal_dispatch), POSIX only. A handler that
+runs an Objeck method from inside the signal handler allocates, takes the collector's
+locks and starts an interpreter in a context where any of that can deadlock the thread
+it interrupted: signalled often enough while the program allocates, the old VM hung.
+Now the OS handler only records the signal and a dispatcher thread, a registered
+mutator, runs the method.
+
+  (no argument)  register both handlers and print PASS, so the regression runner can
+                 run this file
+  storm <file>   write <file> once both handlers are registered, then allocate hard
+                 for a few seconds while the driver sends SIGINT and SIGTERM as fast
+                 as it can; handlers allocate too. Exits 0 with the counts printed.
+  raise          Runtime->RaiseSignal is synchronous, and its handler must have run
+                 by the time RaiseSignal returns, as before.
+~#
+use System.IO.Filesystem;
+
+class SignalDispatch {
+  @interrupts : static : Int;
+  @terminations : static : Int;
+  @bytes : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    Runtime->SetSignal(Runtime->Signal->SIGINT, Handler(Int) ~ Nil);
+    Runtime->SetSignal(Runtime->Signal->SIGTERM, Handler(Int) ~ Nil);
+
+    if(args->Size() = 0) {
+      "PASS: signal_dispatch"->PrintLine();
+      return;
+    };
+
+    if(args[0]->Equals("raise")) {
+      Runtime->RaiseSignal(Runtime->Signal->SIGTERM);
+      "raised terminations={$@terminations}"->PrintLine();
+      Runtime->RaiseSignal(Runtime->Signal->SIGINT);
+      "raised interrupts={$@interrupts}"->PrintLine();
+      return;
+    };
+
+    writer := FileWriter->New(args[1]);
+    writer->WriteString("ready");
+    writer->Close();
+
+    chars := 0;
+    held : Int[] := Nil;
+    for(i := 0; i < 6000000; i += 1;) {
+      text := i->ToString();
+      chars += text->Size();
+      if(i % 100 = 0) {
+        held := Int->New[64];
+        held[0] := i;
+      };
+    };
+    "done chars={$chars}"->PrintLine();
+    seen := @interrupts + @terminations;
+    "seen={$seen}"->PrintLine();
+    "PASS: signal_dispatch storm"->PrintLine();
+  }
+
+  function : Handler(id : Int) ~ Nil {
+    # allocate, as a handler that logs would
+    text := id->ToString();
+    @bytes += text->Size();
+    if(id = Runtime->Signal->SIGINT) {
+      @interrupts += 1;
+    }
+    else if(id = Runtime->Signal->SIGTERM) {
+      @terminations += 1;
+    };
+  }
+}

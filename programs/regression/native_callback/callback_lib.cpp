@@ -41,6 +41,18 @@ extern "C" {
     APITools_SetIntValue(context, 0, result);
   }
 
+#ifdef OBJK_TEST_ABI_VERSION
+  // run_vm_flag_tests.py section 20 builds this file again with the ABI a library
+  // declares set to a chosen value, to check the VM's refusal of a mismatch
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void objk_lib_abi(size_t* abi_version, int* toolchain_version) {
+    *abi_version = OBJK_TEST_ABI_VERSION;
+    *toolchain_version = OBJK_TEST_TOOLCHAIN;
+  }
+#endif
+
   // args[0]: an IntRef set to the VMContext version the VM reports; args[1]: an
   // IntRef set to 1 when the VM's struct_size covers every field this header
   // knows, else 0. A VM that forgets to set either reads as 0 here.

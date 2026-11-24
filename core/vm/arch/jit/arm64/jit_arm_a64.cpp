@@ -1485,7 +1485,7 @@ void JitArm64::ProcessJumpTable(StackInstr* instr) {
   }
   const long base = instr->GetOperand();
   const long range = instr->GetOperand2();
-  const long default_index = instr->GetOperand3();
+  const long default_index = instr->JumpDefaultTargetIndex();
   // instr_index already points at the first slot
   if(range <= 0 || instr_index + range > method->GetInstructionCount()) {
     CompileFailed(L"a select table that runs past the method");
@@ -1559,7 +1559,7 @@ void JitArm64::ProcessJumpTable(StackInstr* instr) {
     TableEntry entry;
     entry.entry_offset = code_index;
     entry.table_offset = table_offset;
-    entry.target_index = slot->GetOperand();
+    entry.target_index = slot->JumpTargetLabelIndex();
     table_entries.push_back(entry);
     AddMachineCode(0);
   }
@@ -3087,8 +3087,8 @@ void JitArm64::store_long_zero(long offset, Register base) {
  * extent (docs/JIT_LOOP_LOCALS_DESIGN.md, section 3; the AMD64 backend's
  * PlanPinRegions is the reference). Runs after ProcessIndices, so the slots are
  * known, and before the frame is sized, which reserves the save slots.
- * A JMP operand is its target's instruction index + 1 on this backend, so a
- * target index is operand - 1 throughout.
+ * This backend keys a jump's target on the LBL that names it
+ * (StackInstr::JumpTargetLabelIndex), throughout.
  */
 void JitArm64::PlanPinRegions() {
   pin_regions.clear();
@@ -3101,8 +3101,8 @@ void JitArm64::PlanPinRegions() {
   for(long i = 0; i < count; ++i) {
     StackInstr* instr = method->GetInstruction(i);
     instr_index_of[instr] = i;
-    if(instr->GetType() == JMP && instr->GetOperand() - 1 < i) {
-      spans.push_back(std::make_pair(instr->GetOperand() - 1, i));
+    if(instr->GetType() == JMP && instr->JumpTargetLabelIndex() < i) {
+      spans.push_back(std::make_pair(instr->JumpTargetLabelIndex(), i));
     }
   }
   if(spans.empty()) {
@@ -3168,15 +3168,15 @@ void JitArm64::PlanPinRegions() {
       StackInstr* instr = method->GetInstruction(i);
       std::vector<long> targets;
       if(instr->GetType() == JMP) {
-        targets.push_back(instr->GetOperand() - 1);
+        targets.push_back(instr->JumpTargetLabelIndex());
       }
       else if(instr->GetType() == JMP_TABLE) {
         // a select's table is a bundle of edges, the default plus one per slot.
         // Only a JMP gets a write-back stub on the way out of a region, so none
         // of a table's edges may cross the region's boundary or land on its header.
-        targets.push_back(instr->GetOperand3() - 1);
+        targets.push_back(instr->JumpDefaultTargetLabelIndex());
         for(long s = 1; s <= instr->GetOperand2() && i + s < count; ++s) {
-          targets.push_back(method->GetInstruction(i + s)->GetOperand() - 1);
+          targets.push_back(method->GetInstruction(i + s)->JumpTargetLabelIndex());
         }
       }
       else {
@@ -3359,7 +3359,7 @@ void JitArm64::EmitPinExitStubs() {
       continue;
     }
     const PinRegion& pin = pin_regions[region];
-    const long target = jump->GetOperand() - 1;
+    const long target = jump->JumpTargetLabelIndex();
     if(target >= pin.header && target <= pin.end) {
       continue;
     }
@@ -6826,6 +6826,7 @@ bool JitArm64::Compile(StackMethod* cm)
     skip_jump = false;
     direct_callee = nullptr;
     fp_callee_saved_used = false;
+    fp_callee_used_mask = 0;
     fp_save_indices.clear();
     fp_restore_indices.clear();
     virtual_site = nullptr;
@@ -6880,12 +6881,12 @@ bool JitArm64::Compile(StackMethod* cm)
         }
         return false;
       }
-      // detect loops via backward jumps. On ARM64 a JMP operand is the target
-      // instruction index + 1 (see the jump backpatch: dest_index = operand - 1).
+      // detect loops via backward jumps. On ARM64 a jump's target is keyed on its
+      // LBL (JumpTargetLabelIndex; see the jump backpatch).
       // A target earlier than the jump is a loop back-edge; its target label is a
       // loop header and is the only kind of label that needs a safepoint poll.
       if(scan_instr->GetType() == JMP) {
-        const long target_index = scan_instr->GetOperand() - 1;
+        const long target_index = scan_instr->JumpTargetLabelIndex();
         if(target_index < i) {
           safepoint_lbl_indices.insert(target_index);
         }
@@ -6996,6 +6997,11 @@ bool JitArm64::Compile(StackMethod* cm)
       }
       fp_pool_size = aval_fregs.size();
       fp_callee_saved_used = true;
+      for(const PinRegion& region : pin_regions) {
+        for(size_t k = 0; k < region.fslots.size(); ++k) {
+          fp_callee_used_mask |= 1u << (PinFloatRegister((int)k) - D8);
+        }
+      }
     }
 
     // The frame above the locals (JIT_CALLING_CONVENTION_DESIGN.md section 12):
@@ -7127,13 +7133,29 @@ bool JitArm64::Compile(StackMethod* cm)
         code[(size_t)restore_index] = 0x14000008;
       }
     }
-    
+    else if(fp_callee_saved_used && fp_callee_used_mask != 0xFFu) {
+      // Some of D8-D15 are used: keep those saves and restores, turn the others
+      // into nops. Every call pays for each store and load that stays, and a
+      // method that pins one float (or takes one pool register) used to pay
+      // for all eight.
+      for(int i = 0; i < JitFrameLayout::SAVE_AREA_WORDS; ++i) {
+        if((fp_callee_used_mask & (1u << i)) == 0) {
+          for(const long save_index : fp_save_indices) {
+            code[(size_t)(save_index + i)] = 0xD503201F;       // nop
+          }
+          for(const long restore_index : fp_restore_indices) {
+            code[(size_t)(restore_index + i)] = 0xD503201F;
+          }
+        }
+      }
+    }
+
     // update jump addresses
     unordered_map<long, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
       StackInstr* instr = jmp_iter->second;
       const long src_offset = jmp_iter->first - 1;
-      const long dest_index = instr->GetOperand() - 1;
+      const long dest_index = instr->JumpTargetLabelIndex();
       long dest_offset = method->GetInstruction(dest_index)->GetOffset();
       // F3: an exit jump lands on its stub; a jump from inside a pinned loop to
       // the loop's header skips the entry loads
@@ -7181,7 +7203,7 @@ bool JitArm64::Compile(StackMethod* cm)
     
     // F8: each table entry is the target's byte offset relative to its table
     for(const TableEntry& entry : table_entries) {
-      const long dest_offset = method->GetInstruction(entry.target_index - 1)->GetOffset();
+      const long dest_offset = method->GetInstruction(entry.target_index)->GetOffset();
       const int32_t rel = (int32_t)((dest_offset - entry.table_offset) * 4);
       code[entry.entry_offset] = (uint32_t)rel;
     }

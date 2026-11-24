@@ -116,8 +116,7 @@ generate a forwarder inside another binary. Phase 2 (shipped) adds:
 1. **Parameter names in every `.obl`.** After each method's entries, a library build writes
    the parameter count, then each parameter's bare name and whether it has a default
    (`IntermediateMethod::Write`). The library magic became `0xffb7` for this change. The compiler refuses a
-   library with the old magic (`0xffb6`, `MAGIC_NUM_LIB_NO_PARAM_NAMES`) and asks for it to be
-   rebuilt. The magic has moved on since (`MAGIC_NUM_LIB` is now `0xffba`; `core/shared/version.in` says why each value changed).
+   library with the old magic (`0xffb6`) as not a library of this toolchain. The magic has moved on since (`MAGIC_NUM_LIB` is now `0xffba`; `core/shared/version.in` says why each value changed).
 2. **One mask forwarder** per library method with two or more defaults
    (`GenerateMaskForwarder`, library targets only). `F$m` takes every parameter plus an `Int`
    whose bit *j* says the caller gave parameter *j*. It assigns each default the caller skipped,

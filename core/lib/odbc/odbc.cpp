@@ -31,6 +31,7 @@
 
 #include "odbc.h"
 #include <mutex>
+#include <memory>
 
 extern "C" {
 
@@ -49,13 +50,17 @@ extern "C" {
   };
 
   static std::mutex bound_params_lock;
-  static std::map<SQLHSTMT, std::map<int, BoundParam> > bound_params;
+  static std::map<SQLHSTMT, std::map<int, std::shared_ptr<BoundParam> > > bound_params;
 
   // copies a value for a position and returns its stable storage
   static BoundParam* keep_param(SQLHSTMT stmt, int i, const void* value, size_t size)
   {
     std::lock_guard<std::mutex> guard(bound_params_lock);
-    BoundParam& param = bound_params[stmt][i];
+    std::shared_ptr<BoundParam>& slot = bound_params[stmt][i];
+    if(!slot) {
+      slot = std::make_shared<BoundParam>();
+    }
+    BoundParam& param = *slot;
     const unsigned char* bytes = (const unsigned char*)value;
     param.data.assign(bytes, bytes + size);
     // a zero-length value still needs an address to bind
@@ -66,21 +71,33 @@ extern "C" {
     return &param;
   }
 
-  static BoundParam* find_param(SQLHSTMT stmt, int i)
+  // Returns shared ownership, not a raw pointer into the map: the entry can be
+  // erased by drop_params on another thread the moment the lock is released.
+  static std::shared_ptr<BoundParam> find_param(SQLHSTMT stmt, int i)
   {
     std::lock_guard<std::mutex> guard(bound_params_lock);
-    std::map<SQLHSTMT, std::map<int, BoundParam> >::iterator found = bound_params.find(stmt);
+    std::map<SQLHSTMT, std::map<int, std::shared_ptr<BoundParam> > >::iterator found = bound_params.find(stmt);
     if(found == bound_params.end()) {
       return nullptr;
     }
-    std::map<int, BoundParam>::iterator param = found->second.find(i);
-    return param == found->second.end() ? nullptr : &param->second;
+    std::map<int, std::shared_ptr<BoundParam> >::iterator param = found->second.find(i);
+    return param == found->second.end() ? nullptr : param->second;
   }
 
   static void drop_params(SQLHSTMT stmt)
   {
     std::lock_guard<std::mutex> guard(bound_params_lock);
     bound_params.erase(stmt);
+  }
+
+  // Frees a statement handle and its parameter copies together, so no path can free
+  // the handle and leave its bound_params entry behind (a recycled handle address
+  // would then inherit the stale entry).
+  static void free_stmt(SQLHSTMT stmt)
+  {
+    drop_params(stmt);
+    SQLFreeStmt(stmt, SQL_UNBIND);
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
   }
 
   // binds a fixed-size value of a C type
@@ -389,8 +406,7 @@ extern "C" {
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
       if(stmt) {
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        free_stmt(stmt);
       };
       APITools_SetIntValue(context, 0, -1);
       return;
@@ -407,15 +423,13 @@ extern "C" {
     // SQLRowCount follow it: iODBC leaves the statement in its prepared state
     // after SQL_NO_DATA and refuses SQLRowCount with HY010.
     if(status == SQL_NO_DATA) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, -1);
       return;
     }
@@ -429,8 +443,7 @@ extern "C" {
       return;
     }
 
-    SQLFreeStmt(stmt, SQL_UNBIND);
-    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    free_stmt(stmt);
     APITools_SetIntValue(context, 0, count);
   }
 
@@ -498,8 +511,7 @@ extern "C" {
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_DBC, conn);
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -510,8 +522,7 @@ extern "C" {
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -522,8 +533,7 @@ extern "C" {
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -540,8 +550,7 @@ extern "C" {
                               &description.nullable);
       if(SQL_FAIL) {
         set_statement_error(SQL_HANDLE_STMT, stmt);
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        free_stmt(stmt);
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
@@ -574,8 +583,7 @@ extern "C" {
     }
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -629,8 +637,7 @@ extern "C" {
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_DBC, conn);
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -641,8 +648,7 @@ extern "C" {
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -653,8 +659,7 @@ extern "C" {
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
       set_statement_error(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -672,8 +677,7 @@ extern "C" {
                               &description.nullable);
       if(SQL_FAIL) {
         set_statement_error(SQL_HANDLE_STMT, stmt);
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        free_stmt(stmt);
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
@@ -715,8 +719,7 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -725,8 +728,7 @@ extern "C" {
     SQLRETURN status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL && columns > 0) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -745,8 +747,7 @@ extern "C" {
       status = SQLDescribeCol(stmt, i + 1, (SQLCHAR*)column_name, SMALL_BUFFER_MAX, &column_name_length,
                               &column_type, &column_size, &column_decimal_digits, &column_nullable);
       if(SQL_FAIL) {
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        free_stmt(stmt);
         APITools_SetIntValue(context, 0, 0);
         return;
       }
@@ -777,8 +778,7 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -789,8 +789,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, columns);
     }
     else {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, -1);
     }
   }
@@ -805,8 +804,7 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -861,7 +859,7 @@ extern "C" {
       }
 
       // set_bytes binds the position as the token
-      BoundParam* param = find_param(stmt, (int)(size_t)param_id);
+      std::shared_ptr<BoundParam> param = find_param(stmt, (int)(size_t)param_id);
       if(!param) {
         SQLCancel(stmt);
         APITools_SetIntValue(context, 0, -1);
@@ -2462,8 +2460,7 @@ extern "C" {
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
       if(stmt) {
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        free_stmt(stmt);
       }
       APITools_SetStringValue(context, 0, L"");
       return;
@@ -2474,8 +2471,7 @@ extern "C" {
       status = SQLTables(stmt, NULL, 0, NULL, 0, NULL, 0, (SQLCHAR*)"TABLE", SQL_NTS);
     }
     if(SQL_FAIL) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetStringValue(context, 0, L"");
       return;
     }
@@ -2498,8 +2494,7 @@ extern "C" {
       }
     }
 
-    SQLFreeStmt(stmt, SQL_UNBIND);
-    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    free_stmt(stmt);
     APITools_SetStringValue(context, 0, result_str);
   }
 
@@ -2529,8 +2524,7 @@ extern "C" {
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
       if(stmt) {
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        free_stmt(stmt);
       }
       APITools_SetStringValue(context, 0, L"");
       return;
@@ -2541,8 +2535,7 @@ extern "C" {
       status = SQLColumns(stmt, NULL, 0, NULL, 0, (SQLCHAR*)table_name.c_str(), SQL_NTS, NULL, 0);
     }
     if(SQL_FAIL) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
       APITools_SetStringValue(context, 0, L"");
       return;
     }
@@ -2577,8 +2570,7 @@ extern "C" {
       }
     }
 
-    SQLFreeStmt(stmt, SQL_UNBIND);
-    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    free_stmt(stmt);
     APITools_SetStringValue(context, 0, result_str);
   }
 
@@ -2604,9 +2596,7 @@ extern "C" {
 
     SQLHSTMT stmt = (SQLHSTMT)APITools_GetIntValue(context, 2);
     if(stmt) {
-      drop_params(stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
     }
 
 #ifdef _DEBUG
@@ -2640,9 +2630,7 @@ extern "C" {
 
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {
-      drop_params(stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      free_stmt(stmt);
     }
 
     // [1] and [2], when the caller passes them, are the statement's column names and

@@ -277,12 +277,12 @@ bool SetStdIo(const char* value)
 #ifndef _MSYS2_CLANG
     if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     // wide output goes out as UTF-8 bytes; lives for the whole process
@@ -302,12 +302,12 @@ bool SetStdIo(const char* value)
 #else
     if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #endif
   }
@@ -321,12 +321,12 @@ bool SetStdIo(const char* value)
 #else
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #endif
   }
