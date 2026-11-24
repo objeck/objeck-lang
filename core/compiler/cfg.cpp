@@ -62,6 +62,21 @@ namespace backend {
 #endif
   }
 
+  std::string Cfg::DumpPath()
+  {
+#ifdef _WIN32
+    size_t len = 0;
+    char buf[1024];
+    if(getenv_s(&len, buf, sizeof(buf), "OBJECK_CFG_DUMP") == 0 && len > 1) {
+      return std::string(buf);
+    }
+    return std::string();
+#else
+    const char* found = std::getenv("OBJECK_CFG_DUMP");
+    return found ? std::string(found) : std::string();
+#endif
+  }
+
   Cfg::Cfg(const std::vector<IntermediateInstruction*>& i) : instrs(i)
   {
     irreducible_edges = 0;
