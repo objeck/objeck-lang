@@ -36,7 +36,7 @@ $version = "RELEASE"
 > tool chain" — Windows CI fails, and `version.h` keeps reverting locally). This
 > exact mismatch (a `202660` obc against `202661` libs) bit the 2026.6.1 release.
 
-### 3. Run `update_version.ps1` (generates version.h + .rc files)
+### 3. Run `update_version.ps1` (generates version.h and the other stamped files; the Windows objeck.rc files are build outputs of core/shared/rc_version.targets, never committed)
 
 ```bash
 cd core/release && powershell -ExecutionPolicy Bypass -File update_version.ps1
@@ -47,7 +47,6 @@ This generates from `.in` templates:
 - `core/release/code_doc64.cmd` (from `code_doc64.in`)
 - `programs/deploy/util/readme/readme.json` (from `readme.json.in`)
 - `tools/lsp/clients/vscode/package.json` (`version` field; the committed copy, so the repo agrees with the `.vsix` the tag stamps)
-- Windows `.rc` resource files for compiler, VM, debugger, REPL, launcher
 - `core/utils/MacApp/Info.plist` (rewritten in place, not from an `.in`: `CFBundleVersion`, `CFBundleShortVersionString` and the copyright's end year)
 
 > **Curate `readme.json.in` by hand.** Only `@VERSION@`/`@YEAR@` are templated —

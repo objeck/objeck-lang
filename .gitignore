@@ -24,6 +24,9 @@
 
 # Compiled Windows resources
 *.res
+# The version-stamped resource scripts. They are rendered from the objeck.in beside
+# them by core/shared/rc_version.targets on every build, so they are never committed.
+core/**/objeck.rc
 # Visual Studio's resource-editor cache; it is rebuilt from the .rc on demand
 *.aps
 
