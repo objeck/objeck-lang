@@ -893,6 +893,482 @@
 				}
 			}
 		},
+		"API.LlmUtil.ChatFn": {
+			"description": "A chat backend, as far as StructuredCall needs one: send a conversation, get the reply text. Implement it for any model or service; the llm_util_clients library has adapters for the Anthropic, OpenAI, Gemini and Ollama clients, and a test can implement it with a scripted fake.",
+			"functions": {
+				"Complete": {
+					"descriptions": ["**Sends a conversation and returns the model's reply text**\n\n```method : public : virutal : Complete(turns:Vector&lt;PromptTurn&gt;) ~ String```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why the last Complete() returned Nil**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.ContextWindow": {
+			"description": "Keeps a conversation inside a token budget. Fit() drops the oldest turns first, always keeps the system prompt and the newest turn, never leaves the conversation starting on an assistant turn, and can note in the system prompt that earlier turns were left out.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits a conversation to the budget by dropping the oldest turns. The input is not changed.**\n\n```method : public : Fit(source:PromptBuilder) ~ PromptBuilder```\n\n\n\nsource: PromptBuilder\n\nreturn: PromptBuilder"]
+				},
+				"GetDropped": {
+					"descriptions": ["**Gets how many turns the last Fit() dropped**\n\n```method : public : GetDropped() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTokens": {
+					"descriptions": ["**Gets the tokens the last Fit() result uses**\n\n```method : public : GetTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsOverBudget": {
+					"descriptions": ["**Tells whether the last Fit() result is still over the budget (the system prompt and the newest turn alone do not fit)**\n\n```method : public : IsOverBudget() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Measure": {
+					"descriptions": ["**Counts the tokens a conversation uses: every turn and the system prompt, with framing**\n\n```method : public : Measure(builder:PromptBuilder) ~ Int```\n\n\n\nbuilder: PromptBuilder\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(budget:Int, counter:TokenCounter)```\n\n\n\nbudget: Int\n\ncounter: TokenCounter"]
+				},
+				"SetOmissionNote": {
+					"descriptions": ["**Sets a note appended to the system prompt when turns were dropped, so the model knows the history is partial**\n\n```method : public : SetOmissionNote(note:String) ~ ContextWindow```\n\n\n\nnote: String\n\nreturn: ContextWindow"]
+				},
+				"SetTurnOverhead": {
+					"descriptions": ["**Sets the framing cost of one message**\n\n```method : public : SetTurnOverhead(tokens:Int) ~ ContextWindow```\n\n\n\ntokens: Int\n\nreturn: ContextWindow"]
+				},
+				"Truncate": {
+					"descriptions": ["**Shortens one text to a token budget, cutting at a word boundary and ending with the marker**\n\n```method : public : Truncate(text:String, max_tokens:Int, marker:String) ~ String```\n\n\n\ntext: String\n\nmax_tokens: Int\n\nmarker: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.JsonExtractor": {
+			"description": "Finds the JSON in a model reply. Models wrap JSON in a code fence, introduce it with a sentence, or trail off after it; the extractor collects every fenced block and every balanced {...} or [...] span, in that order, and parses each strictly. With SetRepair(true), candidates that fail the strict parse are also tried after JsonRepair (off by default, and only ever after the strict parse failed).",
+			"functions": {
+				"Candidates": {
+					"descriptions": ["**Lists the places in a reply that may hold JSON: fenced blocks first, then balanced spans, then the whole text (for a bare scalar)**\n\n```method : public : Candidates(text:String) ~ Vector&lt;String&gt;```\n\n\n\ntext: String\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last parse error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsRepaired": {
+					"descriptions": ["**Tells whether a value returned by the last ParseAll() came from a repaired candidate**\n\n```method : public : IsRepaired(index:Int) ~ Bool```\n\n\n\nindex: Int\n\nreturn: Bool"]
+				},
+				"Parse": {
+					"descriptions": ["**Parses the first candidate that works**\n\n```method : public : Parse(text:String) ~ JsonElement```\n\n\n\ntext: String\n\nreturn: JsonElement"]
+				},
+				"ParseAll": {
+					"descriptions": ["**Parses every candidate in a reply, strictly. With repair on, the candidates that failed are then repaired and parsed again; IsRepaired() tells which values came from that second pass.**\n\n```method : public : ParseAll(text:String) ~ Vector&lt;JsonElement&gt;```\n\n\n\ntext: String\n\nreturn: Vector&lt;JsonElement&gt;"]
+				},
+				"SetRepair": {
+					"descriptions": ["**Turns the lenient repair of failed candidates on or off**\n\n```method : public : SetRepair(repair:Bool) ~ JsonExtractor```\n\n\n\nrepair: Bool\n\nreturn: JsonExtractor"]
+				}
+			}
+		},
+		"API.LlmUtil.JsonRepair": {
+			"description": "Repairs the JSON that models get wrong. Repair() is a single pass over the text that fixes: single-quoted strings, unquoted object keys, trailing commas, raw line breaks and tabs inside strings, Python and JavaScript literals (True, False, None, undefined, NaN), comments, a missing colon value, and a reply cut off in the middle (open strings, objects and arrays are closed). Text after the first complete value is dropped. It does not guess at anything else; whatever it returns still goes through the strict parser.",
+			"functions": {
+				"Repair": {
+					"descriptions": ["**Repairs JSON text as described in the class description**\n\n```function : Repair(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.JsonSchema": {
+			"description": "Checks a JSON value against a JSON Schema and reports every problem it finds, each with a JSON pointer.\n\nSupported keywords: type (one name or an array of names: string, number, integer, boolean, object, array, null), properties, required, additionalProperties (false or a schema), minProperties, maxProperties, items (a schema, or an array for a tuple), minItems, maxItems, uniqueItems, enum, const, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minLength, maxLength, pattern (an unanchored search, with the Query.RegEx dialect), allOf, anyOf, oneOf, not, and $ref to a place in the same document (\"#\", \"#/definitions/x\", \"#/$defs/x\"). A boolean schema is accepted. Other keywords, format among them, are ignored.",
+			"functions": {
+				"Check": {
+					"descriptions": ["**Checks a value against a schema in one call**\n\n```function : Check(schema:JsonElement, value:JsonElement) ~ Vector&lt;SchemaError&gt;```\n\n\n\nschema: JsonElement\n\nvalue: JsonElement\n\nreturn: Vector&lt;SchemaError&gt;"]
+				},
+				"Describe": {
+					"descriptions": ["**Joins the error list into lines**\n\n```function : Describe(errors:Vector&lt;SchemaError&gt;) ~ String```\n\n\n\nerrors: Vector&lt;SchemaError&gt;\n\nreturn: String"]
+				},
+				"IsValid": {
+					"descriptions": ["**Tells whether a value is valid**\n\n```method : public : IsValid(value:JsonElement) ~ Bool```\n\n\n\nvalue: JsonElement\n\nreturn: Bool"]
+				},
+				"Join": {
+					"descriptions": ["**Adds a name to a JSON pointer, escaping \"~\" as \"~0\" and \"/\" as \"~1\"**\n\n```function : Join(path:String, name:String) ~ String```\n\n\n\npath: String\n\nname: String\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(schema:JsonElement)```\n\n\n\nschema: JsonElement"]
+				},
+				"Same": {
+					"descriptions": ["**Compares two JSON values by content: numbers by value, objects regardless of member order**\n\n```function : Same(a:JsonElement, b:JsonElement) ~ Bool```\n\n\n\na: JsonElement\n\nb: JsonElement\n\nreturn: Bool"]
+				},
+				"SetMaxErrors": {
+					"descriptions": ["**Sets how many errors to collect before stopping**\n\n```method : public : SetMaxErrors(max:Int) ~ JsonSchema```\n\n\n\nmax: Int\n\nreturn: JsonSchema"]
+				},
+				"Validate": {
+					"descriptions": ["**Checks a value against the schema**\n\n```method : public : Validate(value:JsonElement) ~ Vector&lt;SchemaError&gt;```\n\n\n\nvalue: JsonElement\n\nreturn: Vector&lt;SchemaError&gt;"]
+				}
+			}
+		},
+		"API.LlmUtil.JsonStrict": {
+			"description": "A strict JSON checker (RFC 8259). Data.JSON.JsonParser is forgiving: it accepts trailing commas, bare words and missing commas, which is no use for deciding whether a model's reply needed repair. JsonStrict says exactly whether a text is one valid JSON value, and where the first problem is.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Gets why the last Validate() said no**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Validate": {
+					"descriptions": ["**Checks a text**\n\n```method : public : Validate(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"API.LlmUtil.LlmChars": {
+			"description": "Character tests shared by the classes in this library. Plain ASCII; bytes above 127 are never a letter, digit or space.",
+			"functions": {
+
+			}
+		},
+		"API.LlmUtil.PromptBuilder": {
+			"description": "A conversation under construction: an optional system prompt and a list of user and assistant turns. The builder is provider-neutral; the ToPairs and ToJsonMessages methods here, and the llm_util_clients library, turn it into what each client takes.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a turn with a given role**\n\n```method : public : Add(role:String, text:String) ~ PromptBuilder```\n\n\n\nrole: String\n\ntext: String\n\nreturn: PromptBuilder"]
+				},
+				"Assistant": {
+					"descriptions": ["**Adds an assistant turn**\n\n```method : public : Assistant(text:String) ~ PromptBuilder```\n\n\n\ntext: String\n\nreturn: PromptBuilder"]
+				},
+				"Clone": {
+					"descriptions": ["**Copies the builder**\n\n```method : public : Clone() ~ PromptBuilder```\n\n\n\nreturn: PromptBuilder"]
+				},
+				"GetAll": {
+					"descriptions": ["**Gets every turn, the system prompt first as a \"system\" turn**\n\n```method : public : GetAll() ~ Vector&lt;PromptTurn&gt;```\n\n\n\nreturn: Vector&lt;PromptTurn&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last template render error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSystem": {
+					"descriptions": ["**Gets the system prompt**\n\n```method : public : GetSystem() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTurns": {
+					"descriptions": ["**Gets the user and assistant turns, without the system prompt**\n\n```method : public : GetTurns() ~ Vector&lt;PromptTurn&gt;```\n\n\n\nreturn: Vector&lt;PromptTurn&gt;"]
+				},
+				"Size": {
+					"descriptions": ["**Counts the user and assistant turns**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"System": {
+					"descriptions": ["**Sets the system prompt, replacing an earlier one**\n\n```method : public : System(text:String) ~ PromptBuilder```\n\n\n\ntext: String\n\nreturn: PromptBuilder", "**Sets the system prompt from a template**\n\n```method : public : System(template:PromptTemplate, vars:PromptVars) ~ PromptBuilder```\n\n\n\ntemplate: PromptTemplate\n\nvars: PromptVars\n\nreturn: PromptBuilder"]
+				},
+				"ToJsonMessages": {
+					"descriptions": ["**The conversation as a JSON array of role and content objects, the shape of the OpenAI chat API and of Ollama**\n\n```method : public : ToJsonMessages(with_system:Bool) ~ JsonElement```\n\n\n\nwith_system: Bool\n\nreturn: JsonElement"]
+				},
+				"ToPairs": {
+					"descriptions": ["**The conversation as role and text pairs, the system prompt first as a \"system\" pair: the shape API.OpenAI.Chat.Completion->Complete takes**\n\n```method : public : ToPairs() ~ Vector&lt;Pair&lt;String,String&gt;&gt;```\n\n\n\nreturn: Vector&lt;Pair&lt;String,String&gt;&gt;"]
+				},
+				"User": {
+					"descriptions": ["**Adds a user turn**\n\n```method : public : User(text:String) ~ PromptBuilder```\n\n\n\ntext: String\n\nreturn: PromptBuilder", "**Adds a user turn from a template**\n\n```method : public : User(template:PromptTemplate, vars:PromptVars) ~ PromptBuilder```\n\n\n\ntemplate: PromptTemplate\n\nvars: PromptVars\n\nreturn: PromptBuilder"]
+				}
+			}
+		},
+		"API.LlmUtil.PromptTemplate": {
+			"description": "A prompt with {{placeholders}}. Syntax:\n\n<ul> <li>{{name}} a required variable; rendering fails, listing every missing variable, when it is not set</li> <li>{{name?}} an optional variable, empty when it is not set</li> <li>{{name|fallback}} a variable with a default, the text after the bar, used verbatim</li> <li>{{name:json}} a filter: json (escape for the inside of a JSON string), upper, lower or trim; combine with the others as {{name:json|fallback}}</li> <li>{{#each items}} ... {{/each}} repeats the body for each item of a list; inside it {{this}} is the item, {{",
+			"functions": {
+				"Check": {
+					"descriptions": ["**Lists what a render would find missing, without rendering**\n\n```method : public : Check(vars:PromptVars) ~ Vector&lt;String&gt;```\n\n\n\nvars: PromptVars\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last parse or render error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMissing": {
+					"descriptions": ["**Gets the variables the last render found missing**\n\n```method : public : GetMissing() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetOptional": {
+					"descriptions": ["**Lists the variables a render may be given**\n\n```method : public : GetOptional() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetRequired": {
+					"descriptions": ["**Lists the variables a render must be given**\n\n```method : public : GetRequired() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetSource": {
+					"descriptions": ["**Gets the template text**\n\n```method : public : GetSource() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOk": {
+					"descriptions": ["**Checks that the template parsed**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Parses a template. A malformed template is not an exception: IsOk() is false and GetError() says what and where.**\n\n```New(source:String)```\n\n\n\nsource: String"]
+				},
+				"Render": {
+					"descriptions": ["**Renders the template. A missing required variable is not silently blanked: the render fails with an error that names every one of them.**\n\n```method : public : Render(vars:PromptVars) ~ String```\n\n\n\nvars: PromptVars\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.PromptTurn": {
+			"description": "One message of a conversation: a role (\"system\", \"user\" or \"assistant\") and its text.",
+			"functions": {
+				"GetRole": {
+					"descriptions": ["**Gets the role**\n\n```method : public : GetRole() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Gets the text**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(role:String, text:String)```\n\n\n\nrole: String\n\ntext: String"]
+				},
+				"ToString": {
+					"descriptions": ["**The turn as \"role: text\"**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.PromptVars": {
+			"description": "The values a PromptTemplate renders with: named text values and named lists of text.",
+			"functions": {
+				"Get": {
+					"descriptions": ["**Gets a text value**\n\n```method : public : Get(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetList": {
+					"descriptions": ["**Gets a list**\n\n```method : public : GetList(name:String) ~ Vector&lt;String&gt;```\n\n\n\nname: String\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"Has": {
+					"descriptions": ["**Checks for a text value**\n\n```method : public : Has(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"HasList": {
+					"descriptions": ["**Checks for a list**\n\n```method : public : HasList(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"Set": {
+					"descriptions": ["**Sets a text value**\n\n```method : public : Set(name:String, value:String) ~ PromptVars```\n\n\n\nname: String\n\nvalue: String\n\nreturn: PromptVars"]
+				},
+				"SetArray": {
+					"descriptions": ["**Sets a list of text values from an array**\n\n```method : public : SetArray(name:String, values:String[]) ~ PromptVars```\n\n\n\nname: String\n\nvalues: String[]\n\nreturn: PromptVars"]
+				},
+				"SetBool": {
+					"descriptions": ["**Sets a Boolean value, rendered as \"true\" or \"false\"**\n\n```method : public : SetBool(name:String, value:Bool) ~ PromptVars```\n\n\n\nname: String\n\nvalue: Bool\n\nreturn: PromptVars"]
+				},
+				"SetFloat": {
+					"descriptions": ["**Sets a float value, rendered as text**\n\n```method : public : SetFloat(name:String, value:Float) ~ PromptVars```\n\n\n\nname: String\n\nvalue: Float\n\nreturn: PromptVars"]
+				},
+				"SetInt": {
+					"descriptions": ["**Sets an integer value, rendered as text**\n\n```method : public : SetInt(name:String, value:Int) ~ PromptVars```\n\n\n\nname: String\n\nvalue: Int\n\nreturn: PromptVars"]
+				},
+				"SetList": {
+					"descriptions": ["**Sets a list of text values for {{#each name}}**\n\n```method : public : SetList(name:String, values:Vector&lt;String&gt;) ~ PromptVars```\n\n\n\nname: String\n\nvalues: Vector&lt;String&gt;\n\nreturn: PromptVars"]
+				}
+			}
+		},
+		"API.LlmUtil.SchemaError": {
+			"description": "One problem found while checking a value against a schema: where it is (a JSON pointer), which schema keyword objected, and what is wrong.",
+			"functions": {
+				"GetKeyword": {
+					"descriptions": ["**Gets the schema keyword that failed**\n\n```method : public : GetKeyword() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMessage": {
+					"descriptions": ["**Gets the message**\n\n```method : public : GetMessage() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPath": {
+					"descriptions": ["**Gets the JSON pointer (RFC 6901) of the value: \"\" is the root, \"/items/2/name\" the name of the third item**\n\n```method : public : GetPath() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(path:String, keyword:String, message:String)```\n\n\n\npath: String\n\nkeyword: String\n\nmessage: String"]
+				},
+				"ToString": {
+					"descriptions": ["**The error as \"pointer: message\"**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.StructuredCall": {
+			"description": "Asks a chat backend for JSON that matches a schema. The schema is added to the system prompt, the JSON is pulled out of the reply (fenced or chatty replies are fine), checked with JsonSchema, and when it is wrong the model is shown the exact errors and asked again, up to a retry limit. The outcome is the typed JSON element or the final error list.",
+			"functions": {
+				"Ask": {
+					"descriptions": ["**Asks with a single user message**\n\n```method : public : Ask(prompt:String) ~ StructuredOutcome```\n\n\n\nprompt: String\n\nreturn: StructuredOutcome", "**Asks with a conversation. The builder is not changed; its system prompt is kept and the schema instruction is added to it.**\n\n```method : public : Ask(builder:PromptBuilder) ~ StructuredOutcome```\n\n\n\nbuilder: PromptBuilder\n\nreturn: StructuredOutcome", "**Asks with a template as the user message**\n\n```method : public : Ask(template:PromptTemplate, vars:PromptVars) ~ StructuredOutcome```\n\n\n\ntemplate: PromptTemplate\n\nvars: PromptVars\n\nreturn: StructuredOutcome"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(chat:ChatFn, schema:JsonElement)```\n\n\n\nchat: ChatFn\n\nschema: JsonElement"]
+				},
+				"SetInstruction": {
+					"descriptions": ["**Replaces the sentence that tells the model to answer with JSON; the schema is always appended**\n\n```method : public : SetInstruction(instruction:String) ~ StructuredCall```\n\n\n\ninstruction: String\n\nreturn: StructuredCall"]
+				},
+				"SetMaxRetries": {
+					"descriptions": ["**Sets how many times to retry after an invalid reply**\n\n```method : public : SetMaxRetries(retries:Int) ~ StructuredCall```\n\n\n\nretries: Int\n\nreturn: StructuredCall"]
+				},
+				"SetRepair": {
+					"descriptions": ["**Turns the lenient JSON repair on: trailing commas, single quotes, unquoted keys, truncated replies. Off by default; used only after the strict parse failed.**\n\n```method : public : SetRepair(repair:Bool) ~ StructuredCall```\n\n\n\nrepair: Bool\n\nreturn: StructuredCall"]
+				}
+			}
+		},
+		"API.LlmUtil.StructuredOutcome": {
+			"description": "What StructuredCall::Ask returns: the valid value, or why there is none.",
+			"functions": {
+				"GetAttempts": {
+					"descriptions": ["**Gets how many times the backend was asked**\n\n```method : public : GetAttempts() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets a one-line reason for a failure: the backend's error, or the last reply's first problem**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrors": {
+					"descriptions": ["**Gets the validation errors of the last reply (empty on success, or when the backend itself failed)**\n\n```method : public : GetErrors() ~ Vector&lt;SchemaError&gt;```\n\n\n\nreturn: Vector&lt;SchemaError&gt;"]
+				},
+				"GetReplies": {
+					"descriptions": ["**Gets every reply text received, oldest first**\n\n```method : public : GetReplies() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetValue": {
+					"descriptions": ["**Gets the JSON value that matched the schema**\n\n```method : public : GetValue() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"IsOk": {
+					"descriptions": ["**Tells whether a value matching the schema was obtained**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"WasRepaired": {
+					"descriptions": ["**Tells whether the value came from a repaired reply (JSON repair is off unless asked for)**\n\n```method : public : WasRepaired() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"API.LlmUtil.TemplateNode": {
+			"description": "One parsed piece of a template: literal text, a variable, an {{#each}} loop or an {{#if}} block.",
+			"functions": {
+
+			}
+		},
+		"API.LlmUtil.TokenCounter": {
+			"description": "Anything that can count the tokens in a text: the offline TokenEstimator here, or an exact counter that asks a provider (GeminiTokenCounter in llm_util_clients).",
+			"functions": {
+				"Count": {
+					"descriptions": ["**Counts the tokens in a text**\n\n```method : public : virutal : Count(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				}
+			}
+		},
+		"API.LlmUtil.TokenEstimator": {
+			"description": "A fast, offline token estimator with no dependencies. It does not run a tokenizer; it counts the pieces a byte-pair tokenizer usually produces: a word costs one token per 6 letters (and a new piece at each lower-to-upper case change, so camelCase splits), digits cost one token per 3, a run of punctuation costs one token per 2 characters, a line break costs one token per 2 (a blank line is one), an indent of 2 or more spaces costs one, and a run of non-ASCII bytes costs one token per 2 bytes.\n\nAccuracy, measured against the cl100k tokenizer on hand-counted samples: plain English prose lands within about 15 percent of the true count and typical source code within about 30 percent; a single short string can be off by two tokens either way. Text that is mostly non-Latin script is the weakest case (the bound there is about 50 percent). Claude's tokenizer usually yields 10 to 20 percent more tokens than cl100k for the same text, so SetScale(1.15) is a good setting for Anthropic models. Use SetMargin to keep a budget safe; do not use an estimate where a hard limit must hold (ask the provider's count endpoint, or leave room).",
+			"functions": {
+				"Count": {
+					"descriptions": ["**Estimates the tokens in a text (TokenCounter)**\n\n```method : public : Count(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"Estimate": {
+					"descriptions": ["**Estimates the tokens in a text**\n\n```method : public : Estimate(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"EstimateTurns": {
+					"descriptions": ["**Estimates a whole conversation: each turn's text plus the per-message framing**\n\n```method : public : EstimateTurns(turns:Vector&lt;PromptTurn&gt;) ~ Int```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: Int"]
+				},
+				"GetTurnOverhead": {
+					"descriptions": ["**Gets the per-message framing cost**\n\n```method : public : GetTurnOverhead() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: scale 1.0, no margin, 4 tokens of framing per message**\n\n```New()```\n\n"]
+				},
+				"Safe": {
+					"descriptions": ["**Adds the safety margin to a token count**\n\n```method : public : Safe(tokens:Int) ~ Int```\n\n\n\ntokens: Int\n\nreturn: Int"]
+				},
+				"SetMargin": {
+					"descriptions": ["**Sets the safety margin used by Safe()**\n\n```method : public : SetMargin(margin:Float) ~ TokenEstimator```\n\n\n\nmargin: Float\n\nreturn: TokenEstimator"]
+				},
+				"SetScale": {
+					"descriptions": ["**Scales every estimate, to match a provider whose tokenizer is wordier (or terser) than cl100k**\n\n```method : public : SetScale(scale:Float) ~ TokenEstimator```\n\n\n\nscale: Float\n\nreturn: TokenEstimator"]
+				},
+				"SetTurnOverhead": {
+					"descriptions": ["**Sets the framing cost of one message (role and separators)**\n\n```method : public : SetTurnOverhead(tokens:Int) ~ TokenEstimator```\n\n\n\ntokens: Int\n\nreturn: TokenEstimator"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.AnthropicChatFn": {
+			"description": "ChatFn over API.Anthropic.Chat. The system turns become the system prompt; earlier turns are added to the conversation and the last user turn is sent. The token counts of the last reply are kept.",
+			"functions": {
+				"Complete": {
+					"descriptions": ["**Sends a conversation**\n\n```method : public : Complete(turns:Vector&lt;PromptTurn&gt;) ~ String```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLastInputTokens": {
+					"descriptions": ["**Gets the input tokens the last reply reported, an exact count of what was sent**\n\n```method : public : GetLastInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLastOutputTokens": {
+					"descriptions": ["**Gets the output tokens the last reply reported**\n\n```method : public : GetLastOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the reply length limit**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ AnthropicChatFn```\n\n\n\nmax_tokens: Int\n\nreturn: AnthropicChatFn"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.GeminiChatFn": {
+			"description": "ChatFn over API.Google.Gemini.Model->GenerateContent. The system turns become the system instruction and assistant turns are sent with Gemini's \"model\" role.",
+			"functions": {
+				"Complete": {
+					"descriptions": ["**Sends a conversation**\n\n```method : public : Complete(turns:Vector&lt;PromptTurn&gt;) ~ String```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				},
+				"ReplyText": {
+					"descriptions": ["**Reads the reply text out of a generateContent response body: the text parts of the first candidate, joined**\n\n```method : public : ReplyText(body:String) ~ String```\n\n\n\nbody: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.GeminiTokenCounter": {
+			"description": "An exact token counter over Gemini's countTokens endpoint. It makes a network call for every Count(); when the call fails it falls back to a TokenEstimator and IsExact() says false, so a budget never stops on a network error.",
+			"functions": {
+				"Count": {
+					"descriptions": ["**Counts the tokens in a text**\n\n```method : public : Count(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"IsExact": {
+					"descriptions": ["**Tells whether the last Count() came from Gemini**\n\n```method : public : IsExact() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.OllamaChatFn": {
+			"description": "ChatFn over API.Ollama.Chat, for a local model. The system turns are added as a \"system\" message.",
+			"functions": {
+				"Complete": {
+					"descriptions": ["**Sends a conversation**\n\n```method : public : Complete(turns:Vector&lt;PromptTurn&gt;) ~ String```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String)```\n\n\n\nmodel: String"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.OpenAIChatFn": {
+			"description": "ChatFn over API.OpenAI.Chat.Completion (the chat completions endpoint). The system turns are sent as \"system\" messages.",
+			"functions": {
+				"Complete": {
+					"descriptions": ["**Sends a conversation**\n\n```method : public : Complete(turns:Vector&lt;PromptTurn&gt;) ~ String```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the last error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, key:String)```\n\n\n\nmodel: String\n\nkey: String"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.PromptAdapters": {
+			"description": "Turns a conversation into each client's own message type, for code that drives a client directly instead of through ChatFn.",
+			"functions": {
+				"FillAnthropic": {
+					"descriptions": ["**Adds a builder's system prompt and turns to an Anthropic chat**\n\n```function : FillAnthropic(builder:PromptBuilder, chat:API.Anthropic.Chat) ~ API.Anthropic.Chat```\n\n\n\nbuilder: PromptBuilder\n\nchat: API.Anthropic.Chat\n\nreturn: API.Anthropic.Chat"]
+				},
+				"FillOllama": {
+					"descriptions": ["**Adds a builder's system prompt and turns to an Ollama chat**\n\n```function : FillOllama(builder:PromptBuilder, chat:API.Ollama.Chat) ~ API.Ollama.Chat```\n\n\n\nbuilder: PromptBuilder\n\nchat: API.Ollama.Chat\n\nreturn: API.Ollama.Chat"]
+				},
+				"GeminiContents": {
+					"descriptions": ["**The conversation as the \"contents\" array of a Gemini generateContent request: \"user\" turns stay, \"assistant\" turns take Gemini's \"model\" role, system turns are left out (see GeminiSystem)**\n\n```function : GeminiContents(turns:Vector&lt;PromptTurn&gt;) ~ JsonElement```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: JsonElement"]
+				},
+				"GeminiSystem": {
+					"descriptions": ["**The system turns as the \"systemInstruction\" object of a Gemini request**\n\n```function : GeminiSystem(turns:Vector&lt;PromptTurn&gt;) ~ JsonElement```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: JsonElement"]
+				},
+				"OpenAIMessages": {
+					"descriptions": ["**The conversation as role and text pairs for API.OpenAI.Chat.Completion->Complete, system turns first**\n\n```function : OpenAIMessages(turns:Vector&lt;PromptTurn&gt;) ~ Vector&lt;Pair&lt;String,String&gt;&gt;```\n\n\n\nturns: Vector&lt;PromptTurn&gt;\n\nreturn: Vector&lt;Pair&lt;String,String&gt;&gt;"]
+				}
+			}
+		},
+		"API.LlmUtil.Clients.TurnSplit": {
+			"description": "Splits a conversation: the system turns joined into one text, and the other turns.",
+			"functions": {
+				"GetSystem": {
+					"descriptions": ["**Gets the system text**\n\n```method : public : GetSystem() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTurns": {
+					"descriptions": ["**Gets the user and assistant turns**\n\n```method : public : GetTurns() ~ Vector&lt;PromptTurn&gt;```\n\n\n\nreturn: Vector&lt;PromptTurn&gt;"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(turns:Vector&lt;PromptTurn&gt;)```\n\n\n\nturns: Vector&lt;PromptTurn&gt;"]
+				},
+				"Problem": {
+					"descriptions": ["**Checks that the conversation can be sent: it is not empty and ends with a user turn**\n\n```method : public : Problem() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
 		"API.Models.EndPoint": {
 			"description": "Why the last call returned Nil.\n\nEvery backend here reports failure the same way -- Nil, with the reason available afterwards -- because the alternatives are worse: an exception the caller must know to guard, or a message on stderr the caller cannot act on.",
 			"functions": {
@@ -21607,6 +22083,150 @@
 		"Wire": [
 			{
 				"bundle": "API.Inference",
+				"file": ""
+			}
+		],
+		"ChatFn": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"ContextWindow": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"JsonExtractor": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"JsonRepair": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"JsonSchema": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"JsonStrict": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"LlmChars": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"PromptBuilder": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"PromptTemplate": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"PromptTurn": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"PromptVars": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"SchemaError": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"StructuredCall": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"StructuredOutcome": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"TemplateNode": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"TokenCounter": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"TokenEstimator": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": ""
+			}
+		],
+		"AnthropicChatFn": [
+			{
+				"bundle": "API.LlmUtil.Clients",
+				"file": ""
+			}
+		],
+		"GeminiChatFn": [
+			{
+				"bundle": "API.LlmUtil.Clients",
+				"file": ""
+			}
+		],
+		"GeminiTokenCounter": [
+			{
+				"bundle": "API.LlmUtil.Clients",
+				"file": ""
+			}
+		],
+		"OllamaChatFn": [
+			{
+				"bundle": "API.LlmUtil.Clients",
+				"file": ""
+			}
+		],
+		"OpenAIChatFn": [
+			{
+				"bundle": "API.LlmUtil.Clients",
+				"file": ""
+			}
+		],
+		"PromptAdapters": [
+			{
+				"bundle": "API.LlmUtil.Clients",
+				"file": ""
+			}
+		],
+		"TurnSplit": [
+			{
+				"bundle": "API.LlmUtil.Clients",
 				"file": ""
 			}
 		],

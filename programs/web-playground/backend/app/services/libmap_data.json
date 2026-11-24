@@ -103,6 +103,18 @@
     "System.Time": ["Alarm", "Date", "Timer"]
    }
   },
+  "llm_util": {
+   "deps": ["gen_collect", "json", "regex"],
+   "bundles": {
+    "API.LlmUtil": ["ChatFn", "ContextWindow", "JsonExtractor", "JsonRepair", "JsonSchema", "JsonStrict", "LlmChars", "PromptBuilder", "PromptTemplate", "PromptTurn", "PromptVars", "SchemaError", "StructuredCall", "StructuredOutcome", "TemplateNode", "TokenCounter", "TokenEstimator"]
+   }
+  },
+  "llm_util_clients": {
+   "deps": ["gen_collect", "json", "regex", "llm_util", "net", "net_server", "cipher", "misc", "anthropic", "openai", "gemini", "ollama"],
+   "bundles": {
+    "API.LlmUtil.Clients": ["AnthropicChatFn", "GeminiChatFn", "GeminiTokenCounter", "OllamaChatFn", "OpenAIChatFn", "PromptAdapters", "TurnSplit"]
+   }
+  },
   "math": {
    "deps": [],
    "bundles": {

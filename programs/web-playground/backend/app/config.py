@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     allowed_libs: set[str] = {
         "gen_collect", "json", "xml", "regex", "cipher", "csv",
         "query", "query_ml", "ml", "ml_lab", "ml_vector", "ml_report", "ml_verify", "stats", "plot", "nlp", "nlp_topics", "ai", "math", "misc", "diags",
-        "concurrent",
+        "concurrent", "llm_util",
     }
 
     # dependency: linked only because an allowed library was built against it.
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     blocked_libs: set[str] = {
         "net_h2", "net_quic", "net_server", "web_server", "odbc", "query_odbc",
         "query_server", "query_vision", "sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame",
-        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic",
+        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic", "llm_util_clients",
         "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub", "ml_cnn", "ml_clip",
     }
 

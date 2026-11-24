@@ -154,6 +154,7 @@
      <li><code>restartFrame</code> and <code>terminateThreads</code> are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.</li>
     </ul>
      </li>
+     <li><strong><code>llm_util</code> and <code>llm_util_clients</code>, pure-Objeck helpers for working with chat models</strong> (<code>API.LlmUtil</code>): <code>PromptTemplate</code> (<code>{{name}}</code>, <code>{{name?}}</code>, <code>{{name|default}}</code>, the <code>json</code>, <code>upper</code>, <code>lower</code> and <code>trim</code> filters, <code>{{#each}}</code>, <code>{{#if}}</code> with <code>{{else}}</code>, <code>\{{</code> for a literal; a missing variable fails the render and every missing name is listed) and <code>PromptBuilder</code>; <code>TokenEstimator</code> (offline, about 4.3 characters per token on English prose; see the bounds in the guide) and <code>ContextWindow</code> (drops the oldest turns, keeps the system prompt and the newest turn); <code>JsonSchema</code> (type, properties, required, items, enum, const, minimum and maximum, minLength and maxLength, pattern, allOf, anyOf, oneOf, not, additionalProperties and local <code>$ref</code>, every error with a JSON pointer); and <code>StructuredCall</code>, which asks any <code>ChatFn</code> for JSON that matches a schema, finds it in a fenced or chatty reply, validates it and retries up to N times with the validation errors fed back, with an opt-in lenient repair (<code>JsonRepair</code>: trailing commas, single quotes, unquoted keys, a truncated reply). <code>llm_util_clients</code> has the <code>ChatFn</code> adapters for the Anthropic, OpenAI, Gemini and Ollama clients, <code>GeminiTokenCounter</code> and <code>PromptAdapters</code>. Link with <code>-lib llm_util,regex,json,gen_collect</code>; documented in <code>docs/ai_sections/llm_util.md</code>.</li>
     </ul>
     <h4 id="documentation">Documentation</h4>
     <ul>
@@ -162,6 +163,7 @@
     <h4 id="tests">Tests</h4>
     <ul>
      <li>New regression tests: <code>regex_lazy_dfa</code>, <code>regex_replace_escapes</code>, <code>regex_threads</code>, <code>ml_vector_parallel</code>, <code>ml_knn_exact</code> and <code>nlp_levenshtein_bounded</code>, and thirteen <code>collect_*</code> tests for the collections above (<code>collect_deque</code>, <code>collect_multiset</code>, <code>collect_union_find</code>, <code>collect_trie</code>, <code>collect_ordered_hash</code>, <code>collect_bimap</code>, <code>collect_priority_map</code>, <code>collect_fenwick</code>, <code>collect_bloom</code>, <code>collect_vector_ops</code>, <code>collect_sort_stable</code>, <code>collect_nil_guards</code>, <code>collect_stack_deep</code>).</li>
+     <li>Six <code>llm_util_*</code> regression tests (template, tokens, schema, extract, structured and clients): no network and no key.</li>
     </ul>
     <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
     <h4 id="fixed-1">Fixed</h4>
