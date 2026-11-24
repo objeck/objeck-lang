@@ -1770,14 +1770,38 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
-  // A store is dead when the next thing that happens to its local is another store:
-  // no read, and no jump, label or return first (the old forward scan, from every
-  // store, was quadratic when a method held many distinct locals). One backward pass
-  // gives the same answer: 'after' holds, per local, what its first later event is.
-  // A jump, label or return forgets everything, which a generation count does in O(1).
+  // A store is dead when no path from it reads its local before another store writes it,
+  // and no exception handler of the try region it is in reads it. The control-flow graph
+  // answers that: across a join, around a loop, in a handler, and for an instruction that
+  // reads the frame without naming a slot (a native call, a thread operation).
   const size_t instr_count = input_instrs.size();
   std::vector<char> is_dead(instr_count, 0);
+  bool graph_used = false;
   {
+    Cfg cfg(input_instrs);
+    if(cfg.WellFormed()) {
+      cfg.ComputeLiveness();
+      const std::vector<bool> graph_dead = cfg.DeadLocalStores();
+      for(size_t i = start_pos; i < instr_count; ++i) {
+        if(graph_dead[i]) {
+          is_dead[i] = 1;
+        }
+      }
+      graph_used = true;
+    }
+  }
+
+  // No graph (the list is not one method's well-formed code): the old straight-line rule,
+  // a store is dead when the next thing that happens to its local is another store, with no
+  // read, jump, label or return first. One backward pass; 'after' holds, per local, what its
+  // first later event is, and a jump, label or return forgets everything (a generation
+  // count does that in O(1)). That rule ignores that a trap inside a try region can hand
+  // control to a handler that reads the local, so it is not used when the list has one.
+  bool has_try = false;
+  for(size_t i = start_pos; !graph_used && !has_try && i < instr_count; ++i) {
+    has_try = input_instrs[i]->GetType() == TRY_START;
+  }
+  if(!graph_used && !has_try) {
     std::unordered_map<long, std::pair<bool, size_t> > after;
     size_t generation = 0;
     for(size_t i = instr_count; i-- > start_pos;) {
@@ -1809,22 +1833,6 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 
       default:
         break;
-      }
-    }
-  }
-
-  // The scan above forgets everything at a label or jump. The graph knows more: a store is
-  // also dead when no path from it reads the slot before another store (a read after the
-  // join, in a loop or in a handler keeps it), including a slot nothing reads again.
-  {
-    Cfg cfg(input_instrs);
-    if(cfg.WellFormed()) {
-      cfg.ComputeLiveness();
-      const std::vector<bool> graph_dead = cfg.DeadLocalStores();
-      for(size_t i = start_pos; i < instr_count; ++i) {
-        if(graph_dead[i]) {
-          is_dead[i] = 1;
-        }
       }
     }
   }
