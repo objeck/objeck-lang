@@ -24,7 +24,7 @@ usage: cfg_oracle.py <bin_dir> [-j N] [--opts s0,s1,s2,s3] [--timeout S] [--work
 <bin_dir> holds obc and an obr built with -DOBJECK_CFG_TRACE; tests are names in
 programs/regression (none: every one), or paths to .obs files (clbg, perf).
 """
-import argparse, os, subprocess, sys, tempfile, shutil, concurrent.futures, threading
+import argparse, glob, os, subprocess, sys, tempfile, shutil, concurrent.futures, threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REG = os.path.abspath(os.path.join(HERE, "..", "..", "programs", "regression"))
@@ -72,12 +72,12 @@ def parse_trace(path):
             parts = line.split()
             if not parts:
                 continue
-            if parts[0] == "M":
+            if parts[0] == "M" and len(parts) == 3:
                 name = parts[1]
                 cur = methods.setdefault(name, {"n": int(parts[2]), "X": set(), "F": set(), "E": set()})
-            elif cur is not None and parts[0] in ("X", "F"):
+            elif cur is not None and parts[0] in ("X", "F") and len(parts) == 2:
                 cur[parts[0]].add(int(parts[1]))
-            elif cur is not None and parts[0] == "E":
+            elif cur is not None and parts[0] == "E" and len(parts) == 3:
                 cur["E"].add((int(parts[1]), int(parts[2])))
     return methods
 
@@ -176,7 +176,7 @@ def one(args, stats, env, obc, obr, src, name, markers, opts):
         os.makedirs(wd, exist_ok=True)
         dump = os.path.join(wd, "dump.txt")
         trace = os.path.join(wd, "trace.txt")
-        for f in (dump, trace):
+        for f in [dump] + glob.glob(trace + ".*"):
             if os.path.exists(f):
                 os.remove(f)
         obe = os.path.join(wd, name + ".obe")
@@ -188,14 +188,16 @@ def one(args, stats, env, obc, obr, src, name, markers, opts):
             continue
         e = dict(env, OBJECK_CFG_TRACE=trace, OBJECK_TEST_OBE=obe)
         rc, out, err, _ = rd.run_proc([obr, "--jit=off", obe], os.path.dirname(src), e, args.timeout)
-        if rc is None or not os.path.isfile(trace):
+        traces = sorted(glob.glob(trace + ".*"))
+        if rc is None or not traces:
             with stats.lock:
                 stats.nonrun.append("%s -opt %s: %s" % (name, opt, "timed out" if rc is None else "no trace written"))
             continue
         dm, skipped = parse_dump(dump)
-        tm = parse_trace(trace)
-        checked, transitions, unmatched, violations = check(dm, tm)
-        stats.add("%s -opt %s" % (name, opt), checked, transitions, unmatched, len([n for n in tm if n in skipped]), violations)
+        for tf in traces:
+            tm = parse_trace(tf)
+            checked, transitions, unmatched, violations = check(dm, tm)
+            stats.add("%s -opt %s" % (name, opt), checked, transitions, unmatched, len([n for n in tm if n in skipped]), violations)
         if not args.keep and not violations:
             shutil.rmtree(wd, ignore_errors=True)
 
@@ -209,7 +211,7 @@ def main(argv=None):
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--work", default=os.path.join(tempfile.gettempdir(), "cfg_oracle"))
     ap.add_argument("--keep", action="store_true")
-    args = ap.parse_args(argv)
+    args = ap.parse_intermixed_args(argv)
     bin_dir = os.path.abspath(args.bin_dir)
     lib_dir = os.path.abspath(os.path.join(bin_dir, "..", "lib"))
     env = rd.make_env(bin_dir, lib_dir)

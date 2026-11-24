@@ -19,6 +19,7 @@
 #include "common.h"
 #include <cstdio>
 #include <cstdlib>
+#include <unistd.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -65,7 +66,9 @@ namespace CfgTrace {
       return;
     }
     r.flushed = true;
-    FILE* out = std::fopen(r.path.c_str(), "a");
+    // one file per process: a test that runs another program writes its own
+    const std::string file = r.path + "." + std::to_string(static_cast<long>(getpid()));
+    FILE* out = std::fopen(file.c_str(), "w");
     if(!out) {
       return;
     }
