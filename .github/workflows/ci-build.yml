@@ -10,8 +10,14 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # Every core/lib/*.obl built from source on one Linux job; the other jobs download them.
+  libs:
+    name: Libraries
+    uses: ./.github/workflows/libs.yml
+
   build:
     name: Build ${{ matrix.platform }}
+    needs: libs
     runs-on: ${{ matrix.os }}
     # Backstop so a hung test/step can never tie up a runner for the default
     # 6 hours (per-test timeouts in run_regression.sh are the first line of
@@ -80,6 +86,16 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    # The libraries, built once from source by the `libs` job (libs.yml). Today they are
+    # also committed and `libs` fails on any byte of difference, so this overwrites each
+    # file with an identical one; it is what the deploy scripts will find once the
+    # .obl are no longer tracked (docs/DESIGN_OBL_FROM_SOURCE.md).
+    - name: Download libraries
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: libs
+        path: core/lib/
 
     # ============================================
     # Dependency Installation
@@ -1925,10 +1941,17 @@ jobs:
   # pairs them with the .obl libraries committed under core/lib.
   tools:
     name: Tools (formatter, LSP, VS Code extension)
+    needs: libs
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       # First, because it needs nothing built and fails in seconds. Five files
       # hard-code the list of core/compiler/lib_src/*.obs and nothing keeps them
@@ -2362,7 +2385,7 @@ jobs:
   status:
     name: CI Status
     runs-on: ubuntu-24.04
-    needs: [build, tools]
+    needs: [libs, build, tools]
     if: always()
     permissions:
       contents: read
@@ -2373,7 +2396,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ needs.build.result }}" = "success" ] \
+          if [ "${{ needs.libs.result }}" = "success" ] \
+             && [ "${{ needs.build.result }}" = "success" ] \
              && [ "${{ needs.tools.result }}" = "success" ]; then
             echo "✅ All platform builds and tooling checks succeeded"
             echo "### ✅ CI — all platform builds and tooling checks succeeded" >> "$GITHUB_STEP_SUMMARY"
