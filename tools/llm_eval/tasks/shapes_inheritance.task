@@ -1,0 +1,63 @@
+id: shapes_inheritance
+category: classes
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a base class Shape that has an abstract (virtual) method Area() ~ Int, and two subclasses (use `from`): Square (side 5) and Rectangle (width 3, height 4), each overriding Area. In Main create one of each and print three lines: `Square: 25`, `Rectangle: 12`, and `Total: 37`, where the total is the sum of the areas computed through the Shape base type.
+--- expected
+Square: 25
+Rectangle: 12
+Total: 37
+--- reference
+class Shape {
+	method : virtual : public : Area() ~ Int;
+}
+
+class Square from Shape {
+	@side : Int;
+
+	New(side : Int) {
+		Parent();
+		@side := side;
+	}
+
+	method : public : Area() ~ Int {
+		return @side * @side;
+	}
+}
+
+class Rectangle from Shape {
+	@width : Int;
+	@height : Int;
+
+	New(width : Int, height : Int) {
+		Parent();
+		@width := width;
+		@height := height;
+	}
+
+	method : public : Area() ~ Int {
+		return @width * @height;
+	}
+}
+
+class Shapes {
+	function : Main(args : String[]) ~ Nil {
+		square := Square->New(5);
+		rectangle := Rectangle->New(3, 4);
+		shapes := Shape->New[2];
+		shapes[0] := square;
+		shapes[1] := rectangle;
+
+		total := 0;
+		each(i : shapes) {
+			total += shapes[i]->Area();
+		};
+
+		"Square: {$square->Area()}"->PrintLine();
+		"Rectangle: {$rectangle->Area()}"->PrintLine();
+		"Total: {$total}"->PrintLine();
+	}
+}

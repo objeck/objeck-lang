@@ -1,0 +1,40 @@
+id: file_roundtrip
+category: file_io
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that writes the three lines alpha, beta, gamma to a file named llm_eval_roundtrip.txt in the current directory using System.IO.Filesystem, reads the file back line by line, and prints the number of lines read on the first line and the second line of the file on the second line of output. Delete the file before exiting.
+--- expected
+3
+beta
+--- reference
+use System.IO.Filesystem;
+
+class FileRoundtrip {
+	function : Main(args : String[]) ~ Nil {
+		name := "llm_eval_roundtrip.txt";
+
+		writer := FileWriter->New(name);
+		writer->WriteString("alpha\nbeta\ngamma\n");
+		writer->Close();
+
+		reader := FileReader->New(name);
+		count := 0;
+		second := "";
+		line := reader->ReadLine();
+		while(line <> Nil) {
+			count += 1;
+			if(count = 2) {
+				second := line;
+			};
+			line := reader->ReadLine();
+		};
+		reader->Close();
+
+		count->PrintLine();
+		second->PrintLine();
+		File->Delete(name);
+	}
+}

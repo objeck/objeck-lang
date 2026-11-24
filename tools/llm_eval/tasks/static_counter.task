@@ -1,0 +1,29 @@
+id: static_counter
+category: classes
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a class Widget that keeps a static (class-level) counter of how many instances have been created, incremented in the constructor. Create three Widget objects in Main, then print `Widgets: 3` using a static function that returns the counter.
+--- expected
+Widgets: 3
+--- reference
+class Widget {
+	@count : static : Int;
+
+	New() {
+		@count += 1;
+	}
+
+	function : GetCount() ~ Int {
+		return @count;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Widget->New();
+		Widget->New();
+		Widget->New();
+		"Widgets: {$Widget->GetCount()}"->PrintLine();
+	}
+}

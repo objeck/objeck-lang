@@ -1,0 +1,40 @@
+id: word_count
+category: collections
+difficulty: 3
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that counts how often each word occurs in the sentence "the cat and the dog and the bird" (words are separated by single spaces). Use a Collection Map from String to IntRef. Print one line per distinct word in alphabetical order, in the form `word count`, for example `and 2`.
+--- expected
+and 2
+bird 1
+cat 1
+dog 1
+the 3
+--- reference
+use Collection;
+
+class WordCount {
+	function : Main(args : String[]) ~ Nil {
+		counts := Map->New()<String, IntRef>;
+		words := "the cat and the dog and the bird"->Split(' ');
+		each(i : words) {
+			word := words[i];
+			if(counts->Has(word)) {
+				current := counts->Find(word);
+				counts->Insert(word, IntRef->New(current->Get() + 1));
+			}
+			else {
+				counts->Insert(word, IntRef->New(1));
+			};
+		};
+
+		keys := counts->GetKeys();
+		each(i : keys) {
+			key := keys->Get(i);
+			count := counts->Find(key)->Get();
+			"{$key} {$count}"->PrintLine();
+		};
+	}
+}

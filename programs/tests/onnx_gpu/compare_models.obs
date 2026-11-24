@@ -1,0 +1,136 @@
+#~
+How far does a variant of a model drift from the original?
+
+  compare_models.obe <model-a.onnx> <ep-a> <model-b.onnx> <ep-b> <inputs>
+
+Runs both models on the same `inputs` deterministic synthetic inputs (the model's first
+input, a different ramp each, dynamic dimensions set to 1) and compares the FIRST
+output: the largest and the mean absolute difference, the largest difference relative to
+the largest value in the original's output, and, for an output of one row per input, how
+often the index of the largest element (the top-1 class) is the same.
+
+Use it to answer "is the FP16 / INT8 / TensorRT version of this model still the same
+model": a float16 variant should agree on top-1 for essentially every input and differ by
+~1e-3 relative; a quantized one calibrated on real data differs by a few percent. A
+variant calibrated on synthetic data (make_models.py) is for SPEED measurements: this
+program will show how much accuracy that costs, which is why it exists.
+
+Output:  COMPARE|a|b|inputs|max_abs|mean_abs|max_rel|top1_agree|top1_total
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+
+class CompareModels {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 5) {
+			"usage: compare_models.obe <model-a> <ep-a> <model-b> <ep-b> <inputs>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		a := Open(args[0], args[1]);
+		b := Open(args[2], args[3]);
+		count := args[4]->ToInt();
+
+		spec_a := a->GetModelInfo()->GetInputs()->Get(0);
+		spec_b := b->GetModelInfo()->GetInputs()->Get(0);
+		shape_a := Resolve(spec_a);
+		shape_b := Resolve(spec_b);
+		elements := 1;
+		for(i := 0; i < shape_a->Size(); i += 1;) {
+			elements *= shape_a[i];
+		};
+
+		worst := 0.0;
+		total := 0.0;
+		compared := 0;
+		peak := 0.0;
+		agree := 0;
+		rows := 0;
+
+		for(n := 0; n < count; n += 1;) {
+			values := Float->New[elements];
+			for(i := 0; i < elements; i += 1;) {
+				values[i] := (((i + 1) * (n + 3) * 7919) % 1000)->ToFloat() / 1000.0;
+			};
+
+			in_a := Vector->New()<Tensor>;
+			in_a->AddBack(Tensor->New(spec_a->GetName(), spec_a->GetDatatype(), shape_a, values));
+			in_b := Vector->New()<Tensor>;
+			in_b->AddBack(Tensor->New(spec_b->GetName(), spec_b->GetDatatype(), shape_b, values));
+
+			out_a := a->Run(in_a);
+			out_b := b->Run(in_b);
+			if(out_a = Nil | out_b = Nil) {
+				"a run failed"->ErrorLine();
+				Runtime->Exit(3);
+			};
+
+			x := out_a->Get(0)->GetFloats();
+			y := out_b->Get(0)->GetFloats();
+			if(x->Size() <> y->Size()) {
+				"output sizes differ"->ErrorLine();
+				Runtime->Exit(3);
+			};
+
+			top_a := 0;
+			top_b := 0;
+			for(i := 0; i < x->Size(); i += 1;) {
+				d := (x[i] - y[i])->Abs();
+				if(d > worst) {
+					worst := d;
+				};
+				total += d;
+				compared += 1;
+				if(x[i]->Abs() > peak) {
+					peak := x[i]->Abs();
+				};
+				if(x[i] > x[top_a]) {
+					top_a := i;
+				};
+				if(y[i] > y[top_b]) {
+					top_b := i;
+				};
+			};
+
+			rows += 1;
+			if(top_a = top_b) {
+				agree += 1;
+			};
+		};
+
+		mean := total / compared->ToFloat();
+		relative := worst / peak;
+		name_a := args[0];
+		name_b := args[2];
+		"COMPARE|{$name_a}|{$name_b}|{$count}|{$worst}|{$mean}|{$relative}|{$agree}|{$rows}"->PrintLine();
+		a->Close();
+		b->Close();
+	}
+
+	function : Open(model : String, ep : String) ~ Session {
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+		session := Session->New(model, config);
+		if(<>session->IsOpen()) {
+			"{$model} did not open"->ErrorLine();
+			Runtime->Exit(3);
+		};
+
+		return session;
+	}
+
+	function : Resolve(spec : TensorSpec) ~ Int[] {
+		declared := spec->GetShape();
+		shape := Int->New[declared->Size()];
+		for(i := 0; i < declared->Size(); i += 1;) {
+			shape[i] := declared[i];
+			if(declared[i] < 0) {
+				shape[i] := 1;
+			};
+		};
+
+		return shape;
+	}
+}

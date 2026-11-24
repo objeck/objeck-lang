@@ -1,0 +1,24 @@
+id: json_parse_field
+category: json
+difficulty: 3
+libs: gen_collect,json
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that parses the JSON text {"name":"Ada","age":36} with the Data.JSON library (JsonParser) and prints `Ada is 36`, reading both values out of the parsed object.
+--- expected
+Ada is 36
+--- reference
+use Data.JSON;
+
+class JsonField {
+	function : Main(args : String[]) ~ Nil {
+		parser := JsonParser->New("{\"name\":\"Ada\",\"age\":36}");
+		if(parser->Parse()) {
+			root := parser->GetRoot();
+			name := root->Get("name")->GetString();
+			age := root->Get("age")->GetInt();
+			"{$name} is {$age}"->PrintLine();
+		};
+	}
+}

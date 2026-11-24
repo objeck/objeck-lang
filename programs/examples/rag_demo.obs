@@ -1,0 +1,104 @@
+#~
+Retrieval-augmented generation (System.ML.Rag), fully offline.
+
+A few short documents are split into chunks, embedded, and kept in a RagIndex. For each
+question the pipeline retrieves the closest chunks, builds a prompt that numbers them as
+sources and asks the model to cite them as [n], and hands the prompt to a generator. The index
+is then saved to a file and loaded again to show that the answers do not change.
+
+Nothing here needs a key, a model or a network: the embedder is RagHashEmbedder (a hashed bag
+of words, so it matches shared words and not meaning) and the generator is RagStubGenerator
+(it answers with the first sentence of source [1] and cites it). To use real models, replace
+those two objects with the adapters in the library rag_adapters, for example
+RagOllamaEmbedder and RagOllamaGenerator, and nothing else changes.
+
+  compile: obc -src rag_demo.obs -lib rag,ml_vector,gen_collect
+  run:     obr rag_demo.obe
+           obr rag_demo.obe "how do I save an index"
+~#
+
+use System.ML.Rag;
+use Collection;
+
+class RagDemo {
+	function : Docs() ~ Vector<Pair<String, String>> {
+		docs := Vector->New()<Pair<String, String>>;
+		docs->AddBack(Pair->New("language.txt", "Objeck is an object-oriented programming language. Programs are compiled to bytecode and run on a virtual machine with a just-in-time compiler.\n\nThe virtual machine has a generational garbage collector, so short-lived objects are cheap.")<String, String>);
+		docs->AddBack(Pair->New("retrieval.txt", "A vector index stores one embedding vector per chunk of text. A search finds the chunks whose vectors are closest to the vector of the question.\n\nAn index can be saved to a file and loaded again, so the documents are embedded once.")<String, String>);
+		docs->AddBack(Pair->New("prompts.txt", "A grounded prompt numbers the retrieved chunks as sources and asks the model to cite the sources it used as [n].\n\nCitations let a reader check each claim of an answer against the text it came from.")<String, String>);
+		return docs;
+	}
+
+	function : Ask(pipeline : RagPipeline, question : String) ~ Nil {
+		"Q: {$question}"->PrintLine();
+		answer := pipeline->Answer(question);
+		if(answer = Nil) {
+			"  failed: {$pipeline->GetError()}"->PrintLine();
+			return;
+		};
+
+		"A: {$answer->GetText()}"->PrintLine();
+		cited := answer->GetCitedSources();
+		each(i : cited) {
+			chunk := cited->Get(i)->GetChunk();
+			score := cited->Get(i)->GetScore();
+			"   cited {$chunk->GetId()} (offset {$chunk->GetOffset()}, score {$score})"->PrintLine();
+		};
+		""->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		pipeline := RagPipeline->New(RagHashEmbedder->New(512), RagStubGenerator->New());
+		pipeline->SetChunker(RagChunker->New(180, 20, RagSplit->PARAGRAPH));
+		pipeline->SetTopK(2);
+		pipeline->SetMinScore(0.1);
+
+		docs := Docs();
+		each(i : docs) {
+			source := docs->Get(i)->GetFirst();
+			added := pipeline->AddText(source, docs->Get(i)->GetSecond());
+			"indexed {$source}: {$added} chunks"->PrintLine();
+		};
+		""->PrintLine();
+
+		questions := Vector->New()<String>;
+		if(args->Size() > 0) {
+			questions->AddBack(args[0]);
+		}
+		else {
+			questions->AddBack("What kind of garbage collector does the virtual machine have?");
+			questions->AddBack("How can an index be saved and loaded?");
+			questions->AddBack("Why number the sources in a prompt?");
+			questions->AddBack("What is the capital of France?");
+		};
+
+		each(i : questions) {
+			Ask(pipeline, questions->Get(i));
+		};
+
+		# save the index, load it into a fresh pipeline and ask again
+		path := "rag_demo.idx";
+		if(<>pipeline->GetIndex()->Store(path)) {
+			"could not save: {$pipeline->GetIndex()->GetError()}"->PrintLine();
+			return;
+		};
+
+		loaded := RagIndex->Load(path);
+		System.IO.Filesystem.File->Delete(path);
+		if(loaded = Nil) {
+			"could not load the index"->PrintLine();
+			return;
+		};
+
+		again := RagPipeline->New(RagHashEmbedder->New(512), RagStubGenerator->New());
+		again->SetTopK(2);
+		if(<>again->SetIndex(loaded)) {
+			"could not use the index: {$again->GetError()}"->PrintLine();
+			return;
+		};
+
+		"--- after saving and loading ({$loaded->Size()} chunks) ---"->PrintLine();
+		Ask(again, questions->Get(0));
+		again->GetPromptBuilder()->Build(questions->Get(0), again->Retrieve(questions->Get(0)))->PrintLine();
+	}
+}

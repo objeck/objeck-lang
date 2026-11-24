@@ -1,0 +1,498 @@
+# EXTRA_LIBS: ml_timeseries,gen_collect
+#~
+System.ML.TimeSeries: accuracy metrics, rolling-origin cross-validation, interval coverage and automatic selection.
+
+ForecastMetrics are checked on a hand-worked pair of vectors and against numpy (gen_reference.py, 1e-12). Rolling-origin
+cross-validation is checked on a straight line where every number is known in closed form (the naive forecast is
+off by exactly h at step h; drift is exact), then on simulated AR(1) data and a trend + seasonal series for what
+it is for: the empirical coverage of the 80% and 90% prediction intervals must land near the nominal level, and
+a seasonal model must beat the seasonal naive one on out-of-sample error. AutoArima and AutoEts must pick the
+differencing the data needs, never return a candidate worse than another one in their own table, and work through
+the Forecaster interface inside the cross-validation. Run from programs/regression.
+~#
+use System.IO.Filesystem;
+use Collection;
+use System.ML.TimeSeries;
+
+#~
+Shared by the ml_timeseries_* tests: reads ml_timeseries_ref/expected.txt (written by gen_reference.py, which
+uses statsmodels / scipy / hand-written numpy and never this library) and keeps the pass / fail tally.
+~#
+class TsRef {
+	@m : Map<String, String>;
+	@ok : Bool;
+	@checks : Int;
+
+	New() {
+		@ok := true;
+		@checks := 0;
+		@m := Map->New()<String, String>;
+		text := FileReader->ReadFile("ml_timeseries_ref/expected.txt");
+		if(text = Nil) {
+			"FAIL: ml_timeseries_ref/expected.txt is not readable (run from programs/regression)"->PrintLine();
+			@ok := false;
+			return;
+		};
+
+		lines := text->Split("\n");
+		each(i : lines) {
+			line := lines[i];
+			if(line->Size() > 0 & line->Get(0) <> '#') {
+				f := line->Split("|");
+				if(f->Size() = 3) {
+					@m->Insert("{$f[0]}|{$f[1]}", f[2]);
+				}
+				else if(f->Size() = 2) {
+					@m->Insert("{$f[0]}|{$f[1]}", "");
+				};
+			};
+		};
+	}
+
+	method : public : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : public : Checks() ~ Int {
+		return @checks;
+	}
+
+	method : public : Check(name : String, cond : Bool) ~ Nil {
+		@checks += 1;
+		if(<>cond) {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : public : Get(name : String, key : String) ~ Float[] {
+		k := "{$name}|{$key}";
+		if(<>@m->Has(k)) {
+			"FAIL: no reference value {$k}"->PrintLine();
+			@ok := false;
+			return Float->New[0];
+		};
+
+		text := @m->Find(k);
+		if(text->Size() = 0) {
+			return Float->New[0];
+		};
+
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			if(parts[i]->Equals("nan")) {
+				out[i] := Float->NaN();
+			}
+			else {
+				out[i] := parts[i]->ToFloat();
+			};
+		};
+
+		return out;
+	}
+
+	method : public : One(name : String, key : String) ~ Float {
+		v := Get(name, key);
+		if(v->Size() = 0) {
+			return Float->NaN();
+		};
+
+		return v[0];
+	}
+
+	# |a - b| <= tol * (1 + |b|); two NaNs are equal
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		if(a <> a | b <> b) {
+			return a <> a & b <> b;
+		};
+
+		d := a - b;
+		if(d < 0.0) {
+			d := -d;
+		};
+
+		return d <= tol * (1.0 + b->Abs());
+	}
+
+	# the largest |a[i] - b[i]| / (1 + |b[i]|), NaN positions must agree; 1e300 on a length mismatch
+	function : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 1.0e300;
+		};
+
+		worst := 0.0;
+		each(i : b) {
+			an := a[i] <> a[i];
+			bn := b[i] <> b[i];
+			if(an | bn) {
+				if(an <> bn) {
+					return 1.0e300;
+				};
+			}
+			else {
+				d := a[i] - b[i];
+				if(d < 0.0) {
+					d := -d;
+				};
+				d := d / (1.0 + b[i]->Abs());
+				if(d > worst) {
+					worst := d;
+				};
+			};
+		};
+
+		return worst;
+	}
+
+	# a named comparison of two arrays: passes when the largest relative difference is within tol
+	method : public : Same(name : String, got : Float[], want : Float[], tol : Float) ~ Nil {
+		d := MaxDiff(got, want);
+		n := want->Size();
+		ok := d <= tol;
+		if(<>ok) {
+			"FAIL: {$name}: {$n} values, max relative difference {$d} > {$tol}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	method : public : SameOne(name : String, got : Float, want : Float, tol : Float) ~ Nil {
+		ok := Near(got, want, tol);
+		if(<>ok) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	# the first values of a series generated here must be the reference's (proves the generator is the same)
+	method : public : Head(name : String, series : Float[]) ~ Nil {
+		want := Get(name, "head");
+		got := Float->New[want->Size()];
+		each(i : got) {
+			got[i] := series[i];
+		};
+		Same("series {$name}: generator matches the reference", got, want, 1.0e-12);
+		Check("series {$name}: length", Near(series->Size()->As(Float), One(name, "n"), 0.0));
+	}
+
+	method : public : Finish(test : String) ~ Nil {
+		c := @checks;
+		if(@ok) {
+			"{$test}: all {$c} checks passed"->PrintLine();
+		}
+		else {
+			"FAIL: {$test}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+#~
+The test series, generated by the library from fixed seeds. gen_reference.py generates the same ones.
+~#
+class TsData {
+	@ar1 : Float[];
+	@ar2 : Float[];
+	@ma1 : Float[];
+	@arma11 : Float[];
+	@ts : Float[];
+	@ms : Float[];
+	@rw : Float[];
+
+	New() {
+		@ar1 := Simulate->Arma([0.7], Nil, 0.0, 1.0, 400, 11);
+		@ma1 := Simulate->Arma(Nil, [0.6], 0.0, 1.0, 500, 12);
+		@arma11 := Simulate->Arma([0.5], [0.4], 2.0, 1.0, 600, 13);
+		@ar2 := Simulate->Arma([0.5, -0.3], Nil, 0.0, 1.0, 500, 14);
+		@ts := Simulate->TrendSeasonal(120, 20.0, 0.3, 5.0, 12, 0.5, 15);
+		@ms := Simulate->MultSeasonal(120, 40.0, 0.2, 0.25, 12, 0.02, 16);
+		@rw := Simulate->RandomWalk(200, 0.3, 1.0, 17);
+	}
+
+	method : public : Get(name : String) ~ Float[] {
+		if(name->Equals("ar1")) {
+			return @ar1;
+		};
+		if(name->Equals("ar2")) {
+			return @ar2;
+		};
+		if(name->Equals("ma1")) {
+			return @ma1;
+		};
+		if(name->Equals("arma11")) {
+			return @arma11;
+		};
+		if(name->Equals("ts")) {
+			return @ts;
+		};
+		if(name->Equals("ms")) {
+			return @ms;
+		};
+
+		return @rw;
+	}
+
+	method : public : Names() ~ String[] {
+		return ["ar1", "ar2", "ma1", "arma11", "ts", "ms", "rw"];
+	}
+}
+
+
+class MlTimeseriesEval {
+	function : Main(args : String[]) ~ Nil {
+		t := TsRef->New();
+		if(t->IsOk()) {
+			MetricsByHand(t);
+			MetricsVsNumpy(t);
+			LineCv(t);
+			Coverage(t);
+			Comparison(t);
+			Auto(t);
+			CvRefusals(t);
+		};
+		t->Finish("ml_timeseries_eval");
+	}
+
+	function : MetricsByHand(t : TsRef) ~ Nil {
+		a := [10.0, 20.0, 30.0];
+		f := [12.0, 18.0, 33.0];
+		# errors (a - f) = -2, 2, -3
+		t->SameOne("ME = (-2 + 2 - 3) / 3", ForecastMetrics->Me(a, f), -1.0, 1.0e-14);
+		t->SameOne("MAE = 7/3", ForecastMetrics->Mae(a, f), 7.0 / 3.0, 1.0e-14);
+		t->SameOne("RMSE = sqrt(17/3)", ForecastMetrics->Rmse(a, f), Float->Sqrt(17.0 / 3.0), 1.0e-14);
+		# MAPE: (0.2 + 0.1 + 0.1) / 3 = 13.33%
+		t->SameOne("MAPE = 100 (0.2 + 0.1 + 0.1) / 3", ForecastMetrics->Mape(a, f), 100.0 * 0.4 / 3.0, 1.0e-13);
+		# sMAPE: 2*2/22 + 2*2/38 + 2*3/63
+		t->SameOne("sMAPE", ForecastMetrics->Smape(a, f), 100.0 * (4.0 / 22.0 + 4.0 / 38.0 + 6.0 / 63.0) / 3.0, 1.0e-13);
+		# MASE with train [1, 3, 6, 10]: naive scale = (2 + 3 + 4) / 3 = 3; lag 2 scale = (5 + 7) / 2 = 6
+		train := [1.0, 3.0, 6.0, 10.0];
+		t->SameOne("MASE, naive scale 3", ForecastMetrics->Mase(a, f, train, 1), (7.0 / 3.0) / 3.0, 1.0e-14);
+		t->SameOne("MASE, lag-2 scale 6", ForecastMetrics->Mase(a, f, train, 2), (7.0 / 3.0) / 6.0, 1.0e-14);
+		t->SameOne("a perfect forecast scores 0", ForecastMetrics->Rmse(a, a), 0.0, 1.0e-20);
+
+		# zero handling: MAPE is undefined with a zero actual, sMAPE counts a 0 / 0 term as 0, MASE needs a non-constant train
+		t->Check("MAPE with a zero actual is NaN", IsNaN(ForecastMetrics->Mape([0.0, 1.0], [1.0, 1.0])));
+		t->SameOne("sMAPE with both zero counts 0 for that term", ForecastMetrics->Smape([0.0, 1.0], [0.0, 2.0]), 100.0 * (2.0 / 3.0) / 2.0, 1.0e-13);
+		t->SameOne("sMAPE with actual 0 and forecast 1 is 200% for that term", ForecastMetrics->Smape([0.0], [1.0]), 200.0, 1.0e-13);
+		t->Check("MASE with a constant training series is NaN", IsNaN(ForecastMetrics->Mase(a, f, [2.0, 2.0, 2.0, 2.0], 1)));
+		t->Check("MASE with a training series no longer than the lag is NaN", IsNaN(ForecastMetrics->Mase(a, f, [1.0, 2.0], 2)));
+		t->Check("a length mismatch is NaN, not fatal", IsNaN(ForecastMetrics->Mae([1.0, 2.0], [1.0])) & IsNaN(ForecastMetrics->Rmse(Nil, a)) & IsNaN(ForecastMetrics->Mae(Float->New[0], Float->New[0])));
+		t->Check("a NaN input is NaN", IsNaN(ForecastMetrics->Mae([1.0, Float->NaN()], [1.0, 2.0])));
+
+		# coverage and width
+		t->SameOne("Coverage: 2 of 3 inside", ForecastMetrics->Coverage([1.0, 5.0, 3.0], [0.0, 0.0, 3.5], [2.0, 4.0, 5.0]), 1.0 / 3.0, 1.0e-15);
+		t->SameOne("Coverage counts the bounds as inside", ForecastMetrics->Coverage([1.0, 2.0], [1.0, 1.0], [3.0, 2.0]), 1.0, 1.0e-15);
+		t->SameOne("MeanWidth", ForecastMetrics->MeanWidth([0.0, 1.0], [2.0, 5.0]), 3.0, 1.0e-15);
+	}
+
+	function : IsNaN(v : Float) ~ Bool {
+		return v <> v;
+	}
+
+	function : MetricsVsNumpy(t : TsRef) ~ Nil {
+		act := t->Get("metrics", "act");
+		frc := t->Get("metrics", "frc");
+		train := t->Get("metrics", "train");
+		t->SameOne("ME vs numpy", ForecastMetrics->Me(act, frc), t->One("metrics", "me"), 1.0e-12);
+		t->SameOne("MAE vs numpy", ForecastMetrics->Mae(act, frc), t->One("metrics", "mae"), 1.0e-12);
+		t->SameOne("RMSE vs numpy", ForecastMetrics->Rmse(act, frc), t->One("metrics", "rmse"), 1.0e-12);
+		t->SameOne("MAPE vs numpy", ForecastMetrics->Mape(act, frc), t->One("metrics", "mape"), 1.0e-12);
+		t->SameOne("sMAPE vs numpy", ForecastMetrics->Smape(act, frc), t->One("metrics", "smape"), 1.0e-12);
+		t->SameOne("MASE (m = 1) vs numpy", ForecastMetrics->Mase(act, frc, train, 1), t->One("metrics", "mase1"), 1.0e-12);
+		t->SameOne("MASE (m = 3) vs numpy", ForecastMetrics->Mase(act, frc, train, 3), t->One("metrics", "mase3"), 1.0e-12);
+	}
+
+	function : LineCv(t : TsRef) ~ Nil {
+		y := Float->New[30];
+		each(i : 30) {
+			y[i] := 1.0 + i->As(Float);
+		};
+		series := TimeSeries->New(y);
+
+		naive := BaselineForecaster->New(BaselineForecaster->Kind->NAIVE);
+		cv := Evaluation->RollingOrigin(naive, series, 10, 3, 1, 0.9, 1);
+		t->Check("rolling origin is valid", cv->IsValid());
+		t->Check("(30 - 3 - 10) / 1 + 1 = 18 origins, none skipped, horizon 3", cv->GetFolds() = 18 & cv->GetSkipped() = 0 & cv->GetHorizon() = 3);
+		t->Same("naive MAE at steps 1, 2, 3 is 1, 2, 3 (a line rises by 1 per step)", cv->GetMaeByHorizon(), [1.0, 2.0, 3.0], 1.0e-12);
+		t->Same("naive RMSE at each step", cv->GetRmseByHorizon(), [1.0, 2.0, 3.0], 1.0e-12);
+		t->SameOne("overall MAE 2", cv->GetMae(), 2.0, 1.0e-12);
+		t->SameOne("overall RMSE sqrt((1 + 4 + 9) / 3)", cv->GetRmse(), Float->Sqrt(14.0 / 3.0), 1.0e-12);
+		t->SameOne("MASE = MAE / 1 = 2 (the naive in-sample error of a line is 1)", cv->GetMase(), 2.0, 1.0e-12);
+		errs := cv->GetErrors();
+		dims := errs->Size();
+		t->Check("the error matrix is folds x horizon, actual - forecast", dims[0] = 18 & dims[1] = 3 & RefNear(errs[0, 0], 1.0) & RefNear(errs[17, 2], 3.0));
+		# MAPE by hand for the first fold: actuals 11, 12, 13 against 10 -> (1/11 + 2/12 + 3/13) / 3 ; just check it is positive and finite
+		t->Check("MAPE and sMAPE are finite percentages", cv->GetMape() > 0.0 & cv->GetMape() < 50.0 & cv->GetSmape() > 0.0 & cv->GetSmape() < 50.0);
+
+		drift := BaselineForecaster->New(BaselineForecaster->Kind->DRIFT);
+		cd := Evaluation->RollingOrigin(drift, series, 10, 3, 2, 0.9, 1);
+		t->Check("drift on a line: step 2 gives (30 - 3 - 10) / 2 + 1 = 9 origins", cd->IsValid() & cd->GetFolds() = 9);
+		t->SameOne("drift is exact on a line (MAE 0)", cd->GetMae(), 0.0, 1.0e-10);
+
+		# the model passed in is not changed: its own state is untouched by the cross-validation
+		t->Check("the model is not fitted by the cross-validation (Copy per fold)", <>naive->IsFitted());
+
+		# a too-large step leaves fewer folds, the last origin never runs past the data
+		big := Evaluation->RollingOrigin(naive, series, 10, 3, 100, 0.9, 1);
+		t->Check("step larger than the data leaves one origin", big->IsValid() & big->GetFolds() = 1);
+		exact := Evaluation->RollingOrigin(naive, series, 27, 3, 1, 0.9, 1);
+		t->Check("initial + horizon = n leaves exactly one origin", exact->IsValid() & exact->GetFolds() = 1);
+	}
+
+	function : RefNear(a : Float, b : Float) ~ Bool {
+		return TsRef->Near(a, b, 1.0e-12);
+	}
+
+	function : Coverage(t : TsRef) ~ Nil {
+		# AR(1) with sigma 1: refit at every 2nd origin, forecast 5 steps with 80% and 95% intervals
+		y := TimeSeries->New(Simulate->Arma([0.7], Nil, 0.0, 1.0, 700, 31));
+		ar := ArimaModel->New(1, 0, 0);
+		cv80 := Evaluation->RollingOrigin(ar, y, 250, 5, 2, 0.8, 1);
+		cv95 := Evaluation->RollingOrigin(ar, y, 250, 5, 2, 0.95, 1);
+		c80 := cv80->GetCoverage();
+		c95 := cv95->GetCoverage();
+		n := cv80->GetFolds() * 5;
+		t->Check("AR(1): {$n} out-of-sample forecasts, 80% interval covers {$c80} (nominal 0.8, tolerance 0.04)", (c80 - 0.8)->Abs() < 0.04);
+		t->Check("AR(1): 95% interval covers {$c95} (nominal 0.95, tolerance 0.03)", (c95 - 0.95)->Abs() < 0.03);
+		t->Check("the 95% interval is wider than the 80%", cv95->GetMeanWidth() > cv80->GetMeanWidth());
+		t->SameOne("the nominal level is recorded", cv80->GetLevel(), 0.8, 1.0e-15);
+		# the interval width at step 1 is 2 z sigma with sigma near 1: 80% -> 2 * 1.2816 = 2.56 (the average over steps is a little wider)
+		t->Check("the AR(1) 80% width is near 2 * 1.28 * sigma (mean width {$cv80->GetMeanWidth()})", cv80->GetMeanWidth() > 2.4 & cv80->GetMeanWidth() < 3.6);
+
+		# Holt-Winters on a trend + seasonal series
+		s := TimeSeries->New(Simulate->TrendSeasonal(300, 20.0, 0.3, 5.0, 12, 0.5, 33));
+		hw := ExponentialSmoothing->HoltWinters(12, false);
+		cv := Evaluation->RollingOrigin(hw, s, 120, 6, 6, 0.9, 12);
+		cov := cv->GetCoverage();
+		folds := cv->GetFolds();
+		t->Check("Holt-Winters: {$folds} folds, 90% interval covers {$cov} (tolerance 0.09; estimated parameters make it slightly optimistic)", cv->IsValid() & (cov - 0.9)->Abs() < 0.09);
+		t->Check("Holt-Winters MASE is below 1 (better than seasonal naive in sample scale)", cv->GetMase() < 1.0);
+
+		# multiplicative seasonality: the approximate relative-scale interval still lands in a sensible band
+		m := TimeSeries->New(Simulate->MultSeasonal(240, 40.0, 0.2, 0.25, 12, 0.02, 34));
+		hm := ExponentialSmoothing->HoltWinters(12, true);
+		cvm := Evaluation->RollingOrigin(hm, m, 96, 6, 12, 0.9, 12);
+		covm := cvm->GetCoverage();
+		t->Check("multiplicative Holt-Winters 90% interval covers {$covm} (approximate intervals, tolerance 0.12)", cvm->IsValid() & (covm - 0.9)->Abs() < 0.12);
+	}
+
+	function : Comparison(t : TsRef) ~ Nil {
+		s := TimeSeries->New(Simulate->TrendSeasonal(300, 20.0, 0.3, 5.0, 12, 0.5, 33));
+		sn := BaselineForecaster->New(BaselineForecaster->Kind->SEASONAL_NAIVE, 12);
+		hw := ExponentialSmoothing->HoltWinters(12, false);
+		arima := ArimaModel->New(1, 0, 0, 1, 12);
+		arima->SetIncludeMean(true);
+		cs := Evaluation->RollingOrigin(sn, s, 120, 12, 12, 0.9, 12);
+		ch := Evaluation->RollingOrigin(hw, s, 120, 12, 12, 0.9, 12);
+		ca := Evaluation->RollingOrigin(arima, s, 120, 12, 12, 0.9, 12);
+		rs := cs->GetRmse();
+		rh := ch->GetRmse();
+		ra := ca->GetRmse();
+		t->Check("Holt-Winters beats seasonal naive out of sample: RMSE {$rh} vs {$rs}", rh < rs);
+		t->Check("seasonal ARIMA beats seasonal naive out of sample: RMSE {$ra} vs {$rs}", ra < rs);
+		t->Check("the seasonal naive MASE is about 1 + the trend term; Holt-Winters is far below it ({$ch->GetMase()} vs {$cs->GetMase()})", ch->GetMase() < cs->GetMase());
+		by := ch->GetRmseByHorizon();
+		t->Check("one RMSE per step ahead, all positive and finite", by->Size() = 12 & by[0] > 0.0 & by[11] > 0.0 & by[11] < 100.0);
+	}
+
+	function : Auto(t : TsRef) ~ Nil {
+		d := TsData->New();
+
+		# stationary data: no differencing, and the best candidate is the best in its own table
+		a := AutoArima->New(2, 2, 2, 1, SelectionCriterion->Kind->AICC);
+		t->Check("AutoArima fits an AR(2) series", a->Fit(TimeSeries->New(d->Get("ar2"))) & a->IsFitted());
+		best := a->GetBest();
+		t->Check("it chose d = 0: {$best->GetName()}", best->GetName()->Find(",0,") > -1);
+		t->Check("it has an AR part: the series is AR(2)", best->GetAr()->Size() >= 1);
+		cands := a->GetCandidates();
+		t->Check("9 candidates were tried (p, q in 0..2)", cands->Size() = 9);
+		t->SameOne("the winner's criterion is the smallest in the table", MinOf(a->GetCandidateCriteria()), a->GetBestCriterion(), 1.0e-15);
+		names := a->GetCandidateNames();
+		t->Check("names line up with the criteria, and the lines are 'name value'", names->Size() = cands->Size() & cands[0]->StartsWith(names[0]));
+		t->SameOne("GetBestCriterion is the winner's AICc", a->GetBestCriterion(), best->GetAicc(), 1.0e-12);
+
+		# the true order is among the candidates and the winner is no worse than it
+		truth := ArimaModel->New(2, 0, 0);
+		truth->SetCssStart(2);
+		truth->Fit(TimeSeries->New(d->Get("ar2")));
+		t->Check("the winner is no worse than the true AR(2) by AICc", a->GetBestCriterion() <= truth->GetAicc() + 1.0e-9);
+
+		# BIC prefers small models: the AR(2) data gives a model with p + q <= 3
+		b := AutoArima->New(2, 2, 2, 1, SelectionCriterion->Kind->BIC);
+		b->Fit(TimeSeries->New(d->Get("ar2")));
+		bb := b->GetBest();
+		t->Check("BIC selection is small: {$bb->GetName()}", bb->GetAr()->Size() + bb->GetMa()->Size() <= 3);
+
+		# a random walk with drift: one difference
+		rw := AutoArima->New(2, 2, 2, 1, SelectionCriterion->Kind->AICC);
+		t->Check("AutoArima fits a random walk", rw->Fit(TimeSeries->New(d->Get("rw"))));
+		t->Check("it chose d = 1: {$rw->GetName()}", rw->GetBest()->GetName()->Find(",1,") > -1);
+		f := rw->Forecast(5, 0.9);
+		t->Check("and forecasts through the Forecaster interface", f->IsValid() & f->Size() = 5);
+
+		# seasonal data with a period: a seasonal difference
+		sa := AutoArima->New(1, 1, 1, 12, SelectionCriterion->Kind->AICC);
+		t->Check("AutoArima fits a seasonal series", sa->Fit(TimeSeries->New(d->Get("ts"))));
+		t->Check("it took a seasonal difference: {$sa->GetName()}", sa->GetBest()->GetName()->Find("D1[12]") > -1);
+
+		# automatic exponential smoothing
+		e := AutoEts->New(12, SelectionCriterion->Kind->AICC);
+		t->Check("AutoEts fits the seasonal series", e->Fit(TimeSeries->New(d->Get("ts"))));
+		t->Check("it picked a seasonal model: {$e->GetName()}", e->GetBest()->GetName()->Find(",12)") > -1);
+		ec := e->GetCandidates();
+		t->Check("9 candidates for a positive seasonal series (3 plain + 3 additive + 3 multiplicative)", ec->Size() = 9);
+		t->SameOne("the winner has the smallest AICc in the table", MinOf(e->GetCandidateCriteria()), e->GetBestCriterion(), 1.0e-15);
+		t->SameOne("GetBestCriterion is the winner's AICc", e->GetBestCriterion(), e->GetBest()->GetAicc(), 1.0e-12);
+
+		neg := Float->New[48];
+		each(i : 48) {
+			neg[i] := 3.0 * (2.0 * Float->Pi() * i->As(Float) / 12.0)->Sin() + 0.01 * i->As(Float);
+		};
+		en := AutoEts->New(12, SelectionCriterion->Kind->AICC);
+		en->Fit(TimeSeries->New(neg));
+		t->Check("a series with non-positive values gets no multiplicative candidates (6)", en->GetCandidates()->Size() = 6);
+
+		plain := AutoEts->New();
+		plain->Fit(TimeSeries->New(d->Get("ar1")));
+		t->Check("without a period only the 3 non-seasonal candidates run", plain->GetCandidates()->Size() = 3);
+
+		# both selectors work as Forecasters inside the cross-validation
+		small := AutoArima->New(1, 1, 1, 1, SelectionCriterion->Kind->AICC);
+		sv := TimeSeries->New(Simulate->Arma([0.6], Nil, 0.0, 1.0, 160, 41));
+		cv := Evaluation->RollingOrigin(small, sv, 100, 4, 20, 0.9, 1);
+		t->Check("AutoArima inside RollingOrigin: {$cv->GetFolds()} folds", cv->IsValid() & cv->GetFolds() = 3);
+		cve := Evaluation->RollingOrigin(AutoEts->New(), sv, 100, 4, 20, 0.9, 1);
+		t->Check("AutoEts inside RollingOrigin", cve->IsValid() & cve->GetFolds() = 3);
+
+		cp := a->Copy();
+		t->Check("Copy of a selector is unfitted with the same grid", <>cp->IsFitted() & cp->Fit(TimeSeries->New(d->Get("ar2"))) & cp->GetName()->Equals(a->GetName()));
+	}
+
+	function : MinOf(v : Float[]) ~ Float {
+		best := Float->Inf();
+		each(i : v) {
+			if(v[i] < best) {
+				best := v[i];
+			};
+		};
+
+		return best;
+	}
+
+	function : CvRefusals(t : TsRef) ~ Nil {
+		y := TimeSeries->New([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]);
+		m := BaselineForecaster->New(BaselineForecaster->Kind->NAIVE);
+		t->Check("initial + horizon beyond the data is refused", <>Evaluation->RollingOrigin(m, y, 9, 3, 1, 0.9, 1)->IsValid());
+		t->Check("horizon 0 / step 0 / initial 1 are refused", <>Evaluation->RollingOrigin(m, y, 5, 0, 1, 0.9, 1)->IsValid() & <>Evaluation->RollingOrigin(m, y, 5, 2, 0, 0.9, 1)->IsValid() & <>Evaluation->RollingOrigin(m, y, 1, 2, 1, 0.9, 1)->IsValid());
+		t->Check("a bad level is refused", <>Evaluation->RollingOrigin(m, y, 5, 2, 1, 1.5, 1)->IsValid());
+		t->Check("a missing value in the series is refused", <>Evaluation->RollingOrigin(m, TimeSeries->New([1.0, 2.0, Float->NaN(), 4.0, 5.0, 6.0]), 3, 1, 1, 0.9, 1)->IsValid());
+		t->Check("Nil model and Nil series are refused", <>Evaluation->RollingOrigin(Nil, y, 5, 2, 1, 0.9, 1)->IsValid() & <>Evaluation->RollingOrigin(m, Nil, 5, 2, 1, 0.9, 1)->IsValid());
+		e := Evaluation->RollingOrigin(m, y, 9, 3, 1, 0.9, 1);
+		t->Check("a refused result has a reason", e->GetError()->Size() > 0);
+
+		# every origin failing (a model that needs more data than any fold has) is reported, not hidden
+		hw := ExponentialSmoothing->HoltWinters(12, false);
+		fail := Evaluation->RollingOrigin(hw, y, 5, 2, 1, 0.9, 1);
+		t->Check("a model that cannot be fitted at any origin gives a failed result", <>fail->IsValid() & fail->GetError()->Size() > 0);
+	}
+}
