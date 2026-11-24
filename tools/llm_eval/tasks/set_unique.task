@@ -1,0 +1,33 @@
+id: set_unique
+category: collections
+difficulty: 3
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that inserts the integers 3, 1, 3, 2, 1, 5, 5 into a Collection Set of IntRef and then prints the number of distinct values on the first line, and the distinct values in ascending order on the second line separated by single spaces.
+--- expected
+4
+1 2 3 5
+--- reference
+use Collection;
+
+class SetUnique {
+	function : Main(args : String[]) ~ Nil {
+		unique := Set->New()<IntRef>;
+		each(v in [3, 1, 3, 2, 1, 5, 5]) {
+			unique->Insert(v);
+		};
+
+		unique->Size()->PrintLine();
+		keys := unique->GetKeys();
+		line := "";
+		each(i : keys) {
+			if(i > 0) {
+				line->Append(" ");
+			};
+			line->Append(keys->Get(i)->Get());
+		};
+		line->PrintLine();
+	}
+}

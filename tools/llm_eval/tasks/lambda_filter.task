@@ -1,0 +1,31 @@
+id: lambda_filter
+category: lambdas
+difficulty: 4
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that puts the integers 1 through 10 into a Collection Vector of IntRef, keeps only the even numbers with Vector's Filter method and a lambda or function reference, and then prints the number of kept values on the first line and their sum on the second.
+--- expected
+5
+30
+--- reference
+use Collection;
+
+class LambdaFilter {
+	function : Main(args : String[]) ~ Nil {
+		values := Vector->New()<IntRef>;
+		for(i := 1; i <= 10; i += 1;) {
+			values->AddBack(i);
+		};
+
+		evens := values->Filter(\(x) => x->Get() % 2 = 0);
+
+		sum := 0;
+		each(i : evens) {
+			sum += evens->Get(i)->Get();
+		};
+		evens->Size()->PrintLine();
+		sum->PrintLine();
+	}
+}

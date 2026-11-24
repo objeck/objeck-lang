@@ -1,0 +1,46 @@
+id: bank_account
+category: classes
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a class Account that has a private balance starting at 0 and the methods Deposit(amount : Int), Withdraw(amount : Int) ~ Bool and GetBalance() ~ Int. Withdraw returns false and leaves the balance unchanged when the amount exceeds the balance. In Main: deposit 100, withdraw 30, then try to withdraw 100. If that withdrawal fails print "Insufficient funds". Finally print "Balance: " followed by the balance.
+--- expected
+Insufficient funds
+Balance: 70
+--- reference
+class Account {
+	@balance : Int;
+
+	New() {
+		@balance := 0;
+	}
+
+	method : public : Deposit(amount : Int) ~ Nil {
+		@balance += amount;
+	}
+
+	method : public : Withdraw(amount : Int) ~ Bool {
+		if(amount > @balance) {
+			return false;
+		};
+
+		@balance -= amount;
+		return true;
+	}
+
+	method : public : GetBalance() ~ Int {
+		return @balance;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		account := Account->New();
+		account->Deposit(100);
+		account->Withdraw(30);
+		if(<>account->Withdraw(100)) {
+			"Insufficient funds"->PrintLine();
+		};
+		"Balance: {$account->GetBalance()}"->PrintLine();
+	}
+}

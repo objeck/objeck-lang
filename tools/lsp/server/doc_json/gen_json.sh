@@ -78,6 +78,7 @@ rm -f *.obe
 	$LIB_SRC/ml_lab.obs \
 	$LIB_SRC/ml_vector.obs \
 	$LIB_SRC/ml_report.obs \
+	$LIB_SRC/llm_eval.obs \
 	$LIB_SRC/ml_verify.obs \
 	$LIB_SRC/ml_cnn.obs \
 	$LIB_SRC/nlp_topics_text.obs \

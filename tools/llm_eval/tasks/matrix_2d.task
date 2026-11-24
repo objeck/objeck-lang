@@ -1,0 +1,33 @@
+id: matrix_2d
+category: quirks
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that creates a 3 by 3 two-dimensional Int array, fills the cell at row r and column c with r * 3 + c + 1 (so the rows are 1 2 3, 4 5 6 and 7 8 9), and prints the sum of the main diagonal on the first line and the sum of the whole matrix on the second line.
+--- expected
+15
+45
+--- reference
+class Matrix2D {
+	function : Main(args : String[]) ~ Nil {
+		grid := Int->New[3, 3];
+		for(r := 0; r < 3; r += 1;) {
+			for(c := 0; c < 3; c += 1;) {
+				grid[r, c] := r * 3 + c + 1;
+			};
+		};
+
+		diagonal := 0;
+		total := 0;
+		for(r := 0; r < 3; r += 1;) {
+			diagonal += grid[r, r];
+			for(c := 0; c < 3; c += 1;) {
+				total += grid[r, c];
+			};
+		};
+		diagonal->PrintLine();
+		total->PrintLine();
+	}
+}
