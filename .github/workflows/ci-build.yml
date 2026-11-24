@@ -1216,6 +1216,11 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obe_version_mismatch.py "%BIN%"
 
+    # A jump to a label the optimizer cannot find, or a label defined twice, is an internal
+    # compiler error and must stop the build, not be read through a dangling iterator.
+    # The label pass has a test hook (OBJECK_TEST_LABEL_FAULT) that simulates both.
+    - name: obc refuses a lost or duplicated jump label (POSIX)
+
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
     - name: obc and obr find their libraries from another working directory (POSIX)
@@ -1225,6 +1230,10 @@ jobs:
         ARCH="${{ matrix.arch }}"
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_label_fatal.py "$BIN"
+
+    - name: obc refuses a lost or duplicated jump label (Windows)
+
         python3 check_lib_path_anchor.py "$BIN"
 
     - name: obc and obr find their libraries from another working directory (Windows)
@@ -1234,6 +1243,8 @@ jobs:
       run: |
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_label_fatal.py "%BIN%"
+
         python check_lib_path_anchor.py "%BIN%"
 
     # Named arguments reach a library method through the parameter names its .obl
