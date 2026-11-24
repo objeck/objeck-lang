@@ -80,6 +80,8 @@ mkdir deploy/doc
 cd ../compiler
 xcodebuild -project xcode/Compiler.xcodeproj clean build $SIGN_FLAGS || exit 1
 cp xcode/build/Release/obc ../release/deploy/bin || exit 1
+# every standard library must exist (core/lib/*.obl are build products; names are read from build_libs.sh)
+sh ../release/require_obl.sh ../lib || exit 1
 cp ../lib/*.obl ../release/deploy/lib
 cp ../lib/*.ini ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib

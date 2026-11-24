@@ -2131,7 +2131,7 @@ jobs:
       # #1010). Read straight from the committed bytes; nothing is built. The
       # self-test comes first for the usual reason: a check that can only say
       # "ok" has not checked anything.
-      - name: Committed libraries carry the toolchain version
+      - name: Libraries carry the toolchain version
         run: |
           python3 tools/cicd/check_obl_versions.py --test
           python3 tools/cicd/check_obl_versions.py
