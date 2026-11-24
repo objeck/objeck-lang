@@ -285,3 +285,5 @@ sign-staging/
 
 # Windows sys_obc build output (accidental artifact from #1766)
 core/compiler/Release-Sys/
+# the one assembly listing that is committed: the golden of check_select_label_order.py
+!programs/regression/select_label_order.golden.obm

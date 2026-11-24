@@ -31,6 +31,7 @@ All notable changes to Objeck will be documented in this file.
 - **`Stack` crashed near 500,000 entries and reported a stale `Size()` after `Empty()`**: it is now array-backed.
 - **A `Nil` key or value lookup in the collections ended the program**: it now reports not-found.
 - **Threads making the first call of the same long-running method could run it 20x slower**: a method with a loop is compiled on its first call, one thread claimed the compile, and a thread that arrived while it was in flight found no native code and interpreted its whole call; compiled code is picked up only at the next call, which a long first call never makes. A two-thread run took about 10 s instead of 0.5 s in 15% of runs, a three-thread run in 35%. The thread that loses the compile race now waits for the compile (milliseconds). Both the AMD64 and ARM64 JITs share the fix. `jit_first_call_race` covers it.
+- **A `select` statement compiled to different jump targets depending on the C++ compiler that built `obc`**: the label ids of a 2- or 3-value subtree were taken from three `++` in one argument list, an unspecified order (g++ right to left, Apple clang left to right). The emitted code is equivalent, but the same library source built on Apple silicon differed from the x64 build in eight libraries. The order is now fixed to what g++ produced, so no committed `.obl` changes; `programs/regression/check_select_label_order.py` compares a listing against an x64 golden on every platform leg.
 
 ### Added
 
