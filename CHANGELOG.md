@@ -59,6 +59,7 @@ All notable changes to Objeck will be documented in this file.
 ### Tests
 
 - New regression tests: `regex_lazy_dfa`, `regex_replace_escapes`, `regex_threads`, `ml_vector_parallel`, `ml_knn_exact` and `nlp_levenshtein_bounded`, and thirteen `collect_*` tests for the collections above (`collect_deque`, `collect_multiset`, `collect_union_find`, `collect_trie`, `collect_ordered_hash`, `collect_bimap`, `collect_priority_map`, `collect_fenwick`, `collect_bloom`, `collect_vector_ops`, `collect_sort_stable`, `collect_nil_guards`, `collect_stack_deep`).
+- New regression test `query_otab_gmt_groups`: a Date column over four row groups (all GMT, all local, all empty, alternating) and an Appended fifth keeps every cell's GMT flag through Save, Load, ToBytes, a partial Read and Append. A suspected mispairing of GMT bits with row groups in the `.otab` reader was investigated and is not a bug: every Date block carries its own GMT bits, so they always line up with their group.
 
 ## [v2026.11.2] - 2026-11-21
 

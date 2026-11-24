@@ -162,6 +162,7 @@
     <h4 id="tests">Tests</h4>
     <ul>
      <li>New regression tests: <code>regex_lazy_dfa</code>, <code>regex_replace_escapes</code>, <code>regex_threads</code>, <code>ml_vector_parallel</code>, <code>ml_knn_exact</code> and <code>nlp_levenshtein_bounded</code>, and thirteen <code>collect_*</code> tests for the collections above (<code>collect_deque</code>, <code>collect_multiset</code>, <code>collect_union_find</code>, <code>collect_trie</code>, <code>collect_ordered_hash</code>, <code>collect_bimap</code>, <code>collect_priority_map</code>, <code>collect_fenwick</code>, <code>collect_bloom</code>, <code>collect_vector_ops</code>, <code>collect_sort_stable</code>, <code>collect_nil_guards</code>, <code>collect_stack_deep</code>).</li>
+     <li>New regression test <code>query_otab_gmt_groups</code>: a Date column over four row groups (all GMT, all local, all empty, alternating) and an Appended fifth keeps every cell's GMT flag through Save, Load, ToBytes, a partial Read and Append. A suspected mispairing of GMT bits with row groups in the <code>.otab</code> reader was investigated and is not a bug: every Date block carries its own GMT bits, so they always line up with their group.</li>
     </ul>
     <h3 id="v2026112---2026-11-21">[v2026.11.2] - 2026-11-21</h3>
     <h4 id="fixed-1">Fixed</h4>
