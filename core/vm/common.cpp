@@ -216,6 +216,12 @@ static_assert(std::atomic<unsigned>::is_always_lock_free, "the signal handler ne
 static thread_local bool raised_from_vm = false;   // inside Runtime->RaiseSignal on this thread
 static std::mutex signal_table_lock;               // guards signal_handler_func for the dispatcher
 static bool signal_dispatch_ready = false;         // the dispatcher thread and its wake-up exist
+// Shutdown handshake. The dispatcher thread outlives the program's main thread, and a handler it starts
+// after the VM has begun to tear the program down would run against freed classes and JIT code. A handler
+// is counted in BEFORE it checks the flag and the stopper sets the flag BEFORE it looks at the count, so
+// either the handler sees the flag and stands down or the stopper sees the handler and waits for it.
+static std::atomic<bool> signal_dispatch_stopping(false);
+static std::atomic<int> signal_handlers_in_flight(0);
 #ifdef _WIN32
 static HANDLE signal_wake_event = nullptr;
 #else
@@ -261,10 +267,16 @@ static void SignalDispatchLoop()
       if(!(bits & (1u << order[i].bit))) {
         continue;
       }
+      signal_handlers_in_flight.fetch_add(1);
+      if(signal_dispatch_stopping.load()) {
+        signal_handlers_in_flight.fetch_sub(1);
+        return;
+      }
       StackMethod* method = StackProgram::FindSignalHandler(order[i].vm_id);
       if(method) {
         Runtime::StackInterpreter::RunSignalMethod(method, order[i].vm_id);
       }
+      signal_handlers_in_flight.fetch_sub(1);
     }
   }
 }
@@ -296,6 +308,22 @@ static bool StartSignalDispatch()
     return false;
   }
   signal_dispatch_ready = true;
+  return true;
+}
+
+void StackProgram::StopSignalDispatch()
+{
+  signal_dispatch_stopping.store(true);
+}
+
+bool StackProgram::WaitSignalDispatchIdle(int timeout_ms)
+{
+  for(int waited = 0; signal_handlers_in_flight.load() != 0; ++waited) {
+    if(waited >= timeout_ms) {
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
   return true;
 }
 
