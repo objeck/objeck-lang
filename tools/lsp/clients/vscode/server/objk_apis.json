@@ -5466,486 +5466,6 @@
 				}
 			}
 		},
-		"Default.Attempt": {
-			"description": "What happened to one attempt: the task, the outcome and the details behind it. The outcome is one of pass, wrong_output, runtime_error, timeout, compile_error, no_code or model_error.",
-			"functions": {
-				"FromJson": {
-					"descriptions": ["**Reads an attempt written by ToJson.**\n\n```function : FromJson(json:JsonElement) ~ Attempt```\n\n\n\njson: JsonElement\n\nreturn: Attempt"]
-				},
-				"GetCode": {
-					"descriptions": ["****\n\n```method : public : GetCode() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetErrorCategory": {
-					"descriptions": ["****\n\n```method : public : GetErrorCategory() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetErrorLine": {
-					"descriptions": ["****\n\n```method : public : GetErrorLine() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetLatency": {
-					"descriptions": ["****\n\n```method : public : GetLatency() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"GetOutput": {
-					"descriptions": ["****\n\n```method : public : GetOutput() ~ String```\n\n\n\nreturn: String"]
-				},
-				"IsCompiled": {
-					"descriptions": ["****\n\n```method : public : IsCompiled() ~ Bool```\n\n\n\nreturn: Bool"]
-				},
-				"IsCorrect": {
-					"descriptions": ["****\n\n```method : public : IsCorrect() ~ Bool```\n\n\n\nreturn: Bool"]
-				},
-				"IsModelError": {
-					"descriptions": ["****\n\n```method : public : IsModelError() ~ Bool```\n\n\n\nreturn: Bool"]
-				},
-				"IsRan": {
-					"descriptions": ["****\n\n```method : public : IsRan() ~ Bool```\n\n\n\nreturn: Bool"]
-				}
-			}
-		},
-		"Default.CodeExtractor": {
-			"description": "Finds the program in a model's answer.",
-			"functions": {
-				"Best": {
-					"descriptions": ["**The program an answer carries: of its code blocks, the longest one that defines a Main function, else the longest block.**\n\n```function : Best(answer:String) ~ String```\n\n\n\nanswer: String\n\nreturn: String"]
-				},
-				"Blocks": {
-					"descriptions": ["**Every fenced code block of an answer, in order. A block that is never closed (an answer cut off by the token limit) runs to the end of the text.**\n\n```function : Blocks(answer:String) ~ Vector&lt;String&gt;```\n\n\n\nanswer: String\n\nreturn: Vector&lt;String&gt;"]
-				}
-			}
-		},
-		"Default.CommandModel": {
-			"description": "A model that is a command line: the prompt (system prompt, blank line, user prompt) is the command's standard input and the answer is what it prints. It evaluates anything with a command line interface, a local runner or a wrapper script around a service, without an adapter of its own. Token counts are not known.",
-			"functions": {
-				"New": {
-					"descriptions": ["**Constructor.**\n\n```New(name:String, command:String, sandbox:Sandbox)```\n\n\n\nname: String\n\ncommand: String\n\nsandbox: Sandbox"]
-				},
-				"SetTimeout": {
-					"descriptions": ["**Sets how long one call may take, 300 seconds by default.**\n\n```method : public : SetTimeout(seconds:Float) ~ Nil```\n\n\n\nseconds: Float\n\nreturn: Nil"]
-				}
-			}
-		},
-		"Default.ErrorCategory": {
-			"description": "Sorts a compiler's first error into a category, so a report can say what a model gets wrong rather than list every message.",
-			"functions": {
-				"Categorize": {
-					"descriptions": ["**The category of a compiler message.**\n\n```function : Categorize(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String"]
-				},
-				"FirstError": {
-					"descriptions": ["**The first error line of the compiler's output, from the message on (the file name and position are dropped). Warnings are skipped.**\n\n```function : FirstError(output:String) ~ String```\n\n\n\noutput: String\n\nreturn: String"]
-				},
-				"Normalize": {
-					"descriptions": ["**Replaces every quoted name in a message with '_' so messages that differ only in a name group together.**\n\n```function : Normalize(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String"]
-				}
-			}
-		},
-		"Default.EvalArgs": {
-			"description": "Reads a command line of the form `--flag value` or `--flag=value`, for the programs that drive the harness and for the adapters, which each read their own flags.",
-			"functions": {
-				"Has": {
-					"descriptions": ["****\n\n```function : Has(args:String[], flag:String) ~ Bool```\n\n\n\nargs: String[]\n\nflag: String\n\nreturn: Bool"]
-				},
-				"Ints": {
-					"descriptions": ["**A comma-separated list of integers.**\n\n```function : Ints(text:String, fallback:Int[]) ~ Int[]```\n\n\n\ntext: String\n\nfallback: Int[]\n\nreturn: Int[]"]
-				},
-				"Value": {
-					"descriptions": ["**The value of a flag.**\n\n```function : Value(args:String[], flag:String, fallback:String) ~ String```\n\n\n\nargs: String[]\n\nflag: String\n\nfallback: String\n\nreturn: String"]
-				}
-			}
-		},
-		"Default.EvalReport": {
-			"description": "The Markdown report and the combined JSON of a run.",
-			"functions": {
-				"Json": {
-					"descriptions": ["**The combined JSON of a run: every model's results and the comparison.**\n\n```function : Json(results:Vector&lt;ModelResults&gt;, comparison:ModelComparison) ~ JsonElement```\n\n\n\nresults: Vector&lt;ModelResults&gt;\n\ncomparison: ModelComparison\n\nreturn: JsonElement"]
-				}
-			}
-		},
-		"Default.EvalRunner": {
-			"description": "Runs a suite against a model: for every task, N attempts of ask, extract, compile, run, check. Nothing it runs touches the network unless the model does.",
-			"functions": {
-				"DefaultSystemPrompt": {
-					"descriptions": ["****\n\n```function : DefaultSystemPrompt() ~ String```\n\n\n\nreturn: String"]
-				},
-				"New": {
-					"descriptions": ["**Constructor.**\n\n```New(model:ModelAdapter, tasks:Vector&lt;EvalTask&gt;, per_task:Int, sandbox:Sandbox)```\n\n\n\nmodel: ModelAdapter\n\ntasks: Vector&lt;EvalTask&gt;\n\nper_task: Int\n\nsandbox: Sandbox"]
-				},
-				"Run": {
-					"descriptions": ["**Runs every task, per_task times each.**\n\n```method : public : Run() ~ ModelResults```\n\n\n\nreturn: ModelResults"]
-				},
-				"RunAttempt": {
-					"descriptions": ["**Runs one attempt of one task.**\n\n```method : public : RunAttempt(task:EvalTask, index:Int) ~ Attempt```\n\n\n\ntask: EvalTask\n\nindex: Int\n\nreturn: Attempt"]
-				},
-				"SetCompileTimeout": {
-					"descriptions": ["**Sets how long a compile may take, 120 seconds by default.**\n\n```method : public : SetCompileTimeout(seconds:Float) ~ Nil```\n\n\n\nseconds: Float\n\nreturn: Nil"]
-				},
-				"SetKeepCode": {
-					"descriptions": ["**Whether the results keep each program and its output (true by default); false keeps the results file small.**\n\n```method : public : SetKeepCode(keep:Bool) ~ Nil```\n\n\n\nkeep: Bool\n\nreturn: Nil"]
-				},
-				"SetMaxTokens": {
-					"descriptions": ["**Sets the most tokens an answer may use, 4096 by default.**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ Nil```\n\n\n\nmax_tokens: Int\n\nreturn: Nil"]
-				},
-				"SetProgress": {
-					"descriptions": ["**Prints a line per attempt as the run goes.**\n\n```method : public : SetProgress(progress:Bool) ~ Nil```\n\n\n\nprogress: Bool\n\nreturn: Nil"]
-				},
-				"SetSystemPrompt": {
-					"descriptions": ["**Replaces the system prompt, for example to add a language primer.**\n\n```method : public : SetSystemPrompt(system:String) ~ Nil```\n\n\n\nsystem: String\n\nreturn: Nil"]
-				}
-			}
-		},
-		"Default.EvalTally": {
-			"description": "A tag with a count, a rate and one example, the row of an aggregate (an error category, a task category).",
-			"functions": {
-				"GetCount": {
-					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetExample": {
-					"descriptions": ["****\n\n```method : public : GetExample() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetLabel": {
-					"descriptions": ["****\n\n```method : public : GetLabel() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetValue": {
-					"descriptions": ["****\n\n```method : public : GetValue() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"Rank": {
-					"descriptions": ["**Orders rows by count, largest first, then by name.**\n\n```function : Rank(a:EvalTally, b:EvalTally) ~ Int```\n\n\n\na: EvalTally\n\nb: EvalTally\n\nreturn: Int"]
-				}
-			}
-		},
-		"Default.EvalTask": {
-			"description": "One task: what to ask, how to compile what comes back, the input its program reads and the output it must print. Tasks are text files (see TaskSuite) with a header of key: value lines and sections introduced by lines that start with three dashes.",
-			"functions": {
-				"BuildPrompt": {
-					"descriptions": ["**The user prompt sent to the model: the statement, the starter code if any, the libraries the program is compiled with and the reply format.**\n\n```method : public : BuildPrompt() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetCategory": {
-					"descriptions": ["****\n\n```method : public : GetCategory() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetChecker": {
-					"descriptions": ["****\n\n```method : public : GetChecker() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetDifficulty": {
-					"descriptions": ["****\n\n```method : public : GetDifficulty() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetExpected": {
-					"descriptions": ["****\n\n```method : public : GetExpected() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetId": {
-					"descriptions": ["****\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetInput": {
-					"descriptions": ["****\n\n```method : public : GetInput() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetLibs": {
-					"descriptions": ["****\n\n```method : public : GetLibs() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetPrompt": {
-					"descriptions": ["****\n\n```method : public : GetPrompt() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetReference": {
-					"descriptions": ["****\n\n```method : public : GetReference() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetStarter": {
-					"descriptions": ["****\n\n```method : public : GetStarter() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetTimeout": {
-					"descriptions": ["****\n\n```method : public : GetTimeout() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"Parse": {
-					"descriptions": ["**Parses a task from its text form.**\n\n```function : Parse(text:String) ~ EvalTask```\n\n\n\ntext: String\n\nreturn: EvalTask"]
-				}
-			}
-		},
-		"Default.EvalText": {
-			"description": "Text helpers shared by the checkers and the report: number formatting, clipping and Markdown cell escaping.",
-			"functions": {
-				"Cell": {
-					"descriptions": ["**Escapes a table cell for Markdown: the pipe, backslash and line ends.**\n\n```function : Cell(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
-				},
-				"Clip": {
-					"descriptions": ["**The first characters of a text, with a marker when it was cut.**\n\n```function : Clip(text:String, limit:Int) ~ String```\n\n\n\ntext: String\n\nlimit: Int\n\nreturn: String"]
-				},
-				"FirstLine": {
-					"descriptions": ["**The first line of a text that is not blank.**\n\n```function : FirstLine(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
-				},
-				"Fixed": {
-					"descriptions": ["**A number with a fixed count of decimals, rounded half away from zero (\"83.3\").**\n\n```function : Fixed(value:Float, decimals:Int) ~ String```\n\n\n\nvalue: Float\n\ndecimals: Int\n\nreturn: String"]
-				},
-				"IsAbsolute": {
-					"descriptions": ["**Whether a path is absolute on this platform.**\n\n```function : IsAbsolute(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
-				},
-				"Percent": {
-					"descriptions": ["**A fraction as a percentage with one decimal (\"83.3%\"), or \"n/a\" for a negative marker.**\n\n```function : Percent(fraction:Float) ~ String```\n\n\n\nfraction: Float\n\nreturn: String"]
-				},
-				"Quote": {
-					"descriptions": ["**Quotes a path or an argument for a command line.**\n\n```function : Quote(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
-				},
-				"SafeName": {
-					"descriptions": ["**Makes an id safe to use in a file name.**\n\n```function : SafeName(id:String) ~ String```\n\n\n\nid: String\n\nreturn: String"]
-				},
-				"Unix": {
-					"descriptions": ["**Removes carriage returns so text from either platform compares the same.**\n\n```function : Unix(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
-				}
-			}
-		},
-		"Default.ExecResult": {
-			"description": "What a command run left behind.",
-			"functions": {
-				"GetExitCode": {
-					"descriptions": ["****\n\n```method : public : GetExitCode() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetOutput": {
-					"descriptions": ["****\n\n```method : public : GetOutput() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetSeconds": {
-					"descriptions": ["****\n\n```method : public : GetSeconds() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"TimedOut": {
-					"descriptions": ["****\n\n```method : public : TimedOut() ~ Bool```\n\n\n\nreturn: Bool"]
-				}
-			}
-		},
-		"Default.ModelAdapter": {
-			"description": "A model under test. An adapter turns a request into one call of a provider's client and the answer into a reply; it never throws: a failed call is ModelReply->Failure(reason).",
-			"functions": {
-				"Complete": {
-					"descriptions": ["**Asks the model.**\n\n```method : public : virutal : Complete(request:ModelRequest) ~ ModelReply```\n\n\n\nrequest: ModelRequest\n\nreturn: ModelReply"]
-				},
-				"GetName": {
-					"descriptions": ["****\n\n```method : public : virutal : GetName() ~ String```\n\n\n\nreturn: String"]
-				}
-			}
-		},
-		"Default.ModelComparison": {
-			"description": "A paired comparison of two models on the tasks both were asked. Attempt number j of a task for model A is paired with attempt j for model B; each pair is one instance, scored 1 when the attempt is correct, and Metrics->PairedBootstrapDifference resamples the instances and reports the interval of (pass rate of B) - (pass rate of A). The instances are attempts, not tasks, so with several attempts per task the interval is a little narrower than a resampling of whole tasks would give.",
-			"functions": {
-				"GetInterval": {
-					"descriptions": ["****\n\n```method : public : GetInterval() ~ ConfInterval```\n\n\n\nreturn: ConfInterval"]
-				},
-				"GetPairs": {
-					"descriptions": ["****\n\n```method : public : GetPairs() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetRateA": {
-					"descriptions": ["****\n\n```method : public : GetRateA() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"GetRateB": {
-					"descriptions": ["****\n\n```method : public : GetRateB() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"GetTasks": {
-					"descriptions": ["****\n\n```method : public : GetTasks() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetVerdict": {
-					"descriptions": ["**A plain verdict: which model is better, or that the data cannot tell them apart.**\n\n```method : public : GetVerdict() ~ String```\n\n\n\nreturn: String"]
-				},
-				"Of": {
-					"descriptions": ["**Compares two models.**\n\n```function : Of(a:ModelResults, b:ModelResults, reps:Int, seed:Int) ~ ModelComparison```\n\n\n\na: ModelResults\n\nb: ModelResults\n\nreps: Int\n\nseed: Int\n\nreturn: ModelComparison"]
-				}
-			}
-		},
-		"Default.ModelReply": {
-			"description": "What one model call returns: the answer text, the tokens it used when the client says (-1 when it does not), or the reason the call failed.",
-			"functions": {
-				"Failure": {
-					"descriptions": ["**A reply for a call that failed. The attempt is recorded as a model error and left out of the rates.**\n\n```function : Failure(error:String) ~ ModelReply```\n\n\n\nerror: String\n\nreturn: ModelReply"]
-				},
-				"GetError": {
-					"descriptions": ["****\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetInputTokens": {
-					"descriptions": ["****\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetOutputTokens": {
-					"descriptions": ["****\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetText": {
-					"descriptions": ["****\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
-				}
-			}
-		},
-		"Default.ModelRequest": {
-			"description": "What one model call sends: the system prompt, the user prompt and which task and attempt it is for (a scripted model answers by them).",
-			"functions": {
-				"GetAttempt": {
-					"descriptions": ["****\n\n```method : public : GetAttempt() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetMaxTokens": {
-					"descriptions": ["****\n\n```method : public : GetMaxTokens() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetSystem": {
-					"descriptions": ["****\n\n```method : public : GetSystem() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetTaskId": {
-					"descriptions": ["****\n\n```method : public : GetTaskId() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetUser": {
-					"descriptions": ["****\n\n```method : public : GetUser() ~ String```\n\n\n\nreturn: String"]
-				}
-			}
-		},
-		"Default.ModelResults": {
-			"description": "Every attempt of one model, and the numbers they make: compile rate, pass",
-			"functions": {
-				"FromJson": {
-					"descriptions": ["**Reads results written by ToJson.**\n\n```function : FromJson(json:JsonElement) ~ ModelResults```\n\n\n\njson: JsonElement\n\nreturn: ModelResults"]
-				},
-				"GetAttempts": {
-					"descriptions": ["****\n\n```method : public : GetAttempts() ~ Vector&lt;Attempt&gt;```\n\n\n\nreturn: Vector&lt;Attempt&gt;"]
-				},
-				"GetAttemptsPerTask": {
-					"descriptions": ["****\n\n```method : public : GetAttemptsPerTask() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetCompileRate": {
-					"descriptions": ["****\n\n```method : public : GetCompileRate() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"GetCounted": {
-					"descriptions": ["****\n\n```method : public : GetCounted() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetErrorCategories": {
-					"descriptions": ["**The compile errors by category.**\n\n```method : public : GetErrorCategories() ~ Vector&lt;EvalTally&gt;```\n\n\n\nreturn: Vector&lt;EvalTally&gt;"]
-				},
-				"GetInputTokens": {
-					"descriptions": ["****\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetMeanLatency": {
-					"descriptions": ["****\n\n```method : public : GetMeanLatency() ~ Float```\n\n\n\nreturn: Float"]
-				},
-				"GetModel": {
-					"descriptions": ["****\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetModelErrors": {
-					"descriptions": ["****\n\n```method : public : GetModelErrors() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetOutcomes": {
-					"descriptions": ["**How many counted attempts ended each way.**\n\n```method : public : GetOutcomes() ~ Vector&lt;EvalTally&gt;```\n\n\n\nreturn: Vector&lt;EvalTally&gt;"]
-				},
-				"GetOutputTokens": {
-					"descriptions": ["****\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetTaskTallies": {
-					"descriptions": ["**The attempts grouped by task, in the order the tasks first appear.**\n\n```method : public : GetTaskTallies() ~ Vector&lt;TaskTally&gt;```\n\n\n\nreturn: Vector&lt;TaskTally&gt;"]
-				},
-				"Load": {
-					"descriptions": ["**Reads a results file.**\n\n```function : Load(path:String) ~ ModelResults```\n\n\n\npath: String\n\nreturn: ModelResults"]
-				},
-				"Save": {
-					"descriptions": ["**Writes the results file.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
-				},
-				"ToJson": {
-					"descriptions": ["**The results as JSON, the format of the results file.**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
-				}
-			}
-		},
-		"Default.OutputChecker": {
-			"description": "Compares a program's output with the expected output.",
-			"functions": {
-				"IsKnown": {
-					"descriptions": ["****\n\n```function : IsKnown(kind:String) ~ Bool```\n\n\n\nkind: String\n\nreturn: Bool"]
-				},
-				"Matches": {
-					"descriptions": ["**Whether an output matches. exact: the same lines, ignoring line-end style, trailing blanks on a line and trailing blank lines. lines: the same lines in any order. numeric: the same whitespace-separated tokens, numbers within 1e-6 of each other (absolute or relative). contains: every non-blank line of the expected text appears as a line of the output.**\n\n```function : Matches(kind:String, expected:String, actual:String) ~ Bool```\n\n\n\nkind: String\n\nexpected: String\n\nactual: String\n\nreturn: Bool"]
-				}
-			}
-		},
-		"Default.PassAtK": {
-			"description": "The unbiased pass",
-			"functions": {
-
-			}
-		},
-		"Default.ReferenceModel": {
-			"description": "A model that gives every task's reference solution, in a code block. Running the harness against it checks the tasks themselves: every one must compile and print its expected output.",
-			"functions": {
-
-			}
-		},
-		"Default.Sandbox": {
-			"description": "Runs commands in a work directory under a timeout and compiles and runs Objeck sources with the real toolchain. A command runs through a small watchdog script written into the directory (a shell script, or PowerShell on Windows), which stops it when it passes its time, and its output is capped so a program that prints forever cannot fill the disk.",
-			"functions": {
-				"Close": {
-					"descriptions": ["**Removes the watchdog, the empty input file and the work directory. The directory is only removed when nothing else is left in it.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
-				"Compile": {
-					"descriptions": ["**Compiles a source file with the real compiler.**\n\n```method : public : Compile(source:String, libs:String, target:String, seconds:Float) ~ ExecResult```\n\n\n\nsource: String\n\nlibs: String\n\ntarget: String\n\nseconds: Float\n\nreturn: ExecResult"]
-				},
-				"Discard": {
-					"descriptions": ["**Deletes a file in the work directory unless files are kept.**\n\n```method : public : Discard(path:String) ~ Nil```\n\n\n\npath: String\n\nreturn: Nil"]
-				},
-				"Execute": {
-					"descriptions": ["**Runs a command line in the work directory with its input from a file, its output (both streams) captured, and a time limit.**\n\n```method : public : Execute(command:String, stdin_path:String, seconds:Float) ~ ExecResult```\n\n\n\ncommand: String\n\nstdin_path: String\n\nseconds: Float\n\nreturn: ExecResult"]
-				},
-				"GetCompiler": {
-					"descriptions": ["****\n\n```method : public : GetCompiler() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetDirectory": {
-					"descriptions": ["****\n\n```method : public : GetDirectory() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetVm": {
-					"descriptions": ["****\n\n```method : public : GetVm() ~ String```\n\n\n\nreturn: String"]
-				},
-				"New": {
-					"descriptions": ["**Constructor. Creates the directory when it is missing.**\n\n```New(dir:String)```\n\n\n\ndir: String"]
-				},
-				"Path": {
-					"descriptions": ["****\n\n```method : public : Path(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
-				},
-				"Run": {
-					"descriptions": ["**Runs a compiled program.**\n\n```method : public : Run(program:String, stdin_path:String, seconds:Float) ~ ExecResult```\n\n\n\nprogram: String\n\nstdin_path: String\n\nseconds: Float\n\nreturn: ExecResult"]
-				},
-				"SetCompiler": {
-					"descriptions": ["**Sets the compiler command (default: obc beside the running VM, else obc on PATH).**\n\n```method : public : SetCompiler(compiler:String) ~ Nil```\n\n\n\ncompiler: String\n\nreturn: Nil"]
-				},
-				"SetKeepFiles": {
-					"descriptions": ["**Keeps the sources, executables and outputs instead of deleting them after use.**\n\n```method : public : SetKeepFiles(keep:Bool) ~ Nil```\n\n\n\nkeep: Bool\n\nreturn: Nil"]
-				},
-				"SetVm": {
-					"descriptions": ["**Sets the VM command (default: obr beside the running VM, else obr on PATH).**\n\n```method : public : SetVm(vm:String) ~ Nil```\n\n\n\nvm: String\n\nreturn: Nil"]
-				}
-			}
-		},
-		"Default.ScriptedModel": {
-			"description": "A model that answers from a script, for tests and for a dry run: the answers added for a task are used in turn, one per attempt (the list repeats), and a default answers every other task.",
-			"functions": {
-				"Add": {
-					"descriptions": ["**Adds an answer for a task. A task with several answers gets them in turn, by attempt number.**\n\n```method : public : Add(task_id:String, answer:String) ~ ScriptedModel```\n\n\n\ntask_id: String\n\nanswer: String\n\nreturn: ScriptedModel"]
-				},
-				"AddFailure": {
-					"descriptions": ["**Makes every call for a task fail.**\n\n```method : public : AddFailure(task_id:String, error:String) ~ ScriptedModel```\n\n\n\ntask_id: String\n\nerror: String\n\nreturn: ScriptedModel"]
-				},
-				"GetCalls": {
-					"descriptions": ["****\n\n```method : public : GetCalls() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"SetDefault": {
-					"descriptions": ["**Sets the answer for every task that has none of its own.**\n\n```method : public : SetDefault(answer:String) ~ ScriptedModel```\n\n\n\nanswer: String\n\nreturn: ScriptedModel"]
-				},
-				"SetTokens": {
-					"descriptions": ["**Sets the token counts every answer reports.**\n\n```method : public : SetTokens(input_tokens:Int, output_tokens:Int) ~ ScriptedModel```\n\n\n\ninput_tokens: Int\n\noutput_tokens: Int\n\nreturn: ScriptedModel"]
-				}
-			}
-		},
-		"Default.TaskSuite": {
-			"description": "A directory of task files: loading, selecting, and the error of the last load.",
-			"functions": {
-				"GetLastError": {
-					"descriptions": ["****\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
-				},
-				"Load": {
-					"descriptions": ["**Loads every *.task file of a directory, in file-name order. A malformed file fails the whole load, so a suite never silently shrinks.**\n\n```function : Load(dir:String) ~ Vector&lt;EvalTask&gt;```\n\n\n\ndir: String\n\nreturn: Vector&lt;EvalTask&gt;"]
-				},
-				"Part": {
-					"descriptions": ["**One part of a suite cut into equal parts, so a long check can run as several shorter ones.**\n\n```function : Part(tasks:Vector&lt;EvalTask&gt;, part:Int, parts:Int) ~ Vector&lt;EvalTask&gt;```\n\n\n\ntasks: Vector&lt;EvalTask&gt;\n\npart: Int\n\nparts: Int\n\nreturn: Vector&lt;EvalTask&gt;"]
-				},
-				"Select": {
-					"descriptions": ["**Keeps the tasks whose id or category is in a comma-separated list.**\n\n```function : Select(tasks:Vector&lt;EvalTask&gt;, ids:String, categories:String) ~ Vector&lt;EvalTask&gt;```\n\n\n\ntasks: Vector&lt;EvalTask&gt;\n\nids: String\n\ncategories: String\n\nreturn: Vector&lt;EvalTask&gt;"]
-				}
-			}
-		},
-		"Default.TaskTally": {
-			"description": "The attempts of one task: how many counted, how many compiled, how many were correct.",
-			"functions": {
-				"GetN": {
-					"descriptions": ["****\n\n```method : public : GetN() ~ Int```\n\n\n\nreturn: Int"]
-				}
-			}
-		},
 		"Game.Framework.AnimatedImageSprite": {
 			"description": "Animated sprite sheet",
 			"functions": {
@@ -14687,6 +14207,500 @@
 				}
 			}
 		},
+		"System.LLM.Eval.Attempt": {
+			"description": "What happened to one attempt: the task, the outcome and the details behind it. The outcome is one of pass, wrong_output, runtime_error, timeout, compile_error, no_code or model_error.",
+			"functions": {
+				"FromJson": {
+					"descriptions": ["**Reads an attempt written by ToJson.**\n\n```function : FromJson(json:JsonElement) ~ Attempt```\n\n\n\njson: JsonElement\n\nreturn: Attempt"]
+				},
+				"GetCode": {
+					"descriptions": ["****\n\n```method : public : GetCode() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorCategory": {
+					"descriptions": ["****\n\n```method : public : GetErrorCategory() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorLine": {
+					"descriptions": ["****\n\n```method : public : GetErrorLine() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLatency": {
+					"descriptions": ["****\n\n```method : public : GetLatency() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetOutput": {
+					"descriptions": ["****\n\n```method : public : GetOutput() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsCompiled": {
+					"descriptions": ["****\n\n```method : public : IsCompiled() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsCorrect": {
+					"descriptions": ["****\n\n```method : public : IsCorrect() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsModelError": {
+					"descriptions": ["****\n\n```method : public : IsModelError() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsRan": {
+					"descriptions": ["****\n\n```method : public : IsRan() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.LLM.Eval.CodeExtractor": {
+			"description": "Finds the program in a model's answer.",
+			"functions": {
+				"Best": {
+					"descriptions": ["**The program an answer carries: of its code blocks, the longest one that defines a Main function, else the longest block.**\n\n```function : Best(answer:String) ~ String```\n\n\n\nanswer: String\n\nreturn: String"]
+				},
+				"Blocks": {
+					"descriptions": ["**Every fenced code block of an answer, in order. A block that is never closed (an answer cut off by the token limit) runs to the end of the text.**\n\n```function : Blocks(answer:String) ~ Vector&lt;String&gt;```\n\n\n\nanswer: String\n\nreturn: Vector&lt;String&gt;"]
+				}
+			}
+		},
+		"System.LLM.Eval.CommandModel": {
+			"description": "A model that is a command line: the prompt (system prompt, blank line, user prompt) is the command's standard input and the answer is what it prints. It evaluates anything with a command line interface, a local runner or a wrapper script around a service, without an adapter of its own. Token counts are not known.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor.**\n\n```New(name:String, command:String, sandbox:Sandbox)```\n\n\n\nname: String\n\ncommand: String\n\nsandbox: Sandbox"]
+				},
+				"SetTimeout": {
+					"descriptions": ["**Sets how long one call may take, 300 seconds by default.**\n\n```method : public : SetTimeout(seconds:Float) ~ Nil```\n\n\n\nseconds: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.LLM.Eval.ErrorCategory": {
+			"description": "Sorts a compiler's first error into a category, so a report can say what a model gets wrong rather than list every message.",
+			"functions": {
+				"Categorize": {
+					"descriptions": ["**The category of a compiler message.**\n\n```function : Categorize(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String"]
+				},
+				"FirstError": {
+					"descriptions": ["**The first error line of the compiler's output, from the message on (the file name and position are dropped). Warnings are skipped.**\n\n```function : FirstError(output:String) ~ String```\n\n\n\noutput: String\n\nreturn: String"]
+				},
+				"Normalize": {
+					"descriptions": ["**Replaces every quoted name in a message with '_' so messages that differ only in a name group together.**\n\n```function : Normalize(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String"]
+				}
+			}
+		},
+		"System.LLM.Eval.EvalArgs": {
+			"description": "Reads a command line of the form `--flag value` or `--flag=value`, for the programs that drive the harness and for the adapters, which each read their own flags.",
+			"functions": {
+				"Has": {
+					"descriptions": ["****\n\n```function : Has(args:String[], flag:String) ~ Bool```\n\n\n\nargs: String[]\n\nflag: String\n\nreturn: Bool"]
+				},
+				"Ints": {
+					"descriptions": ["**A comma-separated list of integers.**\n\n```function : Ints(text:String, fallback:Int[]) ~ Int[]```\n\n\n\ntext: String\n\nfallback: Int[]\n\nreturn: Int[]"]
+				},
+				"Value": {
+					"descriptions": ["**The value of a flag.**\n\n```function : Value(args:String[], flag:String, fallback:String) ~ String```\n\n\n\nargs: String[]\n\nflag: String\n\nfallback: String\n\nreturn: String"]
+				}
+			}
+		},
+		"System.LLM.Eval.EvalReport": {
+			"description": "The Markdown report and the combined JSON of a run.",
+			"functions": {
+				"Json": {
+					"descriptions": ["**The combined JSON of a run: every model's results and the comparison.**\n\n```function : Json(results:Vector&lt;ModelResults&gt;, comparison:ModelComparison) ~ JsonElement```\n\n\n\nresults: Vector&lt;ModelResults&gt;\n\ncomparison: ModelComparison\n\nreturn: JsonElement"]
+				},
+				"Markdown": {
+					"descriptions": ["**The report: a summary table, pass rate by task category, the most common compile errors, a per-task table and, for two models, the paired comparison.**\n\n```function : Markdown(results:Vector&lt;ModelResults&gt;, ks:Int[], comparison:ModelComparison, title:String) ~ String```\n\n\n\nresults: Vector&lt;ModelResults&gt;\n\nks: Int[]\n\ncomparison: ModelComparison\n\ntitle: String\n\nreturn: String"]
+				},
+				"Save": {
+					"descriptions": ["**Writes <prefix>.md and <prefix>.json.**\n\n```function : Save(prefix:String, results:Vector&lt;ModelResults&gt;, ks:Int[], comparison:ModelComparison, title:String) ~ Bool```\n\n\n\nprefix: String\n\nresults: Vector&lt;ModelResults&gt;\n\nks: Int[]\n\ncomparison: ModelComparison\n\ntitle: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.LLM.Eval.EvalRunner": {
+			"description": "Runs a suite against a model: for every task, N attempts of ask, extract, compile, run, check. Nothing it runs touches the network unless the model does.",
+			"functions": {
+				"DefaultSystemPrompt": {
+					"descriptions": ["****\n\n```function : DefaultSystemPrompt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor.**\n\n```New(model:ModelAdapter, tasks:Vector&lt;EvalTask&gt;, per_task:Int, sandbox:Sandbox)```\n\n\n\nmodel: ModelAdapter\n\ntasks: Vector&lt;EvalTask&gt;\n\nper_task: Int\n\nsandbox: Sandbox"]
+				},
+				"Run": {
+					"descriptions": ["**Runs every task, per_task times each.**\n\n```method : public : Run() ~ ModelResults```\n\n\n\nreturn: ModelResults"]
+				},
+				"RunAttempt": {
+					"descriptions": ["**Runs one attempt of one task.**\n\n```method : public : RunAttempt(task:EvalTask, index:Int) ~ Attempt```\n\n\n\ntask: EvalTask\n\nindex: Int\n\nreturn: Attempt"]
+				},
+				"SetCompileTimeout": {
+					"descriptions": ["**Sets how long a compile may take, 120 seconds by default.**\n\n```method : public : SetCompileTimeout(seconds:Float) ~ Nil```\n\n\n\nseconds: Float\n\nreturn: Nil"]
+				},
+				"SetKeepCode": {
+					"descriptions": ["**Whether the results keep each program and its output (true by default); false keeps the results file small.**\n\n```method : public : SetKeepCode(keep:Bool) ~ Nil```\n\n\n\nkeep: Bool\n\nreturn: Nil"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Sets the most tokens an answer may use, 4096 by default.**\n\n```method : public : SetMaxTokens(max_tokens:Int) ~ Nil```\n\n\n\nmax_tokens: Int\n\nreturn: Nil"]
+				},
+				"SetProgress": {
+					"descriptions": ["**Prints a line per attempt as the run goes.**\n\n```method : public : SetProgress(progress:Bool) ~ Nil```\n\n\n\nprogress: Bool\n\nreturn: Nil"]
+				},
+				"SetSystemPrompt": {
+					"descriptions": ["**Replaces the system prompt, for example to add a language primer.**\n\n```method : public : SetSystemPrompt(system:String) ~ Nil```\n\n\n\nsystem: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.LLM.Eval.EvalTally": {
+			"description": "A tag with a count, a rate and one example, the row of an aggregate (an error category, a task category).",
+			"functions": {
+				"GetCount": {
+					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetExample": {
+					"descriptions": ["****\n\n```method : public : GetExample() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLabel": {
+					"descriptions": ["****\n\n```method : public : GetLabel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetValue": {
+					"descriptions": ["****\n\n```method : public : GetValue() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Rank": {
+					"descriptions": ["**Orders rows by count, largest first, then by name.**\n\n```function : Rank(a:EvalTally, b:EvalTally) ~ Int```\n\n\n\na: EvalTally\n\nb: EvalTally\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.LLM.Eval.EvalTask": {
+			"description": "One task: what to ask, how to compile what comes back, the input its program reads and the output it must print. Tasks are text files (see TaskSuite) with a header of key: value lines and sections introduced by lines that start with three dashes.",
+			"functions": {
+				"BuildPrompt": {
+					"descriptions": ["**The user prompt sent to the model: the statement, the starter code if any, the libraries the program is compiled with and the reply format.**\n\n```method : public : BuildPrompt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetCategory": {
+					"descriptions": ["****\n\n```method : public : GetCategory() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetChecker": {
+					"descriptions": ["****\n\n```method : public : GetChecker() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetDifficulty": {
+					"descriptions": ["****\n\n```method : public : GetDifficulty() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetExpected": {
+					"descriptions": ["****\n\n```method : public : GetExpected() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["****\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInput": {
+					"descriptions": ["****\n\n```method : public : GetInput() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLibs": {
+					"descriptions": ["****\n\n```method : public : GetLibs() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPrompt": {
+					"descriptions": ["****\n\n```method : public : GetPrompt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetReference": {
+					"descriptions": ["****\n\n```method : public : GetReference() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetStarter": {
+					"descriptions": ["****\n\n```method : public : GetStarter() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTimeout": {
+					"descriptions": ["****\n\n```method : public : GetTimeout() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Parse": {
+					"descriptions": ["**Parses a task from its text form.**\n\n```function : Parse(text:String) ~ EvalTask```\n\n\n\ntext: String\n\nreturn: EvalTask"]
+				}
+			}
+		},
+		"System.LLM.Eval.EvalText": {
+			"description": "Text helpers shared by the checkers and the report: number formatting, clipping and Markdown cell escaping.",
+			"functions": {
+				"Cell": {
+					"descriptions": ["**Escapes a table cell for Markdown: the pipe, backslash and line ends.**\n\n```function : Cell(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"Clip": {
+					"descriptions": ["**The first characters of a text, with a marker when it was cut.**\n\n```function : Clip(text:String, limit:Int) ~ String```\n\n\n\ntext: String\n\nlimit: Int\n\nreturn: String"]
+				},
+				"FirstLine": {
+					"descriptions": ["**The first line of a text that is not blank.**\n\n```function : FirstLine(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"Fixed": {
+					"descriptions": ["**A number with a fixed count of decimals, rounded half away from zero (\"83.3\").**\n\n```function : Fixed(value:Float, decimals:Int) ~ String```\n\n\n\nvalue: Float\n\ndecimals: Int\n\nreturn: String"]
+				},
+				"IsAbsolute": {
+					"descriptions": ["**Whether a path is absolute on this platform.**\n\n```function : IsAbsolute(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"Percent": {
+					"descriptions": ["**A fraction as a percentage with one decimal (\"83.3%\"), or \"n/a\" for a negative marker.**\n\n```function : Percent(fraction:Float) ~ String```\n\n\n\nfraction: Float\n\nreturn: String"]
+				},
+				"Quote": {
+					"descriptions": ["**Quotes a path or an argument for a command line.**\n\n```function : Quote(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				},
+				"SafeName": {
+					"descriptions": ["**Makes an id safe to use in a file name.**\n\n```function : SafeName(id:String) ~ String```\n\n\n\nid: String\n\nreturn: String"]
+				},
+				"Unix": {
+					"descriptions": ["**Removes carriage returns so text from either platform compares the same.**\n\n```function : Unix(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String"]
+				}
+			}
+		},
+		"System.LLM.Eval.ExecResult": {
+			"description": "What a command run left behind.",
+			"functions": {
+				"GetExitCode": {
+					"descriptions": ["****\n\n```method : public : GetExitCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOutput": {
+					"descriptions": ["****\n\n```method : public : GetOutput() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSeconds": {
+					"descriptions": ["****\n\n```method : public : GetSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"TimedOut": {
+					"descriptions": ["****\n\n```method : public : TimedOut() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.LLM.Eval.ModelAdapter": {
+			"description": "A model under test. An adapter turns a request into one call of a provider's client and the answer into a reply; it never throws: a failed call is ModelReply->Failure(reason).",
+			"functions": {
+				"Complete": {
+					"descriptions": ["**Asks the model.**\n\n```method : public : virutal : Complete(request:ModelRequest) ~ ModelReply```\n\n\n\nrequest: ModelRequest\n\nreturn: ModelReply"]
+				},
+				"GetName": {
+					"descriptions": ["****\n\n```method : public : virutal : GetName() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.LLM.Eval.ModelComparison": {
+			"description": "A paired comparison of two models on the tasks both were asked. Attempt number j of a task for model A is paired with attempt j for model B; each pair is one instance, scored 1 when the attempt is correct, and Metrics->PairedBootstrapDifference resamples the instances and reports the interval of (pass rate of B) - (pass rate of A). The instances are attempts, not tasks, so with several attempts per task the interval is a little narrower than a resampling of whole tasks would give.",
+			"functions": {
+				"GetInterval": {
+					"descriptions": ["****\n\n```method : public : GetInterval() ~ ConfInterval```\n\n\n\nreturn: ConfInterval"]
+				},
+				"GetPairs": {
+					"descriptions": ["****\n\n```method : public : GetPairs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRateA": {
+					"descriptions": ["****\n\n```method : public : GetRateA() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRateB": {
+					"descriptions": ["****\n\n```method : public : GetRateB() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTasks": {
+					"descriptions": ["****\n\n```method : public : GetTasks() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetVerdict": {
+					"descriptions": ["**A plain verdict: which model is better, or that the data cannot tell them apart.**\n\n```method : public : GetVerdict() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Of": {
+					"descriptions": ["**Compares two models.**\n\n```function : Of(a:ModelResults, b:ModelResults, reps:Int, seed:Int) ~ ModelComparison```\n\n\n\na: ModelResults\n\nb: ModelResults\n\nreps: Int\n\nseed: Int\n\nreturn: ModelComparison"]
+				}
+			}
+		},
+		"System.LLM.Eval.ModelReply": {
+			"description": "What one model call returns: the answer text, the tokens it used when the client says (-1 when it does not), or the reason the call failed.",
+			"functions": {
+				"Failure": {
+					"descriptions": ["**A reply for a call that failed. The attempt is recorded as a model error and left out of the rates.**\n\n```function : Failure(error:String) ~ ModelReply```\n\n\n\nerror: String\n\nreturn: ModelReply"]
+				},
+				"GetError": {
+					"descriptions": ["****\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInputTokens": {
+					"descriptions": ["****\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOutputTokens": {
+					"descriptions": ["****\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetText": {
+					"descriptions": ["****\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.LLM.Eval.ModelRequest": {
+			"description": "What one model call sends: the system prompt, the user prompt and which task and attempt it is for (a scripted model answers by them).",
+			"functions": {
+				"GetAttempt": {
+					"descriptions": ["****\n\n```method : public : GetAttempt() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxTokens": {
+					"descriptions": ["****\n\n```method : public : GetMaxTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSystem": {
+					"descriptions": ["****\n\n```method : public : GetSystem() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTaskId": {
+					"descriptions": ["****\n\n```method : public : GetTaskId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetUser": {
+					"descriptions": ["****\n\n```method : public : GetUser() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.LLM.Eval.ModelResults": {
+			"description": "Every attempt of one model, and the numbers they make: compile rate, pass at k, the most common error categories, tokens and latency. Attempts whose model call failed are counted apart and left out of every rate.",
+			"functions": {
+				"FromJson": {
+					"descriptions": ["**Reads results written by ToJson.**\n\n```function : FromJson(json:JsonElement) ~ ModelResults```\n\n\n\njson: JsonElement\n\nreturn: ModelResults"]
+				},
+				"GetAttempts": {
+					"descriptions": ["****\n\n```method : public : GetAttempts() ~ Vector&lt;Attempt&gt;```\n\n\n\nreturn: Vector&lt;Attempt&gt;"]
+				},
+				"GetAttemptsPerTask": {
+					"descriptions": ["****\n\n```method : public : GetAttemptsPerTask() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCategoryRates": {
+					"descriptions": ["**pass at 1 by task category: the mean over the category's tasks of the share of attempts that were correct.**\n\n```method : public : GetCategoryRates() ~ Vector&lt;EvalTally&gt;```\n\n\n\nreturn: Vector&lt;EvalTally&gt;"]
+				},
+				"GetCompileRate": {
+					"descriptions": ["****\n\n```method : public : GetCompileRate() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCounted": {
+					"descriptions": ["****\n\n```method : public : GetCounted() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetErrorCategories": {
+					"descriptions": ["**The compile errors by category.**\n\n```method : public : GetErrorCategories() ~ Vector&lt;EvalTally&gt;```\n\n\n\nreturn: Vector&lt;EvalTally&gt;"]
+				},
+				"GetInputTokens": {
+					"descriptions": ["****\n\n```method : public : GetInputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMeanLatency": {
+					"descriptions": ["****\n\n```method : public : GetMeanLatency() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetModel": {
+					"descriptions": ["****\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetModelErrors": {
+					"descriptions": ["****\n\n```method : public : GetModelErrors() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOutcomes": {
+					"descriptions": ["**How many counted attempts ended each way.**\n\n```method : public : GetOutcomes() ~ Vector&lt;EvalTally&gt;```\n\n\n\nreturn: Vector&lt;EvalTally&gt;"]
+				},
+				"GetOutputTokens": {
+					"descriptions": ["****\n\n```method : public : GetOutputTokens() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPassAtK": {
+					"descriptions": ["**pass at k: the mean over tasks of the unbiased estimator. A task with fewer than k counted attempts is left out.**\n\n```method : public : GetPassAtK(k:Int) ~ Float```\n\n\n\nk: Int\n\nreturn: Float"]
+				},
+				"GetTaskTallies": {
+					"descriptions": ["**The attempts grouped by task, in the order the tasks first appear.**\n\n```method : public : GetTaskTallies() ~ Vector&lt;TaskTally&gt;```\n\n\n\nreturn: Vector&lt;TaskTally&gt;"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a results file.**\n\n```function : Load(path:String) ~ ModelResults```\n\n\n\npath: String\n\nreturn: ModelResults"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the results file.**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"ToJson": {
+					"descriptions": ["**The results as JSON, the format of the results file.**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"System.LLM.Eval.OutputChecker": {
+			"description": "Compares a program's output with the expected output.",
+			"functions": {
+				"IsKnown": {
+					"descriptions": ["****\n\n```function : IsKnown(kind:String) ~ Bool```\n\n\n\nkind: String\n\nreturn: Bool"]
+				},
+				"Matches": {
+					"descriptions": ["**Whether an output matches. exact: the same lines, ignoring line-end style, trailing blanks on a line and trailing blank lines. lines: the same lines in any order. numeric: the same whitespace-separated tokens, numbers within 1e-6 of each other (absolute or relative). contains: every non-blank line of the expected text appears as a line of the output.**\n\n```function : Matches(kind:String, expected:String, actual:String) ~ Bool```\n\n\n\nkind: String\n\nexpected: String\n\nactual: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.LLM.Eval.PassAtK": {
+			"description": "The unbiased pass at k estimator of Chen et al. (2021): from n samples of which c are correct, the probability that at least one of k samples drawn without replacement is correct, 1 - C(n-c, k) / C(n, k), computed as a product so large n does not overflow.",
+			"functions": {
+				"Estimate": {
+					"descriptions": ["****\n\n```function : Estimate(n:Int, c:Int, k:Int) ~ Float```\n\n\n\nn: Int\n\nc: Int\n\nk: Int\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.LLM.Eval.ReferenceModel": {
+			"description": "A model that gives every task's reference solution, in a code block. Running the harness against it checks the tasks themselves: every one must compile and print its expected output.",
+			"functions": {
+
+			}
+		},
+		"System.LLM.Eval.Sandbox": {
+			"description": "Runs commands in a work directory under a timeout and compiles and runs Objeck sources with the real toolchain. A command runs through a small watchdog script written into the directory (a shell script, or PowerShell on Windows), which stops it when it passes its time, and its output is capped so a program that prints forever cannot fill the disk.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Removes the watchdog, the empty input file and the work directory. The directory is only removed when nothing else is left in it.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Compile": {
+					"descriptions": ["**Compiles a source file with the real compiler.**\n\n```method : public : Compile(source:String, libs:String, target:String, seconds:Float) ~ ExecResult```\n\n\n\nsource: String\n\nlibs: String\n\ntarget: String\n\nseconds: Float\n\nreturn: ExecResult"]
+				},
+				"Discard": {
+					"descriptions": ["**Deletes a file in the work directory unless files are kept.**\n\n```method : public : Discard(path:String) ~ Nil```\n\n\n\npath: String\n\nreturn: Nil"]
+				},
+				"Execute": {
+					"descriptions": ["**Runs a command line in the work directory with its input from a file, its output (both streams) captured, and a time limit.**\n\n```method : public : Execute(command:String, stdin_path:String, seconds:Float) ~ ExecResult```\n\n\n\ncommand: String\n\nstdin_path: String\n\nseconds: Float\n\nreturn: ExecResult"]
+				},
+				"GetCompiler": {
+					"descriptions": ["****\n\n```method : public : GetCompiler() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetDirectory": {
+					"descriptions": ["****\n\n```method : public : GetDirectory() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetVm": {
+					"descriptions": ["****\n\n```method : public : GetVm() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Constructor. Creates the directory when it is missing.**\n\n```New(dir:String)```\n\n\n\ndir: String"]
+				},
+				"Path": {
+					"descriptions": ["****\n\n```method : public : Path(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"Run": {
+					"descriptions": ["**Runs a compiled program.**\n\n```method : public : Run(program:String, stdin_path:String, seconds:Float) ~ ExecResult```\n\n\n\nprogram: String\n\nstdin_path: String\n\nseconds: Float\n\nreturn: ExecResult"]
+				},
+				"SetCompiler": {
+					"descriptions": ["**Sets the compiler command (default: obc beside the running VM, else obc on PATH).**\n\n```method : public : SetCompiler(compiler:String) ~ Nil```\n\n\n\ncompiler: String\n\nreturn: Nil"]
+				},
+				"SetKeepFiles": {
+					"descriptions": ["**Keeps the sources, executables and outputs instead of deleting them after use.**\n\n```method : public : SetKeepFiles(keep:Bool) ~ Nil```\n\n\n\nkeep: Bool\n\nreturn: Nil"]
+				},
+				"SetVm": {
+					"descriptions": ["**Sets the VM command (default: obr beside the running VM, else obr on PATH).**\n\n```method : public : SetVm(vm:String) ~ Nil```\n\n\n\nvm: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.LLM.Eval.ScriptedModel": {
+			"description": "A model that answers from a script, for tests and for a dry run: the answers added for a task are used in turn, one per attempt (the list repeats), and a default answers every other task.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds an answer for a task. A task with several answers gets them in turn, by attempt number.**\n\n```method : public : Add(task_id:String, answer:String) ~ ScriptedModel```\n\n\n\ntask_id: String\n\nanswer: String\n\nreturn: ScriptedModel"]
+				},
+				"AddFailure": {
+					"descriptions": ["**Makes every call for a task fail.**\n\n```method : public : AddFailure(task_id:String, error:String) ~ ScriptedModel```\n\n\n\ntask_id: String\n\nerror: String\n\nreturn: ScriptedModel"]
+				},
+				"GetCalls": {
+					"descriptions": ["****\n\n```method : public : GetCalls() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"SetDefault": {
+					"descriptions": ["**Sets the answer for every task that has none of its own.**\n\n```method : public : SetDefault(answer:String) ~ ScriptedModel```\n\n\n\nanswer: String\n\nreturn: ScriptedModel"]
+				},
+				"SetTokens": {
+					"descriptions": ["**Sets the token counts every answer reports.**\n\n```method : public : SetTokens(input_tokens:Int, output_tokens:Int) ~ ScriptedModel```\n\n\n\ninput_tokens: Int\n\noutput_tokens: Int\n\nreturn: ScriptedModel"]
+				}
+			}
+		},
+		"System.LLM.Eval.TaskSuite": {
+			"description": "A directory of task files: loading, selecting, and the error of the last load.",
+			"functions": {
+				"GetLastError": {
+					"descriptions": ["****\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Load": {
+					"descriptions": ["**Loads every *.task file of a directory, in file-name order. A malformed file fails the whole load, so a suite never silently shrinks.**\n\n```function : Load(dir:String) ~ Vector&lt;EvalTask&gt;```\n\n\n\ndir: String\n\nreturn: Vector&lt;EvalTask&gt;"]
+				},
+				"Part": {
+					"descriptions": ["**One part of a suite cut into equal parts, so a long check can run as several shorter ones.**\n\n```function : Part(tasks:Vector&lt;EvalTask&gt;, part:Int, parts:Int) ~ Vector&lt;EvalTask&gt;```\n\n\n\ntasks: Vector&lt;EvalTask&gt;\n\npart: Int\n\nparts: Int\n\nreturn: Vector&lt;EvalTask&gt;"]
+				},
+				"Select": {
+					"descriptions": ["**Keeps the tasks whose id or category is in a comma-separated list.**\n\n```function : Select(tasks:Vector&lt;EvalTask&gt;, ids:String, categories:String) ~ Vector&lt;EvalTask&gt;```\n\n\n\ntasks: Vector&lt;EvalTask&gt;\n\nids: String\n\ncategories: String\n\nreturn: Vector&lt;EvalTask&gt;"]
+				}
+			}
+		},
+		"System.LLM.Eval.TaskTally": {
+			"description": "The attempts of one task: how many counted, how many compiled, how many were correct.",
+			"functions": {
+				"GetN": {
+					"descriptions": ["****\n\n```method : public : GetN() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"System.ML.AdaBoost": {
 			"description": "Discrete AdaBoost over single-feature boolean decision stumps. Each round picks the stump (feature + polarity) with the lowest weighted error, gives it a vote of alpha = 0.5*ln((1-err)/err) and re-weights the samples to focus on mistakes; prediction is the sign of the weighted stump vote. Deterministic. Boosting stops early when no stump beats chance.",
 			"functions": {
@@ -22896,144 +22910,6 @@
 				"file": ""
 			}
 		],
-		"Attempt": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"CodeExtractor": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"CommandModel": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ErrorCategory": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"EvalArgs": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"EvalReport": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"EvalRunner": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"EvalTally": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"EvalTask": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"EvalText": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ExecResult": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ModelAdapter": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ModelComparison": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ModelReply": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ModelRequest": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ModelResults": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"OutputChecker": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"PassAtK": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ReferenceModel": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"Sandbox": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"ScriptedModel": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"TaskSuite": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
-		"TaskTally": [
-			{
-				"bundle": "Default",
-				"file": ""
-			}
-		],
 		"AnimatedImageSprite": [
 			{
 				"bundle": "Game.Framework",
@@ -24395,6 +24271,144 @@
 		"Method": [
 			{
 				"bundle": "System.Introspection",
+				"file": ""
+			}
+		],
+		"Attempt": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"CodeExtractor": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"CommandModel": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ErrorCategory": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"EvalArgs": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"EvalReport": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"EvalRunner": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"EvalTally": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"EvalTask": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"EvalText": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ExecResult": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ModelAdapter": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ModelComparison": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ModelReply": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ModelRequest": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ModelResults": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"OutputChecker": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"PassAtK": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ReferenceModel": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"Sandbox": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"ScriptedModel": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"TaskSuite": [
+			{
+				"bundle": "System.LLM.Eval",
+				"file": ""
+			}
+		],
+		"TaskTally": [
+			{
+				"bundle": "System.LLM.Eval",
 				"file": ""
 			}
 		],

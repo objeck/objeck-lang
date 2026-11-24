@@ -5,7 +5,7 @@ Copyright (c) 2026 Randy Hollines
 use Collection, System.IO.Filesystem, Data.JSON, System.ML;
 
 #~
-LLM evaluation harness: measure how well a language model writes programs, or, with the checkers, any task whose answer can be checked. A task (EvalTask) is a prompt, the libraries the answer links, the input its program reads and the output it must print. EvalRunner sends every task to a model (a ModelAdapter) N times, extracts the code block from each answer, compiles it with the real compiler (obc), runs it under a timeout and compares what it printed with the expected output. Each attempt is recorded (compiled, ran, correct, the first compiler error normalized into a category, tokens, latency); ModelResults aggregates them (compile rate, pass@k, the most common error categories) and ModelComparison compares two models with the paired bootstrap of System.ML (Metrics->PairedBootstrapDifference). EvalReport writes the Markdown report and the JSON results.
+LLM evaluation harness: measure how well a language model writes programs, or, with the checkers, any task whose answer can be checked. A task (EvalTask) is a prompt, the libraries the answer links, the input its program reads and the output it must print. EvalRunner sends every task to a model (a ModelAdapter) N times, extracts the code block from each answer, compiles it with the real compiler (obc), runs it under a timeout and compares what it printed with the expected output. Each attempt is recorded (compiled, ran, correct, the first compiler error normalized into a category, tokens, latency); ModelResults aggregates them (compile rate, pass at k, the most common error categories) and ModelComparison compares two models with the paired bootstrap of System.ML (Metrics->PairedBootstrapDifference). EvalReport writes the Markdown report and the JSON results.
 
 The adapters for OpenAI, Anthropic, Gemini and Ollama live in tools/llm_eval, one file per provider, because the clients cannot be linked into one program (two of them define a Tool class); the library itself needs no network and no key. ScriptedModel, ReferenceModel and CommandModel run without either. Compile with -lib llm_eval,ml,csv,json,gen_collect.
 ~#
@@ -1652,13 +1652,13 @@ bundle System.LLM.Eval {
 	}
 
 	#~
-	The unbiased pass@k estimator of Chen et al. (2021): from n samples of which c are correct, the probability that at least one of k samples drawn without replacement is correct, 1 - C(n-c, k) / C(n, k), computed as a product so large n does not overflow.
+	The unbiased pass at k estimator of Chen et al. (2021): from n samples of which c are correct, the probability that at least one of k samples drawn without replacement is correct, 1 - C(n-c, k) / C(n, k), computed as a product so large n does not overflow.
 	~#
 	class PassAtK {
 		#~
 		@param n samples drawn for the task
 		@param c samples that were correct
-		@param k the k of pass@k
+		@param k the k of pass at k
 		@return the estimate between 0 and 1, or -1.0 when n < 1, k < 1, k > n or c is outside 0 to n
 		~#
 		function : Estimate(n : Int, c : Int, k : Int) ~ Float {
@@ -1984,7 +1984,7 @@ bundle System.LLM.Eval {
 	}
 
 	#~
-	Every attempt of one model, and the numbers they make: compile rate, pass@k, the most common error categories, tokens and latency. Attempts whose model call failed are counted apart and left out of every rate.
+	Every attempt of one model, and the numbers they make: compile rate, pass at k, the most common error categories, tokens and latency. Attempts whose model call failed are counted apart and left out of every rate.
 	~#
 	class ModelResults {
 		@model : String;
@@ -2088,7 +2088,7 @@ bundle System.LLM.Eval {
 		}
 
 		#~
-		pass@k: the mean over tasks of the unbiased estimator. A task with fewer than k counted attempts is left out.
+		pass at k: the mean over tasks of the unbiased estimator. A task with fewer than k counted attempts is left out.
 		@param k the k
 		@return the mean, -1.0 when no task has k attempts
 		~#
@@ -2158,8 +2158,8 @@ bundle System.LLM.Eval {
 		}
 
 		#~
-		pass@1 by task category: the mean over the category's tasks of the share of attempts that were correct.
-		@return a row per category (count: tasks, value: pass@1), in order of first appearance
+		pass at 1 by task category: the mean over the category's tasks of the share of attempts that were correct.
+		@return a row per category (count: tasks, value: pass at 1), in order of first appearance
 		~#
 		method : public : GetCategoryRates() ~ Vector<EvalTally> {
 			tallies := GetTaskTallies();
@@ -2699,7 +2699,7 @@ bundle System.LLM.Eval {
 		#~
 		The report: a summary table, pass rate by task category, the most common compile errors, a per-task table and, for two models, the paired comparison.
 		@param results one entry per model
-		@param ks the k values to report pass@k for, for example [1, 5]
+		@param ks the k values to report pass at k for, for example [1, 5]
 		@param comparison the comparison of two models, or Nil
 		@param title the report's title
 		@return the Markdown text
@@ -2909,7 +2909,7 @@ bundle System.LLM.Eval {
 		Writes <prefix>.md and <prefix>.json.
 		@param prefix path without extension
 		@param results one entry per model
-		@param ks the k values for pass@k
+		@param ks the k values for pass at k
 		@param comparison the comparison, or Nil
 		@param title the report title
 		@return true when both files were written
