@@ -1236,6 +1236,26 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obl_truncated.py "%BIN%"
 
+    # OBJECK_TLS_INSECURE_SKIP_VERIFY disables certificate verification process-wide; the first
+    # secure client connection prints one stderr warning.
+    - name: obr warns once when TLS verification is switched off (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_tls_insecure_warning.py "$BIN"
+
+    - name: obr warns once when TLS verification is switched off (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_tls_insecure_warning.py "%BIN%"
+
     # A jump to a label the optimizer cannot find, or a label defined twice, is an internal
     # compiler error and must stop the build, not be read through a dangling iterator.
     # The label pass has a test hook (OBJECK_TEST_LABEL_FAULT) that simulates both.

@@ -479,6 +479,46 @@ bundle LSP {
 			};
 		}
 
+		method : CallbackInlineValue(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->InlineValue(
+					FindJson(params, "range/start/line")->GetInt(), FindJson(params, "range/start/character")->GetInt(),
+					FindJson(params, "range/end/line")->GetInt(), FindJson(params, "range/end/character")->GetInt()));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackLinkedEditingRange(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->LinkedEditingRange(FindJson(params, "position/line")->GetInt(), FindJson(params, "position/character")->GetInt()));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackOnTypeFormatting(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				tab_size := FindJson(params, "options/tabSize")->GetInt();
+				insert_spaces := FindJson(params, "options/insertSpaces")->GetValue();
+				WriteRpcResponse(id, document->OnTypeFormatting(FindJson(params, "position/line")->GetInt(),
+					FindJson(params, "ch")->GetValue(), tab_size, insert_spaces->Equals("true")));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		# a file or directory is about to be renamed: the edits that keep build.json naming it
+		method : CallbackWillRenameFiles(id : Int, params : JsonElement) ~ Nil {
+			WriteRpcResponse(id, @workspace->WillRenameFiles(FindJson(params, "files")));
+		}
+
 		method : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil {
 			document := DocumentOf(params);
 			start_json := FindJson(params, "range/start/line");
@@ -825,6 +865,23 @@ bundle LSP {
 			workspace_folders->Insert("supported", true);
 			workspace_folders->Insert("changeNotifications", true);
 
+			# willRename: a build.json that lists a source file follows it when it
+			# is renamed or moved, or when the directory it is in is
+			file_operations := workspace->AddChild("fileOperations");
+			will_rename := file_operations->AddChild("willRename");
+			rename_filters := JsonElement->New(JsonElement->JsonType->ARRAY);
+			file_filter := JsonElement->New(JsonElement->JsonType->OBJECT);
+			file_pattern := file_filter->AddChild("pattern");
+			file_pattern->Insert("glob", "**/*.obs");
+			file_pattern->Insert("matches", "file");
+			rename_filters->Add(file_filter);
+			folder_filter := JsonElement->New(JsonElement->JsonType->OBJECT);
+			folder_pattern := folder_filter->AddChild("pattern");
+			folder_pattern->Insert("glob", "**");
+			folder_pattern->Insert("matches", "folder");
+			rename_filters->Add(folder_filter);
+			will_rename->Insert("filters", rename_filters);
+
 			documentSync := capabilities->AddChild("textDocumentSync");
 			documentSyncSave := documentSync->AddChild("save");
 			documentSyncSave->Insert("includeText", true);
@@ -863,6 +920,15 @@ bundle LSP {
 			capabilities->Insert("typeDefinitionProvider", true);
 			capabilities->Insert("implementationProvider", true);
 			capabilities->Insert("inlayHintProvider", true);
+			capabilities->Insert("inlineValueProvider", true);
+			capabilities->Insert("linkedEditingRangeProvider", true);
+
+			on_type := capabilities->AddChild("documentOnTypeFormattingProvider");
+			on_type->Insert("firstTriggerCharacter", "}");
+			more_triggers := JsonElement->New(JsonElement->JsonType->ARRAY);
+			more_triggers->Add(";");
+			more_triggers->Add("\n");
+			on_type->Insert("moreTriggerCharacter", more_triggers);
 
 			callHierarchyProvider := capabilities->AddChild("callHierarchyProvider");
 			callHierarchyProvider->Insert("id", "objeck-call-hierarchy");

@@ -41,6 +41,8 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
+#include <utility>
 
 using namespace frontend;
 
@@ -1855,12 +1857,88 @@ extern "C" {
     };
     std::vector<TokenInfo> tokens;
 
+    // Variables, parameters and instance variables, resolved through the symbol
+    // table's entries: the same ones rename, references and highlight walk. The
+    // VAR_EXPR case below never matched -- a method's expression list holds its
+    // calls, not the variables they name -- so no variable had a token at all.
+    SymbolTableManager* symbol_tables = nullptr; // the bundle being walked's
+    std::set<std::pair<int, size_t> > variable_tokens;
+    auto is_variable_name = [](const std::wstring& name) {
+      size_t index = (!name.empty() && name[0] == L'@') ? 1 : 0;
+      if(index >= name.size()) {
+        return false;
+      }
+      for(; index < name.size(); ++index) {
+        const wchar_t c = name[index];
+        if(!((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') || (c >= L'0' && c <= L'9') || c == L'_')) {
+          return false;
+        }
+      }
+      return true;
+    };
+    auto add_variable = [&](SymbolEntry* entry, const std::wstring& name, const int line_num, const int line_pos, const int modifiers) {
+      if(!entry || line_num <= 0 || line_pos <= 0 || !is_variable_name(name)) {
+        return;
+      }
+      if(!variable_tokens.insert(std::make_pair(line_num, safe_pos(line_pos))).second) {
+        return;
+      }
+
+      TokenInfo t;
+      t.line = line_num - 1;
+      t.start_char = safe_pos(line_pos);
+      t.length = (int)name.size();
+      t.token_modifiers = modifiers;
+      if(name[0] == L'@') {
+        t.token_type = 7; // property
+        if(entry->IsStatic()) {
+          t.token_modifiers |= 2; // static
+        }
+      }
+      else {
+        t.token_type = entry->IsParameter() ? 9 : 8; // parameter or variable
+      }
+      tokens.push_back(t);
+    };
+    // an entry's declaration, then each reference to it
+    auto add_entries = [&](const std::wstring& scope) {
+      if(!symbol_tables) {
+        return;
+      }
+
+      std::vector<SymbolEntry*> entries = symbol_tables->GetEntries(scope);
+      for(size_t e = 0; e < entries.size(); ++e) {
+        SymbolEntry* entry = entries[e];
+        if(!entry || entry->IsSelf()) continue;
+
+        // an inferred local's entry is made during analysis and has no file
+        const std::wstring full_name = entry->GetName();
+        const size_t separator = full_name.find_last_of(L':');
+        const std::wstring bare_name = separator != std::wstring::npos ? full_name.substr(separator + 1) : full_name;
+        if(entry->GetFileName() == uri) {
+          add_variable(entry, bare_name, entry->GetLineNumber(), entry->GetLinePosition(), 1);
+        }
+
+        std::vector<Variable*> variables = entry->GetVariables();
+        for(size_t v = 0; v < variables.size(); ++v) {
+          Variable* variable = variables[v];
+          if(variable && variable->GetFileName() == uri) {
+            add_variable(entry, variable->GetName(), variable->GetLineNumber(), variable->GetLinePosition(), 0);
+          }
+        }
+      }
+    };
+
     std::vector<ParsedBundle*> bundles = program->GetBundles();
     for(size_t i = 0; i < bundles.size(); ++i) {
+      symbol_tables = bundles[i]->GetSymbolTableManager();
       std::vector<Class*> classes = bundles[i]->GetClasses();
       for(size_t j = 0; j < classes.size(); ++j) {
         Class* cls = classes[j];
         if(cls->GetFileName() != uri) continue;
+
+        // instance and class variables
+        add_entries(cls->GetName());
 
         // class/interface declaration token
         if(cls->GetLineNumber() > 0) {
@@ -1900,11 +1978,24 @@ extern "C" {
             tokens.push_back(t);
           }
 
+          // parameters and locals
+          add_entries(m->GetParsedName());
+
           // expressions within method
           std::vector<Expression*> expressions = m->GetExpressions();
           for(size_t l = 0; l < expressions.size(); ++l) {
             Expression* expr = expressions[l];
             if(expr->GetLineNumber() <= 0 || expr->GetLinePosition() <= 0) continue;
+
+            // the variable a call is made on ('editor' in editor->Sum()); a
+            // synthesized call ('?->', '??') has no token of its own
+            if(expr->GetExpressionType() == METHOD_CALL_EXPR) {
+              MethodCall* head = static_cast<MethodCall*>(expr);
+              if(head->GetCallType() != ENUM_CALL && head->GetEntry() && head->GetMidLinePosition() > 0 &&
+                 head->GetMidLinePosition() != expr->GetLinePosition()) {
+                add_variable(head->GetEntry(), head->GetVariableName(), expr->GetLineNumber(), expr->GetLinePosition(), 0);
+              }
+            }
 
             if(expr->GetExpressionType() == VAR_EXPR) {
               Variable* var = static_cast<Variable*>(expr);

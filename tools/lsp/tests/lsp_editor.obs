@@ -1,0 +1,36 @@
+#~
+Fixture for the editor-feature checks in run_lsp_tests.py: inline values,
+linked editing, on-type formatting. A local named 'sum' lives in two methods
+so a check can tell one scope from the other, and Scale's parameter shares a
+name with a class.
+
+Keep this file free of compiler warnings.
+~#
+
+class Editor {
+	@total : Int;
+
+	New(total : Int) {
+		@total := total;
+	}
+
+	method : public : Sum(count : Int) ~ Int {
+		sum := 0;
+		for(i := 0; i < count; i += 1;) {
+			sum += i;
+		};
+		@total := sum + @total;
+		return sum;
+	}
+
+	method : public : Twice(count : Int) ~ Int {
+		sum := count * 2;
+		return sum;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		editor := Editor->New(1);
+		editor->Sum(3)->PrintLine();
+		editor->Twice(4)->PrintLine();
+	}
+}

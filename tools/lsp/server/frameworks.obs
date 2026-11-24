@@ -658,6 +658,12 @@ bundle LSP {
 					return "{$uri},range/start/line:n,range/start/character:n,context/diagnostics:a";
 				}
 				label "textDocument/inlayHint" { return "{$uri},range/start/line:n,range/end/line:n"; }
+				label "textDocument/inlineValue" {
+					return "{$uri},range/start/line:n,range/start/character:n,range/end/line:n,range/end/character:n";
+				}
+				label "textDocument/linkedEditingRange" { return position; }
+				label "textDocument/onTypeFormatting" { return "{$position},ch:s,options/tabSize:n,options/insertSpaces:b"; }
+				label "workspace/willRenameFiles" { return "files:a"; }
 				label "textDocument/semanticTokens/range" { return "{$uri},range/start/line:n,range/end/line:n"; }
 				label "textDocument/selectionRange" { return "{$uri},positions:a"; }
 				label "textDocument/semanticTokens/full" { return uri; }
@@ -701,6 +707,9 @@ bundle LSP {
 				}
 				label "textDocument/selectionRange" {
 					return CheckEach(FindJson(params, "positions"), "line:n,character:n", "positions");
+				}
+				label "workspace/willRenameFiles" {
+					return CheckEach(FindJson(params, "files"), "oldUri:s,newUri:s", "files");
 				}
 				label "workspace/didChangeWatchedFiles" {
 					return CheckEach(FindJson(params, "changes"), "uri:s,type:n", "changes");
@@ -773,6 +782,10 @@ bundle LSP {
 		method : virtual : CallbackIncomingCalls(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackOutgoingCalls(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackInlayHint(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackInlineValue(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackLinkedEditingRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackOnTypeFormatting(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackWillRenameFiles(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil;
@@ -1019,6 +1032,22 @@ bundle LSP {
 
 					label "textDocument/inlayHint" {
 						CallbackInlayHint(id, params);
+					}
+
+					label "textDocument/inlineValue" {
+						CallbackInlineValue(id, params);
+					}
+
+					label "textDocument/linkedEditingRange" {
+						CallbackLinkedEditingRange(id, params);
+					}
+
+					label "textDocument/onTypeFormatting" {
+						CallbackOnTypeFormatting(id, params);
+					}
+
+					label "workspace/willRenameFiles" {
+						CallbackWillRenameFiles(id, params);
 					}
 
 					label "textDocument/semanticTokens/full" {
@@ -1813,6 +1842,39 @@ bundle LSP {
 			return reloaded;
 		}
 
+		#
+		# workspace/willRenameFiles: a WorkspaceEdit for each folder's build.json that
+		# lists a file, or a directory of files, that is being renamed or moved; Nil
+		# when no build.json does.
+		#
+		method : public : WillRenameFiles(files : JsonElement) ~ JsonElement {
+			changes := JsonElement->New(JsonElement->JsonType->OBJECT);
+			found := false;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(j : files) {
+					file := files->Get(j);
+					folder->RenameEdits(file->Get("oldUri")->GetValue(), file->Get("newUri")->GetValue(), edits);
+				};
+
+				if(edits->Size() > 0) {
+					build_uri := String->New(folder->GetUri());
+					build_uri += "/build.json";
+					changes->Insert(build_uri, edits);
+					found := true;
+				};
+			};
+
+			if(<>found) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("changes", changes);
+			return result;
+		}
+
 		method : public : HasFolders() ~ Bool {
 			return @folders->Size() > 0;
 		}
@@ -2273,6 +2335,87 @@ bundle LSP {
 			};
 
 			return false;
+		}
+
+		#
+		# workspace/willRenameFiles: the edits to this folder's build.json that
+		# keep it naming a file, or the files in a directory, that is being moved.
+		# build.json's "files" is the one place a source file's path is written down
+		# -- 'use' names a bundle, never a file -- and the folder's program loses the
+		# file when the entry goes stale. Each edit replaces the path inside the
+		# string's quotes and is added to 'edits'; a file that moves out of the
+		# folder has no relative path to write and is left alone.
+		#
+		method : public : RenameEdits(old_uri : String, new_uri : String, edits : JsonElement) ~ Nil {
+			if(@file_strs = Nil | old_uri = Nil | new_uri = Nil | <>System.IO.Filesystem.File->Exists(@build_file)) {
+				return;
+			};
+
+			text := System.IO.Filesystem.FileReader->ReadFile(@build_file);
+			if(text = Nil) {
+				return;
+			};
+
+			folder_prefix := String->New(@local_path);
+			folder_prefix += '/';
+			old_path := LocalPath(old_uri);
+			new_path := LocalPath(new_uri);
+			if(<>new_path->StartsWith(folder_prefix)) {
+				return;
+			};
+
+			each(i : @file_strs) {
+				listed := String->New(folder_prefix);
+				listed += @file_strs[i];
+
+				# the file itself, or a file inside the directory that moves
+				moved : String := Nil;
+				if(listed->Equals(old_path)) {
+					moved := new_path;
+				}
+				else if(listed->StartsWith(old_path + "/")) {
+					moved := new_path + listed->SubString(old_path->Size(), listed->Size() - old_path->Size());
+				};
+
+				if(moved <> Nil) {
+					renamed := moved->SubString(folder_prefix->Size(), moved->Size() - folder_prefix->Size());
+					# the new path is written as a JSON string
+					if(renamed->Find('"') < 0 & renamed->Find('\\') < 0 & <>renamed->Equals(@file_strs[i])) {
+						quoted := "\"";
+						quoted += @file_strs[i];
+						quoted += '"';
+
+						offset := text->Find(0, quoted);
+						while(offset > -1) {
+							start := offset + 1;
+							line := 0;
+							line_start := 0;
+							for(j := 0; j < start; j += 1;) {
+								if(text->Get(j) = '\n') {
+									line += 1;
+									line_start := j + 1;
+								};
+							};
+
+							edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+							start_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							start_json->Insert("line", line);
+							start_json->Insert("character", start - line_start);
+							end_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							end_json->Insert("line", line);
+							end_json->Insert("character", start - line_start + @file_strs[i]->Size());
+							range := JsonElement->New(JsonElement->JsonType->OBJECT);
+							range->Insert("start", start_json);
+							range->Insert("end", end_json);
+							edit->Insert("range", range);
+							edit->Insert("newText", renamed);
+							edits->Add(edit);
+
+							offset := text->Find(offset + quoted->Size(), quoted);
+						};
+					};
+				};
+			};
 		}
 
 		# every file the build.json lists: the open text where it is open, else disk
@@ -3191,6 +3334,296 @@ bundle LSP {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs(@uri));
+		}
+
+		#
+		# textDocument/inlineValue: what an editor paused in the debugger shows
+		# beside the code. The variables come from the analyzer's own symbol
+		# classification (the rows semanticTokens answers from), so a name that
+		# resolves to a local, a parameter or an instance variable is asked for and
+		# anything else -- a class, a method, text in a string -- is not. A local or
+		# parameter is a variable lookup; an instance variable ('@total'), a member
+		# of the current object, is an expression for the debugger to evaluate.
+		# Objeck reads a member only through a call, and a call is never evaluated
+		# for a hint, so there is no longer chain to offer: '@total' is the whole
+		# of a member chain.
+		#
+		method : public : InlineValue(start_line : Int, start_char : Int, end_line : Int, end_char : Int) ~ JsonElement {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			values := JsonElement->New(JsonElement->JsonType->ARRAY);
+			last_line := -1;
+			last_char := -1;
+			for(i := 0; i < rows->Size(); i += 5;) {
+				line := rows[i];
+				column := rows[i + 1];
+				length := rows[i + 2];
+				kind := rows[i + 3];
+
+				# property, variable and parameter
+				if(kind <> 7 & kind <> 8 & kind <> 9) {
+					continue;
+				};
+
+				if(line < start_line | line > end_line | (line = start_line & column < start_char) |
+						(line = end_line & column + length > end_char)) {
+					continue;
+				};
+
+				# the analyzer may list one reference twice
+				if(line = last_line & column = last_char) {
+					continue;
+				};
+
+				index := GetDocumentIndex(line, column);
+				if(index < 0 | index + length > @text->Size() | length < 1) {
+					continue;
+				};
+
+				name := @text->SubString(index, length);
+				if(<>(IsIdentifierChar(name->Get(0)) | name->Get(0) = '@')) {
+					continue;
+				};
+
+				last_line := line;
+				last_char := column;
+
+				value := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(kind = 7) {
+					value->Insert("range", MakeLineRange(line, column, line, column + length));
+					value->Insert("expression", name);
+				}
+				else {
+					value->Insert("range", MakeLineRange(line, column, line, column + length));
+					value->Insert("variableName", name);
+					value->Insert("caseSensitiveLookup", true);
+				};
+				values->Add(value);
+			};
+
+			return values;
+		}
+
+		#
+		# textDocument/linkedEditingRange: every occurrence of the local variable or
+		# parameter under the cursor, so that typing in one types in all. Nil for
+		# anything else -- an instance variable, a method, a class, a keyword --
+		# because renaming those changes code outside this scope and is the rename
+		# request's job. The analyzer's own symbol classification decides what the
+		# name is (the rows semanticTokens answers from), and its documentHighlight
+		# resolves the occurrences in the name's method. That leaves out a
+		# parameter's declaration, which the classification supplies.
+		#
+		method : public : LinkedEditingRange(line_pos : Int, char_pos : Int) ~ JsonElement {
+			span := IdentifierAt(line_pos, char_pos);
+			if(span = Nil | @text->Get(span[0]) = '@') {
+				return Nil;
+			};
+
+			name := @text->SubString(span[0], span[1] - span[0]);
+			if(name->Get(0)->IsDigit() | IsReserved(name)) {
+				return Nil;
+			};
+
+			proxy := @workspace->GetProxy(@uri, false);
+			libs := @workspace->GetLibs(@uri);
+			rows := proxy->SemanticTokenRows(@uri, libs);
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			# the analyzer's token for the name under the cursor: a variable or a parameter
+			start_char := char_pos - (GetDocumentIndex(line_pos, char_pos) - span[0]);
+			cursor_row := -1;
+			for(j := 0; j < rows->Size(); j += 5;) {
+				if(rows[j] = line_pos & rows[j + 1] = start_char & rows[j + 2] = name->Size()) {
+					cursor_row := j;
+				};
+			};
+
+			if(cursor_row < 0 | (rows[cursor_row + 3] <> 8 & rows[cursor_row + 3] <> 9)) {
+				return Nil;
+			};
+
+			ranges := JsonElement->New(JsonElement->JsonType->ARRAY);
+			seen := Set->New()<String>;
+			query_line := line_pos;
+			query_char := start_char;
+
+			if(rows[cursor_row + 3] = 9) {
+				# the parameter's declaration: the nearest one at or before the cursor
+				decl_row := -1;
+				for(j := cursor_row; j >= 0 & decl_row < 0; j -= 5;) {
+					if(rows[j + 3] = 9 & rows[j + 4] % 2 = 1 & TokenIs(rows, j, name)) {
+						decl_row := j;
+					};
+				};
+
+				if(decl_row < 0) {
+					return Nil;
+				};
+
+				decl_line := rows[decl_row];
+				decl_char := rows[decl_row + 1];
+				seen->Insert("{$decl_line}:{$decl_char}");
+				ranges->Add(MakeLineRange(decl_line, decl_char, decl_line, decl_char + name->Size()));
+
+				# on the declaration the uses are asked about from the first one
+				if(decl_row = cursor_row) {
+					query_line := -1;
+					next_row := decl_row + 5;
+					done := false;
+					while(<>done & next_row < rows->Size()) {
+						if(rows[next_row + 3] = 9 & TokenIs(rows, next_row, name)) {
+							if(rows[next_row + 4] % 2 = 1) {
+								# the next parameter of that name: this one is unused
+								done := true;
+							}
+							else {
+								query_line := rows[next_row];
+								query_char := rows[next_row + 1];
+								done := true;
+							};
+						};
+						next_row += 5;
+					};
+				};
+			};
+
+			highlights : JsonElement := Nil;
+			if(query_line > -1) {
+				highlights := proxy->DocumentHighlight(query_line, query_char, @uri, libs);
+			};
+
+			if(highlights <> Nil) {
+				if(highlights->GetType() <> JsonElement->JsonType->ARRAY) {
+					return Nil;
+				};
+
+				each(i : highlights) {
+					range := highlights->Get(i)->Get("range");
+					range_line := range->FindElements("start/line")->GetInt();
+					range_start := range->FindElements("start/character")->GetInt();
+					range_end := range->FindElements("end/character")->GetInt();
+
+					# one name on one line, spelled as the cursor's
+					if(range->FindElements("end/line")->GetInt() <> range_line | range_end - range_start <> name->Size()) {
+						return Nil;
+					};
+
+					index := GetDocumentIndex(range_line, range_start);
+					if(index < 0 | index + name->Size() > @text->Size() | <>name->Equals(@text->SubString(index, name->Size()))) {
+						return Nil;
+					};
+
+					# each occurrence is a variable or a parameter to the analyzer too
+					classified := false;
+					for(j := 0; j < rows->Size(); j += 5;) {
+						if(rows[j] = range_line & rows[j + 1] = range_start) {
+							if(rows[j + 3] <> 8 & rows[j + 3] <> 9) {
+								return Nil;
+							};
+							classified := true;
+						};
+					};
+
+					if(<>classified) {
+						return Nil;
+					};
+
+					key := "{$range_line}:{$range_start}";
+					if(<>seen->Has(key)) {
+						seen->Insert(key);
+						ranges->Add(MakeLineRange(range_line, range_start, range_line, range_end));
+					};
+				};
+			};
+
+			# the cursor is in one of them
+			at_cursor := false;
+			each(i : ranges) {
+				range := ranges->Get(i);
+				if(range->FindElements("start/line")->GetInt() = line_pos & range->FindElements("start/character")->GetInt() = start_char) {
+					at_cursor := true;
+				};
+			};
+
+			if(ranges->Size() = 0 | <>at_cursor) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("ranges", ranges);
+			result->Insert("wordPattern", "[A-Za-z_][A-Za-z0-9_]*");
+			return result;
+		}
+
+		# the analyzer's token at rows[row] spells this name
+		method : TokenIs(rows : Int[], row : Int, name : String) ~ Bool {
+			if(rows[row + 2] <> name->Size()) {
+				return false;
+			};
+
+			index := GetDocumentIndex(rows[row], rows[row + 1]);
+			return index > -1 & index + name->Size() <= @text->Size() & name->Equals(@text->SubString(index, name->Size()));
+		}
+
+		#
+		# textDocument/onTypeFormatting, after '}', ';' or a new line: the line at
+		# the cursor is indented to the depth the formatter gives it. The formatter
+		# (CodeFormatter) indents by brace nesting alone and rewrites every line of
+		# a document it formats, so only this line's leading whitespace is
+		# replaced; what the user has typed on it is left as it is.
+		#
+		method : public : OnTypeFormatting(line_pos : Int, trigger : String, tab_spaces : Int, insert_spaces : Bool) ~ JsonElement {
+			edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(@text = Nil | trigger = Nil | <>(trigger->Equals("}") | trigger->Equals(";") | trigger->Equals("\n"))) {
+				return edits;
+			};
+
+			end_ranges := GetDocumentEnd();
+			line_count := end_ranges[0] + 1;
+			if(line_pos < 0 | line_pos >= line_count) {
+				return edits;
+			};
+
+			# the same options FormatDocument gives the formatter
+			options := Map->New()<String, String>;
+			options->Insert("function-space", "false");
+			if(insert_spaces) {
+				options->Insert("ident-space", tab_spaces->ToString());
+			};
+			formatter := CodeFormatter->New(options);
+
+			depths := formatter->LineDepths(@text, line_count);
+			if(depths = Nil | depths[line_pos + 1] < 0) {
+				return edits;
+			};
+
+			line_text := LineText(line_pos);
+			current := 0;
+			while(current < line_text->Size() & (line_text->Get(current) = ' ' | line_text->Get(current) = '\t')) {
+				current += 1;
+			};
+
+			indent := formatter->IndentFor(depths[line_pos + 1]);
+			existing := current > 0 ? line_text->SubString(0, current) : "";
+			if(<>indent->Equals(existing)) {
+				edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+				edit->Insert("range", MakeLineRange(line_pos, 0, line_pos, current));
+				edit->Insert("newText", indent);
+				edits->Add(edit);
+			};
+
+			return edits;
 		}
 
 		#

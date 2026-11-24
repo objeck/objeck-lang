@@ -60,7 +60,8 @@ EXPECTED_CAPS = [
     "documentHighlightProvider", "foldingRangeProvider",
     "selectionRangeProvider", "typeDefinitionProvider",
     "implementationProvider", "inlayHintProvider", "callHierarchyProvider",
-    "typeHierarchyProvider", "semanticTokensProvider",
+    "typeHierarchyProvider", "semanticTokensProvider", "inlineValueProvider",
+    "linkedEditingRangeProvider", "documentOnTypeFormattingProvider",
 ]
 
 
@@ -2648,6 +2649,8 @@ REQUESTS_NEEDING_PARAMS = [
     "textDocument/semanticTokens/full", "textDocument/semanticTokens/full/delta",
     "textDocument/foldingRange", "textDocument/documentSymbol",
     "textDocument/documentLink", "textDocument/codeLens", "workspace/symbol",
+    "textDocument/inlineValue", "textDocument/linkedEditingRange",
+    "textDocument/onTypeFormatting", "workspace/willRenameFiles",
 ]
 
 NOTIFICATIONS_NEEDING_PARAMS = [
@@ -2901,6 +2904,348 @@ def check_tcp_limits(obr, server_obe, apis_json, bin_dir):
                 raw.close()
     finally:
         c.close()
+
+
+def leading_space(text):
+    return text[:len(text) - len(text.lstrip(" \t"))]
+
+
+def check_editor_features(c, caps):
+    """Inline values, linked editing and on-type formatting, against lsp_editor.obs.
+
+    The fixture keeps a local named 'sum' in two methods and a parameter named
+    'count' in both, so each answer has to stop at the end of its method, and an
+    instance variable, a method and a class each have a name that must not be
+    taken for a variable.
+    """
+    on_type = caps.get("documentOnTypeFormattingProvider") or {}
+    log_result("onTypeFormatting names '}' first and ';' and a new line after it",
+               on_type.get("firstTriggerCharacter") == "}"
+               and sorted(on_type.get("moreTriggerCharacter") or []) == ["\n", ";"],
+               f"got: {on_type}")
+    log_result("inlineValue and linkedEditingRange are advertised",
+               caps.get("inlineValueProvider") is True and caps.get("linkedEditingRangeProvider") is True)
+    filters = ((caps.get("workspace") or {}).get("fileOperations") or {}).get("willRename", {}).get("filters")
+    log_result("willRename is advertised for source files and directories",
+               isinstance(filters, list)
+               and {(f["pattern"]["glob"], f["pattern"]["matches"]) for f in filters}
+               == {("**/*.obs", "file"), ("**", "folder")}, f"got: {filters}")
+
+    path = os.path.join(TESTS_DIR, "lsp_editor.obs")
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    uri = path_to_uri(path)
+    lines = text.split("\n")
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    diags = c.diagnostics_for(uri, timeout=60)
+    log_result("the editor fixture is clean", diags == [], f"got: {diags}")
+
+    def span(rng):
+        return lines[rng["start"]["line"]][rng["start"]["character"]:rng["end"]["character"]]
+
+    sum_line, _ = find_pos(text, "method : public : Sum(")
+    twice_line, _ = find_pos(text, "method : public : Twice(")
+    main_line, _ = find_pos(text, "function : Main(")
+
+    # --- the analyzer's classification, which both features stand on ------------
+    full = result_of(c.request("textDocument/semanticTokens/full", {"textDocument": {"uri": uri}})) or {}
+    tokens = decode_tokens(full.get("data"))
+    by_kind = {}
+    for line, col, length, kind, mods in tokens:
+        by_kind.setdefault(kind, set()).add(lines[line][col:col + length])
+    log_result("semantic tokens classify locals, parameters and instance variables",
+               {"sum", "i", "editor"} <= by_kind.get(8, set()) and {"count", "total"} <= by_kind.get(9, set())
+               and "@total" in by_kind.get(7, set()), f"got: {by_kind}")
+    count_decl = [t for t in tokens if t[0] == sum_line and lines[t[0]][t[1]:t[1] + t[2]] == "count"]
+    log_result("a parameter's declaration carries the declaration modifier",
+               len(count_decl) == 1 and count_decl[0][3] == 9 and count_decl[0][4] & 1, f"got: {count_decl}")
+
+    # --- textDocument/inlineValue ---------------------------------------------
+    def inline(first, last, start_char=0, end_char=0):
+        return result_of(c.request("textDocument/inlineValue", {
+            "textDocument": {"uri": uri},
+            "range": {"start": {"line": first, "character": start_char},
+                      "end": {"line": last, "character": end_char}},
+            "context": {"frameId": 1, "stoppedLocation": {
+                "start": {"line": first, "character": 0}, "end": {"line": first, "character": 1}}}}))
+
+    whole = inline(0, len(lines))
+    lookups = [v for v in whole or [] if "variableName" in v]
+    exprs = [v for v in whole or [] if "expression" in v]
+    log_result("inlineValue answers the whole document", isinstance(whole, list) and bool(whole), f"got: {whole!r:.200}")
+    log_result("each variable lookup names the text it covers, case-sensitively",
+               bool(lookups) and all(span(v["range"]) == v["variableName"] and v.get("caseSensitiveLookup") is True
+                                     for v in lookups), f"got: {lookups!r:.300}")
+    log_result("locals and parameters are looked up, nothing else is",
+               {v["variableName"] for v in lookups} == {"sum", "i", "count", "total", "editor", "args"},
+               f"got: {sorted({v['variableName'] for v in lookups})}")
+    log_result("an instance variable is an expression to evaluate",
+               bool(exprs) and all(v["expression"] == "@total" == span(v["range"]) for v in exprs),
+               f"got: {exprs!r:.300}")
+    log_result("a method, a class and a call's name are not asked for",
+               not {"Sum", "Twice", "Editor", "PrintLine", "New", "Main"}
+               & ({v["variableName"] for v in lookups} | {v["expression"] for v in exprs}))
+
+    twice = inline(twice_line + 1, twice_line + 3)
+    log_result("inlineValue stays inside the range it is asked about",
+               [v["variableName"] for v in twice or []] == ["sum", "count", "sum"]
+               and all(twice_line + 1 <= v["range"]["start"]["line"] <= twice_line + 3 for v in twice or []),
+               f"got: {twice!r:.300}")
+    ret_line, ret_col = find_pos(text, "return sum;", 2)
+    narrow = inline(ret_line, ret_line, ret_col, ret_col + len("return sum;"))
+    log_result("and inside a range that starts and ends mid-line",
+               [v.get("variableName") for v in narrow or []] == ["sum"], f"got: {narrow!r:.200}")
+    clipped = inline(ret_line, ret_line, ret_col, ret_col + len("return su"))
+    log_result("a name the range ends inside is left out", clipped == [], f"got: {clipped!r:.200}")
+    header = inline(0, 8)
+    log_result("a range with no code in it is an empty list, not null", header == [], f"got: {header!r:.200}")
+    missing = result_of(c.request("textDocument/inlineValue", {
+        "textDocument": {"uri": "file:///not/open.obs"},
+        "range": {"start": {"line": 0, "character": 0}, "end": {"line": 1, "character": 0}},
+        "context": {"frameId": 1, "stoppedLocation": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 1}}}}))
+    log_result("inlineValue on a document that is not open is null", missing is None, f"got: {missing!r}")
+
+    # --- textDocument/linkedEditingRange ---------------------------------------
+    def linked(needle, occurrence=1, offset=1):
+        line, col = find_pos(text, needle, occurrence)
+        return result_of(c.request("textDocument/linkedEditingRange", {
+            "textDocument": {"uri": uri}, "position": {"line": line, "character": col + offset}}))
+
+    def ranges_of(answer):
+        return [(r["start"]["line"], r["start"]["character"], r["end"]["character"])
+                for r in (answer or {}).get("ranges", [])]
+
+    sum_decl = linked("sum := 0")
+    sum_ranges = ranges_of(sum_decl)
+    log_result("a local's occurrences, in its method and no other",
+               len(sum_ranges) == 4 and all(sum_line < r[0] < twice_line for r in sum_ranges)
+               and all(lines[r[0]][r[1]:r[2]] == "sum" for r in sum_ranges), f"got: {sum_decl!r:.300}")
+    log_result("linkedEditingRange carries a word pattern an identifier matches",
+               re.fullmatch((sum_decl or {}).get("wordPattern", "(?!)"), "sum2") is not None
+               and re.fullmatch((sum_decl or {}).get("wordPattern", "(?!)"), "2sum") is None,
+               f"got: {(sum_decl or {}).get('wordPattern')!r}")
+    log_result("from any occurrence, the same ranges",
+               sorted(ranges_of(linked("return sum;", 1, 8))) == sorted(sum_ranges)
+               and sorted(ranges_of(linked("sum += i", 1, 3))) == sorted(sum_ranges))
+    other_sum = ranges_of(linked("sum := count", 1, 1))
+    log_result("the same name in another method is a separate set",
+               len(other_sum) == 2 and all(twice_line < r[0] < main_line for r in other_sum)
+               and not set(other_sum) & set(sum_ranges), f"got: {other_sum}")
+    param = ranges_of(linked("count : Int", 1, 2))
+    log_result("a parameter's declaration and uses, from the declaration",
+               len(param) == 2 and param[0][0] == sum_line and all(sum_line <= r[0] < twice_line for r in param)
+               and all(lines[r[0]][r[1]:r[2]] == "count" for r in param), f"got: {param}")
+    log_result("and from a use",
+               sorted(ranges_of(linked("< count", 1, 3))) == sorted(param))
+    log_result("the second method's parameter is its own",
+               len(ranges_of(linked("count : Int", 2, 2))) == 2
+               and not set(ranges_of(linked("count : Int", 2, 2))) & set(param))
+
+    # an edit made to every range is what the client applies as the user types
+    renamed = apply_edits(text, [{"range": {"start": {"line": r[0], "character": r[1]},
+                                            "end": {"line": r[0], "character": r[2]}}, "newText": "total_sum"}
+                                 for r in sum_ranges])
+    log_result("typing in every range renames one variable and leaves the other",
+               renamed.count("total_sum") == 4 and renamed.count("sum := count * 2") == 1
+               and "@total := total_sum + @total" in renamed, "")
+
+    log_result("an instance variable is not linked", linked("@total := sum", 1, 3) is None)
+    log_result("a method name is not linked", linked("editor->Sum", 1, 10) is None)
+    log_result("a class name is not linked", linked("Editor->New", 1, 3) is None)
+    log_result("a keyword is not linked", linked("return sum;", 1, 2) is None)
+    log_result("punctuation is not linked", linked("sum := 0", 1, 4) is None)
+    log_result("a word in a comment is not linked", linked("Fixture for", 1, 2) is None)
+    log_result("linkedEditingRange on a document that is not open is null", result_of(c.request(
+        "textDocument/linkedEditingRange", {"textDocument": {"uri": "file:///not/open.obs"},
+                                            "position": {"line": 0, "character": 0}})) is None)
+
+    # --- textDocument/onTypeFormatting -----------------------------------------
+    def typed(doc_uri, doc_text, line, trigger, tab_size=4, spaces=True):
+        doc_lines = doc_text.split("\n")
+        column = 0 if trigger == "\n" or line >= len(doc_lines) else len(doc_lines[line])
+        edits = result_of(c.request("textDocument/onTypeFormatting", {
+            "textDocument": {"uri": doc_uri}, "position": {"line": line, "character": column},
+            "ch": trigger, "options": {"tabSize": tab_size, "insertSpaces": spaces}}))
+        applied = apply_edits(doc_text, edits or []).split("\n")
+        return edits, applied[line] if line < len(applied) else ""
+
+    messy = ("class Fmt {\n"
+             "\tfunction : Main(args : String[]) ~ Nil {\n"
+             "\t\tif(true) {\n"
+             "x := 1;\n"
+             "   }\n"
+             "\t\t\t}\n"
+             "  }\n")
+    messy_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_ontype.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": messy_uri, "languageId": "objeck", "version": 1, "text": messy}})
+    c.diagnostics_for(messy_uri, timeout=60)
+    _, got = typed(messy_uri, messy, 3, ";")
+    log_result("';' indents the line to its nesting, in spaces", got == "            x := 1;", repr(got))
+    _, got = typed(messy_uri, messy, 3, ";", spaces=False)
+    log_result("or in tabs", got == "\t\t\tx := 1;", repr(got))
+    _, got = typed(messy_uri, messy, 4, "}")
+    log_result("'}' puts a closing brace at the depth of the line that opened it", got == "        }", repr(got))
+    _, got = typed(messy_uri, messy, 5, "}", tab_size=2)
+    log_result("at the tab width the client asked for", got == "  }", repr(got))
+    _, got = typed(messy_uri, messy, 6, "}")
+    log_result("and the last brace of a class is at column 0", got == "}", repr(got))
+    edits, _ = typed(messy_uri, messy, 1, ";", spaces=False)
+    log_result("a line already at its depth gets no edit", edits == [], f"got: {edits!r}")
+    edits, got = typed(messy_uri, messy, 3, "x")
+    log_result("any other character is none of its business", edits == [] and got == "x := 1;", f"got: {edits!r}")
+    edits, _ = typed(messy_uri, messy, 40, ";")
+    log_result("a line past the end of the document is an empty answer", edits == [], f"got: {edits!r}")
+    log_result("onTypeFormatting on a document that is not open is null", result_of(c.request(
+        "textDocument/onTypeFormatting", {"textDocument": {"uri": "file:///not/open.obs"},
+                                          "position": {"line": 0, "character": 0}, "ch": ";",
+                                          "options": {"tabSize": 4, "insertSpaces": True}})) is None)
+
+    blank = "class Fmt {\n\tfunction : Main(args : String[]) ~ Nil {\n\n\t}\n}\n"
+    blank_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_ontype_blank.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": blank_uri, "languageId": "objeck", "version": 1, "text": blank}})
+    _, got = typed(blank_uri, blank, 2, "\n", tab_size=2)
+    log_result("a new line inside a block starts at the block's depth", got == "    ", repr(got))
+
+    # comments: a line comment is indented like code, and does not shift the lines
+    # after it; the inside of a block comment is left alone
+    comments = ("class C {\n"
+                "# one\n"
+                "# two\n"
+                "#~\n"
+                "  kept\n"
+                "~#\n"
+                "function : Main(args : String[]) ~ Nil {\n"
+                "# three\n"
+                "x := 1;\n"
+                "}\n"
+                "}\n")
+    comments_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_ontype_comments.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": comments_uri, "languageId": "objeck", "version": 1, "text": comments}})
+    want = {1: "  # one", 2: "  # two", 4: "  kept", 6: "  function : Main(args : String[]) ~ Nil {",
+            7: "    # three", 8: "    x := 1;", 9: "  }", 10: "}"}
+    got = {line: typed(comments_uri, comments, line, ";", tab_size=2)[1] for line in want}
+    wrong = {line: got[line] for line in want if got[line] != want[line]}
+    log_result("indentation after line comments and a block comment is by the real line",
+               not wrong, f"got: {wrong}")
+    log_result("a block comment's own lines are not touched",
+               typed(comments_uri, comments, 4, ";", tab_size=2)[0] == [])
+
+    # a function type's backslash is no token to the formatter's scanner, which ends
+    # the process on it; typing in such a file must not take the server down
+    bs = chr(92)
+    func_type = ("class F {\n"
+                 "\tfunction : Main(args : String[]) ~ Nil {\n"
+                 "f : " + bs + "Funcs->Op := Twice(Int) ~ Int;\n"
+                 "\t}\n"
+                 "}\n")
+    func_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_ontype_functype.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": func_uri, "languageId": "objeck", "version": 1, "text": func_type}})
+    _, got = typed(func_uri, func_type, 2, ";", spaces=False)
+    log_result("a function type in the file does not end the server, and the line is indented",
+               c.proc.poll() is None and got == "\t\tf : " + bs + "Funcs->Op := Twice(Int) ~ Int;", repr(got))
+    c.notify("textDocument/didClose", {"textDocument": {"uri": func_uri}})
+
+    # the formatter's own answer: every line it leaves in place, it indents as
+    # this does (its first member, after the class line, is indented a column
+    # short, so New is left out)
+    body = "\n".join(lines[lines.index("class Editor {"):])
+    body_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_ontype_body.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": body_uri, "languageId": "objeck", "version": 1, "text": body}})
+    c.diagnostics_for(body_uri, timeout=60)
+    formatted = apply_edits(body, result_of(c.request("textDocument/formatting", {
+        "textDocument": {"uri": body_uri}, "options": {"tabSize": 4, "insertSpaces": True}})) or [])
+    body_lines, formatted_lines = body.split("\n"), formatted.split("\n")
+    compared = agree = 0
+    off = []
+    for number, original in enumerate(body_lines):
+        if original.strip() and not original.strip().startswith("New(") and number < len(formatted_lines) \
+                and formatted_lines[number].strip() == original.strip():
+            compared += 1
+            _, got = typed(body_uri, body, number, ";" if original.rstrip().endswith(";") else "}")
+            if leading_space(got) == leading_space(formatted_lines[number]):
+                agree += 1
+            else:
+                off.append((number, original, got, formatted_lines[number]))
+    log_result("the lines the formatter keeps are indented as it indents them",
+               compared >= 15 and agree == compared, f"{agree}/{compared}: {off[:2]}")
+
+    for doc_uri in (uri, messy_uri, blank_uri, comments_uri, body_uri):
+        c.notify("textDocument/didClose", {"textDocument": {"uri": doc_uri}})
+
+    # no workspace folder lists any file
+    renamed = result_of(c.request("workspace/willRenameFiles", {"files": [
+        {"oldUri": "file:///a/old.obs", "newUri": "file:///a/new.obs"}]}))
+    log_result("willRenameFiles with no workspace folder is null", renamed is None, f"got: {renamed!r}")
+
+
+def check_will_rename(obr, server_obe, apis_json, bin_dir):
+    """workspace/willRenameFiles edits build.json, the one place a source file's
+    path is written down ('use' names a bundle, never a file)."""
+    work = tempfile.mkdtemp(prefix="objk-lsp-rename-")
+    try:
+        os.makedirs(os.path.join(work, "src"))
+        build = ('{\n\t"files": [\n\t\t"shapes.obs",\n\t\t"src/animals.obs",\n\t\t"src/main.obs"\n\t],\n'
+                 '\t"libs": [\n\t\t"gen_collect.obl"\n\t],\n\t"flags": ""\n}\n')
+        with open(os.path.join(work, "build.json"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(build)
+        folder = path_to_uri(work)
+        build_uri = folder + "/build.json"
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": folder, "capabilities": {},
+                "workspaceFolders": [{"uri": folder, "name": "ws"}]}, timeout=90)
+            c.notify("initialized", {})
+            c.drain(1.0)
+
+            def rename(*pairs):
+                return result_of(c.request("workspace/willRenameFiles", {"files": [
+                    {"oldUri": folder + "/" + old, "newUri": folder + "/" + new} for old, new in pairs]}))
+
+            def files_after(edit):
+                edits = ((edit or {}).get("changes") or {}).get(build_uri)
+                return json.loads(apply_edits(build, edits or []))["files"] if edits else None
+
+            edit = rename(("shapes.obs", "forms.obs"))
+            log_result("renaming a listed file edits build.json, and only build.json",
+                       list((edit or {}).get("changes", {})) == [build_uri], f"got: {edit!r:.300}")
+            log_result("the edit replaces the path inside the quotes",
+                       files_after(edit) == ["forms.obs", "src/animals.obs", "src/main.obs"]
+                       and len(edit["changes"][build_uri]) == 1
+                       and edit["changes"][build_uri][0]["range"]["start"] == {"line": 2, "character": 3},
+                       f"got: {edit!r:.300}")
+            log_result("a file moved into a directory takes the directory's path",
+                       files_after(rename(("shapes.obs", "src/shapes.obs")))
+                       == ["src/shapes.obs", "src/animals.obs", "src/main.obs"])
+            log_result("renaming a directory renames the files it holds",
+                       files_after(rename(("src", "lib"))) == ["shapes.obs", "lib/animals.obs", "lib/main.obs"])
+            log_result("several files at once are one edit of each",
+                       files_after(rename(("shapes.obs", "forms.obs"), ("src/main.obs", "src/app.obs")))
+                       == ["forms.obs", "src/animals.obs", "src/app.obs"])
+            log_result("a file build.json does not list is not its business",
+                       rename(("notes.obs", "memo.obs")) is None)
+            log_result("a name that merely starts like a listed directory is not inside it",
+                       rename(("src2", "lib")) is None)
+            outside = result_of(c.request("workspace/willRenameFiles", {"files": [
+                {"oldUri": folder + "/shapes.obs",
+                 "newUri": path_to_uri(os.path.join(os.path.dirname(work), "elsewhere", "shapes.obs"))}]}))
+            log_result("a file moved out of the folder has no path to write, so no edit", outside is None,
+                       f"got: {outside!r:.200}")
+            log_result("a rename that changes nothing is no edit", rename(("shapes.obs", "shapes.obs")) is None)
+            empty = result_of(c.request("workspace/willRenameFiles", {"files": []}))
+            log_result("no files is null", empty is None, f"got: {empty!r}")
+            log_result("the server is alive after the renames", c.proc.poll() is None)
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def check_hardening(obr, server_obe, apis_json, bin_dir):
@@ -3564,6 +3909,7 @@ def main():
         check_completion_docs(c, caps, probe_text, probe_uri)
         check_enum_docs(c, apis_json)
         check_rename_and_organize(c, probe_text, probe_uri)
+        check_editor_features(c, caps)
         check_document_symbol_tree(c, probe_text, probe_uri)
         check_tokens_lens_links(c, caps, probe_text, probe_uri)
         check_large_real_file(c)
@@ -3576,6 +3922,7 @@ def main():
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_hardening(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
+    check_will_rename(obr, server_obe, apis_json, bin_dir)
     check_program_reuse(obr, server_obe, apis_json, bin_dir)
     check_other_folder_kept(obr, server_obe, apis_json, bin_dir)
     check_library_cache_invalidation(obr, server_obe, apis_json, bin_dir)
