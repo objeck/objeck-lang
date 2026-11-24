@@ -16,6 +16,7 @@ Each library typically consists of:
 - **openai.obs** - OpenAI API integration (GPT-4, GPT-5, DALL-E, Whisper, Realtime API)
 - **gemini.obs** - Google Gemini API integration with schema support
 - **anthropic.obs** - Anthropic Messages API client (Claude): chat, tool use, streaming, structured output
+- **agent.obs** - Provider-neutral tool-use loop: `AgentTool`, `ToolRegistry`, `ChatBackend` adapters for Anthropic, OpenAI, Gemini and Ollama, and `Agent` (`API.Agent`); runs offline against `ScriptedBackend`
 - **ollama.obs** - Ollama local LLM integration
 - **opencv.obs** - OpenCV computer vision library
 - **models.obs** - Backend-neutral inference types shared by `onnx` and `inference`: `Tensor`, `TensorSpec`, `EndPoint`, `Engine` (`API.Models`)
