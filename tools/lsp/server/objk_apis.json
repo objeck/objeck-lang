@@ -17440,6 +17440,224 @@
 				}
 			}
 		},
+		"System.ML.Boost.BoostModel": {
+			"description": "The engine behind GradientBoostingRegressor and GradientBoostingClassifier: the hyper-parameters and their setters, the tree grower, the boosting loop, importances, staged predictions and persistence. Use the two subclasses; the methods named Grow, FitCore and Raw are the engine's and are public only because the subclasses live in other classes.",
+			"functions": {
+				"FitCore": {
+					"descriptions": ["**Engine entry point: fits the ensemble on targets already turned into numbers (class indices for the classifier).**\n\n```method : public : FitCore(X:Float[,], y:Float[], w:Float[], Xv:Float[,], yv:Float[], obj:Int, outputs:Int) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nw: Float[]\n\nXv: Float[,]\n\nyv: Float[]\n\nobj: Int\n\noutputs: Int\n\nreturn: Bool"]
+				},
+				"FromBytes": {
+					"descriptions": ["**Engine: reads what ToBytes wrote into this object.**\n\n```method : public : FromBytes(data:Byte[], kind:Int) ~ Int[]```\n\n\n\ndata: Byte[]\n\nkind: Int\n\nreturn: Int[]"]
+				},
+				"FromHex": {
+					"descriptions": ["**The bytes of a hex text, or Nil when it is not one.**\n\n```function : FromHex() ~ Byte[]```\n\n\n\ntext: String\n\nreturn: Byte[]"]
+				},
+				"GetBestIteration": {
+					"descriptions": ["**The stage with the lowest validation loss when early stopping was on, otherwise the last stage; -1 when unfitted.**\n\n```method : public : GetBestIteration() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last call was refused, or an empty string.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEstimators": {
+					"descriptions": ["**Boosting stages a fit may add.**\n\n```method : public : GetEstimators() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFeatureImportances": {
+					"descriptions": ["**Total loss reduction of the splits on each feature, divided by the total, so the values sum to 1.0 (all 0.0 when no tree split).**\n\n```method : public : GetFeatureImportances() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetFitSeconds": {
+					"descriptions": ["**Seconds the last Fit took.**\n\n```method : public : GetFitSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetGainTotals": {
+					"descriptions": ["**Total loss reduction of the splits on each feature, not normalized.**\n\n```method : public : GetGainTotals() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetLeafCount": {
+					"descriptions": ["**Total number of leaves over all trees.**\n\n```method : public : GetLeafCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLearningRate": {
+					"descriptions": ["**The learning rate.**\n\n```method : public : GetLearningRate() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNumStages": {
+					"descriptions": ["**Stages the fitted model holds (after an early stop, the stages up to the best one).**\n\n```method : public : GetNumStages() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSplitCounts": {
+					"descriptions": ["**How many splits use each feature, over all trees.**\n\n```method : public : GetSplitCounts() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetStopped": {
+					"descriptions": ["**Whether the last fit stopped early.**\n\n```method : public : GetStopped() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"GetTrainLoss": {
+					"descriptions": ["**Mean training loss after each stage that was run (the stages cut off by early stopping included): mean squared error, mean absolute error, mean Huber loss, or log loss.**\n\n```method : public : GetTrainLoss() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetValidationLoss": {
+					"descriptions": ["**Mean validation loss after each stage that was run, empty when the fit had no validation rows.**\n\n```method : public : GetValidationLoss() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"Grow": {
+					"descriptions": ["**Engine: grows one tree on the gradients and Hessians in the working arrays, over the sampled rows and the allowed columns.**\n\n```method : public : Grow() ~ BoostTree```\n\n\n\nX: Float[,]\n\nsample: Int[]\n\ncolmask: Bool[]\n\nreturn: BoostTree"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has succeeded.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with the defaults of scikit-learn's GradientBoosting: 100 stages, learning rate 0.1, depth 3.**\n\n```New()```\n\n", "**Constructor**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int"]
+				},
+				"RawScores": {
+					"descriptions": ["**Engine: raw scores (before the sigmoid or softmax) for each row and output, from the first stages stages.**\n\n```method : public : RawScores(X:Float[,], stages:Int) ~ Float[]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Float[]"]
+				},
+				"SetColumnSample": {
+					"descriptions": ["**Fraction of the features each tree may split on, drawn per tree with the model's seed (default 1.0).**\n\n```method : public : SetColumnSample(fraction:Float) ~ Bool```\n\n\n\nfraction: Float\n\nreturn: Bool"]
+				},
+				"SetEarlyStopping": {
+					"descriptions": ["**Stops adding stages once the validation loss has not improved for patience stages, and cuts the model back to its best stage. The validation rows are the last fraction of a seeded shuffle of the training rows, unless Fit is given a validation set of its own. A patience of 0 (the default) turns early stopping off.**\n\n```method : public : SetEarlyStopping(patience:Int, validation_fraction:Float) ~ Bool```\n\n\n\npatience: Int\n\nvalidation_fraction: Float\n\nreturn: Bool"]
+				},
+				"SetHistogram": {
+					"descriptions": ["**Finds splits on a histogram of at most max_bins bins per feature instead of on the sorted values (0, the default, is the exact search). A feature with no more distinct values than bins loses nothing; otherwise the bin edges sit at the quantiles of its distinct values.**\n\n```method : public : SetHistogram(max_bins:Int) ~ Bool```\n\n\n\nmax_bins: Int\n\nreturn: Bool"]
+				},
+				"SetLambda": {
+					"descriptions": ["**L2 penalty on the leaf values: a leaf holds -G / (H + lambda) times the learning rate, with G and H the sums of the first and second derivative of the loss over its rows (default 0.0). The absolute and Huber losses fit leaves by their own rule and ignore it.**\n\n```method : public : SetLambda(lambda:Float) ~ Bool```\n\n\n\nlambda: Float\n\nreturn: Bool"]
+				},
+				"SetMinChildWeight": {
+					"descriptions": ["**Smallest sum of second derivatives a child may hold (default 0.0; for squared loss this is a row count).**\n\n```method : public : SetMinChildWeight(weight:Float) ~ Bool```\n\n\n\nweight: Float\n\nreturn: Bool"]
+				},
+				"SetMinSamplesLeaf": {
+					"descriptions": ["**Smallest number of training rows a leaf may hold (default 1).**\n\n```method : public : SetMinSamplesLeaf(rows:Int) ~ Bool```\n\n\n\nrows: Int\n\nreturn: Bool"]
+				},
+				"SetMinSplitGain": {
+					"descriptions": ["**Smallest loss reduction that justifies a split; a node whose best split gains no more than this stays a leaf (XGBoost's gamma; default 0.0). The gain is 0.5 * (GL^2/(HL+lambda) + GR^2/(HR+lambda) - G^2/(H+lambda)).**\n\n```method : public : SetMinSplitGain(gain:Float) ~ Bool```\n\n\n\ngain: Float\n\nreturn: Bool"]
+				},
+				"SetSubsample": {
+					"descriptions": ["**Fraction of the rows each stage is fitted on, drawn without replacement with the model's seed (stochastic gradient boosting; default 1.0).**\n\n```method : public : SetSubsample(fraction:Float) ~ Bool```\n\n\n\nfraction: Float\n\nreturn: Bool"]
+				},
+				"StagedRaw": {
+					"descriptions": ["**Engine: raw scores after every stage.**\n\n```method : public : StagedRaw(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"ToBytes": {
+					"descriptions": ["**Engine: the model as bytes: a header, the starting scores, the hyper-parameters worth keeping, the loss history and every tree.**\n\n```method : public : ToBytes(kind:Int, classes:Int[]) ~ Byte[]```\n\n\n\nkind: Int\n\nclasses: Int[]\n\nreturn: Byte[]"]
+				},
+				"ToHex": {
+					"descriptions": ["**Hex text of a byte array, for Export.**\n\n```function : ToHex() ~ String```\n\n\n\ndata: Byte[]\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.Boost.BoostTree": {
+			"description": "One regression tree of a boosted ensemble, stored as flat arrays (node 0 is the root, a child always has a larger index than its parent, a node whose feature is -1 is a leaf). A row goes left when its value is at most the threshold; a missing value (NaN) goes the way the split learned. Leaf values already include the learning rate.",
+			"functions": {
+				"Eval": {
+					"descriptions": ["**The tree's output for a row.**\n\n```method : public : Eval(X:Float[,], r:Int) ~ Float```\n\n\n\nX: Float[,]\n\nr: Int\n\nreturn: Float"]
+				},
+				"GetDepth": {
+					"descriptions": ["**The depth of the deepest leaf (a single leaf has depth 0).**\n\n```method : public : GetDepth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFeature": {
+					"descriptions": ["**The feature a node splits on, or -1 for a leaf.**\n\n```method : public : GetFeature() ~ Int```\n\n\n\ni: Int\n\nreturn: Int"]
+				},
+				"GetGain": {
+					"descriptions": ["**The gain of the split at a node (0.0 for a leaf).**\n\n```method : public : GetGain() ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"GetLeafCount": {
+					"descriptions": ["**Number of leaves.**\n\n```method : public : GetLeafCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNodeCount": {
+					"descriptions": ["**Number of nodes.**\n\n```method : public : GetNodeCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetValue": {
+					"descriptions": ["**The value of a node (meaningful for a leaf).**\n\n```method : public : GetValue() ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"Leaf": {
+					"descriptions": ["**The index of the leaf a row falls in.**\n\n```method : public : Leaf(X:Float[,], r:Int) ~ Int```\n\n\n\nX: Float[,]\n\nr: Int\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(count:Int)```\n\n\n\ncount: Int"]
+				},
+				"SetNode": {
+					"descriptions": ["**Fills in one node.**\n\n```method : public : SetNode() ~ Nil```\n\n\n\ni: Int\n\nfeat: Int\n\nthr: Float\n\nleft: Int\n\nright: Int\n\ndleft: Bool\n\nval: Float\n\ngain: Float\n\nreturn: Nil"]
+				},
+				"SetValue": {
+					"descriptions": ["**Replaces the value of a leaf.**\n\n```method : public : SetValue() ~ Nil```\n\n\n\ni: Int\n\nval: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.Boost.GradientBoostingClassifier": {
+			"description": "Gradient boosted classification trees: binary (logistic loss, one tree per stage) and multiclass (softmax, one tree per class per stage, with XGBoost's Hessian 2 p (1 - p)).\n\nThe starting scores are the log odds (binary) or log priors (multiclass) of the training labels. Class labels are any Ints; they are sorted and PredictProba's columns follow GetClasses(). GradientBoostingClassifier implements ScoreModel, so a binary one drops into CrossValidation and the lab's experiments; PredictScore is the probability of the larger label. Settings, missing values and early stopping are as in GradientBoostingRegressor.",
+			"functions": {
+				"Export": {
+					"descriptions": ["**The model as a text of hex digits.**\n\n```method : public : Export() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits on binary labels (false is class 0, true class 1), as ScoreModel asks.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool", "**Fits on class labels; two classes use the logistic loss, more use softmax.**\n\n```method : public : Fit(X:Float[,], y:Int[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nreturn: Bool", "**Fits with a weight for each row.**\n\n```method : public : Fit(X:Float[,], y:Int[], w:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nw: Float[]\n\nreturn: Bool", "**Fits and watches a validation set of the caller's own for early stopping (the patience must be above 0). Validation labels the training set does not have are refused.**\n\n```method : public : Fit(X:Float[,], y:Int[], Xv:Float[,], yv:Int[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nXv: Float[,]\n\nyv: Int[]\n\nreturn: Bool"]
+				},
+				"GetClasses": {
+					"descriptions": ["**The class labels, sorted; the columns of PredictProba.**\n\n```method : public : GetClasses() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"Import": {
+					"descriptions": ["**Reads a model written by Export.**\n\n```function : Import(text:String) ~ GradientBoostingClassifier```\n\n\n\ntext: String\n\nreturn: GradientBoostingClassifier"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a model written by Store.**\n\n```function : Load(filename:String) ~ GradientBoostingClassifier```\n\n\n\nfilename: String\n\nreturn: GradientBoostingClassifier"]
+				},
+				"LogLoss": {
+					"descriptions": ["**Mean log loss of the predicted probabilities on a labelled set.**\n\n```method : public : LogLoss(X:Float[,], y:Int[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with 100 stages, learning rate 0.1, depth 3, seed 1.**\n\n```New()```\n\n", "**Constructor**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**The most probable class of every row.**\n\n```method : public : Predict(X:Float[,]) ~ Int[]```\n\n\n\nX: Float[,]\n\nreturn: Int[]", "**The most probable class of every row from the first stages stages only.**\n\n```method : public : Predict(X:Float[,], stages:Int) ~ Int[]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Int[]"]
+				},
+				"PredictProba": {
+					"descriptions": ["**Class probabilities for every row, one column per class (GetClasses order); each row sums to 1.0.**\n\n```method : public : PredictProba(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]", "**Class probabilities from the first stages stages only.**\n\n```method : public : PredictProba(X:Float[,], stages:Int) ~ Float[,]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Float[,]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**Probability of the larger class, for a binary model (ScoreModel). A multiclass model gives the probability of its last class.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"Score": {
+					"descriptions": ["**Fraction of rows whose predicted class equals the label.**\n\n```method : public : Score(X:Float[,], y:Int[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Int[]\n\nreturn: Float"]
+				},
+				"StagedPredict": {
+					"descriptions": ["**The predicted class after each stage: row s holds what Predict(X, s + 1) gives, so the last row equals Predict(X).**\n\n```method : public : StagedPredict(X:Float[,]) ~ Int[,]```\n\n\n\nX: Float[,]\n\nreturn: Int[,]"]
+				},
+				"Store": {
+					"descriptions": ["**Writes the model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.Boost.GradientBoostingRegressor": {
+			"description": "Gradient boosted regression trees.\n\nEach stage fits a regression tree to the gradient of the loss and adds it, scaled by the learning rate, to the running prediction. Trees are grown level by level with XGBoost's second-order gain, so a leaf holds -G / (H + lambda): with lambda 0.0 and squared loss that is the mean residual, as in scikit-learn's GradientBoostingRegressor. The starting prediction is the mean of the targets (the median for the absolute and Huber losses). A NaN in a feature is a missing value and follows the direction each split learned; targets may not be NaN.",
+			"functions": {
+				"Export": {
+					"descriptions": ["**The model as a text of hex digits.**\n\n```method : public : Export() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Fit": {
+					"descriptions": ["**Fits the ensemble.**\n\n```method : public : Fit(X:Float[,], y:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nreturn: Bool", "**Fits the ensemble with a weight for each row.**\n\n```method : public : Fit(X:Float[,], y:Float[], w:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nw: Float[]\n\nreturn: Bool", "**Fits the ensemble and watches a validation set of the caller's own for early stopping (see SetEarlyStopping; the patience must be above 0 for it to stop).**\n\n```method : public : Fit(X:Float[,], y:Float[], Xv:Float[,], yv:Float[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nXv: Float[,]\n\nyv: Float[]\n\nreturn: Bool"]
+				},
+				"GetLoss": {
+					"descriptions": ["**The loss being minimized.**\n\n```method : public : GetLoss() ~ BoostLoss```\n\n\n\nreturn: BoostLoss"]
+				},
+				"Import": {
+					"descriptions": ["**Reads a model written by Export.**\n\n```function : Import(text:String) ~ GradientBoostingRegressor```\n\n\n\ntext: String\n\nreturn: GradientBoostingRegressor"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a model written by Store.**\n\n```function : Load(filename:String) ~ GradientBoostingRegressor```\n\n\n\nfilename: String\n\nreturn: GradientBoostingRegressor"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with squared loss, 100 stages, learning rate 0.1, depth 3, seed 1.**\n\n```New()```\n\n", "**Constructor with squared loss.**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int", "**Constructor**\n\n```New(loss:BoostLoss, num_trees:Int, learning_rate:Float, max_depth:Int, seed:Int)```\n\n\n\nloss: BoostLoss\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts every row with all the stages.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]", "**Predicts every row with the first stages stages only.**\n\n```method : public : Predict(X:Float[,], stages:Int) ~ Float[]```\n\n\n\nX: Float[,]\n\nstages: Int\n\nreturn: Float[]"]
+				},
+				"Score": {
+					"descriptions": ["**Mean loss of the model on a labelled set: mean squared error, mean absolute error or mean Huber loss, as the model's loss says.**\n\n```method : public : Score(X:Float[,], y:Float[]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[]\n\nreturn: Float"]
+				},
+				"SetHuber": {
+					"descriptions": ["**The Huber loss is quadratic within delta of the target and linear beyond. With delta 0.0 (the default) it is re-estimated at every stage as the alpha quantile of the absolute residuals (scikit-learn's rule).**\n\n```method : public : SetHuber(delta:Float, alpha:Float) ~ Bool```\n\n\n\ndelta: Float\n\nalpha: Float\n\nreturn: Bool"]
+				},
+				"StagedPredict": {
+					"descriptions": ["**The prediction after each stage: row s holds what Predict(X, s + 1) gives, so the last row equals Predict(X).**\n\n```method : public : StagedPredict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Store": {
+					"descriptions": ["**Writes the model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
 		"System.ML.Clip.ClipEncoder": {
 			"description": "A CLIP image encoder: an exported ONNX image tower plus the preprocessing, giving one embedding per image. Not thread-safe. Close() releases the model.",
 			"functions": {
@@ -26101,6 +26319,30 @@
 				"file": ""
 			}
 		],
+		"BoostModel": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
+		"BoostTree": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
+		"GradientBoostingClassifier": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
+		"GradientBoostingRegressor": [
+			{
+				"bundle": "System.ML.Boost",
+				"file": ""
+			}
+		],
 		"ClipEncoder": [
 			{
 				"bundle": "System.ML.Clip",
@@ -28897,6 +29139,18 @@
 				{ "name": "MAX", "value": "0", "description": "" },
 				{ "name": "MEAN", "value": "1", "description": "" },
 				{ "name": "RMS", "value": "2", "description": "" }
+			]
+		},
+		"System.ML.Boost.BoostLoss": {
+			"name": "BoostLoss",
+			"bundle": "System.ML.Boost",
+			"class": "",
+			"kind": "enum",
+			"description": "The loss a GradientBoostingRegressor minimizes.",
+			"items": [
+				{ "name": "SQUARED", "value": "0", "description": "" },
+				{ "name": "ABSOLUTE", "value": "1", "description": "" },
+				{ "name": "HUBER", "value": "2", "description": "" }
 			]
 		},
 		"System.ML.Clip.ClipPreprocessor#Resize": {

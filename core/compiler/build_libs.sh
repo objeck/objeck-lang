@@ -30,6 +30,8 @@ $OBC -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex
 $OBC -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 $OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs,lib_src/ml_svm.obs,lib_src/ml_outlier.obs,lib_src/ml_embed.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
 $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/ml_lab.obl
+# Gradient boosting (System.ML.Boost): regressor and classifier, XGBoost-style trees. Pure Objeck over ml, so ml.obl is untouched
+$OBC -src lib_src/ml_boost.obs -lib gen_collect,csv,ml -tar lib -opt s3 -dest ../lib/ml_boost.obl
 # Local vector index (exact cosine / dot / L2 search). Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
 # Verification metrics (FAR, FRR, EER, ROC/DET points) and cosine similarity. Needs only gen_collect, so it links no vision library

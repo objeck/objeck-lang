@@ -271,6 +271,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "query_ml": ("Query ML", "Models as query sources"),
     "ml": ("ML", "Machine learning and matrix math"),
     "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
+    "ml_boost": ("Gradient Boosting", "Gradient boosted trees for regression and classification: squared, absolute and Huber loss, logistic and softmax, early stopping, importances and a histogram split finder"),
     "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
     "ml_verify": ("Verification", "False acceptance and rejection rates, the equal error rate, ROC and DET points and cosine similarity for a matching system such as face verification"),
     "ml_timeseries": ("Time Series", "Forecasting: baselines, exponential smoothing, ARIMA with automatic selection, prediction intervals, and rolling-origin evaluation"),
