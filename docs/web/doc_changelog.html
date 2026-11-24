@@ -116,6 +116,7 @@
     </ul>
     <h4 id="fixed">Fixed</h4>
     <ul>
+     <li><strong>Dead-store elimination no longer drops a store a handler reads</strong>: <code>x := 1; try { w := 10 / z; x := 2; } on(e : Error) { return x; }</code> lost <code>x := 1</code> at <code>-opt s1</code> and above, so the handler saw 0 when the division raised. Dead stores now come from the control-flow graph, which counts a handler's reads through its whole try region (and native and thread instructions as reading every local); the straight-line scan stays only as a fallback and is skipped when the code has a try region. New test <code>opt_dead_store_liveness</code>.</li>
      <li><strong><code>{n}</code> in a regular expression meant <code>{n,}</code></strong>: <code>a{2}</code> matched <code>aaa</code>. It is now exactly n. This is in the released v2026.11.2 <code>regex.obl</code>.</li>
      <li><strong><code>RegEx-&gt;ReplaceAll</code> matched against already-replaced text</strong>: a replacement could create or remove a <code>\b</code>, so <code>\bx</code> on <code>xx</code> with <code>-</code> gave <code>--</code> instead of <code>-x</code>. It now builds the result in one pass over the original input.</li>
      <li><strong><code>^a</code>, <code>^a+</code>, <code>^a$</code>, <code>^$</code> and <code>a|$</code> were rejected</strong> as "stray token" or a missing operand; the anchor was only applied when a second operand followed.</li>

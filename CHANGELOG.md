@@ -19,6 +19,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Fixed
 
+- **Dead-store elimination no longer drops a store a handler reads**: `x := 1; try { w := 10 / z; x := 2; } on(e : Error) { return x; }` lost `x := 1` at `-opt s1` and above, so the handler saw 0 when the division raised. Dead stores now come from the control-flow graph, which counts a handler's reads through its whole try region (and native and thread instructions as reading every local); the straight-line scan stays only as a fallback and is skipped when the code has a try region. New test `opt_dead_store_liveness`.
 - **`{n}` in a regular expression meant `{n,}`**: `a{2}` matched `aaa`. It is now exactly n. This is in the released v2026.11.2 `regex.obl`.
 - **`RegEx->ReplaceAll` matched against already-replaced text**: a replacement could create or remove a `\b`, so `\bx` on `xx` with `-` gave `--` instead of `-x`. It now builds the result in one pass over the original input.
 - **`^a`, `^a+`, `^a$`, `^$` and `a|$` were rejected** as "stray token" or a missing operand; the anchor was only applied when a second operand followed.
