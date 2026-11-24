@@ -103,6 +103,12 @@
     "System.Time": ["Alarm", "Date", "Timer"]
    }
   },
+  "llm_eval": {
+   "deps": ["gen_collect", "csv", "json", "ml"],
+   "bundles": {
+    "System.LLM.Eval": ["Attempt", "CodeExtractor", "CommandModel", "ErrorCategory", "EvalArgs", "EvalReport", "EvalRunner", "EvalTally", "EvalTask", "EvalText", "ExecResult", "ModelAdapter", "ModelComparison", "ModelReply", "ModelRequest", "ModelResults", "OutputChecker", "PassAtK", "ReferenceModel", "Sandbox", "ScriptedModel", "TaskSuite", "TaskTally"]
+   }
+  },
   "math": {
    "deps": [],
    "bundles": {
