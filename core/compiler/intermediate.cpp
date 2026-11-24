@@ -1455,9 +1455,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
                                                                                    method_call->GetMethod()->GetEncodedName()));
       }
       else {
-        const int16_t method_id = method_call->GetMethod()->GetId();
-        const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
-        const INT64_VALUE method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)cls_id << 16) | method_id;
+        const INT64_VALUE method_cls_id = PackFunctionValue((int)(method_call->GetMethod()->GetClass()->GetId()), (int)(method_call->GetMethod()->GetId()));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(static_cast<Statement*>(method_call), cur_line_num, method_cls_id));
       }
     }
@@ -1472,9 +1470,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
                                                                                    method_call->GetLibraryMethod()->GetName()));
       }
       else {
-        const int16_t method_id = method_call->GetLibraryMethod()->GetId();
-        const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
-        const INT64_VALUE method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)cls_id << 16) | method_id;
+        const INT64_VALUE method_cls_id = PackFunctionValue((int)(method_call->GetLibraryMethod()->GetLibraryClass()->GetId()), (int)(method_call->GetLibraryMethod()->GetId()));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(static_cast<Statement*>(method_call), cur_line_num, method_cls_id));
       }
     }
@@ -4925,9 +4921,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
                        
       }
       else {
-        const int16_t method_id = method_call->GetMethod()->GetId();
-        const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
-        const INT64_VALUE method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)cls_id << 16) | method_id;
+        const INT64_VALUE method_cls_id = PackFunctionValue((int)(method_call->GetMethod()->GetClass()->GetId()), (int)(method_call->GetMethod()->GetId()));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, method_cls_id));
       }
     }
@@ -4942,9 +4936,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
                                                                                    method_call->GetLibraryMethod()->GetName()));
       }
       else {
-        const int16_t method_id = method_call->GetLibraryMethod()->GetId();
-        const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
-        const INT64_VALUE method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)cls_id << 16) | method_id;
+        const INT64_VALUE method_cls_id = PackFunctionValue((int)(method_call->GetLibraryMethod()->GetLibraryClass()->GetId()), (int)(method_call->GetLibraryMethod()->GetId()));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, method_cls_id));
       }
     }

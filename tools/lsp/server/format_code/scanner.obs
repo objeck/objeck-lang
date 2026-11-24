@@ -9,6 +9,7 @@ class Scanner {
 	@line_pos : Int;
 	@keywords : Hash<String, Token>;
 	@tokens : Vector<Token>;
+	@lenient : Bool;
 
 	New(input : String) {
 		@buffer := input->ToCharArray();
@@ -118,6 +119,11 @@ class Scanner {
 				@tokens->AddBack(Token->New(@line_num, Token->Type->VTAB, "vtab"));
 			};
 		};
+	}
+
+	# step over a character with no token instead of ending the process
+	method : public : SetLenient() ~ Nil {
+		@lenient := true;
 	}
 
 	method : public : GetTokens() ~ Vector<Token> {
@@ -454,8 +460,17 @@ class Scanner {
 
 					other {
 						if(@cur_char <> '\0') {
-							"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'] ---"->ErrorLine();						
-							Runtime->Exit(1);
+							# A caller that only counts braces (CodeFormatter->LineDepths) steps
+							# over a character the scanner has no token for, such as the '\' of a
+							# function type. A formatter cannot write what it did not read, so
+							# for it this still ends the process.
+							if(@lenient) {
+								NextChar();
+							}
+							else {
+								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'] ---"->ErrorLine();
+								Runtime->Exit(1);
+							};
 						};
 					}
 				};

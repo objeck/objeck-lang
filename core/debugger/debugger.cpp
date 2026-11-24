@@ -35,6 +35,7 @@
 #include "../shared/sys.h"
 #include "../shared/version.h"
 #include "../vm/vm.h"
+#include "../vm/arch/ref_map.h"
 #include <sstream>
 #ifndef _WIN32
 #include <sys/stat.h>
@@ -367,6 +368,224 @@ void Runtime::Debugger::ProcessThreads()
   }
 }
 
+// The instruction a goto moves the stopped thread to, picked up by that thread
+// as it leaves the hook. Thread-local so no other thread can take it.
+static thread_local long tl_goto_ip = -1;
+
+bool Runtime::Debugger::TakeGotoIp(long& ip)
+{
+  if(tl_goto_ip < 0) {
+    return false;
+  }
+  ip = tl_goto_ip;
+  tl_goto_ip = -1;
+  return true;
+}
+
+// 'Method:signature' of a method name, which drops the class so that an
+// override can be told to be the same method as the declaration it overrides
+static std::wstring MethodKey(const std::wstring& name)
+{
+  const size_t sep = name.find(L':');
+  return sep == std::wstring::npos ? name : name.substr(sep + 1);
+}
+
+bool Runtime::Debugger::MethodMatches(const StepTargetSpec& spec, StackMethod* method)
+{
+  if(!method) {
+    return false;
+  }
+  return spec.is_virtual ? MethodKey(method->GetName()) == spec.key : method == spec.method;
+}
+
+void Runtime::Debugger::GetStepInTargets(std::vector<StepInTargetInfo>& targets)
+{
+  targets.clear();
+  step_in_calls.clear();
+  if(!cur_method || !cur_program || cur_ip < 0) {
+    return;
+  }
+
+  // From the stop to the end of its statement: the instructions that follow, up
+  // to the first one that belongs to another source line. A call already made
+  // (before the stop, on a line that runs more than once) is not offered.
+  StackInstr* instrs = cur_method->GetInstructions();
+  const long count = cur_method->GetInstructionCount();
+  for(long i = cur_ip; i < count; ++i) {
+    StackInstr* instr = &instrs[i];
+    const int line = instr->GetLineNumber();
+    if(line > 0 && line != cur_line_num) {
+      break;
+    }
+    if(instr->GetType() != MTHD_CALL) {
+      continue;
+    }
+
+    StackClass* cls = cur_program->GetClass(instr->GetOperand());
+    StackMethod* callee = cls ? cls->GetMethod(instr->GetOperand2()) : nullptr;
+    // a method with no bytecode and no override to find has nothing to step into
+    if(!callee || (callee->GetInstructionCount() < 1 && !callee->IsVirtual())) {
+      continue;
+    }
+
+    StepInCall call;
+    call.ip = i;
+    call.spec.method = callee;
+    call.spec.is_virtual = callee->IsVirtual();
+    call.spec.key = MethodKey(callee->GetName());
+
+    StepInTargetInfo info;
+    info.id = (int)step_in_calls.size();
+    info.label = PrintMethod(callee);
+    info.line = cur_line_num;
+    step_in_calls.push_back(call);
+    targets.push_back(info);
+  }
+}
+
+bool Runtime::Debugger::SetStepInTarget(int id)
+{
+  if(id < 0 || id >= (int)step_in_calls.size()) {
+    return false;
+  }
+  step_target = step_in_calls[id].spec;
+  step_target_pending = true;
+  return true;
+}
+
+void Runtime::Debugger::GetGotoTargets(const std::wstring& file_name, int line, std::vector<GotoTargetInfo>& targets)
+{
+  targets.clear();
+  goto_sites.clear();
+  if(!cur_program || line < 1) {
+    return;
+  }
+
+  auto base_name = [](const std::wstring& name) {
+    const size_t sep = name.find_last_of(L"/\\");
+    return sep == std::wstring::npos ? name : name.substr(sep + 1);
+  };
+  const std::wstring wanted = base_name(file_name);
+  const size_t MAX_SITES = 16;
+
+  auto scan = [&](StackMethod* method) {
+    if(!method || !method->GetClass() || method->GetInstructionCount() < 1) {
+      return;
+    }
+    if(base_name(method->GetClass()->GetFileName()) != wanted) {
+      return;
+    }
+    StackInstr* instrs = method->GetInstructions();
+    const long count = method->GetInstructionCount();
+    for(long i = 0; i < count && goto_sites.size() < MAX_SITES; ++i) {
+      // A run of instructions on the line starts where the line first appears.
+      // Instructions with no line of their own (-1) inside a statement do not end
+      // the run: the last one that has a line says which statement it belongs to.
+      if(instrs[i].GetLineNumber() != line) {
+        continue;
+      }
+      long before = i - 1;
+      while(before >= 0 && instrs[before].GetLineNumber() < 1) {
+        --before;
+      }
+      if(before >= 0 && instrs[before].GetLineNumber() == line) {
+        continue;
+      }
+      GotoSite site;
+      site.method = method;
+      site.ip = i;
+      site.line = line;
+      site.label = PrintMethod(method) + L", line " + std::to_wstring(line);
+      goto_sites.push_back(site);
+    }
+  };
+
+  // the stopped method first: it is the one a goto can actually reach
+  scan(cur_method);
+  StackClass** classes = cur_program->GetClasses();
+  for(long c = 0; classes && c < cur_program->GetClassNumber(); ++c) {
+    for(long m = 0; classes[c] && m < classes[c]->GetMethodCount(); ++m) {
+      StackMethod* method = classes[c]->GetMethod(m);
+      if(method != cur_method) {
+        scan(method);
+      }
+    }
+  }
+
+  for(size_t i = 0; i < goto_sites.size(); ++i) {
+    GotoTargetInfo info;
+    info.id = (int)i;
+    info.label = goto_sites[i].label;
+    info.line = goto_sites[i].line;
+    targets.push_back(info);
+  }
+}
+
+bool Runtime::Debugger::GotoTarget(int id, bool frame_is_top, int& new_line, std::wstring& error)
+{
+  if(id < 0 || id >= (int)goto_sites.size()) {
+    error = L"Unknown goto target";
+    return false;
+  }
+  const GotoSite site = goto_sites[id];
+
+  if(!frame_is_top) {
+    error = L"Cannot set the next statement in a caller frame: the frames above it would have to be discarded. Select the innermost frame";
+    return false;
+  }
+  if(!cur_method || !cur_program || cur_ip < 0) {
+    error = L"Cannot set the next statement here: the program is stopped at an error, not at a statement";
+    return false;
+  }
+  if(site.method != cur_method) {
+    error = L"Cannot jump from " + PrintMethod(cur_method) + L" to " + PrintMethod(site.method) +
+            L": the next statement can only be set inside the method that is executing, because another method needs its own frame";
+    return false;
+  }
+
+  // The jump leaves the operand stack as it is, so it is safe only between two
+  // places where the stack holds what the method was entered with: the start of
+  // a statement. The reference map the loader's verifier builds has the height
+  // of the stack on entry to every instruction; a statement boundary is where it
+  // equals the height at the method's first instruction.
+  RefMap* map = RefMap::Build(cur_program, cur_method, true);
+  const bool known = map->ok && !map->height.empty() && (long)map->height.size() > cur_ip && (long)map->height.size() > site.ip;
+  const int entry = known ? map->height[0] : -1;
+  const int here = known ? map->height[cur_ip] : -1;
+  const int there = known ? map->height[site.ip] : -1;
+  delete map;
+  if(!known) {
+    error = L"Cannot set the next statement in " + PrintMethod(cur_method) + L": its bytecode could not be analyzed";
+    return false;
+  }
+  if(here != entry) {
+    error = L"Cannot set the next statement: the program is stopped in the middle of a statement (values are still on the operand stack)";
+    return false;
+  }
+  if(there != entry) {
+    error = L"Cannot jump to line " + std::to_wstring(site.line) + L": it is inside an expression or unreachable, not the start of a statement";
+    return false;
+  }
+
+  // An error handler is pushed at TRY_START and popped at TRY_END; a jump over
+  // either would leave the handler stack describing the wrong region.
+  StackInstr* instrs = cur_method->GetInstructions();
+  const long low = cur_ip < site.ip ? cur_ip : site.ip;
+  const long high = cur_ip < site.ip ? site.ip : cur_ip;
+  for(long i = low; i <= high; ++i) {
+    if(instrs[i].GetType() == TRY_START || instrs[i].GetType() == TRY_END) {
+      error = L"Cannot jump across a try block (an error handler would be left active or lost)";
+      return false;
+    }
+  }
+
+  goto_pending_ip = site.ip;
+  cur_ip = site.ip;
+  cur_line_num = site.line;
+  new_line = site.line;
+  return true;
+}
+
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
   // The interpreter only reaches this hook with the frame it is about to
@@ -460,6 +679,12 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
       // only consider a breakpoint on the first opcode of each line-entry, so a
       // multi-opcode source line counts as a single hit (matters for ignore/temp)
+      // stepIn with a targetId: the named callee was entered, one frame deeper
+      // than the stop. (Anything else the step meets on the way is a call it was
+      // asked to step over.)
+      const bool target_hit = step_target_active && cur_method && call_stack_pos > cur_call_stack_pos &&
+                              MethodMatches(step_target, frame->method);
+
       const bool new_line_instr = (line_num != prev_instr_line || call_stack_pos != prev_instr_pos);
       prev_instr_line = line_num;
       prev_instr_pos = call_stack_pos;
@@ -561,8 +786,10 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         }
       }
 
-      if(found_break || found_next_line || step_into || step_out || until_hit || watch_hit || pause_hit) {
+      if(found_break || found_next_line || step_into || step_out || until_hit || watch_hit || pause_hit || target_hit) {
         // set current line
+        cur_ip = ip - 1;
+        step_target_active = false;
         cur_line_num = line_num;
         cur_file_name = file_name;
         cur_frame = frame;
@@ -585,7 +812,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         if(mode == DebugMode::DAP && dap_adapter) {
           // DAP mode: notify adapter and block until resume
           std::string reason = found_break ? "breakpoint" : (watch_hit ? "data breakpoint" :
-                               ((pause_hit && !(found_next_line || step_into || step_out || until_hit)) ? "pause" : "step"));
+                               ((pause_hit && !(found_next_line || step_into || step_out || until_hit || target_hit)) ? "pause" : "step"));
           dap_adapter->OnStopped(reason, line_num, file_name, frame, call_stack, call_stack_pos);
 
           // After resume, check what stepping mode was requested
@@ -600,8 +827,20 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
             SetWork(WORK_STOPPED, false);
             return;
           }
+          // a goto asked for while stopped moves this thread when it leaves the hook
+          tl_goto_ip = goto_pending_ip.exchange(-1);
+          step_in_calls.clear();
+          goto_sites.clear();
           if(dap_adapter->IsStepInto()) {
-            is_step_into = true;
+            if(step_target_pending) {
+              // stepIn with a targetId: run on (stepping over what is called on
+              // the way) until that callee is entered, or the statement ends
+              is_next_line = true;
+              step_target_active = true;
+            }
+            else {
+              is_step_into = true;
+            }
           }
           else if(dap_adapter->IsStepOver()) {
             is_next_line = true;
@@ -610,7 +849,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
             is_step_out = true;
             jump_stack_pos = call_stack_pos;
           }
-          else {
+          step_target_pending = false;
+          if(!is_step_into && !is_next_line && !is_step_out) {
             // continue — set state for next breakpoint
             continue_state = 1;
           }
@@ -710,6 +950,7 @@ void Runtime::Debugger::OnRuntimeError(StackFrame** call_stack, long call_stack_
   cur_method = frame->method;
   cur_call_stack = call_stack;
   cur_call_stack_pos = call_stack_pos;
+  cur_ip = -1;   // an error stop is not at an instruction goto or stepIn could use
   eval_frame = frame;
   eval_frame_pos = call_stack_pos;
 
@@ -2403,6 +2644,11 @@ void Runtime::Debugger::RequestPause()
   SetWork(WORK_PAUSE, true);
 }
 
+void Runtime::Debugger::RequestHaltAll()
+{
+  Runtime::StackInterpreter::HaltAllExcept(nullptr);
+}
+
 void Runtime::Debugger::CancelPause()
 {
   pause_requested = false;
@@ -3100,6 +3346,106 @@ int Runtime::Debugger::NearestExecutableLine(const std::wstring& file_name, int 
   }
 
   return best;
+}
+
+bool Runtime::Debugger::HasDebugInfo() {
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    return false;
+  }
+  StackClass** classes = prog->GetClasses();
+  const long class_num = prog->GetClassNumber();
+  for(long i = 0; i < class_num; ++i) {
+    if(classes[i]->IsDebug()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::string NoCodeReason(bool has_debug_info) {
+  return has_debug_info ? "There is no executable code in this file"
+                        : "The program was not compiled with -debug, so it has no line information";
+}
+
+int Runtime::Debugger::ResolveBreakLine(const std::wstring& file_name, int line, std::string& why) {
+  const std::set<int> executable = GetExecutableLines(file_name);
+  if(executable.empty()) {
+    why = NoCodeReason(HasDebugInfo());
+    return 0;
+  }
+  const std::set<int>::const_iterator next = executable.lower_bound(line);
+  if(next == executable.end()) {
+    why = "There is no executable code at or after this line";
+    return 0;
+  }
+  return *next;
+}
+
+std::vector<Runtime::Debugger::BreakResolution> Runtime::Debugger::ResolveLoadedBreaks() {
+  std::vector<BreakResolution> changed;
+  std::lock_guard<std::recursive_mutex> guard(state_lock);
+  const bool has_debug = HasDebugInfo();
+  std::map<std::wstring, std::set<int> > lines_by_file;
+
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ) {
+    UserBreak* user_break = *iter;
+    std::map<std::wstring, std::set<int> >::iterator found = lines_by_file.find(user_break->file_name);
+    if(found == lines_by_file.end()) {
+      found = lines_by_file.insert(std::make_pair(user_break->file_name, GetExecutableLines(user_break->file_name))).first;
+    }
+    const std::set<int>& executable = found->second;
+
+    if(executable.count(user_break->line_num)) {
+      ++iter;
+      continue;
+    }
+
+    BreakResolution result;
+    result.id = user_break->id;
+    result.line = user_break->line_num;
+    result.verified = false;
+
+    const std::set<int>::const_iterator next = executable.lower_bound(user_break->line_num);
+    if(executable.empty()) {
+      result.message = NoCodeReason(has_debug);
+    }
+    else if(next == executable.end()) {
+      result.message = "There is no executable code at or after this line";
+    }
+    else {
+      bool taken = false;
+      for(std::list<UserBreak*>::iterator other = breaks.begin(); other != breaks.end(); ++other) {
+        if(*other != user_break && (*other)->line_num == *next && (*other)->full_path == user_break->full_path &&
+           (*other)->file_name == user_break->file_name) {
+          taken = true;
+          break;
+        }
+      }
+      if(taken) {
+        result.message = "A breakpoint is already set on the next executable line";
+      }
+      else {
+        user_break->line_num = *next;
+        result.line = *next;
+        result.verified = true;
+        result.message = "Moved to the next line with executable code";
+      }
+    }
+
+    changed.push_back(result);
+    if(result.verified) {
+      ++iter;
+    }
+    else {
+      // it can never fire; leaving it would also keep the hook off its fast path
+      delete user_break;
+      iter = breaks.erase(iter);
+    }
+  }
+
+  SyncBreakWork();
+  return changed;
 }
 
 bool Runtime::Debugger::MethodEntryLocation(const std::wstring& cls_name, const std::wstring& mthd_name, std::wstring& out_file, int& out_line) {
@@ -4036,6 +4382,7 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   cur_frame = nullptr;
   cur_method = nullptr;
   cur_program = nullptr;
+  program_ready = false;
   is_error = false;
   ref_mem = nullptr;
   ref_klass = nullptr;
@@ -4091,8 +4438,19 @@ void Runtime::Debugger::DapRun() {
     // Run the program
     DoLoad();
     cur_program = loader->GetProgram();
+    if(dap_adapter) {
+      dap_adapter->OnProgramLoaded();
+    }
     // resolve any function breakpoints queued before load
     ResolvePendingMethodBreaks();
+
+    // Breakpoints set before the program existed were reported verified on
+    // trust. Now that its lines are known, move or drop the ones that cannot
+    // fire, and say so when the program carries no line information at all.
+    program_ready = true;
+    if(dap_adapter) {
+      dap_adapter->OnProgramLoaded(HasDebugInfo(), ResolveLoadedBreaks());
+    }
 
     stack_pos = new size_t;
     (*stack_pos) = 0;

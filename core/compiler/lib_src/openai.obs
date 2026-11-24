@@ -6539,10 +6539,43 @@ job = Batch->Get(job->GetId(), token);
 		}
 
 		#~
+		True when the process runs with TLS certificate checking off (OBJECK_TLS_INSECURE_SKIP_VERIFY) and
+		nothing says that sending an API key that way is intended. Setting
+		OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 as well is that statement: it is for testing against a local
+		server, never for a real key.
+		@return true if the key must not be handed out
+		~#
+		function : InsecureTlsBlocksKey() ~ Bool {
+			skip := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY");
+			if(skip = Nil | skip->Size() = 0) {
+				return false;
+			};
+
+			mode := skip->Get(0);
+			if(mode <> '1' & mode <> 't' & mode <> 'T' & mode <> 'y' & mode <> 'Y') {
+				return false;
+			};
+
+			allow := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_ALLOW_API_KEYS");
+			if(allow <> Nil & allow->Size() > 0 & allow->Get(0) = '1') {
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
 		Reads API from 'api_key.dat'
 		@return API key
 		~#
 		function : GetApiKey() ~ String {
+			if(InsecureTlsBlocksKey()) {
+				message := "refusing to use an API key: OBJECK_TLS_INSECURE_SKIP_VERIFY turns TLS certificate checking off, so the key would go to an unauthenticated server (set OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 to allow it for testing)";
+				SetLastError(message);
+				">>> {$message}"->ErrorLine();
+				return Nil;
+			};
+
 			if(@api_key = Nil) {
 				filename := "openai_api_key.dat";
 				token := System.IO.Filesystem.FileReader->ReadFile(filename);

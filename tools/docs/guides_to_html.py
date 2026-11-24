@@ -107,6 +107,8 @@ DOCS = {
         'Where each platform gets its dependencies, and how to check versions.'),
     'docs/ADDING_AN_INTRINSIC.md': ('doc_intrinsic.html', 'Contributing', 'IN',
         'Add a new built-in method to the compiler, VM and both JITs.'),
+    'docs/INSTRUCTION_SET.md': ('doc_instruction_set.html', 'Contributing', 'IS',
+        'The bytecode instruction table: one description of every opcode, a checker for the sites that restate it, and how to add an opcode.'),
     'programs/regression/README.md': ('doc_regression.html', 'Contributing', 'RG',
         'The regression suite: how to run it and how to add a test.'),
     'tools/fuzz/loader/README.md': ('doc_fuzz.html', 'Contributing', 'FZ',

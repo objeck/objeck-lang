@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>The instruction table — Objeck Language</title>
+  <meta name="description" content="Every bytecode opcode is described once, in core/shared/instr_info.h: its operands and what each one is, how many words it pops and pushes, and flags (jump, terminator, may trap, side effect, and so on). tools/cicd/check_instr_table.py prov"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>hljs.highlightAll();</script>
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.classList.toggle("open");
+      });
+      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
+          <a href="guides.html">Guides</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+
+      <a class="pill" href="https://playground.objeck.org">Playground</a>
+    </div>
+  </header>
+
+  <main id="main" role="main" style="text-align: left;">
+   <div class="container">
+
+    <h1 class="page-title">The instruction table</h1>
+    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/INSTRUCTION_SET.md" target="_blank">docs/INSTRUCTION_SET.md on GitHub</a></div>
+    <p class="page-lead">Every bytecode opcode is described once, in <a href="https://github.com/objeck/objeck-lang/blob/master/core/shared/instr_info.h" target="_blank"><code>core/shared/instr_info.h</code></a>: its operands and what each one <em>is</em>, how many words it pops and pushes, and flags (jump, terminator, may trap, side effect, and so on). <a href="https://github.com/objeck/objeck-lang/blob/master/tools/cicd/check_instr_table.py" target="_blank"><code>tools/cicd/check_instr_table.py</code></a> proves that the places that used to restate this by hand agree with it.</p>
+    <div id="toc_container" class="plain">
+     <h4>Contents</h4>
+     <ul>
+      <li><a href="#why">Why</a></li>
+      <li><a href="#a-row">A row</a></li>
+      <li><a href="#adding-an-opcode-today">Adding an opcode (today)</a></li>
+      <li><a href="#what-the-checker-covers">What the checker covers</a></li>
+      <li><a href="#what-it-found">What it found</a></li>
+      <li><a href="#what-was-checked">What was checked</a></li>
+      <li><a href="#phase-2">Phase 2</a></li>
+     </ul>
+    </div>
+
+    <p><strong>Status: phase 1 of two.</strong> The table only <em>describes</em>. No code is driven by it, no opcode was renumbered or reordered, and no byte the compiler writes or the VM reads changed (verified: see <a href="#what-was-checked">What was checked</a>). Phase 2 drives the code from it (<a href="#phase-2">below</a>).</p>
+    <h3 id="why">Why</h3>
+    <p>What an opcode carries was written out by hand in a dozen places, and nothing compared them:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Site</th><th>What it restates</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Site"><code>core/shared/instrs.h</code></td><td data-label="What it restates">the opcode enum. The numbers <strong>are</strong> the <code>.obe</code>/<code>.obl</code> format</td></tr>
+      <tr><td data-label="Site"><code>core/compiler/emit.cpp</code> <code>IntermediateInstruction::Write</code></td><td data-label="What it restates">the operands written, per opcode</td></tr>
+      <tr><td data-label="Site"><code>core/compiler/linker.cpp</code> <code>Library::LoadStatements</code></td><td data-label="What it restates">the <code>.obl</code> reader, per opcode</td></tr>
+      <tr><td data-label="Site"><code>core/vm/loader.cpp</code> <code>Loader::LoadStatements</code></td><td data-label="What it restates">the <code>.obe</code> reader and its verification, per opcode</td></tr>
+      <tr><td data-label="Site"><code>core/vm/dispatch.cpp</code> <code>instr_dispatch</code></td><td data-label="What it restates">the handler for each opcode, by position</td></tr>
+      <tr><td data-label="Site"><code>core/compiler/optimization.cpp</code></td><td data-label="What it restates"><code>MaxLabel</code>, <code>CleanLabelsLocation</code>, <code>JumpToLocation</code>, <code>CanInlineMethod</code>, and the inliner's slot and label shifting</td></tr>
+     </tbody>
+    </table>
+    <p>Forget one and the failure is late and quiet: a library that links into the wrong code, an inlined body whose labels collide with its caller's, a switch that falls into its <code>default</code> case.</p>
+    <h3 id="a-row">A row</h3>
+<pre class="line-numbers"><code class="language-cpp">OBJK_ROW(JMP_TABLE, IMM, COUNT, LABEL, NONE, 1, 0, IFLAG_JUMP | IFLAG_TERMINATOR, "pops the selector; ...")
+//       name       op1  op2    op3    wide  pops pushes flags                    note
+</code></pre>
+    <ul>
+     <li><strong>op1, op2, op3</strong> are the roles of <code>operand</code>, <code>operand2</code> and <code>operand3</code> (<code>StackInstr::GetOperand</code>, <code>GetOperand2</code>, <code>GetOperand3</code>): <code>IMM</code>, <code>CHAR</code>, <code>LABEL</code> (a reference), <code>LABEL_DEF</code> (<code>LBL</code>), <code>SLOT</code>, <code>CTX</code> (the memory context of a slot: <code>CLS</code>, <code>INST</code>, <code>LOCL</code>), <code>CLASS</code>, <code>METHOD</code>, <code>COUNT</code>, <code>FLAG</code>, <code>COND</code>, <code>TYPE</code>, <code>SIZE</code>, <code>NONE</code>, and <code>RUNTIME</code> (set by the VM after load, never in a file). <code>JMP_TABLE</code> keeps its label in <strong>operand3</strong>; the role says so, and the checker holds the label passes to it.</li>
+     <li><strong>wide</strong> is the field that does not fit those three: <code>I64</code> (<code>operand7</code>, the Int literal), <code>F64</code> (<code>operand4</code>), <code>STR</code> (<code>operand5</code>) or <code>STR2</code> (<code>operand5</code> and <code>operand6</code>).</li>
+     <li><strong>pops, pushes</strong> are operand-stack <em>words</em>: a Float is one, a function value is two. <code>STACK_VAR</code> means the count depends on something other than the opcode (a call's callee, a trap's id, an array's dimension count); the note says what. <code>IFLAG_CTX_ADDR</code> means one more word, the base address, is popped unless operand2 is <code>LOCL</code>.</li>
+     <li><strong>flags</strong>: <code>JUMP</code> (names a jump target), <code>TERMINATOR</code>, <code>CALL</code>, <code>MAY_TRAP</code>, <code>SIDE_EFFECT</code>, <code>ALLOCATES</code>, <code>CTX_ADDR</code>, and the status flags <code>VM_ONLY</code> (made by the loader, never in a file), <code>LIB_ONLY</code> (in a <code>.obl</code> only; the linker rewrites it), <code>PSEUDO</code> (an id used as a trap id, or a marker; never an instruction) and <code>RESERVED</code> (in the enum but nothing emits, reads or runs it).</li>
+    </ul>
+    <p><code>CarriesLabel()</code> and <code>CarriesSlot()</code> are derived from the roles, not stored, so they cannot disagree with them.</p>
+    <p>The file layout follows from the roles: the used operands in operand, operand2, operand3 order (a <code>CHAR</code> as a <code>wchar</code>, the rest as 32-bit ints), then the wide field, after the type byte (and the line number, in a debug build). The checker derives that and compares it with what the writer and both readers do.</p>
+    <p>Three <code>static_assert</code>s keep the table honest at compile time: one row per enumerator, in enum order, and a set of rules every row must obey (a jump carries a label; a slot comes with its context). <code>instrs.h</code> includes the table, so <strong>adding an opcode without a row does not compile</strong>.</p>
+    <h3 id="adding-an-opcode-today">Adding an opcode (today)</h3>
+    <p>New opcodes are <strong>appended</strong> (before <code>END_STMTS</code>, which sits mid-list for historical reasons: see the comment on <code>NEW_OBJ_ARY</code>), so every existing number keeps its meaning. Then, in this order:</p>
+    <ol>
+     <li><code>core/shared/instrs.h</code>: the enumerator. Bump <code>MAGIC_NUM_EXE</code> / <code>MAGIC_NUM_LIB</code> in <code>core/shared/version.h</code>: a file that holds the opcode must not load in a VM that does not know it.</li>
+     <li><code>core/shared/instr_info.h</code>: the row, at the same position. Fill in every field from the code you are about to write; a wrong row fails the checker.</li>
+     <li><code>core/vm/dispatch.cpp</code>: <code>Handle_NAME</code> and its entry in <code>instr_dispatch</code>, in enum order (the checker compares the order; a <code>static_assert</code> there compares the count).</li>
+     <li><code>core/compiler/emit.cpp</code>: a <code>case</code> in <code>IntermediateInstruction::Write</code> (and <code>Debug</code>, for <code>obc -asm</code>).</li>
+     <li><code>core/compiler/linker.cpp</code>: a <code>case</code> in <code>Library::LoadStatements</code> that reads exactly what <code>Write</code> wrote. If the opcode is <code>LIB_ONLY</code>, also resolve it in <code>Linker::ResolveExternalMethodCalls</code>.</li>
+     <li><code>core/vm/loader.cpp</code>: a <code>case</code> in <code>Loader::LoadStatements</code> that reads the same, verifies the operands, and calls <code>CheckTarget</code> on a label.</li>
+     <li><code>core/vm/interpreter.cpp</code> and both JITs (<code>core/vm/arch/jit/amd64</code>, <code>core/vm/arch/jit/arm64</code>).</li>
+     <li>If the opcode carries a <strong>label</strong>: <code>MaxLabel</code>, <code>CleanLabelsLocation</code>, <code>JumpToLocation</code>, and the inliner (the label-collision scan and the shifting copy in <code>InlineMethod</code>, or have <code>CanInlineMethod</code> refuse a callee that holds it). If it carries a <strong>slot</strong>: the inliner's shifting copy, and <code>CanInlineMethod</code>'s non-local check.</li>
+     <li>Rebuild the libraries (the <code>.obl</code> files embed the opcode set through the version) and run <code>python3 tools/cicd/check_instr_table.py</code>.</li>
+    </ol>
+    <h3 id="what-the-checker-covers">What the checker covers</h3>
+    <p><code>python3 tools/cicd/check_instr_table.py</code> (about a second; <code>--test</code> breaks each site in memory and fails unless the checker notices). It runs in <code>ci-build.yml</code>'s <code>tools</code> job as an <strong>advisory</strong> step for now, and in <code>tools/cicd/local_ci.py</code>.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th></th><th>Checks</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="">a</td><td data-label="Checks">the table has one row per enumerator, in order, and still carries its <code>static_assert</code>s</td></tr>
+      <tr><td data-label="">b</td><td data-label="Checks">the operands <code>Write</code> writes, and the operands each reader reads, equal the row's roles (order and kind); the instruction header (type byte, then line) is read in the order it is written; <code>VM_ONLY</code>, <code>LIB_ONLY</code>, <code>PSEUDO</code> and <code>RESERVED</code> opcodes are not accepted by the <code>.obe</code> loader</td></tr>
+      <tr><td data-label="">c</td><td data-label="Checks">every label-carrying opcode is in <code>MaxLabel</code>, <code>CleanLabelsLocation</code>, <code>JumpToLocation</code>, the inliner's label scan and its shifting copy (or <code>CanInlineMethod</code> refuses it), reading the operand the table says; every slot-carrying opcode is in the inliner's shift and in <code>CanInlineMethod</code>'s non-local check</td></tr>
+      <tr><td data-label="">d</td><td data-label="Checks">every opcode that names a jump target is checked by the loader's <code>CheckTarget</code></td></tr>
+      <tr><td data-label="">e</td><td data-label="Checks">every <code>LIB_ONLY</code> opcode is resolved by the linker</td></tr>
+      <tr><td data-label="">f</td><td data-label="Checks"><code>instr_dispatch</code> lists the handlers in enum order</td></tr>
+     </tbody>
+    </table>
+    <p>The functions are found by name in every <code>core/compiler/*.cpp</code>, not by line number, so a pass that moves to another file is still found, and one that is renamed fails loudly rather than being skipped. An exemption or a known problem is listed in the script with its reason, and the script warns when the entry is no longer needed.</p>
+    <p><strong>What it cannot find.</strong> It compares what the sites <em>say</em>; it does not run them. In particular it does not check the stack counts or the <code>MAY_TRAP</code> / <code>SIDE_EFFECT</code> flags against the interpreter or the optimizer's purity lists (<code>IsEffectFreeRange</code> and friends): those are read from the code once and are documentation until phase 2 uses them. It does not read the JIT, <code>obc -asm</code>'s <code>Debug</code> printer, the debugger or the language server.</p>
+    <h3 id="what-it-found">What it found</h3>
+    <p>Writing the table from the code, and running the checker, turned up:</p>
+    <ul>
+     <li><strong>A real bug.</strong> <code>Library::LoadStatements</code> (the <code>.obl</code> reader) reads each instruction's line number <em>before</em> its type byte, but <code>Write</code> writes the type, then the line. A library built with <code>obc -tar lib -debug</code> links without complaint into scrambled code, and the program is refused at load (<code>the method can run past its last instruction</code>). Fixed separately by PR #1724; until it merges the script lists it in <code>KNOWN</code>.</li>
+     <li><strong>Drift that is harmless today, now stated.</strong> <code>TRY_START</code> is missing from the inliner's label scan and shift: its handler label is always also defined by an <code>LBL</code> (which the scan includes), and <code>CanInlineMethod</code> refuses a callee holding a <code>TRY_START</code>, so the shift never sees one. The checker accepts that because <em>both</em> facts hold, and fails the day either stops being true. <code>JMP_TABLE</code> keeps its label in operand3, and every pass reads it from there; the checker holds them to it.</li>
+     <li><strong>A dead opcode.</strong> <code>COPY_FUNC_VAR</code> is in the enum, written by <code>Write</code> and listed by the inliner, but nothing creates it and neither reader nor the interpreter handles it (the dispatch entry is a placeholder). Flagged <code>RESERVED</code>; it cannot be removed, because that would renumber everything after it.</li>
+     <li><strong>A hazard that is not an opcode mismatch.</strong> <code>IntermediateInstruction</code>'s constructors leave the operands a row does not use <em>uninitialized</em>. Nothing reads an unused operand today, but phase 2's generic passes will.</li>
+    </ul>
+    <h3 id="what-was-checked">What was checked</h3>
+    <p>The table was derived from the code, then the build was proven unchanged: a clean rebuild of <code>obc</code> and <code>obr</code> with the header in every translation unit; all 52 libraries rebuilt with <code>build_libs.sh</code> are byte-identical to the committed <code>.obl</code> files; and every program in <code>programs/regression</code> compiled with the old and the new <code>obc</code> at <code>-opt s0</code>, <code>s1</code>, <code>s2</code>, <code>s3</code> (771 programs; the other 117 are the negative tests and the ones that need a library the check did not link, and they fail identically) gives byte-identical <code>.obe</code> files. With <code>-debug</code> all but one are identical: <code>core_string_interp_literal.obs</code> is not deterministic under <code>-debug</code> even from one compiler (three runs, three different files), so it cannot be compared. The suite itself, run with the old and the new toolchain, passes the same 823 tests and fails the same 50 (those that need native libraries the container did not build). Linux x86-64 only; Windows, macOS and ARM64 are verified by CI.</p>
+    <h3 id="phase-2">Phase 2</h3>
+    <p>Make the table the source and the hand-written sites its users:</p>
+    <ol>
+     <li><strong>Generate the reader and the writer.</strong> <code>Write</code>, both <code>LoadStatements</code>, and the loader's verifier hooks become one table-driven function each, parameterised by the role (<code>LABEL</code> gets <code>CheckTarget</code>, <code>SLOT</code> gets <code>CheckSlot</code>, <code>CLASS</code> gets <code>CheckClassId</code>). The per-opcode switches (about 700 lines) go away.</li>
+     <li><strong>Drive the label passes and the inliner from the roles.</strong> <code>MaxLabel</code>, <code>CleanLabelsLocation</code> and <code>JumpToLocation</code> rewrite every operand whose role is <code>LABEL</code>/<code>LABEL_DEF</code>; the inliner shifts every <code>SLOT</code> and <code>LABEL</code>, and its <code>default</code> case, which copies an unknown opcode unchanged, becomes an error. Adding a label-carrying opcode then needs no optimizer edit.</li>
+     <li><strong>Use the flags.</strong> <code>IsEffectFreeRange</code>, <code>DeadStore</code>, LICM and the barrier lists in constant propagation, copy propagation and CSE are written from <code>MAY_TRAP</code>, <code>SIDE_EFFECT</code>, <code>CALL</code> and <code>TERMINATOR</code>.</li>
+     <li><strong>Zero the unused operands</strong> in the constructors.</li>
+     <li><strong>An opcode-table hash in the file header.</strong> A hash of the table's rows (names, roles, wire layout) is written next to the version, and the loader and linker refuse a file whose hash differs. An opcode change without a version bump is then detected instead of misread.</li>
+     <li>Promote the checker from advisory to required, and fix the <code>.obl</code> reader's header order (separately; it is a bug today).</li>
+    </ol>
+
+   </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Randy Hollines. All Rights Reserved.
+    <br>
+    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  </footer>
+ </body>
+</html>

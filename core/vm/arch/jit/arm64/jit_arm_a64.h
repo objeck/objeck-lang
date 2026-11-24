@@ -386,6 +386,10 @@ namespace Runtime {
     // register was ever taken from the pool (set in GetFpRegister). Every
     // RTRN emits its own epilogue, so every restore block is recorded.
     bool fp_callee_saved_used;
+    // which of D8-D15 the method really uses (bit i is D8+i): the prologue saves, and every
+    // epilogue restores, only those. A method that pins one float, or takes one pool
+    // register, used to pay for all eight on every call.
+    unsigned fp_callee_used_mask;
     std::vector<long> fp_save_indices;   // one per prologue
     std::vector<long> fp_restore_indices;
     // instruction indices of loop-header labels (back-edge targets); only these
@@ -749,6 +753,7 @@ namespace Runtime {
 #endif
           if(holder->GetRegister() >= D8) {
             fp_callee_saved_used = true;
+            fp_callee_used_mask |= 1u << (holder->GetRegister() - D8);
           }
           return holder;
         }
@@ -773,6 +778,7 @@ namespace Runtime {
 
       if(holder->GetRegister() >= D8) {
         fp_callee_saved_used = true;
+        fp_callee_used_mask |= 1u << (holder->GetRegister() - D8);
       }
       return holder;
     }
@@ -787,6 +793,7 @@ namespace Runtime {
           aval_fregs.erase(it);
           used_fregs.push_back(holder);
           fp_callee_saved_used = true;
+          fp_callee_used_mask |= 1u << (holder->GetRegister() - D8);
           return holder;
         }
       }

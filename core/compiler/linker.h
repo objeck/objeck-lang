@@ -822,6 +822,7 @@ class Library {
   std::wstring lib_path;
   char* buffer;
   char* alloc_buffer;
+  char* buffer_end;       // one past the inflated library: every read is checked against it
   size_t buffer_size;
   long buffer_pos;
   std::map<const std::wstring, LibraryAlias*> aliases;
@@ -838,25 +839,63 @@ class Library {
   std::vector<FloatStringInstruction*> float_strings;
   std::vector<std::wstring> bundle_names;
   
+  // a truncated or corrupt library must end in a clear error, never an out-of-bounds read
+  // or an allocation sized by a garbage length (the VM's Loader::ReadCount is the model)
+  [[noreturn]] void Truncated() const {
+    throw CompilerFatal(L"Library '" + lib_path + L"' is truncated or corrupt (read past the end of the file); rebuild it with this toolchain");
+  }
+
+  [[noreturn]] void Corrupt(const wchar_t* what) const {
+    throw CompilerFatal(L"Library '" + lib_path + L"' is corrupt (" + what + L"); rebuild it with this toolchain");
+  }
+
+  // an index into one of the literal pools, checked before it is used
+  template<typename T>
+  T* PoolEntry(std::vector<T*>& pool, const INT64_VALUE index) const {
+    if(index < 0 || static_cast<uint64_t>(index) >= pool.size()) {
+      Corrupt(L"a literal index is out of range");
+    }
+    return pool[static_cast<size_t>(index)];
+  }
+
+  inline void Need(const size_t bytes) const {
+    if(!buffer || buffer > buffer_end || bytes > static_cast<size_t>(buffer_end - buffer)) {
+      Truncated();
+    }
+  }
+
+  // an element count about to size an allocation or a loop: it cannot exceed what is left
+  inline int ReadCount(const size_t element_size) {
+    const int32_t count = ReadInt();
+    if(count < 0 || static_cast<size_t>(count) > static_cast<size_t>(buffer_end - buffer) / (element_size ? element_size : 1)) {
+      Truncated();
+    }
+    return count;
+  }
+
   inline int32_t ReadInt() {
+    Need(sizeof(int32_t));
     int32_t value = *reinterpret_cast<int32_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline int64_t ReadInt64() {
+    Need(sizeof(int64_t));
     int64_t value = *reinterpret_cast<int64_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline uint32_t ReadUnsigned() {
+    Need(sizeof(uint32_t));
     uint32_t value = *reinterpret_cast<uint32_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline int ReadByte() {
+    Need(sizeof(uint8_t));
     uint8_t value = *reinterpret_cast<uint8_t*>(buffer);
     buffer += sizeof(value);
     return value;
@@ -867,6 +906,10 @@ class Library {
 
     int size = ReadInt();
     if(size) {
+      if(size < 0) {
+        Truncated();
+      }
+      Need(size);
       std::string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
@@ -881,7 +924,11 @@ class Library {
   }
   
   inline std::wstring ReadString() {
-    const int size = ReadInt(); 
+    const int size = ReadInt();
+    if(size < 0) {
+      Truncated();
+    }
+    Need(size);
     std::string in(buffer, size);
     buffer += size;    
    
@@ -894,10 +941,16 @@ class Library {
   }
 
   inline void ReadDummyString() {
-    buffer += ReadInt();
+    const int size = ReadInt();
+    if(size < 0) {
+      Truncated();
+    }
+    Need(size);
+    buffer += size;
   }
 
   double ReadDouble() {
+    Need(sizeof(FLOAT_VALUE));
     FLOAT_VALUE value = *reinterpret_cast<FLOAT_VALUE*>(buffer);
     buffer += sizeof(value);
     return value;
@@ -913,6 +966,8 @@ class Library {
       // LoadFileBuffer throws for every failure it can name
       throw CompilerFatal(L"Unable to read library: '" + file + L"'");
     }
+    // LoadFileBuffer leaves the inflated size in buffer_size
+    buffer_end = alloc_buffer + buffer_size;
   }
 
   void AddEnum(LibraryEnum* e) {
@@ -961,6 +1016,10 @@ class Library {
   Library(const std::wstring &p) {
     lib_path = p;
     alloc_buffer = nullptr;
+    buffer = nullptr;
+    buffer_end = nullptr;
+    buffer_size = 0;
+    buffer_pos = 0;
   }
 
   ~Library() {
