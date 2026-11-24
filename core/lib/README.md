@@ -16,6 +16,8 @@ Each library typically consists of:
 - **openai.obs** - OpenAI API integration (GPT-4, GPT-5, DALL-E, Whisper, Realtime API)
 - **gemini.obs** - Google Gemini API integration with schema support
 - **anthropic.obs** - Anthropic Messages API client (Claude): chat, tool use, streaming, structured output
+- **llm_util.obs** - LLM utilities (`API.LlmUtil`), pure Objeck: `PromptTemplate` and `PromptBuilder`, `TokenEstimator` and `ContextWindow`, `JsonSchema` validation with JSON-pointer errors, `JsonExtractor` and `JsonRepair` for chatty or damaged replies, and `StructuredCall`, which asks any `ChatFn` for JSON matching a schema and retries with the validation errors. Its own library, `llm_util.obl`, which needs `gen_collect`, `json` and `regex`; it links no client
+- **llm_util_clients.obs** - Adapters from `llm_util` to the clients (`API.LlmUtil.Clients`): `ChatFn` for Anthropic, OpenAI, Gemini and Ollama, `GeminiTokenCounter` (exact counts), and `PromptAdapters` for each client's own message type. Its own library, `llm_util_clients.obl`, which links `llm_util` and the four client libraries
 - **ollama.obs** - Ollama local LLM integration
 - **opencv.obs** - OpenCV computer vision library
 - **models.obs** - Backend-neutral inference types shared by `onnx` and `inference`: `Tensor`, `TensorSpec`, `EndPoint`, `Engine` (`API.Models`)

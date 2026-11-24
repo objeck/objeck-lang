@@ -48,6 +48,7 @@ All notable changes to Objeck will be documented in this file.
   - `disassemble` (`supportsDisassembleRequest`) lists the VM bytecode of the method a frame is in (opcode, operands, the callee of a call, the source line); stack frames carry an `instructionPointerReference` to start from.
   - Events: `invalidated` after `setVariable`, `setExpression` and `goto` for a client that declares `supportsInvalidatedEvent`; `progressStart`, `progressUpdate` and `progressEnd` around launch and program start-up for a client that declares `supportsProgressReporting`.
   - `restartFrame` and `terminateThreads` are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.
+- **`llm_util` and `llm_util_clients`, pure-Objeck helpers for working with chat models** (`API.LlmUtil`): `PromptTemplate` (`{{name}}`, `{{name?}}`, `{{name|default}}`, the `json`, `upper`, `lower` and `trim` filters, `{{#each}}`, `{{#if}}` with `{{else}}`, `\{{` for a literal; a missing variable fails the render and every missing name is listed) and `PromptBuilder`; `TokenEstimator` (offline, about 4.3 characters per token on English prose; see the bounds in the guide) and `ContextWindow` (drops the oldest turns, keeps the system prompt and the newest turn); `JsonSchema` (type, properties, required, items, enum, const, minimum and maximum, minLength and maxLength, pattern, allOf, anyOf, oneOf, not, additionalProperties and local `$ref`, every error with a JSON pointer); and `StructuredCall`, which asks any `ChatFn` for JSON that matches a schema, finds it in a fenced or chatty reply, validates it and retries up to N times with the validation errors fed back, with an opt-in lenient repair (`JsonRepair`: trailing commas, single quotes, unquoted keys, a truncated reply). `llm_util_clients` has the `ChatFn` adapters for the Anthropic, OpenAI, Gemini and Ollama clients, `GeminiTokenCounter` and `PromptAdapters`. Link with `-lib llm_util,regex,json,gen_collect`; documented in `docs/ai_sections/llm_util.md`.
 
 ### Documentation
 
@@ -56,6 +57,7 @@ All notable changes to Objeck will be documented in this file.
 ### Tests
 
 - New regression tests: `regex_lazy_dfa`, `regex_replace_escapes`, `regex_threads`, `ml_vector_parallel`, `ml_knn_exact` and `nlp_levenshtein_bounded`, and thirteen `collect_*` tests for the collections above (`collect_deque`, `collect_multiset`, `collect_union_find`, `collect_trie`, `collect_ordered_hash`, `collect_bimap`, `collect_priority_map`, `collect_fenwick`, `collect_bloom`, `collect_vector_ops`, `collect_sort_stable`, `collect_nil_guards`, `collect_stack_deep`).
+- Six `llm_util_*` regression tests (template, tokens, schema, extract, structured and clients): no network and no key.
 
 ## [v2026.11.2] - 2026-11-21
 
