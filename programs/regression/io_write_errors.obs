@@ -13,12 +13,12 @@ use System.IO.Filesystem;
 class IoWriteErrors {
 	@failures : static : Int;
 
-	function : Check(label : String, ok : Bool) ~ Nil {
+	function : Check(what : String, ok : Bool) ~ Nil {
 		if(ok) {
-			"  ok: {$label}"->PrintLine();
+			"  ok: {$what}"->PrintLine();
 		}
 		else {
-			"  FAIL: {$label}"->PrintLine();
+			"  FAIL: {$what}"->PrintLine();
 			@failures += 1;
 		};
 	}

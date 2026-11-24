@@ -12,18 +12,19 @@ use System.IO.Filesystem;
 class IoWriteErrorDevFull {
 	@failures : static : Int;
 
-	function : Check(label : String, ok : Bool) ~ Nil {
+	function : Check(what : String, ok : Bool) ~ Nil {
 		if(ok) {
-			"  ok: {$label}"->PrintLine();
+			"  ok: {$what}"->PrintLine();
 		}
 		else {
-			"  FAIL: {$label}"->PrintLine();
+			"  FAIL: {$what}"->PrintLine();
 			@failures += 1;
 		};
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		if(<>Runtime->GetPlatform()->Has("Linux") | <>File->Exists("/dev/full")) {
+		# File->Exists is false for a device, so the probe is the open itself
+		if(<>Runtime->GetPlatform()->Has("Linux") | <>FileWriter->New("/dev/full")->IsOpen()) {
 			"SKIP: needs Linux /dev/full"->PrintLine();
 			return;
 		};
