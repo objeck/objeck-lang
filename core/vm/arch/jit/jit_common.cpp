@@ -30,6 +30,8 @@
  ***************************************************************************/
 
 #include "jit_common.h"
+#include <chrono>
+#include <thread>
 
 #ifndef _NO_JIT
 #if defined(_M_ARM64)
@@ -59,6 +61,42 @@ JitCompiler::~JitCompiler()
 }
 
 #ifndef _NO_JIT
+// Blocks until the thread that claimed `callee`'s compile has settled it (done or
+// failed). A compile is milliseconds; the bound only keeps a wedged compiler from
+// hanging every other thread, which then interprets as it always did. Waiting
+// without polling the collector's safepoint is deliberate and safe: the compiler
+// thread never parks (Compile() runs no interpreter code and allocates nothing
+// on the collected heap), so a collection that is waiting for this thread to park
+// waits at most for the compile.
+void JitCompiler::WaitForCompile(StackMethod* callee)
+{
+  if(callee->GetJitState() != StackMethod::JIT_COMPILING) {
+    return;
+  }
+
+  static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
+
+  const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  const std::chrono::seconds limit(10);
+  int spins = 0;
+  while(callee->GetJitState() == StackMethod::JIT_COMPILING) {
+    if(++spins < 200) {
+      std::this_thread::yield();
+    }
+    else {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+      if(std::chrono::steady_clock::now() - start > limit) {
+        break;
+      }
+    }
+  }
+
+  if(report) {
+    const long us = (long)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
+    std::wcerr << L"[jit] " << callee->GetName() << L": waited " << us << L" us for another thread's compile" << std::endl;
+  }
+}
+
 bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
 {
   if(callee->GetNativeCode()) {
@@ -89,9 +127,15 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return false;
   }
   if(!callee->ClaimJitCompile()) {
-    // Another thread owns (or just settled) the compile. Re-read the outcome:
-    // treat anything but a definitive failure as "will be available" so the
-    // caller does not mark this call site as failed while a compile is in flight.
+    // Another thread owns (or just settled) the compile. If it is still in
+    // flight, wait for it: a caller that returns now finds no native code and
+    // interprets THIS CALL to the end, and compiled code is only picked up at
+    // the next call (no on-stack replacement). For a method hot only through a
+    // loop inside its first call -- a thread's Run, a kernel -- there is no next
+    // call, so the thread that lost the race ran the whole loop ~20x slower.
+    WaitForCompile(callee);
+    // Re-read the outcome: treat anything but a definitive failure as "will be
+    // available" so the caller does not mark this call site as failed.
     return callee->GetJitState() != StackMethod::JIT_FAILED;
   }
 
