@@ -478,8 +478,12 @@ LibraryAlias* Linker::SearchAliasLibraries(const std::wstring& name, const std::
     return alias;
   }
 
+  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
   for(size_t i = 0; i < uses.size(); ++i) {
-    hit = alias_map.find(uses[i] + L"." + name);
+    qualified.assign(uses[i]);
+    qualified += L'.';
+    qualified += name;
+    hit = alias_map.find(qualified);
     alias = hit != alias_map.end() ? hit->second : nullptr;
     if(alias) {
       return alias;
@@ -498,8 +502,12 @@ LibraryClass* Linker::SearchClassLibraries(const std::wstring& name, const std::
     return klass;
   }
 
+  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
   for(size_t i = 0; i < uses.size(); ++i) {
-    hit = klass_map.find(uses[i] + L"." + name);
+    qualified.assign(uses[i]);
+    qualified += L'.';
+    qualified += name;
+    hit = klass_map.find(qualified);
     klass = hit != klass_map.end() ? hit->second : nullptr;
     if(klass) {
       return klass;
@@ -530,8 +538,12 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::ve
     return eenum;
   }
 
+  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
   for(size_t i = 0; i < uses.size(); ++i) {
-    hit = enum_map.find(uses[i] + L"." + name);
+    qualified.assign(uses[i]);
+    qualified += L'.';
+    qualified += name;
+    hit = enum_map.find(qualified);
     eenum = hit != enum_map.end() ? hit->second : nullptr;
     if(eenum) {
       return eenum;
