@@ -2954,7 +2954,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 	}
 
 	#~
-	Asks a chat backend for JSON that matches a schema. The schema is added to the system prompt, the JSON is pulled out of the reply (fenced or chatty replies are fine), checked with JsonSchema, and when it is wrong the model is shown the exact errors and asked again, up to a retry limit. The outcome is the typed JSON element or the final error list.
+	Asks a chat backend for JSON that matches a schema. The schema is added to the system prompt, the JSON is pulled out of the reply (fenced or chatty replies are fine), checked with JsonSchema, and when it is wrong the model is shown the exact errors and asked again, up to a retry limit. The outcome is the typed JSON element or the final error list. The retry loop is a plain chat, so it works with every backend; a provider's native structured mode (a forced tool call, a response schema) can be used by wrapping it in your own ChatFn.
 
 ```
 call := StructuredCall->New(chat, schema)->SetMaxRetries(2);
@@ -2964,7 +2964,6 @@ if(outcome->IsOk()) {
 };
 ```
 
-	The retry loop is a plain chat, so it works with every backend. A provider's native structured mode (a forced tool call, a response schema) can be used by wrapping it in your own ChatFn.
 	~#
 	class StructuredCall {
 		@chat : ChatFn;
