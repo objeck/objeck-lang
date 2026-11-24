@@ -1,0 +1,76 @@
+#~
+Adding or subtracting an Int literal in compiled code, at the edges of what an instruction can hold.
+
+The ARM64 JIT's add and subtract helpers rewrite a negative immediate as the opposite operation on its
+absolute value, and the minimum Int has no positive counterpart: negating it gives the minimum Int
+again, so the two helpers called each other forever and the compiler spun at 100% CPU. It had been
+there since the helpers were written; the first program to compile such a literal was
+opt_arith_identities, and it hung on every ARM64 runner.
+
+Each function runs 3000 times so the JIT compiles it (the default threshold, and the threshold-1 mode
+of the regression runner, both). Every result is compared with the same sum computed from a value held
+in an array, which the compiler cannot fold into an immediate.
+~#
+class JitIntMinImmediate {
+  @failures : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    k := Int->New[7];
+    k[0] := -9223372036854775807 - 1;
+    k[1] := 9223372036854775807;
+    k[2] := 4095;
+    k[3] := 4096;
+    k[4] := -4095;
+    k[5] := -4096;
+    k[6] := 1000000;
+
+    for(round := 0; round < 3000; round += 1;) {
+      x := round - 1500;
+      Check("x + MIN", Add0(x), x + k[0]);
+      Check("x - MIN", Sub0(x), x - k[0]);
+      Check("x + MAX", Add1(x), x + k[1]);
+      Check("x - MAX", Sub1(x), x - k[1]);
+      Check("x + 4095", Add2(x), x + k[2]);
+      Check("x - 4095", Sub2(x), x - k[2]);
+      Check("x + 4096", Add3(x), x + k[3]);
+      Check("x - 4096", Sub3(x), x - k[3]);
+      Check("x + -4095", Add4(x), x + k[4]);
+      Check("x - -4095", Sub4(x), x - k[4]);
+      Check("x + -4096", Add5(x), x + k[5]);
+      Check("x - -4096", Sub5(x), x - k[5]);
+      Check("x + 1000000", Add6(x), x + k[6]);
+      Check("x - 1000000", Sub6(x), x - k[6]);
+    };
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : Check(name : String, got : Int, want : Int) ~ Nil {
+    if(got <> want) {
+      if(@failures < 10) {
+        "  [FAIL] {$name}: got {$got}, want {$want}"->PrintLine();
+      };
+      @failures += 1;
+    };
+  }
+
+  function : Add0(x : Int) ~ Int { return x + (-9223372036854775807 - 1); }
+  function : Sub0(x : Int) ~ Int { return x - (-9223372036854775807 - 1); }
+  function : Add1(x : Int) ~ Int { return x + 9223372036854775807; }
+  function : Sub1(x : Int) ~ Int { return x - 9223372036854775807; }
+  function : Add2(x : Int) ~ Int { return x + 4095; }
+  function : Sub2(x : Int) ~ Int { return x - 4095; }
+  function : Add3(x : Int) ~ Int { return x + 4096; }
+  function : Sub3(x : Int) ~ Int { return x - 4096; }
+  function : Add4(x : Int) ~ Int { return x + (-4095); }
+  function : Sub4(x : Int) ~ Int { return x - (-4095); }
+  function : Add5(x : Int) ~ Int { return x + (-4096); }
+  function : Sub5(x : Int) ~ Int { return x - (-4096); }
+  function : Add6(x : Int) ~ Int { return x + 1000000; }
+  function : Sub6(x : Int) ~ Int { return x - 1000000; }
+}
