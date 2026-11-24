@@ -1424,9 +1424,15 @@ bundle API.MCP {
 		}
 
 		method : public : Run() ~ Nil {
-			reply := @service->Handle(@text, @sink);
-			if(reply <> Nil) {
-				@sink->Send(reply);
+			try {
+				reply := @service->Handle(@text, @sink);
+				if(reply <> Nil) {
+					@sink->Send(reply);
+				};
+			}
+			on(e : Error) {
+				failure := e->GetMessage();
+				"MCP call failed: {$failure}"->ErrorLine();
 			};
 			@service->JobDone();
 		}
@@ -1710,12 +1716,23 @@ bundle API.MCP {
 				params := McpMessage->EmptyObject();
 			};
 
-			if(<>has_id) {
-				Notify(rpc, params);
-				return Nil;
+			# whatever a handler or a malformed argument does, the server answers and goes on
+			reply : JsonElement;
+			try {
+				if(<>has_id) {
+					Notify(rpc, params);
+				}
+				else {
+					reply := Dispatch(id, rpc, params, sink);
+				};
+			}
+			on(e : Error) {
+				failure := e->GetMessage();
+				if(has_id) {
+					reply := McpMessage->Error(id, McpProtocol->InternalError(), "Internal error: {$failure}");
+				};
 			};
-
-			return Dispatch(id, rpc, params, sink);
+			return reply;
 		}
 
 		# a notification: nothing is answered, whatever it is

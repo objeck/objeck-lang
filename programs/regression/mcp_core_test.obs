@@ -262,6 +262,76 @@ class McpCoreTest {
 		Check(server->Handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}", Nil) = Nil, "a response from the peer is ignored");
 	}
 
+	# ---- messages that are JSON but wrong in every way a client might get them wrong ----
+
+	function : Hostile() ~ Nil {
+		server := Build();
+		server->AddTool("weird", "A tool with a strange schema", "{\"type\":\"object\",\"properties\":{\"x\":5,\"y\":{\"type\":7}},\"required\":[5,{\"a\":1},true]}", Func2Ref->New(McpCoreTest->Fails(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		deep := String->New();
+		for(i := 0; i < 200; i += 1;) {
+			deep->Append("[");
+		};
+		for(i := 0; i < 200; i += 1;) {
+			deep->Append("]");
+		};
+
+		bodies := [
+			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":5,\"capabilities\":1,\"clientInfo\":\"x\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":null,\"clientInfo\":null}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"weird\",\"arguments\":{\"x\":1}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":null}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":[\"add\"],\"arguments\":{}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":null}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":{\"a\":{},\"b\":[]},\"_meta\":5}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":{\"a\":1,\"b\":2},\"_meta\":{\"progressToken\":{\"x\":1}}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"resources/read\",\"params\":{\"uri\":7}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"resources/read\",\"params\":{\"uri\":[\"notes://readme\"]}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"resources/read\",\"params\":{\"uri\":\"\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"prompts/get\",\"params\":{\"name\":7}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"prompts/get\",\"params\":{\"name\":\"greet\",\"arguments\":{\"name\":{\"a\":1}}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"ping\",\"params\":null}",
+			"{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"ping\",\"params\":[]}",
+			"{\"jsonrpc\":\"2.0\",\"id\":16,\"method\":\"\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":17,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":{\"a\":1e999,\"b\":-0}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":[1],\"method\":\"ping\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":{},\"method\":\"ping\"}",
+			"{\"jsonrpc\":2.0,\"id\":18,\"method\":\"ping\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":19,\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":[1,2]}}",
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":{\"a\":1}}}",
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":null}",
+			deep,
+			"{\"jsonrpc\":\"2.0\",\"id\":20,\"method\":\"ping\",\"extra\":{\"a\":[1,2,{\"b\":null}]}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"tools/list\",\"params\":{\"cursor\":\"abc\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":\"\",\"method\":\"ping\"}"
+		];
+
+		answered := 0;
+		for(i := 0; i < bodies->Size(); i += 1;) {
+			reply := server->Handle(bodies[i], Nil);
+			if(reply <> Nil) {
+				parsed := JsonParser->TextToElement(reply);
+				if(parsed <> Nil & parsed->Get("jsonrpc")->GetString()->Equals("2.0") & (parsed->Has("result") | parsed->Has("error"))) {
+					answered += 1;
+				}
+				else {
+					Check(false, "message {$i} got a reply that is not JSON-RPC: {$reply}");
+				};
+			};
+
+			if(<>Ask(server, Req(900, "ping", Nil))->Has("result")) {
+				Check(false, "the server stopped answering after message {$i}");
+				return;
+			};
+		};
+		Check(answered >= 20, "the hostile messages that are requests are answered, {$answered} were");
+		Check(ErrorCode(Ask(server, bodies[2])) <> 0 | Ask(server, bodies[2])->Has("result"), "a tool with a strange schema is answered, as a result or an error");
+		Check(ErrorCode(Ask(server, bodies[0])) = -32602 & ErrorCode(Ask(server, bodies[1])) = -32602, "initialize with the wrong types is invalid params");
+		Check(ErrorCode(Ask(server, bodies[13])) = -32602 & ErrorCode(Ask(server, bodies[14])) = -32602, "params that are null or an array are invalid params");
+		Check(ErrorCode(Ask(server, bodies[23])) = -32700, "JSON nested past the parser's limit is a parse error");
+		Check(Ask(server, bodies[26])->Get("id")->GetString()->Equals(""), "an empty string id is a valid id");
+	}
+
 	# ---- the client, on a loopback transport ----
 
 	function : Client(server : McpService) ~ Nil {
@@ -499,6 +569,7 @@ class McpCoreTest {
 		@service := Build();
 
 		Protocol(@service);
+		Hostile();
 		Client(@service);
 		Cancellation(@service);
 		Bridge(@service);
