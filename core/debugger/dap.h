@@ -270,6 +270,9 @@ namespace Runtime {
 
     // Called when program terminates
     void OnTerminated();
+    // The program is loaded: report breakpoints that moved or cannot bind, and
+    // warn when it was built without -debug.
+    void OnProgramLoaded(bool has_debug_info, const std::vector<Debugger::BreakResolution>& changed);
 
     // Called by the debugger once the program's image has been loaded, which is
     // the end of the 'starting the program' phase a client shows progress for

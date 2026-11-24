@@ -41,6 +41,7 @@
 #include "color.h"
 #include <iomanip>
 #include <set>
+#include <vector>
 #include <map>
 #include <mutex>
 #include <condition_variable>
@@ -426,6 +427,35 @@ namespace Runtime {
     // Every line in a file that carries an instruction, collected in one pass.
     std::set<int> GetExecutableLines(const std::wstring& file_name);
     int NearestExecutableLine(const std::wstring& file_name, int line_num);
+
+  public:
+    // ---- DAP breakpoint verification ------------------------------------
+    // A breakpoint is only real if its line carries an instruction. These check
+    // that against the loaded program instead of trusting the line number.
+
+    // One breakpoint the load changed: moved to the next executable line
+    // (verified) or dropped because it can never fire (not verified).
+    struct BreakResolution {
+      int id;
+      int line;
+      bool verified;
+      std::string message;
+    };
+
+    // True once the program image is loaded, so lines can be checked at all.
+    bool ProgramReady() const { return program_ready; }
+    // True if any class in the loaded program was compiled with -debug.
+    bool HasDebugInfo();
+    // The line a breakpoint requested at 'line' binds to: 'line' itself, or the
+    // next executable line after it. Returns 0 and sets 'why' when there is none.
+    int ResolveBreakLine(const std::wstring& file_name, int line, std::string& why);
+    // Re-check every breakpoint set before the program was loaded; returns the
+    // ones that moved or were dropped.
+    std::vector<BreakResolution> ResolveLoadedBreaks();
+
+  private:
+    std::atomic<bool> program_ready{false};
+  public:
     bool MethodEntryLocation(const std::wstring& cls_name, const std::wstring& mthd_name, std::wstring& out_file, int& out_line);
     void ClearBreaks();
     void EvaluateExpression(Expression* expression);

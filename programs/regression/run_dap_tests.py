@@ -478,6 +478,7 @@ def run_standalone_tests(bin_dir):
                  "dap_frame_eval_test.py", "dap_thread_test.py", "dap_setvar_test.py",
                  "dap_robustness_test.py", "dap_pause_test.py",
                  "dap_breakpoint_keys_test.py", "dap_halt_running_test.py", "dap_stdin_test.py",
+                 "dap_breakpoint_verify_test.py",
                  "dap_stepin_targets_test.py",
                  "dap_goto_test.py",
                  "dap_cancel_progress_test.py",
