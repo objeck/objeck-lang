@@ -1692,6 +1692,13 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #else
   void* status;
   pthread_t vm_thread = (pthread_t)instance[0];
+  if(!vm_thread) {
+    // already joined: the slot was cleared by that join (as on Windows)
+    return;
+  }
+  // cleared now, while 'instance' is the live object: a second Join finds it empty
+  // instead of joining a thread that no longer exists
+  instance[0] = 0;
 
   // see the note above: the handle is read before this thread parks
   MemoryManager::BeginBlocking();

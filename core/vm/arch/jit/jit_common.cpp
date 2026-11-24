@@ -933,6 +933,11 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #else
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
+    if(!vm_thread) {
+      // already joined: the slot was cleared by that join (as on Windows)
+      break;
+    }
+    instance[0] = 0;
 
     // see the note above: the handle is read before this thread parks
     MemoryManager::BeginBlocking();
