@@ -111,6 +111,7 @@
     </ul>
     <h4 id="security">Security</h4>
     <ul>
+     <li><strong>The OpenAI, Gemini and Anthropic clients no longer hand out an API key while TLS certificate checking is off</strong>: with <code>OBJECK_TLS_INSECURE_SKIP_VERIFY</code> set, <code>EndPoint-&gt;GetApiKey()</code> returns <code>Nil</code> and <code>GetLastError()</code> says why, instead of sending the key to a server nobody authenticated. <code>OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1</code> allows the combination for testing against a local server. With checking on nothing changes. Tests: <code>api_key_insecure_tls_anthropic</code>, <code>_openai</code> and <code>_gemini</code>.</li>
      <li><strong><code>Cipher.Encrypt-&gt;AES256</code> writes a new authenticated format</strong>: AES-256-GCM, a key from PBKDF2-HMAC-SHA256 (210,000 iterations, count stored in the header), a random 16-byte salt and a random 12-byte nonce per message, under a <code>OBKC</code> magic and version byte. The old format used a fixed salt, a key that was the raw password zero-padded or truncated to 32 bytes, an IV derived from the password alone, and no authentication, so identical inputs gave identical output, bytes past 32 of a password were ignored, and a modified ciphertext was not detected. <code>Cipher.Decrypt-&gt;AES256</code> reads the new format (returning <code>Nil</code> for a wrong password or any modified or truncated message) and still reads the old format, which is deprecated and no longer produced; re-encrypt old data. Output is 53 bytes longer than the plaintext (it was up to 16). New test: <code>programs/regression/cipher_aes_versioned.obs</code>.</li>
     </ul>
     <h4 id="fixed">Fixed</h4>
@@ -130,6 +131,16 @@
      <li><strong><code>TextSimilarity-&gt;LevenshteinDistance(a, b, max_distance)</code></strong>: the exact distance when it is at most <code>max_distance</code>, otherwise <code>max_distance + 1</code>; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. <code>SpellChecker-&gt;Suggest</code> uses it.</li>
      <li><strong>A <code>RegEx</code> can be shared by threads</strong>: the DFA tables and the capture scratch are used under a lock, and <code>MatchExact</code> no longer keeps its answer in a field.</li>
      <li><strong><code>{n,}</code> in a regular expression</strong> (n or more).</li>
+     <li><strong>Five more Debug Adapter Protocol requests in <code>obd --dap</code></strong>, each advertised in the <code>initialize</code> response:
+    <ul>
+     <li><code>stepInTargets</code> (<code>supportsStepInTargetsRequest</code>) lists the calls left on the stopped statement in the order they run, and <code>stepIn</code> takes an optional <code>targetId</code> to enter just that call, stepping over the others (if the statement ends first it stops on the next line, as <code>next</code> does). Calls through a func-ref and methods with no bytecode are not listed.</li>
+     <li><code>gotoTargets</code> and <code>goto</code> (<code>supportsGotoTargetsRequest</code>) set the next statement. A jump is made only inside the method that is executing, between two statement starts where the operand stack holds what the method was entered with (checked with the loader's reference map), and never across a <code>try</code> block; anything else is a DAP error that says why, and the program is left as it was. A successful <code>goto</code> sends <code>stopped</code> with reason <code>goto</code>.</li>
+     <li><code>cancel</code> (<code>supportsCancelRequest</code>): requests are now read on a thread of their own, so a <code>cancel</code> is seen while an earlier request is still being answered. A request cancelled before its turn is answered <code>cancelled</code> without being started, and <code>evaluate</code> and <code>variables</code> stop at their next check.</li>
+     <li><code>disassemble</code> (<code>supportsDisassembleRequest</code>) lists the VM bytecode of the method a frame is in (opcode, operands, the callee of a call, the source line); stack frames carry an <code>instructionPointerReference</code> to start from.</li>
+     <li>Events: <code>invalidated</code> after <code>setVariable</code>, <code>setExpression</code> and <code>goto</code> for a client that declares <code>supportsInvalidatedEvent</code>; <code>progressStart</code>, <code>progressUpdate</code> and <code>progressEnd</code> around launch and program start-up for a client that declares <code>supportsProgressReporting</code>.</li>
+     <li><code>restartFrame</code> and <code>terminateThreads</code> are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.</li>
+    </ul>
+     </li>
     </ul>
     <h4 id="documentation">Documentation</h4>
     <ul>

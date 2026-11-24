@@ -14,6 +14,7 @@
 #include "debugger.h"
 #include "obj_layout.h"
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <condition_variable>
 #include <thread>
@@ -95,6 +96,28 @@ namespace Runtime {
 
     // Declared by the client on the initialize request.
     bool client_supports_variable_paging;
+    bool client_supports_progress;
+    bool client_supports_invalidated;
+
+    // Requests are read by a thread of their own (see Inbox in dap.cpp) so that a
+    // 'cancel' is noticed while an earlier request is still being answered. The
+    // main thread asks it whether the request it is working on was cancelled.
+  public:
+    struct Inbox;
+  private:
+    std::shared_ptr<Inbox> inbox;
+    int current_request_seq;
+    // the startup progress report is ended once, by whoever gets there first
+    std::atomic<bool> startup_progress_open;
+    bool Cancelled();
+    // test hook: OBJECK_DAP_TEST_DELAY_MS holds evaluate and variables that long
+    // (or until they are cancelled), standing in for a request that is slow
+    bool DelayForTest();
+    void SendProgressStart(const std::string& id, const std::string& title, const std::string& message, int request_seq);
+    void SendProgressUpdate(const std::string& id, const std::string& message);
+    void SendProgressEnd(const std::string& id, const std::string& message);
+    // tells a client that supports it to re-read what it showed of the stopped program
+    void SendInvalidated();
 
     // Captured state at breakpoint
     int stopped_line;
@@ -174,6 +197,19 @@ namespace Runtime {
     void HandleNext(int seq, const json& args);
     void HandleStepIn(int seq, const json& args);
     void HandleStepOut(int seq, const json& args);
+    void HandleStepInTargets(int seq, const json& args);
+    void HandleGotoTargets(int seq, const json& args);
+    void HandleGoto(int seq, const json& args);
+    void HandleCancel(int seq, const json& args);
+    void HandleDisassemble(int seq, const json& args);
+
+    // A disassembly address names one instruction of one method: the class id,
+    // the method id and the instruction's index packed into one number, so that
+    // consecutive instructions have consecutive addresses (a client that does
+    // arithmetic on them, or sorts them, gets the right answer).
+    static std::string EncodeAddress(long cls_id, long mthd_id, long ip);
+    static bool DecodeAddress(const std::string& text, long& cls_id, long& mthd_id, long& ip);
+    std::string DescribeInstruction(StackMethod* method, long ip);
     void HandlePause(int seq, const json& args);
     void HandleDisconnect(int seq, const json& args);
     void HandleEvaluate(int seq, const json& args);
@@ -234,6 +270,10 @@ namespace Runtime {
 
     // Called when program terminates
     void OnTerminated();
+
+    // Called by the debugger once the program's image has been loaded, which is
+    // the end of the 'starting the program' phase a client shows progress for
+    void OnProgramLoaded();
 
     // Called from Debugger::ProcessInstruction for a logpoint: emit the message
     // (with {expr} interpolation) as an output event without stopping

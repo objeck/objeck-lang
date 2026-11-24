@@ -34,6 +34,13 @@ All notable changes to Objeck will be documented in this file.
 - **`TextSimilarity->LevenshteinDistance(a, b, max_distance)`**: the exact distance when it is at most `max_distance`, otherwise `max_distance + 1`; only the cells near the diagonal are computed and the work stops when a whole row is past the ceiling. `SpellChecker->Suggest` uses it.
 - **A `RegEx` can be shared by threads**: the DFA tables and the capture scratch are used under a lock, and `MatchExact` no longer keeps its answer in a field.
 - **`{n,}` in a regular expression** (n or more).
+- **Five more Debug Adapter Protocol requests in `obd --dap`**, each advertised in the `initialize` response:
+  - `stepInTargets` (`supportsStepInTargetsRequest`) lists the calls left on the stopped statement in the order they run, and `stepIn` takes an optional `targetId` to enter just that call, stepping over the others (if the statement ends first it stops on the next line, as `next` does). Calls through a func-ref and methods with no bytecode are not listed.
+  - `gotoTargets` and `goto` (`supportsGotoTargetsRequest`) set the next statement. A jump is made only inside the method that is executing, between two statement starts where the operand stack holds what the method was entered with (checked with the loader's reference map), and never across a `try` block; anything else is a DAP error that says why, and the program is left as it was. A successful `goto` sends `stopped` with reason `goto`.
+  - `cancel` (`supportsCancelRequest`): requests are now read on a thread of their own, so a `cancel` is seen while an earlier request is still being answered. A request cancelled before its turn is answered `cancelled` without being started, and `evaluate` and `variables` stop at their next check.
+  - `disassemble` (`supportsDisassembleRequest`) lists the VM bytecode of the method a frame is in (opcode, operands, the callee of a call, the source line); stack frames carry an `instructionPointerReference` to start from.
+  - Events: `invalidated` after `setVariable`, `setExpression` and `goto` for a client that declares `supportsInvalidatedEvent`; `progressStart`, `progressUpdate` and `progressEnd` around launch and program start-up for a client that declares `supportsProgressReporting`.
+  - `restartFrame` and `terminateThreads` are not offered: the interpreter cannot re-enter a frame (its parameters are already popped into locals and the frames above it hold operand-stack words) and a thread cannot be ended without leaving its locks held.
 
 ### Documentation
 

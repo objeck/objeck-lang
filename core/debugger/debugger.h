@@ -277,6 +277,42 @@ namespace Runtime {
     bool is_next_line;
     bool is_step_out;
     int continue_state;
+    // Index of the instruction the current stop is at, or -1 when the stop is not
+    // at one (an uncaught-error stop). The hook receives the instruction pointer
+    // after the dispatch loop incremented it, so this is that value less one.
+    long cur_ip;
+    // DAP stepIn with a targetId: stop in one named callee instead of the first
+    // one entered. 'pending' is set by the request thread while the program is
+    // stopped; the hook moves it to 'active' when the thread resumes. While it is
+    // active the step behaves as a step over that also stops on entering the
+    // callee (one frame deeper than the stop). A virtual declaration has no body
+    // of its own, so a callee reached through it is matched by method key.
+    struct StepTargetSpec {
+      StackMethod* method;
+      bool is_virtual;
+      std::wstring key;
+    };
+    struct StepInCall {
+      long ip;
+      StepTargetSpec spec;
+    };
+    std::vector<StepInCall> step_in_calls;
+    bool step_target_pending;
+    bool step_target_active;
+    StepTargetSpec step_target;
+    // DAP goto: where the stopped thread continues from. The request thread sets
+    // it while the program is stopped; the stopped thread picks it up when it
+    // leaves the hook (TakeGotoIp), which is the only point the instruction
+    // pointer of the interpreter loop can be changed.
+    struct GotoSite {
+      StackMethod* method;
+      long ip;
+      int line;
+      std::wstring label;
+    };
+    std::vector<GotoSite> goto_sites;
+    std::atomic<long> goto_pending_ip;
+    static bool MethodMatches(const StepTargetSpec& spec, StackMethod* method);
     size_t* ref_mem;
     StackClass* ref_klass;
     // frame selected for inspection (frame/up/down); evaluation reads from here
@@ -525,6 +561,11 @@ namespace Runtime {
       prev_instr_pos = -1;
       is_step_into = is_next_line = false;
       continue_state = 0;
+      cur_ip = -1;
+      step_target_pending = step_target_active = false;
+      step_target.method = nullptr;
+      step_target.is_virtual = false;
+      goto_pending_ip = -1;
     }
 
     ~Debugger() {
@@ -556,6 +597,10 @@ namespace Runtime {
 
     // public accessors for DAP
     const std::wstring& GetBasePath() { return base_path_param; }
+    // the loaded program (null until DapRun has loaded it) and the instruction
+    // the stop is at (-1 when it is not at one)
+    StackProgram* GetLoadedProgram() { return cur_program; }
+    long GetStopIp() const { return cur_ip; }
     std::wstring PrintMethodPublic(StackMethod* method) { return PrintMethod(method); }
 
     // The full path of an existing file -- absolute, one separator, no "." or
@@ -665,6 +710,44 @@ namespace Runtime {
 
     // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num);
+
+    // ---- DAP stepInTargets / stepIn with a targetId / gotoTargets / goto ----
+    // All of these read the stopped thread's state, so they are valid only while
+    // the program is stopped, and the ids they hand out last until it resumes.
+
+    struct StepInTargetInfo {
+      int id;
+      std::wstring label;
+      int line;
+    };
+    // The calls the stopped statement can still step into, in the order they run:
+    // the call instructions from the stop up to the end of the line. Calls whose
+    // callee has no bytecode (a native method) and calls through a func-ref
+    // (DYN_MTHD_CALL, whose callee is only known when it runs) are not listed.
+    void GetStepInTargets(std::vector<StepInTargetInfo>& targets);
+    // Arms the next resume as a stepIn that enters only the call 'id' names; false
+    // when it names none.
+    bool SetStepInTarget(int id);
+
+    struct GotoTargetInfo {
+      int id;
+      std::wstring label;
+      int line;
+    };
+    // The places a statement starting on 'line' of the file 'file_name' (a base
+    // name) can be found: one per run of instructions that starts the line, in
+    // the stopped method first and then anywhere else in the program.
+    void GetGotoTargets(const std::wstring& file_name, int line, std::vector<GotoTargetInfo>& targets);
+    // Sets the next statement to the target 'id' names, or says in 'error' why
+    // that cannot be done safely. 'frame_is_top' is whether the request named the
+    // stopped thread's innermost frame. On success the thread continues from the
+    // target when it next runs, and 'new_line' is the target's line.
+    bool GotoTarget(int id, bool frame_is_top, int& new_line, std::wstring& error);
+    // Called by the interpreter loop right after the hook returns: when the
+    // thread that was stopped has a goto waiting, its instruction pointer must
+    // become 'ip' (the instruction to run next). Always false in a program that
+    // never used goto.
+    bool TakeGotoIp(long& ip);
 
     // runtime callback
     void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame);
