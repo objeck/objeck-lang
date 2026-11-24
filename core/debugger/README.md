@@ -99,7 +99,7 @@ obd --dap
 
 In DAP mode, the debugger communicates over stdin/stdout using JSON-RPC with Content-Length framing. VS Code launches `obd --dap` automatically when you press F5 with the Objeck extension installed.
 
-**Supported DAP requests** (the dispatch in `dap.cpp`): initialize, launch, restart, terminate, disconnect, setBreakpoints, setFunctionBreakpoints, setExceptionBreakpoints, breakpointLocations, dataBreakpointInfo, setDataBreakpoints, configurationDone, threads, stackTrace, scopes, variables, setVariable, setExpression, evaluate, completions, exceptionInfo, modules, loadedSources, continue, next, stepIn, stepOut, pause. `attach` is answered with an error ("Attach is not supported; use a launch configuration"), as is any other request, so a client is never told a request it asked for succeeded when it did not. `supportsStepBack` is false.
+**Supported DAP requests** (the dispatch in `dap.cpp`): initialize, launch, restart, terminate, disconnect, setBreakpoints, setFunctionBreakpoints, setExceptionBreakpoints, breakpointLocations, dataBreakpointInfo, setDataBreakpoints, configurationDone, threads, stackTrace, scopes, variables, setVariable, setExpression, evaluate, completions, exceptionInfo, modules, loadedSources, continue, next, stepIn (with an optional `targetId`), stepInTargets, stepOut, pause, gotoTargets, goto, cancel, disassemble. `attach` is answered with an error ("Attach is not supported; use a launch configuration"), as is any other request, so a client is never told a request it asked for succeeded when it did not. `supportsStepBack` is false.
 
 **Features:**
 - Conditional breakpoints (expression evaluation) and hit-count conditions
@@ -109,6 +109,12 @@ In DAP mode, the debugger communicates over stdin/stdout using JSON-RPC with Con
 - Logpoints (breakpoints with a `{expr}`-interpolated message that log and continue)
 - Variable inspection (locals, parameters, instance/class fields)
 - Setting variable values from the editor (`setVariable`, Int/Char/Float locals)
+- Step into one call of a statement (`stepInTargets`, then `stepIn` with a `targetId`; calls run in bytecode order, which for `a() + b()` is `b()` first)
+- Set the next statement (`gotoTargets` and `goto`): inside the executing method, from a statement start to a statement start, never across a `try`; otherwise an error that says why and no change
+- Cancel a request (`cancel`); `OBJECK_DAP_TEST_DELAY_MS` holds `evaluate` and `variables` that many milliseconds (until cancelled), for the tests
+- Disassemble a frame's method (`disassemble`; frames carry an `instructionPointerReference`; an address packs class, method and instruction index and counts one per instruction)
+- `invalidated` events (after `setVariable`, `setExpression`, `goto`) and `progressStart`/`progressUpdate`/`progressEnd` events (launch and program start-up), sent only to a client that declared `supportsInvalidatedEvent` / `supportsProgressReporting`
+- Not offered: `restartFrame` (a frame cannot be re-entered: its parameters are popped into locals at entry and the frames above it hold operand-stack words) and `terminateThreads` (a thread cannot be ended without leaving its locks held)
 - In-process restart (re-runs the program without relaunching the adapter)
 - Call stack navigation
 - ANSI color output

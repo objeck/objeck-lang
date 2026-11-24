@@ -326,9 +326,11 @@ void Linker::ResolveExternalMethodCalls()
             if(lib_klass) {
               LibraryMethod* lib_method = lib_klass->GetMethod(instr->GetOperand6());
               if(lib_method) {
-                const int16_t lib_method_id = lib_method->GetId();
-                const int16_t lib_cls_id = lib_method->GetLibraryClass()->GetId();
-                const INT64_VALUE lib_method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)lib_cls_id << 16) | lib_method_id;
+                // this pass walks every library class, called or not; a class nothing calls has
+                // no id (-1) and is never emitted, so the value it would carry is unused
+                const int lib_cls_id = (int)lib_method->GetLibraryClass()->GetId();
+                const INT64_VALUE lib_method_cls_id = (lib_cls_id < 0 || lib_method->GetId() < 0) ? 0 :
+                  PackFunctionValue(lib_cls_id, (int)lib_method->GetId());
                 instr->SetType(instructions::LOAD_INT_LIT);
                 instr->SetOperand7(lib_method_cls_id);
               }

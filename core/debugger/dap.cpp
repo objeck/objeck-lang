@@ -13,6 +13,8 @@
 #include "dap.h"
 #include <chrono>
 #include <cstdlib>
+#include <deque>
+#include <set>
 
 #ifdef _WIN32
 #include <io.h>
@@ -61,6 +63,10 @@ DapAdapter::DapAdapter()
   restart_requested = false;
   break_on_exception = false;
   client_supports_variable_paging = false;
+  client_supports_progress = false;
+  client_supports_invalidated = false;
+  current_request_seq = 0;
+  startup_progress_open = false;
   stopped_frame = nullptr;
   stopped_call_stack = nullptr;
   stopped_call_stack_pos = 0;
@@ -87,7 +93,83 @@ DapAdapter::~DapAdapter()
 // allocating gigabytes before the read fails.
 static const size_t MAX_DAP_MESSAGE_SIZE = 64 * 1024 * 1024;
 
+// Requests, in the order they arrived, plus the ids of those a 'cancel' named.
+// The thread that reads the editor's input owns no adapter state, only this, which
+// it shares with the adapter: that thread may still be blocked in read() after the
+// adapter is gone (the process is on its way out), so it must not point into it.
+struct DapAdapter::Inbox {
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::deque<std::string> queue;
+  bool closed = false;
+  std::set<int> cancelled;
+
+  bool Pop(std::string& message) {
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [this]() { return !queue.empty() || closed; });
+    if(queue.empty()) {
+      return false;
+    }
+    message = std::move(queue.front());
+    queue.pop_front();
+    return true;
+  }
+
+  bool IsCancelled(int request_seq) {
+    std::lock_guard<std::mutex> lock(mtx);
+    return cancelled.count(request_seq) > 0;
+  }
+
+  void Forget(int request_seq) {
+    std::lock_guard<std::mutex> lock(mtx);
+    cancelled.erase(request_seq);
+  }
+};
+
+static std::string ReadFramedMessage(int fd);
+
+// Reads requests until the channel closes. A 'cancel' is recorded here, the
+// moment it is read, and not when the main thread gets to it: the request it
+// names may be the one the main thread is working on right now.
+static void ReadRequests(std::shared_ptr<DapAdapter::Inbox> inbox, int fd)
+{
+  while(true) {
+    std::string message = ReadFramedMessage(fd);
+    std::lock_guard<std::mutex> lock(inbox->mtx);
+    if(message.empty()) {
+      inbox->closed = true;
+      inbox->cv.notify_all();
+      return;
+    }
+
+    if(message.find("\"cancel\"") != std::string::npos) {
+      try {
+        json parsed = json::parse(message);
+        if(parsed.value("command", "") == "cancel" && parsed.contains("arguments") && parsed["arguments"].is_object() &&
+           parsed["arguments"].contains("requestId") && parsed["arguments"]["requestId"].is_number_integer()) {
+          // bounded: ids of requests that already finished are never taken back out
+          if(inbox->cancelled.size() > 1024) {
+            inbox->cancelled.clear();
+          }
+          inbox->cancelled.insert(parsed["arguments"]["requestId"].get<int>());
+        }
+      }
+      catch(const json::exception&) {
+        // not a request the main thread can answer either
+      }
+    }
+
+    inbox->queue.push_back(std::move(message));
+    inbox->cv.notify_all();
+  }
+}
+
 std::string DapAdapter::ReadMessage()
+{
+  return ReadFramedMessage(dap_in_fd);
+}
+
+static std::string ReadFramedMessage(int dap_in_fd)
 {
   // Read Content-Length header from the saved DAP input fd. We must
   // not use std::cin here because the underlying fd may be the same as
@@ -470,9 +552,14 @@ void DapAdapter::Run()
   RedirectProgramStdio();
   StartOutputReaders();
 
+  // The editor's requests are read on a thread of their own; it is never joined
+  // (it may be blocked in read() when the session ends) and keeps only the inbox.
+  inbox = std::make_shared<Inbox>();
+  std::thread(ReadRequests, inbox, dap_in_fd).detach();
+
   while(!disconnect_requested) {
-    std::string msg_str = ReadMessage();
-    if(msg_str.empty()) {
+    std::string msg_str;
+    if(!inbox->Pop(msg_str)) {
       break;
     }
 
@@ -484,7 +571,14 @@ void DapAdapter::Run()
       command = msg.value("command", "");
       request_seq = msg.value("seq", 0);
       json args = msg.value("arguments", json::object());
+      current_request_seq = request_seq;
 
+      // A request cancelled before its turn is not started
+      if(command != "cancel" && inbox->IsCancelled(request_seq)) {
+        inbox->Forget(request_seq);
+        SendResponse(request_seq, command, json::object(), false, "cancelled");
+        continue;
+      }
 
       if(command == "initialize") {
         HandleInitialize(request_seq, args);
@@ -521,6 +615,21 @@ void DapAdapter::Run()
       }
       else if(command == "stepOut") {
         HandleStepOut(request_seq, args);
+      }
+      else if(command == "stepInTargets") {
+        HandleStepInTargets(request_seq, args);
+      }
+      else if(command == "gotoTargets") {
+        HandleGotoTargets(request_seq, args);
+      }
+      else if(command == "goto") {
+        HandleGoto(request_seq, args);
+      }
+      else if(command == "cancel") {
+        HandleCancel(request_seq, args);
+      }
+      else if(command == "disassemble") {
+        HandleDisassemble(request_seq, args);
       }
       else if(command == "pause") {
         HandlePause(request_seq, args);
@@ -585,6 +694,7 @@ void DapAdapter::Run()
         SendResponse(request_seq, command, json::object(), false,
                      "Unsupported request '" + command + "'");
       }
+      inbox->Forget(request_seq);
     }
     catch(const json::parse_error&) {
       // garbled bytes: there is no seq to answer, so drop the message as before
@@ -632,6 +742,8 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
   // Client capabilities travel on the initialize request; remember the ones
   // that change what we may send back.
   client_supports_variable_paging = args.value("supportsVariablePaging", false);
+  client_supports_progress = args.value("supportsProgressReporting", false);
+  client_supports_invalidated = args.value("supportsInvalidatedEvent", false);
 
   json capabilities;
   capabilities["supportsConditionalBreakpoints"] = true;
@@ -655,6 +767,10 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
   capabilities["supportsLoadedSourcesRequest"] = true;
   capabilities["supportsDataBreakpoints"] = true;
   capabilities["supportsCompletionsRequest"] = true;
+  capabilities["supportsStepInTargetsRequest"] = true;
+  capabilities["supportsGotoTargetsRequest"] = true;
+  capabilities["supportsCancelRequest"] = true;
+  capabilities["supportsDisassembleRequest"] = true;
 
   // Offer completions as soon as a word or an instance-variable sigil starts.
   capabilities["completionTriggerCharacters"] = json::array({"@", "."});
@@ -689,6 +805,15 @@ void DapAdapter::HandleLaunch(int request_seq, const json& args)
   source_dir = BytesToUnicode(source);
   program_args = BytesToUnicode(prog_args);
 
+  // Loading the debugger is the 'build' of a launch; tell a client that shows
+  // progress. The program itself starts at configurationDone (startup progress).
+  std::string program_name = program;
+  const size_t program_sep = program_name.find_last_of("/\\");
+  if(program_sep != std::string::npos) {
+    program_name = program_name.substr(program_sep + 1);
+  }
+  SendProgressStart("objeck-launch", "Launching " + program_name, "Preparing the debug session", request_seq);
+
   // Ensure source dir ends with separator
 #ifdef _WIN32
   if(source_dir.size() > 0 && source_dir.back() != L'\\') {
@@ -701,10 +826,12 @@ void DapAdapter::HandleLaunch(int request_seq, const json& args)
 #endif
 
   // Create debugger instance
+  SendProgressUpdate("objeck-launch", "Loading the debugger");
   debugger = new Debugger(program_path, source_dir, program_args);
   debugger->SetDapAdapter(this);
 
   is_launched = true;
+  SendProgressEnd("objeck-launch", "Ready");
   SendResponse(request_seq, "launch");
 
   // Send thread started event
@@ -847,6 +974,11 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
 {
   SendResponse(request_seq, "configurationDone");
 
+  if(debugger && is_launched) {
+    startup_progress_open = true;
+    SendProgressStart("objeck-startup", "Starting the program", "Loading the program", request_seq);
+  }
+
   // Start the program on a background thread. Store the thread as a
   // member so Run() can join it on shutdown — detaching would let the
   // VM race the C runtime teardown and access-violate.
@@ -876,6 +1008,8 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
       // Program finished naturally — only fire `terminated` if the user
       // didn't already request disconnect (otherwise the editor sees a
       // late terminated event after it expects us to be gone).
+      // a program that never loaded must not leave its progress report open
+      OnProgramLoaded();
       if(!disconnect_requested) {
         OnTerminated();
       }
@@ -1007,6 +1141,9 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
       frame["source"] = source;
       frame["line"] = stopped_line;
       frame["column"] = 1;
+      if(debugger && debugger->GetStopIp() >= 0) {
+        frame["instructionPointerReference"] = EncodeAddress(method->GetClass()->GetId(), method->GetId(), debugger->GetStopIp());
+      }
       frames.push_back(frame);
     }
 
@@ -1038,6 +1175,9 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
           frame["line"] = 0;
         }
         frame["column"] = 1;
+        if(ip > -1) {
+          frame["instructionPointerReference"] = EncodeAddress(method->GetClass()->GetId(), method->GetId(), ip);
+        }
         frames.push_back(frame);
       }
     }
@@ -1564,6 +1704,12 @@ void DapAdapter::ExpandHandle(const VarHandle& handle, json& variables)
 
 void DapAdapter::HandleVariables(int request_seq, const json& args)
 {
+  // before the lock: a slow request must not hold up the VM's own stop
+  if(DelayForTest()) {
+    SendResponse(request_seq, "variables", json::object(), false, "cancelled");
+    return;
+  }
+
   std::lock_guard<std::mutex> lock(mtx);
 
   int ref = args.value("variablesReference", 0);
@@ -1586,6 +1732,13 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
         page.push_back(variables[i]);
       }
       variables = page;
+    }
+
+    // the expansion above is bounded, but it is the part of this request that can
+    // take a while on a large structure; an answer nobody wants is not sent
+    if(Cancelled()) {
+      SendResponse(request_seq, "variables", json::object(), false, "cancelled");
+      return;
     }
 
     json body;
@@ -1772,9 +1925,433 @@ void DapAdapter::HandleNext(int request_seq, const json& args)
 
 void DapAdapter::HandleStepIn(int request_seq, const json& args)
 {
+  // A targetId names one of the calls stepInTargets listed: step into that one,
+  // over the others. The ids are positions in the statement's call list, which
+  // does not change while the program is stopped, so a client that never asked
+  // for the list can still name a call by its position.
+  if(args.contains("targetId")) {
+    if(!args["targetId"].is_number_integer()) {
+      SendResponse(request_seq, "stepIn", json::object(), false, "targetId must be an integer");
+      return;
+    }
+    if(!is_stopped || !debugger) {
+      SendResponse(request_seq, "stepIn", json::object(), false, "Not stopped");
+      return;
+    }
+    std::vector<Debugger::StepInTargetInfo> targets;
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      debugger->GetStepInTargets(targets);
+    }
+    const int target_id = args["targetId"].get<int>();
+    if(!debugger->SetStepInTarget(target_id)) {
+      SendResponse(request_seq, "stepIn", json::object(), false,
+                   "Unknown step-in target " + std::to_string(target_id) + "; the statement has " +
+                   std::to_string(targets.size()) + " call(s) to step into");
+      return;
+    }
+  }
+
   SendResponse(request_seq, "stepIn");
 
   Resume(true, false, false);
+}
+
+// The calls on the stopped statement that stepIn can enter, in the order they run.
+void DapAdapter::HandleStepInTargets(int request_seq, const json& args)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+
+  if(!is_stopped || !debugger) {
+    SendResponse(request_seq, "stepInTargets", json::object(), false, "Not stopped");
+    return;
+  }
+
+  json targets = json::array();
+  // Only the innermost frame has a statement still to run: a caller frame is
+  // already inside the call that led to the frame above it.
+  const int frame_id = args.contains("frameId") && args["frameId"].is_number_integer() ? args["frameId"].get<int>() : (int)stopped_call_stack_pos;
+  if(frame_id == (int)stopped_call_stack_pos) {
+    std::vector<Debugger::StepInTargetInfo> found;
+    debugger->GetStepInTargets(found);
+    for(const Debugger::StepInTargetInfo& info : found) {
+      json target;
+      target["id"] = info.id;
+      target["label"] = UnicodeToBytes(info.label);
+      target["line"] = info.line;
+      targets.push_back(target);
+    }
+  }
+
+  json body;
+  body["targets"] = targets;
+  SendResponse(request_seq, "stepInTargets", body);
+}
+
+// Where a statement starting on a line can be found, for 'goto' (next statement).
+void DapAdapter::HandleGotoTargets(int request_seq, const json& args)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+
+  if(!is_stopped || !debugger) {
+    SendResponse(request_seq, "gotoTargets", json::object(), false, "Not stopped");
+    return;
+  }
+
+  json source = args.value("source", json::object());
+  const std::string path = source.is_object() ? source.value("path", "") : "";
+  if(path.empty() || !args.contains("line") || !args["line"].is_number_integer()) {
+    SendResponse(request_seq, "gotoTargets", json::object(), false, "A source path and a line are required");
+    return;
+  }
+
+  std::vector<Debugger::GotoTargetInfo> found;
+  debugger->GetGotoTargets(BytesToUnicode(path), args["line"].get<int>(), found);
+
+  json targets = json::array();
+  for(const Debugger::GotoTargetInfo& info : found) {
+    json target;
+    target["id"] = info.id;
+    target["label"] = UnicodeToBytes(info.label);
+    target["line"] = info.line;
+    targets.push_back(target);
+  }
+
+  json body;
+  body["targets"] = targets;
+  SendResponse(request_seq, "gotoTargets", body);
+}
+
+// Sets the next statement of the stopped thread. The program stays stopped: the
+// new position is where it continues from on the next continue or step.
+void DapAdapter::HandleGoto(int request_seq, const json& args)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+
+  if(!is_stopped || !debugger) {
+    SendResponse(request_seq, "goto", json::object(), false, "Not stopped");
+    return;
+  }
+  if(!args.contains("targetId") || !args["targetId"].is_number_integer()) {
+    SendResponse(request_seq, "goto", json::object(), false, "A targetId from gotoTargets is required");
+    return;
+  }
+
+  // The stopped thread is the only one with a position to move.
+  const int stopped_id = debugger->StoppedThreadId() > 0 ? debugger->StoppedThreadId() : 1;
+  if(args.contains("threadId") && args["threadId"].is_number_integer() && args["threadId"].get<int>() != stopped_id) {
+    SendResponse(request_seq, "goto", json::object(), false,
+                 "Cannot set the next statement of thread " + std::to_string(args["threadId"].get<int>()) +
+                 ": only the stopped thread (" + std::to_string(stopped_id) + ") can be moved");
+    return;
+  }
+
+  int new_line = 0;
+  std::wstring error;
+  if(!debugger->GotoTarget(args["targetId"].get<int>(), true, new_line, error)) {
+    SendResponse(request_seq, "goto", json::object(), false, UnicodeToBytes(error));
+    return;
+  }
+
+  stopped_line = new_line;
+  stop_reason = "goto";
+  SendResponse(request_seq, "goto");
+
+  // a goto is answered with a stopped event: the thread is at a new place
+  SendInvalidated();
+  json body;
+  body["reason"] = "goto";
+  body["threadId"] = stopped_id;
+  body["allThreadsStopped"] = true;
+  SendEvent("stopped", body);
+}
+
+// The main loop has already marked what the request names (the reader thread did
+// it the moment the 'cancel' arrived); there is nothing left to do but say so.
+void DapAdapter::HandleCancel(int request_seq, const json& args)
+{
+  SendResponse(request_seq, "cancel");
+}
+
+std::string DapAdapter::EncodeAddress(long cls_id, long mthd_id, long ip)
+{
+  // 19 bits of class, 20 of method, 24 of instruction index: 63 bits, so a
+  // signed 64-bit client still reads it as positive
+  const unsigned long long packed = ((unsigned long long)(cls_id & 0x7FFFF) << 44) |
+                                    ((unsigned long long)(mthd_id & 0xFFFFF) << 24) |
+                                    (unsigned long long)(ip & 0xFFFFFF);
+  char text[32];
+  snprintf(text, sizeof(text), "0x%llx", packed);
+  return text;
+}
+
+bool DapAdapter::DecodeAddress(const std::string& text, long& cls_id, long& mthd_id, long& ip)
+{
+  if(text.size() < 3 || text.size() > 18 || text[0] != '0' || (text[1] != 'x' && text[1] != 'X')) {
+    return false;
+  }
+  unsigned long long packed = 0;
+  for(size_t i = 2; i < text.size(); ++i) {
+    const char ch = text[i];
+    unsigned digit;
+    if(ch >= '0' && ch <= '9') {
+      digit = ch - '0';
+    }
+    else if(ch >= 'a' && ch <= 'f') {
+      digit = ch - 'a' + 10;
+    }
+    else if(ch >= 'A' && ch <= 'F') {
+      digit = ch - 'A' + 10;
+    }
+    else {
+      return false;
+    }
+    packed = (packed << 4) | digit;
+  }
+  cls_id = (long)((packed >> 44) & 0x7FFFF);
+  mthd_id = (long)((packed >> 24) & 0xFFFFF);
+  ip = (long)(packed & 0xFFFFFF);
+  return true;
+}
+
+// One instruction as text: its opcode, then the operands that mean something
+// for it (the table in shared/instr_info.h says which and what they are).
+std::string DapAdapter::DescribeInstruction(StackMethod* method, long ip)
+{
+  StackInstr* instr = method->GetInstruction(ip);
+  const instructions::info::InstrInfo& info = instructions::info::Info(instr->GetType());
+  std::ostringstream out;
+  out << info.name;
+
+  using instructions::info::Role;
+  using instructions::info::Wide;
+  const Role roles[3] = { info.op1, info.op2, info.op3 };
+  const long values[3] = { instr->GetOperand(), instr->GetOperand2(), instr->GetOperand3() };
+  bool first = true;
+  for(int i = 0; i < 3; ++i) {
+    if(!instructions::info::InstrInfo::InFile(roles[i])) {
+      continue;
+    }
+    out << (first ? " " : ", ");
+    first = false;
+    switch(roles[i]) {
+    case Role::R_CTX:
+      out << (values[i] == LOCL ? "LOCL" : values[i] == INST ? "INST" : values[i] == CLS ? "CLS" : std::to_string(values[i]));
+      break;
+
+    case Role::R_LABEL:
+      // a jump's target, as the index of the instruction that runs next
+      out << "-> " << values[i];
+      break;
+
+    case Role::R_CHAR:
+      out << "'" << (char)(values[i] > 31 && values[i] < 127 ? values[i] : '?') << "' (" << values[i] << ")";
+      break;
+
+    default:
+      out << values[i];
+      break;
+    }
+  }
+  if(info.wide == Wide::W_I64) {
+    out << instr->GetInt64Operand();
+  }
+  else if(info.wide == Wide::W_F64) {
+    out << instr->GetFloatOperand();
+  }
+
+  // a call says who it calls
+  if(instr->GetType() == MTHD_CALL && debugger && debugger->GetLoadedProgram()) {
+    StackClass* cls = debugger->GetLoadedProgram()->GetClass(instr->GetOperand());
+    StackMethod* callee = cls ? cls->GetMethod(instr->GetOperand2()) : nullptr;
+    if(callee) {
+      out << "    ; " << UnicodeToBytes(debugger->PrintMethodPublic(callee));
+    }
+  }
+
+  return out.str();
+}
+
+// The bytecode of a method: the instructions the VM runs, which the source line
+// of a statement compiles to. The reference is an address from a stack frame's
+// instructionPointerReference or from an earlier disassembly.
+void DapAdapter::HandleDisassemble(int request_seq, const json& args)
+{
+  StackProgram* program = debugger ? debugger->GetLoadedProgram() : nullptr;
+  if(!program) {
+    SendResponse(request_seq, "disassemble", json::object(), false, "The program is not loaded");
+    return;
+  }
+
+  long cls_id, mthd_id, ip;
+  if(!args.contains("memoryReference") || !args["memoryReference"].is_string() ||
+     !DecodeAddress(args["memoryReference"].get<std::string>(), cls_id, mthd_id, ip)) {
+    SendResponse(request_seq, "disassemble", json::object(), false,
+                 "memoryReference must be an address from a stack frame or an earlier disassembly");
+    return;
+  }
+
+  StackClass* cls = program->GetClass(cls_id);
+  StackMethod* method = cls ? cls->GetMethod(mthd_id) : nullptr;
+  if(!method || method->GetInstructionCount() < 1) {
+    SendResponse(request_seq, "disassemble", json::object(), false, "The address names no method with bytecode");
+    return;
+  }
+
+  // Each instruction is one address unit, so a byte offset and an instruction
+  // offset move by the same amount.
+  long start = ip;
+  long count = 0;
+  if(args.contains("offset") && args["offset"].is_number_integer()) {
+    start += (long)args["offset"].get<int64_t>();
+  }
+  if(args.contains("instructionOffset") && args["instructionOffset"].is_number_integer()) {
+    start += (long)args["instructionOffset"].get<int64_t>();
+  }
+  if(args.contains("instructionCount") && args["instructionCount"].is_number_integer()) {
+    count = (long)args["instructionCount"].get<int64_t>();
+  }
+  if(count < 1 || count > 10000) {
+    SendResponse(request_seq, "disassemble", json::object(), false, "instructionCount must be between 1 and 10000");
+    return;
+  }
+  if(start < -10000000 || start > 0xFFFFFF) {
+    SendResponse(request_seq, "disassemble", json::object(), false, "The requested range is outside the method");
+    return;
+  }
+
+  const bool with_symbols = !args.contains("resolveSymbols") || !args["resolveSymbols"].is_boolean() || args["resolveSymbols"].get<bool>();
+  const std::string source_path = ResolveSourcePath(cls->GetFileName(), cls->GetName());
+  std::string source_name = source_path;
+  const size_t last_sep = source_name.find_last_of("/\\");
+  if(last_sep != std::string::npos) {
+    source_name = source_name.substr(last_sep + 1);
+  }
+
+  json listing = json::array();
+  for(long at = start; at < start + count; ++at) {
+    json entry;
+    // outside the method there is nothing to show; the placeholders keep the
+    // count and the positions the client asked for
+    if(at < 0 || at >= method->GetInstructionCount()) {
+      entry["address"] = EncodeAddress(cls_id, mthd_id, at < 0 ? 0 : (at & 0xFFFFFF));
+      entry["instruction"] = "??";
+      entry["presentationHint"] = "invalid";
+      listing.push_back(entry);
+      continue;
+    }
+
+    entry["address"] = EncodeAddress(cls_id, mthd_id, at);
+    entry["instruction"] = DescribeInstruction(method, at);
+    if(with_symbols && at == 0) {
+      entry["symbol"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
+    }
+    const int line = method->GetInstruction(at)->GetLineNumber();
+    if(line > 0) {
+      json location;
+      location["name"] = source_name;
+      location["path"] = source_path;
+      entry["location"] = location;
+      entry["line"] = line;
+    }
+    listing.push_back(entry);
+  }
+
+  json body;
+  body["instructions"] = listing;
+  SendResponse(request_seq, "disassemble", body);
+}
+
+bool DapAdapter::Cancelled()
+{
+  return inbox && current_request_seq != 0 && inbox->IsCancelled(current_request_seq);
+}
+
+bool DapAdapter::DelayForTest()
+{
+  static long delay_ms = -1;
+  if(delay_ms < 0) {
+    delay_ms = 0;
+#ifdef _WIN32
+    char text[32];
+    size_t length = 0;
+    if(getenv_s(&length, text, sizeof(text), "OBJECK_DAP_TEST_DELAY_MS") == 0 && length > 0) {
+      delay_ms = atol(text);
+    }
+#else
+    const char* text = getenv("OBJECK_DAP_TEST_DELAY_MS");
+    if(text) {
+      delay_ms = atol(text);
+    }
+#endif
+  }
+
+  // wall-clock, not a count of sleeps: a loaded machine oversleeps each 10 ms,
+  // and a count turned a 2 s hold into many seconds
+  const std::chrono::steady_clock::time_point until = std::chrono::steady_clock::now() + std::chrono::milliseconds(delay_ms);
+  while(std::chrono::steady_clock::now() < until && !Cancelled()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  return Cancelled();
+}
+
+void DapAdapter::SendProgressStart(const std::string& id, const std::string& title, const std::string& message, int request_seq)
+{
+  if(!client_supports_progress) {
+    return;
+  }
+  json body;
+  body["progressId"] = id;
+  body["title"] = title;
+  body["message"] = message;
+  body["cancellable"] = false;
+  if(request_seq > 0) {
+    body["requestId"] = request_seq;
+  }
+  SendEvent("progressStart", body);
+}
+
+void DapAdapter::SendProgressUpdate(const std::string& id, const std::string& message)
+{
+  if(!client_supports_progress) {
+    return;
+  }
+  json body;
+  body["progressId"] = id;
+  body["message"] = message;
+  SendEvent("progressUpdate", body);
+}
+
+void DapAdapter::SendProgressEnd(const std::string& id, const std::string& message)
+{
+  if(!client_supports_progress) {
+    return;
+  }
+  json body;
+  body["progressId"] = id;
+  body["message"] = message;
+  SendEvent("progressEnd", body);
+}
+
+void DapAdapter::OnProgramLoaded()
+{
+  if(startup_progress_open.exchange(false)) {
+    SendProgressEnd("objeck-startup", "The program is running");
+  }
+}
+
+void DapAdapter::SendInvalidated()
+{
+  if(!client_supports_invalidated) {
+    return;
+  }
+  json body;
+  body["areas"] = json::array({"variables"});
+  const int thread_id = debugger ? debugger->StoppedThreadId() : 0;
+  if(thread_id > 0) {
+    body["threadId"] = thread_id;
+  }
+  SendEvent("invalidated", body);
 }
 
 void DapAdapter::HandleStepOut(int request_seq, const json& args)
@@ -1856,6 +2433,11 @@ void DapAdapter::HandleDisconnect(int request_seq, const json& args)
 
 void DapAdapter::HandleEvaluate(int request_seq, const json& args)
 {
+  if(DelayForTest()) {
+    SendResponse(request_seq, "evaluate", json::object(), false, "cancelled");
+    return;
+  }
+
   std::string expression = args.value("expression", "");
   std::string context = args.value("context", "");
 
@@ -2241,6 +2823,7 @@ void DapAdapter::HandleSetExpression(int request_seq, const json& args)
   body["value"] = UnicodeToBytes(shown);
   body["variablesReference"] = 0;
   SendResponse(request_seq, "setExpression", body);
+  SendInvalidated();
 }
 
 void DapAdapter::HandleSetVariable(int request_seq, const json& args)
@@ -2340,6 +2923,7 @@ void DapAdapter::HandleSetVariable(int request_seq, const json& args)
   body["value"] = UnicodeToBytes(shown);
   body["variablesReference"] = 0;
   SendResponse(request_seq, "setVariable", body);
+  SendInvalidated();
 }
 
 void DapAdapter::HandleSetFunctionBreakpoints(int request_seq, const json& args)

@@ -124,7 +124,7 @@ The generational collector (nursery plus old generation, write barrier, minor an
 
 ## 10. Debugger and DAP tests
 
-- **What it checks.** `obd` command-line scenarios (scripted with `expect` on POSIX) and Debug Adapter Protocol sessions (`obd --dap` over stdio): breakpoints, stepping, variables, `setVariable`, function breakpoints, logpoints, restart, exception breakpoints, threads, data breakpoints, non-ASCII program, source and output names, teardown.
+- **What it checks.** `obd` command-line scenarios (scripted with `expect` on POSIX) and Debug Adapter Protocol sessions (`obd --dap` over stdio): breakpoints, stepping, variables, `setVariable`, function breakpoints, logpoints, restart, exception breakpoints, threads, data breakpoints, stepInTargets, goto, cancel, progress and invalidated events, disassemble, non-ASCII program, source and output names, teardown.
 - **Input.** Programs compiled with debug symbols, and the scenario scripts in `programs/regression/` ([run_debugger_tests.sh](../programs/regression/run_debugger_tests.sh), [run_dap_tests.py](../programs/regression/run_dap_tests.py), `dap_*_test.py`).
 - **Where it runs.** Per push, every leg.
 - **Locally.** `./run_debugger_tests.sh x64` (needs `expect`), `python3 run_dap_tests.py <bin_dir>` in `programs/regression`.
