@@ -135,6 +135,22 @@ else
   exit 1
 fi
 
+# core/lib/*.obl are build products. While they are still committed this does nothing; once
+# they are not, build them first, the way ci-build.yml's `libs` job does (update_version.sh).
+LIBS_COMMITTED=1
+if ! ls "$work"/core/lib/*.obl >/dev/null 2>&1; then
+  LIBS_COMMITTED=0
+  step "libraries are not committed: build them (core/compiler/update_version.sh)"
+  start=$(date +%s)
+  if ( cd "$work/core/compiler" && sh ./update_version.sh ) > "$work/libs_build.log" 2>&1; then
+    echo "   $(ls "$work"/core/lib/*.obl | wc -l) libraries built after $(( $(date +%s) - start )) s"
+  else
+    tail -25 "$work/libs_build.log"
+    bad "the libraries did not build: $work/libs_build.log"
+    exit 1
+  fi
+fi
+
 step "build (deploy_posix.sh x64)"
 start=$(date +%s)
 ( cd "$work/core/release" && sh ./deploy_posix.sh x64 ) > "$work/build.log" 2>&1
@@ -150,7 +166,9 @@ step "built tree vs runtime_deps.json"
 ( cd "$work" && python3 tools/cicd/check_docs_deps.py --artifacts core/release/deploy --platform linux-x64 ) \
   || bad "the built tree links libraries runtime_deps.json does not list (or the reverse)"
 
-if [ "$LIBS" -eq 1 ]; then
+if [ "$LIBS" -eq 1 ] && [ "$LIBS_COMMITTED" -eq 0 ]; then
+  echo "   (the libraries are not committed: they were built from source above, nothing to compare)"
+elif [ "$LIBS" -eq 1 ]; then
   step "libraries compile from source and equal the committed .obl"
   start=$(date +%s)
   rm -rf "$work/committed_obl"; mkdir -p "$work/committed_obl"

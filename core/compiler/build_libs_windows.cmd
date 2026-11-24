@@ -32,7 +32,7 @@ if errorlevel 1 (
 
 pushd "%~dp0"
 
-call build_lang_windows.cmd %ARCH%
+call "%~dp0build_lang_windows.cmd" %ARCH%
 if errorlevel 1 (
 	popd
 	exit /b 1
