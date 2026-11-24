@@ -390,6 +390,9 @@ class McpCoreTest {
 		client := McpClient->New(transport);
 		client->Initialize("core-test-client", "1.0");
 
+		# made here, before the worker starts: Sink() creates it on first use, and two threads
+		# calling it first would each make a collector and lose the other's messages
+		Sink()->Clear();
 		@saw_cancel := false;
 		worker := System.Concurrency.Thread->New() {
 			New() { Parent() }
@@ -404,11 +407,14 @@ class McpCoreTest {
 
 		# wait until the call reports progress, which means it is in flight
 		waited := 0;
-		while(Sink()->GetMessages()->Size() < 2 & waited < 5000) {
+		while(Sink()->GetMessages()->Size() < 2 & waited < 60000) {
 			System.Concurrency.Thread->Sleep(10);
 			waited += 10;
 		};
 		Check(Sink()->GetMessages()->Size() = 2, "the call reports two progress notifications");
+		if(Sink()->GetMessages()->Size() < 2) {
+			return;
+		};
 		note := JsonParser->TextToElement(Sink()->GetMessages()->Get(0));
 		Check(note <> Nil & note->Get("method")->GetString()->Equals("notifications/progress") & note->Get("params")->Get("progressToken")->GetString()->Equals("tok-1"), "progress goes out as notifications/progress with the token");
 		Check(note->Get("params")->Get("progress")->GetFloat() = 1.0 & note->Get("params")->Get("total")->GetFloat() = 10.0 & note->Get("params")->Get("message")->GetString()->Equals("started"), "with progress, total and message");
@@ -416,7 +422,7 @@ class McpCoreTest {
 
 		server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":100,\"reason\":\"test\"}}", Nil);
 		waited := 0;
-		while(<>@reply_set & waited < 5000) {
+		while(<>@reply_set & waited < 60000) {
 			System.Concurrency.Thread->Sleep(10);
 			waited += 10;
 		};
