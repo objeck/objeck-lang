@@ -136,6 +136,10 @@ namespace backend {
     void ComputeLiveness();
     bool LiveIn(int block, long slot) const;
     bool LiveOut(int block, long slot) const;
+    // For each instruction that stores a local (STOR_INT/FLOAT/FUNC_VAR with LOCL), true
+    // when no path from it reads that slot before another store, and no handler of the
+    // region it is in reads it. Needs ComputeLiveness().
+    std::vector<bool> DeadLocalStores() const;
     // live just before instruction i executes
     bool LiveBefore(size_t i, long slot) const;
 
@@ -163,6 +167,8 @@ namespace backend {
 
     // true when the environment variable OBJECK_CFG_VERIFY is set to 1
     static bool VerifyRequested();
+    // the file OBJECK_CFG_DUMP names, or empty: the optimizer writes every method's final graph there (tools/cicd/cfg_oracle.py)
+    static std::string DumpPath();
 
    private:
     const std::vector<IntermediateInstruction*>& instrs;

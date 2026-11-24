@@ -162,7 +162,7 @@ f := [12.0, 18.0, 33.0];
 
 ### A whole workflow
 
-[`programs/examples/ml/timeseries_forecast.obs`](../programs/examples/ml/timeseries_forecast.obs) generates six years of monthly data, decomposes it, tests it, compares seasonal naive, Holt-Winters, a seasonal ARIMA and `AutoEts` by walk-forward cross-validation, forecasts six months with intervals and lets `AutoArima` choose. It prints this on every machine:
+[`programs/examples/ml/timeseries_forecast.obs`](../../programs/examples/ml/timeseries_forecast.obs) generates six years of monthly data, decomposes it, tests it, compares seasonal naive, Holt-Winters, a seasonal ARIMA and `AutoEts` by walk-forward cross-validation, forecasts six months with intervals and lets `AutoArima` choose. It prints this on every machine:
 
 ```
 72 months, period 12, missing: 0
@@ -241,4 +241,4 @@ On the trend-and-season series Holt-Winters and the seasonal ARIMA beat the seas
 | `NelderMead`, `Objective` | the optimizer, usable on its own | `Minimize(objective, x0, step, maxEvals, tol)` |
 | `TsMath` | numerical helpers | `NormalQuantile`, `NormalCdf`, `ChiSquareCdf`, `LogGamma`, `Solve`, `Invert`, `Ols` |
 
-Tested by `ml_timeseries_transform.obs`, `ml_timeseries_smoothing.obs`, `ml_timeseries_arima.obs`, `ml_timeseries_eval.obs` and `ml_timeseries_edges.obs`; the references are in [`programs/regression/ml_timeseries_ref`](../programs/regression/ml_timeseries_ref).
+Tested by `ml_timeseries_transform.obs`, `ml_timeseries_smoothing.obs`, `ml_timeseries_arima.obs`, `ml_timeseries_eval.obs` and `ml_timeseries_edges.obs`; the references are in [`programs/regression/ml_timeseries_ref`](../../programs/regression/ml_timeseries_ref).

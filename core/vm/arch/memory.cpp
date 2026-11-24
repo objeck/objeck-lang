@@ -30,6 +30,7 @@
 ***************************************************************************/
 
 #include "memory.h"
+#include "../cfg_trace.h"
 #include <iomanip>
 #include <chrono>
 #include <algorithm>
@@ -115,6 +116,9 @@ void MemoryManager::TestCollectorOutOfMemory()
 
 [[noreturn]] void VmExit(int status)
 {
+#ifdef OBJECK_CFG_TRACE
+  CfgTrace::Flush();
+#endif
   MemoryManager::Exit(status);
 }
 
