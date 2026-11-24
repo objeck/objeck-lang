@@ -109,6 +109,8 @@ rm -f *.obe
 	$LIB_SRC/llm_util_clients.obs \
 	$LIB_SRC/agent.obs \
 	$LIB_SRC/mcp.obs \
+	$LIB_SRC/rag.obs \
+	$LIB_SRC/rag_adapters.obs \
 	$LIB_SRC/models.obs \
 	$LIB_SRC/opencv.obs \
 	$LIB_SRC/onnx.obs $LIB_SRC/inference.obs \

@@ -87,6 +87,10 @@ $OBC -src lib_src/mcp.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 # Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
 $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl
+# Retrieval-augmented generation: chunker, retrieval index, grounded prompts and a pipeline, all offline. Needs only gen_collect and ml_vector
+$OBC -src lib_src/rag.obs -lib gen_collect,ml_vector -tar lib -opt s3 -dest ../lib/rag.obl
+# Adapters that plug BERT, CLIP, Ollama, OpenAI, Gemini and Anthropic into the RAG kit. After every library it links
+$OBC -src lib_src/rag_adapters.obs -lib gen_collect,ml_vector,rag,net,net_server,json,cipher,misc,openai,gemini,ollama,anthropic,models,opencv,onnx,nlp,nlp_onnx,ml_verify,ml_clip -tar lib -opt s3 -dest ../lib/rag_adapters.obl
 $OBC -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 $OBC -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
 $OBC -src lib_src/sdl_gl.obs -lib gen_collect,sdl2 -tar lib -dest ../lib/sdl_gl.obl
