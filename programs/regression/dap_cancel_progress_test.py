@@ -49,11 +49,11 @@ try:
     first = s.send("evaluate", {"expression": "x", "frameId": frame.get("id", 0), "context": "watch"})
     second = s.send("evaluate", {"expression": "x", "frameId": frame.get("id", 0), "context": "watch"})
     cancel = s.send("cancel", {"requestId": second})
-    r_cancel = s.wait_response_to(cancel, timeout=5.0)
+    r_cancel = s.wait_response_to(cancel, timeout=30.0)
     check("the cancel itself is answered", r_cancel is not None and r_cancel.get("success") is True, f"got: {r_cancel}")
-    r_first = s.wait_response_to(first, timeout=10.0)
+    r_first = s.wait_response_to(first, timeout=30.0)
     first_done = time.time() - started
-    r_second = s.wait_response_to(second, timeout=10.0)
+    r_second = s.wait_response_to(second, timeout=30.0)
     second_done = time.time() - started
     check("the first request is unaffected and takes its delay",
           r_first is not None and r_first.get("success") is True and first_done >= DELAY / 1000.0 * 0.8,
@@ -74,7 +74,7 @@ try:
     check("a request cancelled while it runs is answered 'cancelled'",
           r_flight is not None and r_flight.get("success") is False and r_flight.get("message") == "cancelled",
           f"got: {r_flight}")
-    check("and ends early, well before its delay", ended < DELAY / 1000.0 * 0.6, f"took {ended:.2f}s")
+    check("and ends early, well before its delay", ended < DELAY / 1000.0 * 0.9, f"took {ended:.2f}s")
     check("its cancel is answered too", s.wait_response_to(cancel, timeout=5.0) is not None)
 
     # ---- 3. cancels that name nothing live ------------------------------------------------

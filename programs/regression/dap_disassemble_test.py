@@ -15,6 +15,7 @@ instruction came from.
  7. the first instruction of a method carries the method's name as its symbol
  8. a bad or unknown address, a missing count, and a program not yet loaded are DAP errors
 """
+import os
 import shutil
 import tempfile
 
@@ -56,7 +57,7 @@ try:
     check("each instruction is text with an opcode",
           all(i.get("instruction", "").split(" ")[0].isupper() or i["instruction"] == "??" for i in listing),
           f"got: {[i['instruction'] for i in listing]}")
-    check("each names the file", all(i.get("location", {}).get("path") == src for i in listing if "line" in i), f"got: {listing[:2]}")
+    check("each names the file", all(os.path.realpath(i.get("location", {}).get("path", "")) == os.path.realpath(src) for i in listing if "line" in i), f"got: {listing[:2]}")
 
     # the whole statement's worth: the three calls, each naming its callee
     resp = s.request("disassemble", {"memoryReference": ref, "instructionCount": 40})

@@ -2286,7 +2286,10 @@ bool DapAdapter::DelayForTest()
 #endif
   }
 
-  for(long waited = 0; waited < delay_ms && !Cancelled(); waited += 10) {
+  // wall-clock, not a count of sleeps: a loaded machine oversleeps each 10 ms,
+  // and a count turned a 2 s hold into many seconds
+  const std::chrono::steady_clock::time_point until = std::chrono::steady_clock::now() + std::chrono::milliseconds(delay_ms);
+  while(std::chrono::steady_clock::now() < until && !Cancelled()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   return Cancelled();
