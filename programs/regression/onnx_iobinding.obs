@@ -1,0 +1,313 @@
+#~
+# IO binding: DeviceTensor and BoundSession.
+#
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
+#
+# A normal Session->Run copies every input to the device and every output back on
+# every call. A DeviceTensor lives in the provider's memory, a BoundSession points
+# the model's inputs and outputs at such tensors, and Run reads and writes them in
+# place. What must hold, on every provider the library can bind:
+#
+#   * a bound Run gives EXACTLY the answer Session->Run gives (same provider, same
+#     input: bit for bit, not "close"),
+#   * uploading new data into the same tensor and running again follows the data,
+#   * a preallocated output and an output ONNX Runtime allocates agree,
+#   * every misuse is refused with a message and a false/Nil return, never a crash:
+#     a closed session, a wrong element count, an unknown output, a Nil tensor,
+#   * a session closed while device tensors still use it is released only after the
+#     last of them is gone (no use of freed memory).
+#
+# ep=cpu runs everywhere, because on the CPU a DeviceTensor is ordinary host memory:
+# the whole binding path is exercised on a runner with no GPU. ep=cuda and
+# ep=tensorrt repeat the checks when the loaded ONNX Runtime carries the provider AND
+# the session actually opens (a runtime can list CUDA on a machine with no driver or
+# no cuDNN); otherwise they print a SKIP line saying why. On the GPU the result is
+# also compared with the CPU's, within a float tolerance: kernels reassociate.
+#
+# The model is the tiny BERT classifier tracked under data/bert, found relative to
+# the working directory, which every runner sets to this directory.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.IO.Filesystem;
+
+class OnnxIoBinding {
+	@ok : Bool;
+	@cpu_logits : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxIoBinding->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	function : Model() ~ String {
+		return "data/bert/classifier/bert_one_label/model.onnx";
+	}
+
+	function : Open(ep : String) ~ Session {
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+		return Session->New(Model(), config);
+	}
+
+	# a deterministic batch of token ids; `shift` makes a different one
+	function : Ids(count : Int, shift : Int) ~ Float[] {
+		values := Float->New[count];
+		for(i := 0; i < count; i += 1;) {
+			values[i] := ((i * 7 + shift) % 25)->ToFloat();
+		};
+
+		return values;
+	}
+
+	function : Ones(count : Int) ~ Float[] {
+		values := Float->New[count];
+		for(i := 0; i < count; i += 1;) {
+			values[i] := 1.0;
+		};
+
+		return values;
+	}
+
+	function : Zeros(count : Int) ~ Float[] {
+		return Float->New[count];
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		for(i := 0; i < a->Size(); i += 1;) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		worst := 0.0;
+		for(i := 0; i < a->Size(); i += 1;) {
+			d := (a[i] - b[i])->Abs();
+			if(d > worst) {
+				worst := d;
+			};
+		};
+
+		return worst;
+	}
+
+	# Session->Run on the same three inputs the binding uses
+	function : Reference(session : Session, ids : Float[], mask : Float[], types : Float[]) ~ Float[] {
+		shape := [2, 6];
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New("input_ids", "INT64", shape, ids));
+		inputs->AddBack(Tensor->New("attention_mask", "INT64", shape, mask));
+		inputs->AddBack(Tensor->New("token_type_ids", "INT64", shape, types));
+		outputs := session->Run(inputs);
+		if(outputs = Nil | outputs->Size() = 0) {
+			return Nil;
+		};
+
+		return outputs->Get(0)->GetFloats();
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		# The model is tracked in this tree: its absence is a broken checkout, not a platform
+		# that cannot run the test.
+		if(<>File->Exists(Model())) {
+			Report("the tiny BERT classifier is present at {$Model()}", false);
+			Runtime->Exit(1);
+		};
+
+		Misuse();
+		Suite("cpu");
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	# Everything that must be refused. ep=cpu: no GPU needed.
+	method : Misuse() ~ Nil {
+		session := Open("cpu");
+		Report("the control session opens", session->IsOpen());
+
+		bad_type := DeviceTensor->New(session, "NOT_A_TYPE", [2, 6]);
+		Report("an unknown element type allocates nothing", <>bad_type->IsOpen());
+
+		negative := DeviceTensor->New(session, "FP32", [2, -1]);
+		Report("a -1 dimension (the model's 'you choose') is refused", <>negative->IsOpen());
+
+		missing := DeviceTensor->ForInput(session, "no_such_input", [2, 6]);
+		Report("ForInput of a name the model lacks is Nil", missing = Nil);
+
+		tensor := DeviceTensor->ForInput(session, "input_ids", [2, 6]);
+		Report("a good device tensor allocates", tensor->IsOpen());
+		Report("it reports the model's element type", tensor->GetDatatype()->Equals("INT64"));
+		Report("and its element count", tensor->GetCount() = 12);
+		Report("an upload of the wrong length is refused", <>tensor->Upload(Ones(5)));
+		Report("a download into the wrong length is refused", <>tensor->Download(Float->New[5]));
+		none : Float[];
+		Report("a Nil upload is refused", <>tensor->Upload(none));
+
+		bound := BoundSession->New(session);
+		Report("an IO binding opens on the session", bound->IsOpen());
+		Report("binding an input to a Nil tensor is refused", <>bound->BindInput("input_ids", Nil));
+		Report("an output that was never bound has no tensor", bound->GetOutput("logits") = Nil);
+		Report("running with nothing bound is refused, not run", <>bound->Run());
+		# ONNX Runtime checks names when it runs, not when they are bound
+		bound->BindInput("no_such_input", tensor);
+		Report("running with an input name the model lacks is refused", <>bound->Run());
+
+		# closing the binding and the tensor twice is harmless
+		bound->Close();
+		bound->Close();
+		Report("a closed binding is not open", <>bound->IsOpen());
+		Report("a closed binding refuses Run", <>bound->Run());
+		tensor->Close();
+		tensor->Close();
+		Report("a closed tensor is not open", <>tensor->IsOpen());
+		Report("a closed tensor refuses an upload", <>tensor->Upload(Ones(12)));
+
+		session->Close();
+		closed := BoundSession->New(session);
+		Report("an IO binding on a closed session is refused", <>closed->IsOpen());
+		late := DeviceTensor->New(session, "FP32", [2, 6]);
+		Report("a device tensor on a closed session is refused", <>late->IsOpen());
+	}
+
+	# The behaviour every bindable provider shares.
+	method : Suite(ep : String) ~ Nil {
+		tag := "ep={$ep}";
+		session := Open(ep);
+		Report("{$tag}: the session opens", session->IsOpen());
+		if(<>session->IsOpen()) {
+			return;
+		};
+
+		ids := Ids(12, 0);
+		mask := Ones(12);
+		types := Zeros(12);
+		expected := Reference(session, ids, mask, types);
+		Report("{$tag}: Session->Run answers (1 logit per row)", expected <> Nil & expected->Size() = 2);
+
+		in_ids := DeviceTensor->ForInput(session, "input_ids", [2, 6]);
+		in_mask := DeviceTensor->ForInput(session, "attention_mask", [2, 6]);
+		in_types := DeviceTensor->ForInput(session, "token_type_ids", [2, 6]);
+		out := DeviceTensor->ForOutput(session, "logits", [2, 1]);
+		Report("{$tag}: four device tensors allocate", in_ids->IsOpen() & in_mask->IsOpen() & in_types->IsOpen() & out->IsOpen());
+		on_gpu := ep->Equals("cuda") | ep->Equals("tensorrt");
+		Report("{$tag}: the memory is where the provider says ({$on_gpu})", in_ids->IsOnDevice() = on_gpu);
+
+		# round trip through the device, exactly
+		in_ids->Upload(ids);
+		back := in_ids->Download();
+		Report("{$tag}: upload then download returns the same numbers", Same(back, ids));
+
+		bound := BoundSession->New(session);
+		Report("{$tag}: the IO binding opens", bound->IsOpen());
+		Report("{$tag}: three inputs bind", bound->BindInput("input_ids", in_ids) &
+			bound->BindInput("attention_mask", in_mask) & bound->BindInput("token_type_ids", in_types));
+		Report("{$tag}: a preallocated output binds", bound->BindOutput("logits", out));
+
+		in_mask->Upload(mask);
+		in_types->Upload(types);
+		Report("{$tag}: the bound Run completes", bound->Run());
+		got := out->Download();
+		Report("{$tag}: bound Run == Session->Run, bit for bit", Same(got, expected));
+
+		# the binding is reused: new data in, new answer out
+		ids2 := Ids(12, 5);
+		expected2 := Reference(session, ids2, mask, types);
+		in_ids->Upload(ids2);
+		Report("{$tag}: a second bound Run completes", bound->Run());
+		got2 := out->Download();
+		Report("{$tag}: it follows the new data, bit for bit", Same(got2, expected2));
+		Report("{$tag}: and the two inputs really gave different answers", <>Same(expected, expected2));
+
+		# the same twenty times: nothing drifts, nothing leaks into the answer
+		steady := true;
+		for(i := 0; i < 20; i += 1;) {
+			bound->Run();
+			if(<>Same(out->Download(), expected2)) {
+				steady := false;
+			};
+		};
+		Report("{$tag}: 20 more runs, same answer every time", steady);
+
+		# ONNX Runtime allocates the output
+		bound->Clear();
+		bound->BindInput("input_ids", in_ids);
+		bound->BindInput("attention_mask", in_mask);
+		bound->BindInput("token_type_ids", in_types);
+		Report("{$tag}: an output bound to ONNX Runtime's own memory", bound->BindOutputToDevice("logits"));
+		Report("{$tag}: that Run completes", bound->Run());
+		dyn := bound->GetOutput("logits");
+		Report("{$tag}: its output is a device tensor", dyn <> Nil & dyn->IsOpen());
+		if(dyn <> Nil) {
+			Report("{$tag}: with the model's shape", dyn->GetCount() = 2 & dyn->GetShape()->Size() = 2);
+			Report("{$tag}: and the same numbers as the preallocated one", Same(dyn->Download(), expected2));
+			dyn->Close();
+		};
+
+		# a GPU result agrees with the CPU's to float tolerance
+		if(ep->Equals("cpu")) {
+			@cpu_logits := expected2;
+		}
+		else if(@cpu_logits <> Nil) {
+			diff := MaxDiff(got2, @cpu_logits);
+			Report("{$tag}: within 1e-3 of the CPU (largest difference {$diff})", diff < 0.001);
+		};
+
+		# Closing the session while tensors and a binding still use it must not free what
+		# they point into; they stay usable, and the last one out releases the session.
+		session->Close();
+		Report("{$tag}: Session->Close with tensors alive: the session reads closed", <>session->IsOpen());
+		Report("{$tag}: yet the tensors still download", Same(out->Download(), expected2));
+		Report("{$tag}: and the binding refuses nothing it already held", bound->IsOpen());
+		bound->Close();
+		in_ids->Close();
+		in_mask->Close();
+		in_types->Close();
+		out->Close();
+		Report("{$tag}: everything closed in any order", <>out->IsOpen());
+	}
+}

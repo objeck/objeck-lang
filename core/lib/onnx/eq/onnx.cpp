@@ -11,6 +11,9 @@ namespace fs = std::filesystem;
 #include <thread>
 #include <memory>
 
+// IO binding: tensors that stay in provider memory between runs
+#include "device_tensor.h"
+
 //
 // Execution provider selection. Every provider this library can request, as the
 // short name a program passes in "ep" and as ONNX Runtime spells it in
@@ -468,6 +471,15 @@ extern "C" {
          const Ort::Session* session = new Ort::Session(*ort_env, model_path.c_str(), session_options);
 #endif
 
+         // Remember what this session runs on: device tensors and IO bindings need the
+         // provider and device, and keep the session alive until they are gone.
+         int device_id = 0;
+         const auto device_option = provider_options.find("device_id");
+         if(device_option != provider_options.end()) {
+            device_id = atoi(device_option->second.c_str());
+         }
+         registry_add(session, ep, device_id);
+
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
@@ -508,6 +520,85 @@ extern "C" {
 #endif
    void onnx_run(VMContext& context) {
       generic_run(context);
+   }
+
+   // Device tensors and IO binding (device_tensor.h): tensors that stay in the
+   // execution provider's memory between runs.
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_new(VMContext& context) {
+      device_new(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_free(VMContext& context) {
+      device_free(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_upload(VMContext& context) {
+      device_upload(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_download(VMContext& context) {
+      device_download(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_meta(VMContext& context) {
+      device_meta(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_new(VMContext& context) {
+      bound_new(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_free(VMContext& context) {
+      bound_free(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_bind(VMContext& context) {
+      bound_bind(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_clear(VMContext& context) {
+      bound_clear(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_run(VMContext& context) {
+      bound_run(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_output(VMContext& context) {
+      bound_output(context);
    }
 
    // YOLO inference

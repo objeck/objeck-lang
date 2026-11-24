@@ -36,6 +36,7 @@
 #include <onnxruntime_cxx_api.h>
 
 #include "scrfd_decode.h"
+#include "session_registry.h"
 
 // ONNX Runtime's global state -- its thread pools, its logging manager, and on
 // macOS the CoreML provider's hooks into the Objective-C runtime -- is owned by
@@ -647,7 +648,8 @@ static void close_session(VMContext & context) {
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 0);
 
    if(session) {
-      delete session;
+      // Deferred while device tensors or IO bindings still use it (session_registry.h)
+      registry_close(session);
       session = nullptr;
    }
 
