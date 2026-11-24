@@ -13,6 +13,7 @@ namespace fs = std::filesystem;
 
 // IO binding: tensors that stay in provider memory between runs
 #include "device_tensor.h"
+#include "float16_entries.h"
 
 //
 // Execution provider selection. Every provider this library can request, as the
@@ -599,6 +600,28 @@ extern "C" {
 #endif
    void onnx_bound_output(VMContext& context) {
       bound_output(context);
+   }
+
+   // Raw element patterns, and float16 / bfloat16 conversion (float16_entries.h)
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_upload_bits(VMContext& context) {
+      device_upload_bits(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_download_bits(VMContext& context) {
+      device_download_bits(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_convert_float16(VMContext& context) {
+      convert_float16(context);
    }
 
    // YOLO inference
