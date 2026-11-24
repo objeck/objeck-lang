@@ -1,4 +1,7 @@
-ARGS=-O3 -flto=auto -Wall -std=c++20 -mavx2 -D_X64 -Wno-unused-function -Wno-unused-variable -MMD -MP
+# EXTRA_FLAGS (a command-line variable, so it reaches this sub-make too) carries variant-build defines such as
+# -DOBJECK_DIRTY_LIST_MAX=64; every translation unit that includes memory.h must see the same ones
+EXTRA_FLAGS ?=
+ARGS=$(EXTRA_FLAGS) -O3 -flto=auto -Wall -std=c++20 -mavx2 -D_X64 -Wno-unused-function -Wno-unused-variable -MMD -MP
 
 AR=gcc-ar
 SRC=jit_common.o

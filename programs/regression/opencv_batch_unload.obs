@@ -1,0 +1,70 @@
+# EXTRA_LIBS: opencv
+use Collection, System.IO.Filesystem, API.OpenCV;
+
+#~
+# ImageBatch decodes on native worker threads, and the library's unload_lib joins
+# any batch still running when the program ends (it used to do so holding batch_mutex).
+#
+# This decodes one batch to completion and checks the bytes, then starts a second batch
+# and ends the program WITHOUT Wait or Close, so the join happens in unload_lib. The test
+# passing means the program exited. It cannot show the old lock held across the join, which
+# needs a second thread to want the mutex at that moment; it covers the unload path.
+~#
+class OpenCvBatchUnload {
+	function : Write(path : String, text : String) ~ Nil {
+		writer := FileWriter->New(path);
+		writer->WriteString(text);
+		writer->Close();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# a 2 x 2 colour image in the text PPM format, which OpenCV reads without a codec library
+		ppm := "P3\n2 2\n255\n255 0 0  0 255 0\n0 0 255  10 20 30\n";
+		paths := String->New[8];
+		each(i : paths) {
+			path := "opencv_batch_unload_{$i}.ppm";
+			Write(path, ppm);
+			paths[i] := path;
+		};
+
+		failures := 0;
+		first := ImageBatch->Start(paths, 2, 3);
+		if(first = Nil) {
+			"FAIL: the batch did not start"->PrintLine();
+			Runtime->Exit(1);
+		};
+		if(first->Wait() <> 0) {
+			"FAIL: some images did not decode"->PrintLine();
+			failures += 1;
+		};
+		pixels := first->Get(0);
+		if(pixels = Nil) {
+			"FAIL: no pixels"->PrintLine();
+			Runtime->Exit(1);
+		};
+		# BGR: the first pixel is red, so blue and green are 0 and red is 255
+		blue : Int := pixels[0];
+		red : Int := pixels[2];
+		if(pixels->Size() <> 12 | blue <> 0 | red <> 255) {
+			"FAIL: the decoded bytes are not the image"->PrintLine();
+			failures += 1;
+		};
+		first->Close();
+
+		# left running and never closed: unload_lib has to finish it
+		second := ImageBatch->Start(paths, 64, 2);
+		if(second = Nil) {
+			"FAIL: the second batch did not start"->PrintLine();
+			failures += 1;
+		};
+
+		each(i : paths) {
+			File->Delete(paths[i]);
+		};
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: opencv batch decode and unload"->PrintLine();
+	}
+}

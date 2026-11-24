@@ -1,0 +1,14 @@
+#~
+Fixture for run_vm_flag_tests.py section 20: loads the native library named by
+the first argument (built from callback_lib.cpp with a chosen objk_lib_abi) and
+prints whether it loaded. A library the VM refuses ends the program before the
+print.
+~#
+use System.API;
+
+class VmNativeAbi {
+	function : Main(args : String[]) ~ Nil {
+		lib := DllProxy->New(args[0]);
+		"loaded {$lib->IsLoaded()}"->PrintLine();
+	}
+}

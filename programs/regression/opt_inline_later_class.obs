@@ -1,0 +1,102 @@
+#~
+Inlining must not depend on which class a callee is in.
+
+ItermediateOptimizer::Optimize used to optimize and inline class by class, so a
+callee in a LATER class was inlined before its own cleanup, dead-code and
+constant-propagation pass ran, while a callee in an EARLIER class was inlined
+already optimized. The emitted code (not the result) depended on class order.
+Optimize now runs the first pass over every method before it inlines any.
+
+This asserts the results are the same for the same helper placed in a class
+before the caller, in the caller's class, and in a class after it, including
+helpers that have dead stores and constant expressions for the first pass to
+remove and a helper that itself calls a later helper. It exits non-zero on a
+mismatch.
+~#
+class OptInlineEarly {
+	function : Scale(a : Int) ~ Int {
+		dead := a * 3;
+		k := 2 + 3;
+		dead := k;
+		return a * k + 1;
+	}
+}
+
+class OptInlineLaterClass {
+	@bad : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OptInlineLaterClass->New();
+		t->Run();
+		if(t->Failures() > 0) {
+			Runtime->Exit(1);
+		};
+	}
+
+	New() {
+		@bad := 0;
+	}
+
+	method : Failures() ~ Int {
+		return @bad;
+	}
+
+	function : Own(a : Int) ~ Int {
+		dead := a * 3;
+		k := 2 + 3;
+		dead := k;
+		return a * k + 1;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		sum_early := 0;
+		sum_own := 0;
+		sum_later := 0;
+		sum_chain := 0;
+		for(i := 0; i < 20; i += 1;) {
+			sum_early += OptInlineEarly->Scale(i);
+			sum_own += Own(i);
+			sum_later += OptInlineLater->Scale(i);
+			sum_chain += OptInlineLater->Chain(i);
+		};
+
+		# 5 * (0 + ... + 19) + 20
+		Check("earlier class", sum_early, 970);
+		Check("own class", sum_own, 970);
+		Check("later class", sum_later, 970);
+		# Chain(i) = (5i + 1) + (5(i + 1) + 1) = 10i + 7, summed over 0..19
+		Check("later class, calls a later helper", sum_chain, 2040);
+	}
+}
+
+class OptInlineLater {
+	function : Scale(a : Int) ~ Int {
+		dead := a * 3;
+		k := 2 + 3;
+		dead := k;
+		return a * k + 1;
+	}
+
+	function : Chain(a : Int) ~ Int {
+		return Scale(a) + OptInlineLater2->Scale(a + 1);
+	}
+}
+
+class OptInlineLater2 {
+	function : Scale(a : Int) ~ Int {
+		dead := a * 3;
+		k := 2 + 3;
+		dead := k;
+		return a * k + 1;
+	}
+}
