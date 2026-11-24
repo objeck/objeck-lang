@@ -3798,7 +3798,15 @@ static void generic_run(VMContext& context) {
          auto shape_info = type_info.GetTensorTypeAndShapeInfo();
          const ONNXTensorElementDataType elem_type = shape_info.GetElementType();
 
-         if(!fill_input_block(blocks[i], elem_type, data + data_at, counts[i], name)) {
+         // Converting millions of elements is long enough to matter to a collection that is
+         // waiting: park for it. It reads the caller's Float[] (an old-generation array: it
+         // does not move, and the caller's argument keeps it alive) and writes native memory.
+         bool filled = false;
+         {
+            APITools_Parked parked(context);
+            filled = fill_input_block(blocks[i], elem_type, data + data_at, counts[i], name);
+         }
+         if(!filled) {
             return;
          }
 
@@ -3850,10 +3858,18 @@ static void generic_run(VMContext& context) {
          output_name_ptrs[i] = output_name_bytes[i].c_str();
       }
 
-      std::vector<Ort::Value> outputs = session->Run(
-         Ort::RunOptions{ nullptr },
-         input_name_ptrs.data(), input_values.data(), input_values.size(),
-         output_name_ptrs.data(), output_name_ptrs.size());
+      // Everything the run reads is native memory built above (blocks, shapes, names): the
+      // Objeck arrays were copied into it. So the thread can be parked for the length of the
+      // inference, and a collection started by another thread does not wait for it. Nothing
+      // the VM manages is touched in this scope (APITools_Parked).
+      std::vector<Ort::Value> outputs;
+      {
+         APITools_Parked parked(context);
+         outputs = session->Run(
+            Ort::RunOptions{ nullptr },
+            input_name_ptrs.data(), input_values.data(), input_values.size(),
+            output_name_ptrs.data(), output_name_ptrs.size());
+      }
 
       // Collect: names and types as strings, shapes concatenated with a rank per
       // output, elements concatenated. The Objeck side splits them back apart.

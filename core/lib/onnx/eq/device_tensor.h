@@ -478,7 +478,12 @@ static void device_upload(VMContext& context) {
          return;
       }
       std::string error;
-      if(!device_copy(buf, buf->staging.data(), true, buf->bytes, error)) {
+      bool copied = false;
+      {
+         APITools_Parked parked(context);   // the staging buffer is native memory
+         copied = device_copy(buf, buf->staging.data(), true, buf->bytes, error);
+      }
+      if(!copied) {
          say("upload failed: " + error);
          return;
       }
@@ -510,7 +515,12 @@ static void device_download(VMContext& context) {
    try {
       buf->staging.resize(buf->bytes);
       std::string error;
-      if(!device_copy(buf, buf->staging.data(), false, buf->bytes, error)) {
+      bool copied = false;
+      {
+         APITools_Parked parked(context);   // the staging buffer is native memory
+         copied = device_copy(buf, buf->staging.data(), false, buf->bytes, error);
+      }
+      if(!copied) {
          say("download failed: " + error);
          return;
       }

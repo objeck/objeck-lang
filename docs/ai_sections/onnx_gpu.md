@@ -304,4 +304,58 @@ A YOLO11 segmentation model (`yolov11.onnx`, 640x640, batch 1, data resident): `
 
 **What was not checked.** `int8=1` with a calibration table (the implicit-quantization route) rather than a QDQ model; DLA (`trt_dla_enable`); dynamic-shape profiles (`trt_profile_*_shapes`), so each new batch size builds a new engine the first time; the Windows TensorRT DLLs (this host has no CUDA 12, cuDNN 9 or TensorRT 10 on Windows, and the build of `libobjk_onnx` for Windows was checked to compile only).
 
+### Threads: one session, many callers
+
+ONNX Runtime lets many threads call `Run` on one session at once, and so does `API.Onnx`: `Session->Run` from several Objeck threads on the same `Session` is supported on every provider. Three things make it safe from Objeck threads in particular.
+
+**The collector does not wait for an inference.** Objeck's collector is stop-the-world: a collection starts only when every other thread is at a safe point, and a thread inside a native call is not at one unless the library says it is blocking. A 50 ms inference would hold up every collection, and so every allocating thread, for up to 50 ms. `Session->Run`, `BoundSession->Run` and the device copies of `DeviceTensor` therefore **park** the calling thread (`APITools_Parked`) for the length of the native work, and so does the conversion of a large input tensor, which at batch 32 is 4.8 million elements. Inside a parked scope the library touches nothing the VM manages: every input is converted into native memory first (Objeck's `Float[]` arguments are old-generation arrays, which do not move, and the caller's argument keeps them alive), and every result is built after the thread is unparked. `tools/cicd/check_native_write_barrier.py` still passes.
+
+Measured with `programs/tests/onnx_gpu/bench_gc_stall.obs`: one thread runs ResNet-34 back to back while another allocates small objects and times every round of that work; the longest round is how long a collection kept the allocating thread waiting. The "before" is the library of the previous PR (its `BoundSession->Run` already parked, so only `Session->Run` is compared):
+
+| model, provider, mode | longest wait of the allocating thread, before | after | p99 round, before | after |
+|---|---:|---:|---:|---:|
+| ResNet-34, batch 32, `ep=cuda`, `Session->Run` | 176.7 ms | **19.9 ms** | 4.5 ms | 4.6 ms |
+| ResNet-34, batch 8, `ep=cpu`, `Session->Run` | 137.9 ms | **53.9 ms** | 88.8 ms | **10.9 ms** |
+
+The remaining 20 ms is the collection itself (a major collection of the large arrays this loop makes), not waiting for the inference; the CPU case has the model's own work on the same cores as the allocator. The inference thread also got faster for not being stalled: median `Session->Run` on the CPU 104 ms before and 135 ms after, while the allocator got 3x the rounds done; on the GPU it is unchanged within noise.
+
+**One `BoundSession` per thread.** A `BoundSession` and the `DeviceTensor`s bound to it belong to one thread at a time, while the `Session` underneath is shared. Each thread's copies run on its own non-blocking CUDA stream, taken from a pool (a stream is handed back when the thread ends, so a program that starts and ends many threads does not accumulate streams), so one thread's transfers do not queue behind another's, and ONNX Runtime gives every `Run` its own execution stream. A session closed while threads still use its tensors is released after the last of them (the registry from the IO binding PR is thread safe).
+
+```objeck
+class Worker from Thread {
+  @session : Session;                       # shared by every worker
+  New(session : Session) { Parent("worker"); @session := session; }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    input := DeviceTensor->ForInput(@session, "data", [1, 3, 224, 224]);   # this thread's own
+    output := DeviceTensor->ForOutput(@session, "output", [1, 1000]);
+    bound := BoundSession->New(@session);
+    bound->BindInput("data", input);
+    bound->BindOutput("output", output);
+    each(i : 1000) {
+      input->Upload(next_frame());
+      bound->Run();
+    };
+    bound->Close();
+    input->Close();
+    output->Close();
+  }
+}
+```
+
+**Throughput, ResNet-34 `ep=cuda`, one shared session, 6 s per row, images per second:**
+
+| batch | mode | 1 thread | 2 | 4 | 8 |
+|---:|---|---:|---:|---:|---:|
+| 1 | `Session->Run` | 255 | 388 | 452 | 422 |
+| 1 | bound, own tensors per thread | 391 | 461 | 483 | 447 |
+| 8 | `Session->Run` | 612 | 1,108 | 1,867 | 2,222 |
+| 8 | bound, own tensors per thread | 2,750 | 2,958 | 3,147 | 2,881 |
+
+`Session->Run` scales with threads (3.6x from 1 to 8 at batch 8) because most of its time is conversion on the host, which runs in parallel when parked. A bound run is already limited by the GPU and ONNX Runtime's host-side launch work after one thread: more threads add 23% at batch 1 and 14% at batch 8 and then fall back as they contend. For small models, a CUDA graph (above) is the better lever than threads.
+
+**What is asserted.** `programs/regression/onnx_concurrency.obs` (every platform, `ep=cpu`) and `onnx_concurrency_gpu.obs` (`SKIP:` unless a GPU provider opens a session; `ep=cuda` and `ep=tensorrt`) run four threads for 60 rounds each on one shared session, half through `Session->Run` and half through their own `BoundSession`, with a fifth thread allocating and dropping garbage without pause so collections keep happening mid-run. Every answer must equal the single-threaded answer for that input (the inputs differ per worker and round, so a crossed result would show), the program must finish, and the garbage thread must have made progress. They passed 30 of 30 runs, then 30 of 30 with `--gc-threshold=64k` (collections almost continuously), 15 of 15 on the GPU with the same threshold, 10 of 10 under `OBJECK_GC_VERIFY=1`, and 10 of 10 with `--jit=off`.
+
+**Not covered.** The per-family sessions (`YoloSession`, `ResNetSession`, `Phi3Session`, ...) still run their inference unparked: they build their input from Objeck data and decode their output in the same native call, and were not changed. Use `Session` for anything that shares a process with garbage-heavy threads.
+
 **Rebuilding the numbers.** `programs/tests/onnx_gpu/run_bench.sh` runs the whole matrix and prints the table rows; see its README.
