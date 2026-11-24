@@ -1,0 +1,2923 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection, System.IO.Filesystem, Data.JSON, System.ML;
+
+#~
+LLM evaluation harness: measure how well a language model writes programs, or, with the checkers, any task whose answer can be checked. A task (EvalTask) is a prompt, the libraries the answer links, the input its program reads and the output it must print. EvalRunner sends every task to a model (a ModelAdapter) N times, extracts the code block from each answer, compiles it with the real compiler (obc), runs it under a timeout and compares what it printed with the expected output. Each attempt is recorded (compiled, ran, correct, the first compiler error normalized into a category, tokens, latency); ModelResults aggregates them (compile rate, pass at k, the most common error categories) and ModelComparison compares two models with the paired bootstrap of System.ML (Metrics->PairedBootstrapDifference). EvalReport writes the Markdown report and the JSON results.
+
+The adapters for OpenAI, Anthropic, Gemini and Ollama live in tools/llm_eval, one file per provider, because the clients cannot be linked into one program (two of them define a Tool class); the library itself needs no network and no key. ScriptedModel, ReferenceModel and CommandModel run without either. Compile with -lib llm_eval,ml,csv,json,gen_collect.
+~#
+bundle System.LLM.Eval {
+	#~
+	Text helpers shared by the checkers and the report: number formatting, clipping and Markdown cell escaping.
+	~#
+	class EvalText {
+		#~
+		A number with a fixed count of decimals, rounded half away from zero ("83.3").
+		@param value the number
+		@param decimals digits after the point, 0 to 9
+		@return the text
+		~#
+		function : Fixed(value : Float, decimals : Int) ~ String {
+			scale := 1;
+			each(i : decimals) {
+				scale *= 10;
+			};
+
+			scaled := (Float->Abs(value) * scale->As(Float))->Round()->As(Int);
+			text := "";
+			if(value < 0.0 & scaled > 0) {
+				text->Append("-");
+			};
+			text->Append(scaled / scale);
+
+			if(decimals > 0) {
+				text->Append(".");
+				fraction := scaled % scale;
+				limit := scale / 10;
+				while(limit > 0 & fraction < limit) {
+					text->Append("0");
+					limit /= 10;
+				};
+				if(fraction > 0) {
+					text->Append(fraction);
+				};
+			};
+
+			return text;
+		}
+
+		#~
+		A fraction as a percentage with one decimal ("83.3%"), or "n/a" for a negative marker.
+		@param fraction between 0 and 1, or below 0 when there is no value
+		@return the text
+		~#
+		function : Percent(fraction : Float) ~ String {
+			if(fraction < 0.0) {
+				return "n/a";
+			};
+
+			text := Fixed(fraction * 100.0, 1);
+			text->Append("%");
+			return text;
+		}
+
+		#~
+		Removes carriage returns so text from either platform compares the same.
+		@param text any text, or Nil
+		@return the text with LF line ends, "" for Nil
+		~#
+		function : Unix(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			return text->RemoveAll('\r');
+		}
+
+		#~
+		The first characters of a text, with a marker when it was cut.
+		@param text any text, or Nil
+		@param limit most characters kept
+		@return the clipped text, "" for Nil
+		~#
+		function : Clip(text : String, limit : Int) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			if(text->Size() <= limit) {
+				return text;
+			};
+
+			clipped := text->SubString(limit);
+			clipped->Append("...");
+			return clipped;
+		}
+
+		#~
+		The first line of a text that is not blank.
+		@param text any text, or Nil
+		@return the line, "" when there is none
+		~#
+		function : FirstLine(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			lines := Unix(text)->Split('\n');
+			each(i : lines) {
+				line := lines[i]->Trim();
+				if(line->Size() > 0) {
+					return line;
+				};
+			};
+
+			return "";
+		}
+
+		#~
+		Escapes a table cell for Markdown: the pipe, backslash and line ends.
+		@param text any text, or Nil
+		@return the cell text
+		~#
+		function : Cell(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			cell := Unix(text)->ReplaceAll("\\", "\\\\");
+			cell := cell->ReplaceAll("|", "\\|");
+			cell := cell->ReplaceAll("\n", " ");
+			return cell->Trim();
+		}
+
+		#~
+		Quotes a path or an argument for a command line.
+		@param text the argument
+		@return the argument inside double quotes
+		~#
+		function : Quote(text : String) ~ String {
+			quoted := "\"";
+			quoted->Append(text);
+			quoted->Append("\"");
+			return quoted;
+		}
+
+		#~
+		Whether a path is absolute on this platform.
+		@param path the path
+		@return true when it is
+		~#
+		function : IsAbsolute(path : String) ~ Bool {
+			if(path->Size() = 0) {
+				return false;
+			};
+
+			if(path->Get(0) = '/' | path->Get(0) = '\\') {
+				return true;
+			};
+
+			return path->Size() > 1 & path->Get(1) = ':';
+		}
+
+		#~
+		Makes an id safe to use in a file name.
+		@param id the id
+		@return the id with every character other than letters, digits and underscore replaced by an underscore
+		~#
+		function : SafeName(id : String) ~ String {
+			safe := "";
+			each(i : id) {
+				c := id->Get(i);
+				if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9') | c = '_') {
+					safe->Append(c);
+				}
+				else {
+					safe->Append('_');
+				};
+			};
+
+			return safe;
+		}
+	}
+
+	#~
+	Reads a command line of the form `--flag value` or `--flag=value`, for the programs that drive the harness and for the adapters, which each read their own flags.
+	~#
+	class EvalArgs {
+		#~
+		The value of a flag.
+		@param args the command line
+		@param flag the flag, for example --model
+		@param fallback the value when the flag is absent or has none
+		@return the value
+		~#
+		function : Value(args : String[], flag : String, fallback : String) ~ String {
+			prefix := "{$flag}=";
+			each(i : args) {
+				if(args[i]->Equals(flag) & i + 1 < args->Size()) {
+					return args[i + 1];
+				};
+
+				if(args[i]->StartsWith(prefix)) {
+					return args[i]->SubString(prefix->Size(), args[i]->Size() - prefix->Size());
+				};
+			};
+
+			return fallback;
+		}
+
+		#~
+		@param args the command line
+		@param flag the flag
+		@return true when the flag is present, with or without a value
+		~#
+		function : Has(args : String[], flag : String) ~ Bool {
+			prefix := "{$flag}=";
+			each(i : args) {
+				if(args[i]->Equals(flag) | args[i]->StartsWith(prefix)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		A comma-separated list of integers.
+		@param text for example "1,5,10"
+		@param fallback the list when the text is Nil or empty
+		@return the integers; entries that are not numbers are left out
+		~#
+		function : Ints(text : String, fallback : Int[]) ~ Int[] {
+			if(text = Nil | text->Trim()->Size() = 0) {
+				return fallback;
+			};
+
+			parts := text->Split(',');
+			values := Vector->New()<IntRef>;
+			each(i : parts) {
+				part := parts[i]->Trim();
+				if(part->IsInt()) {
+					values->AddBack(part->ToInt());
+				};
+			};
+
+			if(values->Size() = 0) {
+				return fallback;
+			};
+
+			result := Int->New[values->Size()];
+			each(i : values) {
+				result[i] := values->Get(i)->Get();
+			};
+
+			return result;
+		}
+	}
+
+	#~
+	A tag with a count, a rate and one example, the row of an aggregate (an error category, a task category).
+	~#
+	class EvalTally {
+		@tag : String;
+		@count : Int;
+		@value : Float;
+		@example : String;
+
+		New(tag : String, count : Int, value : Float, example : String) {
+			@tag := tag;
+			@count := count;
+			@value := value;
+			@example := example;
+		}
+
+		#~
+		@return what is counted
+		~#
+		method : public : GetLabel() ~ String {
+			return @tag;
+		}
+
+		#~
+		@return how many
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		@return the rate or mean the row carries, or -1.0 when it carries none
+		~#
+		method : public : GetValue() ~ Float {
+			return @value;
+		}
+
+		#~
+		@return an example of what was counted, or Nil
+		~#
+		method : public : GetExample() ~ String {
+			return @example;
+		}
+
+		method : public : Add() ~ Nil {
+			@count += 1;
+		}
+
+		#~
+		Orders rows by count, largest first, then by name.
+		@param a a row
+		@param b a row
+		@return negative when a comes first
+		~#
+		function : Rank(a : EvalTally, b : EvalTally) ~ Int {
+			if(a->GetCount() = b->GetCount()) {
+				return a->GetLabel()->Compare(b->GetLabel());
+			};
+
+			return b->GetCount() - a->GetCount();
+		}
+	}
+
+	#~
+	What one model call sends: the system prompt, the user prompt and which task and attempt it is for (a scripted model answers by them).
+	~#
+	class ModelRequest {
+		@system : String;
+		@user : String;
+		@task_id : String;
+		@attempt : Int;
+		@max_tokens : Int;
+
+		New(system : String, user : String, task_id : String, attempt : Int, max_tokens : Int) {
+			@system := system;
+			@user := user;
+			@task_id := task_id;
+			@attempt := attempt;
+			@max_tokens := max_tokens;
+		}
+
+		#~
+		@return the system prompt
+		~#
+		method : public : GetSystem() ~ String {
+			return @system;
+		}
+
+		#~
+		@return the user prompt
+		~#
+		method : public : GetUser() ~ String {
+			return @user;
+		}
+
+		#~
+		@return the id of the task being asked
+		~#
+		method : public : GetTaskId() ~ String {
+			return @task_id;
+		}
+
+		#~
+		@return the attempt number for this task, from 0
+		~#
+		method : public : GetAttempt() ~ Int {
+			return @attempt;
+		}
+
+		#~
+		@return the most tokens the answer may use
+		~#
+		method : public : GetMaxTokens() ~ Int {
+			return @max_tokens;
+		}
+	}
+
+	#~
+	What one model call returns: the answer text, the tokens it used when the client says (-1 when it does not), or the reason the call failed.
+	~#
+	class ModelReply {
+		@text : String;
+		@input_tokens : Int;
+		@output_tokens : Int;
+		@error : String;
+
+		New(text : String, input_tokens : Int, output_tokens : Int) {
+			@text := text;
+			@input_tokens := input_tokens;
+			@output_tokens := output_tokens;
+		}
+
+		#~
+		A reply for a call that failed. The attempt is recorded as a model error and left out of the rates.
+		@param error why the call failed
+		@return the reply
+		~#
+		function : Failure(error : String) ~ ModelReply {
+			reply := ModelReply->New(Nil, -1, -1);
+			reply->SetError(error);
+			return reply;
+		}
+
+		method : SetError(error : String) ~ Nil {
+			@error := error;
+		}
+
+		#~
+		@return the answer text, Nil when the call failed
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		@return the prompt tokens, -1 when unknown
+		~#
+		method : public : GetInputTokens() ~ Int {
+			return @input_tokens;
+		}
+
+		#~
+		@return the answer tokens, -1 when unknown
+		~#
+		method : public : GetOutputTokens() ~ Int {
+			return @output_tokens;
+		}
+
+		#~
+		@return why the call failed, Nil when it did not
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	A model under test. An adapter turns a request into one call of a provider's client and the answer into a reply; it never throws: a failed call is ModelReply->Failure(reason).
+	~#
+	interface ModelAdapter {
+		#~
+		@return the name the report shows for the model
+		~#
+		method : virtual : public : GetName() ~ String;
+
+		#~
+		Asks the model.
+		@param request the prompts and the task and attempt they are for
+		@return the answer, or a failure
+		~#
+		method : virtual : public : Complete(request : ModelRequest) ~ ModelReply;
+	}
+
+	#~
+	A model that answers from a script, for tests and for a dry run: the answers added for a task are used in turn, one per attempt (the list repeats), and a default answers every other task.
+	~#
+	class ScriptedModel implements ModelAdapter {
+		@name : String;
+		@answers : Map<String, Vector<String>>;
+		@failures : Map<String, String>;
+		@fallback : String;
+		@input_tokens : Int;
+		@output_tokens : Int;
+		@calls : Int;
+
+		New(name : String) {
+			@name := name;
+			@answers := Map->New()<String, Vector<String>>;
+			@failures := Map->New()<String, String>;
+			@input_tokens := -1;
+			@output_tokens := -1;
+		}
+
+		#~
+		Adds an answer for a task. A task with several answers gets them in turn, by attempt number.
+		@param task_id the task
+		@param answer the whole answer text, code fence included
+		@return self for chaining
+		~#
+		method : public : Add(task_id : String, answer : String) ~ ScriptedModel {
+			if(<>@answers->Has(task_id)) {
+				@answers->Insert(task_id, Vector->New()<String>);
+			};
+
+			@answers->Find(task_id)->AddBack(answer);
+			return @self;
+		}
+
+		#~
+		Sets the answer for every task that has none of its own.
+		@param answer the answer text
+		@return self for chaining
+		~#
+		method : public : SetDefault(answer : String) ~ ScriptedModel {
+			@fallback := answer;
+			return @self;
+		}
+
+		#~
+		Makes every call for a task fail.
+		@param task_id the task
+		@param error the reason the call reports
+		@return self for chaining
+		~#
+		method : public : AddFailure(task_id : String, error : String) ~ ScriptedModel {
+			@failures->Insert(task_id, error);
+			return @self;
+		}
+
+		#~
+		Sets the token counts every answer reports.
+		@param input_tokens prompt tokens
+		@param output_tokens answer tokens
+		@return self for chaining
+		~#
+		method : public : SetTokens(input_tokens : Int, output_tokens : Int) ~ ScriptedModel {
+			@input_tokens := input_tokens;
+			@output_tokens := output_tokens;
+			return @self;
+		}
+
+		#~
+		@return how many calls the model has had
+		~#
+		method : public : GetCalls() ~ Int {
+			return @calls;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : Complete(request : ModelRequest) ~ ModelReply {
+			@calls += 1;
+			id := request->GetTaskId();
+			if(@failures->Has(id)) {
+				return ModelReply->Failure(@failures->Find(id));
+			};
+
+			answer := @fallback;
+			if(@answers->Has(id)) {
+				list := @answers->Find(id);
+				answer := list->Get(request->GetAttempt() % list->Size());
+			};
+
+			if(answer = Nil) {
+				return ModelReply->Failure("no scripted answer for task {$id}");
+			};
+
+			return ModelReply->New(answer, @input_tokens, @output_tokens);
+		}
+	}
+
+	#~
+	A model that gives every task's reference solution, in a code block. Running the harness against it checks the tasks themselves: every one must compile and print its expected output.
+	~#
+	class ReferenceModel implements ModelAdapter {
+		@answers : Map<String, String>;
+
+		New(tasks : Vector<EvalTask>) {
+			@answers := Map->New()<String, String>;
+			each(i : tasks) {
+				task := tasks->Get(i);
+				if(task->GetReference() <> Nil) {
+					answer := "```objeck\n";
+					answer->Append(task->GetReference());
+					answer->Append("\n```\n");
+					@answers->Insert(task->GetId(), answer);
+				};
+			};
+		}
+
+		method : public : GetName() ~ String {
+			return "reference";
+		}
+
+		method : public : Complete(request : ModelRequest) ~ ModelReply {
+			id := request->GetTaskId();
+			if(@answers->Has(id)) {
+				return ModelReply->New(@answers->Find(id), -1, -1);
+			};
+
+			return ModelReply->Failure("task {$id} has no reference solution");
+		}
+	}
+
+	#~
+	What a command run left behind.
+	~#
+	class ExecResult {
+		@exit_code : Int;
+		@timed_out : Bool;
+		@output : String;
+		@seconds : Float;
+
+		New(exit_code : Int, timed_out : Bool, output : String, seconds : Float) {
+			@exit_code := exit_code;
+			@timed_out := timed_out;
+			@output := output;
+			@seconds := seconds;
+		}
+
+		#~
+		@return the exit code, 137 for a command that was stopped, -1 when it left none
+		~#
+		method : public : GetExitCode() ~ Int {
+			return @exit_code;
+		}
+
+		#~
+		@return true when the command ran out of time (or flooded its output) and was stopped
+		~#
+		method : public : TimedOut() ~ Bool {
+			return @timed_out;
+		}
+
+		#~
+		@return what the command printed, standard output and standard error together
+		~#
+		method : public : GetOutput() ~ String {
+			return @output;
+		}
+
+		#~
+		@return wall-clock seconds the command took
+		~#
+		method : public : GetSeconds() ~ Float {
+			return @seconds;
+		}
+	}
+
+	#~
+	Runs commands in a work directory under a timeout and compiles and runs Objeck sources with the real toolchain. A command runs through a small watchdog script written into the directory (a shell script, or PowerShell on Windows), which stops it when it passes its time, and its output is capped so a program that prints forever cannot fill the disk.
+	~#
+	class Sandbox {
+		@dir : String;
+		@windows : Bool;
+		@compiler : String;
+		@vm : String;
+		@empty : String;
+		@watchdog : String;
+		@seq : Int;
+		@keep : Bool;
+
+		#~
+		Constructor. Creates the directory when it is missing.
+		@param dir work directory; a relative path is made absolute against the current directory
+		~#
+		New(dir : String) {
+			@windows := Directory->GetSlash() = '\\';
+			@dir := dir;
+			if(<>EvalText->IsAbsolute(dir)) {
+				here := Runtime->CommandOutput(@windows ? "cd" : "pwd")->GetOutput();
+				if(here <> Nil & here->Size() > 0) {
+					@dir := "{$here[0]->Trim()}{$Slash()}{$dir}";
+				};
+			};
+
+			Directory->CreatePath(@dir);
+			@compiler := Tool("obc");
+			@vm := Tool("obr");
+			@empty := Path("empty_input.txt");
+			FileWriter->WriteFile(@empty, "");
+			@watchdog := WriteWatchdog();
+		}
+
+		method : Slash() ~ String {
+			return @windows ? "\\" : "/";
+		}
+
+		# the toolchain next to the running VM when it is there, else the bare name on PATH
+		method : Tool(name : String) ~ String {
+			path := Runtime->GetInstallDir();
+			if(path <> Nil & path->Size() > 0) {
+				full := "{$path}{$Slash()}bin{$Slash()}{$name}";
+				if(@windows) {
+					full->Append(".exe");
+				};
+
+				if(File->Exists(full)) {
+					return full;
+				};
+			};
+
+			return name;
+		}
+
+		#~
+		Sets the compiler command (default: obc beside the running VM, else obc on PATH).
+		@param compiler command or path
+		~#
+		method : public : SetCompiler(compiler : String) ~ Nil {
+			@compiler := compiler;
+		}
+
+		#~
+		Sets the VM command (default: obr beside the running VM, else obr on PATH).
+		@param vm command or path
+		~#
+		method : public : SetVm(vm : String) ~ Nil {
+			@vm := vm;
+		}
+
+		#~
+		@return the compiler command in use
+		~#
+		method : public : GetCompiler() ~ String {
+			return @compiler;
+		}
+
+		#~
+		@return the VM command in use
+		~#
+		method : public : GetVm() ~ String {
+			return @vm;
+		}
+
+		#~
+		Keeps the sources, executables and outputs instead of deleting them after use.
+		@param keep true to keep
+		~#
+		method : public : SetKeepFiles(keep : Bool) ~ Nil {
+			@keep := keep;
+		}
+
+		#~
+		@return the absolute work directory
+		~#
+		method : public : GetDirectory() ~ String {
+			return @dir;
+		}
+
+		#~
+		@return the path of a file in the work directory
+		@param name file name
+		~#
+		method : public : Path(name : String) ~ String {
+			return "{$@dir}{$Slash()}{$name}";
+		}
+
+		method : WriteWatchdog() ~ String {
+			if(@windows) {
+				lines := Vector->New()<String>;
+				lines->AddBack("param([string]$StepFile, [string]$Secs, [string]$Marker, [string]$RcFile, [string]$OutFile, [string]$Dir)");
+				lines->AddBack("Remove-Item -LiteralPath $Marker, $RcFile -ErrorAction SilentlyContinue");
+				lines->AddBack("$line = (Get-Content -Raw -LiteralPath $StepFile).Trim()");
+				lines->AddBack("$psi = New-Object System.Diagnostics.ProcessStartInfo");
+				lines->AddBack("$psi.FileName = $env:ComSpec");
+				lines->AddBack("$psi.Arguments = '/c \"' + $line + '\"'");
+				lines->AddBack("$psi.WorkingDirectory = $Dir");
+				lines->AddBack("$psi.UseShellExecute = $false");
+				lines->AddBack("$psi.CreateNoWindow = $true");
+				lines->AddBack("$p = [System.Diagnostics.Process]::Start($psi)");
+				lines->AddBack("$limit = [double]::Parse($Secs, [System.Globalization.CultureInfo]::InvariantCulture)");
+				lines->AddBack("$sw = [System.Diagnostics.Stopwatch]::StartNew()");
+				lines->AddBack("$why = ''");
+				lines->AddBack("while (-not $p.WaitForExit(100)) {");
+				lines->AddBack("  if ($sw.Elapsed.TotalSeconds -gt $limit) { $why = 'timeout'; break }");
+				lines->AddBack("  if ((Test-Path -LiteralPath $OutFile) -and ((Get-Item -LiteralPath $OutFile).Length -gt 8388608)) { $why = 'flood'; break }");
+				lines->AddBack("}");
+				lines->AddBack("if ($why -ne '') {");
+				lines->AddBack("  Set-Content -LiteralPath $Marker -Value $why");
+				lines->AddBack("  & taskkill /F /T /PID $p.Id | Out-Null");
+				lines->AddBack("  $p.WaitForExit(5000) | Out-Null");
+				lines->AddBack("  Set-Content -LiteralPath $RcFile -Value 137");
+				lines->AddBack("} else {");
+				lines->AddBack("  $p.WaitForExit()");
+				lines->AddBack("  Set-Content -LiteralPath $RcFile -Value $p.ExitCode");
+				lines->AddBack("}");
+				path := Path("watchdog.ps1");
+				FileWriter->WriteFile(path, String->Join(lines->ToArray(), "\r\n"));
+				return path;
+			};
+
+			lines := Vector->New()<String>;
+			lines->AddBack("step=$1; secs=$2; marker=$3; rcfile=$4");
+			lines->AddBack("rm -f \"$marker\" \"$rcfile\"");
+			lines->AddBack("sh \"$step\" &");
+			lines->AddBack("pid=$!");
+			lines->AddBack("( trap 'kill \"$s\" 2>/dev/null; exit 0' TERM; sleep \"$secs\" & s=$!; wait \"$s\"; echo timeout > \"$marker\"; kill -9 \"$pid\" 2>/dev/null ) >/dev/null 2>&1 &");
+			lines->AddBack("guard=$!");
+			lines->AddBack("wait \"$pid\"");
+			lines->AddBack("rc=$?");
+			lines->AddBack("kill \"$guard\" 2>/dev/null");
+			lines->AddBack("echo \"$rc\" > \"$rcfile\"");
+			path := Path("watchdog.sh");
+			FileWriter->WriteFile(path, String->Join(lines->ToArray(), "\n"));
+			return path;
+		}
+
+		#~
+		Runs a command line in the work directory with its input from a file, its output (both streams) captured, and a time limit.
+		@param command the command line, program and arguments, already quoted
+		@param stdin_path file the command reads as standard input, Nil for none
+		@param seconds time the command may take before it is stopped
+		@return the result
+		~#
+		method : public : Execute(command : String, stdin_path : String, seconds : Float) ~ ExecResult {
+			@seq += 1;
+			id := @seq;
+			input := stdin_path;
+			if(input = Nil) {
+				input := @empty;
+			};
+
+			out := Path("out_{$id}.txt");
+			marker := Path("mark_{$id}.txt");
+			rc := Path("rc_{$id}.txt");
+			step := Path(@windows ? "step_{$id}.txt" : "step_{$id}.sh");
+			launch : String;
+
+			if(@windows) {
+				line := "{$command} < \"{$input}\" > \"{$out}\" 2>&1";
+				FileWriter->WriteFile(step, line);
+				launch := "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{$@watchdog}\" \"{$step}\" {$seconds} \"{$marker}\" \"{$rc}\" \"{$out}\" \"{$@dir}\"";
+				# cmd /c strips the first and last quote of a line that starts with one
+				launch := "\"{$launch}\"";
+			}
+			else {
+				script := "cd \"{$@dir}\" || exit 1\nulimit -f 16384 2>/dev/null\nexec {$command} < \"{$input}\" > \"{$out}\" 2>&1\n";
+				FileWriter->WriteFile(step, script);
+				launch := "sh \"{$@watchdog}\" \"{$step}\" {$seconds} \"{$marker}\" \"{$rc}\" 2>/dev/null";
+			};
+
+			timer := System.Time.Timer->New();
+			timer->Start();
+			Runtime->Command(launch);
+			timer->End();
+
+			exit_code := -1;
+			if(File->Exists(rc)) {
+				text := FileReader->ReadFile(rc);
+				if(text <> Nil & text->Trim()->IsInt()) {
+					exit_code := text->Trim()->ToInt();
+				};
+			};
+
+			timed_out := File->Exists(marker);
+			output := "";
+			if(File->Exists(out)) {
+				output := EvalText->Unix(FileReader->ReadFile(out));
+			};
+
+			if(<>@keep) {
+				File->Delete(step);
+				File->Delete(out);
+				File->Delete(marker);
+				File->Delete(rc);
+			};
+
+			return ExecResult->New(exit_code, timed_out, output, timer->GetElapsedTime());
+		}
+
+		#~
+		Compiles a source file with the real compiler.
+		@param source path of the .obs file
+		@param libs comma-separated -lib list, "" or Nil for none
+		@param target path of the .obe to write
+		@param seconds time the compile may take
+		@return the result; the compile worked when the exit code is 0 and the target exists
+		~#
+		method : public : Compile(source : String, libs : String, target : String, seconds : Float) ~ ExecResult {
+			command := "{$EvalText->Quote(@compiler)} -src {$EvalText->Quote(source)}";
+			if(libs <> Nil & libs->Size() > 0) {
+				command->Append(" -lib ");
+				command->Append(libs);
+			};
+
+			command->Append(" -dest ");
+			command->Append(EvalText->Quote(target));
+			return Execute(command, Nil, seconds);
+		}
+
+		#~
+		Runs a compiled program.
+		@param program path of the .obe
+		@param stdin_path file to feed as standard input, Nil for none
+		@param seconds time the program may take
+		@return the result
+		~#
+		method : public : Run(program : String, stdin_path : String, seconds : Float) ~ ExecResult {
+			command := "{$EvalText->Quote(@vm)} {$EvalText->Quote(program)}";
+			return Execute(command, stdin_path, seconds);
+		}
+
+		#~
+		Removes the watchdog, the empty input file and the work directory. The directory is only removed when nothing else is left in it.
+		~#
+		method : public : Close() ~ Nil {
+			File->Delete(@watchdog);
+			File->Delete(@empty);
+			Directory->Delete(@dir);
+		}
+
+		#~
+		Deletes a file in the work directory unless files are kept.
+		@param path the file
+		~#
+		method : public : Discard(path : String) ~ Nil {
+			if(<>@keep & File->Exists(path)) {
+				File->Delete(path);
+			};
+		}
+	}
+
+	#~
+	A model that is a command line: the prompt (system prompt, blank line, user prompt) is the command's standard input and the answer is what it prints. It evaluates anything with a command line interface, a local runner or a wrapper script around a service, without an adapter of its own. Token counts are not known.
+	~#
+	class CommandModel implements ModelAdapter {
+		@name : String;
+		@command : String;
+		@sandbox : Sandbox;
+		@seconds : Float;
+		@seq : Int;
+
+		#~
+		Constructor.
+		@param name the name the report shows
+		@param command the command line, quoted as the shell needs it
+		@param sandbox the work directory and watchdog to run it in
+		~#
+		New(name : String, command : String, sandbox : Sandbox) {
+			@name := name;
+			@command := command;
+			@sandbox := sandbox;
+			@seconds := 300.0;
+		}
+
+		#~
+		Sets how long one call may take, 300 seconds by default.
+		@param seconds the limit
+		~#
+		method : public : SetTimeout(seconds : Float) ~ Nil {
+			@seconds := seconds;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : Complete(request : ModelRequest) ~ ModelReply {
+			@seq += 1;
+			prompt := "";
+			if(request->GetSystem() <> Nil & request->GetSystem()->Size() > 0) {
+				prompt->Append(request->GetSystem());
+				prompt->Append("\n\n");
+			};
+			prompt->Append(request->GetUser());
+			prompt->Append("\n");
+
+			path := @sandbox->Path("prompt_{$@seq}.txt");
+			FileWriter->WriteFile(path, prompt);
+			result := @sandbox->Execute(@command, path, @seconds);
+			@sandbox->Discard(path);
+
+			if(result->TimedOut()) {
+				return ModelReply->Failure("the command ran out of time");
+			};
+
+			if(result->GetExitCode() <> 0) {
+				return ModelReply->Failure("the command exited with {$result->GetExitCode()}: {$EvalText->Clip(result->GetOutput(), 300)}");
+			};
+
+			return ModelReply->New(result->GetOutput(), -1, -1);
+		}
+	}
+
+	#~
+	One task: what to ask, how to compile what comes back, the input its program reads and the output it must print. Tasks are text files (see TaskSuite) with a header of key: value lines and sections introduced by lines that start with three dashes.
+	~#
+	class EvalTask {
+		@id : String;
+		@category : String;
+		@difficulty : Int;
+		@libs : String;
+		@checker : String;
+		@timeout : Float;
+		@prompt : String;
+		@starter : String;
+		@input : String;
+		@expected : String;
+		@reference : String;
+
+		New(id : String, category : String, difficulty : Int, libs : String, checker : String, timeout : Float, prompt : String, starter : String, input : String, expected : String, reference : String) {
+			@id := id;
+			@category := category;
+			@difficulty := difficulty;
+			@libs := libs;
+			@checker := checker;
+			@timeout := timeout;
+			@prompt := prompt;
+			@starter := starter;
+			@input := input;
+			@expected := expected;
+			@reference := reference;
+		}
+
+		#~
+		@return the task id, unique in a suite
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		@return the group the report slices by (basics, collections, ...)
+		~#
+		method : public : GetCategory() ~ String {
+			return @category;
+		}
+
+		#~
+		@return difficulty from 1 (easy) to 5
+		~#
+		method : public : GetDifficulty() ~ Int {
+			return @difficulty;
+		}
+
+		#~
+		@return the comma-separated libraries the answer is compiled with, "" for none
+		~#
+		method : public : GetLibs() ~ String {
+			return @libs;
+		}
+
+		#~
+		@return the checker kind: exact, lines, numeric or contains
+		~#
+		method : public : GetChecker() ~ String {
+			return @checker;
+		}
+
+		#~
+		@return seconds the program may run
+		~#
+		method : public : GetTimeout() ~ Float {
+			return @timeout;
+		}
+
+		#~
+		@return the task statement
+		~#
+		method : public : GetPrompt() ~ String {
+			return @prompt;
+		}
+
+		#~
+		@return code the answer starts from, Nil for none
+		~#
+		method : public : GetStarter() ~ String {
+			return @starter;
+		}
+
+		#~
+		@return the text fed to the program's standard input, Nil for none
+		~#
+		method : public : GetInput() ~ String {
+			return @input;
+		}
+
+		#~
+		@return the output the program must print
+		~#
+		method : public : GetExpected() ~ String {
+			return @expected;
+		}
+
+		#~
+		@return a solution known to pass, Nil when the task has none
+		~#
+		method : public : GetReference() ~ String {
+			return @reference;
+		}
+
+		#~
+		The user prompt sent to the model: the statement, the starter code if any, the libraries the program is compiled with and the reply format.
+		@return the prompt text
+		~#
+		method : public : BuildPrompt() ~ String {
+			text := "";
+			text->Append(@prompt);
+			text->Append("\n");
+
+			if(@starter <> Nil & @starter->Size() > 0) {
+				text->Append("\nStart from this code and complete it:\n```objeck\n");
+				text->Append(@starter);
+				text->Append("\n```\n");
+			};
+
+			if(@input <> Nil & @input->Size() > 0) {
+				text->Append("\nThe program reads its input from standard input.\n");
+			};
+
+			if(@libs->Size() > 0) {
+				text->Append("\nThe program is compiled with these libraries linked: ");
+				text->Append(@libs->ReplaceAll(",", ", "));
+				text->Append(".\n");
+			};
+
+			text->Append("\nAnswer with one complete program in a single ```objeck code block. The checker compares what the program prints to standard output, so print nothing else.\n");
+			return text;
+		}
+
+		#~
+		Parses a task from its text form.
+		@param text the file contents
+		@return the task, or Nil when it is malformed; TaskSuite->GetLastError() says why
+		~#
+		function : Parse(text : String) ~ EvalTask {
+			TaskSuite->SetLastError(Nil);
+			lines := EvalText->Unix(text)->Split('\n');
+
+			id : String;
+			category := "general";
+			difficulty := 1;
+			libs := "";
+			checker := "exact";
+			timeout := 10.0;
+
+			sections := Map->New()<String, String>;
+			section : String;
+			body := "";
+
+			each(i : lines) {
+				line := lines[i];
+				if(line->StartsWith("--- ")) {
+					if(section <> Nil) {
+						sections->Insert(section, body);
+					};
+
+					section := line->SubString(4, line->Size() - 4)->Trim();
+					body := "";
+				}
+				else if(section <> Nil) {
+					body->Append(line);
+					body->Append("\n");
+				}
+				else {
+					colon := line->Find(':');
+					if(colon > 0) {
+						key := line->SubString(colon)->Trim();
+						value := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+						if(key->Equals("id")) {
+							id := value;
+						}
+						else if(key->Equals("category")) {
+							category := value;
+						}
+						else if(key->Equals("difficulty")) {
+							difficulty := value->ToInt();
+						}
+						else if(key->Equals("libs")) {
+							libs := value->ReplaceAll(" ", "");
+						}
+						else if(key->Equals("checker")) {
+							checker := value;
+						}
+						else if(key->Equals("timeout")) {
+							timeout := value->ToFloat();
+						};
+					};
+				};
+			};
+
+			if(section <> Nil) {
+				sections->Insert(section, body);
+			};
+
+			if(id = Nil | id->Size() = 0) {
+				TaskSuite->SetLastError("the task has no id: line");
+				return Nil;
+			};
+
+			if(<>sections->Has("prompt")) {
+				TaskSuite->SetLastError("task {$id} has no --- prompt section");
+				return Nil;
+			};
+
+			if(<>sections->Has("expected")) {
+				TaskSuite->SetLastError("task {$id} has no --- expected section");
+				return Nil;
+			};
+
+			if(<>OutputChecker->IsKnown(checker)) {
+				TaskSuite->SetLastError("task {$id} names an unknown checker: {$checker}");
+				return Nil;
+			};
+
+			starter : String;
+			if(sections->Has("starter")) {
+				starter := Trimmed(sections->Find("starter"));
+			};
+
+			input : String;
+			if(sections->Has("input")) {
+				input := sections->Find("input");
+				input := Trimmed(input);
+				input->Append("\n");
+			};
+
+			reference : String;
+			if(sections->Has("reference")) {
+				reference := Trimmed(sections->Find("reference"));
+			};
+
+			return EvalTask->New(id, category, difficulty, libs, checker, timeout, Trimmed(sections->Find("prompt")), starter, input, Trimmed(sections->Find("expected")), reference);
+		}
+
+		# a section body without its blank first and last lines
+		function : Trimmed(body : String) ~ String {
+			text := body;
+			while(text->Size() > 0 & (text->Get(text->Size() - 1) = '\n' | text->Get(text->Size() - 1) = ' ')) {
+				text := text->SubString(text->Size() - 1);
+			};
+
+			while(text->Size() > 0 & text->Get(0) = '\n') {
+				text := text->SubString(1, text->Size() - 1);
+			};
+
+			return text;
+		}
+	}
+
+	#~
+	A directory of task files: loading, selecting, and the error of the last load.
+	~#
+	class TaskSuite {
+		@last_error : static : String;
+
+		function : SetLastError(error : String) ~ Nil {
+			@last_error := error;
+		}
+
+		#~
+		@return why the last Parse or Load failed, Nil when it did not
+		~#
+		function : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Loads every *.task file of a directory, in file-name order. A malformed file fails the whole load, so a suite never silently shrinks.
+		@param dir the directory
+		@return the tasks, or Nil when the directory is missing, empty or holds a malformed task
+		~#
+		function : Load(dir : String) ~ Vector<EvalTask> {
+			@last_error := Nil;
+			names := Directory->List(dir);
+			if(names = Nil) {
+				@last_error := "cannot list {$dir}";
+				return Nil;
+			};
+
+			files := Vector->New()<String>;
+			each(i : names) {
+				if(names[i]->EndsWith(".task")) {
+					files->AddBack(names[i]);
+				};
+			};
+			files->Sort(\(String, String) ~ Int : (a, b) => a->Compare(b));
+
+			tasks := Vector->New()<EvalTask>;
+			seen := Set->New()<String>;
+			slash := Directory->GetSlash() = '\\' ? "\\" : "/";
+			each(i : files) {
+				path := "{$dir}{$slash}{$files->Get(i)}";
+				task := EvalTask->Parse(FileReader->ReadFile(path));
+				if(task = Nil) {
+					@last_error := "{$path}: {$@last_error}";
+					return Nil;
+				};
+
+				if(seen->Has(task->GetId())) {
+					@last_error := "{$path}: duplicate task id {$task->GetId()}";
+					return Nil;
+				};
+
+				seen->Insert(task->GetId());
+				tasks->AddBack(task);
+			};
+
+			if(tasks->Size() = 0) {
+				@last_error := "no *.task files in {$dir}";
+				return Nil;
+			};
+
+			return tasks;
+		}
+
+		#~
+		Keeps the tasks whose id or category is in a comma-separated list.
+		@param tasks the tasks
+		@param ids comma-separated task ids, "" or Nil for all
+		@param categories comma-separated categories, "" or Nil for all
+		@return the tasks that match both lists, in their order
+		~#
+		function : Select(tasks : Vector<EvalTask>, ids : String, categories : String) ~ Vector<EvalTask> {
+			chosen := Vector->New()<EvalTask>;
+			each(i : tasks) {
+				task := tasks->Get(i);
+				if(InList(ids, task->GetId()) & InList(categories, task->GetCategory())) {
+					chosen->AddBack(task);
+				};
+			};
+
+			return chosen;
+		}
+
+		#~
+		One part of a suite cut into equal parts, so a long check can run as several shorter ones.
+		@param tasks the tasks
+		@param part which part, from 0
+		@param parts how many parts
+		@return the tasks whose position modulo parts is part
+		~#
+		function : Part(tasks : Vector<EvalTask>, part : Int, parts : Int) ~ Vector<EvalTask> {
+			chosen := Vector->New()<EvalTask>;
+			each(i : tasks) {
+				if(i % parts = part) {
+					chosen->AddBack(tasks->Get(i));
+				};
+			};
+
+			return chosen;
+		}
+
+		function : InList(list : String, item : String) ~ Bool {
+			if(list = Nil | list->Trim()->Size() = 0) {
+				return true;
+			};
+
+			parts := list->Split(',');
+			each(i : parts) {
+				if(parts[i]->Trim()->Equals(item)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+	}
+
+	#~
+	Finds the program in a model's answer.
+	~#
+	class CodeExtractor {
+		#~
+		Every fenced code block of an answer, in order. A block that is never closed (an answer cut off by the token limit) runs to the end of the text.
+		@param answer the model's answer
+		@return the blocks' code, without the fences
+		~#
+		function : Blocks(answer : String) ~ Vector<String> {
+			blocks := Vector->New()<String>;
+			if(answer = Nil) {
+				return blocks;
+			};
+
+			lines := EvalText->Unix(answer)->Split('\n');
+			open := false;
+			body := "";
+			each(i : lines) {
+				line := lines[i];
+				trimmed := line->Trim();
+				if(trimmed->StartsWith("```")) {
+					if(open) {
+						blocks->AddBack(body);
+						open := false;
+					}
+					else {
+						open := true;
+						body := "";
+					};
+				}
+				else if(open) {
+					body->Append(line);
+					body->Append("\n");
+				};
+			};
+
+			if(open) {
+				blocks->AddBack(body);
+			};
+
+			return blocks;
+		}
+
+		#~
+		The program an answer carries: of its code blocks, the longest one that defines a Main function, else the longest block.
+		@param answer the model's answer
+		@return the code, or Nil when the answer has no code block or only blank ones
+		~#
+		function : Best(answer : String) ~ String {
+			blocks := Blocks(answer);
+			best : String;
+			best_main := false;
+			each(i : blocks) {
+				block := blocks->Get(i);
+				if(block->Trim()->Size() = 0) {
+					continue;
+				};
+
+				has_main := block->Contains("Main(");
+				if(best = Nil | (has_main & <>best_main) | (has_main = best_main & block->Size() > best->Size())) {
+					best := block;
+					best_main := has_main;
+				};
+			};
+
+			return best;
+		}
+	}
+
+	#~
+	Sorts a compiler's first error into a category, so a report can say what a model gets wrong rather than list every message.
+	~#
+	class ErrorCategory {
+		#~
+		The first error line of the compiler's output, from the message on (the file name and position are dropped). Warnings are skipped.
+		@param output what the compiler printed
+		@return the message, or the first non-blank line when no line names a position, or "" for empty output
+		~#
+		function : FirstError(output : String) ~ String {
+			if(output = Nil) {
+				return "";
+			}
+			else {
+				lines := EvalText->Unix(output)->Split('\n');
+				each(i : lines) {
+					line := lines[i];
+					at := line->Find(".obs:(");
+					if(at >= 0 & <>line->Contains("): Warning:")) {
+						close := line->Find(at, "): ");
+						if(close >= 0) {
+							return line->SubString(close + 3, line->Size() - close - 3)->Trim();
+						};
+
+						return line->Trim();
+					};
+				};
+
+				return EvalText->FirstLine(output);
+			};
+		}
+
+		#~
+		Replaces every quoted name in a message with '_' so messages that differ only in a name group together.
+		@param message a compiler message
+		@return the normalized message
+		~#
+		function : Normalize(message : String) ~ String {
+			out := "";
+			inside := false;
+			each(i : message) {
+				c := message->Get(i);
+				if(c = '\'') {
+					if(inside) {
+						inside := false;
+						out->Append("'_'");
+					}
+					else {
+						inside := true;
+					};
+				}
+				else if(<>inside) {
+					out->Append(c);
+				};
+			};
+
+			if(inside) {
+				out->Append("'_'");
+			};
+
+			return out;
+		}
+
+		#~
+		The category of a compiler message.
+		@param message a compiler message, normalized or not
+		@return one of undefined_class, undefined_variable, undefined_method, duplicate_definition, type_mismatch, generics, missing_return, virtual_methods, scope, syntax, array, string_interpolation, other, or no_message when the message is empty
+		~#
+		function : Categorize(message : String) ~ String {
+			if(message = Nil | message->Trim()->Size() = 0) {
+				return "no_message";
+			};
+
+			if(message->Contains("Undefined class") | message->Contains("Undefined alias") | message->Contains("Undefined enum")) {
+				return "undefined_class";
+			};
+
+			if(message->Contains("Undefined variable")) {
+				return "undefined_variable";
+			};
+
+			if(message->Contains("Undefined function") | message->Contains("has no method") | message->Contains("Undefined method")) {
+				return "undefined_method";
+			};
+
+			if(message->Contains("already defined") | message->Contains("Duplicate")) {
+				return "duplicate_definition";
+			};
+
+			if(message->Contains("Generic")) {
+				return "generics";
+			};
+
+			if(message->Contains("interpolation")) {
+				return "string_interpolation";
+			};
+
+			if(message->Contains("must return a value") | message->Contains("returns no value") | message->Contains("return types")) {
+				return "missing_return";
+			};
+
+			if(message->Contains("virtual") | message->Contains("Concrete class")) {
+				return "virtual_methods";
+			};
+
+			if(message->Contains("Cannot reference") | message->Contains("Parent call")) {
+				return "scope";
+			};
+
+			if(message->Contains("Dimension") | message->Contains("array")) {
+				return "array";
+			};
+
+			if(message->Contains("Invalid operation") | message->Contains("Invalid cast") | message->Contains("mismatch") | message->Contains("Invalid class type") | message->Contains("Invalid mathematical") | message->Contains("Nil")) {
+				return "type_mismatch";
+			};
+
+			if(message->StartsWith("Expected") | message->Contains("Invalid character") | message->Contains("cannot be initialized") | message->Contains("is not closed")) {
+				return "syntax";
+			};
+
+			return "other";
+		}
+	}
+
+	#~
+	Compares a program's output with the expected output.
+	~#
+	class OutputChecker {
+		#~
+		@param kind a checker kind
+		@return true for exact, lines, numeric and contains
+		~#
+		function : IsKnown(kind : String) ~ Bool {
+			return kind->Equals("exact") | kind->Equals("lines") | kind->Equals("numeric") | kind->Equals("contains");
+		}
+
+		#~
+		Whether an output matches. exact: the same lines, ignoring line-end style, trailing blanks on a line and trailing blank lines. lines: the same lines in any order. numeric: the same whitespace-separated tokens, numbers within 1e-6 of each other (absolute or relative). contains: every non-blank line of the expected text appears as a line of the output.
+		@param kind the checker kind
+		@param expected the expected output
+		@param actual what the program printed
+		@return true when it matches
+		~#
+		function : Matches(kind : String, expected : String, actual : String) ~ Bool {
+			want := Lines(expected);
+			got := Lines(actual);
+
+			if(kind->Equals("lines")) {
+				want->Sort(\(String, String) ~ Int : (a, b) => a->Compare(b));
+				got->Sort(\(String, String) ~ Int : (a, b) => a->Compare(b));
+				return Same(want, got);
+			};
+
+			if(kind->Equals("contains")) {
+				each(i : want) {
+					if(want->Get(i)->Size() > 0 & <>Has(got, want->Get(i))) {
+						return false;
+					};
+				};
+
+				return true;
+			};
+
+			if(kind->Equals("numeric")) {
+				return Numeric(expected, actual);
+			};
+
+			return Same(want, got);
+		}
+
+		# the lines of a text with trailing blanks removed, and without trailing blank lines
+		function : Lines(text : String) ~ Vector<String> {
+			lines := Vector->New()<String>;
+			parts := EvalText->Unix(text)->Split('\n');
+			each(i : parts) {
+				line := parts[i];
+				end := line->Size();
+				while(end > 0 & (line->Get(end - 1) = ' ' | line->Get(end - 1) = '\t')) {
+					end -= 1;
+				};
+				lines->AddBack(line->SubString(end));
+			};
+
+			while(lines->Size() > 0 & lines->Last()->Size() = 0) {
+				lines->RemoveBack();
+			};
+
+			return lines;
+		}
+
+		function : Same(a : Vector<String>, b : Vector<String>) ~ Bool {
+			if(a->Size() <> b->Size()) {
+				return false;
+			};
+
+			each(i : a) {
+				if(<>a->Get(i)->Equals(b->Get(i))) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		function : Has(lines : Vector<String>, line : String) ~ Bool {
+			each(i : lines) {
+				if(lines->Get(i)->Equals(line)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		function : Numeric(expected : String, actual : String) ~ Bool {
+			want := EvalText->Unix(expected)->SplitWhitespace();
+			got := EvalText->Unix(actual)->SplitWhitespace();
+			if(want->Size() <> got->Size()) {
+				return false;
+			};
+
+			each(i : want) {
+				if((want[i]->IsFloat() | want[i]->IsInt()) & (got[i]->IsFloat() | got[i]->IsInt())) {
+					a := want[i]->ToFloat();
+					b := got[i]->ToFloat();
+					scale := Float->Max(1.0, Float->Max(Float->Abs(a), Float->Abs(b)));
+					if(Float->Abs(a - b) > 0.000001 * scale) {
+						return false;
+					};
+				}
+				else if(<>want[i]->Equals(got[i])) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+	}
+
+	#~
+	The unbiased pass at k estimator of Chen et al. (2021): from n samples of which c are correct, the probability that at least one of k samples drawn without replacement is correct, 1 - C(n-c, k) / C(n, k), computed as a product so large n does not overflow.
+	~#
+	class PassAtK {
+		#~
+		@param n samples drawn for the task
+		@param c samples that were correct
+		@param k the k of pass at k
+		@return the estimate between 0 and 1, or -1.0 when n < 1, k < 1, k > n or c is outside 0 to n
+		~#
+		function : Estimate(n : Int, c : Int, k : Int) ~ Float {
+			if(n < 1 | k < 1 | k > n | c < 0 | c > n) {
+				return -1.0;
+			};
+
+			if(n - c < k) {
+				return 1.0;
+			};
+
+			product := 1.0;
+			for(i := n - c + 1; i <= n; i += 1;) {
+				product *= 1.0 - k->As(Float) / i->As(Float);
+			};
+
+			return 1.0 - product;
+		}
+	}
+
+	#~
+	What happened to one attempt: the task, the outcome and the details behind it. The outcome is one of pass, wrong_output, runtime_error, timeout, compile_error, no_code or model_error.
+	~#
+	class Attempt {
+		@task_id : String;
+		@category : String;
+		@index : Int;
+		@outcome : String;
+		@compiled : Bool;
+		@ran : Bool;
+		@correct : Bool;
+		@error_category : String;
+		@error_line : String;
+		@input_tokens : Int;
+		@output_tokens : Int;
+		@latency : Float;
+		@model_error : String;
+		@code : String;
+		@output : String;
+
+		New(task_id : String, category : String, index : Int) {
+			@task_id := task_id;
+			@category := category;
+			@index := index;
+			@outcome := "model_error";
+			@input_tokens := -1;
+			@output_tokens := -1;
+		}
+
+		method : public : GetTaskId() ~ String {
+			return @task_id;
+		}
+
+		method : public : GetTaskCategory() ~ String {
+			return @category;
+		}
+
+		method : public : GetIndex() ~ Int {
+			return @index;
+		}
+
+		method : public : GetOutcome() ~ String {
+			return @outcome;
+		}
+
+		#~
+		@return true when the compiler accepted the program
+		~#
+		method : public : IsCompiled() ~ Bool {
+			return @compiled;
+		}
+
+		#~
+		@return true when the program ran to completion with exit code 0
+		~#
+		method : public : IsRan() ~ Bool {
+			return @ran;
+		}
+
+		#~
+		@return true when the output matched the expected output
+		~#
+		method : public : IsCorrect() ~ Bool {
+			return @correct;
+		}
+
+		#~
+		@return true when the model call failed; such an attempt is left out of the rates
+		~#
+		method : public : IsModelError() ~ Bool {
+			return @outcome->Equals("model_error");
+		}
+
+		#~
+		@return the category of the first compiler error, Nil when it compiled or never reached the compiler
+		~#
+		method : public : GetErrorCategory() ~ String {
+			return @error_category;
+		}
+
+		#~
+		@return the first compiler error, normalized, Nil when there was none
+		~#
+		method : public : GetErrorLine() ~ String {
+			return @error_line;
+		}
+
+		method : public : GetInputTokens() ~ Int {
+			return @input_tokens;
+		}
+
+		method : public : GetOutputTokens() ~ Int {
+			return @output_tokens;
+		}
+
+		#~
+		@return seconds the model call took
+		~#
+		method : public : GetLatency() ~ Float {
+			return @latency;
+		}
+
+		method : public : GetModelError() ~ String {
+			return @model_error;
+		}
+
+		#~
+		@return the program that was compiled, Nil when there was none
+		~#
+		method : public : GetCode() ~ String {
+			return @code;
+		}
+
+		#~
+		@return what the program printed (clipped), Nil when it never ran
+		~#
+		method : public : GetOutput() ~ String {
+			return @output;
+		}
+
+		method : public : SetOutcome(outcome : String) ~ Nil {
+			@outcome := outcome;
+			@correct := outcome->Equals("pass");
+			if(@correct | outcome->Equals("wrong_output")) {
+				@ran := true;
+			};
+
+			if(@ran | outcome->Equals("runtime_error") | outcome->Equals("timeout")) {
+				@compiled := true;
+			};
+		}
+
+		method : public : SetCompileError(category : String, line : String) ~ Nil {
+			@outcome := "compile_error";
+			@error_category := category;
+			@error_line := line;
+		}
+
+		method : public : SetModelError(error : String) ~ Nil {
+			@outcome := "model_error";
+			@model_error := error;
+		}
+
+		method : public : SetUsage(input_tokens : Int, output_tokens : Int, latency : Float) ~ Nil {
+			@input_tokens := input_tokens;
+			@output_tokens := output_tokens;
+			@latency := latency;
+		}
+
+		method : public : SetCode(code : String) ~ Nil {
+			@code := code;
+		}
+
+		method : public : SetOutput(output : String) ~ Nil {
+			@output := output;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("task", @task_id);
+			json->Insert("category", @category);
+			json->Insert("attempt", @index);
+			json->Insert("outcome", @outcome);
+			json->Insert("compiled", @compiled);
+			json->Insert("ran", @ran);
+			json->Insert("correct", @correct);
+			json->Insert("input_tokens", @input_tokens);
+			json->Insert("output_tokens", @output_tokens);
+			json->Insert("latency", @latency);
+			if(@error_category <> Nil) {
+				json->Insert("error_category", @error_category);
+			};
+
+			if(@error_line <> Nil) {
+				json->Insert("error_line", @error_line);
+			};
+
+			if(@model_error <> Nil) {
+				json->Insert("model_error", @model_error);
+			};
+
+			if(@code <> Nil) {
+				json->Insert("code", @code);
+			};
+
+			if(@output <> Nil) {
+				json->Insert("output", @output);
+			};
+
+			return json;
+		}
+
+		#~
+		Reads an attempt written by ToJson.
+		@param json the attempt object
+		@return the attempt, Nil when the object lacks the task or the outcome
+		~#
+		function : FromJson(json : JsonElement) ~ Attempt {
+			if(json = Nil | <>json->Has("task") | <>json->Has("outcome")) {
+				return Nil;
+			};
+
+			category := "general";
+			if(json->Has("category")) {
+				category := json->Get("category")->GetString();
+			};
+
+			index := 0;
+			if(json->Has("attempt")) {
+				index := json->Get("attempt")->GetInt();
+			};
+
+			attempt := Attempt->New(json->Get("task")->GetString(), category, index);
+			attempt->SetOutcome(json->Get("outcome")->GetString());
+			if(json->Has("error_category") & json->Has("error_line")) {
+				attempt->SetCompileError(json->Get("error_category")->GetString(), json->Get("error_line")->GetString());
+			};
+
+			if(json->Has("model_error")) {
+				attempt->SetModelError(json->Get("model_error")->GetString());
+			};
+
+			input_tokens := -1;
+			output_tokens := -1;
+			latency := 0.0;
+			if(json->Has("input_tokens")) {
+				input_tokens := json->Get("input_tokens")->GetInt();
+			};
+
+			if(json->Has("output_tokens")) {
+				output_tokens := json->Get("output_tokens")->GetInt();
+			};
+
+			if(json->Has("latency")) {
+				latency := json->Get("latency")->GetFloat();
+			};
+
+			attempt->SetUsage(input_tokens, output_tokens, latency);
+			if(json->Has("code")) {
+				attempt->SetCode(json->Get("code")->GetString());
+			};
+
+			if(json->Has("output")) {
+				attempt->SetOutput(json->Get("output")->GetString());
+			};
+
+			return attempt;
+		}
+	}
+
+	#~
+	The attempts of one task: how many counted, how many compiled, how many were correct.
+	~#
+	class TaskTally {
+		@id : String;
+		@category : String;
+		@n : Int;
+		@compiled : Int;
+		@correct : Int;
+
+		New(id : String, category : String) {
+			@id := id;
+			@category := category;
+		}
+
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : GetCategory() ~ String {
+			return @category;
+		}
+
+		#~
+		@return attempts that count (the model answered)
+		~#
+		method : public : GetN() ~ Int {
+			return @n;
+		}
+
+		method : public : GetCompiled() ~ Int {
+			return @compiled;
+		}
+
+		method : public : GetCorrect() ~ Int {
+			return @correct;
+		}
+
+		method : public : Count(attempt : Attempt) ~ Nil {
+			if(attempt->IsModelError()) {
+				return;
+			};
+
+			@n += 1;
+			if(attempt->IsCompiled()) {
+				@compiled += 1;
+			};
+
+			if(attempt->IsCorrect()) {
+				@correct += 1;
+			};
+		}
+	}
+
+	#~
+	Every attempt of one model, and the numbers they make: compile rate, pass at k, the most common error categories, tokens and latency. Attempts whose model call failed are counted apart and left out of every rate.
+	~#
+	class ModelResults {
+		@model : String;
+		@per_task : Int;
+		@attempts : Vector<Attempt>;
+
+		New(model : String, per_task : Int) {
+			@model := model;
+			@per_task := per_task;
+			@attempts := Vector->New()<Attempt>;
+		}
+
+		#~
+		@return the model's name
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		@return how many attempts each task was given
+		~#
+		method : public : GetAttemptsPerTask() ~ Int {
+			return @per_task;
+		}
+
+		method : public : Add(attempt : Attempt) ~ Nil {
+			@attempts->AddBack(attempt);
+		}
+
+		#~
+		@return every attempt, in the order they ran
+		~#
+		method : public : GetAttempts() ~ Vector<Attempt> {
+			return @attempts;
+		}
+
+		#~
+		@return attempts whose model call worked
+		~#
+		method : public : GetCounted() ~ Int {
+			counted := 0;
+			each(i : @attempts) {
+				if(<>@attempts->Get(i)->IsModelError()) {
+					counted += 1;
+				};
+			};
+
+			return counted;
+		}
+
+		#~
+		@return attempts whose model call failed
+		~#
+		method : public : GetModelErrors() ~ Int {
+			return @attempts->Size() - GetCounted();
+		}
+
+		#~
+		The attempts grouped by task, in the order the tasks first appear.
+		@return one tally per task
+		~#
+		method : public : GetTaskTallies() ~ Vector<TaskTally> {
+			tallies := Vector->New()<TaskTally>;
+			index := Map->New()<String, IntRef>;
+			each(i : @attempts) {
+				attempt := @attempts->Get(i);
+				id := attempt->GetTaskId();
+				if(<>index->Has(id)) {
+					index->Insert(id, IntRef->New(tallies->Size()));
+					tallies->AddBack(TaskTally->New(id, attempt->GetTaskCategory()));
+				};
+
+				tallies->Get(index->Find(id)->Get())->Count(attempt);
+			};
+
+			return tallies;
+		}
+
+		#~
+		@return the share of counted attempts the compiler accepted, -1.0 when none counted
+		~#
+		method : public : GetCompileRate() ~ Float {
+			counted := 0;
+			compiled := 0;
+			each(i : @attempts) {
+				attempt := @attempts->Get(i);
+				if(<>attempt->IsModelError()) {
+					counted += 1;
+					if(attempt->IsCompiled()) {
+						compiled += 1;
+					};
+				};
+			};
+
+			if(counted = 0) {
+				return -1.0;
+			};
+
+			return compiled->As(Float) / counted->As(Float);
+		}
+
+		#~
+		pass at k: the mean over tasks of the unbiased estimator. A task with fewer than k counted attempts is left out.
+		@param k the k
+		@return the mean, -1.0 when no task has k attempts
+		~#
+		method : public : GetPassAtK(k : Int) ~ Float {
+			tallies := GetTaskTallies();
+			sum := 0.0;
+			used := 0;
+			each(i : tallies) {
+				tally := tallies->Get(i);
+				if(tally->GetN() >= k) {
+					sum += PassAtK->Estimate(tally->GetN(), tally->GetCorrect(), k);
+					used += 1;
+				};
+			};
+
+			if(used = 0) {
+				return -1.0;
+			};
+
+			return sum / used->As(Float);
+		}
+
+		#~
+		The compile errors by category.
+		@return a row per category with its count and an example message, most common first
+		~#
+		method : public : GetErrorCategories() ~ Vector<EvalTally> {
+			rows := Vector->New()<EvalTally>;
+			index := Map->New()<String, IntRef>;
+			each(i : @attempts) {
+				attempt := @attempts->Get(i);
+				if(attempt->GetOutcome()->Equals("compile_error")) {
+					tag := attempt->GetErrorCategory();
+					if(<>index->Has(tag)) {
+						index->Insert(tag, IntRef->New(rows->Size()));
+						rows->AddBack(EvalTally->New(tag, 0, -1.0, attempt->GetErrorLine()));
+					};
+
+					rows->Get(index->Find(tag)->Get())->Add();
+				};
+			};
+
+			rows->Sort(\(EvalTally, EvalTally) ~ Int : (a, b) => EvalTally->Rank(a, b));
+			return rows;
+		}
+
+		#~
+		How many counted attempts ended each way.
+		@return a row per outcome that occurred, most common first
+		~#
+		method : public : GetOutcomes() ~ Vector<EvalTally> {
+			rows := Vector->New()<EvalTally>;
+			index := Map->New()<String, IntRef>;
+			each(i : @attempts) {
+				attempt := @attempts->Get(i);
+				tag := attempt->GetOutcome();
+				if(<>index->Has(tag)) {
+					index->Insert(tag, IntRef->New(rows->Size()));
+					rows->AddBack(EvalTally->New(tag, 0, -1.0, Nil));
+				};
+
+				rows->Get(index->Find(tag)->Get())->Add();
+			};
+
+			rows->Sort(\(EvalTally, EvalTally) ~ Int : (a, b) => EvalTally->Rank(a, b));
+			return rows;
+		}
+
+		#~
+		pass at 1 by task category: the mean over the category's tasks of the share of attempts that were correct.
+		@return a row per category (count: tasks, value: pass at 1), in order of first appearance
+		~#
+		method : public : GetCategoryRates() ~ Vector<EvalTally> {
+			tallies := GetTaskTallies();
+			rows := Vector->New()<EvalTally>;
+			sums := Vector->New()<FloatRef>;
+			index := Map->New()<String, IntRef>;
+			each(i : tallies) {
+				tally := tallies->Get(i);
+				if(tally->GetN() = 0) {
+					continue;
+				};
+
+				tag := tally->GetCategory();
+				if(<>index->Has(tag)) {
+					index->Insert(tag, IntRef->New(rows->Size()));
+					rows->AddBack(EvalTally->New(tag, 0, 0.0, Nil));
+					sums->AddBack(FloatRef->New(0.0));
+				};
+
+				at := index->Find(tag)->Get();
+				rows->Get(at)->Add();
+				sums->Get(at)->Set(sums->Get(at)->Get() + tally->GetCorrect()->As(Float) / tally->GetN()->As(Float));
+			};
+
+			result := Vector->New()<EvalTally>;
+			each(i : rows) {
+				row := rows->Get(i);
+				result->AddBack(EvalTally->New(row->GetLabel(), row->GetCount(), sums->Get(i)->Get() / row->GetCount()->As(Float), Nil));
+			};
+
+			return result;
+		}
+
+		#~
+		@return mean seconds a model call took over the counted attempts, -1.0 when none counted
+		~#
+		method : public : GetMeanLatency() ~ Float {
+			total := 0.0;
+			counted := 0;
+			each(i : @attempts) {
+				attempt := @attempts->Get(i);
+				if(<>attempt->IsModelError()) {
+					total += attempt->GetLatency();
+					counted += 1;
+				};
+			};
+
+			if(counted = 0) {
+				return -1.0;
+			};
+
+			return total / counted->As(Float);
+		}
+
+		#~
+		@return the prompt tokens of all attempts that report them, -1 when none does
+		~#
+		method : public : GetInputTokens() ~ Int {
+			return Tokens(true);
+		}
+
+		#~
+		@return the answer tokens of all attempts that report them, -1 when none does
+		~#
+		method : public : GetOutputTokens() ~ Int {
+			return Tokens(false);
+		}
+
+		method : Tokens(input : Bool) ~ Int {
+			total := 0;
+			known := false;
+			each(i : @attempts) {
+				attempt := @attempts->Get(i);
+				value := input ? attempt->GetInputTokens() : attempt->GetOutputTokens();
+				if(value >= 0) {
+					total += value;
+					known := true;
+				};
+			};
+
+			return known ? total : -1;
+		}
+
+		#~
+		The results as JSON, the format of the results file.
+		@return the JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("schema", "llm_eval/1");
+			json->Insert("model", @model);
+			json->Insert("attempts_per_task", @per_task);
+
+			list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : @attempts) {
+				list->Add(@attempts->Get(i)->ToJson());
+			};
+			json->Insert("attempts", list);
+			return json;
+		}
+
+		#~
+		Reads results written by ToJson.
+		@param json the JSON object
+		@return the results, Nil when the object is not a results file
+		~#
+		function : FromJson(json : JsonElement) ~ ModelResults {
+			if(json = Nil | <>json->Has("model") | <>json->Has("attempts")) {
+				return Nil;
+			};
+
+			per_task := 1;
+			if(json->Has("attempts_per_task")) {
+				per_task := json->Get("attempts_per_task")->GetInt();
+			};
+
+			results := ModelResults->New(json->Get("model")->GetString(), per_task);
+			list := json->Get("attempts");
+			each(i : list->Size()) {
+				attempt := Attempt->FromJson(list->Get(i));
+				if(attempt = Nil) {
+					return Nil;
+				};
+
+				results->Add(attempt);
+			};
+
+			return results;
+		}
+
+		#~
+		Reads a results file.
+		@param path the file
+		@return the results, Nil when the file is missing or is not a results file
+		~#
+		function : Load(path : String) ~ ModelResults {
+			if(<>File->Exists(path)) {
+				return Nil;
+			};
+
+			parser := JsonParser->New(FileReader->ReadFile(path));
+			if(<>parser->Parse()) {
+				return Nil;
+			};
+
+			return FromJson(parser->GetRoot());
+		}
+
+		#~
+		Writes the results file.
+		@param path the file
+		@return true when it was written
+		~#
+		method : public : Save(path : String) ~ Bool {
+			return FileWriter->WriteFile(path, ToJson()->ToFormattedString());
+		}
+	}
+
+	#~
+	Runs a suite against a model: for every task, N attempts of ask, extract, compile, run, check. Nothing it runs touches the network unless the model does.
+	~#
+	class EvalRunner {
+		@model : ModelAdapter;
+		@tasks : Vector<EvalTask>;
+		@per_task : Int;
+		@sandbox : Sandbox;
+		@system : String;
+		@max_tokens : Int;
+		@compile_seconds : Float;
+		@progress : Bool;
+		@keep_code : Bool;
+
+		#~
+		Constructor.
+		@param model the model under test
+		@param tasks the tasks to ask
+		@param per_task attempts per task, at least 1
+		@param sandbox where programs are compiled and run
+		~#
+		New(model : ModelAdapter, tasks : Vector<EvalTask>, per_task : Int, sandbox : Sandbox) {
+			@model := model;
+			@tasks := tasks;
+			@per_task := per_task < 1 ? 1 : per_task;
+			@sandbox := sandbox;
+			@system := EvalRunner->DefaultSystemPrompt();
+			@max_tokens := 4096;
+			@compile_seconds := 120.0;
+			@keep_code := true;
+		}
+
+		#~
+		@return the system prompt used unless SetSystemPrompt replaces it
+		~#
+		function : DefaultSystemPrompt() ~ String {
+			return "You write programs in the Objeck programming language. Reply with one complete, compilable Objeck program in a single ```objeck code block and nothing else.";
+		}
+
+		#~
+		Replaces the system prompt, for example to add a language primer.
+		@param system the prompt
+		~#
+		method : public : SetSystemPrompt(system : String) ~ Nil {
+			@system := system;
+		}
+
+		#~
+		Sets the most tokens an answer may use, 4096 by default.
+		@param max_tokens the limit
+		~#
+		method : public : SetMaxTokens(max_tokens : Int) ~ Nil {
+			@max_tokens := max_tokens;
+		}
+
+		#~
+		Sets how long a compile may take, 120 seconds by default.
+		@param seconds the limit
+		~#
+		method : public : SetCompileTimeout(seconds : Float) ~ Nil {
+			@compile_seconds := seconds;
+		}
+
+		#~
+		Prints a line per attempt as the run goes.
+		@param progress true to print
+		~#
+		method : public : SetProgress(progress : Bool) ~ Nil {
+			@progress := progress;
+		}
+
+		#~
+		Whether the results keep each program and its output (true by default); false keeps the results file small.
+		@param keep true to keep
+		~#
+		method : public : SetKeepCode(keep : Bool) ~ Nil {
+			@keep_code := keep;
+		}
+
+		#~
+		Runs every task, per_task times each.
+		@return the results
+		~#
+		method : public : Run() ~ ModelResults {
+			results := ModelResults->New(@model->GetName(), @per_task);
+			total := @tasks->Size() * @per_task;
+			done := 0;
+			each(i : @tasks) {
+				each(j : @per_task) {
+					attempt := RunAttempt(@tasks->Get(i), j);
+					results->Add(attempt);
+					done += 1;
+					if(@progress) {
+						"[{$done}/{$total}] {$attempt->GetTaskId()} #{$j + 1}: {$attempt->GetOutcome()}"->PrintLine();
+					};
+				};
+			};
+
+			return results;
+		}
+
+		#~
+		Runs one attempt of one task.
+		@param task the task
+		@param index the attempt number, from 0
+		@return what happened
+		~#
+		method : public : RunAttempt(task : EvalTask, index : Int) ~ Attempt {
+			attempt := Attempt->New(task->GetId(), task->GetCategory(), index);
+			request := ModelRequest->New(@system, task->BuildPrompt(), task->GetId(), index, @max_tokens);
+
+			timer := System.Time.Timer->New();
+			timer->Start();
+			reply := @model->Complete(request);
+			timer->End();
+
+			if(reply = Nil) {
+				attempt->SetModelError("the adapter returned no reply");
+				return attempt;
+			};
+
+			attempt->SetUsage(reply->GetInputTokens(), reply->GetOutputTokens(), timer->GetElapsedTime());
+			if(reply->GetError() <> Nil) {
+				attempt->SetModelError(reply->GetError());
+				return attempt;
+			};
+
+			code := CodeExtractor->Best(reply->GetText());
+			if(code = Nil) {
+				attempt->SetCompileError("no_code_block", "the answer has no code block");
+				attempt->SetOutcome("no_code");
+				return attempt;
+			};
+
+			if(@keep_code) {
+				attempt->SetCode(code);
+			};
+
+			name := "{$EvalText->SafeName(task->GetId())}_{$index}";
+			source := @sandbox->Path("{$name}.obs");
+			target := @sandbox->Path("{$name}.obe");
+			FileWriter->WriteFile(source, code);
+
+			compiled := @sandbox->Compile(source, task->GetLibs(), target, @compile_seconds);
+			@sandbox->Discard(source);
+			if(compiled->TimedOut() | compiled->GetExitCode() <> 0 | <>File->Exists(target)) {
+				message := ErrorCategory->FirstError(compiled->GetOutput());
+				if(compiled->TimedOut()) {
+					message := "the compiler ran out of time";
+				};
+
+				attempt->SetCompileError(ErrorCategory->Categorize(message), ErrorCategory->Normalize(message));
+				@sandbox->Discard(target);
+				return attempt;
+			};
+
+			input : String;
+			if(task->GetInput() <> Nil) {
+				input := @sandbox->Path("{$name}.in");
+				FileWriter->WriteFile(input, task->GetInput());
+			};
+
+			ran := @sandbox->Run(target, input, task->GetTimeout());
+			@sandbox->Discard(target);
+			if(input <> Nil) {
+				@sandbox->Discard(input);
+			};
+
+			if(@keep_code) {
+				attempt->SetOutput(EvalText->Clip(ran->GetOutput(), 4000));
+			};
+
+			if(ran->TimedOut()) {
+				attempt->SetOutcome("timeout");
+			}
+			else if(ran->GetExitCode() <> 0) {
+				attempt->SetOutcome("runtime_error");
+			}
+			else if(OutputChecker->Matches(task->GetChecker(), task->GetExpected(), ran->GetOutput())) {
+				attempt->SetOutcome("pass");
+			}
+			else {
+				attempt->SetOutcome("wrong_output");
+			};
+
+			return attempt;
+		}
+	}
+
+	#~
+	A paired comparison of two models on the tasks both were asked. Attempt number j of a task for model A is paired with attempt j for model B; each pair is one instance, scored 1 when the attempt is correct, and Metrics->PairedBootstrapDifference resamples the instances and reports the interval of (pass rate of B) - (pass rate of A). The instances are attempts, not tasks, so with several attempts per task the interval is a little narrower than a resampling of whole tasks would give.
+	~#
+	class ModelComparison {
+		@name_a : String;
+		@name_b : String;
+		@rate_a : Float;
+		@rate_b : Float;
+		@interval : ConfInterval;
+		@pairs : Int;
+		@tasks : Int;
+
+		New(name_a : String, name_b : String, rate_a : Float, rate_b : Float, interval : ConfInterval, pairs : Int, tasks : Int) {
+			@name_a := name_a;
+			@name_b := name_b;
+			@rate_a := rate_a;
+			@rate_b := rate_b;
+			@interval := interval;
+			@pairs := pairs;
+			@tasks := tasks;
+		}
+
+		#~
+		Compares two models.
+		@param a model A's results
+		@param b model B's results
+		@param reps bootstrap resamples, 2000 is plenty
+		@param seed seeds the resampling, so the interval repeats
+		@return the comparison; its interval is Nil when the models share no counted attempt
+		~#
+		function : Of(a : ModelResults, b : ModelResults, reps : Int, seed : Int) ~ ModelComparison {
+			by_a := Group(a);
+			by_b := Group(b);
+
+			scores_a := Vector->New()<FloatRef>;
+			scores_b := Vector->New()<FloatRef>;
+			tasks := 0;
+			keys := by_a->GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(by_b->Has(key)) {
+					list_a := by_a->Find(key);
+					list_b := by_b->Find(key);
+					shared := list_a->Size() < list_b->Size() ? list_a->Size() : list_b->Size();
+					if(shared > 0) {
+						tasks += 1;
+					};
+
+					each(j : shared) {
+						scores_a->AddBack(FloatRef->New(list_a->Get(j)->Get()));
+						scores_b->AddBack(FloatRef->New(list_b->Get(j)->Get()));
+					};
+				};
+			};
+
+			n := scores_a->Size();
+			if(n = 0) {
+				return ModelComparison->New(a->GetModel(), b->GetModel(), -1.0, -1.0, Nil, 0, 0);
+			};
+
+			sa := Float->New[n];
+			sb := Float->New[n];
+			actuals := Bool->New[n];
+			sum_a := 0.0;
+			sum_b := 0.0;
+			each(i : n) {
+				sa[i] := scores_a->Get(i)->Get();
+				sb[i] := scores_b->Get(i)->Get();
+				actuals[i] := true;
+				sum_a += sa[i];
+				sum_b += sb[i];
+			};
+
+			interval := Metrics->PairedBootstrapDifference(sa, 0.5, sb, 0.5, actuals, false, reps, seed);
+			return ModelComparison->New(a->GetModel(), b->GetModel(), sum_a / n->As(Float), sum_b / n->As(Float), interval, n, tasks);
+		}
+
+		# the counted attempts of each task as 1.0 (correct) or 0.0, in attempt order
+		function : Group(results : ModelResults) ~ Map<String, Vector<FloatRef>> {
+			groups := Map->New()<String, Vector<FloatRef>>;
+			attempts := results->GetAttempts();
+			each(i : attempts) {
+				attempt := attempts->Get(i);
+				if(attempt->IsModelError()) {
+					continue;
+				};
+
+				id := attempt->GetTaskId();
+				if(<>groups->Has(id)) {
+					groups->Insert(id, Vector->New()<FloatRef>);
+				};
+
+				groups->Find(id)->AddBack(FloatRef->New(attempt->IsCorrect() ? 1.0 : 0.0));
+			};
+
+			return groups;
+		}
+
+		method : public : GetNameA() ~ String {
+			return @name_a;
+		}
+
+		method : public : GetNameB() ~ String {
+			return @name_b;
+		}
+
+		#~
+		@return A's pass rate over the paired attempts, -1.0 when there are none
+		~#
+		method : public : GetRateA() ~ Float {
+			return @rate_a;
+		}
+
+		#~
+		@return B's pass rate over the paired attempts, -1.0 when there are none
+		~#
+		method : public : GetRateB() ~ Float {
+			return @rate_b;
+		}
+
+		#~
+		@return the interval of B minus A, Nil when it could not be computed
+		~#
+		method : public : GetInterval() ~ ConfInterval {
+			return @interval;
+		}
+
+		#~
+		@return how many attempt pairs there were
+		~#
+		method : public : GetPairs() ~ Int {
+			return @pairs;
+		}
+
+		#~
+		@return how many tasks both models were asked
+		~#
+		method : public : GetTasks() ~ Int {
+			return @tasks;
+		}
+
+		#~
+		A plain verdict: which model is better, or that the data cannot tell them apart.
+		@return one sentence
+		~#
+		method : public : GetVerdict() ~ String {
+			if(@interval = Nil) {
+				return "Not enough shared attempts to compare the two models.";
+			};
+
+			level := EvalText->Fixed(@interval->GetLevel() * 100.0, 0);
+			diff := EvalText->Fixed(@interval->GetPoint() * 100.0, 1);
+			low := EvalText->Fixed(@interval->GetLow() * 100.0, 1);
+			high := EvalText->Fixed(@interval->GetHigh() * 100.0, 1);
+			if(@interval->GetLow() > 0.0) {
+				return "{$@name_b} is better than {$@name_a}: +{$diff} points of pass rate, {$level}% interval [{$low}, {$high}] excludes 0.";
+			};
+
+			if(@interval->GetHigh() < 0.0) {
+				return "{$@name_a} is better than {$@name_b}: {$diff} points of pass rate for {$@name_b}, {$level}% interval [{$low}, {$high}] excludes 0.";
+			};
+
+			return "No significant difference: {$@name_b} minus {$@name_a} is {$diff} points of pass rate, {$level}% interval [{$low}, {$high}] includes 0.";
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("a", @name_a);
+			json->Insert("b", @name_b);
+			json->Insert("pairs", @pairs);
+			json->Insert("tasks", @tasks);
+			json->Insert("pass_rate_a", @rate_a);
+			json->Insert("pass_rate_b", @rate_b);
+			if(@interval <> Nil) {
+				json->Insert("difference", @interval->GetPoint());
+				json->Insert("low", @interval->GetLow());
+				json->Insert("high", @interval->GetHigh());
+				json->Insert("level", @interval->GetLevel());
+			};
+
+			json->Insert("verdict", GetVerdict());
+			return json;
+		}
+	}
+
+	#~
+	The Markdown report and the combined JSON of a run.
+	~#
+	class EvalReport {
+		#~
+		The report: a summary table, pass rate by task category, the most common compile errors, a per-task table and, for two models, the paired comparison.
+		@param results one entry per model
+		@param ks the k values to report pass at k for, for example [1, 5]
+		@param comparison the comparison of two models, or Nil
+		@param title the report's title
+		@return the Markdown text
+		~#
+		function : Markdown(results : Vector<ModelResults>, ks : Int[], comparison : ModelComparison, title : String) ~ String {
+			md := "# {$title}\n\n";
+
+			md->Append("## Summary\n\n| Model | Tasks | Attempts per task | Compile rate |");
+			each(i : ks) {
+				md->Append(" pass@{$ks[i]} |");
+			};
+			md->Append(" API errors | Mean latency (s) | Tokens in / out |\n|---|---|---|---|");
+			each(i : ks) {
+				md->Append("---|");
+			};
+			md->Append("---|---|---|\n");
+
+			each(i : results) {
+				r := results->Get(i);
+				md->Append("| {$EvalText->Cell(r->GetModel())} | {$r->GetTaskTallies()->Size()} | {$r->GetAttemptsPerTask()} | {$EvalText->Percent(r->GetCompileRate())} |");
+				each(j : ks) {
+					md->Append(" {$EvalText->Percent(r->GetPassAtK(ks[j]))} |");
+				};
+
+				latency := r->GetMeanLatency() < 0.0 ? "n/a" : EvalText->Fixed(r->GetMeanLatency(), 2);
+				tokens := "n/a";
+				if(r->GetInputTokens() >= 0) {
+					tokens := "{$r->GetInputTokens()} / {$r->GetOutputTokens()}";
+				};
+				md->Append(" {$r->GetModelErrors()} | {$latency} | {$tokens} |\n");
+			};
+
+			md->Append("\nCompile rate is the share of answers the compiler accepted; pass@k is the unbiased estimator of Chen et al. averaged over tasks (n attempts per task, c correct). Attempts whose model call failed are left out of every rate.\n");
+
+			md->Append("\n## Pass@1 by task category\n\n");
+			AppendCategoryTable(md, results);
+
+			md->Append("\n## Compile errors\n\n");
+			AppendErrors(md, results);
+
+			md->Append("\n## Outcomes\n\n");
+			AppendOutcomes(md, results);
+
+			md->Append("\n## Per task\n\nCorrect attempts out of counted attempts.\n\n");
+			AppendTasks(md, results);
+
+			if(comparison <> Nil) {
+				md->Append("\n## Comparison\n\n");
+				md->Append(comparison->GetVerdict());
+				md->Append("\n\n");
+				md->Append("| | Pass rate |\n|---|---|\n");
+				md->Append("| {$EvalText->Cell(comparison->GetNameA())} (A) | {$EvalText->Percent(comparison->GetRateA())} |\n");
+				md->Append("| {$EvalText->Cell(comparison->GetNameB())} (B) | {$EvalText->Percent(comparison->GetRateB())} |\n");
+				md->Append("\nPaired bootstrap over {$comparison->GetPairs()} attempt pairs on {$comparison->GetTasks()} tasks (System.ML Metrics->PairedBootstrapDifference); the statistic is B minus A.\n");
+			};
+
+			return md;
+		}
+
+		function : AppendCategoryTable(md : String, results : Vector<ModelResults>) ~ Nil {
+			labels := Vector->New()<String>;
+			seen := Set->New()<String>;
+			each(i : results) {
+				rows := results->Get(i)->GetCategoryRates();
+				each(j : rows) {
+					tag := rows->Get(j)->GetLabel();
+					if(<>seen->Has(tag)) {
+						seen->Insert(tag);
+						labels->AddBack(tag);
+					};
+				};
+			};
+
+			md->Append("| Category |");
+			each(i : results) {
+				md->Append(" {$EvalText->Cell(results->Get(i)->GetModel())} |");
+			};
+			md->Append("\n|---|");
+			each(i : results) {
+				md->Append("---|");
+			};
+			md->Append("\n");
+
+			each(i : labels) {
+				md->Append("| {$labels->Get(i)} |");
+				each(j : results) {
+					value := -1.0;
+					rows := results->Get(j)->GetCategoryRates();
+					each(m : rows) {
+						if(rows->Get(m)->GetLabel()->Equals(labels->Get(i))) {
+							value := rows->Get(m)->GetValue();
+						};
+					};
+
+					md->Append(" {$EvalText->Percent(value)} |");
+				};
+				md->Append("\n");
+			};
+		}
+
+		function : AppendErrors(md : String, results : Vector<ModelResults>) ~ Nil {
+			any := false;
+			each(i : results) {
+				rows := results->Get(i)->GetErrorCategories();
+				if(rows->Size() = 0) {
+					continue;
+				};
+
+				any := true;
+				md->Append("**{$EvalText->Cell(results->Get(i)->GetModel())}**\n\n| Category | Count | Example |\n|---|---|---|\n");
+				each(j : rows) {
+					row := rows->Get(j);
+					md->Append("| {$row->GetLabel()} | {$row->GetCount()} | {$EvalText->Cell(EvalText->Clip(row->GetExample(), 120))} |\n");
+				};
+				md->Append("\n");
+			};
+
+			if(<>any) {
+				md->Append("No compile errors.\n");
+			};
+		}
+
+		function : AppendOutcomes(md : String, results : Vector<ModelResults>) ~ Nil {
+			md->Append("| Model | Outcomes |\n|---|---|\n");
+			each(i : results) {
+				rows := results->Get(i)->GetOutcomes();
+				line := "";
+				each(j : rows) {
+					if(j > 0) {
+						line->Append(", ");
+					};
+					line->Append("{$rows->Get(j)->GetLabel()} {$rows->Get(j)->GetCount()}");
+				};
+				md->Append("| {$EvalText->Cell(results->Get(i)->GetModel())} | {$line} |\n");
+			};
+		}
+
+		function : AppendTasks(md : String, results : Vector<ModelResults>) ~ Nil {
+			ids := Vector->New()<String>;
+			seen := Set->New()<String>;
+			each(i : results) {
+				tallies := results->Get(i)->GetTaskTallies();
+				each(j : tallies) {
+					id := tallies->Get(j)->GetId();
+					if(<>seen->Has(id)) {
+						seen->Insert(id);
+						ids->AddBack(id);
+					};
+				};
+			};
+
+			md->Append("| Task |");
+			each(i : results) {
+				md->Append(" {$EvalText->Cell(results->Get(i)->GetModel())} |");
+			};
+			md->Append("\n|---|");
+			each(i : results) {
+				md->Append("---|");
+			};
+			md->Append("\n");
+
+			each(i : ids) {
+				md->Append("| {$ids->Get(i)} |");
+				each(j : results) {
+					cell := "-";
+					tallies := results->Get(j)->GetTaskTallies();
+					each(m : tallies) {
+						tally := tallies->Get(m);
+						if(tally->GetId()->Equals(ids->Get(i))) {
+							cell := "{$tally->GetCorrect()}/{$tally->GetN()}";
+						};
+					};
+
+					md->Append(" {$cell} |");
+				};
+				md->Append("\n");
+			};
+		}
+
+		#~
+		The combined JSON of a run: every model's results and the comparison.
+		@param results one entry per model
+		@param comparison the comparison, or Nil
+		@return the JSON object
+		~#
+		function : Json(results : Vector<ModelResults>, comparison : ModelComparison) ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("schema", "llm_eval_report/1");
+			models := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : results) {
+				r := results->Get(i);
+				model := r->ToJson();
+				model->Insert("compile_rate", r->GetCompileRate());
+				model->Insert("pass_at_1", r->GetPassAtK(1));
+				models->Add(model);
+			};
+			json->Insert("models", models);
+
+			if(comparison <> Nil) {
+				json->Insert("comparison", comparison->ToJson());
+			};
+
+			return json;
+		}
+
+		#~
+		Writes <prefix>.md and <prefix>.json.
+		@param prefix path without extension
+		@param results one entry per model
+		@param ks the k values for pass at k
+		@param comparison the comparison, or Nil
+		@param title the report title
+		@return true when both files were written
+		~#
+		function : Save(prefix : String, results : Vector<ModelResults>, ks : Int[], comparison : ModelComparison, title : String) ~ Bool {
+			markdown := FileWriter->WriteFile("{$prefix}.md", Markdown(results, ks, comparison, title));
+			json := FileWriter->WriteFile("{$prefix}.json", Json(results, comparison)->ToFormattedString());
+			return markdown & json;
+		}
+	}
+}

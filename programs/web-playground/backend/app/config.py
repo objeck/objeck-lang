@@ -73,8 +73,8 @@ class Settings(BaseSettings):
     blocked_libs: set[str] = {
         "net_h2", "net_quic", "net_server", "web_server", "odbc", "query_odbc",
         "query_server", "query_vision", "sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame",
-        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic", "agent",, "llm_util_clients",
-        "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub", "ml_cnn", "ml_clip",
+        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic", "agent", "llm_util_clients",
+        "llm_eval", "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub", "ml_cnn", "ml_clip",
     }
 
     model_config = {"env_prefix": "PLAYGROUND_"}

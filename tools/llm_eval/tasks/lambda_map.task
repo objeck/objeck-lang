@@ -1,0 +1,32 @@
+id: lambda_map
+category: lambdas
+difficulty: 4
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that builds a Collection Vector of IntRef holding 1, 2, 3, 4, 5, uses Vector's Map method with a lambda or function reference to square each element, and prints the squares on one line separated by single spaces.
+--- expected
+1 4 9 16 25
+--- reference
+use Collection;
+
+class LambdaMap {
+	function : Main(args : String[]) ~ Nil {
+		values := Vector->New()<IntRef>;
+		each(v in [1, 2, 3, 4, 5]) {
+			values->AddBack(v);
+		};
+
+		squares := values->Map(\(x) => IntRef->New(x->Get() * x->Get()));
+
+		line := "";
+		each(i : squares) {
+			if(i > 0) {
+				line->Append(" ");
+			};
+			line->Append(squares->Get(i)->Get());
+		};
+		line->PrintLine();
+	}
+}

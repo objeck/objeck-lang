@@ -1827,6 +1827,7 @@ jobs:
           ../../../compiler/lib_src/ml_boost.obs \
           ../../../compiler/lib_src/ml_vector.obs \
           ../../../compiler/lib_src/ml_report.obs \
+          ../../../compiler/lib_src/llm_eval.obs \
           ../../../compiler/lib_src/ml_verify.obs \
           ../../../compiler/lib_src/ml_timeseries.obs \
           ../../../compiler/lib_src/ml_timeseries_models.obs \

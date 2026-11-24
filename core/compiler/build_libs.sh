@@ -47,6 +47,9 @@ $OBC -src lib_src/stats.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/stats
 # ml_report needs ml_lab, stats and plot, so it is built AFTER them (it used to come first, and a version bump failed: the committed stats/plot were still the previous toolchain version)
 # Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
 $OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
+# LLM evaluation harness: tasks, a model interface, answer extraction, compile-and-run under a timeout, pass@k and a paired bootstrap comparison
+# (Metrics->PairedBootstrapDifference from ml). Pure Objeck, no network: the provider adapters live in tools/llm_eval. After ml
+$OBC -src lib_src/llm_eval.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/llm_eval.obl
 # Topic modeling: BSON reader, dictionary, LDA, coherence and an SVG topic report. After json and plot, which it links
 $OBC -src lib_src/nlp_topics_text.obs,lib_src/nlp_topics_lda.obs,lib_src/nlp_topics_metrics.obs,lib_src/nlp_topics_viz.obs -lib gen_collect,json,plot -tar lib -opt s3 -dest ../lib/nlp_topics.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl

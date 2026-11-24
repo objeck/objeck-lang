@@ -1,0 +1,25 @@
+id: index_error
+category: exceptions
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that creates an Int array of size 3, then reads element 5 inside a try block (use a variable for the index) and catches the out-of-range access with an `on` clause for IndexError, printing `out of range`. After the try statement print `after`. Output: `out of range` then `after`.
+--- expected
+out of range
+after
+--- reference
+class IndexCheck {
+	function : Main(args : String[]) ~ Nil {
+		values := Int->New[3];
+		index := 5;
+		try {
+			values[index]->PrintLine();
+		}
+		on(e : IndexError) {
+			"out of range"->PrintLine();
+		};
+		"after"->PrintLine();
+	}
+}
