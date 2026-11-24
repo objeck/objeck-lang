@@ -155,6 +155,89 @@ bundle LSP {
 		}
 
 		#
+		# textDocument/inlineCompletion; the work is in inline_completion.obs. The
+		# provider's request runs on its own thread and this waits for it at most the
+		# configured timeout, stopping early when the client cancels or edits the
+		# document (what arrived meanwhile waits in the inbox). Every failure is an
+		# empty list; only a cancel is answered with an error, as LSP asks.
+		#
+		method : CallbackInlineCompletion(id : Int, params : JsonElement) ~ Nil {
+			items := JsonElement->New(JsonElement->JsonType->ARRAY);
+			uri := FindString(params, "textDocument/uri");
+			line_json := FindJson(params, "position/line");
+			char_json := FindJson(params, "position/character");
+			document := @workspace->GetDocument(uri);
+			job : InlineCompletionJob := Nil;
+			text : String := Nil;
+			if(document <> Nil & line_json <> Nil & char_json <> Nil) {
+				text := document->GetText();
+				job := InlineCompletion->Begin(text, line_json->GetInt(), char_json->GetInt());
+			};
+
+			if(job <> Nil) {
+				abandoned := 0;
+				waited := 0;
+				limit := InlineCompletionSettings->GetTimeoutMs();
+				while(<>job->IsDone() & waited < limit & abandoned = 0) {
+					abandoned := InlineAbandoned(uri);
+					System.Concurrency.Thread->Sleep(10);
+					waited += 10;
+				};
+
+				if(abandoned = 1) {
+					WriteRpcError(id, LspWorker->ErrorCode->REQUEST_CANCELLED->As(Int), "Request cancelled");
+					return;
+				};
+
+				if(abandoned = 0 & job->IsDone()) {
+					index := InlineCompletion->IndexOf(text, line_json->GetInt(), char_json->GetInt());
+					suggestion := InlineCompletion->Shape(job->GetResult(), InlineCompletion->LinePrefix(text, index));
+					if(<>suggestion->IsEmpty()) {
+						item := JsonElement->New(JsonElement->JsonType->OBJECT);
+						item->Insert("insertText", suggestion);
+						range := item->AddChild("range");
+						range->AddChild("start")->Insert("line", line_json->GetInt());
+						range->Get("start")->Insert("character", char_json->GetInt());
+						range->AddChild("end")->Insert("line", line_json->GetInt());
+						range->Get("end")->Insert("character", char_json->GetInt());
+						items->Add(item);
+					};
+				};
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("items", items);
+			WriteRpcResponse(id, result);
+		}
+
+		# 1 when the client has cancelled the request being answered, 2 when it has
+		# edited or closed the document since, else 0; the inbox is only looked at.
+		method : InlineAbandoned(uri : String) ~ Int {
+			found := 0;
+			critical(@inbox_mutex) {
+				each(i : @inbox) {
+					queued := @inbox->Get(i);
+					queued_method := queued->GetMethod();
+					if(found = 0 & queued_method <> Nil & queued->IsNotification()) {
+						if(queued_method->Equals("$/cancelRequest")) {
+							cancel_id := FindJson(queued->GetParams(), "id");
+							if(cancel_id <> Nil & @reply_id <> Nil & cancel_id->ToString()->Equals(@reply_id->ToString())) {
+								found := 1;
+							};
+						}
+						else if(queued_method->Equals("textDocument/didChange") | queued_method->Equals("textDocument/didClose")) {
+							if(uri <> Nil & uri->Equals(FindString(queued->GetParams(), "textDocument/uri"))) {
+								found := 2;
+							};
+						};
+					};
+				};
+			};
+
+			return found;
+		}
+
+		#
 		# Everything that had arrived, in order. Two things are decided from the
 		# whole batch first: which requests the client has since cancelled, and
 		# which documents change later in it -- a request about a document that
@@ -658,6 +741,7 @@ bundle LSP {
 					return "{$uri},range/start/line:n,range/start/character:n,context/diagnostics:a";
 				}
 				label "textDocument/inlayHint" { return "{$uri},range/start/line:n,range/end/line:n"; }
+				label "textDocument/inlineCompletion" { return position; }
 				label "textDocument/inlineValue" {
 					return "{$uri},range/start/line:n,range/start/character:n,range/end/line:n,range/end/character:n";
 				}
@@ -895,6 +979,10 @@ bundle LSP {
 						NotifyDidChangeWorkspace(params);
 					}
 
+					label "workspace/didChangeConfiguration" {
+						InlineCompletionSettings->ConfigureFromSettings(FindJson(params, "settings"));
+					}
+
 					label "exit" {
 						Exit();
 					}
@@ -1032,6 +1120,10 @@ bundle LSP {
 
 					label "textDocument/inlayHint" {
 						CallbackInlayHint(id, params);
+					}
+
+					label "textDocument/inlineCompletion" {
+						CallbackInlineCompletion(id, params);
 					}
 
 					label "textDocument/inlineValue" {

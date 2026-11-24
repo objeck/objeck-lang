@@ -73,6 +73,7 @@
       <li><a href="#features">Features</a></li>
       <li><a href="#debugging-features">Debugging Features</a></li>
       <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#inline-completion-ghost-text-off-by-default">Inline completion (ghost text), off by default</a></li>
       <li><a href="#development">Development</a></li>
       <li><a href="#resources">Resources</a></li>
      </ul>
@@ -250,6 +251,7 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Feature">Folding Range</td><td data-label="Method"><code>textDocument/foldingRange</code></td></tr>
       <tr><td data-label="Feature">Selection Range</td><td data-label="Method"><code>textDocument/selectionRange</code></td></tr>
       <tr><td data-label="Feature">Inlay Hint</td><td data-label="Method"><code>textDocument/inlayHint</code></td></tr>
+      <tr><td data-label="Feature">Inline Completion</td><td data-label="Method"><code>textDocument/inlineCompletion</code> (ghost text from a model; off by default, see below)</td></tr>
       <tr><td data-label="Feature">Inline Value</td><td data-label="Method"><code>textDocument/inlineValue</code> (locals and parameters as variable lookups, instance variables as expressions, while debugging)</td></tr>
       <tr><td data-label="Feature">Linked Editing Range</td><td data-label="Method"><code>textDocument/linkedEditingRange</code> (every occurrence of a local or parameter in its method)</td></tr>
       <tr><td data-label="Feature">On-Type Formatting</td><td data-label="Method"><code>textDocument/onTypeFormatting</code> (<code>}</code>, <code>;</code> and new line re-indent the line to the formatter's depth)</td></tr>
@@ -279,18 +281,46 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Feature">Watch File Changes</td><td data-label="Method"><code>workspace/didChangeWatchedFiles</code></td></tr>
       <tr><td data-label="Feature">Workspace Folder Changes</td><td data-label="Method"><code>workspace/didChangeWorkspaceFolders</code></td></tr>
       <tr><td data-label="Feature">Find Symbol</td><td data-label="Method"><code>workspace/symbol</code></td></tr>
+      <tr><td data-label="Feature">Configuration</td><td data-label="Method"><code>workspace/didChangeConfiguration</code> (the <code>objeck.inlineCompletion</code> section)</td></tr>
       <tr><td data-label="Feature">Rename Files</td><td data-label="Method"><code>workspace/willRenameFiles</code> (<code>build.json</code> follows a source file, or a directory of them, that is renamed or moved)</td></tr>
      </tbody>
     </table>
     <div class="raw"></details></div>
+    <h3 id="inline-completion-ghost-text-off-by-default">Inline completion (ghost text), off by default</h3>
+    <p><code>textDocument/inlineCompletion</code> (LSP 3.18) suggests the next statement as ghost text from a language model. <strong>It is off by default, and with the provider <code>none</code> nothing leaves your machine.</strong> Code is sent to a model only after you choose a provider:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Provider</th><th>Where the code goes</th><th>Key</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Provider"><code>none</code> (default)</td><td data-label="Where the code goes">nowhere</td><td data-label="Key">none</td></tr>
+      <tr><td data-label="Provider"><code>ollama</code></td><td data-label="Where the code goes">a local Ollama server, <code>http://localhost:11434</code> unless <code>ollamaHost</code> says otherwise (a host that is not this machine receives the code)</td><td data-label="Key">none</td></tr>
+      <tr><td data-label="Provider"><code>anthropic</code></td><td data-label="Where the code goes">Anthropic's API</td><td data-label="Key"><code>ANTHROPIC_API_KEY</code> or <code>anthropic_api_key.dat</code>, as the <code>API.Anthropic</code> library reads it</td></tr>
+      <tr><td data-label="Provider"><code>openai</code></td><td data-label="Where the code goes">OpenAI's API</td><td data-label="Key"><code>openai_api_key.dat</code>, as <code>API.OpenAI</code> reads it</td></tr>
+      <tr><td data-label="Provider"><code>gemini</code></td><td data-label="Where the code goes">Google's API</td><td data-label="Key">the key file <code>API.Google.Gemini</code> reads</td></tr>
+     </tbody>
+    </table>
+    <p>The server asks a provider with the text before the cursor (at most 4,000 characters) and a short suffix (500), takes the first statement or block of the answer, and replies with one item at the cursor. It uses the Objeck AI libraries' own HTTP clients, so a cloud provider is subject to their rules: the key is refused while <code>OBJECK_TLS_INSECURE_SKIP_VERIFY</code> is set. A provider that does not answer within <code>timeoutMs</code> (3 seconds) is ignored for that request, <code>$/cancelRequest</code> ends the wait, and any failure is an empty list, never an error.</p>
+    <p>Settings, under <code>objeck.inlineCompletion</code> in VS Code (any client can send them as <code>initializationOptions.inlineCompletion</code> or in <code>workspace/didChangeConfiguration</code>):</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Setting</th><th>Default</th><th></th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Setting"><code>provider</code></td><td data-label="Default"><code>none</code></td><td data-label=""><code>none</code>, <code>ollama</code>, <code>anthropic</code>, <code>openai</code> or <code>gemini</code></td></tr>
+      <tr><td data-label="Setting"><code>model</code></td><td data-label="Default">the provider's</td><td data-label="">ollama <code>qwen2.5-coder:1.5b</code>, anthropic <code>claude-haiku-4-5</code>, openai <code>gpt-4o-mini</code>, gemini <code>gemini-2.5-flash</code></td></tr>
+      <tr><td data-label="Setting"><code>ollamaHost</code></td><td data-label="Default"><code>http://localhost:11434</code></td><td data-label="">the Ollama server</td></tr>
+      <tr><td data-label="Setting"><code>timeoutMs</code></td><td data-label="Default"><code>3000</code></td><td data-label="">200 to 30000</td></tr>
+     </tbody>
+    </table>
     <h3 id="development">Development</h3>
     <p><strong>Building the VS Code extension:</strong></p>
 <pre class="cmd">npm install -g yo generator-code typescript @vscode/vsce
 cd clients/vscode &amp;&amp; npm run compile</pre>
     <p><strong>Building the LSP server</strong> (requires <a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck</a>):</p>
 <pre class="cmd">cd server
-obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs \
-    -lib diags,net,json,regex,cipher -dest objeck_lsp.obe</pre>
+obc -src frameworks.obs,proxy.obs,server.obs,inline_completion.obs,format_code/scanner.obs,format_code/formatter.obs \
+    -lib diags,net,json,regex,cipher,net_server,misc,ollama,anthropic,openai,gemini -dest objeck_lsp.obe</pre>
     <p><strong>Testing the server:</strong> <code>python tests/run_lsp_tests.py &lt;objeck&gt;/bin [server_dir]</code>. The server keeps each parsed and analyzed program until a document changes; set <code>OBJECK_LSP_NO_CACHE=1</code> to parse afresh for every request instead, and compare the two when a result looks wrong.</p>
     <h3 id="resources">Resources</h3>
     <ul>

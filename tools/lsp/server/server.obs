@@ -920,6 +920,8 @@ bundle LSP {
 			capabilities->Insert("typeDefinitionProvider", true);
 			capabilities->Insert("implementationProvider", true);
 			capabilities->Insert("inlayHintProvider", true);
+			# ghost-text suggestions; answers nothing until the user picks a provider (inline_completion.obs)
+			capabilities->Insert("inlineCompletionProvider", true);
 			capabilities->Insert("inlineValueProvider", true);
 			capabilities->Insert("linkedEditingRangeProvider", true);
 
@@ -985,6 +987,7 @@ bundle LSP {
 			# A client that can run a program names its command; the 'Run' lens
 			# then invokes it. Without one the lens only says what to run.
 			@run_command := FindString(params, "initializationOptions/runCommand");
+			InlineCompletionSettings->Configure(FindJson(params, "initializationOptions/inlineCompletion"));
 
 			# Dynamic registration is a request, so it waits for the client's
 			# 'initialized' (NotifyInitialized), and is only sent to a client that

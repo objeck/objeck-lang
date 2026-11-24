@@ -20,8 +20,8 @@ Both scripts compile the server and place `objeck_lsp.obe` alongside the script.
 
 **Manual build** (requires Objeck in PATH):
 ```sh
-obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs \
-    -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
+obc -src frameworks.obs,proxy.obs,server.obs,inline_completion.obs,format_code/scanner.obs,format_code/formatter.obs \
+    -lib diags,net,json,regex,cipher,net_server,misc,ollama,anthropic,openai,gemini -dest objeck_lsp.obe
 ```
 
 ## Run
