@@ -1154,6 +1154,7 @@ jobs:
             ../../../compiler/lib_src/gemini.obs \
             ../../../compiler/lib_src/ollama.obs \
             ../../../compiler/lib_src/anthropic.obs \
+            ../../../compiler/lib_src/agent.obs \
             ../../../compiler/lib_src/json_rpc.obs \
             ../../../compiler/lib_src/models.obs \
             ../../../compiler/lib_src/opencv.obs \

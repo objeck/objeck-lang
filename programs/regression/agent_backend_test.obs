@@ -1,0 +1,568 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+The four provider adapters of API.Agent, run against recorded response bodies and the requests they build,
+so no key and no network are needed. For each of Anthropic, OpenAI, Gemini and Ollama: a plain reply, a reply
+that calls a tool, several calls in one reply, the error object, and the request built for a conversation
+that holds a user message, a reply with tool calls, their results (one flagged as an error) and a follow-up.
+The bodies follow the providers' published API reference. Then each adapter drives the whole Agent loop
+through a replay wrapper that builds the real request and reads the recorded reply, and the second request is
+checked for the provider's own shape of a tool result.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection;
+
+# Builds the real request and reads a recorded reply, so the loop runs through an adapter without a network
+class Replay implements ChatBackend {
+  @kind : String;
+  @anthropic : AnthropicBackend;
+  @openai : OpenAIBackend;
+  @gemini : GeminiBackend;
+  @ollama : OllamaBackend;
+  @bodies : Vector<String>;
+  @requests : Vector<JsonElement>;
+  @used : Int;
+  @last_error : String;
+
+  New(kind : String, bodies : Vector<String>) {
+    @kind := kind;
+    @bodies := bodies;
+    @requests := Vector->New()<JsonElement>;
+    @anthropic := AnthropicBackend->New("claude-sonnet-5-5", "test-key");
+    @openai := OpenAIBackend->New("gpt-5", "test-key");
+    @gemini := GeminiBackend->New("gemini-2.5-flash", "test-key");
+    @ollama := OllamaBackend->New("llama3.2");
+  }
+
+  method : public : GetName() ~ String {
+    return @kind;
+  }
+
+  method : public : GetLastError() ~ String {
+    return @last_error;
+  }
+
+  method : public : GetRequests() ~ Vector<JsonElement> {
+    return @requests;
+  }
+
+  method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+    request : JsonElement;
+    reply : AgentReply;
+    body := @bodies->Get(@used);
+    @used += 1;
+    if(@kind->Equals("anthropic")) {
+      request := @anthropic->BuildRequest(conversation, tools);
+      reply := @anthropic->ParseBody(body);
+      @last_error := @anthropic->GetLastError();
+    }
+    else if(@kind->Equals("openai")) {
+      request := @openai->BuildRequest(conversation, tools);
+      reply := @openai->ParseBody(body);
+      @last_error := @openai->GetLastError();
+    }
+    else if(@kind->Equals("gemini")) {
+      request := @gemini->BuildRequest(conversation, tools);
+      reply := @gemini->ParseBody(body);
+      @last_error := @gemini->GetLastError();
+    }
+    else {
+      request := @ollama->BuildRequest(conversation, tools);
+      reply := @ollama->ParseBody(body);
+      @last_error := @ollama->GetLastError();
+    };
+
+    # keep the request as text, so later edits to the conversation cannot change it
+    @requests->AddBack(JsonParser->TextToElement(request->ToString()));
+    return reply;
+  }
+}
+
+class Doubler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    n := arguments->Get("n")->GetInt();
+    return (n * 2)->ToString();
+  }
+}
+
+class Oops implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Runtime->Raise(Error->New("no such thing"));
+    return "";
+  }
+}
+
+class AgentBackendTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  # a value at a path such as messages.1.content.0.type; numbers index arrays
+  function : Dig(json : JsonElement, path : String) ~ JsonElement {
+    current := json;
+    part := String->New();
+    i := 0;
+    while(i <= path->Size() & current <> Nil) {
+      if(i = path->Size() | path->Get(i) = '.') {
+        if(current->GetType() = JsonElement->JsonType->ARRAY) {
+          index := part->ToInt();
+          if(index < current->Size()) {
+            current := current->Get(index);
+          }
+          else {
+            current := Nil;
+          };
+        }
+        else {
+          current := current->Get(part);
+        };
+        part->Clear();
+      }
+      else {
+        part->Append(path->Get(i));
+      };
+      i += 1;
+    };
+    return current;
+  }
+
+  function : Str(json : JsonElement, path : String) ~ String {
+    found := Dig(json, path);
+    if(found = Nil) {
+      return Nil;
+    };
+    if(found->GetType() = JsonElement->JsonType->STRING) {
+      return found->GetString();
+    };
+    return found->ToString();
+  }
+
+  function : Weather() ~ Vector<AgentTool> {
+    schema := Json("{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"City and state\"},\"unit\":{\"type\":\"string\",\"enum\":[\"celsius\",\"fahrenheit\"]}},\"required\":[\"location\"],\"additionalProperties\":false}");
+    tools := Vector->New()<AgentTool>;
+    tools->AddBack(AgentTool->New("get_weather", "Get the current weather in a given location", schema, Doubler->New()));
+    tools->AddBack(AgentTool->New("ping", "Takes no arguments", Nil, Doubler->New()));
+    return tools;
+  }
+
+  # user, a reply with two calls and some text, a result and an error result, then a follow-up user message
+  function : Conversation() ~ AgentConversation {
+    conversation := AgentConversation->New();
+    conversation->SetSystem("You are a weather bot.");
+    conversation->AddUser("Weather in Paris and Rome?");
+
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("call_1", "get_weather", Json("{\"location\":\"Paris\"}")));
+    calls->AddBack(AgentToolCall->New("call_2", "get_weather", Json("{\"location\":\"Rome\"}")));
+    reply := AgentReply->New("Checking both.", calls, "tool_calls", 0, 0);
+    conversation->AddAssistant(reply, "other");
+
+    conversation->AddToolResult("call_1", "get_weather", "18C and sunny", false);
+    conversation->AddToolResult("call_2", "get_weather", "the service is down", true);
+    conversation->AddAssistant(AgentReply->Say("Paris is 18C; Rome is unavailable."), "other");
+    conversation->AddUser("Thanks.");
+    return conversation;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestAnthropicParse();
+    TestAnthropicRequest();
+    TestOpenAIParse();
+    TestOpenAIRequest();
+    TestGeminiParse();
+    TestGeminiRequest();
+    TestOllamaParse();
+    TestOllamaRequest();
+    TestAnthropicLoop();
+    TestOpenAILoop();
+    TestGeminiLoop();
+    TestOllamaLoop();
+    TestBadTool();
+    TestKeyLookup();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestAnthropicParse() ~ Nil {
+    "-- Anthropic: responses"->PrintLine();
+    backend := AnthropicBackend->New("claude-sonnet-5-5", "k");
+    Check("the name", Same(backend->GetName(), "anthropic"));
+
+    reply := backend->ParseBody("{\"id\":\"msg_01\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-5-5\",\"content\":[{\"type\":\"text\",\"text\":\"Hello\"},{\"type\":\"text\",\"text\":\" world\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":5}}");
+    Check("text blocks join", reply <> Nil & Same(reply->GetText(), "Hello world") & <>reply->HasToolCalls());
+    Check("end_turn is end, with token counts", Same(reply->GetStopReason(), "end") & reply->GetInputTokens() = 12 & reply->GetOutputTokens() = 5);
+
+    reply := backend->ParseBody("{\"id\":\"msg_01Aq9w938a90dw8q\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-5-5\",\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"usage\":{\"input_tokens\":472,\"output_tokens\":89},\"content\":[{\"type\":\"text\",\"text\":\"I'll check the weather.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01A09q90qw90lq917835lq9\",\"name\":\"get_weather\",\"input\":{\"location\":\"San Francisco, CA\"}},{\"type\":\"tool_use\",\"id\":\"toolu_02B\",\"name\":\"get_weather\",\"input\":{\"location\":\"Oslo\",\"unit\":\"celsius\"}}]}");
+    Check("tool_use is tool_calls", reply <> Nil & Same(reply->GetStopReason(), "tool_calls") & reply->HasToolCalls());
+    Check("text beside the calls is kept", Same(reply->GetText(), "I'll check the weather."));
+    calls := reply->GetToolCalls();
+    Check("two calls", calls->Size() = 2);
+    Check("call id, name and input", Same(calls->Get(0)->GetId(), "toolu_01A09q90qw90lq917835lq9") & Same(calls->Get(0)->GetName(), "get_weather") & Same(calls->Get(0)->GetArgument("location"), "San Francisco, CA"));
+    Check("the second call", Same(calls->Get(1)->GetId(), "toolu_02B") & Same(calls->Get(1)->GetArgument("unit"), "celsius"));
+
+    reply := backend->ParseBody("{\"id\":\"m\",\"content\":[{\"type\":\"text\",\"text\":\"cut\"}],\"stop_reason\":\"max_tokens\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}");
+    Check("max_tokens is length", Same(reply->GetStopReason(), "length"));
+    reply := backend->ParseBody("{\"id\":\"m\",\"content\":[],\"stop_reason\":\"refusal\",\"usage\":{}}");
+    Check("refusal is filtered", Same(reply->GetStopReason(), "filtered") & reply->GetText()->Size() = 0);
+
+    reply := backend->ParseBody("{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}");
+    Check("the error object is a failure", reply = Nil & Has(backend->GetLastError(), "authentication_error") & Has(backend->GetLastError(), "invalid x-api-key"));
+    reply := backend->ParseBody("not json");
+    Check("a body that is not JSON is a failure", reply = Nil & Has(backend->GetLastError(), "not JSON"));
+    reply := backend->ParseBody("{\"id\":\"m\"}");
+    Check("a body with no content is a failure", reply = Nil & Has(backend->GetLastError(), "content"));
+    reply := backend->ParseBody("{\"content\":[{\"type\":\"text\",\"text\":\"ok\"}],\"stop_reason\":\"end_turn\"}");
+    Check("the error is cleared by a good body", reply <> Nil & backend->GetLastError() = Nil);
+  }
+
+  function : TestAnthropicRequest() ~ Nil {
+    "-- Anthropic: request"->PrintLine();
+    backend := AnthropicBackend->New("claude-sonnet-5-5", "k");
+    request := backend->BuildRequest(Conversation(), Weather());
+    Check("model, max_tokens and system", Same(Str(request, "model"), "claude-sonnet-5-5") & Same(Str(request, "max_tokens"), "4096") & Same(Str(request, "system"), "You are a weather bot."));
+    Check("the system prompt is not a message", Dig(request, "messages")->Size() = 5);
+    Check("user message", Same(Str(request, "messages.0.role"), "user") & Same(Str(request, "messages.0.content"), "Weather in Paris and Rome?"));
+    Check("assistant message holds text then tool_use blocks", Same(Str(request, "messages.1.role"), "assistant") & Same(Str(request, "messages.1.content.0.type"), "text") & Same(Str(request, "messages.1.content.1.type"), "tool_use") & Same(Str(request, "messages.1.content.2.type"), "tool_use"));
+    Check("tool_use carries id, name and input as an object", Same(Str(request, "messages.1.content.1.id"), "call_1") & Same(Str(request, "messages.1.content.1.name"), "get_weather") & Same(Str(request, "messages.1.content.1.input.location"), "Paris"));
+    Check("both results share one user message", Same(Str(request, "messages.2.role"), "user") & Dig(request, "messages.2.content")->Size() = 2);
+    Check("tool_result names the call", Same(Str(request, "messages.2.content.0.type"), "tool_result") & Same(Str(request, "messages.2.content.0.tool_use_id"), "call_1") & Same(Str(request, "messages.2.content.0.content"), "18C and sunny"));
+    Check("an ordinary result has no is_error", Dig(request, "messages.2.content.0.is_error") = Nil);
+    Check("a failed result is flagged", Same(Str(request, "messages.2.content.1.tool_use_id"), "call_2") & Same(Str(request, "messages.2.content.1.is_error"), "true"));
+    Check("the final answer and the follow-up", Same(Str(request, "messages.3.role"), "assistant") & Same(Str(request, "messages.3.content.0.text"), "Paris is 18C; Rome is unavailable.") & Same(Str(request, "messages.4.role"), "user"));
+    Check("tools use name, description and input_schema", Dig(request, "tools")->Size() = 2 & Same(Str(request, "tools.0.name"), "get_weather") & Same(Str(request, "tools.0.description"), "Get the current weather in a given location") & Same(Str(request, "tools.0.input_schema.type"), "object") & Same(Str(request, "tools.0.input_schema.properties.location.type"), "string"));
+    Check("a tool with no schema still sends an object schema", Same(Str(request, "tools.1.input_schema.type"), "object"));
+    Check("the request is JSON a server could parse", JsonParser->TextToElement(request->ToString()) <> Nil);
+
+    request := backend->SetTemperature(0.25)->SetMaxTokens(512)->BuildRequest(Conversation(), Nil);
+    Check("max tokens and temperature are settable", Same(Str(request, "max_tokens"), "512") & Dig(request, "temperature") <> Nil);
+    Check("with no tools there is no tools field", Dig(request, "tools") = Nil);
+
+    plain := AgentConversation->New();
+    plain->AddUser("hi");
+    request := AnthropicBackend->New("m", "k")->BuildRequest(plain, Nil);
+    Check("no system prompt, no system field", Dig(request, "system") = Nil);
+
+    empty := AgentConversation->New();
+    empty->AddUser("hi");
+    empty->AddAssistant(AgentReply->Say(""), "x");
+    empty->AddUser("again");
+    request := AnthropicBackend->New("m", "k")->BuildRequest(empty, Nil);
+    Check("an empty reply is left out, since the API rejects empty content", Dig(request, "messages")->Size() = 2);
+  }
+
+  function : TestOpenAIParse() ~ Nil {
+    "-- OpenAI: responses"->PrintLine();
+    backend := OpenAIBackend->New("gpt-5", "k");
+    Check("the name", Same(backend->GetName(), "openai"));
+
+    reply := backend->ParseBody("{\"id\":\"chatcmpl-123\",\"object\":\"chat.completion\",\"created\":1677652288,\"model\":\"gpt-4o-mini\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Hello there, how may I assist you today?\"},\"logprobs\":null,\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":9,\"completion_tokens\":12,\"total_tokens\":21}}");
+    Check("plain reply", reply <> Nil & Same(reply->GetText(), "Hello there, how may I assist you today?") & <>reply->HasToolCalls());
+    Check("stop is end, with token counts", Same(reply->GetStopReason(), "end") & reply->GetInputTokens() = 9 & reply->GetOutputTokens() = 12);
+
+    reply := backend->ParseBody("{\"id\":\"chatcmpl-abc123\",\"object\":\"chat.completion\",\"created\":1699896916,\"model\":\"gpt-4o-mini\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call_abc123\",\"type\":\"function\",\"function\":{\"name\":\"get_current_weather\",\"arguments\":\"{\\n\\\"location\\\": \\\"Boston, MA\\\"\\n}\"}},{\"id\":\"call_def456\",\"type\":\"function\",\"function\":{\"name\":\"get_current_weather\",\"arguments\":\"{\\\"location\\\":\\\"Oslo\\\",\\\"unit\\\":\\\"celsius\\\"}\"}}]},\"logprobs\":null,\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":82,\"completion_tokens\":17,\"total_tokens\":99}}");
+    Check("tool calls", reply <> Nil & reply->HasToolCalls() & Same(reply->GetStopReason(), "tool_calls") & reply->GetToolCalls()->Size() = 2);
+    Check("null content is empty text", Same(reply->GetText(), ""));
+    calls := reply->GetToolCalls();
+    Check("the string arguments are parsed into an object", Same(calls->Get(0)->GetId(), "call_abc123") & Same(calls->Get(0)->GetName(), "get_current_weather") & Same(calls->Get(0)->GetArgument("location"), "Boston, MA"));
+    Check("the second call", Same(calls->Get(1)->GetId(), "call_def456") & Same(calls->Get(1)->GetArgument("unit"), "celsius"));
+
+    reply := backend->ParseBody("{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call_x\",\"type\":\"function\",\"function\":{\"name\":\"f\",\"arguments\":\"{oops\"}}]},\"finish_reason\":\"tool_calls\"}]}");
+    Check("arguments that are not JSON come through as Nil, for the schema check to reject", reply <> Nil & reply->GetToolCalls()->Get(0)->GetArguments() = Nil);
+
+    reply := backend->ParseBody("{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"partial\"},\"finish_reason\":\"length\"}]}");
+    Check("length", Same(reply->GetStopReason(), "length") & Same(reply->GetText(), "partial"));
+    reply := backend->ParseBody("{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal\":\"I can't help with that.\"},\"finish_reason\":\"stop\"}]}");
+    Check("a refusal is filtered, with its text", Same(reply->GetStopReason(), "filtered") & Same(reply->GetText(), "I can't help with that."));
+    reply := backend->ParseBody("{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":\"content_filter\"}]}");
+    Check("content_filter is filtered", Same(reply->GetStopReason(), "filtered"));
+
+    reply := backend->ParseBody("{\"error\":{\"message\":\"Incorrect API key provided: sk-proj-abcdefghijklmnopqrstu. You can find your API key at https://platform.openai.com/account/api-keys.\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"invalid_api_key\"}}");
+    Check("the error object is a failure", reply = Nil & Has(backend->GetLastError(), "invalid_request_error") & Has(backend->GetLastError(), "Incorrect API key"));
+    Check("a key echoed in an error is masked", <>Has(backend->GetLastError(), "abcdefghijklmnop"));
+    reply := backend->ParseBody("{\"choices\":[]}");
+    Check("no choice is a failure", reply = Nil & Has(backend->GetLastError(), "choice"));
+  }
+
+  function : TestOpenAIRequest() ~ Nil {
+    "-- OpenAI: request"->PrintLine();
+    backend := OpenAIBackend->New("gpt-5", "k");
+    request := backend->BuildRequest(Conversation(), Weather());
+    Check("model", Same(Str(request, "model"), "gpt-5"));
+    Check("the system prompt is the first message", Same(Str(request, "messages.0.role"), "system") & Same(Str(request, "messages.0.content"), "You are a weather bot."));
+    Check("user message", Same(Str(request, "messages.1.role"), "user"));
+    Check("assistant message carries text and tool_calls", Same(Str(request, "messages.2.role"), "assistant") & Same(Str(request, "messages.2.content"), "Checking both.") & Dig(request, "messages.2.tool_calls")->Size() = 2);
+    Check("tool call id, type and function name", Same(Str(request, "messages.2.tool_calls.0.id"), "call_1") & Same(Str(request, "messages.2.tool_calls.0.type"), "function") & Same(Str(request, "messages.2.tool_calls.0.function.name"), "get_weather"));
+    Check("arguments are a string of JSON, as OpenAI sends them", Dig(request, "messages.2.tool_calls.0.function.arguments")->GetType() = JsonElement->JsonType->STRING & Has(Str(request, "messages.2.tool_calls.0.function.arguments"), "Paris"));
+    Check("each result is its own tool message", Same(Str(request, "messages.3.role"), "tool") & Same(Str(request, "messages.3.tool_call_id"), "call_1") & Same(Str(request, "messages.3.content"), "18C and sunny") & Same(Str(request, "messages.4.role"), "tool") & Same(Str(request, "messages.4.tool_call_id"), "call_2"));
+    Check("a failed result is plain text for the model", Same(Str(request, "messages.4.content"), "the service is down"));
+    Check("then the answer and the follow-up", Same(Str(request, "messages.5.role"), "assistant") & Same(Str(request, "messages.6.role"), "user") & Dig(request, "messages")->Size() = 7);
+    Check("tools are function tools", Dig(request, "tools")->Size() = 2 & Same(Str(request, "tools.0.type"), "function") & Same(Str(request, "tools.0.function.name"), "get_weather") & Same(Str(request, "tools.0.function.parameters.type"), "object"));
+    Check("no token limit unless one is set", Dig(request, "max_completion_tokens") = Nil & Dig(request, "temperature") = Nil);
+
+    call_only := AgentConversation->New();
+    call_only->AddUser("go");
+    call_only->AddAssistant(AgentReply->Ask("c9", "ping", "{}"), "x");
+    request := backend->SetMaxTokens(300)->BuildRequest(call_only, Nil);
+    Check("an assistant turn with only calls has no content field", Dig(request, "messages.1.content") = Nil & Dig(request, "messages.1.tool_calls") <> Nil);
+    Check("max_completion_tokens when set", Same(Str(request, "max_completion_tokens"), "300"));
+  }
+
+  function : TestGeminiParse() ~ Nil {
+    "-- Gemini: responses"->PrintLine();
+    backend := GeminiBackend->New("models/gemini-2.5-flash", "k");
+    Check("the name", Same(backend->GetName(), "gemini"));
+
+    reply := backend->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello! \"},{\"text\":\"How can I help?\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":4,\"candidatesTokenCount\":9,\"totalTokenCount\":13}}");
+    Check("text parts join", reply <> Nil & Same(reply->GetText(), "Hello! How can I help?") & <>reply->HasToolCalls());
+    Check("STOP is end, with token counts", Same(reply->GetStopReason(), "end") & reply->GetInputTokens() = 4 & reply->GetOutputTokens() = 9);
+
+    reply := backend->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_current_weather\",\"args\":{\"location\":\"Boston\"}},\"thoughtSignature\":\"CiQBsig\"},{\"functionCall\":{\"name\":\"get_current_weather\",\"args\":{\"location\":\"Oslo\",\"unit\":\"celsius\"},\"id\":\"fc_77\"}}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":42,\"candidatesTokenCount\":8,\"totalTokenCount\":50}}");
+    Check("function calls", reply <> Nil & reply->HasToolCalls() & Same(reply->GetStopReason(), "tool_calls") & reply->GetToolCalls()->Size() = 2);
+    calls := reply->GetToolCalls();
+    Check("name and args", Same(calls->Get(0)->GetName(), "get_current_weather") & Same(calls->Get(0)->GetArgument("location"), "Boston") & Same(calls->Get(1)->GetArgument("unit"), "celsius"));
+    Check("a call with no id is given one", calls->Get(0)->GetId() <> Nil & calls->Get(0)->GetId()->StartsWith("gemini_call_"));
+    Check("a call with an id keeps it", Same(calls->Get(1)->GetId(), "fc_77"));
+    Check("the model's parts are kept for the next request", reply->GetRaw() <> Nil & reply->GetRaw()->Size() = 2 & Has(reply->GetRaw()->ToString(), "CiQBsig"));
+
+    reply := backend->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"thinking about it\",\"thought\":true},{\"text\":\"The answer.\"}]},\"finishReason\":\"STOP\"}]}");
+    Check("a thought summary is not part of the answer", Same(reply->GetText(), "The answer."));
+    reply := backend->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"cut\"}]},\"finishReason\":\"MAX_TOKENS\"}]}");
+    Check("MAX_TOKENS is length", Same(reply->GetStopReason(), "length"));
+    reply := backend->ParseBody("{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}");
+    Check("SAFETY is filtered even with no content", reply <> Nil & Same(reply->GetStopReason(), "filtered"));
+
+    reply := backend->ParseBody("{\"promptFeedback\":{\"blockReason\":\"SAFETY\"}}");
+    Check("a blocked prompt is a failure that says so", reply = Nil & Has(backend->GetLastError(), "blocked") & Has(backend->GetLastError(), "SAFETY"));
+    reply := backend->ParseBody("{\"error\":{\"code\":400,\"message\":\"API key not valid. Please pass a valid API key.\",\"status\":\"INVALID_ARGUMENT\"}}");
+    Check("the error object is a failure", reply = Nil & Has(backend->GetLastError(), "INVALID_ARGUMENT") & Has(backend->GetLastError(), "API key not valid"));
+  }
+
+  function : TestGeminiRequest() ~ Nil {
+    "-- Gemini: request"->PrintLine();
+    backend := GeminiBackend->New("gemini-2.5-flash", "k");
+    request := backend->BuildRequest(Conversation(), Weather());
+    Check("the system prompt is systemInstruction", Same(Str(request, "systemInstruction.parts.0.text"), "You are a weather bot.") & Dig(request, "contents")->Size() = 5);
+    Check("user turn", Same(Str(request, "contents.0.role"), "user") & Same(Str(request, "contents.0.parts.0.text"), "Weather in Paris and Rome?"));
+    Check("the model turn has a text part and functionCall parts", Same(Str(request, "contents.1.role"), "model") & Same(Str(request, "contents.1.parts.0.text"), "Checking both.") & Same(Str(request, "contents.1.parts.1.functionCall.name"), "get_weather") & Same(Str(request, "contents.1.parts.1.functionCall.args.location"), "Paris") & Same(Str(request, "contents.1.parts.2.functionCall.args.location"), "Rome"));
+    Check("both results share one user turn", Same(Str(request, "contents.2.role"), "user") & Dig(request, "contents.2.parts")->Size() = 2);
+    Check("functionResponse names the tool and holds the result", Same(Str(request, "contents.2.parts.0.functionResponse.name"), "get_weather") & Same(Str(request, "contents.2.parts.0.functionResponse.response.result"), "18C and sunny"));
+    Check("a failed result is under error", Same(Str(request, "contents.2.parts.1.functionResponse.response.error"), "the service is down") & Dig(request, "contents.2.parts.1.functionResponse.response.result") = Nil);
+    Check("a call id is echoed on its response", Same(Str(request, "contents.2.parts.0.functionResponse.id"), "call_1"));
+    Check("the answer is a model turn and the follow-up a user turn", Same(Str(request, "contents.3.role"), "model") & Same(Str(request, "contents.4.role"), "user"));
+    Check("tools are functionDeclarations", Dig(request, "tools")->Size() = 1 & Dig(request, "tools.0.functionDeclarations")->Size() = 2 & Same(Str(request, "tools.0.functionDeclarations.0.name"), "get_weather"));
+    Check("the schema is trimmed to what Gemini accepts", Same(Str(request, "tools.0.functionDeclarations.0.parameters.type"), "object") & Dig(request, "tools.0.functionDeclarations.0.parameters.additionalProperties") = Nil & Dig(request, "tools.0.functionDeclarations.0.parameters.properties.unit.enum") <> Nil & Dig(request, "tools.0.functionDeclarations.0.parameters.required") <> Nil);
+    Check("a tool with no properties is sent without parameters", Dig(request, "tools.0.functionDeclarations.1.parameters") = Nil);
+    Check("no limits unless set", Dig(request, "generationConfig") = Nil);
+
+    # the model's own parts, thought signature and all, go back unchanged
+    parsed := GeminiBackend->New("g", "k");
+    reply := parsed->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"ping\",\"args\":{}},\"thoughtSignature\":\"SIG123\"}]},\"finishReason\":\"STOP\"}]}");
+    conversation := AgentConversation->New();
+    conversation->AddUser("go");
+    conversation->AddAssistant(reply, "gemini");
+    conversation->AddToolResult(reply->GetToolCalls()->Get(0)->GetId(), "ping", "pong", false);
+    request := backend->SetMaxTokens(200)->BuildRequest(conversation, Nil);
+    Check("the thought signature is sent back", Same(Str(request, "contents.1.parts.0.thoughtSignature"), "SIG123"));
+    Check("an id made up here is not sent, since Gemini never had it", Dig(request, "contents.2.parts.0.functionResponse.id") = Nil);
+    Check("generationConfig when a limit is set", Same(Str(request, "generationConfig.maxOutputTokens"), "200"));
+
+    # a call that carries Gemini's own id gets it back on the response
+    reply := parsed->ParseBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"ping\",\"args\":{},\"id\":\"fc_9\"}}]},\"finishReason\":\"STOP\"}]}");
+    conversation := AgentConversation->New();
+    conversation->AddUser("go");
+    conversation->AddAssistant(reply, "gemini");
+    conversation->AddToolResult("fc_9", "ping", "pong", false);
+    request := backend->BuildRequest(conversation, Nil);
+    Check("Gemini's own call id is echoed", Same(Str(request, "contents.2.parts.0.functionResponse.id"), "fc_9"));
+
+    # a reply from another backend has no Gemini parts to send back, so it is rebuilt
+    foreign := AgentConversation->New();
+    foreign->AddUser("go");
+    foreign->AddAssistant(AgentReply->Ask("x1", "ping", "{}"), "anthropic");
+    request := backend->BuildRequest(foreign, Nil);
+    Check("a turn from another provider is rebuilt as functionCall", Same(Str(request, "contents.1.parts.0.functionCall.name"), "ping"));
+  }
+
+  function : TestOllamaParse() ~ Nil {
+    "-- Ollama: responses"->PrintLine();
+    backend := OllamaBackend->New("llama3.2");
+    Check("the name", Same(backend->GetName(), "ollama"));
+
+    reply := backend->ParseBody("{\"model\":\"llama3.2\",\"created_at\":\"2025-07-07T20:32:53.844124Z\",\"message\":{\"role\":\"assistant\",\"content\":\"Hello!\"},\"done_reason\":\"stop\",\"done\":true,\"total_duration\":1234,\"prompt_eval_count\":26,\"eval_count\":298}");
+    Check("plain reply", reply <> Nil & Same(reply->GetText(), "Hello!") & <>reply->HasToolCalls());
+    Check("stop is end, with token counts", Same(reply->GetStopReason(), "end") & reply->GetInputTokens() = 26 & reply->GetOutputTokens() = 298);
+
+    reply := backend->ParseBody("{\"model\":\"llama3.2\",\"created_at\":\"2025-07-07T20:32:53.844124Z\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"get_current_weather\",\"arguments\":{\"format\":\"celsius\",\"location\":\"Paris, FR\"}}},{\"function\":{\"name\":\"get_current_weather\",\"arguments\":{\"location\":\"Oslo\"}}}]},\"done_reason\":\"stop\",\"done\":true,\"prompt_eval_count\":211,\"eval_count\":28}");
+    Check("tool calls, though done_reason says stop", reply <> Nil & reply->HasToolCalls() & Same(reply->GetStopReason(), "tool_calls") & reply->GetToolCalls()->Size() = 2);
+    calls := reply->GetToolCalls();
+    Check("name and object arguments", Same(calls->Get(0)->GetName(), "get_current_weather") & Same(calls->Get(0)->GetArgument("location"), "Paris, FR") & Same(calls->Get(0)->GetArgument("format"), "celsius"));
+    Check("ids are made up and differ", calls->Get(0)->GetId() <> Nil & calls->Get(0)->GetId()->StartsWith("ollama_call_") & <>Same(calls->Get(0)->GetId(), calls->Get(1)->GetId()));
+
+    reply := backend->ParseBody("{\"message\":{\"role\":\"assistant\",\"content\":\"cut\"},\"done_reason\":\"length\",\"done\":true}");
+    Check("length", Same(reply->GetStopReason(), "length"));
+    reply := backend->ParseBody("{\"error\":\"model 'nope' not found\"}");
+    Check("the error string is a failure", reply = Nil & Has(backend->GetLastError(), "not found"));
+    reply := backend->ParseBody("{\"done\":true}");
+    Check("a body with no message is a failure", reply = Nil & Has(backend->GetLastError(), "message"));
+  }
+
+  function : TestOllamaRequest() ~ Nil {
+    "-- Ollama: request"->PrintLine();
+    backend := OllamaBackend->New("llama3.2");
+    request := backend->BuildRequest(Conversation(), Weather());
+    Check("model and no streaming", Same(Str(request, "model"), "llama3.2") & Same(Str(request, "stream"), "false"));
+    Check("the system prompt is the first message", Same(Str(request, "messages.0.role"), "system") & Same(Str(request, "messages.0.content"), "You are a weather bot."));
+    Check("assistant message carries calls with object arguments", Same(Str(request, "messages.2.role"), "assistant") & Same(Str(request, "messages.2.tool_calls.0.function.name"), "get_weather") & Same(Str(request, "messages.2.tool_calls.0.function.arguments.location"), "Paris"));
+    Check("each result is a tool message naming the tool", Same(Str(request, "messages.3.role"), "tool") & Same(Str(request, "messages.3.tool_name"), "get_weather") & Same(Str(request, "messages.3.content"), "18C and sunny") & Same(Str(request, "messages.4.role"), "tool"));
+    Check("then the answer and the follow-up", Dig(request, "messages")->Size() = 7);
+    Check("tools are function tools", Dig(request, "tools")->Size() = 2 & Same(Str(request, "tools.0.type"), "function") & Same(Str(request, "tools.0.function.name"), "get_weather") & Same(Str(request, "tools.0.function.parameters.type"), "object"));
+    Check("no options unless set", Dig(request, "options") = Nil);
+    request := backend->SetMaxTokens(64)->SetTemperature(0.5)->BuildRequest(Conversation(), Nil);
+    Check("num_predict and temperature are options", Same(Str(request, "options.num_predict"), "64") & Dig(request, "options.temperature") <> Nil);
+  }
+
+  function : LoopRegistry() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    schema := Json("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}},\"required\":[\"n\"]}");
+    registry->Add(AgentTool->New("double", "Doubles n", schema, Doubler->New()));
+    registry->Add(AgentTool->New("oops", "Always fails", Nil, Oops->New()));
+    return registry;
+  }
+
+  function : Bodies2(first : String, second : String) ~ Vector<String> {
+    bodies := Vector->New()<String>;
+    bodies->AddBack(first);
+    bodies->AddBack(second);
+    return bodies;
+  }
+
+  function : TestAnthropicLoop() ~ Nil {
+    "-- Anthropic: the loop through the adapter"->PrintLine();
+    first := "{\"id\":\"m1\",\"content\":[{\"type\":\"text\",\"text\":\"Doubling.\"},{\"type\":\"tool_use\",\"id\":\"toolu_A\",\"name\":\"double\",\"input\":{\"n\":21}},{\"type\":\"tool_use\",\"id\":\"toolu_B\",\"name\":\"oops\",\"input\":{}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":10,\"output_tokens\":5}}";
+    second := "{\"id\":\"m2\",\"content\":[{\"type\":\"text\",\"text\":\"It is 42.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":4}}";
+    backend := Replay->New("anthropic", Bodies2(first, second));
+    result := Agent->New(backend, LoopRegistry())->SetSystem("Be exact.")->Run("double 21");
+    Check("completed with the final text", result->IsCompleted() & Same(result->GetText(), "It is 42."));
+    Check("tokens summed over both replies", result->GetInputTokens() = 40 & result->GetOutputTokens() = 9);
+    Check("both calls ran, one failed", result->GetToolCallCount() = 2 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent(), "42") & Same(result->GetSteps()->Get(0)->GetResults()->Get(1)->GetStatus(), "error"));
+
+    second_request := backend->GetRequests()->Get(1);
+    Check("the second request replays the conversation", Dig(second_request, "messages")->Size() = 3);
+    Check("the assistant turn is tool_use blocks with the ids the model chose", Same(Str(second_request, "messages.1.content.1.id"), "toolu_A") & Same(Str(second_request, "messages.1.content.2.id"), "toolu_B"));
+    Check("the results come back as tool_result blocks, the failure flagged", Same(Str(second_request, "messages.2.content.0.tool_use_id"), "toolu_A") & Same(Str(second_request, "messages.2.content.0.content"), "42") & Same(Str(second_request, "messages.2.content.1.tool_use_id"), "toolu_B") & Same(Str(second_request, "messages.2.content.1.is_error"), "true") & Has(Str(second_request, "messages.2.content.1.content"), "no such thing"));
+    Check("the tools were offered every time", Dig(second_request, "tools")->Size() = 2 & Same(Str(second_request, "system"), "Be exact."));
+  }
+
+  function : TestOpenAILoop() ~ Nil {
+    "-- OpenAI: the loop through the adapter"->PrintLine();
+    first := "{\"id\":\"c1\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call_A\",\"type\":\"function\",\"function\":{\"name\":\"double\",\"arguments\":\"{\\\"n\\\":21}\"}},{\"id\":\"call_B\",\"type\":\"function\",\"function\":{\"name\":\"oops\",\"arguments\":\"{}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":5}}";
+    second := "{\"id\":\"c2\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"It is 42.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":4}}";
+    backend := Replay->New("openai", Bodies2(first, second));
+    result := Agent->New(backend, LoopRegistry())->SetSystem("Be exact.")->Run("double 21");
+    Check("completed with the final text", result->IsCompleted() & Same(result->GetText(), "It is 42."));
+    Check("tokens summed over both replies", result->GetInputTokens() = 40 & result->GetOutputTokens() = 9);
+    Check("both calls ran, one failed", result->GetToolCallCount() = 2 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent(), "42") & Same(result->GetSteps()->Get(0)->GetResults()->Get(1)->GetStatus(), "error"));
+
+    second_request := backend->GetRequests()->Get(1);
+    Check("system, user, assistant, two tool messages", Dig(second_request, "messages")->Size() = 5);
+    Check("the assistant turn has the calls with string arguments", Same(Str(second_request, "messages.2.tool_calls.0.id"), "call_A") & Has(Str(second_request, "messages.2.tool_calls.0.function.arguments"), "21") & Same(Str(second_request, "messages.2.tool_calls.1.id"), "call_B"));
+    Check("each tool message carries its call id", Same(Str(second_request, "messages.3.tool_call_id"), "call_A") & Same(Str(second_request, "messages.3.content"), "42") & Same(Str(second_request, "messages.4.tool_call_id"), "call_B") & Has(Str(second_request, "messages.4.content"), "no such thing"));
+  }
+
+  function : TestGeminiLoop() ~ Nil {
+    "-- Gemini: the loop through the adapter"->PrintLine();
+    first := "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"double\",\"args\":{\"n\":21}},\"thoughtSignature\":\"SIGX\"},{\"functionCall\":{\"name\":\"oops\",\"args\":{}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":5}}";
+    second := "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"It is 42.\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":30,\"candidatesTokenCount\":4}}";
+    backend := Replay->New("gemini", Bodies2(first, second));
+    result := Agent->New(backend, LoopRegistry())->SetSystem("Be exact.")->Run("double 21");
+    Check("completed with the final text", result->IsCompleted() & Same(result->GetText(), "It is 42."));
+    Check("tokens summed over both replies", result->GetInputTokens() = 40 & result->GetOutputTokens() = 9);
+    Check("both calls ran, one failed", result->GetToolCallCount() = 2 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent(), "42") & Same(result->GetSteps()->Get(0)->GetResults()->Get(1)->GetStatus(), "error"));
+
+    second_request := backend->GetRequests()->Get(1);
+    Check("user, model, user", Dig(second_request, "contents")->Size() = 3);
+    Check("the model turn is what Gemini sent, signature included", Same(Str(second_request, "contents.1.parts.0.thoughtSignature"), "SIGX") & Same(Str(second_request, "contents.1.parts.1.functionCall.name"), "oops"));
+    Check("the results are functionResponse parts in one user turn", Dig(second_request, "contents.2.parts")->Size() = 2 & Same(Str(second_request, "contents.2.parts.0.functionResponse.name"), "double") & Same(Str(second_request, "contents.2.parts.0.functionResponse.response.result"), "42") & Same(Str(second_request, "contents.2.parts.1.functionResponse.name"), "oops") & Has(Str(second_request, "contents.2.parts.1.functionResponse.response.error"), "no such thing"));
+  }
+
+  function : TestOllamaLoop() ~ Nil {
+    "-- Ollama: the loop through the adapter"->PrintLine();
+    first := "{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"double\",\"arguments\":{\"n\":21}}},{\"function\":{\"name\":\"oops\",\"arguments\":{}}}]},\"done_reason\":\"stop\",\"done\":true,\"prompt_eval_count\":10,\"eval_count\":5}";
+    second := "{\"model\":\"llama3.2\",\"message\":{\"role\":\"assistant\",\"content\":\"It is 42.\"},\"done_reason\":\"stop\",\"done\":true,\"prompt_eval_count\":30,\"eval_count\":4}";
+    backend := Replay->New("ollama", Bodies2(first, second));
+    result := Agent->New(backend, LoopRegistry())->SetSystem("Be exact.")->Run("double 21");
+    Check("completed with the final text", result->IsCompleted() & Same(result->GetText(), "It is 42."));
+    Check("tokens summed over both replies", result->GetInputTokens() = 40 & result->GetOutputTokens() = 9);
+    Check("both calls ran, one failed", result->GetToolCallCount() = 2 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent(), "42") & Same(result->GetSteps()->Get(0)->GetResults()->Get(1)->GetStatus(), "error"));
+
+    second_request := backend->GetRequests()->Get(1);
+    Check("system, user, assistant, two tool messages", Dig(second_request, "messages")->Size() = 5);
+    Check("the assistant turn replays the calls", Same(Str(second_request, "messages.2.tool_calls.0.function.name"), "double") & Same(Str(second_request, "messages.2.tool_calls.0.function.arguments.n"), "21"));
+    Check("each result names its tool", Same(Str(second_request, "messages.3.tool_name"), "double") & Same(Str(second_request, "messages.3.content"), "42") & Same(Str(second_request, "messages.4.tool_name"), "oops"));
+  }
+
+  # a model that calls a tool that is not there, or sends broken arguments, gets an error it can read, on every adapter
+  function : TestBadTool() ~ Nil {
+    "-- bad calls through each adapter"->PrintLine();
+    anthropic := "{\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"missing\",\"input\":{}}],\"stop_reason\":\"tool_use\"}";
+    openai := "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"t1\",\"type\":\"function\",\"function\":{\"name\":\"double\",\"arguments\":\"{broken\"}}]},\"finish_reason\":\"tool_calls\"}]}";
+    done_anthropic := "{\"content\":[{\"type\":\"text\",\"text\":\"fine\"}],\"stop_reason\":\"end_turn\"}";
+    done_openai := "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"fine\"},\"finish_reason\":\"stop\"}]}";
+
+    result := Agent->New(Replay->New("anthropic", Bodies2(anthropic, done_anthropic)), LoopRegistry())->Run("x");
+    Check("an unknown tool from Anthropic", Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "unknown") & result->IsCompleted());
+    result := Agent->New(Replay->New("openai", Bodies2(openai, done_openai)), LoopRegistry())->Run("x");
+    Check("broken argument text from OpenAI is rejected", Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "invalid") & result->IsCompleted());
+
+    backend := Replay->New("anthropic", Bodies2("{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}", done_anthropic));
+    result := Agent->New(backend, LoopRegistry())->Run("x");
+    Check("a provider error ends the run with its message", Same(result->GetStatus(), "error") & Has(result->GetError(), "overloaded_error"));
+  }
+
+  function : TestKeyLookup() ~ Nil {
+    "-- a missing key"->PrintLine();
+    # with no key anywhere the backend refuses before sending; the message says where a key can come from
+    saved := System.Runtime->GetEnvironmentVariable("ANTHROPIC_API_KEY");
+    if(saved = Nil | saved->Size() = 0) {
+      backend := AnthropicBackend->New("claude-sonnet-5-5", Nil);
+      plain := AgentConversation->New();
+      plain->AddUser("hi");
+      reply := backend->Chat(plain, Nil);
+      Check("no key, no request", reply = Nil & Has(backend->GetLastError(), "no API key") & Has(backend->GetLastError(), "ANTHROPIC_API_KEY"));
+    }
+    else {
+      Check("skipped: ANTHROPIC_API_KEY is set here", true);
+    };
+  }
+}
