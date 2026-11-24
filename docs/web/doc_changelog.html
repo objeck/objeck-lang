@@ -123,6 +123,7 @@
      <li><strong><code>KNearestNeighbors-&gt;Query</code> with a k below 1, a Nil query or a Nil matrix</strong> ended with an allocation error; it now returns no neighbors.</li>
      <li><strong><code>Stack</code> crashed near 500,000 entries and reported a stale <code>Size()</code> after <code>Empty()</code></strong>: it is now array-backed.</li>
      <li><strong>A <code>Nil</code> key or value lookup in the collections ended the program</strong>: it now reports not-found.</li>
+     <li><strong>Threads making the first call of the same long-running method could run it 20x slower</strong>: a method with a loop is compiled on its first call, one thread claimed the compile, and a thread that arrived while it was in flight found no native code and interpreted its whole call; compiled code is picked up only at the next call, which a long first call never makes. A two-thread run took about 10 s instead of 0.5 s in 15% of runs, a three-thread run in 35%. The thread that loses the compile race now waits for the compile (milliseconds). Both the AMD64 and ARM64 JITs share the fix. <code>jit_first_call_race</code> covers it.</li>
     </ul>
     <h4 id="added">Added</h4>
     <ul>
