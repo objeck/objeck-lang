@@ -358,7 +358,7 @@ Proxy-&gt;GetDllProxy()-&gt;CallFunction(@draw_name, @draw_args);
     <p>Collected from things that have actually gone wrong here.</p>
     <ul>
      <li><strong><code>.obs</code> files are marked binary in <code>.gitattributes</code>.</strong> <code>git diff</code> shows you nothing. Review by reading the file, and expect that two branches touching the same <code>.obs</code> cannot be merged in parallel — stack them.</li>
-     <li><strong>A changed <code>.obs</code> requires committing the rebuilt <code>.obl</code>.</strong> The <code>.obl</code> files under <code>core/lib/</code> are tracked, and a stale one fails on the platforms that do not rebuild it — usually as a pile of "undefined method" errors on macOS.</li>
+     <li><strong>A changed <code>.obs</code> needs no committed <code>.obl</code>.</strong> The <code>.obl</code> files under <code>core/lib/</code> are build products (<code>.gitignore</code>d): CI's <code>libs</code> job builds them from the sources and every other job downloads that result. Locally, <code>core/compiler/update_version.sh</code> (or <code>core\compiler\build_libs_windows.cmd</code>) rebuilds them.</li>
      <li><strong>Never widen an existing trap's arity.</strong> Append a new trap after <code>EXIT</code> instead. The bytecode is positional and the loader has its own parser.</li>
      <li><strong><code>String[]</code> is indexed directly</strong>, without the <code>[0]</code> holder indirection the other array types need.</li>
      <li><strong>A native handle in an <code>Int</code> is invisible to the collector.</strong> If it needs releasing, the Objeck side needs a <code>Free</code>.</li>
