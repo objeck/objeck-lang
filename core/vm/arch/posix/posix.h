@@ -948,13 +948,27 @@ class IPSecureSocket {
   // intended ONLY for testing against self-signed/dev servers. Default is OFF —
   // certificates are verified (chain + hostname). Enable for a test run with
   // OBJECK_TLS_INSECURE_SKIP_VERIFY=1. Cached on first read.
+  // Said once, on stderr, the first time the mode takes effect: it turns off the one
+  // thing that makes a TLS connection safe, for every secure client socket in the
+  // process, and an exported variable outlives the test it was meant for.
+  static void WarnInsecureSkipVerify() {
+    fputs(">>> WARNING: OBJECK_TLS_INSECURE_SKIP_VERIFY is set: TLS server certificates are NOT verified"
+          " for secure client sockets in this process. Use it only to test against self-signed servers;"
+          " unset it for anything that sends credentials or API keys. <<<\n", stderr);
+    fflush(stderr);
+  }
+
   static bool InsecureSkipVerify() {
-    static int cached = -1;
-    if(cached < 0) {
+    // a function-local static initializes once, even with several threads connecting at the start
+    static const bool cached = []() {
       const char* v = getenv("OBJECK_TLS_INSECURE_SKIP_VERIFY");
-      cached = (v && (v[0] == '1' || v[0] == 't' || v[0] == 'T' || v[0] == 'y' || v[0] == 'Y')) ? 1 : 0;
-    }
-    return cached == 1;
+      const bool on = v && (v[0] == '1' || v[0] == 't' || v[0] == 'T' || v[0] == 'y' || v[0] == 'Y');
+      if(on) {
+        WarnInsecureSkipVerify();
+      }
+      return on;
+    }();
+    return cached;
   }
 
   // The receive timeout every TLS client socket starts with, in milliseconds.
