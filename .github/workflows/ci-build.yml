@@ -647,6 +647,24 @@ jobs:
         sh ./build_libs.sh "$OBC"
         echo "Libraries rebuilt successfully"
 
+    # Windows can build its own lang.obl: the Release-Sys configuration of compiler.vcxproj is
+    # the _SYSTEM bootstrap compiler, the same sources the POSIX flow builds as sys_obc. The
+    # result must equal the file in core/lib (the `libs` job's Linux build, which is also the
+    # committed one today), byte for byte.
+    - name: lang.obl built by the Windows _SYSTEM compiler equals the Linux build
+      if: runner.os == 'Windows'
+      shell: cmd
+      working-directory: ./core/compiler
+      run: |
+        call .\build_lang_windows.cmd ${{ matrix.arch }} %RUNNER_TEMP%\lang_windows.obl
+        if errorlevel 1 exit /b 1
+        fc /b %RUNNER_TEMP%\lang_windows.obl ..\lib\lang.obl
+        if errorlevel 1 (
+          echo ERROR: the Windows-built lang.obl differs from the library build
+          exit /b 1
+        )
+        echo lang.obl: Windows build is byte-identical
+
     - name: Update deploy with rebuilt libraries
       if: matrix.platform != 'linux-x64'
       shell: bash
