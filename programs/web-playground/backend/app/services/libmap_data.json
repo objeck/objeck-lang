@@ -164,6 +164,12 @@
     "System.ML.Report": ["ReplicateCell", "Replicates", "Report", "ReportBlock", "ReportText", "ResultTables"]
    }
   },
+  "ml_timeseries": {
+   "deps": ["gen_collect"],
+   "bundles": {
+    "System.ML.TimeSeries": ["Acf", "AdfResult", "ArimaModel", "AutoArima", "AutoEts", "BaselineForecaster", "CvResult", "Decomposition", "Evaluation", "ExponentialSmoothing", "ForecastMetrics", "ForecastResult", "Forecaster", "Frequency", "ModelKit", "NelderMead", "Objective", "OlsFit", "Rng", "SelectionCriterion", "SeriesTransform", "Simulate", "Stationarity", "TimeSeries", "TsMath"]
+   }
+  },
   "ml_vector": {
    "deps": ["gen_collect"],
    "bundles": {

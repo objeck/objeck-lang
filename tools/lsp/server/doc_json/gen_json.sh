@@ -79,6 +79,10 @@ rm -f *.obe
 	$LIB_SRC/ml_vector.obs \
 	$LIB_SRC/ml_report.obs \
 	$LIB_SRC/ml_verify.obs \
+	$LIB_SRC/ml_timeseries.obs \
+	$LIB_SRC/ml_timeseries_models.obs \
+	$LIB_SRC/ml_timeseries_arima.obs \
+	$LIB_SRC/ml_timeseries_eval.obs \
 	$LIB_SRC/ml_cnn.obs \
 	$LIB_SRC/nlp_topics_text.obs \
 	$LIB_SRC/nlp_topics_lda.obs \
