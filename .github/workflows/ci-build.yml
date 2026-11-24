@@ -1232,7 +1232,7 @@ jobs:
       if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
-      run: \
+      run: |
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_label_fatal.py "%BIN%"
@@ -1252,7 +1252,7 @@ jobs:
       if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
-      run: \
+      run: |
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_path_anchor.py "%BIN%"
