@@ -270,7 +270,7 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
 
     case CLASS_TYPE: {
       name = L"o.";
-      const std::vector<std::wstring> uses = program->GetLibUses();
+      const std::vector<std::wstring>& uses = program->GetLibUses();
 
       // a jagged array's row type (#1246): its base class by its full name
       if(IsRowTypeName(type->GetName())) {
@@ -1041,7 +1041,7 @@ std::wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linke
 
     case CLASS_TYPE: {
       name = L"o.";
-      const std::vector<std::wstring> uses = program->GetLibUses();
+      const std::vector<std::wstring>& uses = program->GetLibUses();
 
       // program class check
       const std::wstring type_klass_name = type->GetName();
@@ -1144,7 +1144,7 @@ std::wstring Alias::EncodeFunctionType(std::vector<Type*> func_params, Type* fun
 /****************************
  * class Lambda
  ****************************/
-const std::vector<std::wstring> ParsedProgram::GetLibUses() {
+const std::vector<std::wstring>& ParsedProgram::GetLibUses() {
   // Sort into tiers:
   // 1. System bundles
   // 2. User bundles
