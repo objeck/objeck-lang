@@ -99,6 +99,8 @@ namespace CfgTrace {
     const char* p = std::getenv("OBJECK_CFG_TRACE");
     if(p) {
       Reg().path = p;
+      // a program this one starts runs other code: it must not write a trace of its own
+      unsetenv("OBJECK_CFG_TRACE");
       std::atexit([]() { Flush(); });
     }
   }

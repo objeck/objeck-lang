@@ -246,7 +246,12 @@ def main(argv=None):
     print("cfg_oracle: %d program/opt runs, %d methods checked, %d transitions checked, %d trace methods without a graph, "
           "%d methods the graph skipped, %d runs not checked, %d VIOLATIONS"
           % (stats.programs, stats.methods, stats.transitions, stats.unmatched, stats.skipped_methods, len(stats.nonrun), len(stats.violations)))
-    for v in stats.violations[:60]:
+    by_test = {}
+    for v in stats.violations:
+        by_test[v.split(":")[0]] = by_test.get(v.split(":")[0], 0) + 1
+    for k, n in sorted(by_test.items(), key=lambda kv: -kv[1])[:40]:
+        print("  %6d violation(s) in %s" % (n, k))
+    for v in stats.violations[:30]:
         print("  VIOLATION " + v)
     if os.environ.get("ORACLE_SHOW_NONRUN"):
         for v in stats.nonrun:
