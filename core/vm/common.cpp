@@ -3475,7 +3475,17 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   if(!array) {
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
-  const std::wstring out = BytesToUnicode((char*)(array + 3));
+  // Decode exactly the array's own length. A Byte[] is not NUL-terminated (only strings built by the
+  // runtime are), so handing the bare pointer to a converter that reads until a zero byte reads past the
+  // end of an exact-length array into whatever follows it: a String built from 8 bytes came back 9, 10,
+  // 33 or 73 characters long, varying from run to run (found by rag_index_test on Apple Silicon and
+  // Windows ARM64, where the bytes after the array were not zero).
+  // Within that length a zero byte still ends the string, as it always did (a padded read buffer).
+  const char* bytes = (const char*)(array + 3);
+  const size_t byte_count = array[0];
+  const void* first_zero = memchr(bytes, 0, byte_count);
+  const size_t text_length = first_zero ? (size_t)((const char*)first_zero - bytes) : byte_count;
+  const std::wstring out = BytesToUnicode(std::string(bytes, text_length));
 
   // create character array
   const long char_array_size = (long)out.size();

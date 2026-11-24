@@ -1,0 +1,75 @@
+#~
+String->New(Byte[]) must decode exactly the bytes of the array.
+
+A Byte[] is not NUL-terminated. The converter used to hand the bare pointer to a routine that reads
+until a zero byte, so an exact-length array was decoded together with whatever followed it in memory:
+a string built from 8 bytes came back 9, 10, 33 or 73 characters long, differing from run to run
+(rag_index_test on Apple Silicon and Windows ARM64). A zero byte INSIDE the array still ends the string,
+as it always did (a padded read buffer). Dirty memory is made first, so the bytes after an array are
+not zero.
+~#
+class BytesToStringLength {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(<>ok) {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # leave non-zero garbage behind in memory the next arrays may reuse
+  function : Dirty() ~ Nil {
+    for(round := 0; round < 200; round += 1;) {
+      junk := Byte->New[64 + round % 7];
+      for(i := 0; i < junk->Size(); i += 1;) {
+        junk[i] := 0x41 + (i % 26);
+      };
+    };
+  }
+
+  function : Exact(text : String) ~ Bool {
+    bytes := Byte->New[text->Size()];
+    for(i := 0; i < text->Size(); i += 1;) {
+      bytes[i] := text->Get(i)->As(Byte);
+    };
+    back := String->New(bytes);
+    return back <> Nil & back->Equals(text);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    texts := ["doc0.txt", "a", "abcdefg", "abcdefgh", "abcdefghi", "0123456789abcdef", "exactly-sixteen!", "x y z"];
+    for(round := 0; round < 400; round += 1;) {
+      Dirty();
+      for(t := 0; t < texts->Size(); t += 1;) {
+        if(<>Exact(texts[t])) {
+          "  [FAIL] round {$round}: '{$texts[t]}' did not round-trip"->PrintLine();
+          @failures += 1;
+          if(@failures > 5) {
+            "FAIL: {$@failures} check(s) failed"->PrintLine();
+            Runtime->Exit(1);
+          };
+        };
+      };
+    };
+
+    # a zero byte inside the array ends the string (a padded buffer), as before
+    padded := Byte->New[8];
+    padded[0] := 'a'->As(Byte); padded[1] := 'b'->As(Byte); padded[2] := 'c'->As(Byte);
+    text := String->New(padded);
+    Check("a zero byte inside the array ends the string", text <> Nil & text->Equals("abc"));
+
+    # an all-zero array is the empty string
+    zeros := Byte->New[4];
+    empty := String->New(zeros);
+    Check("an all-zero array decodes to the empty string", empty <> Nil & empty->Size() = 0);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
