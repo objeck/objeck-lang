@@ -66,8 +66,21 @@ class TelemetryContentionTest {
 		Check("an unknown worker is Nil", report->GetWorker(4) = Nil & report->GetWorker(-1) = Nil);
 		comb := report->GetCombined();
 		Check("combined: 24 samples", comb->GetCount() = 24);
-		Check("combined: min is the fastest worker's min", comb->GetMin() = report->GetWorker(0)->GetMin());
-		Check("combined: max is the slowest worker's max", comb->GetMax() = report->GetWorker(3)->GetMax());
+		# which worker is fastest is a matter of timing (a loaded runner can oversleep worker 0),
+		# so the check is against the smallest and largest of the workers' own extremes. Both are
+		# kept exactly, never estimated, so equality is right.
+		lo := report->GetWorker(0)->GetMin();
+		hi := report->GetWorker(0)->GetMax();
+		for(w := 1; w < 4; w += 1;) {
+			if(report->GetWorker(w)->GetMin() < lo) {
+				lo := report->GetWorker(w)->GetMin();
+			};
+			if(report->GetWorker(w)->GetMax() > hi) {
+				hi := report->GetWorker(w)->GetMax();
+			};
+		};
+		Check("combined: min is the smallest of the workers' mins", comb->GetMin() = lo);
+		Check("combined: max is the largest of the workers' maxes", comb->GetMax() = hi);
 		weighted := 0.0;
 		for(w := 0; w < 4; w += 1;) {
 			weighted += report->GetWorker(w)->GetMean() * 6.0;

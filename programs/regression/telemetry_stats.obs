@@ -143,6 +143,22 @@ class TelemetryStatsTest {
 		odd->Add(1.0);
 		Check("merging a series of another accuracy is refused, and changes nothing", a->Merge(odd) = false & a->GetCount() = 40);
 
+		# merge keeps the extremes exact whichever series holds them, on the sketch path too
+		# (the slowest series first, the fastest last: the order a timing race can produce)
+		slow := SeriesStats->New(0, 0.01, 4, 0);
+		mid := SeriesStats->New(0, 0.01, 4, 0);
+		fast := SeriesStats->New(0, 0.01, 4, 0);
+		for(i := 0; i < 5; i += 1;) {
+			slow->Add(80.0 + i->As(Float) * 0.123);
+			mid->Add(40.0 + i->As(Float) * 0.321);
+			fast->Add(20.0 + i->As(Float) * 0.777);
+		};
+		all3 := SeriesStats->New(0, 0.01, 4, 0);
+		Check("merge three", all3->Merge(slow) & all3->Merge(mid) & all3->Merge(fast));
+		Check("merged min is the last series' min, exactly", all3->GetMin() = 20.0 & all3->GetMin() = fast->GetMin());
+		Check("merged max is the first series' max, exactly", all3->GetMax() = slow->GetMax() & all3->GetMax() = 80.0 + 4.0 * 0.123);
+		Check("merged quantile 0 and 1 are those extremes", all3->Quantile(0.0) = all3->GetMin() & all3->Quantile(1.0) = all3->GetMax());
+
 		# JSON round trip, small (exact) and large (sketch)
 		back := SeriesStats->FromJson(Data.JSON.JsonParser->TextToElement(whole->ToJson()->ToString()), 512);
 		Check("exact series reads back", back <> Nil);
