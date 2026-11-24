@@ -70,6 +70,7 @@ for _libs, _reason in (
     (("net", "net_h2", "net_quic", "net_server", "web_server", "json_rpc", "rss",
       "query_server", "ai_hub"), "the sandbox has no network access"),
     (("openai", "gemini", "ollama", "anthropic", "agent", "llm_util_clients", "inference"), "it needs network access to a hosted model"),
+    (("mcp",), "it serves and calls other programs over the network"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("ml_cnn",), "it reads image files through OpenCV and trains on many threads"),

@@ -19,6 +19,7 @@ Each library typically consists of:
 - **llm_util.obs** - LLM utilities (`API.LlmUtil`), pure Objeck: `PromptTemplate` and `PromptBuilder`, `TokenEstimator` and `ContextWindow`, `JsonSchema` validation with JSON-pointer errors, `JsonExtractor` and `JsonRepair` for chatty or damaged replies, and `StructuredCall`, which asks any `ChatFn` for JSON matching a schema and retries with the validation errors. Its own library, `llm_util.obl`, which needs `gen_collect`, `json` and `regex`; it links no client
 - **llm_util_clients.obs** - Adapters from `llm_util` to the clients (`API.LlmUtil.Clients`): `ChatFn` for Anthropic, OpenAI, Gemini and Ollama, `GeminiTokenCounter` (exact counts), and `PromptAdapters` for each client's own message type. Its own library, `llm_util_clients.obl`, which links `llm_util` and the four client libraries
 - **agent.obs** - Provider-neutral tool-use loop: `AgentTool`, `ToolRegistry`, `ChatBackend` adapters for Anthropic, OpenAI, Gemini and Ollama, and `Agent` (`API.Agent`); runs offline against `ScriptedBackend`
+- **mcp.obs** - Model Context Protocol (revision 2025-11-25): a server for tools, resources and prompts over stdio or streamable HTTP, a client, and a bridge that gives a server's tools to the Anthropic, OpenAI and Gemini clients
 - **ollama.obs** - Ollama local LLM integration
 - **opencv.obs** - OpenCV computer vision library
 - **models.obs** - Backend-neutral inference types shared by `onnx` and `inference`: `Tensor`, `TensorSpec`, `EndPoint`, `Engine` (`API.Models`)

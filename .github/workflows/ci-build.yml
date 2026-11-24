@@ -1256,6 +1256,27 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_funcref_range.py "%BIN%"
 
+    # The MCP server library speaks newline-delimited JSON-RPC on standard input and output:
+    # a scripted client starts a server process and covers the handshake, every method, the
+    # JSON-RPC errors, a request cancelled in flight and megabyte messages (no network).
+    - name: the MCP server answers a scripted stdio client (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_stdio_test.py "$BIN"
+
+    - name: the MCP server answers a scripted stdio client (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_stdio_test.py "%BIN%"
+
     # A build of several files reports each file's errors together, in the order the
     # files were given, rather than interleaved by line number.
     - name: obc reports a multi-file build's errors file by file (POSIX)
@@ -1852,6 +1873,7 @@ jobs:
           ../../../compiler/lib_src/llm_util.obs \
           ../../../compiler/lib_src/llm_util_clients.obs \
           ../../../compiler/lib_src/agent.obs \
+          ../../../compiler/lib_src/mcp.obs \
           ../../../compiler/lib_src/json_rpc.obs \
           ../../../compiler/lib_src/models.obs \
           ../../../compiler/lib_src/opencv.obs \

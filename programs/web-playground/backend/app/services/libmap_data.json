@@ -133,6 +133,12 @@
     "System.Math": ["BigInt", "Complex", "Rational"]
    }
   },
+  "mcp": {
+   "deps": ["json", "net", "net_server", "cipher", "misc"],
+   "bundles": {
+    "API.MCP": ["McpCall", "McpClient", "McpCollector", "McpCommandTransport", "McpContents", "McpHttpHandler", "McpHttpTransport", "McpLoopback", "McpPrompt", "McpPromptResult", "McpProtocol", "McpResource", "McpService", "McpSink", "McpStdio", "McpStdoutSink", "McpTool", "McpToolBridge", "McpToolResult", "McpTransport"]
+   }
+  },
   "misc": {
    "deps": ["gen_collect", "net", "json"],
    "bundles": {
