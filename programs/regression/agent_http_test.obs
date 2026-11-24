@@ -1,0 +1,254 @@
+# EXTRA_LIBS: agent,net,net_server,json,cipher,misc
+#~
+The agent's provider adapters over the wire, against a local HTTPS server that answers in the Anthropic,
+OpenAI and Gemini shapes: the path, the key header each provider wants (x-api-key, Authorization: Bearer,
+x-goog-api-key, and not in the Gemini URL), the JSON body, a tool call that the loop runs and a final answer
+that reports what the request carried, and a 401 whose message echoes the key back and must come out masked.
+agent_backend_test covers the translation of recorded bodies; this covers the request path no recorded
+body can. No key is real and nothing leaves loopback.
+
+The server presents a self-signed certificate for DNS:localhost, pinned with SetCertificate, the same
+fixture anthropic_http_test uses (openssl on PATH).
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.IO.Filesystem, Web.HTTP.Server;
+
+class AgentMock from HttpsRequestHandler {
+  New() { Parent(); }
+
+  method : ProcessGet(request : Request, response : Response) ~ Bool {
+    response->SetCodeContent(404, "not found");
+    return false;
+  }
+
+  method : ProcessPost(request : Request, response : Response) ~ Bool {
+    path := request->GetPath();
+    body := request->GetContent();
+    if(body = Nil) {
+      response->SetCodeContent(400, "{\"error\":{\"message\":\"no body\",\"type\":\"invalid_request_error\"}}");
+      return false;
+    };
+
+    if(path->Equals("/v1/messages")) {
+      key := request->GetHeader("x-api-key");
+      if(key = Nil | key->StartsWith("bad-")) {
+        response->SetCodeContent(401, "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key {$key}\"}}");
+        return false;
+      };
+
+      if(body->Find("tool_result") > -1) {
+        version := request->GetHeader("anthropic-version");
+        seen := body->Find("\"content\":\"42\"") > -1;
+        response->SetCodeContent(200, "{\"id\":\"m2\",\"content\":[{\"type\":\"text\",\"text\":\"anthropic ok key={$key} version={$version} result42={$seen}\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":9,\"output_tokens\":6}}");
+        return false;
+      };
+
+      response->SetCodeContent(200, "{\"id\":\"m1\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"calculator\",\"input\":{\"expression\":\"6*7\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":5,\"output_tokens\":8}}");
+      return false;
+    };
+
+    if(path->Equals("/v1/chat/completions")) {
+      auth := request->GetHeader("Authorization");
+      if(auth = Nil | auth->Find("bad-") > -1) {
+        response->SetCodeContent(401, "{\"error\":{\"message\":\"Incorrect API key provided: {$auth}\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}");
+        return false;
+      };
+
+      if(body->Find("\"role\":\"tool\"") > -1) {
+        seen := body->Find("\"tool_call_id\":\"call_1\"") > -1;
+        response->SetCodeContent(200, "{\"id\":\"c2\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"openai ok auth={$auth} tool_call_id_ok={$seen}\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":9,\"completion_tokens\":6}}");
+        return false;
+      };
+
+      response->SetCodeContent(200, "{\"id\":\"c1\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"calculator\",\"arguments\":\"{\\\"expression\\\":\\\"6*7\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":8}}");
+      return false;
+    };
+
+    if(path->Equals("/v1beta/models/gemini-x:generateContent")) {
+      key := request->GetHeader("x-goog-api-key");
+      if(key = Nil | key->StartsWith("bad-")) {
+        response->SetCodeContent(400, "{\"error\":{\"code\":400,\"message\":\"API key not valid: {$key}\",\"status\":\"INVALID_ARGUMENT\"}}");
+        return false;
+      };
+
+      if(body->Find("functionResponse") > -1) {
+        seen := body->Find("\"result\":\"42\"") > -1;
+        response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"gemini ok key={$key} response42={$seen}\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":9,\"candidatesTokenCount\":6}}");
+        return false;
+      };
+
+      response->SetCodeContent(200, "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"calculator\",\"args\":{\"expression\":\"6*7\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":8}}");
+      return false;
+    };
+
+    response->SetCodeContent(404, "not found");
+    return false;
+  }
+}
+
+class AgentHttpTest {
+  @port : static : Int;
+  @failures : static : Int;
+
+  function : Port() ~ Int { return @port; }
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  # A self-signed certificate valid from 2025, so a clock that steps back (WSL2) cannot make it "not yet valid"
+  function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+    dir := "{$cert}.ca";
+    Directory->Delete(dir);
+    File->Delete(cert);
+    File->Delete(key);
+    if(<>Directory->Create(dir)) {
+      return false;
+    };
+
+    cnf := FileWriter->New("{$dir}/openssl.cnf");
+    cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+    cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+    cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+    cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+    cnf->Close();
+    FileWriter->New("{$dir}/index.txt")->Close();
+    serial := FileWriter->New("{$dir}/serial");
+    serial->WriteString("01\n");
+    serial->Close();
+
+    made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+    if(made) {
+      made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+    };
+
+    Directory->Delete(dir);
+    return made;
+  }
+
+  function : Registry() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+    return registry;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    @port := 0;
+    cert := "agent-http-{$Runtime->GetProcessId()}-cert.pem";
+    key := "agent-http-{$Runtime->GetProcessId()}-key.pem";
+    File->Delete(cert);
+    File->Delete(key);
+
+    if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost")) {
+      "  [FAIL] openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    server := System.Concurrency.Thread->New() {
+      New() { Parent(); }
+      method : public : Run(arg : System.Base) ~ Nil {
+        WebServer->ServeSecure(AgentMock->New()->GetClass(),
+          AgentHttpTest->Port(), "agent-http-{$Runtime->GetProcessId()}-cert.pem", "agent-http-{$Runtime->GetProcessId()}-key.pem", "", false);
+      }
+    };
+    server->Execute(Nil);
+    waited := 0;
+    while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+      System.Concurrency.Thread->Sleep(25);
+      waited += 25;
+    };
+    @port := WebServer->GetBoundPort();
+    if(@port = 0) {
+      "  [FAIL] the TLS server never listened"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    TestAnthropic(cert);
+    TestOpenAI(cert);
+    TestGemini(cert);
+    TestUnreachable();
+
+    File->Delete(cert);
+    File->Delete(key);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+    # ServeSecure blocks in accept; end the process after cleanup
+    Runtime->Exit(0);
+  }
+
+  function : TestAnthropic(cert : String) ~ Nil {
+    "-- Anthropic over HTTPS"->PrintLine();
+    backend := AnthropicBackend->New("claude-sonnet-5-5", "test-key-aaaa1111")->SetBaseUrl("https://localhost:{$@port}/v1")->SetCertificate(cert);
+    result := Agent->New(backend, Registry())->Run("What is 6 * 7?");
+    Check("the run completes", result->IsCompleted());
+    Check("the key went in x-api-key and the version header was sent", Has(result->GetText(), "key=test-key-aaaa1111") & Has(result->GetText(), "version=2023-06-01"));
+    Check("the tool ran and its result reached the server", Has(result->GetText(), "result42=true"));
+    Check("one tool call, two steps", result->GetToolCallCount() = 1 & result->GetSteps()->Size() = 2);
+    Check("the transcript does not show the key", <>Has(result->ToString(), "test-key-aaaa1111") & <>Has(result->ToJson()->ToString(), "test-key-aaaa1111"));
+
+    bad := AnthropicBackend->New("claude-sonnet-5-5", "bad-key-bbbb2222")->SetBaseUrl("https://localhost:{$@port}/v1")->SetCertificate(cert);
+    result := Agent->New(bad, Registry())->Run("hello");
+    Check("a 401 ends the run with the provider's message", Same(result->GetStatus(), "error") & Has(result->GetError(), "authentication_error"));
+    Check("the key the server echoed is masked", <>Has(result->GetError(), "bad-key-bbbb2222") & Has(result->GetError(), "[REDACTED]"));
+    Check("the backend's error is masked too", <>Has(bad->GetLastError(), "bad-key-bbbb2222"));
+  }
+
+  function : TestOpenAI(cert : String) ~ Nil {
+    "-- OpenAI over HTTPS"->PrintLine();
+    backend := OpenAIBackend->New("gpt-5", "test-key-cccc3333")->SetBaseUrl("https://localhost:{$@port}/v1")->SetCertificate(cert);
+    result := Agent->New(backend, Registry())->Run("What is 6 * 7?");
+    Check("the run completes", result->IsCompleted());
+    Check("the key went in a Bearer header", Has(result->GetText(), "auth=Bearer test-key-cccc3333"));
+    Check("the tool result came back as a tool message with the call id", Has(result->GetText(), "tool_call_id_ok=true"));
+    Check("one tool call, two steps", result->GetToolCallCount() = 1 & result->GetSteps()->Size() = 2);
+    Check("the transcript does not show the key", <>Has(result->ToString(), "test-key-cccc3333"));
+
+    bad := OpenAIBackend->New("gpt-5", "bad-key-dddd4444")->SetBaseUrl("https://localhost:{$@port}/v1")->SetCertificate(cert);
+    result := Agent->New(bad, Registry())->Run("hello");
+    Check("a 401 ends the run", Same(result->GetStatus(), "error") & Has(result->GetError(), "invalid_request_error"));
+    Check("the key the server echoed is masked", <>Has(result->GetError(), "bad-key-dddd4444") & Has(result->GetError(), "[REDACTED]"));
+  }
+
+  function : TestGemini(cert : String) ~ Nil {
+    "-- Gemini over HTTPS"->PrintLine();
+    backend := GeminiBackend->New("gemini-x", "test-key-eeee5555")->SetBaseUrl("https://localhost:{$@port}/v1beta")->SetCertificate(cert);
+    result := Agent->New(backend, Registry())->Run("What is 6 * 7?");
+    Check("the run completes", result->IsCompleted());
+    Check("the key went in x-goog-api-key", Has(result->GetText(), "key=test-key-eeee5555"));
+    Check("the tool result went back as a functionResponse", Has(result->GetText(), "response42=true"));
+    Check("one tool call, two steps", result->GetToolCallCount() = 1 & result->GetSteps()->Size() = 2);
+    Check("the transcript does not show the key", <>Has(result->ToString(), "test-key-eeee5555"));
+
+    bad := GeminiBackend->New("gemini-x", "bad-key-ffff6666")->SetBaseUrl("https://localhost:{$@port}/v1beta")->SetCertificate(cert);
+    result := Agent->New(bad, Registry())->Run("hello");
+    Check("a 400 ends the run", Same(result->GetStatus(), "error") & Has(result->GetError(), "INVALID_ARGUMENT"));
+    Check("the key the server echoed is masked", <>Has(result->GetError(), "bad-key-ffff6666"));
+  }
+
+  function : TestUnreachable() ~ Nil {
+    "-- a server that is not there"->PrintLine();
+    backend := OllamaBackend->New("llama3.2")->SetHost("http://127.0.0.1:1");
+    result := Agent->New(backend, Registry())->Run("hello");
+    Check("a refused connection ends the run with an error", Same(result->GetStatus(), "error") & result->GetError() <> Nil);
+  }
+}
