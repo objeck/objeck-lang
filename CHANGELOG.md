@@ -19,6 +19,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Fixed
 
+- **A method chain on a parenthesised calculation inside another calculation dropped every call after the first**: `(p * x)->Sin()->Abs()->Log() * -1.0 + c` ran as `(p * x)->Sin() * -1.0 + c` and returned a wrong number at every `-opt` level, interpreted and JIT-compiled alike. The compiler emitted only the first attached call of a nested calculated operand. Operands now go through the same path as any other expression. Library `.obl` files are byte-identical after the fix.
 - **`{n}` in a regular expression meant `{n,}`**: `a{2}` matched `aaa`. It is now exactly n. This is in the released v2026.11.2 `regex.obl`.
 - **`RegEx->ReplaceAll` matched against already-replaced text**: a replacement could create or remove a `\b`, so `\bx` on `xx` with `-` gave `--` instead of `-x`. It now builds the result in one pass over the original input.
 - **`^a`, `^a+`, `^a$`, `^$` and `a|$` were rejected** as "stray token" or a missing operand; the anchor was only applied when a second operand followed.
