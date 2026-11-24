@@ -1156,6 +1156,7 @@ jobs:
             ../../../compiler/lib_src/anthropic.obs \
             ../../../compiler/lib_src/llm_util.obs \
             ../../../compiler/lib_src/llm_util_clients.obs \
+            ../../../compiler/lib_src/agent.obs \
             ../../../compiler/lib_src/json_rpc.obs \
             ../../../compiler/lib_src/models.obs \
             ../../../compiler/lib_src/opencv.obs \

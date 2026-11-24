@@ -1,0 +1,781 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+The agent loop (API.Agent) against a scripted fake model, so no key and no network are needed: a reply
+with no tool call, one call, several calls in a row, several calls in one turn, a tool that fails three
+ways (a raised error, a runtime fault, no result), arguments the schema rejects, an unknown tool, the step
+limit, the allow and deny lists, the approval callback, a tool over its time limit, a result that is cut,
+a backend that fails with a key in its message, the observer, a second Run on the same conversation, the
+transcript, the schema checker on its own, and the built-in tools.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.IO.Filesystem;
+
+class EchoHandler implements AgentToolHandler {
+  @count : static : Int;
+
+  New() {
+  }
+
+  function : GetCount() ~ Int {
+    return @count;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    @count += 1;
+    text := arguments->Get("text")->GetString();
+    return "echo:{$text}";
+  }
+}
+
+class BoomHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Runtime->Raise(Error->New("the disk is on fire"));
+    return "unreachable";
+  }
+}
+
+class CrashHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    zero := 0;
+    return (10 / zero)->ToString();
+  }
+}
+
+class NothingHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return Nil;
+  }
+}
+
+class SlowHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    System.Concurrency.Thread->Sleep(120);
+    return "finally";
+  }
+}
+
+class BigHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    text := String->New();
+    i := 0;
+    while(i < 500) {
+      text->Append("0123456789");
+      i += 1;
+    };
+    return text;
+  }
+}
+
+class DangerHandler implements AgentToolHandler {
+  @count : static : Int;
+
+  New() {
+  }
+
+  function : GetCount() ~ Int {
+    return @count;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    @count += 1;
+    return "deleted";
+  }
+}
+
+class KeyLeakHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Runtime->Raise(Error->New("upstream said: bad key sk-ant-api03-abcdefghijklmnop1234567890 for this request"));
+    return "unreachable";
+  }
+}
+
+class Approver implements AgentApprover {
+  @answer : Bool;
+  @asked : Int;
+  @last : String;
+
+  New(answer : Bool) {
+    @answer := answer;
+  }
+
+  method : public : GetAsked() ~ Int {
+    return @asked;
+  }
+
+  method : public : GetLast() ~ String {
+    return @last;
+  }
+
+  method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+    @asked += 1;
+    @last := call->GetName();
+    return @answer;
+  }
+}
+
+class Recorder implements AgentObserver {
+  @log : String;
+
+  New() {
+    @log := "";
+  }
+
+  method : public : GetLog() ~ String {
+    return @log;
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+    @log->Append("R{$step_index} ");
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+    @log->Append("T{$step_index}:");
+    @log->Append(result->GetStatus());
+    @log->Append(' ');
+  }
+}
+
+class AgentLoopTest {
+  @failures : static : Int;
+  @adds : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  function : Add(arguments : JsonElement) ~ String {
+    @adds += 1;
+    a := arguments->Get("a")->GetFloat();
+    b := arguments->Get("b")->GetFloat();
+    return (a + b)->ToString();
+  }
+
+  function : Pair(arguments : JsonElement) ~ JsonElement {
+    result := Json("{\"pair\":[1,2]}");
+    return result;
+  }
+
+  function : Registry() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    echo_schema := Json("{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"],\"additionalProperties\":false}");
+    registry->Add(AgentTool->New("echo", "Repeats the text", echo_schema, EchoHandler->New()));
+
+    add_schema := Json("{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"]}");
+    registry->Add(AgentTool->New("add", "Adds two numbers", add_schema, Func2Ref->New(AgentLoopTest->Add(JsonElement) ~ String)<JsonElement, String>));
+    registry->Add(AgentTool->New("pair", "Returns JSON", Nil, Func2Ref->New(AgentLoopTest->Pair(JsonElement) ~ JsonElement)<JsonElement, JsonElement>));
+    registry->Add(AgentTool->New("boom", "Always fails", Nil, BoomHandler->New()));
+    registry->Add(AgentTool->New("crash", "Divides by zero", Nil, CrashHandler->New()));
+    registry->Add(AgentTool->New("nothing", "Returns no result", Nil, NothingHandler->New()));
+    registry->Add(AgentTool->New("slow", "Takes a while", Nil, SlowHandler->New())->SetTimeout(30));
+    registry->Add(AgentTool->New("big", "Returns a lot", Nil, BigHandler->New()));
+    registry->Add(AgentTool->New("leak", "Fails with a key in the message", Nil, KeyLeakHandler->New()));
+    registry->Add(AgentTool->New("danger", "Deletes things", Nil, DangerHandler->New())->SetDangerous(true));
+    return registry;
+  }
+
+  function : Say(text : String) ~ AgentReply {
+    return AgentReply->Say(text);
+  }
+
+  function : Ask(id : String, name : String, arguments : String) ~ AgentReply {
+    return AgentReply->Ask(id, name, arguments);
+  }
+
+  function : Script2(a : AgentReply, b : AgentReply) ~ ScriptedBackend {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(a);
+    script->AddBack(b);
+    return ScriptedBackend->New(script);
+  }
+
+  function : Script3(a : AgentReply, b : AgentReply, c : AgentReply) ~ ScriptedBackend {
+    backend := Script2(a, b);
+    backend->Add(c);
+    return backend;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestNoToolCall();
+    TestOneCall();
+    TestSequentialCalls();
+    TestParallelCalls();
+    TestJsonResult();
+    TestToolFailures();
+    TestInvalidArguments();
+    TestUnknownTool();
+    TestMaxSteps();
+    TestAllowDeny();
+    TestApproval();
+    TestTimeoutAndTruncation();
+    TestBackendFailure();
+    TestKeysAreRedacted();
+    TestObserver();
+    TestSecondRun();
+    TestTranscript();
+    TestSchema();
+    TestBuiltins();
+    TestSandbox();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestNoToolCall() ~ Nil {
+    "-- a reply with no tool call"->PrintLine();
+    reply := AgentReply->New("Hello there", Nil, "end", 11, 4);
+    script := Vector->New()<AgentReply>;
+    script->AddBack(reply);
+    backend := ScriptedBackend->New(script);
+    agent := Agent->New(backend, Registry());
+    agent->SetSystem("Be brief.");
+    result := agent->Run("hi");
+    Check("completed", result->IsCompleted() & Same(result->GetStatus(), "completed"));
+    Check("final text", Same(result->GetText(), "Hello there"));
+    Check("one step, no calls", result->GetSteps()->Size() = 1 & result->GetToolCallCount() = 0);
+    Check("tokens add up", result->GetInputTokens() = 11 & result->GetOutputTokens() = 4);
+    Check("the model was asked once", backend->GetCallCount() = 1);
+    Check("the system prompt reached the conversation", Same(backend->GetLastConversation()->GetSystem(), "Be brief."));
+    Check("every registered tool was offered", Has(backend->GetOfferedTools(), "echo") & Has(backend->GetOfferedTools(), "danger"));
+    Check("no error", result->GetError() = Nil);
+  }
+
+  function : TestOneCall() ~ Nil {
+    "-- one tool call"->PrintLine();
+    EchoHandler->GetCount();
+    before := EchoHandler->GetCount();
+    backend := Script2(Ask("call_1", "echo", "{\"text\":\"ping\"}"), Say("It said echo:ping"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("say ping");
+    Check("completed", result->IsCompleted());
+    Check("two steps", result->GetSteps()->Size() = 2);
+    Check("final text", Same(result->GetText(), "It said echo:ping"));
+    Check("the handler ran once", EchoHandler->GetCount() = before + 1);
+
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("result ok", call->IsOk() & Same(call->GetStatus(), "ok"));
+    Check("result content", Same(call->GetContent(), "echo:ping"));
+    Check("result carries the call id and name", Same(call->GetCallId(), "call_1") & Same(call->GetToolName(), "echo"));
+    Check("arguments kept as JSON text", Has(call->GetArguments(), "ping"));
+
+    entries := agent->GetConversation()->GetEntries();
+    Check("conversation is user, assistant, tool, assistant", entries->Size() = 4 & Same(entries->Get(0)->GetRole(), "user") & Same(entries->Get(1)->GetRole(), "assistant") & Same(entries->Get(2)->GetRole(), "tool") & Same(entries->Get(3)->GetRole(), "assistant"));
+    Check("the tool entry answers the call", Same(entries->Get(2)->GetCallId(), "call_1") & Same(entries->Get(2)->GetText(), "echo:ping") & <>entries->Get(2)->IsError());
+    Check("the second request carried the result", backend->GetLastConversation()->Size() = 4);
+  }
+
+  function : TestSequentialCalls() ~ Nil {
+    "-- several calls in a row"->PrintLine();
+    @adds := 0;
+    backend := Script3(Ask("c1", "add", "{\"a\":1,\"b\":2}"), Ask("c2", "add", "{\"a\":3,\"b\":4}"), Say("done"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("add things");
+    Check("completed after three steps", result->IsCompleted() & result->GetSteps()->Size() = 3);
+    Check("two calls made", result->GetToolCallCount() = 2 & @adds = 2);
+    first := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    second := result->GetSteps()->Get(1)->GetResults()->Get(0);
+    Check("first result", first->IsOk() & first->GetContent()->ToFloat() = 3.0);
+    Check("second result", second->IsOk() & second->GetContent()->ToFloat() = 7.0);
+    Check("step numbers", result->GetSteps()->Get(0)->GetIndex() = 1 & result->GetSteps()->Get(2)->GetIndex() = 3);
+  }
+
+  function : TestParallelCalls() ~ Nil {
+    "-- several calls in one turn"->PrintLine();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("p1", "echo", Json("{\"text\":\"one\"}")));
+    calls->AddBack(AgentToolCall->New("p2", "add", Json("{\"a\":2,\"b\":3}")));
+    calls->AddBack(AgentToolCall->New("p3", "echo", Json("{\"text\":\"three\"}")));
+    backend := Script2(AgentReply->AskAll(calls), Say("all done"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("do three things");
+    Check("completed in two steps", result->IsCompleted() & result->GetSteps()->Size() = 2);
+    results := result->GetSteps()->Get(0)->GetResults();
+    Check("three results in call order", results->Size() = 3 & Same(results->Get(0)->GetCallId(), "p1") & Same(results->Get(1)->GetCallId(), "p2") & Same(results->Get(2)->GetCallId(), "p3"));
+    Check("each ran", Same(results->Get(0)->GetContent(), "echo:one") & results->Get(1)->GetContent()->ToFloat() = 5.0 & Same(results->Get(2)->GetContent(), "echo:three"));
+
+    entries := agent->GetConversation()->GetEntries();
+    Check("one tool entry per call, in order", entries->Size() = 6 & Same(entries->Get(2)->GetCallId(), "p1") & Same(entries->Get(3)->GetCallId(), "p2") & Same(entries->Get(4)->GetCallId(), "p3"));
+    Check("the assistant entry keeps all three calls", entries->Get(1)->GetToolCalls()->Size() = 3);
+  }
+
+  function : TestJsonResult() ~ Nil {
+    "-- a tool that returns JSON"->PrintLine();
+    backend := Script2(Ask("j1", "pair", "{}"), Say("ok"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("pair");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("JSON result becomes JSON text", call->IsOk() & Same(call->GetContent(), "{\"pair\":[1,2]}"));
+  }
+
+  function : TestToolFailures() ~ Nil {
+    "-- a tool that fails"->PrintLine();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("f1", "boom", Json("{}")));
+    calls->AddBack(AgentToolCall->New("f2", "crash", Json("{}")));
+    calls->AddBack(AgentToolCall->New("f3", "nothing", Json("{}")));
+    backend := Script2(AgentReply->AskAll(calls), Say("recovered"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("break things");
+    Check("the loop still completes", result->IsCompleted() & Same(result->GetText(), "recovered"));
+
+    results := result->GetSteps()->Get(0)->GetResults();
+    raised := results->Get(0);
+    Check("a raised error is an error result", Same(raised->GetStatus(), "error") & <>raised->IsOk());
+    Check("the model can read why", Has(raised->GetContent(), "the disk is on fire") & Has(raised->GetContent(), "boom"));
+    crashed := results->Get(1);
+    Check("a runtime fault is an error result", Same(crashed->GetStatus(), "error") & Has(crashed->GetContent(), "crash"));
+    empty := results->Get(2);
+    Check("no result is an error result", Same(empty->GetStatus(), "error") & Has(empty->GetContent(), "returned no result"));
+
+    entries := agent->GetConversation()->GetEntries();
+    Check("the failures are flagged to the backend", entries->Get(2)->IsError() & entries->Get(3)->IsError() & entries->Get(4)->IsError());
+    Check("the model was shown the error text", Has(entries->Get(2)->GetText(), "Error:"));
+  }
+
+  function : TestInvalidArguments() ~ Nil {
+    "-- arguments the schema rejects"->PrintLine();
+    @adds := 0;
+    EchoHandler->GetCount();
+    echoes := EchoHandler->GetCount();
+
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("v1", "add", Json("{\"a\":\"one\",\"b\":2}")));
+    calls->AddBack(AgentToolCall->New("v2", "add", Json("{\"a\":1}")));
+    calls->AddBack(AgentToolCall->New("v3", "echo", Json("{\"text\":\"x\",\"extra\":1}")));
+    calls->AddBack(AgentToolCall->New("v4", "echo", Json("{\"text\":7}")));
+    calls->AddBack(AgentToolCall->New("v5", "echo", Nil));
+    backend := Script2(AgentReply->AskAll(calls), Say("sorry"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("bad arguments");
+    Check("the loop completes", result->IsCompleted());
+    Check("no handler ran", @adds = 0 & EchoHandler->GetCount() = echoes);
+
+    results := result->GetSteps()->Get(0)->GetResults();
+    Check("wrong type is invalid", Same(results->Get(0)->GetStatus(), "invalid") & Has(results->Get(0)->GetContent(), "arguments.a: expected number, got string"));
+    Check("a missing required property is invalid", Same(results->Get(1)->GetStatus(), "invalid") & Has(results->Get(1)->GetContent(), "missing required property 'b'"));
+    Check("an extra property is invalid when the schema forbids it", Same(results->Get(2)->GetStatus(), "invalid") & Has(results->Get(2)->GetContent(), "unexpected property 'extra'"));
+    Check("a number where text belongs is invalid", Same(results->Get(3)->GetStatus(), "invalid") & Has(results->Get(3)->GetContent(), "expected string, got number"));
+    Check("arguments that were not JSON are invalid", Same(results->Get(4)->GetStatus(), "invalid") & Has(results->Get(4)->GetContent(), "not valid JSON"));
+    Check("the model is told which tool", Has(results->Get(0)->GetContent(), "invalid arguments for 'add'"));
+  }
+
+  function : TestUnknownTool() ~ Nil {
+    "-- a tool that does not exist"->PrintLine();
+    backend := Script2(Ask("u1", "teleport", "{}"), Say("fine"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("teleport me");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("status unknown", Same(call->GetStatus(), "unknown"));
+    Check("the message names the tool and lists the real ones", Has(call->GetContent(), "teleport") & Has(call->GetContent(), "echo") & Has(call->GetContent(), "add"));
+    Check("the loop carries on", result->IsCompleted());
+  }
+
+  function : TestMaxSteps() ~ Nil {
+    "-- the step limit"->PrintLine();
+    EchoHandler->GetCount();
+    before := EchoHandler->GetCount();
+    script := Vector->New()<AgentReply>;
+    i := 0;
+    while(i < 6) {
+      script->AddBack(Ask("m{$i}", "echo", "{\"text\":\"again\"}"));
+      i += 1;
+    };
+    backend := ScriptedBackend->New(script);
+    agent := Agent->New(backend, Registry());
+    agent->SetMaxSteps(3);
+    result := agent->Run("never stop");
+    Check("status max_steps", Same(result->GetStatus(), "max_steps") & <>result->IsCompleted());
+    Check("exactly three model calls", backend->GetCallCount() = 3 & result->GetSteps()->Size() = 3);
+    Check("the error says why", Has(result->GetError(), "3 steps"));
+    Check("no final text", result->GetText()->Size() = 0);
+    Check("only the first two rounds ran their tools", EchoHandler->GetCount() = before + 2);
+
+    last := result->GetSteps()->Get(2)->GetResults()->Get(0);
+    Check("the last step's call was skipped", Same(last->GetStatus(), "skipped") & Has(last->GetContent(), "step limit"));
+
+    entries := agent->GetConversation()->GetEntries();
+    calls_made := 0;
+    answers := 0;
+    j := 0;
+    while(j < entries->Size()) {
+      calls_made += entries->Get(j)->GetToolCalls()->Size();
+      if(Same(entries->Get(j)->GetRole(), "tool")) {
+        answers += 1;
+      };
+      j += 1;
+    };
+    Check("every call is answered, so the conversation stays valid", calls_made = 3 & answers = 3);
+  }
+
+  function : TestAllowDeny() ~ Nil {
+    "-- allow and deny lists"->PrintLine();
+    EchoHandler->GetCount();
+    before := EchoHandler->GetCount();
+    registry := Registry();
+    registry->Deny("echo");
+    backend := Script2(Ask("d1", "echo", "{\"text\":\"secret\"}"), Say("blocked"));
+    agent := Agent->New(backend, registry);
+    result := agent->Run("use echo");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("a denied tool is refused as denied", Same(call->GetStatus(), "denied") & Has(call->GetContent(), "not permitted"));
+    Check("its handler did not run", EchoHandler->GetCount() = before);
+    Check("the model was not shown it", <>Has(backend->GetOfferedTools(), "echo") & Has(backend->GetOfferedTools(), "add"));
+    Check("the loop carries on", result->IsCompleted());
+
+    only := Registry();
+    only->Allow("add");
+    only->Allow("pair");
+    backend := Script2(Ask("d2", "echo", "{\"text\":\"x\"}"), Say("blocked"));
+    agent := Agent->New(backend, only);
+    result := agent->Run("use echo");
+    Check("an allow list offers only its tools", Same(backend->GetOfferedTools(), "add,pair"));
+    Check("a tool off the allow list is denied", Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "denied"));
+
+    both := Registry();
+    both->Allow("add");
+    both->Deny("add");
+    Check("deny beats allow", <>both->Permits("add") & <>both->Permits("echo"));
+    Check("permits when no list is set", Registry()->Permits("echo") & <>Registry()->Permits(Nil));
+  }
+
+  function : TestApproval() ~ Nil {
+    "-- approval"->PrintLine();
+    DangerHandler->GetCount();
+    before := DangerHandler->GetCount();
+
+    no := Approver->New(false);
+    backend := Script2(Ask("a1", "danger", "{}"), Say("understood"));
+    agent := Agent->New(backend, Registry());
+    agent->SetApprover(no);
+    result := agent->Run("delete everything");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("a refusing approver stops the call", Same(call->GetStatus(), "refused") & Has(call->GetContent(), "declined"));
+    Check("the approver was asked about that tool", no->GetAsked() = 1 & Same(no->GetLast(), "danger"));
+    Check("the handler did not run", DangerHandler->GetCount() = before);
+    Check("the model is told so", Has(agent->GetConversation()->GetEntries()->Get(2)->GetText(), "declined") & agent->GetConversation()->GetEntries()->Get(2)->IsError());
+
+    yes := Approver->New(true);
+    backend := Script2(Ask("a2", "danger", "{}"), Say("done"));
+    agent := Agent->New(backend, Registry());
+    agent->SetApprover(yes);
+    result := agent->Run("delete everything");
+    Check("an approving approver lets it run", Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "ok") & DangerHandler->GetCount() = before + 1);
+
+    backend := Script2(Ask("a3", "danger", "{}"), Say("done"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("delete everything");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("with no approver a dangerous tool is refused", Same(call->GetStatus(), "refused") & Has(call->GetContent(), "needs approval") & DangerHandler->GetCount() = before + 1);
+
+    quiet := Approver->New(true);
+    backend := Script2(Ask("a4", "echo", "{\"text\":\"hi\"}"), Say("done"));
+    agent := Agent->New(backend, Registry());
+    agent->SetApprover(quiet);
+    result := agent->Run("hi");
+    Check("a safe tool does not ask", quiet->GetAsked() = 0 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "ok"));
+
+    every := Approver->New(false);
+    backend := Script2(Ask("a5", "echo", "{\"text\":\"hi\"}"), Say("done"));
+    agent := Agent->New(backend, Registry());
+    agent->SetApprover(every);
+    agent->SetApproveAll(true);
+    result := agent->Run("hi");
+    Check("approve-all asks about a safe tool too", every->GetAsked() = 1 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "refused"));
+
+    # an invalid call is not worth asking about
+    ask_first := Approver->New(true);
+    backend := Script2(Ask("a6", "danger", "{\"x\":"), Say("done"));
+    agent := Agent->New(backend, Registry());
+    agent->SetApprover(ask_first);
+    result := agent->Run("broken json");
+    Check("arguments are checked before the approver is asked", ask_first->GetAsked() = 0 & Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "invalid"));
+  }
+
+  function : TestTimeoutAndTruncation() ~ Nil {
+    "-- time limit and result size"->PrintLine();
+    backend := Script2(Ask("t1", "slow", "{}"), Say("late"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("be slow");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("a tool over its own limit is a timeout", Same(call->GetStatus(), "timeout") & Has(call->GetContent(), "over its 30 ms limit"));
+    Check("its result was discarded", <>Has(call->GetContent(), "finally"));
+    Check("the time was measured", call->GetMillis() >= 100);
+
+    backend := Script2(Ask("t2", "echo", "{\"text\":\"quick\"}"), Say("fast"));
+    agent := Agent->New(backend, Registry());
+    agent->SetToolTimeout(5000);
+    result := agent->Run("be quick");
+    Check("a quick tool under the agent's limit is fine", Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "ok"));
+
+    backend := Script2(Ask("t3", "big", "{}"), Say("big"));
+    agent := Agent->New(backend, Registry());
+    agent->SetMaxResultChars(100);
+    result := agent->Run("be big");
+    content := result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent();
+    Check("a long result is cut", content->Size() < 200 & Has(content, "[truncated]") & result->GetSteps()->Get(0)->GetResults()->Get(0)->IsOk());
+
+    backend := Script2(Ask("t4", "big", "{}"), Say("big"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("be big");
+    Check("the default limit leaves 5000 characters alone", result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent()->Size() = 5000);
+  }
+
+  function : TestBackendFailure() ~ Nil {
+    "-- a backend that fails"->PrintLine();
+    backend := ScriptedBackend->New(Nil);
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("hello?");
+    Check("status error", Same(result->GetStatus(), "error") & <>result->IsCompleted());
+    Check("the backend's message is kept", Has(result->GetError(), "no reply"));
+    Check("no steps", result->GetSteps()->Size() = 0);
+
+    # the second request fails, after a tool ran
+    backend := Script2(Ask("b1", "echo", "{\"text\":\"x\"}"), Say("unused"));
+    backend->GetCallCount();
+    agent := Agent->New(ScriptedBackend->New(Vector->New()<AgentReply>)->Add(Ask("b2", "echo", "{\"text\":\"y\"}")), Registry());
+    result := agent->Run("two requests");
+    Check("a failure after a tool call is reported with the steps so far", Same(result->GetStatus(), "error") & result->GetSteps()->Size() = 1 & result->GetToolCallCount() = 1);
+
+    truncated := AgentReply->New("half an ans", Nil, "length", 0, 0);
+    script := Vector->New()<AgentReply>;
+    script->AddBack(truncated);
+    agent := Agent->New(ScriptedBackend->New(script), Registry());
+    result := agent->Run("long");
+    Check("a reply cut at the token limit is an error with its text", Same(result->GetStatus(), "error") & Has(result->GetError(), "cut off") & Same(result->GetText(), "half an ans"));
+
+    filtered := AgentReply->New("", Nil, "filtered", 0, 0);
+    script := Vector->New()<AgentReply>;
+    script->AddBack(filtered);
+    agent := Agent->New(ScriptedBackend->New(script), Registry());
+    result := agent->Run("naughty");
+    Check("a filtered reply is an error", Same(result->GetStatus(), "error") & Has(result->GetError(), "content filter"));
+  }
+
+  function : TestKeysAreRedacted() ~ Nil {
+    "-- API keys are redacted"->PrintLine();
+    Redactor->Add("my-very-secret-token-9999");
+    scrubbed := Redactor->Scrub("auth failed for my-very-secret-token-9999 on the server");
+    Check("a registered key is masked", <>Has(scrubbed, "my-very-secret") & Has(scrubbed, "[REDACTED]") & Has(scrubbed, "on the server"));
+    Check("an sk- token is masked", <>Has(Redactor->Scrub("key sk-proj-abcdefghijklmnop12345 end"), "abcdefgh"));
+    Check("an sk-ant token is masked", <>Has(Redactor->Scrub("key sk-ant-api03-abcdefghijklmnop12345"), "abcdefgh"));
+    # built from two pieces so the source holds no key-shaped literal for a secret scanner to read
+    google := "AIza";
+    google->Append("SyA1234567890abcdefghijklmnopqrstu");
+    Check("a Google key is masked", <>Has(Redactor->Scrub("?key={$google}"), "SyA1234567"));
+    Check("a bearer token is masked", <>Has(Redactor->Scrub("Authorization: Bearer abcdef0123456789"), "abcdef0123"));
+    Check("ordinary text is left alone", Same(Redactor->Scrub("the task-list is short and sk-8 is not a key"), "the task-list is short and sk-8 is not a key"));
+    Check("Nil stays Nil", Redactor->Scrub(Nil) = Nil);
+
+    backend := Script2(Ask("k1", "leak", "{}"), Say("ok"));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("leak");
+    call := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    Check("a key in a tool's error text is masked in the transcript", <>Has(result->ToString(), "abcdefghijklmnop") & Has(result->ToString(), "[REDACTED]"));
+    Check("and in the JSON transcript", <>Has(result->ToJson()->ToString(), "abcdefghijklmnop"));
+
+    script := Vector->New()<AgentReply>;
+    failing := ScriptedBackend->New(script);
+    agent := Agent->New(failing, Registry());
+    result := agent->Run("x");
+    Check("a clean error is unchanged", Has(result->GetError(), "script has no reply"));
+  }
+
+  function : TestObserver() ~ Nil {
+    "-- the observer"->PrintLine();
+    recorder := Recorder->New();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("o1", "echo", Json("{\"text\":\"a\"}")));
+    calls->AddBack(AgentToolCall->New("o2", "teleport", Json("{}")));
+    backend := Script2(AgentReply->AskAll(calls), Say("end"));
+    agent := Agent->New(backend, Registry());
+    agent->SetObserver(recorder);
+    result := agent->Run("watch");
+    Check("replies and results arrive in order", Same(recorder->GetLog(), "R1 T1:ok T1:unknown R2 "));
+    Check("the run completed", result->IsCompleted());
+  }
+
+  function : TestSecondRun() ~ Nil {
+    "-- a second Run carries on"->PrintLine();
+    backend := Script2(Say("first answer"), Say("second answer"));
+    agent := Agent->New(backend, Registry());
+    first := agent->Run("one");
+    second := agent->Run("two");
+    Check("both answers", Same(first->GetText(), "first answer") & Same(second->GetText(), "second answer"));
+    Check("the conversation holds both turns", agent->GetConversation()->Size() = 4);
+    Check("the second request saw the first turn", backend->GetLastConversation()->Size() = 4);
+    agent->Reset();
+    Check("Reset forgets the turns", agent->GetConversation()->Size() = 0);
+  }
+
+  function : TestTranscript() ~ Nil {
+    "-- the transcript"->PrintLine();
+    backend := Script2(Ask("x1", "echo", "{\"text\":\"abc\"}"), Say("The answer."));
+    agent := Agent->New(backend, Registry());
+    result := agent->Run("go");
+    text := result->ToString();
+    Check("text transcript names the call and the answer", Has(text, "call echo") & Has(text, "-> ok: echo:abc") & Has(text, "answer: The answer.") & Has(text, "result: completed"));
+
+    json := result->ToJson();
+    Check("JSON transcript has status and text", Same(json->Get("status")->GetString(), "completed") & Same(json->Get("text")->GetString(), "The answer."));
+    steps := json->Get("steps");
+    Check("JSON transcript has the steps", steps->Size() = 2 & steps->Get(0)->Get("calls")->Size() = 1);
+    call := steps->Get(0)->Get("calls")->Get(0);
+    Check("each call has id, tool, status and content", Same(call->Get("id")->GetString(), "x1") & Same(call->Get("tool")->GetString(), "echo") & Same(call->Get("status")->GetString(), "ok") & Same(call->Get("content")->GetString(), "echo:abc"));
+    Check("the JSON round trips", JsonParser->TextToElement(json->ToString()) <> Nil);
+  }
+
+  function : Schema(schema : String, value : String) ~ String {
+    return AgentSchema->Check(Json(schema), Json(value));
+  }
+
+  function : TestSchema() ~ Nil {
+    "-- the schema checker"->PrintLine();
+    Check("an empty object fits an object schema", Schema("{\"type\":\"object\"}", "{}") = Nil);
+    Check("a string is not an object", Has(Schema("{\"type\":\"object\"}", "\"x\""), "expected object, got string"));
+    Check("integer accepts 3 and 3.0", Schema("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}}}", "{\"n\":3}") = Nil & Schema("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}}}", "{\"n\":3.0}") = Nil);
+    Check("integer rejects 3.5", Has(Schema("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}}}", "{\"n\":3.5}"), "expected integer"));
+    Check("boolean", Schema("{\"type\":\"object\",\"properties\":{\"b\":{\"type\":\"boolean\"}}}", "{\"b\":true}") = Nil & Has(Schema("{\"type\":\"object\",\"properties\":{\"b\":{\"type\":\"boolean\"}}}", "{\"b\":\"yes\"}"), "expected boolean"));
+    Check("a type list", Schema("{\"type\":\"object\",\"properties\":{\"s\":{\"type\":[\"string\",\"null\"]}}}", "{\"s\":null}") = Nil & Has(Schema("{\"type\":\"object\",\"properties\":{\"s\":{\"type\":[\"string\",\"null\"]}}}", "{\"s\":4}"), "expected [\"string\",\"null\"]"));
+    Check("enum accepts a member", Schema("{\"type\":\"object\",\"properties\":{\"u\":{\"enum\":[\"c\",\"f\"]}}}", "{\"u\":\"c\"}") = Nil);
+    Check("enum rejects another value", Has(Schema("{\"type\":\"object\",\"properties\":{\"u\":{\"enum\":[\"c\",\"f\"]}}}", "{\"u\":\"k\"}"), "arguments.u: must be one of"));
+    Check("minimum and maximum", Has(Schema("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\",\"minimum\":1,\"maximum\":5}}}", "{\"n\":0}"), "at least 1") & Has(Schema("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\",\"minimum\":1,\"maximum\":5}}}", "{\"n\":9}"), "at most 5") & Schema("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"number\",\"minimum\":1,\"maximum\":5}}}", "{\"n\":5}") = Nil);
+    Check("minLength and maxLength", Has(Schema("{\"type\":\"object\",\"properties\":{\"s\":{\"type\":\"string\",\"minLength\":2,\"maxLength\":3}}}", "{\"s\":\"a\"}"), "at least 2") & Has(Schema("{\"type\":\"object\",\"properties\":{\"s\":{\"type\":\"string\",\"minLength\":2,\"maxLength\":3}}}", "{\"s\":\"abcd\"}"), "at most 3"));
+    Check("array items are checked with their index", Has(Schema("{\"type\":\"object\",\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}}}", "{\"xs\":[1,2,\"three\"]}"), "arguments.xs[2]: expected number"));
+    Check("minItems and maxItems", Has(Schema("{\"type\":\"object\",\"properties\":{\"xs\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":2}}}", "{\"xs\":[]}"), "at least 1") & Has(Schema("{\"type\":\"object\",\"properties\":{\"xs\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":2}}}", "{\"xs\":[1,2,3]}"), "at most 2"));
+    Check("nested objects report the path", Has(Schema("{\"type\":\"object\",\"properties\":{\"p\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"}},\"required\":[\"x\"]}}}", "{\"p\":{}}"), "arguments.p: missing required property 'x'"));
+    Check("anyOf takes any one option", Schema("{\"type\":\"object\",\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"number\"}]}}}", "{\"v\":4}") = Nil & Has(Schema("{\"type\":\"object\",\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"number\"}]}}}", "{\"v\":true}"), "does not match any"));
+    Check("const", Schema("{\"type\":\"object\",\"properties\":{\"v\":{\"const\":7}}}", "{\"v\":7}") = Nil & Has(Schema("{\"type\":\"object\",\"properties\":{\"v\":{\"const\":7}}}", "{\"v\":8}"), "must be 7"));
+    Check("a property the schema does not mention is allowed by default", Schema("{\"type\":\"object\",\"properties\":{}}", "{\"x\":1}") = Nil);
+    Check("additionalProperties as a schema", Has(Schema("{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\"}}", "{\"x\":\"s\"}"), "arguments.x"));
+    Check("a missing schema accepts anything", AgentSchema->Check(Nil, Json("{\"x\":1}")) = Nil);
+    Check("Nil arguments are reported", Has(AgentSchema->Check(Json("{\"type\":\"object\"}"), Nil), "not valid JSON"));
+  }
+
+  function : Calc(expression : String) ~ AgentToolResult {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("calc", "calculator", "{\"expression\":\"{$expression}\"}"));
+    script->AddBack(AgentReply->Say("ok"));
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    return agent->Run("calc")->GetSteps()->Get(0)->GetResults()->Get(0);
+  }
+
+  function : TestBuiltins() ~ Nil {
+    "-- the built-in tools"->PrintLine();
+    Check("17 * 23", Same(Calc("17 * 23")->GetContent(), "391"));
+    Check("precedence", Same(Calc("2 + 3 * 4")->GetContent(), "14"));
+    Check("parentheses and sqrt", Same(Calc("(3 + 4) * sqrt(16)")->GetContent(), "28"));
+    Check("division gives a fraction", Same(Calc("7 / 2")->GetContent(), "3.5"));
+    Check("power is right-associative", Same(Calc("2 ^ 3 ^ 2")->GetContent(), "512"));
+    Check("unary minus", Same(Calc("-4 + 10")->GetContent(), "6"));
+    Check("modulo", Same(Calc("17 % 5")->GetContent(), "2"));
+    Check("a constant", Calc("pi * 2")->GetContent()->ToFloat() > 6.28 & Calc("pi * 2")->GetContent()->ToFloat() < 6.29);
+    Check("a function name is case-insensitive", Same(Calc("ABS(0 - 5)")->GetContent(), "5"));
+    Check("division by zero is an error result", Same(Calc("1 / 0")->GetStatus(), "error") & Has(Calc("1 / 0")->GetContent(), "division by zero"));
+    Check("garbage is an error result", Same(Calc("2 +")->GetStatus(), "error") & Same(Calc("abc")->GetStatus(), "error") & Same(Calc("(1 + 2")->GetStatus(), "error") & Same(Calc("1 2")->GetStatus(), "error"));
+    Check("an unknown function is an error result", Has(Calc("frob(2)")->GetContent(), "unknown function 'frob'"));
+    Check("an empty expression is rejected before the tool runs", Same(Calc("")->GetStatus(), "invalid"));
+
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->CurrentTime());
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("t1", "current_time", "{}"));
+    script->AddBack(AgentReply->Ask("t2", "current_time", "{\"offset_hours\":5}"));
+    script->AddBack(AgentReply->Ask("t3", "current_time", "{\"offset_hours\":40}"));
+    script->AddBack(AgentReply->Say("ok"));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    result := agent->Run("what time is it");
+    utc := result->GetSteps()->Get(0)->GetResults()->Get(0);
+    shifted := result->GetSteps()->Get(1)->GetResults()->Get(0);
+    Check("the clock answers in UTC", utc->IsOk() & utc->GetContent()->EndsWith(" UTC"));
+    Check("the clock can be shifted", shifted->IsOk() & Has(shifted->GetContent(), "(UTC+5)"));
+    Check("an offset out of range is invalid", Same(result->GetSteps()->Get(2)->GetResults()->Get(0)->GetStatus(), "invalid"));
+  }
+
+  function : TestSandbox() ~ Nil {
+    "-- the file reader's sandbox"->PrintLine();
+    dir := "agent-sandbox-{$Runtime->GetProcessId()}";
+    Directory->Delete(dir);
+    Directory->Create(dir);
+    Directory->Create("{$dir}/sub");
+    writer := FileWriter->New("{$dir}/hello.txt");
+    writer->WriteString("hello from the sandbox");
+    writer->Close();
+    writer := FileWriter->New("{$dir}/sub/deep.txt");
+    writer->WriteString("deep");
+    writer->Close();
+
+    Check("a plain name", Same(AgentTools->SafePath("box", "a.txt"), "box/a.txt"));
+    Check("a trailing slash on the sandbox", Same(AgentTools->SafePath("box/", "a.txt"), "box/a.txt"));
+    Check("a subdirectory", Same(AgentTools->SafePath("box", "sub/a.txt"), "box/sub/a.txt"));
+    Check("backslashes are read as slashes", Same(AgentTools->SafePath("box", "sub\\a.txt"), "box/sub/a.txt"));
+    Check("a name that merely contains dots is fine", Same(AgentTools->SafePath("box", "a..b.txt"), "box/a..b.txt"));
+    Check(".. is refused", AgentTools->SafePath("box", "../x") = Nil & AgentTools->SafePath("box", "sub/../../x") = Nil & AgentTools->SafePath("box", "..") = Nil & AgentTools->SafePath("box", "sub\\..\\..\\x") = Nil);
+    Check("an absolute path is refused", AgentTools->SafePath("box", "/etc/passwd") = Nil & AgentTools->SafePath("box", "\\windows\\win.ini") = Nil & AgentTools->SafePath("box", "C:/windows/win.ini") = Nil);
+    Check("an empty path is refused", AgentTools->SafePath("box", "") = Nil & AgentTools->SafePath("box", "  ") = Nil & AgentTools->SafePath("box", Nil) = Nil);
+
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->ReadFile(dir));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("r1", "read_file", "{\"path\":\"hello.txt\"}"));
+    script->AddBack(AgentReply->Ask("r2", "read_file", "{\"path\":\"sub/deep.txt\"}"));
+    script->AddBack(AgentReply->Ask("r3", "read_file", "{\"path\":\"../agent_loop_test.obs\"}"));
+    script->AddBack(AgentReply->Ask("r4", "read_file", "{\"path\":\"nope.txt\"}"));
+    script->AddBack(AgentReply->Ask("r5", "read_file", "{\"path\":\"/etc/passwd\"}"));
+    script->AddBack(AgentReply->Say("ok"));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    result := agent->Run("read");
+    Check("a file under the sandbox is read", Same(result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent(), "hello from the sandbox"));
+    Check("a file in a subdirectory is read", Same(result->GetSteps()->Get(1)->GetResults()->Get(0)->GetContent(), "deep"));
+    escaped := result->GetSteps()->Get(2)->GetResults()->Get(0);
+    Check("climbing out is an error result", Same(escaped->GetStatus(), "error") & Has(escaped->GetContent(), "may not contain .."));
+    Check("a missing file is an error result", Same(result->GetSteps()->Get(3)->GetResults()->Get(0)->GetStatus(), "error") & Has(result->GetSteps()->Get(3)->GetResults()->Get(0)->GetContent(), "no such file"));
+    Check("an absolute path is an error result", Same(result->GetSteps()->Get(4)->GetResults()->Get(0)->GetStatus(), "error"));
+
+    File->Delete("{$dir}/sub/deep.txt");
+    File->Delete("{$dir}/hello.txt");
+    Directory->Delete("{$dir}/sub");
+    Directory->Delete(dir);
+  }
+}

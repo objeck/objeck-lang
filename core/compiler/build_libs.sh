@@ -74,6 +74,7 @@ $OBC -src lib_src/anthropic.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest
 $OBC -src lib_src/llm_util.obs -lib gen_collect,json,regex -tar lib -opt s3 -dest ../lib/llm_util.obl
 # Adapters from llm_util's ChatFn and TokenCounter to the Anthropic, OpenAI, Gemini and Ollama clients. A library of its own so llm_util links no client
 $OBC -src lib_src/llm_util_clients.obs -lib gen_collect,json,regex,llm_util,net,net_server,cipher,misc,anthropic,openai,gemini,ollama -tar lib -opt s3 -dest ../lib/llm_util_clients.obl
+$OBC -src lib_src/agent.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/agent.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 # Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
 $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl

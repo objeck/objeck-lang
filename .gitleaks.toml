@@ -68,6 +68,10 @@ regexes = [
   # (generic-api-key read it as a key next to a variable named key); it appears in the PR's first commit
   # even though a later commit builds the block from bytes, and gitleaks scans every commit of a PR
   '''0123456789abcdef''',
+  # a made-up Google-style key that programs/regression/agent_loop_test.obs feeds the redactor; the first commit
+  # of the agent PR has it as one literal (generic-api-key), a later commit builds it from two pieces, and
+  # gitleaks scans every commit of a PR
+  '''AIzaSyA1234567890abcdefghijklmnopqrstu''',
 ]
 
 # The seventeen historical commits behind the 326 findings a FULL-HISTORY scan
