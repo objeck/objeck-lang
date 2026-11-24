@@ -1113,39 +1113,7 @@ index->Store("rag.idx");
 				return Byte->New[0];
 			};
 
-			# String->ToByteArray has returned one byte too many on macOS arm64 for a string built by
-			# interpolation (a trailing 0), which loaded back as a longer, different text; the byte
-			# count of a String is the byte count of its characters' UTF-8, so cut at that
-			bytes := text->ToByteArray();
-			size := Utf8Size(text);
-			if(bytes->Size() = size) {
-				return bytes;
-			};
-
-			fixed := Byte->New[size];
-			Byte->Copy(fixed, 0, bytes, 0, size);
-			return fixed;
-		}
-
-		function : Utf8Size(text : String) ~ Int {
-			size := 0;
-			each(i : text) {
-				code := text->Get(i)->As(Int);
-				if(code < 128) {
-					size += 1;
-				}
-				else if(code < 2048) {
-					size += 2;
-				}
-				else if(code < 65536) {
-					size += 3;
-				}
-				else {
-					size += 4;
-				};
-			};
-
-			return size;
+			return text->ToByteArray();
 		}
 
 		function : Text(bytes : Byte[]) ~ String {
@@ -1153,21 +1121,7 @@ index->Store("rag.idx");
 				return "";
 			};
 
-			# count the characters the UTF-8 bytes hold (every byte but a continuation byte starts one) and
-			# keep that many, so a decoder that hands back extra characters cannot change the text
-			wanted := 0;
-			each(i : bytes) {
-				if((bytes[i]->As(Int) and 192) <> 128) {
-					wanted += 1;
-				};
-			};
-
-			text := String->New(bytes);
-			if(text->Size() > wanted) {
-				return text->SubString(0, wanted);
-			};
-
-			return text;
+			return String->New(bytes);
 		}
 
 		function : ByteOf(value : Int, shift : Int) ~ Byte {
