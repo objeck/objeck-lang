@@ -102,7 +102,7 @@ The magic numbers and `VER_NUM` are defined in `core/shared/version.in` and rend
 
 Two compatibility rules, both enforced by refusal with a message:
 - **Version.** The loader and the linker accept a file only when its first integer equals `VER_NUM`, the release number with the dots removed (2026.10.3 is `2026103`). Any release invalidates every older `.obe` and `.obl`. Every committed `core/lib/*.obl` must therefore be rebuilt at a version bump; `tools/cicd/check_obl_versions.py` fails the Tools job when one is stale.
-- **Magic.** A change to what a file means without a change to what it looks like bumps the magic. The loader names the old ones it recognises (`MAGIC_NUM_EXE_UNTYPED_INT_ARRAYS`) and says to recompile; the linker does the same for the older library magics.
+- **Magic.** A change to what a file means without a change to what it looks like bumps the magic. Only the two current values are accepted (`MAGIC_NUM_EXE`, `MAGIC_NUM_LIB`), and only after the file's toolchain version equals this one exactly, so an older magic never gets as far as a message of its own; `core/shared/version.in` records what each value changed.
 
 A library records what the compiler needs to link against it. A program records what the VM needs to run it, including the classes and methods it linked from libraries, which is why `obr` needs no `.obl`. (This is checked in `LoadImage`, which reads only the `.obe`; the only library files `obr` opens are the native shared libraries.)
 

@@ -30,8 +30,64 @@
  ***************************************************************************/
 
 #include "optimization.h"
+#include "cfg.h"
 #include <functional>
+#include <iostream>
 #include <unordered_map>
+
+namespace {
+  // OBJECK_CFG_VERIFY=1 makes the optimizer build the control-flow graph of every method it
+  // sees, before and after its passes, and check the graph's invariants (see Cfg::Verify). It
+  // is how the library sources and the test programs are checked: compile them with it set and
+  // read the summary on stderr.
+  struct CfgVerifyStats {
+    size_t methods = 0;
+    size_t blocks = 0;
+    size_t loops = 0;
+    size_t irreducible = 0;
+    size_t not_well_formed = 0;
+    size_t failures = 0;
+    bool enabled = false;
+
+    ~CfgVerifyStats() {
+      if(enabled) {
+        std::wcerr << L"cfg-verify: methods=" << methods << " blocks=" << blocks << " loops=" << loops
+                  << " irreducible_edges=" << irreducible << " not_well_formed=" << not_well_formed
+                  << " failures=" << failures << std::endl;
+      }
+    }
+  };
+
+  CfgVerifyStats cfg_verify_stats;
+
+  void VerifyMethodCfg(IntermediateMethod* method, const std::vector<IntermediateBlock*>& blocks, const char* stage)
+  {
+    if(!cfg_verify_stats.enabled) {
+      return;
+    }
+    for(IntermediateBlock* block : blocks) {
+      const std::vector<IntermediateInstruction*> instrs = block->GetInstructions();
+      Cfg cfg(instrs);
+      ++cfg_verify_stats.methods;
+      if(!cfg.WellFormed()) {
+        ++cfg_verify_stats.not_well_formed;
+        std::wcerr << L"cfg-verify: not well formed (" << stage << L") " << method->GetName().c_str() << L": ";
+        std::wcerr << std::wstring(cfg.Problem().begin(), cfg.Problem().end()) << std::endl;
+        continue;
+      }
+      cfg_verify_stats.blocks += cfg.Size();
+      cfg_verify_stats.loops += cfg.Loops().size();
+      cfg_verify_stats.irreducible += cfg.IrreducibleEdges();
+      cfg.ComputeLiveness();
+      std::string why;
+      if(!cfg.Verify(&why)) {
+        ++cfg_verify_stats.failures;
+        std::wcerr << L"cfg-verify: FAIL (" << stage << L") " << method->GetName().c_str() << L": ";
+        std::wcerr << std::wstring(why.begin(), why.end()) << std::endl;
+      }
+    }
+  }
+}
 #include <tuple>
 
 using namespace backend;
@@ -64,6 +120,7 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
   }
 
   jump_inline_offset = 0;
+  cfg_verify_stats.enabled = Cfg::VerifyRequested();
 }
 
 void ItermediateOptimizer::Optimize()
@@ -86,7 +143,9 @@ void ItermediateOptimizer::Optimize()
 #ifdef _DEBUG
       GetLogger() << L"Optimizing method, pass 1: name='" << current_method->GetName() << "'" << std::endl;
 #endif
+      VerifyMethodCfg(current_method, current_method->GetBlocks(), "emitted");
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
+      VerifyMethodCfg(current_method, current_method->GetBlocks(), "optimized");
     }
   }
 
@@ -1346,11 +1405,32 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   // map labels ids to indexes
   IntermediateBlock* outputs = new IntermediateBlock;
   std::unordered_map<int, int> lbl_offsets;
+  // test hook (programs/regression/check_label_fatal.py): source cannot produce a lost or
+  // doubled label, so this simulates a bug in label generation to exercise the checks below
+  const char* label_fault = nullptr;
+#ifdef _WIN32
+  char label_fault_buf[16] = {0};   // MSVC rejects getenv (C4996, an error in this build)
+  { size_t len = 0; if(getenv_s(&len, label_fault_buf, sizeof(label_fault_buf), "OBJECK_TEST_LABEL_FAULT") == 0 && len > 1) { label_fault = label_fault_buf; } }
+#else
+  label_fault = getenv("OBJECK_TEST_LABEL_FAULT");
+#endif
+  bool label_fault_done = false;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case LBL:
-      lbl_offsets.insert(std::pair<int, int>(instr->GetOperand(), (int)i + 1));
+      if(label_fault && !label_fault_done) {
+        label_fault_done = true;
+        if(!strcmp(label_fault, "drop")) {
+          break;
+        }
+        if(!strcmp(label_fault, "dup")) {
+          lbl_offsets.insert(std::pair<int, int>(instr->GetOperand(), (int)i + 1));
+        }
+      }
+      if(!lbl_offsets.insert(std::pair<int, int>(instr->GetOperand(), (int)i + 1)).second) {
+        throw CompilerFatal(L"Internal compiler error: duplicate jump label id " + std::to_wstring(instr->GetOperand()));
+      }
       break;
 
     default:
@@ -1363,28 +1443,28 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     switch(instr->GetType()) {
     case JMP: {
       std::unordered_map<int, int>::iterator result = lbl_offsets.find(static_cast<int>(instr->GetOperand()));
-#ifdef _DEBUG
-      assert(result != lbl_offsets.end());
-#endif
+      if(result == lbl_offsets.end()) {
+        throw CompilerFatal(L"Internal compiler error: unresolved jump label id " + std::to_wstring(instr->GetOperand()));
+      }
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, result->second, instr->GetOperand2()));
     }
       break;
 
     case TRY_START: {
       std::unordered_map<int, int>::iterator result = lbl_offsets.find(static_cast<int>(instr->GetOperand()));
-#ifdef _DEBUG
-      assert(result != lbl_offsets.end());
-#endif
+      if(result == lbl_offsets.end()) {
+        throw CompilerFatal(L"Internal compiler error: unresolved jump label id " + std::to_wstring(instr->GetOperand()));
+      }
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRY_START, result->second, instr->GetOperand2()));
     }
       break;
 
     case JMP_TABLE: {
       std::unordered_map<int, int>::iterator def_result = lbl_offsets.find((int)instr->GetOperand3());
-#ifdef _DEBUG
-      assert(def_result != lbl_offsets.end());
-#endif
-      const long default_ip = (def_result != lbl_offsets.end()) ? (long)def_result->second : 0;
+      if(def_result == lbl_offsets.end()) {
+        throw CompilerFatal(L"Internal compiler error: unresolved jump table default label id " + std::to_wstring(instr->GetOperand3()));
+      }
+      const long default_ip = (long)def_result->second;
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE,
         instr->GetOperand(), instr->GetOperand2(), default_ip));
     }
@@ -1392,10 +1472,10 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
     case JMP_TABLE_SLOT: {
       std::unordered_map<int, int>::iterator slot_result = lbl_offsets.find((int)instr->GetOperand());
-#ifdef _DEBUG
-      assert(slot_result != lbl_offsets.end());
-#endif
-      const long target_ip = (slot_result != lbl_offsets.end()) ? (long)slot_result->second : 0;
+      if(slot_result == lbl_offsets.end()) {
+        throw CompilerFatal(L"Internal compiler error: unresolved jump table slot label id " + std::to_wstring(instr->GetOperand()));
+      }
+      const long target_ip = (long)slot_result->second;
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE_SLOT, target_ip));
     }
       break;

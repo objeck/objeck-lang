@@ -5093,6 +5093,26 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
       return true;
     }
 
+    // Test hook for the VM's exit path (vm_exit_flush.obs): the collector's fatal
+    // out-of-memory exit, which cannot be reached on demand. Inert unless
+    // OBJECK_GC_TEST_HOOKS=1.
+    if(!wcscmp(key, L"runtime.test.collector_oom")) {
+      static const bool hooks = []() {
+#ifdef _WIN32
+        char hook_value[8] = {0};
+        size_t len = 0;
+        return !getenv_s(&len, hook_value, sizeof(hook_value), "OBJECK_GC_TEST_HOOKS") && !strcmp(hook_value, "1");
+#else
+        const char* hook_value = std::getenv("OBJECK_GC_TEST_HOOKS");
+        return hook_value && !strcmp(hook_value, "1");
+#endif
+      }();
+      if(hooks) {
+        MemoryManager::TestCollectorOutOfMemory();
+      }
+      return true;
+    }
+
     program->SetProperty(key, value);
   }
 
