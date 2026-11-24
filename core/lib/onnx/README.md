@@ -77,6 +77,10 @@ No release ships CUDA. It needs an ONNX Runtime built with the CUDA provider, th
 
 Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=cpu` vs `ep=cuda`, see `docs/ONNX_CUDA_PLAN.md`): about 460-500 ms per image on the CPU and 42 ms on CUDA on Windows (roughly 11x), 340-510 ms and 44 ms on Linux under WSL2. The time includes JPEG decoding, preprocessing and decoding the detections, which stay on the CPU.
 
+### IO binding (keeping tensors on the device)
+
+`Session->Run` copies every input to the device and every output back on each call. `DeviceTensor` and `BoundSession` (`device_tensor.h`, `onnx.obs`) allocate tensors once in the provider's memory (`ep=cuda`, `ep=tensorrt`; host memory for `ep=cpu`), bind them to the model's inputs and outputs by name, and run on them in place: ResNet-34 at batch 32 on an RTX 4090 went from 48.9 ms to 6.1 ms per run with the data resident. A bound run is bit-identical to `Session->Run` on the same provider. The CUDA runtime calls it needs (a copy, a stream) are looked up from the cudart library the CUDA provider already loaded, so building the library still needs no CUDA. A session closed while tensors still use it is released after the last of them (`session_registry.h`). See `docs/ai_sections/onnx_gpu.md`.
+
 ## Quick Start
 
 ```objeck
