@@ -136,6 +136,10 @@ namespace backend {
     void ComputeLiveness();
     bool LiveIn(int block, long slot) const;
     bool LiveOut(int block, long slot) const;
+    // For each instruction that stores a local (STOR_INT/FLOAT/FUNC_VAR with LOCL), true
+    // when no path from it reads that slot before another store, and no handler of the
+    // region it is in reads it. Needs ComputeLiveness().
+    std::vector<bool> DeadLocalStores() const;
     // live just before instruction i executes
     bool LiveBefore(size_t i, long slot) const;
 
