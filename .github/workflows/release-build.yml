@@ -112,6 +112,14 @@ jobs:
   # Build All Platforms in Parallel
   # ============================================
 
+  # Every core/lib/*.obl from source, stamped with the tag's version (version-metadata).
+  libs:
+    name: Libraries
+    needs: prepare
+    uses: ./.github/workflows/libs.yml
+    with:
+      version_metadata: true
+
   build:
     name: Build ${{ matrix.platform }}
     # build-docs runs first: docs/api.zip is no longer committed, so the deploy scripts
@@ -119,8 +127,8 @@ jobs:
     # own with code_doc64.cmd) need the zip build-docs produces. build-docs is skipped
     # for pre-release versions (a hyphen), so the legs run when it succeeded OR was
     # skipped, never when it failed.
-    needs: [prepare, build-docs]
-    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.build-docs.result == 'success' || needs.build-docs.result == 'skipped') }}
+    needs: [prepare, libs, build-docs]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && needs.libs.result == 'success' && (needs.build-docs.result == 'success' || needs.build-docs.result == 'skipped') }}
     runs-on: ${{ matrix.os }}
     # A release must never ship without its API reference: with this set, the deploy
     # scripts fail on a missing docs/api.zip instead of noting it and carrying on (the
@@ -200,6 +208,15 @@ jobs:
         with:
           name: version-metadata
           path: core/
+
+      # The libraries, built from source by the `libs` job. While core/lib/*.obl are still
+      # tracked that job fails unless they equal the committed copies, so this changes no
+      # byte; after the migration it is where every deploy gets them.
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       # ============================================
       # Install Dependencies (Same as CI)
@@ -898,7 +915,7 @@ jobs:
 
   build-lsp:
     name: Build LSP Package
-    needs: prepare
+    needs: [prepare, libs]
     runs-on: ubuntu-24.04
 
     steps:
@@ -912,6 +929,15 @@ jobs:
         with:
           name: version-metadata
           path: core/
+
+      # The libraries, built from source by the `libs` job. While core/lib/*.obl are still
+      # tracked that job fails unless they equal the committed copies, so this changes no
+      # byte; after the migration it is where every deploy gets them.
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       # Cache a USER-OWNED archive dir; restoring root-owned /var/cache/apt/archives
       # as the unprivileged runner fails with "tar: ...deb: Permission denied".
@@ -1026,7 +1052,7 @@ jobs:
 
   build-docs:
     name: Generate API Docs
-    needs: prepare
+    needs: [prepare, libs]
     runs-on: ubuntu-24.04
     # Skip for pre-release builds (test, rc, beta, alpha, etc.)
     # Pre-compiled libraries won't match pre-release versions
@@ -1044,6 +1070,15 @@ jobs:
         with:
           name: version-metadata
           path: core/
+
+      # The libraries, built from source by the `libs` job. While core/lib/*.obl are still
+      # tracked that job fails unless they equal the committed copies, so this changes no
+      # byte; after the migration it is where every deploy gets them.
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       - name: Install dependencies
         run: |
@@ -1145,7 +1180,7 @@ jobs:
 
   summary:
     name: Build Summary
-    needs: [prepare, build, build-lsp, build-docs, install-test-macos]
+    needs: [prepare, libs, build, build-lsp, build-docs, install-test-macos]
     runs-on: ubuntu-24.04
     if: always()
     permissions:

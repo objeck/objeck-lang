@@ -73,6 +73,7 @@ Directory READMEs: [compiler](../core/compiler/README.md), [VM](../core/vm/READM
 | [release_integrity.md](release_integrity.md) | What a release verifies today, and the signed manifest that would let `obu` detect a substituted `SHA256SUMS` |
 | [UPDATER_DESIGN.md](UPDATER_DESIGN.md) | `obu check`, `update`, `rollback` (**built**; the page's status block records the Windows swap) |
 | [DEB_PACKAGE_DESIGN.md](DEB_PACKAGE_DESIGN.md) | The `.deb` packages (**built**, v2026.10.1) |
+| [DESIGN_OBL_FROM_SOURCE.md](DESIGN_OBL_FROM_SOURCE.md) | Build the standard libraries in CI instead of committing `core/lib/*.obl`: consumers, the Windows `lang.obl` gap, a prototype (**proposed**) |
 | [ARCHITECTURE_ASSESSMENT_2026_11.md](ARCHITECTURE_ASSESSMENT_2026_11.md) | A static review of every component with ranked findings (**snapshot**, master `5faaca629f`). Since then fixed: the dead parser copy (1.1), the missing ABI version (2.3), the `exit(1)` calls in the loader and the compiler back end (2.2; one remains, in `Library::LoadFile` in `linker.cpp`, for a library built before typed `Int[]` arrays: its siblings throw `CompilerFatal`), the commented-out nightly cron (5.1), and part of 2.1 (`Loader::Verify`). The roadmap table at the end lists the rest |
 | [LIBRARY_BACKLOG_2026_11.md](LIBRARY_BACKLOG_2026_11.md) | Library defects found by the Nil-safety sweep and not yet fixed (**working**) |
 | [ROSETTA_HARDENING.md](ROSETTA_HARDENING.md) | Working the Rosetta Code backlog as a hardening vehicle: how to claim a task, what to skip, defects it found (**working**) |
