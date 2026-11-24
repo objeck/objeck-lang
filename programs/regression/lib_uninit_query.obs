@@ -1,0 +1,92 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured bugs that depended on a local declared without a value inside a loop keeping the
+previous iteration's value (the library source now sets each one explicitly):
+- View->ToJson: a name the table has no column for is null in every row; it wrote the value of
+  the column before it.
+- the text parser: a date literal of a length it does not read (#1/2#) is an error; it was read as
+  the date literal before it.
+- Table->Save: a null cell of a String or Object column is written as a null, as the first row's
+  always was, not as a copy of the row before it. The saved file is the same size as one whose
+  null cells are empty strings, and reads back with the same cells.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class LibUninitQuery {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		JsonView();
+		DateLiteral();
+		NullCells();
+
+		if(@failures > 0) {
+			"{$@failures} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"All library uninitialized-local tests passed"->PrintLine();
+	}
+
+	function : JsonView() ~ Nil {
+		table := Table->New("t", ["a", "b"]);
+		row := table->Insert(); row->Set("a", IntRef->New(1)); row->Set("b", "x");
+		row := table->Insert(); row->Set("a", IntRef->New(2)); row->Set("b", "y");
+		view := View->New(table, [1, -1, 2], ["a", "missing", "b"], [0, 1]);
+		json := view->ToJson();
+		Check(json <> Nil, "the view writes JSON");
+		if(json <> Nil) {
+			Check(json->Equals("[{\"a\":1,\"missing\":null,\"b\":\"x\"},{\"a\":2,\"missing\":null,\"b\":\"y\"}]"), "a name with no column is null: {$json}");
+		};
+	}
+
+	function : DateLiteral() ~ Nil {
+		good := Parser->New("select * from t where d = #01/02/2020#");
+		Check(good->Parse() <> Nil, "a date literal of a known length parses");
+		bad := Parser->New("select * from t where d = #01/02/2020# or e = #1/2#");
+		Check(bad->Parse() = Nil, "a date literal of an unknown length is an error, not the date before it");
+	}
+
+	function : FileBytes(rows : Vector<String>, path : String) ~ Int {
+		table := Table->New("t", ["v"]);
+		each(i : rows) {
+			row := table->Insert();
+			if(rows->Get(i) <> Nil) {
+				row->Set("v", rows->Get(i));
+			};
+		};
+		File->Delete(path);
+		Check(table->Save(path), "save {$path}");
+		size := File->Size(path);
+		File->Delete(path);
+		return size;
+	}
+
+	function : NullCells() ~ Nil {
+		# a null after a long text: the file must not carry the text a second time. Over 4096 different
+		# texts, so the column is not dictionary encoded
+		with_null := Vector->New()<String>;
+		with_empty := Vector->New()<String>;
+		each(i : 10000) {
+			if(i % 2 = 0) {
+				text := "row {$i}: a long piece of text, repeated for size: 0123456789 0123456789 0123456789";
+				with_null->AddBack(text);
+				with_empty->AddBack(text);
+			}
+			else {
+				with_null->AddBack(Nil);
+				with_empty->AddBack("");
+			};
+		};		null_size := FileBytes(with_null, "lib_uninit_null.otab");
+		empty_size := FileBytes(with_empty, "lib_uninit_empty.otab");
+		Check(null_size > 0 & null_size <= empty_size, "a null cell writes no text: {$null_size} bytes against {$empty_size}");
+	}
+}
