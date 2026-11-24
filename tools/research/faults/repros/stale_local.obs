@@ -1,0 +1,17 @@
+# A local declared without an initializer inside a loop body keeps its value from the previous iteration
+# instead of starting empty. Found because a harness reported a stale result as a fresh one.
+# obc -src stale_local.obs -dest s.obe && obr s.obe
+# prints "got=set in iteration 0 n=42" for i=0, 1 and 2 (a fresh local would be Nil and 0 for i=1 and 2)
+class StaleLocal {
+	function : Main(args : String[]) ~ Nil {
+		for(i := 0; i < 3; i += 1;) {
+			got : String;
+			n : Int;
+			if(i = 0) {
+				got := "set in iteration 0";
+				n := 42;
+			};
+			"i={$i} got={$got} n={$n}"->PrintLine();
+		};
+	}
+}

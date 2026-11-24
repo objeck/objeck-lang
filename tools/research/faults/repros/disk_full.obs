@@ -1,0 +1,12 @@
+# FileWriter reports success on a device that fails every write (ENOSPC): the error is lost in stdio
+# buffering and Close() returns Nil, so a program cannot know its output was not stored.
+# obc -src disk_full.obs -dest d.obe && obr d.obe     (Linux; prints "wrote 12 of 12")
+class DiskFull {
+	function : Main(args : String[]) ~ Nil {
+		w := System.IO.Filesystem.FileWriter->New("/dev/full");
+		bytes := "hello world\n"->ToByteArray();
+		n := w->WriteBuffer(0, bytes->Size(), bytes);
+		w->Close();
+		"wrote {$n} of {$bytes->Size()}"->PrintLine();
+	}
+}

@@ -1,0 +1,503 @@
+#~
+Fault-injection harness for concurrent agents (research H6, see README.md).
+
+N agent threads each run R units. A unit is one Agent->Run over a 3-call script (tool call, tool call,
+final answer). Faults are drawn from a seeded schedule (Mix, identical to faultlib.py), so a run is
+reproducible whatever the thread interleaving. Output is one line per finished unit ("U ..."), one
+"HANG" line per agent that had not finished at the deadline, and one "SUMMARY" line.
+
+  obr fault_agents.obe <seed> <agents> <runs> <fault> <rate> <backend> <tool_limit_ms> <deadline_s> [outdir]
+
+  fault    none | tool_exception | tool_fault | tool_timeout | tool_huge | tool_hang | cancel_coop |
+           cancel_uncoop | thread_fault | thread_exit | stdin
+  backend  scripted, or the base URL of fake_llm.py (OllamaBackend over plain HTTP)
+  tool_limit_ms  Agent->SetToolTimeout (0 = none): the library's only timeout mitigation
+
+EXTRA_LIBS: agent,net,json,cipher,misc
+~#
+use API.Agent;
+use Collection;
+use Data.JSON;
+use System.Concurrency;
+use System.IO.Filesystem;
+
+class Faults {
+	@seed : static : Int;
+
+	function : Mix(seed : Int, a : Int, r : Int, salt : Int) ~ Int {
+		x := (seed * 7919 + a * 104729 + r * 1299709 + salt * 15485863 + 12345) % 2147483647;
+		if(x = 0) {
+			x := 1;
+		};
+		for(i := 0; i < 4; i += 1;) {
+			x := (x * 48271) % 2147483647;
+		};
+		return x;
+	}
+
+	function : Faulted(seed : Int, a : Int, r : Int, rate : Float) ~ Bool {
+		u := Mix(seed, a, r, 1)->ToFloat() / 2147483647.0;
+		return (a % 4 = 0) & u < rate;
+	}
+
+	function : CallArg(a : Int, r : Int, call : Int) ~ Int {
+		return (a * 31 + r * 7 + call) % 97;
+	}
+
+	function : Expected(n : Int) ~ String {
+		return "R:{$(n * n + 7)}";
+	}
+
+	function : Answer(a : Int, r : Int) ~ String {
+		return "ANSWER:{$((a * 1000 + r) * 3 + 1)}";
+	}
+}
+
+# State shared by every thread; one mutex, short sections
+class Board {
+	@mutex : ThreadMutex;
+	@finished : Int;
+	@cur_run : Int[];
+	@done_flag : Bool[];
+
+	New(agents : Int) {
+		@mutex := ThreadMutex->New("board");
+		@cur_run := Int->New[agents];
+		@done_flag := Bool->New[agents];
+	}
+
+	method : public : Line(text : String) ~ Nil {
+		critical(@mutex) {
+			text->PrintLine();
+		};
+	}
+
+	method : public : Start(a : Int, r : Int) ~ Nil {
+		critical(@mutex) {
+			@cur_run[a] := r;
+		};
+	}
+
+	method : public : Finish(a : Int) ~ Nil {
+		critical(@mutex) {
+			@done_flag[a] := true;
+			@finished += 1;
+		};
+	}
+
+	method : public : Finished() ~ Int {
+		critical(@mutex) {
+			return @finished;
+		};
+		return 0;
+	}
+
+	method : public : Stuck(a : Int) ~ Int {
+		critical(@mutex) {
+			if(<>@done_flag[a]) {
+				return @cur_run[a];
+			};
+		};
+		return -1;
+	}
+}
+
+# A cancel request: fires after a delay, then records when
+class Canceller from Thread {
+	@delay : Int;
+	@flag : CancelFlag;
+
+	New(delay : Int, flag : CancelFlag) {
+		Parent("canceller");
+		@delay := delay;
+		@flag := flag;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Thread->Sleep(@delay);
+		@flag->Fire();
+	}
+}
+
+class CancelFlag {
+	@set : Bool;
+	@since : System.Time.Timer;
+
+	New() {
+	}
+
+	method : public : Fire() ~ Nil {
+		@since := System.Time.Timer->New(true);
+		@set := true;
+	}
+
+	method : public : IsSet() ~ Bool {
+		return @set;
+	}
+
+	method : public : Latency() ~ Int {
+		if(@since = Nil) {
+			return -1;
+		};
+		@since->End();
+		return (@since->GetElapsedTime() * 1000.0)->As(Int);
+	}
+}
+
+class WorkHandler implements AgentToolHandler {
+	@fault : String;
+	@seed : Int;
+	@agent : Int;
+	@run : Int;
+	@rate : Float;
+	@calls : Int;
+	@flag : CancelFlag;
+	@injected : Bool;
+	@silent : Int;
+
+	New(fault : String, seed : Int, agent : Int, rate : Float) {
+		@fault := fault;
+		@seed := seed;
+		@agent := agent;
+		@rate := rate;
+	}
+
+	method : public : Begin(run : Int, flag : CancelFlag) ~ Nil {
+		@run := run;
+		@calls := 0;
+		@flag := flag;
+		@injected := false;
+	}
+
+	method : public : WasInjected() ~ Bool {
+		return @injected;
+	}
+
+	method : public : Run(arguments : JsonElement) ~ String {
+		n := arguments->Get("n")->GetInt();
+		call := @calls;
+		@calls += 1;
+		if(call = 0 & <>@fault->Equals("none") & Faults->Faulted(@seed, @agent, @run, @rate)) {
+			@injected := true;
+			if(@fault->Equals("tool_exception")) {
+				Runtime->Raise(Error->New("injected tool failure"));
+			}
+			else if(@fault->Equals("tool_fault")) {
+				zero := 0;
+				return (10 / zero)->ToString();
+			}
+			else if(@fault->Equals("tool_timeout")) {
+				Thread->Sleep(250);
+			}
+			else if(@fault->Equals("tool_huge")) {
+				text := String->New("0123456789abcdef");
+				for(i := 0; i < 20; i += 1;) {
+					text->Append(text);
+				};
+				return text;
+			}
+			else if(@fault->Equals("tool_hang")) {
+				while(true) {
+					Thread->Sleep(1000);
+				};
+			}
+			else if(@fault->Equals("cancel_coop")) {
+				Canceller->New(100, @flag)->Execute(Nil);
+				for(i := 0; i < 100; i += 1;) {
+					if(@flag->IsSet()) {
+						Runtime->Raise(Error->New("cancelled"));
+					};
+					Thread->Sleep(10);
+				};
+			}
+			else if(@fault->Equals("cancel_uncoop")) {
+				Canceller->New(100, @flag)->Execute(Nil);
+				Thread->Sleep(1000);
+			};
+		};
+		return Faults->Expected(n);
+	}
+}
+
+# Wraps a backend: once the flag is set the next model call is refused (cooperative cancellation)
+class CancellableBackend implements ChatBackend {
+	@inner : ChatBackend;
+	@flag : CancelFlag;
+	@last_error : String;
+
+	New(inner : ChatBackend, flag : CancelFlag) {
+		@inner := inner;
+		@flag := flag;
+	}
+
+	method : public : GetName() ~ String {
+		return @inner->GetName();
+	}
+
+	method : public : GetLastError() ~ String {
+		if(@last_error <> Nil) {
+			return @last_error;
+		};
+		return @inner->GetLastError();
+	}
+
+	method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+		if(@flag->IsSet()) {
+			@last_error := "cancelled before the model call";
+			return Nil;
+		};
+		@last_error := Nil;
+		return @inner->Chat(conversation, tools);
+	}
+}
+
+class AgentWorker from Thread {
+	@id : Int;
+	@runs : Int;
+	@seed : Int;
+	@fault : String;
+	@rate : Float;
+	@backend_url : String;
+	@limit : Int;
+	@board : Board;
+	@outdir : String;
+
+	New(id : Int, runs : Int, seed : Int, fault : String, rate : Float, backend_url : String, limit : Int, board : Board, outdir : String) {
+		Parent("agent {$id}");
+		@id := id;
+		@runs := runs;
+		@seed := seed;
+		@fault := fault;
+		@rate := rate;
+		@backend_url := backend_url;
+		@limit := limit;
+		@board := board;
+		@outdir := outdir;
+	}
+
+	method : Schema() ~ JsonElement {
+		return JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}},\"required\":[\"n\"]}");
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		handler := WorkHandler->New(@fault, @seed, @id, @rate);
+		registry := ToolRegistry->New();
+		registry->Add(AgentTool->New("work", "Do one unit of work", Schema(), handler));
+		writer : FileWriter;
+		if(@outdir <> Nil & @outdir->Size() > 0) {
+			writer := FileWriter->New("{$@outdir}/agent_{$@id}.log");
+		};
+
+		short := 0;
+		for(r := 0; r < @runs; r += 1;) {
+			@board->Start(@id, r);
+			flag := CancelFlag->New();
+			handler->Begin(r, flag);
+			inner : ChatBackend;
+			if(@backend_url->Equals("scripted")) {
+				script := Vector->New()<AgentReply>;
+				script->AddBack(AgentReply->Ask("c1", "work", "{\"n\":{$(Faults->CallArg(@id, r, 0))}}"));
+				script->AddBack(AgentReply->Ask("c2", "work", "{\"n\":{$(Faults->CallArg(@id, r, 1))}}"));
+				script->AddBack(AgentReply->Say(Faults->Answer(@id, r)));
+				inner := ScriptedBackend->New(script);
+			}
+			else {
+				inner := OllamaBackend->New("fake")->SetHost(@backend_url);
+			};
+
+			agent := Agent->New(CancellableBackend->New(inner, flag), registry);
+			if(@limit > 0) {
+				agent->SetToolTimeout(@limit);
+			};
+
+			timer := System.Time.Timer->New(true);
+			result := agent->Run("UNIT {$@id} {$r}");
+			timer->End();
+			ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+
+			# classify: ok | wrong | error ; detected = the runtime reported a failure of some kind
+			outcome := "error";
+			detected := 0;
+			silent := 0;
+			steps := result->GetSteps();
+			for(s := 0; s < steps->Size(); s += 1;) {
+				results := steps->Get(s)->GetResults();
+				for(k := 0; k < results->Size(); k += 1;) {
+					res := results->Get(k);
+					if(<>res->IsOk()) {
+						detected := 1;
+					}
+					else {
+						# a result the loop called ok must be exactly what a healthy tool returns, except
+						# the documented 20000-character cut
+						want := Faults->Expected(Faults->CallArg(@id, r, s));
+						got := res->GetContent();
+						if(got = Nil | (<>got->Equals(want) & <>got->EndsWith("... [truncated]"))) {
+							silent := 1;
+						};
+					};
+				};
+			};
+			if(result->IsCompleted()) {
+				if(result->GetText()->Equals(Faults->Answer(@id, r))) {
+					outcome := "ok";
+				}
+				else {
+					outcome := "wrong";
+					silent := 1;
+				};
+			}
+			else {
+				detected := 1;
+			};
+			err := "";
+			if(result->GetError() <> Nil) {
+				err := result->GetError();
+				if(err->Size() > 60) {
+					err := err->SubString(60);
+				};
+				err := err->ReplaceAll(" ", "_");
+			};
+
+			injected := 0;
+			if(handler->WasInjected()) {
+				injected := 1;
+			};
+			cancel_ms := flag->Latency();
+			@board->Line("U a={$@id} r={$r} inj={$injected} out={$outcome} det={$detected} silent={$silent} ms={$ms} cancel_ms={$cancel_ms} err={$err}");
+			if(writer <> Nil) {
+				# the usual call, which cannot report a failure, then a checked write of the same bytes
+				text := "a={$@id} r={$r} out={$outcome} ms={$ms}\n";
+				writer->WriteString(text);
+				bytes := text->ToByteArray();
+				wrote := writer->WriteBuffer(0, bytes->Size(), bytes);
+				if(wrote <> bytes->Size()) {
+					short += 1;
+				};
+			};
+		};
+
+		if(writer <> Nil) {
+			writer->Close();
+			@board->Line("DISK a={$@id} short={$short} runs={$@runs}");
+		};
+		@board->Finish(@id);
+	}
+}
+
+# A thread that fails outside any try: what does the process do?
+class Saboteur from Thread {
+	@kind : String;
+	@delay : Int;
+
+	New(kind : String, delay : Int) {
+		Parent("saboteur");
+		@kind := kind;
+		@delay := delay;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Thread->Sleep(@delay);
+		"SABOTEUR firing {$@kind}"->PrintLine();
+		if(@kind->Equals("thread_fault")) {
+			zero := 0;
+			(10 / zero)->PrintLine();
+		}
+		else if(@kind->Equals("thread_exit")) {
+			Runtime->Exit(7);
+		};
+	}
+}
+
+class FaultAgents {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 8) {
+			"usage: fault_agents <seed> <agents> <runs> <fault> <rate> <backend> <tool_limit_ms> <deadline_s> [outdir]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		seed := args[0]->ToInt();
+		agents := args[1]->ToInt();
+		runs := args[2]->ToInt();
+		fault := args[3];
+		rate := args[4]->ToFloat();
+		backend_url := args[5];
+		limit := args[6]->ToInt();
+		deadline := args[7]->ToInt();
+		outdir := "";
+		if(args->Size() > 8) {
+			outdir := args[8];
+		};
+
+		if(fault->Equals("stdin")) {
+			StdinMode();
+			return;
+		};
+
+		board := Board->New(agents);
+		workers := Vector->New()<AgentWorker>;
+		overall := System.Time.Timer->New(true);
+		for(a := 0; a < agents; a += 1;) {
+			w := AgentWorker->New(a, runs, seed, fault, rate, backend_url, limit, board, outdir);
+			workers->AddBack(w);
+			w->Execute(Nil);
+		};
+
+		if(fault->StartsWith("thread_")) {
+			Saboteur->New(fault, 150)->Execute(Nil);
+		};
+
+		waited := 0;
+		while(board->Finished() < agents & waited < deadline * 100) {
+			Thread->Sleep(10);
+			waited += 1;
+		};
+
+		stuck := 0;
+		for(a := 0; a < agents; a += 1;) {
+			r := board->Stuck(a);
+			if(r >= 0) {
+				stuck += 1;
+				board->Line("HANG a={$a} r={$r}");
+			};
+		};
+
+		overall->End();
+		ms := (overall->GetElapsedTime() * 1000.0)->As(Int);
+		finished := board->Finished();
+		board->Line("SUMMARY agents={$agents} finished={$finished} stuck={$stuck} wall_ms={$ms}");
+		if(stuck > 0) {
+			# threads cannot be joined; leave the way a service would
+			Runtime->Exit(0);
+		};
+	}
+
+	# reads one prompt per line until end of input; every line is answered by a one-call agent
+	function : StdinMode() ~ Nil {
+		handler := WorkHandler->New("none", 1, 0, 0.0);
+		registry := ToolRegistry->New();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}},\"required\":[\"n\"]}");
+		registry->Add(AgentTool->New("work", "Do one unit of work", schema, handler));
+		served := 0;
+		empty := 0;
+		line := System.IO.Console->ReadLine();
+		while(line <> Nil & empty < 1000) {
+			if(line->Size() = 0) {
+				empty += 1;
+			}
+			else {
+				script := Vector->New()<AgentReply>;
+				script->AddBack(AgentReply->Ask("c1", "work", "{\"n\":3}"));
+				script->AddBack(AgentReply->Say("done"));
+				agent := Agent->New(ScriptedBackend->New(script), registry);
+				handler->Begin(served, CancelFlag->New());
+				agent->Run(line);
+				served += 1;
+				"SERVED {$served}"->PrintLine();
+			};
+			line := System.IO.Console->ReadLine();
+		};
+
+		"STDIN_END served={$served} empty_reads={$empty} nil={$(line = Nil)}"->PrintLine();
+	}
+}
