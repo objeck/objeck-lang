@@ -632,6 +632,128 @@ class CodeFormatter {
 		return formatted;
 	}
 
+	#
+	# The nesting depth the formatter indents each line of 'source' to: one level
+	# per open '{', one fewer for a line that starts with '}'. Index 1 is the
+	# first line. A blank line has the depth the code around it is at, which is
+	# where a new line typed there belongs; a line a multi-line comment runs
+	# over is -1, because the formatter leaves a comment's text alone. Nil when
+	# the source does not scan.
+	#
+	# The scanner's line numbers are not the source's, and this undoes how: a
+	# line comment ends at its newline without counting it, so every token after
+	# one is a line short, and a multi-line comment is numbered by the line it
+	# ends on. The formatter itself never reads the numbers (only a range format
+	# does), which is why they were never corrected there.
+	#
+	method : public : LineDepths(source : String, line_count : Int) ~ Int[] {
+		scanner := Scanner->New(source);
+		scanner->SetLenient();
+		if(<>scanner->Scan()) {
+			return Nil;
+		};
+
+		depths := Int->New[line_count + 2];
+		depth := 0;
+		line := 1;
+		drift := 0;
+		tokens := scanner->GetTokens();
+		each(i : tokens) {
+			token := tokens->Get(i);
+			type := token->GetType();
+
+			# the blank-line marker shares a line with the token after it
+			if(type = Token->Type->VTAB) {
+				continue;
+			};
+
+			token_line := token->GetLine() + drift;
+			start_line := token_line;
+			comment_end := token_line;
+			if(type = Token->Type->MULTI_COMMENT) {
+				comment := token->GetValue();
+				each(j : comment) {
+					if(comment->Get(j) = '\n') {
+						start_line -= 1;
+					};
+				};
+			};
+
+			# lines with no token take the depth the code before them left
+			while(line < start_line & line <= line_count) {
+				depths[line] := depth;
+				line += 1;
+			};
+
+			# the first token on a line sets its depth
+			if(line = start_line & line <= line_count) {
+				if(start_line < comment_end) {
+					depths[line] := -1;
+				}
+				else if(type = Token->Type->CCBRACE & depth > 0) {
+					depths[line] := depth - 1;
+				}
+				else {
+					depths[line] := depth;
+				};
+				line += 1;
+			};
+
+			select(type) {
+				label Token->Type->OCBRACE {
+					depth += 1;
+				}
+
+				label Token->Type->CCBRACE {
+					if(depth > 0) {
+						depth -= 1;
+					};
+				}
+
+				label Token->Type->LINE_COMMENT {
+					drift += 1;
+				}
+
+				label Token->Type->MULTI_COMMENT {
+					while(line <= comment_end & line <= line_count) {
+						depths[line] := -1;
+						line += 1;
+					};
+				}
+
+				other {
+				}
+			};
+		};
+
+		while(line <= line_count) {
+			depths[line] := depth;
+			line += 1;
+		};
+
+		return depths;
+	}
+
+	# the whitespace the formatter writes before a line at this depth
+	method : public : IndentFor(depth : Int) ~ String {
+		indent := "";
+		if(@ident_space > 0) {
+			each(i : depth) {
+				each(j : @ident_space) {
+					indent += ' ';
+				};
+				indent += ' ';
+			};
+		}
+		else {
+			each(i : depth) {
+				indent += '\t';
+			};
+		};
+
+		return indent;
+	}
+
 	method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
 		if(@prev_token->GetType() = Token->Type->CCBRACE) {
 			AppendBuffer("\n\n");

@@ -1686,15 +1686,15 @@ void JitAmd64::PlanPinRegions() {
       StackInstr* instr = method->GetInstruction(i);
       std::vector<long> targets;
       if(instr->GetType() == JMP) {
-        targets.push_back(instr->GetOperand());
+        targets.push_back(instr->JumpTargetIndex());
       }
       else if(instr->GetType() == JMP_TABLE) {
         // F8: a select's table is a bundle of edges, the default plus one per
         // slot. Only a JMP gets a write-back stub on the way out of a region,
         // so none of a table's edges may cross the region's boundary.
-        targets.push_back(instr->GetOperand3());
+        targets.push_back(instr->JumpDefaultTargetIndex());
         for(long s = 1; s <= instr->GetOperand2() && i + s < count; ++s) {
-          targets.push_back(method->GetInstruction(i + s)->GetOperand());
+          targets.push_back(method->GetInstruction(i + s)->JumpTargetIndex());
         }
       }
       else {
@@ -1914,7 +1914,7 @@ void JitAmd64::EmitPinExitStubs() {
       continue;
     }
     const PinRegion& pin = pin_regions[region];
-    const long target = jump->GetOperand();
+    const long target = jump->JumpTargetIndex();
     if(target >= pin.header && target <= pin.end) {
       continue;
     }
@@ -2018,7 +2018,7 @@ void JitAmd64::ProcessJumpTable(StackInstr* instr) {
   }
   const long base = instr->GetOperand();
   const long range = instr->GetOperand2();
-  const long default_index = instr->GetOperand3();
+  const long default_index = instr->JumpDefaultTargetIndex();
   // instr_index already points at the first slot
   if(range <= 0 || instr_index + range > method->GetInstructionCount()) {
     CompileFailed(L"a select table that runs past the method");
@@ -2094,7 +2094,7 @@ void JitAmd64::ProcessJumpTable(StackInstr* instr) {
     TableEntry entry;
     entry.entry_offset = code_index;
     entry.table_offset = table_offset;
-    entry.target_index = slot->GetOperand();
+    entry.target_index = slot->JumpTargetIndex();
     table_entries.push_back(entry);
     AddImm(0);
   }
@@ -8485,10 +8485,10 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
       // detect loops via backward jumps (a JMP operand is the target instruction
       // index; a target earlier than the jump is a loop back-edge)
-      if(scan_instr->GetType() == JMP && scan_instr->GetOperand() < i) {
-        detected_loops.push_back({scan_instr->GetOperand(), i});
+      if(scan_instr->GetType() == JMP && scan_instr->JumpTargetIndex() < i) {
+        detected_loops.push_back({scan_instr->JumpTargetIndex(), i});
         // the back-edge target label is a loop header — it needs a safepoint poll
-        safepoint_lbl_indices.insert(scan_instr->GetOperand());
+        safepoint_lbl_indices.insert(scan_instr->JumpTargetIndex());
       }
     }
 
@@ -8728,7 +8728,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
       StackInstr* instr = iter->second;
       const long src_offset = iter->first;
-      const long dest_index = instr->GetOperand();
+      const long dest_index = instr->JumpTargetIndex();
       long dest_offset = method->GetInstruction(dest_index)->GetOffset();
       // F3: an exit jump lands on its stub; a jump from inside a pinned loop to
       // the loop's header skips the entry loads

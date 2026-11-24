@@ -370,13 +370,10 @@ void Parser::ProcessError(ScannerTokenType type)
  * not at the next token, which
  * is on a later line.
  ****************************/
-void Parser::ReportSyntaxError(const std::wstring &msg)
+void Parser::ReportSyntaxError(const std::wstring &msg, bool top_level)
 {
   // what a top-level parse says after an earlier error in this file is noise
-  if(syntax_error_seen && msg.compare(0, 14, L"Expected 'use'") != 0 && msg.compare(0, 16, L"Expected 'class'") != 0) {
-    // fall through: an ordinary error
-  }
-  else if(syntax_error_seen) {
+  if(syntax_error_seen && top_level) {
     return;
   }
   syntax_error_seen = true;
@@ -407,6 +404,45 @@ void Parser::ProcessError(const std::wstring &msg)
   }
 
   ReportSyntaxError(msg);
+}
+
+/****************************
+ * Emits a top-level parsing error.
+ ****************************/
+void Parser::ProcessTopLevelError(const std::wstring &msg)
+{
+  if(ReportLexicalError() || IsEchoOfLexicalError()) {
+    return;
+  }
+
+  ReportSyntaxError(msg, true);
+}
+
+void Parser::ProcessTopLevelError(const std::wstring &msg, ScannerTokenType sync)
+{
+  if(!ReportLexicalError() && !IsEchoOfLexicalError()) {
+    ReportSyntaxError(msg, true);
+  }
+
+  ScannerTokenType token = GetToken();
+  while(token != sync && token != TOKEN_END_OF_STREAM) {
+    NextToken();
+    token = GetToken();
+  }
+}
+
+/****************************
+ * Starts a file with none of the
+ * previous file's error state: its
+ * recovery flags described a
+ * different token stream.
+ ****************************/
+void Parser::ResetErrorState()
+{
+  lexical_error_seen = false;
+  lexical_recovery = false;
+  syntax_quiet = false;
+  syntax_error_seen = false;
 }
 
 /****************************
@@ -596,6 +632,7 @@ bool Parser::Parse()
  ****************************/
 void Parser::ParseFile(const std::wstring &file_name)
 {
+  ResetErrorState();
   scanner = new Scanner(file_name, alt_syntax);
   NextToken();
   char stack_mark = 0;
@@ -617,6 +654,7 @@ void Parser::ParseFile(const std::wstring &file_name)
  ****************************/
 void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
 {
+  ResetErrorState();
   scanner = new Scanner(progam.first, alt_syntax, progam.second);
   NextToken();
   char stack_mark = 0;
@@ -831,7 +869,7 @@ void Parser::ParseBundle(int depth)
             break;
 
           default:
-            ProcessError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+            ProcessTopLevelError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
             NextToken();
             break;
           }
@@ -898,7 +936,7 @@ void Parser::ParseBundle(int depth)
           break;
 
         default:
-          ProcessError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+          ProcessTopLevelError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
           NextToken();
           break;
         }
@@ -911,7 +949,7 @@ void Parser::ParseBundle(int depth)
     }
     // error
     else {
-      ProcessError(L"Expected 'use', 'bundle', 'class', 'record', 'interface', 'enum' or 'consts'");
+      ProcessTopLevelError(L"Expected 'use', 'bundle', 'class', 'record', 'interface', 'enum' or 'consts'");
       NextToken();
     }
   }

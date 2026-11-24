@@ -47,9 +47,10 @@ sys.path.insert(0, TESTS_DIR)
 from run_lsp_tests import LspClient, REPO_ROOT, path_to_uri, find_pos, make_env  # noqa: E402
 
 SERVER_SRC = os.path.join(REPO_ROOT, "tools", "lsp", "server")
-SERVER_FILES = ["frameworks.obs", "proxy.obs", "server.obs",
+SERVER_FILES = ["frameworks.obs", "proxy.obs", "server.obs", "inline_completion.obs",
                 "format_code/scanner.obs", "format_code/formatter.obs"]
-SERVER_LIBS = ["gen_collect.obl", "diags.obl", "net.obl", "json.obl", "regex.obl", "cipher.obl"]
+SERVER_LIBS = ["gen_collect.obl", "diags.obl", "net.obl", "json.obl", "regex.obl", "cipher.obl",
+               "ollama.obl", "anthropic.obl", "openai.obl", "gemini.obl"]
 
 TINY_MAIN = """class Tiny {
 	function : Main(args : String[]) ~ Nil {

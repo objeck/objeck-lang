@@ -1,0 +1,396 @@
+use Collection, Data.JSON, API.Google.Gemini;
+
+#~
+Inline completion (textDocument/inlineCompletion, LSP 3.18): ghost-text suggestions
+from a language model.
+
+OFF BY DEFAULT. With the provider 'none' nothing is built and nothing leaves the
+process. The text before and after the cursor is sent to a model ONLY when the user
+has chosen a provider:
+
+  ollama     a local Ollama server (http://localhost:11434 unless 'ollamaHost' says
+             otherwise: a remote host receives the code too)
+  anthropic  Anthropic's API, through API.Anthropic; needs ANTHROPIC_API_KEY or
+             anthropic_api_key.dat, as the library already reads it
+  openai     OpenAI's API, through API.OpenAI; needs openai_api_key.dat
+  gemini     Google's API, through API.Google.Gemini; needs the Gemini key file
+
+The HTTP is the AI libraries' own; this file writes none. Those libraries refuse an
+API key while OBJECK_TLS_INSECURE_SKIP_VERIFY is set, and so does this: the provider
+then answers nothing.
+
+The request runs on its own thread and the handler waits for it at most 'timeoutMs'
+(3 seconds by default), so a model that hangs cannot hold the server longer. Any
+failure answers an empty list, never an error.
+~#
+bundle LSP {
+	#~
+	The user's choice of provider, from initializationOptions.inlineCompletion and
+	workspace/didChangeConfiguration (settings.objeck.inlineCompletion or
+	settings.inlineCompletion): { provider, model, ollamaHost, timeoutMs }.
+	~#
+	class InlineCompletionSettings {
+		@provider : static : String;
+		@model : static : String;
+		@host : static : String;
+		@timeout_ms : static : Int;
+
+		# 'none' until the user says otherwise
+		function : GetProvider() ~ String {
+			if(@provider = Nil) {
+				return "none";
+			};
+			return @provider;
+		}
+
+		function : GetHost() ~ String {
+			return @host;
+		}
+
+		# the model setting, else the provider's default
+		function : GetModel() ~ String {
+			if(@model <> Nil & <>@model->IsEmpty()) {
+				return @model;
+			};
+
+			select(GetProvider()) {
+				label "ollama" { return "qwen2.5-coder:1.5b"; }
+				label "anthropic" { return "claude-haiku-4-5"; }
+				label "openai" { return "gpt-4o-mini"; }
+				label "gemini" { return "gemini-2.5-flash"; }
+				other { return ""; }
+			};
+
+			return "";
+		}
+
+		# milliseconds the handler waits: 3000 unless set, within 200 to 30000
+		function : GetTimeoutMs() ~ Int {
+			if(@timeout_ms < 200) {
+				return 3000;
+			};
+			if(@timeout_ms > 30000) {
+				return 30000;
+			};
+			return @timeout_ms;
+		}
+
+		function : IsEnabled() ~ Bool {
+			return <>GetProvider()->Equals("none");
+		}
+
+		# The 'settings' of workspace/didChangeConfiguration: the object may be
+		# the section itself or have it under 'objeck'.
+		function : ConfigureFromSettings(settings : JsonElement) ~ Nil {
+			if(settings = Nil | settings->GetType() <> JsonElement->JsonType->OBJECT) {
+				return;
+			};
+
+			section := settings;
+			if(section->Has("objeck") & section->Get("objeck")->GetType() = JsonElement->JsonType->OBJECT) {
+				section := section->Get("objeck");
+			};
+			if(section->Has("inlineCompletion")) {
+				Configure(section->Get("inlineCompletion"));
+			};
+		}
+
+		# An absent setting keeps its default; an unknown provider is 'none'.
+		function : Configure(options : JsonElement) ~ Nil {
+			if(options = Nil | options->GetType() <> JsonElement->JsonType->OBJECT) {
+				return;
+			};
+
+			provider := TextOf(options, "provider");
+			if(provider <> Nil) {
+				provider := provider->Trim();
+				if(provider->Equals("ollama") | provider->Equals("anthropic") | provider->Equals("openai") | provider->Equals("gemini")) {
+					@provider := provider;
+				}
+				else {
+					@provider := "none";
+				};
+			};
+
+			@model := TextOf(options, "model");
+
+			host := TextOf(options, "ollamaHost");
+			if(host <> Nil) {
+				host := host->Trim();
+				if(host->StartsWith("http://") | host->StartsWith("https://")) {
+					while(host->Size() > 0 & host->Get(host->Size() - 1) = '/') {
+						host := host->SubString(0, host->Size() - 1);
+					};
+					@host := host;
+				}
+				else {
+					@host := Nil;
+				};
+			};
+
+			if(options->Has("timeoutMs") & options->Get("timeoutMs")->GetType() = JsonElement->JsonType->NUMBER) {
+				@timeout_ms := options->Get("timeoutMs")->GetInt();
+			};
+		}
+
+		function : TextOf(options : JsonElement, name : String) ~ String {
+			if(options->Has(name)) {
+				found := options->Get(name);
+				if(found <> Nil & found->GetType() = JsonElement->JsonType->STRING) {
+					return found->GetValue();
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	One request to the provider, on its own thread: the handler cannot be blocked by
+	a model that never answers, it only stops waiting.
+	~#
+	class InlineCompletionJob from System.Concurrency.Thread {
+		@provider : String;
+		@host : String;
+		@model : String;
+		@prompt : String;
+		@result : String;
+		@done : Bool;
+
+		New(provider : String, host : String, model : String, prompt : String) {
+			Parent();
+			@provider := provider;
+			@host := host;
+			@model := model;
+			@prompt := prompt;
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			text := InlineCompletion->Ask(@provider, @host, @model, @prompt);
+			@result := text;
+			@done := true;
+		}
+
+		method : public : IsDone() ~ Bool {
+			return @done;
+		}
+
+		method : public : GetResult() ~ String {
+			return @result;
+		}
+	}
+
+	class InlineCompletion {
+		# the text taken before the cursor, and after it
+		consts Context {
+			PREFIX_CHARS := 4000,
+			SUFFIX_CHARS := 500,
+			MAX_LINES := 8
+		}
+
+		# a job that never answered stays running; only one is allowed at a time
+		@running : static : InlineCompletionJob;
+
+		# The index into 'text' of a position, a line past the end meaning the end
+		# of the text and a character past a line's end meaning that line's end.
+		function : IndexOf(text : String, line : Int, character : Int) ~ Int {
+			index := 0;
+			at_line := 0;
+			size := text->Size();
+			while(at_line < line & index < size) {
+				if(text->Get(index) = '\n') {
+					at_line += 1;
+				};
+				index += 1;
+			};
+
+			col := 0;
+			while(col < character & index < size & text->Get(index) <> '\n') {
+				index += 1;
+				col += 1;
+			};
+
+			return index;
+		}
+
+		# The text of the cursor's line before the cursor
+		function : LinePrefix(text : String, index : Int) ~ String {
+			start := index;
+			while(start > 0 & text->Get(start - 1) <> '\n') {
+				start -= 1;
+			};
+
+			return text->SubString(start, index - start);
+		}
+
+		function : BuildPrompt(text : String, index : Int) ~ String {
+			first := index - InlineCompletion->Context->PREFIX_CHARS->As(Int);
+			if(first < 0) {
+				first := 0;
+			};
+			last_index := index + InlineCompletion->Context->SUFFIX_CHARS->As(Int);
+			if(last_index > text->Size()) {
+				last_index := text->Size();
+			};
+
+			prompt := "You complete Objeck source code. Reply with ONLY the code that belongs at <CURSOR>: no explanation, no markdown fences, and do not repeat the text before the cursor. Stop after one statement or one block.\n\n";
+			prompt += text->SubString(first, index - first);
+			prompt += "<CURSOR>";
+			prompt += text->SubString(index, last_index - index);
+			return prompt;
+		}
+
+		# A job for the request, or Nil when the provider is off, or one is still
+		# waiting on an earlier request that never came back.
+		function : Begin(text : String, line : Int, character : Int) ~ InlineCompletionJob {
+			if(<>InlineCompletionSettings->IsEnabled() | text = Nil) {
+				return Nil;
+			};
+
+			if(@running <> Nil & <>@running->IsDone()) {
+				return Nil;
+			};
+
+			index := IndexOf(text, line, character);
+			job := InlineCompletionJob->New(InlineCompletionSettings->GetProvider(), InlineCompletionSettings->GetHost(),
+				InlineCompletionSettings->GetModel(), BuildPrompt(text, index));
+			@running := job;
+			job->Execute(Nil);
+			return job;
+		}
+
+		# The provider's answer, or Nil on any failure. The libraries report
+		# failure as Nil, and a missing key as Nil, so there is nothing to catch.
+		function : Ask(provider : String, host : String, model : String, prompt : String) ~ String {
+			select(provider) {
+				label "ollama" {
+					if(host <> Nil) {
+						API.Ollama.EndPoint->SetHost(host);
+					};
+					options := API.Ollama.Options->New()->SetTemperature(0.2)->SetNumPredict(128);
+					return API.Ollama.Completion->Generate(model, prompt, options);
+				}
+
+				label "anthropic" {
+					chat := API.Anthropic.Chat->New(model, Nil);
+					chat->SetMaxTokens(128)->SetTemperature(0.2);
+					return chat->Send(prompt);
+				}
+
+				label "openai" {
+					key := API.OpenAI.EndPoint->GetApiKey();
+					if(key = Nil) {
+						return Nil;
+					};
+					message := Pair->New("user", prompt)<String, String>;
+					response := API.OpenAI.Responses.Response->Respond(model, message, key);
+					if(response = Nil) {
+						return Nil;
+					};
+					return response->GetText();
+				}
+
+				label "gemini" {
+					key := API.Google.Gemini.EndPoint->GetApiKey();
+					if(key = Nil) {
+						return Nil;
+					};
+					content := Content->New("user")->AddPart(TextPart->New(prompt));
+					candidates := Model->GenerateContent(model, content, key);
+					if(candidates = Nil | candidates->Size() = 0) {
+						return Nil;
+					};
+					return candidates->Get(0)->GetAllText();
+				}
+
+				other {
+					return Nil;
+				}
+			};
+
+			return Nil;
+		}
+
+		#
+		# The first logical statement of what the model said: the fence lines and
+		# any echoed marker dropped, up to the first blank line, to the line that
+		# closes the first statement or block, or MAX_LINES lines. The text before
+		# the cursor on its line is dropped if the model repeated it.
+		#
+		function : Shape(raw : String, line_prefix : String) ~ String {
+			if(raw = Nil) {
+				return "";
+			};
+
+			text := raw->ReplaceAll("\r", "")->ReplaceAll("<CURSOR>", "");
+			text += "\n";
+
+			shaped := "";
+			line := String->New();
+			lines := 0;
+			depth := 0;
+			done := false;
+			size := text->Size();
+			for(i := 0; i < size; i += 1;) {
+				c := text->Get(i);
+				if(c <> '\n') {
+					line->Append(c);
+				}
+				else {
+					trimmed := line->Trim();
+					if(trimmed->StartsWith("```") | trimmed->IsEmpty()) {
+						# a fence or blank line before the code is skipped, after it ends the group
+						if(lines > 0) {
+							done := true;
+						};
+					}
+					else {
+						if(lines > 0) {
+							shaped += "\n";
+						};
+						shaped += line;
+						lines += 1;
+
+						depth += line->Count('{');
+						depth -= line->Count('}');
+						last := trimmed->Get(trimmed->Size() - 1);
+						if(depth <= 0 & (last = ';' | last = '}')) {
+							done := true;
+						};
+						if(lines >= InlineCompletion->Context->MAX_LINES->As(Int)) {
+							done := true;
+						};
+					};
+
+					line := String->New();
+					if(done) {
+						break;
+					};
+				};
+			};
+
+			# trailing blanks only: the leading ones are the model's indentation
+			end := shaped->Size();
+			while(end > 0 & (shaped->Get(end - 1) = ' ' | shaped->Get(end - 1) = '\t')) {
+				end -= 1;
+			};
+			shaped := shaped->SubString(0, end);
+
+			# a model that repeats the line so far, or indents after text already there
+			if(line_prefix <> Nil & line_prefix->Size() > 0) {
+				if(shaped->StartsWith(line_prefix)) {
+					shaped := shaped->SubString(line_prefix->Size(), shaped->Size() - line_prefix->Size());
+				}
+				else if(line_prefix->Trim()->Size() > 0) {
+					start := 0;
+					while(start < shaped->Size() & (shaped->Get(start) = ' ' | shaped->Get(start) = '\t')) {
+						start += 1;
+					};
+					shaped := shaped->SubString(start, shaped->Size() - start);
+				};
+			};
+
+			return shaped;
+		}
+	}
+}
