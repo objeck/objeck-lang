@@ -1944,6 +1944,13 @@ class StackProgram {
 #endif
 
   static bool AddSignalHandler(long key, StackMethod* mthd);
+  // the handler registered for a VM signal id, or nullptr; safe beside AddSignalHandler
+  static StackMethod* FindSignalHandler(long key);
+  // Shutdown: StopSignalDispatch() keeps the dispatcher thread from starting another handler;
+  // WaitSignalDispatchIdle() waits (false on timeout) for one already running to return. Called by
+  // the VM, in that order around halting the other threads, before the program is freed.
+  static void StopSignalDispatch();
+  static bool WaitSignalDispatchIdle(int timeout_ms);
   StackMethod* GetSignalHandler(long key);
 
   static void InitializeProprieties();

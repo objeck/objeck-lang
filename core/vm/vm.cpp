@@ -112,8 +112,10 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     // mid auto-JIT (PatchCallSites walking the class tables) while ~StackProgram
     // frees them -> use-after-free crash at exit. Halt the others (not `intpr`,
     // which is this thread) and wait briefly for them to unwind and deregister.
+    StackProgram::StopSignalDispatch();
     Runtime::StackInterpreter::HaltAllExcept(intpr);
-    if(!Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000)) {
+    const bool threads_drained = Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000);
+    if(!StackProgram::WaitSignalDispatchIdle(2000) || !threads_drained) {
       // A thread did not drain -- it is parked in a blocking syscall (a server
       // thread in accept(), a reader in recv()) where it cannot observe Halt, and
       // it is still live. Do not free the program out from under it: anything that

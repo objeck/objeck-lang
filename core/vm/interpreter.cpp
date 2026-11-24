@@ -2248,6 +2248,32 @@ static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack
   }
 }
 
+//
+// An Objeck signal handler, run by the signal dispatch thread. The same shape as a
+// spawned thread's body (AsyncMethodCall): its own interpreter and operand stack, a
+// registered mutator (so the collector waits for it, scans it and moves its objects),
+// the same last-resort catches.
+//
+void StackInterpreter::RunSignalMethod(StackMethod* method, long signal_id)
+{
+  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+  size_t* op_stack = intpr->GetOpStack();
+  size_t* stack_pos = new size_t;
+  *stack_pos = 0;
+
+  AddThread(intpr);
+  MemoryManager::RegisterMutator();
+  MemoryManager::SafePoint();   // park immediately if a collection is already underway
+  op_stack[(*stack_pos)++] = (size_t)signal_id;
+  ExecuteThreadBody(intpr, op_stack, stack_pos, method, nullptr);
+  MemoryManager::UnregisterMutator();
+
+  // roots first, then the memory they point into (see AsyncMethodCall)
+  RemoveThread(intpr);
+  delete intpr;
+  delete stack_pos;
+}
+
 #ifdef _WIN32
 //
 // windows thread callback

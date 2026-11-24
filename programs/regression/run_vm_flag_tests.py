@@ -725,6 +725,7 @@ def main():
 
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
+    check_signal_dispatch(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
 
@@ -2574,6 +2575,53 @@ def compile_fixture(obc, name, env, bin_dir):
     rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
     check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
     return dest if rc == 0 and os.path.exists(dest) else None
+
+
+def check_signal_dispatch(obc, obr, env, bin_dir):
+    # ---- Runtime->SetSignal handlers run on a VM thread -----------------------------
+    # signal_dispatch.obs allocates hard while this script sends SIGINT and SIGTERM as
+    # fast as it can. A handler that runs an Objeck method inside the OS signal
+    # handler (allocating, taking the collector's locks) deadlocks or corrupts the
+    # thread it interrupted; the VM only records the signal there and a dispatcher
+    # thread runs the method. A hang is the failure, so the run is bounded.
+    if os.name == "nt":
+        return
+    import signal as os_signal
+    import tempfile
+    import time
+    dest = compile_fixture(obc, "signal_dispatch", env, bin_dir)
+    if not dest:
+        return
+    rc, out, err = run([obr, dest, "raise"], env=env, cwd=SCRIPT_DIR)
+    check("a handler has run by the time Runtime->RaiseSignal returns",
+          rc == 0 and b"raised terminations=1" in out and b"raised interrupts=1" in out,
+          f"rc={rc} out={out[-200:]!r} err={err[-200:]!r}")
+    for jit in ("--jit=off", "--jit=1"):
+        with tempfile.TemporaryDirectory() as scratch:
+            ready = os.path.join(scratch, "ready")
+            proc = subprocess.Popen([obr, jit, "--nursery=256k", dest, "storm", ready], env=env, cwd=SCRIPT_DIR,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            deadline = time.time() + 60
+            while not os.path.exists(ready) and proc.poll() is None and time.time() < deadline:
+                time.sleep(0.01)
+            sent = 0
+            while proc.poll() is None and time.time() < deadline:
+                try:
+                    proc.send_signal(os_signal.SIGINT if sent % 2 == 0 else os_signal.SIGTERM)
+                except ProcessLookupError:
+                    break
+                sent += 1
+                time.sleep(0.0005)
+            hung = proc.poll() is None
+            if hung:
+                proc.kill()
+            out, err = proc.communicate()
+            seen = re.search(rb"seen=(\d+)", out)
+            check(f"signal storm {jit}: the program finishes and exits 0 ({sent} signals sent)",
+                  not hung and proc.returncode == 0 and b"PASS: signal_dispatch storm" in out,
+                  f"hung={hung} rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
+            check(f"signal storm {jit}: handlers ran",
+                  seen is not None and int(seen.group(1)) > 0, f"out={out[-200:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):

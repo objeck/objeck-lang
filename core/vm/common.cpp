@@ -36,6 +36,10 @@
 #endif
 
 #include <thread>
+#include <mutex>
+#include <atomic>
+#include <cerrno>
+#include <system_error>
 #include <chrono>
 #include "common.h"
 #include "loader.h"
@@ -190,10 +194,158 @@ pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 std::map<std::wstring, std::wstring> StackProgram::properties_map;
 std::unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
+// ---- Signal delivery ------------------------------------------------------------
+//
+// What an operating-system signal handler may do is very little: it can interrupt a
+// thread in the middle of malloc, a stdio call or a lock, so anything that allocates
+// or takes a lock can deadlock the thread it interrupted. Running an Objeck method
+// does all of that (a new interpreter, its stacks, the handler table, the collector's
+// thread lists). SIGINT and SIGTERM, which arrive from outside at any moment, are
+// therefore only RECORDED by the handler -- one atomic or, one write() to a pipe -- and
+// the Objeck method runs on a dedicated VM thread (SignalDispatchLoop) that is a
+// registered mutator like any other: the collector counts it, parks it, and scans it.
+// A thread blocked in a read or a sleep does not delay the handler, and neither does
+// a hot compiled loop: nothing has to poll.
+//
+// Signals that are NOT asynchronous keep running the method inline, on the thread
+// that raised them: Runtime->RaiseSignal (a synchronous std::raise from VM code) and
+// the faults SIGSEGV, SIGFPE, SIGILL and SIGABRT, which cannot be deferred (returning
+// from a fault's handler re-executes the faulting instruction).
+static std::atomic<unsigned> pending_signals(0);   // bit 0: SIGINT, bit 1: SIGTERM
+static_assert(std::atomic<unsigned>::is_always_lock_free, "the signal handler needs a lock-free flag word");
+static thread_local bool raised_from_vm = false;   // inside Runtime->RaiseSignal on this thread
+static std::mutex signal_table_lock;               // guards signal_handler_func for the dispatcher
+static bool signal_dispatch_ready = false;         // the dispatcher thread and its wake-up exist
+// Shutdown handshake. The dispatcher thread outlives the program's main thread, and a handler it starts
+// after the VM has begun to tear the program down would run against freed classes and JIT code. A handler
+// is counted in BEFORE it checks the flag and the stopper sets the flag BEFORE it looks at the count, so
+// either the handler sees the flag and stands down or the stopper sees the handler and waits for it.
+static std::atomic<bool> signal_dispatch_stopping(false);
+static std::atomic<int> signal_handlers_in_flight(0);
+#ifdef _WIN32
+static HANDLE signal_wake_event = nullptr;
+#else
+static int signal_wake_pipe[2] = {-1, -1};
+#endif
+
+// async-signal-safe: an atomic or and one write()/SetEvent
+static void QueueSignal(unsigned bit)
+{
+  pending_signals.fetch_or(1u << bit, std::memory_order_acq_rel);
+#ifdef _WIN32
+  SetEvent(signal_wake_event);
+#else
+  const int saved_errno = errno;
+  const char byte = 1;
+  const ssize_t written = write(signal_wake_pipe[1], &byte, 1);   // a full pipe already means "awake"
+  (void)written;
+  errno = saved_errno;
+#endif
+}
+
+// the VM thread that runs queued signals' Objeck handlers
+static void SignalDispatchLoop()
+{
+  for(;;) {
+#ifdef _WIN32
+    if(WaitForSingleObject(signal_wake_event, INFINITE) != WAIT_OBJECT_0) {
+      return;
+    }
+#else
+    char drain[64];
+    const ssize_t count = read(signal_wake_pipe[0], drain, sizeof(drain));
+    if(count < 0 && errno == EINTR) {
+      continue;
+    }
+    if(count <= 0) {
+      return;
+    }
+#endif
+    const unsigned bits = pending_signals.exchange(0, std::memory_order_acq_rel);
+    const struct { unsigned bit; long vm_id; } order[] = { {0, VM_SIGINT}, {1, VM_SIGTERM} };
+    for(size_t i = 0; i < sizeof(order) / sizeof(order[0]); ++i) {
+      if(!(bits & (1u << order[i].bit))) {
+        continue;
+      }
+      signal_handlers_in_flight.fetch_add(1);
+      if(signal_dispatch_stopping.load()) {
+        signal_handlers_in_flight.fetch_sub(1);
+        return;
+      }
+      StackMethod* method = StackProgram::FindSignalHandler(order[i].vm_id);
+      if(method) {
+        Runtime::StackInterpreter::RunSignalMethod(method, order[i].vm_id);
+      }
+      signal_handlers_in_flight.fetch_sub(1);
+    }
+  }
+}
+
+// creates the wake-up and starts the dispatcher once; false leaves signals inline
+static bool StartSignalDispatch()
+{
+  if(signal_dispatch_ready) {
+    return true;
+  }
+#ifdef _WIN32
+  signal_wake_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  if(!signal_wake_event) {
+    return false;
+  }
+#else
+  if(pipe(signal_wake_pipe) != 0) {
+    return false;
+  }
+  for(int i = 0; i < 2; ++i) {
+    fcntl(signal_wake_pipe[i], F_SETFD, fcntl(signal_wake_pipe[i], F_GETFD) | FD_CLOEXEC);
+  }
+  fcntl(signal_wake_pipe[1], F_SETFL, fcntl(signal_wake_pipe[1], F_GETFL) | O_NONBLOCK);
+#endif
+  try {
+    std::thread(SignalDispatchLoop).detach();
+  }
+  catch(const std::system_error&) {
+    return false;
+  }
+  signal_dispatch_ready = true;
+  return true;
+}
+
+void StackProgram::StopSignalDispatch()
+{
+  signal_dispatch_stopping.store(true);
+}
+
+bool StackProgram::WaitSignalDispatchIdle(int timeout_ms)
+{
+  for(int waited = 0; signal_handlers_in_flight.load() != 0; ++waited) {
+    if(waited >= timeout_ms) {
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  return true;
+}
+
+// the table is read here, on the dispatcher thread, while a VM thread may be adding to it
+StackMethod* StackProgram::FindSignalHandler(long key)
+{
+  std::lock_guard<std::mutex> guard(signal_table_lock);
+  std::unordered_map<long, StackMethod*>::iterator found = signal_handler_func.find(key);
+  return found != signal_handler_func.end() ? found->second : nullptr;
+}
+
 
 bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 {
-  signal_handler_func.insert(std::make_pair(signal_id, mthd));
+  {
+    std::lock_guard<std::mutex> guard(signal_table_lock);
+    signal_handler_func.insert(std::make_pair(signal_id, mthd));
+  }
+
+  if(signal_id == VM_SIGINT || signal_id == VM_SIGTERM) {
+    StartSignalDispatch();
+  }
 
   switch(signal_id) {
   case VM_SIGABRT:
@@ -239,6 +391,12 @@ StackMethod* StackProgram::GetSignalHandler(long key)
 
 void StackProgram::SignalHandler(int signal)
 {
+  // SIGINT and SIGTERM from outside: record and return (see "Signal delivery" above)
+  if(!raised_from_vm && signal_dispatch_ready && (signal == SIGINT || signal == SIGTERM)) {
+    QueueSignal(signal == SIGINT ? 0 : 1);
+    return;
+  }
+
   StackMethod* called_method = nullptr;
 
   long sys_value = 0;
@@ -4268,6 +4426,13 @@ bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_s
 bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   const INT64_VALUE signal_id = (INT64_VALUE)PopInt(op_stack, stack_pos);
+
+  // a raise from VM code is synchronous: its handler runs here, on this thread, before
+  // std::raise returns, as it always has
+  struct InlineScope {
+    InlineScope() { raised_from_vm = true; }
+    ~InlineScope() { raised_from_vm = false; }
+  } inline_scope;
 
   switch(signal_id) {
   case VM_SIGABRT:

@@ -876,6 +876,11 @@ namespace Runtime {
     static void* AsyncMethodCall(void* arg);
 #endif
 
+    // Runs a registered signal handler (Runtime->SetSignal) with 'signal_id' as its
+    // argument, on the calling thread, which becomes a mutator for the duration. Called
+    // from the signal dispatch thread (common.cpp), never from a signal handler.
+    static void RunSignalMethod(StackMethod* method, long signal_id);
+
     StackInterpreter(StackFrame** c, long* cp) {
 #ifdef _DEBUGGER
       debugger = nullptr;   // see the note in StackInterpreter()
