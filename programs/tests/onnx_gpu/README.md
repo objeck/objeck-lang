@@ -8,6 +8,8 @@ Benchmarks for `API.Onnx` on the GPU. They need a GPU, a GPU build of ONNX Runti
 | `run_bench.sh` | Runs `bench_run` over a list of batch sizes and prints markdown rows |
 | `make_models.py` | Makes the FP16, FP16-with-FP32-edges and INT8 (QDQ) variants of an FP32 image model (`pip install onnx onnxruntime onnxconverter-common numpy sympy`); the INT8 one is calibrated on synthetic data, so it is for speed and not accuracy |
 | `compare_models.obs` | Runs two models (or one model on two providers) on the same inputs and prints the largest and mean absolute difference, the relative difference and how often the top-1 class agrees |
+| `bench_gc_stall.obs` | One thread runs a model back to back while another allocates; prints how long the allocating thread was kept waiting for a collection (the cost of a native call that does not park) |
+| `bench_threads.obs` | One shared session used by 1, 2, 4, 8 threads, through `Session->Run` or one `BoundSession` per thread; prints runs and images per second |
 
 ## Reproduce
 

@@ -89,6 +89,10 @@ Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=
 
 `ep=tensorrt` (`session_options.h`) appends the TensorRT provider, then the CUDA provider for what TensorRT cannot take, with the engine cache on by default in a per-user directory. Session-level keys in the config map (`intra_op_threads`, `inter_op_threads`, `graph_optimization`, `execution_mode`, `mem_pattern`, `cpu_mem_arena`, `session_config.<key>`) are checked and refused when unreadable; every other key is a provider option. `enable_cuda_graph=1` (CUDA) and `cuda_graph=1` (TensorRT) replay the recorded kernels for a bound run. A runtime that lacks the provider refuses the session. Keys, defaults and measurements: `docs/ai_sections/onnx_gpu.md`.
 
+### Threads
+
+`Session->Run`, a bound run and the `DeviceTensor` copies park the calling thread for the length of the native work, so a stop-the-world collection started by another Objeck thread does not wait for an inference (longest wait 176.7 ms to 19.9 ms for ResNet-34 at batch 32). A `Session` may be shared by threads; give each thread its own `BoundSession` and tensors. See `docs/ai_sections/onnx_gpu.md`.
+
 ## Quick Start
 
 ```objeck
