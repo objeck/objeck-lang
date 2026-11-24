@@ -229,7 +229,7 @@
   "onnx": {
    "deps": ["models", "opencv", "cipher", "json"],
    "bundles": {
-    "API.Onnx": ["DeepLabClassification", "DeepLabResult", "DeepLabSession", "FaceDetection", "FaceDetectionResult", "FaceRecognitionResult", "FaceResult", "FaceSession", "ModelInfo", "OnnxEngine", "OnnxRuntime", "OpenPoseClassification", "OpenPoseResult", "OpenPoseSession", "Phi3Result", "Phi3Session", "Phi3Tokenizer", "Phi3VisionSession", "ResNetResult", "ResNetSession", "RunResult", "Session", "YoloClassification", "YoloResult", "YoloSession"]
+    "API.Onnx": ["BFloat16", "BoundSession", "DeepLabClassification", "DeepLabResult", "DeepLabSession", "DeviceTensor", "FaceDetection", "FaceDetectionResult", "FaceRecognitionResult", "FaceResult", "FaceSession", "Half", "ModelInfo", "OnnxEngine", "OnnxRuntime", "OpenPoseClassification", "OpenPoseResult", "OpenPoseSession", "Phi3Result", "Phi3Session", "Phi3Tokenizer", "Phi3VisionSession", "Quantization", "ResNetResult", "ResNetSession", "RunResult", "Session", "YoloClassification", "YoloResult", "YoloSession"]
    }
   },
   "openai": {

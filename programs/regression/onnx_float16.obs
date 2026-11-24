@@ -1,0 +1,489 @@
+#~
+# float16, bfloat16 and 8-bit element types in API.Onnx.
+#
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
+#
+# Part 1 needs no model and no GPU. Half and BFloat16 must round the way the hardware
+# does -- to nearest, ties to even, straight from the Float -- and every edge case has a
+# wrong answer that looks plausible: a tie rounded up, a value just under the overflow
+# threshold sent to infinity, a NaN collapsing into an infinity, a negative zero losing
+# its sign. So the conversion is checked three ways:
+#
+#   * a table of values whose half and bfloat16 patterns are known,
+#   * the round trip of ALL 65,536 patterns (every non-NaN pattern must come back
+#     unchanged; every NaN must stay a NaN),
+#   * every interval between two neighbouring finite values: the midpoint must go to
+#     the neighbour with the even pattern, a hair above to the upper one and a hair
+#     below to the lower one. Together with the round trip this pins the rounding in
+#     the normal range, the subnormal range and at the overflow edge.
+#
+# Part 2 runs a model that takes and returns FP16, BF16, INT8 and UINT8 tensors. The
+# model is a few hundred bytes -- Cast, Mul, Cast -- written out below as hex and
+# saved to a scratch file by the test, so no model file is tracked:
+#
+#   h:FP16 -> 2h (FP16)   b:BF16 -> 2b (BF16)   q:INT8 -> q (INT32)   u:UINT8 -> u / 2 (FP32)
+#
+# It checks what the CONVERSION layer did to the numbers (a 0.1 fed to an FP16 input is
+# 0.0999755859375, so the answer is exactly 0.199951171875), through Session->Run and
+# through a bound run with raw bit patterns. ep=cpu always; ep=cuda and ep=tensorrt when
+# the runtime has them and a session opens (otherwise a SKIP line says so).
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.IO.Filesystem;
+
+class OnnxFloat16 {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxFloat16->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	function : Infinity() ~ Float {
+		return 1.0e308 * 10.0;
+	}
+
+	function : NaN() ~ Float {
+		inf := Infinity();
+		return inf - inf;
+	}
+
+	function : IsNaN(value : Float) ~ Bool {
+		return value <> value;
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		HalfTable();
+		BFloat16Table();
+		HalfExhaustive();
+		BFloat16Exhaustive();
+		Quantize();
+		Models();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	# ---- part 1: the conversions ----------------------------------------------------
+
+	method : HalfTable() ~ Nil {
+		negative_zero := 0.0 * -1.0;
+		Report("half: 0 is 0x0000", Half->ToBits(0.0) = 0);
+		Report("half: -0 is 0x8000, the sign kept", Half->ToBits(negative_zero) = 32768);
+		Report("half: 1 is 0x3C00", Half->ToBits(1.0) = 15360);
+		Report("half: -2 is 0xC000", Half->ToBits(-2.0) = 49152);
+		Report("half: 0.1 is 0x2E66", Half->ToBits(0.1) = 11878);
+		Report("half: the largest finite, 65504, is 0x7BFF", Half->ToBits(65504.0) = 31743);
+		Report("half: 65519.99 is still 65504 (0x7BFF)", Half->ToBits(65519.99) = 31743);
+		Report("half: 65520, the tie to even, is infinity (0x7C00)", Half->ToBits(65520.0) = 31744);
+		Report("half: 1e10 is infinity", Half->ToBits(1.0e10) = 31744);
+		Report("half: -1e10 is -infinity (0xFC00)", Half->ToBits(-1.0e10) = 64512);
+		Report("half: +infinity is 0x7C00", Half->ToBits(Infinity()) = 31744);
+		Report("half: -infinity is 0xFC00", Half->ToBits(-1.0 * Infinity()) = 64512);
+		Report("half: the smallest subnormal, 2^-24, is 0x0001", Half->ToBits(5.960464477539063e-8) = 1);
+		Report("half: exactly half of it (2^-25) ties to even: 0", Half->ToBits(2.9802322387695312e-8) = 0);
+		Report("half: a hair over half of it rounds up to 0x0001", Half->ToBits(2.9802322387695316e-8) = 1);
+		Report("half: the smallest normal, 2^-14, is 0x0400", Half->ToBits(6.103515625e-5) = 1024);
+		Report("half: 1 + 2^-11, a tie, goes to the even pattern 0x3C00", Half->ToBits(1.00048828125) = 15360);
+		Report("half: 1 + 3 * 2^-11, a tie, goes to the even pattern 0x3C02", Half->ToBits(1.00146484375) = 15362);
+
+		nan_bits := Half->ToBits(NaN());
+		Report("half: a NaN stays a NaN (exponent all ones, mantissa non-zero)",
+			(nan_bits / 1024) % 32 = 31 & nan_bits % 1024 <> 0);
+
+		Report("half: 0x3C00 is 1", Half->FromBits(15360) = 1.0);
+		Report("half: 0x7BFF is 65504", Half->FromBits(31743) = 65504.0);
+		Report("half: 0x0001 is 2^-24", Half->FromBits(1) = 5.960464477539063e-8);
+		Report("half: 0x7C00 is +infinity", Half->FromBits(31744) = Infinity());
+		Report("half: 0xFC00 is -infinity", Half->FromBits(64512) = -1.0 * Infinity());
+		Report("half: 0x7E00 is a NaN", IsNaN(Half->FromBits(32256)));
+		Report("half: only the low 16 bits are read", Half->FromBits(65536 + 15360) = 1.0);
+		Report("half: Round(0.1) is 0.0999755859375", Half->Round(0.1) = 0.0999755859375);
+	}
+
+	method : BFloat16Table() ~ Nil {
+		Report("bfloat16: 1 is 0x3F80", BFloat16->ToBits(1.0) = 16256);
+		Report("bfloat16: -2 is 0xC000", BFloat16->ToBits(-2.0) = 49152);
+		Report("bfloat16: 0.1 is 0x3DCD", BFloat16->ToBits(0.1) = 15821);
+		Report("bfloat16: 3.389e38 is finite, the largest bfloat16 (0x7F7F), the range of FP32", BFloat16->ToBits(3.389e38) = 32639);
+		Report("bfloat16: 1e39 is infinity (0x7F80)", BFloat16->ToBits(1.0e39) = 32640);
+		Report("bfloat16: -infinity is 0xFF80", BFloat16->ToBits(-1.0 * Infinity()) = 65408);
+		Report("bfloat16: 1 + 2^-8, a tie, goes to the even pattern 0x3F80", BFloat16->ToBits(1.00390625) = 16256);
+		Report("bfloat16: 1 + 3 * 2^-8, a tie, goes to the even pattern 0x3F82", BFloat16->ToBits(1.01171875) = 16258);
+
+		nan_bits := BFloat16->ToBits(NaN());
+		Report("bfloat16: a NaN stays a NaN", (nan_bits / 128) % 256 = 255 & nan_bits % 128 <> 0);
+
+		Report("bfloat16: 0x3F80 is 1", BFloat16->FromBits(16256) = 1.0);
+		Report("bfloat16: Round(0.1) is 0.10009765625", BFloat16->Round(0.1) = 0.10009765625);
+	}
+
+	# all 65,536 patterns through Unpack and Pack, then the rounding between neighbours
+	method : HalfExhaustive() ~ Nil {
+		patterns := Int->New[65536];
+		for(i := 0; i < 65536; i += 1;) {
+			patterns[i] := i;
+		};
+
+		values := Half->Unpack(patterns);
+		again := Half->Pack(values);
+		Report("half: Unpack and Pack are the same length", values <> Nil & again <> Nil & values->Size() = 65536 & again->Size() = 65536);
+
+		mismatches := 0;
+		nan_lost := 0;
+		for(i := 0; i < 65536; i += 1;) {
+			if(IsNaN(values[i])) {
+				if((again[i] / 1024) % 32 <> 31 | again[i] % 1024 = 0) {
+					nan_lost += 1;
+				};
+			}
+			else if(again[i] <> i) {
+				mismatches += 1;
+			};
+		};
+		Report("half: every non-NaN pattern survives a round trip ({$mismatches} changed)", mismatches = 0);
+		Report("half: every NaN pattern is still a NaN ({$nan_lost} lost)", nan_lost = 0);
+
+		# between neighbours i and i + 1 (positive side; the negative side is a sign flip)
+		wrong := 0;
+		for(i := 0; i < 31744; i += 1;) {
+			low := values[i];
+			high := 65536.0;
+			if(i < 31743) {
+				high := values[i + 1];
+			};
+
+			mid := (low + high) / 2.0;
+			step := (high - low) / 1024.0;
+			even := i + 1;
+			if(i % 2 = 0) {
+				even := i;
+			};
+
+			if(Half->ToBits(mid) <> even | Half->ToBits(mid + step) <> i + 1 | Half->ToBits(mid - step) <> i) {
+				wrong += 1;
+			};
+			if(Half->ToBits(-1.0 * mid) <> even + 32768) {
+				wrong += 1;
+			};
+		};
+		Report("half: every midpoint ties to even, and a hair either side goes the right way ({$wrong} wrong of 31,744 intervals)", wrong = 0);
+	}
+
+	method : BFloat16Exhaustive() ~ Nil {
+		patterns := Int->New[65536];
+		for(i := 0; i < 65536; i += 1;) {
+			patterns[i] := i;
+		};
+
+		values := BFloat16->Unpack(patterns);
+		again := BFloat16->Pack(values);
+
+		mismatches := 0;
+		nan_lost := 0;
+		for(i := 0; i < 65536; i += 1;) {
+			if(IsNaN(values[i])) {
+				if((again[i] / 128) % 256 <> 255 | again[i] % 128 = 0) {
+					nan_lost += 1;
+				};
+			}
+			else if(again[i] <> i) {
+				mismatches += 1;
+			};
+		};
+		Report("bfloat16: all non-NaN patterns survive a round trip ({$mismatches} changed)", mismatches = 0);
+		Report("bfloat16: every NaN pattern is still a NaN ({$nan_lost} lost)", nan_lost = 0);
+
+		# the largest finite bfloat16 is 0x7F7F; the interval above it ends at 2^128
+		top := 340282366920938463463374607431768211456.0;
+		wrong := 0;
+		for(i := 0; i < 32640; i += 1;) {
+			low := values[i];
+			high := top;
+			if(i < 32639) {
+				high := values[i + 1];
+			};
+
+			mid := (low + high) / 2.0;
+			step := (high - low) / 1024.0;
+			even := i + 1;
+			if(i % 2 = 0) {
+				even := i;
+			};
+
+			if(BFloat16->ToBits(mid) <> even | BFloat16->ToBits(mid + step) <> i + 1 | BFloat16->ToBits(mid - step) <> i) {
+				wrong += 1;
+			};
+		};
+		Report("bfloat16: every midpoint ties to even, and a hair either side goes the right way ({$wrong} wrong of 32,640 intervals)", wrong = 0);
+	}
+
+	method : Quantize() ~ Nil {
+		x := [0.0, 0.5, -0.5, 1.4, 1.5, -1.5, 100.0, -100.0];
+		q := Quantization->ToInt8(x, 0.5, 0);
+		Report("int8: 0 and 0.5/0.5 -> 0, 1", q[0] = 0.0 & q[1] = 1.0 & q[2] = -1.0);
+		Report("int8: 1.4/0.5 = 2.8 rounds to 3, and 3.0 stays 3", q[3] = 3.0 & q[4] = 3.0);
+		Report("int8: -1.5/0.5 = -3", q[5] = -3.0);
+		Report("int8: saturates at 127 and -128, never wraps", q[6] = 127.0 & q[7] = -128.0);
+
+		u := Quantization->ToUInt8([0.0, 1.0, 2.0, 200.0, -5.0], 1.0, 128);
+		Report("uint8: zero point 128 shifts up, saturates at 255 and 0", u[0] = 128.0 & u[1] = 129.0 & u[2] = 130.0 & u[3] = 255.0 & u[4] = 123.0);
+
+		ties := Quantization->ToInt8([2.5, -2.5, 3.5], 1.0, 0);
+		Report("int8: ties go away from zero (2.5 -> 3, -2.5 -> -3)", ties[0] = 3.0 & ties[1] = -3.0 & ties[2] = 4.0);
+
+		back := Quantization->Dequantize([129.0, 130.0], 0.5, 128);
+		Report("dequantize: (q - zero_point) * scale", back[0] = 0.5 & back[1] = 1.0);
+		Report("a scale of zero or less is refused", Quantization->ToInt8(x, 0.0, 0) = Nil);
+	}
+
+	# ---- part 2: a model with FP16, BF16, INT8 and UINT8 tensors ----------------------
+
+	function : ModelHex() ~ String {
+		return "08083a8c030a190a016812036833322204436173742a090a02746f1801a001020a140a036833320a0374776f120368363422034d756c0a1a0a03683634120268322204436173742a090a02746f180aa001020a190a016212036233322204436173742a090a02746f1801a001020a140a036233320a0374776f120362363422034d756c0a1a0a03623634120262322204436173742a090a02746f1810a001020a180a0171120271322204436173742a090a02746f1806a001020a190a017512037533322204436173742a090a02746f1801a001020a140a037533320a0468616c661202753222034d756c120a74696e795f74797065732a0d1001420374776f4a04000000402a0e1001420468616c664a040000003f5a0d0a016812080a06080a12020a005a0d0a016212080a06081012020a005a0d0a017112080a06080312020a005a0d0a017512080a06080212020a00620e0a02683212080a06080a12020a00620e0a02623212080a06081012020a00620e0a02713212080a06080612020a00620e0a02753212080a06080112020a0042040a001011";
+	}
+
+	function : ModelPath() ~ String {
+		return "onnx_float16_scratch_model.onnx";
+	}
+
+	method : WriteModel() ~ Bool {
+		hex := ModelHex();
+		digits := "0123456789abcdef";
+		bytes := Byte->New[hex->Size() / 2];
+		for(i := 0; i < bytes->Size(); i += 1;) {
+			high := digits->Find(hex->SubString(i * 2, 1));
+			low := digits->Find(hex->SubString(i * 2 + 1, 1));
+			bytes[i] := high * 16 + low;
+		};
+
+		writer := FileWriter->New(ModelPath());
+		written := writer->WriteBuffer(bytes);
+		writer->Close();
+		return written = bytes->Size();
+	}
+
+	method : Models() ~ Nil {
+		Report("the test model is written to a scratch file", WriteModel());
+
+		Suite("cpu");
+
+		providers := ["cuda", "tensorrt"];
+		each(provider in providers) {
+			if(<>OnnxRuntime->HasProvider(provider)) {
+				"SKIP: ep={$provider} is not asserted, this runtime has no {$provider} provider"->PrintLine();
+			}
+			else {
+				config := Map->New()<String, String>;
+				config->Insert("ep", provider);
+				probe := Session->New(ModelPath(), config);
+				if(probe->IsOpen()) {
+					probe->Close();
+					Suite(provider);
+				}
+				else {
+					"SKIP: ep={$provider} is listed by this runtime but a session did not open (no driver, CUDA or cuDNN here?)"->PrintLine();
+				};
+			};
+		};
+
+		System.IO.Filesystem.File->Delete(ModelPath());
+	}
+
+	method : Suite(ep : String) ~ Nil {
+		tag := "ep={$ep}";
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+		session := Session->New(ModelPath(), config);
+		Report("{$tag}: the FP16/BF16/INT8/UINT8 model opens", session->IsOpen());
+		if(<>session->IsOpen()) {
+			return;
+		};
+
+		info := session->GetModelInfo();
+		types := "";
+		specs := info->GetInputs();
+		each(spec in specs) {
+			types += spec->GetDatatype();
+			types += " ";
+		};
+		Report("{$tag}: the model says what its inputs are ({$types})", types->Equals("FP16 BF16 INT8 UINT8 "));
+
+		# values chosen so each conversion has something to do
+		h := [0.1, 1.0, 65504.0, 65520.0, -0.5, 3.14159];
+		b := [0.1, 3.0, 1.0e38, -2.5, 0.0, 255.0];
+		q := [-128.0, 127.0, 0.0, 5.0, 300.0, -300.0];
+		u := [0.0, 1.0, 255.0, 256.0, -3.0, 100.0];
+
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New("h", "FP16", [6], h));
+		inputs->AddBack(Tensor->New("b", "BF16", [6], b));
+		inputs->AddBack(Tensor->New("q", "INT8", [6], q));
+		inputs->AddBack(Tensor->New("u", "UINT8", [6], u));
+		outputs := session->Run(inputs);
+		Report("{$tag}: Session->Run answers", outputs <> Nil & outputs->Size() = 4);
+		if(outputs = Nil | outputs->Size() <> 4) {
+			session->Close();
+			return;
+		};
+
+		h2 := outputs->Get(0);
+		b2 := outputs->Get(1);
+		q2 := outputs->Get(2);
+		u2 := outputs->Get(3);
+		Report("{$tag}: the output element types are reported (FP16, BF16, INT32, FP32)",
+			h2->GetDatatype()->Equals("FP16") & b2->GetDatatype()->Equals("BF16") &
+			q2->GetDatatype()->Equals("INT32") & u2->GetDatatype()->Equals("FP32"));
+
+		# 2 * the half-precision value, exactly: 0.1 -> 0.0999755859375 -> 0.199951171875
+		hv := h2->GetFloats();
+		half_ok := true;
+		for(i := 0; i < 4; i += 1;) {
+			expected := 2.0 * Half->Round(h[i]);
+			if(i = 2 | i = 3) {
+				expected := Infinity();
+			};
+			if(hv[i] <> expected) {
+				half_ok := false;
+			};
+		};
+		first := hv[0];
+		Report("{$tag}: FP16 in and out: 0.1 became 0.0999755859375 before the model saw it (got {$first})", first = 0.199951171875);
+		Report("{$tag}: FP16: 2 x (each rounded input), and 65504 x 2 and 65520 x 2 overflow to infinity", half_ok);
+		Report("{$tag}: FP16: -0.5 -> -1 and 3.14159 -> 2 x 3.140625", hv[4] = -1.0 & hv[5] = 6.28125);
+
+		bv := b2->GetFloats();
+		bf_ok := true;
+		for(i := 0; i < 6; i += 1;) {
+			if(i <> 2) {
+				if(bv[i] <> 2.0 * BFloat16->Round(b[i])) {
+					bf_ok := false;
+				};
+			};
+		};
+		first := bv[0];
+		Report("{$tag}: BF16 in and out: 0.1 -> 2 x 0.10009765625 (got {$first})", first = 0.2001953125);
+		Report("{$tag}: BF16: every element is 2 x its rounded input", bf_ok);
+		Report("{$tag}: BF16: 1e38 x 2 is finite in bfloat16 (the FP32 range)", bv[2] > 1.9e38 & bv[2] < 2.1e38);
+
+		qv := q2->GetFloats();
+		Report("{$tag}: INT8: -128, 127, 0, 5 pass through", qv[0] = -128.0 & qv[1] = 127.0 & qv[2] = 0.0 & qv[3] = 5.0);
+		high := qv[4];
+		low := qv[5];
+		Report("{$tag}: INT8: 300 saturates to 127 and -300 to -128, no undefined wrap (got {$high}, {$low})", high = 127.0 & low = -128.0);
+
+		uv := u2->GetFloats();
+		Report("{$tag}: UINT8: 0, 1, 255 halved", uv[0] = 0.0 & uv[1] = 0.5 & uv[2] = 127.5);
+		over := uv[3];
+		under := uv[4];
+		Report("{$tag}: UINT8: 256 saturates to 255 and -3 to 0 (halved: got {$over}, {$under})", over = 127.5 & under = 0.0);
+
+		# the same through the binding, with raw bit patterns: no conversion in the loop
+		ih := DeviceTensor->New(session, "FP16", [6]);
+		ib := DeviceTensor->New(session, "BF16", [6]);
+		iq := DeviceTensor->New(session, "INT8", [6]);
+		iu := DeviceTensor->New(session, "UINT8", [6]);
+		oh := DeviceTensor->New(session, "FP16", [6]);
+		ob := DeviceTensor->New(session, "BF16", [6]);
+		oq := DeviceTensor->New(session, "INT32", [6]);
+		ou := DeviceTensor->New(session, "FP32", [6]);
+		Report("{$tag}: eight device tensors of four small types allocate", ih->IsOpen() & ib->IsOpen() & iq->IsOpen() & iu->IsOpen() &
+			oh->IsOpen() & ob->IsOpen() & oq->IsOpen() & ou->IsOpen());
+
+		Report("{$tag}: FP16 patterns upload as they are", ih->UploadBits(Half->Pack(h)));
+		Report("{$tag}: BF16 patterns upload as they are", ib->UploadBits(BFloat16->Pack(b)));
+		Report("{$tag}: INT8 and UINT8 upload", iq->Upload(q) & iu->Upload(u));
+
+		bound := BoundSession->New(session);
+		bound->BindInput("h", ih);
+		bound->BindInput("b", ib);
+		bound->BindInput("q", iq);
+		bound->BindInput("u", iu);
+		bound->BindOutput("h2", oh);
+		bound->BindOutput("b2", ob);
+		bound->BindOutput("q2", oq);
+		bound->BindOutput("u2", ou);
+		Report("{$tag}: the bound run completes", bound->Run());
+
+		bits := Int->New[6];
+		oh->DownloadBits(bits);
+		same := true;
+		for(i := 0; i < 6; i += 1;) {
+			if(bits[i] <> Half->ToBits(hv[i])) {
+				same := false;
+			};
+		};
+		Report("{$tag}: bound FP16 output patterns equal Session->Run's, bit for bit", same);
+
+		ob->DownloadBits(bits);
+		same := true;
+		for(i := 0; i < 6; i += 1;) {
+			if(bits[i] <> BFloat16->ToBits(bv[i])) {
+				same := false;
+			};
+		};
+		Report("{$tag}: bound BF16 output patterns equal Session->Run's, bit for bit", same);
+
+		Report("{$tag}: the INT8 input kept its saturated value on the device (127)", Same(iq->Download(), [-128.0, 127.0, 0.0, 5.0, 127.0, -128.0]));
+		Report("{$tag}: the INT32 and FP32 outputs equal Session->Run's", Same(oq->Download(), qv) & Same(ou->Download(), uv));
+		Report("{$tag}: UploadBits of the wrong length is refused", <>ih->UploadBits(Int->New[3]));
+		none : Int[];
+		Report("{$tag}: UploadBits of Nil is refused", <>ih->UploadBits(none));
+
+		bound->Close();
+		ih->Close(); ib->Close(); iq->Close(); iu->Close();
+		oh->Close(); ob->Close(); oq->Close(); ou->Close();
+		session->Close();
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		for(i := 0; i < a->Size(); i += 1;) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+}
