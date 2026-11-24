@@ -94,6 +94,7 @@ of them — the list is not VS Code specific:
 **Editing**
 
 - Code completion with signature help
+- Inline completion (ghost text from a language model), **off by default**: with the provider `none` nothing leaves your machine, `ollama` stays local, and `anthropic`, `openai` and `gemini` send the text around the cursor to that company; see [Inline completion in the editor](AI.md#inline-completion-in-the-editor-language-server)
 - Rename
 - Code actions (quick fixes)
 - Document and range formatting, and re-indenting a line as you type `}`, `;` or Enter

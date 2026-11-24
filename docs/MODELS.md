@@ -162,6 +162,8 @@ Leaving `ep` out uses the build's default provider (`OnnxRuntime->GetDefaultProv
 | Linux x64, Linux ARM64 | none (`cpu`) | CPU only |
 | macOS | Apple Neural Engine / GPU via CoreML (`coreml`) | CoreML, CPU |
 
+The macOS runtime is ONNX Runtime 1.30.0 from Microsoft's NuGet package `Microsoft.ML.OnnxRuntime` (the GitHub release is gone). CoreML evaluates some operators at reduced precision (a BERT pooler's `tanh` came out about 1e-3 off a reference on an M4 Max), so a check against a reference to 1e-6 on Apple Silicon needs `ep=cpu`.
+
 No release ships CUDA. `ep=cuda` works when you provide an ONNX Runtime built with the CUDA provider, plus the NVIDIA driver, CUDA 12 and cuDNN 9 it needs: put that runtime's `onnxruntime` library beside `libobjk_onnx` (Windows: replace `bin\onnxruntime.dll` and add `onnxruntime_providers_cuda.dll` and its dependencies). On Linux `libobjk_onnx` is linked to one runtime version, so rebuild it against yours with `ORT_ROOT=<dir> ./build.sh cpu` (see [core/lib/onnx/README.md](../core/lib/onnx/README.md)). Which providers a runtime carries:
 
 ```objeck

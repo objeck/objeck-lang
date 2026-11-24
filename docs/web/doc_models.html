@@ -173,6 +173,7 @@ yolo export model=yolo11n.pt format=onnx
       <tr><td data-label="Platform">macOS</td><td data-label="Default accelerator">Apple Neural Engine / GPU via CoreML (<code>coreml</code>)</td><td data-label="Shipped runtime carries">CoreML, CPU</td></tr>
      </tbody>
     </table>
+    <p>The macOS runtime is ONNX Runtime 1.30.0 from Microsoft's NuGet package <code>Microsoft.ML.OnnxRuntime</code> (the GitHub release is gone). CoreML evaluates some operators at reduced precision (a BERT pooler's <code>tanh</code> came out about 1e-3 off a reference on an M4 Max), so a check against a reference to 1e-6 on Apple Silicon needs <code>ep=cpu</code>.</p>
     <p>No release ships CUDA. <code>ep=cuda</code> works when you provide an ONNX Runtime built with the CUDA provider, plus the NVIDIA driver, CUDA 12 and cuDNN 9 it needs: put that runtime's <code>onnxruntime</code> library beside <code>libobjk_onnx</code> (Windows: replace <code>bin\onnxruntime.dll</code> and add <code>onnxruntime_providers_cuda.dll</code> and its dependencies). On Linux <code>libobjk_onnx</code> is linked to one runtime version, so rebuild it against yours with <code>ORT_ROOT=&lt;dir&gt; ./build.sh cpu</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank">core/lib/onnx/README.md</a>). Which providers a runtime carries:</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Onnx;
 

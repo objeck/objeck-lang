@@ -61,11 +61,13 @@
     <div id="toc_container" class="plain">
      <h4>Contents</h4>
      <ul>
+      <li><a href="#which-library-for-what">Which library for what</a></li>
       <li><a href="#authentication">Authentication</a></li>
       <li><a href="#openai-1">OpenAI</a></li>
       <li><a href="#anthropic-claude">Anthropic (Claude)</a></li>
       <li><a href="#gemini-1">Gemini</a></li>
       <li><a href="#ollama-local-models">Ollama (Local Models)</a></li>
+      <li><a href="#inline-completion-in-the-editor-language-server">Inline completion in the editor (language server)</a></li>
       <li><a href="#onnx-local-inference">ONNX Local Inference</a></li>
       <li><a href="#remote-inference-servers">Remote Inference Servers</a></li>
       <li><a href="#computer-vision-opencv">Computer Vision (OpenCV)</a></li>
@@ -77,23 +79,67 @@
      </ul>
     </div>
 
+    <h3 id="which-library-for-what">Which library for what</h3>
+    <p>Every library is a <code>.obl</code> file you name with <code>-lib</code>; <code>lang</code> and <code>gen_collect</code> are always supplied by the compiler. The <strong>Compile</strong> column is the shortest <code>-lib</code> list that links, and a group such as <code>@ai</code> expands to several (see <a href="#library-aliases">Library Aliases</a>). A library that sits on others lists them: name every one, because the linker loads exactly what you list.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>I want to...</th><th>Library</th><th>Namespace</th><th>Compile (<code>-lib</code>)</th><th>Needs</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="I want to...">chat with, embed with or moderate through <strong>OpenAI</strong></td><td data-label="Library"><code>openai</code></td><td data-label="Namespace"><code>API.OpenAI</code></td><td data-label="Compile (-lib)"><code>net,net_server,json,cipher,misc,openai</code></td><td data-label="Needs"><code>openai_api_key.dat</code></td></tr>
+      <tr><td data-label="I want to...">use <strong>Gemini</strong> (chat, vision, grounding, caching, files)</td><td data-label="Library"><code>gemini</code></td><td data-label="Namespace"><code>API.Google.Gemini</code></td><td data-label="Compile (-lib)"><code>net,net_server,json,cipher,misc,gemini</code></td><td data-label="Needs"><code>gemini_api_key.dat</code></td></tr>
+      <tr><td data-label="I want to...">use <strong>Claude</strong> (chat, tools, streaming, thinking)</td><td data-label="Library"><code>anthropic</code></td><td data-label="Namespace"><code>API.Anthropic</code></td><td data-label="Compile (-lib)"><code>net,json,cipher,misc,anthropic</code></td><td data-label="Needs"><code>ANTHROPIC_API_KEY</code> or <code>anthropic_api_key.dat</code></td></tr>
+      <tr><td data-label="I want to...">run a model <strong>locally through Ollama</strong></td><td data-label="Library"><code>ollama</code></td><td data-label="Namespace"><code>API.Ollama</code></td><td data-label="Compile (-lib)"><code>net,json,cipher,misc,ollama</code></td><td data-label="Needs">a running Ollama server</td></tr>
+      <tr><td data-label="I want to...">run an <strong>ONNX model in the process</strong> (face, YOLO, ResNet, Phi-3, any graph)</td><td data-label="Library"><code>onnx</code> (+ <code>models</code>, <code>opencv</code>)</td><td data-label="Namespace"><code>API.Onnx</code>, <code>API.Models</code></td><td data-label="Compile (-lib)"><code>models,opencv,cipher,json,onnx</code></td><td data-label="Needs">an <code>.onnx</code> file</td></tr>
+      <tr><td data-label="I want to...">call a model <strong>served over HTTP</strong> (Triton, KServe, TF Serving)</td><td data-label="Library"><code>inference</code> (+ <code>models</code>)</td><td data-label="Namespace"><code>API.Inference</code></td><td data-label="Compile (-lib)"><code>models,net,json,cipher,inference</code></td><td data-label="Needs">a model server</td></tr>
+      <tr><td data-label="I want to...">load, resize and draw on <strong>images</strong></td><td data-label="Library"><code>opencv</code></td><td data-label="Namespace"><code>API.OpenCV</code></td><td data-label="Compile (-lib)"><code>opencv,cipher,json</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to...">tokenize, TF-IDF, sentiment, spelling and style features</td><td data-label="Library"><code>nlp</code></td><td data-label="Namespace"><code>System.NLP</code></td><td data-label="Compile (-lib)"><code>nlp</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to..."><strong>sentence embeddings</strong> and <strong>fine-tuned text classifiers</strong> from BERT-family ONNX models</td><td data-label="Library"><code>nlp_onnx</code> (+ <code>onnx</code>, <code>nlp</code>)</td><td data-label="Namespace"><code>System.NLP.Onnx</code></td><td data-label="Compile (-lib)"><code>models,opencv,cipher,json,onnx,nlp,nlp_onnx</code></td><td data-label="Needs">an <code>.onnx</code> model and its vocabulary</td></tr>
+      <tr><td data-label="I want to..."><strong>download models</strong> from the Hugging Face Hub into a cache</td><td data-label="Library"><code>ai_hub</code></td><td data-label="Namespace"><code>System.AI.Hub</code></td><td data-label="Compile (-lib)"><code>net,json,cipher,ai_hub</code></td><td data-label="Needs">network, or the cache</td></tr>
+      <tr><td data-label="I want to..."><strong>topic modeling</strong> (LDA) and BSON dumps</td><td data-label="Library"><code>nlp_topics</code></td><td data-label="Namespace"><code>System.NLP.Topics</code></td><td data-label="Compile (-lib)"><code>nlp_topics,json,plot</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to...">regression, classifiers, trees, clustering, outliers, PCA, metrics, neural networks</td><td data-label="Library"><code>ml</code></td><td data-label="Namespace"><code>System.ML</code></td><td data-label="Compile (-lib)"><code>ml,csv</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to..."><strong>experiments</strong>: stratified splits, parameter sweeps, result tables, charts</td><td data-label="Library"><code>ml_lab</code></td><td data-label="Namespace"><code>System.ML.Lab</code></td><td data-label="Compile (-lib)"><code>ml,ml_lab,csv,json</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to...">a <strong>local vector index</strong> (exact cosine, dot or L2 search)</td><td data-label="Library"><code>ml_vector</code></td><td data-label="Namespace"><code>System.ML.VectorSearch</code></td><td data-label="Compile (-lib)"><code>ml_vector</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to...">FAR, FRR, EER and ROC / DET points for a verifier</td><td data-label="Library"><code>ml_verify</code></td><td data-label="Namespace"><code>System.ML.Verification</code></td><td data-label="Compile (-lib)"><code>ml_verify</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to..."><strong>CLIP</strong> image embeddings and LFW pair scoring</td><td data-label="Library"><code>ml_clip</code> (+ <code>onnx</code>, <code>ml_verify</code>)</td><td data-label="Namespace"><code>System.ML.Clip</code></td><td data-label="Compile (-lib)"><code>ml_clip,onnx,opencv,models,ml_verify,json,cipher</code></td><td data-label="Needs">a CLIP image-tower <code>.onnx</code></td></tr>
+      <tr><td data-label="I want to..."><strong>convolutional networks</strong>, on the CPU or an NVIDIA GPU</td><td data-label="Library"><code>ml_cnn</code></td><td data-label="Namespace"><code>System.ML.Cnn</code></td><td data-label="Compile (-lib)"><code>@cnn</code></td><td data-label="Needs">images</td></tr>
+      <tr><td data-label="I want to...">replicates, t-tests and a printable <strong>report</strong></td><td data-label="Library"><code>ml_report</code> (+ <code>ml_lab</code>, <code>stats</code>, <code>plot</code>)</td><td data-label="Namespace"><code>System.ML.Report</code></td><td data-label="Compile (-lib)"><code>ml_report,ml_lab,ml,stats,plot,csv,json</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to..."><strong>statistics</strong>: descriptive, t-tests, correlation, OLS</td><td data-label="Library"><code>stats</code></td><td data-label="Namespace"><code>System.Stats</code></td><td data-label="Compile (-lib)"><code>stats</code></td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to..."><strong>charts</strong> as SVG, in a window or as PNG</td><td data-label="Library"><code>plot</code> (+ <code>plot_sdl</code>, <code>sdl2</code>)</td><td data-label="Namespace"><code>System.Plot</code></td><td data-label="Compile (-lib)"><code>plot</code> (<code>plot,plot_sdl,sdl2</code> for a window or PNG)</td><td data-label="Needs"></td></tr>
+      <tr><td data-label="I want to...">graph search, game playing, optimizers, reinforcement learning</td><td data-label="Library"><code>ai</code></td><td data-label="Namespace"><code>System.AI</code></td><td data-label="Compile (-lib)"><code>ai</code></td><td data-label="Needs"></td></tr>
+     </tbody>
+    </table>
+    <p><code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>ml_verify</code>, <code>ml_report</code>, <code>stats</code>, <code>plot</code>, <code>nlp</code>, <code>nlp_topics</code> and <code>ai</code> need no key, no network and no model runtime. The hosted clients need a key and a network; <code>onnx</code>, <code>opencv</code> and the CNN layers of <code>ml_cnn</code> use native libraries, which every package ships.</p>
+    <p><strong>A retrieval-shaped question usually starts here.</strong> To search your own documents: embed them (<code>BertEmbedder</code> in <code>nlp_onnx</code>, or the OpenAI, Gemini or Ollama embedding calls), keep the vectors in a <code>VectorIndex</code> (<code>ml_vector</code>), and hand the closest passages to a chat model. To judge a model or a detector: <code>Metrics</code>, then the bootstrap and the paired bootstrap (<a href="#evaluating-models-and-detectors">Evaluating models and detectors</a>), <code>System.Stats</code> for the tests, <code>System.ML.Report</code> for the write-up.</p>
+    <hr class="section-end">
     <h3 id="authentication">Authentication</h3>
     <h4 id="openai">OpenAI</h4>
-    <p>Create <code>openai_api_key.dat</code> in your working directory containing your API key. The static helper reads it:</p>
+    <p>Create <code>openai_api_key.dat</code> in your working directory containing your API key, or call <code>EndPoint-&gt;SetApiKey(key)</code>. The static helper reads it (and trims it):</p>
 <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
 
 token := EndPoint-&gt;GetApiKey();
+if(token = Nil) {
+  EndPoint-&gt;GetLastError()-&gt;ErrorLine();   # why there is no key: see "Keys and certificate checking" below
+  return;
+};
 </code></pre>
     <h4 id="anthropic">Anthropic</h4>
     <p>Set the <code>ANTHROPIC_API_KEY</code> environment variable, or create <code>anthropic_api_key.dat</code> in your working directory, or call <code>EndPoint-&gt;SetApiKey(key)</code>. <code>Chat-&gt;New(model, Nil)</code> reads the key with <code>EndPoint-&gt;GetApiKey()</code>; pass a key as the second argument to override it for one chat.</p>
     <h4 id="gemini">Gemini</h4>
-    <p>Create <code>gemini_api_key.dat</code> in your working directory. Use the static helper:</p>
+    <p>Create <code>gemini_api_key.dat</code> in your working directory, or call <code>EndPoint-&gt;SetApiKey(key)</code>. Use the static helper:</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
 
 token := EndPoint-&gt;GetApiKey();
 </code></pre>
     <h4 id="ollama">Ollama</h4>
     <p>No authentication needed. Ollama runs locally at <code>http://localhost:11434</code> by default. Start it with <code>ollama serve</code>.</p>
+    <h4 id="keys-and-certificate-checking">Keys and certificate checking</h4>
+    <p>Every secure client socket verifies the server's certificate chain and host name. <code>OBJECK_TLS_INSECURE_SKIP_VERIFY=1</code> (a value that starts with <code>1</code>, <code>t</code>, <code>T</code>, <code>y</code> or <code>Y</code>) turns that off for the whole process, which exists for testing against a self-signed development server. Two things follow when it is set:</p>
+    <ul>
+     <li><strong>A warning, once.</strong> The first secure connection prints <code>&gt;&gt;&gt; WARNING: OBJECK_TLS_INSECURE_SKIP_VERIFY is set: TLS server certificates are NOT verified ...</code> on stderr, so an exported variable that outlived the test it was meant for does not go unnoticed.</li>
+     <li><strong>No API key from the helpers.</strong> The OpenAI, Gemini and Anthropic clients refuse to hand a key out while certificate checking is off, because it would go to a server nobody authenticated. <code>EndPoint-&gt;GetApiKey()</code> returns <code>Nil</code>, <code>EndPoint-&gt;GetLastError()</code> says <code>refusing to use an API key: OBJECK_TLS_INSECURE_SKIP_VERIFY turns TLS certificate checking off ...</code>, and the same line goes to stderr. The refusal comes before the environment variable and the key file are read, so it holds for a key set with <code>SetApiKey</code> too. Setting <code>OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1</code> as well says the combination is intended (a placeholder key against a local mock server, say) and lifts the refusal; do not use it with a real key. With certificate checking on, nothing changes.</li>
+    </ul>
+    <p>The refusal covers what <code>GetApiKey()</code> returns, so check its result for <code>Nil</code> before using it as <code>token</code> in the examples below. A key you pass to a call yourself (the <code>token</code> argument, or <code>Chat-&gt;New(model, key)</code> for Anthropic) is sent as given. The Ollama client has no key. The language server's inline completion uses the same clients, so it is subject to the same rule (see <a href="#inline-completion-in-the-editor-language-server">Inline completion in the editor</a>).</p>
     <hr class="section-end">
     <h3 id="openai-1">OpenAI</h3>
     <h4 id="chat--text">Chat &amp; Text</h4>
@@ -244,9 +290,9 @@ each(j in jobs) {
 </code></pre>
     <hr class="section-end">
     <h3 id="anthropic-claude">Anthropic (Claude)</h3>
-    <p><code>API.Anthropic</code> is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. Compile with <code>-lib anthropic</code>. A failed call returns <code>Nil</code>, and <code>EndPoint-&gt;GetLastError()</code> says why, as in the other clients. Requests go over HTTPS; <code>EndPoint-&gt;SetBaseUrl</code> points the client at a gateway and <code>EndPoint-&gt;SetCertificate</code> pins its certificate.</p>
+    <p><code>API.Anthropic</code> is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. <strong>Compile:</strong> <code>obc -src your.obs -lib net,json,cipher,misc,anthropic</code>. A failed call returns <code>Nil</code>, and <code>EndPoint-&gt;GetLastError()</code> says why, as in the other clients. Requests go over HTTPS; <code>EndPoint-&gt;SetBaseUrl</code> points the client at a gateway and <code>EndPoint-&gt;SetCertificate</code> pins its certificate.</p>
     <h4 id="chat-and-system-prompts">Chat and system prompts</h4>
-    <p>A <code>Chat</code> keeps the message history. <code>SetSystem</code>, <code>SetMaxTokens</code> (default 4096) and <code>SetTemperature</code> return the chat, so they chain.</p>
+    <p>A <code>Chat</code> keeps the message history. <code>SetSystem</code>, <code>SetMaxTokens</code> (default 4096), <code>SetTemperature</code>, <code>SetTopP</code> (nucleus sampling) and <code>SetTopK</code> return the chat, so they chain. <code>top_p</code>, <code>top_k</code> and the temperature are unset until you call them, so the API's defaults apply; some models refuse a request that sets both the temperature and <code>top_p</code>, so change one of them.</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Anthropic;
 
 chat := Chat-&gt;New("claude-sonnet-5-5", Nil);
@@ -255,7 +301,7 @@ chat-&gt;Send("Why is the sky blue?")-&gt;PrintLine();
 chat-&gt;Send("And at sunset?")-&gt;PrintLine();
 </code></pre>
     <p><code>SendReply(message, tools)</code> returns the whole <code>Reply</code>: <code>GetText()</code>, <code>GetThinking()</code>, <code>GetStopReason()</code>, <code>GetInputTokens()</code>, <code>GetOutputTokens()</code>, and the tool calls. Pass <code>Nil</code> as the message to send the history as it stands.</p>
-    <p><code>SetThinking(budget_tokens)</code> turns on extended thinking. The API needs a budget of at least 1024 tokens and a <code>SetMaxTokens</code> above it. While thinking is on the temperature is not sent, and <code>SendJson</code> leaves thinking off for its one request, because the API rejects a forced tool with thinking.</p>
+    <p><code>SetThinking(budget_tokens)</code> turns on extended thinking. The API needs a budget of at least 1024 tokens and a <code>SetMaxTokens</code> above it. While thinking is on the temperature, <code>top_p</code> and <code>top_k</code> are not sent, and <code>SendJson</code> leaves thinking off for its one request, because the API rejects a forced tool with thinking.</p>
     <p>What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (<code>stop_reason</code> <code>refusal</code>) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.</p>
     <h4 id="tool-use">Tool use</h4>
     <p>Describe each tool with a name, a description and a JSON schema. When a reply has tool uses, run them, return each result with <code>AddToolResult(use_id, text)</code> and send again. Results for one reply share one user message, as the API requires. Mark a failed tool with <code>AddToolResult(id, text, true)</code>.</p>
@@ -423,7 +469,7 @@ FileManager-&gt;Delete("files/abc123", token);
 </code></pre>
     <hr class="section-end">
     <h4 id="context-caching">Context Caching</h4>
-    <p>Cache large, reused content server-side to avoid paying re-tokenization costs on every request.</p>
+    <p>Cache large, reused content server-side to avoid paying re-tokenization costs on every request. The service requires a minimum amount of cached text and only some models support caching; a refused request returns <code>Nil</code> with the reason in <code>EndPoint-&gt;GetLastError()</code>.</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
 
 # Cache a large system prompt or document for 5 minutes
@@ -431,7 +477,7 @@ large_context := FileReader-&gt;ReadFile("legal_document.txt");
 content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New(large_context));
 
 item := CachedContent-&gt;Create(
-    "models/gemini-1.5-pro-001", content, 300, "legal-doc-cache", token);
+    "models/gemini-2.5-flash", content, 300, "legal-doc-cache", token);
 if(item &lt;&gt; Nil) {
     "Name: {$item-&gt;GetName()}"-&gt;PrintLine();
     tokens := item-&gt;GetTokenCount();
@@ -489,9 +535,69 @@ each(m in models) {
 };
 Model-&gt;Pull("phi3");
 </code></pre>
+    <p>Every request completes before it returns: replies are not streamed, so a long generation prints nothing until it is done. A failed call returns <code>Nil</code> (or <code>false</code>) and <code>EndPoint-&gt;GetLastError()</code> says why, as in the other clients; <code>EndPoint-&gt;SetHost("http://myserver:11434")</code> points the client at another machine.</p>
+    <p><code>Options</code> carries the sampling and format settings, and each setter returns the <code>Options</code>, so they chain: <code>SetTemperature</code>, <code>SetTopP</code>, <code>SetTopK</code>, <code>SetMinP</code>, <code>SetNumCtx</code>, <code>SetNumPredict</code>, <code>SetSeed</code>, <code>SetRepeatPenalty</code>, <code>SetStop</code>, <code>SetKeepAlive</code>, <code>SetThink</code> (a Bool, or a level such as <code>"high"</code>), <code>SetFormat</code> (<code>"json"</code>, or a JSON schema) and <code>Set(name, value)</code> for any other Ollama option. <code>GenerateReply</code> and <code>Chat-&gt;SendReply</code> return the whole <code>Reply</code> (text, thinking, tool calls and the timings), where <code>Generate</code> and <code>Chat-&gt;Send</code> return only the text:</p>
+<pre class="line-numbers"><code class="language-cpp">use API.Ollama, Collection, Data.JSON;
+
+opts := Options-&gt;New()-&gt;SetSeed(7)-&gt;SetTemperature(0.0);
+reply := Completion-&gt;GenerateReply("llama3.2", "Why is the sky blue?", opts);
+if(reply &lt;&gt; Nil) {
+    reply-&gt;GetText()-&gt;PrintLine();
+    tps := reply-&gt;GetTokensPerSecond();
+    "{$tps} tokens/s"-&gt;PrintLine();
+};
+
+# a tool: describe it with a JSON schema, run what the model asks for, send the result back
+schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector-&gt;New()&lt;Tool&gt;;
+tools-&gt;AddBack(Tool-&gt;New("get_weather", "Get the weather for a city", schema));
+
+chat := Chat-&gt;New("llama3.2");
+reply := chat-&gt;SendReply("What is the weather in Paris?", Nil, tools);
+while(reply &lt;&gt; Nil &amp; reply-&gt;HasToolCalls()) {
+    calls := reply-&gt;GetToolCalls();
+    each(i : calls) {
+        call := calls-&gt;Get(i);
+        city := call-&gt;GetArgument("city");
+        chat-&gt;AddToolResult(call-&gt;GetName(), "18C and sunny in {$city}");
+    };
+    reply := chat-&gt;SendReply(Nil, Nil, tools);
+};
+</code></pre>
+    <p><code>Model-&gt;Embed(model, texts)</code> embeds several texts in one call (a <code>Float[,]</code>, a row per text) and <code>Model-&gt;Show</code>, <code>Running</code>, <code>Version</code>, <code>Delete</code> and <code>Copy</code> round out model management.</p>
+    <hr class="section-end">
+    <h3 id="inline-completion-in-the-editor-language-server">Inline completion in the editor (language server)</h3>
+    <p>The Objeck language server can suggest the next statement as ghost text from a language model (<code>textDocument/inlineCompletion</code>, LSP 3.18). <strong>It is off by default, and with the provider <code>none</code> nothing leaves your machine.</strong> Code is sent to a model only after you pick a provider. It is local-first: Ollama keeps everything on your machine, and the three cloud providers each send the text around your cursor to that company.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th><code>objeck.inlineCompletion.provider</code></th><th>Where the code goes</th><th>Key</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="objeck.inlineCompletion.provider"><code>none</code> (default)</td><td data-label="Where the code goes">nowhere</td><td data-label="Key">none</td></tr>
+      <tr><td data-label="objeck.inlineCompletion.provider"><code>ollama</code></td><td data-label="Where the code goes">a local Ollama server, <code>http://localhost:11434</code> unless <code>ollamaHost</code> says otherwise (a host that is not this machine receives the code)</td><td data-label="Key">none</td></tr>
+      <tr><td data-label="objeck.inlineCompletion.provider"><code>anthropic</code></td><td data-label="Where the code goes">Anthropic's API</td><td data-label="Key"><code>ANTHROPIC_API_KEY</code> or <code>anthropic_api_key.dat</code>, as <code>API.Anthropic</code> reads it</td></tr>
+      <tr><td data-label="objeck.inlineCompletion.provider"><code>openai</code></td><td data-label="Where the code goes">OpenAI's API</td><td data-label="Key"><code>openai_api_key.dat</code>, as <code>API.OpenAI</code> reads it</td></tr>
+      <tr><td data-label="objeck.inlineCompletion.provider"><code>gemini</code></td><td data-label="Where the code goes">Google's API</td><td data-label="Key">the key file <code>API.Google.Gemini</code> reads</td></tr>
+     </tbody>
+    </table>
+    <p>The settings, in VS Code under <code>objeck.inlineCompletion</code> (any client can send them as <code>initializationOptions.inlineCompletion</code> or in <code>workspace/didChangeConfiguration</code>), take effect without a restart:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Setting"><code>provider</code></td><td data-label="Default"><code>none</code></td><td data-label="Meaning"><code>none</code>, <code>ollama</code>, <code>anthropic</code>, <code>openai</code> or <code>gemini</code></td></tr>
+      <tr><td data-label="Setting"><code>model</code></td><td data-label="Default">the provider's</td><td data-label="Meaning">empty uses <code>qwen2.5-coder:1.5b</code> (Ollama), <code>claude-haiku-4-5</code> (Anthropic), <code>gpt-4o-mini</code> (OpenAI) or <code>gemini-2.5-flash</code> (Gemini)</td></tr>
+      <tr><td data-label="Setting"><code>ollamaHost</code></td><td data-label="Default"><code>http://localhost:11434</code></td><td data-label="Meaning">the Ollama server</td></tr>
+      <tr><td data-label="Setting"><code>timeoutMs</code></td><td data-label="Default"><code>3000</code></td><td data-label="Meaning">the longest wait for a suggestion, 200 to 30000</td></tr>
+     </tbody>
+    </table>
+    <p>The server sends the text before the cursor (at most 4,000 characters) and a short suffix (500), keeps the first statement or block of the answer and replies with one item at the cursor. It uses the clients described in this guide, so a cloud provider follows their rules: the key is refused while <code>OBJECK_TLS_INSECURE_SKIP_VERIFY</code> is set (see <a href="#keys-and-certificate-checking">Keys and certificate checking</a>). A provider that does not answer within <code>timeoutMs</code> is ignored for that request, <code>$/cancelRequest</code> ends the wait, and any failure is an empty list, never an error. For the full language-server feature list and setup see <a href="doc_lsp.html">the language server README</a> and <a href="doc_editors.html">editors.md</a>.</p>
     <hr class="section-end">
     <h3 id="onnx-local-inference">ONNX Local Inference</h3>
-    <p>Run ML models locally using the ONNX Runtime. The execution provider is a per-session choice (<code>ep</code>: <code>cpu</code>, <code>cuda</code>, <code>dml</code>, <code>qnn</code>, <code>vitisai</code>, <code>coreml</code>) among those the loaded ONNX Runtime carries. Without <code>ep</code> a session uses the build's default: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS, and the CPU on Linux x64 and ARM64 (each linked with a vendored ONNX Runtime 1.19.0 CPU-only build). No release ships CUDA; with an ONNX Runtime you supply that carries it, <code>ep=cuda</code> runs on an NVIDIA GPU. See <a href="doc_models.html#execution-providers">execution providers</a> for the setting and <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank">core/lib/onnx/README.md</a> for how to set CUDA up.</p>
+    <p>Run ML models locally using the ONNX Runtime. The execution provider is a per-session choice (<code>ep</code>: <code>cpu</code>, <code>cuda</code>, <code>dml</code>, <code>qnn</code>, <code>vitisai</code>, <code>coreml</code>) among those the loaded ONNX Runtime carries. Without <code>ep</code> a session uses the build's default: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS, and the CPU on Linux x64 and ARM64. No release ships CUDA; with an ONNX Runtime you supply that carries it, <code>ep=cuda</code> runs on an NVIDIA GPU. See <a href="doc_models.html#execution-providers">execution providers</a> for the setting and <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank">core/lib/onnx/README.md</a> for how to set CUDA up.</p>
+    <p><strong>Where the runtime comes from.</strong> Every package carries its own ONNX Runtime beside <code>libobjk_onnx</code>, so nothing is installed separately: ONNX Runtime 1.22.1 with DirectML on Windows x64 (the NuGet package <code>Microsoft.ML.OnnxRuntime.DirectML</code>), a QNN build on Windows ARM64, a vendored CPU-only 1.19.0 build on Linux x64 and ARM64, and ONNX Runtime 1.30.0 on macOS (the NuGet package <code>Microsoft.ML.OnnxRuntime</code>, because Microsoft's GitHub release of it is no longer there; the macOS build needs macOS 14 or later). <a href="doc_dependencies.html">third_party_dependencies.md</a> lists the versions and where each is pinned.</p>
+    <p><strong>CoreML runs some operators at reduced precision.</strong> On Apple Silicon the default provider is CoreML, which evaluates parts of a graph (a BERT pooler's <code>tanh</code>, for one) in lower precision than the CPU does: a result can differ from a reference by about 1e-3 where the CPU provider agrees to 1e-6. That is fine for embeddings, ranking and classification, but a test that compares model output with a reference to 1e-6 should ask for the CPU, <code>config-&gt;Insert("ep", "cpu")</code>, as the regression test <code>nlp_onnx_embedder</code> does. <code>BertEmbedder</code> and <code>TextClassifier</code> opened with no session options fall back to the CPU themselves when the default provider cannot open the model (DirectML without a display adapter, CoreML on an unsupported graph); <code>IsCpuFallback()</code> says whether that happened, and <code>ep=cpu</code> asked for by name is never reported as a fallback.</p>
     <p>A provider the runtime does not carry is refused with an error that lists the ones it does, and the session does not open; it is never quietly run on the CPU. Ask first:</p>
 <pre class="line-numbers"><code class="language-cpp">use API.Onnx, Collection;
 
@@ -948,14 +1054,7 @@ detector-&gt;Fit(Xs_normal);
 anomaly := detector-&gt;PredictScore(Xs_test);   # -decision: higher = stranger
 flags := detector-&gt;IsOutlier(Xs_test);        # Bool[]; Predict gives +1/-1
 
-# comparing two detectors at thresholds fixed beforehand: threshold from out-of-fold
-# scores, applied unchanged to the test set, then a PAIRED bootstrap of the difference
-cut_a := Metrics-&gt;ThresholdAtFpr(oof_a, oof_labels, 0.01);
-cut_b := Metrics-&gt;ThresholdAtFpr(oof_b, oof_labels, 0.01);
-gain := Metrics-&gt;PairedBootstrapDifference(test_a, cut_a, test_b, cut_b, test_labels, false, 1000, 42);
-# gain-&gt;GetPoint() is recall(B) - recall(A); GetLow()/GetHigh() its 95% interval. Both
-# detectors are applied to the same resampled rows, so shared noise cancels. true as the
-# sixth argument compares false-positive rates instead. Nil on bad input.
+# comparing two detectors: the paired bootstrap, see "Evaluating models and detectors"
 
 # multiclass Gaussian naive Bayes over integer labels 0..C-1
 gnb := GaussianNaiveBayes-&gt;New();
@@ -995,6 +1094,42 @@ tree := KDTree-&gt;New(matrix);
 nearest := tree-&gt;Nearest(3, [57.0, 170.0]);   # row indexes, closest first
 </code></pre>
     <p><code>KNearestNeighbors-&gt;Query(k, query)</code> scans the rows once and keeps the best k in a heap, closest first, ties in row order. Over 50,000 rows of 16 values, 200 queries with k = 5 take 0.057 s (about 3,500 queries/s; it took 15 s before v2026.11.3). A k below 1, a <code>Nil</code> query or a <code>Nil</code> matrix returns no neighbors. <code>KDTree</code> is the index to use when the data has few dimensions and many queries.</p>
+    <h4 id="evaluating-models-and-detectors">Evaluating models and detectors</h4>
+    <p><code>Metrics</code> (in <code>ml.obl</code>) scores a model by what it ranks, not only by a single threshold: <code>AucRoc</code>, <code>AveragePrecision</code>, <code>RocCurve</code>, <code>PrCurve</code>, <code>RecallAtFpr(scores, actuals, max_fpr)</code> (the detection rate within a false-alarm budget) and <code>ThresholdAtFpr</code> (the cut that spends the budget). A score is higher for the positive class, a label is <code>true</code> for it, and a metric that cannot be computed returns a negative marker (<code>-1.0</code>) rather than a number, so check it.</p>
+    <p>A single figure from one test set says nothing about how far to trust it, and at a small false-alarm budget it is fragile: 0.1% of 10,000 negatives is ten false positives. <code>Metrics-&gt;Bootstrap(metric, scores, actuals, reps, seed, level)</code> resamples the scored instances with replacement, recomputes the metric on each resample and returns a <code>ConfInterval</code> (<code>GetPoint()</code> is the metric on the original sample, <code>GetLow()</code> and <code>GetHigh()</code> the percentile interval, <code>GetLevel()</code>, <code>GetReps()</code>, <code>GetUsableReps()</code> and <code>GetWidth()</code>). A resample that holds a single class has no AUC and is dropped, <code>GetUsableReps()</code> says how many survived, and the call returns <code>Nil</code> on bad input or fewer than two usable resamples. The <code>ScoreMetric</code> to pass is <code>AucMetric-&gt;New()</code>, <code>RecallAtFprMetric-&gt;New(max_fpr)</code> or <code>AveragePrecisionMetric-&gt;New()</code>; the call without <code>level</code> uses 0.95.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+auc := Metrics-&gt;Bootstrap(AucMetric-&gt;New(), scores, actuals, 1000, 42);
+if(auc &lt;&gt; Nil) {
+  "AUC {$auc-&gt;GetPoint()}, 95% interval {$auc-&gt;GetLow()} .. {$auc-&gt;GetHigh()}"-&gt;PrintLine();
+};
+</code></pre>
+    <p><strong>Comparing two models: the paired bootstrap.</strong> Two intervals that overlap do not tell you that one detector is no better than the other, because the two detectors scored the same instances and share most of their noise. <code>Metrics-&gt;PairedBootstrapDifference</code> answers the comparison question itself. Each detector has a threshold fixed beforehand (for example <code>ThresholdAtFpr</code> on out-of-fold scores, never the test set), each resample draws instances once and applies both detectors to that one draw, and the interval is that of the statistic <strong>B minus A</strong>: recall by default, or the false-positive rate when <code>use_fpr</code> is <code>true</code>. An instance is flagged when its score is greater than or equal to the threshold. The call is <code>PairedBootstrapDifference(scores_a, threshold_a, scores_b, threshold_b, actuals, use_fpr, reps, seed)</code>, with a ninth <code>level</code> argument for an interval other than 95%. The scores are for the same instances in the same order. A resample with no positive instance (recall) or no negative instance (false-positive rate) has no value and is left out; <code>Nil</code> comes back for mismatched lengths, fewer than two resamples or fewer than two usable ones.</p>
+<pre class="line-numbers"><code class="language-cpp"># thresholds from out-of-fold scores, applied unchanged to the held-out test set
+cut_a := Metrics-&gt;ThresholdAtFpr(oof_a, oof_labels, 0.01);
+cut_b := Metrics-&gt;ThresholdAtFpr(oof_b, oof_labels, 0.01);
+gain := Metrics-&gt;PairedBootstrapDifference(test_a, cut_a, test_b, cut_b, test_labels, false, 1000, 42);
+if(gain &lt;&gt; Nil) {
+  "recall(B) - recall(A) = {$gain-&gt;GetPoint()} [{$gain-&gt;GetLow()}, {$gain-&gt;GetHigh()}]"-&gt;PrintLine();
+  if(gain-&gt;GetLow() &gt; 0.0) {
+    "B detects more than A at this budget"-&gt;PrintLine();     # the interval excludes zero
+  };
+};
+</code></pre>
+    <p>The same paired comparison for a metric that needs no frozen threshold is <code>Replicates-&gt;Paired</code> (<a href="#replicates-and-reports-systemmlreport">System.ML.Report</a>), which pairs the runs of two settings by seed and returns a t-test.</p>
+    <h4 id="outlier-detection">Outlier detection</h4>
+    <p><code>System.ML</code> has seven unsupervised anomaly detectors that share one interface, <code>OutlierDetector</code>, so they are interchangeable: <code>ZScoreDetector</code>, <code>IsolationForest</code>, <code>LocalOutlierFactor</code>, <code>EllipticEnvelope</code>, <code>DbscanDetector</code>, <code>AutoencoderDetector</code> and <code>OneClassSvmDetector</code>. The conventions are fixed across them: a label is <code>true</code> for an <strong>outlier</strong> (scikit-learn's -1), a score is <strong>higher for a stranger row</strong> (the negation of scikit-learn's <code>score_samples</code>), so predictions and scores feed <code>Metrics</code> directly; <code>GetThreshold()</code> is the cut on the score, <code>DecisionFunction</code> is the score minus it, and a row is an outlier when its score is strictly above the cut. A NaN in the input makes <code>Fit</code> return <code>false</code> (<code>GetError()</code> says where) and <code>Predict</code> and <code>Score</code> return <code>Nil</code>. The design and the checks against scikit-learn are in <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ML_OUTLIERS_DESIGN.md" target="_blank">ML_OUTLIERS_DESIGN.md</a>.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+detector : OutlierDetector := IsolationForest-&gt;New(100, 0, 0.05, 42);   # trees, rows per tree (0: min(256, n)), contamination, seed
+if(detector-&gt;Fit(X_normal)) {
+  flags := detector-&gt;Predict(X_test);          # Bool[], true = outlier
+  scores := detector-&gt;Score(X_test);           # higher = more anomalous
+  auc := Metrics-&gt;AucRoc(scores, y_test);
+  "AUC {$auc}"-&gt;PrintLine();
+};
+</code></pre>
+    <p>A contamination of <code>0.0</code> means "auto" (an <code>IsolationForest</code> threshold of 0.5), otherwise the threshold is that quantile of the training scores. <code>LocalOutlierFactor-&gt;New(k, contamination, novelty)</code> scores new rows only with <code>novelty</code> set to <code>true</code>; without it, <code>FitPredict</code> labels the training rows themselves, and so does <code>DbscanDetector</code> (DBSCAN's noise). <code>SensitivitySweep-&gt;Run(detector, settings, names, X, y)</code> fits and labels the same rows at a series of sensitivity settings and returns a <code>SweepResult</code> table for the usual lab comparison with known labels. <code>OneClassSvmDetector</code>, like <code>OneClassSVM</code> above, fits on normal rows.</p>
     <h4 id="clustering--decomposition">Clustering &amp; Decomposition</h4>
 <pre class="line-numbers"><code class="language-cpp"># DBSCAN discovers the cluster count and labels outliers -1
 scanner := DBSCAN-&gt;New(0.8, 3);        # eps, min points
@@ -1618,15 +1753,15 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Alias"><code>@std</code></td><td data-label="Expands to"><code>json</code>, <code>json_stream</code>, <code>net</code>, <code>cipher</code></td><td data-label="Use for">everyday networked apps</td></tr>
       <tr><td data-label="Alias"><code>@web</code></td><td data-label="Expands to"><code>net_h2</code>, <code>net_quic</code>, <code>web_server</code>, <code>json_rpc</code>, <code>net_server</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">HTTP/2, HTTP/3, the embedded server, JSON-RPC</td></tr>
       <tr><td data-label="Alias"><code>@data</code></td><td data-label="Expands to"><code>xml</code>, <code>regex</code>, <code>csv</code>, <code>query</code>, <code>rss</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">parsing and querying structured data</td></tr>
-      <tr><td data-label="Alias"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">LLM clients: OpenAI, Gemini, Ollama</td></tr>
-      <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>ml_verify</code>, <code>stats</code>, <code>plot</code>, <code>nlp</code>, <code>nlp_topics</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work</td></tr>
+      <tr><td data-label="Alias"><code>@ml</code></td><td data-label="Expands to"><code>gemini</code>, <code>openai</code>, <code>ollama</code>, <code>anthropic</code>, <code>net_server</code>, <code>misc</code>, <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">LLM clients: OpenAI, Gemini, Ollama, Anthropic</td></tr>
+      <tr><td data-label="Alias"><code>@ai</code></td><td data-label="Expands to"><code>ai</code>, <code>ml</code>, <code>ml_lab</code>, <code>ml_vector</code>, <code>ml_report</code>, <code>ml_verify</code>, <code>stats</code>, <code>plot</code>, <code>nlp</code>, <code>nlp_topics</code>, <code>csv</code>, <code>json</code></td><td data-label="Use for">local System.ML / System.ML.Lab / System.ML.VectorSearch / System.ML.Report / System.ML.Verification / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work</td></tr>
       <tr><td data-label="Alias"><code>@plot</code></td><td data-label="Expands to"><code>plot</code>, <code>plot_sdl</code>, <code>sdl2</code></td><td data-label="Use for">charts in a window or as PNG (SVG alone needs only <code>plot</code>)</td></tr>
       <tr><td data-label="Alias"><code>@vision</code></td><td data-label="Expands to"><code>opencv</code>, <code>onnx</code>, <code>nlp_onnx</code>, <code>ml_clip</code>, <code>ml_verify</code>, <code>models</code>, <code>nlp</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for">OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification</td></tr>
       <tr><td data-label="Alias"><code>@cnn</code></td><td data-label="Expands to"><code>ml_cnn</code>, <code>ml</code>, <code>ml_lab</code>, <code>opencv</code>, <code>csv</code>, <code>json</code>, <code>cipher</code></td><td data-label="Use for"><code>System.ML.Cnn</code> convolutional networks, image loading and history tables</td></tr>
       <tr><td data-label="Alias"><code>@game</code></td><td data-label="Expands to"><code>sdl2</code>, <code>sdl_game</code>, <code>sdl_gl</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="Use for">SDL games, 2D and OpenGL</td></tr>
      </tbody>
     </table>
-    <p>Aliases and explicit names mix in any order, for either <code>--target</code> (<code>-lib @ai,json</code> and <code>-lib json,@ai</code> are the same). Groups are user-editable: add a section to <code>configobjk.ini</code> and reference it as <code>@yourname</code>.</p>
+    <p><code>inference</code> and <code>ai_hub</code> are in no alias; name them. Aliases and explicit names mix in any order, for either <code>--target</code> (<code>-lib @ai,json</code> and <code>-lib json,@ai</code> are the same). Groups are user-editable: add a section to <code>configobjk.ini</code> and reference it as <code>@yourname</code>.</p>
     <p>A group must be <strong>closed under dependencies</strong> — the linker loads exactly what the group lists and does not chase a member's own dependencies, so a group that omits one fails on every use, even from a program that never touches it.</p>
     <p>An unknown alias names the config file and lists the groups it does define. An unresolvable class names the library that would supply it:</p>
 <pre class="plain">Error: Unable to resolve external library class: 'Web.HTTP.Server.Request'.
@@ -1646,6 +1781,7 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">Text embeddings</td><td data-label="Class"><code>Embedding</code></td><td data-label="Library"><code>openai</code></td><td data-label="Key">OpenAI</td></tr>
       <tr><td data-label="Capability">Content moderation</td><td data-label="Class"><code>Moderation</code></td><td data-label="Library"><code>openai</code></td><td data-label="Key">OpenAI</td></tr>
       <tr><td data-label="Capability">Batch processing</td><td data-label="Class"><code>Batch</code></td><td data-label="Library"><code>openai</code></td><td data-label="Key">OpenAI</td></tr>
+      <tr><td data-label="Capability">Chat, tool use, streaming, thinking</td><td data-label="Class"><code>Chat</code>, <code>Reply</code>, <code>Tool</code></td><td data-label="Library"><code>anthropic</code></td><td data-label="Key">Anthropic</td></tr>
       <tr><td data-label="Capability">Generate (text/vision)</td><td data-label="Class"><code>Model::GenerateContent</code></td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
       <tr><td data-label="Capability">Structured JSON output</td><td data-label="Class"><code>Model::GenerateContent</code> + schema</td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
       <tr><td data-label="Capability">Search grounding</td><td data-label="Class"><code>Model::GenerateContentWithGrounding</code></td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
@@ -1654,7 +1790,9 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">File upload</td><td data-label="Class"><code>FileManager</code></td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
       <tr><td data-label="Capability">Context caching</td><td data-label="Class"><code>CachedContent</code></td><td data-label="Library"><code>gemini</code></td><td data-label="Key">Gemini</td></tr>
       <tr><td data-label="Capability">Local text gen</td><td data-label="Class"><code>Completion</code> / <code>Chat</code></td><td data-label="Library"><code>ollama</code></td><td data-label="Key">None</td></tr>
-      <tr><td data-label="Capability">Local embeddings</td><td data-label="Class"><code>Model::Embeddings</code></td><td data-label="Library"><code>ollama</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Local embeddings</td><td data-label="Class"><code>Model::Embeddings</code>, <code>Model::Embed</code></td><td data-label="Library"><code>ollama</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Tools, JSON schema output, thinking, timings</td><td data-label="Class"><code>Options</code>, <code>Tool</code>, <code>Reply</code></td><td data-label="Library"><code>ollama</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Ghost-text completion in the editor</td><td data-label="Class">language server, <code>objeck.inlineCompletion</code></td><td data-label="Library"><code>ollama</code>, <code>anthropic</code>, <code>openai</code> or <code>gemini</code></td><td data-label="Key">Off by default; a key for a cloud provider</td></tr>
       <tr><td data-label="Capability">Face recognition</td><td data-label="Class"><code>FaceSession</code></td><td data-label="Library"><code>onnx</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Object detection</td><td data-label="Class"><code>YoloSession</code></td><td data-label="Library"><code>onnx</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Local SLM</td><td data-label="Class"><code>Phi3Session</code></td><td data-label="Library"><code>onnx</code></td><td data-label="Key">None</td></tr>
@@ -1673,6 +1811,8 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">Image embeddings (CLIP) and LFW pair scoring</td><td data-label="Class"><code>ClipEncoder</code>, <code>ClipPreprocessor</code>, <code>FacePairs</code></td><td data-label="Library"><code>ml_clip</code> + <code>onnx</code>, <code>opencv</code>, <code>models</code>, <code>ml_verify</code></td><td data-label="Key">A CLIP image ONNX model</td></tr>
       <tr><td data-label="Capability">FAR, FRR, EER, ROC and DET points for a verifier</td><td data-label="Class"><code>Verification</code>, <code>VerificationResult</code>, <code>Similarity</code></td><td data-label="Library"><code>ml_verify</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Hugging Face Hub downloads</td><td data-label="Class"><code>HubClient</code></td><td data-label="Library"><code>ai_hub</code> + <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Key">Network (cache works offline)</td></tr>
+      <tr><td data-label="Capability">Local vector search</td><td data-label="Class"><code>VectorIndex</code>, <code>VectorMetric</code></td><td data-label="Library"><code>ml_vector</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Topic modeling, BSON</td><td data-label="Class"><code>Lda</code>, <code>BsonReader</code>, <code>TopicMetrics</code></td><td data-label="Library"><code>nlp_topics</code> + <code>json</code>, <code>plot</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Linear / regularized regression</td><td data-label="Class"><code>LinearRegression</code>, <code>RidgeRegression</code>, <code>LassoRegression</code>, <code>ElasticNet</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Linear classifiers</td><td data-label="Class"><code>LogisticRegression</code>, <code>SVM</code>, <code>Perceptron</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Kernel SVMs</td><td data-label="Class"><code>KernelSVM</code> (linear, RBF, poly, sigmoid), <code>OneClassSVM</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
@@ -1680,6 +1820,13 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">Trees &amp; ensembles</td><td data-label="Class"><code>DecisionTree</code>, <code>RandomForest</code>, <code>AdaBoost</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Nearest neighbors</td><td data-label="Class"><code>KNearestNeighbors</code>, <code>KDTree</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Clustering</td><td data-label="Class"><code>KMeans</code>, <code>DBSCAN</code>, <code>GaussianMixture</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Outlier detection</td><td data-label="Class"><code>OutlierDetector</code>: <code>IsolationForest</code>, <code>LocalOutlierFactor</code>, <code>EllipticEnvelope</code>, <code>ZScoreDetector</code>, <code>DbscanDetector</code>, <code>AutoencoderDetector</code>, <code>OneClassSvmDetector</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Metrics, bootstrap and paired bootstrap</td><td data-label="Class"><code>Metrics</code>, <code>ConfInterval</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Experiments, tables, charts</td><td data-label="Class"><code>Partition</code>, <code>Experiment</code>, <code>ResultTable</code>, <code>Chart</code></td><td data-label="Library"><code>ml_lab</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Replicates, t-tests, printable report</td><td data-label="Class"><code>Replicates</code>, <code>Report</code></td><td data-label="Library"><code>ml_report</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Statistics</td><td data-label="Class"><code>Stats</code>, <code>TTest</code>, <code>Correlation</code>, <code>OLS</code></td><td data-label="Library"><code>stats</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Charts</td><td data-label="Class"><code>Figure</code>, <code>Axes</code>, <code>PlotPng</code></td><td data-label="Library"><code>plot</code>, <code>plot_sdl</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Convolutional networks</td><td data-label="Class"><code>CnnModel</code>, <code>CnnTrainer</code>, <code>ImageDataset</code></td><td data-label="Library"><code>ml_cnn</code></td><td data-label="Key">None; optional NVIDIA GPU</td></tr>
       <tr><td data-label="Capability">Decomposition</td><td data-label="Class"><code>PCA</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Neural network</td><td data-label="Class"><code>NeuralNetwork</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Classifier head over embeddings</td><td data-label="Class"><code>EmbeddingClassifier</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
@@ -1692,18 +1839,19 @@ values := mdp-&gt;GetValues();
     <h4 id="model-recommendations">Model Recommendations</h4>
     <table class="ref-table">
      <thead>
-      <tr><th>Task</th><th>OpenAI</th><th>Gemini</th><th>Ollama</th></tr>
+      <tr><th>Task</th><th>OpenAI</th><th>Anthropic</th><th>Gemini</th><th>Ollama</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Task">General chat</td><td data-label="OpenAI"><code>gpt-4o-mini</code></td><td data-label="Gemini"><code>gemini-2.0-flash</code></td><td data-label="Ollama"><code>llama3.2</code></td></tr>
-      <tr><td data-label="Task">Reasoning</td><td data-label="OpenAI"><code>o3-mini</code></td><td data-label="Gemini"><code>gemini-2.5-pro</code></td><td data-label="Ollama"><code>qwen2.5</code></td></tr>
-      <tr><td data-label="Task">Vision</td><td data-label="OpenAI"><code>gpt-4o</code></td><td data-label="Gemini"><code>gemini-2.0-flash</code></td><td data-label="Ollama"><code>llava</code></td></tr>
-      <tr><td data-label="Task">Realtime audio</td><td data-label="OpenAI"><code>gpt-4o-realtime-preview</code></td><td data-label="Gemini">—</td><td data-label="Ollama">—</td></tr>
-      <tr><td data-label="Task">Embeddings</td><td data-label="OpenAI"><code>text-embedding-3-small</code></td><td data-label="Gemini"><code>text-embedding-004</code></td><td data-label="Ollama"><code>nomic-embed-text</code></td></tr>
-      <tr><td data-label="Task">Image gen</td><td data-label="OpenAI"><code>dall-e-3</code></td><td data-label="Gemini">—</td><td data-label="Ollama">—</td></tr>
-      <tr><td data-label="Task">Fast + cheap</td><td data-label="OpenAI"><code>gpt-4o-mini</code></td><td data-label="Gemini"><code>gemini-2.5-flash</code></td><td data-label="Ollama"><code>phi3</code></td></tr>
+      <tr><td data-label="Task">General chat</td><td data-label="OpenAI"><code>gpt-4o-mini</code></td><td data-label="Anthropic"><code>claude-sonnet-5-5</code></td><td data-label="Gemini"><code>gemini-2.0-flash</code></td><td data-label="Ollama"><code>llama3.2</code></td></tr>
+      <tr><td data-label="Task">Reasoning</td><td data-label="OpenAI"><code>o3-mini</code></td><td data-label="Anthropic"><code>claude-sonnet-5-5</code> with <code>SetThinking</code></td><td data-label="Gemini"><code>gemini-2.5-pro</code></td><td data-label="Ollama"><code>qwen2.5</code></td></tr>
+      <tr><td data-label="Task">Vision</td><td data-label="OpenAI"><code>gpt-4o</code></td><td data-label="Anthropic">—</td><td data-label="Gemini"><code>gemini-2.0-flash</code></td><td data-label="Ollama"><code>llava</code></td></tr>
+      <tr><td data-label="Task">Realtime audio</td><td data-label="OpenAI"><code>gpt-4o-realtime-preview</code></td><td data-label="Anthropic">—</td><td data-label="Gemini">—</td><td data-label="Ollama">—</td></tr>
+      <tr><td data-label="Task">Embeddings</td><td data-label="OpenAI"><code>text-embedding-3-small</code></td><td data-label="Anthropic">—</td><td data-label="Gemini"><code>text-embedding-004</code></td><td data-label="Ollama"><code>nomic-embed-text</code></td></tr>
+      <tr><td data-label="Task">Image gen</td><td data-label="OpenAI"><code>dall-e-3</code></td><td data-label="Anthropic">—</td><td data-label="Gemini">—</td><td data-label="Ollama">—</td></tr>
+      <tr><td data-label="Task">Fast + cheap</td><td data-label="OpenAI"><code>gpt-4o-mini</code></td><td data-label="Anthropic"><code>claude-haiku-4-5</code></td><td data-label="Gemini"><code>gemini-2.5-flash</code></td><td data-label="Ollama"><code>phi3</code></td></tr>
      </tbody>
     </table>
+    <p>These are starting points, not guarantees: providers retire model ids, and none of them was called while this guide was updated (see the note under each client). Ask the service what it offers (<code>Model-&gt;List(token)</code> for Gemini, <code>Model-&gt;List()</code> for Ollama) and pass the id as a string; <code>Model-&gt;GEMINI_2_5_FLASH()</code> and the other <code>Model</code> constants return Gemini ids.</p>
     <h4 id="example-programs">Example Programs</h4>
     <p>Full working examples are in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks" target="_blank"><code>programs/frameworks/</code></a>:</p>
 <pre class="plain">openai/   openai_chat.obs     openai_images.obs   openai_moderation.obs
@@ -1728,19 +1876,16 @@ opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
      <tbody>
       <tr><td data-label="Area"><code>System.Plot</code>, <code>System.Plot.SDL</code></td><td data-label="Tests"><code>plot_svg.obs</code>, <code>plot_svg_more.obs</code> (with goldens in <code>plot_golden/</code>), <code>plot_view.obs</code>, <code>plot_sdl.obs</code></td></tr>
       <tr><td data-label="Area"><code>System.ML.Cnn</code></td><td data-label="Tests"><code>ml_cnn_gradcheck.obs</code> (finite differences, float64), <code>ml_cnn_parity.obs</code> (against PyTorch, data from <code>tools/ml/cnn_parity.py</code>), <code>ml_cnn_parity64.obs</code> (float64 engine against PyTorch float64 at 64 x 64, 20 Adam steps), <code>ml_cnn_edges.obs</code>, <code>ml_cnn_dataset.obs</code>, <code>ml_cnn_train.obs</code>, and for the optional GPU backend <code>ml_cnn_cuda.obs</code>, <code>ml_cnn_cuda_parity.obs</code> (both skip without a CUDA device) and <code>ml_cnn_cuda_fallback.obs</code> (runs only without one)</td></tr>
-     </tbody>
-    </table>
-    <table class="ref-table">
-     <thead>
-      <tr><th><code>System.Stats</code></th><th><code>stats_dist.obs</code>, <code>stats_ttest.obs</code>, <code>stats_corr_ols.obs</code>, <code>stats_degenerate.obs</code> (expected values from scipy / numpy, generated by <code>tools/stats/gen_stats_reference.py</code>)</th></tr>
-     </thead>
-     <tbody>
-      <tr><td data-label="System.Stats"><code>System.ML.VectorSearch</code></td><td data-label="stats_dist.obs, stats_ttest.obs, stats_corr_ols.obs, stats_degenerate.obs (expected values from scipy / numpy, generated by tools/stats/gen_stats_reference.py)"><code>ml_vector_exact.obs</code>, <code>ml_vector_edges.obs</code>, <code>ml_vector_validation.obs</code>, <code>ml_vector_persist.obs</code></td></tr>
-      <tr><td data-label="System.Stats"><code>System.ML</code></td><td data-label="stats_dist.obs, stats_ttest.obs, stats_corr_ols.obs, stats_degenerate.obs (expected values from scipy / numpy, generated by tools/stats/gen_stats_reference.py)"><code>ml_*.obs</code>, e.g. <code>ml_kernel_svm_reference.obs</code> and <code>ml_one_class_svm_reference.obs</code> (against an independent reference, generated by <code>tools/ml/svm_reference/gen_reference_test.py</code>), <code>ml_outlier_*.obs</code>, <code>ml_lab_*.obs</code></td></tr>
-      <tr><td data-label="System.Stats"><code>System.AI</code></td><td data-label="stats_dist.obs, stats_ttest.obs, stats_corr_ols.obs, stats_degenerate.obs (expected values from scipy / numpy, generated by tools/stats/gen_stats_reference.py)"><code>ai_search_test.obs</code>, <code>ai_game_test.obs</code>, <code>ai_optimize_test.obs</code>, <code>ai_rl_test.obs</code></td></tr>
-      <tr><td data-label="System.Stats"><code>System.NLP</code></td><td data-label="stats_dist.obs, stats_ttest.obs, stats_corr_ols.obs, stats_degenerate.obs (expected values from scipy / numpy, generated by tools/stats/gen_stats_reference.py)"><code>nlp_*.obs</code>, e.g. <code>nlp_wordpiece_parity.obs</code>, <code>nlp_bpe_tokenizer.obs</code></td></tr>
-      <tr><td data-label="System.Stats"><code>System.NLP.Topics</code></td><td data-label="stats_dist.obs, stats_ttest.obs, stats_corr_ols.obs, stats_degenerate.obs (expected values from scipy / numpy, generated by tools/stats/gen_stats_reference.py)"><code>nlp_topics_bson.obs</code>, <code>nlp_topics_bson_pymongo.obs</code>, <code>nlp_topics_dictionary.obs</code>, <code>nlp_topics_lda.obs</code>, <code>nlp_topics_metrics.obs</code>, <code>nlp_topics_plots.obs</code>; the reference values come from <code>nlp_topics_reference.py</code>, <code>nlp_topics_bson_fixtures.py</code>, <code>nlp_topics_bson_pymongo.py</code> and <code>nlp_topics_gensim_check.py</code></td></tr>
-      <tr><td data-label="System.Stats">ONNX, remote inference, Hub</td><td data-label="stats_dist.obs, stats_ttest.obs, stats_corr_ols.obs, stats_degenerate.obs (expected values from scipy / numpy, generated by tools/stats/gen_stats_reference.py)"><code>onnx_*.obs</code>, <code>nlp_onnx_*.obs</code>, <code>inference_client_test.obs</code>, <code>ai_hub_client.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.Stats</code></td><td data-label="Tests"><code>stats_dist.obs</code>, <code>stats_ttest.obs</code>, <code>stats_corr_ols.obs</code>, <code>stats_degenerate.obs</code> (expected values from scipy / numpy, generated by <code>tools/stats/gen_stats_reference.py</code>)</td></tr>
+      <tr><td data-label="Area"><code>System.ML.Verification</code>, <code>System.ML.Clip</code></td><td data-label="Tests"><code>ml_verify_metrics.obs</code> (against scikit-learn and numpy, generated by <code>ml_verify_golden/gen_expected.py</code>), <code>ml_clip_pairs.obs</code>, <code>ml_clip_preprocess.obs</code>, <code>ml_clip_encoder.obs</code> (data from <code>data/clip/gen_tiny_clip.py</code>)</td></tr>
+      <tr><td data-label="Area"><code>System.ML.VectorSearch</code></td><td data-label="Tests"><code>ml_vector_exact.obs</code>, <code>ml_vector_edges.obs</code>, <code>ml_vector_validation.obs</code>, <code>ml_vector_persist.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.ML</code></td><td data-label="Tests"><code>ml_*.obs</code>, e.g. <code>ml_kernel_svm_reference.obs</code> and <code>ml_one_class_svm_reference.obs</code> (against an independent reference, generated by <code>tools/ml/svm_reference/gen_reference_test.py</code>), <code>ml_outlier_*.obs</code>, <code>ml_lab_*.obs</code></td></tr>
+      <tr><td data-label="Area">API clients</td><td data-label="Tests"><code>anthropic_parse_test.obs</code>, <code>anthropic_http_test.obs</code> (a local mock, not api.anthropic.com), <code>openai_parse_test.obs</code>, <code>openai_request_test.obs</code>, <code>gemini_parse_test.obs</code>, <code>ollama_parse_test.obs</code>, <code>ollama_api_test.obs</code>; <code>api_key_insecure_tls_openai.obs</code>, <code>api_key_insecure_tls_gemini.obs</code> and <code>api_key_insecure_tls_anthropic.obs</code> for the key refusal while certificate checking is off</td></tr>
+      <tr><td data-label="Area">Evaluation and outliers (<code>System.ML</code>)</td><td data-label="Tests"><code>ml_threshold_bootstrap.obs</code> (<code>Metrics-&gt;Bootstrap</code>), <code>ml_paired_bootstrap.obs</code> (<code>PairedBootstrapDifference</code>), <code>ml_outlier_*.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.AI</code></td><td data-label="Tests"><code>ai_search_test.obs</code>, <code>ai_game_test.obs</code>, <code>ai_optimize_test.obs</code>, <code>ai_rl_test.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.NLP</code></td><td data-label="Tests"><code>nlp_*.obs</code>, e.g. <code>nlp_wordpiece_parity.obs</code>, <code>nlp_bpe_tokenizer.obs</code></td></tr>
+      <tr><td data-label="Area"><code>System.NLP.Topics</code></td><td data-label="Tests"><code>nlp_topics_bson.obs</code>, <code>nlp_topics_bson_pymongo.obs</code>, <code>nlp_topics_dictionary.obs</code>, <code>nlp_topics_lda.obs</code>, <code>nlp_topics_metrics.obs</code>, <code>nlp_topics_plots.obs</code>; the reference values come from <code>nlp_topics_reference.py</code>, <code>nlp_topics_bson_fixtures.py</code>, <code>nlp_topics_bson_pymongo.py</code> and <code>nlp_topics_gensim_check.py</code></td></tr>
+      <tr><td data-label="Area">ONNX, remote inference, Hub</td><td data-label="Tests"><code>onnx_*.obs</code>, <code>nlp_onnx_*.obs</code>, <code>inference_client_test.obs</code>, <code>ai_hub_client.obs</code></td></tr>
      </tbody>
     </table>
     <p>A test passes when it exits 0 and is compiled with the libraries its <code># EXTRA_LIBS:</code> line names; a test that needs a model or a native library that is not deployed prints <code>SKIP:</code> instead. To run one:</p>

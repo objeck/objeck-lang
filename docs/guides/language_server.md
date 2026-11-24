@@ -52,7 +52,7 @@ the ones `tools/lsp/scripts/install.cmd` and `install.sh` implement.
 Diagnostics as you type, completion with signature help, hover, go to definition, declaration,
 type definition and implementation, find references, rename, code actions, formatting, document
 and workspace symbols, call and type hierarchy, inlay hints, semantic tokens, folding and
-document highlight. The full list is in [`docs/editors.md`](../editors.md#4-lsp-features).
+document highlight. The full list is in [`docs/editors.md`](../editors.md#4-lsp-features). Ghost-text inline completion from a language model is available too, but it is off by default and sends nothing anywhere until you choose a provider (`objeck.inlineCompletion.provider`; Ollama keeps it local): see [the AI guide](../AI.md#inline-completion-in-the-editor-language-server).
 
 Debugging needs a program compiled with debug symbols, or no breakpoint will bind:
 

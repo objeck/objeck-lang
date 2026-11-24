@@ -3,7 +3,9 @@
 All AI and ML capabilities are **standard library** — no third-party packages, no pip install, no package.json. Import the relevant bundle and go.
 
 ## Table of Contents
+- [Which library for what](#which-library-for-what)
 - [Authentication](#authentication)
+  - [Keys and certificate checking](#keys-and-certificate-checking)
 - [OpenAI](#openai)
   - [Chat & Text](#chat--text)
   - [Vision](#vision)
@@ -25,6 +27,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Files API](#files-api)
   - [Context Caching](#context-caching)
 - [Ollama (Local Models)](#ollama-local-models)
+- [Inline completion in the editor (language server)](#inline-completion-in-the-editor-language-server)
 - [ONNX Local Inference](#onnx-local-inference)
   - [Face Recognition](#face-recognition)
   - [Object Detection (YOLO)](#object-detection-yolo)
@@ -42,6 +45,8 @@ All AI and ML capabilities are **standard library** — no third-party packages,
 - [Machine Learning (System.ML)](#machine-learning-systemml)
   - [Regression](#regression)
   - [Classification](#classification)
+  - [Evaluating models and detectors](#evaluating-models-and-detectors)
+  - [Outlier detection](#outlier-detection)
   - [Clustering & Decomposition](#clustering--decomposition)
   - [Neural Network](#neural-network)
   - [Model Persistence](#model-persistence)
@@ -62,22 +67,60 @@ All AI and ML capabilities are **standard library** — no third-party packages,
 
 ---
 
+## Which library for what
+
+Every library is a `.obl` file you name with `-lib`; `lang` and `gen_collect` are always supplied by the compiler. The **Compile** column is the shortest `-lib` list that links, and a group such as `@ai` expands to several (see [Library Aliases](#library-aliases)). A library that sits on others lists them: name every one, because the linker loads exactly what you list.
+
+| I want to... | Library | Namespace | Compile (`-lib`) | Needs |
+|---|---|---|---|---|
+| chat with, embed with or moderate through **OpenAI** | `openai` | `API.OpenAI` | `net,net_server,json,cipher,misc,openai` | `openai_api_key.dat` |
+| use **Gemini** (chat, vision, grounding, caching, files) | `gemini` | `API.Google.Gemini` | `net,net_server,json,cipher,misc,gemini` | `gemini_api_key.dat` |
+| use **Claude** (chat, tools, streaming, thinking) | `anthropic` | `API.Anthropic` | `net,json,cipher,misc,anthropic` | `ANTHROPIC_API_KEY` or `anthropic_api_key.dat` |
+| run a model **locally through Ollama** | `ollama` | `API.Ollama` | `net,json,cipher,misc,ollama` | a running Ollama server |
+| run an **ONNX model in the process** (face, YOLO, ResNet, Phi-3, any graph) | `onnx` (+ `models`, `opencv`) | `API.Onnx`, `API.Models` | `models,opencv,cipher,json,onnx` | an `.onnx` file |
+| call a model **served over HTTP** (Triton, KServe, TF Serving) | `inference` (+ `models`) | `API.Inference` | `models,net,json,cipher,inference` | a model server |
+| load, resize and draw on **images** | `opencv` | `API.OpenCV` | `opencv,cipher,json` | |
+| tokenize, TF-IDF, sentiment, spelling and style features | `nlp` | `System.NLP` | `nlp` | |
+| **sentence embeddings** and **fine-tuned text classifiers** from BERT-family ONNX models | `nlp_onnx` (+ `onnx`, `nlp`) | `System.NLP.Onnx` | `models,opencv,cipher,json,onnx,nlp,nlp_onnx` | an `.onnx` model and its vocabulary |
+| **download models** from the Hugging Face Hub into a cache | `ai_hub` | `System.AI.Hub` | `net,json,cipher,ai_hub` | network, or the cache |
+| **topic modeling** (LDA) and BSON dumps | `nlp_topics` | `System.NLP.Topics` | `nlp_topics,json,plot` | |
+| regression, classifiers, trees, clustering, outliers, PCA, metrics, neural networks | `ml` | `System.ML` | `ml,csv` | |
+| **experiments**: stratified splits, parameter sweeps, result tables, charts | `ml_lab` | `System.ML.Lab` | `ml,ml_lab,csv,json` | |
+| a **local vector index** (exact cosine, dot or L2 search) | `ml_vector` | `System.ML.VectorSearch` | `ml_vector` | |
+| FAR, FRR, EER and ROC / DET points for a verifier | `ml_verify` | `System.ML.Verification` | `ml_verify` | |
+| **CLIP** image embeddings and LFW pair scoring | `ml_clip` (+ `onnx`, `ml_verify`) | `System.ML.Clip` | `ml_clip,onnx,opencv,models,ml_verify,json,cipher` | a CLIP image-tower `.onnx` |
+| **convolutional networks**, on the CPU or an NVIDIA GPU | `ml_cnn` | `System.ML.Cnn` | `@cnn` | images |
+| replicates, t-tests and a printable **report** | `ml_report` (+ `ml_lab`, `stats`, `plot`) | `System.ML.Report` | `ml_report,ml_lab,ml,stats,plot,csv,json` | |
+| **statistics**: descriptive, t-tests, correlation, OLS | `stats` | `System.Stats` | `stats` | |
+| **charts** as SVG, in a window or as PNG | `plot` (+ `plot_sdl`, `sdl2`) | `System.Plot` | `plot` (`plot,plot_sdl,sdl2` for a window or PNG) | |
+| graph search, game playing, optimizers, reinforcement learning | `ai` | `System.AI` | `ai` | |
+
+`ml`, `ml_lab`, `ml_vector`, `ml_verify`, `ml_report`, `stats`, `plot`, `nlp`, `nlp_topics` and `ai` need no key, no network and no model runtime. The hosted clients need a key and a network; `onnx`, `opencv` and the CNN layers of `ml_cnn` use native libraries, which every package ships.
+
+**A retrieval-shaped question usually starts here.** To search your own documents: embed them (`BertEmbedder` in `nlp_onnx`, or the OpenAI, Gemini or Ollama embedding calls), keep the vectors in a `VectorIndex` (`ml_vector`), and hand the closest passages to a chat model. To judge a model or a detector: `Metrics`, then the bootstrap and the paired bootstrap ([Evaluating models and detectors](#evaluating-models-and-detectors)), `System.Stats` for the tests, `System.ML.Report` for the write-up.
+
+---
+
 ## Authentication
 
 ### OpenAI
-Create `openai_api_key.dat` in your working directory containing your API key. The static helper reads it:
+Create `openai_api_key.dat` in your working directory containing your API key, or call `EndPoint->SetApiKey(key)`. The static helper reads it (and trims it):
 
 ```ruby
 use API.OpenAI;
 
 token := EndPoint->GetApiKey();
+if(token = Nil) {
+  EndPoint->GetLastError()->ErrorLine();   # why there is no key: see "Keys and certificate checking" below
+  return;
+};
 ```
 
 ### Anthropic
 Set the `ANTHROPIC_API_KEY` environment variable, or create `anthropic_api_key.dat` in your working directory, or call `EndPoint->SetApiKey(key)`. `Chat->New(model, Nil)` reads the key with `EndPoint->GetApiKey()`; pass a key as the second argument to override it for one chat.
 
 ### Gemini
-Create `gemini_api_key.dat` in your working directory. Use the static helper:
+Create `gemini_api_key.dat` in your working directory, or call `EndPoint->SetApiKey(key)`. Use the static helper:
 
 ```ruby
 use API.Google.Gemini;
@@ -87,6 +130,14 @@ token := EndPoint->GetApiKey();
 
 ### Ollama
 No authentication needed. Ollama runs locally at `http://localhost:11434` by default. Start it with `ollama serve`.
+
+### Keys and certificate checking
+Every secure client socket verifies the server's certificate chain and host name. `OBJECK_TLS_INSECURE_SKIP_VERIFY=1` (a value that starts with `1`, `t`, `T`, `y` or `Y`) turns that off for the whole process, which exists for testing against a self-signed development server. Two things follow when it is set:
+
+- **A warning, once.** The first secure connection prints `>>> WARNING: OBJECK_TLS_INSECURE_SKIP_VERIFY is set: TLS server certificates are NOT verified ...` on stderr, so an exported variable that outlived the test it was meant for does not go unnoticed.
+- **No API key from the helpers.** The OpenAI, Gemini and Anthropic clients refuse to hand a key out while certificate checking is off, because it would go to a server nobody authenticated. `EndPoint->GetApiKey()` returns `Nil`, `EndPoint->GetLastError()` says `refusing to use an API key: OBJECK_TLS_INSECURE_SKIP_VERIFY turns TLS certificate checking off ...`, and the same line goes to stderr. The refusal comes before the environment variable and the key file are read, so it holds for a key set with `SetApiKey` too. Setting `OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1` as well says the combination is intended (a placeholder key against a local mock server, say) and lifts the refusal; do not use it with a real key. With certificate checking on, nothing changes.
+
+The refusal covers what `GetApiKey()` returns, so check its result for `Nil` before using it as `token` in the examples below. A key you pass to a call yourself (the `token` argument, or `Chat->New(model, key)` for Anthropic) is sent as given. The Ollama client has no key. The language server's inline completion uses the same clients, so it is subject to the same rule (see [Inline completion in the editor](#inline-completion-in-the-editor-language-server)).
 
 ---
 
@@ -287,11 +338,11 @@ each(j in jobs) {
 
 ## Anthropic (Claude)
 
-`API.Anthropic` is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. Compile with `-lib anthropic`. A failed call returns `Nil`, and `EndPoint->GetLastError()` says why, as in the other clients. Requests go over HTTPS; `EndPoint->SetBaseUrl` points the client at a gateway and `EndPoint->SetCertificate` pins its certificate.
+`API.Anthropic` is a client for the Anthropic Messages API: chat with a system prompt, tool use, streaming over server-sent events, structured output, and extended-thinking blocks. **Compile:** `obc -src your.obs -lib net,json,cipher,misc,anthropic`. A failed call returns `Nil`, and `EndPoint->GetLastError()` says why, as in the other clients. Requests go over HTTPS; `EndPoint->SetBaseUrl` points the client at a gateway and `EndPoint->SetCertificate` pins its certificate.
 
 ### Chat and system prompts
 
-A `Chat` keeps the message history. `SetSystem`, `SetMaxTokens` (default 4096) and `SetTemperature` return the chat, so they chain.
+A `Chat` keeps the message history. `SetSystem`, `SetMaxTokens` (default 4096), `SetTemperature`, `SetTopP` (nucleus sampling) and `SetTopK` return the chat, so they chain. `top_p`, `top_k` and the temperature are unset until you call them, so the API's defaults apply; some models refuse a request that sets both the temperature and `top_p`, so change one of them.
 
 ```ruby
 use API.Anthropic;
@@ -304,7 +355,7 @@ chat->Send("And at sunset?")->PrintLine();
 
 `SendReply(message, tools)` returns the whole `Reply`: `GetText()`, `GetThinking()`, `GetStopReason()`, `GetInputTokens()`, `GetOutputTokens()`, and the tool calls. Pass `Nil` as the message to send the history as it stands.
 
-`SetThinking(budget_tokens)` turns on extended thinking. The API needs a budget of at least 1024 tokens and a `SetMaxTokens` above it. While thinking is on the temperature is not sent, and `SendJson` leaves thinking off for its one request, because the API rejects a forced tool with thinking.
+`SetThinking(budget_tokens)` turns on extended thinking. The API needs a budget of at least 1024 tokens and a `SetMaxTokens` above it. While thinking is on the temperature, `top_p` and `top_k` are not sent, and `SendJson` leaves thinking off for its one request, because the API rejects a forced tool with thinking.
 
 What joins the history, so a chat never wedges: a reply that fails is dropped together with the message that asked for it; a refusal (`stop_reason` `refusal`) and an empty reply are returned to you but not kept, as the API advises; an empty text block is removed from a turn before it is replayed; thinking blocks, including redacted ones, are replayed whole.
 
@@ -526,7 +577,7 @@ FileManager->Delete("files/abc123", token);
 
 ### Context Caching
 
-Cache large, reused content server-side to avoid paying re-tokenization costs on every request.
+Cache large, reused content server-side to avoid paying re-tokenization costs on every request. The service requires a minimum amount of cached text and only some models support caching; a refused request returns `Nil` with the reason in `EndPoint->GetLastError()`.
 
 ```ruby
 use API.Google.Gemini, System.IO.Filesystem;
@@ -536,7 +587,7 @@ large_context := FileReader->ReadFile("legal_document.txt");
 content := Content->New("user")->AddPart(TextPart->New(large_context));
 
 item := CachedContent->Create(
-    "models/gemini-1.5-pro-001", content, 300, "legal-doc-cache", token);
+    "models/gemini-2.5-flash", content, 300, "legal-doc-cache", token);
 if(item <> Nil) {
     "Name: {$item->GetName()}"->PrintLine();
     tokens := item->GetTokenCount();
@@ -612,11 +663,75 @@ each(m in models) {
 Model->Pull("phi3");
 ```
 
+Every request completes before it returns: replies are not streamed, so a long generation prints nothing until it is done. A failed call returns `Nil` (or `false`) and `EndPoint->GetLastError()` says why, as in the other clients; `EndPoint->SetHost("http://myserver:11434")` points the client at another machine.
+
+`Options` carries the sampling and format settings, and each setter returns the `Options`, so they chain: `SetTemperature`, `SetTopP`, `SetTopK`, `SetMinP`, `SetNumCtx`, `SetNumPredict`, `SetSeed`, `SetRepeatPenalty`, `SetStop`, `SetKeepAlive`, `SetThink` (a Bool, or a level such as `"high"`), `SetFormat` (`"json"`, or a JSON schema) and `Set(name, value)` for any other Ollama option. `GenerateReply` and `Chat->SendReply` return the whole `Reply` (text, thinking, tool calls and the timings), where `Generate` and `Chat->Send` return only the text:
+
+```ruby
+use API.Ollama, Collection, Data.JSON;
+
+opts := Options->New()->SetSeed(7)->SetTemperature(0.0);
+reply := Completion->GenerateReply("llama3.2", "Why is the sky blue?", opts);
+if(reply <> Nil) {
+    reply->GetText()->PrintLine();
+    tps := reply->GetTokensPerSecond();
+    "{$tps} tokens/s"->PrintLine();
+};
+
+# a tool: describe it with a JSON schema, run what the model asks for, send the result back
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector->New()<Tool>;
+tools->AddBack(Tool->New("get_weather", "Get the weather for a city", schema));
+
+chat := Chat->New("llama3.2");
+reply := chat->SendReply("What is the weather in Paris?", Nil, tools);
+while(reply <> Nil & reply->HasToolCalls()) {
+    calls := reply->GetToolCalls();
+    each(i : calls) {
+        call := calls->Get(i);
+        city := call->GetArgument("city");
+        chat->AddToolResult(call->GetName(), "18C and sunny in {$city}");
+    };
+    reply := chat->SendReply(Nil, Nil, tools);
+};
+```
+
+`Model->Embed(model, texts)` embeds several texts in one call (a `Float[,]`, a row per text) and `Model->Show`, `Running`, `Version`, `Delete` and `Copy` round out model management.
+
+---
+
+## Inline completion in the editor (language server)
+
+The Objeck language server can suggest the next statement as ghost text from a language model (`textDocument/inlineCompletion`, LSP 3.18). **It is off by default, and with the provider `none` nothing leaves your machine.** Code is sent to a model only after you pick a provider. It is local-first: Ollama keeps everything on your machine, and the three cloud providers each send the text around your cursor to that company.
+
+| `objeck.inlineCompletion.provider` | Where the code goes | Key |
+|---|---|---|
+| `none` (default) | nowhere | none |
+| `ollama` | a local Ollama server, `http://localhost:11434` unless `ollamaHost` says otherwise (a host that is not this machine receives the code) | none |
+| `anthropic` | Anthropic's API | `ANTHROPIC_API_KEY` or `anthropic_api_key.dat`, as `API.Anthropic` reads it |
+| `openai` | OpenAI's API | `openai_api_key.dat`, as `API.OpenAI` reads it |
+| `gemini` | Google's API | the key file `API.Google.Gemini` reads |
+
+The settings, in VS Code under `objeck.inlineCompletion` (any client can send them as `initializationOptions.inlineCompletion` or in `workspace/didChangeConfiguration`), take effect without a restart:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `provider` | `none` | `none`, `ollama`, `anthropic`, `openai` or `gemini` |
+| `model` | the provider's | empty uses `qwen2.5-coder:1.5b` (Ollama), `claude-haiku-4-5` (Anthropic), `gpt-4o-mini` (OpenAI) or `gemini-2.5-flash` (Gemini) |
+| `ollamaHost` | `http://localhost:11434` | the Ollama server |
+| `timeoutMs` | `3000` | the longest wait for a suggestion, 200 to 30000 |
+
+The server sends the text before the cursor (at most 4,000 characters) and a short suffix (500), keeps the first statement or block of the answer and replies with one item at the cursor. It uses the clients described in this guide, so a cloud provider follows their rules: the key is refused while `OBJECK_TLS_INSECURE_SKIP_VERIFY` is set (see [Keys and certificate checking](#keys-and-certificate-checking)). A provider that does not answer within `timeoutMs` is ignored for that request, `$/cancelRequest` ends the wait, and any failure is an empty list, never an error. For the full language-server feature list and setup see [the language server README](../tools/lsp/README.md) and [editors.md](editors.md).
+
 ---
 
 ## ONNX Local Inference
 
-Run ML models locally using the ONNX Runtime. The execution provider is a per-session choice (`ep`: `cpu`, `cuda`, `dml`, `qnn`, `vitisai`, `coreml`) among those the loaded ONNX Runtime carries. Without `ep` a session uses the build's default: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS, and the CPU on Linux x64 and ARM64 (each linked with a vendored ONNX Runtime 1.19.0 CPU-only build). No release ships CUDA; with an ONNX Runtime you supply that carries it, `ep=cuda` runs on an NVIDIA GPU. See [execution providers](MODELS.md#execution-providers) for the setting and [core/lib/onnx/README.md](../core/lib/onnx/README.md) for how to set CUDA up.
+Run ML models locally using the ONNX Runtime. The execution provider is a per-session choice (`ep`: `cpu`, `cuda`, `dml`, `qnn`, `vitisai`, `coreml`) among those the loaded ONNX Runtime carries. Without `ep` a session uses the build's default: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS, and the CPU on Linux x64 and ARM64. No release ships CUDA; with an ONNX Runtime you supply that carries it, `ep=cuda` runs on an NVIDIA GPU. See [execution providers](MODELS.md#execution-providers) for the setting and [core/lib/onnx/README.md](../core/lib/onnx/README.md) for how to set CUDA up.
+
+**Where the runtime comes from.** Every package carries its own ONNX Runtime beside `libobjk_onnx`, so nothing is installed separately: ONNX Runtime 1.22.1 with DirectML on Windows x64 (the NuGet package `Microsoft.ML.OnnxRuntime.DirectML`), a QNN build on Windows ARM64, a vendored CPU-only 1.19.0 build on Linux x64 and ARM64, and ONNX Runtime 1.30.0 on macOS (the NuGet package `Microsoft.ML.OnnxRuntime`, because Microsoft's GitHub release of it is no longer there; the macOS build needs macOS 14 or later). [third_party_dependencies.md](third_party_dependencies.md) lists the versions and where each is pinned.
+
+**CoreML runs some operators at reduced precision.** On Apple Silicon the default provider is CoreML, which evaluates parts of a graph (a BERT pooler's `tanh`, for one) in lower precision than the CPU does: a result can differ from a reference by about 1e-3 where the CPU provider agrees to 1e-6. That is fine for embeddings, ranking and classification, but a test that compares model output with a reference to 1e-6 should ask for the CPU, `config->Insert("ep", "cpu")`, as the regression test `nlp_onnx_embedder` does. `BertEmbedder` and `TextClassifier` opened with no session options fall back to the CPU themselves when the default provider cannot open the model (DirectML without a display adapter, CoreML on an unsupported graph); `IsCpuFallback()` says whether that happened, and `ep=cpu` asked for by name is never reported as a fallback.
 
 A provider the runtime does not carry is refused with an error that lists the ones it does, and the session does not open; it is never quietly run on the CPU. Ask first:
 
@@ -1280,14 +1395,7 @@ detector->Fit(Xs_normal);
 anomaly := detector->PredictScore(Xs_test);   # -decision: higher = stranger
 flags := detector->IsOutlier(Xs_test);        # Bool[]; Predict gives +1/-1
 
-# comparing two detectors at thresholds fixed beforehand: threshold from out-of-fold
-# scores, applied unchanged to the test set, then a PAIRED bootstrap of the difference
-cut_a := Metrics->ThresholdAtFpr(oof_a, oof_labels, 0.01);
-cut_b := Metrics->ThresholdAtFpr(oof_b, oof_labels, 0.01);
-gain := Metrics->PairedBootstrapDifference(test_a, cut_a, test_b, cut_b, test_labels, false, 1000, 42);
-# gain->GetPoint() is recall(B) - recall(A); GetLow()/GetHigh() its 95% interval. Both
-# detectors are applied to the same resampled rows, so shared noise cancels. true as the
-# sixth argument compares false-positive rates instead. Nil on bad input.
+# comparing two detectors: the paired bootstrap, see "Evaluating models and detectors"
 
 # multiclass Gaussian naive Bayes over integer labels 0..C-1
 gnb := GaussianNaiveBayes->New();
@@ -1336,6 +1444,56 @@ nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
 ```
 
 `KNearestNeighbors->Query(k, query)` scans the rows once and keeps the best k in a heap, closest first, ties in row order. Over 50,000 rows of 16 values, 200 queries with k = 5 take 0.057 s (about 3,500 queries/s; it took 15 s before v2026.11.3). A k below 1, a `Nil` query or a `Nil` matrix returns no neighbors. `KDTree` is the index to use when the data has few dimensions and many queries.
+
+### Evaluating models and detectors
+
+`Metrics` (in `ml.obl`) scores a model by what it ranks, not only by a single threshold: `AucRoc`, `AveragePrecision`, `RocCurve`, `PrCurve`, `RecallAtFpr(scores, actuals, max_fpr)` (the detection rate within a false-alarm budget) and `ThresholdAtFpr` (the cut that spends the budget). A score is higher for the positive class, a label is `true` for it, and a metric that cannot be computed returns a negative marker (`-1.0`) rather than a number, so check it.
+
+A single figure from one test set says nothing about how far to trust it, and at a small false-alarm budget it is fragile: 0.1% of 10,000 negatives is ten false positives. `Metrics->Bootstrap(metric, scores, actuals, reps, seed, level)` resamples the scored instances with replacement, recomputes the metric on each resample and returns a `ConfInterval` (`GetPoint()` is the metric on the original sample, `GetLow()` and `GetHigh()` the percentile interval, `GetLevel()`, `GetReps()`, `GetUsableReps()` and `GetWidth()`). A resample that holds a single class has no AUC and is dropped, `GetUsableReps()` says how many survived, and the call returns `Nil` on bad input or fewer than two usable resamples. The `ScoreMetric` to pass is `AucMetric->New()`, `RecallAtFprMetric->New(max_fpr)` or `AveragePrecisionMetric->New()`; the call without `level` uses 0.95.
+
+```ruby
+use System.ML;
+
+auc := Metrics->Bootstrap(AucMetric->New(), scores, actuals, 1000, 42);
+if(auc <> Nil) {
+  "AUC {$auc->GetPoint()}, 95% interval {$auc->GetLow()} .. {$auc->GetHigh()}"->PrintLine();
+};
+```
+
+**Comparing two models: the paired bootstrap.** Two intervals that overlap do not tell you that one detector is no better than the other, because the two detectors scored the same instances and share most of their noise. `Metrics->PairedBootstrapDifference` answers the comparison question itself. Each detector has a threshold fixed beforehand (for example `ThresholdAtFpr` on out-of-fold scores, never the test set), each resample draws instances once and applies both detectors to that one draw, and the interval is that of the statistic **B minus A**: recall by default, or the false-positive rate when `use_fpr` is `true`. An instance is flagged when its score is greater than or equal to the threshold. The call is `PairedBootstrapDifference(scores_a, threshold_a, scores_b, threshold_b, actuals, use_fpr, reps, seed)`, with a ninth `level` argument for an interval other than 95%. The scores are for the same instances in the same order. A resample with no positive instance (recall) or no negative instance (false-positive rate) has no value and is left out; `Nil` comes back for mismatched lengths, fewer than two resamples or fewer than two usable ones.
+
+```ruby
+# thresholds from out-of-fold scores, applied unchanged to the held-out test set
+cut_a := Metrics->ThresholdAtFpr(oof_a, oof_labels, 0.01);
+cut_b := Metrics->ThresholdAtFpr(oof_b, oof_labels, 0.01);
+gain := Metrics->PairedBootstrapDifference(test_a, cut_a, test_b, cut_b, test_labels, false, 1000, 42);
+if(gain <> Nil) {
+  "recall(B) - recall(A) = {$gain->GetPoint()} [{$gain->GetLow()}, {$gain->GetHigh()}]"->PrintLine();
+  if(gain->GetLow() > 0.0) {
+    "B detects more than A at this budget"->PrintLine();     # the interval excludes zero
+  };
+};
+```
+
+The same paired comparison for a metric that needs no frozen threshold is `Replicates->Paired` ([System.ML.Report](#replicates-and-reports-systemmlreport)), which pairs the runs of two settings by seed and returns a t-test.
+
+### Outlier detection
+
+`System.ML` has seven unsupervised anomaly detectors that share one interface, `OutlierDetector`, so they are interchangeable: `ZScoreDetector`, `IsolationForest`, `LocalOutlierFactor`, `EllipticEnvelope`, `DbscanDetector`, `AutoencoderDetector` and `OneClassSvmDetector`. The conventions are fixed across them: a label is `true` for an **outlier** (scikit-learn's -1), a score is **higher for a stranger row** (the negation of scikit-learn's `score_samples`), so predictions and scores feed `Metrics` directly; `GetThreshold()` is the cut on the score, `DecisionFunction` is the score minus it, and a row is an outlier when its score is strictly above the cut. A NaN in the input makes `Fit` return `false` (`GetError()` says where) and `Predict` and `Score` return `Nil`. The design and the checks against scikit-learn are in [ML_OUTLIERS_DESIGN.md](ML_OUTLIERS_DESIGN.md).
+
+```ruby
+use System.ML;
+
+detector : OutlierDetector := IsolationForest->New(100, 0, 0.05, 42);   # trees, rows per tree (0: min(256, n)), contamination, seed
+if(detector->Fit(X_normal)) {
+  flags := detector->Predict(X_test);          # Bool[], true = outlier
+  scores := detector->Score(X_test);           # higher = more anomalous
+  auc := Metrics->AucRoc(scores, y_test);
+  "AUC {$auc}"->PrintLine();
+};
+```
+
+A contamination of `0.0` means "auto" (an `IsolationForest` threshold of 0.5), otherwise the threshold is that quantile of the training scores. `LocalOutlierFactor->New(k, contamination, novelty)` scores new rows only with `novelty` set to `true`; without it, `FitPredict` labels the training rows themselves, and so does `DbscanDetector` (DBSCAN's noise). `SensitivitySweep->Run(detector, settings, names, X, y)` fits and labels the same rows at a series of sensitivity settings and returns a `SweepResult` table for the usual lab comparison with known labels. `OneClassSvmDetector`, like `OneClassSVM` above, fits on normal rows.
 
 ### Clustering & Decomposition
 
@@ -1598,6 +1756,7 @@ Also `AddBullets`, `AddNumbered`, `AddChart` (a Lab `Chart`), `AddPageBreak`, `S
 The HTML (`ToHtml()`) is one file with its styles inline and no external request: a table of contents, inline SVG that scales to the page width, tables whose rows do not split across printed pages and whose header repeats, and a print stylesheet. Open it in a browser and choose Print, Save as PDF. `ToMarkdown()` writes CommonMark with pipe tables; `Save("report.md")` writes the SVG figures beside it (`report-figure-1.svg`).
 
 Word: Word opens an HTML file but does not draw its inline SVG reliably. For a `.docx`, print the HTML to PDF from a browser, or convert the Markdown with pandoc if you have it, or use PNG figures (`PlotPng->Save` from `System.Plot.SDL` needs the SDL2 natives; `AddFigureFile` embeds the result). This library was checked in Chromium-based Edge and by parsing, and not in Word. Example: `programs/examples/ml/study_report.obs`; tests `ml_report_replicates` (statistics against numpy, scipy and statsmodels), `ml_report_build` and `ml_report_golden`.
+
 ### Face verification: FAR, FRR, EER and CLIP embeddings (System.ML.Verification, System.ML.Clip)
 
 Two libraries for a verification study such as "does a CLIP image embedding separate same-person pairs from different-person pairs on Labeled Faces in the Wild". `ml_verify.obl` (in `@ai`, needs only `gen_collect`, pure Objeck, so it runs in the web playground) holds the metrics. `ml_clip.obl` (in `@vision`; needs `onnx`, `opencv`, `models`, `ml_verify`) holds the CLIP image encoder and the pair reader. No call in either ends the program on bad input: a call that cannot do its job returns a failure value (`Nil`, `false`, or a result whose `IsValid()` is false) and `GetError()` says why, `""` when there is nothing to report. A scalar with no value is `NaN`.
@@ -2076,14 +2235,14 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@std` | `json`, `json_stream`, `net`, `cipher` | everyday networked apps |
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
-| `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_verify`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
+| `@ml` | `gemini`, `openai`, `ollama`, `anthropic`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama, Anthropic |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_report`, `ml_verify`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.ML.VectorSearch / System.ML.Report / System.ML.Verification / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `ml_clip`, `ml_verify`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks, image loading and history tables |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
-Aliases and explicit names mix in any order, for either `--target` (`-lib @ai,json` and `-lib json,@ai` are the same). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`.
+`inference` and `ai_hub` are in no alias; name them. Aliases and explicit names mix in any order, for either `--target` (`-lib @ai,json` and `-lib json,@ai` are the same). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`.
 
 A group must be **closed under dependencies** — the linker loads exactly what the group lists and does not chase a member's own dependencies, so a group that omits one fails on every use, even from a program that never touches it.
 
@@ -2109,6 +2268,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Text embeddings | `Embedding` | `openai` | OpenAI |
 | Content moderation | `Moderation` | `openai` | OpenAI |
 | Batch processing | `Batch` | `openai` | OpenAI |
+| Chat, tool use, streaming, thinking | `Chat`, `Reply`, `Tool` | `anthropic` | Anthropic |
 | Generate (text/vision) | `Model::GenerateContent` | `gemini` | Gemini |
 | Structured JSON output | `Model::GenerateContent` + schema | `gemini` | Gemini |
 | Search grounding | `Model::GenerateContentWithGrounding` | `gemini` | Gemini |
@@ -2117,7 +2277,9 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | File upload | `FileManager` | `gemini` | Gemini |
 | Context caching | `CachedContent` | `gemini` | Gemini |
 | Local text gen | `Completion` / `Chat` | `ollama` | None |
-| Local embeddings | `Model::Embeddings` | `ollama` | None |
+| Local embeddings | `Model::Embeddings`, `Model::Embed` | `ollama` | None |
+| Tools, JSON schema output, thinking, timings | `Options`, `Tool`, `Reply` | `ollama` | None |
+| Ghost-text completion in the editor | language server, `objeck.inlineCompletion` | `ollama`, `anthropic`, `openai` or `gemini` | Off by default; a key for a cloud provider |
 | Face recognition | `FaceSession` | `onnx` | None |
 | Object detection | `YoloSession` | `onnx` | None |
 | Local SLM | `Phi3Session` | `onnx` | None |
@@ -2136,6 +2298,8 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Image embeddings (CLIP) and LFW pair scoring | `ClipEncoder`, `ClipPreprocessor`, `FacePairs` | `ml_clip` + `onnx`, `opencv`, `models`, `ml_verify` | A CLIP image ONNX model |
 | FAR, FRR, EER, ROC and DET points for a verifier | `Verification`, `VerificationResult`, `Similarity` | `ml_verify` | None |
 | Hugging Face Hub downloads | `HubClient` | `ai_hub` + `net`, `json`, `cipher` | Network (cache works offline) |
+| Local vector search | `VectorIndex`, `VectorMetric` | `ml_vector` | None |
+| Topic modeling, BSON | `Lda`, `BsonReader`, `TopicMetrics` | `nlp_topics` + `json`, `plot` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
 | Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid), `OneClassSVM` | `ml` | None |
@@ -2143,6 +2307,13 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Trees & ensembles | `DecisionTree`, `RandomForest`, `AdaBoost` | `ml` | None |
 | Nearest neighbors | `KNearestNeighbors`, `KDTree` | `ml` | None |
 | Clustering | `KMeans`, `DBSCAN`, `GaussianMixture` | `ml` | None |
+| Outlier detection | `OutlierDetector`: `IsolationForest`, `LocalOutlierFactor`, `EllipticEnvelope`, `ZScoreDetector`, `DbscanDetector`, `AutoencoderDetector`, `OneClassSvmDetector` | `ml` | None |
+| Metrics, bootstrap and paired bootstrap | `Metrics`, `ConfInterval` | `ml` | None |
+| Experiments, tables, charts | `Partition`, `Experiment`, `ResultTable`, `Chart` | `ml_lab` | None |
+| Replicates, t-tests, printable report | `Replicates`, `Report` | `ml_report` | None |
+| Statistics | `Stats`, `TTest`, `Correlation`, `OLS` | `stats` | None |
+| Charts | `Figure`, `Axes`, `PlotPng` | `plot`, `plot_sdl` | None |
+| Convolutional networks | `CnnModel`, `CnnTrainer`, `ImageDataset` | `ml_cnn` | None; optional NVIDIA GPU |
 | Decomposition | `PCA` | `ml` | None |
 | Neural network | `NeuralNetwork` | `ml` | None |
 | Classifier head over embeddings | `EmbeddingClassifier` | `ml` | None |
@@ -2153,15 +2324,17 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 
 ### Model Recommendations
 
-| Task | OpenAI | Gemini | Ollama |
-|---|---|---|---|
-| General chat | `gpt-4o-mini` | `gemini-2.0-flash` | `llama3.2` |
-| Reasoning | `o3-mini` | `gemini-2.5-pro` | `qwen2.5` |
-| Vision | `gpt-4o` | `gemini-2.0-flash` | `llava` |
-| Realtime audio | `gpt-4o-realtime-preview` | — | — |
-| Embeddings | `text-embedding-3-small` | `text-embedding-004` | `nomic-embed-text` |
-| Image gen | `dall-e-3` | — | — |
-| Fast + cheap | `gpt-4o-mini` | `gemini-2.5-flash` | `phi3` |
+| Task | OpenAI | Anthropic | Gemini | Ollama |
+|---|---|---|---|---|
+| General chat | `gpt-4o-mini` | `claude-sonnet-5-5` | `gemini-2.0-flash` | `llama3.2` |
+| Reasoning | `o3-mini` | `claude-sonnet-5-5` with `SetThinking` | `gemini-2.5-pro` | `qwen2.5` |
+| Vision | `gpt-4o` | — | `gemini-2.0-flash` | `llava` |
+| Realtime audio | `gpt-4o-realtime-preview` | — | — | — |
+| Embeddings | `text-embedding-3-small` | — | `text-embedding-004` | `nomic-embed-text` |
+| Image gen | `dall-e-3` | — | — | — |
+| Fast + cheap | `gpt-4o-mini` | `claude-haiku-4-5` | `gemini-2.5-flash` | `phi3` |
+
+These are starting points, not guarantees: providers retire model ids, and none of them was called while this guide was updated (see the note under each client). Ask the service what it offers (`Model->List(token)` for Gemini, `Model->List()` for Ollama) and pass the id as a string; `Model->GEMINI_2_5_FLASH()` and the other `Model` constants return Gemini ids.
 
 ### Example Programs
 Full working examples are in [`programs/frameworks/`](../programs/frameworks/):
@@ -2196,11 +2369,12 @@ The libraries in this guide are covered by the regression suite in `programs/reg
 |---|---|
 | `System.Plot`, `System.Plot.SDL` | `plot_svg.obs`, `plot_svg_more.obs` (with goldens in `plot_golden/`), `plot_view.obs`, `plot_sdl.obs` |
 | `System.ML.Cnn` | `ml_cnn_gradcheck.obs` (finite differences, float64), `ml_cnn_parity.obs` (against PyTorch, data from `tools/ml/cnn_parity.py`), `ml_cnn_parity64.obs` (float64 engine against PyTorch float64 at 64 x 64, 20 Adam steps), `ml_cnn_edges.obs`, `ml_cnn_dataset.obs`, `ml_cnn_train.obs`, and for the optional GPU backend `ml_cnn_cuda.obs`, `ml_cnn_cuda_parity.obs` (both skip without a CUDA device) and `ml_cnn_cuda_fallback.obs` (runs only without one) |
-
 | `System.Stats` | `stats_dist.obs`, `stats_ttest.obs`, `stats_corr_ols.obs`, `stats_degenerate.obs` (expected values from scipy / numpy, generated by `tools/stats/gen_stats_reference.py`) |
 | `System.ML.Verification`, `System.ML.Clip` | `ml_verify_metrics.obs` (against scikit-learn and numpy, generated by `ml_verify_golden/gen_expected.py`), `ml_clip_pairs.obs`, `ml_clip_preprocess.obs`, `ml_clip_encoder.obs` (data from `data/clip/gen_tiny_clip.py`) |
 | `System.ML.VectorSearch` | `ml_vector_exact.obs`, `ml_vector_edges.obs`, `ml_vector_validation.obs`, `ml_vector_persist.obs` |
 | `System.ML` | `ml_*.obs`, e.g. `ml_kernel_svm_reference.obs` and `ml_one_class_svm_reference.obs` (against an independent reference, generated by `tools/ml/svm_reference/gen_reference_test.py`), `ml_outlier_*.obs`, `ml_lab_*.obs` |
+| API clients | `anthropic_parse_test.obs`, `anthropic_http_test.obs` (a local mock, not api.anthropic.com), `openai_parse_test.obs`, `openai_request_test.obs`, `gemini_parse_test.obs`, `ollama_parse_test.obs`, `ollama_api_test.obs`; `api_key_insecure_tls_openai.obs`, `api_key_insecure_tls_gemini.obs` and `api_key_insecure_tls_anthropic.obs` for the key refusal while certificate checking is off |
+| Evaluation and outliers (`System.ML`) | `ml_threshold_bootstrap.obs` (`Metrics->Bootstrap`), `ml_paired_bootstrap.obs` (`PairedBootstrapDifference`), `ml_outlier_*.obs` |
 | `System.AI` | `ai_search_test.obs`, `ai_game_test.obs`, `ai_optimize_test.obs`, `ai_rl_test.obs` |
 | `System.NLP` | `nlp_*.obs`, e.g. `nlp_wordpiece_parity.obs`, `nlp_bpe_tokenizer.obs` |
 | `System.NLP.Topics` | `nlp_topics_bson.obs`, `nlp_topics_bson_pymongo.obs`, `nlp_topics_dictionary.obs`, `nlp_topics_lda.obs`, `nlp_topics_metrics.obs`, `nlp_topics_plots.obs`; the reference values come from `nlp_topics_reference.py`, `nlp_topics_bson_fixtures.py`, `nlp_topics_bson_pymongo.py` and `nlp_topics_gensim_check.py` |

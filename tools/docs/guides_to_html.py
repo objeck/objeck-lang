@@ -66,7 +66,7 @@ DOCS = {
     'docs/FEATURES.md': ('doc_features.html', 'Language and libraries', 'LF',
         'The language reference with examples: classes, generics, closures, errors, strings and more.'),
     'docs/AI.md': ('doc_ai.html', 'Language and libraries', 'AI',
-        'OpenAI, Gemini, Ollama, ONNX, OpenCV, ML and NLP, with working code.'),
+        'OpenAI, Anthropic, Gemini, Ollama, ONNX, OpenCV, ML, statistics, plotting and NLP, with working code.'),
     'docs/COLLECTIONS_GUIDE.md': ('doc_collections.html', 'Language and libraries', 'CO',
         'Choosing between Vector, Hash, Map, Set, Cache and the unboxed collections.'),
     'docs/ERROR_CONVENTIONS.md': ('doc_errors.html', 'Language and libraries', 'ER',

@@ -2,7 +2,7 @@
 
 Collection of practical code examples demonstrating Objeck's capabilities.
 
-> **AI developers:** See the full [AI & ML Developer Guide](AI.md) for comprehensive coverage of OpenAI, Gemini, Ollama, ONNX, OpenCV, and NLP.
+> **AI developers:** See the full [AI & ML Developer Guide](AI.md) for comprehensive coverage of OpenAI, Anthropic, Gemini, Ollama, ONNX, OpenCV, machine learning, and NLP.
 
 ## Table of Contents
 - [Hello World](#hello-world)
