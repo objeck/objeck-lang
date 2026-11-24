@@ -54,10 +54,17 @@ export function activate(context: ExtensionContext) {
         const clientOptions: LanguageClientOptions = {
             documentSelector: [{ scheme: 'file', language: 'objeck' }],
             synchronize: {
-                fileEvents: workspace.createFileSystemWatcher('**/build.json')
+                fileEvents: workspace.createFileSystemWatcher('**/build.json'),
+                // changes to objeck.inlineCompletion.* reach the server as
+                // workspace/didChangeConfiguration
+                configurationSection: 'objeck.inlineCompletion'
             },
-            // the server's 'Run' code lens invokes this command
-            initializationOptions: { runCommand: RUN_COMMAND }
+            // the server's 'Run' code lens invokes this command; inlineCompletion
+            // is the user's choice of ghost-text provider ('none' unless they set one)
+            initializationOptions: {
+                runCommand: RUN_COMMAND,
+                inlineCompletion: inlineCompletionSettings()
+            }
         };
 
         client = new LanguageClient('objeck_lsp', 'Objeck Language Server', serverOptions, clientOptions);
@@ -73,6 +80,18 @@ export function activate(context: ExtensionContext) {
 }
 
 const RUN_COMMAND = 'objeck.runProgram';
+
+// The objeck.inlineCompletion.* settings as the server reads them. Off ('none')
+// unless the user chose a provider: nothing is sent to a model by default.
+function inlineCompletionSettings() {
+    const section = workspace.getConfiguration('objeck.inlineCompletion');
+    return {
+        provider: section.get<string>('provider', 'none'),
+        model: section.get<string>('model', ''),
+        ollamaHost: section.get<string>('ollamaHost', 'http://localhost:11434'),
+        timeoutMs: section.get<number>('timeoutMs', 3000)
+    };
+}
 
 // What the server's 'Run' lens passes: the program's directory, and the
 // arguments for obc and for obr.

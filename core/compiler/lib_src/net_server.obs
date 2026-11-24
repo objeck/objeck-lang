@@ -27,6 +27,7 @@ bundle Web.HTTP.Server {
 		# without a limit a client that opens connections and stalls costs a thread apiece.
 		@active_connections : static : Int;
 		@max_connections : static : Int;
+		@max_body_bytes : static : Int;
 		@connection_mutex : static : System.Concurrency.ThreadMutex;
 
 		# Half-second ticks since the first Serve, for request deadlines; see RequestGuard
@@ -254,6 +255,25 @@ bundle Web.HTTP.Server {
 		~#
 		function : SetMaxConnections(max : Int) ~ Nil {
 			@max_connections := max;
+		}
+
+		#~
+		Sets the largest request body accepted, in bytes; a request whose Content-Length
+		is larger is answered 413 Content Too Large before its body is read. Call before
+		Serve. Zero (or less), the default, allows 8388608 (8 MiB). A WebServerConfig
+		that sets its own limit takes precedence.
+		@param max most body bytes
+		~#
+		function : SetMaxBodyBytes(max : Int) ~ Nil {
+			@max_body_bytes := max;
+		}
+
+		#~
+		Gets the largest request body set by SetMaxBodyBytes
+		@return most body bytes, or 0 for the default
+		~#
+		function : GetMaxBodyBytes() ~ Int {
+			return @max_body_bytes;
 		}
 
 		#~
@@ -579,6 +599,7 @@ bundle Web.HTTP.Server {
 		@file_group_handler_map : Hash<String, FileGroupHandler>;
 		@default_handler : FileHandler;
 		@content_cache : Map<String, ByteArrayRef>;
+		@max_body_bytes : Int;
 
 		#~
 		Constructor
@@ -609,6 +630,24 @@ bundle Web.HTTP.Server {
 			};
 
 			return Nil;
+		}
+
+		#~
+		Sets the largest request body accepted, in bytes; a request whose Content-Length
+		is larger is answered 413 Content Too Large before its body is read. Zero (or
+		less), the default, defers to WebServer->SetMaxBodyBytes and then to 8388608 (8 MiB).
+		@param max most body bytes
+		~#
+		method : public : SetMaxBodyBytes(max : Int) ~ Nil {
+			@max_body_bytes := max;
+		}
+
+		#~
+		Gets the largest request body this configuration accepts
+		@return most body bytes, or 0 for the default
+		~#
+		method : public : GetMaxBodyBytes() ~ Int {
+			return @max_body_bytes;
 		}
 
 		#~
@@ -2451,6 +2490,54 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	# A request as RequestGuard->ReadRequest read it: either the reason it was refused
+	# (a status text such as "413 Content Too Large"), or its verb, target, headers,
+	# body (Nil when it has none) and whether the connection may carry another request.
+	class : private : ParsedRequest {
+		@error : String;
+		@verb : String;
+		@path : String;
+		@headers : Map<String, String>;
+		@body : Byte[];
+		@persistent : Bool;
+
+		New(error : String) {
+			@error := error;
+		}
+
+		New(verb : String, path : String, headers : Map<String, String>, body : Byte[], persistent : Bool) {
+			@verb := verb;
+			@path := path;
+			@headers := headers;
+			@body := body;
+			@persistent := persistent;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : GetVerb() ~ String {
+			return @verb;
+		}
+
+		method : public : GetPath() ~ String {
+			return @path;
+		}
+
+		method : public : GetHeaders() ~ Map<String, String> {
+			return @headers;
+		}
+
+		method : public : GetBody() ~ Byte[] {
+			return @body;
+		}
+
+		method : public : IsPersistent() ~ Bool {
+			return @persistent;
+		}
+	}
+
 	# What a request must satisfy before a handler sees it. Shared by the HTTP and
 	# HTTPS request handlers. Every check answers a status code, 0 meaning accepted,
 	# so the handlers can refuse with the right one (400, 414, 431, 505).
@@ -2468,6 +2555,33 @@ bundle Web.HTTP.Server {
 
 		function : MaxHeaderBytes() ~ Int {
 			return 65536;
+		}
+
+		# The largest request body accepted, unless WebServer->SetMaxBodyBytes or
+		# WebServerConfig->SetMaxBodyBytes says otherwise; a larger Content-Length is
+		# answered 413 before any of the body is read. A body is buffered whole in memory
+		# and one thread serves each connection (up to DefaultMaxConnections), so this
+		# bounds the worst case at connections x limit. 8 MiB (it was a fixed 16 MiB, a
+		# worst case of 16 GiB) holds an ordinary form post, a JSON payload or a photo,
+		# and sits just above McpRequestHandler's 4 MiB message limit, so MCP still answers
+		# an oversized message with its own JSON-RPC error. An application that takes
+		# bigger uploads raises it.
+		function : DefaultMaxBodyBytes() ~ Int {
+			return 8388608;
+		}
+
+		# The body limit in force: the configuration's, else the server's, else the default
+		function : BodyLimit(config : WebServerConfig) ~ Int {
+			if(config <> Nil & config->GetMaxBodyBytes() > 0) {
+				return config->GetMaxBodyBytes();
+			};
+
+			limit := WebServer->GetMaxBodyBytes();
+			if(limit > 0) {
+				return limit;
+			};
+
+			return DefaultMaxBodyBytes();
 		}
 
 		# The most simultaneous connections served, unless WebServer->SetMaxConnections
@@ -2859,7 +2973,7 @@ bundle Web.HTTP.Server {
 		# arrived, and each byte that does arrive starts the socket timeout over, so a
 		# sender dripping one byte every few seconds would hold a read of 256 KB for
 		# days and the clock would never be looked at. Reading a byte at a time looks at
-		# it after every byte (about 2 MB/s, so the 16 MB limit fits in the deadline).
+		# it after every byte (about 2 MB/s, so a body of the default limit fits in the deadline).
 		# ReadBuffer rather than ReadByte, because a body may hold a zero byte and
 		# ReadByte answers zero for end of stream too. The body is gathered as it
 		# arrives, so a Content-Length of 16 MB that never delivers costs nothing.
@@ -2893,6 +3007,163 @@ bundle Web.HTTP.Server {
 			};
 
 			return body->ToByteArray();
+		}
+
+		# The connection persists unless the client or the version says otherwise: an
+		# explicit Connection header wins; otherwise HTTP/1.1 persists and HTTP/1.0 does
+		# not (RFC 9112 sec. 9.3)
+		function : IsPersistent(version : String, headers : Map<String, String>) ~ Bool {
+			if(headers <> Nil) {
+				connection := headers->Find("connection");
+				if(connection <> Nil) {
+					lowered := connection->ToLower()->Trim();
+					if(lowered->Equals("close")) {
+						return false;
+					};
+					options := lowered->Split(',');
+					each(i : options) {
+						if(options[i]->Trim()->Equals("close")) {
+							return false;
+						};
+					};
+					if(lowered->Equals("keep-alive")) {
+						return true;
+					};
+					each(i : options) {
+						if(options[i]->Trim()->Equals("keep-alive")) {
+							return true;
+						};
+					};
+				};
+			};
+
+			return version <> Nil & version->Equals("HTTP/1.1");
+		}
+
+		# Reads the header block under every limit and rule. Nil when the request is
+		# refused whole, with the status to answer in status[0].
+		function : ReadHeaders(socket : System.IO.InputStream, clock : Int[], is_debug : Bool, status : Int[]) ~ Map<String, String> {
+			headers := Map->New()<String, String>;
+
+			status[0] := 0;
+			header_count := 0;
+			header_bytes := 0;
+			header := ReadLine(socket, clock);
+			while(header <> Nil & header->Size() > 0) {
+				header_count += 1;
+				header_bytes += header->Size();
+				header_check := CheckHeaderCount(header_count, header_bytes);
+				if(header_check = 0) {
+					header_check := CheckHeaderLine(header);
+				};
+				if(header_check <> 0) {
+					status[0] := header_check;
+					return Nil;
+				};
+
+				if(is_debug) {
+					"header: {$header}"->PrintLine();
+				};
+
+				colon := header->Find(':');
+				if(colon > 0) {
+					name := header->SubString(colon)->ToLower();
+					value := header->SubString(colon + 1, header->Size() - colon - 1);
+					if(value <> Nil) {
+						value := value->Trim();
+						existing := headers->Find(name);
+						if(existing <> Nil) {
+							value := "{$existing},{$value}";
+						};
+						headers->Insert(name, value);
+					};
+				};
+
+				header := ReadLine(socket, clock);
+			};
+
+			if(header = Nil) {
+				status[0] := 408;
+				return Nil;
+			};
+
+			return headers;
+		}
+
+		# Everything between the request line and the handler, shared by the HTTP and HTTPS
+		# request handlers: validates the request line, reads and checks the headers, frames
+		# and reads the body (refusing one over BodyLimit before reading any of it). The
+		# request line is the first line, already read and not empty. The answer is the
+		# parsed request, or one whose GetError() is the status text to refuse with.
+		function : ReadRequest(request : String, socket : System.IO.InputStream, clock : Int[], debug_address : String, allow_persistence : Bool, config : WebServerConfig) ~ ParsedRequest {
+			if(request->Size() > MaxLine()) {
+				return ParsedRequest->New(StatusText(414));
+			};
+			if(debug_address <> Nil) {
+				"===\nRequest: '{$request}' from '{$debug_address}'\n==="->PrintLine();
+			};
+
+			# parse request
+			request_verb : String; request_path : String; request_version : String;
+			request_parts := request->Split(" ");
+			if(request_parts->Size() = 3) {
+				request_verb := request_parts[0];
+				request_path := request_parts[1];
+				request_version := request_parts[2];
+			};
+
+			# get request headers
+			status := Int->New[1];
+			request_headers := ReadHeaders(socket, clock, debug_address <> Nil, status);
+			if(request_headers = Nil) {
+				return ParsedRequest->New(StatusText(status[0]));
+			};
+			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
+				return ParsedRequest->New("400 Bad Request");
+			};
+			if(request_path->IsEmpty()) {
+				return ParsedRequest->New("400 Bad Request");
+			};
+
+			if(<>IsSupportedVersion(request_version)) {
+				return ParsedRequest->New(StatusText(505));
+			};
+			if(CheckHost(request_version, request_headers) <> 0) {
+				return ParsedRequest->New(StatusText(400));
+			};
+			# the path as it will be matched: an absolute-form target cut to its path, and nothing
+			# that is encoded, escaped or dotted its way out of the root (see Target)
+			request_target := Target(request_path);
+			if(request_target = Nil) {
+				return ParsedRequest->New(StatusText(400));
+			};
+
+			# Parse request framing before method dispatch. A body on GET or an
+			# unsupported method still occupies the stream and must be consumed before
+			# this connection can be reused.
+			if(request_headers->Find("transfer-encoding") <> Nil) {
+				return ParsedRequest->New("400 Bad Request");
+			};
+			content_length_str := request_headers->Find("content-length");
+			buffer : Byte[];
+			if(content_length_str <> Nil) {
+				if(content_length_str->IsNumeric() = false) {
+					return ParsedRequest->New("400 Bad Request");
+				};
+				content_length := content_length_str->ToInt();
+				if(content_length < 0 | content_length > BodyLimit(config)) {
+					return ParsedRequest->New("413 Content Too Large");
+				};
+				if(content_length > 0) {
+					buffer := ReadBody(content_length, socket, clock);
+					if(buffer = Nil) {
+						return ParsedRequest->New("400 Bad Request");
+					};
+				};
+			};
+
+			persistent := allow_persistence & IsPersistent(request_version, request_headers);
+			return ParsedRequest->New(request_verb, request_target, request_headers, buffer, persistent);
 		}
 
 		function : StatusText(code : Int) ~ String {
@@ -3659,100 +3930,28 @@ class RequestHandler from HttpsRequestHandler {
 				# peer closed, or the accepted socket's receive timeout expired
 				return false;
 			};
-			if(request->Size() > RequestGuard->MaxLine()) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(414));
-				return false;
-			};
+
+			# Everything from the request line's validation to the end of the body is shared with
+			# the other handler: RequestGuard->ReadRequest. It answers the status to refuse with, or
+			# the parsed request.
+			debug_address : String;
 			if(@is_debug) {
-				request_address := @client->GetAddress();
-				"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+				debug_address := @client->GetAddress();
 			};
-
-			# parse request
-			request_verb : String; request_path : String; request_version : String;
-			if(request->Size() > 0) {
-				request_parts := request->Split(" ");
-				if(request_parts->Size() = 3) {
-					request_verb := request_parts[0];
-					request_path := request_parts[1];
-					request_version := request_parts[2];
-				};
-			};
-
-			# get request headers
-			request_headers := GetHeaders();
-			if(request_headers = Nil) {
+			parsed := RequestGuard->ReadRequest(request, @client, @clock, debug_address, allow_persistence, @server_config);
+			if(parsed->GetError() <> Nil) {
 				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(@header_status));
+				WriteEmptyResponse(parsed->GetError());
 				return false;
 			};
-			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
-				@keep_alive := false;
-				WriteEmptyResponse("400 Bad Request");
-				return false;
-			};
-			if(request_path->IsEmpty()) {
-				@keep_alive := false;
-				WriteEmptyResponse("400 Bad Request");
-				return false;
-			};
-
-			if(<>RequestGuard->IsSupportedVersion(request_version)) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(505));
-				return false;
-			};
-			if(RequestGuard->CheckHost(request_version, request_headers) <> 0) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(400));
-				return false;
-			};
-			# the path as it will be matched: an absolute-form target cut to its path, and nothing
-			# that is encoded, escaped or dotted its way out of the root (see RequestGuard->Target)
-			request_target := RequestGuard->Target(request_path);
-			if(request_target = Nil) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(400));
-				return false;
-			};
-			request_path := request_target;
+			request_verb := parsed->GetVerb();
+			request_path := parsed->GetPath();
+			request_headers := parsed->GetHeaders();
+			buffer := parsed->GetBody();
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
-			@keep_alive := allow_persistence & IsPersistent(request_version, request_headers);
-
-			# Parse request framing before method dispatch. A body on GET or an
-			# unsupported method still occupies the stream and must be consumed before
-			# this connection can be reused.
-			if(request_headers->Find("transfer-encoding") <> Nil) {
-				@keep_alive := false;
-				WriteEmptyResponse("400 Bad Request");
-				return false;
-			};
-			content_length_str := request_headers->Find("content-length");
-			buffer : Byte[];
-			if(content_length_str <> Nil) {
-				if(content_length_str->IsNumeric() = false) {
-					@keep_alive := false;
-					WriteEmptyResponse("400 Bad Request");
-					return false;
-				};
-				content_length := content_length_str->ToInt();
-				if(content_length < 0 | content_length > 16*1048576) { # 16M body limit
-					@keep_alive := false;
-					WriteEmptyResponse("413 Content Too Large");
-					return false;
-				};
-				if(content_length > 0) {
-					buffer := RequestGuard->ReadBody(content_length, @client, @clock);
-					if(buffer = Nil) {
-						@keep_alive := false;
-						WriteEmptyResponse("400 Bad Request");
-						return false;
-					};
-				};
-			};
+			@keep_alive := parsed->IsPersistent();
 
 			# verify request
 			if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
@@ -3853,31 +4052,7 @@ class RequestHandler from HttpsRequestHandler {
 		@return true to keep the connection open
 		~#
 		method : IsPersistent(version : String, headers : Map<String, String>) ~ Bool {
-			if(headers <> Nil) {
-				connection := headers->Find("connection");
-				if(connection <> Nil) {
-					lowered := connection->ToLower()->Trim();
-					if(lowered->Equals("close")) {
-						return false;
-					};
-					options := lowered->Split(',');
-					each(i : options) {
-						if(options[i]->Trim()->Equals("close")) {
-							return false;
-						};
-					};
-					if(lowered->Equals("keep-alive")) {
-						return true;
-					};
-					each(i : options) {
-						if(options[i]->Trim()->Equals("keep-alive")) {
-							return true;
-						};
-					};
-				};
-			};
-
-			return version <> Nil & version->Equals("HTTP/1.1");
+			return RequestGuard->IsPersistent(version, headers);
 		}
 
 		#~
@@ -3885,55 +4060,14 @@ class RequestHandler from HttpsRequestHandler {
 		@return HTTP headers
 		~#
 		method : public : GetHeaders() ~ Map<String, String> {
-			headers := Map->New()<String, String>;
-			
 			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
 			# answer with in @header_status
-			@header_status := 0;
 			if(@clock = Nil) {
 				@clock := Int->New[1];
 			};
-			header_count := 0;
-			header_bytes := 0;
-			header := RequestGuard->ReadLine(@client, @clock);
-			while(header <> Nil & header->Size() > 0) {
-				header_count += 1;
-				header_bytes += header->Size();
-				header_check := RequestGuard->CheckHeaderCount(header_count, header_bytes);
-				if(header_check = 0) {
-					header_check := RequestGuard->CheckHeaderLine(header);
-				};
-				if(header_check <> 0) {
-					@header_status := header_check;
-					return Nil;
-				};
-
-				if(@is_debug) {				
-					"header: {$header}"->PrintLine();
-				};
-                
-				colon := header->Find(':');
-				if(colon > 0) {
-					name := header->SubString(colon)->ToLower();
-					value := header->SubString(colon + 1, header->Size() - colon - 1);
-					if(value <> Nil) {
-						value := value->Trim();
-						existing := headers->Find(name);
-						if(existing <> Nil) {
-							value := "{$existing},{$value}";
-						};
-						headers->Insert(name, value);
-					};
-				};
-
-				header := RequestGuard->ReadLine(@client, @clock);
-			};
-			
-			if(header = Nil) {
-				@header_status := 408;
-				return Nil;
-			};
-
+			status := Int->New[1];
+			headers := RequestGuard->ReadHeaders(@client, @clock, @is_debug, status);
+			@header_status := status[0];
 			return headers;
 		}
 
@@ -4075,100 +4209,28 @@ class RequestHandler from HttpsRequestHandler {
 				# peer closed, or the accepted socket's receive timeout expired
 				return false;
 			};
-			if(request->Size() > RequestGuard->MaxLine()) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(414));
-				return false;
-			};
+
+			# Everything from the request line's validation to the end of the body is shared with
+			# the other handler: RequestGuard->ReadRequest. It answers the status to refuse with, or
+			# the parsed request.
+			debug_address : String;
 			if(@is_debug) {
-				request_address := @client->GetAddress();
-				"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+				debug_address := @client->GetAddress();
 			};
-
-			# parse request
-			request_verb : String; request_path : String; request_version : String;
-			if(request->Size() > 0) {
-				request_parts := request->Split(" ");
-				if(request_parts->Size() = 3) {
-					request_verb := request_parts[0];
-					request_path := request_parts[1];
-					request_version := request_parts[2];
-				};
-			};
-
-			# get request headers
-			request_headers := GetHeaders();
-			if(request_headers = Nil) {
+			parsed := RequestGuard->ReadRequest(request, @client, @clock, debug_address, allow_persistence, @server_config);
+			if(parsed->GetError() <> Nil) {
 				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(@header_status));
+				WriteEmptyResponse(parsed->GetError());
 				return false;
 			};
-			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
-				@keep_alive := false;
-				WriteEmptyResponse("400 Bad Request");
-				return false;
-			};
-			if(request_path->IsEmpty()) {
-				@keep_alive := false;
-				WriteEmptyResponse("400 Bad Request");
-				return false;
-			};
-
-			if(<>RequestGuard->IsSupportedVersion(request_version)) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(505));
-				return false;
-			};
-			if(RequestGuard->CheckHost(request_version, request_headers) <> 0) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(400));
-				return false;
-			};
-			# the path as it will be matched: an absolute-form target cut to its path, and nothing
-			# that is encoded, escaped or dotted its way out of the root (see RequestGuard->Target)
-			request_target := RequestGuard->Target(request_path);
-			if(request_target = Nil) {
-				@keep_alive := false;
-				WriteEmptyResponse(RequestGuard->StatusText(400));
-				return false;
-			};
-			request_path := request_target;
+			request_verb := parsed->GetVerb();
+			request_path := parsed->GetPath();
+			request_headers := parsed->GetHeaders();
+			buffer := parsed->GetBody();
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
-			@keep_alive := allow_persistence & IsPersistent(request_version, request_headers);
-
-			# Parse request framing before method dispatch. A body on GET or an
-			# unsupported method still occupies the stream and must be consumed before
-			# this connection can be reused.
-			if(request_headers->Find("transfer-encoding") <> Nil) {
-				@keep_alive := false;
-				WriteEmptyResponse("400 Bad Request");
-				return false;
-			};
-			content_length_str := request_headers->Find("content-length");
-			buffer : Byte[];
-			if(content_length_str <> Nil) {
-				if(content_length_str->IsNumeric() = false) {
-					@keep_alive := false;
-					WriteEmptyResponse("400 Bad Request");
-					return false;
-				};
-				content_length := content_length_str->ToInt();
-				if(content_length < 0 | content_length > 16*1048576) { # 16M body limit
-					@keep_alive := false;
-					WriteEmptyResponse("413 Content Too Large");
-					return false;
-				};
-				if(content_length > 0) {
-					buffer := RequestGuard->ReadBody(content_length, @client, @clock);
-					if(buffer = Nil) {
-						@keep_alive := false;
-						WriteEmptyResponse("400 Bad Request");
-						return false;
-					};
-				};
-			};
+			@keep_alive := parsed->IsPersistent();
 
 			# verify request
 			if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
@@ -4271,31 +4333,7 @@ class RequestHandler from HttpsRequestHandler {
 		@return true to keep the connection open
 		~#
 		method : IsPersistent(version : String, headers : Map<String, String>) ~ Bool {
-			if(headers <> Nil) {
-				connection := headers->Find("connection");
-				if(connection <> Nil) {
-					lowered := connection->ToLower()->Trim();
-					if(lowered->Equals("close")) {
-						return false;
-					};
-					options := lowered->Split(',');
-					each(i : options) {
-						if(options[i]->Trim()->Equals("close")) {
-							return false;
-						};
-					};
-					if(lowered->Equals("keep-alive")) {
-						return true;
-					};
-					each(i : options) {
-						if(options[i]->Trim()->Equals("keep-alive")) {
-							return true;
-						};
-					};
-				};
-			};
-
-			return version <> Nil & version->Equals("HTTP/1.1");
+			return RequestGuard->IsPersistent(version, headers);
 		}
 
 		#~
@@ -4303,55 +4341,14 @@ class RequestHandler from HttpsRequestHandler {
 		@return HTTP headers
 		~#
 		method : public : GetHeaders() ~ Map<String, String> {
-			headers := Map->New()<String, String>;
-			
 			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
 			# answer with in @header_status
-			@header_status := 0;
 			if(@clock = Nil) {
 				@clock := Int->New[1];
 			};
-			header_count := 0;
-			header_bytes := 0;
-			header := RequestGuard->ReadLine(@client, @clock);
-			while(header <> Nil & header->Size() > 0) {
-				header_count += 1;
-				header_bytes += header->Size();
-				header_check := RequestGuard->CheckHeaderCount(header_count, header_bytes);
-				if(header_check = 0) {
-					header_check := RequestGuard->CheckHeaderLine(header);
-				};
-				if(header_check <> 0) {
-					@header_status := header_check;
-					return Nil;
-				};
-
-				if(@is_debug) {				
-					"header: {$header}"->PrintLine();
-				};
-
-				colon := header->Find(':');
-				if(colon > 0) {
-					name := header->SubString(colon)->ToLower();
-					value := header->SubString(colon + 1, header->Size() - colon - 1);
-					if(value <> Nil) {
-						value := value->Trim();
-						existing := headers->Find(name);
-						if(existing <> Nil) {
-							value := "{$existing},{$value}";
-						};
-						headers->Insert(name, value);
-					};
-				};
-
-				header := RequestGuard->ReadLine(@client, @clock);
-			};
-			
-			if(header = Nil) {
-				@header_status := 408;
-				return Nil;
-			};
-
+			status := Int->New[1];
+			headers := RequestGuard->ReadHeaders(@client, @clock, @is_debug, status);
+			@header_status := status[0];
 			return headers;
 		}
 

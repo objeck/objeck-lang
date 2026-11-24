@@ -1,0 +1,114 @@
+#~
+Write-heavy old-to-young pointer workload for the write barrier's overflow path.
+
+The write barrier records each old-generation object that gains a young reference
+in a dirty list of DIRTY_LIST_MAX entries (65536). Past that, objects are marked
+but not recorded, and the next minor collection scans the whole old generation
+instead of the list. A normal program seldom dirties 65536 objects between two
+collections, so that path is hardly ever run.
+
+dirty_list_overflow.sh builds a VM with -DOBJECK_DIRTY_LIST_MAX=64 and runs this
+with a small nursery: every collection then overflows. The program checks itself
+against a shadow copy kept in plain integers, and prints a checksum; the script
+requires the checksum to match the normal VM's. Run bare it is an ordinary
+regression test (a 128 MB nursery collects a few times).
+
+Each of the old holders is hit three ways every round: a field store, a store into
+an array the holder owns, and a store into a shared old array.
+~#
+class OverflowNode {
+  @v : Int;
+  @next : OverflowNode;
+
+  New(v : Int, next : OverflowNode) {
+    @v := v;
+    @next := next;
+  }
+
+  method : public : Value() ~ Int { return @v; }
+  method : public : Next() ~ OverflowNode { return @next; }
+}
+
+class OverflowHolder {
+  @head : OverflowNode;
+  @slots : OverflowNode[];
+
+  New() {
+    @slots := OverflowNode->New[4];
+  }
+
+  method : public : Push(v : Int, slot : Int) ~ Nil {
+    @head := OverflowNode->New(v, @head);
+    @slots[slot] := OverflowNode->New(v + 1, Nil);
+  }
+
+  method : public : Sum() ~ Int {
+    total := 0;
+    for(n := @head; n <> Nil; n := n->Next();) {
+      total += n->Value();
+    };
+    each(i : @slots) {
+      if(@slots[i] <> Nil) {
+        total += @slots[i]->Value();
+      };
+    };
+    return total;
+  }
+}
+
+class DirtyListOverflow {
+  function : Main(args : String[]) ~ Nil {
+    holders_count := 3000;
+    rounds := 60;
+
+    holders := OverflowHolder->New[holders_count];
+    shared := OverflowNode->New[holders_count];
+    expected := Int->New[holders_count];
+    each(i : holders_count) {
+      holders[i] := OverflowHolder->New();
+    };
+
+    for(r := 0; r < rounds; r += 1;) {
+      each(i : holders_count) {
+        v := r * 31 + i;
+        holders[i]->Push(v, (r + i) % 4);
+        shared[i] := OverflowNode->New(v * 2, Nil);
+        expected[i] += v;
+        # short-lived garbage, so minor collections keep coming
+        waste := Int->New[16];
+        waste[0] := v;
+      };
+    };
+
+    checksum := 0;
+    bad := 0;
+    each(i : holders_count) {
+      if(shared[i]->Value() <> (((rounds - 1) * 31 + i) * 2)) { bad += 1; };
+      checksum += holders[i]->Sum() + shared[i]->Value();
+    };
+
+    # the chain sums (every v pushed) plus the last four slot values per holder
+    want := 0;
+    each(i : holders_count) {
+      want += expected[i];
+      slot_last := Int->New[4];
+      for(r := 0; r < rounds; r += 1;) {
+        slot_last[(r + i) % 4] := r * 31 + i + 1;
+      };
+      each(k : 4) {
+        want += slot_last[k];
+      };
+      want += ((rounds - 1) * 31 + i) * 2;
+    };
+    if(want <> checksum) { bad += 1; };
+
+    "checksum={$checksum}"->PrintLine();
+    if(bad = 0) {
+      "PASS: dirty list overflow workload"->PrintLine();
+    }
+    else {
+      "FAIL: dirty list overflow workload ({$bad} mismatches)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}

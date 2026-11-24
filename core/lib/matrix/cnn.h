@@ -45,6 +45,7 @@
 #define __OBJK_CNN_H__
 
 #include <vector>
+#include "../../shared/cpu_count.h"
 #include <string>
 #include <memory>
 #include <thread>
@@ -166,7 +167,8 @@ class Pool {
 
  public:
   Pool() : job_(nullptr), total_(0), generation_(0), finished_(0), stop_(false), threads_(1) {
-    unsigned hw = std::thread::hardware_concurrency();
+    // the CPUs this process may use, not the machine's (a cluster job gets a slice)
+    unsigned hw = UsableCpuCount();
     SetThreads((int)std::min(8u, hw ? hw : 1u));
   }
 

@@ -88,20 +88,12 @@ void Loader::LoadImage()
   const int magic_num = static_cast<int>(ReadInt());
   switch(magic_num) {
   case MAGIC_NUM_LIB:
-  case MAGIC_NUM_LIB_UNQUALIFIED_ENUMS:
-  case MAGIC_NUM_LIB_NO_GENERIC_MARKS:
-  case MAGIC_NUM_LIB_NO_PARAM_NAMES:
     error << L"Cannot run '" << filename << L"': it is a library (.obl), not a program (.obe)." << std::endl
                << L"\tLink it into a program with 'obc -lib' and run that program's .obe." << std::endl;
     LoadFailed();
 
   case MAGIC_NUM_EXE:
     break;
-
-  case MAGIC_NUM_EXE_UNTYPED_INT_ARRAYS:
-    error << L"Cannot run '" << filename << L"': it was compiled before an Int[] and an object array were allocated with distinct opcodes," << std::endl
-          << L"\tso this runtime would read its object arrays as Int[]. Recompile its source with this toolchain's obc." << std::endl;
-    LoadFailed();
 
   default:
     error << L"Unknown file type for '" << filename << L"'." << std::endl;
@@ -1164,6 +1156,31 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
   }
 
+
+  // Every jump lands just past a LBL (StackInstr::JumpTargetIndex). The interpreter
+  // and the AMD64 JIT resume at the target index, the ARM64 JIT keys on the LBL one
+  // before it (JumpTargetLabelIndex); they agree only while that instruction is a LBL.
+  for(long j = 0; j < count; ++j) {
+    const StackInstr& jump = mthd_instrs[j];
+    long target = -1;
+    switch(jump.GetType()) {
+    case JMP:
+    case TRY_START:
+    case JMP_TABLE_SLOT:
+      target = jump.JumpTargetIndex();
+      break;
+
+    case JMP_TABLE:
+      target = jump.JumpDefaultTargetIndex();
+      break;
+
+    default:
+      continue;
+    }
+    if(target < 1 || mthd_instrs[target - 1].GetType() != LBL) {
+      VerifyFailed(cls, method, j, L"jump target is not just past a label");
+    }
+  }
 
   // Control must not run past the last instruction: the interpreter would read
   // the word after the array.

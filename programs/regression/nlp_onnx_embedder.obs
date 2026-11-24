@@ -390,7 +390,12 @@ class NlpOnnxEmbedder {
 		Check("a fixed sequence length other than max_len is refused: {$error}", <>wrong->IsOpen() & error <> Nil & error->Has("16"));
 		wrong->Close();
 
-		embedder := BertEmbedder->New("data/bert/tiny_bert_fixed.onnx", "data/bert/vocab.txt", 16);
+		# These checks compare against the reference to 1e-6, a precision test and not a provider test, so
+		# the model runs on the CPU provider: the macOS default (CoreML) evaluates the pooler's tanh at
+		# reduced precision and misses by 0.001251 on an M4 Max, with the old and the new ONNX Runtime alike.
+		cpu_config := Map->New()<String, String>;
+		cpu_config->Insert("ep", "cpu");
+		embedder := BertEmbedder->New("data/bert/tiny_bert_fixed.onnx", @tokenizer, 16, cpu_config);
 		Check("max_len 16 opens it", embedder->IsOpen());
 		if(<>embedder->IsOpen()) {
 			return;

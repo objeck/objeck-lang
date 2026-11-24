@@ -44,8 +44,8 @@
 *.nativecodeanalysis.sarif
 UpgradeLog.htm
 
-# Visual Studio and Xcode per-user files. The few still tracked hold debugger
-# settings or breakpoints on purpose; new ones stay local.
+# Visual Studio and Xcode per-user files (debugger settings hard-code one
+# machine's paths, so none are tracked).
 .vs/
 *.vcxproj.user
 xcuserdata/

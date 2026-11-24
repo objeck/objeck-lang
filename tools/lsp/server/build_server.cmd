@@ -50,7 +50,7 @@ copy /y %OBJECK_ROOT%\core\lib\diags.obl "%DEPLOY_DIR%\lib\diags.obl"
 
 echo ---
 
-"%OBC%" -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
+"%OBC%" -src frameworks.obs,proxy.obs,server.obs,inline_completion.obs,format_code/scanner.obs,format_code/formatter.obs -lib diags,net,json,regex,cipher,net_server,misc,ollama,anthropic,openai,gemini -dest objeck_lsp.obe
 if %ERRORLEVEL% NEQ 0 (
 	echo Build failed: objeck_lsp.obe
 	EXIT /B 1

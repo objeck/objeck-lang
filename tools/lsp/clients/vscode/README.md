@@ -32,6 +32,10 @@ For multi-file projects, add a `build.json` to the project root — see [`build.
 
 Open the folder (not just the file) in VS Code to activate workspace mode.
 
+## Inline completion (ghost text), off by default
+
+`objeck.inlineCompletion.provider` is `none` unless you change it, and then **no code is sent anywhere**. Set it to `ollama` to get suggestions from a local [Ollama](https://ollama.com) server (`objeck.inlineCompletion.ollamaHost`, default `http://localhost:11434`; a host that is not your machine receives the code around your cursor). `anthropic`, `openai` and `gemini` send that text to the company's API and need a key already configured the way the Objeck library reads it (`ANTHROPIC_API_KEY` or `anthropic_api_key.dat`, `openai_api_key.dat`, the Gemini key file). `objeck.inlineCompletion.model` overrides the provider's default model and `objeck.inlineCompletion.timeoutMs` (3000) bounds the wait; a slow or failing provider simply produces no suggestion.
+
 ## Transport
 
 Each VS Code window starts its own server over **STDIO**, launched and stopped by the language client. The extension runs `obr` from the configured install directory directly (no shell), with `OBJECK_STDIO=binary` set. It used to share one fixed named pipe between windows, so a second window reached the first window's server.

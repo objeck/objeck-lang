@@ -185,6 +185,9 @@ class Session:
         try:
             self.proc.wait(timeout=8.0)
         except subprocess.TimeoutExpired:
+            # obd must end by itself after a disconnect, even with a program still
+            # running; killing it here used to hide that it did not
+            check("obd exits by itself after disconnect", False, "still running 8 s after disconnect")
             self.proc.kill()
         return self.proc.returncode
 

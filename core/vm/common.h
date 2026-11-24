@@ -910,6 +910,36 @@ class StackInstr
     return operand3;
   }
 
+  // Jump operands -- the ONE statement of the convention. A control-flow target
+  // (the operand of JMP, TRY_START and JMP_TABLE_SLOT, and the operand3 default
+  // of JMP_TABLE) is stored as the index of the instruction that follows the
+  // target's LBL: the compiler writes "LBL index + 1" (JumpToLocation) and the
+  // loader verifies that the instruction just before it is a LBL. Execution
+  // therefore resumes AT that index (the interpreter's `ip = operand`), and the
+  // LBL itself, which emits no code, is one index earlier.
+  //   JumpTargetIndex()      the first instruction run after the jump; what the
+  //                          interpreter and the AMD64 JIT key their loop
+  //                          headers, safepoints and patching on
+  //   JumpTargetLabelIndex() the LBL that names it; what the ARM64 JIT keys on
+  // Both name the same place (a LBL emits no code); a backend picks one and uses
+  // it throughout. Never subtract 1 from a raw operand to get there.
+  inline long JumpTargetIndex() const {
+    return operand;
+  }
+
+  inline long JumpTargetLabelIndex() const {
+    return operand - 1;
+  }
+
+  // JMP_TABLE's out-of-range target, held in operand3 (the slots hold the rest)
+  inline long JumpDefaultTargetIndex() const {
+    return operand3;
+  }
+
+  inline long JumpDefaultTargetLabelIndex() const {
+    return operand3 - 1;
+  }
+
   inline INT64_VALUE GetInt64Operand() const {
     return alt_operand.int64_operand;
   }
@@ -1914,6 +1944,13 @@ class StackProgram {
 #endif
 
   static bool AddSignalHandler(long key, StackMethod* mthd);
+  // the handler registered for a VM signal id, or nullptr; safe beside AddSignalHandler
+  static StackMethod* FindSignalHandler(long key);
+  // Shutdown: StopSignalDispatch() keeps the dispatcher thread from starting another handler;
+  // WaitSignalDispatchIdle() waits (false on timeout) for one already running to return. Called by
+  // the VM, in that order around halting the other threads, before the program is freed.
+  static void StopSignalDispatch();
+  static bool WaitSignalDispatchIdle(int timeout_ms);
   StackMethod* GetSignalHandler(long key);
 
   static void InitializeProprieties();

@@ -1,0 +1,88 @@
+#~
+Loop-invariant code motion must not hoist a store that did not always run first.
+
+The optimizer moves a statement like `t := a * b` in front of a loop when its
+operands do not change in the loop. That is only sound when nothing can tell it
+now runs earlier or more often: the store ran on every iteration that reached it,
+no read of the slot comes before it in the loop, and nothing reads the slot after
+the loop (a loop that runs zero times, or an `if` around the store, would leave
+the old value). The pass used to check none of that for a slot with one store in
+the loop, so
+  - `if(i > lim) { t := a * b; }` set t even when the test never held, and
+  - `s += t; t := a * b;` read the hoisted value on the first iteration.
+Each function below has the answer the unoptimized program gives. Exits 1 on a
+failure.
+~#
+class OptLicmStoreHoist {
+  @fails : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+
+    # the store is conditional and never runs; t is read after the loop
+    Expect(NeverStores(3, 5, 100) = 10, "a conditional store that never runs leaves t at zero");
+    # the store runs for some iterations
+    Expect(SometimesStores(3, 5, 4) = 15010, "a conditional store that sometimes runs");
+    # read before write inside the loop: the first iteration sees the old value
+    Expect(ReadBeforeStore(3, 5) = 60, "a read before the store sees the previous iteration's value");
+    # the loop never runs; the store must not
+    Expect(ZeroIterations(3, 5) = 7, "a store in a loop that runs zero times does not run");
+    # the case the pass is for: stored and read only inside the loop, on every iteration
+    Expect(StillHoistable(3, 5) = 514500, "an invariant store used only inside the loop");
+
+    if(@fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: loop-invariant stores are hoisted only when that cannot be observed"->PrintLine();
+  }
+
+  function : Expect(ok : Bool, what : String) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$what}"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : NeverStores(a : Int, b : Int, lim : Int) ~ Int {
+    t : Int; n := 0;
+    for(i := 0; i < 10; i += 1;) {
+      if(i > lim) { t := a * b; };
+      n += 1;
+    };
+    return t * 1000 + n;
+  }
+
+  function : SometimesStores(a : Int, b : Int, lim : Int) ~ Int {
+    t : Int; n := 0;
+    for(i := 0; i < 10; i += 1;) {
+      if(i > lim) { t := a * b; };
+      n += 1;
+    };
+    return t * 1000 + n;
+  }
+
+  function : ReadBeforeStore(a : Int, b : Int) ~ Int {
+    n := 0; t : Int; s := 0;
+    while(n < 5) {
+      s += t;
+      t := a * b;
+      n += 1;
+    };
+    return s;
+  }
+
+  function : ZeroIterations(a : Int, b : Int) ~ Int {
+    t := 7; n := 0;
+    while(n < 0) { t := a * b; n += 1; };
+    return t;
+  }
+
+  function : StillHoistable(a : Int, b : Int) ~ Int {
+    s := 0;
+    for(i := 0; i < 1000; i += 1;) {
+      k := a * b;
+      s += k + i;
+    };
+    return s;
+  }
+}

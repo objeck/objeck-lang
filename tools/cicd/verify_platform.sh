@@ -237,6 +237,12 @@ BIN_ABS="$ROOT/$BIN"
 # ---- tests --------------------------------------------------------------------------
 regression regression "regression (default JIT)"
 regression regression_jit1 "regression (OBJECK_JIT_THRESHOLD=1)" OBJECK_JIT_THRESHOLD=1
+# The VM flag tests compile native test libraries against mbedTLS. On macOS the only copy is the
+# bundle build_macos_deps.sh made (no Homebrew mbedTLS), and run_vm_flag_tests.py finds it through
+# OBJECK_DEPS; without it two library builds fail and the 20 tests gated on them do not run.
+if [ "$(uname -s)" = Darwin ]; then
+	export OBJECK_DEPS="${OBJECK_DEPS:-$HOME/objeck-deps/darwin-arm64}"
+fi
 run_step vm_flags "VM flag tests" bash -c "cd programs/regression && python3 run_vm_flag_tests.py '$BIN_ABS'"
 run_step debugger "debugger tests" bash -c "cd programs/regression && ./run_debugger_tests.sh $ARCH"
 run_step dap "DAP tests" bash -c "cd programs/regression && python3 run_dap_tests.py '$BIN_ABS'"

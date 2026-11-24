@@ -1,0 +1,15 @@
+#~
+runtime.cpu.count is the number of CPUs this process may use, not the machine's.
+
+A cluster job given 4 of a node's 64 cores, a container run with --cpus=2 and a
+process started under taskset all see the whole machine through
+hardware_concurrency(); sizing a thread pool from that starts 64 threads on 4
+cores. The harness (run_vm_flag_tests.py) starts this program under
+OBJECK_CPU_COUNT and, on Linux, under taskset, and compares the line it prints.
+~#
+class CpuCountAffinity {
+  function : Main(args : String[]) ~ Nil {
+    count := Runtime->GetProperty("runtime.cpu.count")->ToInt();
+    "cpus={$count}"->PrintLine();
+  }
+}
