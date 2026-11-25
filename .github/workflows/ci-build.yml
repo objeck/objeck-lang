@@ -1352,6 +1352,26 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python mcp_stubs_test.py "%BIN%"
 
+    # '@tool' doc comments (docs/design/MCP_FIRST_CLASS.md): what the compiler says about a tool it cannot make,
+    # and what the scanner must leave alone (tags in strings and other comments, CRLF, a megabyte comment).
+    - name: the MCP tool tag diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_tool_tags_diag_test.py "$BIN"
+
+    - name: the MCP tool tag diagnostics hold (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_tool_tags_diag_test.py "%BIN%"
+
     # A build of several files reports each file's errors together, in the order the
     # files were given, rather than interleaved by line number.
     - name: obc reports a multi-file build's errors file by file (POSIX)

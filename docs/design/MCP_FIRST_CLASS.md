@@ -193,3 +193,53 @@ rebuilt from source into a scratch copy. They are first measurements, not a stud
 **Not possible without the compiler** (and not faked): `McpService->ExposeObject(obj)`; deriving parameter
 names, defaults, enum values, record fields and descriptions from the function; `obr prog.obe --mcp`;
 a compile error for a spec that disagrees with its function.
+
+## 7. Stage 2 (compiler): `@tool`, what was built and measured
+
+Option D1 of section 3(d), as designed. No new keyword, no grammar change, no `.obe` or `.obl` format change, no
+VM, JIT or GC change (`git diff core/vm` is empty); the compiler changes are in `scanner.{h,cpp}`,
+`parser.{h,cpp}` only.
+
+**How it works.**
+1. *Scanner.* `Scanner::Comments()` already walks every comment. For a `#~ ... ~#` comment that was closed, one
+   pass over its text looks for a line that starts with `@tool` (after blanks, followed by a blank, the end of the
+   line or the end of the comment). Only then is the text kept (`ToolDoc`) and its index put on the next token
+   (`Token::doc_id`, `-1` for every other token). Only the last comment before a token counts. Every other
+   comment is discarded exactly as before; `@tools`, `@tool_name`, a mention mid-line, the word in a string, in a
+   `//`, `#` or `/* */` comment, in a comment cut off by the end of the file, are not tags.
+2. *Parser.* `ParseClass` reads the token's `doc_id` where it meets `function`. A tagged comment before anything
+   else (a method, a constructor, a variable, an enum, a class) is an error at the comment.
+3. *Derivation.* At the end of the class, as `GenerateRecordMethods` does for records, `GenerateMcpTools` reads the
+   comment's description, tags and `@param` lines and the function's declared types (a Declaration's default
+   expression says optional), looks up enums and records among the declarations parsed so far, and writes
+   **ordinary source text**, which the same parser parses with a second scanner and adds to the class:
+   `McpTools(service)` (one `McpToolSpec` chain per tool, with `AddSchema` for each parameter's schema),
+   `McpTool_<function>(call)` (reads each argument with `GetInt`/`GetString`/..., calls the function, converts its
+   result) and `McpRead_<n>(json)` helpers for arrays, `Vector`, `Map`, enums and records. The text is one line,
+   padded with newlines, so an error in it points at the tagged function. A class with no tagged function takes
+   none of these paths.
+4. *Runtime.* The registered handlers are the library's `McpToolSpec` and `McpService` unchanged, so the checks,
+   the hints, the counters, the stub generator and `McpAgentTools` all work on the compiler's output.
+
+**Gates.**
+
+| Gate | Result |
+|---|---|
+| (a) RQ1 oracle | The 15 hand-written schemas of the repository's servers and examples, re-declared as `@tool` functions, are equal as JSON (`McpToolSpec->Same`) to the originals (`mcp_tool_tags_test`, 62 checks); every row of the mapping table (Int, Float, Bool, Byte, Char, String, JsonElement, `Int[]`, `Vector<String>`, `Map<String,IntRef>`, an enum, a record, a record with a record, an enum and an array in it, `Point[]`) has a schema check and a call check; the library's `SchemaFor` and the compiler give the same schema for the same type. |
+| (b) Byte-identical `.obe` | 5,580 compilations (1,395 sources of `programs/regression`, `programs/deploy`, `programs/examples` and `tools`, each at `-opt s0` and `s3`, with its own library list or with a wide one) by the reference obc (built from the unmodified base commit) and by the new obc: 3,348 produced identical `.obe` bytes and 2,228 failed (unresolvable library mixes) with identical text and exit code, **zero differences** over files without a tag. Four further records are one file I rewrote with tags between the two passes; compiled again with both, the reference refuses it (it has no `McpTools`) and the new one builds it. The 63 libraries rebuilt from source by the new compiler on Linux equal the committed ones except the three that changed on purpose (see the PR). |
+| (c) Compile time | 60 programs, `-opt s3`, sequential, median of 9 alternating runs: new 12.42 s, reference 12.49 s (-0.5 percent, spread 11.6 to 13.8 s). An earlier 5-run measurement of 80 programs gave +2.8 percent, inside its own spread of 1 s; the two runs disagree in sign, so the change is not distinguishable from noise. |
+| (e) Scanner fuzz | `mcp_tool_tags_diag_test.py` (a tag in a string, in `//`, `#` and `/* */` comments, mid-line, `@tools`, `@tool_name`, a comment between the tag and the function, a doc comment in a method body, nested markers, a comment cut off by the end of the file, CRLF, a 1 MB comment, non-ASCII text in a description and a default) plus a mutation fuzzer over real sources (truncate, delete, duplicate a slice, insert `@tool` anywhere, CRLF, Unicode, nested `#~`): 490 mutants, 377 without a tag compile to exactly what the reference gives, 113 with tags never crash, hang or give two answers. The loader and verifier are untouched. |
+
+**Honest limits** (also in the AI guide): enums and records must be declared in the sources being compiled and before
+the class that uses them (library enums are not visible while parsing); an enum cannot be an optional parameter or
+an array element (a default must be a literal; arrays of enums need a helper that cannot hold an enum); multi
+dimensional arrays, `ref` parameters, function types and plain classes are refused; a record result is not
+derived (return `JsonElement`), and a `JsonElement` result declares only `{"type":"object"}` as its output
+schema; the file must `use API.MCP`; a generated name (`McpTools`, `McpTool_x`, `McpRead_n`) that the class
+already uses is an error. The editor grammars highlight the tags; the language server's index is built from the
+library sources and does not know the tag.
+
+**What remains.** Stage 3: `obr prog.obe --mcp` and `--mcp-http <port>`, which find `McpTools` by name after load
+and serve (the one VM-side piece; startup only, behind the flag). Stage 4: a compiler step that runs the stub
+generator. Not done: a derived `outputSchema` from a record return type; progress and cancellation reaching an
+`AgentObserver`; reading enums and records from a library `.obl`.
