@@ -1,0 +1,1873 @@
+#~~
+# Objeck retrieval-augmented generation kit: chunking, retrieval, grounded prompts and a pipeline
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use System.ML.VectorSearch;
+
+#~
+A retrieval-augmented generation (RAG) kit: split documents into chunks, embed them, keep the vectors in a local VectorIndex together with where each chunk came from, find the chunks closest to a question, build a prompt that numbers them as sources and asks the model to cite them as [n], and call a text generator.
+
+The pieces are small and replaceable. RagEmbedder turns texts into vectors and RagGenerator turns a prompt into text; the library ships a hashing bag-of-words embedder (RagHashEmbedder) and an extractive stub (RagStubGenerator) so a whole pipeline runs offline with no key and no model, and the library rag_adapters supplies adapters over BERT sentence embeddings, CLIP, Ollama, OpenAI, Gemini and Anthropic.
+
+Nothing here ends the program on bad input or a failed call. A call that cannot do what it was asked returns Nil, false or -1 and the object keeps the reason, read with GetError(), which is "" when there is nothing to report. Chunk sizes, offsets and lengths count characters of the String, not bytes, so an accented letter is one. A character outside the Basic Multilingual Plane may count as two on a platform that stores strings as UTF-16.
+
+Not thread-safe: use one RagIndex, RagChunker and RagPipeline from one thread at a time. A RagEmbedder or RagGenerator is called from the thread that calls the pipeline.
+
+Needs gen_collect and ml_vector: compile with -lib rag,ml_vector,gen_collect.
+~#
+bundle System.ML.Rag {
+	#~
+	How RagChunker cuts a text.
+	~#
+	enum RagSplit {
+		SIZE,
+		PARAGRAPH,
+		SENTENCE
+	}
+
+	#~
+	One piece of a source text: where it came from, where it starts, and its text.
+	~#
+	class RagChunk {
+		@id : String;
+		@source : String;
+		@offset : Int;
+		@text : String;
+
+		#~
+		Creates a chunk.
+		@param id unique id, "source#n" for the chunker's chunks
+		@param source name of the document it came from (a file name, a URL, a title)
+		@param offset position of its first character in the source text
+		@param text the chunk text
+		~#
+		New(id : String, source : String, offset : Int, text : String) {
+			@id := id;
+			@source := source;
+			@offset := offset;
+			@text := text;
+		}
+
+		#~
+		The chunk's id, the key of its vector in the index.
+		@return id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		The document the chunk came from.
+		@return source name
+		~#
+		method : public : GetSource() ~ String {
+			return @source;
+		}
+
+		#~
+		Where the chunk starts in its source text, in characters from 0.
+		@return offset
+		~#
+		method : public : GetOffset() ~ Int {
+			return @offset;
+		}
+
+		#~
+		The chunk text.
+		@return text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Length of the chunk text in characters.
+		@return length
+		~#
+		method : public : GetLength() ~ Int {
+			return @text->Size();
+		}
+
+		#~
+		A short description: id, offset and length.
+		@return description
+		~#
+		method : public : ToString() ~ String {
+			return "{$@id} @{$@offset} +{$@text->Size()}";
+		}
+	}
+
+	#~
+	Cuts a text into RagChunk pieces. Three modes (RagSplit): SIZE cuts windows of size characters that overlap by overlap characters; PARAGRAPH and SENTENCE keep paragraphs (separated by a blank line) or sentences (ended by . ! or ? and a space or the end) whole and pack as many as fit in size characters into a chunk, so a chunk never starts or ends in the middle of one. A single paragraph or sentence longer than size is cut by SIZE, with the overlap. Chunk text is the original text, so offset + length never passes the end of the source.
+
+	Every chunk's id is the source name, "#" and the chunk's number from 0 in that call. A text that is empty or only whitespace gives no chunks. A chunker built with a bad size or overlap is not valid: IsValid() is false, GetError() says why and every call gives an empty vector.
+
+```
+chunker := RagChunker->New(200, 20);
+chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
+"{$chunks->Size()} chunks"->PrintLine();
+```
+	~#
+	class RagChunker {
+		@size : Int;
+		@overlap : Int;
+		@mode : RagSplit;
+		@error : String;
+
+		#~
+		Creates a chunker in SIZE mode.
+		@param size largest chunk in characters, 1 or more
+		@param overlap characters shared by neighbouring SIZE chunks, from 0 to size - 1
+		~#
+		New(size : Int, overlap : Int) {
+			@size := size;
+			@overlap := overlap;
+			@mode := RagSplit->SIZE;
+			@error := "";
+			if(size < 1) {
+				@error := "size must be 1 or more, got {$size}";
+			}
+			else if(overlap < 0 | overlap >= size) {
+				@error := "overlap must be from 0 to size - 1 ({$size - 1}), got {$overlap}";
+			};
+		}
+
+		#~
+		Creates a chunker with the given mode.
+		@param size largest chunk in characters, 1 or more
+		@param overlap characters shared by neighbouring SIZE chunks (also used when a long paragraph or sentence is cut), from 0 to size - 1
+		@param mode how to cut
+		~#
+		New(size : Int, overlap : Int, mode : RagSplit) {
+			@size := size;
+			@overlap := overlap;
+			@mode := mode;
+			@error := "";
+			if(size < 1) {
+				@error := "size must be 1 or more, got {$size}";
+			}
+			else if(overlap < 0 | overlap >= size) {
+				@error := "overlap must be from 0 to size - 1 ({$size - 1}), got {$overlap}";
+			};
+		}
+
+		#~
+		Whether size and overlap are usable.
+		@return true if Split will cut
+		~#
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		Why the chunker is not valid.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The largest chunk in characters.
+		@return size
+		~#
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		#~
+		The SIZE overlap in characters.
+		@return overlap
+		~#
+		method : public : GetOverlap() ~ Int {
+			return @overlap;
+		}
+
+		#~
+		How this chunker cuts.
+		@return mode
+		~#
+		method : public : GetMode() ~ RagSplit {
+			return @mode;
+		}
+
+		#~
+		Cuts a text in this chunker's mode.
+		@param source name of the document, used in the chunk ids
+		@param text the text
+		@return chunks in text order; empty (never Nil) for an empty text or an invalid chunker
+		~#
+		method : public : Split(source : String, text : String) ~ Vector<RagChunk> {
+			if(@mode = RagSplit->PARAGRAPH) {
+				return SplitParagraphs(source, text);
+			}
+			else if(@mode = RagSplit->SENTENCE) {
+				return SplitSentences(source, text);
+			};
+
+			return SplitBySize(source, text);
+		}
+
+		#~
+		Cuts a text into windows of size characters that overlap by overlap characters, whatever the mode. The last window ends at the end of the text, and there is no trailing window that the one before already holds: ten characters with size 5 and overlap 0 are two chunks, with size 5 and overlap 2 are 0-5, 3-8 and 5-10. A window of only whitespace is dropped.
+		@param source name of the document
+		@param text the text
+		@return chunks in text order; empty for an empty text or an invalid chunker
+		~#
+		method : public : SplitBySize(source : String, text : String) ~ Vector<RagChunk> {
+			chunks := Vector->New()<RagChunk>;
+			if(<>IsValid() | text = Nil | text->Size() = 0) {
+				return chunks;
+			};
+
+			length := text->Size();
+			stride := @size - @overlap;
+			start := 0;
+			done := false;
+			while(<>done) {
+				end := start + @size;
+				if(end >= length) {
+					end := length;
+					done := true;
+				};
+				AddChunk(chunks, source, text, start, end);
+				start += stride;
+			};
+
+			return chunks;
+		}
+
+		#~
+		Packs whole paragraphs (separated by a blank line) into chunks of up to size characters, whatever the mode.
+		@param source name of the document
+		@param text the text
+		@return chunks in text order; empty for an empty text or an invalid chunker
+		~#
+		method : public : SplitParagraphs(source : String, text : String) ~ Vector<RagChunk> {
+			chunks := Vector->New()<RagChunk>;
+			if(<>IsValid() | text = Nil | text->Size() = 0) {
+				return chunks;
+			};
+
+			Pack(chunks, source, text, ParagraphSpans(text));
+			return chunks;
+		}
+
+		#~
+		Packs whole sentences into chunks of up to size characters, whatever the mode.
+		@param source name of the document
+		@param text the text
+		@return chunks in text order; empty for an empty text or an invalid chunker
+		~#
+		method : public : SplitSentences(source : String, text : String) ~ Vector<RagChunk> {
+			chunks := Vector->New()<RagChunk>;
+			if(<>IsValid() | text = Nil | text->Size() = 0) {
+				return chunks;
+			};
+
+			Pack(chunks, source, text, SentenceSpans(text));
+			return chunks;
+		}
+
+		method : AddChunk(chunks : Vector<RagChunk>, source : String, text : String, start : Int, end : Int) ~ Nil {
+			piece := text->SubString(start, end - start);
+			if(piece->Trim()->Size() = 0) {
+				return;
+			};
+
+			chunks->AddBack(RagChunk->New("{$source}#{$chunks->Size()}", source, start, piece));
+		}
+
+		# spans are [start, end) pairs in two parallel lists, whitespace trimmed away
+		method : Pack(chunks : Vector<RagChunk>, source : String, text : String, spans : Vector<IntRef>) ~ Nil {
+			first := -1;
+			last := -1;
+			i := 0;
+			while(i < spans->Size()) {
+				start := spans->Get(i)->Get();
+				end := spans->Get(i + 1)->Get();
+				i += 2;
+
+				if(end - start > @size) {
+					Flush(chunks, source, text, first, last);
+					first := -1;
+					last := -1;
+					CutLong(chunks, source, text, start, end);
+				}
+				else if(first < 0) {
+					first := start;
+					last := end;
+				}
+				else if(end - first <= @size) {
+					last := end;
+				}
+				else {
+					Flush(chunks, source, text, first, last);
+					first := start;
+					last := end;
+				};
+			};
+
+			Flush(chunks, source, text, first, last);
+		}
+
+		method : Flush(chunks : Vector<RagChunk>, source : String, text : String, first : Int, last : Int) ~ Nil {
+			if(first >= 0) {
+				AddChunk(chunks, source, text, first, last);
+			};
+		}
+
+		# a unit longer than size is cut into overlapping windows of its own
+		method : CutLong(chunks : Vector<RagChunk>, source : String, text : String, start : Int, end : Int) ~ Nil {
+			stride := @size - @overlap;
+			at := start;
+			done := false;
+			while(<>done) {
+				to := at + @size;
+				if(to >= end) {
+					to := end;
+					done := true;
+				};
+				AddChunk(chunks, source, text, at, to);
+				at += stride;
+			};
+		}
+
+		function : IsSpace(c : Char) ~ Bool {
+			code := c->As(Int);
+			return code = 32 | code = 9 | code = 10 | code = 13 | code = 11 | code = 12 | code = 160;
+		}
+
+		# trims whitespace off [start, end) and adds the span when something is left
+		function : AddSpan(spans : Vector<IntRef>, text : String, start : Int, end : Int) ~ Nil {
+			while(start < end & IsSpace(text->Get(start))) {
+				start += 1;
+			};
+			while(end > start & IsSpace(text->Get(end - 1))) {
+				end -= 1;
+			};
+
+			if(end > start) {
+				spans->AddBack(IntRef->New(start));
+				spans->AddBack(IntRef->New(end));
+			};
+		}
+
+		# paragraphs: runs of lines split at a line that holds only whitespace
+		function : ParagraphSpans(text : String) ~ Vector<IntRef> {
+			spans := Vector->New()<IntRef>;
+			length := text->Size();
+			para_start := 0;
+			line_start := 0;
+			i := 0;
+			while(i <= length) {
+				if(i = length | text->Get(i)->As(Int) = 10) {
+					blank := true;
+					j := line_start;
+					while(j < i & blank) {
+						if(<>IsSpace(text->Get(j))) {
+							blank := false;
+						};
+						j += 1;
+					};
+
+					if(blank) {
+						AddSpan(spans, text, para_start, line_start);
+						para_start := i + 1;
+					};
+					line_start := i + 1;
+				};
+				i += 1;
+			};
+			AddSpan(spans, text, para_start, length);
+
+			return spans;
+		}
+
+		# sentences: end at . ! or ? (and any closing quote or bracket) followed by whitespace or the end
+		function : SentenceSpans(text : String) ~ Vector<IntRef> {
+			spans := Vector->New()<IntRef>;
+			length := text->Size();
+			start := 0;
+			i := 0;
+			while(i < length) {
+				code := text->Get(i)->As(Int);
+				if(code = 46 | code = 33 | code = 63) {
+					end := i + 1;
+					while(end < length & IsCloser(text->Get(end))) {
+						end += 1;
+					};
+
+					if(end = length | IsSpace(text->Get(end))) {
+						AddSpan(spans, text, start, end);
+						start := end;
+						i := end;
+					}
+					else {
+						i += 1;
+					};
+				}
+				else {
+					i += 1;
+				};
+			};
+			AddSpan(spans, text, start, length);
+
+			return spans;
+		}
+
+		function : IsCloser(c : Char) ~ Bool {
+			code := c->As(Int);
+			return code = 34 | code = 39 | code = 41 | code = 93;
+		}
+	}
+
+	#~
+	A chunk found by a search: the chunk, its score and its place in the results.
+	~#
+	class RagMatch {
+		@chunk : RagChunk;
+		@score : Float;
+		@rank : Int;
+
+		#~
+		Creates a match.
+		@param chunk the chunk
+		@param score the index's score: for COSINE and DOT higher is closer, for L2 the distance, so lower is closer
+		@param rank 1 for the closest, 2 for the next, and so on
+		~#
+		New(chunk : RagChunk, score : Float, rank : Int) {
+			@chunk := chunk;
+			@score := score;
+			@rank := rank;
+		}
+
+		#~
+		The chunk.
+		@return chunk
+		~#
+		method : public : GetChunk() ~ RagChunk {
+			return @chunk;
+		}
+
+		#~
+		The score.
+		@return score
+		~#
+		method : public : GetScore() ~ Float {
+			return @score;
+		}
+
+		#~
+		The place in the results, 1 for the closest.
+		@return rank
+		~#
+		method : public : GetRank() ~ Int {
+			return @rank;
+		}
+	}
+
+	#~
+	Turns texts into vectors. Implement it to plug in any embedding model; the library rag_adapters has implementations over BERT, CLIP, Ollama, OpenAI and Gemini. A failure returns Nil and GetError() says why. Every vector from one embedder has the same length, and the same text always gives the same vector.
+
+```
+class FirstLetters implements RagEmbedder {
+  method : public : GetDimension() ~ Int { return 26; }
+  method : public : GetError() ~ String { return ""; }
+  method : public : Embed(texts : String[]) ~ Float[,] {
+    out := Float->New[texts->Size(), 26];
+    each(i : texts) {
+      if(texts[i]->Size() > 0) {
+        c := texts[i]->Get(0)->As(Int) - 'a'->As(Int);
+        if(c >= 0 & c < 26) { out[i, c] := 1.0; };
+      };
+    };
+    return out;
+  }
+}
+```
+	~#
+	interface RagEmbedder {
+		#~
+		Length of the vectors, or 0 when it is not known until the first Embed.
+		@return dimension
+		~#
+		method : virtual : public : GetDimension() ~ Int;
+
+		#~
+		Embeds texts.
+		@param texts one or more texts
+		@return one row per text, GetDimension() columns; Nil on failure (see GetError)
+		~#
+		method : virtual : public : Embed(texts : String[]) ~ Float[,];
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	Turns a prompt into text. Implement it to plug in any language model; the library rag_adapters has implementations over Ollama, OpenAI, Anthropic and Gemini. A failure returns Nil and GetError() says why.
+
+```
+class Shout implements RagGenerator {
+  method : public : GetError() ~ String { return ""; }
+  method : public : Generate(prompt : String) ~ String { return prompt->ToUpper(); }
+}
+```
+	~#
+	interface RagGenerator {
+		#~
+		Generates the reply to a prompt.
+		@param prompt the whole prompt
+		@return the reply text; Nil on failure (see GetError)
+		~#
+		method : virtual : public : Generate(prompt : String) ~ String;
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	A toy embedder for tests and offline demos: a hashed bag of words. Text is lower-cased and split into words (ASCII letters and digits, and any character above 127); each word that is not a common English stop word adds 1 to the bucket its hash picks out of dim buckets. Two texts that share words get close vectors, texts that share none get orthogonal ones (barring a bucket collision), so a search ranks by shared vocabulary. It knows nothing about meaning: "car" and "automobile" are unrelated. The same text always gives the same vector, on every platform.
+
+```
+embedder := RagHashEmbedder->New(256);
+vectors := embedder->Embed(["red apples", "green pears"]);
+"{$embedder->GetDimension()}"->PrintLine();
+```
+	~#
+	class RagHashEmbedder implements RagEmbedder {
+		@dim : Int;
+		@stop : Hash<String, IntRef>;
+
+		#~
+		Creates an embedder with 256 buckets.
+		~#
+		New() {
+			Init(256);
+		}
+
+		#~
+		Creates an embedder.
+		@param dim number of buckets, 1 or more (a value below 1 gives 256)
+		~#
+		New(dim : Int) {
+			Init(dim);
+		}
+
+		method : Init(dim : Int) ~ Nil {
+			@dim := dim;
+			if(@dim < 1) {
+				@dim := 256;
+			};
+
+			@stop := Hash->New()<String, IntRef>;
+			words := ["a", "an", "and", "are", "as", "at", "be", "by", "can", "do", "does", "for", "from", "has", "have", "how", "in", "is", "it", "its", "of", "on", "or", "that", "the", "this", "to", "was", "were", "what", "when", "where", "which", "who", "why", "with"];
+			each(w : words) {
+				@stop->Insert(words[w], IntRef->New(1));
+			};
+		}
+
+		#~
+		The number of buckets.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dim;
+		}
+
+		#~
+		Always "": the toy embedder does not fail.
+		@return ""
+		~#
+		method : public : GetError() ~ String {
+			return "";
+		}
+
+		#~
+		The words of a text as this embedder sees them: lower case, stop words dropped.
+		@param text the text
+		@return words in order of appearance
+		~#
+		method : public : Words(text : String) ~ Vector<String> {
+			words := Vector->New()<String>;
+			if(text = Nil) {
+				return words;
+			};
+
+			lower := text->ToLower();
+			word := "";
+			each(i : lower) {
+				c := lower->Get(i);
+				if(IsWordChar(c)) {
+					word += c;
+				}
+				else {
+					AddWord(words, word);
+					word := "";
+				};
+			};
+			AddWord(words, word);
+
+			return words;
+		}
+
+		method : AddWord(words : Vector<String>, word : String) ~ Nil {
+			if(word->Size() > 0 & @stop->Find(word) = Nil) {
+				words->AddBack(word);
+			};
+		}
+
+		function : IsWordChar(c : Char) ~ Bool {
+			code := c->As(Int);
+			return (code >= 48 & code <= 57) | (code >= 97 & code <= 122) | code > 127;
+		}
+
+		function : Bucket(word : String, dim : Int) ~ Int {
+			h := 5381;
+			each(i : word) {
+				h := (h * 33 + word->Get(i)->As(Int)) % 2147483629;
+			};
+
+			return h % dim;
+		}
+
+		#~
+		Embeds texts.
+		@param texts one or more texts
+		@return one row per text, GetDimension() columns of word counts; Nil if texts is Nil or empty
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			if(texts = Nil | texts->Size() = 0) {
+				return Nil;
+			};
+
+			out := Float->New[texts->Size(), @dim];
+			each(i : texts) {
+				words := Words(texts[i]);
+				each(w : words) {
+					b := Bucket(words->Get(w), @dim);
+					out[i, b] := out[i, b] + 1.0;
+				};
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	A generator for tests and offline demos that needs no model: it answers with the sentence of source [1] that shares the most words with the question (the first one on a tie) and cites it, "... [1]", or says it does not know when the prompt has no sources. It keeps the last prompt and a call count so a test can see what the pipeline sent.
+
+```
+generator := RagStubGenerator->New();
+reply := generator->Generate("Sources:\n[1] Objeck is a language. It is fast.\n\nQuestion: what?");
+reply->PrintLine();
+```
+	~#
+	class RagStubGenerator implements RagGenerator {
+		@last_prompt : String;
+		@calls : Int;
+		@fail : Bool;
+
+		New() {
+			@last_prompt := "";
+			@calls := 0;
+			@fail := false;
+		}
+
+		#~
+		Makes every later call fail, to test the failure path of a pipeline.
+		@param fail true to fail
+		~#
+		method : public : SetFail(fail : Bool) ~ Nil {
+			@fail := fail;
+		}
+
+		#~
+		The prompt of the last call.
+		@return prompt, or "" before the first call
+		~#
+		method : public : GetLastPrompt() ~ String {
+			return @last_prompt;
+		}
+
+		#~
+		How many times Generate was called.
+		@return count
+		~#
+		method : public : GetCalls() ~ Int {
+			return @calls;
+		}
+
+		#~
+		The failure reason: "" or what SetFail set up.
+		@return the reason
+		~#
+		method : public : GetError() ~ String {
+			if(@fail) {
+				return "stub generator set to fail";
+			};
+
+			return "";
+		}
+
+		#~
+		Answers from source [1] of the prompt.
+		@param prompt the prompt
+		@return the answer; Nil if set to fail
+		~#
+		method : public : Generate(prompt : String) ~ String {
+			@calls += 1;
+			@last_prompt := prompt;
+			if(@fail) {
+				return Nil;
+			};
+
+			if(prompt = Nil) {
+				return "I do not know.";
+			};
+
+			start := -1;
+			at := prompt->Find("\n[1] ");
+			if(at > -1) {
+				start := at + 5;
+			}
+			else if(prompt->StartsWith("[1] ")) {
+				start := 4;
+			};
+
+			if(start < 0) {
+				return "I do not know.";
+			};
+
+			end := prompt->Find(start, "\n");
+			if(end < 0) {
+				end := prompt->Size();
+			};
+
+			line := prompt->SubString(start, end - start);
+			line := BestSentence(line, QuestionOf(prompt));
+
+			return "{$line} [1]";
+		}
+
+		# the question line of a RagPromptBuilder prompt, or "" when there is none
+		function : QuestionOf(prompt : String) ~ String {
+			at := prompt->FindLast("\nQuestion: ");
+			if(at < 0) {
+				return "";
+			};
+
+			start := at + 11;
+			end := prompt->Find(start, "\nAnswer:");
+			if(end < 0) {
+				end := prompt->Size();
+			};
+
+			return prompt->SubString(start, end - start);
+		}
+
+		# the sentence of the text that shares the most words with the question; the first on a tie
+		function : BestSentence(text : String, question : String) ~ String {
+			spans := RagChunker->SentenceSpans(text);
+			if(spans->Size() = 0) {
+				return text;
+			};
+
+			embedder := RagHashEmbedder->New(16);
+			wanted := Hash->New()<String, IntRef>;
+			words := embedder->Words(question);
+			each(w : words) {
+				wanted->Insert(words->Get(w), IntRef->New(1));
+			};
+
+			best := 0;
+			best_score := -1;
+			i := 0;
+			while(i < spans->Size()) {
+				start := spans->Get(i)->Get();
+				end := spans->Get(i + 1)->Get();
+				score := 0;
+				sentence_words := embedder->Words(text->SubString(start, end - start));
+				each(w : sentence_words) {
+					if(wanted->Find(sentence_words->Get(w)) <> Nil) {
+						score += 1;
+					};
+				};
+
+				if(score > best_score) {
+					best_score := score;
+					best := i;
+				};
+				i += 2;
+			};
+
+			start := spans->Get(best)->Get();
+			end := spans->Get(best + 1)->Get();
+			return text->SubString(start, end - start);
+		}
+	}
+
+
+	#~
+	A vector index that remembers where each vector came from: a VectorIndex of chunk vectors plus the RagChunk (source, offset, text) behind every id, so a search returns chunks, not bare ids, and a whole index saves to and loads from one file. Adding a chunk whose id is already present replaces it. Nothing here ends the program: a refused call returns false, -1 or Nil and GetError() says why.
+
+```
+index := RagIndex->New(3, VectorMetric->COSINE);
+index->Add(RagChunk->New("a#0", "a", 0, "alpha"), [1.0, 0.0, 0.0]);
+index->Add(RagChunk->New("b#0", "b", 0, "beta"), [0.0, 1.0, 0.0]);
+found := index->Search([0.9, 0.1, 0.0], 1);
+found->Get(0)->GetChunk()->GetText()->PrintLine();
+index->Store("rag.idx");
+```
+	~#
+	class RagIndex {
+		@dim : Int;
+		@metric : VectorMetric;
+		@vectors : VectorIndex;
+		@chunks : Hash<String, RagChunk>;
+		@order : Vector<RagChunk>;
+		@error : String;
+
+		#~
+		Creates an empty index.
+		@param dim length of every vector, 1 or more
+		@param metric how vectors are ranked against a query
+		~#
+		New(dim : Int, metric : VectorMetric) {
+			@dim := dim;
+			@metric := metric;
+			@error := "";
+			@vectors := VectorIndex->New(dim, metric);
+			@chunks := Hash->New()<String, RagChunk>;
+			@order := Vector->New()<RagChunk>;
+			if(<>@vectors->IsValid()) {
+				@error := @vectors->GetError();
+			};
+		}
+
+		#~
+		Whether the index was created with a usable dimension.
+		@return true if it accepts chunks
+		~#
+		method : public : IsValid() ~ Bool {
+			return @vectors->IsValid();
+		}
+
+		#~
+		Why the last call was refused.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Length of the vectors.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dim;
+		}
+
+		#~
+		How vectors are ranked.
+		@return metric
+		~#
+		method : public : GetMetric() ~ VectorMetric {
+			return @metric;
+		}
+
+		#~
+		Number of chunks held.
+		@return count
+		~#
+		method : public : Size() ~ Int {
+			return @order->Size();
+		}
+
+		#~
+		Whether a chunk id is held.
+		@param id chunk id
+		@return true if present
+		~#
+		method : public : Contains(id : String) ~ Bool {
+			return id <> Nil & @chunks->Find(id) <> Nil;
+		}
+
+		#~
+		Looks a chunk up by id.
+		@param id chunk id
+		@return the chunk, or Nil
+		~#
+		method : public : GetChunk(id : String) ~ RagChunk {
+			if(id = Nil) {
+				return Nil;
+			};
+
+			return @chunks->Find(id);
+		}
+
+		#~
+		The vector stored for a chunk.
+		@param id chunk id
+		@return a copy of the vector, or Nil
+		~#
+		method : public : GetVector(id : String) ~ Float[] {
+			return @vectors->Get(id);
+		}
+
+		#~
+		Every chunk, in the order they were added.
+		@return a copy of the list
+		~#
+		method : public : GetChunks() ~ Vector<RagChunk> {
+			copy := Vector->New()<RagChunk>;
+			each(i : @order) {
+				copy->AddBack(@order->Get(i));
+			};
+
+			return copy;
+		}
+
+		#~
+		Sets how many threads a search may use on a large index (see VectorIndex->SetThreads).
+		@param threads thread count, 1 or more
+		~#
+		method : public : SetThreads(threads : Int) ~ Nil {
+			@vectors->SetThreads(threads);
+		}
+
+		#~
+		Adds a chunk and its vector; a chunk with the same id is replaced.
+		@param chunk the chunk, with a non-empty id
+		@param vector vector of exactly the index's dimension
+		@return true if stored, false if refused (GetError() says why)
+		~#
+		method : public : Add(chunk : RagChunk, vector : Float[]) ~ Bool {
+			if(chunk = Nil) {
+				return Fail("chunk is Nil");
+			};
+
+			id := chunk->GetId();
+			if(id = Nil | id->Size() = 0) {
+				return Fail("chunk id is Nil or empty");
+			};
+
+			if(<>@vectors->Add(id, vector)) {
+				return Fail(@vectors->GetError());
+			};
+
+			@error := "";
+			if(@chunks->Find(id) <> Nil) {
+				each(i : @order) {
+					if(@order->Get(i)->GetId()->Equals(id)) {
+						@order->Set(chunk, i);
+					};
+				};
+			}
+			else {
+				@order->AddBack(chunk);
+			};
+			@chunks->Insert(id, chunk);
+
+			return true;
+		}
+
+		method : Fail(reason : String) ~ Bool {
+			@error := reason;
+			return false;
+		}
+
+		#~
+		Removes a chunk.
+		@param id chunk id
+		@return true if it was present
+		~#
+		method : public : Remove(id : String) ~ Bool {
+			if(id = Nil | @chunks->Find(id) = Nil) {
+				return false;
+			};
+
+			@vectors->Remove(id);
+			@chunks->Remove(id);
+			each(i : @order) {
+				if(@order->Get(i)->GetId()->Equals(id)) {
+					@order->Remove(i);
+					return true;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Removes every chunk that came from a source.
+		@param source the source name
+		@return how many chunks were removed
+		~#
+		method : public : RemoveSource(source : String) ~ Int {
+			doomed := Vector->New()<String>;
+			each(i : @order) {
+				chunk := @order->Get(i);
+				if(source <> Nil & chunk->GetSource() <> Nil & chunk->GetSource()->Equals(source)) {
+					doomed->AddBack(chunk->GetId());
+				};
+			};
+
+			each(i : doomed) {
+				Remove(doomed->Get(i));
+			};
+
+			return doomed->Size();
+		}
+
+		#~
+		The k chunks closest to a query vector, closest first.
+		@param query vector of exactly the index's dimension
+		@param k how many to return
+		@return matches, closest first, ranks from 1; empty, never Nil (an empty index, a refused query and k below 1 give none; GetError() says which)
+		~#
+		method : public : Search(query : Float[], k : Int) ~ Vector<RagMatch> {
+			matches := Vector->New()<RagMatch>;
+			hits := @vectors->Search(query, k);
+			@error := @vectors->GetError();
+			each(i : hits) {
+				hit := hits->Get(i);
+				chunk := @chunks->Find(hit->GetId());
+				if(chunk <> Nil) {
+					matches->AddBack(RagMatch->New(chunk, hit->GetScore(), matches->Size() + 1));
+				};
+			};
+
+			return matches;
+		}
+
+		#~
+		Writes the index to one file: a 12-byte header (the tag ORAG, a format byte, three reserved zero bytes, a CRC32 of the body), then the body (dimension, metric, count, and for each chunk its id, source, offset, text and vector).
+		@param filename file to write
+		@return true if written, false if the index is invalid or the file cannot be written (GetError() says why)
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsValid()) {
+				return Fail("the index has no valid dimension");
+			};
+
+			if(filename = Nil | filename->Size() = 0) {
+				return Fail("file name is Nil or empty");
+			};
+
+			code := 0;
+			if(@metric = VectorMetric->DOT) {
+				code := 1;
+			}
+			else if(@metric = VectorMetric->L2) {
+				code := 2;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@dim);
+			serializer->Write(code);
+			serializer->Write(@order->Size());
+			each(i : @order) {
+				chunk := @order->Get(i);
+				serializer->Write(Bytes(chunk->GetId()));
+				serializer->Write(Bytes(chunk->GetSource()));
+				serializer->Write(chunk->GetOffset());
+				serializer->Write(Bytes(chunk->GetText()));
+				serializer->Write(@vectors->Get(chunk->GetId()));
+			};
+
+			body := serializer->Serialize();
+			crc := Byte->CRC32(body);
+			file := Byte->New[12 + body->Size()];
+			file[0] := 'O'->As(Byte);
+			file[1] := 'R'->As(Byte);
+			file[2] := 'A'->As(Byte);
+			file[3] := 'G'->As(Byte);
+			file[4] := 1->As(Byte);
+			file[8] := ByteOf(crc, 24);
+			file[9] := ByteOf(crc, 16);
+			file[10] := ByteOf(crc, 8);
+			file[11] := ByteOf(crc, 0);
+			Byte->Copy(file, 12, body, 0, body->Size());
+
+			if(<>System.IO.Filesystem.FileWriter->WriteFile(filename, file)) {
+				return Fail("cannot write '{$filename}'");
+			};
+
+			@error := "";
+			return true;
+		}
+
+		function : Bytes(text : String) ~ Byte[] {
+			if(text = Nil | text->Size() = 0) {
+				return Byte->New[0];
+			};
+
+			return text->ToByteArray();
+		}
+
+		function : Text(bytes : Byte[]) ~ String {
+			if(bytes = Nil | bytes->Size() = 0) {
+				return "";
+			};
+
+			return String->New(bytes);
+		}
+
+		function : ByteOf(value : Int, shift : Int) ~ Byte {
+			return ((value >>> shift) % 256)->As(Byte);
+		}
+
+		#~
+		Reads an index written by Store. A file that is missing, is not an index, is from a newer format, or fails its CRC32 (truncated or damaged) gives Nil rather than ending the program.
+		@param filename file to read
+		@return the index, or Nil
+		~#
+		function : Load(filename : String) ~ RagIndex {
+			if(filename = Nil | filename->Size() = 0) {
+				return Nil;
+			};
+
+			file := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(file = Nil | file->Size() < 13) {
+				return Nil;
+			};
+
+			if(file[0] <> 'O'->As(Byte) | file[1] <> 'R'->As(Byte) | file[2] <> 'A'->As(Byte) | file[3] <> 'G'->As(Byte) | file[4] <> 1->As(Byte) | file[5] <> 0->As(Byte) | file[6] <> 0->As(Byte) | file[7] <> 0->As(Byte)) {
+				return Nil;
+			};
+
+			body := Byte->New[file->Size() - 12];
+			Byte->Copy(body, 0, file, 12, body->Size());
+			crc := Byte->CRC32(body);
+			if(file[8] <> ByteOf(crc, 24) | file[9] <> ByteOf(crc, 16) | file[10] <> ByteOf(crc, 8) | file[11] <> ByteOf(crc, 0)) {
+				return Nil;
+			};
+
+			index : RagIndex;
+			try {
+				index := Decode(body);
+			}
+			on(e : System.Error) {
+				index := Nil;
+			};
+
+			return index;
+		}
+
+		function : Decode(body : Byte[]) ~ RagIndex {
+			deserializer := System.IO.Deserializer->New(body);
+			dim := deserializer->ReadInt();
+			code := deserializer->ReadInt();
+			count := deserializer->ReadInt();
+			if(dim < 1 | dim > 1048576 | code < 0 | code > 2 | count < 0) {
+				return Nil;
+			};
+
+			metric := VectorMetric->COSINE;
+			if(code = 1) {
+				metric := VectorMetric->DOT;
+			}
+			else if(code = 2) {
+				metric := VectorMetric->L2;
+			};
+
+			index := RagIndex->New(dim, metric);
+			each(i : count) {
+				id := Text(deserializer->ReadByteArray());
+				source := Text(deserializer->ReadByteArray());
+				offset := deserializer->ReadInt();
+				text := Text(deserializer->ReadByteArray());
+				vector := deserializer->ReadFloatArray();
+				if(id->Size() = 0 | vector = Nil | index->Contains(id)) {
+					return Nil;
+				};
+
+				if(<>index->Add(RagChunk->New(id, source, offset, text), vector)) {
+					return Nil;
+				};
+			};
+
+			return index;
+		}
+	}
+
+	#~
+	Builds the prompt that grounds a model in retrieved chunks: an instruction, the sources numbered [1], [2], ... one per line (line breaks inside a chunk become spaces), then the question. The instruction tells the model to answer only from the sources and to cite the ones it uses as [n]. Change the wording with SetInstruction, and cap the context with SetMaxContext.
+
+```
+builder := RagPromptBuilder->New();
+prompt := builder->Build("What is Objeck?", matches);
+prompt->PrintLine();
+```
+	~#
+	class RagPromptBuilder {
+		@instruction : String;
+		@max_context : Int;
+
+		#~
+		Creates a builder with the default instruction and no cap on the context.
+		~#
+		New() {
+			@instruction := "Answer the question using only the numbered sources below. Cite the sources you use as [n], for example [1] or [2]. If the sources do not contain the answer, say that you do not know.";
+			@max_context := 0;
+		}
+
+		#~
+		Sets the text that opens the prompt.
+		@param instruction the instruction; keep the "cite as [n]" request if the answer is to be checked with RagAnswer->GetCitations
+		~#
+		method : public : SetInstruction(instruction : String) ~ Nil {
+			if(instruction <> Nil) {
+				@instruction := instruction;
+			};
+		}
+
+		#~
+		The text that opens the prompt.
+		@return the instruction
+		~#
+		method : public : GetInstruction() ~ String {
+			return @instruction;
+		}
+
+		#~
+		Caps the characters of source text in a prompt. The closest sources are kept whole, in order, until the next would pass the cap; the first source is always kept.
+		@param chars the cap, or 0 for no cap
+		~#
+		method : public : SetMaxContext(chars : Int) ~ Nil {
+			@max_context := chars;
+			if(@max_context < 0) {
+				@max_context := 0;
+			};
+		}
+
+		#~
+		The cap on source text.
+		@return characters, 0 for no cap
+		~#
+		method : public : GetMaxContext() ~ Int {
+			return @max_context;
+		}
+
+		#~
+		The matches that fit under the cap, which are the sources a Build prompt numbers.
+		@param matches matches, closest first
+		@return the leading matches that fit; every one when there is no cap
+		~#
+		method : public : Select(matches : Vector<RagMatch>) ~ Vector<RagMatch> {
+			chosen := Vector->New()<RagMatch>;
+			if(matches = Nil) {
+				return chosen;
+			};
+
+			used := 0;
+			full := false;
+			i := 0;
+			while(i < matches->Size() & <>full) {
+				size := Flatten(matches->Get(i)->GetChunk()->GetText())->Size();
+				if(@max_context > 0 & chosen->Size() > 0 & used + size > @max_context) {
+					full := true;
+				}
+				else {
+					chosen->AddBack(matches->Get(i));
+					used += size;
+					i += 1;
+				};
+			};
+
+			return chosen;
+		}
+
+		#~
+		Builds the prompt.
+		@param question the question
+		@param matches matches, closest first
+		@return the prompt
+		~#
+		method : public : Build(question : String, matches : Vector<RagMatch>) ~ String {
+			chosen := Select(matches);
+			prompt := "{$@instruction}\n\nSources:\n";
+			if(chosen->Size() = 0) {
+				prompt += "(none)\n";
+			};
+
+			each(i : chosen) {
+				text := Flatten(chosen->Get(i)->GetChunk()->GetText());
+				n := i + 1;
+				prompt += "[{$n}] {$text}\n";
+			};
+
+			prompt += "\nQuestion: {$question}\nAnswer:";
+
+			return prompt;
+		}
+
+		# line breaks and runs of white space become one space
+		function : Flatten(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+
+			out := "";
+			pending := false;
+			each(i : text) {
+				c := text->Get(i);
+				code := c->As(Int);
+				if(code = 32 | code = 9 | code = 10 | code = 13) {
+					pending := out->Size() > 0;
+				}
+				else {
+					if(pending) {
+						out += " ";
+						pending := false;
+					};
+					out += c;
+				};
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	The result of RagPipeline->Answer: the question, the generated text, the sources that were put in the prompt (numbered from 1 in the order of the list) and the prompt itself.
+
+```
+answer := pipeline->Answer("What is Objeck?");
+answer->GetText()->PrintLine();
+cited := answer->GetCitedSources();
+each(i : cited) {
+  cited->Get(i)->GetChunk()->GetSource()->PrintLine();
+};
+```
+	~#
+	class RagAnswer {
+		@question : String;
+		@text : String;
+		@sources : Vector<RagMatch>;
+		@prompt : String;
+
+		#~
+		Creates an answer.
+		@param question the question asked
+		@param text the generated text
+		@param sources the sources the prompt numbered
+		@param prompt the prompt sent to the generator
+		~#
+		New(question : String, text : String, sources : Vector<RagMatch>, prompt : String) {
+			@question := question;
+			@text := text;
+			@sources := sources;
+			@prompt := prompt;
+		}
+
+		#~
+		The question.
+		@return question
+		~#
+		method : public : GetQuestion() ~ String {
+			return @question;
+		}
+
+		#~
+		The generated text.
+		@return text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		The sources in the prompt; source n of the text is element n - 1.
+		@return matches
+		~#
+		method : public : GetSources() ~ Vector<RagMatch> {
+			return @sources;
+		}
+
+		#~
+		The prompt that was sent.
+		@return prompt, "" when no generator call was made
+		~#
+		method : public : GetPrompt() ~ String {
+			return @prompt;
+		}
+
+		#~
+		The source numbers the text cites, as [n] or [n, m]: each once, in order of first appearance, and only numbers that name a source.
+		@return numbers from 1; empty when nothing valid is cited
+		~#
+		method : public : GetCitations() ~ Int[] {
+			found := Vector->New()<IntRef>;
+			if(@text <> Nil) {
+				i := 0;
+				while(i < @text->Size()) {
+					if(@text->Get(i)->As(Int) = 91) {
+						i := ReadBracket(i + 1, found);
+					}
+					else {
+						i += 1;
+					};
+				};
+			};
+
+			out := Int->New[found->Size()];
+			each(i : found) {
+				out[i] := found->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		# reads "n]" or "n, m]" starting after a '['; returns where to carry on
+		method : ReadBracket(at : Int, found : Vector<IntRef>) ~ Int {
+			numbers := Vector->New()<IntRef>;
+			value := -1;
+			i := at;
+			valid := true;
+			closed := false;
+			while(i < @text->Size() & valid & <>closed) {
+				code := @text->Get(i)->As(Int);
+				if(code >= 48 & code <= 57) {
+					if(value < 0) {
+						value := 0;
+					};
+					value := value * 10 + code - 48;
+					if(value > 100000) {
+						valid := false;
+					};
+				}
+				else if(code = 44 | code = 32) {
+					if(value >= 0) {
+						numbers->AddBack(IntRef->New(value));
+						value := -1;
+					};
+				}
+				else if(code = 93) {
+					if(value >= 0) {
+						numbers->AddBack(IntRef->New(value));
+					};
+					closed := true;
+				}
+				else {
+					valid := false;
+				};
+				i += 1;
+			};
+
+			if(valid & closed) {
+				each(n : numbers) {
+					number := numbers->Get(n)->Get();
+					if(number >= 1 & number <= @sources->Size() & <>Has(found, number)) {
+						found->AddBack(IntRef->New(number));
+					};
+				};
+				return i;
+			};
+
+			return at;
+		}
+
+		function : Has(list : Vector<IntRef>, number : Int) ~ Bool {
+			each(i : list) {
+				if(list->Get(i)->Get() = number) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		The sources the text cites.
+		@return matches in the order they are first cited
+		~#
+		method : public : GetCitedSources() ~ Vector<RagMatch> {
+			cited := Vector->New()<RagMatch>;
+			numbers := GetCitations();
+			each(i : numbers) {
+				cited->AddBack(@sources->Get(numbers[i] - 1));
+			};
+
+			return cited;
+		}
+	}
+
+	#~
+	Ties the pieces together: adds documents (split, embed, index) and answers questions (embed the question, retrieve the top k chunks, build a grounded prompt, call the generator). The index is created from the first embedding, or supplied with SetIndex to carry on from a saved one. A failure returns Nil, false or -1 and GetError() says which step failed.
+
+```
+pipeline := RagPipeline->New(RagHashEmbedder->New(), RagStubGenerator->New());
+pipeline->AddText("faq.txt", "Objeck is an object-oriented language.\n\nIt compiles to a bytecode.");
+answer := pipeline->Answer("What is Objeck?");
+answer->GetText()->PrintLine();
+pipeline->GetIndex()->Store("faq.idx");
+```
+	~#
+	class RagPipeline {
+		@embedder : RagEmbedder;
+		@generator : RagGenerator;
+		@chunker : RagChunker;
+		@builder : RagPromptBuilder;
+		@index : RagIndex;
+		@metric : VectorMetric;
+		@top_k : Int;
+		@min_score : Float;
+		@use_min : Bool;
+		@batch : Int;
+		@no_answer : String;
+		@error : String;
+
+		#~
+		Creates a pipeline that splits by paragraph (500 characters, overlap 50 when a paragraph is cut), ranks by cosine similarity and retrieves 4 chunks.
+		@param embedder embeds chunks and questions
+		@param generator writes the answer
+		~#
+		New(embedder : RagEmbedder, generator : RagGenerator) {
+			Init(embedder, generator, RagChunker->New(500, 50, RagSplit->PARAGRAPH), VectorMetric->COSINE);
+		}
+
+		#~
+		Creates a pipeline with its own chunker and metric.
+		@param embedder embeds chunks and questions
+		@param generator writes the answer
+		@param chunker how documents are split
+		@param metric how chunks are ranked against a question
+		~#
+		New(embedder : RagEmbedder, generator : RagGenerator, chunker : RagChunker, metric : VectorMetric) {
+			Init(embedder, generator, chunker, metric);
+		}
+
+		method : Init(embedder : RagEmbedder, generator : RagGenerator, chunker : RagChunker, metric : VectorMetric) ~ Nil {
+			@embedder := embedder;
+			@generator := generator;
+			@chunker := chunker;
+			@metric := metric;
+			@builder := RagPromptBuilder->New();
+			@top_k := 4;
+			@min_score := 0.0;
+			@use_min := false;
+			@batch := 16;
+			@no_answer := "I do not know: no relevant source was found.";
+			@error := "";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Fail(reason : String) ~ Nil {
+			@error := reason;
+		}
+
+		#~
+		How many chunks a question retrieves.
+		@param k 1 or more
+		~#
+		method : public : SetTopK(k : Int) ~ Nil {
+			if(k >= 1) {
+				@top_k := k;
+			};
+		}
+
+		#~
+		How many chunks a question retrieves.
+		@return k
+		~#
+		method : public : GetTopK() ~ Int {
+			return @top_k;
+		}
+
+		#~
+		Drops retrieved chunks that score below a floor, so a question the documents do not cover reaches the generator with no sources, and Answer returns the no-answer text without calling it. Ignored for the L2 metric, whose score is a distance.
+		@param score the lowest score kept, for example 0.2 for cosine
+		~#
+		method : public : SetMinScore(score : Float) ~ Nil {
+			@min_score := score;
+			@use_min := true;
+		}
+
+		#~
+		The text Answer returns when nothing was retrieved.
+		@param text the text
+		~#
+		method : public : SetNoAnswerText(text : String) ~ Nil {
+			if(text <> Nil) {
+				@no_answer := text;
+			};
+		}
+
+		#~
+		How many chunks are embedded in one call to the embedder.
+		@param size 1 or more
+		~#
+		method : public : SetBatchSize(size : Int) ~ Nil {
+			if(size >= 1) {
+				@batch := size;
+			};
+		}
+
+		#~
+		Replaces the chunker used by AddText.
+		@param chunker the chunker
+		~#
+		method : public : SetChunker(chunker : RagChunker) ~ Nil {
+			if(chunker <> Nil) {
+				@chunker := chunker;
+			};
+		}
+
+		#~
+		The chunker AddText uses.
+		@return chunker
+		~#
+		method : public : GetChunker() ~ RagChunker {
+			return @chunker;
+		}
+
+		#~
+		Replaces the prompt builder.
+		@param builder the builder
+		~#
+		method : public : SetPromptBuilder(builder : RagPromptBuilder) ~ Nil {
+			if(builder <> Nil) {
+				@builder := builder;
+			};
+		}
+
+		#~
+		The prompt builder.
+		@return builder
+		~#
+		method : public : GetPromptBuilder() ~ RagPromptBuilder {
+			return @builder;
+		}
+
+		#~
+		Uses an existing index, for example one read with RagIndex->Load. The embedder must produce vectors of the index's dimension (checked when it is known; a mismatch shows up on the first Embed otherwise).
+		@param index the index
+		@return true if accepted
+		~#
+		method : public : SetIndex(index : RagIndex) ~ Bool {
+			if(index = Nil | <>index->IsValid()) {
+				Fail("the index is Nil or not valid");
+				return false;
+			};
+
+			known := @embedder->GetDimension();
+			if(known > 0 & known <> index->GetDimension()) {
+				Fail("the embedder gives {$known} values, the index holds {$index->GetDimension()}");
+				return false;
+			};
+
+			@index := index;
+			@metric := index->GetMetric();
+			@error := "";
+			return true;
+		}
+
+		#~
+		The index, or Nil before the first document is added.
+		@return index
+		~#
+		method : public : GetIndex() ~ RagIndex {
+			return @index;
+		}
+
+		#~
+		Splits a document, embeds the chunks and indexes them. Chunks that an earlier AddText for the same source added are removed first, so adding a document again updates it.
+		@param source name of the document
+		@param text its text
+		@return how many chunks were added; -1 on failure (see GetError)
+		~#
+		method : public : AddText(source : String, text : String) ~ Int {
+			if(source = Nil | source->Size() = 0) {
+				Fail("source is Nil or empty");
+				return -1;
+			};
+
+			if(@index <> Nil) {
+				@index->RemoveSource(source);
+			};
+
+			chunks := @chunker->Split(source, text);
+			if(<>@chunker->IsValid()) {
+				Fail("chunker: {$@chunker->GetError()}");
+				return -1;
+			};
+
+			return AddChunks(chunks);
+		}
+
+		#~
+		Embeds chunks and indexes them.
+		@param chunks the chunks, with unique ids
+		@return how many were added; -1 on failure (see GetError); chunks before the failing batch stay in the index
+		~#
+		method : public : AddChunks(chunks : Vector<RagChunk>) ~ Int {
+			if(chunks = Nil) {
+				Fail("chunks is Nil");
+				return -1;
+			};
+
+			added := 0;
+			start := 0;
+			while(start < chunks->Size()) {
+				end := start + @batch;
+				if(end > chunks->Size()) {
+					end := chunks->Size();
+				};
+
+				texts := String->New[end - start];
+				each(i : texts) {
+					texts[i] := chunks->Get(start + i)->GetText();
+				};
+
+				vectors := Embed(texts);
+				if(vectors = Nil) {
+					return -1;
+				};
+
+				dims := vectors->Size();
+				if(@index = Nil) {
+					@index := RagIndex->New(dims[1], @metric);
+					if(<>@index->IsValid()) {
+						Fail("index: {$@index->GetError()}");
+						@index := Nil;
+						return -1;
+					};
+				};
+
+				each(i : texts) {
+					row := Float->New[dims[1]];
+					each(j : row) {
+						row[j] := vectors[i, j];
+					};
+
+					if(<>@index->Add(chunks->Get(start + i), row)) {
+						Fail("index: {$@index->GetError()}");
+						return -1;
+					};
+					added += 1;
+				};
+
+				start := end;
+			};
+
+			@error := "";
+			return added;
+		}
+
+		# embeds texts and checks the shape of what comes back; Nil with the error set
+		method : Embed(texts : String[]) ~ Float[,] {
+			vectors := @embedder->Embed(texts);
+			if(vectors = Nil) {
+				Fail("embedder: {$@embedder->GetError()}");
+				return Nil;
+			};
+
+			dims := vectors->Size();
+			if(dims[0] <> texts->Size() | dims[1] < 1) {
+				Fail("embedder returned {$dims[0]} x {$dims[1]} values for {$texts->Size()} texts");
+				return Nil;
+			};
+
+			if(@index <> Nil & dims[1] <> @index->GetDimension()) {
+				Fail("embedder returned {$dims[1]} values, the index holds {$@index->GetDimension()}");
+				return Nil;
+			};
+
+			return vectors;
+		}
+
+		#~
+		Finds the chunks closest to a question.
+		@param question the question
+		@return matches, closest first, at most the top k; empty when nothing is indexed or nothing scores above the floor; Nil on failure (see GetError)
+		~#
+		method : public : Retrieve(question : String) ~ Vector<RagMatch> {
+			if(question = Nil | question->Size() = 0) {
+				Fail("question is Nil or empty");
+				return Nil;
+			};
+
+			found := Vector->New()<RagMatch>;
+			if(@index = Nil | @index->Size() = 0) {
+				@error := "";
+				return found;
+			};
+
+			texts := String->New[1];
+			texts[0] := question;
+			vectors := Embed(texts);
+			if(vectors = Nil) {
+				return Nil;
+			};
+
+			dims := vectors->Size();
+			query := Float->New[dims[1]];
+			each(j : query) {
+				query[j] := vectors[0, j];
+			};
+
+			hits := @index->Search(query, @top_k);
+			if(hits->Size() = 0 & @index->GetError()->Size() > 0) {
+				Fail("index: {$@index->GetError()}");
+				return Nil;
+			};
+
+			each(i : hits) {
+				hit := hits->Get(i);
+				if(@use_min & @metric <> VectorMetric->L2 & hit->GetScore() < @min_score) {
+					return found;
+				};
+				found->AddBack(RagMatch->New(hit->GetChunk(), hit->GetScore(), found->Size() + 1));
+			};
+
+			@error := "";
+			return found;
+		}
+
+		#~
+		Answers a question from the indexed documents: retrieves, builds the grounded prompt, calls the generator. With nothing retrieved, the generator is not called and the answer is the no-answer text with no sources.
+		@param question the question
+		@return the answer; Nil on failure (see GetError)
+		~#
+		method : public : Answer(question : String) ~ RagAnswer {
+			matches := Retrieve(question);
+			if(matches = Nil) {
+				return Nil;
+			};
+
+			if(matches->Size() = 0) {
+				return RagAnswer->New(question, @no_answer, matches, "");
+			};
+
+			sources := @builder->Select(matches);
+			prompt := @builder->Build(question, sources);
+			text := @generator->Generate(prompt);
+			if(text = Nil) {
+				Fail("generator: {$@generator->GetError()}");
+				return Nil;
+			};
+
+			@error := "";
+			return RagAnswer->New(question, text, sources, prompt);
+		}
+	}
+}

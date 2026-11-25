@@ -1,0 +1,32 @@
+id: sort_desc
+category: collections
+difficulty: 3
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that puts the integers 5, 3, 9, 1, 7 into a Collection Vector of IntRef, sorts the vector in descending order, and prints the values on one line separated by single spaces.
+--- expected
+9 7 5 3 1
+--- reference
+use Collection;
+
+class SortDesc {
+	function : Main(args : String[]) ~ Nil {
+		values := Vector->New()<IntRef>;
+		each(v in [5, 3, 9, 1, 7]) {
+			values->AddBack(v);
+		};
+
+		values->Sort(\(IntRef, IntRef) ~ Int : (a, b) => b->Get() - a->Get());
+
+		line := "";
+		each(i : values) {
+			if(i > 0) {
+				line->Append(" ");
+			};
+			line->Append(values->Get(i)->Get());
+		};
+		line->PrintLine();
+	}
+}

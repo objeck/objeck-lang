@@ -1,0 +1,42 @@
+# Run by tools/llm_eval/run_tests.py, which compiles this file together with ../llm_eval.obs
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+The task suite checks itself: every reference solution in tools/llm_eval/tasks is compiled with the real compiler, run under its time limit with its hidden input, and must print exactly the task's expected output. A task whose reference does not pass is a broken task, not a weak model. The suite is checked in two halves (llm_eval_references_a and _b, every second task each) so neither test runs long. No model and no network. Exits 1 on a failure.
+~#
+class LlmEvalReferencesA {
+	function : Main(args : String[]) ~ Nil {
+		all := TaskSuite->Load("../tasks");
+		if(all = Nil) {
+			"FAIL: {$TaskSuite->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		if(all->Size() < 40) {
+			"FAIL: the suite has {$all->Size()} tasks, 40 expected"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		tasks := TaskSuite->Part(all, 0, 2);
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_refs_a_{$Runtime->GetProcessId()}";
+		sandbox := Sandbox->New(work);
+		results := EvalRunner->New(ReferenceModel->New(tasks), tasks, 1, sandbox)->Run();
+
+		failed := 0;
+		attempts := results->GetAttempts();
+		each(i : attempts) {
+			attempt := attempts->Get(i);
+			if(<>attempt->IsCorrect()) {
+				failed += 1;
+				"FAIL: {$attempt->GetTaskId()}: {$attempt->GetOutcome()} {$attempt->GetErrorLine()} {$attempt->GetOutput()}"->PrintLine();
+			};
+		};
+
+		sandbox->Close();
+		if(failed > 0) {
+			Runtime->Exit(1);
+		};
+
+		"{$tasks->Size()} of {$tasks->Size()} reference solutions pass"->PrintLine();
+	}
+}

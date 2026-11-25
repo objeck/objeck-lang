@@ -1,0 +1,33 @@
+id: generic_max
+category: generics
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a generic class Maximizer<T : Compare> (the type parameter is bounded by System.Compare) that has a method Max(a : T, b : T) ~ T returning the larger of the two using the Compare interface. Use it with IntRef (3 and 9) and with String ("apple" and "pear"), printing `9` and then `pear`.
+--- expected
+9
+pear
+--- reference
+class Maximizer<T : Compare> {
+	New() {
+	}
+
+	method : public : Max(a : T, b : T) ~ T {
+		if(a->Compare(b) >= 0) {
+			return a;
+		};
+
+		return b;
+	}
+}
+
+class MaxTest {
+	function : Main(args : String[]) ~ Nil {
+		numbers := Maximizer->New()<IntRef>;
+		words := Maximizer->New()<String>;
+		numbers->Max(3, 9)->Get()->PrintLine();
+		words->Max("apple", "pear")->PrintLine();
+	}
+}

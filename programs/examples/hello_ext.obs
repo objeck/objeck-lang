@@ -6,6 +6,10 @@ bundle Default {
 			string->PrintLine();
 
 			input := IO.Console->ReadLine();
+			if(input = Nil) {
+				"no input"->PrintLine();
+				return;
+			};
 			input->GetClass()->GetName()->PrintLine();
 
 			if(input->StartsWith("Hi")) {

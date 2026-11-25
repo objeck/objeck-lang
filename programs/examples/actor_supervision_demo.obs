@@ -1,0 +1,136 @@
+#~
+Actors and supervision (System.Actor): a small team under a supervisor. A "fetcher" fails on a bad
+URL, and the supervisor restarts it with fresh state while the "summarizer" keeps its own state; a
+caller asks questions with a timeout; a monitor reports when an actor ends; and a restart storm
+fails the supervisor itself, the way Erlang/OTP escalates.
+
+  obc -src actor_supervision_demo.obs -lib gen_collect,concurrent,actor -dest actor_supervision_demo.obe
+  obr actor_supervision_demo.obe
+
+The same pieces carry a supervised team of API.Agent agents: see actor_agents (AgentActorFactory).
+An uncaught VM fault, an out-of-memory abort or a crash in native code still ends the whole
+program; supervision recovers from errors the actor can catch (docs/ai_sections/actor.md).
+~#
+use System.Actor;
+use System.Concurrency;
+use Collection;
+
+# Fetches "pages"; a URL that starts with "bad" raises an error. Its count of pages is state that
+# a restart loses.
+class Fetcher implements ActorBehavior {
+  @pages : Int;
+
+  New() {
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->CALL) {
+      mail->Answer(IntRef->New(@pages));
+      return true;
+    };
+    if(mail->GetKind() <> Mail->Kind->DATA) {
+      return true;
+    };
+    url := mail->GetPayload()->As(String);
+    if(url->StartsWith("bad")) {
+      Runtime->Raise(Error->New("cannot fetch {$url}"));
+    };
+    @pages += 1;
+    "  fetcher: got {$url} (page {$@pages})"->PrintLine();
+    return true;
+  }
+}
+
+class Summarizer implements ActorBehavior {
+  @words : Int;
+
+  New() {
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->CALL) {
+      mail->Answer(IntRef->New(@words));
+    }
+    else if(mail->GetKind() = Mail->Kind->DATA) {
+      @words += mail->GetPayload()->As(String)->Split(" ")->Size();
+    };
+    return true;
+  }
+}
+
+class FetcherFactory implements BehaviorFactory {
+  New() {
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    return Fetcher->New();
+  }
+}
+
+class SummarizerFactory implements BehaviorFactory {
+  New() {
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    return Summarizer->New();
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    "-- a supervised team --"->PrintLine();
+    team := Supervisor->New("team", SupervisorStrategy->Kind->ONE_FOR_ONE, 3, 60);
+    team->AddChild(ChildSpec->New("fetcher", FetcherFactory->New(), ChildSpec->Restart->PERMANENT, 1000));
+    team->AddChild(ChildSpec->New("summarizer", SummarizerFactory->New(), ChildSpec->Restart->PERMANENT, 1000));
+    team->Start();
+
+    fetcher := team->GetChild("fetcher");
+    summarizer := team->GetChild("summarizer");
+    summarizer->Send("the quick brown fox");
+    fetcher->Send("a.example");
+    fetcher->Send("b.example");
+    "fetcher has fetched {$(fetcher->Call(Nil, 5000)->GetValue()->As(IntRef)->Get())} pages"->PrintLine();
+
+    "-- a failure --"->PrintLine();
+    watcher := Mailbox->New();
+    fetcher->Monitor(watcher);
+    fetcher->Send("bad.example");
+    down := watcher->Receive(5000)->As(Mail);
+    "monitor: {$(down->GetSource()->GetName())} ended, {$(down->GetReason()->ToString())}"->PrintLine();
+
+    # the call is queued behind the supervisor's handling of the failure
+    team->GetRestartCount();
+    replacement := team->GetChild("fetcher");
+    "the supervisor restarted it: a new actor, pages fetched so far {$(replacement->Call(Nil, 5000)->GetValue()->As(IntRef)->Get())}"->PrintLine();
+    "the summarizer was left alone: {$(summarizer->Call(Nil, 5000)->GetValue()->As(IntRef)->Get())} words"->PrintLine();
+
+    "-- a call that is not answered in time --"->PrintLine();
+    quiet := Actor->New("quiet", Ignorer->New())->Start();
+    r := quiet->Call("hello?", 50);
+    "call status: {$(r->GetStatus()->As(Int))} (1 is TIMED_OUT), error: {$(r->GetError())}"->PrintLine();
+    quiet->Stop();
+    quiet->Join();
+
+    "-- a restart storm fails the supervisor --"->PrintLine();
+    each(i : 4) {
+      child := team->GetChild("fetcher");
+      if(child <> Nil) {
+        child->Send("bad{$i}");
+        child->Join(5000);
+        team->GetRestartCount();
+      };
+    };
+    "supervisor: {$(team->Join(5000)->ToString())}"->PrintLine();
+    "children stopped with it: {$(replacement->IsExited() & summarizer->IsExited())}"->PrintLine();
+  }
+}
+
+# never answers a call
+class Ignorer implements ActorBehavior {
+  New() {
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    return true;
+  }
+}

@@ -1,0 +1,2762 @@
+#~~
+# Objeck machine learning library: gradient boosting
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use System.ML;
+
+#~
+Experimental: API may change.
+
+Gradient boosting: GradientBoostingRegressor (squared, absolute and Huber loss) and GradientBoostingClassifier (binary logistic and multiclass softmax). XGBoost-style second-order trees with L2-regularized leaf values, shrinkage, row and column subsampling, early stopping on a validation split, gain and split-count importances, staged predictions, model files, and an optional histogram split finder. Compile with -lib ml_boost,ml,gen_collect,csv. Design and measurements: docs/ai_sections/ml_boost.md.
+~#
+bundle System.ML.Boost {
+	#~
+	The loss a GradientBoostingRegressor minimizes.
+	~#
+	enum BoostLoss {
+		SQUARED,
+		ABSOLUTE,
+		HUBER
+	}
+
+	#~
+	One regression tree of a boosted ensemble, stored as flat arrays (node 0 is the root, a child always has a larger index than its parent, a node whose feature is -1 is a leaf). A row goes left when its value is at most the threshold; a missing value (NaN) goes the way the split learned. Leaf values already include the learning rate.
+	~#
+	class BoostTree {
+		@count : Int;
+		@feat : Int[];
+		@thr : Float[];
+		@left : Int[];
+		@right : Int[];
+		@dleft : Bool[];
+		@val : Float[];
+		@gain : Float[];
+
+		#~
+		Constructor
+		@param count number of nodes
+		~#
+		New(count : Int) {
+			@count := count;
+			@feat := Int->New[count];
+			@thr := Float->New[count];
+			@left := Int->New[count];
+			@right := Int->New[count];
+			@dleft := Bool->New[count];
+			@val := Float->New[count];
+			@gain := Float->New[count];
+			each(i : count) {
+				@feat[i] := -1;
+			};
+		}
+
+		#~
+		Fills in one node.
+		~#
+		method : public : SetNode(i : Int, feat : Int, thr : Float, left : Int, right : Int, dleft : Bool, val : Float, gain : Float) ~ Nil {
+			@feat[i] := feat;
+			@thr[i] := thr;
+			@left[i] := left;
+			@right[i] := right;
+			@dleft[i] := dleft;
+			@val[i] := val;
+			@gain[i] := gain;
+		}
+
+		#~
+		Replaces the value of a leaf.
+		~#
+		method : public : SetValue(i : Int, val : Float) ~ Nil {
+			@val[i] := val;
+		}
+
+		#~
+		Number of nodes.
+		@return nodes, leaves included
+		~#
+		method : public : GetNodeCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		Number of leaves.
+		@return leaves
+		~#
+		method : public : GetLeafCount() ~ Int {
+			leaves := 0;
+			each(i : @count) {
+				if(@feat[i] < 0) {
+					leaves += 1;
+				};
+			};
+
+			return leaves;
+		}
+
+		#~
+		The feature a node splits on, or -1 for a leaf.
+		~#
+		method : public : GetFeature(i : Int) ~ Int {
+			return @feat[i];
+		}
+
+		#~
+		The gain of the split at a node (0.0 for a leaf).
+		~#
+		method : public : GetGain(i : Int) ~ Float {
+			return @gain[i];
+		}
+
+		#~
+		The value of a node (meaningful for a leaf).
+		~#
+		method : public : GetValue(i : Int) ~ Float {
+			return @val[i];
+		}
+
+		#~
+		The depth of the deepest leaf (a single leaf has depth 0).
+		@return depth
+		~#
+		method : public : GetDepth() ~ Int {
+			depth := Int->New[@count];
+			deepest := 0;
+			each(i : @count) {
+				if(@feat[i] >= 0) {
+					depth[@left[i]] := depth[i] + 1;
+					depth[@right[i]] := depth[i] + 1;
+				}
+				else if(depth[i] > deepest) {
+					deepest := depth[i];
+				};
+			};
+
+			return deepest;
+		}
+
+		#~
+		The index of the leaf a row falls in.
+		@param X feature matrix
+		@param r row
+		@return leaf node index
+		~#
+		method : public : Leaf(X : Float[,], r : Int) ~ Int {
+			n := 0;
+			f := @feat[0];
+			while(f >= 0) {
+				v := X[r, f];
+				if(v <> v) {
+					if(@dleft[n]) {
+						n := @left[n];
+					}
+					else {
+						n := @right[n];
+					};
+				}
+				else if(v <= @thr[n]) {
+					n := @left[n];
+				}
+				else {
+					n := @right[n];
+				};
+
+				f := @feat[n];
+			};
+
+			return n;
+		}
+
+		#~
+		The tree's output for a row.
+		@param X feature matrix
+		@param r row
+		@return leaf value
+		~#
+		method : public : Eval(X : Float[,], r : Int) ~ Float {
+			return @val[Leaf(X, r)];
+		}
+
+		method : public : Write(serializer : System.IO.Serializer) ~ Nil {
+			serializer->Write(@count);
+			serializer->Write(@feat);
+			serializer->Write(@thr);
+			serializer->Write(@left);
+			serializer->Write(@right);
+			serializer->Write(@dleft);
+			serializer->Write(@val);
+			serializer->Write(@gain);
+		}
+
+		# reads one tree; Nil when the stream is short or the arrays are not a tree over features 0 .. cols - 1
+		function : Read(deserializer : System.IO.Deserializer, cols : Int) ~ BoostTree {
+			if(deserializer->Remaining() < 16) {
+				return Nil;
+			};
+
+			count := deserializer->ReadInt();
+			if(count < 1 | count > 1073741824 | deserializer->Remaining() < count * 8) {
+				return Nil;
+			};
+
+			tree := BoostTree->New(count);
+			tree->Fill(deserializer, cols);
+			if(<>deserializer->IsOk() | <>tree->Check(cols)) {
+				return Nil;
+			};
+
+			return tree;
+		}
+
+		method : Fill(deserializer : System.IO.Deserializer, cols : Int) ~ Nil {
+			@feat := deserializer->ReadIntArray();
+			@thr := deserializer->ReadFloatArray();
+			@left := deserializer->ReadIntArray();
+			@right := deserializer->ReadIntArray();
+			@dleft := deserializer->ReadBoolArray();
+			@val := deserializer->ReadFloatArray();
+			@gain := deserializer->ReadFloatArray();
+		}
+
+		method : Check(cols : Int) ~ Bool {
+			if(@feat = Nil | @thr = Nil | @left = Nil | @right = Nil | @dleft = Nil | @val = Nil | @gain = Nil) {
+				return false;
+			};
+
+			if(@feat->Size() <> @count | @thr->Size() <> @count | @left->Size() <> @count | @right->Size() <> @count | @dleft->Size() <> @count | @val->Size() <> @count | @gain->Size() <> @count) {
+				return false;
+			};
+
+			each(i : @count) {
+				if(@feat[i] >= 0) {
+					if(@feat[i] >= cols | @left[i] <= i | @right[i] <= i | @left[i] >= @count | @right[i] >= @count) {
+						return false;
+					};
+				};
+			};
+
+			return true;
+		}
+	}
+
+	#~
+	The engine behind GradientBoostingRegressor and GradientBoostingClassifier: the hyper-parameters and their setters, the tree grower, the boosting loop, importances, staged predictions and persistence. Use the two subclasses; the methods named Grow, FitCore and Raw are the engine's and are public only because the subclasses live in other classes.
+	~#
+	class BoostModel {
+		# hyper-parameters
+		@num_trees : Int;
+		@learning_rate : Float;
+		@max_depth : Int;
+		@min_leaf : Int;
+		@subsample : Float;
+		@colsample : Float;
+		@lambda : Float;
+		@gamma : Float;
+		@min_child_weight : Float;
+		@seed : Int;
+		@max_bins : Int;
+		@patience : Int;
+		@val_frac : Float;
+		@huber_delta : Float;
+		@huber_alpha : Float;
+
+		# the fitted model
+		@obj : Int;
+		@outputs : Int;
+		@cols : Int;
+		@base : Float[];
+		@trees : Vector<BoostTree>;
+		@train_loss : Float[];
+		@valid_loss : Float[];
+		@stages_run : Int;
+		@best_iter : Int;
+		@stopped : Bool;
+		@fitted : Bool;
+		@error : String;
+		@fit_seconds : Float;
+
+		# working state of one fit
+		@n : Int;
+		@order : Int[];
+		@nvalid : Int[];
+		@hasnan : Bool[];
+		@bins : Int[];
+		@nbins : Int[];
+		@edges : Float[];
+		@g : Float[];
+		@h : Float[];
+		@pos : Int[];
+		@leaf_of : Int[];
+		@active : Int[];
+		@na : Int;
+		@node_g : Float[];
+		@node_h : Float[];
+		@node_c : Int[];
+		@bgain : Float[];
+		@bfeat : Int[];
+		@bthr : Float[];
+		@bdl : Bool[];
+		@bgl : Float[];
+		@bhl : Float[];
+		@bcl : Int[];
+		@sgl : Float[];
+		@shl : Float[];
+		@scl : Int[];
+		@sprev : Float[];
+		@mg : Float[];
+		@mh : Float[];
+		@mc : Int[];
+
+		#~
+		Constructor with the defaults of scikit-learn's GradientBoosting: 100 stages, learning rate 0.1, depth 3.
+		~#
+		New() {
+			Init(100, 0.1, 3, 1);
+		}
+
+		#~
+		Constructor
+		@param num_trees boosting stages
+		@param learning_rate shrinkage applied to each stage, in (0, 1]
+		@param max_depth deepest any tree may grow (a depth-1 tree is a stump)
+		@param seed seed of the row and column sampling and of the validation split
+		~#
+		New(num_trees : Int, learning_rate : Float, max_depth : Int, seed : Int) {
+			Init(num_trees, learning_rate, max_depth, seed);
+		}
+
+		method : Init(num_trees : Int, learning_rate : Float, max_depth : Int, seed : Int) ~ Nil {
+			@num_trees := num_trees;
+			@learning_rate := learning_rate;
+			@max_depth := max_depth;
+			@seed := seed;
+			@min_leaf := 1;
+			@subsample := 1.0;
+			@colsample := 1.0;
+			@lambda := 0.0;
+			@gamma := 0.0;
+			@min_child_weight := 0.0;
+			@max_bins := 0;
+			@patience := 0;
+			@val_frac := 0.1;
+			@huber_delta := 0.0;
+			@huber_alpha := 0.9;
+			@obj := 0;
+			@outputs := 1;
+			@fitted := false;
+			@error := "";
+		}
+
+		method : public : Refuse(message : String) ~ Bool {
+			@error := message;
+			return false;
+		}
+
+		#~
+		Smallest number of training rows a leaf may hold (default 1).
+		@param rows at least 1
+		@return false and GetError says why when refused
+		~#
+		method : public : SetMinSamplesLeaf(rows : Int) ~ Bool {
+			if(rows < 1) {
+				return Refuse("min_samples_leaf must be at least 1");
+			};
+
+			@min_leaf := rows;
+			return true;
+		}
+
+		#~
+		Fraction of the rows each stage is fitted on, drawn without replacement with the model's seed (stochastic gradient boosting; default 1.0).
+		@param fraction in (0, 1]
+		@return false and GetError says why when refused
+		~#
+		method : public : SetSubsample(fraction : Float) ~ Bool {
+			if(fraction <= 0.0 | fraction > 1.0) {
+				return Refuse("subsample must be in (0, 1]");
+			};
+
+			@subsample := fraction;
+			return true;
+		}
+
+		#~
+		Fraction of the features each tree may split on, drawn per tree with the model's seed (default 1.0).
+		@param fraction in (0, 1]
+		@return false and GetError says why when refused
+		~#
+		method : public : SetColumnSample(fraction : Float) ~ Bool {
+			if(fraction <= 0.0 | fraction > 1.0) {
+				return Refuse("column sample must be in (0, 1]");
+			};
+
+			@colsample := fraction;
+			return true;
+		}
+
+		#~
+		L2 penalty on the leaf values: a leaf holds -G / (H + lambda) times the learning rate, with G and H the sums of the first and second derivative of the loss over its rows (default 0.0). The absolute and Huber losses fit leaves by their own rule and ignore it.
+		@param lambda at least 0.0
+		@return false and GetError says why when refused
+		~#
+		method : public : SetLambda(lambda : Float) ~ Bool {
+			if(lambda < 0.0) {
+				return Refuse("lambda must be at least 0.0");
+			};
+
+			@lambda := lambda;
+			return true;
+		}
+
+		#~
+		Smallest loss reduction that justifies a split; a node whose best split gains no more than this stays a leaf (XGBoost's gamma; default 0.0). The gain is 0.5 * (GL^2/(HL+lambda) + GR^2/(HR+lambda) - G^2/(H+lambda)).
+		@param gain at least 0.0
+		@return false and GetError says why when refused
+		~#
+		method : public : SetMinSplitGain(gain : Float) ~ Bool {
+			if(gain < 0.0) {
+				return Refuse("min split gain must be at least 0.0");
+			};
+
+			@gamma := gain;
+			return true;
+		}
+
+		#~
+		Smallest sum of second derivatives a child may hold (default 0.0; for squared loss this is a row count).
+		@param weight at least 0.0
+		@return false and GetError says why when refused
+		~#
+		method : public : SetMinChildWeight(weight : Float) ~ Bool {
+			if(weight < 0.0) {
+				return Refuse("min child weight must be at least 0.0");
+			};
+
+			@min_child_weight := weight;
+			return true;
+		}
+
+		#~
+		Finds splits on a histogram of at most max_bins bins per feature instead of on the sorted values (0, the default, is the exact search). A feature with no more distinct values than bins loses nothing; otherwise the bin edges sit at the quantiles of its distinct values.
+		@param max_bins 0 for exact, or 2 to 255
+		@return false and GetError says why when refused
+		~#
+		method : public : SetHistogram(max_bins : Int) ~ Bool {
+			if(max_bins <> 0 & (max_bins < 2 | max_bins > 255)) {
+				return Refuse("histogram bins must be 0 (exact) or 2 to 255");
+			};
+
+			@max_bins := max_bins;
+			return true;
+		}
+
+		#~
+		Stops adding stages once the validation loss has not improved for patience stages, and cuts the model back to its best stage. The validation rows are the last fraction of a seeded shuffle of the training rows, unless Fit is given a validation set of its own. A patience of 0 (the default) turns early stopping off.
+		@param patience stages to wait for an improvement
+		@param validation_fraction share of the training rows held out, in (0, 0.5]
+		@return false and GetError says why when refused
+		~#
+		method : public : SetEarlyStopping(patience : Int, validation_fraction : Float) ~ Bool {
+			if(patience < 0) {
+				return Refuse("patience must be at least 0");
+			};
+
+			if(validation_fraction <= 0.0 | validation_fraction > 0.5) {
+				return Refuse("validation fraction must be in (0, 0.5]");
+			};
+
+			@patience := patience;
+			@val_frac := validation_fraction;
+			return true;
+		}
+
+		#~
+		Boosting stages a fit may add.
+		@return the number given at construction
+		~#
+		method : public : GetEstimators() ~ Int {
+			return @num_trees;
+		}
+
+		#~
+		The learning rate.
+		@return shrinkage per stage
+		~#
+		method : public : GetLearningRate() ~ Float {
+			return @learning_rate;
+		}
+
+		#~
+		Whether Fit has succeeded.
+		@return true when fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		Why the last call was refused, or an empty string.
+		@return the reason
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Stages the fitted model holds (after an early stop, the stages up to the best one).
+		@return stage count, 0 when unfitted
+		~#
+		method : public : GetNumStages() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @trees->Size() / @outputs;
+		}
+
+		#~
+		The stage with the lowest validation loss when early stopping was on, otherwise the last stage; -1 when unfitted.
+		@return stage index from 0
+		~#
+		method : public : GetBestIteration() ~ Int {
+			if(<>@fitted) {
+				return -1;
+			};
+
+			return @best_iter;
+		}
+
+		#~
+		Whether the last fit stopped early.
+		@return true when patience ran out before the last stage
+		~#
+		method : public : GetStopped() ~ Bool {
+			return @stopped;
+		}
+
+		#~
+		Mean training loss after each stage that was run (the stages cut off by early stopping included): mean squared error, mean absolute error, mean Huber loss, or log loss.
+		@return one value per stage, or Nil when unfitted
+		~#
+		method : public : GetTrainLoss() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @train_loss;
+		}
+
+		#~
+		Mean validation loss after each stage that was run, empty when the fit had no validation rows.
+		@return one value per stage, or Nil when unfitted
+		~#
+		method : public : GetValidationLoss() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @valid_loss;
+		}
+
+		#~
+		Seconds the last Fit took.
+		@return elapsed seconds
+		~#
+		method : public : GetFitSeconds() ~ Float {
+			return @fit_seconds;
+		}
+
+		#~
+		Total loss reduction of the splits on each feature, divided by the total, so the values sum to 1.0 (all 0.0 when no tree split).
+		@return one importance per feature, or Nil when unfitted
+		~#
+		method : public : GetFeatureImportances() ~ Float[] {
+			gains := GetGainTotals();
+			if(gains = Nil) {
+				return Nil;
+			};
+
+			total := 0.0;
+			each(i : gains) {
+				total += gains[i];
+			};
+
+			if(total > 0.0) {
+				each(i : gains) {
+					gains[i] := gains[i] / total;
+				};
+			};
+
+			return gains;
+		}
+
+		#~
+		Total loss reduction of the splits on each feature, not normalized.
+		@return one total per feature, or Nil when unfitted
+		~#
+		method : public : GetGainTotals() ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			gains := Float->New[@cols];
+			each(t : @trees->Size()) {
+				tree := @trees->Get(t);
+				each(i : tree->GetNodeCount()) {
+					f := tree->GetFeature(i);
+					if(f >= 0) {
+						gains[f] += tree->GetGain(i);
+					};
+				};
+			};
+
+			return gains;
+		}
+
+		#~
+		How many splits use each feature, over all trees.
+		@return one count per feature, or Nil when unfitted
+		~#
+		method : public : GetSplitCounts() ~ Int[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			counts := Int->New[@cols];
+			each(t : @trees->Size()) {
+				tree := @trees->Get(t);
+				each(i : tree->GetNodeCount()) {
+					f := tree->GetFeature(i);
+					if(f >= 0) {
+						counts[f] += 1;
+					};
+				};
+			};
+
+			return counts;
+		}
+
+		#~
+		Total number of leaves over all trees.
+		@return leaves
+		~#
+		method : public : GetLeafCount() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			leaves := 0;
+			each(t : @trees->Size()) {
+				leaves += @trees->Get(t)->GetLeafCount();
+			};
+
+			return leaves;
+		}
+
+		# ---------------------------------------------------------------- engine
+
+		#~
+		Engine entry point: fits the ensemble on targets already turned into numbers (class indices for the classifier).
+		@param X rows x features; NaN means missing
+		@param y one target per row
+		@param w one weight per row, or Nil
+		@param Xv validation rows, or Nil
+		@param yv validation targets, or Nil
+		@param obj 0 squared, 1 absolute, 2 Huber, 3 logistic, 4 softmax
+		@param outputs trees per stage: 1, or the number of classes for softmax
+		@return true when fitted
+		~#
+		method : public : FitCore(X : Float[,], y : Float[], w : Float[], Xv : Float[,], yv : Float[], obj : Int, outputs : Int) ~ Bool {
+			started := System.Time.Timer->New();
+			started->Start();
+			@error := "";
+
+			if(@num_trees < 1) {
+				return Refuse("the number of stages must be at least 1");
+			};
+
+			if(@learning_rate <= 0.0 | @learning_rate > 1.0) {
+				return Refuse("the learning rate must be in (0, 1]");
+			};
+
+			if(@max_depth < 1 | @max_depth > 30) {
+				return Refuse("max depth must be 1 to 30");
+			};
+
+			if(X = Nil) {
+				return Refuse("X is Nil");
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 2 | cols < 1) {
+				return Refuse("need at least 2 rows and 1 column");
+			};
+
+			if(y = Nil | y->Size() <> rows) {
+				return Refuse("y must have one value per row");
+			};
+
+			if(w <> Nil & w->Size() <> rows) {
+				return Refuse("weights must have one value per row");
+			};
+
+			each(i : rows) {
+				if(y[i] <> y[i]) {
+					return Refuse("y holds NaN at row {$i}");
+				};
+
+				if(w <> Nil & (w[i] <> w[i] | w[i] < 0.0)) {
+					return Refuse("weight {$i} is NaN or negative");
+				};
+			};
+
+			hasv := Xv <> Nil & yv <> Nil;
+			if(hasv) {
+				if(Xv->Size()[1] <> cols | Xv->Size()[0] < 1 | yv->Size() <> Xv->Size()[0]) {
+					return Refuse("the validation set must have the training width and one target per row");
+				};
+			};
+
+			Xt := X;
+			yt := y;
+			wt := w;
+			if(<>hasv & @patience > 0) {
+				vn := (rows->As(Float) * @val_frac)->As(Int);
+				if(vn < 1) {
+					vn := 1;
+				};
+
+				if(rows - vn < 2) {
+					return Refuse("too few rows to hold out a validation set");
+				};
+
+				perm := Permutation(rows, System.ML.Random->New(@seed + 7919));
+				Xt := Float->New[rows - vn, cols];
+				Xv := Float->New[vn, cols];
+				yt := Float->New[rows - vn];
+				yv := Float->New[vn];
+				if(w <> Nil) {
+					wt := Float->New[rows - vn];
+				};
+
+				each(i : rows) {
+					r := perm[i];
+					if(i < rows - vn) {
+						each(c : cols) {
+							Xt[i, c] := X[r, c];
+						};
+
+						yt[i] := y[r];
+						if(w <> Nil) {
+							wt[i] := w[r];
+						};
+					}
+					else {
+						each(c : cols) {
+							Xv[i - (rows - vn), c] := X[r, c];
+						};
+
+						yv[i - (rows - vn)] := y[r];
+					};
+				};
+
+				hasv := true;
+			};
+
+			@stopped := false;
+			@fitted := false;
+			@obj := obj;
+			@outputs := outputs;
+			@cols := cols;
+			n := yt->Size();
+			@n := n;
+			K := outputs;
+			nv := 0;
+			if(hasv) {
+				nv := yv->Size();
+			};
+
+			@base := InitialScore(yt, wt, obj, K);
+			F := Float->New[n * K];
+			Fv := Float->New[nv * K];
+			each(r : n) {
+				each(k : K) {
+					F[r * K + k] := @base[k];
+				};
+			};
+
+			each(r : nv) {
+				each(k : K) {
+					Fv[r * K + k] := @base[k];
+				};
+			};
+
+			Prepare(Xt);
+			@g := Float->New[n];
+			@h := Float->New[n];
+			P := Float->New[n * K];
+			@trees := Vector->New()<BoostTree>;
+			train_loss := Float->New[@num_trees];
+			valid_loss := Float->New[0];
+			if(hasv) {
+				valid_loss := Float->New[@num_trees];
+			};
+
+			rand := System.ML.Random->New(@seed);
+			best := 0.0;
+			@best_iter := -1;
+			stages := 0;
+			delta := @huber_delta;
+
+			for(t := 0; t < @num_trees; t += 1;) {
+				if(obj >= 3) {
+					Probabilities(F, P, n, K);
+				};
+
+				if(obj = 2 & @huber_delta <= 0.0) {
+					delta := HuberDelta(yt, F, n);
+				};
+
+				sample := SampleRows(n, rand);
+				each(k : K) {
+					FillGradients(yt, wt, F, P, n, K, k, obj, delta);
+					tree := Grow(Xt, sample, SampleColumns(cols, rand));
+					if(obj = 1 | obj = 2) {
+						RefitLeaves(tree, yt, F, sample, delta, obj);
+					};
+
+					@trees->AddBack(tree);
+					each(r : n) {
+						F[r * K + k] += tree->Eval(Xt, r);
+					};
+
+					each(r : nv) {
+						Fv[r * K + k] += tree->Eval(Xv, r);
+					};
+				};
+
+				train_loss[t] := MeanLoss(yt, F, n, K, obj, delta);
+				stages := t + 1;
+				if(hasv) {
+					valid_loss[t] := MeanLoss(yv, Fv, nv, K, obj, delta);
+					if(@best_iter < 0 | valid_loss[t] < best - 0.000000000001) {
+						best := valid_loss[t];
+						@best_iter := t;
+					}
+					else if(@patience > 0 & t - @best_iter >= @patience) {
+						@stopped := true;
+						t := @num_trees;
+					};
+				};
+			};
+
+			@stages_run := stages;
+			@train_loss := Float->New[stages];
+			each(t : stages) {
+				@train_loss[t] := train_loss[t];
+			};
+
+			@valid_loss := Float->New[0];
+			if(hasv) {
+				@valid_loss := Float->New[stages];
+				each(t : stages) {
+					@valid_loss[t] := valid_loss[t];
+				};
+			};
+
+			if(@patience > 0 & hasv & @best_iter >= 0) {
+				# cut back to the best stage
+				kept := Vector->New()<BoostTree>;
+				keep := (@best_iter + 1) * K;
+				each(t : keep) {
+					kept->AddBack(@trees->Get(t));
+				};
+
+				@trees := kept;
+			}
+			else {
+				@best_iter := stages - 1;
+			};
+
+			@order := Nil;
+			@bins := Nil;
+			@g := Nil;
+			@h := Nil;
+			@fitted := true;
+			started->End();
+			@fit_seconds := started->GetElapsedTime();
+			return true;
+		}
+
+		function : Permutation(n : Int, rand : System.ML.Random) ~ Int[] {
+			perm := Int->New[n];
+			each(i : n) {
+				perm[i] := i;
+			};
+
+			for(i := n - 1; i > 0; i -= 1;) {
+				j := rand->NextInt(i + 1);
+				tmp := perm[i];
+				perm[i] := perm[j];
+				perm[j] := tmp;
+			};
+
+			return perm;
+		}
+
+		method : SampleRows(n : Int, rand : System.ML.Random) ~ Int[] {
+			if(@subsample >= 1.0) {
+				rows := Int->New[n];
+				each(i : n) {
+					rows[i] := i;
+				};
+
+				return rows;
+			};
+
+			k := (n->As(Float) * @subsample)->As(Int);
+			if(k < 2) {
+				k := 2;
+			};
+
+			if(k > n) {
+				k := n;
+			};
+
+			perm := Permutation(n, rand);
+			rows := Int->New[k];
+			each(i : k) {
+				rows[i] := perm[i];
+			};
+
+			return rows;
+		}
+
+		method : SampleColumns(cols : Int, rand : System.ML.Random) ~ Bool[] {
+			mask := Bool->New[cols];
+			if(@colsample >= 1.0) {
+				each(i : cols) {
+					mask[i] := true;
+				};
+
+				return mask;
+			};
+
+			k := (cols->As(Float) * @colsample + 0.5)->As(Int);
+			if(k < 1) {
+				k := 1;
+			};
+
+			perm := Permutation(cols, rand);
+			each(i : k) {
+				mask[perm[i]] := true;
+			};
+
+			return mask;
+		}
+
+		# the starting score of each output
+		method : InitialScore(y : Float[], w : Float[], obj : Int, K : Int) ~ Float[] {
+			base := Float->New[K];
+			n := y->Size();
+			total := 0.0;
+			each(i : n) {
+				if(w = Nil) {
+					total += 1.0;
+				}
+				else {
+					total += w[i];
+				};
+			};
+
+			if(total <= 0.0) {
+				total := 1.0;
+			};
+
+			if(obj = 0) {
+				sum := 0.0;
+				each(i : n) {
+					if(w = Nil) {
+						sum += y[i];
+					}
+					else {
+						sum += w[i] * y[i];
+					};
+				};
+
+				base[0] := sum / total;
+			}
+			else if(obj = 1 | obj = 2) {
+				base[0] := Median(y);
+			}
+			else if(obj = 3) {
+				pos := 0.0;
+				each(i : n) {
+					if(y[i] > 0.5) {
+						if(w = Nil) {
+							pos += 1.0;
+						}
+						else {
+							pos += w[i];
+						};
+					};
+				};
+
+				p := Clamp(pos / total);
+				base[0] := (p / (1.0 - p))->Log();
+			}
+			else {
+				counts := Float->New[K];
+				each(i : n) {
+					c := y[i]->As(Int);
+					if(w = Nil) {
+						counts[c] += 1.0;
+					}
+					else {
+						counts[c] += w[i];
+					};
+				};
+
+				each(k : K) {
+					base[k] := Clamp(counts[k] / total)->Log();
+				};
+			};
+
+			return base;
+		}
+
+		function : Clamp(p : Float) ~ Float {
+			if(p < 0.000000000001) {
+				return 0.000000000001;
+			};
+
+			if(p > 0.999999999999) {
+				return 0.999999999999;
+			};
+
+			return p;
+		}
+
+		function : Median(values : Float[]) ~ Float {
+			m := values->Size();
+			if(m = 0) {
+				return 0.0;
+			};
+
+			sorted := Float->Sort(values);
+			if(m % 2 = 1) {
+				return sorted[m / 2];
+			};
+
+			return (sorted[m / 2 - 1] + sorted[m / 2]) * 0.5;
+		}
+
+		# sigmoid (obj 3) or softmax (obj 4) of the raw scores
+		method : public : Probabilities(F : Float[], P : Float[], n : Int, K : Int) ~ Nil {
+			if(K = 1) {
+				each(r : n) {
+					P[r] := Sigmoid(F[r]);
+				};
+
+				return;
+			};
+
+			each(r : n) {
+				top := F[r * K];
+				for(k := 1; k < K; k += 1;) {
+					if(F[r * K + k] > top) {
+						top := F[r * K + k];
+					};
+				};
+
+				sum := 0.0;
+				each(k : K) {
+					e := (F[r * K + k] - top)->Exp();
+					P[r * K + k] := e;
+					sum += e;
+				};
+
+				each(k : K) {
+					P[r * K + k] := P[r * K + k] / sum;
+				};
+			};
+		}
+
+		function : public : Sigmoid(x : Float) ~ Float {
+			if(x >= 0.0) {
+				return 1.0 / (1.0 + (0.0 - x)->Exp());
+			};
+
+			e := x->Exp();
+			return e / (1.0 + e);
+		}
+
+		method : public : HuberDelta(y : Float[], F : Float[], n : Int) ~ Float {
+			res := Float->New[n];
+			each(i : n) {
+				res[i] := Float->Abs(y[i] - F[i]);
+			};
+
+			sorted := Float->Sort(res);
+			pos := (@huber_alpha * (n - 1)->As(Float))->As(Int);
+			d := sorted[pos];
+			if(d < 0.000000000001) {
+				d := 0.000000000001;
+			};
+
+			return d;
+		}
+
+		# the first and second derivative of the loss for output k, scaled by the row weights
+		method : FillGradients(y : Float[], w : Float[], F : Float[], P : Float[], n : Int, K : Int, k : Int, obj : Int, delta : Float) ~ Nil {
+			each(r : n) {
+				gr := 0.0;
+				hs := 1.0;
+				if(obj = 0) {
+					gr := F[r] - y[r];
+				}
+				else if(obj = 1) {
+					d := F[r] - y[r];
+					if(d > 0.0) {
+						gr := 1.0;
+					}
+					else if(d < 0.0) {
+						gr := -1.0;
+					};
+				}
+				else if(obj = 2) {
+					d := F[r] - y[r];
+					if(d > delta) {
+						gr := delta;
+					}
+					else if(d < 0.0 - delta) {
+						gr := 0.0 - delta;
+					}
+					else {
+						gr := d;
+					};
+				}
+				else if(obj = 3) {
+					p := P[r];
+					gr := p - y[r];
+					hs := p * (1.0 - p);
+				}
+				else {
+					p := P[r * K + k];
+					if(y[r]->As(Int) = k) {
+						gr := p - 1.0;
+					}
+					else {
+						gr := p;
+					};
+
+					hs := 2.0 * p * (1.0 - p);
+				};
+
+				if(hs < 0.0000000000000001) {
+					hs := 0.0000000000000001;
+				};
+
+				if(w <> Nil) {
+					gr *= w[r];
+					hs *= w[r];
+				};
+
+				@g[r] := gr;
+				@h[r] := hs;
+			};
+		}
+
+		# mean loss over rows
+		method : public : MeanLoss(y : Float[], F : Float[], n : Int, K : Int, obj : Int, delta : Float) ~ Float {
+			sum := 0.0;
+			each(r : n) {
+				if(obj = 0) {
+					d := F[r] - y[r];
+					sum += d * d;
+				}
+				else if(obj = 1) {
+					sum += Float->Abs(F[r] - y[r]);
+				}
+				else if(obj = 2) {
+					d := Float->Abs(F[r] - y[r]);
+					if(d <= delta) {
+						sum += 0.5 * d * d;
+					}
+					else {
+						sum += delta * (d - 0.5 * delta);
+					};
+				}
+				else if(obj = 3) {
+					z := F[r];
+					# log(1 + e^z) - y z, written to be stable for large |z|
+					if(z > 0.0) {
+						sum += z + (1.0 + (0.0 - z)->Exp())->Log() - y[r] * z;
+					}
+					else {
+						sum += (1.0 + z->Exp())->Log() - y[r] * z;
+					};
+				}
+				else {
+					top := F[r * K];
+					for(k := 1; k < K; k += 1;) {
+						if(F[r * K + k] > top) {
+							top := F[r * K + k];
+						};
+					};
+
+					se := 0.0;
+					each(k : K) {
+						se += (F[r * K + k] - top)->Exp();
+					};
+
+					sum += top + se->Log() - F[r * K + y[r]->As(Int)];
+				};
+			};
+
+			return sum / n->As(Float);
+		}
+
+		# sklearn's leaf update for the absolute (median of the residuals) and Huber (median plus the mean clipped deviation) losses
+		method : RefitLeaves(tree : BoostTree, y : Float[], F : Float[], sample : Int[], delta : Float, obj : Int) ~ Nil {
+			nodes := tree->GetNodeCount();
+			counts := Int->New[nodes];
+			each(i : sample->Size()) {
+				counts[@leaf_of[sample[i]]] += 1;
+			};
+
+			starts := Int->New[nodes + 1];
+			each(i : nodes) {
+				starts[i + 1] := starts[i] + counts[i];
+			};
+
+			fill := Int->New[nodes];
+			res := Float->New[sample->Size()];
+			each(i : sample->Size()) {
+				r := sample[i];
+				leaf := @leaf_of[r];
+				res[starts[leaf] + fill[leaf]] := y[r] - F[r];
+				fill[leaf] += 1;
+			};
+
+			each(leaf : nodes) {
+				if(counts[leaf] > 0) {
+					part := Float->New[counts[leaf]];
+					each(i : counts[leaf]) {
+						part[i] := res[starts[leaf] + i];
+					};
+
+					m := Median(part);
+					v := m;
+					if(obj = 2) {
+						extra := 0.0;
+						each(i : counts[leaf]) {
+							d := part[i] - m;
+							if(d > delta) {
+								d := delta;
+							}
+							else if(d < 0.0 - delta) {
+								d := 0.0 - delta;
+							};
+
+							extra += d;
+						};
+
+						v := m + extra / counts[leaf]->As(Float);
+					};
+
+					tree->SetValue(leaf, v * @learning_rate);
+				};
+			};
+		}
+
+		# ---------------------------------------------------------------- tree growing
+
+		# per-feature pre-sorted row order (exact search) or bin codes (histogram search)
+		method : Prepare(X : Float[,]) ~ Nil {
+			dims := X->Size();
+			n := dims[0];
+			p := dims[1];
+			@hasnan := Bool->New[p];
+			@nvalid := Int->New[p];
+			if(@max_bins = 0) {
+				@order := Int->New[n * p];
+				each(f : p) {
+					m := 0;
+					each(r : n) {
+						v := X[r, f];
+						if(v <> v) {
+							@hasnan[f] := true;
+						}
+						else {
+							@order[f * n + m] := r;
+							m += 1;
+						};
+					};
+
+					@nvalid[f] := m;
+					SortFeature(X, f, n, m);
+				};
+			}
+			else {
+				@bins := Int->New[n * p];
+				@nbins := Int->New[p];
+				@edges := Float->New[p * @max_bins];
+				each(f : p) {
+					vals := Float->New[n];
+					m := 0;
+					each(r : n) {
+						v := X[r, f];
+						if(v <> v) {
+							@hasnan[f] := true;
+						}
+						else {
+							vals[m] := v;
+							m += 1;
+						};
+					};
+
+					@nvalid[f] := m;
+					BinFeature(X, f, n, vals, m);
+				};
+			};
+		}
+
+		# bottom-up merge sort of the non-missing rows of feature f by value
+		method : SortFeature(X : Float[,], f : Int, n : Int, m : Int) ~ Nil {
+			if(m < 2) {
+				return;
+			};
+
+			base := f * n;
+			src := Int->New[m];
+			each(i : m) {
+				src[i] := @order[base + i];
+			};
+
+			dst := Int->New[m];
+			width := 1;
+			while(width < m) {
+				lo := 0;
+				while(lo < m) {
+					mid := lo + width;
+					if(mid > m) {
+						mid := m;
+					};
+
+					hi := lo + 2 * width;
+					if(hi > m) {
+						hi := m;
+					};
+
+					a := lo;
+					b := mid;
+					o := lo;
+					while(a < mid & b < hi) {
+						if(X[src[a], f] <= X[src[b], f]) {
+							dst[o] := src[a];
+							a += 1;
+						}
+						else {
+							dst[o] := src[b];
+							b += 1;
+						};
+
+						o += 1;
+					};
+
+					while(a < mid) {
+						dst[o] := src[a];
+						a += 1;
+						o += 1;
+					};
+
+					while(b < hi) {
+						dst[o] := src[b];
+						b += 1;
+						o += 1;
+					};
+
+					lo += 2 * width;
+				};
+
+				tmp := src;
+				src := dst;
+				dst := tmp;
+				width *= 2;
+			};
+
+			each(i : m) {
+				@order[base + i] := src[i];
+			};
+		}
+
+		# bin edges of feature f: midpoints of the distinct values, or quantiles of them when there are more than max_bins
+		method : BinFeature(X : Float[,], f : Int, n : Int, vals : Float[], m : Int) ~ Nil {
+			B := @max_bins;
+			part := Float->New[m];
+			each(i : m) {
+				part[i] := vals[i];
+			};
+
+			sorted := Float->Sort(part);
+			uniq := Float->New[m];
+			u := 0;
+			each(i : m) {
+				if(u = 0 | sorted[i] > uniq[u - 1]) {
+					uniq[u] := sorted[i];
+					u += 1;
+				};
+			};
+
+			nb := u;
+			if(nb > B) {
+				nb := B;
+			};
+
+			if(nb < 1) {
+				nb := 1;
+			};
+
+			@nbins[f] := nb;
+			for(b := 0; b < nb - 1; b += 1;) {
+				idx := b + 1;
+				if(u > B) {
+					idx := ((b + 1) * u) / nb;
+				};
+
+				edge := (uniq[idx - 1] + uniq[idx]) * 0.5;
+				if(edge >= uniq[idx]) {
+					edge := uniq[idx - 1];
+				};
+
+				@edges[f * B + b] := edge;
+			};
+
+			each(r : n) {
+				v := X[r, f];
+				if(v <> v) {
+					@bins[f * n + r] := nb;
+				}
+				else {
+					lo := 0;
+					hi := nb - 1;
+					while(lo < hi) {
+						mid := (lo + hi) / 2;
+						if(v <= @edges[f * B + mid]) {
+							hi := mid;
+						}
+						else {
+							lo := mid + 1;
+						};
+					};
+
+					@bins[f * n + r] := lo;
+				};
+			};
+		}
+
+		#~
+		Engine: grows one tree on the gradients and Hessians in the working arrays, over the sampled rows and the allowed columns.
+		~#
+		method : public : Grow(X : Float[,], sample : Int[], colmask : Bool[]) ~ BoostTree {
+			n := @n;
+			p := @cols;
+			ns := sample->Size();
+			limit := 2 * ns + 1;
+			cap := 1;
+			level := 0;
+			while(level <= @max_depth & cap < limit) {
+				cap := cap * 2 + 1;
+				level += 1;
+			};
+
+			nfeat := Int->New[cap];
+			nthr := Float->New[cap];
+			nleft := Int->New[cap];
+			nright := Int->New[cap];
+			ndl := Bool->New[cap];
+			ngain := Float->New[cap];
+			splitflag := Bool->New[cap];
+			each(i : cap) {
+				nfeat[i] := -1;
+			};
+
+			@node_g := Float->New[cap];
+			@node_h := Float->New[cap];
+			@node_c := Int->New[cap];
+			@bgain := Float->New[cap];
+			@bfeat := Int->New[cap];
+			@bthr := Float->New[cap];
+			@bdl := Bool->New[cap];
+			@bgl := Float->New[cap];
+			@bhl := Float->New[cap];
+			@bcl := Int->New[cap];
+			@sgl := Float->New[cap];
+			@shl := Float->New[cap];
+			@scl := Int->New[cap];
+			@sprev := Float->New[cap];
+			@mg := Float->New[cap];
+			@mh := Float->New[cap];
+			@mc := Int->New[cap];
+			@pos := Int->New[n];
+			@leaf_of := Int->New[n];
+			each(i : n) {
+				@pos[i] := -1;
+				@leaf_of[i] := -1;
+			};
+
+			gsum := 0.0;
+			hsum := 0.0;
+			each(i : ns) {
+				r := sample[i];
+				@pos[r] := 0;
+				gsum += @g[r];
+				hsum += @h[r];
+			};
+
+			@node_g[0] := gsum;
+			@node_h[0] := hsum;
+			@node_c[0] := ns;
+			@active := Int->New[cap];
+			@active[0] := 0;
+			@na := 1;
+			nodes := 1;
+			slot := Int->New[cap];
+			depth := 0;
+			min_gain := @gamma;
+			if(min_gain < 0.000000000001) {
+				min_gain := 0.000000000001;
+			};
+
+			while(@na > 0 & depth < @max_depth) {
+				each(a : @na) {
+					nd := @active[a];
+					@bgain[nd] := min_gain;
+					@bfeat[nd] := -1;
+					slot[nd] := a;
+				};
+
+				if(@max_bins = 0) {
+					each(f : p) {
+						if(colmask[f]) {
+							ScanExact(X, f, n);
+						};
+					};
+				}
+				else {
+					B1 := @max_bins + 1;
+					hg := Float->New[@na * B1];
+					hh := Float->New[@na * B1];
+					hc := Int->New[@na * B1];
+					each(f : p) {
+						if(colmask[f]) {
+							ScanHistogram(f, n, sample, slot, hg, hh, hc, B1);
+						};
+					};
+				};
+
+				nxt := Int->New[2 * @na];
+				nn := 0;
+				each(a : @na) {
+					nd := @active[a];
+					if(@bfeat[nd] >= 0) {
+						l := nodes;
+						rt := nodes + 1;
+						nodes += 2;
+						splitflag[nd] := true;
+						nfeat[nd] := @bfeat[nd];
+						nthr[nd] := @bthr[nd];
+						ndl[nd] := @bdl[nd];
+						nleft[nd] := l;
+						nright[nd] := rt;
+						ngain[nd] := @bgain[nd];
+						@node_g[l] := @bgl[nd];
+						@node_h[l] := @bhl[nd];
+						@node_c[l] := @bcl[nd];
+						@node_g[rt] := @node_g[nd] - @bgl[nd];
+						@node_h[rt] := @node_h[nd] - @bhl[nd];
+						@node_c[rt] := @node_c[nd] - @bcl[nd];
+						nxt[nn] := l;
+						nxt[nn + 1] := rt;
+						nn += 2;
+					};
+				};
+
+				# route the rows; rows of nodes that did not split are finished
+				each(i : ns) {
+					r := sample[i];
+					nd := @pos[r];
+					if(nd >= 0) {
+						if(splitflag[nd]) {
+							v := X[r, nfeat[nd]];
+							goleft := false;
+							if(v <> v) {
+								goleft := ndl[nd];
+							}
+							else {
+								goleft := v <= nthr[nd];
+							};
+
+							if(goleft) {
+								@pos[r] := nleft[nd];
+							}
+							else {
+								@pos[r] := nright[nd];
+							};
+						}
+						else {
+							@leaf_of[r] := nd;
+							@pos[r] := -1;
+						};
+					};
+				};
+
+				each(a : nn) {
+					@active[a] := nxt[a];
+				};
+
+				@na := nn;
+				depth += 1;
+			};
+
+			each(i : ns) {
+				r := sample[i];
+				if(@pos[r] >= 0) {
+					@leaf_of[r] := @pos[r];
+					@pos[r] := -1;
+				};
+			};
+
+			tree := BoostTree->New(nodes);
+			each(i : nodes) {
+				if(nfeat[i] >= 0) {
+					tree->SetNode(i, nfeat[i], nthr[i], nleft[i], nright[i], ndl[i], 0.0, ngain[i]);
+				}
+				else {
+					d := @node_h[i] + @lambda;
+					if(d < 0.0000000000000001) {
+						d := 0.0000000000000001;
+					};
+
+					tree->SetNode(i, -1, 0.0, 0, 0, false, (0.0 - @node_g[i]) / d * @learning_rate, 0.0);
+				};
+			};
+
+			return tree;
+		}
+
+		# candidate splits of feature f over the sorted rows
+		method : ScanExact(X : Float[,], f : Int, n : Int) ~ Nil {
+			off := f * n;
+			cnt := @nvalid[f];
+			hasnan := @hasnan[f];
+			each(a : @na) {
+				nd := @active[a];
+				@sgl[nd] := 0.0;
+				@shl[nd] := 0.0;
+				@scl[nd] := 0;
+				@sprev[nd] := 0.0;
+				@mg[nd] := 0.0;
+				@mh[nd] := 0.0;
+				@mc[nd] := 0;
+			};
+
+			if(hasnan) {
+				for(i := 0; i < cnt; i += 1;) {
+					r := @order[off + i];
+					nd := @pos[r];
+					if(nd >= 0) {
+						@mg[nd] += @g[r];
+						@mh[nd] += @h[r];
+						@mc[nd] += 1;
+					};
+				};
+
+				each(a : @na) {
+					nd := @active[a];
+					@mg[nd] := @node_g[nd] - @mg[nd];
+					@mh[nd] := @node_h[nd] - @mh[nd];
+					@mc[nd] := @node_c[nd] - @mc[nd];
+				};
+			};
+
+			order := @order;
+			pos := @pos;
+			gg := @g;
+			hh := @h;
+			sgl := @sgl;
+			shl := @shl;
+			scl := @scl;
+			sprev := @sprev;
+			for(i := 0; i < cnt; i += 1;) {
+				r := order[off + i];
+				nd := pos[r];
+				if(nd >= 0) {
+					v := X[r, f];
+					c := scl[nd];
+					if(c > 0 & v > sprev[nd]) {
+						prev := sprev[nd];
+						thr := (prev + v) * 0.5;
+						if(thr >= v) {
+							thr := prev;
+						};
+
+						Evaluate(nd, f, thr);
+					};
+
+					sgl[nd] += gg[r];
+					shl[nd] += hh[r];
+					scl[nd] := c + 1;
+					sprev[nd] := v;
+				};
+			};
+
+			if(hasnan) {
+				# present against missing
+				each(a : @na) {
+					nd := @active[a];
+					if(@mc[nd] > 0 & @scl[nd] > 0) {
+						Evaluate(nd, f, 1.0e300);
+					};
+				};
+			};
+		}
+
+		method : ScanHistogram(f : Int, n : Int, sample : Int[], slot : Int[], hg : Float[], hh : Float[], hc : Int[], B1 : Int) ~ Nil {
+			total := @na * B1;
+			each(i : total) {
+				hg[i] := 0.0;
+				hh[i] := 0.0;
+				hc[i] := 0;
+			};
+
+			off := f * n;
+			ns := sample->Size();
+			each(i : ns) {
+				r := sample[i];
+				nd := @pos[r];
+				if(nd >= 0) {
+					k := slot[nd] * B1 + @bins[off + r];
+					hg[k] += @g[r];
+					hh[k] += @h[r];
+					hc[k] += 1;
+				};
+			};
+
+			nb := @nbins[f];
+			hasnan := @hasnan[f];
+			each(a : @na) {
+				nd := @active[a];
+				row := a * B1;
+				@sgl[nd] := 0.0;
+				@shl[nd] := 0.0;
+				@scl[nd] := 0;
+				@mg[nd] := 0.0;
+				@mh[nd] := 0.0;
+				@mc[nd] := 0;
+				if(hasnan) {
+					@mg[nd] := hg[row + nb];
+					@mh[nd] := hh[row + nb];
+					@mc[nd] := hc[row + nb];
+				};
+
+				for(b := 0; b < nb - 1; b += 1;) {
+					if(hc[row + b] > 0) {
+						@sgl[nd] += hg[row + b];
+						@shl[nd] += hh[row + b];
+						@scl[nd] += hc[row + b];
+						Evaluate(nd, f, @edges[f * @max_bins + b]);
+					};
+				};
+
+				# the last non-empty bin, then present against missing
+				@sgl[nd] += hg[row + nb - 1];
+				@shl[nd] += hh[row + nb - 1];
+				@scl[nd] += hc[row + nb - 1];
+				if(hasnan & @mc[nd] > 0 & @scl[nd] > 0) {
+					Evaluate(nd, f, 1.0e300);
+				};
+			};
+		}
+
+		# scores the split of node nd on feature f at thr from the running left sums, with the missing rows each way
+		method : Evaluate(nd : Int, f : Int, thr : Float) ~ Nil {
+			G := @node_g[nd];
+			H := @node_h[nd];
+			C := @node_c[nd];
+			GL := @sgl[nd];
+			HL := @shl[nd];
+			CL := @scl[nd];
+			if(CL >= @min_leaf & C - CL >= @min_leaf & HL >= @min_child_weight & H - HL >= @min_child_weight) {
+				gain := SplitGain(GL, HL, G - GL, H - HL, G, H);
+				if(gain > @bgain[nd]) {
+					Record(nd, f, thr, false, gain, GL, HL, CL);
+				};
+			};
+
+			if(@hasnan[f] & @mc[nd] > 0) {
+				GL2 := GL + @mg[nd];
+				HL2 := HL + @mh[nd];
+				CL2 := CL + @mc[nd];
+				if(CL2 >= @min_leaf & C - CL2 >= @min_leaf & HL2 >= @min_child_weight & H - HL2 >= @min_child_weight) {
+					gain := SplitGain(GL2, HL2, G - GL2, H - HL2, G, H);
+					if(gain > @bgain[nd]) {
+						Record(nd, f, thr, true, gain, GL2, HL2, CL2);
+					};
+				};
+			};
+		}
+
+		method : Record(nd : Int, f : Int, thr : Float, dl : Bool, gain : Float, GL : Float, HL : Float, CL : Int) ~ Nil {
+			@bgain[nd] := gain;
+			@bfeat[nd] := f;
+			@bthr[nd] := thr;
+			@bdl[nd] := dl;
+			@bgl[nd] := GL;
+			@bhl[nd] := HL;
+			@bcl[nd] := CL;
+		}
+
+		method : SplitGain(GL : Float, HL : Float, GR : Float, HR : Float, G : Float, H : Float) ~ Float {
+			return 0.5 * (Score(GL, HL) + Score(GR, HR) - Score(G, H));
+		}
+
+		method : Score(G : Float, H : Float) ~ Float {
+			d := H + @lambda;
+			if(d < 0.0000000000000001) {
+				d := 0.0000000000000001;
+			};
+
+			return G * G / d;
+		}
+
+		# ---------------------------------------------------------------- prediction
+
+		#~
+		Engine: raw scores (before the sigmoid or softmax) for each row and output, from the first stages stages.
+		@param X feature matrix
+		@param stages how many stages to use
+		@return rows * outputs scores, row-major, or Nil when unfitted or the width is wrong
+		~#
+		method : public : RawScores(X : Float[,], stages : Int) ~ Float[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			if(X = Nil | X->Size()[0] < 1 | X->Size()[1] <> @cols) {
+				@error := "X must have {$@cols} columns";
+				return Nil;
+			};
+
+			K := @outputs;
+			if(stages < 0 | stages > @trees->Size() / K) {
+				stages := @trees->Size() / K;
+			};
+
+			rows := X->Size()[0];
+			result := Float->New[rows * K];
+			each(r : rows) {
+				each(k : K) {
+					result[r * K + k] := @base[k];
+				};
+			};
+
+			each(s : stages) {
+				each(k : K) {
+					tree := @trees->Get(s * K + k);
+					each(r : rows) {
+						result[r * K + k] += tree->Eval(X, r);
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Engine: raw scores after every stage.
+		@param X feature matrix
+		@return a matrix of stages x (rows * outputs), or Nil when unfitted or the width is wrong
+		~#
+		method : public : StagedRaw(X : Float[,]) ~ Float[,] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			if(X = Nil | X->Size()[0] < 1 | X->Size()[1] <> @cols) {
+				@error := "X must have {$@cols} columns";
+				return Nil;
+			};
+
+			K := @outputs;
+			stages := @trees->Size() / K;
+			rows := X->Size()[0];
+			current := Float->New[rows * K];
+			each(r : rows) {
+				each(k : K) {
+					current[r * K + k] := @base[k];
+				};
+			};
+
+			result := Float->New[stages, rows * K];
+			each(s : stages) {
+				each(k : K) {
+					tree := @trees->Get(s * K + k);
+					each(r : rows) {
+						current[r * K + k] += tree->Eval(X, r);
+					};
+				};
+
+				width := rows * K;
+				each(i : width) {
+					result[s, i] := current[i];
+				};
+			};
+
+			return result;
+		}
+
+		# ---------------------------------------------------------------- persistence
+
+		#~
+		Engine: the model as bytes: a header, the starting scores, the hyper-parameters worth keeping, the loss history and every tree.
+		@param kind 1 for a regressor, 2 for a classifier
+		@param classes the class labels of a classifier, or Nil
+		@return the bytes, or Nil when unfitted
+		~#
+		method : public : ToBytes(kind : Int, classes : Int[]) ~ Byte[] {
+			if(<>@fitted) {
+				@error := "not fitted";
+				return Nil;
+			};
+
+			s := System.IO.Serializer->New();
+			s->Write(1330860616);
+			s->Write(1);
+			s->Write(kind);
+			s->Write(@obj);
+			s->Write(@outputs);
+			s->Write(@cols);
+			s->Write(@learning_rate);
+			s->Write(@best_iter);
+			s->Write(@base);
+			if(classes = Nil) {
+				classes := Int->New[0];
+			};
+
+			s->Write(classes);
+			s->Write(@train_loss);
+			s->Write(@valid_loss);
+			s->Write(@trees->Size());
+			each(t : @trees->Size()) {
+				@trees->Get(t)->Write(s);
+			};
+
+			return s->Serialize();
+		}
+
+		#~
+		Engine: reads what ToBytes wrote into this object.
+		@param data the bytes
+		@param kind 1 for a regressor, 2 for a classifier
+		@return the class labels read (empty for a regressor), or Nil when the bytes are not a model of that kind
+		~#
+		method : public : FromBytes(data : Byte[], kind : Int) ~ Int[] {
+			@fitted := false;
+			if(data = Nil | data->Size() < 64) {
+				@error := "not a boosting model";
+				return Nil;
+			};
+
+			d := System.IO.Deserializer->New(data);
+			if(<>d->IsOk() | d->ReadInt() <> 1330860616 | d->ReadInt() <> 1 | d->ReadInt() <> kind) {
+				@error := "not a boosting model of this kind";
+				return Nil;
+			};
+
+			obj := d->ReadInt();
+			outputs := d->ReadInt();
+			cols := d->ReadInt();
+			rate := d->ReadFloat();
+			best := d->ReadInt();
+			base := d->ReadFloatArray();
+			classes := d->ReadIntArray();
+			train := d->ReadFloatArray();
+			valid := d->ReadFloatArray();
+			count := d->ReadInt();
+			if(<>d->IsOk() | obj < 0 | obj > 4 | outputs < 1 | cols < 1 | base = Nil | base->Size() <> outputs | classes = Nil | train = Nil | valid = Nil | count < 1 | count % outputs <> 0) {
+				@error := "corrupt boosting model";
+				return Nil;
+			};
+
+			trees := Vector->New()<BoostTree>;
+			each(t : count) {
+				tree := BoostTree->Read(d, cols);
+				if(tree = Nil) {
+					@error := "corrupt boosting model";
+					return Nil;
+				};
+
+				trees->AddBack(tree);
+			};
+
+			@obj := obj;
+			@outputs := outputs;
+			@cols := cols;
+			@learning_rate := rate;
+			@best_iter := best;
+			@base := base;
+			@train_loss := train;
+			@valid_loss := valid;
+			@stages_run := train->Size();
+			@trees := trees;
+			@stopped := false;
+			@fitted := true;
+			@error := "";
+			return classes;
+		}
+
+		#~
+		Hex text of a byte array, for Export.
+		~#
+		function : ToHex(data : Byte[]) ~ String {
+			digits := "0123456789abcdef";
+			out := Char->New[data->Size() * 2];
+			each(i : data->Size()) {
+				v := data[i]->As(Int);
+				if(v < 0) {
+					v += 256;
+				};
+
+				out[i * 2] := digits->Get(v / 16);
+				out[i * 2 + 1] := digits->Get(v % 16);
+			};
+
+			return String->New(out);
+		}
+
+		#~
+		The bytes of a hex text, or Nil when it is not one.
+		~#
+		function : FromHex(text : String) ~ Byte[] {
+			if(text = Nil | text->Size() % 2 <> 0) {
+				return Nil;
+			};
+
+			data := Byte->New[text->Size() / 2];
+			each(i : data->Size()) {
+				hi := HexDigit(text->Get(i * 2));
+				lo := HexDigit(text->Get(i * 2 + 1));
+				if(hi < 0 | lo < 0) {
+					return Nil;
+				};
+
+				data[i] := (hi * 16 + lo)->As(Byte);
+			};
+
+			return data;
+		}
+
+		function : HexDigit(c : Char) ~ Int {
+			if(c >= '0' & c <= '9') {
+				return c - '0';
+			};
+
+			if(c >= 'a' & c <= 'f') {
+				return c - 'a' + 10;
+			};
+
+			return -1;
+		}
+	}
+
+	#~
+	Gradient boosted regression trees.
+
+	Each stage fits a regression tree to the gradient of the loss and adds it, scaled by the learning rate, to the running prediction. Trees are grown level by level with XGBoost's second-order gain, so a leaf holds -G / (H + lambda): with lambda 0.0 and squared loss that is the mean residual, as in scikit-learn's GradientBoostingRegressor. The starting prediction is the mean of the targets (the median for the absolute and Huber losses). A NaN in a feature is a missing value and follows the direction each split learned; targets may not be NaN.
+
+```
+model := GradientBoostingRegressor->New(200, 0.1, 3, 42);
+model->SetSubsample(0.8);
+model->Fit(train_x, train_y);
+predictions := model->Predict(test_x);
+```
+	~#
+	class GradientBoostingRegressor from BoostModel {
+		@loss : BoostLoss;
+
+		#~
+		Constructor with squared loss, 100 stages, learning rate 0.1, depth 3, seed 1.
+		~#
+		New() {
+			Parent();
+			@loss := BoostLoss->SQUARED;
+		}
+
+		#~
+		Constructor with squared loss.
+		@param num_trees boosting stages
+		@param learning_rate shrinkage per stage, in (0, 1]
+		@param max_depth deepest tree
+		@param seed seed of the sampling and of the validation split
+		~#
+		New(num_trees : Int, learning_rate : Float, max_depth : Int, seed : Int) {
+			Parent(num_trees, learning_rate, max_depth, seed);
+			@loss := BoostLoss->SQUARED;
+		}
+
+		#~
+		Constructor
+		@param loss SQUARED, ABSOLUTE or HUBER
+		@param num_trees boosting stages
+		@param learning_rate shrinkage per stage, in (0, 1]
+		@param max_depth deepest tree
+		@param seed seed of the sampling and of the validation split
+		~#
+		New(loss : BoostLoss, num_trees : Int, learning_rate : Float, max_depth : Int, seed : Int) {
+			Parent(num_trees, learning_rate, max_depth, seed);
+			@loss := loss;
+		}
+
+		#~
+		The Huber loss is quadratic within delta of the target and linear beyond. With delta 0.0 (the default) it is re-estimated at every stage as the alpha quantile of the absolute residuals (scikit-learn's rule).
+		@param delta 0.0 for adaptive, or a fixed value above 0.0
+		@param alpha the quantile of the adaptive rule, in (0, 1)
+		@return false and GetError says why when refused
+		~#
+		method : public : SetHuber(delta : Float, alpha : Float) ~ Bool {
+			if(delta < 0.0 | alpha <= 0.0 | alpha >= 1.0) {
+				return Refuse("delta must be at least 0.0 and alpha in (0, 1)");
+			};
+
+			@huber_delta := delta;
+			@huber_alpha := alpha;
+			return true;
+		}
+
+		#~
+		The loss being minimized.
+		@return the loss
+		~#
+		method : public : GetLoss() ~ BoostLoss {
+			return @loss;
+		}
+
+		#~
+		Fits the ensemble.
+		@param X rows x features
+		@param y one target per row
+		@return true when fitted; false and GetError says why when the input or a setting was refused (an earlier fit is kept)
+		~#
+		method : public : Fit(X : Float[,], y : Float[]) ~ Bool {
+			return Fit(X, y, Nil, Nil, Nil);
+		}
+
+		#~
+		Fits the ensemble with a weight for each row.
+		@param X rows x features
+		@param y one target per row
+		@param w one non-negative weight per row
+		@return true when fitted
+		~#
+		method : public : Fit(X : Float[,], y : Float[], w : Float[]) ~ Bool {
+			return Fit(X, y, w, Nil, Nil);
+		}
+
+		#~
+		Fits the ensemble and watches a validation set of the caller's own for early stopping (see SetEarlyStopping; the patience must be above 0 for it to stop).
+		@param X rows x features
+		@param y one target per row
+		@param Xv validation rows
+		@param yv validation targets
+		@return true when fitted
+		~#
+		method : public : Fit(X : Float[,], y : Float[], Xv : Float[,], yv : Float[]) ~ Bool {
+			return Fit(X, y, Nil, Xv, yv);
+		}
+
+		method : Fit(X : Float[,], y : Float[], w : Float[], Xv : Float[,], yv : Float[]) ~ Bool {
+			obj := 0;
+			if(@loss = BoostLoss->ABSOLUTE) {
+				obj := 1;
+			}
+			else if(@loss = BoostLoss->HUBER) {
+				obj := 2;
+			};
+
+			return FitCore(X, y, w, Xv, yv, obj, 1);
+		}
+
+		#~
+		Predicts every row with all the stages.
+		@param X rows x features
+		@return one prediction per row, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			return Predict(X, -1);
+		}
+
+		#~
+		Predicts every row with the first stages stages only.
+		@param X rows x features
+		@param stages how many stages to use: 0 gives the starting score, a negative or too large number means all
+		@return one prediction per row, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : Predict(X : Float[,], stages : Int) ~ Float[] {
+			return RawScores(X, stages);
+		}
+
+		#~
+		The prediction after each stage: row s holds what Predict(X, s + 1) gives, so the last row equals Predict(X).
+		@param X rows x features
+		@return a stages x rows matrix, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : StagedPredict(X : Float[,]) ~ Float[,] {
+			return StagedRaw(X);
+		}
+
+		#~
+		Mean loss of the model on a labelled set: mean squared error, mean absolute error or mean Huber loss, as the model's loss says.
+		@param X rows x features
+		@param y one target per row
+		@return the mean loss, or NaN when unfitted or the shapes do not match
+		~#
+		method : public : Score(X : Float[,], y : Float[]) ~ Float {
+			raw := RawScores(X, -1);
+			if(raw = Nil | y = Nil | y->Size() <> raw->Size()) {
+				return Float->NaN();
+			};
+
+			delta := @huber_delta;
+			if(@obj = 2 & delta <= 0.0) {
+				delta := HuberDelta(y, raw, y->Size());
+			};
+
+			return MeanLoss(y, raw, y->Size(), 1, @obj, delta);
+		}
+
+		#~
+		Writes the model to a file.
+		@param filename file to write
+		@return true on success
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			data := ToBytes(1, Nil);
+			if(data = Nil) {
+				return false;
+			};
+
+			if(<>System.IO.Filesystem.FileWriter->WriteFile(filename, data)) {
+				@error := "cannot write '{$filename}'";
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Reads a model written by Store.
+		@param filename file to read
+		@return the model, or Nil when the file is missing or not a regressor
+		~#
+		function : Load(filename : String) ~ GradientBoostingRegressor {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			return FromData(data);
+		}
+
+		#~
+		The model as a text of hex digits.
+		@return the text, or Nil when unfitted
+		~#
+		method : public : Export() ~ String {
+			data := ToBytes(1, Nil);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return BoostModel->ToHex(data);
+		}
+
+		#~
+		Reads a model written by Export.
+		@param text the exported text
+		@return the model, or Nil when the text is not a regressor
+		~#
+		function : Import(text : String) ~ GradientBoostingRegressor {
+			return FromData(BoostModel->FromHex(text));
+		}
+
+		function : FromData(data : Byte[]) ~ GradientBoostingRegressor {
+			if(data = Nil) {
+				return Nil;
+			};
+
+			model := GradientBoostingRegressor->New();
+			if(model->FromBytes(data, 1) = Nil) {
+				return Nil;
+			};
+
+			return model;
+		}
+	}
+
+	#~
+	Gradient boosted classification trees: binary (logistic loss, one tree per stage) and multiclass (softmax, one tree per class per stage, with XGBoost's Hessian 2 p (1 - p)).
+
+	The starting scores are the log odds (binary) or log priors (multiclass) of the training labels. Class labels are any Ints; they are sorted and PredictProba's columns follow GetClasses(). GradientBoostingClassifier implements ScoreModel, so a binary one drops into CrossValidation and the lab's experiments; PredictScore is the probability of the larger label. Settings, missing values and early stopping are as in GradientBoostingRegressor.
+
+```
+model := GradientBoostingClassifier->New(100, 0.1, 3, 42);
+model->Fit(train_x, labels);
+proba := model->PredictProba(test_x);
+classes := model->Predict(test_x);
+```
+	~#
+	class GradientBoostingClassifier from BoostModel implements System.ML.ScoreModel {
+		@classes : Int[];
+
+		#~
+		Constructor with 100 stages, learning rate 0.1, depth 3, seed 1.
+		~#
+		New() {
+			Parent();
+		}
+
+		#~
+		Constructor
+		@param num_trees boosting stages
+		@param learning_rate shrinkage per stage, in (0, 1]
+		@param max_depth deepest tree
+		@param seed seed of the sampling and of the validation split
+		~#
+		New(num_trees : Int, learning_rate : Float, max_depth : Int, seed : Int) {
+			Parent(num_trees, learning_rate, max_depth, seed);
+		}
+
+		#~
+		Fits on binary labels (false is class 0, true class 1), as ScoreModel asks.
+		@param X rows x features
+		@param y one label per row
+		@return true when fitted
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			if(y = Nil) {
+				return Refuse("y is Nil");
+			};
+
+			labels := Int->New[y->Size()];
+			each(i : y->Size()) {
+				if(y[i]) {
+					labels[i] := 1;
+				};
+			};
+
+			return Fit(X, labels, Nil, Nil, Nil);
+		}
+
+		#~
+		Fits on class labels; two classes use the logistic loss, more use softmax.
+		@param X rows x features
+		@param y one label per row
+		@return true when fitted; false and GetError says why when the input or a setting was refused
+		~#
+		method : public : Fit(X : Float[,], y : Int[]) ~ Bool {
+			return Fit(X, y, Nil, Nil, Nil);
+		}
+
+		#~
+		Fits with a weight for each row.
+		@param X rows x features
+		@param y one label per row
+		@param w one non-negative weight per row
+		@return true when fitted
+		~#
+		method : public : Fit(X : Float[,], y : Int[], w : Float[]) ~ Bool {
+			return Fit(X, y, w, Nil, Nil);
+		}
+
+		#~
+		Fits and watches a validation set of the caller's own for early stopping (the patience must be above 0). Validation labels the training set does not have are refused.
+		@param X rows x features
+		@param y one label per row
+		@param Xv validation rows
+		@param yv validation labels
+		@return true when fitted
+		~#
+		method : public : Fit(X : Float[,], y : Int[], Xv : Float[,], yv : Int[]) ~ Bool {
+			return Fit(X, y, Nil, Xv, yv);
+		}
+
+		method : Fit(X : Float[,], y : Int[], w : Float[], Xv : Float[,], yv : Int[]) ~ Bool {
+			if(y = Nil | y->Size() < 2) {
+				return Refuse("y needs at least 2 labels");
+			};
+
+			sorted := Int->Sort(y);
+			found := Int->New[y->Size()];
+			K := 0;
+			each(i : sorted->Size()) {
+				if(K = 0 | sorted[i] <> found[K - 1]) {
+					found[K] := sorted[i];
+					K += 1;
+				};
+			};
+
+			if(K < 2) {
+				return Refuse("y holds only one class");
+			};
+
+			classes := Int->New[K];
+			each(k : K) {
+				classes[k] := found[k];
+			};
+
+			targets := Float->New[y->Size()];
+			each(i : y->Size()) {
+				targets[i] := IndexIn(classes, y[i])->As(Float);
+			};
+
+			vt : Float[];
+			if(Xv <> Nil & yv <> Nil) {
+				vt := Float->New[yv->Size()];
+				each(i : yv->Size()) {
+					c := IndexIn(classes, yv[i]);
+					if(c < 0) {
+						return Refuse("validation label {$yv[i]} is not in the training labels");
+					};
+
+					vt[i] := c->As(Float);
+				};
+			};
+
+			outputs := 1;
+			obj := 3;
+			if(K > 2) {
+				obj := 4;
+				outputs := K;
+			};
+
+			if(<>FitCore(X, targets, w, Xv, vt, obj, outputs)) {
+				return false;
+			};
+
+			@classes := classes;
+			return true;
+		}
+
+		function : IndexIn(classes : Int[], value : Int) ~ Int {
+			each(k : classes->Size()) {
+				if(classes[k] = value) {
+					return k;
+				};
+			};
+
+			return -1;
+		}
+
+		#~
+		The class labels, sorted; the columns of PredictProba.
+		@return the labels, or Nil when unfitted
+		~#
+		method : public : GetClasses() ~ Int[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			return @classes;
+		}
+
+		#~
+		Class probabilities for every row, one column per class (GetClasses order); each row sums to 1.0.
+		@param X rows x features
+		@return a rows x classes matrix, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : PredictProba(X : Float[,]) ~ Float[,] {
+			return PredictProba(X, -1);
+		}
+
+		#~
+		Class probabilities from the first stages stages only.
+		@param X rows x features
+		@param stages how many stages to use: 0 gives the starting probabilities, a negative or too large number means all
+		@return a rows x classes matrix, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : PredictProba(X : Float[,], stages : Int) ~ Float[,] {
+			raw := RawScores(X, stages);
+			if(raw = Nil) {
+				return Nil;
+			};
+
+			return ToProba(raw);
+		}
+
+		method : ToProba(raw : Float[]) ~ Float[,] {
+			K := @classes->Size();
+			rows := raw->Size() / @outputs;
+			result := Float->New[rows, K];
+			if(K = 2) {
+				each(r : rows) {
+					p := BoostModel->Sigmoid(raw[r]);
+					result[r, 0] := 1.0 - p;
+					result[r, 1] := p;
+				};
+
+				return result;
+			};
+
+			P := Float->New[raw->Size()];
+			Probabilities(raw, P, rows, K);
+			each(r : rows) {
+				each(k : K) {
+					result[r, k] := P[r * K + k];
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Probability of the larger class, for a binary model (ScoreModel). A multiclass model gives the probability of its last class.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			proba := PredictProba(X);
+			if(proba = Nil) {
+				return Nil;
+			};
+
+			rows := proba->Size()[0];
+			last := proba->Size()[1] - 1;
+			scores := Float->New[rows];
+			each(r : rows) {
+				scores[r] := proba[r, last];
+			};
+
+			return scores;
+		}
+
+		#~
+		The most probable class of every row.
+		@param X rows x features
+		@return one label per row, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : Predict(X : Float[,]) ~ Int[] {
+			return Predict(X, -1);
+		}
+
+		#~
+		The most probable class of every row from the first stages stages only.
+		@param X rows x features
+		@param stages how many stages to use
+		@return one label per row, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : Predict(X : Float[,], stages : Int) ~ Int[] {
+			raw := RawScores(X, stages);
+			if(raw = Nil) {
+				return Nil;
+			};
+
+			return Labels(raw);
+		}
+
+		method : Labels(raw : Float[]) ~ Int[] {
+			K := @classes->Size();
+			rows := raw->Size() / @outputs;
+			labels := Int->New[rows];
+			each(r : rows) {
+				if(K = 2) {
+					if(raw[r] > 0.0) {
+						labels[r] := @classes[1];
+					}
+					else {
+						labels[r] := @classes[0];
+					};
+				}
+				else {
+					top := 0;
+					each(k : K) {
+						if(raw[r * K + k] > raw[r * K + top]) {
+							top := k;
+						};
+					};
+
+					labels[r] := @classes[top];
+				};
+			};
+
+			return labels;
+		}
+
+		#~
+		The predicted class after each stage: row s holds what Predict(X, s + 1) gives, so the last row equals Predict(X).
+		@param X rows x features
+		@return a stages x rows matrix of labels, or Nil when unfitted or X has the wrong width
+		~#
+		method : public : StagedPredict(X : Float[,]) ~ Int[,] {
+			staged := StagedRaw(X);
+			if(staged = Nil) {
+				return Nil;
+			};
+
+			stages := staged->Size()[0];
+			width := staged->Size()[1];
+			rows := width / @outputs;
+			result := Int->New[stages, rows];
+			each(s : stages) {
+				raw := Float->New[width];
+				each(i : width) {
+					raw[i] := staged[s, i];
+				};
+
+				labels := Labels(raw);
+				each(r : rows) {
+					result[s, r] := labels[r];
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Fraction of rows whose predicted class equals the label.
+		@param X rows x features
+		@param y one label per row
+		@return accuracy in 0.0 to 1.0, or NaN when unfitted or the shapes do not match
+		~#
+		method : public : Score(X : Float[,], y : Int[]) ~ Float {
+			labels := Predict(X);
+			if(labels = Nil | y = Nil | y->Size() <> labels->Size()) {
+				return Float->NaN();
+			};
+
+			hits := 0;
+			each(i : labels->Size()) {
+				if(labels[i] = y[i]) {
+					hits += 1;
+				};
+			};
+
+			return hits->As(Float) / labels->Size()->As(Float);
+		}
+
+		#~
+		Mean log loss of the predicted probabilities on a labelled set.
+		@param X rows x features
+		@param y one label per row (each must be a class the model was fitted on)
+		@return the log loss, or NaN when unfitted, a label is unknown or the shapes do not match
+		~#
+		method : public : LogLoss(X : Float[,], y : Int[]) ~ Float {
+			proba := PredictProba(X);
+			if(proba = Nil | y = Nil | y->Size() <> proba->Size()[0]) {
+				return Float->NaN();
+			};
+
+			sum := 0.0;
+			each(r : y->Size()) {
+				c := IndexIn(@classes, y[r]);
+				if(c < 0) {
+					return Float->NaN();
+				};
+
+				p := proba[r, c];
+				if(p < 0.000000000000001) {
+					p := 0.000000000000001;
+				};
+
+				sum -= p->Log();
+			};
+
+			return sum / y->Size()->As(Float);
+		}
+
+		#~
+		Writes the model to a file.
+		@param filename file to write
+		@return true on success
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			data := ToBytes(2, @classes);
+			if(data = Nil) {
+				return false;
+			};
+
+			if(<>System.IO.Filesystem.FileWriter->WriteFile(filename, data)) {
+				@error := "cannot write '{$filename}'";
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Reads a model written by Store.
+		@param filename file to read
+		@return the model, or Nil when the file is missing or not a classifier
+		~#
+		function : Load(filename : String) ~ GradientBoostingClassifier {
+			return FromData(System.IO.Filesystem.FileReader->ReadBinaryFile(filename));
+		}
+
+		#~
+		The model as a text of hex digits.
+		@return the text, or Nil when unfitted
+		~#
+		method : public : Export() ~ String {
+			data := ToBytes(2, @classes);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return BoostModel->ToHex(data);
+		}
+
+		#~
+		Reads a model written by Export.
+		@param text the exported text
+		@return the model, or Nil when the text is not a classifier
+		~#
+		function : Import(text : String) ~ GradientBoostingClassifier {
+			return FromData(BoostModel->FromHex(text));
+		}
+
+		function : FromData(data : Byte[]) ~ GradientBoostingClassifier {
+			if(data = Nil) {
+				return Nil;
+			};
+
+			model := GradientBoostingClassifier->New();
+			classes := model->FromBytes(data, 2);
+			if(classes = Nil) {
+				return Nil;
+			};
+
+			if(classes->Size() < 2 | model->OutputCount() <> GradientBoostingClassifier->ExpectedOutputs(classes)) {
+				return Nil;
+			};
+
+			model->SetClasses(classes);
+			return model;
+		}
+
+		function : ExpectedOutputs(classes : Int[]) ~ Int {
+			if(classes->Size() = 2) {
+				return 1;
+			};
+
+			return classes->Size();
+		}
+
+		method : public : SetClasses(classes : Int[]) ~ Nil {
+			@classes := classes;
+		}
+
+		method : public : OutputCount() ~ Int {
+			return @outputs;
+		}
+	}
+}

@@ -1,0 +1,579 @@
+# EXTRA_LIBS: gen_collect,concurrent,actor
+#~
+System.Actor core: exit reasons (normal, stopped, failed by a raised error and by each runtime fault
+the VM lets a program catch, killed), Init and Terminate hooks, Stop draining the queue, Kill that
+cannot interrupt a blocked handler, Call with a timeout, a late answer, a dead actor and a failing
+handler, monitors (DOWN mail), links (and trapping their EXIT mail) and Join with a timeout.
+Scripted handlers and latches decide every interleaving; no check depends on a sleep.
+~#
+use System.Actor;
+use System.Concurrency;
+use Collection;
+
+# A thread-safe event log a test can wait on
+class Probe {
+  @mutex : ThreadMutex;
+  @changed : Condition;
+  @events : Vector<String>;
+
+  New() {
+    @mutex := ThreadMutex->New("probe");
+    @changed := Condition->New();
+    @events := Vector->New()<String>;
+  }
+
+  method : public : Add(text : String) ~ Nil {
+    critical(@mutex) {
+      @events->AddBack(text);
+      @changed->Broadcast();
+    };
+  }
+
+  method : public : Count(text : String) ~ Int {
+    n := 0;
+    critical(@mutex) {
+      each(i : @events) {
+        if(@events->Get(i)->Equals(text)) {
+          n += 1;
+        };
+      };
+    };
+    return n;
+  }
+
+  method : public : CountPrefix(prefix : String) ~ Int {
+    n := 0;
+    critical(@mutex) {
+      each(i : @events) {
+        if(@events->Get(i)->StartsWith(prefix)) {
+          n += 1;
+        };
+      };
+    };
+    return n;
+  }
+
+  # waits until the event has been recorded n times; false after ten seconds
+  method : public : Await(text : String, n : Int) ~ Bool {
+    deadline := ActorClock->Now() + 10000;
+    ok := false;
+    critical(@mutex) {
+      done := false;
+      while(done = false) {
+        c := 0;
+        each(i : @events) {
+          if(@events->Get(i)->Equals(text)) {
+            c += 1;
+          };
+        };
+        if(c >= n) {
+          ok := true;
+          done := true;
+        }
+        else {
+          remaining := deadline - ActorClock->Now();
+          if(remaining <= 0) {
+            done := true;
+          }
+          else {
+            @changed->Wait(@mutex, remaining);
+          };
+        };
+      };
+    };
+    return ok;
+  }
+
+  method : public : AwaitPrefix(prefix : String, n : Int) ~ Bool {
+    deadline := ActorClock->Now() + 10000;
+    ok := false;
+    critical(@mutex) {
+      done := false;
+      while(done = false) {
+        c := 0;
+        each(i : @events) {
+          if(@events->Get(i)->StartsWith(prefix)) {
+            c += 1;
+          };
+        };
+        if(c >= n) {
+          ok := true;
+          done := true;
+        }
+        else {
+          remaining := deadline - ActorClock->Now();
+          if(remaining <= 0) {
+            done := true;
+          }
+          else {
+            @changed->Wait(@mutex, remaining);
+          };
+        };
+      };
+    };
+    return ok;
+  }
+
+  method : public : Text() ~ String {
+    s := "";
+    critical(@mutex) {
+      each(i : @events) {
+        if(i > 0) {
+          s += ",";
+        };
+        s += @events->Get(i);
+      };
+    };
+    return s;
+  }
+}
+
+# Does what a test tells it to, one command per mail
+class Scripted implements ActorBehavior, ActorLifecycle {
+  @name : String;
+  @probe : Probe;
+  @gate : CountDownLatch;
+  @fail_init : Bool;
+  @fail_term : Bool;
+
+  New(name : String, probe : Probe, gate : CountDownLatch) {
+    @name := name;
+    @probe := probe;
+    @gate := gate;
+  }
+
+  # unbounded recursion: the call-depth limit is an error the actor can catch
+  method : Descend(n : Int) ~ Int {
+    r := Descend(n + 1);
+    return r + 1;
+  }
+
+  method : public : FailInit() ~ Scripted {
+    @fail_init := true;
+    return @self;
+  }
+
+  method : public : FailTerminate() ~ Scripted {
+    @fail_term := true;
+    return @self;
+  }
+
+  method : public : Init(me : Actor) ~ Nil {
+    @probe->Add("init:{$@name}");
+    if(@fail_init) {
+      Runtime->Raise(Error->New("init boom"));
+    };
+  }
+
+  method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
+    @probe->Add("term:{$@name}:{$(reason->ToString())}");
+    if(@fail_term) {
+      Runtime->Raise(Error->New("term boom"));
+    };
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    kind := mail->GetKind();
+    cmd : String;
+    if(mail->GetPayload() <> Nil) {
+      cmd := mail->GetPayload()->As(String);
+    };
+
+    if(kind = Mail->Kind->DOWN) {
+      @probe->Add("down:{$(mail->GetSource()->GetName())}:{$(mail->GetReason()->ToString())}");
+      return true;
+    };
+    if(kind = Mail->Kind->EXIT) {
+      @probe->Add("exit:{$(mail->GetSource()->GetName())}:{$(mail->GetReason()->ToString())}");
+      return true;
+    };
+
+    if(kind = Mail->Kind->CALL) {
+      if(cmd = Nil) {
+        mail->Answer("nil-call");
+      }
+      else if(cmd->Equals("hold")) {
+        @probe->Add("holding");
+        @gate->Await();
+        ok := mail->Answer("late");
+        @probe->Add("answered:{$ok}");
+      }
+      else if(cmd->Equals("fail")) {
+        Runtime->Raise(Error->New("boom-call"));
+      }
+      else {
+        mail->Answer("re:{$cmd}");
+      };
+      return true;
+    };
+
+    if(cmd->Equals("bye")) {
+      return false;
+    }
+    else if(cmd->Equals("fail")) {
+      Runtime->Raise(Error->New("boom"));
+    }
+    else if(cmd->Equals("div")) {
+      z := 0;
+      x := 10 / z;
+      @probe->Add("unreachable {$x}");
+    }
+    else if(cmd->Equals("index")) {
+      a := Int->New[2];
+      a[5] := 1;
+    }
+    else if(cmd->Equals("nil")) {
+      s : String;
+      n := s->Size();
+      @probe->Add("unreachable {$n}");
+    }
+    else if(cmd->Equals("cast")) {
+      b : System.Base := "text";
+      i := b->As(IntRef);
+      @probe->Add("unreachable {$(i->Get())}");
+    }
+    else if(cmd->Equals("assert")) {
+      Runtime->Assert(false);
+    }
+    else if(cmd->Equals("recurse")) {
+      @probe->Add("unreachable {$(Descend(0))}");
+    }
+    else if(cmd->Equals("block")) {
+      @probe->Add("blocked");
+      @gate->Await();
+      @probe->Add("unblocked");
+    }
+    else {
+      @probe->Add("got:{$cmd}");
+    };
+    return true;
+  }
+}
+
+class ActorCoreTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Make(name : String, probe : Probe) ~ Actor {
+    return Actor->New(name, Scripted->New(name, probe, CountDownLatch->New(1)));
+  }
+
+  function : Reason(actor : Actor) ~ ExitReason {
+    return actor->Join(10000);
+  }
+
+  function : Exits() ~ Nil {
+    "exit reasons:"->PrintLine();
+    probe := Probe->New();
+
+    a := Make("a", probe)->Start();
+    a->Send("hello");
+    a->Send("bye");
+    r := Reason(a);
+    Check("a handler that returns false ends NORMAL", r <> Nil & r->GetKind() = ExitReason->Kind->NORMAL);
+    Check("the hooks ran in order", probe->Text()->Equals("init:a,got:hello,term:a:normal"));
+    Check("a normal exit is orderly", r->IsOrderly() & r->IsAbnormal() = false);
+    Check("the mailbox is closed after the exit", a->Send("late") = Mailbox->Status->CLOSED);
+    Check("exit state", a->IsExited() & a->IsRunning() = false & a->GetExitReason() = r);
+
+    # Stop is graceful: what is queued is handled first
+    probe2 := Probe->New();
+    b := Make("b", probe2);
+    each(i : 5) {
+      b->Send("m{$i}");
+    };
+    b->Start();
+    b->Stop();
+    r2 := Reason(b);
+    Check("Stop ends STOPPED", r2->GetKind() = ExitReason->Kind->STOPPED);
+    Check("all five queued mails were handled first", probe2->CountPrefix("got:m") = 5 & b->GetProcessedCount() = 5);
+    Check("a stopped actor takes no more mail", b->Send("x") = Mailbox->Status->CLOSED);
+
+    # Stop and Kill before Start
+    c := Make("c", Probe->New());
+    c->Stop();
+    Check("Stop before Start is STOPPED", Reason(c)->GetKind() = ExitReason->Kind->STOPPED);
+    d := Make("d", Probe->New());
+    d->Kill();
+    Check("Kill before Start is KILLED", Reason(d)->GetKind() = ExitReason->Kind->KILLED);
+    Check("Start after the end changes nothing", d->Start()->IsRunning() = false);
+
+    # Join with a timeout
+    e := Make("e", Probe->New())->Start();
+    started := ActorClock->Now();
+    Check("Join with a timeout returns Nil while running", e->Join(40) = Nil);
+    Check("it waited at least the timeout", ActorClock->Now() - started >= 35);
+    Check("Join(0) on a running actor is Nil", e->Join(0) = Nil);
+    e->Stop();
+    Check("Join after Stop", Reason(e)->GetKind() = ExitReason->Kind->STOPPED);
+  }
+
+  function : Failures() ~ Nil {
+    "failures become exit reasons:"->PrintLine();
+    commands := ["fail", "div", "index", "nil", "cast", "assert", "recurse"];
+    each(i : commands) {
+      probe := Probe->New();
+      a := Make("f", probe)->Start();
+      a->Send(commands[i]);
+      a->Send("never");
+      r := Reason(a);
+      ok := r <> Nil & r->GetKind() = ExitReason->Kind->FAILED & r->GetError() <> Nil & r->GetError()->Size() > 0;
+      Check("{$(commands[i])} -> FAILED: {$(r->GetError())}", ok);
+      Check("  the next mail was not handled, Terminate ran", probe->Count("got:never") = 0 & probe->CountPrefix("term:f:failed") = 1);
+      Check("  abnormal", r->IsAbnormal());
+    };
+
+    probe2 := Probe->New();
+    a2 := Make("fail", probe2)->Start();
+    a2->Send("fail");
+    Check("a raised error keeps its message", Reason(a2)->GetError()->Equals("boom"));
+
+    # the failure of one actor does not touch another
+    bystander := Make("bystander", probe2)->Start();
+    a3 := Make("dies", probe2)->Start();
+    a3->Send("div");
+    Reason(a3);
+    bystander->Send("still-here");
+    Check("a bystander keeps working", probe2->Await("got:still-here", 1) & bystander->IsRunning());
+    bystander->Stop();
+    Reason(bystander);
+
+    # Init and Terminate failures
+    pi := Probe->New();
+    ai := Actor->New("badinit", Scripted->New("badinit", pi, CountDownLatch->New(1))->FailInit())->Start();
+    ri := Reason(ai);
+    Check("a failing Init is FAILED", ri->GetKind() = ExitReason->Kind->FAILED & ri->GetError()->Find("init boom") > -1);
+    Check("no mail was handled after it", ai->GetProcessedCount() = 0);
+
+    pt := Probe->New();
+    at := Actor->New("badterm", Scripted->New("badterm", pt, CountDownLatch->New(1))->FailTerminate())->Start();
+    at->Send("bye");
+    rt := Reason(at);
+    Check("a failing Terminate turns an orderly exit into FAILED", rt->GetKind() = ExitReason->Kind->FAILED & rt->GetError()->Find("term boom") > -1);
+  }
+
+  function : Killing() ~ Nil {
+    "Kill:"->PrintLine();
+    probe := Probe->New();
+    gate := CountDownLatch->New(1);
+    a := Actor->New("k", Scripted->New("k", probe, gate))->Start();
+    a->Send("block");
+    Check("the handler is blocked", probe->Await("blocked", 1));
+    a->Send("queued-1");
+    a->Send("queued-2");
+    a->Kill();
+    Check("Kill discards what was queued", a->GetMailbox()->Size() = 0);
+    Check("a blocked handler cannot be interrupted: still running", a->Join(60) = Nil & a->IsRunning());
+    gate->CountDown();
+    r := Reason(a);
+    Check("it ends KILLED once the handler returns", r->GetKind() = ExitReason->Kind->KILLED);
+    Check("the queued mails were never handled", probe->CountPrefix("got:queued") = 0);
+    Check("they were counted as discarded", a->GetDiscardedCount() = 2);
+    Check("Terminate saw the reason", probe->Count("term:k:killed") = 1);
+
+    # a kill wakes an idle actor
+    idle := Make("idle", Probe->New())->Start();
+    idle->Kill();
+    Check("Kill wakes an actor waiting for mail", Reason(idle)->GetKind() = ExitReason->Kind->KILLED);
+  }
+
+  function : Calls() ~ Nil {
+    "Call:"->PrintLine();
+    probe := Probe->New();
+    gate := CountDownLatch->New(1);
+    a := Actor->New("srv", Scripted->New("srv", probe, gate))->Start();
+
+    r1 := a->Call("ping", 5000);
+    Check("a call is answered", r1->IsOk() & r1->GetValue()->As(String)->Equals("re:ping"));
+    r2 := a->Call("pong", 5000);
+    Check("correlation ids count up per actor", r1->GetId() = 1 & r2->GetId() = 2);
+    Check("a Nil question is allowed", a->Call(Nil, 5000)->GetValue()->As(String)->Equals("nil-call"));
+
+    # a call that times out, then a late answer
+    started := ActorClock->Now();
+    r3 := a->Call("hold", 60);
+    elapsed := ActorClock->Now() - started;
+    Check("a call without an answer times out", r3->GetStatus() = CallResult->Status->TIMED_OUT & r3->GetError() <> Nil);
+    Check("it waited at least the timeout ({$elapsed} ms)", elapsed >= 55);
+    Check("nothing is answered yet", a->GetLateAnswers() = 0);
+    gate->CountDown();
+    Check("the handler answered after the caller gave up", probe->Await("answered:false", 1));
+    Check("the late answer was dropped and counted", a->GetLateAnswers() = 1);
+    r4 := a->Call("after", 5000);
+    Check("the actor serves the next call normally", r4->IsOk() & r4->GetId() = 5);
+
+    # a handler that fails on a call
+    r5 := a->Call("fail", 5000);
+    Check("a failing handler fails the call", r5->GetStatus() = CallResult->Status->FAILED & r5->GetError()->Find("boom-call") > -1);
+    Check("and the actor", Reason(a)->GetKind() = ExitReason->Kind->FAILED);
+    r6 := a->Call("later", 5000);
+    Check("a call to an ended actor is DEAD at once", r6->GetStatus() = CallResult->Status->DEAD);
+
+    # calls queued behind a failure are failed, not left to time out
+    probe2 := Probe->New();
+    gate2 := CountDownLatch->New(1);
+    b := Actor->New("b", Scripted->New("b", probe2, gate2));
+    results := Vector->New()<CallJob>;
+    each(i : 3) {
+      j := CallJob->New(b, "q{$i}");
+      results->AddBack(j);
+    };
+    b->Send("fail");
+    b->Start();
+    each(i : results) {
+      results->Get(i)->Execute(Nil);
+    };
+    each(i : results) {
+      results->Get(i)->Join();
+    };
+    Reason(b);
+    dead := 0;
+    each(i : results) {
+      st := results->Get(i)->GetResult()->GetStatus();
+      if(st = CallResult->Status->DEAD | st = CallResult->Status->OK) {
+        dead += 1;
+      };
+    };
+    Check("every call came back promptly, none timed out", dead = 3);
+
+    # Call from inside a handler to another actor works (no cycle)
+    probe3 := Probe->New();
+    c := Make("c", probe3)->Start();
+    Check("a call returns an answer", c->Call("x", 5000)->IsOk());
+    c->Stop();
+    Reason(c);
+  }
+
+  function : Monitoring() ~ Nil {
+    "monitors:"->PrintLine();
+    probe := Probe->New();
+    target := Make("target", probe);
+    watch1 := Mailbox->New();
+    watch2 := Mailbox->New();
+    target->Monitor(watch1);
+    target->Monitor(watch2);
+    gone := Mailbox->New();
+    target->Monitor(gone);
+    target->Demonitor(gone);
+    target->Start();
+    target->Send("fail");
+    r := Reason(target);
+
+    m1 := watch1->Receive(5000);
+    Check("a monitor gets a DOWN mail", m1 <> Nil & m1->As(Mail)->GetKind() = Mail->Kind->DOWN);
+    Check("it names the actor and the reason", m1->As(Mail)->GetSource() = target & m1->As(Mail)->GetReason()->GetKind() = ExitReason->Kind->FAILED);
+    Check("every monitor is told", watch2->Receive(5000) <> Nil);
+    Check("a removed monitor is not told", gone->TryReceive() = Nil);
+    Check("one notice each", watch1->TryReceive() = Nil);
+
+    late := Mailbox->New();
+    target->Monitor(late);
+    lm := late->Receive(5000);
+    Check("monitoring an ended actor reports at once", lm <> Nil & lm->As(Mail)->GetKind() = Mail->Kind->DOWN & lm->As(Mail)->GetReason() = r);
+
+    # an actor as the watcher
+    probe2 := Probe->New();
+    watcher := Make("watcher", probe2)->Start();
+    t2 := Make("t2", probe2);
+    t2->Monitor(watcher);
+    t2->Start();
+    t2->Send("bye");
+    Check("an actor receives the DOWN mail as mail", probe2->Await("down:t2:normal", 1));
+    watcher->Stop();
+    Reason(watcher);
+
+    # a full bounded watcher mailbox still gets the notice
+    full := Mailbox->New(1, Mailbox->Policy->REJECT);
+    full->Send("filler");
+    t3 := Make("t3", Probe->New())->Start();
+    t3->Monitor(full);
+    t3->Stop();
+    Reason(t3);
+    Check("the notice goes past a full mailbox", full->Size() = 2);
+  }
+
+  function : Linking() ~ Nil {
+    "links:"->PrintLine();
+    probe := Probe->New();
+    a := Make("a", probe)->Start();
+    b := Make("b", probe)->Start();
+    a->Link(b);
+    b->Send("fail");
+    ra := Reason(a);
+    Check("a linked actor fails with its partner", ra->GetKind() = ExitReason->Kind->FAILED & ra->GetError()->Find("linked actor b") > -1);
+    Reason(b);
+
+    # an orderly exit is not passed on
+    c := Make("c", probe)->Start();
+    d := Make("d", probe)->Start();
+    c->Link(d);
+    d->Send("bye");
+    Reason(d);
+    c->Send("probe-c");
+    Check("a normal exit does not touch the partner", probe->Await("got:probe-c", 1) & c->IsRunning());
+    c->Stop();
+    Reason(c);
+
+    # an actor that traps exits gets mail
+    e := Make("e", probe)->Start();
+    e->SetTrapExits(true);
+    f := Make("f", probe)->Start();
+    e->Link(f);
+    f->Send("div");
+    Check("a trapping actor gets an EXIT mail", probe->Await("exit:f:failed: Divide by zero", 1) | probe->AwaitPrefix("exit:f:failed", 1));
+    Check("and keeps running", e->IsRunning());
+    e->Stop();
+    Reason(e);
+
+    # linking to an actor that has ended already
+    g := Make("g", probe)->Start();
+    h := Make("h", probe)->Start();
+    h->Send("fail");
+    Reason(h);
+    g->Link(h);
+    Check("a link to an actor that already failed fails now", Reason(g)->GetKind() = ExitReason->Kind->FAILED);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    Exits();
+    Failures();
+    Killing();
+    Calls();
+    Monitoring();
+    Linking();
+    if(@failures > 0) {
+      "{$@failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "all actor core checks passed"->PrintLine();
+  }
+}
+
+class CallJob from Thread {
+  @actor : Actor;
+  @payload : String;
+  @result : CallResult;
+
+  New(actor : Actor, payload : String) {
+    Parent("call");
+    @actor := actor;
+    @payload := payload;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    @result := @actor->Call(@payload, 20000);
+  }
+
+  method : public : GetResult() ~ CallResult {
+    return @result;
+  }
+}

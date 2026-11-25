@@ -1,0 +1,315 @@
+# EXTRA_LIBS: llm_util,regex
+#~
+API.LlmUtil StructuredCall against a scripted fake ChatFn: a reply that is valid the
+first time, invalid and then fixed on a retry, never valid, wrapped in chatter or a
+code fence, repaired when repair is on, and a backend that fails. The fake records
+every conversation it is sent, so the retry feedback is checked word for word.
+No network, no key.
+~#
+
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+#~
+A ChatFn that answers from a script and remembers what it was asked.
+~#
+class FakeChat implements ChatFn {
+  @replies : Vector<String>;
+  @next : Int;
+  @calls : Vector<Vector<PromptTurn>>;
+  @fail_with : String;
+
+  New(replies : Vector<String>) {
+    @replies := replies;
+    @calls := Vector->New()<Vector<PromptTurn>>;
+  }
+
+  method : public : FailWith(error : String) ~ FakeChat {
+    @fail_with := error;
+    return @self;
+  }
+
+  method : public : Complete(turns : Vector<PromptTurn>) ~ String {
+    snapshot := Vector->New()<PromptTurn>;
+    each(i : turns) {
+      snapshot->AddBack(turns->Get(i));
+    };
+    @calls->AddBack(snapshot);
+
+    if(@fail_with <> Nil) {
+      return Nil;
+    };
+
+    # the last scripted reply repeats once the script runs out
+    index := @next;
+    if(index >= @replies->Size()) {
+      index := @replies->Size() - 1;
+    };
+    @next += 1;
+    return @replies->Get(index);
+  }
+
+  method : public : GetError() ~ String {
+    return @fail_with;
+  }
+
+  method : public : CallCount() ~ Int {
+    return @calls->Size();
+  }
+
+  method : public : Call(n : Int) ~ Vector<PromptTurn> {
+    return @calls->Get(n);
+  }
+}
+
+class LlmUtilStructuredTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Script(a : String) ~ Vector<String> {
+    v := Vector->New()<String>;
+    v->AddBack(a);
+    return v;
+  }
+
+  function : Script(a : String, b : String) ~ Vector<String> {
+    v := Script(a);
+    v->AddBack(b);
+    return v;
+  }
+
+  function : Schema() ~ JsonElement {
+    return JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"age\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}");
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    TestValidFirstTime();
+    TestRetryFixes();
+    TestNeverValid();
+    TestChatty();
+    TestUnparseable();
+    TestRepair();
+    TestBackendFailure();
+    TestNoRetries();
+    TestBuilderAndTemplate();
+    TestPicksTheValidCandidate();
+    TestFeedbackCap();
+    TestScalarSchema();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestValidFirstTime() ~ Nil {
+    "-- valid the first time"->PrintLine();
+    chat := FakeChat->New(Script("{\"name\":\"Ada\",\"age\":36}"));
+    call := StructuredCall->New(chat, Schema());
+    outcome := call->Ask("Extract the person from: Ada Lovelace, 36");
+    Check("ok", outcome->IsOk());
+    Check("one attempt", outcome->GetAttempts() = 1 & chat->CallCount() = 1);
+    Check("the typed value", outcome->GetValue()->Get("name")->GetString()->Equals("Ada") & outcome->GetValue()->Get("age")->GetInt() = 36);
+    Check("no errors, no repair, no failure text", outcome->GetErrors()->Size() = 0 & <>outcome->WasRepaired() & outcome->GetError() = Nil);
+    Check("the reply is kept", outcome->GetReplies()->Size() = 1);
+
+    turns := chat->Call(0);
+    Check("the conversation is a system turn and the user turn", turns->Size() = 2 & turns->Get(0)->GetRole()->Equals("system") & turns->Get(1)->GetRole()->Equals("user"));
+    Check("the user turn is the prompt", turns->Get(1)->GetText()->Equals("Extract the person from: Ada Lovelace, 36"));
+    system := turns->Get(0)->GetText();
+    Check("the system turn tells the model to answer with JSON only", system->Contains("single JSON value") & system->Contains("no markdown code fence"));
+    Check("the system turn carries the schema", system->Contains("JSON Schema:") & system->Contains("\"required\":[\"name\",\"age\"]"));
+  }
+
+  function : TestRetryFixes() ~ Nil {
+    "-- invalid, then fixed on a retry"->PrintLine();
+    wrong := "{\"name\":\"Ada\",\"age\":\"36\"}";
+    chat := FakeChat->New(Script(wrong, "{\"name\":\"Ada\",\"age\":36}"));
+    outcome := StructuredCall->New(chat, Schema())->Ask("Who?");
+    Check("ok after one retry", outcome->IsOk() & outcome->GetAttempts() = 2 & chat->CallCount() = 2);
+    Check("the value is the corrected one", outcome->GetValue()->Get("age")->GetInt() = 36);
+    Check("both replies are kept", outcome->GetReplies()->Size() = 2 & outcome->GetReplies()->Get(0)->Equals(wrong));
+
+    second := chat->Call(1);
+    Check("the retry has system, user, the wrong reply and the feedback", second->Size() = 4 & second->Get(2)->GetRole()->Equals("assistant") & second->Get(3)->GetRole()->Equals("user"));
+    Check("the wrong reply is sent back as an assistant turn", second->Get(2)->GetText()->Equals(wrong));
+    feedback := second->Get(3)->GetText();
+    Check("the feedback names the exact error with its pointer", feedback->Contains("- /age: expected integer, got string"));
+    Check("the feedback asks for corrected JSON only", feedback->StartsWith("Your reply did not match the schema. Problems:") & feedback->EndsWith("Reply again with only the corrected JSON value."));
+    Check("the first request is unchanged by the retry", chat->Call(0)->Size() = 2);
+  }
+
+  function : TestNeverValid() ~ Nil {
+    "-- never valid"->PrintLine();
+    chat := FakeChat->New(Script("{\"name\":\"\",\"age\":-4,\"extra\":1}"));
+    outcome := StructuredCall->New(chat, Schema())->SetMaxRetries(2)->Ask("Who?");
+    Check("not ok", <>outcome->IsOk() & outcome->GetValue() = Nil);
+    Check("three attempts, one request and two retries", outcome->GetAttempts() = 3 & chat->CallCount() = 3);
+    errors := outcome->GetErrors();
+    Check("the final error list is complete", errors->Size() = 3);
+    Check("minLength for the name", errors->Get(0)->GetPath()->Equals("/age") | errors->Get(0)->GetPath()->Equals("/name"));
+    paths := String->New();
+    each(i : errors) {
+      paths->Append(errors->Get(i)->GetPath());
+      paths->Append(' ');
+    };
+    Check("the three problems are located", paths->Contains("/name ") & paths->Contains("/age ") & paths->Contains("/extra "));
+    Check("a one-line reason", outcome->GetError() <> Nil & outcome->GetError()->Size() > 0);
+
+    last := chat->Call(2);
+    Check("the third request carries two rounds of feedback", last->Size() = 6);
+    Check("the feedback lists every error", last->Get(5)->GetText()->Contains("/name:") & last->Get(5)->GetText()->Contains("/age:") & last->Get(5)->GetText()->Contains("/extra:"));
+    Check("the replies are all kept", outcome->GetReplies()->Size() = 3);
+  }
+
+  function : TestChatty() ~ Nil {
+    "-- chatty and fenced replies"->PrintLine();
+    chat := FakeChat->New(Script("Sure! Here is the data you asked for:\n```json\n{\"name\":\"Ada\",\"age\":36}\n```\nLet me know if you need anything else."));
+    outcome := StructuredCall->New(chat, Schema())->Ask("Who?");
+    Check("a fenced reply is accepted without a retry", outcome->IsOk() & outcome->GetAttempts() = 1);
+
+    inline_chat := FakeChat->New(Script("The person is {\"name\":\"Ada\",\"age\":36}, as far as I can tell."));
+    inline_outcome := StructuredCall->New(inline_chat, Schema())->Ask("Who?");
+    Check("JSON inside a sentence is accepted", inline_outcome->IsOk() & inline_outcome->GetValue()->Get("name")->GetString()->Equals("Ada"));
+  }
+
+  function : TestUnparseable() ~ Nil {
+    "-- a reply with no JSON"->PrintLine();
+    chat := FakeChat->New(Script("I am sorry, I do not have that information.", "```json\n{\"name\":\"Ada\",\"age\":36}\n```"));
+    outcome := StructuredCall->New(chat, Schema())->Ask("Who?");
+    Check("fixed on the retry", outcome->IsOk() & outcome->GetAttempts() = 2);
+    feedback := chat->Call(1)->Get(3)->GetText();
+    Check("the feedback says the reply could not be used", feedback->StartsWith("Your reply could not be used: the reply holds no JSON object or array."));
+
+    never := FakeChat->New(Script("no json here"));
+    failed := StructuredCall->New(never, Schema())->SetMaxRetries(1)->Ask("Who?");
+    Check("never JSON: not ok, two attempts", <>failed->IsOk() & failed->GetAttempts() = 2);
+    Check("the error list holds the parse error", failed->GetErrors()->Size() = 1 & failed->GetErrors()->Get(0)->GetKeyword()->Equals("parse"));
+  }
+
+  function : TestRepair() ~ Nil {
+    "-- repair"->PrintLine();
+    damaged := "{'name':'Ada','age':36,}";
+    off := FakeChat->New(Script(damaged));
+    refused := StructuredCall->New(off, Schema())->SetMaxRetries(0)->Ask("Who?");
+    Check("repair is off by default: the damaged reply fails", <>refused->IsOk() & refused->GetAttempts() = 1);
+
+    on := FakeChat->New(Script(damaged));
+    fixed := StructuredCall->New(on, Schema())->SetRepair(true)->Ask("Who?");
+    Check("repair on: accepted on the first attempt", fixed->IsOk() & fixed->GetAttempts() = 1 & on->CallCount() = 1);
+    Check("and marked as repaired", fixed->WasRepaired() & fixed->GetValue()->Get("age")->GetInt() = 36);
+
+    strict := FakeChat->New(Script("{\"name\":\"Ada\",\"age\":36}"));
+    clean := StructuredCall->New(strict, Schema())->SetRepair(true)->Ask("Who?");
+    Check("a clean reply is not marked repaired even with repair on", clean->IsOk() & <>clean->WasRepaired());
+
+    cut := FakeChat->New(Script("```json\n{\"name\":\"Ada\",\"age\":36"));
+    closed := StructuredCall->New(cut, Schema())->SetRepair(true)->Ask("Who?");
+    Check("a cut-off reply is closed", closed->IsOk() & closed->WasRepaired());
+
+    still_wrong := FakeChat->New(Script("{'name':'Ada','age':'x',}", "{\"name\":\"Ada\",\"age\":1}"));
+    again := StructuredCall->New(still_wrong, Schema())->SetRepair(true)->Ask("Who?");
+    Check("a repaired reply is still validated and can be retried", again->IsOk() & again->GetAttempts() = 2 & <>again->WasRepaired());
+  }
+
+  function : TestBackendFailure() ~ Nil {
+    "-- a failing backend"->PrintLine();
+    chat := FakeChat->New(Script("{}"))->FailWith("boom");
+    outcome := StructuredCall->New(chat, Schema())->Ask("Who?");
+    Check("not ok", <>outcome->IsOk());
+    Check("the backend's error is reported", outcome->GetError()->Equals("the chat backend failed: boom"));
+    Check("no retry on a transport failure", outcome->GetAttempts() = 1 & chat->CallCount() = 1);
+    Check("no validation errors, no replies", outcome->GetErrors()->Size() = 0 & outcome->GetReplies()->Size() = 0);
+  }
+
+  function : TestNoRetries() ~ Nil {
+    "-- retry limit"->PrintLine();
+    chat := FakeChat->New(Script("{\"name\":\"Ada\"}", "{\"name\":\"Ada\",\"age\":1}"));
+    outcome := StructuredCall->New(chat, Schema())->SetMaxRetries(0)->Ask("Who?");
+    Check("zero retries asks once", <>outcome->IsOk() & chat->CallCount() = 1);
+    Check("the error says what is missing", outcome->GetErrors()->Get(0)->ToString()->Equals("/age: the required property 'age' is missing"));
+
+    five := FakeChat->New(Script("{}"));
+    StructuredCall->New(five, Schema())->SetMaxRetries(4)->Ask("Who?");
+    Check("four retries make five requests", five->CallCount() = 5);
+
+    negative := FakeChat->New(Script("{}"));
+    StructuredCall->New(negative, Schema())->SetMaxRetries(-3)->Ask("Who?");
+    Check("a negative limit is ignored (default 2 retries)", negative->CallCount() = 3);
+  }
+
+  function : TestBuilderAndTemplate() ~ Nil {
+    "-- builder and template input"->PrintLine();
+    builder := PromptBuilder->New()->System("You extract people.")->User("Earlier question")->Assistant("Earlier answer")->User("Ada Lovelace, 36");
+    chat := FakeChat->New(Script("{\"name\":\"Ada\",\"age\":36}"));
+    outcome := StructuredCall->New(chat, Schema())->Ask(builder);
+    Check("ok", outcome->IsOk());
+    turns := chat->Call(0);
+    Check("the system prompt is kept and the schema added after it", turns->Get(0)->GetText()->StartsWith("You extract people.\n\n") & turns->Get(0)->GetText()->Contains("JSON Schema:"));
+    Check("the history follows", turns->Size() = 4 & turns->Get(1)->GetText()->Equals("Earlier question") & turns->Get(3)->GetText()->Equals("Ada Lovelace, 36"));
+    Check("the builder is not changed", builder->Size() = 3 & builder->GetSystem()->Equals("You extract people."));
+
+    tpl := PromptTemplate->New("Extract the person from: {{text}}");
+    templ_chat := FakeChat->New(Script("{\"name\":\"Ada\",\"age\":36}"));
+    ok := StructuredCall->New(templ_chat, Schema())->Ask(tpl, PromptVars->New()->Set("text", "Ada, 36"));
+    Check("a template prompt", ok->IsOk() & templ_chat->Call(0)->Get(1)->GetText()->Equals("Extract the person from: Ada, 36"));
+
+    bad_chat := FakeChat->New(Script("{}"));
+    bad := StructuredCall->New(bad_chat, Schema())->Ask(tpl, PromptVars->New());
+    Check("a failed render sends nothing and says why", <>bad->IsOk() & bad_chat->CallCount() = 0 & bad->GetError()->Equals("the prompt template failed: missing required variable: text"));
+
+    custom := FakeChat->New(Script("{\"name\":\"Ada\",\"age\":36}"));
+    StructuredCall->New(custom, Schema())->SetInstruction("Answer in JSON.")->Ask("x");
+    text := custom->Call(0)->Get(0)->GetText();
+    Check("a custom instruction replaces the default, the schema stays", text->StartsWith("Answer in JSON.") & text->Contains("JSON Schema:") & <>text->Contains("single JSON value"));
+  }
+
+  function : TestPicksTheValidCandidate() ~ Nil {
+    "-- several JSON values in one reply"->PrintLine();
+    chat := FakeChat->New(Script("First an aside [1, 2] and then the answer {\"name\":\"Ada\",\"age\":36}."));
+    outcome := StructuredCall->New(chat, Schema())->Ask("Who?");
+    Check("the one that matches the schema is used", outcome->IsOk() & outcome->GetAttempts() = 1 & outcome->GetValue()->Get("name")->GetString()->Equals("Ada"));
+
+    wrong_first := FakeChat->New(Script("{\"name\":\"Ada\"} or maybe {\"name\":\"Ada\",\"age\":36}"));
+    second := StructuredCall->New(wrong_first, Schema())->Ask("Who?");
+    Check("a later valid value wins over an earlier invalid one", second->IsOk() & second->GetAttempts() = 1);
+  }
+
+  function : TestFeedbackCap() ~ Nil {
+    "-- feedback size"->PrintLine();
+    items := JsonParser->TextToElement("{\"type\":\"array\",\"items\":{\"type\":\"string\"}}");
+    chat := FakeChat->New(Script("[1,2,3,4,5,6,7,8,9,10,11,12]"));
+    StructuredCall->New(chat, items)->SetMaxRetries(1)->Ask("List");
+    feedback := chat->Call(1)->Get(3)->GetText();
+    Check("at most 8 errors are listed", feedback->Contains("- /7: expected string, got number") & <>feedback->Contains("- /8: expected"));
+    Check("the rest are counted", feedback->Contains("- ... and 4 more"));
+  }
+
+  function : TestScalarSchema() ~ Nil {
+    "-- a schema that is not an object"->PrintLine();
+    choice := JsonParser->TextToElement("{\"enum\":[\"red\",\"green\",\"blue\"]}");
+    chat := FakeChat->New(Script("\"purple\"", "\"green\""));
+    outcome := StructuredCall->New(chat, choice)->Ask("Pick a colour");
+    Check("a string enum, fixed on the retry", outcome->IsOk() & outcome->GetAttempts() = 2 & outcome->GetValue()->GetString()->Equals("green"));
+    Check("the feedback names the allowed values", chat->Call(1)->Get(3)->GetText()->Contains("is not one of: \"red\", \"green\", \"blue\""));
+
+    number := JsonParser->TextToElement("{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}");
+    nchat := FakeChat->New(Script("The rating is 4."));
+    nout := StructuredCall->New(nchat, number)->SetMaxRetries(0)->Ask("Rate it");
+    Check("prose with a bare number is not JSON", <>nout->IsOk());
+    schat := FakeChat->New(Script("4"));
+    sout := StructuredCall->New(schat, number)->Ask("Rate it");
+    Check("a bare number reply is", sout->IsOk() & sout->GetValue()->GetInt() = 4);
+  }
+}

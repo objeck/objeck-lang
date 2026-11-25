@@ -1,0 +1,54 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+Two library bugs that depended on a local declared without a value inside a loop keeping the
+previous iteration's value:
+- SentimentAnalyzer: a booster or empty word took the valence of the word before it ("great very"
+  scored as "great" twice, the second time boosted by the words around it).
+- FunctionType: a parameter with no "description" took the previous parameter's description, and
+  one of an unknown type (here "array") was stored as a copy of the previous parameter.
+The library source now sets those locals explicitly, so these hold whatever the compiler does.
+~#
+use System.NLP, Data.JSON, Data.JSON.Scheme, Collection;
+
+class LibUninitNlpJson {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# "very" carries no valence of its own: appending it cannot change the score
+		plain := SentimentAnalyzer->AnalyzeCompound("great");
+		Check(plain > 0.0, "great is positive");
+		Check(SentimentAnalyzer->AnalyzeCompound("great very") = plain, "a trailing booster adds nothing");
+		Check(SentimentAnalyzer->AnalyzeCompound("great very very") = plain, "two trailing boosters add nothing");
+
+		json := "{\"name\":\"f\",\"description\":\"d\",\"parameters\":{\"type\":\"object\",\"properties\":{\"first\":{\"type\":\"string\",\"description\":\"first one\"},\"second\":{\"type\":\"integer\"},\"third\":{\"type\":\"array\",\"description\":\"unsupported\"}},\"required\":[\"first\"]}}";
+		parser := JsonParser->New(json);
+		Check(parser->Parse(), "the function JSON parses");
+		func := FunctionType->New(parser->GetRoot());
+		params := func->GetParams();
+
+		first := params->Find("first");
+		Check(first <> Nil & first->GetDesc()->Equals("first one"), "first keeps its description");
+		second := params->Find("second");
+		Check(second <> Nil, "second is there");
+		if(second <> Nil) {
+			Check(second->GetDesc() = Nil, "a parameter without a description has none, not the previous one's");
+			Check(second->GetType() = ParameterType->Type->INTEGER, "second is an integer");
+		};
+		Check(params->Find("third") = Nil, "a parameter of an unsupported type is left out, not a copy of the previous one");
+
+		if(@failures > 0) {
+			"{$@failures} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"All library uninitialized-local tests passed"->PrintLine();
+	}
+}
