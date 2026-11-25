@@ -1,143 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Query.Structured: a database inside your program — Objeck Language</title>
-  <meta name="description" content="A database inside your program: typed in-memory tables, SQL joins, grouping, prepared statements and files."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="A database inside your program: typed in-memory tables, SQL joins, grouping, prepared statements and files.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">Query.Structured: a database inside your program</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html" aria-current="page">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Query.Structured: a database inside your program</h1>
     <p class="page-lead"><code>Query.Structured</code> is a columnar, typed, in-memory table engine in the standard library (since v2026.10.2). You build a <code>Table</code>, put rows in it, and ask questions in SQL: <code>WHERE</code>, <code>GROUP BY</code>, <code>ORDER BY</code>, joins, arithmetic, indexes. There is no server and no setup. A table can be saved to a file, kept durable on disk, or read from a CSV, JSON or XML file, an archive, an Excel workbook or an ODBC database.</p>
-    <div id="toc_container">
-     <h4>Contents</h4>
-     <ul>
-      <li><a href="#compiling">Compiling</a></li>
-      <li><a href="#your-first-table">Your first table</a></li>
-      <li><a href="#the-sql-you-can-use">The SQL you can use</a></li>
-      <li><a href="#joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</a></li>
-      <li><a href="#keeping-a-table-on-disk">Keeping a table on disk</a></li>
-      <li><a href="#other-sources">Other sources</a></li>
-      <li><a href="#how-to-check">How to check</a></li>
-      <li><a href="#where-next">Where next</a></li>
-     </ul>
-    </div>
 
     <p>Use it when you would otherwise write loops over arrays of records to filter, group and sort them. The design and the full list of what it does are in <a href="doc_query_design.html"><code>docs/QUERY_DESIGN.md</code></a>; this page is the short, runnable way in.</p>
-    <p>Every program below is in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/guides" target="_blank"><code>programs/examples/guides/</code></a>. Each one was compiled and run with the v2026.10.3 toolchain, and the output shown is what it printed.</p>
-    <h3 id="compiling">Compiling</h3>
+    <p>Every program below is in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/guides" target="_blank" rel="noopener"><code>programs/examples/guides/</code></a>. Each one was compiled and run with the v2026.10.3 toolchain, and the output shown is what it printed.</p>
+    <h2 id="compiling">Compiling</h2>
     <p><code>obc</code> does not pull in a library's own dependencies, so a program that uses <code>Query.Structured</code> names all of these:</p>
 <pre class="cmd">obc -src program.obs -lib query,misc,net,json,regex,xml,csv,cipher</pre>
-    <h3 id="your-first-table">Your first table</h3>
+    <h2 id="your-first-table">Your first table</h2>
     <p>A table has a name and a list of column names. <code>Insert()</code> makes an empty row and <code>Set()</code> fills a cell by column name. Numbers go in as <code>IntRef</code> or <code>FloatRef</code> objects, text as plain strings. <code>Query()</code> takes SQL and returns another <code>Table</code>; <code>ToCsv()</code> prints it.</p>
-<pre class="line-numbers"><code class="language-cpp">use Query.Structured;
-use System.IO.Filesystem;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Query</span>.Structured;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-class QueryStart {
-  function : Main(args : String[]) ~ Nil {
-    # a table has a name and a list of column names
-    people := Table-&gt;New("people", ["name", "age", "team"]);
+<span class="t-kw">class</span> <span class="t-cls">QueryStart</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># a table has a name and a list of column names</span>
+    people <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"people"</span>, [<span class="t-str">"name"</span>, <span class="t-str">"age"</span>, <span class="t-str">"team"</span>]);
 
-    # Insert makes an empty row; Set fills a cell by column name.
-    # Numbers go in as IntRef or FloatRef objects, text as plain strings.
-    Add(people, "Ada", 36, "compilers");
-    Add(people, "Grace", 45, "compilers");
-    Add(people, "Linus", 28, "kernels");
-    Add(people, "Barbara", 52, "kernels");
-    Add(people, "Ken", 61, "tools");
-    "rows: {$(people-&gt;Size())}"-&gt;PrintLine();
+    <span class="t-com"># Insert makes an empty row; Set fills a cell by column name.</span>
+    <span class="t-com"># Numbers go in as IntRef or FloatRef objects, text as plain strings.</span>
+    Add(people, <span class="t-str">"Ada"</span>, <span class="t-num">36</span>, <span class="t-str">"compilers"</span>);
+    Add(people, <span class="t-str">"Grace"</span>, <span class="t-num">45</span>, <span class="t-str">"compilers"</span>);
+    Add(people, <span class="t-str">"Linus"</span>, <span class="t-num">28</span>, <span class="t-str">"kernels"</span>);
+    Add(people, <span class="t-str">"Barbara"</span>, <span class="t-num">52</span>, <span class="t-str">"kernels"</span>);
+    Add(people, <span class="t-str">"Ken"</span>, <span class="t-num">61</span>, <span class="t-str">"tools"</span>);
+    <span class="t-str">"rows: {$(people-&gt;Size())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- ask a question; the answer is a Table ---
-    result := people-&gt;Query("select name, age from people where age &gt; 40 order by age desc");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- ask a question; the answer is a Table ---</span>
+    result <span class="t-op">:=</span> people<span class="t-op">-&gt;</span>Query(<span class="t-str">"select name, age from people where age &gt; 40 order by age desc"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- read the cells of an answer yourself ---
-    # LiveRows() lists the row numbers, RowAt() gets a row, Get(name) a cell;
-    # a cell comes back as an IntRef, FloatRef or String
-    rows := result-&gt;LiveRows();
-    each(i : rows) {
-      row := result-&gt;RowAt(rows[i]);
-      name := row-&gt;Get("name")-&gt;As(String);
-      age := row-&gt;Get("age")-&gt;As(IntRef)-&gt;Get();
-      "  {$name} is {$age}"-&gt;PrintLine();
+    <span class="t-com"># --- read the cells of an answer yourself ---</span>
+    <span class="t-com"># LiveRows() lists the row numbers, RowAt() gets a row, Get(name) a cell;</span>
+    <span class="t-com"># a cell comes back as an IntRef, FloatRef or String</span>
+    rows <span class="t-op">:=</span> result<span class="t-op">-&gt;</span>LiveRows();
+    <span class="t-kw">each</span>(i : rows) {
+      row <span class="t-op">:=</span> result<span class="t-op">-&gt;</span>RowAt(rows[i]);
+      name <span class="t-op">:=</span> row<span class="t-op">-&gt;</span>Get(<span class="t-str">"name"</span>)<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">String</span>);
+      age <span class="t-op">:=</span> row<span class="t-op">-&gt;</span>Get(<span class="t-str">"age"</span>)<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">IntRef</span>)<span class="t-op">-&gt;</span>Get();
+      <span class="t-str">"  {$name} is {$age}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # --- group, count and average ---
-    result := people-&gt;Query("select team, count(*) as people, avg(age) as average_age from people group by team order by team");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- group, count and average ---</span>
+    result <span class="t-op">:=</span> people<span class="t-op">-&gt;</span>Query(<span class="t-str">"select team, count(*) as people, avg(age) as average_age from people group by team order by team"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- a quick look at a table: its columns and their types ---
-    people-&gt;Describe()-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- a quick look at a table: its columns and their types ---</span>
+    people<span class="t-op">-&gt;</span>Describe()<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- a mistake is a Nil answer and a message ---
-    result := people-&gt;Query("select nickname from people");
-    if(result = Nil) {
-      "error: {$(people-&gt;GetError())}"-&gt;PrintLine();
+    <span class="t-com"># --- a mistake is a Nil answer and a message ---</span>
+    result <span class="t-op">:=</span> people<span class="t-op">-&gt;</span>Query(<span class="t-str">"select nickname from people"</span>);
+    <span class="t-kw">if</span>(result = <span class="t-const">Nil</span>) {
+      <span class="t-str">"error: {$(people-&gt;GetError())}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # --- a CSV file, queried by its name ---
-    writer := FileWriter-&gt;New("scores_guide.csv");
-    writer-&gt;WriteString("player,level,points\nada,3,1200\ngrace,5,3400\nada,4,2100\n");
-    writer-&gt;Close();
+    <span class="t-com"># --- a CSV file, queried by its name ---</span>
+    writer <span class="t-op">:=</span> <span class="t-cls">FileWriter</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"scores_guide.csv"</span>);
+    writer<span class="t-op">-&gt;</span>WriteString(<span class="t-str">"player,level,points\nada,3,1200\ngrace,5,3400\nada,4,2100\n"</span>);
+    writer<span class="t-op">-&gt;</span>Close();
 
-    result := Catalog-&gt;Run("select player, sum(points) as total from 'scores_guide.csv' group by player order by total desc");
-    result-&gt;ToCsv()-&gt;Print();
-    File-&gt;Delete("scores_guide.csv");
+    result <span class="t-op">:=</span> <span class="t-cls">Catalog</span><span class="t-op">-&gt;</span>Run(<span class="t-str">"select player, sum(points) as total from 'scores_guide.csv' group by player order by total desc"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
+    <span class="t-cls">File</span><span class="t-op">-&gt;</span>Delete(<span class="t-str">"scores_guide.csv"</span>);
   }
 
-  function : Add(table : Table, name : String, age : Int, team : String) ~ Nil {
-    row := table-&gt;Insert();
-    row-&gt;Set("name", name);
-    row-&gt;Set("age", IntRef-&gt;New(age));
-    row-&gt;Set("team", team);
+  <span class="t-kw">function</span> : <span class="t-fn">Add</span>(table : Table, name : <span class="t-type">String</span>, age : <span class="t-type">Int</span>, team : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    row <span class="t-op">:=</span> table<span class="t-op">-&gt;</span>Insert();
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"name"</span>, name);
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"age"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(age));
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"team"</span>, team);
   }
 }
 </code></pre>
@@ -171,7 +144,7 @@ ada,3300</pre>
      <li><code>people-&gt;Query("select nickname from people")</code> did not stop the program. It returned <code>Nil</code>, and <code>GetError()</code> said <code>unknown column 'nickname'</code>. Every statement that fails does this, and the error is kept per thread, so threads that query one table do not read each other's errors.</li>
      <li><code>Catalog-&gt;Run(sql)</code> answers a query that only reads files, with no tables to set up first. The quoted name <code>'scores_guide.csv'</code> stands where a table name goes; the format follows the extension.</li>
     </ul>
-    <h3 id="the-sql-you-can-use">The SQL you can use</h3>
+    <h2 id="the-sql-you-can-use">The SQL you can use</h2>
 <pre class="cmd">SELECT [DISTINCT] (* | expr [AS name], ...)
 FROM table [[INNER | LEFT] JOIN table ON condition ...]
 [WHERE predicate]
@@ -193,97 +166,97 @@ CREATE INDEX ON table (col) [USING HASH | SORTED]</pre>
      <li><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE TABLE</code> and <code>CREATE INDEX</code> run with <code>Execute()</code>, which returns the number of rows changed (or <code>-1</code> on error). A statement that fails changes nothing.</li>
      <li><code>?</code> is a placeholder for a value; see prepared statements below.</li>
     </ul>
-    <h3 id="joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</h3>
+    <h2 id="joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</h2>
     <p>A <code>Catalog</code> holds named tables, and SQL run through it can join them. This program declares the type of every column, so a value of the wrong type is refused instead of changing the column.</p>
-<pre class="line-numbers"><code class="language-cpp">use Query.Structured;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Query</span>.Structured;
 
-class QueryJoin {
-  function : Main(args : String[]) ~ Nil {
-    catalog := Catalog-&gt;New();
+<span class="t-kw">class</span> <span class="t-cls">QueryJoin</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    catalog <span class="t-op">:=</span> <span class="t-cls">Catalog</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
 
-    # --- two tables with declared column types ---
-    customers := Table-&gt;New("customers", ["id", "name", "city"],
-      [ColumnType-&gt;INT, ColumnType-&gt;STRING, ColumnType-&gt;STRING]);
-    AddCustomer(customers, 1, "Ada", "London");
-    AddCustomer(customers, 2, "Grace", "New York");
-    AddCustomer(customers, 3, "Linus", "Helsinki");
-    catalog-&gt;Add(customers);
+    <span class="t-com"># --- two tables with declared column types ---</span>
+    customers <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"customers"</span>, [<span class="t-str">"id"</span>, <span class="t-str">"name"</span>, <span class="t-str">"city"</span>],
+      [<span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>INT, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>STRING, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>STRING]);
+    AddCustomer(customers, <span class="t-num">1</span>, <span class="t-str">"Ada"</span>, <span class="t-str">"London"</span>);
+    AddCustomer(customers, <span class="t-num">2</span>, <span class="t-str">"Grace"</span>, <span class="t-str">"New York"</span>);
+    AddCustomer(customers, <span class="t-num">3</span>, <span class="t-str">"Linus"</span>, <span class="t-str">"Helsinki"</span>);
+    catalog<span class="t-op">-&gt;</span>Add(customers);
 
-    orders := Table-&gt;New("orders", ["customer_id", "item", "qty", "price"],
-      [ColumnType-&gt;INT, ColumnType-&gt;STRING, ColumnType-&gt;INT, ColumnType-&gt;FLOAT]);
-    AddOrder(orders, 1, "widget", 10, 2.5);
-    AddOrder(orders, 1, "gadget", 2, 10.0);
-    AddOrder(orders, 2, "widget", 4, 2.5);
-    AddOrder(orders, 2, "gizmo", 8, 0.25);
-    AddOrder(orders, 9, "widget", 1, 2.5);
-    catalog-&gt;Add(orders);
+    orders <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"orders"</span>, [<span class="t-str">"customer_id"</span>, <span class="t-str">"item"</span>, <span class="t-str">"qty"</span>, <span class="t-str">"price"</span>],
+      [<span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>INT, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>STRING, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>INT, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>FLOAT]);
+    AddOrder(orders, <span class="t-num">1</span>, <span class="t-str">"widget"</span>, <span class="t-num">10</span>, <span class="t-num">2.5</span>);
+    AddOrder(orders, <span class="t-num">1</span>, <span class="t-str">"gadget"</span>, <span class="t-num">2</span>, <span class="t-num">10.0</span>);
+    AddOrder(orders, <span class="t-num">2</span>, <span class="t-str">"widget"</span>, <span class="t-num">4</span>, <span class="t-num">2.5</span>);
+    AddOrder(orders, <span class="t-num">2</span>, <span class="t-str">"gizmo"</span>, <span class="t-num">8</span>, <span class="t-num">0.25</span>);
+    AddOrder(orders, <span class="t-num">9</span>, <span class="t-str">"widget"</span>, <span class="t-num">1</span>, <span class="t-num">2.5</span>);
+    catalog<span class="t-op">-&gt;</span>Add(orders);
 
-    # --- a declared column refuses a value of another type ---
-    row := orders-&gt;Insert();
-    stored := row-&gt;Set("qty", "lots");
-    "storing text in an Int column: {$stored}"-&gt;PrintLine();
-    orders-&gt;Delete(row-&gt;GetKey());
-    ""-&gt;PrintLine();
+    <span class="t-com"># --- a declared column refuses a value of another type ---</span>
+    row <span class="t-op">:=</span> orders<span class="t-op">-&gt;</span>Insert();
+    stored <span class="t-op">:=</span> row<span class="t-op">-&gt;</span>Set(<span class="t-str">"qty"</span>, <span class="t-str">"lots"</span>);
+    <span class="t-str">"storing text in an Int column: {$stored}"</span><span class="t-op">-&gt;</span>PrintLine();
+    orders<span class="t-op">-&gt;</span>Delete(row<span class="t-op">-&gt;</span>GetKey());
+    <span class="t-str">""</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- inner join: only customers that have orders ---
-    "-- inner join --"-&gt;PrintLine();
-    result := catalog-&gt;Query("select c.name, o.item, o.qty * o.price as total from customers c join orders o on c.id = o.customer_id order by total desc");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- inner join: only customers that have orders ---</span>
+    <span class="t-str">"-- inner join --"</span><span class="t-op">-&gt;</span>PrintLine();
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select c.name, o.item, o.qty * o.price as total from customers c join orders o on c.id = o.customer_id order by total desc"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- left join: every customer, with empty cells where there is no order ---
-    "-- left join --"-&gt;PrintLine();
-    result := catalog-&gt;Query("select c.name, o.item from customers c left join orders o on c.id = o.customer_id order by c.name");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- left join: every customer, with empty cells where there is no order ---</span>
+    <span class="t-str">"-- left join --"</span><span class="t-op">-&gt;</span>PrintLine();
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select c.name, o.item from customers c left join orders o on c.id = o.customer_id order by c.name"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- group the joined rows; HAVING may use arithmetic over aggregates ---
-    "-- spending per customer, more than 20 in total --"-&gt;PrintLine();
-    result := catalog-&gt;Query("select c.name, count(*) as orders, sum(o.qty * o.price) as spent from customers c join orders o on c.id = o.customer_id group by c.name having sum(o.qty * o.price) &gt; 20 order by spent desc");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- group the joined rows; HAVING may use arithmetic over aggregates ---</span>
+    <span class="t-str">"-- spending per customer, more than 20 in total --"</span><span class="t-op">-&gt;</span>PrintLine();
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select c.name, count(*) as orders, sum(o.qty * o.price) as spent from customers c join orders o on c.id = o.customer_id group by c.name having sum(o.qty * o.price) &gt; 20 order by spent desc"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- arithmetic in WHERE ---
-    "-- orders where qty * price is under 5 --"-&gt;PrintLine();
-    result := catalog-&gt;Query("select customer_id, item, qty * price as total from orders where qty * price &lt; 5 order by customer_id");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- arithmetic in WHERE ---</span>
+    <span class="t-str">"-- orders where qty * price is under 5 --"</span><span class="t-op">-&gt;</span>PrintLine();
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select customer_id, item, qty * price as total from orders where qty * price &lt; 5 order by customer_id"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- a prepared statement: parsed once, run with different values ---
-    "-- prepared statement --"-&gt;PrintLine();
-    lookup := catalog-&gt;Prepare("select item, qty from orders where customer_id = ? and qty &gt;= ?");
-    lookup-&gt;Bind(1, 2)-&gt;Bind(2, 5);
-    result := lookup-&gt;Execute();
-    result-&gt;ToCsv()-&gt;Print();
-    lookup-&gt;Bind(1, 1)-&gt;Bind(2, 1);
-    result := lookup-&gt;Execute();
-    "customer 1 has {$(result-&gt;Size())} orders"-&gt;PrintLine();
+    <span class="t-com"># --- a prepared statement: parsed once, run with different values ---</span>
+    <span class="t-str">"-- prepared statement --"</span><span class="t-op">-&gt;</span>PrintLine();
+    lookup <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Prepare(<span class="t-str">"select item, qty from orders where customer_id = ? and qty &gt;= ?"</span>);
+    lookup<span class="t-op">-&gt;</span>Bind(<span class="t-num">1</span>, <span class="t-num">2</span>)<span class="t-op">-&gt;</span>Bind(<span class="t-num">2</span>, <span class="t-num">5</span>);
+    result <span class="t-op">:=</span> lookup<span class="t-op">-&gt;</span>Execute();
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
+    lookup<span class="t-op">-&gt;</span>Bind(<span class="t-num">1</span>, <span class="t-num">1</span>)<span class="t-op">-&gt;</span>Bind(<span class="t-num">2</span>, <span class="t-num">1</span>);
+    result <span class="t-op">:=</span> lookup<span class="t-op">-&gt;</span>Execute();
+    <span class="t-str">"customer 1 has {$(result-&gt;Size())} orders"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- UPDATE and DELETE report how many rows they changed ---
-    ""-&gt;PrintLine();
-    changed := catalog-&gt;Execute("update orders set price = 3.0 where item = 'widget'");
-    "updated {$changed} rows"-&gt;PrintLine();
-    removed := catalog-&gt;Execute("delete from orders where customer_id = 9");
-    "deleted {$removed} row"-&gt;PrintLine();
-    result := catalog-&gt;Query("select count(*) as orders, sum(qty * price) as value from orders");
-    result-&gt;ToCsv()-&gt;Print();
+    <span class="t-com"># --- UPDATE and DELETE report how many rows they changed ---</span>
+    <span class="t-str">""</span><span class="t-op">-&gt;</span>PrintLine();
+    changed <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Execute(<span class="t-str">"update orders set price = 3.0 where item = 'widget'"</span>);
+    <span class="t-str">"updated {$changed} rows"</span><span class="t-op">-&gt;</span>PrintLine();
+    removed <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Execute(<span class="t-str">"delete from orders where customer_id = 9"</span>);
+    <span class="t-str">"deleted {$removed} row"</span><span class="t-op">-&gt;</span>PrintLine();
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select count(*) as orders, sum(qty * price) as value from orders"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- a mistake is a Nil result with a message, not a crash ---
-    result := catalog-&gt;Query("select name from nobody");
-    if(result = Nil) {
-      "error: {$(catalog-&gt;GetError())}"-&gt;PrintLine();
+    <span class="t-com"># --- a mistake is a Nil result with a message, not a crash ---</span>
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select name from nobody"</span>);
+    <span class="t-kw">if</span>(result = <span class="t-const">Nil</span>) {
+      <span class="t-str">"error: {$(catalog-&gt;GetError())}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
   }
 
-  function : AddCustomer(table : Table, id : Int, name : String, city : String) ~ Nil {
-    row := table-&gt;Insert();
-    row-&gt;Set("id", IntRef-&gt;New(id));
-    row-&gt;Set("name", name);
-    row-&gt;Set("city", city);
+  <span class="t-kw">function</span> : <span class="t-fn">AddCustomer</span>(table : Table, id : <span class="t-type">Int</span>, name : <span class="t-type">String</span>, city : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    row <span class="t-op">:=</span> table<span class="t-op">-&gt;</span>Insert();
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"id"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(id));
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"name"</span>, name);
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"city"</span>, city);
   }
 
-  function : AddOrder(table : Table, customer : Int, item : String, qty : Int, price : Float) ~ Nil {
-    row := table-&gt;Insert();
-    row-&gt;Set("customer_id", IntRef-&gt;New(customer));
-    row-&gt;Set("item", item);
-    row-&gt;Set("qty", IntRef-&gt;New(qty));
-    row-&gt;Set("price", FloatRef-&gt;New(price));
+  <span class="t-kw">function</span> : <span class="t-fn">AddOrder</span>(table : Table, customer : <span class="t-type">Int</span>, item : <span class="t-type">String</span>, qty : <span class="t-type">Int</span>, price : <span class="t-type">Float</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    row <span class="t-op">:=</span> table<span class="t-op">-&gt;</span>Insert();
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"customer_id"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(customer));
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"item"</span>, item);
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"qty"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(qty));
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"price"</span>, <span class="t-type">FloatRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(price));
   }
 }
 </code></pre>
@@ -328,81 +301,81 @@ error: no table named 'nobody'</pre>
      <li><code>Prepare()</code> parses a statement once. <code>Bind(index, value)</code> fills the <code>?</code> placeholders, numbered from 1, and <code>Execute()</code> runs it as many times as you like with new values. A statement that changes rows runs with <code>ExecuteUpdate()</code>.</li>
      <li>A join on equality sorts the right side's keys once and finds each left row's matches by binary search (not a hash join; the output order is fixed: left rows in order, each with its matches in the right table's order). <code>Explain(sql)</code> on a table or a catalog describes the plan without running the query.</li>
     </ul>
-    <h3 id="keeping-a-table-on-disk">Keeping a table on disk</h3>
+    <h2 id="keeping-a-table-on-disk">Keeping a table on disk</h2>
     <p>An <code>.otab</code> file stores a table column by column. <code>Save</code> writes one (the write goes to a temporary file that is renamed over the old one, so a crash leaves the old file or the new one), <code>Load</code> reads it back, and <code>OtabFile</code> reads only the columns you name. <code>TableStore</code> goes further: it logs every <code>INSERT</code>, <code>UPDATE</code> and <code>DELETE</code> before the statement returns, so a crash loses at most the statement in progress.</p>
-<pre class="line-numbers"><code class="language-cpp">use Query.Structured;
-use System.IO.Filesystem;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Query</span>.Structured;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-class QueryOtab {
-  function : Main(args : String[]) ~ Nil {
-    path := "readings_guide.otab";
+<span class="t-kw">class</span> <span class="t-cls">QueryOtab</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    path <span class="t-op">:=</span> <span class="t-str">"readings_guide.otab"</span>;
 
-    # --- 100,000 readings from four sensors ---
-    readings := Table-&gt;New("readings", ["sensor", "day", "celsius"],
-      [ColumnType-&gt;STRING, ColumnType-&gt;INT, ColumnType-&gt;FLOAT]);
-    sensors := ["north", "south", "east", "west"];
-    each(i : 100000) {
-      row := readings-&gt;Insert();
-      row-&gt;Set("sensor", sensors[i % 4]);
-      row-&gt;Set("day", IntRef-&gt;New(i / 4));
-      row-&gt;Set("celsius", FloatRef-&gt;New(10.0 + ((i * 37) % 200)-&gt;As(Float) / 10.0));
+    <span class="t-com"># --- 100,000 readings from four sensors ---</span>
+    readings <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"readings"</span>, [<span class="t-str">"sensor"</span>, <span class="t-str">"day"</span>, <span class="t-str">"celsius"</span>],
+      [<span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>STRING, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>INT, <span class="t-cls">ColumnType</span><span class="t-op">-&gt;</span>FLOAT]);
+    sensors <span class="t-op">:=</span> [<span class="t-str">"north"</span>, <span class="t-str">"south"</span>, <span class="t-str">"east"</span>, <span class="t-str">"west"</span>];
+    <span class="t-kw">each</span>(i : <span class="t-num">100000</span>) {
+      row <span class="t-op">:=</span> readings<span class="t-op">-&gt;</span>Insert();
+      row<span class="t-op">-&gt;</span>Set(<span class="t-str">"sensor"</span>, sensors[i % <span class="t-num">4</span>]);
+      row<span class="t-op">-&gt;</span>Set(<span class="t-str">"day"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(i / <span class="t-num">4</span>));
+      row<span class="t-op">-&gt;</span>Set(<span class="t-str">"celsius"</span>, <span class="t-type">FloatRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">10.0</span> + ((i * <span class="t-num">37</span>) % <span class="t-num">200</span>)<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">Float</span>) / <span class="t-num">10.0</span>));
     };
-    "rows in memory: {$(readings-&gt;Size())}"-&gt;PrintLine();
+    <span class="t-str">"rows in memory: {$(readings-&gt;Size())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- save, load, and query what came back ---
-    if(&lt;&gt;readings-&gt;Save(path, Compression-&gt;SMALL)) {
-      "save failed: {$(readings-&gt;GetError())}"-&gt;PrintLine();
-      return;
+    <span class="t-com"># --- save, load, and query what came back ---</span>
+    <span class="t-kw">if</span>(<span class="t-op">&lt;&gt;</span>readings<span class="t-op">-&gt;</span>Save(path, <span class="t-cls">Compression</span><span class="t-op">-&gt;</span>SMALL)) {
+      <span class="t-str">"save failed: {$(readings-&gt;GetError())}"</span><span class="t-op">-&gt;</span>PrintLine();
+      <span class="t-kw">return</span>;
     };
-    "file size: {$(File-&gt;Size(path))} bytes"-&gt;PrintLine();
+    <span class="t-str">"file size: {$(File-&gt;Size(path))} bytes"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    loaded := Table-&gt;Load(path);
-    "rows loaded: {$(loaded-&gt;Size())}"-&gt;PrintLine();
-    result := loaded-&gt;Query("select sensor, count(*) as n, min(celsius) as lowest, max(celsius) as highest from readings group by sensor order by sensor");
-    result-&gt;ToCsv()-&gt;Print();
+    loaded <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span>Load(path);
+    <span class="t-str">"rows loaded: {$(loaded-&gt;Size())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    result <span class="t-op">:=</span> loaded<span class="t-op">-&gt;</span>Query(<span class="t-str">"select sensor, count(*) as n, min(celsius) as lowest, max(celsius) as highest from readings group by sensor order by sensor"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
 
-    # --- OtabFile reads only the columns you ask for ---
-    # (the row keys are always read too, so a narrow read is not a tiny one)
-    one := OtabFile-&gt;New(path);
-    if(one-&gt;IsOpen()) {
-      part := one-&gt;Read(["celsius"]);
-      "one column:  {$(part-&gt;Size())} rows, {$(one-&gt;GetBytesRead())} of {$(one-&gt;GetFileSize())} bytes read"-&gt;PrintLine();
+    <span class="t-com"># --- OtabFile reads only the columns you ask for ---</span>
+    <span class="t-com"># (the row keys are always read too, so a narrow read is not a tiny one)</span>
+    one <span class="t-op">:=</span> <span class="t-cls">OtabFile</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(path);
+    <span class="t-kw">if</span>(one<span class="t-op">-&gt;</span>IsOpen()) {
+      part <span class="t-op">:=</span> one<span class="t-op">-&gt;</span>Read([<span class="t-str">"celsius"</span>]);
+      <span class="t-str">"one column:  {$(part-&gt;Size())} rows, {$(one-&gt;GetBytesRead())} of {$(one-&gt;GetFileSize())} bytes read"</span><span class="t-op">-&gt;</span>PrintLine();
     };
-    all := OtabFile-&gt;New(path);
-    if(all-&gt;IsOpen()) {
-      part := all-&gt;Read();
-      "all columns: {$(part-&gt;Size())} rows, {$(all-&gt;GetBytesRead())} of {$(all-&gt;GetFileSize())} bytes read"-&gt;PrintLine();
-    };
-
-    # --- SQL names a table in a catalog; a loaded .otab goes in with Add ---
-    catalog := Catalog-&gt;New();
-    catalog-&gt;Add(loaded);
-    result := catalog-&gt;Query("select count(*) as hot_readings from readings where celsius &gt; 29.5");
-    result-&gt;ToCsv()-&gt;Print();
-
-    # --- a durable table: changes survive closing and reopening ---
-    store := TableStore-&gt;New(path);
-    if(&lt;&gt;store-&gt;IsOpen()) {
-      "open failed: {$(store-&gt;GetError())}"-&gt;PrintLine();
-      return;
-    };
-    durable := store-&gt;GetTable();
-    durable-&gt;Execute("delete from readings where sensor = 'west'");
-    durable-&gt;Execute("update readings set celsius = 0.0 where day = 0");
-    "after changes: {$(durable-&gt;Size())} rows"-&gt;PrintLine();
-    store-&gt;Close();
-
-    reopened := TableStore-&gt;New(path);
-    if(reopened-&gt;IsOpen()) {
-      table := reopened-&gt;GetTable();
-      "reopened: {$(table-&gt;Size())} rows, {$(reopened-&gt;GetReplayed())} log records replayed"-&gt;PrintLine();
-      reopened-&gt;Checkpoint();
-      reopened-&gt;Close();
+    all <span class="t-op">:=</span> <span class="t-cls">OtabFile</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(path);
+    <span class="t-kw">if</span>(all<span class="t-op">-&gt;</span>IsOpen()) {
+      part <span class="t-op">:=</span> all<span class="t-op">-&gt;</span>Read();
+      <span class="t-str">"all columns: {$(part-&gt;Size())} rows, {$(all-&gt;GetBytesRead())} of {$(all-&gt;GetFileSize())} bytes read"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    File-&gt;Delete(path);
-    File-&gt;Delete("{$path}.log");
-    File-&gt;Delete("{$path}.lock");
+    <span class="t-com"># --- SQL names a table in a catalog; a loaded .otab goes in with Add ---</span>
+    catalog <span class="t-op">:=</span> <span class="t-cls">Catalog</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    catalog<span class="t-op">-&gt;</span>Add(loaded);
+    result <span class="t-op">:=</span> catalog<span class="t-op">-&gt;</span>Query(<span class="t-str">"select count(*) as hot_readings from readings where celsius &gt; 29.5"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
+
+    <span class="t-com"># --- a durable table: changes survive closing and reopening ---</span>
+    store <span class="t-op">:=</span> <span class="t-cls">TableStore</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(path);
+    <span class="t-kw">if</span>(<span class="t-op">&lt;&gt;</span>store<span class="t-op">-&gt;</span>IsOpen()) {
+      <span class="t-str">"open failed: {$(store-&gt;GetError())}"</span><span class="t-op">-&gt;</span>PrintLine();
+      <span class="t-kw">return</span>;
+    };
+    durable <span class="t-op">:=</span> store<span class="t-op">-&gt;</span>GetTable();
+    durable<span class="t-op">-&gt;</span>Execute(<span class="t-str">"delete from readings where sensor = 'west'"</span>);
+    durable<span class="t-op">-&gt;</span>Execute(<span class="t-str">"update readings set celsius = 0.0 where day = 0"</span>);
+    <span class="t-str">"after changes: {$(durable-&gt;Size())} rows"</span><span class="t-op">-&gt;</span>PrintLine();
+    store<span class="t-op">-&gt;</span>Close();
+
+    reopened <span class="t-op">:=</span> <span class="t-cls">TableStore</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(path);
+    <span class="t-kw">if</span>(reopened<span class="t-op">-&gt;</span>IsOpen()) {
+      table <span class="t-op">:=</span> reopened<span class="t-op">-&gt;</span>GetTable();
+      <span class="t-str">"reopened: {$(table-&gt;Size())} rows, {$(reopened-&gt;GetReplayed())} log records replayed"</span><span class="t-op">-&gt;</span>PrintLine();
+      reopened<span class="t-op">-&gt;</span>Checkpoint();
+      reopened<span class="t-op">-&gt;</span>Close();
+    };
+
+    <span class="t-cls">File</span><span class="t-op">-&gt;</span>Delete(path);
+    <span class="t-cls">File</span><span class="t-op">-&gt;</span>Delete(<span class="t-str">"{$path}.log"</span>);
+    <span class="t-cls">File</span><span class="t-op">-&gt;</span>Delete(<span class="t-str">"{$path}.lock"</span>);
   }
 }
 </code></pre>
@@ -430,26 +403,46 @@ reopened: 75000 rows, 2 log records replayed</pre>
      <li>Readers that do not write open the file with <code>Table-&gt;Load</code> and see the last save or checkpoint.</li>
      <li>A named <code>.otab</code> file cannot stand in <code>FROM</code> the way a CSV can: load it, add it to a catalog and query it by table name, as the program does.</li>
     </ul>
-    <h3 id="other-sources">Other sources</h3>
+    <h2 id="other-sources">Other sources</h2>
     <p>A quoted file name in <code>FROM</code> reads that file: <code>from 'runs.csv'</code>, <code>from 'weather.json'</code>. The format follows the extension (<code>.csv</code>, <code>.tsv</code>, <code>.json</code>, <code>.jsonl</code>, <code>.xml</code>, <code>.xlsx</code>, also compressed <code>.csv.gz</code>), and <code>csv('data.csv', header =&gt; false)</code> and its relatives set options. A <code>Catalog</code> can also load sources that make tables of other things: <code>CsvSource</code>, <code>JsonSource</code>, <code>XmlSource</code>, <code>TextSource</code> (log lines), <code>FilesystemSource</code> (a folder listing), <code>ArchiveSource</code> (zip and tar), <code>XlsxSource</code> (worksheets), <code>ObjectSource</code> (your own objects), and, in separate libraries, ODBC results, <code>System.ML</code> results and image detections.</p>
-    <p>The shipped example <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_files_19.obs" target="_blank"><code>sql_files_19.obs</code></a> queries CSV and JSON files and a folder, and joins them. <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_tables_18.obs" target="_blank"><code>sql_tables_18.obs</code></a> is another tour of tables, indexes and <code>Explain</code>.</p>
+    <p>The shipped example <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_files_19.obs" target="_blank" rel="noopener"><code>sql_files_19.obs</code></a> queries CSV and JSON files and a folder, and joins them. <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/sql_tables_18.obs" target="_blank" rel="noopener"><code>sql_tables_18.obs</code></a> is another tour of tables, indexes and <code>Explain</code>.</p>
     <p>A catalog that answers queries from other people (as <code>TableServer</code> does) should call <code>SetFileAccess(false)</code>: otherwise a query could read any file the process can, or fetch any URL.</p>
-    <h3 id="how-to-check">How to check</h3>
+    <h2 id="how-to-check">How to check</h2>
     <p>The engine is covered by the <code>query_*.obs</code> tests in <code>programs/regression/</code>, listed in <a href="doc_query_design.html"><code>docs/QUERY_DESIGN.md</code></a> (the differential tests compare every query form with a naive evaluator; <code>query_persist_*.obs</code> cover the <code>.otab</code> file and the durable table). To check this page, compile each program with the line shown under it and compare the output; the output blocks were not re-run for this review, and the file size and bytes-read figures in the last one depend on the compressor's output.</p>
-    <h3 id="where-next">Where next</h3>
+    <h2 id="where-next">Where next</h2>
     <ul>
      <li><a href="doc_query_design.html"><code>docs/QUERY_DESIGN.md</code></a>: the storage layout, the planner, indexes, the <code>.otab</code> format, sources, and the network server.</li>
-     <li>The API reference for <code>Query.Structured</code> at <a href="https://www.objeck.org/api/latest/" target="_blank">https://www.objeck.org/api/latest/</a>.</li>
+     <li>The API reference for <code>Query.Structured</code> at <a href="https://www.objeck.org/api/latest/" target="_blank" rel="noopener">https://www.objeck.org/api/latest/</a>.</li>
      <li><a href="guide_collections.html">Collections</a>, if what you need is a <code>Hash</code> or a <code>Vector</code> and not SQL.</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#compiling">Compiling</a></li><li><a href="#your-first-table">Your first table</a></li><li><a href="#the-sql-you-can-use">The SQL you can use</a></li><li><a href="#joins-expressions-and-prepared-statements">Joins, expressions and prepared statements</a></li><li><a href="#keeping-a-table-on-disk">Keeping a table on disk</a></li><li><a href="#other-sources">Other sources</a></li><li><a href="#how-to-check">How to check</a></li><li><a href="#where-next">Where next</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

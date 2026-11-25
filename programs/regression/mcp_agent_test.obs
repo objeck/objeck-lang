@@ -1,0 +1,340 @@
+# EXTRA_LIBS: mcp,agent,mcp_agent,net,net_server,cipher,misc
+#~
+Hands declared functions and MCP servers to an agent (McpAgentTools), against a scripted model, so no key and
+no network are needed:
+
+- a function declared with McpToolSpec becomes an AgentTool with the same name, description and schema, and
+  the agent runs it;
+- the tools of a server reached through an in-process client become agent tools, with their hints;
+- the effect hints and the approval rules: a destructive tool always asks (and is refused when nobody can
+  say yes), a read-only tool is not asked about under SetApproveUnlessReadOnly, a tool without a hint is
+  asked about under it and not otherwise, a hint of false changes nothing, and the handler of a refused call
+  never runs;
+- failures: a tool that reports isError, a tool that raises, arguments the schema rejects;
+- cancellation: the agent's token reaches the handler as McpCall->IsCancelled(), and how long it took is
+  bounded.
+~#
+use API.MCP, API.Agent, Data.JSON, Collection, System.Concurrency;
+
+class Approver implements AgentApprover {
+	@answer : Bool;
+	@asked : Int;
+	@last : String;
+
+	New(answer : Bool) {
+		@answer := answer;
+	}
+
+	method : public : GetAsked() ~ Int {
+		return @asked;
+	}
+
+	method : public : GetLast() ~ String {
+		return @last;
+	}
+
+	method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+		@asked += 1;
+		@last := call->GetName();
+		return @answer;
+	}
+}
+
+class Canceller from Thread {
+	New() {
+		Parent();
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		token := arg->As(AgentCancel);
+		Thread->Sleep(60);
+		token->Cancel("stop");
+	}
+}
+
+class McpAgentTest {
+	@pass : static : Int;
+	@fail : static : Int;
+	@removed : static : Int;
+	@polled : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# ---- handlers ----
+
+	function : Add(call : McpCall) ~ McpToolResult {
+		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+		return McpToolResult->Text("{$sum}");
+	}
+
+	function : Remove(call : McpCall) ~ McpToolResult {
+		@removed += 1;
+		path := call->GetString("path");
+		return McpToolResult->Text("removed {$path}");
+	}
+
+	function : Note(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Text("noted");
+	}
+
+	function : Fails(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Error("the disk is full");
+	}
+
+	function : Raises(call : McpCall) ~ McpToolResult {
+		nothing : String;
+		size := nothing->Size();
+		return McpToolResult->Text("{$size}");
+	}
+
+	# works until cancelled, as a polite tool does
+	function : Wait(call : McpCall) ~ McpToolResult {
+		waited := 0;
+		while(<>call->IsCancelled() & waited < 5000) {
+			Thread->Sleep(5);
+			waited += 5;
+		};
+		if(call->IsCancelled()) {
+			return McpToolResult->Text("cancelled");
+		};
+		return McpToolResult->Text("finished");
+	}
+
+	function : Handler(which : Int) ~ Func2Ref<McpCall, McpToolResult> {
+		if(which = 0) {
+			return Func2Ref->New(McpAgentTest->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 1) {
+			return Func2Ref->New(McpAgentTest->Remove(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 2) {
+			return Func2Ref->New(McpAgentTest->Note(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 3) {
+			return Func2Ref->New(McpAgentTest->Fails(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 4) {
+			return Func2Ref->New(McpAgentTest->Raises(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		};
+		return Func2Ref->New(McpAgentTest->Wait(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+	}
+
+	function : Specs() ~ Vector<McpToolSpec> {
+		specs := Vector->New()<McpToolSpec>;
+		specs->AddBack(McpToolSpec->New("add", "Add two integers")->Add("a", "Int", "first")->Add("b", "Int", "second")->ReadOnly());
+		specs->AddBack(McpToolSpec->New("remove_file", "Delete a file")->Add("path", "String", "the file")->Destructive());
+		specs->AddBack(McpToolSpec->New("note", "Write a note"));
+		specs->AddBack(McpToolSpec->New("fails", "A tool that fails"));
+		specs->AddBack(McpToolSpec->New("raises", "A tool that raises"));
+		specs->AddBack(McpToolSpec->New("wait", "Works until cancelled"));
+		return specs;
+	}
+
+	function : Registry() ~ ToolRegistry {
+		registry := ToolRegistry->New();
+		specs := Specs();
+		each(i : specs) {
+			registry->Add(McpAgentTools->FromSpec(specs->Get(i), Handler(i)));
+		};
+		return registry;
+	}
+
+	function : Ask(id : String, name : String, arguments : String) ~ AgentReply {
+		return AgentReply->Ask(id, name, arguments);
+	}
+
+	function : Script(first : AgentReply) ~ ScriptedBackend {
+		script := Vector->New()<AgentReply>;
+		script->AddBack(first);
+		script->AddBack(AgentReply->Say("done"));
+		return ScriptedBackend->New(script);
+	}
+
+	function : Status(result : AgentResult) ~ String {
+		return result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus();
+	}
+
+	function : Content(result : AgentResult) ~ String {
+		return result->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent();
+	}
+
+	# ---- a declared function is an agent tool ----
+
+	function : Declared() ~ Nil {
+		registry := Registry();
+		tool := registry->Find("add");
+		Check(tool <> Nil & tool->GetDescription()->Equals("Add two integers"), "the tool has the spec's name and description");
+		Check(McpToolSpec->Same(tool->GetSchema(), Specs()->Get(0)->GetSchema()) & tool->GetSchema()->Get("required")->Size() = 2, "and the derived schema");
+		Check(tool->IsReadOnly() & <>tool->IsDestructive() & <>tool->NeedsApproval(), "add is read-only");
+		Check(registry->Find("remove_file")->IsDestructive() & registry->Find("remove_file")->NeedsApproval() & <>registry->Find("remove_file")->IsReadOnly(), "remove_file is destructive and not read-only");
+		note := registry->Find("note");
+		Check(<>note->IsReadOnly() & <>note->IsDestructive() & <>note->NeedsApproval(), "a tool with no hints has none");
+
+		agent := Agent->New(Script(Ask("c1", "add", "{\"a\":17,\"b\":25}")), registry);
+		result := agent->Run("17 + 25?");
+		Check(Status(result)->Equals("ok") & Content(result)->Equals("42"), "the agent runs the declared function: 42");
+
+		agent := Agent->New(Script(Ask("c2", "add", "{\"a\":\"x\",\"b\":2}")), Registry());
+		result := agent->Run("bad");
+		Check(Status(result)->Equals("invalid"), "arguments the schema rejects never reach the function");
+
+		agent := Agent->New(Script(Ask("c3", "fails", "{}")), Registry());
+		result := agent->Run("fail");
+		Check(Status(result)->Equals("error") & Content(result)->Has("the disk is full"), "an isError result is an error result with its text");
+
+		agent := Agent->New(Script(Ask("c4", "raises", "{}")), Registry());
+		result := agent->Run("raise");
+		Check(Status(result)->Equals("error"), "a handler that raises is an error result");
+	}
+
+	# ---- the hints and the approval rules ----
+
+	function : Approval() ~ Nil {
+		before := @removed;
+
+		# a destructive tool asks even though nothing else was set
+		no := Approver->New(false);
+		agent := Agent->New(Script(Ask("d1", "remove_file", "{\"path\":\"a.txt\"}")), Registry());
+		agent->SetApprover(no);
+		result := agent->Run("delete");
+		Check(Status(result)->Equals("refused") & no->GetAsked() = 1 & Content(result)->Has("declined") & @removed = before, "destructive: the approver is asked, says no, the function does not run");
+
+		yes := Approver->New(true);
+		agent := Agent->New(Script(Ask("d2", "remove_file", "{\"path\":\"b.txt\"}")), Registry());
+		agent->SetApprover(yes);
+		result := agent->Run("delete");
+		Check(Status(result)->Equals("ok") & yes->GetAsked() = 1 & @removed = before + 1 & Content(result)->Equals("removed b.txt"), "destructive: an approver that says yes lets it run");
+
+		agent := Agent->New(Script(Ask("d3", "remove_file", "{\"path\":\"c.txt\"}")), Registry());
+		result := agent->Run("delete");
+		Check(Status(result)->Equals("refused") & Content(result)->Has("needs approval") & @removed = before + 1, "destructive: with nobody to ask it is refused");
+
+		# default behaviour for tools that are not destructive: no question
+		quiet := Approver->New(false);
+		agent := Agent->New(Script(Ask("d4", "note", "{}")), Registry());
+		agent->SetApprover(quiet);
+		result := agent->Run("note");
+		Check(Status(result)->Equals("ok") & quiet->GetAsked() = 0, "a tool without hints is not asked about by default");
+
+		# SetApproveUnlessReadOnly: the read-only tool runs, the unmarked one asks
+		cautious := Approver->New(false);
+		agent := Agent->New(Script(Ask("d5", "add", "{\"a\":1,\"b\":2}")), Registry());
+		agent->SetApprover(cautious)->SetApproveUnlessReadOnly(true);
+		result := agent->Run("add");
+		Check(Status(result)->Equals("ok") & cautious->GetAsked() = 0, "unless-read-only: a read-only tool runs without a question");
+
+		agent := Agent->New(Script(Ask("d6", "note", "{}")), Registry());
+		agent->SetApprover(cautious)->SetApproveUnlessReadOnly(true);
+		result := agent->Run("note");
+		Check(Status(result)->Equals("refused") & cautious->GetAsked() = 1 & cautious->GetLast()->Equals("note"), "unless-read-only: a tool with no hint is asked about");
+
+		# a stated hint of false is not a hint of true
+		registry := ToolRegistry->New();
+		false_hint := McpAgentTools->FromSpec(McpToolSpec->New("note", "Write a note"), Handler(2));
+		false_hint->SetDestructiveHint(false)->SetReadOnlyHint(false);
+		registry->Add(false_hint);
+		never := Approver->New(false);
+		agent := Agent->New(Script(Ask("d7", "note", "{}")), registry);
+		agent->SetApprover(never);
+		result := agent->Run("note");
+		Check(Status(result)->Equals("ok") & never->GetAsked() = 0 & <>false_hint->NeedsApproval() & <>false_hint->IsReadOnly(), "destructiveHint false and readOnlyHint false do not ask by default");
+
+		# approve-all still asks about a read-only tool, as it always did
+		all := Approver->New(true);
+		agent := Agent->New(Script(Ask("d8", "add", "{\"a\":1,\"b\":2}")), Registry());
+		agent->SetApprover(all)->SetApproveAll(true);
+		result := agent->Run("add");
+		Check(all->GetAsked() = 1 & Status(result)->Equals("ok"), "approve-all asks about a read-only tool too");
+	}
+
+	# ---- a server's tools ----
+
+	function : Served() ~ Nil {
+		server := McpService->New("agent-test", "1.0.0");
+		specs := Specs();
+		each(i : specs) {
+			specs->Get(i)->AddTo(server, Handler(i));
+		};
+
+		client := McpClient->InProcess(server);
+		Check(client->Initialize("agent-test", "1.0"), "the client initializes");
+		registry := ToolRegistry->New();
+		count := McpAgentTools->AddAll(registry, client);
+		Check(count = 6 & registry->Size() = 6, "every tool of the server is registered");
+		Check(registry->Find("add")->IsReadOnly() & registry->Find("remove_file")->IsDestructive() & <>registry->Find("note")->IsReadOnly(), "the hints came over the protocol");
+		Check(McpToolSpec->Same(registry->Find("add")->GetSchema(), specs->Get(0)->GetSchema()), "and the schema");
+
+		before := @removed;
+		agent := Agent->New(Script(Ask("s1", "add", "{\"a\":40,\"b\":2}")), registry);
+		result := agent->Run("add");
+		Check(Status(result)->Equals("ok") & Content(result)->Equals("42"), "the agent calls the server's tool: 42");
+
+		no := Approver->New(false);
+		agent := Agent->New(Script(Ask("s2", "remove_file", "{\"path\":\"x\"}")), registry);
+		agent->SetApprover(no);
+		result := agent->Run("delete");
+		Check(Status(result)->Equals("refused") & no->GetAsked() = 1 & @removed = before, "a destructive tool of the server asks, and a no stops it before the server is called");
+
+		agent := Agent->New(Script(Ask("s3", "fails", "{}")), registry);
+		result := agent->Run("fail");
+		Check(Status(result)->Equals("error") & Content(result)->Has("the disk is full"), "a server's isError result is an error result");
+
+		down := McpAgentTools->AddAll(ToolRegistry->New(), McpClient->Command("objeck_no_such_command_xyz"));
+		Check(down = -1, "a server that cannot be reached lists nothing: -1");
+		client->Close();
+	}
+
+	# ---- cancellation ----
+
+	function : Cancellation() ~ Nil {
+		tool := Registry()->Find("wait");
+		token := AgentCancel->New();
+		Canceller->New()->Execute(token);
+
+		timer := System.Time.Timer->New(true);
+		text := tool->InvokeWith(JsonParser->TextToElement("{}"), token);
+		elapsed := timer->GetElapsedTime();
+		Check(text <> Nil & text->Equals("cancelled"), "the agent's token reaches the handler as IsCancelled");
+		Check(elapsed >= 0.04 & elapsed < 2.0, "and the call returns promptly after it, not at the handler's own limit");
+
+		done := AgentCancel->New();
+		done->Cancel("already");
+		failure := false;
+		try {
+			tool->InvokeWith(JsonParser->TextToElement("{}"), done);
+		}
+		on(e : Error) {
+			failure := e->GetMessage()->Has("cancelled before");
+		};
+		Check(failure, "a token cancelled before the call stops it before the handler runs");
+
+		fresh := AgentCancel->New();
+		quick := Registry()->Find("add")->InvokeWith(JsonParser->TextToElement("{\"a\":1,\"b\":1}"), fresh);
+		Check(quick->Equals("2"), "a call whose token is never cancelled finishes normally");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Declared();
+		Approval();
+		Served();
+		Cancellation();
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP agent, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP agent, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

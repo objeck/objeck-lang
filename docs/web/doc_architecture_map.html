@@ -1,89 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Architecture map — Objeck Language</title>
-  <meta name="description" content="The one-page entry point to how Objeck is put together: what each part is for, where it lives, what goes in and out, what must not be done to it, and which document goes deeper. Every statement was checked against the source on master 4cfcf"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="The one-page entry point to how Objeck is put together: what each part is for, where it lives, what goes in and out, what must not be done to it, and which document goes deeper. Every statement was checked against the source on master 4cfcf">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
-      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
-                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose' });
     await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
   </script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Architecture map</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARCHITECTURE_MAP.md" target="_blank">docs/ARCHITECTURE_MAP.md on GitHub</a></div>
-    <p class="page-lead">The one-page entry point to how Objeck is put together: what each part is for, where it lives, what goes in and out, what must not be done to it, and which document goes deeper. Every statement was checked against the source on master <code>4cfcf08f04</code> (v2026.10.3 in development); where an older document disagrees with the code, the code wins and the disagreement is named in <a href="#where-older-documents-disagree-with-the-code">the last section</a>.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#the-whole-system">The whole system</a></li>
-      <li><a href="#directory-map">Directory map</a></li>
-      <li><a href="#compiler">Compiler</a></li>
-      <li><a href="#file-formats">File formats</a></li>
-      <li><a href="#virtual-machine">Virtual machine</a></li>
-      <li><a href="#standard-libraries">Standard libraries</a></li>
-      <li><a href="#tools">Tools</a></li>
-      <li><a href="#build-and-release">Build and release</a></li>
-      <li><a href="#testing">Testing</a></li>
-      <li><a href="#facts-that-must-agree-by-hand">Facts that must agree by hand</a></li>
-      <li><a href="#where-older-documents-disagree-with-the-code">Where older documents disagree with the code</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#how-it-works">How it works</a></li><li aria-current="page">Architecture map</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html" aria-current="page">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Architecture map</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARCHITECTURE_MAP.md" target="_blank" rel="noopener">View docs/ARCHITECTURE_MAP.md on GitHub</a></p>
+    <p class="page-lead">The one-page entry point to how Objeck is put together: what each part is for, where it lives, what goes in and out, what must not be done to it, and which document goes deeper. Every statement was checked against the source on master <code>4cfcf08f04</code> (v2026.10.3 in development); where an older document disagrees with the code, the code wins and the disagreement is named in <a href="#where-older-documents-disagree-with-the-code">the last section</a>.</p>
 
-    <p>This page is the map. <a href="doc_architecture.html">architecture.md</a> is the long illustrated tour of the same ground, and every other page in <code>docs/</code> is listed in <a href="https://github.com/objeck/objeck-lang/blob/master/docs/README.md" target="_blank">README.md</a>.</p>
-    <h3 id="the-whole-system">The whole system</h3>
+    <p>This page is the map. <a href="doc_architecture.html">architecture.md</a> is the long illustrated tour of the same ground, and every other page in <code>docs/</code> is listed in <a href="https://github.com/objeck/objeck-lang/blob/master/docs/README.md" target="_blank" rel="noopener">README.md</a>.</p>
+    <h2 id="the-whole-system">The whole system</h2>
 <pre class="mermaid">flowchart LR
     SRC[".obs source"] --&gt; OBC["obc&lt;br/&gt;compiler"]
     LIBSRC["core/compiler/lib_src&lt;br/&gt;library sources"] --&gt; OBC
@@ -101,7 +75,7 @@
     DIAGS --&gt; LSP["language server&lt;br/&gt;tools/lsp"]
     OBC --&gt; OBI["obi REPL&lt;br/&gt;compiler and VM in one process"]</pre>
     <p>The statement "the <code>.obe</code> embeds what it links" is checked in <a href="#file-formats">File formats</a>. The dashed edges are the ones that are easy to get wrong: the VM never opens an <code>.obl</code>, and the language server and REPL do not run the <code>obc</code> executable, they link its sources.</p>
-    <h3 id="directory-map">Directory map</h3>
+    <h2 id="directory-map">Directory map</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Path</th><th>What is there</th></tr>
@@ -121,7 +95,7 @@
       <tr><td data-label="Path"><code>.github/workflows/</code></td><td data-label="What is there">CI, release, nightly and probe workflows</td></tr>
      </tbody>
     </table>
-    <h3 id="compiler">Compiler</h3>
+    <h2 id="compiler">Compiler</h2>
     <p><strong>Purpose.</strong> Turn <code>.obs</code> source into an executable (<code>.obe</code>) or a library (<code>.obl</code>).</p>
     <p><strong>Where.</strong> <code>core/compiler/</code>. The pipeline is written out in <code>Compile()</code> in <code>compiler.cpp</code>:</p>
 <pre class="mermaid">flowchart LR
@@ -139,7 +113,7 @@
       <tr><td data-label="Stage">Context analyzer (<code>context.cpp</code>, types in <code>types.cpp</code>)</td><td data-label="Output">the same tree, resolved and checked</td><td data-label="Notes">types, generics, named and <code>ref</code> arguments, <code>?-&gt;</code>. The linker is loaded from here, so library classes are known before analysis starts</td></tr>
       <tr><td data-label="Stage">Linker (<code>linker.cpp</code>, <code>Library</code> and <code>Linker</code> in <code>linker.h</code>)</td><td data-label="Output">the library classes the program uses</td><td data-label="Notes">reads each <code>.obl</code> named by <code>-lib</code>, plus <code>lang</code> and <code>gen_collect</code> unless <code>--strict</code></td></tr>
       <tr><td data-label="Stage">Intermediate emitter (<code>intermediate.cpp</code>)</td><td data-label="Output">blocks of VM instructions per method</td><td data-label="Notes">the opcodes are <code>core/shared/instrs.h</code>. The system intrinsics (below) are lowered here</td></tr>
-      <tr><td data-label="Stage">Optimizer (<code>optimization.cpp</code>)</td><td data-label="Output">the same blocks, rewritten</td><td data-label="Notes"><code>-opt s0</code> to <code>s3</code>, default <code>s3</code>. <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a> lists the passes per level</td></tr>
+      <tr><td data-label="Stage">Optimizer (<code>optimization.cpp</code>)</td><td data-label="Output">the same blocks, rewritten</td><td data-label="Notes"><code>-opt s0</code> to <code>s3</code>, default <code>s3</code>. <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank" rel="noopener">optimization_pipeline.md</a> lists the passes per level</td></tr>
       <tr><td data-label="Stage">File emitter (<code>emit.cpp</code>)</td><td data-label="Output">the <code>.obe</code> or <code>.obl</code></td><td data-label="Notes">zlib-compressed; the writer is <code>OutputStream</code> in <code>core/shared/sys.h</code></td></tr>
      </tbody>
     </table>
@@ -163,8 +137,8 @@
      <li>The back end reports a fatal error by throwing <code>CompilerFatal</code>, caught in <code>Compile()</code>, so a host that embeds the compiler survives it (the language server and <code>obi</code> embed it). One site still calls <code>exit(1)</code>: the rejection of a library with the pre-<code>NEW_INT_ARY</code> magic, in <code>Library::LoadFile</code> (<code>linker.cpp</code>); its sibling checks throw. Do not add another.</li>
      <li>The linker checks that a library's toolchain version equals <code>VER_NUM</code>; do not hand-edit a library's header.</li>
     </ul>
-    <p><strong>Deeper.</strong> <a href="doc_architecture.html">architecture.md</a> section 2; <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a>; <a href="doc_method_generics.html">METHOD_GENERICS_DESIGN.md</a>, <a href="doc_named_arguments.html">NAMED_ARGUMENTS_DESIGN.md</a>, <a href="doc_reference_parameters.html">REFERENCE_PARAMETERS_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARRAY_LITERALS_DESIGN.md" target="_blank">ARRAY_LITERALS_DESIGN.md</a>, <a href="doc_jagged_arrays.html">JAGGED_ARRAYS_DESIGN.md</a> for individual features; <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md" target="_blank">core/compiler/README.md</a>.</p>
-    <h3 id="file-formats">File formats</h3>
+    <p><strong>Deeper.</strong> <a href="doc_architecture.html">architecture.md</a> section 2; <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank" rel="noopener">optimization_pipeline.md</a>; <a href="doc_method_generics.html">METHOD_GENERICS_DESIGN.md</a>, <a href="doc_named_arguments.html">NAMED_ARGUMENTS_DESIGN.md</a>, <a href="doc_reference_parameters.html">REFERENCE_PARAMETERS_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARRAY_LITERALS_DESIGN.md" target="_blank" rel="noopener">ARRAY_LITERALS_DESIGN.md</a>, <a href="doc_jagged_arrays.html">JAGGED_ARRAYS_DESIGN.md</a> for individual features; <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md" target="_blank" rel="noopener">core/compiler/README.md</a>.</p>
+    <h2 id="file-formats">File formats</h2>
     <table class="ref-table">
      <thead>
       <tr><th></th><th><code>.obe</code> (program)</th><th><code>.obl</code> (library)</th></tr>
@@ -187,7 +161,7 @@
     <p>A library records what the compiler needs to link against it. A program records what the VM needs to run it, including the classes and methods it linked from libraries, which is why <code>obr</code> needs no <code>.obl</code>. (This is checked in <code>LoadImage</code>, which reads only the <code>.obe</code>; the only library files <code>obr</code> opens are the native shared libraries.)</p>
     <p><strong>Do not.</strong> Do not read an <code>.obe</code> as trusted input: see <a href="doc_security.html">SECURITY_MODEL.md</a>. Do not add a field without reading how the older magics are handled in <code>loader.cpp</code> and <code>linker.cpp</code>.</p>
     <p><strong>Deeper.</strong> <a href="doc_otab_format.html">OTAB_FORMAT.md</a> is a different format (the <code>.otab</code> table file of <code>Query.Structured</code>); <a href="doc_security.html">SECURITY_MODEL.md</a> for what the loader checks.</p>
-    <h3 id="virtual-machine">Virtual machine</h3>
+    <h2 id="virtual-machine">Virtual machine</h2>
     <p><strong>Purpose.</strong> Run an <code>.obe</code>.</p>
     <p><strong>Where.</strong> <code>core/vm/</code>. <code>posix_main.cpp</code> and <code>win_main.cpp</code> parse options through the single parser in <code>vm_options.h</code>, then <code>Execute()</code> in <code>vm.cpp</code> builds a <code>Loader</code>, loads, and starts the interpreter.</p>
 <pre class="mermaid">flowchart TD
@@ -201,22 +175,22 @@
     TRAP --&gt;|"load library, call by name"| NAT["native library&lt;br/&gt;lib_api.h"]
     INT --- MM["MemoryManager&lt;br/&gt;arch/memory.cpp"]
     JIT --- MM</pre>
-    <h4 id="loader-and-verifier">Loader and verifier</h4>
+    <h3 id="loader-and-verifier">Loader and verifier</h3>
     <p><code>Loader::Load</code> returns false with a message instead of exiting (<code>LoadFailed</code> throws, <code>Load</code> catches), so the debugger, the REPL and the fuzz harness can survive a bad file. It checks structure (every read stays inside the buffer, counts are bounded by the bytes left, ids are in range, opcodes are known). <code>Loader::Verify</code> then relates operands to the program: jump targets, local and field offsets against frame and object sizes, class and method ids, trap ids. Since PR #1598 (2026-11-18) it also runs the reference-map builder (<code>arch/ref_map.h</code>) over every method and refuses one that pops an empty operand stack, joins two paths at different heights, or reads through a non-zero integer literal as an array or object. The full list, and what is still unchecked (the stack's height bound, trap pop counts, types), is in <a href="doc_security.html">SECURITY_MODEL.md</a>.</p>
     <p><strong>Rule.</strong> An <code>.obe</code> is native code with the privileges of <code>obr</code>. Do not describe <code>obr</code> as a sandbox; the playground isolates with a container.</p>
-    <h4 id="interpreter-and-traps">Interpreter and traps</h4>
+    <h3 id="interpreter-and-traps">Interpreter and traps</h3>
     <p>A stack machine over the opcodes in <code>core/shared/instrs.h</code>. System services (files, sockets, time, threads, process, serialization) are <strong>traps</strong>: a <code>TRAP</code> instruction whose operand-stack id is a value of <code>enum Traps</code> (<code>core/shared/traps.h</code>), handled by one big <code>switch</code> in <code>TrapProcessor::ProcessTrap</code>. A trap handler allocates without collecting and pops exactly the arguments its declaration says; leaving one on the stack shifted every frame above it (#1457).</p>
     <p><strong>Rules.</strong> The trap table is append-only (see Compiler). A trap that reads <code>frame-&gt;mem</code> cannot be compiled: it is on the JIT's rejection list (<code>HasFrameDependentTrap</code> in <code>jit_common.h</code>).</p>
-    <h4 id="native-libraries-and-the-versioned-abi">Native libraries and the versioned ABI</h4>
+    <h3 id="native-libraries-and-the-versioned-abi">Native libraries and the versioned ABI</h3>
     <p><code>DllProxy-&gt;New("libobjk_x")</code> loads <code>&lt;lib dir&gt;/native/libobjk_x.dll|.so|.dylib</code> (<code>StackInterpreter::SharedLibraryLoad</code>); <code>CallFunction</code> finds an exported function by name and passes a <code>VMContext</code> (<code>core/vm/lib_api.h</code>) with the argument array. There is no signature checking: the name is the only link. <code>VMContext</code> only grows at the end. Since 2026.10.3 it carries <code>abi_version</code> and <code>struct_size</code>; a library must read fields appended after them through <code>APITools_HasField</code>.</p>
     <p><strong>Rules.</strong> Never insert or reorder a <code>VMContext</code> field. A native library must not let an exception escape or call <code>exit()</code>. Everything a native library allocates lives in the old generation. A native library that stores an object it <em>received</em> (an argument, or a callback's result) into one it allocated must run the write barrier; <code>tools/cicd/check_native_write_barrier.py</code> scans for it.</p>
     <p><strong>Deeper.</strong> <a href="doc_native_interface.html">native_interface.md</a> is the whole contract.</p>
-    <h4 id="jit">JIT</h4>
+    <h3 id="jit">JIT</h3>
     <p><code>core/vm/arch/jit/</code>: <code>jit_common.{h,cpp}</code> is the shared driver, <code>amd64/jit_amd_lp64.{h,cpp}</code> and <code>arm64/jit_arm_a64.{h,cpp}</code> the two code generators, <code>jit_frame_layout.h</code> the frame constants both generators and the collector share (with <code>static_assert</code>s).</p>
     <p>A method is compiled on its call count reaching the threshold (default 10, <code>--jit=&lt;n&gt;</code> or <code>OBJECK_JIT_THRESHOLD</code>), or on its first call when it contains a loop. A pre-scan (<code>CanJitInstruction</code>, a whitelist) decides whether every opcode can be compiled; a method that cannot stays interpreted. <code>--jit=off</code> compiles nothing, including <code>native</code> methods. Compiled code reaches the interpreter, allocation and traps through a callback bridge, and compiled code calls compiled code directly through patched call sites and per-site inline caches.</p>
     <p><strong>Rules.</strong> After any point where compiled code can park or call back, <code>self</code> must be re-read from <code>frame-&gt;mem[0]</code>: a collection may have moved it. A frame's slot layout must be the same in the code generator and in the collector's frame walker, which is why they share <code>jit_frame_layout.h</code>. Bisect a suspected JIT bug with <code>--jit=off</code>, then <code>OBJECK_JIT_REPORT=1</code>.</p>
-    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit/README.md" target="_blank">core/vm/arch/jit/README.md</a> and its <code>amd64/</code> and <code>arm64/</code> pages; <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_CALLING_CONVENTION_DESIGN.md" target="_blank">JIT_CALLING_CONVENTION_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_ENTRY_COMPILE_DESIGN.md" target="_blank">JIT_ENTRY_COMPILE_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_LOOP_LOCALS_DESIGN.md" target="_blank">JIT_LOOP_LOCALS_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_SELECT_TABLES_DESIGN.md" target="_blank">JIT_SELECT_TABLES_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/TRY_IN_JIT_DESIGN.md" target="_blank">TRY_IN_JIT_DESIGN.md</a>; <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_ARM64_HANDOFF_2026_09.md" target="_blank">JIT_ARM64_HANDOFF_2026_09.md</a> for what is open on ARM64.</p>
-    <h4 id="garbage-collector">Garbage collector</h4>
+    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit/README.md" target="_blank" rel="noopener">core/vm/arch/jit/README.md</a> and its <code>amd64/</code> and <code>arm64/</code> pages; <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_CALLING_CONVENTION_DESIGN.md" target="_blank" rel="noopener">JIT_CALLING_CONVENTION_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_ENTRY_COMPILE_DESIGN.md" target="_blank" rel="noopener">JIT_ENTRY_COMPILE_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_LOOP_LOCALS_DESIGN.md" target="_blank" rel="noopener">JIT_LOOP_LOCALS_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_SELECT_TABLES_DESIGN.md" target="_blank" rel="noopener">JIT_SELECT_TABLES_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/TRY_IN_JIT_DESIGN.md" target="_blank" rel="noopener">TRY_IN_JIT_DESIGN.md</a>; <a href="https://github.com/objeck/objeck-lang/blob/master/docs/JIT_ARM64_HANDOFF_2026_09.md" target="_blank" rel="noopener">JIT_ARM64_HANDOFF_2026_09.md</a> for what is open on ARM64.</p>
+    <h3 id="garbage-collector">Garbage collector</h3>
     <p><code>core/vm/arch/memory.{h,cpp}</code>. Generational, mark-and-sweep with promotion:</p>
     <ul>
      <li>Objects are bump-allocated in a <strong>nursery</strong> (a 128 MB reservation; <code>--nursery</code> lowers the limit). A <strong>minor</strong> collection promotes survivors to the <strong>old generation</strong> and resets the nursery. A <strong>major</strong> collection marks both generations and frees dead old objects. Arrays are allocated directly in the old generation.</li>
@@ -225,22 +199,22 @@
      <li><strong>Roots.</strong> Class statics, operand stacks, interpreter frames and compiled frames. The collector no longer guesses which words are references where it can know: reference maps (<code>arch/ref_map.h</code>) type the interpreter's operand stack, and compiled frames have typed spill slots (<code>TMP_REF_*</code> are scanned, <code>TMP_VAL_*</code> are not). Words no map types are still scanned conservatively (<code>OBJECK_GC_ROOTS=conservative</code> restores the old behaviour everywhere, as a negative control; <code>=audit</code> reports where maps and live stacks disagree).</li>
      <li><strong>Checkers.</strong> <code>OBJECK_GC_VERIFY</code> runs the heap verifier (<code>arch/memory_verify.cpp</code>); <code>OBJECK_GC_VERIFY_INJECT</code> plants faults to prove it notices; <code>OBJECK_GC_TRACE</code>, <code>OBJECK_GC_STATS</code> print what happened.</li>
     </ul>
-    <p><strong>Status and limits.</strong> All of the above is implemented and on by default; the generational collector has been enabled since v2026.6.3 (#574), the heap verifier since v2026.9.5, the typed roots since v2026.10.2 (interpreter) and v2026.10.3 (compiled frames, <code>Int[]</code> tag), per <code>git tag --contains</code>. It is stop-the-world with three parallel mark threads, so a major collection's pause grows with the old generation. It is conservative for operand-stack words the reference maps cannot type, so an integer equal to a live young object's address on such a stack can still retain or relocate it (<a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>, section 12). <strong>How to check:</strong> <code>OBJECK_GC_STATS=1 obr prog.obe</code> for what a run did; <code>OBJECK_GC_VERIFY=checkmark obr --nursery=64k prog.obe</code> for the invariants (<a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/README.md" target="_blank">arch/README.md</a>).</p>
+    <p><strong>Status and limits.</strong> All of the above is implemented and on by default; the generational collector has been enabled since v2026.6.3 (#574), the heap verifier since v2026.9.5, the typed roots since v2026.10.2 (interpreter) and v2026.10.3 (compiled frames, <code>Int[]</code> tag), per <code>git tag --contains</code>. It is stop-the-world with three parallel mark threads, so a major collection's pause grows with the old generation. It is conservative for operand-stack words the reference maps cannot type, so an integer equal to a live young object's address on such a stack can still retain or relocate it (<a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>, section 12). <strong>How to check:</strong> <code>OBJECK_GC_STATS=1 obr prog.obe</code> for what a run did; <code>OBJECK_GC_VERIFY=checkmark obr --nursery=64k prog.obe</code> for the invariants (<a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/README.md" target="_blank" rel="noopener">arch/README.md</a>).</p>
     <p><strong>Rules.</strong> Any new collection entry point must replicate the stop-the-world protocol of <code>CollectMajor</code> and <code>CollectMinor</code>; a minor collection that ran beside live threads corrupted memory once. The object-layout walkers (mark, fixup, dirty scan, verifier) must agree on field widths. Counters must not reach stdout (differential runs compare stdout). A teardown crash means earlier heap corruption: look upstream.</p>
-    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/README.md" target="_blank">core/vm/arch/README.md</a>; <a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a> for the root model and what is left.</p>
-    <h3 id="standard-libraries">Standard libraries</h3>
+    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/README.md" target="_blank" rel="noopener">core/vm/arch/README.md</a>; <a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a> for the root model and what is left.</p>
+    <h2 id="standard-libraries">Standard libraries</h2>
     <p><strong>Purpose.</strong> The class library: collections, I/O, networking, JSON and XML, machine learning, graphics, and bindings to native code.</p>
     <p><strong>Where.</strong> Sources are <code>core/compiler/lib_src/*.obs</code>, 56 files. <code>core/compiler/build_libs.sh</code> is the one list of how they group into libraries (several source files can make one <code>.obl</code>, for example <code>ml_*.obs</code> into <code>ml.obl</code>) and in what dependency order. <code>lang.obl</code> is the exception: it is built by <code>sys_obc</code> because only that compiler accepts the intrinsic keywords. The results are committed in <code>core/lib/*.obl</code> and copied, not rebuilt, by the deploy scripts. Native modules live in <code>core/lib/&lt;name&gt;/</code>, and ship as <code>lib/native/libobjk_*</code>.</p>
     <p><strong>Inputs and outputs.</strong> A program names what it uses with <code>-lib</code> (<code>lang</code> and <code>gen_collect</code> are implicit); <code>@std</code>, <code>@web</code>, <code>@data</code>, <code>@ml</code>, <code>@ai</code>, <code>@vision</code> and <code>@game</code> expand from <code>lib/configobjk.ini</code>.</p>
     <p><strong>Rules.</strong></p>
     <ul>
      <li>A new library is added in <code>build_libs.sh</code> and in the doc-build lists that <code>tools/cicd/check_doc_lists.py</code> verifies against <code>lib_src</code>.</li>
-     <li>Doc comments are <code>#~ ... ~#</code> immediately before a class, method, function, enum or constructor; <code>code_doc</code> builds the API reference from them, and <code>tools/cicd/check_doc_fences.py</code> guards the code-fence rule. <a href="https://github.com/objeck/objeck-lang/blob/master/docs/DOC_COVERAGE.md" target="_blank">DOC_COVERAGE.md</a> measures which public members have one.</li>
+     <li>Doc comments are <code>#~ ... ~#</code> immediately before a class, method, function, enum or constructor; <code>code_doc</code> builds the API reference from them, and <code>tools/cicd/check_doc_fences.py</code> guards the code-fence rule. <a href="https://github.com/objeck/objeck-lang/blob/master/docs/DOC_COVERAGE.md" target="_blank" rel="noopener">DOC_COVERAGE.md</a> measures which public members have one.</li>
      <li><code>.obl</code> files are tied to the toolchain version (see File formats); a source change that must reach users means rebuilding and committing the <code>.obl</code>.</li>
      <li>Report failure the way the library you are editing does, until <a href="doc_errors.html">ERROR_CONVENTIONS.md</a> (a proposal) is adopted.</li>
     </ul>
-    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/README.md" target="_blank">core/lib/README.md</a>; <a href="doc_collections.html">COLLECTIONS_GUIDE.md</a>; <a href="doc_ai.html">AI.md</a>, <a href="doc_models.html">MODELS.md</a>, <a href="doc_query_design.html">QUERY_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/opengl.md" target="_blank">opengl.md</a>.</p>
-    <h3 id="tools">Tools</h3>
+    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/README.md" target="_blank" rel="noopener">core/lib/README.md</a>; <a href="doc_collections.html">COLLECTIONS_GUIDE.md</a>; <a href="doc_ai.html">AI.md</a>, <a href="doc_models.html">MODELS.md</a>, <a href="doc_query_design.html">QUERY_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/opengl.md" target="_blank" rel="noopener">opengl.md</a>.</p>
+    <h2 id="tools">Tools</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Tool</th><th>Source</th><th>What it does</th><th>Deeper</th></tr>
@@ -248,16 +222,16 @@
      <tbody>
       <tr><td data-label="Tool"><code>obc</code></td><td data-label="Source"><code>core/compiler/</code></td><td data-label="What it does">compile</td><td data-label="Deeper"><a href="doc_cli_options.html">cli_options.md</a></td></tr>
       <tr><td data-label="Tool"><code>obr</code></td><td data-label="Source"><code>core/vm/</code></td><td data-label="What it does">run an <code>.obe</code></td><td data-label="Deeper"><a href="doc_cli_options.html">cli_options.md</a></td></tr>
-      <tr><td data-label="Tool"><code>obd</code></td><td data-label="Source"><code>core/debugger/</code></td><td data-label="What it does">command-line debugger; <code>--dap</code> is a Debug Adapter Protocol server for editors. Built from the VM sources with <code>-D_DEBUGGER</code>, so it has its own interpreter build and no JIT</td><td data-label="Deeper"><a href="https://github.com/objeck/objeck-lang/blob/master/core/debugger/README.md" target="_blank">core/debugger/README.md</a></td></tr>
-      <tr><td data-label="Tool"><code>obi</code></td><td data-label="Source"><code>core/repl/</code></td><td data-label="What it does">REPL and a small full-screen editor. Links <code>core/module/module.a</code>, so it compiles and runs in one process. It re-runs the whole buffer on every entry</td><td data-label="Deeper"><a href="https://github.com/objeck/objeck-lang/blob/master/core/repl/README.md" target="_blank">core/repl/README.md</a></td></tr>
-      <tr><td data-label="Tool"><code>obu</code></td><td data-label="Source"><code>core/utils/updater/</code></td><td data-label="What it does"><code>check</code>, <code>update</code>, <code>rollback</code>, <code>verify</code>. Verifies a signature before trusting the manifest</td><td data-label="Deeper"><a href="https://github.com/objeck/objeck-lang/blob/master/docs/UPDATER_DESIGN.md" target="_blank">UPDATER_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_integrity.md" target="_blank">release_integrity.md</a></td></tr>
+      <tr><td data-label="Tool"><code>obd</code></td><td data-label="Source"><code>core/debugger/</code></td><td data-label="What it does">command-line debugger; <code>--dap</code> is a Debug Adapter Protocol server for editors. Built from the VM sources with <code>-D_DEBUGGER</code>, so it has its own interpreter build and no JIT</td><td data-label="Deeper"><a href="https://github.com/objeck/objeck-lang/blob/master/core/debugger/README.md" target="_blank" rel="noopener">core/debugger/README.md</a></td></tr>
+      <tr><td data-label="Tool"><code>obi</code></td><td data-label="Source"><code>core/repl/</code></td><td data-label="What it does">REPL and a small full-screen editor. Links <code>core/module/module.a</code>, so it compiles and runs in one process. It re-runs the whole buffer on every entry</td><td data-label="Deeper"><a href="https://github.com/objeck/objeck-lang/blob/master/core/repl/README.md" target="_blank" rel="noopener">core/repl/README.md</a></td></tr>
+      <tr><td data-label="Tool"><code>obu</code></td><td data-label="Source"><code>core/utils/updater/</code></td><td data-label="What it does"><code>check</code>, <code>update</code>, <code>rollback</code>, <code>verify</code>. Verifies a signature before trusting the manifest</td><td data-label="Deeper"><a href="https://github.com/objeck/objeck-lang/blob/master/docs/UPDATER_DESIGN.md" target="_blank" rel="noopener">UPDATER_DESIGN.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_integrity.md" target="_blank" rel="noopener">release_integrity.md</a></td></tr>
       <tr><td data-label="Tool"><code>obb</code>, <code>obn</code></td><td data-label="Source"><code>core/utils/launcher/</code></td><td data-label="What it does"><code>obb</code> builds a self-contained application directory from an <code>.obe</code> and a toolchain directory; <code>obn</code> is the launcher it copies in, which starts <code>runtime/bin/obr</code> on <code>app/app.obe</code></td><td data-label="Deeper"></td></tr>
       <tr><td data-label="Tool">Language server</td><td data-label="Source"><code>tools/lsp/server/</code> (Objeck)</td><td data-label="What it does">LSP over stdio; analysis through <code>libobjk_diags</code>; editor clients in <code>tools/lsp/clients/</code></td><td data-label="Deeper"><a href="doc_lsp.html">tools/lsp/README.md</a>, <a href="doc_incremental.html">INCREMENTAL_ANALYSIS_DESIGN.md</a>, <a href="doc_editors.html">editors.md</a></td></tr>
       <tr><td data-label="Tool"><code>code_doc</code></td><td data-label="Source"><code>core/lib/code_doc/</code> (Objeck)</td><td data-label="What it does">builds the API reference from doc comments; the release ships it as <code>api.zip</code></td><td data-label="Deeper"><code>core/release/code_doc64.in</code></td></tr>
      </tbody>
     </table>
-    <h3 id="build-and-release">Build and release</h3>
-    <p><strong>Build.</strong> Windows builds with MSBuild on <code>core/release/objeck.sln</code>; Linux and macOS with the Makefiles under each component's <code>make/</code> directory (<code>core/vm/make/Makefile.amd64</code> and so on) or the Xcode projects. The QUIC and mbedTLS dependencies are built by <code>tools/deps/</code>. <code>core/release/deploy_windows.cmd</code>, <code>deploy_posix.sh</code> and <code>deploy_macos_arm64.sh</code> assemble a deploy tree (<code>core/release/deploy-x64</code>, <code>deploy</code>, ...) with <code>bin/</code>, <code>lib/</code> and <code>lib/native/</code>; the regression runners use that tree. <a href="https://github.com/objeck/objeck-lang/blob/master/core/readme.md" target="_blank">core/readme.md</a> has the per-platform steps.</p>
+    <h2 id="build-and-release">Build and release</h2>
+    <p><strong>Build.</strong> Windows builds with MSBuild on <code>core/release/objeck.sln</code>; Linux and macOS with the Makefiles under each component's <code>make/</code> directory (<code>core/vm/make/Makefile.amd64</code> and so on) or the Xcode projects. The QUIC and mbedTLS dependencies are built by <code>tools/deps/</code>. <code>core/release/deploy_windows.cmd</code>, <code>deploy_posix.sh</code> and <code>deploy_macos_arm64.sh</code> assemble a deploy tree (<code>core/release/deploy-x64</code>, <code>deploy</code>, ...) with <code>bin/</code>, <code>lib/</code> and <code>lib/native/</code>; the regression runners use that tree. <a href="https://github.com/objeck/objeck-lang/blob/master/core/readme.md" target="_blank" rel="noopener">core/readme.md</a> has the per-platform steps.</p>
     <p><strong>Version.</strong> <code>core/release/update_version.ps1</code> holds the release number and renders every file that carries it from a <code>.in</code> template, including <code>core/shared/version.h</code>. Edit the <code>.in</code>, never the output; <code>tools/cicd/check_version_templates.py</code> fails when a generated file does not match its template. A bump must also rebuild and commit every <code>.obl</code>.</p>
     <p><strong>Workflows</strong> (<code>.github/workflows/</code>):</p>
     <table class="ref-table">
@@ -267,15 +241,15 @@
      <tbody>
       <tr><td data-label="Workflow"><code>ci-build.yml</code></td><td data-label="Runs">every push and pull request to master</td><td data-label="Purpose">builds and tests the five platforms (windows-x64, windows-arm64, linux-x64, linux-arm64, macos-arm64), then the <code>Tools</code> job: the build-free checks, the language server and the editor extension</td></tr>
       <tr><td data-label="Workflow"><code>nightly-hardening.yml</code></td><td data-label="Runs">daily 07:23 UTC, and on dispatch</td><td data-label="Purpose">the long checks CI cannot afford per push, run on the binaries CI built</td></tr>
-      <tr><td data-label="Workflow"><code>release-build.yml</code>, <code>release-publish.yml</code></td><td data-label="Runs">a <code>v*.*.*</code> tag</td><td data-label="Purpose">build, sign (macOS) and publish; Windows installers are signed afterwards by hand. <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_process.md" target="_blank">release_process.md</a></td></tr>
+      <tr><td data-label="Workflow"><code>release-build.yml</code>, <code>release-publish.yml</code></td><td data-label="Runs">a <code>v*.*.*</code> tag</td><td data-label="Purpose">build, sign (macOS) and publish; Windows installers are signed afterwards by hand. <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_process.md" target="_blank" rel="noopener">release_process.md</a></td></tr>
       <tr><td data-label="Workflow"><code>release-deb.yml</code>, <code>resign-manifest.yml</code>, <code>verify-platforms.yml</code>, <code>verify-signing-credentials.yml</code></td><td data-label="Runs">after publish, or on dispatch</td><td data-label="Purpose"><code>.deb</code> packages, re-signing <code>SHA256SUMS</code>, the cloud form of the release gate, a signing-secret check</td></tr>
       <tr><td data-label="Workflow"><code>perf-gate.yml</code>, <code>benchmark.yml</code>, <code>stress-probe.yml</code>, <code>probe-gc-stress-arm64.yml</code></td><td data-label="Runs">dispatch or <code>probe/**</code> branches</td><td data-label="Purpose">performance and flake measurement; the perf gate is report-only</td></tr>
       <tr><td data-label="Workflow"><code>codeql.yml</code>, <code>secret-scan.yml</code>, <code>playground-tests.yml</code>, <code>tests-manifest.yml</code>, <code>jekyll-gh-pages.yml</code>, <code>release-drafter.yml</code>, <code>release-stats.yml</code></td><td data-label="Runs">various</td><td data-label="Purpose">static analysis, secret scan, playground backend tests, the generated <code>TESTS.md</code>, the published site, release notes draft, download counts</td></tr>
      </tbody>
     </table>
     <p><strong>Rules.</strong> Do not commit <code>programs/regression/TESTS.md</code>: <code>tests-manifest.yml</code> regenerates it on master. A release dispatch of <code>release-build.yml</code> from master publishes. A check that can only return one answer proves nothing: give a gate a negative control (see the <code>--test</code> options in <code>tools/cicd/</code>).</p>
-    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/docs/CI_CD.md" target="_blank">CI_CD.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_process.md" target="_blank">release_process.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_integrity.md" target="_blank">release_integrity.md</a>, <a href="doc_dependencies.html">third_party_dependencies.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/cicd/README.md" target="_blank">tools/cicd/README.md</a>.</p>
-    <h3 id="testing">Testing</h3>
+    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/docs/CI_CD.md" target="_blank" rel="noopener">CI_CD.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_process.md" target="_blank" rel="noopener">release_process.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/release_integrity.md" target="_blank" rel="noopener">release_integrity.md</a>, <a href="doc_dependencies.html">third_party_dependencies.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/cicd/README.md" target="_blank" rel="noopener">tools/cicd/README.md</a>.</p>
+    <h2 id="testing">Testing</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Layer</th><th>Where</th><th>What it catches</th></tr>
@@ -294,8 +268,8 @@
      </tbody>
     </table>
     <p>A test fails by its exit code. A test that prints <code>FAIL</code> and returns normally is scored a pass, which <code>tools/cicd/check_test_exit_codes.py</code> exists to prevent. A reduced test gets a reason line: <code># JIT_DISABLE</code>, <code># VERIFY_SKIP</code> and <code># GC_STRESS_SKIP</code> each need a following <code># reason:</code>.</p>
-    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/programs/TESTING.md" target="_blank">programs/TESTING.md</a>, <a href="doc_regression.html">programs/regression/README.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/fuzz/README.md" target="_blank">tools/fuzz/README.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/PLAN_2026_10_0_HARDENING.md" target="_blank">PLAN_2026_10_0_HARDENING.md</a>.</p>
-    <h3 id="facts-that-must-agree-by-hand">Facts that must agree by hand</h3>
+    <p><strong>Deeper.</strong> <a href="https://github.com/objeck/objeck-lang/blob/master/programs/TESTING.md" target="_blank" rel="noopener">programs/TESTING.md</a>, <a href="doc_regression.html">programs/regression/README.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/fuzz/README.md" target="_blank" rel="noopener">tools/fuzz/README.md</a>, <a href="https://github.com/objeck/objeck-lang/blob/master/docs/PLAN_2026_10_0_HARDENING.md" target="_blank" rel="noopener">PLAN_2026_10_0_HARDENING.md</a>.</p>
+    <h2 id="facts-that-must-agree-by-hand">Facts that must agree by hand</h2>
     <p>The recurring defects in this project come from facts kept in several places. Each row names the places and the check that guards them; a row with no check is a known risk.</p>
     <table class="ref-table">
      <thead>
@@ -311,7 +285,7 @@
       <tr><td data-label="Fact">Documentation counts and names</td><td data-label="Kept in">prose in many pages</td><td data-label="Guard">none; this is why <code>check_doc_links.py</code> and the notes below exist</td></tr>
      </tbody>
     </table>
-    <h3 id="where-older-documents-disagree-with-the-code">Where older documents disagree with the code</h3>
+    <h2 id="where-older-documents-disagree-with-the-code">Where older documents disagree with the code</h2>
     <p>Checked while writing this page. The code is right in each case; the fix is noted where it was made in the same change.</p>
     <table class="ref-table">
      <thead>
@@ -327,14 +301,34 @@
       <tr><td data-label="Document"><code>docs/CI_CD.md</code></td><td data-label="Said">"6 platforms" in the overview</td><td data-label="Code">five build platforms plus the language-server job</td><td data-label="Resolution">noted here; the page is the maintainers'</td></tr>
      </tbody>
     </table>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#the-whole-system">The whole system</a></li><li><a href="#directory-map">Directory map</a></li><li><a href="#compiler">Compiler</a></li><li><a href="#file-formats">File formats</a></li><li><a href="#virtual-machine">Virtual machine</a></li><li><a href="#standard-libraries">Standard libraries</a></li><li><a href="#tools">Tools</a></li><li><a href="#build-and-release">Build and release</a></li><li><a href="#testing">Testing</a></li><li><a href="#facts-that-must-agree-by-hand">Facts that must agree by hand</a></li><li><a href="#where-older-documents-disagree-with-the-code">Where older documents disagree with the code</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

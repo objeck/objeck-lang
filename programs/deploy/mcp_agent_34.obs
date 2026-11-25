@@ -1,0 +1,105 @@
+#~
+# compile: obc -src mcp_agent_34.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
+# run:     obr mcp_agent_34.obe
+#
+# Hand plain functions to an agent, and let the effect of each decide whether
+# the agent may run it. An agent (API.Agent) is a loop: it sends a task to a
+# model, runs the tool calls the model asks for, and sends the results back.
+# McpToolSpec describes a function once; McpAgentTools->FromSpec turns that
+# description into an agent tool, so the same function can be served over MCP
+# or given straight to an agent.
+#
+# Three tools: add only reads (ReadOnly), note is not marked either way, and
+# delete_file is Destructive. The agent runs with SetApproveUnlessReadOnly, the
+# cautious rule for tools you did not write: only a tool known to be read-only
+# runs unasked. A destructive tool always asks, whatever else is set. Here the
+# "user" is a few lines of code that says no to deletions.
+#
+# The model is a ScriptedBackend, a fake that replays a fixed script, so this
+# runs offline with no key and gives the same answer every time. With a real
+# model (AnthropicBackend, OpenAIBackend) the rest is unchanged.
+#
+# output:
+#     [approval asked for note: yes]
+#     [approval asked for delete_file: no]
+#   add: ok - 42
+#   note: ok - noted: the sum is 42
+#   delete_file: refused - Error: the user declined to run 'delete_file'
+#   model says: Added the numbers and made a note.
+~#
+use API.MCP, API.Agent, Data.JSON, Collection;
+
+# the user: asked before a tool that is not read-only runs
+class Ask implements AgentApprover {
+	New() {
+	}
+
+	method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+		name := call->GetName();
+		allowed := <>name->Equals("delete_file");
+		verdict := "no";
+		if(allowed) {
+			verdict := "yes";
+		};
+		"  [approval asked for {$name}: {$verdict}]"->PrintLine();
+		return allowed;
+	}
+}
+
+class Tools {
+	function : Add(call : McpCall) ~ McpToolResult {
+		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+		return McpToolResult->Text("{$sum}");
+	}
+
+	function : Note(call : McpCall) ~ McpToolResult {
+		text := call->GetString("text");
+		return McpToolResult->Text("noted: {$text}");
+	}
+
+	function : DeleteFile(call : McpCall) ~ McpToolResult {
+		path := call->GetString("path");
+		return McpToolResult->Text("deleted {$path}");
+	}
+
+	function : Registry() ~ ToolRegistry {
+		registry := ToolRegistry->New();
+		registry->Add(McpAgentTools->FromSpec(
+			McpToolSpec->New("add", "Add two integers")->Add("a", "Int", Nil)->Add("b", "Int", Nil)->ReadOnly(),
+			Func2Ref->New(Tools->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
+		registry->Add(McpAgentTools->FromSpec(
+			McpToolSpec->New("note", "Save a note")->Add("text", "String", Nil),
+			Func2Ref->New(Tools->Note(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
+		registry->Add(McpAgentTools->FromSpec(
+			McpToolSpec->New("delete_file", "Delete a file")->Add("path", "String", Nil)->Destructive(),
+			Func2Ref->New(Tools->DeleteFile(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
+		return registry;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# what the "model" does: three tool calls in one turn, then an answer
+		calls := Vector->New()<AgentToolCall>;
+		calls->AddBack(AgentToolCall->New("1", "add", JsonParser->TextToElement("{\"a\":17,\"b\":25}")));
+		calls->AddBack(AgentToolCall->New("2", "note", JsonParser->TextToElement("{\"text\":\"the sum is 42\"}")));
+		calls->AddBack(AgentToolCall->New("3", "delete_file", JsonParser->TextToElement("{\"path\":\"old.txt\"}")));
+
+		script := Vector->New()<AgentReply>;
+		script->AddBack(AgentReply->AskAll(calls));
+		script->AddBack(AgentReply->Say("Added the numbers and made a note."));
+
+		agent := Agent->New(ScriptedBackend->New(script), Registry());
+		agent->SetApprover(Ask->New())->SetApproveUnlessReadOnly(true);
+		result := agent->Run("Add 17 and 25, save the answer, then clean up old.txt");
+
+		each(step in result->GetSteps()) {
+			each(r in step->GetResults()) {
+				name := r->GetToolName();
+				status := r->GetStatus();
+				content := r->GetContent();
+				"{$name}: {$status} - {$content}"->PrintLine();
+			};
+		};
+		text := result->GetText();
+		"model says: {$text}"->PrintLine();
+	}
+}

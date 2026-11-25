@@ -1,0 +1,17 @@
+use System.ML;
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    x := Float->New[5, 1];
+    y := Float->New[5, 1];
+    each(i : 5) {
+      x[i, 0] := i->As(Float);
+      y[i, 0] := 2.0 * i->As(Float) + 1.0;
+    };
+
+    model := LinearRegression->New();
+    model->Fit(x, y, true);
+    c := model->GetCoefficients();
+    "y = {$(c[1]):.2} x + {$(c[0]):.2}"->PrintLine();
+  }
+}

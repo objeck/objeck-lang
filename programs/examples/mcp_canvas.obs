@@ -8,6 +8,13 @@ on one shared canvas. An SDL2 window shows the canvas, each painter's cursor, a
 side panel of the tools/call requests as they happen (tool, arguments, result),
 and sparks that fly from a painter's card to the cells its call just changed.
 
+How the tools are made (first-class MCP): each tool is DECLARED with McpToolSpec (its parameters and
+their Objeck types written once; the JSON Schema is derived, where this file used to build it with a text
+mini-language), and the scripted painters call the server through CanvasClient, a typed client that
+mcp_stubs generated from the tool list (`obr mcp_canvas.obe --stub` prints it again), so
+`@canvas->FillRect(0, 12, 40, 12)` is checked by the compiler. The Claude and OpenAI painters still get
+the same tools through McpToolBridge, as JSON.
+
 Live (needs keys; each painter falls back to the scripted painter without its key):
   painter A  Claude  (API.Anthropic, claude-sonnet-5-5)           "sunset over the sea"
   painter B  OpenAI  (API.OpenAI.Chat, gpt-5.4-mini)              "a boat, birds, an island"
@@ -22,6 +29,7 @@ Build:  obc -src mcp_canvas.obs -lib gen_collect,json,net,net_server,cipher,misc
 Run:    obr mcp_canvas.obe --demo
         obr mcp_canvas.obe                        (live: Claude + OpenAI)
         obr mcp_canvas.obe --selftest             (no window, no network)
+        obr mcp_canvas.obe --stub                 (print the generated CanvasClient)
         obr mcp_canvas.obe --demo --shot out.png  (no window: renders to a surface,
                                                    writes out_mid.png and out.png)
 
@@ -607,47 +615,13 @@ class Sprites {
 	}
 }
 
-#~ the MCP server: one per painter, so a handler knows who is calling; all of them share the Board ~#
+#~ the MCP server: one per painter, so a handler knows who is calling; all of them share the Board.
+   The tools are DECLARED, not described: each McpToolSpec names the parameters with their Objeck types
+   and the input schema is derived from them (before, a text mini-language built the JSON by hand). ~#
 class CanvasTools {
-	function : Schema(props : String, required : String) ~ String {
-		json := "{\"type\":\"object\",\"properties\":{";
-		if(props->Size() > 0) {
-			parts := props->Split(',');
-			each(i : parts) {
-				kv := parts[i]->Split(':');
-				ty := "string";
-				if(kv[1]->Equals("i")) {
-					ty := "integer";
-				}
-				else if(kv[1]->Equals("b")) {
-					ty := "boolean";
-				};
-				if(i > 0) {
-					json->Append(",");
-				};
-				pn := kv[0];
-				json->Append("\"{$pn}\":{\"type\":\"{$ty}\"}");
-			};
-		};
-		json->Append("}");
-		if(required->Size() > 0) {
-			names := required->Split(',');
-			json->Append(",\"required\":[");
-			each(i : names) {
-				if(i > 0) {
-					json->Append(",");
-				};
-				rn := names[i];
-				json->Append("\"{$rn}\"");
-			};
-			json->Append("]");
-		};
-		json->Append("}");
-		return json;
-	}
-
-	function : Reg(svc : McpService, pid : Int, name : String, description : String, schema : String) ~ Nil {
-		svc->AddTool(name, description, schema, Func2Ref->New(\(call) => CanvasTools->Call(pid, name, call))<McpCall, McpToolResult>);
+	function : Reg(svc : McpService, pid : Int, spec : McpToolSpec) ~ Nil {
+		name := spec->GetName();
+		spec->AddTo(svc, Func2Ref->New(\(call) => CanvasTools->Call(pid, name, call))<McpCall, McpToolResult>);
 	}
 
 	function : Call(pid : Int, name : String, call : McpCall) ~ McpToolResult {
@@ -661,14 +635,14 @@ class CanvasTools {
 	function : Service(pid : Int) ~ McpService {
 		svc := McpService->New("canvas", "1.0");
 		svc->SetInstructions("A shared 40x24 tile canvas. Another painter works on it at the same time.");
-		Reg(svc, pid, "look", "See the canvas as a text grid (one letter per tile) plus both painters' cursors and colors. It is large: call it rarely.", Schema("", ""));
-		Reg(svc, pid, "set_color", "Choose your paint color: black white gray red orange yellow green forest teal cyan sky blue navy purple pink brown, or empty to erase.", Schema("color:s", "color"));
-		Reg(svc, pid, "move", "Move your cursor to a tile (x 0..39, y 0..23; 0,0 is the top left).", Schema("x:i,y:i", "x,y"));
-		Reg(svc, pid, "plot", "Paint one tile with your color; at (x,y), or at your cursor when they are left out.", Schema("x:i,y:i", ""));
-		Reg(svc, pid, "line", "Paint a straight line of tiles from (x1,y1) to (x2,y2) with your color.", Schema("x1:i,y1:i,x2:i,y2:i", "x1,y1,x2,y2"));
-		Reg(svc, pid, "fill_rect", "Paint a filled rectangle with its top-left tile at (x,y), w tiles wide and h tall, with your color. It is clipped to the canvas.", Schema("x:i,y:i,w:i,h:i", "x,y,w,h"));
-		Reg(svc, pid, "circle", "Paint a circle centered on (x,y) with radius r (filled unless filled is false) with your color.", Schema("x:i,y:i,r:i,filled:b", "x,y,r"));
-		Reg(svc, pid, "stamp", "Stamp a ready-made sprite (sun cloud boat bird star tree house) with its top-left tile at (x,y). Sprites bring their own colors. sun is 7x7, cloud 8x4, boat 9x7, bird 5x3, star 3x3, tree 5x6, house 7x7.", Schema("name:s,x:i,y:i", "name,x,y"));
+		Reg(svc, pid, McpToolSpec->New("look", "See the canvas as a text grid (one letter per tile) plus both painters' cursors and colors. It is large: call it rarely.")->ReadOnly());
+		Reg(svc, pid, McpToolSpec->New("set_color", "Choose your paint color: black white gray red orange yellow green forest teal cyan sky blue navy purple pink brown, or empty to erase.")->Add("color", "String", Nil));
+		Reg(svc, pid, McpToolSpec->New("move", "Move your cursor to a tile (x 0..39, y 0..23; 0,0 is the top left).")->Add("x", "Int", Nil)->Add("y", "Int", Nil));
+		Reg(svc, pid, McpToolSpec->New("plot", "Paint one tile with your color; at (x,y), or at your cursor when they are left out.")->AddOptional("x", "Int", Nil)->AddOptional("y", "Int", Nil));
+		Reg(svc, pid, McpToolSpec->New("line", "Paint a straight line of tiles from (x1,y1) to (x2,y2) with your color.")->Add("x1", "Int", Nil)->Add("y1", "Int", Nil)->Add("x2", "Int", Nil)->Add("y2", "Int", Nil));
+		Reg(svc, pid, McpToolSpec->New("fill_rect", "Paint a filled rectangle with its top-left tile at (x,y), w tiles wide and h tall, with your color. It is clipped to the canvas.")->Add("x", "Int", Nil)->Add("y", "Int", Nil)->Add("w", "Int", Nil)->Add("h", "Int", Nil));
+		Reg(svc, pid, McpToolSpec->New("circle", "Paint a circle centered on (x,y) with radius r (filled unless filled is false) with your color.")->Add("x", "Int", Nil)->Add("y", "Int", Nil)->Add("r", "Int", Nil)->AddOptional("filled", "Bool", Nil));
+		Reg(svc, pid, McpToolSpec->New("stamp", "Stamp a ready-made sprite (sun cloud boat bird star tree house) with its top-left tile at (x,y). Sprites bring their own colors. sun is 7x7, cloud 8x4, boat 9x7, bird 5x3, star 3x3, tree 5x6, house 7x7.")->Add("name", "String", Nil)->Add("x", "Int", Nil)->Add("y", "Int", Nil));
 		return svc;
 	}
 }
@@ -682,6 +656,7 @@ class Agent {
 	@system : String;
 	@max_turns : Int;
 	@client : McpClient;
+	@canvas : CanvasClient;
 	@bridge : McpToolBridge;
 	@state : String;
 	@turn : Int;
@@ -718,6 +693,7 @@ class Agent {
 			@error := @client->GetError();
 			return false;
 		};
+		@canvas := CanvasClient->New(@client);
 		@bridge := McpToolBridge->New(@client);
 		return true;
 	}
@@ -882,40 +858,46 @@ class Agent {
 	method : Step(line : String) ~ Nil {
 		words := line->Split(' ');
 		tool := words[0];
+		# every call is a typed method of CanvasClient (generated by --stub from the tool list):
+		# a wrong argument type or count is a compile error here, not a refused call at run time
 		if(tool->Equals("sleep")) {
 			System.Concurrency.Thread->Sleep(words[1]->ToInt());
 			return;
+		}
+		else if(tool->Equals("look")) {
+			@canvas->Look();
+		}
+		else if(tool->Equals("set_color")) {
+			@canvas->SetColor(words[1]);
+		}
+		else if(tool->Equals("move")) {
+			@canvas->Move(Num(words, 1), Num(words, 2));
+		}
+		else if(tool->Equals("plot")) {
+			@canvas->Plot(Num(words, 1), Num(words, 2));
+		}
+		else if(tool->Equals("line")) {
+			@canvas->Line(Num(words, 1), Num(words, 2), Num(words, 3), Num(words, 4));
+		}
+		else if(tool->Equals("fill_rect")) {
+			@canvas->FillRect(Num(words, 1), Num(words, 2), Num(words, 3), Num(words, 4));
+		}
+		else if(tool->Equals("circle")) {
+			@canvas->Circle(Num(words, 1), Num(words, 2), Num(words, 3));
+		}
+		else if(tool->Equals("stamp")) {
+			@canvas->Stamp(words[1], Num(words, 2), Num(words, 3));
 		};
-
-		keys := Scripts->ArgNames(tool);
-		args := JsonElement->New(JsonElement->JsonType->OBJECT);
-		for(i := 0; i < keys->Size() & i + 1 < words->Size(); i += 1;) {
-			value := words[i + 1];
-			c := value->Get(0);
-			if(c = '-' | (c >= '0' & c <= '9')) {
-				args->Insert(keys[i], value->ToInt());
-			}
-			else {
-				args->Insert(keys[i], value);
-			};
-		};
-		@client->CallTool(tool, args);
 		System.Concurrency.Thread->Sleep(170);
+	}
+
+	function : Num(words : String[], index : Int) ~ Int {
+		return words[index]->ToInt();
 	}
 }
 
 #~ what the scripted painters paint ~#
 class Scripts {
-	function : ArgNames(tool : String) ~ String[] {
-		if(tool->Equals("set_color")) { return "color"->Split(','); };
-		if(tool->Equals("move") | tool->Equals("plot")) { return "x,y"->Split(','); };
-		if(tool->Equals("line")) { return "x1,y1,x2,y2"->Split(','); };
-		if(tool->Equals("fill_rect")) { return "x,y,w,h"->Split(','); };
-		if(tool->Equals("circle")) { return "x,y,r"->Split(','); };
-		if(tool->Equals("stamp")) { return "name,x,y"->Split(','); };
-		return String->New[0];
-	}
-
 	function : Get(pid : Int) ~ String {
 		if(pid = 0) {
 			# a sunset: sky bands, the sun sinking into the sea, its reflection, clouds, stars
@@ -1478,6 +1460,7 @@ class McpCanvas {
 	function : Main(args : String[]) ~ Nil {
 		demo := false;
 		selftest := false;
+		stub := false;
 		verbose := false;
 		shot : String;
 		shot_after := 18;
@@ -1493,6 +1476,7 @@ class McpCanvas {
 			a := args[i];
 			if(a->Equals("--demo")) { demo := true; }
 			else if(a->Equals("--selftest")) { selftest := true; }
+			else if(a->Equals("--stub")) { stub := true; }
 			else if(a->Equals("--verbose")) { verbose := true; }
 			else if(a->Equals("--shot") & i + 1 < args->Size()) { i += 1; shot := args[i]; }
 			else if(a->Equals("--shot-after") & i + 1 < args->Size()) { i += 1; shot_after := args[i]->ToInt(); }
@@ -1503,6 +1487,11 @@ class McpCanvas {
 			else if(a->Equals("--prompt-a") & i + 1 < args->Size()) { i += 1; prompt_a := args[i]; }
 			else if(a->Equals("--prompt-b") & i + 1 < args->Size()) { i += 1; prompt_b := args[i]; };
 			i += 1;
+		};
+
+		if(stub) {
+			PrintStub();
+			return;
 		};
 
 		if(selftest) {
@@ -1686,6 +1675,14 @@ class McpCanvas {
 	}
 
 	# the tools, end to end, with no window and no network: two painters over in-process MCP
+	# writes the typed client the scripted painters use: the CanvasClient class at the end of this file
+	function : PrintStub() ~ Nil {
+		Board->Init();
+		client := McpClient->InProcess(CanvasTools->Service(0));
+		client->Initialize("stub", "1.0");
+		McpStubGenerator->Generate(client->GetServerName(), client->GetServerVersion(), client->ListTools(), "CanvasClient")->Print();
+	}
+
 	function : SelfTest() ~ Nil {
 		Board->Init();
 		svc_a := CanvasTools->Service(0);
@@ -1745,6 +1742,15 @@ class McpCanvas {
 		out := bridge->Run("plot", input);
 		Gate->Check(out->StartsWith("ok:") & Board->GetCell(2, 22) = sky, "bridge->Run paints like a model's tool call");
 
+		# the typed client the scripted painters use: methods, not JSON
+		typed := CanvasClient->New(ca);
+		Gate->Check(typed->SetColor("white") <> Nil, "typed: SetColor(String)");
+		painted := typed->Plot(7, 20);
+		Gate->Check(painted <> Nil & painted->StartsWith("ok:") & Board->GetCell(7, 20) = white, "typed: Plot(Int, Int) paints with the color just set");
+		Gate->Check(typed->Move(99, 1) = Nil & typed->GetError() <> Nil & typed->GetError()->StartsWith("error:"), "typed: a tool error is Nil, and GetError() says why");
+		Gate->Check(typed->Look() <> Nil & typed->GetError() = Nil, "typed: a call that works clears GetError()");
+		Gate->Check(tools->Get(0)->GetName()->Equals("look") & tools->Get(0)->GetReadOnlyHint(), "look is declared read-only");
+
 		events := Board->Drain();
 		en := events->Size();
 		tt := Board->GetTotal();
@@ -1773,5 +1779,204 @@ class PainterThread from System.Concurrency.Thread {
 
 	method : public : Run(arg : System.Base) ~ Nil {
 		arg->As(Agent)->Work();
+	}
+}
+
+# ---- generated by mcp_stubs (obr mcp_canvas.obe --stub): the typed client of the canvas tools; change the tools and generate again ----
+#~
+Typed client of the MCP server 'canvas'. Every method calls one tool and returns the text of its result,
+or Nil with the reason in GetError().
+~#
+class CanvasClient {
+	@client : McpClient;
+	@error : String;
+
+	#~
+	Constructor
+	@param client a client that has been initialized
+	~#
+	New(client : McpClient) {
+		@client := client;
+	}
+
+	#~
+	Why the last call returned Nil
+	@return the reason, Nil after a call that worked
+	~#
+	method : public : GetError() ~ String {
+		return @error;
+	}
+
+	method : CallText(tool : String, mcp_args : JsonElement) ~ String {
+		@error := Nil;
+		result := @client->CallTool(tool, mcp_args);
+		if(result = Nil) {
+			@error := @client->GetError();
+			return Nil;
+		};
+
+		if(result->IsError()) {
+			@error := result->GetText();
+			return Nil;
+		};
+
+		return result->GetText();
+	}
+
+	method : CallJson(tool : String, mcp_args : JsonElement) ~ JsonElement {
+		@error := Nil;
+		result := @client->CallTool(tool, mcp_args);
+		if(result = Nil) {
+			@error := @client->GetError();
+			return Nil;
+		};
+
+		if(result->IsError()) {
+			@error := result->GetText();
+			return Nil;
+		};
+
+		return result->GetStructured();
+	}
+
+	#~
+	See the canvas as a text grid (one letter per tile) plus both painters' cursors and colors. It is large: call it rarely.
+	Read-only: the tool does not change anything.
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Look() ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		return CallText("look", mcp_args);
+	}
+
+	#~
+	Choose your paint color: black white gray red orange yellow green forest teal cyan sky blue navy purple pink brown, or empty to erase.
+	@param color the argument
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : SetColor(color : String) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(color <> Nil) {
+			mcp_args->Insert("color", color);
+		};
+		return CallText("set_color", mcp_args);
+	}
+
+	#~
+	Move your cursor to a tile (x 0..39, y 0..23; 0,0 is the top left).
+	@param x the argument
+	@param y the argument
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Move(x : Int, y : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		mcp_args->Insert("x", x);
+		mcp_args->Insert("y", y);
+		return CallText("move", mcp_args);
+	}
+
+	#~
+	Paint one tile with your color; at (x,y), or at your cursor when they are left out.
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Plot() ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		return CallText("plot", mcp_args);
+	}
+
+	#~
+	Paint one tile with your color; at (x,y), or at your cursor when they are left out.
+	@param x the argument (optional)
+	@param y the argument (optional)
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Plot(x : Int, y : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		mcp_args->Insert("x", x);
+		mcp_args->Insert("y", y);
+		return CallText("plot", mcp_args);
+	}
+
+	#~
+	Paint a straight line of tiles from (x1,y1) to (x2,y2) with your color.
+	@param x1 the argument
+	@param y1 the argument
+	@param x2 the argument
+	@param y2 the argument
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Line(x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		mcp_args->Insert("x1", x1);
+		mcp_args->Insert("y1", y1);
+		mcp_args->Insert("x2", x2);
+		mcp_args->Insert("y2", y2);
+		return CallText("line", mcp_args);
+	}
+
+	#~
+	Paint a filled rectangle with its top-left tile at (x,y), w tiles wide and h tall, with your color. It is clipped to the canvas.
+	@param x the argument
+	@param y the argument
+	@param w the argument
+	@param h the argument
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : FillRect(x : Int, y : Int, w : Int, h : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		mcp_args->Insert("x", x);
+		mcp_args->Insert("y", y);
+		mcp_args->Insert("w", w);
+		mcp_args->Insert("h", h);
+		return CallText("fill_rect", mcp_args);
+	}
+
+	#~
+	Paint a circle centered on (x,y) with radius r (filled unless filled is false) with your color.
+	@param x the argument
+	@param y the argument
+	@param r the argument
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Circle(x : Int, y : Int, r : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		mcp_args->Insert("x", x);
+		mcp_args->Insert("y", y);
+		mcp_args->Insert("r", r);
+		return CallText("circle", mcp_args);
+	}
+
+	#~
+	Paint a circle centered on (x,y) with radius r (filled unless filled is false) with your color.
+	@param x the argument
+	@param y the argument
+	@param r the argument
+	@param filled the argument (optional)
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Circle(x : Int, y : Int, r : Int, filled : Bool) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		mcp_args->Insert("x", x);
+		mcp_args->Insert("y", y);
+		mcp_args->Insert("r", r);
+		mcp_args->Insert("filled", filled);
+		return CallText("circle", mcp_args);
+	}
+
+	#~
+	Stamp a ready-made sprite (sun cloud boat bird star tree house) with its top-left tile at (x,y). Sprites bring their own colors. sun is 7x7, cloud 8x4, boat 9x7, bird 5x3, star 3x3, tree 5x6, house 7x7.
+	@param name the argument
+	@param x the argument
+	@param y the argument
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Stamp(name : String, x : Int, y : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(name <> Nil) {
+			mcp_args->Insert("name", name);
+		};
+		mcp_args->Insert("x", x);
+		mcp_args->Insert("y", y);
+		return CallText("stamp", mcp_args);
 	}
 }

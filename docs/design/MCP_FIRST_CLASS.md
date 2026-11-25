@@ -1,0 +1,195 @@
+# MCP as a first-class part of Objeck: design
+
+Status: DRAFT, not part of any release. Stage 0 (this document) and Stage 1 (library and tools, no
+compiler or VM change) are in review; Stages 2 and 3 are proposals. Every statement about the current
+source cites the file; every claim about the future is marked **untested**.
+
+## 1. Goal
+
+Today an author who wants a model to call an Objeck function writes the function, then writes a JSON
+Schema for it by hand, then registers both (`core/compiler/lib_src/mcp.obs`, `API.MCP`). The function's
+name, its doc comment and its parameter types already say what the schema says. The goal is to remove the
+second copy, and to make the other direction (calling a server) typed:
+
+1. **Declare**: write a function, get the tool definition derived from it.
+2. **Serve**: `obr prog.obe --mcp` (stdio) or `--mcp-http <port>` serves a program's tools with no code.
+3. **Consume**: generated typed stubs, so `weather->Forecast("Denver", 3)` is checked by the compiler.
+4. **Hand to an agent**: plain functions (or a server's tools) become `API.Agent` tools directly.
+5. **Effects**: read-only / destructive hints (the MCP `annotations`) drive the agent's approval rules.
+6. **Cancellation, time limits, progress**: mapped onto the existing cancel token and runtime.
+
+Rules for the work: correctness first; no hot-path change; no slowdown in `obc` compile time; **no change
+to the generated code of a program that does not use the feature**.
+
+## 2. Research questions and claims
+
+The feature set is the subject of a thesis chapter, so each claim below is stated so it can fail.
+
+| RQ | Claim | How it is evaluated | Status |
+|---|---|---|---|
+| RQ1 equivalence | The schema derived from a declaration equals, as JSON, the schema a person wrote by hand for the same tool. | Oracle: every hand-written schema in the repository's servers and examples (`mcp_core_test`, `mcp_stdio_fixture`, `mcp_server_demo`, `mcp_canvas`: fifteen schemas at Stage 1) is re-declared; `McpToolSpec->Same` compares them. Fails on the first difference. Stage 2 re-runs the same oracle against the compiler's derivation. | Stage 1: passes for the type-spec path (`mcp_declare_test`). The doc-comment path is **untested**. |
+| RQ2 agent accuracy | An agent given derived schemas makes no more wrong calls (schema-invalid arguments, wrong tool, refused or failed calls per task) than with hand-written ones. | Equal schemas give identical wire bytes, so for them the difference is zero by construction; the question is only about descriptions derived from doc comments, which differ in wording. Run the same task set, N runs per model, per variant; count calls by `AgentToolResult` status (`ok`, `invalid`, `error`, `refused`, `denied`, `unknown`). | **Untested** (needs the doc-comment path and paid model runs). Stage 1 has one live run (section 9), which is an existence proof, not a rate. |
+| RQ3 cost | Derivation adds no tokens: the tool definitions sent to the model are the same size or smaller. | Bytes and tokens of the `tools` array, and `AgentResult` token totals, derived vs hand-written; latency per call from `McpService->GetStats`. | Stage 1: counters exist; first numbers in section 9. |
+| RQ4 effort and defects | Declaring cuts the lines a tool costs, and typed stubs catch argument errors at compile time that JSON blobs catch at run time (or never). | Lines per tool, hand-written vs declared (the canvas example is the corpus); a catalogue of argument mistakes and when each is reported (compile, schema check, handler). | Stage 1: stub compile error shown (`mcp_stubs_test.py`); line counts in section 9. |
+| RQ5 unused cost | A program that does not use the feature runs the same instructions it did before. | Compare the emitted `.obe` of the regression corpus before and after (byte equal), compile time of `obc` over the corpus, and in-process call cost of the library with counters off. | Stage 1: library cost measured (section 9); compiler claims **untested** until Stage 2. |
+| RQ6 cancellation | A cancelled agent run stops a running tool within a bounded time, and a tool that never polls is abandoned, not killed. | Latency from `AgentCancel->Cancel` to handler return, as a distribution; the honest limit is that a thread cannot be interrupted. | Stage 1: mechanism and a bound test (`mcp_agent_test`); distribution **untested**. |
+
+Instrumentation that exists after Stage 1: `McpService->EnableStats(true)` / `GetStats()` (calls, errors,
+rejected arguments, cancellations, total and maximum handler milliseconds per tool; off by default, one
+Bool test when off); `AgentResult` already carries tokens and per-step results; `AgentToolResult` status.
+Stage 2 adds a compile-time report (`obc --mcp-report`: tools found, schema derived, types that fell back).
+
+## 3. What the compiler and VM have today (Stage 0 evidence)
+
+### (a) Annotations and doc comments
+
+* **No annotation or attribute syntax.** `core/compiler/scanner.cpp` lines 108-157 list every keyword
+  (`and not or xor virtual if else do while ... from true false New Nil As TypeOf critical`). The only
+  declaration modifiers are `public private virtual native static` (`parser.cpp` ~1929-2019). `@` starts an
+  instance-variable name (`scanner.cpp` 1642-1652), so `@tool` before a function is already taken.
+* **Doc comments are discarded by the scanner.** `Scanner::Comments()` (`scanner.cpp` 1323-1345) skips
+  `#`, `//`, `#~ ... ~#` and `/* */`; no token or tree node carries the text. The comments are read again,
+  as text, by `code_doc` (`core/lib/code_doc/doc_parser.obs`, an Objeck program) for the API reference;
+  that is a second, heuristic parser ("every declaration starts at column ...").
+* **The `.obe`/`.obl` carries no comments and, normally, no parameter names.** The loader reads a
+  declaration's name only when the file was built with `-debug` (`core/vm/loader.cpp` 471, 551). Method
+  entries are name, return type string, parameter type string, space (`loader.cpp` 596-605).
+* **Default arguments exist** (`New(start : Bool := false)`, `lang.obs` Timer), which is the natural
+  meaning of "optional parameter" for derivation.
+
+### (b) Runtime reflection
+
+`System.Introspection` (`lang.obs` 14270-14450) has `Class` (`GetName`, `GetMethods`), `Method`
+(`GetName`, `GetClass`, `GetParameters`, `GetReturn`) and `DataType` (`GetType`, `GetDimension`,
+`GetClassName`); `Class->Instance(name)` makes an object of a class with a zero-argument constructor.
+Measured on a method with `(city : String, days : Int, tags : Vector<String>, scale : Map<String, IntRef>,
+c : Color, p : Point, f : (Int) ~ Int) ~ Vector<String>` (scratch probe, run on the current toolchain):
+
+| declared | reflection reports |
+|---|---|
+| `String` | CLASS `System.String` |
+| `Int` | INT, class name `Nil` |
+| `Vector<String>` | CLASS `Collection.Vector<String>` (generic arguments are present, as text) |
+| `Map<String, IntRef>` | CLASS `Collection.Map<String\|IntRef>` |
+| an enum `Color` | CLASS `Color` (not distinguishable from a class) |
+| a record `Point` | CLASS `Point`; its fields cannot be listed |
+| `(Int) ~ Int` | FUNC, no signature |
+
+What it **cannot** do, so a library alone cannot: give **parameter names** (not stored, see (a)), give
+**doc comments**, give **default values** or which parameters are optional, list the **fields** of a
+record or the **values** of an enum, or **call** a method (there is no `Invoke`; `Method` has getters
+only). A function can only be called through a `FuncRef`/`Func2Ref` built at compile time with the
+function's name written in source. The tests for the mapping from reflection spellings are in
+`mcp_declare_test` (`Collection.Map<String|IntRef>` and friends reach the same schemas).
+
+Consequence for **`McpService->ExposeObject(obj)`**: reflection yields method names and parameter types
+but not parameter names or a way to call, so a library cannot implement it. Stage 1 does **not** fake it
+(no schema with invented parameter names, no registered tool that cannot run).
+
+### (c) Mapping Objeck types to JSON Schema
+
+The honest table (implemented as `McpToolSpec->SchemaFor`, tested row by row):
+
+| Objeck | JSON Schema | Notes |
+|---|---|---|
+| `Int` | `{"type":"integer"}` | Objeck `Int` is 64-bit; JSON numbers are doubles in many peers, so values above 2^53 do not round-trip everywhere. The checker accepts any integer literal. |
+| `Float` | `{"type":"number"}` | |
+| `Bool` | `{"type":"boolean"}` | |
+| `String` | `{"type":"string"}` | A `Nil` string is "absent", never JSON `null`. |
+| `Char` | `{"type":"string","minLength":1,"maxLength":1}` | Lossy on the way back: a stub types it `String`. |
+| `Byte` | `{"type":"integer","minimum":0,"maximum":255}` | `McpSchema` does not check the bounds (only type, enum, item type). |
+| `T[]`, `T[,]` | array of `T`, nested once per dimension | Rectangular only; a stub maps 1-D arrays of scalars to `Int[]`, `Float[]`, `Bool[]`, `String[]`, anything else to `JsonElement`. |
+| `Vector<T>`, `List`, `Stack`... | array of `T` | Collections hold `IntRef`, `FloatRef`...; the spellings reflection produces are accepted. |
+| `Map<String,T>` | `{"type":"object","additionalProperties":T}` | Only String keys. |
+| enum | `{"type":"string","enum":[names]}` | Needs the names: **compiler only**; the library form is `enum(a,b,c)`. An Objeck enum is an Int underneath, so the generated adapter must convert name to value. |
+| record | `{"type":"object","properties":{...},"required":[...]}` | Needs the fields: **compiler only**. |
+| any other class | `{"type":"object"}`, `Known()` false | Says nothing about the contents; a stub types it `JsonElement`. |
+| `JsonElement` | `{}` | Any value. |
+| function types, `Nil`-returning handles, native handles | not derivable | Rejected at derivation time (Stage 2: a compile error naming the parameter). |
+
+Return values: `String` becomes text content; `JsonElement` or a record becomes `structuredContent` plus
+its text rendering, and an `outputSchema` when the type is a record (Stage 2). A raised `Error` or a `Nil`
+result is an `isError` result with the message (already what `McpService` does for a raising handler).
+
+### (d) Options for "declare a tool by writing a function"
+
+| Option | What changes | Cost and risk | Test oracle |
+|---|---|---|---|
+| **D0 library builder** (`McpToolSpec`, Stage 1) | Types written as strings next to the name; no compiler change. | Types are written twice (once in the function, once in the spec); a mismatch is found only by tests. Cannot see enum values or record fields. | RQ1 oracle; round trip through the in-process transport. |
+| **D1 doc-comment tag `@tool`** + compiler | The scanner keeps a `#~ ~#` comment that immediately precedes a `function`/`method` and contains `@tool` (only then), attaches the text to the method node; a context pass derives the schema from the declared types, defaults and `@param` lines and **synthesizes an ordinary registration method** (`Class->McpTools(service)`) containing the schema constant and a lambda adapter that reads arguments and calls the function. | No grammar change, so old sources and old compilers (which see a comment) are unaffected. Programs with no `@tool` produce byte-identical `.obe`. A stale or wrong tag is silently a comment. The adapter code is generated source, so VM/JIT/GC are untouched. | RQ1 oracle against every hand-written schema; `.obe` byte equality for the corpus without tags; compile-time delta. |
+| **D2 annotation syntax** `[tool(...)]` or `#[...]` | New grammar. `[` already starts array indexing and literals; `#[` is a legal comment today, which keeps old compilers working but is a second comment dialect. | A grammar change is a language commitment (and for the LSP, `code_doc`, syntax highlighters). Costs the most; buys structured arguments (`[tool(readonly)]`) that D1 gets as `@readonly` tags. | Same, plus parser tests for each form and the error messages. |
+| **D3 `tool` keyword** | A declaration form `tool Name(...) ~ T {}`. | Reserves a word (breaks programs using `tool` as a name: `mcp_canvas.obs` has a local `tool`), new tree node, new emit path. Highest risk and no capability D1 lacks. | Same as D2. |
+| **D4 source generator** (no compiler change) | A tool (like `code_doc`) reads the doc comments as text and writes the registration class. | Zero compiler risk; but it is a second parser that can disagree with `obc` (the failure mode `code_doc` already has), and a build step users forget. Useful as a bridge. | Same oracle, plus parser-disagreement tests. |
+
+Recommendation: **D1**. It is the smallest change that has the information (names, types, defaults,
+descriptions) and cannot change anything for programs that do not use it. D2/D3 add syntax without adding
+capability. D4 is acceptable only as a stopgap.
+
+### (e) Staged plan
+
+* **Stage 0**: this document.
+* **Stage 1 (library and tools, no compiler or VM change)**, implemented in the stacked PR:
+  `McpToolSpec` (declare from types; derived schema; annotations; output schema), `McpToolAnnotations` on
+  `McpTool` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` and `outputSchema` on the
+  wire), schema checks for `enum` and array items, `McpService->EnableStats`, `McpStubGenerator` and
+  `tools/mcp/mcp_stubs.obs` (typed client stubs), `API.Agent` effect hints and approval rules
+  (`AgentTool->SetReadOnlyHint/SetDestructiveHint/NeedsApproval`, `Agent->SetApproveUnlessReadOnly`), and the
+  new library `mcp_agent` (`McpAgentTools`: a declared function or a server's tools become agent tools; the
+  agent's cancel token reaches the handler). Tests, examples, a demo and a walkthrough.
+* **Stage 2 (compiler)**: D1. Scanner keeps tagged comments; parser attaches them; a pass derives schemas
+  (enum values, record fields, defaults, `@param` descriptions, `@readonly`/`@destructive`/`@idempotent`
+  tags) and synthesizes `McpTools(service)`. Diagnostics for non-derivable parameters. The oracle of RQ1 and
+  the byte-equality test of RQ5 gate it. No VM change.
+* **Stage 3 (launcher)**: `obr prog.obe --mcp` / `--mcp-http <port>`: after load, find the synthesized
+  method by name, build a `McpService`, serve. The only VM-side work, startup only, behind the flag.
+* **Stage 4 (consumption in the compiler)**: `obc -mcp-stub <server>` as a step that runs the generator.
+
+## 4. Design details of Stage 1
+
+* **Hints are tri-state** (`not stated`, `true`, `false`): a tool listed with no annotations is listed
+  exactly as before (no `annotations` key), and an absent hint changes no behaviour. MCP says unannotated
+  tools must be treated as untrusted, so the agent has an explicit policy for that, not an implicit one.
+* **Approval rules** (`Agent`): a tool needs approval when it is `SetDangerous`, **or** its
+  `destructiveHint` is true; `SetApproveAll` asks about everything; `SetApproveUnlessReadOnly(true)` asks
+  about every tool not known to be read-only. With nobody to ask, a call that needs approval is refused,
+  as before.
+* **Stub shape**: one class per server, one method per tool, parameters typed from the input schema, a
+  second overload without the optional parameters, `Nil` plus `GetError()` for `isError` and transport
+  failures, a `...Json` method returning `structuredContent` when the tool declares an `outputSchema`. A JSON
+  object does not keep the order its names were written in, so required parameters come first in the order
+  of the `required` array and optional ones by name. Output is deterministic (no timestamps), so it can be
+  compared with a golden file.
+* **Where code lives**: schema derivation and the generator are in `mcp.obs` (so they are testable in
+  process), the command line is `tools/mcp/mcp_stubs.obs`, and agent glue is a new library `mcp_agent`
+  because `mcp` must not start linking `agent` (every existing consumer's `-lib` line would break).
+
+## 5. Open questions and limits
+
+* `Int` above 2^53 across JSON; `Char`/`Byte` lose their bounds in a stub; optional `Int`/`Float`/`Bool`
+  parameters have no `Nil`, so the stub offers a shorter overload instead of a nullable.
+* Cancellation: the mechanism is cooperative. The agent's token reaches a declared function as
+  `McpCall->IsCancelled()` through a watcher thread (2 ms poll); a handler that never polls runs to its end
+  (or, under `AgentTool->Mode->BOUNDED_THREAD`, is abandoned).
+* Progress notifications map to `McpCall->ReportProgress` already; surfacing them to an `AgentObserver` is
+  Stage 2.
+* `.obl` files built from `mcp.obs`, `agent.obs` and the new `mcp_agent.obs` are at the master toolchain
+  version and **must be rebuilt after the 2026.11.4 version bump merges**.
+
+## 6. Stage 1 results (what was built and measured)
+
+All numbers are from one Windows x64 machine (Ryzen 9 7950X3D), the current master toolchain, libraries
+rebuilt from source into a scratch copy. They are first measurements, not a study.
+
+| Item | Result |
+|---|---|
+| RQ1 oracle | 15 hand-written schemas from the repository (`mcp_core_test` 3, `mcp_stdio_fixture` 1, `mcp_server_demo` 3, `mcp_canvas` 8) plus 1 mixed example: all 16 re-declared with `McpToolSpec` equal as JSON. The canvas example's own text mini-language was replaced by `McpToolSpec` and its 8 schemas are the oracle for that change. |
+| Tests | `mcp_declare_test` 89 checks, `mcp_agent_test` 29, `mcp_stubs_test.py` 21, `weather_server` self-check, `mcp_canvas --selftest` 23; `mcp_core_test` (122) and the stdio test unchanged. |
+| RQ5, library cost with the hooks unused | In-process `tools/call`, 20,000 calls, five alternating runs: 76.4 us (library before) vs 77.5 us (after, counters off), +1.4 percent, inside the run-to-run spread (72 to 84 us); 79.3 us with counters on. The enum and item checks return before any lookup for a number or a boolean. |
+| RQ4, lines | The canvas example's 8 tool registrations: 36 lines of schema text mini-language (`Schema`) plus 8 `Reg` calls became 8 `McpToolSpec` declarations with no schema helper. The scripted painters' call sites became typed methods; the generated client is 197 lines that nobody writes. A wrong argument type or count in a stub call is a compile error (`mcp_stubs_test.py`), where `CallTool` with JSON text finds it at run time. |
+| RQ6, cancellation | `AgentCancel->Cancel` to handler return through the watcher: 30 runs, median 17.7 ms, p95 33.7 ms, max 50.1 ms, minimum 1.7 ms, on Windows with a handler that polls every 1 ms; the figure includes thread start and Windows timer granularity (about 15 ms), so it is an upper bound on the mechanism, not a floor. **Untested** on Linux and macOS, and for a handler that does not poll. |
+| Live, typed stub behind a model | Claude `claude-sonnet-5-5`: 3 tool calls, 2 turns, 1,711 input and 323 output tokens, 2.6 s. OpenAI `gpt-5.4-mini`: the same 3 calls, 4 turns, 5.1 s; the library exposes no token counts. Server-side handler time 0.01 to 0.77 ms per call. One run each: an existence proof. |
+| Live canvas | Claude and `gpt-5.4-mini` painted one canvas through the declared tools: Claude 33 calls, 4 turns, 15,659 input and 3,036 output tokens; GPT 24 calls, 11 turns; 57 calls, none refused. |
+
+**Not possible without the compiler** (and not faked): `McpService->ExposeObject(obj)`; deriving parameter
+names, defaults, enum values, record fields and descriptions from the function; `obr prog.obe --mcp`;
+a compile error for a spec that disagrees with its function.

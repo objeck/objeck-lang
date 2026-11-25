@@ -1,67 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quick Start — Objeck Language</title>
-  <meta name="description" content="Get started with Objeck: installation, language basics, collections, AI/ML, web programming, and more."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>
-   hljs.highlightAll();
-  </script>
-  
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-
-      document.addEventListener("click", () => {
-        menuItems.classList.remove("open");
-      });
-    });
-  </script>
-
+  <meta name="description" content="Get started with Objeck: installation, language basics, collections, AI/ML, web programming, and more.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-  
-    <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-  
-  <main id="main" role="main" style="text-align: left;">
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li aria-current="page">Quick Start</li></ol></nav>
+  <div class="layout has-side">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html" aria-current="page">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
    <div class="container">
+    <h1 class="page-title">Quick Start</h1>
     <p>
      Before you get started, checkout Objeck's
       <a href="https://www.objeck.org/api/latest/index.html">
@@ -70,10 +51,7 @@
       . Over the years, the language has become a collection of libraries to get stuff done. See what's available and read on. You can also try code interactively in the <a href="https://playground.objeck.org">Web Playground</a>. Once you have written a first program, the <a href="guides.html">getting-started guides</a> cover Query, HTTP, JSON/XML/RegEx, collections, game AI and editor setup, each with a complete program and its output.
     </p>
     <div id="toc_container">
-     <p>
-      <h4>
-       Contents
-      </h4>
+     <p class="toc-title">Contents</p><p>
       <p>
       </p>
       <ul>
@@ -458,11 +436,11 @@
       Hello World!
      </h3>
      <p><a href="https://playground.objeck.org" target="_blank">Try it in the Playground &rarr;</a></p>
-     <pre><code class="language-cpp">class Hello {
-  function : Main(args : String[]) ~ Nil {
-    "Hello World"-&gt;PrintLine();
-    "Καλημέρα κόσμε"-&gt;PrintLine();
-    "こんにちは 世界"-&gt;PrintLine();
+     <pre><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Hello</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"Hello World"</span><span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-str">"Καλημέρα κόσμε"</span><span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-str">"こんにちは 世界"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -669,14 +647,14 @@
        <p>
         Literals are defined as they are in most programming languages. In Objeck literals are treated as objects and may have methods associated with them.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">'\u00BD'-&gt;PrintLine();
-13-&gt;Min(3)-&gt;PrintLine();
-3.89-&gt;Sin()-&gt;PrintLine();
-0xCB0-&gt;PrintLine(); # hex
--0b1101-&gt;PrintLine(); # bin
-0o52-&gt;PrintLine(); # oct
-1_000_000-&gt;PrintLine(); # underscores are ignored
-"Hello World"-&gt;Size()-&gt;PrintLine();
+       <pre class="line-numbers"><code class="language-objeck">'\u00BD'<span class="t-op">-&gt;</span>PrintLine();
+<span class="t-num">13</span><span class="t-op">-&gt;</span>Min(<span class="t-num">3</span>)<span class="t-op">-&gt;</span>PrintLine();
+<span class="t-num">3.89</span><span class="t-op">-&gt;</span>Sin()<span class="t-op">-&gt;</span>PrintLine();
+<span class="t-num">0xCB0</span><span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># hex</span>
+-0b1101<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># bin</span>
+0o52<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># oct</span>
+<span class="t-num">1_000_000</span><span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># underscores are ignored</span>
+<span class="t-str">"Hello World"</span><span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
        <p>
         Octal literals take a <code>0o</code> prefix, as hexadecimal takes <code>0x</code> and
@@ -692,10 +670,10 @@
         ordinary <code>Int</code>, so there is no separate unsigned type. Hexadecimal and binary
         literals are read the same way, since they already denote bit patterns.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">0xFFFFFFFFFFFFFFFF-&gt;PrintLine(); # -1: every bit set
-0xFFFFFFFFFFFFFFFFu-&gt;PrintLine(); # the same value, written explicitly
-18446744073709551615u-&gt;PrintLine(); # 2^64-1 in decimal, also -1
-mask := 0x00000000FFFFFFFFu; # a full-width mask
+       <pre class="line-numbers"><code class="language-objeck"><span class="t-num">0xFFFFFFFFFFFFFFFF</span><span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># -1: every bit set</span>
+0xFFFFFFFFFFFFFFFFu<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># the same value, written explicitly</span>
+18446744073709551615u<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 2^64-1 in decimal, also -1</span>
+mask <span class="t-op">:=</span> 0x00000000FFFFFFFFu; <span class="t-com"># a full-width mask</span>
 </code></pre>
        <p>
         A literal that does not fit is rejected at compile time rather than silently clamped.
@@ -706,48 +684,48 @@ mask := 0x00000000FFFFFFFFu; # a full-width mask
         number, <code>&gt;&gt;&gt;</code> shifts a zero in instead. It sits at the same precedence
         as <code>&gt;&gt;</code> and is left-associative.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">(-8 &gt;&gt; 3)-&gt;PrintLine();  # -1: the sign bit is copied down
-(-8 &gt;&gt;&gt; 3)-&gt;PrintLine(); # 2305843009213693951: zeros shift in
-(-1 &gt;&gt;&gt; 63)-&gt;PrintLine(); # 1: only the former sign bit is left
-(-1 &gt;&gt;&gt; 64)-&gt;PrintLine(); # -1: counts are taken modulo 64, like every shift
+       <pre class="line-numbers"><code class="language-objeck">(-<span class="t-num">8</span> &gt;&gt; <span class="t-num">3</span>)<span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># -1: the sign bit is copied down</span>
+(-<span class="t-num">8</span> &gt;&gt;&gt; <span class="t-num">3</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 2305843009213693951: zeros shift in</span>
+(-<span class="t-num">1</span> &gt;&gt;&gt; <span class="t-num">63</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 1: only the former sign bit is left</span>
+(-<span class="t-num">1</span> &gt;&gt;&gt; <span class="t-num">64</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># -1: counts are taken modulo 64, like every shift</span>
 </code></pre>
        <p>
         <code>Int</code> also carries operations that read both operands as unsigned 64-bit
         quantities, for the cases where the signed reading of the same bits is the wrong one.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">Int-&gt;ToUnsignedString(-1)-&gt;PrintLine(); # 18446744073709551615
-Int-&gt;DivideUnsigned(-1, 3)-&gt;PrintLine(); # 6148914691236517205
-Int-&gt;ModUnsigned(-1, 10)-&gt;PrintLine();  # 5
-Int-&gt;CompareUnsigned(-1, 1)-&gt;PrintLine(); # 1: -1 is the largest unsigned value
+       <pre class="line-numbers"><code class="language-objeck"><span class="t-type">Int</span><span class="t-op">-&gt;</span>ToUnsignedString(-<span class="t-num">1</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 18446744073709551615</span>
+<span class="t-type">Int</span><span class="t-op">-&gt;</span>DivideUnsigned(-<span class="t-num">1</span>, <span class="t-num">3</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 6148914691236517205</span>
+<span class="t-type">Int</span><span class="t-op">-&gt;</span>ModUnsigned(-<span class="t-num">1</span>, <span class="t-num">10</span>)<span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># 5</span>
+<span class="t-type">Int</span><span class="t-op">-&gt;</span>CompareUnsigned(-<span class="t-num">1</span>, <span class="t-num">1</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 1: -1 is the largest unsigned value</span>
 </code></pre>
        <p>
         Here are a few examples of variable declarations and assignments. Variable types can be explicitly defined or implicitly inferred through assignments or casts. If a variable's type is inferred it cannot be redefined later in the program however it can be cast.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">a : Int;
-b : Float := 13.5;
-c := 7.25; # type inferred as Float
-d := (b * 2)-&gt;As(Int); # type inferred as Int
+       <pre class="line-numbers"><code class="language-objeck">a : <span class="t-type">Int</span>;
+b : <span class="t-type">Float</span> <span class="t-op">:=</span> <span class="t-num">13.5</span>;
+c <span class="t-op">:=</span> <span class="t-num">7.25</span>; <span class="t-com"># type inferred as Float</span>
+d <span class="t-op">:=</span> (b * <span class="t-num">2</span>)<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">Int</span>); <span class="t-com"># type inferred as Int</span>
 </code></pre>
        <p>
         Also support for multi-variable assignment and negation.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">a, b : Float := 13.5;
-b += -a * 13;
-"{$b}"-&gt;PrintLine();
-a := b := c := 3.15;
-"{$a} {$b} {$c}"-&gt;PrintLine();
-d := a &lt; b ? "less" : "greater"; # conditional operator
+       <pre class="line-numbers"><code class="language-objeck">a, b : <span class="t-type">Float</span> <span class="t-op">:=</span> <span class="t-num">13.5</span>;
+b += -a * <span class="t-num">13</span>;
+<span class="t-str">"{$b}"</span><span class="t-op">-&gt;</span>PrintLine();
+a <span class="t-op">:=</span> b <span class="t-op">:=</span> c <span class="t-op">:=</span> <span class="t-num">3.15</span>;
+<span class="t-str">"{$a} {$b} {$c}"</span><span class="t-op">-&gt;</span>PrintLine();
+d <span class="t-op">:=</span> a &lt; b ? <span class="t-str">"less"</span> : <span class="t-str">"greater"</span>; <span class="t-com"># conditional operator</span>
 </code></pre>
        <p>
         Types can also be described and referenced using aliases.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">function : Multiplier(a : FloatRef, b : FloatRef) ~ \Func-&gt;Proc {
-  return \Func-&gt;Proc : (c) =&gt;  a * b * c;
+       <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Multiplier</span>(a : <span class="t-type">FloatRef</span>, b : <span class="t-type">FloatRef</span>) <span class="t-op">~</span> \<span class="t-cls">Func</span><span class="t-op">-&gt;</span>Proc {
+  <span class="t-kw">return</span> \<span class="t-cls">Func</span><span class="t-op">-&gt;</span>Proc : (c) <span class="t-op">=&gt;</span>  a * b * c;
   }
 }
 
-alias Func {
-  Proc : (FloatRef) ~ FloatRef
+<span class="t-kw">alias</span> <span class="t-cls">Func</span> {
+  Proc : (<span class="t-type">FloatRef</span>) <span class="t-op">~</span> <span class="t-type">FloatRef</span>
 }
 </code></pre>
        <small>
@@ -875,11 +853,11 @@ alias Func {
        <p>
         Comments may span a single line or multiple lines. In addition, comments for bundles, classes, interfaces and functions/methods may be used to produce code documentation. Please refer to the project website for additional information about generating documentation from your code.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">flag := false; # single line comment
-#~
+       <pre class="line-numbers"><code class="language-objeck">flag <span class="t-op">:=</span> <span class="t-const">false</span>; <span class="t-com"># single line comment</span>
+<span class="t-com">#~
 multiline comment. flag above
 may be set to true or false
-~#
+~#</span>
 </code></pre>
        <p>
        </p>
@@ -895,13 +873,13 @@ may be set to true or false
        <p>
         An "if/else" statement is a basic control statement.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">number := Console-&gt;ReadLine()-&gt;ToInt();
-if(number &lt;&gt; 3) {
- "Not equal to 3"-&gt;PrintLine();
-} else if(number &lt; 13) {
- "Less than 13"-&gt;PrintLine();
-} else {
- "Some other number"-&gt;PrintLine();
+       <pre class="line-numbers"><code class="language-objeck">number <span class="t-op">:=</span> <span class="t-cls">Console</span><span class="t-op">-&gt;</span>ReadLine()<span class="t-op">-&gt;</span>ToInt();
+<span class="t-kw">if</span>(number <span class="t-op">&lt;&gt;</span> <span class="t-num">3</span>) {
+ <span class="t-str">"Not equal to 3"</span><span class="t-op">-&gt;</span>PrintLine();
+} <span class="t-kw">else</span> <span class="t-kw">if</span>(number &lt; <span class="t-num">13</span>) {
+ <span class="t-str">"Less than 13"</span><span class="t-op">-&gt;</span>PrintLine();
+} <span class="t-kw">else</span> {
+ <span class="t-str">"Some other number"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
        <h4>
@@ -910,17 +888,17 @@ if(number &lt;&gt; 3) {
        <p>
         Select statements can be used to efficiently map integer and enum values to blocks of code.
        </p>
-       <pre class="line-numbers"><code class="language-cpp">select(c) {
- label Color-&gt;Red: { "Red"-&gt;PrintLine(); }
- label Color-&gt;Green: { "Green"-&gt;PrintLine(); }
- label Color-&gt;Purple: { "Purple"-&gt;PrintLine(); }
- other: { "Another color"-&gt;PrintLine(); }
+       <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">select</span>(c) {
+ <span class="t-kw">label</span> <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Red: { <span class="t-str">"Red"</span><span class="t-op">-&gt;</span>PrintLine(); }
+ <span class="t-kw">label</span> <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Green: { <span class="t-str">"Green"</span><span class="t-op">-&gt;</span>PrintLine(); }
+ <span class="t-kw">label</span> <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Purple: { <span class="t-str">"Purple"</span><span class="t-op">-&gt;</span>PrintLine(); }
+ <span class="t-kw">other</span>: { <span class="t-str">"Another color"</span><span class="t-op">-&gt;</span>PrintLine(); }
 };
 
-select(n) {
- label 9:
- label 19: { n-&gt;PrintLine(); } 
- label 0x1b: { (3 * 9 = n)-&gt;PrintLine(); }
+<span class="t-kw">select</span>(n) {
+ <span class="t-kw">label</span> <span class="t-num">9</span>:
+ <span class="t-kw">label</span> <span class="t-num">19</span>: { n<span class="t-op">-&gt;</span>PrintLine(); } 
+ <span class="t-kw">label</span> <span class="t-num">0x1b</span>: { (<span class="t-num">3</span> * <span class="t-num">9</span> = n)<span class="t-op">-&gt;</span>PrintLine(); }
 };</code></pre>
        <p>
         The language supports for the following looping statements
@@ -931,11 +909,11 @@ select(n) {
          <p>
           A "do/while" loop is a basic post-test loop.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">i := 0;
-do {
- i-&gt;PrintLine();
- i += 1;
-} while(i &lt;&gt; 10);
+         <pre class="line-numbers"><code class="language-objeck">i <span class="t-op">:=</span> <span class="t-num">0</span>;
+<span class="t-kw">do</span> {
+ i<span class="t-op">-&gt;</span>PrintLine();
+ i += <span class="t-num">1</span>;
+} <span class="t-kw">while</span>(i <span class="t-op">&lt;&gt;</span> <span class="t-num">10</span>);
 </code></pre>
          <h4>
           For
@@ -943,17 +921,17 @@ do {
          <p>
           A "for" loop is a controlled loop with an explicated control expression.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">location := "East Bay";
-for(i := 0; i &lt; location-&gt;Size(); i += 1;) {
- location-&gt;Get(i)-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck">location <span class="t-op">:=</span> <span class="t-str">"East Bay"</span>;
+<span class="t-kw">for</span>(i <span class="t-op">:=</span> <span class="t-num">0</span>; i &lt; location<span class="t-op">-&gt;</span>Size(); i += <span class="t-num">1</span>;) {
+ location<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <p>
           For loops also support multiple initialization and update statements separated by commas.
          </p>
-         <pre class="line-numbers"><code class="language-cpp"># multi-statement for loop
-for(i := 0, j := 10; i &lt; j; i += 1, j -= 1;) {
-  "i={$i}, j={$j}"-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># multi-statement for loop</span>
+<span class="t-kw">for</span>(i <span class="t-op">:=</span> <span class="t-num">0</span>, j <span class="t-op">:=</span> <span class="t-num">10</span>; i &lt; j; i += <span class="t-num">1</span>, j -= <span class="t-num">1</span>;) {
+  <span class="t-str">"i={$i}, j={$j}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h4>
@@ -962,17 +940,17 @@ for(i := 0, j := 10; i &lt; j; i += 1, j -= 1;) {
          <p>
           An "each" loop is a controlled loop that iterates though all elements in an array or collection. Items can also be iterated in reverse using the "reverse" keyword.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">area_code := Int-&gt;New[3];
-area_codes := Int-&gt;New[3];
-area_codes[0] := 5;
-area_codes[1] := 1;
-area_codes[2] := 0;
+         <pre class="line-numbers"><code class="language-objeck">area_code <span class="t-op">:=</span> <span class="t-type">Int</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">3</span>];
+area_codes <span class="t-op">:=</span> <span class="t-type">Int</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">3</span>];
+area_codes[<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-num">5</span>;
+area_codes[<span class="t-num">1</span>] <span class="t-op">:=</span> <span class="t-num">1</span>;
+area_codes[<span class="t-num">2</span>] <span class="t-op">:=</span> <span class="t-num">0</span>;
 
-sum := 0;
-each(i : area_codes) {
+sum <span class="t-op">:=</span> <span class="t-num">0</span>;
+<span class="t-kw">each</span>(i : area_codes) {
  sum += area_codes[i];
 };
-sum-&gt;PrintLine();
+sum<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
          <p>
          </p>
@@ -982,24 +960,24 @@ sum-&gt;PrintLine();
          <p>
           The "reverse" keyword iterates items in reverse.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">numbers := [1, 2, 3, 4, 5];
-reverse(i : numbers) {
-	numbers[i]-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck">numbers <span class="t-op">:=</span> [<span class="t-num">1</span>, <span class="t-num">2</span>, <span class="t-num">3</span>, <span class="t-num">4</span>, <span class="t-num">5</span>];
+<span class="t-kw">reverse</span>(i : numbers) {
+	numbers[i]<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <p>
           An "each" or "reverse" loop can also bind to a variable using the assignment operator instead of a colon.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">strings := Generic.Vector-&gt;New()&lt;String&gt;;
-strings-&gt;AddBack("abd");
-strings-&gt;AddBack("efg");
-strings-&gt;AddBack("hij");
-strings-&gt;AddBack("lmn");
+         <pre class="line-numbers"><code class="language-objeck">strings <span class="t-op">:=</span> <span class="t-cls">Generic</span>.<span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+strings<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"abd"</span>);
+strings<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"efg"</span>);
+strings<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"hij"</span>);
+strings<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"lmn"</span>);
 
-reverse(string := strings) {
-	string += ", 123";
-	each(letter := string) {
-		letter-&gt;PrintLine();
+<span class="t-kw">reverse</span>(string <span class="t-op">:=</span> strings) {
+	string += <span class="t-str">", 123"</span>;
+	<span class="t-kw">each</span>(letter <span class="t-op">:=</span> string) {
+		letter<span class="t-op">-&gt;</span>PrintLine();
 	};
 };
 </code></pre>
@@ -1011,18 +989,18 @@ reverse(string := strings) {
          <p>
           The "leaving" keyword is used to execute a block of code at the end of method/function
          </p>
-         <pre class="line-numbers"><code class="language-cpp">
-function : WriteSocket(bytes : Byte[]) ~ Nil {
-	client := TCPSocket-&gt;New("localhost", 4660);
-	leaving {
-		client-&gt;Close();
+         <pre class="line-numbers"><code class="language-objeck">
+<span class="t-kw">function</span> : <span class="t-fn">WriteSocket</span>(bytes : <span class="t-type">Byte</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+	client <span class="t-op">:=</span> <span class="t-cls">TCPSocket</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"localhost"</span>, <span class="t-num">4660</span>);
+	<span class="t-kw">leaving</span> {
+		client<span class="t-op">-&gt;</span>Close();
 	};
 
-	if(client-&gt;IsOpen()) {
-		size := bytes-&gt;Size();
-		size_str := size-&gt;ToString();
-		client-&gt;WriteString(size_str);
-		client-&gt;WriteBuffer(0, size, bytes)-&gt;PrintLine();
+	<span class="t-kw">if</span>(client<span class="t-op">-&gt;</span>IsOpen()) {
+		size <span class="t-op">:=</span> bytes<span class="t-op">-&gt;</span>Size();
+		size_str <span class="t-op">:=</span> size<span class="t-op">-&gt;</span>ToString();
+		client<span class="t-op">-&gt;</span>WriteString(size_str);
+		client<span class="t-op">-&gt;</span>WriteBuffer(<span class="t-num">0</span>, size, bytes)<span class="t-op">-&gt;</span>PrintLine();
 	};
 }
 </code></pre>
@@ -1269,40 +1247,40 @@ function : WriteSocket(bytes : Byte[]) ~ Nil {
            </tr>
           </table>
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class Luhn {
-  function : IsValid(cc : String) ~ Bool {
-    isOdd := true; oddSum := 0; evenSum := 0;
-    for(i := cc-&gt;Size() - 1; i &gt;= 0; i -= 1;) {
-      digit : Int := cc-&gt;Get(i) - '0';
-      if(isOdd) {
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Luhn</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">IsValid</span>(cc : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">Bool</span> {
+    isOdd <span class="t-op">:=</span> <span class="t-const">true</span>; oddSum <span class="t-op">:=</span> <span class="t-num">0</span>; evenSum <span class="t-op">:=</span> <span class="t-num">0</span>;
+    <span class="t-kw">for</span>(i <span class="t-op">:=</span> cc<span class="t-op">-&gt;</span>Size() - <span class="t-num">1</span>; i &gt;= <span class="t-num">0</span>; i -= <span class="t-num">1</span>;) {
+      digit : <span class="t-type">Int</span> <span class="t-op">:=</span> cc<span class="t-op">-&gt;</span>Get(i) - <span class="t-str">'0'</span>;
+      <span class="t-kw">if</span>(isOdd) {
         oddSum += digit;
-      } else {
-        evenSum += digit / 5 + (2 * digit) % 10;
+      } <span class="t-kw">else</span> {
+        evenSum += digit / <span class="t-num">5</span> + (<span class="t-num">2</span> * digit) % <span class="t-num">10</span>;
       };
-      isOdd := isOdd &lt;&gt; true;
+      isOdd <span class="t-op">:=</span> isOdd <span class="t-op">&lt;&gt;</span> <span class="t-const">true</span>;
     };
-    return (oddSum + evenSum) % 10 = 0;
+    <span class="t-kw">return</span> (oddSum + evenSum) % <span class="t-num">10</span> = <span class="t-num">0</span>;
   }
 
-  function : Main(args : String[]) ~ Nil {
-    IsValid("49927398716")-&gt;PrintLine();
-    IsValid("49927398717")-&gt;PrintLine();
-    IsValid("1234567812345678")-&gt;PrintLine();
-    IsValid("1234567812345670")-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    IsValid(<span class="t-str">"49927398716"</span>)<span class="t-op">-&gt;</span>PrintLine();
+    IsValid(<span class="t-str">"49927398717"</span>)<span class="t-op">-&gt;</span>PrintLine();
+    IsValid(<span class="t-str">"1234567812345678"</span>)<span class="t-op">-&gt;</span>PrintLine();
+    IsValid(<span class="t-str">"1234567812345670"</span>)<span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
          <p>
           Code fragment from the Base64 encoding class
          </p>
-         <pre class="line-numbers"><code class="language-cpp"># Primary encoding loop
-r := ""; i : Int; a := 0;
-for(i := 0; i &lt; end; i += 3;) {
-  a := (data[i] &lt;&lt; 16) or (data[i+1] &lt;&lt; 8) or (data[i+2]);
-  r-&gt;Append( lut[0x3F and (a &gt;&gt; 18)] );
-  r-&gt;Append( lut[0x3F and (a &gt;&gt; 12)] );
-  r-&gt;Append( lut[0x3F and (a &gt;&gt; 6)] );
-  r-&gt;Append( lut[0x3F and a] );
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># Primary encoding loop</span>
+r <span class="t-op">:=</span> <span class="t-str">""</span>; i : <span class="t-type">Int</span>; a <span class="t-op">:=</span> <span class="t-num">0</span>;
+<span class="t-kw">for</span>(i <span class="t-op">:=</span> <span class="t-num">0</span>; i &lt; end; i += <span class="t-num">3</span>;) {
+  a <span class="t-op">:=</span> (data[i] &lt;&lt; <span class="t-num">16</span>) <span class="t-kw">or</span> (data[i+<span class="t-num">1</span>] &lt;&lt; <span class="t-num">8</span>) <span class="t-kw">or</span> (data[i+<span class="t-num">2</span>]);
+  r<span class="t-op">-&gt;</span>Append( lut[<span class="t-num">0x3F</span> <span class="t-kw">and</span> (a &gt;&gt; <span class="t-num">18</span>)] );
+  r<span class="t-op">-&gt;</span>Append( lut[<span class="t-num">0x3F</span> <span class="t-kw">and</span> (a &gt;&gt; <span class="t-num">12</span>)] );
+  r<span class="t-op">-&gt;</span>Append( lut[<span class="t-num">0x3F</span> <span class="t-kw">and</span> (a &gt;&gt; <span class="t-num">6</span>)] );
+  r<span class="t-op">-&gt;</span>Append( lut[<span class="t-num">0x3F</span> <span class="t-kw">and</span> a] );
 };</code></pre>
          <h4 id="nil_safety">
           Nil-safe operators
@@ -1310,17 +1288,17 @@ for(i := 0; i &lt; end; i += 3;) {
          <p>
           <code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> rather than faulting. <code>??</code> supplies a value when its left side is <code>Nil</code>, and evaluates the right side only when it has to.
          </p>
-         <pre class="line-numbers"><code class="language-cpp"># guarded call: Nil instead of a fault if person or the address is Nil
-city := person?-&gt;GetAddress()?-&gt;GetCity();
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># guarded call: Nil instead of a fault if person or the address is Nil</span>
+city <span class="t-op">:=</span> person?<span class="t-op">-&gt;</span>GetAddress()?<span class="t-op">-&gt;</span>GetCity();
 
-# default when the left side is Nil
-name := lookup ?? "(unknown)";
+<span class="t-com"># default when the left side is Nil</span>
+name <span class="t-op">:=</span> lookup ?? <span class="t-str">"(unknown)"</span>;
 
-# a single '?-&gt;' guards the whole rest of the chain
-text := maybe?-&gt;Trim()-&gt;ToUpper();
+<span class="t-com"># a single '?-&gt;' guards the whole rest of the chain</span>
+text <span class="t-op">:=</span> maybe?<span class="t-op">-&gt;</span>Trim()<span class="t-op">-&gt;</span>ToUpper();
 
-# a chain ending in a value type needs '??', since an Int cannot be Nil
-size := maybe?-&gt;ToUpper()-&gt;Size() ?? -1;</code></pre>
+<span class="t-com"># a chain ending in a value type needs '??', since an Int cannot be Nil</span>
+size <span class="t-op">:=</span> maybe?<span class="t-op">-&gt;</span>ToUpper()<span class="t-op">-&gt;</span>Size() ?? -<span class="t-num">1</span>;</code></pre>
          <p>
           Both build on the <code>Try()</code>/<code>Otherwise()</code> methods: <code>a?-&gt;b()</code> is <code>a-&gt;Try()-&gt;b()</code> and <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>. One consequence worth knowing is that <code>Try()</code> guards against any runtime error in the chain, not only a <code>Nil</code> dereference — so <code>a?-&gt;Get(999)</code> yields <code>Nil</code> on an out-of-range index instead of faulting.
          </p>
@@ -1337,26 +1315,26 @@ size := maybe?-&gt;ToUpper()-&gt;Size() ?? -1;</code></pre>
           Allocating and indexing arrays
          </p>
          <p>
-          <pre><code class="language-cpp"># allocate Int array
-boxes := Int-&gt;New[2,3];
-boxes[0,0] := 2;
-boxes[0,1] := 4;
-boxes[0,2] := 8;
-boxes[1,0] := 1;
-boxes[1,1] := 2;
-boxes[1,2] := 3;
-dims := boxes-&gt;Size(); # get the dimensions
-dims[0]-&gt;PrintLine(); # dimension 1
-dims[1]-&gt;PrintLine(); # dimension 2
+          <pre><code class="language-objeck"><span class="t-com"># allocate Int array</span>
+boxes <span class="t-op">:=</span> <span class="t-type">Int</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">2</span>,<span class="t-num">3</span>];
+boxes[<span class="t-num">0</span>,<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-num">2</span>;
+boxes[<span class="t-num">0</span>,<span class="t-num">1</span>] <span class="t-op">:=</span> <span class="t-num">4</span>;
+boxes[<span class="t-num">0</span>,<span class="t-num">2</span>] <span class="t-op">:=</span> <span class="t-num">8</span>;
+boxes[<span class="t-num">1</span>,<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-num">1</span>;
+boxes[<span class="t-num">1</span>,<span class="t-num">1</span>] <span class="t-op">:=</span> <span class="t-num">2</span>;
+boxes[<span class="t-num">1</span>,<span class="t-num">2</span>] <span class="t-op">:=</span> <span class="t-num">3</span>;
+dims <span class="t-op">:=</span> boxes<span class="t-op">-&gt;</span>Size(); <span class="t-com"># get the dimensions</span>
+dims[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># dimension 1</span>
+dims[<span class="t-num">1</span>]<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># dimension 2</span>
 
-# create some strings an iterate over them
-directions := String-&gt;New[4];
-directions[0] := "North";
-directions[1] := "South";
-directions[2] := "East";
-directions[3] := "West";
-each(i : directions) {
-  directions[i]->PrintLine();
+<span class="t-com"># create some strings an iterate over them</span>
+directions <span class="t-op">:=</span> <span class="t-type">String</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">4</span>];
+directions[<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-str">"North"</span>;
+directions[<span class="t-num">1</span>] <span class="t-op">:=</span> <span class="t-str">"South"</span>;
+directions[<span class="t-num">2</span>] <span class="t-op">:=</span> <span class="t-str">"East"</span>;
+directions[<span class="t-num">3</span>] <span class="t-op">:=</span> <span class="t-str">"West"</span>;
+<span class="t-kw">each</span>(i : directions) {
+  directions[i]<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          </p>
@@ -1367,16 +1345,16 @@ each(i : directions) {
           <code>Int[][]</code> is an array of rows, and each row can have its own length. An array literal whose elements are arrays is a jagged array too.
          </p>
          <p>
-          <pre><code class="language-cpp">rows := Int[]-&gt;New[3];
-each(i : 3) {
-  rows[i] := Int-&gt;New[i + 1];
-  for(j := 0; j &lt;= i; j += 1;) {
-    rows[i][j] := i * 10 + j;
+          <pre><code class="language-objeck">rows <span class="t-op">:=</span> <span class="t-type">Int</span>[]<span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">3</span>];
+<span class="t-kw">each</span>(i : <span class="t-num">3</span>) {
+  rows[i] <span class="t-op">:=</span> <span class="t-type">Int</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[i + <span class="t-num">1</span>];
+  <span class="t-kw">for</span>(j <span class="t-op">:=</span> <span class="t-num">0</span>; j &lt;= i; j += <span class="t-num">1</span>;) {
+    rows[i][j] <span class="t-op">:=</span> i * <span class="t-num">10</span> + j;
   };
 };
-each(i : 3) {
-  row := rows[i];
-  "row {$i} has {$(row-&gt;Size())} items, last is {$(row[row-&gt;Size() - 1])}"-&gt;PrintLine();
+<span class="t-kw">each</span>(i : <span class="t-num">3</span>) {
+  row <span class="t-op">:=</span> rows[i];
+  <span class="t-str">"row {$i} has {$(row-&gt;Size())} items, last is {$(row[row-&gt;Size() - 1])}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          </p>
@@ -1390,24 +1368,24 @@ each(i : 3) {
           </code>
           character can be used to interpret strings verbatim, ignoring escape characters.
          </p>
-         <pre><code class="language-cpp">name := "DJ";
-name += ' ';
-name += "Premier";
-name += $"bell \b \b bell";
-name-&gt;PrintLine();
-name-&gt;SubString(2)-&gt;PrintLine();
-name-&gt;Size()-&gt;PrintLine();
+         <pre><code class="language-objeck">name <span class="t-op">:=</span> <span class="t-str">"DJ"</span>;
+name += <span class="t-str">' '</span>;
+name += <span class="t-str">"Premier"</span>;
+name += $<span class="t-str">"bell \b \b bell"</span>;
+name<span class="t-op">-&gt;</span>PrintLine();
+name<span class="t-op">-&gt;</span>SubString(<span class="t-num">2</span>)<span class="t-op">-&gt;</span>PrintLine();
+name<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
          <p>
           Code fragment from a sundial program
          </p>
-         <pre><code class="language-cpp">"Hour\t\tsun hour angle\t\tdial hour line angle from 6am to 6pm"-&gt;PrintLine();
-for(h := -6; h &lt;= 6; h+=1;) {
-  hra := 15.0 * h;
+         <pre><code class="language-objeck"><span class="t-str">"Hour\t\tsun hour angle\t\tdial hour line angle from 6am to 6pm"</span><span class="t-op">-&gt;</span>PrintLine();
+<span class="t-kw">for</span>(h <span class="t-op">:=</span> -<span class="t-num">6</span>; h &lt;= <span class="t-num">6</span>; h+=<span class="t-num">1</span>;) {
+  hra <span class="t-op">:=</span> <span class="t-num">15.0</span> * h;
   hra -= lng - ref;
-  hla := (slat* (hra*2*Float-&gt;Pi()/360.0)-&gt;Tan())
-    -&gt;ArcTan() * 360.0 / (2*Float-&gt;Pi());
-  "HR={$h}\t\tHRA={$hra}\t\tHLA={$hla}"-&gt;PrintLine();
+  hla <span class="t-op">:=</span> (slat* (hra*<span class="t-num">2</span>*<span class="t-type">Float</span><span class="t-op">-&gt;</span>Pi()/<span class="t-num">360.0</span>)<span class="t-op">-&gt;</span>Tan())
+    <span class="t-op">-&gt;</span>ArcTan() * <span class="t-num">360.0</span> / (<span class="t-num">2</span>*<span class="t-type">Float</span><span class="t-op">-&gt;</span>Pi());
+  <span class="t-str">"HR={$h}\t\tHRA={$hra}\t\tHLA={$hla}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <p>
@@ -1418,40 +1396,40 @@ for(h := -6; h &lt;= 6; h+=1;) {
          <p>
           Values can be embedded directly into string literals using the <code>{$...}</code> syntax — a cleaner alternative to manual concatenation. The braces may hold any expression: a bare variable, a field, an arithmetic / comparison / logical expression, an array access, or a method call.
          </p>
-         <pre><code class="language-cpp">name := "Objeck";
-version := 2026;
-"Welcome to {$name} v{$version}!"-&gt;PrintLine();   # Welcome to Objeck v2026!
+         <pre><code class="language-objeck">name <span class="t-op">:=</span> <span class="t-str">"Objeck"</span>;
+version <span class="t-op">:=</span> <span class="t-num">2026</span>;
+<span class="t-str">"Welcome to {$name} v{$version}!"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># Welcome to Objeck v2026!</span>
 
-i := 41;
-a := 3; b := 4;
-"next  = {$i + 1}"-&gt;PrintLine();                  # next  = 42
-"area  = {$a * b}"-&gt;PrintLine();                  # area  = 12
-"even? = {$i % 2 = 0}"-&gt;PrintLine();              # even? = false
-"upper = {$name-&gt;ToUpper()}"-&gt;PrintLine();        # upper = OBJECK
+i <span class="t-op">:=</span> <span class="t-num">41</span>;
+a <span class="t-op">:=</span> <span class="t-num">3</span>; b <span class="t-op">:=</span> <span class="t-num">4</span>;
+<span class="t-str">"next  = {$i + 1}"</span><span class="t-op">-&gt;</span>PrintLine();                  <span class="t-com"># next  = 42</span>
+<span class="t-str">"area  = {$a * b}"</span><span class="t-op">-&gt;</span>PrintLine();                  <span class="t-com"># area  = 12</span>
+<span class="t-str">"even? = {$i % 2 = 0}"</span><span class="t-op">-&gt;</span>PrintLine();              <span class="t-com"># even? = false</span>
+<span class="t-str">"upper = {$name-&gt;ToUpper()}"</span><span class="t-op">-&gt;</span>PrintLine();        <span class="t-com"># upper = OBJECK</span>
 </code></pre>
          <p>
           Append <code>:spec</code> to an interpolated expression to control precision, width, alignment, or radix, using Python / .NET&ndash;style format specifiers.
          </p>
-         <pre><code class="language-cpp">pi := 3.14159; n := 42; v := 255; s := "hi";
-"{$pi:.2}"-&gt;PrintLine();    # 3.14       precision
-"[{$n:5}]"-&gt;PrintLine();    # [   42]    minimum width, right-justified
-"{$n:05}"-&gt;PrintLine();     # 00042      zero-padded
-"[{$s:&lt;6}]"-&gt;PrintLine();   # [hi    ]   left-justified
-"[{$s:&gt;6}]"-&gt;PrintLine();   # [    hi]   right-justified
-"{$v:x}"-&gt;PrintLine();      # 0xff       hexadecimal
-"{$v:b}"-&gt;PrintLine();      # 11111111   binary
+         <pre><code class="language-objeck">pi <span class="t-op">:=</span> <span class="t-num">3.14159</span>; n <span class="t-op">:=</span> <span class="t-num">42</span>; v <span class="t-op">:=</span> <span class="t-num">255</span>; s <span class="t-op">:=</span> <span class="t-str">"hi"</span>;
+<span class="t-str">"{$pi:.2}"</span><span class="t-op">-&gt;</span>PrintLine();    <span class="t-com"># 3.14       precision</span>
+<span class="t-str">"[{$n:5}]"</span><span class="t-op">-&gt;</span>PrintLine();    <span class="t-com"># [   42]    minimum width, right-justified</span>
+<span class="t-str">"{$n:05}"</span><span class="t-op">-&gt;</span>PrintLine();     <span class="t-com"># 00042      zero-padded</span>
+<span class="t-str">"[{$s:&lt;6}]"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># [hi    ]   left-justified</span>
+<span class="t-str">"[{$s:&gt;6}]"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># [    hi]   right-justified</span>
+<span class="t-str">"{$v:x}"</span><span class="t-op">-&gt;</span>PrintLine();      <span class="t-com"># 0xff       hexadecimal</span>
+<span class="t-str">"{$v:b}"</span><span class="t-op">-&gt;</span>PrintLine();      <span class="t-com"># 11111111   binary</span>
 </code></pre>
          <p>
           For a positional template &mdash; handy when the format string is reused or built at runtime &mdash; use <code>String-&gt;Format</code>. The placeholders <code>{0}</code>, <code>{1}</code>, &hellip; are replaced by the matching argument; <code>{{</code> and <code>}}</code> produce literal braces.
          </p>
-         <pre><code class="language-cpp">String-&gt;Format("{0} = {1}", "x", "y")-&gt;PrintLine();      # x = y
-String-&gt;Format("{1} before {0}", "a", "b")-&gt;PrintLine(); # b before a
+         <pre><code class="language-objeck"><span class="t-type">String</span><span class="t-op">-&gt;</span>Format(<span class="t-str">"{0} = {1}"</span>, <span class="t-str">"x"</span>, <span class="t-str">"y"</span>)<span class="t-op">-&gt;</span>PrintLine();      <span class="t-com"># x = y</span>
+<span class="t-type">String</span><span class="t-op">-&gt;</span>Format(<span class="t-str">"{1} before {0}"</span>, <span class="t-str">"a"</span>, <span class="t-str">"b"</span>)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># b before a</span>
 </code></pre>
          <p>
           The <code>$</code> prefix before a string literal instead treats it as a verbatim string, ignoring escape characters like <code>\n</code> and <code>\t</code>.
          </p>
-         <pre><code class="language-cpp">path := $"C:\Users\objeck\files";
-path-&gt;PrintLine(); # prints: C:\Users\objeck\files
+         <pre><code class="language-objeck">path <span class="t-op">:=</span> $<span class="t-str">"C:\Users\objeck\files"</span>;
+path<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># prints: C:\Users\objeck\files</span>
 </code></pre>
          <h2 id="enum_const">
           Enums and Constants
@@ -1459,27 +1437,27 @@ path-&gt;PrintLine(); # prints: C:\Users\objeck\files
          <p>
           Enums are enumerated named constant values. Enums values are sequential and start from an offset. Constants, like enums, are named constant values however each value can be uniquely assigned.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">enum Color {
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">enum</span> <span class="t-cls">Color</span> {
  Red,
  Blue,
  Green
 }
 
-class Character {
-  @move : Character-&gt;Direction;
+<span class="t-kw">class</span> <span class="t-cls">Character</span> {
+  @move : <span class="t-cls">Character</span><span class="t-op">-&gt;</span>Direction;
 
-  enum Direction {
-   Left := -100,
+  <span class="t-kw">enum</span> <span class="t-cls">Direction</span> {
+   Left <span class="t-op">:=</span> -<span class="t-num">100</span>,
    Right,
    Up,
    Down
   }
 }
 	
-consts Products {
- PipBoy := 101,
- ValutSuit := 111,
- Laser := 675
+<span class="t-kw">consts</span> <span class="t-cls">Products</span> {
+ PipBoy <span class="t-op">:=</span> <span class="t-num">101</span>,
+ ValutSuit <span class="t-op">:=</span> <span class="t-num">111</span>,
+ Laser <span class="t-op">:=</span> <span class="t-num">675</span>
 }
 </code></pre>
          <p>
@@ -1494,17 +1472,17 @@ consts Products {
           </code>
           and reside in the same that the directory that the program is executed from.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">ren=stimpy
+         <pre class="line-numbers"><code class="language-objeck">ren=stimpy
 cola=pepsi
 </code></pre>
          <p>
           Here is an example using an external proprieties file and creating new a new property.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">Runtime-&gt;GetProperty("ren")-&gt;PrintLine();
-Runtime-&gt;GetProperty("cola")-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>GetProperty(<span class="t-str">"ren"</span>)<span class="t-op">-&gt;</span>PrintLine();
+<span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>GetProperty(<span class="t-str">"cola"</span>)<span class="t-op">-&gt;</span>PrintLine();
 
-Runtime-&gt;SetProperty("hello", "world");
-Runtime-&gt;GetProperty("hello")-&gt;PrintLine();
+<span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>SetProperty(<span class="t-str">"hello"</span>, <span class="t-str">"world"</span>);
+<span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>GetProperty(<span class="t-str">"hello"</span>)<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
          <h2 id="bundles_use">
           Bundles and Use Statements
@@ -1512,30 +1490,30 @@ Runtime-&gt;GetProperty("hello")-&gt;PrintLine();
          <p>
           Bundles are Objeck's module system for organizing related classes, interfaces, and enums into namespaces. The <code>use</code> keyword imports a bundle so its members can be referenced without fully qualified names.
          </p>
-         <pre><code class="language-cpp"># without 'use' — fully qualified names required
-list := Collection.List-&gt;New()&lt;String&gt;;
-parser := Data.JSON.JsonParser-&gt;TextToElement(text);
+         <pre><code class="language-objeck"><span class="t-com"># without 'use' — fully qualified names required</span>
+list <span class="t-op">:=</span> <span class="t-cls">Collection</span>.<span class="t-cls">List</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+parser <span class="t-op">:=</span> <span class="t-cls">Data</span>.<span class="t-cls">JSON</span>.<span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(text);
 
-# with 'use' — shorter references
-use Collection;
-use Data.JSON;
+<span class="t-com"># with 'use' — shorter references</span>
+<span class="t-kw">use</span> Collection;
+<span class="t-kw">use</span> <span class="t-cls">Data</span>.JSON;
 
-list := List-&gt;New()&lt;String&gt;;
-parser := JsonParser-&gt;TextToElement(text);
+list <span class="t-op">:=</span> <span class="t-cls">List</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+parser <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(text);
 </code></pre>
          <p>
           You can define your own bundles to organize code into logical namespaces.
          </p>
-         <pre><code class="language-cpp">bundle App.Models {
-  class User {
-    @name : String;
+         <pre><code class="language-objeck"><span class="t-kw">bundle</span> <span class="t-cls">App</span>.Models {
+  <span class="t-kw">class</span> <span class="t-cls">User</span> {
+    @name : <span class="t-type">String</span>;
 
-    New(name : String) {
-      @name := name;
+    <span class="t-kw">New</span>(name : <span class="t-type">String</span>) {
+      @name <span class="t-op">:=</span> name;
     }
 
-    method : public : GetName() ~ String {
-      return @name;
+    <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetName</span>() <span class="t-op">~</span> <span class="t-type">String</span> {
+      <span class="t-kw">return</span> @name;
     }
   }
 }
@@ -1543,11 +1521,11 @@ parser := JsonParser-&gt;TextToElement(text);
          <p>
           The <code>use function</code> form allows importing static functions directly so they can be called without the class prefix.
          </p>
-         <pre><code class="language-cpp">use function Int;
+         <pre><code class="language-objeck"><span class="t-kw">use</span> <span class="t-kw">function</span> <span class="t-type">Int</span>;
 
-# call Int functions directly
-value := Abs(-42);
-max := Max(10, 20);
+<span class="t-com"># call Int functions directly</span>
+value <span class="t-op">:=</span> Abs(-<span class="t-num">42</span>);
+max <span class="t-op">:=</span> Max(<span class="t-num">10</span>, <span class="t-num">20</span>);
 </code></pre>
          <h2 id="classes_interfaces">
           Classes and Interfaces
@@ -1562,86 +1540,86 @@ max := Max(10, 20);
           </a>
           for other features such as reflection, serialization and more.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">interface Registration {
-  method : virtual : public : GetColor() ~ String;
-  method : virtual : public : GetMake() ~ String;
-  method : virtual : public : GetModel() ~ String;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">interface</span> <span class="t-cls">Registration</span> {
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">GetColor</span>() <span class="t-op">~</span> <span class="t-type">String</span>;
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">GetMake</span>() <span class="t-op">~</span> <span class="t-type">String</span>;
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">GetModel</span>() <span class="t-op">~</span> <span class="t-type">String</span>;
 }
-enum EngineType {
-  Gas := 200,
+<span class="t-kw">enum</span> <span class="t-cls">EngineType</span> {
+  Gas <span class="t-op">:=</span> <span class="t-num">200</span>,
   Hybrid,
   Electric,
   Warp
 }
 
-class : public : Vehicle {
-  @wheels : Int;
-  @color : String;
+<span class="t-kw">class</span> : <span class="t-mod">public</span> : Vehicle {
+  @wheels : <span class="t-type">Int</span>;
+  @color : <span class="t-type">String</span>;
   @engine_type : EngineType;
   
-  New(wheels : Int, color : String, engine_type : EngineType) {
-    @wheels := wheels;
-    @color := color;
-    @engine_type := engine_type;
+  <span class="t-kw">New</span>(wheels : <span class="t-type">Int</span>, color : <span class="t-type">String</span>, engine_type : EngineType) {
+    @wheels <span class="t-op">:=</span> wheels;
+    @color <span class="t-op">:=</span> color;
+    @engine_type <span class="t-op">:=</span> engine_type;
  }
  
- method : public : GetColor() ~ String {
-   return @color;
+ <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetColor</span>() <span class="t-op">~</span> <span class="t-type">String</span> {
+   <span class="t-kw">return</span> @color;
  }
  
- method : public : GetEngine() ~ EngineType {
-   return @engine_type;
+ <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetEngine</span>() <span class="t-op">~</span> EngineType {
+   <span class="t-kw">return</span> @engine_type;
  }
 }
  
 
-class : public StarShip from Vehicle implements Registration {
-  New() {
-    Parent(13, "Metal Fuschia", EngineType-&gt;Warp);
+<span class="t-kw">class</span> : <span class="t-mod">public</span> StarShip <span class="t-kw">from</span> <span class="t-cls">Vehicle</span> <span class="t-kw">implements</span> <span class="t-cls">Registration</span> {
+  <span class="t-kw">New</span>() {
+    <span class="t-kw">Parent</span>(<span class="t-num">13</span>, <span class="t-str">"Metal Fuschia"</span>, <span class="t-cls">EngineType</span><span class="t-op">-&gt;</span>Warp);
   }
  
-  method : public : GetMake() ~ String {
-    return "Excelsior";
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetMake</span>() <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"Excelsior"</span>;
   }
  
-  method : public : GetModel() ~ String {
-    return "NX-2000";
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetModel</span>() <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"NX-2000"</span>;
   }
 
-  method : public : EchoDescription() ~ Nil {
-    "Partying with the Borg, they brought drinks!"-&gt;PrintLine();
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">EchoDescription</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"Partying with the Borg, they brought drinks!"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 
-class : public Pinto from Vehicle implements Registration {
-  New() {
-    Parent();
+<span class="t-kw">class</span> : <span class="t-mod">public</span> Pinto <span class="t-kw">from</span> <span class="t-cls">Vehicle</span> <span class="t-kw">implements</span> <span class="t-cls">Registration</span> {
+  <span class="t-kw">New</span>() {
+    <span class="t-kw">Parent</span>();
   }
  
-  method : public : GetMake() ~ String {
-    return "Ford";
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetMake</span>() <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"Ford"</span>;
   }
   
-  method : public : GetModel() ~ String {
-    return "Pinto";
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetModel</span>() <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"Pinto"</span>;
   }
 }
 
-class : public VehicleTest {
-  function : Main(args : String[]) ~ Nil {
-    pinto := Pinto-&gt;New();
-    star_ship := StarShip-&gt;New();
-    type_of := pinto-&gt;TypeOf(Vehicle);
-    type_of-&gt;PrintLine();
-    type_of := star_ship-&gt;TypeOf(Vehicle);
-    type_of-&gt;PrintLine();
-    type_of := pinto-&gt;TypeOf(StarShip);
-    type_of-&gt;PrintLine();
-    registration := star_ship-&gt;As(Registration);
-    registration-&gt;GetMake()-&gt;PrintLine();
-    registration-&gt;GetColor()-&gt;PrintLine();
-    enterprise := registration-&gt;As(StarShip);
-    enterprise-&gt;EchoDescription();
+<span class="t-kw">class</span> : <span class="t-mod">public</span> VehicleTest {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    pinto <span class="t-op">:=</span> <span class="t-cls">Pinto</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    star_ship <span class="t-op">:=</span> <span class="t-cls">StarShip</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    type_of <span class="t-op">:=</span> pinto<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(Vehicle);
+    type_of<span class="t-op">-&gt;</span>PrintLine();
+    type_of <span class="t-op">:=</span> star_ship<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(Vehicle);
+    type_of<span class="t-op">-&gt;</span>PrintLine();
+    type_of <span class="t-op">:=</span> pinto<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(StarShip);
+    type_of<span class="t-op">-&gt;</span>PrintLine();
+    registration <span class="t-op">:=</span> star_ship<span class="t-op">-&gt;</span><span class="t-kw">As</span>(Registration);
+    registration<span class="t-op">-&gt;</span>GetMake()<span class="t-op">-&gt;</span>PrintLine();
+    registration<span class="t-op">-&gt;</span>GetColor()<span class="t-op">-&gt;</span>PrintLine();
+    enterprise <span class="t-op">:=</span> registration<span class="t-op">-&gt;</span><span class="t-kw">As</span>(StarShip);
+    enterprise<span class="t-op">-&gt;</span>EchoDescription();
   }
 }</code></pre>
          <p>
@@ -1649,23 +1627,23 @@ class : public VehicleTest {
          <p>
           Anonymous classes can be created that define "inline" required interface methods or functions. External variables may be referenced within an anonymous class if they’re passed as references to the class constructor.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">interface Greetings {
-  method : virtual : public : SayHi() ~ Nil;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">interface</span> <span class="t-cls">Greetings</span> {
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">SayHi</span>() <span class="t-op">~</span> <span class="t-const">Nil</span>;
 }
 
-class Hello {
-  function : Main(args : String[]) ~ Nil {
-    hey := Base-&gt;New() implements Greetings {
-      New() {}
-      method : public : SayHi() ~ Nil {
-        "Hey..."-&gt;PrintLine();
+<span class="t-kw">class</span> <span class="t-cls">Hello</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    hey <span class="t-op">:=</span> <span class="t-cls">Base</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>() <span class="t-kw">implements</span> <span class="t-cls">Greetings</span> {
+      <span class="t-kw">New</span>() {}
+      <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">SayHi</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+        <span class="t-str">"Hey..."</span><span class="t-op">-&gt;</span>PrintLine();
       }
     };
  
-    howdy := Base-&gt;New() implements Greetings {
-      New() {}
-      method : public : SayHi() ~ Nil {
-        "Howdy!"-&gt;PrintLine();
+    howdy <span class="t-op">:=</span> <span class="t-cls">Base</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>() <span class="t-kw">implements</span> <span class="t-cls">Greetings</span> {
+      <span class="t-kw">New</span>() {}
+      <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">SayHi</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+        <span class="t-str">"Howdy!"</span><span class="t-op">-&gt;</span>PrintLine();
       }
     };
   }
@@ -1677,22 +1655,22 @@ class Hello {
          <p>
           The <code>As()</code> method casts an object to a different type, such as an interface or parent/child class. The <code>TypeOf()</code> method checks whether an object is an instance of a given type and returns a boolean.
          </p>
-         <pre><code class="language-cpp"># cast to an interface
-star_ship := StarShip-&gt;New();
-registration := star_ship-&gt;As(Registration);
-registration-&gt;GetMake()-&gt;PrintLine();
+         <pre><code class="language-objeck"><span class="t-com"># cast to an interface</span>
+star_ship <span class="t-op">:=</span> <span class="t-cls">StarShip</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+registration <span class="t-op">:=</span> star_ship<span class="t-op">-&gt;</span><span class="t-kw">As</span>(Registration);
+registration<span class="t-op">-&gt;</span>GetMake()<span class="t-op">-&gt;</span>PrintLine();
 
-# cast back to the concrete type
-enterprise := registration-&gt;As(StarShip);
-enterprise-&gt;EchoDescription();
+<span class="t-com"># cast back to the concrete type</span>
+enterprise <span class="t-op">:=</span> registration<span class="t-op">-&gt;</span><span class="t-kw">As</span>(StarShip);
+enterprise<span class="t-op">-&gt;</span>EchoDescription();
 
-# type checking
-is_vehicle := star_ship-&gt;TypeOf(Vehicle);
-is_vehicle-&gt;PrintLine(); # true
+<span class="t-com"># type checking</span>
+is_vehicle <span class="t-op">:=</span> star_ship<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(Vehicle);
+is_vehicle<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># true</span>
 
-# cast between primitive and reference types
-value := 55.141-&gt;As(Char);
-value-&gt;PrintLine();
+<span class="t-com"># cast between primitive and reference types</span>
+value <span class="t-op">:=</span> <span class="t-num">55.141</span><span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">Char</span>);
+value<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
          <p>
           Casts are checked at runtime. A failed cast returns <code>Nil</code>, so it is good practice to check results before use.
@@ -1703,10 +1681,10 @@ value-&gt;PrintLine();
          <p>
           In addition, to arrays the language supports various generic collections such as Vectors, Lists, Maps, Stack, Queues, etc. To learn more about the collections classes please check out the API documentation. In order to use these classes you must "use" the collections bundle or use a fully qualified name consider the following lines of code:
          </p>
-         <pre><code class="language-cpp">use Collection;
+         <pre><code class="language-objeck"><span class="t-kw">use</span> Collection;
 
-genres := Vector-&gt;New()&lt;String&gt;;	
-genres := Collection.Vector-&gt;New()&lt;String&gt;;
+genres <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;	
+genres <span class="t-op">:=</span> <span class="t-cls">Collection</span>.<span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
 </code></pre>
          <h3 id="collect_vector">
           Vectors
@@ -1714,14 +1692,14 @@ genres := Collection.Vector-&gt;New()&lt;String&gt;;
          <p>
           Vectors are arrays that can be dynamically resized. They support fast indexing, iterating and appending of values. In order to improve performance memory for vectors is preallocated.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">genres := Vector-&gt;New()&lt;String&gt;;
-genres-&gt;AddBack("Hip hop");
-genres-&gt;AddBack("Classical");
-genres-&gt;AddBack("Jazz");
-genres-&gt;AddBack("Rock");
-genres-&gt;AddBack("Folk");
-each(i : genres) {
-  genres-&gt;Get(i)-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck">genres <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+genres<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Hip hop"</span>);
+genres<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Classical"</span>);
+genres<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Jazz"</span>);
+genres<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Rock"</span>);
+genres<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Folk"</span>);
+<span class="t-kw">each</span>(i : genres) {
+  genres<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h3 id="collect_list">
@@ -1730,18 +1708,18 @@ each(i : genres) {
          <p>
           Lists are a collection of linear linked nodes. They support the fast insertion and removal of values. Memory for nodes are allocated on-demand however nodes may not be directly indexed as with Vectors.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">artists := List-&gt;New()&lt;String&gt;;
-artists-&gt;AddBack("Hendrix");
-artists-&gt;AddFront("Beck");
-# move cursor back for middle insertion
-artists-&gt;Back();
-artists-&gt;Insert("Common");
-# move cursor to start of list
-artists-&gt;Rewind();
-# iterate over values
-while(artists-&gt;More()) {
-  artists-&gt;Get()-&gt;PrintLine();
-  artists-&gt;Next();
+         <pre class="line-numbers"><code class="language-objeck">artists <span class="t-op">:=</span> <span class="t-cls">List</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+artists<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Hendrix"</span>);
+artists<span class="t-op">-&gt;</span>AddFront(<span class="t-str">"Beck"</span>);
+<span class="t-com"># move cursor back for middle insertion</span>
+artists<span class="t-op">-&gt;</span>Back();
+artists<span class="t-op">-&gt;</span>Insert(<span class="t-str">"Common"</span>);
+<span class="t-com"># move cursor to start of list</span>
+artists<span class="t-op">-&gt;</span>Rewind();
+<span class="t-com"># iterate over values</span>
+<span class="t-kw">while</span>(artists<span class="t-op">-&gt;</span>More()) {
+  artists<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span>PrintLine();
+  artists<span class="t-op">-&gt;</span>Next();
 };
 </code></pre>
          <h3 id="collect_map_hash">
@@ -1750,16 +1728,16 @@ while(artists-&gt;More()) {
          <p>
           Map and Hash classes manage key/value pairs. Maps manage values in tree and allocate memory on demand. Maps are slower than hashes however manage memory better. Hashes use keys as indices into arrays and support fast insertion and deletion at the cost of memory. Maps are ordered while Hashes are not.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">area_codes := Map-&gt;New()&lt;IntRef, String&gt;;
-area_codes-&gt;Insert(510, "Oakland");
-area_codes-&gt;Insert(415, "San Francisco");
-area_codes-&gt;Insert(650, "Palo Alto");
-area_codes-&gt;Insert(925, "San Jose");
+         <pre class="line-numbers"><code class="language-objeck">area_codes <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">510</span>, <span class="t-str">"Oakland"</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">415</span>, <span class="t-str">"San Francisco"</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">650</span>, <span class="t-str">"Palo Alto"</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">925</span>, <span class="t-str">"San Jose"</span>);
 
-area_codes-&gt;Find(510)-&gt;PrintLine();
-codes := area_codes-&gt;GetValues()&lt;String&gt;;
-each(code := codes) {
-  code-&gt;PrintLine();
+area_codes<span class="t-op">-&gt;</span>Find(<span class="t-num">510</span>)<span class="t-op">-&gt;</span>PrintLine();
+codes <span class="t-op">:=</span> area_codes<span class="t-op">-&gt;</span>GetValues()&lt;<span class="t-type">String</span>&gt;;
+<span class="t-kw">each</span>(code <span class="t-op">:=</span> codes) {
+  code<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h3 id="collect_map_set">
@@ -1768,16 +1746,16 @@ each(code := codes) {
          <p>
           Sets are key are a collection of ordered keys.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">area_codes := Set-&gt;New()&lt;IntRef&gt;;
-area_codes-&gt;Insert(510);
-area_codes-&gt;Insert(415);
-area_codes-&gt;Insert(650);
-area_codes-&gt;Insert(925);
+         <pre class="line-numbers"><code class="language-objeck">area_codes <span class="t-op">:=</span> <span class="t-cls">Set</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>&gt;;
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">510</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">415</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">650</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">925</span>);
 
-area_codes-&gt;Has(510)-&gt;PrintLine();
-codes := area_codes-&gt;GetKeys()&lt;IntRef&gt;;
-each(code := codes) {
-  code-&gt;PrintLine();
+area_codes<span class="t-op">-&gt;</span>Has(<span class="t-num">510</span>)<span class="t-op">-&gt;</span>PrintLine();
+codes <span class="t-op">:=</span> area_codes<span class="t-op">-&gt;</span>GetKeys()&lt;<span class="t-type">IntRef</span>&gt;;
+<span class="t-kw">each</span>(code <span class="t-op">:=</span> codes) {
+  code<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h3 id="collect_map_queue">
@@ -1786,12 +1764,12 @@ each(code := codes) {
          <p>
           Queues support adding items to front and back of a stack-like structure.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">queue := Collection.Queue-&gt;New()<floatref>;
-queue-&gt;AddFront(33.3);
-queue-&gt;AddBack(99.9);
-queue-&gt;AddFront(66.6);
-queue-&gt;Front()-&gt;PrintLine();
-</floatref></code></pre>
+         <pre class="line-numbers"><code class="language-objeck">queue <span class="t-op">:=</span> <span class="t-cls">Collection</span>.<span class="t-cls">Queue</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+queue<span class="t-op">-&gt;</span>AddFront(<span class="t-num">33.3</span>);
+queue<span class="t-op">-&gt;</span>AddBack(<span class="t-num">99.9</span>);
+queue<span class="t-op">-&gt;</span>AddFront(<span class="t-num">66.6</span>);
+queue<span class="t-op">-&gt;</span>Front()<span class="t-op">-&gt;</span>PrintLine();
+</code></pre>
          <h3 id="collect_utilities">
           Collection Utilities
          </h3>
@@ -1801,32 +1779,32 @@ queue-&gt;Front()-&gt;PrintLine();
          <p>
           <code>Vector-&gt;Zip(..)</code> combines two vectors into a vector of pairs, pairing corresponding elements.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">keys := Vector-&gt;New()&lt;String&gt;;
-keys-&gt;AddBack("name");
-keys-&gt;AddBack("city");
-keys-&gt;AddBack("state");
+         <pre class="line-numbers"><code class="language-objeck">keys <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+keys<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"name"</span>);
+keys<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"city"</span>);
+keys<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"state"</span>);
 
-values := Vector-&gt;New()&lt;String&gt;;
-values-&gt;AddBack("Alice");
-values-&gt;AddBack("Oakland");
-values-&gt;AddBack("CA");
+values <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+values<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Alice"</span>);
+values<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Oakland"</span>);
+values<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"CA"</span>);
 
-zipped := keys-&gt;Zip(values)&lt;String&gt;;
+zipped <span class="t-op">:=</span> keys<span class="t-op">-&gt;</span>Zip(values)&lt;<span class="t-type">String</span>&gt;;
 </code></pre>
          <p>
           <code>Map-&gt;Dict(..)</code> and <code>Hash-&gt;Dict(..)</code> convert a Map or Hash into a vector of key/value pairs for easy iteration.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">area_codes := Map-&gt;New()&lt;IntRef, String&gt;;
-area_codes-&gt;Insert(510, "Oakland");
-area_codes-&gt;Insert(415, "San Francisco");
+         <pre class="line-numbers"><code class="language-objeck">area_codes <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">510</span>, <span class="t-str">"Oakland"</span>);
+area_codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">415</span>, <span class="t-str">"San Francisco"</span>);
 
-# convert to list of pairs
-pairs := area_codes-&gt;Dict()&lt;IntRef, String&gt;;
-each(i : pairs) {
-  pair := pairs-&gt;Get(i)&lt;Pair&lt;IntRef, String&gt; &gt;;
-  key := pair-&gt;GetFirst()&lt;IntRef&gt;;
-  value := pair-&gt;GetSecond()&lt;String&gt;;
-  "{$key}: {$value}"-&gt;PrintLine();
+<span class="t-com"># convert to list of pairs</span>
+pairs <span class="t-op">:=</span> area_codes<span class="t-op">-&gt;</span>Dict()&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+<span class="t-kw">each</span>(i : pairs) {
+  pair <span class="t-op">:=</span> pairs<span class="t-op">-&gt;</span>Get(i)&lt;Pair&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt; &gt;;
+  key <span class="t-op">:=</span> pair<span class="t-op">-&gt;</span>GetFirst()&lt;<span class="t-type">IntRef</span>&gt;;
+  value <span class="t-op">:=</span> pair<span class="t-op">-&gt;</span>GetSecond()&lt;<span class="t-type">String</span>&gt;;
+  <span class="t-str">"{$key}: {$value}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h3 id="collect_primitive">
@@ -1835,24 +1813,24 @@ each(i : pairs) {
          <p>
           <code>IntVector</code>, <code>FloatVector</code>, <code>IntMap</code>, <code>IntSet</code> and <code>BitSet</code> hold plain numbers instead of wrapper objects such as <code>IntRef</code>. They use less memory, avoid allocating an object per element, and are the right choice for large numeric data.
          </p>
-         <pre><code class="language-cpp">use Collection;
+         <pre><code class="language-objeck"><span class="t-kw">use</span> Collection;
 
-class Counting {
-  function : Main(args : String[]) ~ Nil {
-    # unboxed Int storage: no IntRef wrapper objects
-    scores := IntVector-&gt;New();
-    scores-&gt;AddBack(90);
-    scores-&gt;AddBack(75);
-    scores-&gt;AddBack(82);
-    "first={$(scores-&gt;First())} last={$(scores-&gt;Last())}"-&gt;PrintLine();
+<span class="t-kw">class</span> <span class="t-cls">Counting</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># unboxed Int storage: no IntRef wrapper objects</span>
+    scores <span class="t-op">:=</span> <span class="t-cls">IntVector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    scores<span class="t-op">-&gt;</span>AddBack(<span class="t-num">90</span>);
+    scores<span class="t-op">-&gt;</span>AddBack(<span class="t-num">75</span>);
+    scores<span class="t-op">-&gt;</span>AddBack(<span class="t-num">82</span>);
+    <span class="t-str">"first={$(scores-&gt;First())} last={$(scores-&gt;Last())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # count occurrences with an IntMap
-    counts := IntMap-&gt;New();
-    values := [3, 1, 3, 2, 3, 1];
-    each(i : values) {
-      counts-&gt;Add(values[i], 1);
+    <span class="t-com"># count occurrences with an IntMap</span>
+    counts <span class="t-op">:=</span> <span class="t-cls">IntMap</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    values <span class="t-op">:=</span> [<span class="t-num">3</span>, <span class="t-num">1</span>, <span class="t-num">3</span>, <span class="t-num">2</span>, <span class="t-num">3</span>, <span class="t-num">1</span>];
+    <span class="t-kw">each</span>(i : values) {
+      counts<span class="t-op">-&gt;</span>Add(values[i], <span class="t-num">1</span>);
     };
-    "threes: {$(counts-&gt;Find(3))}, has 9: {$(counts-&gt;Has(9))}"-&gt;PrintLine();
+    <span class="t-str">"threes: {$(counts-&gt;Find(3))}, has 9: {$(counts-&gt;Has(9))}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -1862,30 +1840,30 @@ class Counting {
          <p>
           <code>Query.Structured</code> is a columnar database in the standard library. A <code>Table</code> holds typed columns, and <code>Query</code> runs SQL over it &mdash; joins, <code>group by</code>, <code>having</code>, <code>order by</code>, indexes and expressions &mdash; returning another table. A quoted file name or URL in <code>from</code> is read as a table too (CSV, JSON, XML, zip and tar members, Excel worksheets), and <code>Explain</code> shows the plan. If a query fails it returns <code>Nil</code> and <code>GetError</code> says why.
          </p>
-         <pre><code class="language-cpp">use Query.Structured;
+         <pre><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Query</span>.Structured;
 
-class Orders {
-  function : Main(args : String[]) ~ Nil {
-    orders := Table-&gt;New("orders", ["region", "item", "qty", "price"]);
-    Add(orders, "east", "apple", 10, 2.5);
-    Add(orders, "west", "pear", 4, 3.0);
-    Add(orders, "east", "fig", 6, 4.0);
-    Add(orders, "west", "apple", 8, 2.5);
+<span class="t-kw">class</span> <span class="t-cls">Orders</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    orders <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"orders"</span>, [<span class="t-str">"region"</span>, <span class="t-str">"item"</span>, <span class="t-str">"qty"</span>, <span class="t-str">"price"</span>]);
+    Add(orders, <span class="t-str">"east"</span>, <span class="t-str">"apple"</span>, <span class="t-num">10</span>, <span class="t-num">2.5</span>);
+    Add(orders, <span class="t-str">"west"</span>, <span class="t-str">"pear"</span>, <span class="t-num">4</span>, <span class="t-num">3.0</span>);
+    Add(orders, <span class="t-str">"east"</span>, <span class="t-str">"fig"</span>, <span class="t-num">6</span>, <span class="t-num">4.0</span>);
+    Add(orders, <span class="t-str">"west"</span>, <span class="t-str">"apple"</span>, <span class="t-num">8</span>, <span class="t-num">2.5</span>);
 
-    totals := orders-&gt;Query("select region, sum(qty * price) as total from orders group by region order by total desc");
-    if(totals = Nil) {
-      orders-&gt;GetError()-&gt;PrintLine();
-      return;
+    totals <span class="t-op">:=</span> orders<span class="t-op">-&gt;</span>Query(<span class="t-str">"select region, sum(qty * price) as total from orders group by region order by total desc"</span>);
+    <span class="t-kw">if</span>(totals = <span class="t-const">Nil</span>) {
+      orders<span class="t-op">-&gt;</span>GetError()<span class="t-op">-&gt;</span>PrintLine();
+      <span class="t-kw">return</span>;
     };
-    totals-&gt;ToCsv()-&gt;Print();
+    totals<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
   }
 
-  function : Add(t : Table, region : String, item : String, qty : Int, price : Float) ~ Nil {
-    r := t-&gt;Insert();
-    r-&gt;Set("region", region);
-    r-&gt;Set("item", item);
-    r-&gt;Set("qty", IntRef-&gt;New(qty));
-    r-&gt;Set("price", FloatRef-&gt;New(price));
+  <span class="t-kw">function</span> : <span class="t-fn">Add</span>(t : Table, region : <span class="t-type">String</span>, item : <span class="t-type">String</span>, qty : <span class="t-type">Int</span>, price : <span class="t-type">Float</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    r <span class="t-op">:=</span> t<span class="t-op">-&gt;</span>Insert();
+    r<span class="t-op">-&gt;</span>Set(<span class="t-str">"region"</span>, region);
+    r<span class="t-op">-&gt;</span>Set(<span class="t-str">"item"</span>, item);
+    r<span class="t-op">-&gt;</span>Set(<span class="t-str">"qty"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(qty));
+    r<span class="t-op">-&gt;</span>Set(<span class="t-str">"price"</span>, <span class="t-type">FloatRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(price));
   }
 }
 </code></pre>
@@ -1914,32 +1892,32 @@ west,32.0</pre>
           </a>
           .
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class FofG {
-  @f : static : (Int) ~ Int;
-  @g : static : (Int) ~ Int;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">FofG</span> {
+  @f : <span class="t-mod">static</span> : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>;
+  @g : <span class="t-mod">static</span> : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>;
 
-  function : Main(args : String[]) ~ Nil {
-    compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
-    compose(13)-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    compose <span class="t-op">:=</span> Composer(F(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>, G(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>);
+    compose(<span class="t-num">13</span>)<span class="t-op">-&gt;</span>PrintLine();
   }
 
-  function : F(a : Int) ~ Int {
-    return a + 14;
+  <span class="t-kw">function</span> : <span class="t-fn">F</span>(a : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> a + <span class="t-num">14</span>;
   }
  
-  function : G(a : Int) ~ Int {
-    return a + 15;
+  <span class="t-kw">function</span> : <span class="t-fn">G</span>(a : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> a + <span class="t-num">15</span>;
   }
  
-  function : native : Compose(x : Int) ~ Int {
-    return @f(@g(x));
+  <span class="t-kw">function</span> : <span class="t-mod">native</span> : <span class="t-fn">Compose</span>(x : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> @f(@g(x));
   }
 
-  function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
-    @f := f;
-    @g := g;
+  <span class="t-kw">function</span> : <span class="t-fn">Composer</span>(f : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>, g : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>) <span class="t-op">~</span> (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    @f <span class="t-op">:=</span> f;
+    @g <span class="t-op">:=</span> g;
     
-    return Compose(Int) ~ Int;
+    <span class="t-kw">return</span> Compose(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>;
   }
 }
 </code></pre>
@@ -1948,65 +1926,65 @@ west,32.0</pre>
          <p>
           Lambda expressions allow programmers to create anonymous functions and assign references to these functions. Such functions can be used for inline calculations and programming logic. In addition to expressions, the language supports lambdas expressions that contain 'if' and 'select' statements and return a value.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">vector := Vector-&gt;New()&lt;Func2Ref &lt;FloatRef, FloatRef&gt; &gt;;
-# store functions in collections
-vector-&gt;AddBack(Func2Ref-&gt;New(\Func-&gt;Double : (v) 
-  =&gt;  v * v)&lt;FloatRef, FloatRef&gt;);
-# new function from preexisting function at run-time
-vector-&gt;AddBack(Func2Ref-&gt;New(\Func-&gt;Double : (v) 
-  =&gt; Float-&gt;SquareRoot(v-&gt;Get()))&lt;FloatRef, FloatRef&gt;);
-# process collection
-each(i : vector) {
-  # return value of other functions and pass argument to other function
-  Show(vector-&gt;Get(i)&lt;Func2Ref&gt;-&gt;Get()&lt;FloatRef, FloatRef&gt;);
+         <pre class="line-numbers"><code class="language-objeck">vector <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">Func2Ref</span> &lt;<span class="t-type">FloatRef</span>, <span class="t-type">FloatRef</span>&gt; &gt;;
+<span class="t-com"># store functions in collections</span>
+vector<span class="t-op">-&gt;</span>AddBack(<span class="t-type">Func2Ref</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(\<span class="t-cls">Func</span><span class="t-op">-&gt;</span>Double : (v) 
+  <span class="t-op">=&gt;</span>  v * v)&lt;<span class="t-type">FloatRef</span>, <span class="t-type">FloatRef</span>&gt;);
+<span class="t-com"># new function from preexisting function at run-time</span>
+vector<span class="t-op">-&gt;</span>AddBack(<span class="t-type">Func2Ref</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(\<span class="t-cls">Func</span><span class="t-op">-&gt;</span>Double : (v) 
+  <span class="t-op">=&gt;</span> <span class="t-type">Float</span><span class="t-op">-&gt;</span>SquareRoot(v<span class="t-op">-&gt;</span>Get()))&lt;<span class="t-type">FloatRef</span>, <span class="t-type">FloatRef</span>&gt;);
+<span class="t-com"># process collection</span>
+<span class="t-kw">each</span>(i : vector) {
+  <span class="t-com"># return value of other functions and pass argument to other function</span>
+  Show(vector<span class="t-op">-&gt;</span>Get(i)&lt;<span class="t-type">Func2Ref</span>&gt;<span class="t-op">-&gt;</span>Get()&lt;<span class="t-type">FloatRef</span>, <span class="t-type">FloatRef</span>&gt;);
 };
 </code></pre>
          <p>
           Objeck supports closures by allowing the value of local variables to captured and used in later invocations of code.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">funcs := Vector-&gt;New()&lt;FuncRef&lt;IntRef&gt; &gt;;
-# create 10 functions capturing i     
-for(i := 0; i &lt; 10; i += 1;) {
-  funcs-&gt;AddBack(FuncRef-&gt;New(\() ~ IntRef : () =&gt; i * i)&lt;IntRef&gt;);
+         <pre class="line-numbers"><code class="language-objeck">funcs <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; &gt;;
+<span class="t-com"># create 10 functions capturing i     </span>
+<span class="t-kw">for</span>(i <span class="t-op">:=</span> <span class="t-num">0</span>; i &lt; <span class="t-num">10</span>; i += <span class="t-num">1</span>;) {
+  funcs<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FuncRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(\() <span class="t-op">~</span> <span class="t-type">IntRef</span> : () <span class="t-op">=&gt;</span> i * i)&lt;<span class="t-type">IntRef</span>&gt;);
 };
-# invoke functions
-each(i : funcs) {
-  func := funcs-&gt;Get(i)-&gt;Get()&lt;IntRef&gt;;
-  func()-&gt;Get()-&gt;PrintLine();
+<span class="t-com"># invoke functions</span>
+<span class="t-kw">each</span>(i : funcs) {
+  func <span class="t-op">:=</span> funcs<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>Get()&lt;<span class="t-type">IntRef</span>&gt;;
+  func()<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <p>
           As of v2026.6.3, lambdas have a simplified form. A bare lambda <code>\(...) =&gt; body</code> infers its return type from context and auto-wraps into a <code>FuncRef&lt;R&gt;</code> when it is assigned, returned, passed as an argument, or stored in a collection &mdash; no explicit <code>FuncRef-&gt;New(...)&lt;R&gt;</code> wrapper or <code>~ R :</code> annotation is needed. A <code>FuncRef</code> can be called <em>directly</em> with <code>v()</code> (no <code>-&gt;Get()</code>/<code>-&gt;Call()</code> step), and the body may be a single expression or a <code>{ ... }</code> block of statements ending in a <code>return</code>.
          </p>
-         <pre class="line-numbers"><code class="language-cpp"># bare lambda; return type inferred from the FuncRef&lt;IntRef&gt; target, called directly
-f : FuncRef&lt;IntRef&gt; := \() =&gt; IntRef-&gt;New(5);
-f()-&gt;Get()-&gt;PrintLine();          # 5
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># bare lambda; return type inferred from the FuncRef&lt;IntRef&gt; target, called directly</span>
+f : <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; <span class="t-op">:=</span> \() <span class="t-op">=&gt;</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">5</span>);
+f()<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span>PrintLine();          <span class="t-com"># 5</span>
 
-# block body: arbitrary statements with a return; auto-wrapped into the collection
-funcs := Vector-&gt;New()&lt;FuncRef&lt;IntRef&gt; &gt;;
-each(i : 5) {
-  funcs-&gt;AddBack(\() =&gt; {
-    acc := IntRef-&gt;New(0);
-    for(k := 0; k &lt; i; k += 1;) { acc-&gt;Set(acc-&gt;Get() + k); };
-    return acc;
+<span class="t-com"># block body: arbitrary statements with a return; auto-wrapped into the collection</span>
+funcs <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; &gt;;
+<span class="t-kw">each</span>(i : <span class="t-num">5</span>) {
+  funcs<span class="t-op">-&gt;</span>AddBack(\() <span class="t-op">=&gt;</span> {
+    acc <span class="t-op">:=</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">0</span>);
+    <span class="t-kw">for</span>(k <span class="t-op">:=</span> <span class="t-num">0</span>; k &lt; i; k += <span class="t-num">1</span>;) { acc<span class="t-op">-&gt;</span>Set(acc<span class="t-op">-&gt;</span>Get() + k); };
+    <span class="t-kw">return</span> acc;
   });
 };
-# call each FuncRef directly
-each(i : funcs) {
-  f := funcs-&gt;Get(i);
-  f()-&gt;Get()-&gt;PrintLine();
+<span class="t-com"># call each FuncRef directly</span>
+<span class="t-kw">each</span>(i : funcs) {
+  f <span class="t-op">:=</span> funcs<span class="t-op">-&gt;</span>Get(i);
+  f()<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <p>
           Lambda parameters types can also be inferred using the modified syntax below.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">map := Map-&gt;New()&gt;IntRef, String&gt;;
-map-&gt;Insert(1, "One");
-map-&gt;Insert(3, "Three");
-map-&gt;Insert(5, "Five");
-map-&gt;Insert(7, "Seven");
-map-&gt;Insert(9, "Nine");
-map-&gt;Each(\^(k, v) =&gt; "{$k}: {$v}"-&gt;PrintLine());
+         <pre class="line-numbers"><code class="language-objeck">map <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&gt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+map<span class="t-op">-&gt;</span>Insert(<span class="t-num">1</span>, <span class="t-str">"One"</span>);
+map<span class="t-op">-&gt;</span>Insert(<span class="t-num">3</span>, <span class="t-str">"Three"</span>);
+map<span class="t-op">-&gt;</span>Insert(<span class="t-num">5</span>, <span class="t-str">"Five"</span>);
+map<span class="t-op">-&gt;</span>Insert(<span class="t-num">7</span>, <span class="t-str">"Seven"</span>);
+map<span class="t-op">-&gt;</span>Insert(<span class="t-num">9</span>, <span class="t-str">"Nine"</span>);
+map<span class="t-op">-&gt;</span>Each(\^(k, v) <span class="t-op">=&gt;</span> <span class="t-str">"{$k}: {$v}"</span><span class="t-op">-&gt;</span>PrintLine());
 </code></pre>
          <h2 id="named_args">
           Named Arguments and Reference Parameters
@@ -2014,27 +1992,27 @@ map-&gt;Each(\^(k, v) =&gt; "{$k}: {$v}"-&gt;PrintLine());
          <p>
           Pass an argument by name with <code>name: value</code>. Positional arguments come first, named ones follow in any order, and any parameter that has a default value can be skipped. Arguments are still evaluated in the order they are written. Named arguments work for your own methods and constructors and for the standard library, so the standard library's parameter names are part of its public API.
          </p>
-         <pre><code class="language-cpp">function : Train(data : String, rate : Float := 0.1, epochs : Int := 10) ~ Nil {
-  "{$data}: rate={$rate} epochs={$epochs}"-&gt;PrintLine();
+         <pre><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Train</span>(data : <span class="t-type">String</span>, rate : <span class="t-type">Float</span> <span class="t-op">:=</span> <span class="t-num">0.1</span>, epochs : <span class="t-type">Int</span> <span class="t-op">:=</span> <span class="t-num">10</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+  <span class="t-str">"{$data}: rate={$rate} epochs={$epochs}"</span><span class="t-op">-&gt;</span>PrintLine();
 }
 
-# arguments by name, in any order; a defaulted parameter can be skipped
-Train("sales", epochs: 50);
-Train("sales", epochs: 5, rate: 0.5);
+<span class="t-com"># arguments by name, in any order; a defaulted parameter can be skipped</span>
+Train(<span class="t-str">"sales"</span>, epochs: <span class="t-num">50</span>);
+Train(<span class="t-str">"sales"</span>, epochs: <span class="t-num">5</span>, rate: <span class="t-num">0.5</span>);
 </code></pre>
          <p>
           A <code>ref</code> parameter is copied in and copied back out, like <code>inout</code> in Swift. Write <code>ref</code> at the call site too. A local variable, a parameter or a field can be passed.
          </p>
-         <pre><code class="language-cpp">function : Swap(ref a : Int, ref b : Int) ~ Nil {
-  t := a;
-  a := b;
-  b := t;
+         <pre><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Swap</span>(ref a : <span class="t-type">Int</span>, ref b : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+  t <span class="t-op">:=</span> a;
+  a <span class="t-op">:=</span> b;
+  b <span class="t-op">:=</span> t;
 }
 
-x := 1;
-y := 2;
+x <span class="t-op">:=</span> <span class="t-num">1</span>;
+y <span class="t-op">:=</span> <span class="t-num">2</span>;
 Swap(ref x, ref y);
-"x={$x} y={$y}"-&gt;PrintLine(); # x=2 y=1
+<span class="t-str">"x={$x} y={$y}"</span><span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># x=2 y=1</span>
 </code></pre>
          <h2 id="generics">
           Generics
@@ -2042,31 +2020,31 @@ Swap(ref x, ref y);
          <p>
           Generics allow classes and methods to operate on parameterized types, providing type safety while maintaining code reuse. Generic types are specified using angle brackets after a constructor call or method invocation.
          </p>
-         <pre><code class="language-cpp">use Collection;
+         <pre><code class="language-objeck"><span class="t-kw">use</span> Collection;
 
-# creating a typed Vector of Strings
-names := Vector-&gt;New()&lt;String&gt;;
-names-&gt;AddBack("Alice");
-names-&gt;AddBack("Bob");
+<span class="t-com"># creating a typed Vector of Strings</span>
+names <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+names<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Alice"</span>);
+names<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Bob"</span>);
 
-# creating a typed Map with IntRef keys and String values
-codes := Map-&gt;New()&lt;IntRef, String&gt;;
-codes-&gt;Insert(510, "Oakland");
-codes-&gt;Insert(415, "San Francisco");
+<span class="t-com"># creating a typed Map with IntRef keys and String values</span>
+codes <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">510</span>, <span class="t-str">"Oakland"</span>);
+codes<span class="t-op">-&gt;</span>Insert(<span class="t-num">415</span>, <span class="t-str">"San Francisco"</span>);
 
-# retrieve values with type safety
-name := names-&gt;Get(0)&lt;String&gt;;
-name-&gt;PrintLine();
+<span class="t-com"># retrieve values with type safety</span>
+name <span class="t-op">:=</span> names<span class="t-op">-&gt;</span>Get(<span class="t-num">0</span>)&lt;<span class="t-type">String</span>&gt;;
+name<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
          <p>
           Primitive types (Int, Float, Bool, etc.) must be wrapped using their reference counterparts (IntRef, FloatRef, BoolRef) when used as generic type parameters.
          </p>
-         <pre><code class="language-cpp"># IntRef wraps Int for use in generic collections
-numbers := Vector-&gt;New()&lt;IntRef&gt;;
-numbers-&gt;AddBack(42);
-numbers-&gt;AddBack(99);
-each(i : numbers) {
-  numbers-&gt;Get(i)-&gt;PrintLine();
+         <pre><code class="language-objeck"><span class="t-com"># IntRef wraps Int for use in generic collections</span>
+numbers <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>&gt;;
+numbers<span class="t-op">-&gt;</span>AddBack(<span class="t-num">42</span>);
+numbers<span class="t-op">-&gt;</span>AddBack(<span class="t-num">99</span>);
+<span class="t-kw">each</span>(i : numbers) {
+  numbers<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h3 id="generic_methods">
@@ -2075,22 +2053,22 @@ each(i : numbers) {
          <p>
           A method can declare its own type parameters after its name. They are inferred from the arguments and checked against their bound, so the call needs no cast.
          </p>
-         <pre><code class="language-cpp">function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T {
-  best := values-&gt;Get(0);
-  for(i := 1; i &lt; values-&gt;Size(); i += 1;) {
-    v := values-&gt;Get(i);
-    if(v-&gt;Compare(best) &gt; 0) {
-      best := v;
+         <pre><code class="language-objeck"><span class="t-kw">function</span> : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) <span class="t-op">~</span> T {
+  best <span class="t-op">:=</span> values<span class="t-op">-&gt;</span>Get(<span class="t-num">0</span>);
+  <span class="t-kw">for</span>(i <span class="t-op">:=</span> <span class="t-num">1</span>; i &lt; values<span class="t-op">-&gt;</span>Size(); i += <span class="t-num">1</span>;) {
+    v <span class="t-op">:=</span> values<span class="t-op">-&gt;</span>Get(i);
+    <span class="t-kw">if</span>(v<span class="t-op">-&gt;</span>Compare(best) &gt; <span class="t-num">0</span>) {
+      best <span class="t-op">:=</span> v;
     };
   };
-  return best;
+  <span class="t-kw">return</span> best;
 }
 
-names := Vector-&gt;New()&lt;String&gt;;
-names-&gt;AddBack("pear");
-names-&gt;AddBack("apple");
-names-&gt;AddBack("zucchini");
-Max(names)-&gt;PrintLine(); # zucchini
+names <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+names<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"pear"</span>);
+names<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"apple"</span>);
+names<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"zucchini"</span>);
+Max(names)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># zucchini</span>
 </code></pre>
          <h2 id="error_handling">
           Error Handling
@@ -2102,16 +2080,16 @@ Max(names)-&gt;PrintLine(); # zucchini
          <p>
           The <code>leaving</code> block ensures cleanup code runs when a method or function exits, regardless of how it exits. This is similar to <code>finally</code> in other languages.
          </p>
-         <pre><code class="language-cpp"># leaving block ensures cleanup runs when method exits
-function : ProcessFile(name : String) ~ Nil {
-  reader := System.IO.Filesystem.FileReader-&gt;New(name);
-  leaving {
-    reader-&gt;Close();
+         <pre><code class="language-objeck"><span class="t-com"># leaving block ensures cleanup runs when method exits</span>
+<span class="t-kw">function</span> : <span class="t-fn">ProcessFile</span>(name : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+  reader <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Filesystem</span>.<span class="t-cls">FileReader</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(name);
+  <span class="t-kw">leaving</span> {
+    reader<span class="t-op">-&gt;</span>Close();
   };
 
-  content := reader-&gt;ReadFile();
-  if(content &lt;&gt; Nil) {
-    content-&gt;PrintLine();
+  content <span class="t-op">:=</span> reader<span class="t-op">-&gt;</span>ReadFile();
+  <span class="t-kw">if</span>(content <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+    content<span class="t-op">-&gt;</span>PrintLine();
   };
 }
 </code></pre>
@@ -2119,18 +2097,18 @@ function : ProcessFile(name : String) ~ Nil {
          <p>
           The <code>try/otherwise</code> construct catches runtime errors and allows the program to recover gracefully. If an error occurs inside a <code>try</code> block, execution transfers to the <code>otherwise</code> block instead of terminating the program.
          </p>
-         <pre><code class="language-cpp">class ErrorExample {
-  function : Main(args : String[]) ~ Nil {
-    # attempt an operation that may fail
+         <pre><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">ErrorExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># attempt an operation that may fail</span>
     try {
-      value : String;
-      value-&gt;Size()-&gt;PrintLine(); # Nil dereference
+      value : <span class="t-type">String</span>;
+      value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># Nil dereference</span>
     }
     otherwise {
-      "Error: recovered from Nil dereference"-&gt;PrintLine();
+      <span class="t-str">"Error: recovered from Nil dereference"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    "Program continues..."-&gt;PrintLine();
+    <span class="t-str">"Program continues..."</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -2141,37 +2119,37 @@ function : ProcessFile(name : String) ~ Nil {
          <p>
           Derive from <code>Error</code> to define your own errors, raise one with <code>Runtime-&gt;Raise</code>, and catch it by type with <code>try { } on(e : Type) { } finally { }</code>. Clauses are tested in order, an error that no clause names carries on after the <code>finally</code> block, and <code>return</code>, <code>break</code> and <code>continue</code> leave through <code>finally</code>. The runtime's own faults are <code>NilError</code>, <code>IndexError</code>, <code>DivideByZeroError</code>, <code>CastError</code> and <code>RuntimeError</code>.
          </p>
-         <pre><code class="language-cpp">class ParseError from Error {
-  @line : Int;
+         <pre><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">ParseError</span> <span class="t-kw">from</span> <span class="t-cls">Error</span> {
+  @line : <span class="t-type">Int</span>;
 
-  New(message : String, line : Int) {
-    Parent(message);
-    @line := line;
+  <span class="t-kw">New</span>(message : <span class="t-type">String</span>, line : <span class="t-type">Int</span>) {
+    <span class="t-kw">Parent</span>(message);
+    @line <span class="t-op">:=</span> line;
   }
 
-  method : public : GetLine() ~ Int {
-    return @line;
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetLine</span>() <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> @line;
   }
 }
 
-class ErrorExample {
-  function : Parse(line : Int) ~ Int {
-    if(line % 2 = 1) {
-      Runtime-&gt;Raise(ParseError-&gt;New("bad row", line));
+<span class="t-kw">class</span> <span class="t-cls">ErrorExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Parse</span>(line : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">if</span>(line % <span class="t-num">2</span> = <span class="t-num">1</span>) {
+      <span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>Raise(<span class="t-cls">ParseError</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"bad row"</span>, line));
     };
-    return line;
+    <span class="t-kw">return</span> line;
   }
 
-  function : Main(args : String[]) ~ Nil {
-    each(i : 4) {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-kw">each</span>(i : <span class="t-num">4</span>) {
       try {
-        "row {$(Parse(i))} ok"-&gt;PrintLine();
+        <span class="t-str">"row {$(Parse(i))} ok"</span><span class="t-op">-&gt;</span>PrintLine();
       }
       on(e : ParseError) {
-        "row {$(e-&gt;GetLine())}: {$(e-&gt;GetMessage())}"-&gt;PrintLine();
+        <span class="t-str">"row {$(e-&gt;GetLine())}: {$(e-&gt;GetMessage())}"</span><span class="t-op">-&gt;</span>PrintLine();
       }
       finally {
-        "checked row {$i}"-&gt;PrintLine();
+        <span class="t-str">"checked row {$i}"</span><span class="t-op">-&gt;</span>PrintLine();
       };
     };
   }
@@ -2186,27 +2164,27 @@ class ErrorExample {
          <p>
           Objeck supports runtime introspection through the <code>System.Introspection</code> classes. You can query an object's class, check type relationships, and dynamically instantiate classes.
          </p>
-         <pre><code class="language-cpp"># get class information at runtime
-ship := StarShip-&gt;New();
-class_obj := ship-&gt;GetClass();
-class_obj-&gt;GetName()-&gt;PrintLine(); # "StarShip"
+         <pre><code class="language-objeck"><span class="t-com"># get class information at runtime</span>
+ship <span class="t-op">:=</span> <span class="t-cls">StarShip</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+class_obj <span class="t-op">:=</span> ship<span class="t-op">-&gt;</span>GetClass();
+class_obj<span class="t-op">-&gt;</span>GetName()<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># "StarShip"</span>
 
-# get unique IDs
-ship-&gt;GetClassID()-&gt;PrintLine();
-ship-&gt;GetInstanceID()-&gt;PrintLine();
+<span class="t-com"># get unique IDs</span>
+ship<span class="t-op">-&gt;</span>GetClassID()<span class="t-op">-&gt;</span>PrintLine();
+ship<span class="t-op">-&gt;</span>GetInstanceID()<span class="t-op">-&gt;</span>PrintLine();
 
-# check type hierarchy
-ship-&gt;TypeOf(Vehicle)-&gt;PrintLine(); # true
-ship-&gt;TypeOf(Pinto)-&gt;PrintLine();   # false
+<span class="t-com"># check type hierarchy</span>
+ship<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(Vehicle)<span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># true</span>
+ship<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(Pinto)<span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># false</span>
 </code></pre>
          <p>
           Dynamic instantiation allows classes to be created by name at runtime, enabling patterns like dependency injection.
          </p>
-         <pre><code class="language-cpp"># dynamic class instantiation
-class_obj := Class-&gt;Instance("StarShip");
-if(class_obj &lt;&gt; Nil) {
-  instance := class_obj-&gt;As(StarShip);
-  instance-&gt;EchoDescription();
+         <pre><code class="language-objeck"><span class="t-com"># dynamic class instantiation</span>
+class_obj <span class="t-op">:=</span> <span class="t-cls">Class</span><span class="t-op">-&gt;</span>Instance(<span class="t-str">"StarShip"</span>);
+<span class="t-kw">if</span>(class_obj <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+  instance <span class="t-op">:=</span> class_obj<span class="t-op">-&gt;</span><span class="t-kw">As</span>(StarShip);
+  instance<span class="t-op">-&gt;</span>EchoDescription();
 };
 </code></pre>
          <h2 id="threads">
@@ -2222,18 +2200,18 @@ if(class_obj &lt;&gt; Nil) {
           </a>
           is a complete code example demonstrating the concepts above.
          </p>
-         <pre class="line-numbers"><code class="language-cpp"># lock cache for while we search or insert content
-critical(@content_mutex) {
-	# found in cache
-	found := @content_cache-&gt;Find(path_name);
-	if(found &lt;&gt; Nil) {
-		content := found-&gt;Get();
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># lock cache for while we search or insert content</span>
+<span class="t-kw">critical</span>(@content_mutex) {
+	<span class="t-com"># found in cache</span>
+	found <span class="t-op">:=</span> @content_cache<span class="t-op">-&gt;</span>Find(path_name);
+	<span class="t-kw">if</span>(found <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+		content <span class="t-op">:=</span> found<span class="t-op">-&gt;</span>Get();
 	}
-	# not found, add to cache
-	else {
-		content := System.IO.Filesystem.FileReader-&gt;ReadBinaryFile(path_name);
-		if(content &lt;&gt; Nil) {
-			@content_cache-&gt;Insert(path_name, ByteArrayRef-&gt;New(content));
+	<span class="t-com"># not found, add to cache</span>
+	<span class="t-kw">else</span> {
+		content <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Filesystem</span>.<span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(path_name);
+		<span class="t-kw">if</span>(content <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+			@content_cache<span class="t-op">-&gt;</span>Insert(path_name, <span class="t-type">ByteArrayRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(content));
 		};
 	};
 };
@@ -2250,30 +2228,30 @@ critical(@content_mutex) {
          <p>
           As an example, observe the execution time of this prime number program with and without the use of the native keyword.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class FindPrime {
-   function : Main(args : System.String[]) ~ Nil {
-     Run(100000);
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">FindPrime</span> {
+   <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-cls">System</span>.<span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+     Run(<span class="t-num">100000</span>);
    }
  
-   function : native : Run(topCandidate : Int) ~ Nil {
-     candidate := 2;
-     while(candidate &lt;= topCandidate) {
-       trialDivisor := 2;
-       prime := 1;
+   <span class="t-kw">function</span> : <span class="t-mod">native</span> : <span class="t-fn">Run</span>(topCandidate : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+     candidate <span class="t-op">:=</span> <span class="t-num">2</span>;
+     <span class="t-kw">while</span>(candidate &lt;= topCandidate) {
+       trialDivisor <span class="t-op">:=</span> <span class="t-num">2</span>;
+       prime <span class="t-op">:=</span> <span class="t-num">1</span>;
 
-       found := true;
-       while(trialDivisor * trialDivisor &lt;= candidate &amp; found) {
-         if(candidate % trialDivisor = 0) {
-           prime := 0;
-           found := false;
+       found <span class="t-op">:=</span> <span class="t-const">true</span>;
+       <span class="t-kw">while</span>(trialDivisor * trialDivisor &lt;= candidate &amp; found) {
+         <span class="t-kw">if</span>(candidate % trialDivisor = <span class="t-num">0</span>) {
+           prime <span class="t-op">:=</span> <span class="t-num">0</span>;
+           found <span class="t-op">:=</span> <span class="t-const">false</span>;
          }
-         else {
+         <span class="t-kw">else</span> {
            trialDivisor++;
          };
        };
 
-       if(found) {
-         candidate-&gt;PrintLine();
+       <span class="t-kw">if</span>(found) {
+         candidate<span class="t-op">-&gt;</span>PrintLine();
        };
        candidate++;
      };
@@ -2286,21 +2264,21 @@ critical(@content_mutex) {
          <p>
           Creating class libraries is pretty straightforward. Put one or more classes into one or more files and compile the code with the “-tar lib” option. Code for libraries cannot contain a “main” function.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class Pair {
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Pair</span> {
   @key : Compare;
   @value : Base;
  
-  New(key : Compare, value : Base) {
-    @key := key;
-    @value := value;
+  <span class="t-kw">New</span>(key : Compare, value : Base) {
+    @key <span class="t-op">:=</span> key;
+    @value <span class="t-op">:=</span> value;
   }
  
-  method : public : GetKey() ~ Compare {
-    return @key;
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetKey</span>() <span class="t-op">~</span> Compare {
+    <span class="t-kw">return</span> @key;
   }
  
-  method : public : Get() ~ Base {
-    return @value;
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Get</span>() <span class="t-op">~</span> Base {
+    <span class="t-kw">return</span> @value;
   }
 }
 </code></pre>
@@ -2324,9 +2302,9 @@ critical(@content_mutex) {
          <p>
           Reads and prints a file
          </p>
-         <pre class="line-numbers"><code class="language-cpp">content := System.IO.Filesystem.FileReader-&gt;ReadFile("in.txt");
-content-&gt;PrintLine();
-System.IO.Filesystem.FileReader-&gt;WriteFile("out.txt", content);
+         <pre class="line-numbers"><code class="language-objeck">content <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Filesystem</span>.<span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadFile(<span class="t-str">"in.txt"</span>);
+content<span class="t-op">-&gt;</span>PrintLine();
+<span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Filesystem</span>.<span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>WriteFile(<span class="t-str">"out.txt"</span>, content);
 </code></pre>
          <h4 id="json_parsing">
           HTTPS Client &amp; JSON Parsing
@@ -2334,15 +2312,15 @@ System.IO.Filesystem.FileReader-&gt;WriteFile("out.txt", content);
          <p>
           Read JSON from a timeserver and parser the date/time
          </p>
-         <pre class="line-numbers"><code class="language-cpp">get_buf := Web.HTTP.HttpClient-&gt;QuickGet(Web.HTTP.Url-&gt;New("http://worldtimeapi.org/api/ip"));
-if(get_buf &lt;&gt; Nil) {
-	json_elem := Data.JSON.JsonParser-&gt;TextToElement(get_buf-&gt;ToString());
-	if(json_elem &lt;&gt; Nil) {
-		date_time_elem := json_elem-&gt;Get("datetime");
-		if(date_time_elem &lt;&gt; Nil) {
-			date_time := ParseTime(date_time_elem-&gt;GetString());
-			if(date_time &lt;&gt; Nil) {
-				date_time-&gt;ToString()-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck">get_buf <span class="t-op">:=</span> <span class="t-cls">Web</span>.<span class="t-cls">HTTP</span>.<span class="t-cls">HttpClient</span><span class="t-op">-&gt;</span>QuickGet(<span class="t-cls">Web</span>.<span class="t-cls">HTTP</span>.<span class="t-cls">Url</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"http://worldtimeapi.org/api/ip"</span>));
+<span class="t-kw">if</span>(get_buf <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+	json_elem <span class="t-op">:=</span> <span class="t-cls">Data</span>.<span class="t-cls">JSON</span>.<span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(get_buf<span class="t-op">-&gt;</span>ToString());
+	<span class="t-kw">if</span>(json_elem <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+		date_time_elem <span class="t-op">:=</span> json_elem<span class="t-op">-&gt;</span>Get(<span class="t-str">"datetime"</span>);
+		<span class="t-kw">if</span>(date_time_elem <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+			date_time <span class="t-op">:=</span> ParseTime(date_time_elem<span class="t-op">-&gt;</span>GetString());
+			<span class="t-kw">if</span>(date_time <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+				date_time<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
 			};
 		};
 	};
@@ -2354,97 +2332,97 @@ if(get_buf &lt;&gt; Nil) {
          <p>
           Parse and XML document and access elements
          </p>
-         <pre class="line-numbers"><code class="language-cpp">in := "";
-in += "<inventory #45x10^3\"="" store="" title='\"OmniCorp'>";
-in += "<section name='\"health\"'>";
-in += "<item stock='\"12\"' upc='\"123456789\"'>";
-in += "<name>Invisibility Cream</name>";
-in += "<price>14.50</price>";
-in += "<description>Makes you invisible</description>";
-in += "</item>";
-in += "<item stock='\"18\"' upc='\"445322344\"'>";
-in += "<name>Levitation Salve</name>";
-in += "<price>23.99</price>";
-in += "<description>Levitate yourself for up to 3 hours per application</description>";
-in += "</item>";
-in += "</section>";
-in += "<section name='\"food\"'>";
-in += "<item stock='\"653\"' upc='\"485672034\"'>";
-in += "<name>Blork and Freen Instameal</name>";
-in += "<price>4.95</price>";
-in += "<description>A tasty meal in a tablet; just add water</description>";
-in += "</item>";
-in += "<item stock='\"44\"' upc='\"132957764\"'>";
-in += "<name>Grob winglets</name>";
-in += "<price>3.56</price>";
-in += "<description>Tender winglets of Grob. Just add water</description>";
-in += "</item>";
-in += "</section>";
-in += "</inventory>";
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">in</span> <span class="t-op">:=</span> <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Invisibility Cream"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"14.50"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Makes you invisible"</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Levitation Salve"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"23.99"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Levitate yourself for up to 3 hours per application"</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Blork and Freen Instameal"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"4.95"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"A tasty meal in a tablet; just add water"</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Grob winglets"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"3.56"</span>;
+<span class="t-kw">in</span> += <span class="t-str">"Tender winglets of Grob. Just add water"</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
+<span class="t-kw">in</span> += <span class="t-str">""</span>;
 
-parser := XmlParser-&gt;New(in);
-if(parser-&gt;Parse()) {
-	# get first item
-	results := parser-&gt;FindElements("/inventory/section[1]/item[1]")<xmlelement>;
-	if(results &lt;&gt; Nil) {
-		Standard-&gt;Print("items: ")-&gt;PrintLine(results-&gt;Size());
+parser <span class="t-op">:=</span> <span class="t-cls">XmlParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-kw">in</span>);
+<span class="t-kw">if</span>(parser<span class="t-op">-&gt;</span>Parse()) {
+	<span class="t-com"># get first item</span>
+	results <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>FindElements(<span class="t-str">"/inventory/section[1]/item[1]"</span>);
+	<span class="t-kw">if</span>(results <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+		<span class="t-cls">Standard</span><span class="t-op">-&gt;</span>Print(<span class="t-str">"items: "</span>)<span class="t-op">-&gt;</span>PrintLine(results<span class="t-op">-&gt;</span>Size());
 	};
-	# get all prices
-	results := parser-&gt;FindElements("/inventory/section/item/price")<xmlelement>;
-	if(results &lt;&gt; Nil) {
-		each(i : results) {					
-			element := results-&gt;Get(i);
-			element-&gt;GetContent()-&gt;PrintLine();
+	<span class="t-com"># get all prices</span>
+	results <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>FindElements(<span class="t-str">"/inventory/section/item/price"</span>);
+	<span class="t-kw">if</span>(results <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+		<span class="t-kw">each</span>(i : results) {					
+			element <span class="t-op">:=</span> results<span class="t-op">-&gt;</span>Get(i);
+			element<span class="t-op">-&gt;</span>GetContent()<span class="t-op">-&gt;</span>PrintLine();
 		};
 	};
-	# get names
-	results := parser-&gt;FindElements("/inventory/section/item/name")<xmlelement>;
-	if(results &lt;&gt; Nil) {
-		Standard-&gt;Print("names: ")-&gt;PrintLine(results-&gt;Size());
+	<span class="t-com"># get names</span>
+	results <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>FindElements(<span class="t-str">"/inventory/section/item/name"</span>);
+	<span class="t-kw">if</span>(results <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+		<span class="t-cls">Standard</span><span class="t-op">-&gt;</span>Print(<span class="t-str">"names: "</span>)<span class="t-op">-&gt;</span>PrintLine(results<span class="t-op">-&gt;</span>Size());
 	};
 };
-</xmlelement></xmlelement></xmlelement></code></pre>
+</code></pre>
          <h4 id="alarm">
           Alarm
          </h4>
          <p>
           Sets alarms for 3 and 5 seconds
          </p>
-         <pre class="line-numbers"><code class="language-cpp">System.Time.Alarm-&gt;New() {
-	New() {
-		Parent(1500);
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-cls">System</span>.<span class="t-cls">Time</span>.<span class="t-cls">Alarm</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>() {
+	<span class="t-kw">New</span>() {
+		<span class="t-kw">Parent</span>(<span class="t-num">1500</span>);
 	}
 	
-	method : public : Ring(b : Base) ~ Nil {
-		v := b-&gt;As(IntRef)-&gt;Get();
-		"Foo {$v}!"-&gt;PrintLine();
+	<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Ring</span>(b : Base) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		v <span class="t-op">:=</span> b<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">IntRef</span>)<span class="t-op">-&gt;</span>Get();
+		<span class="t-str">"Foo {$v}!"</span><span class="t-op">-&gt;</span>PrintLine();
 	}
-}-&gt;Start(IntRef-&gt;New(7));
+}<span class="t-op">-&gt;</span>Start(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">7</span>));
 
-System.Time.Alarm-&gt;New() {
-	New() {
-		Parent(3000);
+<span class="t-cls">System</span>.<span class="t-cls">Time</span>.<span class="t-cls">Alarm</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>() {
+	<span class="t-kw">New</span>() {
+		<span class="t-kw">Parent</span>(<span class="t-num">3000</span>);
 	}
 	
-	method : public : Ring(b : Base) ~ Nil {
-		str := b-&gt;As(String);
-		"Bar {$str}."-&gt;PrintLine();
+	<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Ring</span>(b : Base) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		str <span class="t-op">:=</span> b<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">String</span>);
+		<span class="t-str">"Bar {$str}."</span><span class="t-op">-&gt;</span>PrintLine();
 	}
-}-&gt;Start("It's Math...");
+}<span class="t-op">-&gt;</span>Start(<span class="t-str">"It's Math..."</span>);
 
-System.Time.Alarm-&gt;New() {
-	New() {
-		Parent(5000, true);
+<span class="t-cls">System</span>.<span class="t-cls">Time</span>.<span class="t-cls">Alarm</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>() {
+	<span class="t-kw">New</span>() {
+		<span class="t-kw">Parent</span>(<span class="t-num">5000</span>, <span class="t-const">true</span>);
 	}
 	
-	method : public : Ring(b : Base) ~ Nil {
-		"!Soap!"-&gt;PrintLine();
+	<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Ring</span>(b : Base) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		<span class="t-str">"!Soap!"</span><span class="t-op">-&gt;</span>PrintLine();
 	}
-}-&gt;Start(Nil);
+}<span class="t-op">-&gt;</span>Start(<span class="t-const">Nil</span>);
 
-"Thread started..."-&gt;PrintLine();
-System.Concurrency.Thread-&gt;Sleep(30000);
-"Done."-&gt;PrintLine();
+<span class="t-str">"Thread started..."</span><span class="t-op">-&gt;</span>PrintLine();
+<span class="t-cls">System</span>.<span class="t-cls">Concurrency</span>.<span class="t-cls">Thread</span><span class="t-op">-&gt;</span>Sleep(<span class="t-num">30000</span>);
+<span class="t-str">"Done."</span><span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
          <h4 id="regex">
           Regular Expression
@@ -2452,99 +2430,99 @@ System.Concurrency.Thread-&gt;Sleep(30000);
          <p>
           Sample RegEx queries. The <a href="guide_data.html">JSON, XML and RegEx guide</a> shows what each library does with missing or malformed input.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">string := "I am a string";
-# exact match
-regex := RegEx-&gt;New(".*string");
-if(regex-&gt;MatchExact(".*string")) {
-	"ends with 'string'"-&gt;PrintLine();
+         <pre class="line-numbers"><code class="language-objeck">string <span class="t-op">:=</span> <span class="t-str">"I am a string"</span>;
+<span class="t-com"># exact match</span>
+regex <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">".*string"</span>);
+<span class="t-kw">if</span>(regex<span class="t-op">-&gt;</span>MatchExact(<span class="t-str">".*string"</span>)) {
+	<span class="t-str">"ends with 'string'"</span><span class="t-op">-&gt;</span>PrintLine();
 };
-# replace all
-regex := RegEx-&gt;New(" a ");
-regex-&gt;ReplaceAll(string, " another ")-&gt;PrintLine();
+<span class="t-com"># replace all</span>
+regex <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">" a "</span>);
+regex<span class="t-op">-&gt;</span>ReplaceAll(string, <span class="t-str">" another "</span>)<span class="t-op">-&gt;</span>PrintLine();
 
-regex := RegEx-&gt;New("((4\\.[0-3])|(2\\.[0-3]))");
-found := regex-&gt;Find("Mozilla/4.0")<result>;
-each(i : found) {
-	found-&gt;Get(i)-&gt;ToString()-&gt;PrintLine();
-};
-
-regex := RegEx-&gt;New("1[3-5]?9");
-match := regex-&gt;Match("149");
-if(match &lt;&gt; Nil) {
-	match-&gt;PrintLine();
+regex <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"((4\\.[0-3])|(2\\.[0-3]))"</span>);
+found <span class="t-op">:=</span> regex<span class="t-op">-&gt;</span>Find(<span class="t-str">"Mozilla/4.0"</span>);
+<span class="t-kw">each</span>(i : found) {
+	found<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
 };
 
-regex := RegEx-&gt;New("([a-z]|[0-9]|-)+");
-match := regex-&gt;Match("my_title_here");
-if(match &lt;&gt; Nil) {
-	match-&gt;PrintLine();
+regex <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"1[3-5]?9"</span>);
+match <span class="t-op">:=</span> regex<span class="t-op">-&gt;</span>Match(<span class="t-str">"149"</span>);
+<span class="t-kw">if</span>(match <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+	match<span class="t-op">-&gt;</span>PrintLine();
 };
-</result></code></pre>
+
+regex <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"([a-z]|[0-9]|-)+"</span>);
+match <span class="t-op">:=</span> regex<span class="t-op">-&gt;</span>Match(<span class="t-str">"my_title_here"</span>);
+<span class="t-kw">if</span>(match <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+	match<span class="t-op">-&gt;</span>PrintLine();
+};
+</code></pre>
          <h4 id="web-client">
           Web Client
          </h4>
          <p>
           Fetched a webpage and parses the URLs. The <a href="guide_http.html">HTTP guide</a> has a complete server and client, and explains how the client reuses connections.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">input := args[0];
+         <pre class="line-numbers"><code class="language-objeck">input <span class="t-op">:=</span> args[<span class="t-num">0</span>];
 
-output := HttpsClient-&gt;New()-&gt;QuickGet(Web.HTTP.Url-&gt;New(input))-&gt;ToString();
-output_len := output-&gt;Size();
-"URL: {$input}, read: {$output_len} character(s)"-&gt;PrintLine();
+output <span class="t-op">:=</span> <span class="t-cls">HttpsClient</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>QuickGet(<span class="t-cls">Web</span>.<span class="t-cls">HTTP</span>.<span class="t-cls">Url</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(input))<span class="t-op">-&gt;</span>ToString();
+output_len <span class="t-op">:=</span> output<span class="t-op">-&gt;</span>Size();
+<span class="t-str">"URL: {$input}, read: {$output_len} character(s)"</span><span class="t-op">-&gt;</span>PrintLine();
 
-"running regex..."-&gt;PrintLine();		
-expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&amp;(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
+<span class="t-str">"running regex..."</span><span class="t-op">-&gt;</span>PrintLine();		
+expr <span class="t-op">:=</span> <span class="t-str">"(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&amp;(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')"</span>;
 
-found := RegEx-&gt;New(expr)-&gt;Find(output)<result>;
-"---"-&gt;PrintLine();
-each(i : found) {
-	found-&gt;Get(i)-&gt;ToString()-&gt;PrintLine();
+found <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(expr)<span class="t-op">-&gt;</span>Find(output);
+<span class="t-str">"---"</span><span class="t-op">-&gt;</span>PrintLine();
+<span class="t-kw">each</span>(i : found) {
+	found<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
 };
-</result></code></pre>
+</code></pre>
          <h4 id="web-server">
           Web Server
          </h4>
          <p>
           HTTPS web sever for user authentication
          </p>
-         <pre class="line-numbers"><code class="language-cpp">use Web.HTTP.Server;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Web</span>.<span class="t-cls">HTTP</span>.Server;
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		WebServer-&gt;ServeSecure("config/passwd_config.json");
+<span class="t-kw">class</span> <span class="t-cls">Test</span> {
+	<span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		<span class="t-cls">WebServer</span><span class="t-op">-&gt;</span>ServeSecure(<span class="t-str">"config/passwd_config.json"</span>);
 	}
 }
 
-class RequestHandler from HttpsRequestHandler {
-	New() {
-		Parent();
+<span class="t-kw">class</span> <span class="t-cls">RequestHandler</span> <span class="t-kw">from</span> <span class="t-cls">HttpsRequestHandler</span> {
+	<span class="t-kw">New</span>() {
+		<span class="t-kw">Parent</span>();
 	}
 	
-	method : ProcessGet(request : Request, response : Response) ~ Bool {
-		# authenticated
-		if(request-&gt;HasParam("unauthenticated")) {
-			response-&gt;RemoveCookie("authenticated");
+	<span class="t-kw">method</span> : <span class="t-fn">ProcessGet</span>(request : Request, response : Response) <span class="t-op">~</span> <span class="t-type">Bool</span> {
+		<span class="t-com"># authenticated</span>
+		<span class="t-kw">if</span>(request<span class="t-op">-&gt;</span>HasParam(<span class="t-str">"unauthenticated"</span>)) {
+			response<span class="t-op">-&gt;</span>RemoveCookie(<span class="t-str">"authenticated"</span>);
 		}
-		# unauthenticated
-		else if(request-&gt;HasCookie("authenticated")) {
-			return response-&gt;SetForwardAlias("auth.html");
+		<span class="t-com"># unauthenticated</span>
+		<span class="t-kw">else</span> <span class="t-kw">if</span>(request<span class="t-op">-&gt;</span>HasCookie(<span class="t-str">"authenticated"</span>)) {
+			<span class="t-kw">return</span> response<span class="t-op">-&gt;</span>SetForwardAlias(<span class="t-str">"auth.html"</span>);
 		}
-		# check name and password
-		else if(request-&gt;HasParam("name") &amp; request-&gt;HasParam("password")) {
-			name := request-&gt;GetParam("name");
-			password := request-&gt;GetParam("password");
-			if(name-&gt;Equals("mega") &amp; password-&gt;Equals("1234")) {
-				response-&gt;AddCookie(Web.HTTP.Cookie-&gt;New("authenticated", "true"));
-				return response-&gt;SetForwardAlias("auth.html");
+		<span class="t-com"># check name and password</span>
+		<span class="t-kw">else</span> <span class="t-kw">if</span>(request<span class="t-op">-&gt;</span>HasParam(<span class="t-str">"name"</span>) &amp; request<span class="t-op">-&gt;</span>HasParam(<span class="t-str">"password"</span>)) {
+			name <span class="t-op">:=</span> request<span class="t-op">-&gt;</span>GetParam(<span class="t-str">"name"</span>);
+			password <span class="t-op">:=</span> request<span class="t-op">-&gt;</span>GetParam(<span class="t-str">"password"</span>);
+			<span class="t-kw">if</span>(name<span class="t-op">-&gt;</span>Equals(<span class="t-str">"mega"</span>) &amp; password<span class="t-op">-&gt;</span>Equals(<span class="t-str">"1234"</span>)) {
+				response<span class="t-op">-&gt;</span>AddCookie(<span class="t-cls">Web</span>.<span class="t-cls">HTTP</span>.<span class="t-cls">Cookie</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"authenticated"</span>, <span class="t-str">"true"</span>));
+				<span class="t-kw">return</span> response<span class="t-op">-&gt;</span>SetForwardAlias(<span class="t-str">"auth.html"</span>);
 			};
 		};
 		
-		# show login page
-		return response-&gt;SetForwardAlias("index.html");
+		<span class="t-com"># show login page</span>
+		<span class="t-kw">return</span> response<span class="t-op">-&gt;</span>SetForwardAlias(<span class="t-str">"index.html"</span>);
 	}
 
-	method : ProcessPost(request : Request, response : Response) ~ Bool {
-		return false;
+	<span class="t-kw">method</span> : <span class="t-fn">ProcessPost</span>(request : Request, response : Response) <span class="t-op">~</span> <span class="t-type">Bool</span> {
+		<span class="t-kw">return</span> <span class="t-const">false</span>;
 	}
 }
 </code></pre>
@@ -2554,20 +2532,20 @@ class RequestHandler from HttpsRequestHandler {
          <p>
           Objects can be serialized to bytes and deserialized back using the <code>Serializer</code> and <code>Deserializer</code> classes. This allows saving object state to files or transmitting over a network.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">use Collection;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> Collection;
 
-# serialize objects to bytes
-serializer := System.IO.Serializer-&gt;New();
-pair := Pair-&gt;New("hello"&lt;Base&gt;, "world"&lt;Base&gt;)&lt;String, String&gt;;
-serializer-&gt;Write(pair);
-bytes := serializer-&gt;Serialize();
+<span class="t-com"># serialize objects to bytes</span>
+serializer <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Serializer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+pair <span class="t-op">:=</span> <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"hello"</span>&lt;Base&gt;, <span class="t-str">"world"</span>&lt;Base&gt;)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;;
+serializer<span class="t-op">-&gt;</span>Write(pair);
+bytes <span class="t-op">:=</span> serializer<span class="t-op">-&gt;</span>Serialize();
 
-# deserialize objects from bytes
-deserializer := System.IO.Deserializer-&gt;New(bytes);
-restored := deserializer-&gt;ReadObject()-&gt;As(Pair&lt;String, String&gt;);
-if(restored &lt;&gt; Nil) {
-  restored-&gt;GetFirst()&lt;String&gt;-&gt;PrintLine();
-  restored-&gt;GetSecond()&lt;String&gt;-&gt;PrintLine();
+<span class="t-com"># deserialize objects from bytes</span>
+deserializer <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Deserializer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(bytes);
+restored <span class="t-op">:=</span> deserializer<span class="t-op">-&gt;</span>ReadObject()<span class="t-op">-&gt;</span><span class="t-kw">As</span>(Pair&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;);
+<span class="t-kw">if</span>(restored <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+  restored<span class="t-op">-&gt;</span>GetFirst()&lt;<span class="t-type">String</span>&gt;<span class="t-op">-&gt;</span>PrintLine();
+  restored<span class="t-op">-&gt;</span>GetSecond()&lt;<span class="t-type">String</span>&gt;<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
          <h4 id="ai_ml">
@@ -2578,15 +2556,15 @@ if(restored &lt;&gt; Nil) {
          </p>
 
          <p><strong>OpenAI — cloud chat</strong></p>
-         <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-class OpenAIChat {
-  function : Main(args : String[]) ~ Nil {
-    token := FileReader-&gt;ReadFile("openai_api_key.dat")-&gt;Trim();
-    response := Response-&gt;Respond("gpt-4o-mini",
-      Pair-&gt;New("user", "Explain JIT compilation in one sentence.")&lt;String, String&gt;,
+<span class="t-kw">class</span> <span class="t-cls">OpenAIChat</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    token <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadFile(<span class="t-str">"openai_api_key.dat"</span>)<span class="t-op">-&gt;</span>Trim();
+    response <span class="t-op">:=</span> <span class="t-cls">Response</span><span class="t-op">-&gt;</span>Respond(<span class="t-str">"gpt-4o-mini"</span>,
+      <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>, <span class="t-str">"Explain JIT compilation in one sentence."</span>)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;,
       token);
-    response-&gt;GetText()-&gt;PrintLine();
+    response<span class="t-op">-&gt;</span>GetText()<span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -2594,27 +2572,27 @@ class OpenAIChat {
 &gt; obr openai_chat</pre>
 
          <p><strong>Gemini — cloud chat with vision</strong></p>
-         <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-class GeminiChat {
-  function : Main(args : String[]) ~ Nil {
-    token := EndPoint-&gt;GetApiKey();   # reads gemini_api_key.dat
+<span class="t-kw">class</span> <span class="t-cls">GeminiChat</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    token <span class="t-op">:=</span> <span class="t-cls">EndPoint</span><span class="t-op">-&gt;</span>GetApiKey();   <span class="t-com"># reads gemini_api_key.dat</span>
 
-    # text
-    content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New("What is JIT compilation?"));
-    candidates := Model-&gt;GenerateContent("models/gemini-2.0-flash", content, token);
-    if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
-      candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+    <span class="t-com"># text</span>
+    content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)<span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"What is JIT compilation?"</span>));
+    candidates <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>GenerateContent(<span class="t-str">"models/gemini-2.0-flash"</span>, content, token);
+    <span class="t-kw">if</span>(candidates <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; <span class="t-op">&lt;&gt;</span>candidates<span class="t-op">-&gt;</span>IsEmpty()) {
+      candidates<span class="t-op">-&gt;</span>First()<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # image + text
-    bytes := FileReader-&gt;ReadBinaryFile("chart.png");
-    content := Content-&gt;New("user")
-      -&gt;AddPart(TextPart-&gt;New("Summarize this chart."))
-      -&gt;AddPart(BinaryPart-&gt;New(bytes, "image/png"));
-    candidates := Model-&gt;GenerateContent("models/gemini-2.0-flash", content, token);
-    if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
-      candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+    <span class="t-com"># image + text</span>
+    bytes <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"chart.png"</span>);
+    content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)
+      <span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Summarize this chart."</span>))
+      <span class="t-op">-&gt;</span>AddPart(<span class="t-cls">BinaryPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(bytes, <span class="t-str">"image/png"</span>));
+    candidates <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>GenerateContent(<span class="t-str">"models/gemini-2.0-flash"</span>, content, token);
+    <span class="t-kw">if</span>(candidates <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; <span class="t-op">&lt;&gt;</span>candidates<span class="t-op">-&gt;</span>IsEmpty()) {
+      candidates<span class="t-op">-&gt;</span>First()<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
     };
   }
 }
@@ -2623,18 +2601,18 @@ class GeminiChat {
 &gt; obr gemini_chat</pre>
 
          <p><strong>Ollama — local models, no API key</strong></p>
-         <pre class="line-numbers"><code class="language-cpp">use API.Ollama;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Ollama;
 
-class LocalChat {
-  function : Main(args : String[]) ~ Nil {
-    # one-shot
-    Completion-&gt;Generate("llama3.2", "What is 2 + 2?")-&gt;PrintLine();
+<span class="t-kw">class</span> <span class="t-cls">LocalChat</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># one-shot</span>
+    <span class="t-cls">Completion</span><span class="t-op">-&gt;</span>Generate(<span class="t-str">"llama3.2"</span>, <span class="t-str">"What is 2 + 2?"</span>)<span class="t-op">-&gt;</span>PrintLine();
 
-    # multi-turn (context maintained automatically)
-    chat := Chat-&gt;New("llama3.2");
-    r1 := chat-&gt;Send("My name is Alice.");
-    r2 := chat-&gt;Send("What is my name?");
-    r2-&gt;PrintLine();   # "Your name is Alice."
+    <span class="t-com"># multi-turn (context maintained automatically)</span>
+    chat <span class="t-op">:=</span> <span class="t-cls">Chat</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"llama3.2"</span>);
+    r1 <span class="t-op">:=</span> chat<span class="t-op">-&gt;</span>Send(<span class="t-str">"My name is Alice."</span>);
+    r2 <span class="t-op">:=</span> chat<span class="t-op">-&gt;</span>Send(<span class="t-str">"What is my name?"</span>);
+    r2<span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># "Your name is Alice."</span>
   }
 }
 </code></pre>
@@ -2646,19 +2624,19 @@ class LocalChat {
          <p>
           The <code>ml</code> library provides classical ML algorithms: regression, classification, clustering, neural networks, and more.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">use System.ML;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class HousePrices {
-  function : Main(args : String[]) ~ Nil {
-    # features: [sqft, rooms]  →  price
-    X := [[800.0, 2.0], [1200.0, 3.0], [1600.0, 4.0], [2000.0, 5.0]];
-    y := [[150000.0], [220000.0], [300000.0], [380000.0]];
+<span class="t-kw">class</span> <span class="t-cls">HousePrices</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># features: [sqft, rooms]  →  price</span>
+    X <span class="t-op">:=</span> [[<span class="t-num">800.0</span>, <span class="t-num">2.0</span>], [<span class="t-num">1200.0</span>, <span class="t-num">3.0</span>], [<span class="t-num">1600.0</span>, <span class="t-num">4.0</span>], [<span class="t-num">2000.0</span>, <span class="t-num">5.0</span>]];
+    y <span class="t-op">:=</span> [[<span class="t-num">150000.0</span>], [<span class="t-num">220000.0</span>], [<span class="t-num">300000.0</span>], [<span class="t-num">380000.0</span>]];
 
-    model := LinearRegression-&gt;New();
-    if(model-&gt;Fit(X, y)) {
-      preds := model-&gt;Predict([[1400.0, 3.0]]);
-      "Predicted: {$preds[0,0]}"-&gt;PrintLine();
-      "R²: {$model-&gt;GetRSquared()}"-&gt;PrintLine();
+    model <span class="t-op">:=</span> <span class="t-cls">LinearRegression</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    <span class="t-kw">if</span>(model<span class="t-op">-&gt;</span>Fit(X, y)) {
+      preds <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>Predict([[<span class="t-num">1400.0</span>, <span class="t-num">3.0</span>]]);
+      <span class="t-str">"Predicted: {$preds[0,0]}"</span><span class="t-op">-&gt;</span>PrintLine();
+      <span class="t-str">"R²: {$model-&gt;GetRSquared()}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
   }
 }
@@ -2670,25 +2648,25 @@ class HousePrices {
          <p>
           The <code>ai</code> library covers graph search, adversarial game trees, metaheuristic optimization, and reinforcement learning.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">use System.AI;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.AI;
 
-class PathFinder {
-  function : Main(args : String[]) ~ Nil {
-    # weighted graph: 0→1→3 cheaper than 0→3 direct
-    graph := Graph-&gt;New(4);
-    graph-&gt;AddEdge(0, 1, 1.0);
-    graph-&gt;AddEdge(1, 2, 2.0);
-    graph-&gt;AddEdge(0, 3, 10.0);
-    graph-&gt;AddEdge(1, 3, 3.0);
+<span class="t-kw">class</span> <span class="t-cls">PathFinder</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># weighted graph: 0→1→3 cheaper than 0→3 direct</span>
+    graph <span class="t-op">:=</span> <span class="t-cls">Graph</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">4</span>);
+    graph<span class="t-op">-&gt;</span>AddEdge(<span class="t-num">0</span>, <span class="t-num">1</span>, <span class="t-num">1.0</span>);
+    graph<span class="t-op">-&gt;</span>AddEdge(<span class="t-num">1</span>, <span class="t-num">2</span>, <span class="t-num">2.0</span>);
+    graph<span class="t-op">-&gt;</span>AddEdge(<span class="t-num">0</span>, <span class="t-num">3</span>, <span class="t-num">10.0</span>);
+    graph<span class="t-op">-&gt;</span>AddEdge(<span class="t-num">1</span>, <span class="t-num">3</span>, <span class="t-num">3.0</span>);
 
-    result := Dijkstra-&gt;FindPath(graph, 0, 3);
-    if(result-&gt;Found()) {
-      "Cost: {$result-&gt;GetCost()}"-&gt;PrintLine();
-      path := result-&gt;GetPath();
-      each(i : path) {
-        "{$path[i]} "-&gt;Print();
+    result <span class="t-op">:=</span> <span class="t-cls">Dijkstra</span><span class="t-op">-&gt;</span>FindPath(graph, <span class="t-num">0</span>, <span class="t-num">3</span>);
+    <span class="t-kw">if</span>(result<span class="t-op">-&gt;</span>Found()) {
+      <span class="t-str">"Cost: {$result-&gt;GetCost()}"</span><span class="t-op">-&gt;</span>PrintLine();
+      path <span class="t-op">:=</span> result<span class="t-op">-&gt;</span>GetPath();
+      <span class="t-kw">each</span>(i : path) {
+        <span class="t-str">"{$path[i]} "</span><span class="t-op">-&gt;</span>Print();
       };
-      "\n"-&gt;Print();
+      <span class="t-str">"\n"</span><span class="t-op">-&gt;</span>Print();
     };
   }
 }
@@ -2706,43 +2684,43 @@ class PathFinder {
          <p>
           Objeck provides database access through ODBC, supporting SQL Server, PostgreSQL, MySQL, SQLite, and any ODBC-compliant database. Connect using a data source name (DSN) or a connection string.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">use Database.ODBC;
+         <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Database</span>.ODBC;
 
-class DbExample {
-  function : Main(args : String[]) ~ Nil {
-    # connect using DSN
-    conn := Connection-&gt;New("my_dsn", "user", "password");
+<span class="t-kw">class</span> <span class="t-cls">DbExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># connect using DSN</span>
+    conn <span class="t-op">:=</span> <span class="t-cls">Connection</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"my_dsn"</span>, <span class="t-str">"user"</span>, <span class="t-str">"password"</span>);
 
-    # or connect using a connection string
-    # conn := Connection-&gt;New("Driver={PostgreSQL};Server=localhost;Database=mydb;Uid=user;Pwd=pass;");
+    <span class="t-com"># or connect using a connection string</span>
+    <span class="t-com"># conn := Connection-&gt;New("Driver={PostgreSQL};Server=localhost;Database=mydb;Uid=user;Pwd=pass;");</span>
 
-    if(conn-&gt;IsOpen()) {
-      # query with a prepared statement
-      ps := conn-&gt;CreateParameterStatement("SELECT id, name FROM users WHERE age &gt; ?");
-      ps-&gt;SetInt(1, 21);
-      rs := ps-&gt;Select();
+    <span class="t-kw">if</span>(conn<span class="t-op">-&gt;</span>IsOpen()) {
+      <span class="t-com"># query with a prepared statement</span>
+      ps <span class="t-op">:=</span> conn<span class="t-op">-&gt;</span>CreateParameterStatement(<span class="t-str">"SELECT id, name FROM users WHERE age &gt; ?"</span>);
+      ps<span class="t-op">-&gt;</span>SetInt(<span class="t-num">1</span>, <span class="t-num">21</span>);
+      rs <span class="t-op">:=</span> ps<span class="t-op">-&gt;</span>Select();
 
-      if(rs &lt;&gt; Nil) {
-        while(rs-&gt;Next()) {
-          id := rs-&gt;GetBigInt("id");
-          name := rs-&gt;GetVarchar("name");
-          "{$id}: {$name}"-&gt;PrintLine();
+      <span class="t-kw">if</span>(rs <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+        <span class="t-kw">while</span>(rs<span class="t-op">-&gt;</span>Next()) {
+          id <span class="t-op">:=</span> rs<span class="t-op">-&gt;</span>GetBigInt(<span class="t-str">"id"</span>);
+          name <span class="t-op">:=</span> rs<span class="t-op">-&gt;</span>GetVarchar(<span class="t-str">"name"</span>);
+          <span class="t-str">"{$id}: {$name}"</span><span class="t-op">-&gt;</span>PrintLine();
         };
-        rs-&gt;Close();
+        rs<span class="t-op">-&gt;</span>Close();
       };
-      ps-&gt;Close();
+      ps<span class="t-op">-&gt;</span>Close();
 
-      # insert with transaction control
-      conn-&gt;SetAutoCommit(false);
-      count := conn-&gt;Update("INSERT INTO logs(message) VALUES('hello')");
-      if(count &gt; 0) {
-        conn-&gt;Commit();
+      <span class="t-com"># insert with transaction control</span>
+      conn<span class="t-op">-&gt;</span>SetAutoCommit(<span class="t-const">false</span>);
+      count <span class="t-op">:=</span> conn<span class="t-op">-&gt;</span>Update(<span class="t-str">"INSERT INTO logs(message) VALUES('hello')"</span>);
+      <span class="t-kw">if</span>(count &gt; <span class="t-num">0</span>) {
+        conn<span class="t-op">-&gt;</span>Commit();
       }
-      else {
-        conn-&gt;Rollback();
+      <span class="t-kw">else</span> {
+        conn<span class="t-op">-&gt;</span>Rollback();
       };
 
-      conn-&gt;Close();
+      conn<span class="t-op">-&gt;</span>Close();
     };
   }
 }
@@ -3206,14 +3184,14 @@ goodbye.</pre>
           Create a <code>.vscode/launch.json</code> in your workspace (or use the "Run and Debug" panel to auto-generate one):
          </p>
 <pre class="line-numbers"><code class="language-json">{
-  "version": "0.2.0",
-  "configurations": [
+  <span class="t-str">"version"</span>: <span class="t-str">"0.2.0"</span>,
+  <span class="t-str">"configurations"</span>: [
     {
-      "type": "objeck",
-      "request": "launch",
-      "name": "Debug Objeck Program",
-      "program": "${workspaceFolder}/myprogram.obe",
-      "sourceDir": "${workspaceFolder}"
+      <span class="t-str">"type"</span>: <span class="t-str">"objeck"</span>,
+      <span class="t-str">"request"</span>: <span class="t-str">"launch"</span>,
+      <span class="t-str">"name"</span>: <span class="t-str">"Debug Objeck Program"</span>,
+      <span class="t-str">"program"</span>: <span class="t-str">"${workspaceFolder}/myprogram.obe"</span>,
+      <span class="t-str">"sourceDir"</span>: <span class="t-str">"${workspaceFolder}"</span>
     }
   ]
 }
@@ -3249,9 +3227,9 @@ goodbye.</pre>
           1. Create an empty working directory for your app
           <br/>
           2. Copy the code below to a file called 'hello.obs' and save it to the working directory
-          <pre class="line-numbers"><code class="language-cpp">class Native {
-  function : Main(args : String[]) ~ Nil {
-    "Hello World!"-&gt;PrintLine();
+          <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Native</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"Hello World!"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -3411,11 +3389,31 @@ Benchmarks Game
      </p>
     </div>
    </div>
+  
+<!-- content:end -->
+   </div>
+  </div>
   </main>
-  <footer class="footer">
-   &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

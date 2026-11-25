@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Community — Objeck Language</title>
+  <meta name="description" content="Security problems: do not open an issue; follow SECURITY.md.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html" aria-current="page">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li aria-current="page">Community</li></ol></nav>
+  <div class="layout has-toc">
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Community</h1>
+    <p class="page-lead">Security problems: do not open an issue; follow <a href="https://github.com/objeck/objeck-lang/blob/master/SECURITY.md" target="_blank" rel="noopener">SECURITY.md</a>.</p>
+
+    <h2 id="talk">Talk</h2>
+    <ul>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions" target="_blank" rel="noopener">Discussions</a>: questions and ideas</li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues" target="_blank" rel="noopener">Issues</a>: bugs and requests (templates provided; a small failing program helps most)</li>
+     <li><a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank" rel="noopener">Rosetta Code</a>: add a solution</li>
+    </ul>
+    <h2 id="contribute">Contribute</h2>
+    <p><a href="https://github.com/objeck/objeck-lang/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">CONTRIBUTING.md</a> has the detail. In short: branch off <code>master</code>, keep the change focused, say what changed and which platforms you tested, never commit credentials.</p>
+    <p>Start with the <a href="doc_architecture_map.html">architecture map</a> and <a href="doc_intrinsic.html">adding an intrinsic</a>.</p>
+    <h2 id="build-and-test">Build and test</h2>
+    <ul>
+     <li>CI is the authoritative recipe: <a href="https://github.com/objeck/objeck-lang/blob/master/.github/workflows/ci-build.yml" target="_blank" rel="noopener"><code>ci-build.yml</code></a> and <a href="https://github.com/objeck/objeck-lang/blob/master/.github/actions/setup-objeck-deps/action.yml" target="_blank" rel="noopener"><code>setup-objeck-deps</code></a>.</li>
+     <li>Regression suite: <a href="doc_regression.html"><code>programs/regression</code></a>. <code>./run_regression.sh x64</code> (or <code>arm64</code>) on Linux and macOS, <code>run_regression.cmd x64</code> on Windows.</li>
+     <li>New library: add one line to <code>LIBS</code> in <code>tools/docs/guides_to_html.py</code>; the generator fails until you do.</li>
+    </ul>
+    <h2 id="conduct">Conduct</h2>
+    <p><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md" target="_blank" rel="noopener">Contributor Covenant</a>.</p>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#talk">Talk</a></li><li><a href="#contribute">Contribute</a></li><li><a href="#build-and-test">Build and test</a></li><li><a href="#conduct">Conduct</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>

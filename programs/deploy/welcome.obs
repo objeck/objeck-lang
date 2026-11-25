@@ -24,7 +24,8 @@ class Welcome {
 			"csv_16.obs", "regex_17.obs", "sql_tables_18.obs", "sql_files_19.obs",
 			"serialize_20.obs", "odbc_21.obs", "http_client_22.obs", "web_server_23.obs",
 			"rss_reader_24.obs", "ml_regression_25.obs", "ml_classify_26.obs", "ml_outliers_27.obs",
-			"nlp_28.obs", "llm_29.obs", "ai_search_30.obs", "game_31.obs"];
+			"nlp_28.obs", "llm_29.obs", "ai_search_30.obs", "game_31.obs",
+			"mcp_declare_32.obs", "mcp_stub_33.obs", "mcp_agent_34.obs"];
 
 		libs := [
 			"",
@@ -58,7 +59,10 @@ class Welcome {
 			"nlp",
 			"gemini,net,net_server,json,misc,cipher",
 			"ai",
-			"sdl2,sdl_game,json"];
+			"sdl2,sdl_game,json",
+			"gen_collect,json,net,net_server,cipher,misc,mcp",
+			"gen_collect,json,net,net_server,cipher,misc,mcp",
+			"gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent"];
 
 		about := [
 			"a class, a function, Main, and one line of output",
@@ -92,7 +96,10 @@ class Welcome {
 			"tokenizing, stemming, sentiment and TF-IDF search",
 			"ask a large language model (Gemini) a question",
 			"A* pathfinding and minimax",
-			"an SDL2 game: collect gems, dodge spiders, keep a best score"];
+			"an SDL2 game: collect gems, dodge spiders, keep a best score",
+			"MCP: declare a tool from its types, serve it, call it",
+			"MCP: call a server through a generated typed client",
+			"MCP: plain functions as agent tools, with approval by effect"];
 
 		""->PrintLine();
 		"Objeck example programs"->PrintLine();
@@ -133,7 +140,7 @@ class Welcome {
 		"Notes"->PrintLine();
 		"-----"->PrintLine();
 		"  Read them in order: 0-13 teach the language, 14-21 data, 22-24 networking,"->PrintLine();
-		"  25-30 AI and machine learning, and 31 is a game."->PrintLine();
+		"  25-30 AI and machine learning, 31 is a game, and 32-34 are MCP tools and agents."->PrintLine();
 		"  game_31 opens a window, so it needs a display (not SSH or a container)."->PrintLine();
 		"  odbc_21 needs a configured data source, llm_29 needs an API key, and"->PrintLine();
 		"  http_client_22 and rss_reader_24 need the internet."->PrintLine();

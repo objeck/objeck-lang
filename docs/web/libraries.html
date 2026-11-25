@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Libraries — Objeck Language</title>
+  <meta name="description" content="Every library that ships with Objeck, one line each, generated from the repository: collections, data, networking, LLM clients, ML, graphics.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html" aria-current="page">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li aria-current="page">Libraries</li></ol></nav>
+  <div class="layout has-toc">
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Libraries</h1>
+<p class="page-lead">62 libraries, generated from <code>core/compiler/build_libs.sh</code> and the sources. Pass them to <code>obc -lib</code>; a library's own dependencies are not added for you. <a href="https://www.objeck.org/api/latest/index.html" target="_blank" rel="noopener">API reference</a>.</p>
+<pre class="cmd">obc -src app.obs -lib json,net,cipher</pre>
+<h2 id="in-practice">In practice</h2>
+<h3>JSON</h3><pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Data</span>.JSON;
+
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    root <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"name\": \"Ada\", \"langs\": [\"en\", \"fr\"], \"age\": 36}"</span>);
+    name <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Get(<span class="t-str">"name"</span>)<span class="t-op">-&gt;</span>GetString();
+    age <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Get(<span class="t-str">"age"</span>)<span class="t-op">-&gt;</span>GetInt();
+    <span class="t-str">"{$name} is {$age}"</span><span class="t-op">-&gt;</span>PrintLine();
+
+    doc <span class="t-op">:=</span> <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>OBJECT);
+    doc<span class="t-op">-&gt;</span>Insert(<span class="t-str">"ok"</span>, <span class="t-const">true</span>);
+    doc<span class="t-op">-&gt;</span>Insert(<span class="t-str">"count"</span>, <span class="t-num">3</span>);
+    doc<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
+  }
+}</code></pre>
+      <pre class="cmd example-out">$ obc -src json.obs -lib json
+$ obr json.obe
+Ada is 36
+{"count":3,"ok":true}</pre>
+<h3>SQL</h3><pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Query</span>.Structured;
+
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    sales <span class="t-op">:=</span> <span class="t-cls">Table</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"sales"</span>, [<span class="t-str">"region"</span>, <span class="t-str">"qty"</span>]);
+    Add(sales, <span class="t-str">"east"</span>, <span class="t-num">10</span>);
+    Add(sales, <span class="t-str">"west"</span>, <span class="t-num">4</span>);
+    Add(sales, <span class="t-str">"east"</span>, <span class="t-num">3</span>);
+    result <span class="t-op">:=</span> sales<span class="t-op">-&gt;</span>Query(<span class="t-str">"select region, sum(qty) as total from sales group by region"</span>);
+    result<span class="t-op">-&gt;</span>ToCsv()<span class="t-op">-&gt;</span>Print();
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Add</span>(table : Table, region : <span class="t-type">String</span>, qty : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    row <span class="t-op">:=</span> table<span class="t-op">-&gt;</span>Insert();
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"region"</span>, region);
+    row<span class="t-op">-&gt;</span>Set(<span class="t-str">"qty"</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(qty));
+  }
+}</code></pre>
+      <pre class="cmd example-out">$ obc -src query.obs -lib query,misc,net,json,regex,xml,csv,cipher
+$ obr query.obe
+region,total
+east,13
+west,4</pre>
+<h3>Machine learning</h3><pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
+
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    x <span class="t-op">:=</span> <span class="t-type">Float</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">5</span>, <span class="t-num">1</span>];
+    y <span class="t-op">:=</span> <span class="t-type">Float</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">5</span>, <span class="t-num">1</span>];
+    <span class="t-kw">each</span>(i : <span class="t-num">5</span>) {
+      x[i, <span class="t-num">0</span>] <span class="t-op">:=</span> i<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">Float</span>);
+      y[i, <span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-num">2.0</span> * i<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">Float</span>) + <span class="t-num">1.0</span>;
+    };
+
+    model <span class="t-op">:=</span> <span class="t-cls">LinearRegression</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    model<span class="t-op">-&gt;</span>Fit(x, y, <span class="t-const">true</span>);
+    c <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>GetCoefficients();
+    <span class="t-str">"y = {$(c[1]):.2} x + {$(c[0]):.2}"</span><span class="t-op">-&gt;</span>PrintLine();
+  }
+}</code></pre>
+      <pre class="cmd example-out">$ obc -src ml.obs -lib csv,ml
+$ obr ml.obe
+y = 2.00 x + 1.00</pre>
+<h3>Threads</h3><pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.Concurrency;
+
+<span class="t-kw">class</span> <span class="t-cls">Counter</span> <span class="t-kw">from</span> <span class="t-cls">Thread</span> {
+  @total : <span class="t-mod">static</span> : <span class="t-type">Int</span>;
+  @lock : <span class="t-mod">static</span> : ThreadMutex;
+
+  <span class="t-kw">New</span>() {
+    <span class="t-kw">Parent</span>();
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Init</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    @lock <span class="t-op">:=</span> <span class="t-cls">ThreadMutex</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"lock"</span>);
+  }
+
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Run</span>(arg : <span class="t-cls">System</span>.Base) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-kw">each</span>(i : <span class="t-num">1000</span>) {
+      <span class="t-kw">critical</span>(@lock) {
+        @total += <span class="t-num">1</span>;
+      };
+    };
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Total</span>() <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> @total;
+  }
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-cls">Counter</span><span class="t-op">-&gt;</span>Init();
+    workers <span class="t-op">:=</span> <span class="t-cls">Counter</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">4</span>];
+    <span class="t-kw">each</span>(i : workers) {
+      workers[i] <span class="t-op">:=</span> <span class="t-cls">Counter</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+      workers[i]<span class="t-op">-&gt;</span>Execute(<span class="t-const">Nil</span>);
+    };
+    <span class="t-kw">each</span>(i : workers) {
+      workers[i]<span class="t-op">-&gt;</span>Join();
+    };
+    <span class="t-cls">Counter</span><span class="t-op">-&gt;</span>Total()<span class="t-op">-&gt;</span>PrintLine();
+  }
+}</code></pre>
+      <pre class="cmd example-out">$ obc -src threads.obs -lib concurrent
+$ obr threads.obe
+4000</pre>
+<h2 id="core">Core</h2>
+<table class="ref-table lib-table">
+ <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>
+ <tbody>
+  <tr><td data-label="Library"><code>gen_collect</code></td><td data-label="What it gives you">Generic collections: Vector, Map, Hash, Set and the rest, plus tuples. Also always loaded.</td><td data-label="Namespaces" class="ns"><code>Collection</code>, <code>Collection.Tuple</code></td></tr>
+  <tr><td data-label="Library"><code>lang</code></td><td data-label="What it gives you">The core classes: console, files, sockets, reflection, threads and time. Always loaded; never passed to <code>-lib</code>.</td><td data-label="Namespaces" class="ns"><code>System</code>, <code>System.API</code>, <code>System.Concurrency</code>, <code>System.IO</code>, <code>System.IO.Filesystem</code>, <code>System.IO.Net</code>, <code>System.Introspection</code>, <code>System.Time</code></td></tr>
+  <tr><td data-label="Library"><code>-lib actor</code></td><td data-label="What it gives you">Actors with supervision, the base for programs made of cooperating agents.</td><td data-label="Namespaces" class="ns"><code>System.Actor</code></td></tr>
+  <tr><td data-label="Library"><code>-lib cipher</code></td><td data-label="What it gives you">SHA and MD5 hashes, HMAC, AES-256 encryption and Base64.</td><td data-label="Namespaces" class="ns"><code>Cipher</code></td></tr>
+  <tr><td data-label="Library"><code>-lib concurrent</code></td><td data-label="What it gives you">Structured concurrency (<code>TaskScope</code>, <code>Task</code>) and a runtime <code>Monitor</code>.</td><td data-label="Namespaces" class="ns"><code>System.Concurrency</code></td></tr>
+  <tr><td data-label="Library"><code>-lib diags</code></td><td data-label="What it gives you">Static analysis behind the language server: symbols, diagnostics and hover information.</td><td data-label="Namespaces" class="ns"><code>System.Diagnostics</code></td></tr>
+  <tr><td data-label="Library"><code>-lib math</code></td><td data-label="What it gives you">Arbitrary-precision and exact arithmetic.</td><td data-label="Namespaces" class="ns"><code>System.Math</code></td></tr>
+  <tr><td data-label="Library"><code>-lib misc</code></td><td data-label="What it gives you">Date parsing and formatting, and network time.</td><td data-label="Namespaces" class="ns"><code>System.Time</code>, <code>System.Utility</code></td></tr>
+  <tr><td data-label="Library"><code>-lib regex</code></td><td data-label="What it gives you">Regular expressions: matching, replacing, anchors, groups.</td><td data-label="Namespaces" class="ns"><code>Query.RegEx</code></td></tr>
+ </tbody>
+</table>
+<h2 id="data-and-text">Data and text</h2>
+<table class="ref-table lib-table">
+ <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>
+ <tbody>
+  <tr><td data-label="Library"><code>-lib csv</code></td><td data-label="What it gives you">Read and write delimited text (RFC 4180).</td><td data-label="Namespaces" class="ns"><code>Data.CSV</code></td></tr>
+  <tr><td data-label="Library"><code>-lib json</code></td><td data-label="What it gives you">Parse and build JSON, with a schema layer for typed access.</td><td data-label="Namespaces" class="ns"><code>Data.JSON</code>, <code>Data.JSON.Scheme</code></td></tr>
+  <tr><td data-label="Library"><code>-lib json_rpc</code></td><td data-label="What it gives you">JSON-RPC 2.0 client and server.</td><td data-label="Namespaces" class="ns"><code>Data.JSON.RPC</code></td></tr>
+  <tr><td data-label="Library"><code>-lib json_stream</code></td><td data-label="What it gives you">A streaming JSON parser for documents too large to hold as a tree.</td><td data-label="Namespaces" class="ns"><code>Data.JSON.Stream</code></td></tr>
+  <tr><td data-label="Library"><code>-lib odbc</code></td><td data-label="What it gives you">ODBC database access: connections, statements, result sets.</td><td data-label="Namespaces" class="ns"><code>Database.ODBC</code></td></tr>
+  <tr><td data-label="Library"><code>-lib query</code></td><td data-label="What it gives you">An in-memory, column-oriented SQL engine over typed tables, with joins, grouping and indexes; reads CSV, JSON, XML and archives.</td><td data-label="Namespaces" class="ns"><code>Query.Structured</code></td></tr>
+  <tr><td data-label="Library"><code>-lib query_ml</code></td><td data-label="What it gives you">Model evaluation results as <code>Query.Structured</code> tables.</td><td data-label="Namespaces" class="ns"><code>Query.Structured.ML</code></td></tr>
+  <tr><td data-label="Library"><code>-lib query_odbc</code></td><td data-label="What it gives you">A table or a query in a real database, read as a table.</td><td data-label="Namespaces" class="ns"><code>Query.Structured.Odbc</code></td></tr>
+  <tr><td data-label="Library"><code>-lib query_server</code></td><td data-label="What it gives you">Publish tables over HTTP, read-only, with a SQL endpoint.</td><td data-label="Namespaces" class="ns"><code>Query.Structured.Server</code></td></tr>
+  <tr><td data-label="Library"><code>-lib query_vision</code></td><td data-label="What it gives you">A folder of images, and what a detector found in them, as tables.</td><td data-label="Namespaces" class="ns"><code>Query.Structured.Vision</code></td></tr>
+  <tr><td data-label="Library"><code>-lib xml</code></td><td data-label="What it gives you">Parse and build XML.</td><td data-label="Namespaces" class="ns"><code>Data.XML</code></td></tr>
+ </tbody>
+</table>
+<h2 id="web-and-networking">Web and networking</h2>
+<table class="ref-table lib-table">
+ <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>
+ <tbody>
+  <tr><td data-label="Library"><code>-lib net</code></td><td data-label="What it gives you">HTTP/1.1 and HTTPS clients, URL and response types, and a downloader.</td><td data-label="Namespaces" class="ns"><code>Web.HTTP</code></td></tr>
+  <tr><td data-label="Library"><code>-lib net_h2</code></td><td data-label="What it gives you">An HTTP/2 client with multiplexed streams.</td><td data-label="Namespaces" class="ns"><code>Web.HTTP</code></td></tr>
+  <tr><td data-label="Library"><code>-lib net_quic</code></td><td data-label="What it gives you">An HTTP/3 (QUIC) client.</td><td data-label="Namespaces" class="ns"><code>Web.HTTP</code></td></tr>
+  <tr><td data-label="Library"><code>-lib net_server</code></td><td data-label="What it gives you">An HTTP server framework: routes, static files, an MCP transport and OAuth helpers.</td><td data-label="Namespaces" class="ns"><code>System.IO.Net.OAuth</code>, <code>Web.HTTP.Server</code>, <code>Web.HTTP.Server.MCP</code></td></tr>
+  <tr><td data-label="Library"><code>-lib rss</code></td><td data-label="What it gives you">An RSS 2.0 feed reader.</td><td data-label="Namespaces" class="ns"><code>Web.RSS</code></td></tr>
+  <tr><td data-label="Library"><code>-lib web_server</code></td><td data-label="What it gives you">A small embedded web server with typed access to the request.</td><td data-label="Namespaces" class="ns"><code>Web.Server</code></td></tr>
+ </tbody>
+</table>
+<h2 id="llms-agents-and-inference">LLMs, agents and inference</h2>
+<table class="ref-table lib-table">
+ <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>
+ <tbody>
+  <tr><td data-label="Library"><code>-lib actor_agents</code></td><td data-label="What it gives you">Run an agent as a supervised actor.</td><td data-label="Namespaces" class="ns"><code>System.Actor</code></td></tr>
+  <tr><td data-label="Library"><code>-lib agent</code></td><td data-label="What it gives you">A provider-neutral tool-use loop: an agent that calls the functions you give it.</td><td data-label="Namespaces" class="ns"><code>API.Agent</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ai_hub</code></td><td data-label="What it gives you">Download models from the Hugging Face Hub into a local cache.</td><td data-label="Namespaces" class="ns"><code>System.AI.Hub</code></td></tr>
+  <tr><td data-label="Library"><code>-lib anthropic</code></td><td data-label="What it gives you">Anthropic Messages API client.</td><td data-label="Namespaces" class="ns"><code>API.Anthropic</code></td></tr>
+  <tr><td data-label="Library"><code>-lib gemini</code></td><td data-label="What it gives you">Google Gemini client, including tuning and corpora.</td><td data-label="Namespaces" class="ns"><code>API.Google.Gemini</code>, <code>API.Google.Gemini.Corpus</code>, <code>API.Google.Gemini.Tuning</code></td></tr>
+  <tr><td data-label="Library"><code>-lib inference</code></td><td data-label="What it gives you">A client for HTTP model-inference servers.</td><td data-label="Namespaces" class="ns"><code>API.Inference</code></td></tr>
+  <tr><td data-label="Library"><code>-lib llm_util</code></td><td data-label="What it gives you">Prompt templates, token estimates, context windows and JSON Schema validation for model calls.</td><td data-label="Namespaces" class="ns"><code>API.LlmUtil</code></td></tr>
+  <tr><td data-label="Library"><code>-lib mcp</code></td><td data-label="What it gives you">Model Context Protocol server and client.</td><td data-label="Namespaces" class="ns"><code>API.MCP</code></td></tr>
+  <tr><td data-label="Library"><code>-lib models</code></td><td data-label="What it gives you">Backend-neutral inference types shared by the model libraries.</td><td data-label="Namespaces" class="ns"><code>API.Models</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ollama</code></td><td data-label="What it gives you">Ollama client, for models that run on your own machine.</td><td data-label="Namespaces" class="ns"><code>API.Ollama</code></td></tr>
+  <tr><td data-label="Library"><code>-lib onnx</code></td><td data-label="What it gives you">ONNX Runtime inference for pre-trained models. <em>Experimental: the API may change.</em></td><td data-label="Namespaces" class="ns"><code>API.Onnx</code></td></tr>
+  <tr><td data-label="Library"><code>-lib openai</code></td><td data-label="What it gives you">OpenAI chat, responses, audio, embeddings, vision and more.</td><td data-label="Namespaces" class="ns"><code>API.OpenAI</code>, <code>API.OpenAI.Audio</code>, <code>API.OpenAI.Chat</code>, <code>API.OpenAI.Responses</code>, <code>API.OpenAI.Tuning</code></td></tr>
+  <tr><td data-label="Library"><code>-lib opencv</code></td><td data-label="What it gives you">OpenCV computer vision: load, transform and detect in images.</td><td data-label="Namespaces" class="ns"><code>API.OpenCV</code></td></tr>
+  <tr><td data-label="Library"><code>-lib rag</code></td><td data-label="What it gives you">Retrieval-augmented generation: chunking, retrieval and grounded prompts.</td><td data-label="Namespaces" class="ns"><code>System.ML.Rag</code></td></tr>
+  <tr><td data-label="Library"><code>-lib rag_adapters</code></td><td data-label="What it gives you">Adapters that connect the RAG kit to the embedding and chat libraries. <em>Experimental: the API may change.</em></td><td data-label="Namespaces" class="ns"><code>System.ML.Rag</code></td></tr>
+ </tbody>
+</table>
+<h2 id="machine-learning-and-statistics">Machine learning and statistics</h2>
+<table class="ref-table lib-table">
+ <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>
+ <tbody>
+  <tr><td data-label="Library"><code>-lib ai</code></td><td data-label="What it gives you">Classic AI: graph search, minimax and Monte Carlo tree search, optimization, reinforcement learning.</td><td data-label="Namespaces" class="ns"><code>System.AI</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml</code></td><td data-label="What it gives you">Matrices and neural networks, linear models, trees and forests, naive Bayes, nearest neighbours, clustering, SVMs, outlier detection and preprocessing.</td><td data-label="Namespaces" class="ns"><code>System.ML</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_boost</code></td><td data-label="What it gives you">Gradient boosting for regression and classification. <em>Experimental: the API may change.</em></td><td data-label="Namespaces" class="ns"><code>System.ML.Boost</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_clip</code></td><td data-label="What it gives you">CLIP image embeddings and face-pair scoring.</td><td data-label="Namespaces" class="ns"><code>System.ML.Clip</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_cnn</code></td><td data-label="What it gives you">Convolutional neural networks on the CPU.</td><td data-label="Namespaces" class="ns"><code>System.ML.Cnn</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_lab</code></td><td data-label="What it gives you">Experiment support: splits, resampling and parameter sweeps.</td><td data-label="Namespaces" class="ns"><code>System.ML.Lab</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_report</code></td><td data-label="What it gives you">Replicate statistics and a report builder for a study.</td><td data-label="Namespaces" class="ns"><code>System.ML.Report</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_timeseries</code></td><td data-label="What it gives you">Time series: transforms, forecasters, ARIMA and forecast evaluation. <em>Experimental: the API may change.</em></td><td data-label="Namespaces" class="ns"><code>System.ML.TimeSeries</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_vector</code></td><td data-label="What it gives you">A local vector index: store embeddings, ask for the nearest.</td><td data-label="Namespaces" class="ns"><code>System.ML.VectorSearch</code></td></tr>
+  <tr><td data-label="Library"><code>-lib ml_verify</code></td><td data-label="What it gives you">Verification metrics (FAR, FRR, EER) for match decisions.</td><td data-label="Namespaces" class="ns"><code>System.ML.Verification</code></td></tr>
+  <tr><td data-label="Library"><code>-lib nlp</code></td><td data-label="What it gives you">Tokenization, stemming, TF-IDF, similarity and sentiment.</td><td data-label="Namespaces" class="ns"><code>System.NLP</code></td></tr>
+  <tr><td data-label="Library"><code>-lib nlp_onnx</code></td><td data-label="What it gives you">Sentence embeddings from BERT-family models exported to ONNX.</td><td data-label="Namespaces" class="ns"><code>System.NLP.Onnx</code></td></tr>
+  <tr><td data-label="Library"><code>-lib nlp_topics</code></td><td data-label="What it gives you">Topic modeling (LDA), quality metrics and an SVG topic report.</td><td data-label="Namespaces" class="ns"><code>System.NLP.Topics</code></td></tr>
+  <tr><td data-label="Library"><code>-lib plot</code></td><td data-label="What it gives you">Scatter, histogram, line and bar charts as standalone SVG.</td><td data-label="Namespaces" class="ns"><code>System.Plot</code></td></tr>
+  <tr><td data-label="Library"><code>-lib plot_sdl</code></td><td data-label="What it gives you">An SDL2 window for <code>System.Plot</code>, and PNG export.</td><td data-label="Namespaces" class="ns"><code>System.Plot.SDL</code></td></tr>
+  <tr><td data-label="Library"><code>-lib stats</code></td><td data-label="What it gives you">Descriptive statistics, distributions, t-tests and an OLS summary.</td><td data-label="Namespaces" class="ns"><code>System.Stats</code></td></tr>
+  <tr><td data-label="Library"><code>-lib telemetry</code></td><td data-label="What it gives you">Per-model, per-device inference timing and resource sampling.</td><td data-label="Namespaces" class="ns"><code>System.Telemetry</code></td></tr>
+ </tbody>
+</table>
+<h2 id="graphics-games-and-media">Graphics, games and media</h2>
+<table class="ref-table lib-table">
+ <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>
+ <tbody>
+  <tr><td data-label="Library"><code>-lib lame</code></td><td data-label="What it gives you">MP3 encoding with LAME.</td><td data-label="Namespaces" class="ns"><code>Game.SDL2.Aux</code></td></tr>
+  <tr><td data-label="Library"><code>-lib sdl2</code></td><td data-label="What it gives you">SDL2: 2D graphics, input, audio and windows.</td><td data-label="Namespaces" class="ns"><code>Game.SDL2</code></td></tr>
+  <tr><td data-label="Library"><code>-lib sdl_game</code></td><td data-label="What it gives you">A 2D game framework: sprites, collisions, tilemaps, camera and scenes.</td><td data-label="Namespaces" class="ns"><code>Game.Framework</code></td></tr>
+  <tr><td data-label="Library"><code>-lib sdl_gl</code></td><td data-label="What it gives you">OpenGL 3.3 core rendering on top of SDL2.</td><td data-label="Namespaces" class="ns"><code>Game.OpenGL</code></td></tr>
+ </tbody>
+</table>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#in-practice">In practice</a></li><li><a href="#core">Core</a></li><li><a href="#data-and-text">Data and text</a></li><li><a href="#web-and-networking">Web and networking</a></li><li><a href="#llms-agents-and-inference">LLMs, agents and inference</a></li><li><a href="#machine-learning-and-statistics">Machine learning and statistics</a></li><li><a href="#graphics-games-and-media">Graphics, games and media</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>

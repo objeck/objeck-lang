@@ -1,77 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Incremental Analysis for the Language Server — Design — Objeck Language</title>
-  <meta name="description" content="Issue: #1236, item 15 of the 2026-10-17 audit of tools/lsp against LSP 3.17. It follows #1217 (debounce) and #1218 (reuse across requests), which took the waste out of the server. What remains is the cost of the compiler&#x27;s whole-program ana"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Issue: #1236, item 15 of the 2026-10-17 audit of tools/lsp against LSP 3.17. It follows #1217 (debounce) and #1218 (reuse across requests), which took the waste out of the server. What remains is the cost of the compiler&#x27;s whole-program ana">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Incremental Analysis for the Language Server — Design</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/INCREMENTAL_ANALYSIS_DESIGN.md" target="_blank">docs/INCREMENTAL_ANALYSIS_DESIGN.md on GitHub</a></div>
-    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1236" target="_blank">#1236</a>, item 15 of the 2026-10-17 audit of <code>tools/lsp</code> against LSP 3.17. It follows #1217 (debounce) and #1218 (reuse across requests), which took the waste out of the server. What remains is the cost of the compiler's whole-program analysis.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#why">Why</a></li>
-      <li><a href="#what-happens-on-an-edit-today">What happens on an edit today</a></li>
-      <li><a href="#phases">Phases</a></li>
-      <li><a href="#how-to-check">How to check</a></li>
-      <li><a href="#decisions">Decisions</a></li>
-      <li><a href="#first-steps">First steps</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#design-notes">Design notes</a></li><li aria-current="page">Incremental Analysis for the Language Server — Design</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html" aria-current="page">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Incremental Analysis for the Language Server — Design</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/INCREMENTAL_ANALYSIS_DESIGN.md" target="_blank" rel="noopener">View docs/INCREMENTAL_ANALYSIS_DESIGN.md on GitHub</a></p>
+    <p class="page-lead">Issue: <a href="https://github.com/objeck/objeck-lang/issues/1236" target="_blank" rel="noopener">#1236</a>, item 15 of the 2026-10-17 audit of <code>tools/lsp</code> against LSP 3.17. It follows #1217 (debounce) and #1218 (reuse across requests), which took the waste out of the server. What remains is the cost of the compiler's whole-program analysis.</p>
 
     <p><strong>Status:</strong> partly implemented. Phase 0 (timing, <code>OBJECK_LSP_TIMING=1</code>, #1435), "analyze once per edit" (#1437), Phase 1 step 1 (library byte cache, library instructions not built; commit <code>0011bc0806</code>) and Phase 2 (as built: keep programs, not generations) are shipped. <strong>Not implemented, design only:</strong> Phase 1 step 2 (shared library objects, deferred), Phase 3 (re-parse one file) and Phase 4 (repeatable, scoped analysis). So today an edit still re-parses the folder and re-analyzes the whole program once; the section "What happens on an edit today" describes the compiler side that remains true. Measured numbers below carry their date, machine and commit; they were not re-run for this revision.</p>
-    <h3 id="why">Why</h3>
+    <h2 id="why">Why</h2>
     <p>Every keystroke costs work proportional to the whole folder. Measured in the audit (Windows x64):</p>
     <ul>
      <li>a 6-line <code>main.obs</code> alone: 12 ms per keystroke;</li>
@@ -79,7 +59,7 @@
      <li><code>obc</code> on about 10k lines with clashing names: 16.9 s, which is superlinear.</li>
     </ul>
     <p>Research code is often one large notebook-like file plus helpers. The editor should not slow down as the project grows.</p>
-    <h3 id="what-happens-on-an-edit-today">What happens on an edit today</h3>
+    <h2 id="what-happens-on-an-edit-today">What happens on an edit today</h2>
     <p>Measured by reading the code on 2026-10-20. Line numbers drift, so each reference below also names the symbol; <code>grep -n</code> it. (The paragraph describes the state before phases 0-2; the compiler-side costs are unchanged, and phase 1 removed the library-instruction build in the diagnostics library only.)</p>
     <ol>
      <li><strong>Everything is invalidated.</strong> <code>didChange</code> bumps one workspace-wide generation (<code>Invalidate</code> in <code>tools/lsp/server/frameworks.obs</code>). The next request drops every cached program in every folder (<code>GetProxy</code>).</li>
@@ -96,15 +76,15 @@
     </ol>
     <p>Analysis mutates the tree (eval types, resolved methods, inserted casts, generated methods), so it cannot run twice on one tree: comments in <code>core/lib/diags/diags.cpp</code> record that a second <code>Analyze()</code> reports bogus errors. A new analysis needs a fresh parse.</p>
     <p>So the cost of an edit is parse(all) + link(all libraries) + analyze(all). The phases below take those costs out in order of cost and risk.</p>
-    <h3 id="phases">Phases</h3>
-    <h4 id="phase-0--measure">Phase 0 — measure</h4>
+    <h2 id="phases">Phases</h2>
+    <h3 id="phase-0--measure">Phase 0 — measure</h3>
     <p>Before changing anything, time the three parts per request:</p>
     <ul>
      <li>an <code>OBJECK_LSP_TIMING=1</code> switch in diags.cpp records parse, link (<code>Linker::Load</code>) and analyze times for each program;</li>
      <li>a <code>run_lsp_tests.py</code> case drives a fixed edit sequence on <code>lib_src/json.obs</code> (the 2.5k-line fixture <code>check_large_real_file</code> already uses) and prints the split.</li>
     </ul>
     <p>The audit's 146 ms is the baseline. This decides whether phase 1 or phase 2 comes first: if reloading the libraries is a large share, phase 1 is nearly free.</p>
-    <h5 id="phase-0-results-2026-10-27">Phase 0 results (2026-10-27)</h5>
+    <h4 id="phase-0-results-2026-10-27">Phase 0 results (2026-10-27)</h4>
     <p>How to repeat it: <code>OBJECK_LSP_TIMING=1</code> makes <code>libobjk_diags</code> write one <code>[lsp-timing]</code> line to stderr per parse and per analysis. <code>tools/lsp/tests/bench_incremental.py &lt;bin_dir&gt; [server_dir]</code> turns it on, runs the server, and prints the table below. It is a separate script rather than a <code>run_lsp_tests.py</code> case because it reports numbers and does not pass or fail. Per workspace it opens one document, makes 10 body-only edits (a comment line), sends a hover after each edit, and waits for the diagnostics. It then times <code>obc</code> on the same program. The <code>link</code> column is a second <code>Linker</code> loading the same libraries, alone, right after the analysis: <code>Linker::Load</code> runs inside <code>Analyze()</code>, and timing it there would mean changing the compiler. <code>analyze</code> is the analysis total minus that load.</p>
     <p>Windows x64, Ryzen AI 9 HX 370, master at 36923202bd, JIT pinned off as the editor clients set it. Medians, in ms per edit, summed over the programs analyzed for that edit:</p>
     <table class="ref-table">
@@ -134,14 +114,14 @@
      <li><strong>Phase 4 next</strong> for large workspaces, with phase 3 after it.</li>
      <li><strong>Phase 2</strong> pays only in multi-root workspaces; nothing here measured that case.</li>
     </ul>
-    <h4 id="phase-1--load-each-library-once-per-server">Phase 1 — load each library once per server</h4>
+    <h3 id="phase-1--load-each-library-once-per-server">Phase 1 — load each library once per server</h3>
     <p><code>Linker</code> objects are per program because user classes write into them (<code>LibraryClass::AddChild</code>), and the AST holds raw <code>LibraryMethod*</code> pointers into them. Two steps make a shared copy safe:</p>
     <ol>
      <li><strong>Cache the bytes.</strong> A process-wide cache of inflated <code>.obl</code> contents, keyed by path, size and mtime. <code>Library::Load</code> reads from it instead of from disk. This needs no other change, because each program still builds its own objects from the bytes.</li>
      <li><strong>Share the objects.</strong> Move the per-program part of a library class, its children, out of <code>LibraryClass</code> and into a side table on the program, keyed by the library class. Then one <code>Linker</code> per library set can be shared read-only, and the AST's pointers stay valid as long as the cache entry lives. That entry is reference-counted by the programs that use it.</li>
     </ol>
     <p>Expected gain: the library share of the measured time, which is the whole cost for a small file in a large <code>libs</code> list.</p>
-    <h5 id="phase-1-results-2026-11-02">Phase 1 results (2026-11-02)</h5>
+    <h4 id="phase-1-results-2026-11-02">Phase 1 results (2026-11-02)</h4>
     <p>Before step 2, the load was split further (Windows x64, Ryzen 9 7950X3D, a 6-line file with the 13 default libraries, ms per program):</p>
     <table class="ref-table">
      <thead>
@@ -178,7 +158,7 @@
     <p><code>obc</code> is unchanged: the same 6-line program with the 13 libraries takes 136 ms before and 135 after, and the server's 8.8k lines 898 and 899 (medians of ten, alternated).</p>
     <p><code>tools/lsp/tests/validate_cached_analysis.py</code> checks the result against a from-scratch analysis: a second server with <code>OBJECK_LSP_NO_CACHE=1</code> answers the same requests over the language server's fixtures, the regression programs and the library sources, with a seeded, randomized edit script per file (comment lines, deleted and duplicated lines, stray characters, renamed identifiers, undo, revert). Diagnostics must be byte-identical and every hover, completion, symbol and definition answer equal. <code>--control</code> sends the cached server a different edit script and must fail, which shows the comparison can tell answers apart.</p>
     <p><strong>Step 2 is deferred.</strong> What it could still save is the "everything else" row and most of the free: about 9 + 4 ms per program for the 13 default libraries, against the 36 + 20 this phase removed most of. It would also have to move more than the plan said: library signatures are <code>frontend::Type</code> objects made by the program's own <code>TypeFactory</code> (per program since #659), and the analyzer writes into library objects in several places besides <code>AddChild</code> (<code>SetCalled</code>, lazily cached user names, interface ids). Phase 4 is the larger prize for any program bigger than a few lines.</p>
-    <h4 id="phase-2--invalidate-per-folder-and-skip-unchanged-folders">Phase 2 — invalidate per folder, and skip unchanged folders</h4>
+    <h3 id="phase-2--invalidate-per-folder-and-skip-unchanged-folders">Phase 2 — invalidate per folder, and skip unchanged folders</h3>
     <p>(Built differently from this plan; see "Phase 2 as built" below.)</p>
     <p>LSP-side and small. The generation becomes per folder:</p>
     <ul>
@@ -187,7 +167,7 @@
      <li><code>workspace/symbol</code> invalidates on any change, as today.</li>
     </ul>
     <p>In a multi-root workspace, an edit in one root no longer costs a re-analysis of the others (<code>check_multi_root</code> covers the shape).</p>
-    <h5 id="phase-2-as-built-2026-11-02-keep-programs-not-generations">Phase 2 as built (2026-11-02): keep programs, not generations</h5>
+    <h4 id="phase-2-as-built-2026-11-02-keep-programs-not-generations">Phase 2 as built (2026-11-02): keep programs, not generations</h4>
     <p>The plan above was written before #1437. Since #1437 a program is reused only when its texts and libraries equal the ones a request collects (<code>ProxySource-&gt;Matches</code>), so the generation no longer decides whether an answer is right, only how long a program is kept. That is where the lost work was: an edit retired every current program, and a retired program that no request claimed back within one more generation was released. Two edits in one folder therefore released every other folder's program, and the next request there parsed and analyzed it again although none of its texts had changed.</p>
     <p>So phase 2 changes the lifetime and leaves invalidation as it was:</p>
     <ul>
@@ -207,7 +187,7 @@
      </tbody>
     </table>
     <p>Single-folder workspaces, the issue's measurements among them, do not change: hover after an edit, medians of four alternated <code>bench_incremental.py</code> rounds, is 149 ms before and 153 after for the 6-line file, 276 and 270 for <code>json.obs</code>, and 638 and 635 for the server's sources, with one analysis per edit in both.</p>
-    <h4 id="phase-3--re-parse-only-the-edited-file">Phase 3 — re-parse only the edited file</h4>
+    <h3 id="phase-3--re-parse-only-the-edited-file">Phase 3 — re-parse only the edited file</h3>
     <p>Keep the token stream and the parse result per file, and re-parse only the files whose text changed. This needs a per-file unit the program does not have today:</p>
     <ul>
      <li><strong>A <code>ParsedFile</code></strong> holding the file's bundles, classes, <code>use</code>s and its own node pool. <code>ParsedProgram</code> merges files by bundle name, as the parser now does inline.</li>
@@ -220,7 +200,7 @@
     </ul>
      </li>
     </ul>
-    <h4 id="phase-4--analysis-that-can-be-repeated-scoped-to-what-an-edit-reaches">Phase 4 — analysis that can be repeated, scoped to what an edit reaches</h4>
+    <h3 id="phase-4--analysis-that-can-be-repeated-scoped-to-what-an-edit-reaches">Phase 4 — analysis that can be repeated, scoped to what an edit reaches</h3>
     <p>The deep change, and the one the issue's "re-run context analysis only for the classes the edit can reach" needs:</p>
     <ul>
      <li><strong>Analysis writes its results to side tables</strong> keyed by node, not into the nodes:
@@ -246,13 +226,13 @@
      <li><strong>Generated methods follow their inputs.</strong> Named-argument forwarders are keyed by call shape and regenerated when a call site's shape set changes; default alternates are regenerated when a signature changes.</li>
     </ul>
     <p>This touches every <code>Set*</code> the analyzer performs, so it is a series of PRs, each moving one kind of result to a side table behind the existing accessors, with the suite and <code>OBJECK_LSP_NO_CACHE=1</code> comparisons as the check.</p>
-    <h3 id="how-to-check">How to check</h3>
+    <h2 id="how-to-check">How to check</h2>
     <ul>
      <li>Timing split: <code>OBJECK_LSP_TIMING=1</code> makes <code>libobjk_diags</code> write the <code>[lsp-timing]</code> lines; <code>python tools/lsp/tests/bench_incremental.py &lt;bin_dir&gt; [server_dir]</code> runs the edit sequence and prints the tables above (needs a built <code>libobjk_diags</code> and the server; it is a measurement, not a pass/fail test).</li>
      <li>Cached against fresh: <code>python tools/lsp/tests/validate_cached_analysis.py &lt;bin_dir&gt; [server_dir]</code> (see its <code>--help</code>); <code>OBJECK_LSP_NO_CACHE=1</code> is the from-scratch reference it compares against, and <code>--control</code> must fail.</li>
      <li>The numbers were taken on the machines named in each table; expect different absolute values and read the shares.</li>
     </ul>
-    <h3 id="decisions">Decisions</h3>
+    <h2 id="decisions">Decisions</h2>
     <ul>
      <li><strong>Correctness first</strong> (the LSP rule: correct-slow over fast-brittle). Every phase keeps <code>OBJECK_LSP_NO_CACHE=1</code> as a reference. A test compares cached against fresh diagnostics, hover and completion over the edit sequence, and they must agree exactly.</li>
      <li><strong>The command-line compiler gains from phases 1 and 4 too</strong> (library loading, and analysis that does not need a fresh parse). It is not the target, so no phase may slow <code>obc</code>.</li>
@@ -264,21 +244,41 @@
     </ul>
      </li>
     </ul>
-    <h3 id="first-steps">First steps</h3>
+    <h2 id="first-steps">First steps</h2>
     <ol>
      <li>~~Phase 0's timing switch and test, and the measured split recorded in this document.~~ Done; see "Phase 0 results".</li>
      <li>~~One analysis per edit: share the <code>text</code> and <code>alt</code> programs when their texts are equal.~~ Done in #1437: a program is reused for the same texts and libraries under any key.</li>
      <li>~~Phase 1, step 1: the byte cache, behind a switch, compared with <code>OBJECK_LSP_NO_CACHE=1</code>.~~ Done, with library instructions no longer built; see "Phase 1 results".</li>
      <li>Profile the superlinear 10k-line <code>obc</code> case and file what it finds as its own issue.</li>
     </ol>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#why">Why</a></li><li><a href="#what-happens-on-an-edit-today">What happens on an edit today</a></li><li><a href="#phases">Phases</a></li><li><a href="#how-to-check">How to check</a></li><li><a href="#decisions">Decisions</a></li><li><a href="#first-steps">First steps</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

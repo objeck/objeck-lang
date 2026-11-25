@@ -1,142 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Collections — Objeck Language</title>
-  <meta name="description" content="Hash, Map, Vector, Set and MultiHash in one short program."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Hash, Map, Vector, Set and MultiHash in one short program.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">Collections</li></ol></nav>
+  <div class="layout has-side">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html" aria-current="page">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Collections</h1>
     <p class="page-lead">The <code>Collection</code> bundle (<code>gen_collect</code>, built into every compile, so no <code>-lib</code> flag) has vectors, lists, maps, hashes, sets, multi-maps, queues, stacks, heaps, pairs and unboxed <code>IntVector</code>, <code>FloatVector</code>, <code>IntMap</code>, <code>IntSet</code> and <code>BitSet</code>.</p>
 
     <p>Which one to use, what each operation costs and what each <code>Remove</code> returns are in <strong><a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a></strong>; read that to choose. This page is the short tour in code: five collections doing the five jobs they are most often picked for.</p>
 <pre class="cmd">obc -src collections_tour.obs
 obr collections_tour.obe</pre>
-<pre class="line-numbers"><code class="language-cpp">use Collection;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> Collection;
 
-class CollectionsTour {
-  function : Main(args : String[]) ~ Nil {
-    text := "the quick brown fox jumps over the lazy dog the end";
-    words := text-&gt;Split(" ");
+<span class="t-kw">class</span> <span class="t-cls">CollectionsTour</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    text <span class="t-op">:=</span> <span class="t-str">"the quick brown fox jumps over the lazy dog the end"</span>;
+    words <span class="t-op">:=</span> text<span class="t-op">-&gt;</span>Split(<span class="t-str">" "</span>);
 
-    # --- Hash: count words; Find gives Nil when the key is not there yet ---
-    counts := Hash-&gt;New()&lt;String, IntRef&gt;;
-    each(i : words) {
-      word := words[i];
-      seen := counts-&gt;Find(word);
-      if(seen = Nil) {
-        counts-&gt;Insert(word, IntRef-&gt;New(1));
+    <span class="t-com"># --- Hash: count words; Find gives Nil when the key is not there yet ---</span>
+    counts <span class="t-op">:=</span> <span class="t-cls">Hash</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+    <span class="t-kw">each</span>(i : words) {
+      word <span class="t-op">:=</span> words[i];
+      seen <span class="t-op">:=</span> counts<span class="t-op">-&gt;</span>Find(word);
+      <span class="t-kw">if</span>(seen = <span class="t-const">Nil</span>) {
+        counts<span class="t-op">-&gt;</span>Insert(word, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">1</span>));
       }
-      else {
-        seen-&gt;Set(seen-&gt;Get() + 1);
+      <span class="t-kw">else</span> {
+        seen<span class="t-op">-&gt;</span>Set(seen<span class="t-op">-&gt;</span>Get() + <span class="t-num">1</span>);
       };
     };
-    the := counts-&gt;Find("the")-&gt;Get();
-    "distinct words: {$(counts-&gt;Size())}, 'the' appears {$the} times"-&gt;PrintLine();
+    the <span class="t-op">:=</span> counts<span class="t-op">-&gt;</span>Find(<span class="t-str">"the"</span>)<span class="t-op">-&gt;</span>Get();
+    <span class="t-str">"distinct words: {$(counts-&gt;Size())}, 'the' appears {$the} times"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- Map: iterates in key order, so the report comes out sorted ---
-    ordered := Map-&gt;New()&lt;String, IntRef&gt;;
-    pairs := counts-&gt;GetKeyValues();
-    each(i : pairs) {
-      ordered-&gt;Insert(pairs-&gt;Get(i)-&gt;GetFirst(), pairs-&gt;Get(i)-&gt;GetSecond());
+    <span class="t-com"># --- Map: iterates in key order, so the report comes out sorted ---</span>
+    ordered <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+    pairs <span class="t-op">:=</span> counts<span class="t-op">-&gt;</span>GetKeyValues();
+    <span class="t-kw">each</span>(i : pairs) {
+      ordered<span class="t-op">-&gt;</span>Insert(pairs<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>GetFirst(), pairs<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>GetSecond());
     };
-    entries := ordered-&gt;GetKeyValues();
-    "in key order:"-&gt;Print();
-    each(i : entries) {
-      " {$(entries-&gt;Get(i)-&gt;GetFirst())}={$(entries-&gt;Get(i)-&gt;GetSecond()-&gt;Get())}"-&gt;Print();
+    entries <span class="t-op">:=</span> ordered<span class="t-op">-&gt;</span>GetKeyValues();
+    <span class="t-str">"in key order:"</span><span class="t-op">-&gt;</span>Print();
+    <span class="t-kw">each</span>(i : entries) {
+      <span class="t-str">" {$(entries-&gt;Get(i)-&gt;GetFirst())}={$(entries-&gt;Get(i)-&gt;GetSecond()-&gt;Get())}"</span><span class="t-op">-&gt;</span>Print();
     };
-    ""-&gt;PrintLine();
+    <span class="t-str">""</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- Vector of pairs: sort by the first value ---
-    # a CompareVector sorts; Collection.Pair compares by its first element,
-    # so (count, word) pairs sort by count
-    by_count := CompareVector-&gt;New()&lt;Pair&lt;IntRef, String&gt;&gt;;
-    each(i : pairs) {
-      by_count-&gt;AddBack(Pair-&gt;New(pairs-&gt;Get(i)-&gt;GetSecond(), pairs-&gt;Get(i)-&gt;GetFirst())&lt;IntRef, String&gt;);
+    <span class="t-com"># --- Vector of pairs: sort by the first value ---</span>
+    <span class="t-com"># a CompareVector sorts; Collection.Pair compares by its first element,</span>
+    <span class="t-com"># so (count, word) pairs sort by count</span>
+    by_count <span class="t-op">:=</span> <span class="t-cls">CompareVector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;Pair&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;&gt;;
+    <span class="t-kw">each</span>(i : pairs) {
+      by_count<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(pairs<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>GetSecond(), pairs<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>GetFirst())&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;);
     };
-    by_count-&gt;Sort();
-    top := by_count-&gt;Get(by_count-&gt;Size() - 1);
-    "most common: '{$(top-&gt;GetSecond())}' x {$(top-&gt;GetFirst()-&gt;Get())}"-&gt;PrintLine();
+    by_count<span class="t-op">-&gt;</span>Sort();
+    top <span class="t-op">:=</span> by_count<span class="t-op">-&gt;</span>Get(by_count<span class="t-op">-&gt;</span>Size() - <span class="t-num">1</span>);
+    <span class="t-str">"most common: '{$(top-&gt;GetSecond())}' x {$(top-&gt;GetFirst()-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- Set: unique values and set algebra ---
-    first := Set-&gt;New()&lt;String&gt;;
-    each(i : 4) {
-      first-&gt;Add(words[i]);          # the quick brown fox
+    <span class="t-com"># --- Set: unique values and set algebra ---</span>
+    first <span class="t-op">:=</span> <span class="t-cls">Set</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+    <span class="t-kw">each</span>(i : <span class="t-num">4</span>) {
+      first<span class="t-op">-&gt;</span>Add(words[i]);          <span class="t-com"># the quick brown fox</span>
     };
-    second := Set-&gt;New()&lt;String&gt;;
-    second-&gt;Add("the");
-    second-&gt;Add("fox");
-    second-&gt;Add("cat");
-    shared := first-&gt;Intersect(second);
-    either := first-&gt;Union(second);
-    "in both sentences: {$(shared-&gt;Size())}, in either: {$(either-&gt;Size())}"-&gt;PrintLine();
-    "shared:"-&gt;Print();
-    keys := shared-&gt;GetKeys();
-    each(i : keys) {
-      " {$(keys-&gt;Get(i))}"-&gt;Print();
+    second <span class="t-op">:=</span> <span class="t-cls">Set</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+    second<span class="t-op">-&gt;</span>Add(<span class="t-str">"the"</span>);
+    second<span class="t-op">-&gt;</span>Add(<span class="t-str">"fox"</span>);
+    second<span class="t-op">-&gt;</span>Add(<span class="t-str">"cat"</span>);
+    shared <span class="t-op">:=</span> first<span class="t-op">-&gt;</span>Intersect(second);
+    either <span class="t-op">:=</span> first<span class="t-op">-&gt;</span>Union(second);
+    <span class="t-str">"in both sentences: {$(shared-&gt;Size())}, in either: {$(either-&gt;Size())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-str">"shared:"</span><span class="t-op">-&gt;</span>Print();
+    keys <span class="t-op">:=</span> shared<span class="t-op">-&gt;</span>GetKeys();
+    <span class="t-kw">each</span>(i : keys) {
+      <span class="t-str">" {$(keys-&gt;Get(i))}"</span><span class="t-op">-&gt;</span>Print();
     };
-    ""-&gt;PrintLine();
+    <span class="t-str">""</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # --- MultiHash: several values under one key ---
-    by_length := MultiHash-&gt;New()&lt;IntRef, String&gt;;
-    each(i : words) {
-      by_length-&gt;Insert(IntRef-&gt;New(words[i]-&gt;Size()), words[i]);
+    <span class="t-com"># --- MultiHash: several values under one key ---</span>
+    by_length <span class="t-op">:=</span> <span class="t-cls">MultiHash</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+    <span class="t-kw">each</span>(i : words) {
+      by_length<span class="t-op">-&gt;</span>Insert(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(words[i]<span class="t-op">-&gt;</span>Size()), words[i]);
     };
-    fives := by_length-&gt;Find(IntRef-&gt;New(5));
-    "five-letter words:"-&gt;Print();
-    each(i : fives) {
-      " {$(fives-&gt;Get(i))}"-&gt;Print();
+    fives <span class="t-op">:=</span> by_length<span class="t-op">-&gt;</span>Find(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">5</span>));
+    <span class="t-str">"five-letter words:"</span><span class="t-op">-&gt;</span>Print();
+    <span class="t-kw">each</span>(i : fives) {
+      <span class="t-str">" {$(fives-&gt;Get(i))}"</span><span class="t-op">-&gt;</span>Print();
     };
-    ""-&gt;PrintLine();
+    <span class="t-str">""</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -154,22 +140,38 @@ five-letter words: quick brown jumps</pre>
      <li><code>Set</code> operations (<code>Intersect</code>, <code>Union</code>, <code>Difference</code>) return new sets and leave both operands alone.</li>
      <li><code>MultiHash</code> stores a <code>Vector</code> per key; <code>Find(key)</code> returns that vector, not a copy.</li>
     </ul>
-    <h3 id="how-to-check">How to check</h3>
+    <h2 id="how-to-check">How to check</h2>
     <p>Compile and run the program above; the five output lines are what it printed when the page was written (not re-run for this review). The collections are covered by <code>programs/regression/collect_*.obs</code> (the list is at the end of <a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a>); the pair sort that the note above describes is <code>collect_pair_compare.obs</code> (<code>10da7f1c55</code>, 2026-11-02).</p>
-    <h3 id="where-next">Where next</h3>
+    <h2 id="where-next">Where next</h2>
     <ul>
      <li><a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a>: the choosing table, costs and the <code>Remove</code> return values.</li>
-     <li>The shipped <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/collections_11.obs" target="_blank"><code>collections_11.obs</code></a> covers <code>List</code>, <code>Stack</code>, <code>Queue</code> and the unboxed collections.</li>
+     <li>The shipped <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/collections_11.obs" target="_blank" rel="noopener"><code>collections_11.obs</code></a> covers <code>List</code>, <code>Stack</code>, <code>Queue</code> and the unboxed collections.</li>
      <li><a href="guide_query.html">Query.Structured</a>, when you want to filter, group and join rows with SQL.</li>
     </ul>
-
+<!-- content:end -->
    </div>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

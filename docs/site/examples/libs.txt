@@ -1,0 +1,8 @@
+# name = the -lib list the sample compiles with (empty: none)
+hello =
+shapes =
+lambdas =
+json = json
+threads = concurrent
+query = query,misc,net,json,regex,xml,csv,cipher
+ml = csv,ml

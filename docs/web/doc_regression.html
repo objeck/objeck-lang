@@ -1,78 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Objeck Language Regression Test Suite — Objeck Language</title>
-  <meta name="description" content="This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 .obs files (the generated TESTS.md lists every one, by category, with what it checks; 128 files are named bad_*; 139 carry "/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 .obs files (the generated TESTS.md lists every one, by category, with what it checks; 128 files are named bad_*; 139 carry ">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Objeck Language Regression Test Suite</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/README.md" target="_blank">programs/regression/README.md on GitHub</a></div>
-    <p class="page-lead">This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 <code>.obs</code> files (the generated <a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/TESTS.md" target="_blank">TESTS.md</a> lists every one, by category, with what it checks; 128 files are named <code>bad_*</code>; 139 carry an <code>EXPECT_COMPILE_ERROR</code> (116) or <code>EXPECT_RUNTIME_ERROR</code> (23) marker). The map of every other assurance mechanism in the repository (fuzzers, verifiers, nightly jobs, static analysis) is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/TESTING_AND_ASSURANCE.md" target="_blank">docs/TESTING_AND_ASSURANCE.md</a>. It covers:</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#purpose">Purpose</a></li>
-      <li><a href="#running-tests">Running Tests</a></li>
-      <li><a href="#test-organization">Test Organization</a></li>
-      <li><a href="#adding-new-tests">Adding New Tests</a></li>
-      <li><a href="#cicd-integration">CI/CD Integration</a></li>
-      <li><a href="#expected-output">Expected Output</a></li>
-      <li><a href="#related-documentation">Related Documentation</a></li>
-      <li><a href="#maintenance">Maintenance</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#contributing">Contributing</a></li><li aria-current="page">Objeck Language Regression Test Suite</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html" aria-current="page">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Objeck Language Regression Test Suite</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/README.md" target="_blank" rel="noopener">View programs/regression/README.md on GitHub</a></p>
+    <p class="page-lead">This regression test suite validates the compiler, virtual machine, JIT and libraries after every change. It has 812 <code>.obs</code> files (the generated <a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/TESTS.md" target="_blank" rel="noopener">TESTS.md</a> lists every one, by category, with what it checks; 128 files are named <code>bad_*</code>; 139 carry an <code>EXPECT_COMPILE_ERROR</code> (116) or <code>EXPECT_RUNTIME_ERROR</code> (23) marker). The map of every other assurance mechanism in the repository (fuzzers, verifiers, nightly jobs, static analysis) is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/TESTING_AND_ASSURANCE.md" target="_blank" rel="noopener">docs/TESTING_AND_ASSURANCE.md</a>. It covers:</p>
 
-    <h3 id="purpose">Purpose</h3>
+    <h2 id="purpose">Purpose</h2>
     <ul>
      <li><strong>Core language</strong> - classes, generics, closures and lambdas, records, strings, collections, exceptions</li>
      <li><strong>JIT</strong> - AMD64 and ARM64 code generation (<code>jit_*</code>, <code>arm64_*</code>)</li>
@@ -82,13 +60,13 @@
      <li><strong>Tools</strong> - debugger, DAP, LSP and MCP entry points</li>
     </ul>
     <p><code>TESTS.md</code> is generated by <code>gen_manifest.py</code> in this directory; it also lists the 14 debugger tests that <code>run_debugger_tests.sh</code> drives. <strong>Do not commit it in a pull request:</strong> the <code>Regression test manifest</code> workflow regenerates it on master after each merge that changes a test. When every pull request carried its own copy, each merge made every other open pull request conflict on it.</p>
-    <h3 id="running-tests">Running Tests</h3>
+    <h2 id="running-tests">Running Tests</h2>
     <p>Build a deploy tree first (<code>core/release/deploy_windows.cmd x64|arm64</code>, <code>core/release/deploy_posix.sh x64|arm64</code> or <code>core/release/deploy_macos_arm64.sh</code>). The runners use <code>core/release/deploy-&lt;arch&gt;</code> when it exists and <code>core/release/deploy</code> otherwise.</p>
-    <h4 id="linuxmacos">Linux/macOS</h4>
+    <h3 id="linuxmacos">Linux/macOS</h3>
 <pre class="cmd">cd programs/regression
 chmod +x run_regression.sh
 ./run_regression.sh x64          # or arm64</pre>
-    <h4 id="windows">Windows</h4>
+    <h3 id="windows">Windows</h3>
 <pre class="cmd">cd programs\regression
 run_regression.cmd x64      REM For x64 build
 run_regression.cmd arm64    REM For ARM64 build</pre>
@@ -128,7 +106,7 @@ run_regression.cmd arm64    REM For ARM64 build</pre>
      </tbody>
     </table>
     <p>None of the Python runners can find a bug outside the programs it feeds them: the robustness gates catch crashes, hangs and diagnostics that drift, not a wrong error message that happens to land near the mutation, and the differential runner finds divergence between configurations, not an error every configuration shares.</p>
-    <h3 id="test-organization">Test Organization</h3>
+    <h2 id="test-organization">Test Organization</h2>
     <p>The file-name prefix decides a test's category in <code>TESTS.md</code> (<code>core_</code>, <code>jit_</code>, <code>arm64_</code>, <code>bad_</code>, <code>collect_</code>, <code>ml_</code> and so on; the mapping is <code>CATS</code> in <code>gen_manifest.py</code>, and a name that matches none is filed under Other). Directives are comment lines starting at column 0:</p>
     <table class="ref-table">
      <thead>
@@ -145,7 +123,7 @@ run_regression.cmd arm64    REM For ARM64 build</pre>
      </tbody>
     </table>
     <p>Data a test reads lives under <code>data/</code>, found relative to this directory (every runner runs tests from here). <code>data/bert/</code> holds three tiny BERT-shaped ONNX models, their vocabulary and <code>gen_tiny_bert.py</code>, which regenerates them byte-for-byte; <code>docs/ML_BERT_DESIGN.md</code> describes them.</p>
-    <h3 id="adding-new-tests">Adding New Tests</h3>
+    <h2 id="adding-new-tests">Adding New Tests</h2>
     <ol>
      <li>Create a new <code>.obs</code> file in this directory</li>
      <li>Name it descriptively: <code>category_feature.obs</code></li>
@@ -154,37 +132,37 @@ run_regression.cmd arm64    REM For ARM64 build</pre>
      <li>Exit with code 0 on success, non-zero on failure (<code>Runtime-&gt;Exit(1)</code>). Printing <code>FAIL</code> is not enough: a test that returns normally exits 0 and is scored a pass, and CI's <code>tools/cicd/check_test_exit_codes.py</code> rejects a test that prints <code>FAIL</code> with no exit path</li>
      <li>Leave <code>TESTS.md</code> alone: it is regenerated on master after the merge (run <code>python gen_manifest.py</code> locally to preview, but do not commit the result)</li>
     </ol>
-    <h4 id="test-template">Test Template</h4>
-<pre class="line-numbers"><code class="language-cpp">#~
+    <h3 id="test-template">Test Template</h3>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com">#~
 # Test Name
 # Brief description of what this tests
 # Related commit: &lt;commit-hash&gt;
-~#
+~#</span>
 
-class MyTest {
-    function : Main(args : String[]) ~ Nil {
-        "Testing my feature..."-&gt;PrintLine();
+<span class="t-kw">class</span> <span class="t-cls">MyTest</span> {
+    <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+        <span class="t-str">"Testing my feature..."</span><span class="t-op">-&gt;</span>PrintLine();
 
-        pass := true;
+        pass <span class="t-op">:=</span> <span class="t-const">true</span>;
 
-        # Your test logic here
-        if(test_condition) {
-            # Test passed
-        } else {
-            pass := false;
-            "  FAIL: Description of failure"-&gt;PrintLine();
+        <span class="t-com"># Your test logic here</span>
+        <span class="t-kw">if</span>(test_condition) {
+            <span class="t-com"># Test passed</span>
+        } <span class="t-kw">else</span> {
+            pass <span class="t-op">:=</span> <span class="t-const">false</span>;
+            <span class="t-str">"  FAIL: Description of failure"</span><span class="t-op">-&gt;</span>PrintLine();
         };
 
-        if(pass) {
-            "PASS: My feature"-&gt;PrintLine();
-        } else {
-            "FAIL: My feature"-&gt;PrintLine();
-            Runtime-&gt;Exit(1);
+        <span class="t-kw">if</span>(pass) {
+            <span class="t-str">"PASS: My feature"</span><span class="t-op">-&gt;</span>PrintLine();
+        } <span class="t-kw">else</span> {
+            <span class="t-str">"FAIL: My feature"</span><span class="t-op">-&gt;</span>PrintLine();
+            <span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>Exit(<span class="t-num">1</span>);
         };
     }
 }
 </code></pre>
-    <h3 id="cicd-integration">CI/CD Integration</h3>
+    <h2 id="cicd-integration">CI/CD Integration</h2>
     <p>This test suite runs automatically in GitHub Actions on:</p>
     <ul>
      <li>Push to master</li>
@@ -192,7 +170,7 @@ class MyTest {
     </ul>
     <p>It runs natively on all five platforms (Windows x64 and ARM64, Linux x64 and ARM64, macOS ARM64), twice on each: once as is and once with <code>OBJECK_JIT_THRESHOLD=1</code>. The same job runs the debugger, DAP, VM-flag and compiler-robustness runners from this directory, and CI's <code>tools</code> job lints the tests themselves (<code>check_test_exit_codes.py</code>, <code>check_jit_optouts.py</code>, <code>check_diff_markers.py</code> in <code>tools/cicd</code>). <code>.github/workflows/nightly-hardening.yml</code> runs daily at 07:23 UTC and on dispatch, against the binaries of the latest green master CI run: <code>run_differential.py</code>, the program fuzzer (<code>tools/fuzz/run_fuzz.py</code>), this suite twice under the heap verifier (<code>OBJECK_NURSERY=256k OBJECK_GC_VERIFY=1</code>, then <code>OBJECK_VM_ARGS=--gc-threshold=64k OBJECK_GC_VERIFY=1</code>), loops of <code>minor_gc_stress</code>, <code>core_thread_gc_stress</code> and <code>jit_gc_stress</code> in both JIT modes, and a libFuzzer run on the .obe loader.</p>
     <p>See <code>.github/workflows/ci-build.yml</code> for CI configuration.</p>
-    <h3 id="expected-output">Expected Output</h3>
+    <h2 id="expected-output">Expected Output</h2>
     <p>From <code>run_regression.sh</code>; <code>run_regression.cmd</code> prints the same summary with slightly different per-test lines.</p>
 <pre class="plain">========================================
   Objeck Regression Test Suite
@@ -212,27 +190,47 @@ Running: bad_call_undefined...
 ========================================
   Results: N passed, M skipped, 0 failed
 ========================================</pre>
-    <h3 id="related-documentation">Related Documentation</h3>
+    <h2 id="related-documentation">Related Documentation</h2>
     <ul>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/programs/TESTING.md" target="_blank">Main Testing Documentation</a></li>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/TESTS.md" target="_blank">Test manifest</a></li>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/.github/workflows/ci-build.yml" target="_blank">GitHub Actions Workflow</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/programs/TESTING.md" target="_blank" rel="noopener">Main Testing Documentation</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/programs/regression/TESTS.md" target="_blank" rel="noopener">Test manifest</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/.github/workflows/ci-build.yml" target="_blank" rel="noopener">GitHub Actions Workflow</a></li>
     </ul>
-    <h3 id="maintenance">Maintenance</h3>
+    <h2 id="maintenance">Maintenance</h2>
     <ul>
      <li>Run regression tests before major releases</li>
      <li>Add tests for new features and bug fixes</li>
      <li>Update test expectations if language semantics change intentionally</li>
      <li>Do not commit <code>TESTS.md</code>; it is regenerated on master after each merge that adds or removes a test</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#purpose">Purpose</a></li><li><a href="#running-tests">Running Tests</a></li><li><a href="#test-organization">Test Organization</a></li><li><a href="#adding-new-tests">Adding New Tests</a></li><li><a href="#cicd-integration">CI/CD Integration</a></li><li><a href="#expected-output">Expected Output</a></li><li><a href="#related-documentation">Related Documentation</a></li><li><a href="#maintenance">Maintenance</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>
