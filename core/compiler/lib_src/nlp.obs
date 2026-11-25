@@ -2163,9 +2163,16 @@ if(TextSimilarity->LevenshteinDistance("opentelemetry", "opentelemetri", 2) <= 2
 				max_distance := 0;
 			};
 
-			over := max_distance + 1;
 			len1 := str1->Size();
 			len2 := str2->Size();
+
+			# a ceiling that covers both lengths can never be passed: the exact distance is the answer
+			# (and max_distance + 1 below would overflow for a ceiling near Int->MaxSize())
+			if(max_distance >= len1 & max_distance >= len2) {
+				return LevenshteinDistance(str1, str2);
+			};
+
+			over := max_distance + 1;
 			gap := len1 - len2;
 			if(gap < 0) {
 				gap := -gap;
