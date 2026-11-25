@@ -1,78 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Changelog — Objeck Language</title>
-  <meta name="description" content="Objeck release notes, changelog, installation instructions, and platform support."/>
-  <link href="style/styles.css" rel="stylesheet"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-
-      document.addEventListener("click", () => {
-        menuItems.classList.remove("open");
-      });
-    });
-  </script>
-
+  <meta name="description" content="Objeck release notes, changelog, installation instructions, and platform support.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-  
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" style="text-align: left;">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li aria-current="page">Changelog</li></ol></nav>
+  <div class="layout has-side">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html" aria-current="page">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <!-- Intro -->
-    <p style="font-size: 1.05rem; color: #9ca3af; margin: 0.5rem 0 1.25rem;">
+    <h1 class="page-title">Release notes</h1>
+    <p class="page-lead">
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
-    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.11.3</a>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.11.4</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
-    <p style="font-size: 0.9rem; color: #9ca3af; margin: 0 0 2rem;">
-      v2026.11.3 is the current release &mdash; see the
+    <p class="fine">
+      v<!-- version:start -->2026.11.4<!-- version:end --> is the current release &mdash; see the
       <a href="doc_changelog.html">changelog</a>.
     </p>
 
     <!-- Changelog -->
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.4" style="color: inherit; text-decoration: none;">v2026.11.4</a></u></h3>
+   <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.4" style="color: inherit; text-decoration: none;">v2026.11.4</a></h2>
     <ul>
      <li><strong>A toolkit for AI agents</strong> &mdash; <code>API.Agent</code> is a provider-neutral tool-use loop for Claude, OpenAI, Gemini and Ollama with cancellation, budgets, bounded tool calls and a trace; <code>mcp</code> is a Model Context Protocol server and client over stdio and streamable HTTP; <code>System.Actor</code> adds actors with supervision; and <code>llm_util</code>, <code>rag</code> and <code>System.Telemetry</code> add prompt templates and JSON Schema checks, a retrieval-augmented generation kit and inference timing, all in Objeck.</li>
      <li><strong>OpenAI tool calls</strong> &mdash; <code>Completion-&gt;CompleteWithTools</code> sends a <code>tools</code> array to Chat Completions and <code>Choice-&gt;GetToolCalls()</code> returns the calls the model asked for, so the OpenAI client takes part in the same tool loop as the other providers.</li>
@@ -87,8 +77,11 @@
      <li><strong>Compiler and runtime fixes</strong> &mdash; <code>String-&gt;New(Byte[])</code> no longer reads past the array, a method chain on a parenthesised calculation keeps every call, a local declared without a value in a loop starts empty each iteration, dead-store elimination keeps a store a handler reads, loop-invariant code motion no longer hoists an observable store, function references to method ids of 32768 or more work, threads making the first call of one long-running method no longer run it 20x slower, and an ARM64 hang on the minimum <code>Int</code> is gone.</li>
      <li><strong>Library fixes</strong> &mdash; <code>KNearestNeighbors-&gt;Query</code>, bounded <code>LevenshteinDistance</code> and the threaded <code>VectorIndex</code> search are corrected at their edges, <code>SentimentAnalyzer</code>, <code>View-&gt;ToJson</code>, <code>Table-&gt;Save</code> and the Gemini and JSON-schema parsers no longer carry a previous value into the next, and a <code>Nil</code> collection lookup reports not-found.</li>
      <li><strong>Build and release</strong> &mdash; <code>core/lib/*.obl</code> are rebuilt from source and compared in CI, <code>docs/api.zip</code> and the Windows <code>objeck.rc</code> files are generated instead of committed, and <code>tools/hpc/alderaan</code> runs Objeck on a Slurm cluster without root.</li>
+     <li><strong>Eight AI examples</strong> &mdash; <code>mcp_32.obs</code> to <code>forecast_39.obs</code> ship with every release and run offline with no key or model: an MCP server and client, an agent loop, agent run control, a supervised actor, retrieval with citations, structured output with retry, telemetry and a forecast.</li>
+     <li><strong>A new objeck.org</strong> &mdash; a dark-first design with new navigation, Learn, Start, Libraries and Community pages, and code samples that a CI check compiles and runs.</li>
+     <li><strong>Steadier tests and CI</strong> &mdash; the nightly differential run no longer sees timings on stdout, the CodeQL steps move to 4.39.4 together, and the Windows build legs have a 90-minute cap.</li>
     </ul>
-   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.3" style="color: inherit; text-decoration: none;">v2026.11.3</a></h3>
+   <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.3">v2026.11.3</a></h2>
     <ul>
      <li><strong>Regular expressions are 4.5 to 27 times faster</strong> &mdash; <code>RegEx</code> finds where the longest match ends with a lazily built DFA, one table lookup per character, and skips start positions that cannot begin a match. On 680 KB of text a class-first search went from 0.55 s to 0.043 s and an alternation with a group from 0.99 s to 0.09 s. Patterns with <code>\b</code> or <code>\B</code>, or that need more than 1,024 states, run on the NFA as before; capture groups are unchanged. A <code>RegEx</code> can now be shared by threads (matching on one instance is serialized).</li>
      <li><strong>RegEx bugs fixed</strong> &mdash; <code>{n}</code> was read as <code>{n,}</code>, so <code>a{2}</code> matched <code>aaa</code>; it now means exactly n, and <code>{n,}</code> is accepted. <code>ReplaceAll</code> matched against text it had already rewritten (<code>\bx</code> on <code>xx</code> with <code>-</code> gave <code>--</code>); it now works in one pass over the original. <code>^a</code>, <code>^a+</code>, <code>^a$</code> and <code>^$</code> were rejected; they compile. Unknown letter or digit escapes, including the backreference <code>\1</code>, were silently read as the literal character; they and a trailing backslash are now an error.</li>
@@ -97,7 +90,7 @@
      <li><strong>Nine new collection types and sturdier collections</strong> &mdash; <code>Deque</code>, <code>MultiSet</code>, <code>UnionFind</code>, <code>Trie</code>, <code>OrderedHash</code>, <code>BiMap</code>, <code>PriorityMap</code> (with decrease-key), <code>FenwickTree</code> and <code>BloomFilter</code> join the collections library, with one shared merge sort for <code>Vector</code> and <code>CompareVector</code>, <code>Vector</code> insert, slice and add-all, doubling growth, and a <code>Stack</code> that no longer crashes near 500,000 entries. A <code>Nil</code> key or value lookup now reports not-found instead of ending the program. Thirteen new regression tests cover them.</li>
      <li><strong>Library workloads are measured</strong> &mdash; <code>docs/performance.md</code> has a new Library workloads section with the regex, vector search, nearest-neighbor, edit-distance, string and JSON timings behind these numbers, and what it did not measure.</li>
     </ul>
-   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.2" style="color: inherit; text-decoration: none;">v2026.11.2</a></h3>
+   <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.2">v2026.11.2</a></h2>
     <ul>
      <li><strong>A long linked chain no longer crashes the VM</strong> &mdash; a <code>List</code>, <code>Queue</code>, <code>CompareList</code> or linked <code>Stack</code> of about 500,000 or more nodes exited with code 127, because marking recursed once per node and overflowed the collector thread's native stack; marking now uses a bounded per-thread work stack, and a 2-million-node chain passes with and without the JIT (<code>binarytrees</code> is unchanged)</li>
      <li><strong>Sorting and strings are faster</strong> &mdash; the <code>Vector</code> and <code>CompareVector</code> merge sorts skip a merge when the halves are already in order (500,000 sorted elements: about 500 ms to 80 ms, random input unchanged, still stable), and <code>String-&gt;Append(String)</code> copies strings of 32 or more characters in one block (1,000-character pieces: 1,660 ms to 292 ms)</li>
@@ -107,7 +100,7 @@
      <li><strong>One command finishes a release</strong> &mdash; <code>tools/cicd/release_finish.sh</code> waits for the build, signs the installers (unattended from a DPAPI-protected password file, or at one prompt), deploys the playground and the site, and runs the release gates; the site deploy script targets the new server</li>
      <li><strong>Topic stability is a distribution</strong> &mdash; <code>docs/AI.md</code> explains how to read <code>TopicMetrics-&gt;Stability</code> (about 1.0 when two seeds find the same optimum, 0.67 to 0.8 when one merged two topics), measured against Gensim over 15 seed pairs</li>
     </ul>
-   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.1" style="color: inherit; text-decoration: none;">v2026.11.1</a></h3>
+   <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.1">v2026.11.1</a></h2>
     <ul>
      <li><strong>Compiler errors that say what is wrong</strong> &mdash; the scanner gives each rejected token a concrete reason with a source excerpt and caret (bad escapes, unterminated strings reported at the opening quote, malformed numbers such as <code>1e3</code>, <code>0o9</code> and <code>1.2.3</code>); the parser says "Expected X, found Y" and names the opener of an unclosed <code>(</code>; the analyzer suggests "Did you mean ..." for an undefined variable, class or method and details call signatures and casts. Recovery after a lexical error no longer buries it under follow-on errors.</li>
      <li><strong>Large programs compile faster</strong> &mdash; the optimizer's dead-store pass was quadratic, so a 100,000-statement program took 54 s to compile at <code>-opt s3</code> and now takes 5 s; 20,000 <code>select</code> labels went from 6 s to 0.6 s; and a program that uses the query library compiles in 0.7 s instead of 1.4 s because the intermediate instructions are freed in one pass.</li>
@@ -133,7 +126,7 @@
      <li><strong>objeck.org</strong> &mdash; a Playground pill in the header, fewer duplicate links, a click-to-play Internals video that makes no request to YouTube until played, security headers (with a report-only content security policy), and a daily visitor report from the access log with no cookies or scripts added to the site.</li>
      <li><strong>Tooling</strong> &mdash; <code>tools/release-stats/snapshot_traffic.py</code> keeps the repository traffic GitHub drops after 14 days, in a private folder and never in the repository; a flaky language-server test (the queued-batch ContentModified check) is fixed. The README gains a Platform support section: the Linux release needs glibc 2.38 or newer, with workarounds for older distributions.</li>
     </ul>
-   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.0" style="color: inherit; text-decoration: none;">v2026.11.0</a></h3>
+   <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.11.0">v2026.11.0</a></h2>
     <ul>
      <li><strong>A web server that serves a site</strong> &mdash; <code>StaticFiles</code> serves a folder with content types from a whitelist of extensions, <code>index.html</code> for a folder, ETags and conditional requests (304), gzip for text and <code>Range</code> for large files (206 and 416), and refuses dotfiles, non-ASCII names and folder listings. <code>programs/examples/site_server.obs</code> is a complete server in about 160 lines, and objeck.org now runs on it behind Caddy.</li>
      <li><strong>Hostile clients are bounded</strong> &mdash; the whole request has a deadline, so a client that trickles its headers cannot hold a connection open; a <code>..</code> path in any spelling answers 400; <code>Request.GetHeader</code> is case-insensitive; and one silent connection no longer blocks every TLS client, because <code>TCPSecureSocketServer-&gt;Accept</code> no longer does the handshake inside the accept call. <code>tools/security</code> is a black-box harness of 93 hostile requests, and it passes.</li>
@@ -143,7 +136,7 @@
      <li><strong>A new look for objeck.org</strong> &mdash; a teal-black page under a slow aurora, a hamburger menu on the left with the logo centered, a Powered by Objeck badge, and the performance figures re-measured on this version.</li>
     </ul>
 
-   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.3" style="color: inherit; text-decoration: none;">v2026.10.3</a></h3>
+   <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.3">v2026.10.3</a></h2>
     <ul>
      <li><strong>Garbage collector roots, finished</strong> &mdash; compiled code now tells the collector exactly which stack slots hold references (typed slots on x64 and ARM64), and an <code>Int[]</code> has its own heap tag, so an <code>Int</code> or an <code>Int[]</code> element that happens to equal an object's address is never rewritten by a collection, interpreted or compiled (<a href="doc_gc_roots.html">design</a>)</li>
      <li><strong>A hardened loader</strong> &mdash; a fuzz target on <code>Loader::Load</code> (hundreds of millions of executions) fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count, an abort on a bad method signature, a silent exit on an unknown opcode and a read past the end of a short <code>.obe</code>; a verifier now checks jump targets, local and trap ids and class, method and field ids before anything runs (<a href="doc_security.html">trust model</a>)</li>
@@ -160,7 +153,7 @@
      <li><strong>Upgrading</strong> &mdash; recompile your <code>.obe</code> files and rebuild your own <code>.obl</code> libraries: the file format changed, and a program or library built by an earlier version is refused with a message saying so</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.2" style="color: inherit; text-decoration: none;">v2026.10.2</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.2">v2026.10.2</a></h2>
      <ul>
       <li><strong>Query.Structured, a columnar engine</strong> &mdash; every column is a typed array with a null bitmap, text is dictionary-encoded, and 65,536-row groups carry zone maps so a filter skips what it cannot match. Queries return views with nothing copied, a <code>where</code> is compiled once into typed predicates, prepared statements take <code>?</code> placeholders, and a method-chaining API (<code>Col("value")-&gt;Gt(0.5)</code>) sits beside SQL. The SQL parser is new: <code>INNER</code>/<code>LEFT JOIN</code> through a <code>Catalog</code>, <code>GROUP BY</code> with <code>COUNT</code>/<code>SUM</code>/<code>AVG</code>/<code>MIN</code>/<code>MAX</code>/<code>MEDIAN</code>/<code>STDDEV</code> and <code>HAVING</code>, multi-key <code>ORDER BY ASC|DESC</code>, <code>LIMIT</code>/<code>OFFSET</code>, <code>DISTINCT</code>, <code>MATCHES</code>, <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>/<code>CREATE TABLE</code>, and SQL expressions in every clause (<code>score * 100 as pct</code>, <code>group by x % 10</code>, <code>having sum(a) / count(*) &gt; 2</code>, <code>on t.n + 1 = u.w</code>), evaluated 1,024 rows at a time and reduced to the ordinary filter where an index or zone map can serve it. The old API keeps its signatures and results. At 100,000 rows on Windows x64, a <code>where</code> went from 0.558 s to 0.023 s, <code>order by</code> from 3.16 s to 0.096 s and <code>Sum</code> from 0.051 s to 0.004 s (#1291, #1295, #1298, #1301, #1303, #1325, #1367, #1398, #1416, #1417)</li>
       <li><strong>Files and URLs are tables</strong> &mdash; a quoted path in <code>FROM</code> or <code>JOIN</code> is read by its extension (<code>.csv</code>, <code>.tsv</code>, <code>.json</code>, <code>.jsonl</code>, <code>.xml</code>, <code>.otab</code>, each also <code>.gz</code>), <code>csv('data.txt', delimiter =&gt; ';')</code> sets options, a glob reads several files as one table with a <code>_file</code> column, an <code>http(s)</code> path goes through a download cache revalidated with <code>ETag</code> and <code>Last-Modified</code>, and an archive member or worksheet follows the path after a dot: <code>from 'results.zip'.'2026/runs.csv'</code>, <code>from 'budget.xlsx'.'Q1 2026'</code>. <code>Catalog-&gt;SetFileAccess(false)</code> refuses them all. The URL download cache is correct across processes that share the temporary folder (one folder of immutable versions per URL and one small note, published by an atomic rename), and a file rewritten within the second of its last read is read again (#1303, #1366, #1384, #1391)</li>
@@ -201,7 +194,7 @@
       <li><strong>Upgrading</strong> &mdash; every <code>.obl</code> is a new format (magic <code>0xffb9</code>): rebuild your own libraries. An <code>.obe</code> compiled by an earlier release is refused by this runtime, which requires an exact toolchain version match (the message names both versions): recompile the source. A v2026.10.1 <code>obu</code> run from an install directory with a non-ASCII name crashes before doing anything, so that install must be upgraded to v2026.10.2 by hand; from v2026.10.2 on <code>obu</code> handles it. <code>Directory-&gt;List</code> drops <code>.</code> and <code>..</code> on Windows. <code>010</code> is an error and <code>0o10</code> is octal. <code>System.Time.Date</code> must be written in full beside <code>Database.ODBC</code>. <code>CompressBr</code> is <code>CompressDeflate</code>. <code>Byte[]-&gt;ToHexString</code> is a digest. <code>ByteBuffer-&gt;New(Byte[])</code> copies. <code>Hash</code> iteration order changes. <code>Softmax</code> is per row. Malformed JSON numbers and over-long CSV rows fail. In <code>Query.Structured</code>'s new engine NaN matches only <code>&lt;&gt;</code> and sorts last. <code>Serialize</code> compresses at level 1. A Nil interpolates as <code>Nil</code>. The call stack defaults to 16,384 frames. <code>--gc-threshold</code> holds as given while a major leaves a quarter of it free and scales with the live heap otherwise. On POSIX only, a write to a closed stdout pipe fails instead of ending the program. <code>McpServer</code> takes <code>http_port</code> 0. <code>GetLastError()</code> is Nil after a call that worked. <code>Data.JSON</code> decodes string escapes when it parses, so stop calling <code>JsonElement-&gt;Decode</code> on parsed text (it is deprecated, and an invalid escape no longer parses). <code>TF_IDF-&gt;New()</code> smooths IDF and normalizes to unit length by default. <code>System.Time.Timer</code> measures wall-clock time on Linux and macOS. In <code>Query.Structured</code>, <code>where a = b</code> compares two columns, and a program that changes tables published by a <code>TableServer</code> must bracket the changes with <code>BeginWrite()</code> and <code>EndWrite()</code>. <code>McpServer-&gt;Serve</code> refuses an incomplete configuration. In <code>Data.XML</code>, <code>FindElements</code> <code>"[n]"</code> is the n-th match, as in XPath, not the first <em>n</em>. In <code>Query.Structured</code>, an unknown column in a single-table select list or <code>ORDER BY</code> makes <code>Query</code> return <code>Nil</code> with <code>GetError()</code> naming it, where it used to read as empty. Against v2026.10.1 no class is removed from the editor index and the only functions removed are <code>CompressBr</code> and <code>UncompressBr</code>. The CHANGELOG has the full list</li>
      </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.1" style="color: inherit; text-decoration: none;">v2026.10.1</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.1">v2026.10.1</a></h2>
      <ul>
       <li><strong>Errors you can raise, catch by type, and clean up after</strong> &mdash; System.Error and its subclasses are raised with Runtime-&gt;Raise and caught with try { } on(e : ParseError) { } finally { }. Clauses are tested in order, an error no clause names goes on after finally, and return, break and continue leave through finally. The runtime's own faults are NilError, IndexError, DivideByZeroError, CastError and RuntimeError, and a failed Runtime-&gt;Assert or library call now recovers instead of ending the program. ?-&gt; still recovers from anything, and Runtime-&gt;GetLastError() says what it was (#1267, #1273, #1274)</li>
       <li><strong>Named arguments</strong> &mdash; F(data, rate: 0.1, epochs: 50) in any order, skipping any defaulted parameter, for the program's own methods and constructors and for library ones: every .obl records its parameter names, so standard-library parameter names are now public API. Arguments are still evaluated in the order written (#1263, #1268)</li>
@@ -224,7 +217,7 @@
       <li><strong>Release verification runs on all five platforms from one dispatch</strong> &mdash; each from a clean checkout, refusing to pass unless every leg reports the same commit. It also caught that a checkout made on Windows cannot build the POSIX ONNX library at all: nine paths here are git symlinks, and a Windows clone writes them as text files (<a href="https://github.com/objeck/objeck-lang/pull/1095">#1095</a>, <a href="https://github.com/objeck/objeck-lang/pull/1094">#1094</a>)</li>
      </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.0" style="color: inherit; text-decoration: none;">v2026.10.0</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.10.0">v2026.10.0</a></h2>
      <ul>
      <li><strong><code>Try()</code> recovers from an error raised inside compiled code</strong> &mdash; whether a guarded chain recovered or ended the program depended on how many times the failing method had been called. The handler stack is now per-thread so a JIT callback can see it, the callback reports a status instead of exiting, and a compiled method calling a compiled method that fails carries the status outward instead of printing and exiting. Compiled recursion that overruns the native C stack stays fatal (#925)</li>
      <li><strong>A recovered <code>?-&gt;</code> compares correctly against <code>Nil</code></strong> &mdash; <code>if(x?-&gt;y() = Nil)</code> took the wrong branch once the failing method was hot, while the same value through a local was right. Recovery was never at fault; the value was read before the handler's store was visible (#1067)</li>
@@ -250,7 +243,7 @@
      <li><strong>Build and test plumbing</strong> &mdash; the generated POSIX <code>Makefile</code>s are treated as build output rather than tracked source; a missing <code>expect</code> let the debugger suite skip every test and still report success; and <code>cov_scan.sh</code> reported a submission Coverity had refused, which also deleted the archive it had just promised to keep</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.7" style="color: inherit; text-decoration: none;">v2026.9.7</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.7">v2026.9.7</a></h2>
      <ul>
       <li><strong>A model can be evaluated honestly, end to end</strong> &mdash; <code>System.ML</code> could fit a model but not measure one. Nothing held a scaler&rsquo;s statistics across a train/test split, so test data was scaled by its own numbers, which leaks the test distribution into the result. <code>FeatureScaler</code> and <code>TableEncoder</code> learn from the training split and reapply it, <code>StratifiedKFold</code> keeps each class&rsquo;s ratio in every fold from a seed, and <code>CrossValidation-&gt;Evaluate</code> runs the folds over a common <code>ScoreModel</code> interface</li>
       <li><strong>Metrics that take a score rather than a decision</strong> &mdash; <code>RecallAtFpr</code>, <code>ThresholdAtFpr</code>, <code>AucRoc</code>, <code>AveragePrecision</code>, <code>RocCurve</code> and <code>PrCurve</code>. A <code>Bool</code> array is already thresholded, so it cannot say what recall would be at a different false-alarm rate</li>
@@ -266,7 +259,7 @@
       <li><strong>The <code>@web</code> library group never worked, and <code>@</code> groups now expand anywhere in the list</strong> &mdash; <code>-lib @web</code> failed on any program, even one that never touched HTTP, because the group omitted <code>net_server.obl</code>. Separately, when building a library, <code>-lib @std</code> worked while <code>-lib @std,misc</code> tried to open a file named <code>@std.obl</code>. Both fixed, and the groups are now documented &mdash; <code>obc</code>&rsquo;s usage had never mentioned <code>@</code> at all</li>
 </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.6" style="color: inherit; text-decoration: none;">v2026.9.6</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.6">v2026.9.6</a></h2>
      <ul>
       <li><strong><code>System.ML</code> stopped returning wrong numbers</strong> &mdash; column sums and averages truncated every fractional value, so <code>LinearSolver</code> reported the wrong R-squared; <code>KMeans-&gt;Group</code> could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero</li>
       <li><strong><code>Matrix2D</code> says no instead of stopping the program</strong> &mdash; operations on shapes it cannot combine return <code>Nil</code>, a <code>Nil</code> operand no longer crashes the native code, <code>Inverse</code> of a non-square matrix no longer hangs, and <code>NeuralNetwork-&gt;Train</code> refuses an input or target that is not a column of the right height</li>
@@ -276,7 +269,7 @@
       <li><strong><code>obi</code> exits when its input ends</strong> &mdash; piping a program into the REPL, or closing its input, left it running forever</li>
      </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.5" style="color: inherit; text-decoration: none;">v2026.9.5</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.5">v2026.9.5</a></h2>
      <ul>
       <li><strong>Linux ARM64 runs on every ARM64 CPU</strong> &mdash; v2026.9.4 needed SVE instructions and stopped with &ldquo;Illegal instruction&rdquo; on a Raspberry Pi 4/5, Graviton2, Snapdragon X or Apple silicon in a Linux VM; it now targets ARMv8-A, at no measured cost</li>
       <li><strong>Threads exit and join safely</strong> &mdash; a runtime error or <code>Runtime-&gt;Exit</code> with another thread running no longer crashes the VM, and <code>Thread-&gt;Join</code> no longer fails after a garbage collection</li>
@@ -286,7 +279,7 @@
       <li><strong>Integer arithmetic</strong> &mdash; one definition across interpreter, compiler and JITs; <code>INT64_MIN / -1</code> no longer stops the program, and <code>&gt;&gt;&gt;</code> takes its shift count modulo 64</li>
      </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.4" style="color: inherit; text-decoration: none;">v2026.9.4</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.4">v2026.9.4</a></h2>
     <ul>
      <li><strong>Integer division by a power of two rounded the wrong way at <code>-opt s2</code> and <code>s3</code></strong> &mdash; strength reduction turned <code>n / 2^k</code> on a local into an arithmetic shift, which rounds toward negative infinity where division truncates toward zero: <code>-7 / 2</code> gave <code>-4</code>. Division is no longer rewritten; both JITs already compile a constant divisor correctly. Recompile programs built at <code>s2</code> or <code>s3</code> with v2026.9.3 or earlier</li>
      <li><strong><code>1 / n</code> evaluated to <code>n</code> at <code>-opt s3</code></strong> &mdash; a peephole pattern meant for <code>x / 1</code> matched the left operand instead, so <code>1 / 5</code> gave <code>5</code>. The pattern is gone</li>
@@ -294,7 +287,7 @@
      <li><strong>Deserializing an object array with a Nil element corrupted its object</strong> &mdash; each Nil element was written into the object's next field instead of the array, so the array read back as Nil and later fields shifted</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.3" style="color: inherit; text-decoration: none;">v2026.9.3</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.3">v2026.9.3</a></h2>
     <ul>
      <li><strong>macOS installs need nothing else</strong> &mdash; every macOS release since v2026.6.3 linked Homebrew's GnuTLS and ngtcp2, plus an ngtcp2 GnuTLS backend Homebrew does not ship, so <code>obr</code> stopped at launch on any Mac but the build machine; v2026.9.2's OpenCV, ONNX and LAME bindings needed Homebrew formulas too. HTTP/3's TLS moves to AWS-LC, linked statically into <code>obr</code> on Linux and macOS with ngtcp2, nghttp3 and nghttp2, and the <code>.pkg</code> carries OpenCV, ONNX Runtime, mbedTLS, libiodbc and LAME. It runs on macOS 13.3 or later, the ONNX binding on macOS 14</li>
      <li><strong>ARM64: a collection could corrupt an object under multithreaded load</strong> &mdash; the collector set the mark bit below any nursery address its conservative scans found, including the stale and interior pointers compiled ARM64 code leaves on the stack. For a map's tree node that turned an empty <code>@right</code> into 1, and a later lookup crashed: silently or with &ldquo;Invalid object cast&rdquo; on Windows arm64, with SIGSEGV on macOS and Linux arm64. It marks only real object starts now</li>
@@ -304,7 +297,7 @@
      <li><strong>Every platform is verified before a tag</strong> &mdash; one script per machine builds a clean checkout the way the release does and runs the regression suite with the default JIT and with every method compiled, plus the VM flag, debugger and DAP tests; install instructions are checked against the libraries the binaries link; a dispatched Release Build can no longer publish; and a test that did not run no longer counts as a pass</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.2" style="color: inherit; text-decoration: none;">v2026.9.2</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.2">v2026.9.2</a></h2>
     <ul>
      <li><strong>macOS ships OpenCV and ONNX again</strong> &mdash; v2026.9.1's <code>.pkg</code>, <code>.zip</code> and <code>.tgz</code> carried neither <code>libobjk_opencv</code> nor <code>libobjk_onnx</code>. Homebrew's default <code>opencv</code> is now 5.0, which moved <code>contourArea</code>, <code>boundingRect</code>, <code>approxPolyDP</code> and the affine estimators out of <code>cv::</code>, and the release build installed it while CI stayed on <code>opencv@4</code>. The release build is pinned too</li>
      <li><strong>Linux x64's ONNX loads without <code>LD_LIBRARY_PATH</code></strong> &mdash; <code>libobjk_onnx.so</code> had no <code>$ORIGIN</code> RUNPATH, so it found the ONNX Runtime shipped beside it only where CI's environment pointed there</li>
@@ -316,7 +309,7 @@
      <li><strong>The Windows API-docs search-index check runs</strong> &mdash; it existed only in the generated <code>code_doc64.cmd</code>, which every deploy regenerates from its template; it is in the template now, and CI checks the templates</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.1" style="color: inherit; text-decoration: none;">v2026.9.1</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.1">v2026.9.1</a></h2>
     <ul>
      <li><strong>Compiled code now calls compiled code directly</strong> &mdash; a call between JIT'd methods used to cross a C++ bridge: an eleven-argument entry, a pooled frame, a release. The caller now builds the callee's frame on its own stack and enters its native entry, with inline caches for <code>virtual</code> and func-ref sites. A bound call went from 26.5&nbsp;ns to 5.5&nbsp;ns, a <code>virtual</code> call from 125&nbsp;ns to 6.0&nbsp;ns, and <code>Fib(32)</code> from 0.208&nbsp;s to 0.043&nbsp;s on AMD64; on an M4 Max a call went from 17.1&nbsp;ns to 7.4&nbsp;ns and <code>Fib(32)</code> from 0.135&nbsp;s to 0.050&nbsp;s. A dense <code>select</code> compiles to a jump table on both backends</li>
      <li><strong>Every hash of a string was wrong</strong> &mdash; Hash->SHA256("abc"->ToByteArray()) digested "abc" plus a zero byte. A Byte[] carries its element count in the word native libraries read, and the JIT plus thirteen trap producers wrote count+1 for the NUL pad; the interpreter's Byte->New wrote the count. [0] is the element count everywhere now, and a test hashes arrays from every producer against known digests</li>
@@ -339,13 +332,13 @@
      <li><strong>The standard libraries are rebuilt by the compiler that ships with them</strong> &mdash; the committed <code>.obl</code> predated four compiler correctness fixes, including the func-ref inliner that library code is compiled with (<code>-opt s3</code>); 30 of 32 libraries changed</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.0" style="color: inherit; text-decoration: none;">v2026.9.0</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.0">v2026.9.0</a></h2>
      <ul>
          <li><strong>A server that wrote a response and closed could lose all of it</strong> &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. <code>TCPSocket</code> and <code>TCPSecureSocket</code> gain <code>CloseGracefully()</code>, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: <code>Close()</code> lost 21, <code>CloseGracefully()</code> lost none</li>
          <li><strong>The language server serialized every request behind one lock</strong> &mdash; concurrent analysis was correct only because of it, with <code>TreeFactory</code> and <code>TypeFactory</code> as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking</li>
          <li><strong>Four publish steps reported success while doing nothing</strong> &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed</li>
      </ul>
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.4" style="color: inherit; text-decoration: none;">v2026.8.4</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.4">v2026.8.4</a></h2>
     <ul>
         <li><strong><code>Game.OpenGL</code> &mdash; 3D graphics for Objeck</strong> &mdash; OpenGL 3.3 core over SDL2 on Windows, Linux and macOS. 26 classes covering windowing and frame pacing, built-in shaders, meshes and OBJ loading, textures, cameras, materials, up to eight directional/point/spot lights with Blinn-Phong specular, shadow maps including omnidirectional cube shadows, render-to-texture, instancing through a one-call <code>PropBatch</code>, frustum culling, <code>Scene-&gt;Raycast</code> for hitscan and picking, gamepad input, a transform hierarchy with keyframed animation, particles, billboards, a pixel-space text overlay, and a scene that answers collision. The examples got <strong>shorter</strong> as it grew &mdash; the minimal window demo went from 105 lines to 25, and per-frame allocations in both original draw loops went to zero. Verified by 453 checks that read pixels back rather than merely exiting cleanly, and two demos ship in the distribution</li>
         <li><strong><code>Web.Server</code> could not be used by anyone</strong> &mdash; it shipped in every release with 13 native entry points that existed in exactly one file: the binding itself. No <code>.cpp</code>, no build target, no library in any deploy tree, and <code>Request</code>/<code>Response</code> declared no constructor, so a program could not obtain an instance at all. Writing the missing native library was never an option &mdash; the design is a per-host bridge for Nginx, IIS and Apache, whose request structures differ entirely, so one generic library cannot exist. It is now implemented in pure Objeck over <code>Web.HTTP.Server</code>: same bundle, same class names, same signatures, no native library. Coverage went from 0 of 13 methods to 13 of 13</li>
@@ -362,7 +355,7 @@
         <li><strong><code>obu update</code> and <code>obu rollback</code> on Windows</strong> &mdash; the in-place swap needed no copy-self-and-re-exec dance: Windows forbids deleting a running image but permits renaming it. <code>obu check</code> also gained the offline test coverage it had on no platform</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.3" style="color: inherit; text-decoration: none;">v2026.8.3</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.3">v2026.8.3</a></h2>
     <ul>
         <li><strong>A corrupt library could crash the compiler</strong> &mdash; <code>TypeParser::ParseType</code> and <code>ParseParameters</code> switch on the first character of a type string and had no default case, so anything outside the known set left the type null and was dereferenced immediately. An <strong>empty</strong> string reaches this too, since <code>operator[](0)</code> on an empty <code>wstring</code> yields a null character. The linker calls both on type strings read straight out of <code>.obl</code> files, so the input is not the compiler's own</li>
         <li><strong>A <code>}</code> on the first line hung the REPL</strong> &mdash; an unsigned indent counter decremented at <code>0</code> wrapped to <code>SIZE_MAX</code>, and the indent loop below then ran about 1.8e19 times. Listing and saving both hit it</li>
@@ -375,7 +368,7 @@
         <li><strong>Coverity Scan on Windows as well as Linux</strong> &mdash; the first Windows scan turned up twenty real defects in cross-platform sources that MSVC compiles differently than GCC, so the Linux scan had never reached them. The scan token now lives outside the tree, and <code>linux-arm64</code> &mdash; a native runner that had never been exercised before publication &mdash; is now smoke tested too</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.2" style="color: inherit; text-decoration: none;">v2026.8.2</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.2">v2026.8.2</a></h2>
     <ul>
         <li><strong>Subscript the result of a method call</strong> &mdash; <code>GetItems()[0]-&gt;GetName()</code> now works. It had never been implemented, and the grammar swallowed the attempt: <code>[</code> after a call was read as a fresh static-array literal, so the call was evaluated and discarded. <code>GetArr()[0]-&gt;Size()</code> silently returned <code>1</code> and <code>GetArr()[0]-&gt;PrintLine()</code> printed <code>[0]</code>; with an object array the same cause surfaced as "Undefined function/method call". <strong>Behaviour change:</strong> code that compiled and returned the wrong value now returns the correct one</li>
         <li><strong>The release build proves the toolchain works</strong> &mdash; every earlier gate asserted only that files existed, so a release could ship binaries unable to compile or run anything and still go out green. Both platforms now compile and run a real program from the shipped tree and assert the reported version matches the tag. <code>deploy_windows.cmd</code> also re-ran <code>update_version.ps1</code>, regenerating <code>version.h</code> from a hardcoded version &mdash; a disagreement meant Windows built a different version whose binaries rejected the committed <code>.obl</code> set, failing every program</li>
@@ -401,19 +394,19 @@
         <li><strong>Editor tooling is tested in CI</strong> &mdash; the formatter, language server and VS Code extension now run on every push. Two of those suites had never executed: the formatter's runner pointed outside the repository, and the tooling scripts appended the build tree to <code>PATH</code> so a system-wide install shadowed it</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.4" style="color: inherit; text-decoration: none;">v2026.6.4</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.4">v2026.6.4</a></h2>
     <ul>
         <li><strong>Multithreaded GC stability fix</strong> &mdash; fixed an intermittent crash (<code>0xC0000005</code>) in the generational minor garbage collector during thread startup: a thread being spawned held its <code>self</code> and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the object and leave the new thread a stale reference. These are now tracked and relocated across collection. Surfaced only under heavy multithreaded churn</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.3" style="color: inherit; text-decoration: none;">v2026.6.3</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.3">v2026.6.3</a></h2>
     <ul>
         <li><strong>Generational minor garbage collection</strong> &mdash; minor (nursery) collection is now enabled: a nursery-full collection scans only the remembered set plus roots and recycles the young generation without sweeping the old generation, falling back to a full major GC under old-gen pressure. JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64, and the nursery is zeroed at allocation time instead of inside the stop-the-world pause</li>
         <li><strong>Closure ergonomics</strong> &mdash; call a <code>FuncRef</code> directly with <code>v()</code> (no explicit <code>-&gt;Call()</code>); write bare lambdas with an inferred return type (<code>\(x) =&gt; x * 2</code>) that auto-wrap into <code>FuncRef&lt;R&gt;</code> when assigned, returned, passed as a method argument, or stored as a collection element; and give a lambda a block body (<code>\(x) =&gt; { ... }</code>). A multi-capture closure heap-corruption bug is fixed (captures now use closure-local ids)</li>
         <li><strong>New <code>System.Concurrency</code> library</strong> &mdash; structured concurrency with <code>TaskScope</code>, <code>Task</code>, and <code>Monitor</code>, plus <code>runtime.*</code> process/GC/CPU diagnostics (GC pause, promotion, allocation rate, lock contention, thread/STW/nursery counters) read through <code>Runtime-&gt;GetProperty</code></li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.1" style="color: inherit; text-decoration: none;">v2026.6.1</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.1">v2026.6.1</a></h2>
     <ul>
         <li><strong>String interpolation</strong> &mdash; <code>"{$...}"</code> now accepts arbitrary expressions (<code>"{$i + 1}"</code>, <code>"{$a * b - c}"</code>, <code>"{$x &gt; y}"</code>), Python/.NET format specifiers for precision, width, alignment, and radix (<code>"{$pi:.2}"</code>, <code>"{$n:05}"</code>, <code>"{$s:&lt;10}"</code>, <code>"{$v:x}"</code>), and a positional <code>String-&gt;Format("{0} = {1}", a, b)</code> helper</li>
         <li><strong>Generics &mdash; bounds and variance</strong> &mdash; compound bounds (<code>T : A &amp; B</code>), F-bounded constraints (<code>T : Compare&lt;T&gt;</code>), and declaration-site variance (<code>out T</code> covariant, <code>in T</code> contravariant), checked soundly and preserved across the <code>.obl</code> library boundary; readable generic type-mismatch diagnostics</li>
@@ -425,7 +418,7 @@
         <li><strong>Reproducible builds &amp; ONNX</strong> &mdash; compiling unchanged library source now produces byte-identical <code>.obl</code> output; on macOS the compiled CoreML model is cached across runs (~35&times; faster warm starts)</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.0" style="color: inherit; text-decoration: none;">v2026.6.0</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.0">v2026.6.0</a></h2>
     <ul>
         <li><strong>New <code>System.AI</code> library</strong> (<code>-lib ai</code> / <code>@ai</code>) &mdash; classic AI in the standard library: graph search (<code>Dijkstra</code>, <code>AStar</code>, <code>BreadthFirst</code>, <code>DepthFirst</code>), adversarial game search (<code>Minimax</code> with alpha-beta, <code>MonteCarloTreeSearch</code>), metaheuristics (<code>GeneticAlgorithm</code>, <code>SimulatedAnnealing</code>, <code>HillClimbing</code>), and tabular reinforcement learning (<code>QLearning</code>, <code>Sarsa</code>, <code>MarkovDecisionProcess</code>); all stochastic algorithms are seedable</li>
         <li><strong><code>System.ML</code> overhaul</strong> &mdash; 13 new estimators (regularized regression, SVM, perceptron, PCA, Gaussian naive Bayes, AdaBoost, DBSCAN, Gaussian mixture, KD-tree, gradient-boosted trees); real recursive <code>DecisionTree</code> and voting <code>RandomForest</code>; <code>NeuralNetwork</code> bias vectors; seedable <code>System.ML.Random</code>; a uniform <code>Fit</code>/<code>Predict</code>/<code>Score</code>/<code>Store</code>/<code>Load</code> API. <em>Breaking:</em> <code>RandomForest-&gt;Train</code> is now <code>Fit</code>; stored <code>NeuralNetwork</code> models must be regenerated</li>
@@ -434,14 +427,14 @@
         <li><strong>Library improvements</strong> &mdash; library aliases (<code>@std</code>/<code>@ml</code>/<code>@ai</code>/<code>@game</code>) documented; Data.XML rejects truncated documents, fixes <code>&amp;apos;</code> decoding, and adds <code>EncodeText</code>/<code>SetEncodedContent</code>/<code>GetDecodedContent</code>/<code>GetDecodedValue</code></li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.4" style="color: inherit; text-decoration: none;">v2026.5.4</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.4">v2026.5.4</a></h2>
     <ul>
         <li><strong>Debugger test reliability</strong> &mdash; Windows CI debugger tests fixed; <code>.obe</code>/<code>.obl</code> format detection now correctly handles the edge case where a new-format size-header LSB collides with the <code>0x78</code> zlib CMF byte</li>
         <li><strong>LSP shell script permissions</strong> &mdash; all <code>tools/lsp/</code> shell scripts now carry the execute bit in git, fixing <code>Permission denied</code> in the LSP release CI job</li>
         <li><strong>Release workflow hardening</strong> &mdash; <code>git checkout -f master</code> prevents dirty-tree abort when committing <code>api.zip</code> from a tag-based build</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.3" style="color: inherit; text-decoration: none;">v2026.5.3</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.3">v2026.5.3</a></h2>
     <ul>
         <li><strong>JIT <code>select</code> dispatch</strong> &mdash; dense integer <code>select</code> (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST &mdash; best strategy chosen automatically on AMD64 and ARM64</li>
         <li><strong>API documentation overhaul</strong> &mdash; bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages</li>
@@ -450,7 +443,7 @@
         <li><strong>Performance</strong> &mdash; <code>bench_spectralnorm_native</code>: incremental FP denominator eliminates per-element <code>I2F</code> conversions from the inner loop</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.2" style="color: inherit; text-decoration: none;">v2026.5.2</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.2">v2026.5.2</a></h2>
     <ul>
         <li><strong>HTTP/2 client</strong> &mdash; <code>Http2Client</code> with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and <code>Quick*</code> one-liners via nghttp2 + ALPN</li>
         <li><strong>HTTP/3 / QUIC client</strong> &mdash; <code>Http3Client</code> over UDP with connection reuse and the same <code>Quick*</code> API (ngtcp2 + nghttp3 + GnuTLS)</li>
@@ -464,7 +457,7 @@
         <li><strong>Improved release process</strong> &mdash; self-contained Windows builds; CI verifies all binaries and API docs on all platforms before publishing</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.3" style="color: inherit; text-decoration: none;">v2026.4.3</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.3">v2026.4.3</a></h2>
     <ul>
         <li><strong>DAP debugger hover</strong> &mdash; hovering an object shows <code>ClassName { field=val, ... }</code> with one-level instance field expansion</li>
         <li><strong>DAP instance/class variable scopes</strong> &mdash; Variables pane shows separate Locals, Instance, and Class scopes</li>
@@ -476,7 +469,7 @@
         <li>Hardened HTTPS client against null ReadLine on connection failures</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.2" style="color: inherit; text-decoration: none;">v2026.4.2</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.2">v2026.4.2</a></h2>
     <ul>
         <li><strong>JIT local variable register cache</strong> (AMD64 + ARM64) &mdash; ~3x speedup across all benchmarks</li>
         <li><strong>DTLS support</strong> &mdash; secure UDP via <code>DTLSSocket</code> and <code>DTLSSocketServer</code></li>
@@ -484,7 +477,7 @@
         <li>Hardened JSON/XML parsers, LTO, ARM64 native CPU tuning</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.1" style="color: inherit; text-decoration: none;">v2026.4.1</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.1">v2026.4.1</a></h2>
     <ul>
         <li>Debug Adapter Protocol (DAP) for VS Code with conditional breakpoints and ANSI colors</li>
         <li>3.3x binarytrees speedup &mdash; young-gen bump allocator, direct JIT-to-JIT calling</li>
@@ -493,33 +486,33 @@
         <li>Networking, ODBC, OpenCV, Phi-3 Vision improvements</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.2.1" style="color: inherit; text-decoration: none;">v2026.2.1</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.2.1">v2026.2.1</a></h2>
     <ul>
         <li>Added <code>try/otherwise</code> error handling framework</li>
         <li>4.38x nbody speedup, CSE, dead code elimination</li>
         <li>14 debugger and 16 runtime regression tests in CI</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.7.0" style="color: inherit; text-decoration: none;">v2025.7.0</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.7.0">v2025.7.0</a></h2>
     <ul>
         <li>Added <code>Hash->Dict()</code>, <code>Map->Dict()</code>, and <code>Vector->Zip()</code> to collections</li>
         <li>Updated style (docs, logos); bug fixes</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.6.3" style="color: inherit; text-decoration: none;">v2025.6.3</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.6.3">v2025.6.3</a></h2>
     <ul>
         <li>Support for user-provided HTTPS PEM files</li>
         <li>Multi-statement pre/update support in <code>for</code> loops</li>
     </ul>
 
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.6.2" style="color: inherit; text-decoration: none;">v2025.6.2</a></h3>
+    <h2><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.6.2">v2025.6.2</a></h2>
     <ul>
         <li>New API documentation system</li>
         <li>OpenAI Responses API; improved JSON schema support</li>
     </ul>
 
     <!-- Footer links -->
-    <div style="margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid #e0e0e0;">
+    <div class="endmatter">
       <p>
         <a href="getting_started.html">Quick Start</a> &mdash;
         <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a> &mdash;
@@ -527,18 +520,38 @@
         <a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">Rosetta Code</a> &mdash;
         <a href="https://github.com/objeck/objeck-lang/issues" target="_blank">Report an Issue</a>
       </p>
-      <p style="font-size: 0.9rem; color: #9ca3af;">
+      <p class="fine">
         Tested on Windows 10/11, Ubuntu 24.04 LTS, and macOS 15 (ARM64 + x64).
         Licensed under <a href="https://opensource.org/licenses/BSD-2-Clause">BSD-2-Clause</a>.
         Source on <a href="https://github.com/objeck/objeck-lang">GitHub</a>.
       </p>
     </div>
 
+  
+<!-- content:end -->
+   </div>
+  </div>
   </main>
-  <footer class="footer">
-   &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

@@ -1,77 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>What is new in v2026.10.3 — Objeck Language</title>
-  <meta name="description" content="Upgrading to Objeck v2026.10.3: recompile your programs, HttpClient connection reuse, library Nil fixes, language server speedups."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Upgrading to Objeck v2026.10.3: recompile your programs, HttpClient connection reuse, library Nil fixes, language server speedups.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">What is new in v2026.10.3</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html" aria-current="page">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">What is new in v2026.10.3</h1>
     <p class="page-lead">v2026.10.3 is a hardening release. It adds almost no new syntax; it makes existing things safer, and one of them, the HTTP client, behaves differently enough to read about.</p>
-    <div id="toc_container">
-     <h4>Contents</h4>
-     <ul>
-      <li><a href="#upgrading-recompile-your-programs-and-libraries">Upgrading: recompile your programs and libraries</a></li>
-      <li><a href="#httpclient-reuses-connections">HttpClient reuses connections</a></li>
-      <li><a href="#libraries-stop-dereferencing-nil">Libraries stop dereferencing Nil</a></li>
-      <li><a href="#the-language-server-and-debugger">The language server and debugger</a></li>
-      <li><a href="#under-the-hood">Under the hood</a></li>
-      <li><a href="#a-new-example-checkers-with-ten-ai-levels">A new example: checkers with ten AI levels</a></li>
-      <li><a href="#new-and-updated-documents">New and updated documents</a></li>
-     </ul>
-    </div>
 
     <div class="note">v2026.10.3 is in development. This page describes what is on <code>master</code>; the <a href="doc_changelog.html">CHANGELOG</a> is the complete list and says when the release is published. The examples on this page were compiled and run with a toolchain built from <code>master</code>.</div>
-    <h3 id="upgrading-recompile-your-programs-and-libraries">Upgrading: recompile your programs and libraries</h3>
+    <h2 id="upgrading-recompile-your-programs-and-libraries">Upgrading: recompile your programs and libraries</h2>
     <p>The <code>.obe</code> (program) and <code>.obl</code> (library) file formats changed, because an <code>Int[]</code> and an object array are now different kinds of heap object. A program or library built by an earlier version is refused with a message that says so. Recompile every <code>.obe</code> from source with the new <code>obc</code> and rebuild every <code>.obl</code> of your own.</p>
     <p>This is what the new <code>obr</code> printed for a program compiled by the previous toolchain:</p>
 <pre class="cmd">Cannot run 'hello_old.obe': it was compiled before an Int[] and an object array were allocated with distinct opcodes,
@@ -83,12 +57,12 @@
      <li>A malformed <code>.obe</code> is refused by a verifier with a message before anything runs. A valid program is never refused.</li>
      <li>Code that stopped one server and started another on the same port within four seconds, and relied on every request getting a fresh connection, should wait for the old server to exit (see the next section).</li>
     </ul>
-    <h3 id="httpclient-reuses-connections">HttpClient reuses connections</h3>
+    <h2 id="httpclient-reuses-connections">HttpClient reuses connections</h2>
     <p><code>HttpClient</code> used to open a connection for each request and close it. On Windows that could run the machine out of ports: a process making about 130 requests a second used all 16,384 and every connect then failed. Now plain-HTTP connections wait in a pool when the server allows it, and a <code>GET</code> or <code>DELETE</code> to the same host and port reuses one. <code>POST</code>, <code>PUT</code> and <code>PATCH</code> never do. <code>HttpClient-&gt;CloseIdleConnections()</code> closes the waiting ones, and <code>WebServer-&gt;Stop()</code> calls it.</p>
     <p>In the program from the <a href="guide_http.html">HTTP guide</a>, twenty <code>GET</code>s now use one connection:</p>
 <pre class="cmd">GET:  20 of 20 answered, 1 connection(s) used</pre>
     <p>where the same program on a toolchain from before the change used 20. Details and the full program: <strong><a href="guide_http.html">HTTP client and web server</a></strong>.</p>
-    <h3 id="libraries-stop-dereferencing-nil">Libraries stop dereferencing Nil</h3>
+    <h2 id="libraries-stop-dereferencing-nil">Libraries stop dereferencing Nil</h2>
     <p>A failed request, an empty reply, a missing file or a partial document no longer ends the program in the libraries that used to:</p>
     <ul>
      <li>OpenAI, Gemini, misc and net (a refused connection answers with status <code>0</code>, not <code>Nil</code>);</li>
@@ -98,31 +72,51 @@
     </ul>
     <p><code>RegEx</code> repeat counts are bounded: <code>a{99999999999}</code> used to fill the heap while compiling and never return. A count is now at most 1000, the low bound may not exceed the high one, and a pattern that expands past 100,000 instructions is not OK and matches nothing. The JSON-RPC client sends a fresh request id each call, <code>WebDownloader</code> no longer skips URLs when given seven or more, and sorting a vector of <code>Collection.Pair</code> no longer ends in <code>Invalid object cast</code>.</p>
     <p>See <strong><a href="guide_data.html">JSON, XML and regular expressions</a></strong> for a program that feeds each of them bad input and shows the answers, and <strong><a href="guide_collections.html">Collections</a></strong> for the pair sort.</p>
-    <h3 id="the-language-server-and-debugger">The language server and debugger</h3>
+    <h2 id="the-language-server-and-debugger">The language server and debugger</h2>
     <p>Edits analyze faster (a hover after an edit in a small workspace went from 165 ms to 53 ms on Windows), a library that fails to load no longer takes the server down, and the debug adapter keeps output whole, orders its messages, can pause and refuses requests it does not understand. See <strong><a href="guide_editors.html">Editor setup and the language server</a></strong>.</p>
-    <h3 id="under-the-hood">Under the hood</h3>
+    <h2 id="under-the-hood">Under the hood</h2>
     <ul>
      <li>Compiled code now tells the garbage collector exactly which stack words are references on x64 and ARM64, so an <code>Int</code> that happens to equal an object's address is never rewritten by a collection (<a href="doc_gc_roots.html">design</a>).</li>
      <li>The loader was fuzzed for hundreds of millions of executions, which fixed a crash on a repeated class or method id, allocations of up to 16 GB from a corrupt count and a read past the end of a short <code>.obe</code>; errors are returned instead of calling <code>exit(1)</code> (<a href="doc_security.html">trust model</a>).</li>
      <li>The native library ABI is versioned, so a library can tell it was built for a different VM.</li>
     </ul>
-    <h3 id="a-new-example-checkers-with-ten-ai-levels">A new example: checkers with ten AI levels</h3>
-    <p><a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/checkers" target="_blank"><code>programs/examples/checkers</code></a> is an SDL2 game with ten opponents built from <code>System.AI</code>'s <code>Minimax</code> and <code>MonteCarloTreeSearch</code> and the example's own search, a self-play learner that tunes the evaluation, several piece sets, and music generated while you play. Its move generator is checked against the published perft counts. See <strong><a href="guide_ai.html">Game AI with System.AI</a></strong> for a small version of the same idea you can read in one sitting.</p>
-    <h3 id="new-and-updated-documents">New and updated documents</h3>
+    <h2 id="a-new-example-checkers-with-ten-ai-levels">A new example: checkers with ten AI levels</h2>
+    <p><a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/checkers" target="_blank" rel="noopener"><code>programs/examples/checkers</code></a> is an SDL2 game with ten opponents built from <code>System.AI</code>'s <code>Minimax</code> and <code>MonteCarloTreeSearch</code> and the example's own search, a self-play learner that tunes the evaluation, several piece sets, and music generated while you play. Its move generator is checked against the published perft counts. See <strong><a href="guide_ai.html">Game AI with System.AI</a></strong> for a small version of the same idea you can read in one sitting.</p>
+    <h2 id="new-and-updated-documents">New and updated documents</h2>
     <ul>
      <li>Getting-started guides (this set): <a href="guide_query.html">Query.Structured</a>, <a href="guide_http.html">HTTP</a>, <a href="guide_data.html">JSON, XML and RegEx</a>, <a href="guide_collections.html">Collections</a>, <a href="guide_ai.html">Game AI</a>, <a href="guide_editors.html">Editor setup</a>.</li>
      <li><a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a>: which collection to use and what each operation costs.</li>
      <li><a href="doc_errors.html"><code>docs/ERROR_CONVENTIONS.md</code></a> and <a href="doc_intrinsic.html"><code>docs/ADDING_AN_INTRINSIC.md</code></a>.</li>
      <li><a href="doc_assessment.html"><code>docs/ARCHITECTURE_ASSESSMENT_2026_11.md</code></a> and <a href="doc_security.html"><code>docs/SECURITY_MODEL.md</code></a> (an <code>.obe</code> is native code).</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#upgrading-recompile-your-programs-and-libraries">Upgrading: recompile your programs and libraries</a></li><li><a href="#httpclient-reuses-connections">HttpClient reuses connections</a></li><li><a href="#libraries-stop-dereferencing-nil">Libraries stop dereferencing Nil</a></li><li><a href="#the-language-server-and-debugger">The language server and debugger</a></li><li><a href="#under-the-hood">Under the hood</a></li><li><a href="#a-new-example-checkers-with-ten-ai-levels">A new example: checkers with ten AI levels</a></li><li><a href="#new-and-updated-documents">New and updated documents</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

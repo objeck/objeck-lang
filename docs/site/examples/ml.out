@@ -1,0 +1,3 @@
+$ obc -src ml.obs -lib csv,ml
+$ obr ml.obe
+y = 2.00 x + 1.00

@@ -16,6 +16,9 @@ v2026.11.4
 - Compiler and runtime fixes -- String->New(Byte[]) no longer reads past the array, a method chain on a parenthesised calculation keeps every call, a local declared without a value in a loop starts empty each iteration, dead-store elimination keeps a store a handler reads, loop-invariant code motion no longer hoists an observable store, function references to method ids of 32768 or more work, threads making the first call of one long-running method no longer run it 20x slower, and an ARM64 hang on the minimum Int is gone.
 - Library fixes -- KNearestNeighbors->Query, bounded LevenshteinDistance and the threaded VectorIndex search are corrected at their edges, SentimentAnalyzer, View->ToJson, Table->Save and the Gemini and JSON-schema parsers no longer carry a previous value into the next, and a Nil collection lookup reports not-found.
 - Build and release -- core/lib/*.obl are rebuilt from source and compared in CI, docs/api.zip and the Windows objeck.rc files are generated instead of committed, and tools/hpc/alderaan runs Objeck on a Slurm cluster without root.
+- Eight AI examples -- mcp_32.obs to forecast_39.obs ship with every release and run offline with no key or model: an MCP server and client, an agent loop, agent run control, a supervised actor, retrieval with citations, structured output with retry, telemetry and a forecast.
+- A new objeck.org -- a dark-first design with new navigation, Learn, Start, Libraries and Community pages, and code samples that a CI check compiles and runs.
+- Steadier tests and CI -- the nightly differential run no longer sees timings on stdout, the CodeQL steps move to 4.39.4 together, and the Windows build legs have a 90-minute cap.
 
 v2026.11.3 (November 22, 2026)
 ===

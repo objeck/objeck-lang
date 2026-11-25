@@ -1,0 +1,3 @@
+$ obc -src hello.obs
+$ obr hello.obe
+Hello, Objeck

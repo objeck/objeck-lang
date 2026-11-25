@@ -1,80 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Objeck Performance — Objeck Language</title>
-  <meta name="description" content="Everything on this page comes from one harness, perf-results/docker/run_all_benchmarks.sh, run inside the image that perf-results/docker/Dockerfile builds. Read this section before comparing a number here with one from another source."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Everything on this page comes from one harness, perf-results/docker/run_all_benchmarks.sh, run inside the image that perf-results/docker/Dockerfile builds. Read this section before comparing a number here with one from another source.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Objeck Performance</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/performance.md" target="_blank">docs/performance.md on GitHub</a></div>
-    <p class="page-lead">Everything on this page comes from one harness, <code>perf-results/docker/run_all_benchmarks.sh</code>, run inside the image that <code>perf-results/docker/Dockerfile</code> builds. Read this section before comparing a number here with one from another source.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#benchmark-results">Benchmark Results</a></li>
-      <li><a href="#cross-language-comparison">Cross-Language Comparison</a></li>
-      <li><a href="#the-native-keyword">The <code>native</code> Keyword</a></li>
-      <li><a href="#micro-benchmarks">Micro-Benchmarks</a></li>
-      <li><a href="#optimization-history">Optimization History</a></li>
-      <li><a href="#what-we-tried-and-reverted">What We Tried and Reverted</a></li>
-      <li><a href="#speedup-roadmap">Speedup Roadmap</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#how-it-works">How it works</a></li><li aria-current="page">Objeck Performance</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html" aria-current="page">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Objeck Performance</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/performance.md" target="_blank" rel="noopener">View docs/performance.md on GitHub</a></p>
+    <p class="page-lead">Everything on this page comes from one harness, <code>perf-results/docker/run_all_benchmarks.sh</code>, run inside the image that <code>perf-results/docker/Dockerfile</code> builds. Read this section before comparing a number here with one from another source.</p>
 
     <div class="note"><strong>Benchmark results and cross-language comparisons</strong></div>
     <hr class="section-end">
-    <h3 id="benchmark-results">Benchmark Results</h3>
-    <h4 id="test-environment">Test Environment</h4>
+    <h2 id="benchmark-results">Benchmark Results</h2>
+    <h3 id="test-environment">Test Environment</h3>
     <table class="ref-table">
      <thead>
       <tr><th></th><th></th></tr>
@@ -90,7 +69,7 @@
      </tbody>
     </table>
     <div class="note">All tables below come from a <strong>single unified Docker run</strong> (<code>perf-results/docker/Dockerfile</code>) on the box above, so the single-language and cross-language numbers are directly comparable. Note Docker's virtualized backend runs Objeck's <strong>interpreter</strong>-bound benchmarks ~30–50% slower than a native (bare-metal/WSL2) build, while JIT/<code>native</code> code is nearly unaffected — so the interpreter rows here are conservative.</div>
-    <h4 id="measurement-conditions-and-limits">Measurement conditions and limits</h4>
+    <h3 id="measurement-conditions-and-limits">Measurement conditions and limits</h3>
     <p><strong>Reproduce.</strong></p>
 <pre class="cmd">docker build -t objeck-bench -f perf-results/docker/Dockerfile .      # from the repository root
 docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results" objeck-bench</pre>
@@ -117,10 +96,10 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
      <li>Five of the six Objeck CLBG programs (all but <code>spectralnorm</code>) mark hot methods <code>native</code>, an opt-in with no counterpart in the peer programs (<code>grep native programs/tests/clbg/*.obs</code>); the comparison is between each language's idiomatic or annotated version, not between compilers given identical source.</li>
      <li>Six CLBG programs and twelve optimizer-targeted micro-benchmarks written by the project. These tables measure no string, I/O, regex, collection-library, multi-threaded or start-up-latency workload (a first set of library timings is under Library workloads below), and none of the numbers says anything about compile time.</li>
      <li>Peak RSS is recorded for Objeck only, so no statement about a peer's memory in this page rests on a measurement.</li>
-     <li>The claim that Docker slows Objeck's interpreter-bound rows by 30-50% against a native build is quoted from earlier notes; the repository holds no same-OS native-versus-Docker pairing that supports it. For statistically controlled comparisons (ABAB interleaving, 15 runs, p-values) see <a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/baseline-2026.10.0/README.md" target="_blank">perf-results/baseline-2026.10.0/README.md</a>, which is Apple M4 Max and compares two Objeck builds, not languages.</li>
+     <li>The claim that Docker slows Objeck's interpreter-bound rows by 30-50% against a native build is quoted from earlier notes; the repository holds no same-OS native-versus-Docker pairing that supports it. For statistically controlled comparisons (ABAB interleaving, 15 runs, p-values) see <a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/baseline-2026.10.0/README.md" target="_blank" rel="noopener">perf-results/baseline-2026.10.0/README.md</a>, which is Apple M4 Max and compares two Objeck builds, not languages.</li>
     </ul>
-    <h4 id="clbg-benchmarks">CLBG Benchmarks</h4>
-    <p>Classic <a href="https://benchmarksgame-team.pages.debian.net/benchmarksgame/" target="_blank">Computer Language Benchmarks Game</a> programs compiled with <code>-opt s3</code>.</p>
+    <h3 id="clbg-benchmarks">CLBG Benchmarks</h3>
+    <p>Classic <a href="https://benchmarksgame-team.pages.debian.net/benchmarksgame/" target="_blank" rel="noopener">Computer Language Benchmarks Game</a> programs compiled with <code>-opt s3</code>.</p>
     <table class="ref-table">
      <thead>
       <tr><th>Benchmark</th><th>Input</th><th>Time (s)</th><th>Peak RSS</th></tr>
@@ -136,12 +115,12 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
     </table>
     <div class="note">Measured: <strong>v2026.11.3</strong> (<code>ef26ff969d</code>), 2026-11-22 unified Docker run on the host above.</div>
     <p><strong>mandelbrot</strong> and <strong>nbody</strong> benefit from <code>native</code>-annotated methods that JIT-compile to x64. <strong>binarytrees</strong> benefits from the young-gen bump allocator and auto-JIT for methods containing <code>MTHD_CALL</code>.</p>
-    <p><strong>Against the previous pass (2026-11-07, v2026.11.0) every row but mandelbrot is 8–10% faster, and against September (v2026.9.1) the rows are within 7% either way.</strong> Against 2026-11-07: nbody 9.02 → 8.15 s, binarytrees 2.26 → 2.03 s, fannkuchredux 36.01 → 33.24 s, spectralnorm 3.17 → 2.91 s, fasta 7.56 → 6.86 s, mandelbrot 0.77 → 0.77 s (one of its three runs read 1.89 s; the other two 0.77 and 0.72 s). Against September: nbody 8.14 → 8.15 s, binarytrees 2.14 → 2.03 s, fannkuchredux 32.76 → 33.24 s, fasta 7.07 → 6.86 s, spectralnorm 2.72 → 2.91 s (+7%), mandelbrot 0.72 → 0.77 s (+7%). This reads as the host returning to the state it was in in September, not as an engine speedup. The hand-<code>native</code> control in the micro-benchmark table, which the page treats as immune to interpreter changes, read 0.42 s on 2026-11-07 and reads 0.38 s here, the September figure. The changes between v2026.11.0 and v2026.11.3 were compile speed, a collector crash fix and libraries, none aimed at run-time throughput, and nothing here attributes a speedup to them. It also matches the five-run repeat taken on 2026-11-07, after the host had settled (spectralnorm 2.91–2.98 s, nbody 8.25–8.49 s, binarytrees 1.95–2.08 s). The residual +7% on spectralnorm against September has not been attributed to a cause. The CI perf gate is report-only (it cannot fail the build) and its baseline ratios predate the F7 calling convention (<a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/PERF_GATE.md" target="_blank">PERF_GATE.md</a>), so it is not evidence either way. Read the table as "unchanged, ranking unchanged", with one run per cell set by three runs and a host that moves by 6–17% between passes.</p>
+    <p><strong>Against the previous pass (2026-11-07, v2026.11.0) every row but mandelbrot is 8–10% faster, and against September (v2026.9.1) the rows are within 7% either way.</strong> Against 2026-11-07: nbody 9.02 → 8.15 s, binarytrees 2.26 → 2.03 s, fannkuchredux 36.01 → 33.24 s, spectralnorm 3.17 → 2.91 s, fasta 7.56 → 6.86 s, mandelbrot 0.77 → 0.77 s (one of its three runs read 1.89 s; the other two 0.77 and 0.72 s). Against September: nbody 8.14 → 8.15 s, binarytrees 2.14 → 2.03 s, fannkuchredux 32.76 → 33.24 s, fasta 7.07 → 6.86 s, spectralnorm 2.72 → 2.91 s (+7%), mandelbrot 0.72 → 0.77 s (+7%). This reads as the host returning to the state it was in in September, not as an engine speedup. The hand-<code>native</code> control in the micro-benchmark table, which the page treats as immune to interpreter changes, read 0.42 s on 2026-11-07 and reads 0.38 s here, the September figure. The changes between v2026.11.0 and v2026.11.3 were compile speed, a collector crash fix and libraries, none aimed at run-time throughput, and nothing here attributes a speedup to them. It also matches the five-run repeat taken on 2026-11-07, after the host had settled (spectralnorm 2.91–2.98 s, nbody 8.25–8.49 s, binarytrees 1.95–2.08 s). The residual +7% on spectralnorm against September has not been attributed to a cause. The CI perf gate is report-only (it cannot fail the build) and its baseline ratios predate the F7 calling convention (<a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/PERF_GATE.md" target="_blank" rel="noopener">PERF_GATE.md</a>), so it is not evidence either way. Read the table as "unchanged, ranking unchanged", with one run per cell set by three runs and a host that moves by 6–17% between passes.</p>
     <p><strong>binarytrees peak RSS is 177 MB</strong>, unchanged from 2026-11-07 (209 MB in September). It is still an order of magnitude above every other row, so allocation memory remains the standing gap.</p>
     <p><strong>fannkuchredux</strong> is call-bound in structure, but its cost is dominated by the permutation/flip inner loop rather than call overhead, which is why the calling-convention work in v2026.9.1 did not move it (32.32 s in June, 32.76 s in September, 36.01 s on 2026-11-07, 33.24 s here).</p>
     <p><strong>Since June</strong> (v2026.6.2, the comparison the page used to lead with): spectralnorm 44.86 s → 2.91 s (15.4x) and binarytrees 8.53 s → 2.03 s (4.2x). Those are the v2026.9.1 changes, measured again on a later build.</p>
     <hr class="section-end">
-    <h3 id="cross-language-comparison">Cross-Language Comparison</h3>
+    <h2 id="cross-language-comparison">Cross-Language Comparison</h2>
     <p>All five languages measured in <strong>one Docker run on identical inputs</strong> (the mandelbrot and fasta rows were timed in a later pass, described below the table) (<code>perf-results/docker/Dockerfile</code>), so these times are directly comparable to each other. Median of 3 runs.</p>
     <table class="ref-table">
      <thead>
@@ -171,7 +150,7 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
      </tbody>
     </table>
     <p><strong>mandelbrot and fasta were added on 2026-11-22.</strong> They were timed in a separate pass from the four rows above, on the same image and host: Objeck alone first, then Python, Ruby, LuaJIT and Java together in four containers at once, each single-threaded on its own core. Run that way the peers' times may carry a few percent of shared-host noise; the gaps below are far larger. Every peer program was checked against Objeck's output before timing: fasta is byte-identical across all five languages at n=1000, and for mandelbrot the four peers match each other byte for byte and Objeck's digits match theirs at n=64, 200 and 203. Objeck's shipped <code>mandelbrot.obs</code> runs <strong>three threads</strong> and prints each byte as decimal text through a per-byte <code>Print</code>, where the peers are single-threaded and write the packed PBM in bulk, so the row gives both Objeck figures: a one-thread build (the same source with <code>Thread-&gt;New[1]</code>, made for this table) is the like-for-like one. Fasta is single-threaded in every language. Peak RSS was not measured for these two rows.</p>
-    <h4 id="reading-the-table">Reading the table</h4>
+    <h3 id="reading-the-table">Reading the table</h3>
     <ul>
      <li><strong>Java (HotSpot) wins five of six in this run, and LuaJIT takes spectralnorm.</strong> LuaJIT is 5% ahead there (1.12s vs 1.18s); on 2026-11-07 Java led it by 0.02s and in September LuaJIT led by 0.06s, so that row is a tie that flips between runs, not a change. A mature tiered JIT with escape analysis and a generational GC is the bar a younger JIT is measured against.</li>
      <li><strong>Objeck beats Python and Ruby on all six:</strong> nbody <strong>17.7x</strong> / <strong>25.0x</strong>, spectralnorm <strong>43.5x</strong> / <strong>29.3x</strong>, fannkuchredux <strong>12.7x</strong> / <strong>34.6x</strong>, binarytrees <strong>1.7x</strong> / <strong>1.7x</strong>. These ratios are 5–15% higher than on 2026-11-07 because Objeck's own times are lower in this pass (see above); Python's and Ruby's own times also moved, CPython nbody 148.57s → 144.46s and Ruby nbody 213.96s → 203.60s, which is more evidence of run-to-run drift on this host.</li>
@@ -183,7 +162,7 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
      <li><strong>The spectralnorm program was revised on 2026-11-23, and the figures on this page are from the program before.</strong> Its two matrix-vector products wrote <code>Av[i] += ...</code> on every inner iteration, a read and a write of the array element, while all four peer programs (<code>perf-results/cross-lang/benchmarks/spectralnorm.*</code>) accumulate in a local and store once, so the comparison was slightly unfair to Objeck. <code>programs/tests/clbg/spectralnorm.obs</code> now accumulates in a local too; its output is identical (1.27422 at n = 100, 1000 and 5500). Timed side by side on the released v2026.11.3 binary in the benchmark image, five runs each, same session: <strong>2.83 s before, 2.66 s after</strong> (−6%), and 3.30 s to 2.87 s interpreted at n = 1000. The table rows above keep the old program's 2.91 s so they stay comparable with the earlier passes. On a build with Linux float pinning (merged after v2026.11.3, #1690) the same pair reads 2.76 s and 2.21 s (−20%), because the local then lives in a register instead of a stack slot. Rewriting <code>A(i, j)</code> inline gave 1.98 s in the same experiment. Writing the element as <code>v[j] / (n)-&gt;As(Float)</code> made it 4.15 s, and the cause was a false dependency, not the conversion itself: <code>cvtsi2sd</code> writes only the low double and keeps the register's upper half, so the CPU made each conversion wait for whatever last wrote that register, which in that loop was the previous iteration's running sum. The JIT now zeroes the destination register first (#1693, the same <code>pxor</code> C compilers emit) and that variant runs 1.79 s, the fastest of those tried. These figures come from one Linux build and a handful of variants, not from a full pass, and none of them is in the tables above.</li>
      <li><strong>fannkuchredux did not move</strong> with the calling-convention work (32.32s → 32.76s → 33.24s). Its inner loop, not call overhead, is what costs. Java is <strong>1.6x</strong> faster on it.</li>
     </ul>
-    <h4 id="key-takeaways">Key Takeaways</h4>
+    <h3 id="key-takeaways">Key Takeaways</h3>
     <ol>
      <li><strong>Against scripting peers, Objeck is decisively faster.</strong> nbody is <strong>17.7x</strong> faster than CPython and <strong>25.0x</strong> faster than Ruby; spectralnorm <strong>43.5x</strong> and <strong>29.3x</strong>; fannkuchredux <strong>12.7x</strong> and <strong>34.6x</strong>.</li>
      <li><strong>Objeck beats LuaJIT on fannkuchredux</strong> (33.24s vs 116.46s, <strong>3.5x faster</strong>) — the integer-array permutation/flip pattern suits a method JIT better than a tracing one. Java still leads it by 1.6x.</li>
@@ -193,7 +172,7 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
      <li><strong>Measurement environment matters.</strong> Objeck's interpreter is more sensitive to virtualization than its JIT. This pass ran within about 7% of September's on the same host and 8–10% faster than the 2026-11-07 pass, with the engine design unchanged; native (non-Docker) numbers would be meaningfully better than the Docker numbers shown here.</li>
     </ol>
     <hr class="section-end">
-    <h3 id="the-native-keyword">The <code>native</code> Keyword</h3>
+    <h2 id="the-native-keyword">The <code>native</code> Keyword</h2>
     <p>Methods marked <code>native</code> are JIT-compiled to x64 or ARM64 machine code. All other methods run in the interpreter unless auto-JIT compiles them after 10 calls.</p>
     <div class="note">Measured: <strong>v2026.11.3</strong> (<code>ef26ff969d</code>), 2026-11-22 unified Docker run.</div>
     <table class="ref-table">
@@ -207,7 +186,7 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
     </table>
     <p>Methods marked <code>native</code> that contain <code>MTHD_CALL</code> are JIT-compiled via <code>ProcessStackCallback</code>. Auto-JIT also compiles hot methods automatically (default: after 10 calls). Closure/function-reference calls (<code>DYN_MTHD_CALL</code>) are auto-JIT'd as well, and since v2026.9.1 a compiled caller enters a compiled callee's native entry directly, with an inline cache at <code>virtual</code> and func-ref sites. A closure-heavy kernel therefore reaches native-level speed at the <strong>default</strong> threshold: spectralnorm no longer needs <code>OBJECK_JIT_THRESHOLD=1</code> to be fast, and the hand-<code>native</code> kernel is no longer meaningfully ahead of it.</p>
     <hr class="section-end">
-    <h3 id="micro-benchmarks">Micro-Benchmarks</h3>
+    <h2 id="micro-benchmarks">Micro-Benchmarks</h2>
     <p>Targeted benchmarks for specific optimization patterns (<code>programs/tests/perf/</code>). Compiled with <code>-opt s3</code>, median of 3 runs.</p>
     <div class="note">Measured: <strong>v2026.11.3</strong> (<code>ef26ff969d</code>), 2026-11-22 unified Docker run. The June column is the 2026-06-21 run against v2026.6.2 and the v2026.9.1 column is the 2026-09-12 run; the change is June to now.</div>
     <table class="ref-table">
@@ -231,7 +210,7 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
     </table>
     <p>The two fastest rows (<code>bench_cse</code>, <code>bench_loop_invariant</code>) now sit at 0.01 s, close enough to the harness's resolution that their ratios should be read as "too fast to distinguish" rather than as precise multiples. <code>bench_spectralnorm_native</code> is the control: it is hand-<code>native</code>, so it was already compiled before this work and read 0.38 s in September. It read 0.42 s on 2026-11-07 and reads <strong>0.38 s</strong> now, so the control moved with the host and not with the engine: the other rows moved by a similar fraction between those two passes. A control that moves is what makes the other rows credible. Because its kernel is <code>native</code>-annotated it is <em>always</em> compiled and never runs through the interpreter, so it is valid for comparing one build against another but must never be read as an interpreter measurement.</p>
     <p>The June column's environment (host, harness, run count) is not recorded on this page beyond its date and version; treat June-to-now ratios as order-of-magnitude, not as controlled comparisons. The v2026.9.1 column is the 2026-09-12 Docker run at <code>f6b3b09046</code>. Times are <code>/usr/bin/time</code> wall seconds with 0.01 s resolution, which is why the 0.01 s rows cannot be told apart and why a "+3%" on a 0.38 s row is a 0.01 s difference. "Peak RSS" is the maximum resident set of the <code>obr</code> process in the current run.</p>
-    <h4 id="library-workloads">Library workloads</h4>
+    <h3 id="library-workloads">Library workloads</h3>
     <p>Timings of library code rather than compiler or VM patterns. Measured 2026-11-22 on the Ryzen 9 7950X3D (Windows, JIT on, libraries built with <code>-opt s3</code>, the v2026.11.2 compiler), <strong>one run per cell</strong> and not interleaved, so a difference under about 10% is not a result. The programs were scratch benchmarks, not files in this repository; the data are generated from a fixed integer generator, so they can be rewritten. "Before" is the library as released in v2026.11.2, "after" is v2026.11.3.</p>
     <p><strong>Regular expressions</strong> (<code>Query.RegEx</code>, <code>Find</code> over 680,000 characters of text):</p>
     <table class="ref-table">
@@ -270,15 +249,15 @@ docker run --rm -e BENCH_RUNS=3 -v "$(pwd)/perf-results/docker-results:/results"
     </table>
     <p><strong>Measured and already fast</strong> (1,005,000 characters of text; a 789 KB JSON file): <code>Find</code> of 15,000 occurrences 7 ms, <code>ReplaceAll</code> 12 ms, <code>Split</code> into 165,001 parts 70 ms, <code>ToLower</code> plus <code>ToUpper</code> 6 ms, 20,000 <code>s += ...</code> 35 ms (20,000 <code>Append</code> calls 74 ms), <code>JsonParser</code> parse 34 ms, <code>ToString</code> of the parsed document 131 ms, DBSCAN on 4,000 points of 8 values 0.20 s, a Gaussian mixture over 5,000 points of 4 values 0.05 s.</p>
     <p><strong>Not measured:</strong> <code>query.obs</code>, <code>net_server</code>, ODBC, the tree and SVM learners, matrix multiplication in pure Objeck, and any ARM64 or Linux result.</p>
-    <h4 id="running-benchmarks">Running Benchmarks</h4>
+    <h3 id="running-benchmarks">Running Benchmarks</h3>
 <pre class="cmd"># Docker (recommended for reproducible results)
 docker build -t objeck-bench -f perf-results/docker/Dockerfile .
 docker run --rm -v "$(pwd)/perf-results/docker-results:/results" objeck-bench
 
 # Linux/WSL (using deploy directory)
 bash perf-results/run_benchmarks.sh &lt;deploy_dir&gt; &lt;output_dir&gt; [num_runs]</pre>
-    <p><code>run_benchmarks.sh</code> takes a deploy tree (<code>&lt;deploy_dir&gt;/bin/obc</code> and <code>obr</code>), runs the six CLBG programs and the twelve micro-benchmarks <code>num_runs</code> times each (default 10, not 3), and writes <code>&lt;output_dir&gt;/results.csv</code> (<code>benchmark,run,time_seconds,peak_rss_kb</code>). It times with GNU <code>/usr/bin/time -f "%e %M"</code>, so it runs on Linux and WSL only; for macOS and Windows, and for statistical comparison of two builds (interleaved runs, warm-ups discarded, p-values), use <code>perf-results/objeck_bench.py</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/baseline-2026.10.0/README.md" target="_blank">perf-results/baseline-2026.10.0/README.md</a>). The cross-language comparison needs the Docker image above, or <code>perf-results/cross-lang/run_native.sh</code> for the CI-scaled Java and LuaJIT subset (<a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/PERF_GATE.md" target="_blank">PERF_GATE.md</a>). Do not time anything on a machine that is busy with a build or a test run: this page's own notes show a pass taken that way drifting by 6-17%.</p>
-    <h4 id="profiling-the-interpreters-instruction-mix">Profiling the interpreter's instruction mix</h4>
+    <p><code>run_benchmarks.sh</code> takes a deploy tree (<code>&lt;deploy_dir&gt;/bin/obc</code> and <code>obr</code>), runs the six CLBG programs and the twelve micro-benchmarks <code>num_runs</code> times each (default 10, not 3), and writes <code>&lt;output_dir&gt;/results.csv</code> (<code>benchmark,run,time_seconds,peak_rss_kb</code>). It times with GNU <code>/usr/bin/time -f "%e %M"</code>, so it runs on Linux and WSL only; for macOS and Windows, and for statistical comparison of two builds (interleaved runs, warm-ups discarded, p-values), use <code>perf-results/objeck_bench.py</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/baseline-2026.10.0/README.md" target="_blank" rel="noopener">perf-results/baseline-2026.10.0/README.md</a>). The cross-language comparison needs the Docker image above, or <code>perf-results/cross-lang/run_native.sh</code> for the CI-scaled Java and LuaJIT subset (<a href="https://github.com/objeck/objeck-lang/blob/master/perf-results/PERF_GATE.md" target="_blank" rel="noopener">PERF_GATE.md</a>). Do not time anything on a machine that is busy with a build or a test run: this page's own notes show a pass taken that way drifting by 6-17%.</p>
+    <h3 id="profiling-the-interpreters-instruction-mix">Profiling the interpreter's instruction mix</h3>
     <p>The VM is a stack machine, so which instruction sequences deserve a fused instruction should come from what programs execute. An <code>obr</code> built with <code>-DOBJECK_INSTR_PROFILE</code> (Linux: <code>make EXTRA_FLAGS=-DOBJECK_INSTR_PROFILE</code> in <code>core/vm</code>; see <code>core/vm/instr_profile.h</code>) counts every instruction the interpreter dispatches, and every pair and triple that ran one after another in the same method. A normal build is untouched.</p>
 <pre class="cmd">OBJECK_INSTR_PROFILE_OUT=prof_%p.txt obr --jit=off program.obe    # %p becomes the process id
 cat prof_*.txt &gt; all.txt                                           # profiles add up
@@ -301,7 +280,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
      <li><strong>The regression programs are test code</strong>: loop-heavy, with little of the string and library work a real program does, so treat their shares as one workload, not as typical.</li>
     </ul>
     <hr class="section-end">
-    <h3 id="optimization-history">Optimization History</h3>
+    <h2 id="optimization-history">Optimization History</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Version</th><th>Date</th><th>Key Optimization</th><th>Impact</th></tr>
@@ -324,7 +303,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
      </tbody>
     </table>
     <p><em>Conditions for this table:</em> the machine, input and run count behind the rows before v2026.9.1 are <strong>not recorded</strong> on this page (conditions not recorded); the speedups are quoted from the release notes of the time. The v2026.9.1 row quotes <code>docs/JIT_CALLING_CONVENTION_DESIGN.md</code>, where the AMD64 figures are medians of three from <code>programs/tests/jit_call_probe.obs</code> alternated with a master binary on one box (the last step, 5.5 ns and 0.043 s, on Windows x64; the CPU model is not recorded there). The M4 Max pair "17.1 ns to 7.4 ns" and "0.135 s to 0.050 s" joins two alternated series in that document: 17.1 ns and 0.135 s are master's figures at the phase-2 entry/exit work (its section 12), and 7.4 ns and 0.050 s are the native-entry result measured against a later master at <code>3366d92c4a</code>, whose own figures were 13.8 ns and 0.107 s (its section 13). Against that later master the improvement is 13.8 to 7.4 ns and 0.107 to 0.050 s.</p>
-    <h4 id="v202630-detail">v2026.3.0 Detail</h4>
+    <h3 id="v202630-detail">v2026.3.0 Detail</h3>
     <p><strong>Headline: binarytrees (depth=17) from 65.8s to 28.7s.</strong> Young-gen bump allocator enabled with complete call stack fixup.</p>
     <table class="ref-table">
      <thead>
@@ -340,7 +319,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
      </tbody>
     </table>
     <p><strong>How it was found:</strong> GC profiling revealed only 18% of binarytrees runtime was in GC. The remaining 82% was per-object allocation overhead and interpreter dispatch -- contradicting the assumption that "GC is the #1 bottleneck."</p>
-    <h4 id="v202660-detail">v2026.6.0 Detail</h4>
+    <h3 id="v202660-detail">v2026.6.0 Detail</h3>
     <p><strong>Headline: broad 5–15% speedup across all interpreter and JIT benchmarks.</strong></p>
     <table class="ref-table">
      <thead>
@@ -353,7 +332,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
       <tr><td data-label="Optimization">Loop-Invariant Code Motion (LICM)</td><td data-label="Category">Compiler (<code>-opt s2+</code>)</td><td data-label="Impact">Hoists <code>arr-&gt;Size()</code> reads and pure arithmetic statements out of loop bodies when inputs are loop-invariant.</td></tr>
      </tbody>
     </table>
-    <h4 id="v202662-detail-arm64-forced-jit-correctness">v2026.6.2+ Detail (ARM64 forced-JIT correctness)</h4>
+    <h3 id="v202662-detail-arm64-forced-jit-correctness">v2026.6.2+ Detail (ARM64 forced-JIT correctness)</h3>
     <p><strong>Headline: no benchmark moves, but every ARM64 JIT miscompile that forced JIT (<code>OBJECK_JIT_THRESHOLD=1</code>) exposed is now fixed — a prerequisite for lowering the auto-JIT threshold below 10.</strong> These were latent because cold helper methods rarely reach the trigger, so they ran interpreted; forcing JIT surfaced them. Found with the JIT's <code>_DEBUG_JIT_JIT</code> codegen disassembly and lldb.</p>
     <table class="ref-table">
      <thead>
@@ -369,7 +348,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
       <tr><td data-label="Fix"><code>Int-&gt;MinSize()</code> returned <code>INT64_MAX</code> (PR #551)</td><td data-label="Category">Library</td><td data-label="Bug"><code>2-&gt;Pow(63)</code> computes <code>+2^63</code> in float and saturates on F2I; fixed to <code>1 &lt;&lt; 63</code>. (Not a JIT bug — failed interpreted too; was masked by exit-code-based tests that printed <code>FAIL</code> without <code>Runtime-&gt;Exit(1)</code>.)</td></tr>
      </tbody>
     </table>
-    <h4 id="v202691-detail-the-calling-convention">v2026.9.1 Detail (the calling convention)</h4>
+    <h3 id="v202691-detail-the-calling-convention">v2026.9.1 Detail (the calling convention)</h3>
     <p><strong>Headline: a call between compiled methods no longer crosses the C++ bridge.</strong> Before this, a JIT'd method calling another JIT'd method went out through an eleven-argument bridge entry, took a pooled frame and released it. The caller now builds the callee's frame on its own stack and jumps straight to its native entry.</p>
     <table class="ref-table">
      <thead>
@@ -387,7 +366,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
     <p><em>Limits:</em> the call-cost table is a call-bound micro-kernel (<code>jit_call_probe.obs</code>, 20M bound calls, 2M <code>virtual</code> calls, <code>Fib(32)</code> about 7M calls) and says nothing about call-light code; "before" is a master binary of the time, not a release.</p>
     <p><strong>What this meant for the tables above, and what re-measuring found.</strong> The 2026-09-12 run settled it. <code>spectralnorm</code> fell <strong>16.5x</strong> (44.86s to 2.72s) and its "JIT warmup dominates" narrative is gone: the default threshold now beats what forcing compilation achieved in June. <code>binarytrees</code> fell <strong>4.0x</strong> (8.53s to 2.14s) and now leads all three scripting/JIT peers on time, leaving its 209 MB peak RSS as the real gap. <code>fannkuchredux</code>, despite being call-bound, did <strong>not</strong> move (32.32s to 32.76s) -- its permutation/flip inner loop dominates, not call overhead. The hand-<code>native</code> spectralnorm kernel was already compiled and comes back unchanged (0.37s to 0.38s), which is the run's own sanity check.</p>
     <hr class="section-end">
-    <h3 id="what-we-tried-and-reverted">What We Tried and Reverted</h3>
+    <h2 id="what-we-tried-and-reverted">What We Tried and Reverted</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Optimization</th><th>Result</th><th>Why</th></tr>
@@ -404,9 +383,9 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
     </table>
     <p><em>Conditions not recorded:</em> the ratios in this table (0.66x, 0.85x, 0.64x, 0.91x, 0.5x, the 3.35 s to 3.53 s dispatch pair) have no host, input or run count on this page; they are experiment notes, not reproducible measurements, and "x slower" is the factor the experiment's benchmark ran at.</p>
     <hr class="section-end">
-    <h3 id="speedup-roadmap">Speedup Roadmap</h3>
+    <h2 id="speedup-roadmap">Speedup Roadmap</h2>
     <p>Prioritized by leverage, grounded in the cross-language run above. The single clearest signal <em>(as written in June; see the 2026-11-22 figures above for where it stands now)</em>: <strong>Objeck already beats Python/Ruby on JIT-friendly loops but loses to everything — including the interpreters — on allocation-bound work (binarytrees), and trails Java/LuaJIT on float loops.</strong> So the highest-value work is allocation throughput and float codegen, not more integer-loop tuning.</p>
-    <h4 id="p0--recover-the-gc-safepoint-regression-complete--both-arches">P0 — Recover the GC-safepoint regression <em>(complete — both arches)</em></h4>
+    <h3 id="p0--recover-the-gc-safepoint-regression-complete--both-arches">P0 — Recover the GC-safepoint regression <em>(complete — both arches)</em></h3>
     <p>The cooperative stop-the-world work (v2026.6.2) emits an unconditional <code>call MemoryManager::SafePoint</code> at <strong>every JIT label</strong>, which regressed label-dense integer loops (fannkuchredux ~35s → ~59s; the call/ret + optimization barrier is paid every loop iteration) while barely touching float/call-dominated loops (spectralnorm_native +7%).</p>
     <table class="ref-table">
      <thead>
@@ -419,7 +398,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
      </tbody>
     </table>
     <p><em>Conditions for the P0 table: not recorded</em> beyond what each cell states (fannkuch-12 on AMD64, fannkuch-11 on Apple Silicon for ARM64, min-of-6 for the ARM64 figures); the host CPU, run counts for the AMD64 figures and the benchmark input for the first row (71.6 s to 56.9 s) are not on this page. The rows are not mutually comparable: fannkuchredux appears at ~35 s, ~59 s, 71.6 s, 56.9 s and 38.4 s across them, so do not chain them into one trajectory and do not compare them with the 2026-11-07 figure (36.01 s).</p>
-    <h4 id="p1--allocation--gc-throughput-the-1-cross-language-gap">P1 — Allocation &amp; GC throughput <em>(the #1 cross-language gap)</em></h4>
+    <h3 id="p1--allocation--gc-throughput-the-1-cross-language-gap">P1 — Allocation &amp; GC throughput <em>(the #1 cross-language gap)</em></h3>
     <p>binarytrees is the benchmark where Objeck trails the most. <em>(The original text, written against the June run, said it lost to every peer, Java 22x and the interpreters ~2x. In the 2026-11-22 run Objeck beats CPython, Ruby and LuaJIT on time and trails Java 8.5x; the memory gap, 177 MB, remains.)</em> The young-gen bump allocator helped, but per-object allocation + a call into the allocator still dominates.</p>
     <table class="ref-table">
      <thead>
@@ -431,7 +410,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
       <tr><td data-label="Opportunity"><strong>Thread-local allocation buffers (TLAB)</strong></td><td data-label="Category">GC</td><td data-label="Expected Impact">MED — cut <code>young_offset</code> CAS contention under multithreaded allocation</td></tr>
      </tbody>
     </table>
-    <h4 id="p2--close-jit-coverage-gaps">P2 — Close JIT coverage gaps</h4>
+    <h3 id="p2--close-jit-coverage-gaps">P2 — Close JIT coverage gaps</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Opportunity</th><th>Category</th><th>Expected Impact</th></tr>
@@ -444,7 +423,7 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
       <tr><td data-label="Opportunity"><strong>Lower the auto-JIT threshold</strong> (currently 10 calls)</td><td data-label="Category">VM</td><td data-label="Expected Impact">MED — now <em>unblocked</em> on ARM64: the forced-JIT (<code>THRESHOLD=1</code>) correctness fixes above mean cold helpers JIT correctly, so the trigger can drop to compile warm code sooner. Measure the compile-time-vs-runtime trade-off before changing the default; re-validate x64 at the lower threshold first</td></tr>
      </tbody>
     </table>
-    <h4 id="p3--measurement--methodology">P3 — Measurement &amp; methodology</h4>
+    <h3 id="p3--measurement--methodology">P3 — Measurement &amp; methodology</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Opportunity</th><th>Impact</th></tr>
@@ -464,14 +443,34 @@ python tools/perf/instr_profile_report.py all.txt --top 20         # names come 
     <p><em>All six CLBG benchmarks are measured here, <code>fasta</code> included.</em></p>
     <p><em>The measured commit is the v2026.11.3 release tag. Since v2026.11.0 the changes were compile speed, a collector crash fix, libraries and release tooling, none aimed at run-time throughput. The report-only CI perf gate is not evidence for or against that.</em></p>
     <p><em>P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon). The ARM64 forced-JIT correctness chain (PR #548, #551) is merged and the full ARM64 suite is green at <code>OBJECK_JIT_THRESHOLD=1</code>; as of v2026.9.1 every CI leg runs that pass, ARM64 included.</em></p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#benchmark-results">Benchmark Results</a></li><li><a href="#cross-language-comparison">Cross-Language Comparison</a></li><li><a href="#the-native-keyword">The <code>native</code> Keyword</a></li><li><a href="#micro-benchmarks">Micro-Benchmarks</a></li><li><a href="#optimization-history">Optimization History</a></li><li><a href="#what-we-tried-and-reverted">What We Tried and Reverted</a></li><li><a href="#speedup-roadmap">Speedup Roadmap</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

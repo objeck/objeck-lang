@@ -1,0 +1,96 @@
+#~
+# compile: obc -src actors_35.obs -lib gen_collect,concurrent,actor
+# run:     obr actors_35.obe
+#
+# An actor is a thread with a mailbox and private state. Nothing else touches
+# that state; other code sends it messages, so it needs no locks. Teams of
+# actors are how multi-agent programs are built, and the part that makes them
+# robust is supervision, borrowed from Erlang: when an actor fails, its
+# supervisor does not crash the program, it starts a fresh one.
+#
+# Here a Worker counts the jobs it has done. Sending it a job named "bad..."
+# makes it raise an error. The supervisor restarts it, so the job count starts
+# again from zero (state does not survive a restart) while the program carries
+# on. Call() sends a question and waits for the answer.
+#
+# Only the main thread prints, so the output is the same on every run.
+#
+# output:
+#   worker has done 2 jobs
+#   a job failed; the supervisor has restarted the worker 1 time
+#   the new worker has done 0 jobs
+#   after one more job: 1
+~#
+
+use System.Actor;
+use Collection;
+
+# the actor's behavior: Handle() is called once per message
+class Worker implements ActorBehavior {
+	@jobs : Int;
+
+	New() {
+	}
+
+	method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+		# a question: answer with the job count
+		if(mail->GetKind() = Mail->Kind->CALL) {
+			mail->Answer(IntRef->New(@jobs));
+			return true;
+		};
+
+		# a job: a name that starts with "bad" fails
+		if(mail->GetKind() = Mail->Kind->DATA) {
+			job := mail->GetPayload()->As(String);
+			if(job->StartsWith("bad")) {
+				Runtime->Raise(Error->New("cannot do {$job}"));
+			};
+			@jobs += 1;
+		};
+		return true;
+	}
+}
+
+# how the supervisor makes a fresh worker
+class WorkerFactory implements BehaviorFactory {
+	New() {
+	}
+
+	method : public : Create() ~ ActorBehavior {
+		return Worker->New();
+	}
+}
+
+class ActorTour {
+	function : Main(args : String[]) ~ Nil {
+		# restart a failed child, but give up after 3 failures in 60 seconds
+		team := Supervisor->New("team", SupervisorStrategy->Kind->ONE_FOR_ONE, 3, 60);
+		team->AddChild(ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->PERMANENT, 1000));
+		team->Start();
+
+		worker := team->GetChild("worker");
+		worker->Send("job one");
+		worker->Send("job two");
+		"worker has done {$(Jobs(worker))} jobs"->PrintLine();
+
+		# a failure: the monitor hears about it, and the supervisor restarts the worker
+		watcher := Mailbox->New();
+		worker->Monitor(watcher);
+		worker->Send("bad job");
+		watcher->Receive(5000);
+		restarts := team->GetRestartCount();
+		"a job failed; the supervisor has restarted the worker {$restarts} time"->PrintLine();
+
+		worker := team->GetChild("worker");
+		"the new worker has done {$(Jobs(worker))} jobs"->PrintLine();
+		worker->Send("job three");
+		"after one more job: {$(Jobs(worker))}"->PrintLine();
+
+		team->Stop();
+		team->Join(5000);
+	}
+
+	function : Jobs(worker : Actor) ~ Int {
+		return worker->Call(Nil, 5000)->GetValue()->As(IntRef)->Get();
+	}
+}

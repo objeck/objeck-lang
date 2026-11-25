@@ -1,0 +1,4 @@
+$ obc -src json.obs -lib json
+$ obr json.obe
+Ada is 36
+{"count":3,"ok":true}

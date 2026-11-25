@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Get started — Objeck Language</title>
+  <meta name="description" content="Install, write a program, run it. Or use the playground: no install, libraries chosen from your use lines, no network access in the sandbox.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html" aria-current="page">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li aria-current="page">Get started</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html" aria-current="page">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Get started</h1>
+    <p class="page-lead">Install, write a program, run it. Or use the <a href="https://playground.objeck.org">playground</a>: no install, libraries chosen from your <code>use</code> lines, no network access in the sandbox.</p>
+
+    <h2 id="install">Install</h2>
+    <p>Current release: <strong>v2026.11.4</strong>. All files are on the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank" rel="noopener">releases page</a>.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Platform</th><th>Download</th><th>Needs</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Platform">Windows x64, ARM64</td><td data-label="Download"><code>.msi</code> or <code>.zip</code></td><td data-label="Needs">nothing</td></tr>
+      <tr><td data-label="Platform">macOS Apple silicon</td><td data-label="Download"><code>.pkg</code>, <code>.tgz</code> or <code>.zip</code></td><td data-label="Needs">nothing</td></tr>
+      <tr><td data-label="Platform">Ubuntu 24.04 x64, ARM64</td><td data-label="Download"><code>.deb</code></td><td data-label="Needs">installs its own dependencies</td></tr>
+      <tr><td data-label="Platform">Other Linux x64, ARM64</td><td data-label="Download"><code>.tgz</code></td><td data-label="Needs">glibc 2.38+, then <code>install_deps.sh</code></td></tr>
+     </tbody>
+    </table>
+    <p>Ubuntu 24.04:</p>
+<pre class="cmd">curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.4/objeck-ubuntu24.04-x64_2026.11.4.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.11.4.deb</pre>
+    <p>Other Linux:</p>
+<pre class="cmd">tar xzf objeck-linux-x64_2026.11.4.tgz
+./objeck-lang/install_deps.sh     # --check only reports
+source ./objeck-lang/env.sh       # sets PATH and OBJECK_LIB_PATH</pre>
+    <p>Debian 12 and Ubuntu 22.04 have an older glibc: use a container or build from source (see the <a href="https://github.com/objeck/objeck-lang#readme" target="_blank" rel="noopener">README</a>).</p>
+    <h2 id="first-program">First program</h2>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Hello</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"Hello, Objeck"</span><span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src hello.obs
+$ obr hello.obe
+Hello, Objeck</pre>
+    <p>Libraries are named at compile time, for example <code>obc -src app.obs -lib json,net</code>. See <a href="libraries.html">Libraries</a>.</p>
+    <h2 id="next">Next</h2>
+    <ul>
+     <li><a href="getting_started.html">Quick start tour</a></li>
+     <li><a href="guides.html">Guides</a></li>
+     <li><a href="ai_guide.html">AI and ML guide</a></li>
+     <li><a href="doc_features.html">Language reference</a></li>
+     <li><a href="guide_editors.html">Editor setup</a></li>
+    </ul>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#install">Install</a></li><li><a href="#first-program">First program</a></li><li><a href="#next">Next</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>

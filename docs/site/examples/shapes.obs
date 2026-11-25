@@ -1,0 +1,29 @@
+use Collection;
+
+class Shape {
+  method : virtual : public : Area() ~ Float;
+}
+
+class Circle from Shape {
+  @r : Float;
+  New(r : Float) { Parent(); @r := r; }
+  method : public : Area() ~ Float { return Float->Pi() * @r * @r; }
+}
+
+class Square from Shape {
+  @s : Float;
+  New(s : Float) { Parent(); @s := s; }
+  method : public : Area() ~ Float { return @s * @s; }
+}
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    shapes := Vector->New()<Shape>;
+    shapes->AddBack(Circle->New(1.5));
+    shapes->AddBack(Square->New(2.0));
+    each(i : shapes) {
+      area := shapes->Get(i)->Area();
+      "{$area:.2}"->PrintLine();
+    };
+  }
+}

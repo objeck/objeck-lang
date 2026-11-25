@@ -1,0 +1,4 @@
+$ obc -src shapes.obs
+$ obr shapes.obe
+7.07
+4.00

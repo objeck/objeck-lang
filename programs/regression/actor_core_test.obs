@@ -327,7 +327,13 @@ class ActorCoreTest {
       a->Send("never");
       r := Reason(a);
       ok := r <> Nil & r->GetKind() = ExitReason->Kind->FAILED & r->GetError() <> Nil & r->GetError()->Size() > 0;
-      Check("{$(commands[i])} -> FAILED: {$(r->GetError())}", ok);
+      # the error text goes to stderr: the interpreter's index message carries the index and
+      # the size ("Index out of bounds: 5,2") and the JIT's does not, so it must not reach stdout
+      "  {$(commands[i])} error: {$(r->GetError())}"->ErrorLine();
+      Check("{$(commands[i])} -> FAILED", ok);
+      if(commands[i]->Equals("index")) {
+        Check("  the error names the index fault", r->GetError()->Find("Index out of bounds") > -1);
+      };
       Check("  the next mail was not handled, Terminate ran", probe->Count("got:never") = 0 & probe->CountPrefix("term:f:failed") = 1);
       Check("  abnormal", r->IsAbnormal());
     };
@@ -403,7 +409,8 @@ class ActorCoreTest {
     r3 := a->Call("hold", 60);
     elapsed := ActorClock->Now() - started;
     Check("a call without an answer times out", r3->GetStatus() = CallResult->Status->TIMED_OUT & r3->GetError() <> Nil);
-    Check("it waited at least the timeout ({$elapsed} ms)", elapsed >= 55);
+    "  waited {$elapsed} ms"->ErrorLine();
+    Check("it waited at least the timeout", elapsed >= 55);
     Check("nothing is answered yet", a->GetLateAnswers() = 0);
     gate->CountDown();
     Check("the handler answered after the caller gave up", probe->Await("answered:false", 1));

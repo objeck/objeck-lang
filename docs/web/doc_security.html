@@ -1,79 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The Objeck VM trust model — Objeck Language</title>
-  <meta name="description" content="Short version: running an .obe is equivalent to running native code with the privileges of the obr process. The VM checks that a program file is well formed enough to load; it does not check that the bytecode inside is safe to execute. Do n"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Short version: running an .obe is equivalent to running native code with the privileges of the obr process. The VM checks that a program file is well formed enough to load; it does not check that the bytecode inside is safe to execute. Do n">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">The Objeck VM trust model</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/SECURITY_MODEL.md" target="_blank">docs/SECURITY_MODEL.md on GitHub</a></div>
-    <p class="page-lead"><strong>Short version: running an <code>.obe</code> is equivalent to running native code with the privileges of the <code>obr</code> process.</strong> The VM checks that a program file is well formed enough to load; it does not check that the bytecode inside is safe to execute. Do not run an <code>.obe</code> you would not run as a native executable, and do not treat <code>obr</code> as a sandbox. Isolation, where it is needed, comes from the operating system around the VM -- as the playground does with Docker.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#who-can-do-what">Who can do what</a></li>
-      <li><a href="#what-the-loader-checks">What the loader checks</a></li>
-      <li><a href="#what-the-verification-pass-checks">What the verification pass checks</a></li>
-      <li><a href="#what-is-still-not-checked">What is still not checked</a></li>
-      <li><a href="#the-playground">The playground</a></li>
-      <li><a href="#planned">Planned</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#how-it-works">How it works</a></li><li aria-current="page">The Objeck VM trust model</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html" aria-current="page">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">The Objeck VM trust model</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/SECURITY_MODEL.md" target="_blank" rel="noopener">View docs/SECURITY_MODEL.md on GitHub</a></p>
+    <p class="page-lead"><strong>Short version: running an <code>.obe</code> is equivalent to running native code with the privileges of the <code>obr</code> process.</strong> The VM checks that a program file is well formed enough to load; it does not check that the bytecode inside is safe to execute. Do not run an <code>.obe</code> you would not run as a native executable, and do not treat <code>obr</code> as a sandbox. Isolation, where it is needed, comes from the operating system around the VM -- as the playground does with Docker.</p>
 
     <p>This page says what the loader and interpreter check today, what they do not, what the web playground relies on, and what is planned. Every statement about the code cites the file and line it was read from (master, 2026-10-31); line numbers drift, so the function names are given as well.</p>
-    <p>Reporting a vulnerability is covered in <a href="https://github.com/objeck/objeck-lang/blob/master/SECURITY.md" target="_blank">SECURITY.md</a>.</p>
+    <p>Reporting a vulnerability is covered in <a href="https://github.com/objeck/objeck-lang/blob/master/SECURITY.md" target="_blank" rel="noopener">SECURITY.md</a>.</p>
     <hr class="section-end">
-    <h3 id="who-can-do-what">Who can do what</h3>
+    <h2 id="who-can-do-what">Who can do what</h2>
     <p>There are two ways for a program to do something dangerous, and the VM stops neither.</p>
     <ol>
      <li><strong>By asking.</strong> A correct program compiled from ordinary source can read and write any file the process can, open sockets, run shell commands (<code>TrapProcessor::SysCmd</code> passes its argument to <code>_wsystem</code>/<code>system</code>, <code>core/vm/common.cpp:4195-4213</code>), and load native code: <code>DllProxy-&gt;New(name)</code> appends <code>name</code> to the native library directory with no check for path separators and loads the result (<code>StackInterpreter::SharedLibraryLoad</code>, <code>core/vm/interpreter.cpp:3080-3132</code> for <code>LoadLibraryW</code>, <code>:3198</code> for <code>dlopen</code>), so a name with <code>../</code> in it loads any file the process can read that carries the platform's library suffix, which the VM appends. A native library runs in-process with no restriction at all (see <a href="doc_native_interface.html">native_interface.md</a>).</li>
@@ -81,7 +61,7 @@
     </ol>
     <p>The first is the language working as designed. The second is the gap a bytecode verifier closes; the loader's verification pass closes part of it (below).</p>
     <hr class="section-end">
-    <h3 id="what-the-loader-checks">What the loader checks</h3>
+    <h2 id="what-the-loader-checks">What the loader checks</h2>
     <p><code>Loader::Load</code> and friends (<code>core/vm/loader.cpp</code>, <code>core/vm/loader.h</code>) validate the file's <em>structure</em>:</p>
     <table class="ref-table">
      <thead>
@@ -100,7 +80,7 @@
     </table>
     <p>The bounds check is off for the bundled-executable path, which loads from memory with no length (<code>buffer_end = nullptr</code>, <code>loader.h:194</code>).</p>
     <p>These checks are fuzzed: <a href="doc_fuzz.html">tools/fuzz/loader</a> holds libFuzzer targets on <code>Loader::Load</code>, seeded with the compiled regression programs, and every input they found is a case in <code>run_vm_flag_tests.py</code> (section 30).</p>
-    <h3 id="what-the-verification-pass-checks">What the verification pass checks</h3>
+    <h2 id="what-the-verification-pass-checks">What the verification pass checks</h2>
     <p>Once a program has loaded and before any of it runs, <code>Loader::Verify</code> (<code>core/vm/loader.cpp</code>) relates each operand to the program it is part of. A program that breaks a rule is refused with <code>&gt;&gt;&gt; Invalid bytecode: &lt;method&gt;, instruction &lt;n&gt;: &lt;rule&gt; &lt;&lt;&lt;</code> and status 1. Every rule holds for every program the toolchain compiles: the 849 compiled regression programs (each links the standard libraries; a quarter are compiled again with <code>-debug</code>) all pass.</p>
     <table class="ref-table">
      <thead>
@@ -125,7 +105,7 @@
     </table>
     <p><code>run_vm_flag_tests.py</code> section 30 changes one operand of a freshly compiled program for each rule and requires the refusal. The stack rules were also run over 684 regression programs and 613 example, deploy and test programs, each compiled with every library: none is refused. The builder is run in a lenient mode here (a local the declarations do not list is an untyped slot, and a method it cannot model, or an instruction it has no rule for, is not a verdict); only a failure that makes the method unsafe refuses the program.</p>
     <p>The interpreter also checks, when an array is indexed with more than one index, that the array has that many dimensions (<code>ArrayIndex</code>, <code>core/vm/interpreter.cpp</code>).</p>
-    <h3 id="what-is-still-not-checked">What is still not checked</h3>
+    <h2 id="what-is-still-not-checked">What is still not checked</h2>
     <ul>
      <li><strong>Trap argument counts.</strong> A trap pops as many words as its own id says, while the builder takes the count from the instruction's operand, so a trap that disagrees with its own id is not caught; a check needs a per-trap table the compiler and the VM do not share yet. (The operand stack is bounded and never negative; the table above lists both checks.)</li>
      <li><strong>Types.</strong> The builder infers what each stack word is from how it is used and lets an <code>Int</code> and a reference meet in one value (<code>GetInstanceID()</code> is a reference returned as an <code>Int</code>), so putting one where the other is expected goes unnoticed; the only type rule is the non-zero literal above. An instance variable is checked against the largest object, not the object on the stack: nothing proves which class that is. Likewise a trap trusts whatever words the program put on the stack as its arguments -- object pointers included.</li>
@@ -133,7 +113,7 @@
     </ul>
     <p>So the rule at the top of this page still stands: a crafted <code>.obe</code> can still corrupt memory through the stack or through a trap's arguments.</p>
     <hr class="section-end">
-    <h3 id="the-playground">The playground</h3>
+    <h2 id="the-playground">The playground</h2>
     <p><a href="https://playground.objeck.org">playground.objeck.org</a> runs untrusted programs. It does not rely on the VM for isolation. Its backend (<code>programs/web-playground/backend</code>) compiles the visitor's <em>source</em> with <code>obc</code> -- it never accepts an <code>.obe</code> -- and then runs it in a Docker container (<code>app/services/sandbox.py:206-236</code>):</p>
     <ul>
      <li><code>network_mode="none"</code> (<code>sandbox.py:211</code>)</li>
@@ -146,20 +126,40 @@
     <p>Before that it refuses source that names bundles or calls the sandbox would not honour anyway -- <code>System.API</code>, <code>System.IO.Filesystem</code>, <code>System.IO.Net</code> (<code>app/services/libmap.py:61-65</code>), <code>DllProxy</code>, process and socket classes (<code>app/services/validator.py:86-101</code>) -- so a visitor gets a reason rather than a failure. That check is a lexical scan, by its own description "deliberately not a parser" (<code>app/services/source_scan.py:13</code>); it improves the error messages and is not the security boundary. The container is.</p>
     <p>Anyone hosting Objeck for untrusted users should do the same: treat the VM process as hostile and contain it from outside.</p>
     <hr class="section-end">
-    <h3 id="planned">Planned</h3>
+    <h2 id="planned">Planned</h2>
     <ul>
      <li><strong>Trap and type checks</strong>, completing the verifier (the operand stack is already bounded and never negative): a per-trap pop count the compiler and VM share, and the class of each object operand known. With them, "a crafted <code>.obe</code> is native code" becomes "a crafted <code>.obe</code> is refused".</li>
      <li><strong>Deny flags</strong> on <code>obr</code>, for capabilities a program should not have even when it asks: native libraries (<code>DllProxy</code>), running commands, the file system, the network. Each would make the matching traps fail as a runtime error. Together with a complete verifier, they would let <code>obr</code> itself enforce what the playground currently enforces only with a container and a source scan.</li>
     </ul>
     <p>Until both exist, the rule at the top of this page stands.</p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#who-can-do-what">Who can do what</a></li><li><a href="#what-the-loader-checks">What the loader checks</a></li><li><a href="#what-the-verification-pass-checks">What the verification pass checks</a></li><li><a href="#what-is-still-not-checked">What is still not checked</a></li><li><a href="#the-playground">The playground</a></li><li><a href="#planned">Planned</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>
