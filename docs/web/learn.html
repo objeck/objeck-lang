@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learn — Objeck Language</title>
+  <meta name="description" content="Each is built around a program that was compiled and run; the output shown is what it printed.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li aria-current="page">Learn</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html" aria-current="page">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Learn</h1>
+    <p class="page-lead">Each is built around a program that was compiled and run; the output shown is what it printed.</p>
+
+    <h2 id="start">Start</h2>
+    <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="getting_started.html">Quick start tour</a>: the language on one page</li>
+     <li><a href="doc_examples.html">Examples</a></li>
+    </ul>
+    <h2 id="classes-and-lambdas">Classes and lambdas</h2>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">Shape</span> {
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">Area</span>() <span class="t-op">~</span> <span class="t-type">Float</span>;
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Circle</span> <span class="t-kw">from</span> <span class="t-cls">Shape</span> {
+  @r : <span class="t-type">Float</span>;
+  <span class="t-kw">New</span>(r : <span class="t-type">Float</span>) { <span class="t-kw">Parent</span>(); @r <span class="t-op">:=</span> r; }
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Area</span>() <span class="t-op">~</span> <span class="t-type">Float</span> { <span class="t-kw">return</span> <span class="t-type">Float</span><span class="t-op">-&gt;</span>Pi() * @r * @r; }
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Square</span> <span class="t-kw">from</span> <span class="t-cls">Shape</span> {
+  @s : <span class="t-type">Float</span>;
+  <span class="t-kw">New</span>(s : <span class="t-type">Float</span>) { <span class="t-kw">Parent</span>(); @s <span class="t-op">:=</span> s; }
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Area</span>() <span class="t-op">~</span> <span class="t-type">Float</span> { <span class="t-kw">return</span> @s * @s; }
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    shapes <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;Shape&gt;;
+    shapes<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Circle</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">1.5</span>));
+    shapes<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Square</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">2.0</span>));
+    <span class="t-kw">each</span>(i : shapes) {
+      area <span class="t-op">:=</span> shapes<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>Area();
+      <span class="t-str">"{$area:.2}"</span><span class="t-op">-&gt;</span>PrintLine();
+    };
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src shapes.obs
+$ obr shapes.obe
+7.07
+4.00</pre>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    words <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"compiler"</span>);
+    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"jit"</span>);
+    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"collector"</span>);
+
+    lengths <span class="t-op">:=</span> words<span class="t-op">-&gt;</span>Map(\(<span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">IntRef</span> : (w) <span class="t-op">=&gt;</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(w<span class="t-op">-&gt;</span>Size()));
+    <span class="t-kw">each</span>(i : words) {
+      <span class="t-str">"{$(words-&gt;Get(i))}: {$(lengths-&gt;Get(i)-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    };
+
+    triple <span class="t-op">:=</span> \(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> : (x) <span class="t-op">=&gt;</span> x * <span class="t-num">3</span>;
+    triple(<span class="t-num">14</span>)<span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src lambdas.obs
+$ obr lambdas.obe
+compiler: 8
+jit: 3
+collector: 9
+42</pre>
+    <h2 id="guides">Guides</h2>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Guide</th><th>Topic</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Guide"><a href="guide_query.html">Query.Structured</a></td><td data-label="Topic">SQL over typed tables</td></tr>
+      <tr><td data-label="Guide"><a href="guide_http.html">HTTP</a></td><td data-label="Topic">Server, client, connection reuse</td></tr>
+      <tr><td data-label="Guide"><a href="guide_data.html">JSON, XML, RegEx</a></td><td data-label="Topic">Parsing and bad input</td></tr>
+      <tr><td data-label="Guide"><a href="guide_collections.html">Collections</a></td><td data-label="Topic">Hash, Map, Vector, Set, MultiHash</td></tr>
+      <tr><td data-label="Guide"><a href="guide_ai.html">Game AI</a></td><td data-label="Topic">Minimax, Monte Carlo tree search</td></tr>
+      <tr><td data-label="Guide"><a href="guide_editors.html">Editors</a></td><td data-label="Topic">Language server, debugger</td></tr>
+      <tr><td data-label="Guide"><a href="guide_whats_new.html">What is new in v2026.10.3</a></td><td data-label="Topic">Upgrading</td></tr>
+     </tbody>
+    </table>
+    <h2 id="ai-and-ml">AI and ML</h2>
+    <ul>
+     <li><a href="ai_guide.html">AI and ML guide</a></li>
+     <li><a href="doc_models.html">Which models run</a></li>
+     <li><a href="doc_ai.html">AI reference</a></li>
+    </ul>
+    <h2 id="reference">Reference</h2>
+    <ul>
+     <li><a href="doc_features.html">Language reference</a></li>
+     <li><a href="doc_collections.html">Collections guide</a></li>
+     <li><a href="doc_errors.html">Error conventions</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="doc_cli_options.html">Command-line options</a></li>
+    </ul>
+    <h2 id="inside">Inside</h2>
+    <ul>
+     <li><a href="doc_architecture.html">Architecture</a></li>
+     <li><a href="doc_performance.html">Performance</a></li>
+     <li><a href="doc_security.html">Security model</a></li>
+    </ul>
+    <h2 id="more">More</h2>
+    <ul>
+     <li><a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank" rel="noopener">Objeck on Rosetta Code</a></li>
+     <li><a href="https://www.youtube.com/watch?v=jToZaCETby8" target="_blank" rel="noopener">Internals video</a> (AI-generated overview, v2026.9)</li>
+     <li><a href="https://www.objeck.org/video/objeck_edge_architecture.mp4">Video overview</a> (7 min)</li>
+    </ul>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#start">Start</a></li><li><a href="#classes-and-lambdas">Classes and lambdas</a></li><li><a href="#guides">Guides</a></li><li><a href="#ai-and-ml">AI and ML</a></li><li><a href="#reference">Reference</a></li><li><a href="#inside">Inside</a></li><li><a href="#more">More</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>

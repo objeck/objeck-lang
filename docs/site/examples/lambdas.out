@@ -1,0 +1,6 @@
+$ obc -src lambdas.obs
+$ obr lambdas.obe
+compiler: 8
+jit: 3
+collector: 9
+42

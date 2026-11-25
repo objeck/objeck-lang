@@ -1,62 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Third-party dependencies: where each platform gets them, and how to check versions — Objeck Language</title>
-  <meta name="description" content="Objeck pins little itself. The HTTP/2 and HTTP/3 stack (nghttp2, ngtcp2, nghttp3, AWS-LC) is built from pinned sources by tools/deps/build_quic_deps.sh and linked statically on Linux and macOS. The TLS, audio, vision and inference libraries"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Objeck pins little itself. The HTTP/2 and HTTP/3 stack (nghttp2, ngtcp2, nghttp3, AWS-LC) is built from pinned sources by tools/deps/build_quic_deps.sh and linked statically on Linux and macOS. The TLS, audio, vision and inference libraries">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#reference">Reference</a></li><li aria-current="page">Third-party dependencies: where each platform gets them, and how to check versions</li></ol></nav>
+  <div class="layout has-side">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html" aria-current="page">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Third-party dependencies: where each platform gets them, and how to check versions</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/third_party_dependencies.md" target="_blank">docs/third_party_dependencies.md on GitHub</a></div>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/third_party_dependencies.md" target="_blank" rel="noopener">View docs/third_party_dependencies.md on GitHub</a></p>
     <p class="page-lead">Objeck pins little itself. The HTTP/2 and HTTP/3 stack (nghttp2, ngtcp2, nghttp3, AWS-LC) is built from pinned sources by <code>tools/deps/build_quic_deps.sh</code> and linked statically on Linux and macOS. The TLS, audio, vision and inference libraries come from each platform's package channel at build time, so security fixes arrive with that channel — and a channel that is behind is behind for every release built on it. This page records the provenance so an audit is a lookup, not an archaeology dig. The few versions the tree pins are in <code>tools/deps/build_quic_deps.sh</code> (AWS-LC), <code>tools/deps/build_macos_deps.sh</code> (the macOS static builds) and the <code>$opencvVersion</code> of the Windows OpenCV download in the three build workflows.</p>
 
     <table class="ref-table">
@@ -76,28 +67,44 @@
       <tr><td data-label="Library">VC runtime</td><td data-label="Windows x64 / ARM64"><code>vcruntime140*.dll</code>, <code>msvcp140*.dll</code>, <code>concrt140.dll</code> copied from the toolset (<code>deploy_windows.cmd</code>)</td><td data-label="Linux x64 / ARM64">—</td><td data-label="macOS ARM64">—</td><td data-label="Used by">every Windows binary</td></tr>
      </tbody>
     </table>
-    <h3 id="checking-what-a-build-actually-used">Checking what a build actually used</h3>
+    <h2 id="checking-what-a-build-actually-used">Checking what a build actually used</h2>
     <ul>
      <li><strong>Windows</strong>: in the CI log's "Install Windows dependencies" step, <code>vcpkg install</code> names each port with its version (<code>mbedtls:x64-windows@&lt;version&gt;</code>). OpenCV x64's version is <code>$opencvVersion</code> in the workflows (and the <code>4120</code> in its DLL name); ONNX Runtime x64's is the NuGet version in <code>core/lib/onnx/vs/packages.config</code>. The vendored DLLs, SDL2 and the ARM64 QNN ONNX Runtime (1.23.0), carry theirs in their file-version resources (<code>(Get-Item SDL2.dll).VersionInfo</code>).</li>
      <li><strong>Linux</strong>: <code>dpkg -l libmbedtls-dev libsdl2-dev libopencv-dev libmp3lame-dev</code> on the runner image (<code>ubuntu-24.04</code> — the image, not the tree, decides the version). The HTTP/2 and HTTP/3 versions are pinned in <code>tools/deps/build_quic_deps.sh</code> and recorded in its prefix's <code>.quic-deps-stamp</code>.</li>
      <li><strong>macOS</strong>: every third-party library is pinned in <code>tools/deps/build_macos_deps.sh</code> (version and sha256) and recorded in its prefix's <code>macos-bundle/.macos-deps-stamp</code>; HTTP/2 and HTTP/3 as on Linux (<code>.quic-deps-stamp</code>). The licenses ship under each library's <code>licenses/</code>.</li>
      <li><strong>Shipped tree</strong>: <code>ldd lib/native/libobjk_crypto.so</code> / <code>otool -L</code> / <code>dumpbin /dependents</code> names the exact runtime libraries a native module links, which is also what <code>verify_native_libs.sh|.ps1</code> checks resolve.</li>
     </ul>
-    <h3 id="what-audit-means-here">What "audit" means here</h3>
+    <h2 id="what-audit-means-here">What "audit" means here</h2>
     <ol>
      <li>For the two libraries with a security surface exposed to the network — mbedTLS and nghttp2 (plus ngtcp2/AWS-LC on POSIX) — compare the version the runner image installs, or the version pinned in the table above, against upstream's supported branches (mbedTLS 3.6 LTS at the time of writing; 4.x is not API-compatible and is a migration, not a bump).</li>
      <li>For the Windows pins, OpenCV x64 (<code>$opencvVersion</code> and the cache keys in the three workflows, and the <code>4120</code> in the DLL and import-library names) and ONNX Runtime x64 (the NuGet version in <code>core/lib/onnx/vs/packages.config</code>, repeated in <code>vs/vs.vcxproj</code> and <code>deploy_windows.cmd</code>), compare the pinned version against the latest patch release and bump it everywhere it is named. The vendored SDL2 DLLs and ARM64 QNN runtime are bumped by replacing the files; ARM64 OpenCV follows vcpkg.</li>
      <li>Anything vendored (zlib) is our responsibility to update by hand.</li>
     </ol>
     <p>A scheduled job that prints these versions into the CI summary would turn step 1 into a glance; it is not built yet.</p>
-
+<!-- content:end -->
    </div>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

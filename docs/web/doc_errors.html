@@ -1,67 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Error reporting in the libraries: what exists, and one rule to adopt — Objeck Language</title>
-  <meta name="description" content="Status: a proposal for the maintainer. The first half records, with file and line, the ways the libraries report failure today. The second half proposes a single rule for new code. Nothing here changes behaviour, and no library has been cha"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Status: a proposal for the maintainer. The first half records, with file and line, the ways the libraries report failure today. The second half proposes a single rule for new code. Nothing here changes behaviour, and no library has been cha">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#language-and-libraries">Language and libraries</a></li><li aria-current="page">Error reporting in the libraries: what exists, and one rule to adopt</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html" aria-current="page">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Error reporting in the libraries: what exists, and one rule to adopt</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_CONVENTIONS.md" target="_blank">docs/ERROR_CONVENTIONS.md on GitHub</a></div>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ERROR_CONVENTIONS.md" target="_blank" rel="noopener">View docs/ERROR_CONVENTIONS.md on GitHub</a></p>
     <p class="page-lead"><strong>Status: a proposal for the maintainer.</strong> The first half records, with file and line, the ways the libraries report failure today. The second half proposes a single rule for new code. Nothing here changes behaviour, and no library has been changed to follow it.</p>
 
     <p>Lines refer to <code>core/compiler/lib_src/</code> at the commit that last edited this file; they drift as the libraries change, so check a reference with <code>grep -n &lt;symbol&gt;</code> before relying on it. The <code>lang.obs</code>, <code>ml_lab.obs</code> and <code>query.obs</code> references were re-checked against master on 2026-11-18, the others were refreshed the same day.</p>
-    <h3 id="what-is-in-use">What is in use</h3>
-    <h4 id="1-a-process-wide-last-error-string-openai-gemini-ollama-inference">1. A process-wide "last error" string: OpenAI, Gemini, Ollama, inference</h4>
+    <h2 id="what-is-in-use">What is in use</h2>
+    <h3 id="1-a-process-wide-last-error-string-openai-gemini-ollama-inference">1. A process-wide "last error" string: OpenAI, Gemini, Ollama, inference</h3>
     <p>The failing call returns <code>Nil</code> or <code>false</code> and leaves the reason in a class variable that the next call overwrites.</p>
     <table class="ref-table">
      <thead>
@@ -76,7 +67,7 @@
      </tbody>
     </table>
     <p>Because the string is shared by every thread, two threads that fail at once can read each other's message. The three AI libraries also differ on the "no error" value (<code>"&lt;none&gt;"</code> versus <code>Nil</code>), and until recently several legacy methods printed <code>### Error: ... ###</code> with <code>-&gt;ErrorLine()</code> and returned <code>Nil</code> without recording anything (<code>openai.obs:84</code>, <code>:170</code>; <code>grep -c '### Error'</code> finds 23 such lines in <code>gemini.obs</code> and 13 in <code>openai.obs</code>). A caller of those cannot ask why.</p>
-    <h4 id="2-an-instance-error-ml-csv-json-xml-nlp-query-columns">2. An instance error: ML, CSV, JSON, XML, NLP, Query columns</h4>
+    <h3 id="2-an-instance-error-ml-csv-json-xml-nlp-query-columns">2. An instance error: ML, CSV, JSON, XML, NLP, Query columns</h3>
     <p>The object remembers why <em>its</em> last call failed; a failed call leaves the object usable.</p>
     <ul>
      <li>ML models: <code>GetError()</code> at <code>ml_core.obs:2360</code>, <code>ml_embed.obs:176</code>, <code>ml_outlier.obs</code> (several classes, <code>:889</code> and onwards). Returns <code>""</code> when the last call worked, per its comment.</li>
@@ -85,29 +76,29 @@
      <li><code>IsOk()</code> after construction, with the reason held for the same object: <code>rss.obs:98</code>, <code>regex.obs:124</code>.</li>
     </ul>
     <p>This is safe with one thread per object. The "no error" value is <code>""</code> in ML and <code>Nil</code> in most others.</p>
-    <h4 id="3-a-per-thread-error-query-tables-sockets">3. A per-thread error: Query tables, sockets</h4>
+    <h3 id="3-a-per-thread-error-query-tables-sockets">3. A per-thread error: Query tables, sockets</h3>
     <p><code>GetError()</code> answers for the calling thread's last call on the object, so several threads can share a <code>Table</code> or <code>Catalog</code>.</p>
     <ul>
      <li><code>ThreadErrors</code> (<code>query.obs:1440</code>), a map keyed by <code>Thread-&gt;GetCurrentId()</code>, absent when no thread has failed so the success path costs one field read. <code>Table-&gt;GetError()</code> is at <code>query.obs:4176</code>, <code>Catalog-&gt;GetError()</code> at <code>:18556</code>; design in <code>docs/QUERY_DESIGN.md</code>, "Errors per thread".</li>
      <li>Sockets: <code>TCPSocket-&gt;GetLastError()</code> (<code>lang.obs:12572</code>) and its TLS, UDP, DTLS and server twins (<code>:12873</code>, <code>:13093</code>, <code>:13184</code>, <code>:13304</code>, <code>:13522</code>, <code>:13739</code>, <code>:13864</code>) keep the reason per thread and return <code>Nil</code> when the thread's latest socket call worked.</li>
     </ul>
     <p>This is the convention that is correct under threads, and the one the runtime's own sockets use.</p>
-    <h4 id="4-raising-runtime-raise-typed-tryon">4. Raising: <code>Runtime-&gt;Raise</code>, typed <code>try</code>/<code>on</code></h4>
+    <h3 id="4-raising-runtime-raise-typed-tryon">4. Raising: <code>Runtime-&gt;Raise</code>, typed <code>try</code>/<code>on</code></h3>
     <ul>
      <li><code>System.Error</code> and its subclasses (<code>lang.obs:8150</code>, <code>NilError</code> <code>:8182</code>, <code>IndexError</code> <code>:8195</code>, <code>DivideByZeroError</code> <code>:8208</code>, <code>CastError</code> <code>:8221</code>, <code>RuntimeError</code> <code>:8235</code>), <code>Runtime-&gt;Raise(e)</code> (<code>:8318</code>) and <code>Runtime-&gt;GetLastError()</code> (<code>:8332</code>). A caller recovers with <code>try { } on(e : T) { } finally { }</code>. Design and status: <code>docs/ERROR_HANDLING_DESIGN.md</code> (phases 1 to 4 shipped).</li>
      <li><code>ml_lab.obs</code> is the one library that uses it: <code>LabError from Error</code> (<code>:20</code>), raised from <code>Runtime-&gt;Raise(LabError-&gt;New(...))</code> for input it cannot act on (<code>:453</code>, <code>:784</code>, <code>:1033</code>, <code>:2012</code>, <code>:2259</code>, <code>:3021</code>). An uncaught one ends the program with its message.</li>
     </ul>
-    <h4 id="5-return-value-only">5. Return value only</h4>
+    <h3 id="5-return-value-only">5. Return value only</h3>
     <p>Many small methods (<code>Vector-&gt;Set</code>, <code>Hash-&gt;Remove</code>) say only whether they worked. That is fine when there is exactly one way to fail.</p>
     <p><strong>How to check</strong> any row above: <code>grep -n "GetLastError\|GetError" core/compiler/lib_src/&lt;file&gt;.obs</code>, and for raising, <code>grep -ln "Runtime-&gt;Raise" core/compiler/lib_src/*.obs</code> (today <code>lang.obs</code> and <code>ml_lab.obs</code> only).</p>
-    <h3 id="what-goes-wrong-with-the-mix">What goes wrong with the mix</h3>
+    <h2 id="what-goes-wrong-with-the-mix">What goes wrong with the mix</h2>
     <ul>
      <li>A caller has to learn which of five mechanisms a library uses, and which of three "no error" values it returns (<code>"&lt;none&gt;"</code>, <code>Nil</code>, <code>""</code>).</li>
      <li>The process-wide string is racy, and was the source of the unrecorded failures: a library with no obligation to set it tends not to.</li>
      <li>Only conventions 3 and 4 are safe under threads, and only 4 can be ignored by mistake without anyone noticing: a <code>Nil</code> return that the caller then dereferences is the failure the library sweep for this document found in the OpenAI, Gemini, <code>misc</code> and <code>net</code> libraries.</li>
      <li><code>ml_lab</code> raises where <code>ml</code>, which it builds on, returns a value and sets <code>GetError()</code>; a program using both handles two styles in one experiment.</li>
     </ul>
-    <h3 id="proposed-rule">Proposed rule</h3>
+    <h2 id="proposed-rule">Proposed rule</h2>
     <p>For new code, and for existing code the next time it is touched:</p>
     <ol>
      <li><strong>A failure the caller should expect (I/O, network, parsing untrusted input, a missing record): return the failure value and keep the reason per thread.</strong> The failure value is <code>Nil</code> for an object or a string, <code>false</code> for an action, and <code>-1</code> for a count or index. The reason is read with <code>GetError()</code>; it returns <code>Nil</code> when the calling thread's last call worked. Use the <code>ThreadErrors</code> shape in <code>query.obs:1440</code>, or the sockets' runtime-kept error, rather than a class variable. Never print and return.</li>
@@ -116,7 +107,7 @@
      <li><strong>Do not mix the two for one condition.</strong> A function that can fail for a reason in rule 1 does not also raise for it; a function that raises (rule 2) never returns <code>Nil</code> to say the same thing.</li>
      <li><strong>A doc comment names the failure value and where the reason is read</strong>, the way Ollama's does (<code>@return ... or Nil with the last error set</code>).</li>
     </ol>
-    <h4 id="what-adopting-it-would-touch">What adopting it would touch</h4>
+    <h3 id="what-adopting-it-would-touch">What adopting it would touch</h3>
     <p>Nothing in this change. When the maintainer decides:</p>
     <ul>
      <li>The OpenAI, Gemini and Ollama <code>GetLastError</code> become thin readers of a per-thread map (the <code>static</code> name stays, as a function, so callers do not change), and settle on <code>Nil</code>.</li>
@@ -125,14 +116,34 @@
      <li>New libraries follow rules 1 to 5 from the start.</li>
     </ul>
     <p>Open questions for the maintainer: whether the <code>static</code> last-error functions are public API that a deprecation period must cover, and whether <code>ml</code> should raise like <code>ml_lab</code> or <code>ml_lab</code> should return like <code>ml</code>.</p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#what-is-in-use">What is in use</a></li><li><a href="#what-goes-wrong-with-the-mix">What goes wrong with the mix</a></li><li><a href="#proposed-rule">Proposed rule</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

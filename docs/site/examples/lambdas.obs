@@ -1,0 +1,18 @@
+use Collection;
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    words := Vector->New()<String>;
+    words->AddBack("compiler");
+    words->AddBack("jit");
+    words->AddBack("collector");
+
+    lengths := words->Map(\(String) ~ IntRef : (w) => IntRef->New(w->Size()));
+    each(i : words) {
+      "{$(words->Get(i))}: {$(lengths->Get(i)->Get())}"->PrintLine();
+    };
+
+    triple := \(Int) ~ Int : (x) => x * 3;
+    triple(14)->PrintLine();
+  }
+}

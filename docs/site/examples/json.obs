@@ -1,0 +1,15 @@
+use Data.JSON;
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    root := JsonParser->TextToElement("{\"name\": \"Ada\", \"langs\": [\"en\", \"fr\"], \"age\": 36}");
+    name := root->Get("name")->GetString();
+    age := root->Get("age")->GetInt();
+    "{$name} is {$age}"->PrintLine();
+
+    doc := JsonElement->New(JsonElement->JsonType->OBJECT);
+    doc->Insert("ok", true);
+    doc->Insert("count", 3);
+    doc->ToString()->PrintLine();
+  }
+}

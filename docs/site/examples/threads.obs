@@ -1,0 +1,41 @@
+use System.Concurrency;
+
+class Counter from Thread {
+  @total : static : Int;
+  @lock : static : ThreadMutex;
+
+  New() {
+    Parent();
+  }
+
+  function : Init() ~ Nil {
+    @lock := ThreadMutex->New("lock");
+  }
+
+  method : public : Run(arg : System.Base) ~ Nil {
+    each(i : 1000) {
+      critical(@lock) {
+        @total += 1;
+      };
+    };
+  }
+
+  function : Total() ~ Int {
+    return @total;
+  }
+}
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    Counter->Init();
+    workers := Counter->New[4];
+    each(i : workers) {
+      workers[i] := Counter->New();
+      workers[i]->Execute(Nil);
+    };
+    each(i : workers) {
+      workers[i]->Join();
+    };
+    Counter->Total()->PrintLine();
+  }
+}

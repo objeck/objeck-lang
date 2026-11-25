@@ -1,68 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Objeck LSP — Objeck Language</title>
-  <meta name="description" content="Sublime TCP client shim."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Sublime TCP client shim.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#tools">Tools</a></li><li aria-current="page">Objeck LSP</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html" aria-current="page">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Objeck LSP</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/README.md" target="_blank">tools/lsp/clients/sublime/README.md on GitHub</a></div>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/README.md" target="_blank" rel="noopener">View tools/lsp/clients/sublime/README.md on GitHub</a></p>
     <p class="page-lead">Sublime TCP client shim.</p>
 
-    <h3 id="installation">Installation</h3>
+    <h2 id="installation">Installation</h2>
     <ul>
-     <li>Install syntax <a href="https://github.com/objeck/objeck-lang/tree/master/docs/syntax/sublime" target="_blank">highlighting</a></li>
-     <li>Install the Sublime <a href="https://lsp.sublimetext.io/language_servers/" target="_blank">LSP support</a></li>
+     <li>Install syntax <a href="https://github.com/objeck/objeck-lang/tree/master/docs/syntax/sublime" target="_blank" rel="noopener">highlighting</a></li>
+     <li>Install the Sublime <a href="https://lsp.sublimetext.io/language_servers/" target="_blank" rel="noopener">LSP support</a></li>
      <li>Open Preferences &gt; Package Settings &gt; LSP &gt; Settings and add the "objeck" client configuration to the "clients":</li>
     </ul>
     <p>Standard I/O</p>
@@ -103,19 +94,19 @@
 		}
 	}
 }</pre>
-    <h3 id="running-client">Running client</h3>
+    <h2 id="running-client">Running client</h2>
     <ul>
      <li>Open Tools &gt; LSP &gt; Enable Language and select objeck</li>
     </ul>
-    <h3 id="debugging-dap">Debugging (DAP)</h3>
-    <p>Sublime debugging uses the <a href="https://packagecontrol.io/packages/Debugger" target="_blank">Debugger</a> package by Dave Leroy. After installing it via Package Control:</p>
+    <h2 id="debugging-dap">Debugging (DAP)</h2>
+    <p>Sublime debugging uses the <a href="https://packagecontrol.io/packages/Debugger" target="_blank" rel="noopener">Debugger</a> package by Dave Leroy. After installing it via Package Control:</p>
     <ol>
      <li>Copy <code>dap/objeck_dap_adapter.py</code> into your <code>Packages/Objeck/</code> directory (the <code>install.sh</code> / <code>install.cmd</code> script does this for you).</li>
      <li>Create <code>Packages/User/Objeck.sublime-settings</code> pointing at your <code>obd</code> binary:</li>
     </ol>
 <pre class="line-numbers"><code class="language-json">{
-    "obd_path": "C:\\Program Files\\Objeck\\bin\\obd.exe",
-    "objeck_lib_path": "C:\\Program Files\\Objeck\\lib"
+    <span class="t-str">"obd_path"</span>: <span class="t-str">"C:\\Program Files\\Objeck\\bin\\obd.exe"</span>,
+    <span class="t-str">"objeck_lib_path"</span>: <span class="t-str">"C:\\Program Files\\Objeck\\lib"</span>
 }
 </code></pre>
     <ol start="3">
@@ -124,36 +115,56 @@
      <li><strong>Debugger &gt; Start</strong>, pick the configuration, and click the gutter to set breakpoints.</li>
     </ol>
     <p>The adapter is registered on Sublime startup and runs <code>obd --dap</code> over stdio with <code>OBJECK_LIB_PATH</code> set per <code>Objeck.sublime-settings</code>.</p>
-    <h4 id="creating-a-debug-configuration">Creating a debug configuration</h4>
-    <p><strong>Per project</strong> — put a <code>debugger_configurations</code> block in a <code>.sublime-project</code> and open it with <em>Project &gt; Open Project</em>. Configurations are only read from an open project, not from a plain folder. See <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/dap/objeck.sublime-project.example" target="_blank"><code>dap/objeck.sublime-project.example</code></a>.</p>
-    <p><strong>Globally, without a project</strong> — the Debugger package normally insists on a sublime project and shows <em>"Debugger requires a sublime project"</em>. A non-empty <code>global_debugger_configurations</code> in <code>Packages/User/Debugger.sublime-settings</code> lifts that requirement and makes the configuration available in every window. See <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/dap/Debugger.sublime-settings.example" target="_blank"><code>dap/Debugger.sublime-settings.example</code></a>:</p>
+    <h3 id="creating-a-debug-configuration">Creating a debug configuration</h3>
+    <p><strong>Per project</strong> — put a <code>debugger_configurations</code> block in a <code>.sublime-project</code> and open it with <em>Project &gt; Open Project</em>. Configurations are only read from an open project, not from a plain folder. See <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/dap/objeck.sublime-project.example" target="_blank" rel="noopener"><code>dap/objeck.sublime-project.example</code></a>.</p>
+    <p><strong>Globally, without a project</strong> — the Debugger package normally insists on a sublime project and shows <em>"Debugger requires a sublime project"</em>. A non-empty <code>global_debugger_configurations</code> in <code>Packages/User/Debugger.sublime-settings</code> lifts that requirement and makes the configuration available in every window. See <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/clients/sublime/dap/Debugger.sublime-settings.example" target="_blank" rel="noopener"><code>dap/Debugger.sublime-settings.example</code></a>:</p>
 <pre class="line-numbers"><code class="language-json">{
-    "global_debugger_configurations": [
+    <span class="t-str">"global_debugger_configurations"</span>: [
         {
-            "name": "Objeck: debug current file",
-            "type": "objeck",
-            "request": "launch",
-            "program": "${file_path}/${file_base_name}.obe",
-            "sourceDir": "${file_path}"
+            <span class="t-str">"name"</span>: <span class="t-str">"Objeck: debug current file"</span>,
+            <span class="t-str">"type"</span>: <span class="t-str">"objeck"</span>,
+            <span class="t-str">"request"</span>: <span class="t-str">"launch"</span>,
+            <span class="t-str">"program"</span>: <span class="t-str">"${file_path}/${file_base_name}.obe"</span>,
+            <span class="t-str">"sourceDir"</span>: <span class="t-str">"${file_path}"</span>
         }
     ]
 }
 </code></pre>
     <p><code>${file_path}</code> and <code>${file_base_name}</code> are expanded per window, so this one entry debugs whichever <code>.obs</code> file is open — provided the matching <code>.obe</code> sits beside it. Use <code>${folder}</code> instead only inside a project, since it has no meaning without one.</p>
-    <h4 id="troubleshooting">Troubleshooting</h4>
+    <h3 id="troubleshooting">Troubleshooting</h3>
     <ul>
      <li><strong>"Add or select a configuration to begin debugging"</strong> — the Debugger package found no configurations. Either no <code>.sublime-project</code> is open, or it has no <code>debugger_configurations</code> block. Add a global configuration as above to sidestep projects entirely.</li>
      <li><strong>Breakpoints never hit</strong> — the <code>.obe</code> was built without <code>--debug</code>, or it is stale relative to the source. Recompile after every edit; the debugger runs the bytecode, not the <code>.obs</code>.</li>
      <li><strong><code>objeck</code> missing from the adapter list</strong> — the adapter registers at startup, so restart Sublime after installing it. <code>View &gt; Show Console</code> logs <code>[objeck-dap] registered adapter types:</code> and warns explicitly if registration failed.</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#installation">Installation</a></li><li><a href="#running-client">Running client</a></li><li><a href="#debugging-dap">Debugging (DAP)</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>
