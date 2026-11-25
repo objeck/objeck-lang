@@ -21,44 +21,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Backstop so a hung test/step can never tie up a runner for the default
     # 6 hours (per-test timeouts in run_regression.sh are the first line of
-    # defense; this caps the whole job). The Windows legs run the regression twice on slow
-    # runners: windows-arm64 took 55 minutes on a good day, and windows-x64 took 42 to 56 minutes
-    # across the runs of 2026-11-25 and was cancelled at exactly 60 on one of them. They get a
-    # longer cap; the POSIX legs stay at 60.
-    timeout-minutes: ${{ startsWith(matrix.platform, 'windows') && 90 || 60 }}
+    # defense; this caps the whole job). The Windows legs are not here: they are
+    # the `windows` job below, split into parallel jobs by ci-windows.yml.
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Windows builds
-          # Pinned to windows-2025-vs2026, which ships VS2026 (toolset v145).
-          # The .vcxproj files select $(DefaultPlatformToolset) rather than a
-          # hard-coded toolset, so they resolve to v145 here and to v143 on a
-          # VS2022 developer box; VS2026 ships only v145 (no v143), so pinning
-          # either version in the projects breaks one environment or the other.
-          # Explicit label rather than windows-latest/windows-2025 to avoid
-          # future silent image migrations.
-          - platform: windows-x64
-            os: windows-2025-vs2026
-            arch: x64
-            deploy_script: deploy_windows.cmd x64
-            shell: cmd
-
-          # windows-11-arm is a NATIVE ARM64 runner. This leg used to build on
-          # the x64 image and cross-compile, which meant it could not execute a
-          # single thing it produced -- the whole test suite, the debugger tests
-          # and the DAP tests were skipped, so an ARM64-only miscompile had
-          # nothing standing in its way. Native build + native execution closes
-          # that. It ships VS2022 (toolset v143) rather than VS2026's v145; the
-          # .vcxproj files select $(DefaultPlatformToolset), so they follow the
-          # image either way.
-          - platform: windows-arm64
-            os: windows-11-arm
-            arch: ARM64
-            deploy_script: deploy_windows.cmd arm64
-            shell: cmd
-
           # Linux builds
           - platform: linux-x64
             # Pinned: ubuntu-latest became 26.04 on 2026-10-31, which links OpenCV 4.10 and mbedTLS 3.x
@@ -258,171 +228,6 @@ jobs:
         rm "$CERTIFICATE_PATH"
         echo "Apple signing certificate installed."
 
-    # Windows setup
-    - name: Setup Visual Studio (Windows)
-      if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
-
-    - name: Setup MSVC Environment (Windows)
-      if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
-      with:
-        arch: ${{ matrix.arch }}
-
-    # Christian Werner's sqliteodbc 0.99991, pinned by checksum. x64 lifts
-    # sqlite3odbc.dll out of the upstream installer with 7-Zip (the installer
-    # is never run); upstream ships no ARM64 build, so that leg compiles the
-    # driver from the pinned source tarball and SQLite amalgamation with the
-    # MSVC toolchain the step above put on PATH. Either way the DSN is a
-    # per-user registry entry naming the DLL by path, needing no admin
-    # rights, and the script connects through the Driver Manager before it
-    # returns. The downloads are cached so an upstream outage cannot redden a
-    # leg; the checksums are verified on a cache hit too. Windows PowerShell
-    # rather than pwsh: the connection check uses System.Data.Odbc, which the
-    # .NET Framework carries and PowerShell 7 does not bundle.
-    - name: Cache SQLite ODBC downloads (Windows)
-      if: runner.os == 'Windows'
-      continue-on-error: true
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: sqliteodbc-downloads
-        key: sqliteodbc-0.99991-sqlite-3540100-${{ matrix.arch }}
-
-    - name: Configure ODBC test DSN (Windows)
-      if: runner.os == 'Windows'
-      shell: powershell
-      run: ./tools/cicd/setup_sqlite_odbc.ps1 -Arch ${{ matrix.arch }} -Dir "$env:RUNNER_TEMP\sqliteodbc" -Downloads sqliteodbc-downloads
-
-    - name: Install Windows dependencies
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        # Install mbedtls and nghttp2 via vcpkg. The installs download tools and
-        # sources from external CDNs that intermittently 504 (a transient ninja
-        # download failed a whole leg on 2026-06-06), so retry before giving up.
-        #
-        # The backoff rides out an OUTAGE, not just a blip. The previous version
-        # made 3 attempts 20s apart -- about a 40-second window -- and on
-        # 2026-09-21 all three drew the same 504 fetching zlib for ARM64, inside
-        # 27 seconds. That reddened master, auto-filed #950, and cost a
-        # diagnosis, on a dependency fetch that had nothing to do with the code.
-        #
-        # 5 attempts at 15s, 45s, 2m and 4m spans about seven minutes. It costs
-        # nothing on success, and windows-arm64 is a shipping target whose leg
-        # already runs 26 minutes -- spending a few more to avoid a false red is
-        # the right trade.
-        function Install-VcpkgPackage([string]$pkg) {
-          $delays = @(15, 45, 120, 240)
-          $max = $delays.Count + 1
-          for($i = 1; $i -le $max; $i++) {
-            vcpkg install $pkg
-            if($LASTEXITCODE -eq 0) {
-              return
-            }
-            if($i -lt $max) {
-              $wait = $delays[$i - 1]
-              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in ${wait}s..."
-              Start-Sleep -Seconds $wait
-            }
-          }
-          # Name the likely cause. The failure that reaches here looks identical
-          # to a bad token or a broken config, and it is almost never either.
-          throw "vcpkg install $pkg failed after $max attempts over ~7 minutes. This is usually an upstream CDN outage fetching sources, not a configuration problem -- check the curl status codes above before changing anything."
-        }
-        Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
-        Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
-
-        # The committed ARM64 OpenCV modules are a MODULAR build: opencv_core4
-        # imports z.dll, and opencv_imgcodecs4 imports jpeg62/libpng16/tiff/
-        # libwebp*. None of those codec DLLs were ever committed beside them, so
-        # libobjk_opencv.dll failed to load with error 126 -- present, correctly
-        # built, and missing a dependency two levels down. x64 never showed this
-        # because it downloads opencv_world, which links the codecs IN.
-        if("${{ matrix.arch }}" -eq "ARM64") {
-          Install-VcpkgPackage "zlib:${{ matrix.arch }}-windows"
-          Install-VcpkgPackage "libjpeg-turbo:${{ matrix.arch }}-windows"
-          Install-VcpkgPackage "libpng:${{ matrix.arch }}-windows"
-          Install-VcpkgPackage "tiff:${{ matrix.arch }}-windows"
-          Install-VcpkgPackage "libwebp:${{ matrix.arch }}-windows"
-        }
-
-        # Set include/lib paths for Visual Studio
-        $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
-        echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
-        echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
-        # Add vcpkg bin to PATH so nghttp2.dll is found at test runtime
-        echo "$vcpkgRoot\bin" >> $env:GITHUB_PATH
-
-        Write-Output "✅ Installed mbedtls and nghttp2 for ${{ matrix.arch }}"
-        Write-Output "Set INCLUDE=$vcpkgRoot\include"
-        Write-Output "Set LIB=$vcpkgRoot\lib"
-        Write-Output "Added to PATH: $vcpkgRoot\bin"
-
-    - name: Cache OpenCV DLLs (Windows x64)
-      if: matrix.platform == 'windows-x64'
-      id: opencv-cache
-      # The cache is only an optimization — a transient cache-service error must
-      # not fail the build. On a miss/error, cache-hit != 'true' and the download
-      # step below fetches the DLLs anyway.
-      continue-on-error: true
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: core/lib/opencv/win/x64/bin
-        key: opencv-4.12.0-win-x64-dlls-licenses
-
-    - name: Download OpenCV runtime DLLs (Windows x64)
-      if: matrix.platform == 'windows-x64' && steps.opencv-cache.outputs.cache-hit != 'true'
-      shell: pwsh
-      run: |
-        $opencvVersion = "4.12.0"
-        $binDir = "core\lib\opencv\win\x64\bin"
-        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-
-        $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
-        Write-Output "Downloading OpenCV $opencvVersion from $url ..."
-        # same transient-CDN-failure class as the vcpkg installs: bounded retry
-        $max = 3
-        for($i = 1; $i -le $max; $i++) {
-          try {
-            Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
-            break
-          }
-          catch {
-            if($i -eq $max) { throw }
-            Write-Output "OpenCV download failed (attempt $i/$max); retrying in 20s..."
-            Start-Sleep -Seconds 20
-          }
-        }
-
-        7z x opencv-dl.exe -oopencv-extract -y | Out-Null
-
-        Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
-        Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
-
-        # The package's license texts go beside the DLLs, inside the cache, so a
-        # cache hit carries them too. deploy_windows.cmd ships them in
-        # doc\licenses\opencv: OpenCV's LICENSE and etc\licenses, which covers what
-        # opencv_world links in and the LGPL FFmpeg in opencv_videoio_ffmpeg.
-        $licDir = "$binDir\licenses"
-        New-Item -ItemType Directory -Force -Path $licDir | Out-Null
-        $etc = Get-ChildItem opencv-extract -Recurse -Directory -Filter licenses | Where-Object { $_.FullName -match '\\etc\\licenses$' } | Select-Object -First 1
-        if (-not $etc) { throw "The OpenCV package has no etc\licenses directory" }
-        Copy-Item "$($etc.FullName)\*" $licDir
-        $top = @("opencv-extract\opencv\LICENSE", "opencv-extract\opencv\build\LICENSE") | Where-Object { Test-Path $_ } | Select-Object -First 1
-        if (-not $top) { throw "The OpenCV package has no LICENSE" }
-        Copy-Item $top "$licDir\LICENSE"
-        Get-ChildItem opencv-extract\opencv -Filter "LICENSE_FFMPEG*" | Copy-Item -Destination $licDir
-
-        Remove-Item opencv-dl.exe -Force
-        Remove-Item -Recurse opencv-extract -Force
-
-        Write-Output "OpenCV DLLs installed:"
-        Get-ChildItem $binDir
-
-    # ============================================
-    # ccache Setup
-    # ============================================
-
     # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
     # from cache or build them with tools/deps/build_quic_deps.sh.
     # macOS runs the build scripts with its own shells, and /bin/sh and /bin/bash
@@ -525,37 +330,6 @@ jobs:
         CXX: ${{ runner.os == 'Linux' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
 
-    # TEMPORARY DIAGNOSTIC for #661. core_opencv and onnx_runtime_test fail on
-    # windows-arm64 with error 126 -- the wrapper loads, one of its IMPORTS does
-    # not. Three guesses have been wrong so far, all because the deploy log does
-    # not echo per-file copies. This asks the runner directly instead.
-    - name: Diagnose native library imports (windows-arm64)
-      if: matrix.platform == 'windows-arm64'
-      working-directory: ./core/release
-      shell: cmd
-      continue-on-error: true
-      run: |
-        echo ===== deploy-arm64\bin =====
-        dir /b deploy-arm64\bin\*.dll
-        echo ===== deploy-arm64\lib\native =====
-        dir /b deploy-arm64\lib\native\*.dll
-        echo ===== imports of libobjk_opencv.dll =====
-        dumpbin /dependents deploy-arm64\lib\native\libobjk_opencv.dll
-        echo ===== imports of libobjk_onnx.dll =====
-        dumpbin /dependents deploy-arm64\lib\native\libobjk_onnx.dll
-        echo ===== runtime presence =====
-        if exist deploy-arm64\bin\msvcp140.dll (echo msvcp140 PRESENT) else (echo msvcp140 MISSING)
-        if exist deploy-arm64\bin\vcruntime140.dll (echo vcruntime140 PRESENT) else (echo vcruntime140 MISSING)
-        if exist deploy-arm64\bin\opencv_core4.dll (echo opencv_core4 PRESENT) else (echo opencv_core4 MISSING)
-        if exist deploy-arm64\bin\onnxruntime.dll (echo onnxruntime PRESENT) else (echo onnxruntime MISSING)
-        echo ===== what the opencv DLLs themselves import =====
-        for %%d in (opencv_core4 opencv_imgproc4 opencv_imgcodecs4 opencv_highgui4 opencv_videoio4) do (
-          echo --- %%d ---
-          dumpbin /dependents deploy-arm64\bin\%%d.dll | findstr /i ".dll"
-        )
-        echo ===== onnx wrapper imports vs bin =====
-        dumpbin /dependents deploy-arm64\bin\onnxruntime.dll | findstr /i ".dll"
-
     # Prove the macOS distribution is self-contained.
     #
     # The deploy bundles SDL2 into lib/sdl and rewrites install names to @rpath,
@@ -632,41 +406,6 @@ jobs:
       run: |
         chmod +x update_version_arm.sh
         ./update_version_arm.sh
-
-    - name: Rebuild libraries (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./core/compiler
-      shell: bash
-      run: |
-        OBC="../release/${{ matrix.arch == 'ARM64' && 'deploy-arm64' || 'deploy-x64' }}/bin/obc.exe"
-        if [ ! -f "$OBC" ]; then
-          echo "Compiler not found at $OBC, skipping lib rebuild"
-          exit 0
-        fi
-
-        echo "Rebuilding libraries with $OBC..."
-        # The list lives in build_libs.sh, shared with update_version.sh; this
-        # step used to carry a copy of all 31 lines.
-        sh ./build_libs.sh "$OBC"
-        echo "Libraries rebuilt successfully"
-
-    # Windows can build its own lang.obl: the Release-Sys configuration of compiler.vcxproj is
-    # the _SYSTEM bootstrap compiler, the same sources the POSIX flow builds as sys_obc. The
-    # result must equal the file in core/lib (the `libs` job's Linux build, which is also the
-    # committed one today), byte for byte.
-    - name: lang.obl built by the Windows _SYSTEM compiler equals the Linux build
-      if: runner.os == 'Windows'
-      shell: cmd
-      working-directory: ./core/compiler
-      run: |
-        call .\build_lang_windows.cmd ${{ matrix.arch }} %RUNNER_TEMP%\lang_windows.obl
-        if errorlevel 1 exit /b 1
-        fc /b %RUNNER_TEMP%\lang_windows.obl ..\lib\lang.obl
-        if errorlevel 1 (
-          echo ERROR: the Windows-built lang.obl differs from the library build
-          exit /b 1
-        )
-        echo lang.obl: Windows build is byte-identical
 
     - name: Update deploy with rebuilt libraries
       if: matrix.platform != 'linux-x64'
@@ -951,17 +690,6 @@ jobs:
         echo "Running regression tests for architecture: $ARCH"
         ./run_regression.sh $ARCH
 
-    - name: Run regression tests (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      # Temporary: surface generic type-arg state to diagnose the intermittent
-      # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
-      env:
-        OBJECK_DIAG_GENERICS: "1"
-        OBJECK_REQUIRE_ODBC: "1"
-      run: run_regression.cmd ${{ matrix.arch }}
-
     # A second pass with every method compiled on its first call. The default
     # threshold compiles a method on its tenth call (or on entry when it has a
     # loop), so most of the suite runs interpreted and a JIT bug in a method
@@ -984,15 +712,6 @@ jobs:
         OBJECK_REQUIRE_ODBC: "1"
       run: ./run_regression.sh ${{ matrix.arch }}
 
-    - name: Run regression tests with every method compiled (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      env:
-        OBJECK_JIT_THRESHOLD: "1"
-        OBJECK_REQUIRE_ODBC: "1"
-      run: run_regression.cmd ${{ matrix.arch }}
-
     - name: Run debugger tests (POSIX)
       if: runner.os != 'Windows'
       working-directory: ./programs/regression
@@ -1001,12 +720,6 @@ jobs:
         ARCH="${{ matrix.arch }}"
         echo "Running debugger tests for architecture: $ARCH"
         ./run_debugger_tests.sh $ARCH
-
-    - name: Run debugger tests (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: run_debugger_tests.cmd ${{ matrix.arch }}
 
     - name: Run DAP tests (POSIX)
       if: runner.os != 'Windows'
@@ -1018,15 +731,6 @@ jobs:
         echo "Running DAP tests with bin: $BIN"
         python3 run_dap_tests.py "$BIN"
 
-    - name: Run DAP tests (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python run_dap_tests.py "%BIN%"
-
     # VM flags: interpreter/JIT equivalence, value validation, one usage text.
     - name: Run VM flag tests (POSIX)
       if: runner.os != 'Windows'
@@ -1037,15 +741,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 run_vm_flag_tests.py "$BIN"
 
-    - name: Run VM flag tests (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python run_vm_flag_tests.py "%BIN%"
-
     # llm_eval is a research harness (tools/llm_eval), not a shipped library: its tests
     # compile the source together with each test instead of linking an .obl.
     - name: Run llm_eval harness tests (POSIX)
@@ -1055,14 +750,6 @@ jobs:
         BIN="core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
         python3 tools/llm_eval/run_tests.py "$BIN"
-
-    - name: Run llm_eval harness tests (Windows)
-      if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        set BIN=core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=core\release\deploy\bin
-        python tools\llm_eval\run_tests.py "%BIN%"
 
     # GC root coverage (advisory): 30 generated programs that keep references live in loops,
     # pending expression temporaries, inlined callees, ?-> regions, fields and threads, run
@@ -1083,23 +770,6 @@ jobs:
           echo "::warning title=GC root coverage::advisory run diverged or failed (exit $rc); not blocking. Seeds: $(cat gc_roots_out/summary.json 2>/dev/null | tr -d '\n ')"
           cat gc_roots_out/seed_*/report.txt 2>/dev/null | head -60 || true
         fi
-        exit $rc
-
-    - name: GC root coverage, 30 seeds (advisory, Windows)
-      if: runner.os == 'Windows'
-      continue-on-error: true
-      timeout-minutes: 20
-      shell: pwsh
-      run: |
-        $bin = "core\release\deploy-${{ matrix.arch }}\bin"
-        if (-not (Test-Path $bin)) { $bin = "core\release\deploy\bin" }
-        $start = [int](Get-Date -UFormat %Y%m%d)
-        python tools/gc_roots/run_roots.py --bin $bin --mode ci --count 30 --start $start -j 4 --out gc_roots_out
-        $rc = $LASTEXITCODE
-        if ($rc -ne 0) {
-          Write-Output "::warning title=GC root coverage::advisory run diverged or failed (exit $rc); not blocking."
-          Get-ChildItem gc_roots_out -Recurse -Filter report.txt -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { Get-Content $_.FullName | Select-Object -First 12 }
-        }
         exit $rc
 
     - name: Upload GC root coverage findings
@@ -1126,15 +796,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 run_compiler_robustness.py "$BIN"
 
-    - name: Compiler robustness, mutation and stress (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python run_compiler_robustness.py "%BIN%"
-
     # obi evaluates code in-process through the module build -- also the embedding
     # API -- a separate compilation of the VM sources with its own macros and link
     # line. It lacked HTTP/2 and HTTP/3 for as long as obr has had them, and nothing
@@ -1148,15 +809,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obi_obr_parity.py "$BIN"
-
-    - name: obi matches obr on compiled-in protocols (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_obi_obr_parity.py "%BIN%"
 
     # API.Inference over a real HTTP round trip, both protocols.
     #
@@ -1189,20 +841,6 @@ jobs:
         python3 tools/cicd/mock_inference_server.py --selftest
         python3 tools/cicd/test_inference_round_trip.py "$BIN"
 
-    - name: API.Inference round trip (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        BIN="core/release/deploy-${{ matrix.arch }}/bin"
-        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
-        LIB="$(dirname "$BIN")/lib"
-        OBJECK_LIB_PATH="$LIB" "$BIN/obc.exe" \
-          -src programs/tests/inference_round_trip.obs \
-          -lib models,inference,net,json,cipher,gen_collect \
-          -dest programs/tests/inference_round_trip.obe
-        python tools/cicd/mock_inference_server.py --selftest
-        python tools/cicd/test_inference_round_trip.py "$BIN"
-
     # A library that uses the array copy constructor (`Int->New[src]`) built fine
     # and then killed obc on the program build: the .obl carried the callee's
     # library-local ids, the consuming build missed them and dereferenced a
@@ -1218,15 +856,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_array_copy.py "$BIN"
 
-    - name: a library's array copy constructor survives linking (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_lib_array_copy.py "%BIN%"
-
     # A library built with `-debug` carries a line number in every instruction.
     # The .obl writer puts it after the type byte and the reader took it before,
     # so the library linked into scrambled code and the program was refused at
@@ -1239,15 +868,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_debug_symbols.py "$BIN"
-
-    - name: a library built with -debug links and runs (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_lib_debug_symbols.py "%BIN%"
 
     # An .obe compiled by another toolchain version is refused by the loader
     # before it runs; the message must name both versions, say which side is
@@ -1262,15 +882,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obe_version_mismatch.py "$BIN"
 
-    - name: obr refuses an .obe from another toolchain version with a clear message (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_obe_version_mismatch.py "%BIN%"
-
     # The library reader checks every read against the end of the inflated file; a damaged
     # .obl must end in an error message, never an out-of-bounds read or a crash.
     - name: obc refuses a truncated or corrupt library with a clear message (POSIX)
@@ -1282,15 +893,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obl_truncated.py "$BIN"
 
-    - name: obc refuses a truncated or corrupt library with a clear message (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_obl_truncated.py "%BIN%"
-
     # A function value packs the class and method ids into 16-bit fields. A method id >=
     # 32768 used to sign-extend into the class and tag bits; ids past 65535 now fail the build.
     - name: a function reference to a high method id works; past 65535 is refused (POSIX)
@@ -1301,15 +903,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_funcref_range.py "$BIN"
-
-    - name: a function reference to a high method id works; past 65535 is refused (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_funcref_range.py "%BIN%"
 
     # The MCP server library speaks newline-delimited JSON-RPC on standard input and output:
     # a scripted client starts a server process and covers the handshake, every method, the
@@ -1323,15 +916,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 mcp_stdio_test.py "$BIN"
 
-    - name: the MCP server answers a scripted stdio client (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python mcp_stdio_test.py "%BIN%"
-
     # A build of several files reports each file's errors together, in the order the
     # files were given, rather than interleaved by line number.
     - name: obc reports a multi-file build's errors file by file (POSIX)
@@ -1342,15 +926,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_multifile_diagnostics.py "$BIN"
-
-    - name: obc reports a multi-file build's errors file by file (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_multifile_diagnostics.py "%BIN%"
 
     # OBJECK_TLS_INSECURE_SKIP_VERIFY disables certificate verification process-wide; the first
     # secure client connection prints one stderr warning.
@@ -1363,15 +938,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_tls_insecure_warning.py "$BIN"
 
-    - name: obr warns once when TLS verification is switched off (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_tls_insecure_warning.py "%BIN%"
-
     # A jump to a label the optimizer cannot find, or a label defined twice, is an internal
     # compiler error and must stop the build, not be read through a dangling iterator.
     # The label pass has a test hook (OBJECK_TEST_LABEL_FAULT) that simulates both.
@@ -1383,15 +949,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_label_fatal.py "$BIN"
-
-    - name: obc refuses a lost or duplicated jump label (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_label_fatal.py "%BIN%"
 
     # Select statements hand out jump label ids in a fixed order. They used to take three
     # `++conditional_label` from one argument list, whose evaluation order C++ leaves open: g++
@@ -1408,15 +965,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_select_label_order.py "$BIN"
 
-    - name: select statements emit the same jump labels on every compiler (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_select_label_order.py "%BIN%"
-
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
     - name: obc and obr find their libraries from another working directory (POSIX)
@@ -1427,15 +975,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_path_anchor.py "$BIN"
-
-    - name: obc and obr find their libraries from another working directory (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_lib_path_anchor.py "%BIN%"
 
     # Named arguments reach a library method through the parameter names its .obl
     # records; skipping a middle default goes through the method's mask forwarder,
@@ -1450,15 +989,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_named_args.py "$BIN"
 
-    - name: named arguments reach a library's methods (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_lib_named_args.py "%BIN%"
-
     # A library records where its methods' own type parameters stand, so a call
     # into it infers them: a library generic function returns its caller's type,
     # not its bound (#1242, phase 2). This builds such a library.
@@ -1470,15 +1000,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_methods.py "$BIN"
-
-    - name: a library's generic methods infer their type arguments (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_lib_generic_methods.py "%BIN%"
 
     # A chain of calls on a library generic class ('source->AddString(..)->
     # AddInt(..)', each returning ObjectSource<T>) keeps the receiver's type
@@ -1492,15 +1013,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_chain.py "$BIN"
-
-    - name: a library generic class's call chain keeps its type arguments (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_lib_generic_chain.py "%BIN%"
 
     # `Vector[]<T>` as a parameter built fine inside a library and resolved for
     # callers inside it, but a program that linked the library was told the method
@@ -1520,15 +1032,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_generic_array_param.py "$BIN"
 
-    - name: a generic array parameter survives the .obl round trip (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_generic_array_param.py "%BIN%"
-
     # Every prompt in the REPL read a line without checking the read. At EOF the
     # two loops spun forever instead of leaving, and the one-shot prompts acted on
     # a line nobody typed (#917). Each invocation here reaches a prompt whose input
@@ -1541,15 +1044,6 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obi_stdin_eof.py "$BIN"
-
-    - name: obi exits at stdin EOF (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_obi_stdin_eof.py "%BIN%"
 
     # Console->ReadLine returned an empty string at the end of input, forever, so a
     # loop on `line <> Nil` never ended. It now returns Nil there and "" only for a
@@ -1564,15 +1058,6 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_console_eof.py "$BIN"
 
-    - name: Console ReadLine returns Nil at EOF (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./programs/regression
-      shell: cmd
-      run: |
-        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
-        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
-        python check_console_eof.py "%BIN%"
-
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection
@@ -1585,7 +1070,7 @@ jobs:
     # this step fails loudly if that message changes without the suite being
     # switched on.
     - name: Run updater tests
-      if: matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64'
+      if: matrix.platform == 'linux-x64'
       shell: bash
       run: |
         if [ "${{ runner.os }}" != "Windows" ]; then export CXX=g++; fi
@@ -1630,15 +1115,6 @@ jobs:
         fi
         echo "Verifying signature handling with $OBU_BIN"
         "$PY" tools/cicd/test_obu_verify.py "$OBU_BIN"
-
-    # The launcher's Command Prompt script (SetObjEnv.cmd) for an install under
-    # a non-ASCII directory, run in a new code page 437 console: cmd reads a
-    # batch file in the console's code page, and the script used to be plain
-    # UTF-8, so such an install set PATH and OBJECK_LIB_PATH to mojibake.
-    - name: Launcher command-prompt script (Windows)
-      if: matrix.platform == 'windows-x64'
-      shell: cmd
-      run: python core\utils\WindowsApp\test_set_obj_env.py
 
     # cov_scan.sh's large-submission flow, against a mock Coverity Scan. Above
     # 500 MB the single-shot form POST stops working and the script switches to
@@ -1769,7 +1245,7 @@ jobs:
     # ============================================
 
     - name: Run network tests (non-gating)
-      if: matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64'
+      if: matrix.platform == 'linux-x64'
       continue-on-error: true
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
@@ -2031,6 +1507,22 @@ jobs:
           core/release/${{ steps.deploy-dir.outputs.dir }}/bin/*
           core/release/${{ steps.deploy-dir.outputs.dir }}/lib/*
         retention-days: 7
+
+  # The Windows legs: ci-windows.yml builds the toolchain once per platform, then runs the
+  # regression suite as parallel shards (both passes in each), the VM flag tests, the debugger and
+  # DAP tests and the other checks as their own jobs. They are a separate workflow, not matrix legs of
+  # `build`, because a matrix leg cannot wait for only its own platform's sibling jobs. Check names
+  # read "Build windows-x64 / Compile", "... / Regression shard 3 of 6" and "... / Result".
+  windows:
+    name: Build ${{ matrix.platform }}
+    needs: libs
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-x64, windows-arm64]
+    uses: ./.github/workflows/ci-windows.yml
+    with:
+      platform: ${{ matrix.platform }}
 
   # ============================================
   # Editor tooling: formatter, LSP server, VS Code extension
@@ -2502,7 +1994,7 @@ jobs:
   status:
     name: CI Status
     runs-on: ubuntu-24.04
-    needs: [libs, build, tools]
+    needs: [libs, build, windows, tools]
     if: always()
     permissions:
       contents: read
@@ -2515,15 +2007,16 @@ jobs:
         run: |
           if [ "${{ needs.libs.result }}" = "success" ] \
              && [ "${{ needs.build.result }}" = "success" ] \
+             && [ "${{ needs.windows.result }}" = "success" ] \
              && [ "${{ needs.tools.result }}" = "success" ]; then
             echo "✅ All platform builds and tooling checks succeeded"
             echo "### ✅ CI — all platform builds and tooling checks succeeded" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          echo "❌ Build result: ${{ needs.build.result }}, tools result: ${{ needs.tools.result }}"
+          echo "❌ Build result: ${{ needs.build.result }}, windows result: ${{ needs.windows.result }}, tools result: ${{ needs.tools.result }}"
           {
-            echo "### ❌ CI — build ${{ needs.build.result }}, tools ${{ needs.tools.result }}"
+            echo "### ❌ CI — build ${{ needs.build.result }}, windows ${{ needs.windows.result }}, tools ${{ needs.tools.result }}"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -2557,6 +2050,6 @@ jobs:
         uses: ./notify-src/.github/actions/notify-failure
         with:
           workflow: CI Build (master)
-          details: "build: ${{ needs.build.result }}, tools: ${{ needs.tools.result }}. The run summary names each failed job."
+          details: "build: ${{ needs.build.result }}, windows: ${{ needs.windows.result }}, tools: ${{ needs.tools.result }}. The run summary names each failed job."
           ntfy-topic: ${{ secrets.NTFY_TOPIC }}
           github-token: ${{ github.token }}
