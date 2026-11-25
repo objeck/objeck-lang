@@ -991,13 +991,124 @@ class Live {
     <p><strong>Limits.</strong></p>
     <ul>
      <li><code>SetMaxSteps(n)</code> (default 10) bounds the model calls in one <code>Run</code>; a model still asking for tools on the last step gets <code>skipped</code> answers and the result is <code>max_steps</code>.</li>
-     <li>Timeouts are not interruptions: <code>SetToolTimeout(ms)</code> reports a slow handler as <code>timeout</code> and discards its result, but a handler that never returns still hangs the run.</li>
+     <li>Timeouts are not interruptions: <code>SetToolTimeout(ms)</code> reports a slow handler as <code>timeout</code> and discards its result, but a handler that never returns still hangs the run unless the tool runs in <code>BOUNDED_THREAD</code> mode (see run control below).</li>
      <li>Tool calls run one after another, even when the model asks for several at once.</li>
      <li>The schema checker covers <code>type</code>, <code>properties</code>, <code>required</code>, <code>additionalProperties</code>, <code>enum</code>, <code>const</code>, the numeric, string and array bounds, <code>items</code>, <code>anyOf</code> and <code>oneOf</code>; <code>pattern</code>, <code>format</code> and <code>$ref</code> are not checked.</li>
      <li>No token streaming: an <code>AgentObserver</code> sees each step as it happens, and the model's text arrives whole.</li>
      <li>Tested without the live services. <code>agent_loop_test</code>, <code>agent_backend_test</code> and <code>agent_http_test</code> use a scripted model, recorded provider response bodies and a local HTTPS server; nothing in the tests calls api.anthropic.com, api.openai.com, Google or a real Ollama.</li>
     </ul>
     <p><code>programs/examples/agent_demo.obs</code> takes a provider, a model and a question and runs against the scripted model when it gets none.</p>
+    <p><strong>Run control (cancel, budgets, isolated tools, trace).</strong> By default a run cannot be stopped from outside, a tool's time limit is reported only after the handler returns, and nothing bounds a run in time, tokens or money. Four opt-in pieces add that; an agent that sets none of them behaves as before. The full reference is the "Agent run control" section of <code>docs/ai_sections/agent_control.md</code>.</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>You want</th><th>You use</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="You want">to stop a run from another thread</td><td data-label="You use"><code>AgentCancel</code>, <code>agent-&gt;SetCancel(token)</code></td></tr>
+      <tr><td data-label="You want">a deadline, or a cap on steps, model calls, tool calls, tokens or cost</td><td data-label="You use"><code>AgentBudget</code>, <code>agent-&gt;SetBudget(budget)</code></td></tr>
+      <tr><td data-label="You want">a hung tool or model call to stop costing the run</td><td data-label="You use"><code>AgentTool-&gt;Mode-&gt;BOUNDED_THREAD</code>, <code>agent-&gt;SetBoundedModelCalls(true)</code></td></tr>
+      <tr><td data-label="You want">to see each step</td><td data-label="You use"><code>agent-&gt;SetTrace(sink)</code>, <code>AgentTraceBuffer</code></td></tr>
+     </tbody>
+    </table>
+    <ul>
+     <li><strong>Cancel.</strong> <code>AgentCancel</code> is a thread-safe token; any thread calls <code>Cancel("reason")</code>. The loop checks it before every step and between tool calls; a cancelled run ends with the stop reason <code>cancelled</code>, the calls that did not run are answered <code>skipped</code>, and the same agent can run again with a fresh token. <code>AgentCancel-&gt;New(parent)</code> links a token to a parent, so one cancel stops a group. A handler that implements <code>AgentCancelableHandler</code> (<code>Run(arguments, cancel)</code>) is handed the token, which also becomes cancelled when the run's deadline passes, so it can poll <code>IsCancelled()</code> and stop early.</li>
+     <li><strong>Budgets.</strong> <code>AgentBudget</code> limits one <code>Run</code>; every limit is off (0) until set and the first one reached ends the run: <code>SetMaxSteps</code> (<code>budget_steps</code>), <code>SetMaxModelCalls</code> (<code>budget_model_calls</code>, retries count), <code>SetMaxToolCalls</code> (<code>budget_tool_calls</code>; the call over the limit is <code>skipped</code>), <code>SetMaxTokens</code> (<code>budget_tokens</code>), <code>SetMaxCost</code> with <code>SetPrice(in, out)</code> or <code>SetPrices(table, model)</code> (<code>budget_cost</code>; prices are currency per million tokens) and <code>SetMaxWallMs</code> (<code>deadline</code>, enforced everywhere the loop waits). Tokens and cost count only what the backend reports; a backend that reports none never trips them. A reply that crosses a token or cost limit and asks for tools ends the run before those tools run; a final answer is kept as <code>completed</code>.</li>
+     <li><strong>Stop reasons.</strong> <code>result-&gt;GetStopReason()</code> is one of <code>completed</code>, <code>cancelled</code>, <code>deadline</code>, <code>budget_steps</code>, <code>budget_model_calls</code>, <code>budget_tool_calls</code>, <code>budget_tokens</code>, <code>budget_cost</code> or <code>error</code> (the backend failed after its retries, or the reply was cut off or filtered). <code>GetStatus()</code> returns the same word, so <code>IsCompleted()</code> is true only for <code>completed</code>. <code>GetModelCalls()</code>, <code>GetElapsedMs()</code>, <code>GetTotalTokens()</code> and <code>GetCost()</code> say what the run used.</li>
+     <li><strong>Tool modes.</strong> <code>IN_THREAD</code> (the default) runs the handler on the loop's thread, so a limit or a cancel is seen only after it returns. <code>BOUNDED_THREAD</code> runs it on a worker and the loop stops waiting at the tool's limit (<code>SetTimeout</code>, else <code>SetToolTimeout</code>), the deadline or the cancel. Set the default with <code>agent-&gt;SetToolMode(mode)</code> and one tool's with <code>tool-&gt;SetMode(mode)</code>. An abandoned worker is a leak: a thread cannot be killed, so a handler that never returns keeps its thread until the process exits. What the mode guarantees is that the run does not wait for it and that its late result never reaches the transcript. There is no separate process-isolated mode: <code>IN_THREAD</code> and <code>BOUNDED_THREAD</code> are the only two, and a fault that kills a thread outside any <code>try</code> still ends the whole process.</li>
+     <li><strong>A blocked model call.</strong> A cancel is seen between model calls. To cut a call that is blocked inside the backend, <code>agent-&gt;SetBoundedModelCalls(true)</code> runs it on a worker and abandons it at the budget's per-call limit (<code>SetModelCallMs</code>), the deadline or a cancel. A backend that implements <code>AgentDeadlineAware</code> is told its time limit before each call and returns by itself; <code>ScriptedBackend</code> does (<code>SetDelayMs</code> makes a call slow), the four provider backends do not yet.</li>
+     <li><strong>Trace.</strong> <code>agent-&gt;SetTrace(sink)</code> delivers one <code>AgentEvent</code> per step to an <code>AgentTraceSink</code> (an <code>AgentObserver</code> may implement it too). The events, in order: <code>run_start</code>, <code>budget_check</code> (only with a budget), <code>model_start</code>, <code>model_end</code>, <code>model_retry</code>, <code>tool_start</code>, <code>tool_end</code>, <code>halt</code> (a cancel, deadline or budget was noticed) and <code>run_end</code>; each has <code>seq</code> (from 1), <code>ms</code> and <code>step</code>. <code>AgentTraceBuffer</code> keeps them in memory (<code>GetEvents()</code>, <code>Kinds()</code>, <code>Count(kind)</code>, <code>First(kind)</code>), and <code>AgentEvent-&gt;ToString()</code> is one JSON object, so a custom sink can write its own file. Every event goes through the library's key redaction before delivery, like the transcript: registered keys and key-shaped tokens become <code>[REDACTED]</code>, and a tool's arguments are cut at 500 characters.</li>
+    </ul>
+    <p>A scripted model shows all three controls with no key and no network. Compile with <code>-lib agent,net,json,cipher,misc</code>:</p>
+<pre class="line-numbers"><code class="language-cpp">use API.Agent;
+use Collection;
+use Data.JSON;
+use System.Concurrency;
+
+class Quick implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return "done";
+  }
+}
+
+class Hang implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread-&gt;Sleep(3000);
+    return "too late";
+  }
+}
+
+class Stopper from Thread {
+  @token : AgentCancel;
+
+  New(token : AgentCancel) {
+    Parent("stopper");
+    @token := token;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    Thread-&gt;Sleep(200);
+    @token-&gt;Cancel("user pressed stop");
+  }
+}
+
+class Control {
+  function : Tools() ~ ToolRegistry {
+    schema := JsonParser-&gt;TextToElement("{\"type\":\"object\"}");
+    registry := ToolRegistry-&gt;New();
+    registry-&gt;Add(AgentTool-&gt;New("quick", "Returns at once", schema, Quick-&gt;New()));
+    hang := AgentTool-&gt;New("hang", "Never returns in time", schema, Hang-&gt;New());
+    hang-&gt;SetMode(AgentTool-&gt;Mode-&gt;BOUNDED_THREAD);
+    hang-&gt;SetTimeout(300);
+    registry-&gt;Add(hang);
+    return registry;
+  }
+
+  function : Script(name : String, count : Int) ~ Vector&lt;AgentReply&gt; {
+    script := Vector-&gt;New()&lt;AgentReply&gt;;
+    each(i : count) {
+      script-&gt;AddBack(AgentReply-&gt;Ask("call_{$i}", name, "{}"));
+    };
+    script-&gt;AddBack(AgentReply-&gt;Say("finished"));
+    return script;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # 1. a budget: the third tool call is skipped and the run stops
+    agent := Agent-&gt;New(ScriptedBackend-&gt;New(Script("quick", 5)), Tools());
+    agent-&gt;SetBudget(AgentBudget-&gt;New()-&gt;SetMaxToolCalls(2));
+    result := agent-&gt;Run("go");
+    "budget: {$result-&gt;GetStopReason()}"-&gt;PrintLine();
+
+    # 2. a hung tool in BOUNDED_THREAD: the run waits 300 ms, not 3 s
+    agent2 := Agent-&gt;New(ScriptedBackend-&gt;New(Script("hang", 1)), Tools());
+    trace := AgentTraceBuffer-&gt;New();
+    agent2-&gt;SetTrace(trace);
+    result2 := agent2-&gt;Run("go");
+    "hung tool: {$result2-&gt;GetSteps()-&gt;Get(0)-&gt;GetResults()-&gt;Get(0)-&gt;GetStatus()}, {$result2-&gt;GetStopReason()}"-&gt;PrintLine();
+    "trace: {$trace-&gt;Kinds()}"-&gt;PrintLine();
+
+    # 3. a cancel from another thread during a slow model call
+    cancel := AgentCancel-&gt;New();
+    agent3 := Agent-&gt;New(ScriptedBackend-&gt;New(Script("quick", 1))-&gt;SetDelayMs(2000), Tools());
+    agent3-&gt;SetCancel(cancel);
+    agent3-&gt;SetBoundedModelCalls(true);
+    Stopper-&gt;New(cancel)-&gt;Execute(Nil);
+    result3 := agent3-&gt;Run("go");
+    "cancel: {$result3-&gt;GetStopReason()} after {$result3-&gt;GetElapsedMs()} ms"-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="plain">budget: budget_tool_calls
+hung tool: timeout, completed
+trace: run_start,model_start,model_end,tool_start,tool_end,model_start,model_end,run_end
+cancel: cancelled after 231 ms</pre>
+    <p>Compiled and run with the current toolchain; the elapsed time varies. <code>agent_control_test</code> in the regression suite covers each budget and stop reason, the cancel cases, a hung tool with an abandoned worker, the trace and its key redaction, and retries, all on a scripted model. The provider backends' own total deadline is not covered.</p>
     <hr class="section-end">
     <h3 id="model-context-protocol-apimcp">Model Context Protocol (API.MCP)</h3>
     <p><code>API.MCP</code> is a pure-Objeck implementation of the <a href="https://modelcontextprotocol.io" target="_blank">Model Context Protocol</a>. A <strong>server</strong> offers tools, resources and prompts that an MCP client (Claude Desktop, Claude Code, or this library's own client) can discover with the <code>tools/list</code>, <code>resources/list</code> and <code>prompts/list</code> requests and then call; a <strong>client</strong> does the same against another program; and a <strong>bridge</strong> hands a connected server's tools to the Anthropic, OpenAI and Gemini clients. Compile with <code>-lib mcp</code> plus the libraries it links:</p>
