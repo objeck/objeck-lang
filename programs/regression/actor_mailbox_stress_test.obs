@@ -5,8 +5,7 @@ arrives exactly once and, per producer, in the order it was sent. Messages are s
 (a stamp holding a string and an array), so a collector that loses or moves one badly across the
 thread boundary shows up as a wrong number, a corrupt string or a crash. Run under
 --gc-threshold=64k and OBJECK_GC_VERIFY=1 as well as the default. Variants: unbounded; bounded BLOCK
-(backpressure); bounded DROP_OLDEST (order and no duplication still hold, and received + dropped =
-sent); bounded REJECT with a retry; and the same traffic into an actor.
+(backpressure); bounded REJECT with a retry; and the same traffic into an actor.
 ~#
 use System.Actor;
 use System.Concurrency;
@@ -77,8 +76,7 @@ class Producer from Thread {
         @sent += 1;
       }
       else {
-        st := @sink->Send(stamp);
-        if(st = Mailbox->Status->OK | st = Mailbox->Status->DROPPED_OLDEST) {
+        if(@sink->Send(stamp) = Mailbox->Status->OK) {
           @sent += 1;
         };
       };
@@ -173,7 +171,7 @@ class MailboxStress {
 
   # Consumes until every producer has finished and the mailbox is empty, checking order per producer.
   # Returns "received:duplicates:order errors:corrupt".
-  function : Consume(box : Mailbox, producers : Vector<Producer>, gaps_allowed : Bool, count : Int) ~ String {
+  function : Consume(box : Mailbox, producers : Vector<Producer>) ~ String {
     n := producers->Size();
     last := Int->New[n];
     each(i : n) {
@@ -196,11 +194,6 @@ class MailboxStress {
         if(stamp->GetSeq() = last[p]) {
           dup += 1;
         }
-        else if(gaps_allowed) {
-          if(stamp->GetSeq() < last[p]) {
-            order += 1;
-          };
-        }
         else if(stamp->GetSeq() <> last[p] + 1) {
           order += 1;
         };
@@ -222,7 +215,7 @@ class MailboxStress {
     return "{$received}:{$dup}:{$order}:{$bad}";
   }
 
-  function : Run(title : String, box : Mailbox, producers : Int, count : Int, retry : Bool, gaps_allowed : Bool) ~ Nil {
+  function : Run(title : String, box : Mailbox, producers : Int, count : Int, retry : Bool) ~ Nil {
     title->PrintLine();
     threads := Vector->New()<Producer>;
     each(i : producers) {
@@ -232,7 +225,7 @@ class MailboxStress {
     each(i : threads) {
       threads->Get(i)->Execute(Nil);
     };
-    outcome := Consume(box, threads, gaps_allowed, count);
+    outcome := Consume(box, threads);
     sent := 0;
     each(i : threads) {
       threads->Get(i)->Join();
@@ -242,10 +235,8 @@ class MailboxStress {
     tail := box->Size();
     parts := outcome->Split(":");
     received := parts[0]->ToInt() + tail;
-    Check("every message accounted for (sent {$sent}, received {$received}, dropped {$(box->GetDroppedCount())})", received + box->GetDroppedCount() = sent | (gaps_allowed = false & received = sent));
-    if(gaps_allowed = false) {
-      Check("none lost", received = producers * count);
-    };
+    Check("every message accounted for (sent {$sent}, received {$received})", received = sent);
+    Check("none lost", received = producers * count);
     Check("no duplicates", parts[1]->ToInt() = 0);
     Check("per-producer order held", parts[2]->ToInt() = 0);
     Check("no corrupt message", parts[3]->ToInt() = 0);
@@ -278,10 +269,9 @@ class MailboxStress {
   function : Main(args : String[]) ~ Nil {
     producers := 8;
     count := 2500;
-    Run("unbounded, 8 producers:", Mailbox->New(), producers, count, false, false);
-    Run("bounded BLOCK (capacity 8, backpressure):", Mailbox->New(8, Mailbox->Policy->BLOCK), producers, count, false, false);
-    Run("bounded REJECT with retry (capacity 8):", Mailbox->New(8, Mailbox->Policy->REJECT), producers, 600, true, false);
-    Run("bounded DROP_OLDEST (capacity 16):", Mailbox->New(16, Mailbox->Policy->DROP_OLDEST), producers, count, false, true);
+    Run("unbounded, 8 producers:", Mailbox->New(), producers, count, false);
+    Run("bounded BLOCK (capacity 8, backpressure):", Mailbox->New(8, Mailbox->Policy->BLOCK), producers, count, false);
+    Run("bounded REJECT with retry (capacity 8):", Mailbox->New(8, Mailbox->Policy->REJECT), producers, 600, true);
     AgainstActor(producers, count);
     if(@failures > 0) {
       "{$@failures} failure(s)"->PrintLine();

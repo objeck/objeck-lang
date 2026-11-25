@@ -24,44 +24,9 @@ bundle System.Actor {
   }
 
   #~
-  A prompt for an agent actor, and where to put the AgentResult. Sent as the payload of data mail.
-  ~#
-  class AgentJob {
-    @prompt : String;
-    @reply_to : Mailbox;
-
-    #~
-    Creates a job
-    @param prompt what the user asks
-    @param reply_to the mailbox that gets the AgentResult as the payload of a data mail
-    ~#
-    New(prompt : String, reply_to : Mailbox) {
-      @prompt := prompt;
-      @reply_to := reply_to;
-    }
-
-    #~
-    The prompt
-    @return the text
-    ~#
-    method : public : GetPrompt() ~ String {
-      return @prompt;
-    }
-
-    #~
-    Where the result goes
-    @return the mailbox, may be Nil
-    ~#
-    method : public : GetReplyTo() ~ Mailbox {
-      return @reply_to;
-    }
-  }
-
-  #~
-  The behavior of an agent actor. Each mail is one prompt, run to completion with Agent->Run; the
-  conversation carries over from one prompt to the next until the actor is restarted. The prompt is
-  a String payload or an AgentJob. For a CALL the AgentResult is the answer. For data mail the
-  result goes to the job's reply mailbox, or, for a plain String, to the sending actor's mailbox
+  The behavior of an agent actor. Each mail is one String prompt, run to completion with
+  Agent->Run; the conversation carries over from one prompt to the next until the actor is
+  restarted. For a CALL the AgentResult is the answer; for data mail it goes to the sending actor
   as the payload of a data mail (Actor->Send(payload, sender, timeout)). With fail_on_error, a run
   that does not complete (a model error, the step limit) fails the actor, so its supervisor
   restarts it with a fresh agent; without it the failed AgentResult is delivered like any other.
@@ -71,7 +36,6 @@ bundle System.Actor {
     @builder : AgentBuilder;
     @fail_on_error : Bool;
     @agent : Agent;
-    @runs : Int;
 
     #~
     Creates the behavior
@@ -81,7 +45,6 @@ bundle System.Actor {
     New(builder : AgentBuilder, fail_on_error : Bool) {
       @builder := builder;
       @fail_on_error := fail_on_error;
-      @runs := 0;
     }
 
     method : public : Init(me : Actor) ~ Nil {
@@ -94,45 +57,22 @@ bundle System.Actor {
     method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
     }
 
-    #~
-    How many prompts this incarnation has run
-    @return the count
-    ~#
-    method : public : GetRuns() ~ Int {
-      return @runs;
-    }
-
     method : public : Handle(me : Actor, mail : Mail) ~ Bool {
       kind := mail->GetKind();
       if(kind <> Mail->Kind->DATA & kind <> Mail->Kind->CALL) {
         return true;
       };
 
-      prompt : String;
-      reply_to : Mailbox;
       payload := mail->GetPayload();
-      if(payload <> Nil & payload->TypeOf(AgentJob)) {
-        job := payload->As(AgentJob);
-        prompt := job->GetPrompt();
-        reply_to := job->GetReplyTo();
-      }
-      else if(payload <> Nil & payload->TypeOf(String)) {
-        prompt := payload->As(String);
-      };
-
-      if(prompt = Nil) {
-        mail->Fail("an agent actor takes a String prompt or an AgentJob");
+      if(payload = Nil | payload->TypeOf(String) = false) {
+        mail->Fail("an agent actor takes a String prompt");
         return true;
       };
 
-      result := @agent->Run(prompt);
-      @runs += 1;
+      result := @agent->Run(payload->As(String));
 
       if(kind = Mail->Kind->CALL) {
         mail->Answer(result);
-      }
-      else if(reply_to <> Nil) {
-        reply_to->Send(Mail->Data(result, me), -1);
       }
       else if(mail->GetSender() <> Nil) {
         mail->GetSender()->Send(result, me, -1);

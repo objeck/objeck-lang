@@ -1,7 +1,7 @@
 # EXTRA_LIBS: gen_collect,concurrent,actor,actor_agents,agent,net,json,cipher,misc
 #~
 Agents as actors (actor_agents): an API.Agent agent behind a ScriptedBackend, so no key and no
-network are involved. A Call returns the AgentResult; a job delivers it to a mailbox; the
+network are involved. A Call returns the AgentResult; a prompt sent by an actor is answered to it; the
 conversation carries over between prompts; with fail_on_error a run that does not complete fails
 the actor and its supervisor restarts it with a fresh agent (new conversation); in a team of two
 agents under one supervisor, one agent's failure leaves the other's conversation alone.
@@ -147,13 +147,9 @@ class AgentActorTest {
     Check("the run completed with the scripted answer", result->IsCompleted() & result->GetText()->Equals("The answer is 42."));
     Check("the calculator tool ran in the loop", result->GetSteps()->Size() >= 1);
 
-    # a job puts the result in a mailbox of the caller's choosing
-    inbox := Mailbox->New();
-    actor->Send(AgentJob->New("and again?", inbox));
-    item := inbox->Receive(10000);
-    Check("a job's result arrives in its reply mailbox as data mail", item <> Nil & item->TypeOf(Mail));
-    second := item->As(Mail)->GetPayload()->As(AgentResult);
-    Check("the conversation carried over: the second scripted reply", second->IsCompleted() & second->GetText()->Equals("A second reply."));
+    # the conversation carries over to the next prompt
+    r2 := actor->Call("and again?", 10000);
+    Check("the conversation carried over: the second scripted reply", r2->IsOk() & r2->GetValue()->As(AgentResult)->GetText()->Equals("A second reply."));
 
     # a plain prompt from an actor is answered to the sender
     probe := Mailbox->New();

@@ -14607,7 +14607,7 @@
 					"descriptions": ["**Links this actor and another: when either ends abnormally (FAILED or KILLED) the other is told, and fails with it unless it traps exits (SetTrapExits), in which case it gets an EXIT mail. An orderly end (NORMAL or STOPPED) is not passed on. If one of them has ended already, the other is told now.**\n\n```method : public : Link(peer:Actor) ~ Nil```\n\n\n\npeer: Actor\n\nreturn: Nil"]
 				},
 				"Loop": {
-					"descriptions": ["**The actor's receive loop, which runs on its thread. Called by Start and StartIn; do not call it.**\n\n```method : public : Loop() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**The actor's receive loop, which runs on its thread. Called by Start; do not call it.**\n\n```method : public : Loop() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Monitor": {
 					"descriptions": ["**Watches this actor: when it ends, a DOWN mail naming it and the reason is put in the watcher's mailbox (past its capacity). If it has ended already, the notice is sent now.**\n\n```method : public : Monitor(watcher:Mailbox) ~ Nil```\n\n\n\nwatcher: Mailbox\n\nreturn: Nil", "**Watches this actor with another actor's mailbox**\n\n```method : public : Monitor(watcher:Actor) ~ Nil```\n\n\n\nwatcher: Actor\n\nreturn: Nil"]
@@ -14623,9 +14623,6 @@
 				},
 				"Start": {
 					"descriptions": ["**Starts the actor's thread**\n\n```method : public : Start() ~ Actor```\n\n\n\nreturn: Actor"]
-				},
-				"StartIn": {
-					"descriptions": ["**Starts the actor as a task of a TaskScope, so the scope's JoinAll waits for it. The scope can only finish once the actor ends, so stop the actor before JoinAll (ActorScope does).**\n\n```method : public : StartIn(scope:TaskScope) ~ Actor```\n\n\n\nscope: TaskScope\n\nreturn: Actor"]
 				},
 				"Stop": {
 					"descriptions": ["**Asks the actor to end after it has handled what is already queued. The mailbox stops taking new mail. A handler that is blocked keeps the actor alive.**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -14659,49 +14656,9 @@
 				}
 			}
 		},
-		"System.Actor.ActorScope": {
-			"description": "Actors started inside a TaskScope: Start runs each actor as a task of the scope, and End stops them all (last started first, each given a time to stop, then killed) and then joins the scope, so no actor outlives the scope's block. Put End in a leaving block. A leaving block does not run when an error unwinds its method; use try and finally if that matters. A scope that is cancelled before an actor's task starts skips that actor, which then never runs, so End waits no longer than its timeout for it.",
-			"functions": {
-				"End": {
-					"descriptions": ["**Stops every actor started here, last first, and joins the scope**\n\n```method : public : End() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"New": {
-					"descriptions": ["**Creates the helper**\n\n```New(scope:TaskScope, shutdown_ms:Int)```\n\n\n\nscope: TaskScope\n\nshutdown_ms: Int"]
-				},
-				"Start": {
-					"descriptions": ["**Starts an actor as a task of the scope**\n\n```method : public : Start(actor:Actor) ~ Actor```\n\n\n\nactor: Actor\n\nreturn: Actor"]
-				}
-			}
-		},
-		"System.Actor.ActorSystem": {
-			"description": "A convenience that owns a Registry and the actors spawned through it, and ends them together. Spawn starts an actor and registers its name; Shutdown stops them all in reverse order.",
-			"functions": {
-				"Call": {
-					"descriptions": ["**Calls a named actor**\n\n```method : public : Call(name:String, payload:System.Base, timeout:Int) ~ CallResult```\n\n\n\nname: String\n\npayload: System.Base\n\ntimeout: Int\n\nreturn: CallResult"]
-				},
-				"GetRegistry": {
-					"descriptions": ["**The system's registry**\n\n```method : public : GetRegistry() ~ Registry```\n\n\n\nreturn: Registry"]
-				},
-				"New": {
-					"descriptions": ["**Creates an empty system**\n\n```New()```\n\n"]
-				},
-				"Send": {
-					"descriptions": ["**Sends a data mail to a named actor**\n\n```method : public : Send(name:String, payload:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nname: String\n\npayload: System.Base\n\nreturn: Mailbox-&gt;Status"]
-				},
-				"Shutdown": {
-					"descriptions": ["**Stops every actor, last spawned first, each with a time to stop and then a Kill**\n\n```method : public : Shutdown(timeout_ms:Int) ~ Int```\n\n\n\ntimeout_ms: Int\n\nreturn: Int"]
-				},
-				"Spawn": {
-					"descriptions": ["**Creates, registers and starts an actor**\n\n```method : public : Spawn(name:String, behavior:ActorBehavior) ~ Actor```\n\n\n\nname: String\n\nbehavior: ActorBehavior\n\nreturn: Actor", "**Creates, registers and starts an actor with a mailbox of your choosing**\n\n```method : public : Spawn(name:String, behavior:ActorBehavior, mailbox:Mailbox) ~ Actor```\n\n\n\nname: String\n\nbehavior: ActorBehavior\n\nmailbox: Mailbox\n\nreturn: Actor", "**Starts a supervisor, registered by its name, whose children are its own business**\n\n```method : public : Spawn(supervisor:Supervisor, ) ~ Actor```\n\n\n\nsupervisor: Supervisor\n\nname: String\n\nreturn: Actor"]
-				}
-			}
-		},
 		"System.Actor.AgentActorBehavior": {
-			"description": "The behavior of an agent actor. Each mail is one prompt, run to completion with Agent->Run; the conversation carries over from one prompt to the next until the actor is restarted. The prompt is a String payload or an AgentJob. For a CALL the AgentResult is the answer. For data mail the result goes to the job's reply mailbox, or, for a plain String, to the sending actor's mailbox as the payload of a data mail (Actor->Send(payload, sender, timeout)). With fail_on_error, a run that does not complete (a model error, the step limit) fails the actor, so its supervisor restarts it with a fresh agent; without it the failed AgentResult is delivered like any other. An agent run cannot be interrupted: Stop waits for the run in progress, and Kill cannot stop it.",
+			"description": "The behavior of an agent actor. Each mail is one String prompt, run to completion with Agent->Run; the conversation carries over from one prompt to the next until the actor is restarted. For a CALL the AgentResult is the answer; for data mail it goes to the sending actor as the payload of a data mail (Actor->Send(payload, sender, timeout)). With fail_on_error, a run that does not complete (a model error, the step limit) fails the actor, so its supervisor restarts it with a fresh agent; without it the failed AgentResult is delivered like any other. An agent run cannot be interrupted: Stop waits for the run in progress, and Kill cannot stop it.",
 			"functions": {
-				"GetRuns": {
-					"descriptions": ["**How many prompts this incarnation has run**\n\n```method : public : GetRuns() ~ Int```\n\n\n\nreturn: Int"]
-				},
 				"New": {
 					"descriptions": ["**Creates the behavior**\n\n```New(builder:AgentBuilder, fail_on_error:Bool)```\n\n\n\nbuilder: AgentBuilder\n\nfail_on_error: Bool"]
 				}
@@ -14720,20 +14677,6 @@
 			"functions": {
 				"Build": {
 					"descriptions": ["**Builds the agent: its backend, tools and limits**\n\n```method : public : virutal : Build() ~ Agent```\n\n\n\nreturn: Agent"]
-				}
-			}
-		},
-		"System.Actor.AgentJob": {
-			"description": "A prompt for an agent actor, and where to put the AgentResult. Sent as the payload of data mail.",
-			"functions": {
-				"GetPrompt": {
-					"descriptions": ["**The prompt**\n\n```method : public : GetPrompt() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetReplyTo": {
-					"descriptions": ["**Where the result goes**\n\n```method : public : GetReplyTo() ~ Mailbox```\n\n\n\nreturn: Mailbox"]
-				},
-				"New": {
-					"descriptions": ["**Creates a job**\n\n```New(prompt:String, reply_to:Mailbox)```\n\n\n\nprompt: String\n\nreply_to: Mailbox"]
 				}
 			}
 		},
@@ -14884,16 +14827,8 @@
 				}
 			}
 		},
-		"System.Actor.MailMatcher": {
-			"description": "Decides which queued item a selective receive takes. Called with no lock held, so it may be slow, but it must not touch the mailbox it is reading, and it may be called more than once for the same item.",
-			"functions": {
-				"Matches": {
-					"descriptions": ["**Tests one queued item**\n\n```method : public : virutal : Matches(item:System.Base) ~ Bool```\n\n\n\nitem: System.Base\n\nreturn: Bool"]
-				}
-			}
-		},
 		"System.Actor.Mailbox": {
-			"description": "A thread-safe FIFO queue between threads. Unbounded by default; with a capacity it applies an overflow policy when full: BLOCK makes the sender wait (in arrival order, with an optional timeout), DROP_OLDEST evicts the oldest queued item to make room, REJECT refuses the new one. Receivers are served in arrival order too. Items are never Nil. Close() ends sending but lets the receivers drain what is queued, then Receive returns Nil.",
+			"description": "A thread-safe FIFO queue between threads. Unbounded by default; with a capacity it applies an overflow policy when full: BLOCK makes the sender wait (in arrival order, with an optional timeout), REJECT refuses the new item. Receivers are served in arrival order too. Items are never Nil. Close() ends sending but lets the receivers drain what is queued, then Receive returns Nil.",
 			"functions": {
 				"Close": {
 					"descriptions": ["**Ends sending: later sends return CLOSED and blocked senders and receivers wake. What is queued can still be received.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -14903,9 +14838,6 @@
 				},
 				"GetCapacity": {
 					"descriptions": ["**The capacity**\n\n```method : public : GetCapacity() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetDroppedCount": {
-					"descriptions": ["**Number of items evicted by the DROP_OLDEST policy**\n\n```method : public : GetDroppedCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetPolicy": {
 					"descriptions": ["**The overflow policy**\n\n```method : public : GetPolicy() ~ Mailbox-&gt;Policy```\n\n\n\nreturn: Mailbox-&gt;Policy"]
@@ -14937,43 +14869,14 @@
 				"Receive": {
 					"descriptions": ["**Takes the oldest item, waiting without limit**\n\n```method : public : Receive() ~ System.Base```\n\n\n\nreturn: System.Base", "**Takes the oldest item. Waiting receivers are served in arrival order.**\n\n```method : public : Receive(timeout:Int) ~ System.Base```\n\n\n\ntimeout: Int\n\nreturn: System.Base"]
 				},
-				"ReceiveMatching": {
-					"descriptions": ["**Selective receive: takes the oldest item the matcher accepts and leaves the others queued in their order. The matcher runs with no lock held, on a snapshot, so it may see an item more than once. Selective receivers do not queue behind plain Receive callers.**\n\n```method : public : ReceiveMatching(matcher:MailMatcher, timeout:Int) ~ System.Base```\n\n\n\nmatcher: MailMatcher\n\ntimeout: Int\n\nreturn: System.Base"]
-				},
 				"Send": {
 					"descriptions": ["**Queues an item, waiting without limit while a BLOCK mailbox is full**\n\n```method : public : Send(item:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\nreturn: Mailbox-&gt;Status", "**Queues an item**\n\n```method : public : Send(item:System.Base, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status"]
-				},
-				"SendUrgent": {
-					"descriptions": ["**Queues an item past the capacity and the policy, for system traffic that must not be lost to a full mailbox (exit notices). Fails only when the mailbox is closed.**\n\n```method : public : SendUrgent(item:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\nreturn: Mailbox-&gt;Status"]
 				},
 				"Size": {
 					"descriptions": ["**Number of items queued now**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"TryReceive": {
 					"descriptions": ["**Takes the oldest item if there is one, without waiting**\n\n```method : public : TryReceive() ~ System.Base```\n\n\n\nreturn: System.Base"]
-				}
-			}
-		},
-		"System.Actor.Registry": {
-			"description": "A table of actors by name. Register is atomic: of several threads registering one name, one wins. An entry whose actor has ended is treated as free and replaced.",
-			"functions": {
-				"Call": {
-					"descriptions": ["**Calls a registered actor**\n\n```method : public : Call(name:String, payload:System.Base, timeout:Int) ~ CallResult```\n\n\n\nname: String\n\npayload: System.Base\n\ntimeout: Int\n\nreturn: CallResult"]
-				},
-				"Names": {
-					"descriptions": ["**The registered names whose actors are running**\n\n```method : public : Names() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
-				},
-				"Register": {
-					"descriptions": ["**Registers an actor under a name**\n\n```method : public : Register(name:String, actor:Actor) ~ Bool```\n\n\n\nname: String\n\nactor: Actor\n\nreturn: Bool"]
-				},
-				"Send": {
-					"descriptions": ["**Sends a data mail to a registered actor**\n\n```method : public : Send(name:String, payload:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nname: String\n\npayload: System.Base\n\nreturn: Mailbox-&gt;Status"]
-				},
-				"Unregister": {
-					"descriptions": ["**Removes a name**\n\n```method : public : Unregister(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
-				},
-				"Whereis": {
-					"descriptions": ["**Finds a running actor by name**\n\n```method : public : Whereis(name:String) ~ Actor```\n\n\n\nname: String\n\nreturn: Actor"]
 				}
 			}
 		},
@@ -27931,139 +27834,109 @@
 		"Actor": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"ActorBehavior": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"ActorClock": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"ActorLifecycle": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
-			}
-		],
-		"ActorScope": [
-			{
-				"bundle": "System.Actor",
-				"file": "actor.obl"
-			}
-		],
-		"ActorSystem": [
-			{
-				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"AgentActorBehavior": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"AgentActorFactory": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"AgentBuilder": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
-			}
-		],
-		"AgentJob": [
-			{
-				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"BehaviorFactory": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"CallResult": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"ChildInfo": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"ChildSpec": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"ExitReason": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"Mail": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
-			}
-		],
-		"MailMatcher": [
-			{
-				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"Mailbox": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
-			}
-		],
-		"Registry": [
-			{
-				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"Supervisor": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"SupervisorBehavior": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"SupervisorFactory": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"SupervisorStrategy": [
 			{
 				"bundle": "System.Actor",
-				"file": "actor.obl"
+				"file": ""
 			}
 		],
 		"Barrier": [
@@ -31729,8 +31602,7 @@
 			"description": "What a full bounded mailbox does with a new item.<br/> <p><pre>Mailbox->Policy</pre></p>",
 			"items": [
 				{ "name": "BLOCK", "value": "0", "description": "" },
-				{ "name": "DROP_OLDEST", "value": "1", "description": "" },
-				{ "name": "REJECT", "value": "2", "description": "" }
+				{ "name": "REJECT", "value": "1", "description": "" }
 			]
 		},
 		"System.Actor.Mailbox#Status": {
@@ -31741,11 +31613,10 @@
 			"description": "What Send reports.<br/> <p><pre>Mailbox->Status</pre></p>",
 			"items": [
 				{ "name": "OK", "value": "0", "description": "" },
-				{ "name": "DROPPED_OLDEST", "value": "1", "description": "" },
-				{ "name": "FULL", "value": "2", "description": "" },
-				{ "name": "TIMED_OUT", "value": "3", "description": "" },
-				{ "name": "CLOSED", "value": "4", "description": "" },
-				{ "name": "INVALID", "value": "5", "description": "" }
+				{ "name": "FULL", "value": "1", "description": "" },
+				{ "name": "TIMED_OUT", "value": "2", "description": "" },
+				{ "name": "CLOSED", "value": "3", "description": "" },
+				{ "name": "INVALID", "value": "4", "description": "" }
 			]
 		},
 		"System.Actor.SupervisorStrategy#Kind": {

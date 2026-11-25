@@ -19,10 +19,9 @@ bypasses the error path (memory exhaustion, a crash inside a native library, Run
 cannot interrupt a handler that blocks or loops forever; Kill only asks. Read docs/ai_sections/actor.md,
 the section "What is not guaranteed", before relying on supervision for isolation.
 
-Classes: Mailbox (bounded or unbounded queue, three overflow policies, timed receive), Mail (the
+Classes: Mailbox (bounded or unbounded queue, two overflow policies, timed receive), Mail (the
 envelope), Actor, ActorBehavior (the handler), ExitReason, CallResult (the answer to a Call),
-Supervisor with ChildSpec and BehaviorFactory, Registry (name to actor), ActorSystem and ActorScope
-(actors tied to a TaskScope). Link with -lib gen_collect,concurrent,actor.
+Supervisor with ChildSpec and BehaviorFactory. Link with -lib gen_collect,concurrent,actor.
 ~#
 bundle System.Actor {
   #~
@@ -87,23 +86,9 @@ bundle System.Actor {
   }
 
   #~
-  Decides which queued item a selective receive takes. Called with no lock held, so it may be
-  slow, but it must not touch the mailbox it is reading, and it may be called more than once for
-  the same item.
-  ~#
-  interface MailMatcher {
-    #~
-    Tests one queued item
-    @param item the item, never Nil
-    @return true to take this item
-    ~#
-    method : virtual : public : Matches(item : System.Base) ~ Bool;
-  }
-
-  #~
   A thread-safe FIFO queue between threads. Unbounded by default; with a capacity it applies an
   overflow policy when full: BLOCK makes the sender wait (in arrival order, with an optional
-  timeout), DROP_OLDEST evicts the oldest queued item to make room, REJECT refuses the new one.
+  timeout), REJECT refuses the new item.
   Receivers are served in arrival order too. Items are never Nil. Close() ends sending but lets
   the receivers drain what is queued, then Receive returns Nil.
   ```
@@ -122,7 +107,6 @@ box->Receive(100)->ToString()->PrintLine();  # a
     ~#
     enum Policy {
       BLOCK,
-      DROP_OLDEST,
       REJECT
     }
 
@@ -133,7 +117,6 @@ box->Receive(100)->ToString()->PrintLine();  # a
     ~#
     enum Status {
       OK,
-      DROPPED_OLDEST,
       FULL,
       TIMED_OUT,
       CLOSED,
@@ -151,7 +134,6 @@ box->Receive(100)->ToString()->PrintLine();  # a
     @receivers : TicketLine;
     @sent : Int;
     @received : Int;
-    @dropped : Int;
     @rejected : Int;
 
     #~
@@ -182,7 +164,6 @@ box->Receive(100)->ToString()->PrintLine();  # a
       @receivers := TicketLine->New();
       @sent := 0;
       @received := 0;
-      @dropped := 0;
       @rejected := 0;
     }
 
@@ -200,7 +181,7 @@ box->Receive(100)->ToString()->PrintLine();  # a
     #~
     Queues an item, waiting without limit while a BLOCK mailbox is full
     @param item what to queue, not Nil
-    @return OK, DROPPED_OLDEST (queued, and the oldest item was evicted), FULL (REJECT policy), CLOSED or INVALID
+    @return OK, FULL (REJECT policy), CLOSED or INVALID
     ~#
     method : public : Send(item : System.Base) ~ Mailbox->Status {
       return Send(item, -1);
@@ -210,7 +191,7 @@ box->Receive(100)->ToString()->PrintLine();  # a
     Queues an item
     @param item what to queue, not Nil
     @param timeout how long a BLOCK mailbox may make the sender wait, in milliseconds: -1 forever, 0 not at all
-    @return OK, DROPPED_OLDEST, FULL, TIMED_OUT (a BLOCK mailbox stayed full), CLOSED or INVALID
+    @return OK, FULL, TIMED_OUT (a BLOCK mailbox stayed full), CLOSED or INVALID
     ~#
     method : public : Send(item : System.Base, timeout : Int) ~ Mailbox->Status {
       if(item = Nil) {
@@ -218,19 +199,12 @@ box->Receive(100)->ToString()->PrintLine();  # a
       };
 
       status := Mailbox->Status->OK;
-      evicted : System.Base;
       critical(@mutex) {
         if(@closed) {
           status := Mailbox->Status->CLOSED;
         }
         else if(HasRoom() & @senders->IsEmpty()) {
           Push(item);
-        }
-        else if(@policy = Mailbox->Policy->DROP_OLDEST & @items->Size() > 0) {
-          evicted := @items->RemoveFront();
-          @dropped += 1;
-          Push(item);
-          status := Mailbox->Status->DROPPED_OLDEST;
         }
         else if(@policy = Mailbox->Policy->REJECT) {
           @rejected += 1;
@@ -269,18 +243,12 @@ box->Receive(100)->ToString()->PrintLine();  # a
         };
       };
 
-      if(evicted <> Nil & evicted->TypeOf(Mail)) {
-        evicted->As(Mail)->Discarded();
-      };
       return status;
     }
 
-    #~
-    Queues an item past the capacity and the policy, for system traffic that must not be lost to
-    a full mailbox (exit notices). Fails only when the mailbox is closed.
-    @param item what to queue, not Nil
-    @return OK, CLOSED or INVALID
-    ~#
+    # Queues an item past the capacity and the policy. Internal: the actor uses it for DOWN and EXIT
+    # notices, which a full bounded mailbox must not lose (and which must not block the exiting
+    # actor). Fails only when the mailbox is closed.
     method : public : SendUrgent(item : System.Base) ~ Mailbox->Status {
       if(item = Nil) {
         return Mailbox->Status->INVALID;
@@ -359,110 +327,6 @@ box->Receive(100)->ToString()->PrintLine();  # a
     ~#
     method : public : TryReceive() ~ System.Base {
       return Receive(0);
-    }
-
-    #~
-    Selective receive: takes the oldest item the matcher accepts and leaves the others queued in
-    their order. The matcher runs with no lock held, on a snapshot, so it may see an item more
-    than once. Selective receivers do not queue behind plain Receive callers.
-    @param matcher the test
-    @param timeout how long to wait for a matching item, in milliseconds: -1 forever, 0 not at all
-    @return the item, or Nil on timeout or when the mailbox is closed and holds no match
-    ~#
-    method : public : ReceiveMatching(matcher : MailMatcher, timeout : Int) ~ System.Base {
-      if(matcher = Nil) {
-        return Receive(timeout);
-      };
-
-      deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-      result : System.Base;
-      done := false;
-      while(done = false) {
-        # snapshot the queue and the arrival count
-        snapshot : System.Base[];
-        seen := 0;
-        critical(@mutex) {
-          snapshot := @items->ToArray();
-          seen := @sent;
-        };
-
-        # find the first match with no lock held
-        candidate : System.Base;
-        if(snapshot <> Nil) {
-          i := 0;
-          while(i < snapshot->Size() & candidate = Nil) {
-            if(snapshot[i] <> Nil & matcher->Matches(snapshot[i])) {
-              candidate := snapshot[i];
-            };
-            i += 1;
-          };
-        };
-
-        critical(@mutex) {
-          if(candidate <> Nil) {
-            # take it if it is still queued; someone else may have taken it meanwhile
-            index := IndexOf(candidate);
-            if(index > -1) {
-              result := RemoveAt(index);
-              @received += 1;
-              @not_full->Broadcast();
-              done := true;
-            };
-          }
-          else if(@closed) {
-            done := true;
-          }
-          else if(@sent = seen) {
-            # nothing new has arrived since the snapshot: wait for something
-            if(timeout < 0) {
-              @not_empty->Wait(@mutex);
-            }
-            else {
-              remaining := deadline - ActorClock->Now();
-              if(remaining <= 0) {
-                done := true;
-              }
-              else {
-                @not_empty->Wait(@mutex, remaining);
-              };
-            };
-          };
-        };
-
-        if(done = false & timeout >= 0 & deadline - ActorClock->Now() <= 0) {
-          done := true;
-        };
-      };
-      return result;
-    }
-
-    # the caller holds the mutex
-    method : IndexOf(item : System.Base) ~ Int {
-      i := 0;
-      while(i < @items->Size()) {
-        if(@items->Get(i) = item) {
-          return i;
-        };
-        i += 1;
-      };
-      return -1;
-    }
-
-    # the caller holds the mutex
-    method : RemoveAt(index : Int) ~ System.Base {
-      held := Vector->New()<System.Base>;
-      i := 0;
-      while(i < index) {
-        held->AddBack(@items->RemoveFront());
-        i += 1;
-      };
-      item := @items->RemoveFront();
-      j := held->Size() - 1;
-      while(j > -1) {
-        @items->AddFront(held->Get(j));
-        j -= 1;
-      };
-      return item;
     }
 
     #~
@@ -549,18 +413,6 @@ box->Receive(100)->ToString()->PrintLine();  # a
       n := 0;
       critical(@mutex) {
         n := @received;
-      };
-      return n;
-    }
-
-    #~
-    Number of items evicted by the DROP_OLDEST policy
-    @return the count
-    ~#
-    method : public : GetDroppedCount() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @dropped;
       };
       return n;
     }
@@ -1126,13 +978,6 @@ class Counter implements ActorBehavior {
     }
   }
 
-  # a function a closure can call, because a lambda body cannot call an instance method
-  class : private : ActorLoop {
-    function : Run(actor : Actor) ~ Nil {
-      actor->Loop();
-    }
-  }
-
   #~
   A thread with a mailbox and a behavior. Create it, Start it, Send it mail; it handles one mail
   at a time, in arrival order. It ends when the handler returns false (NORMAL), when Stop empties
@@ -1223,30 +1068,6 @@ a->Join()->ToString()->PrintLine();   # stopped
     }
 
     #~
-    Starts the actor as a task of a TaskScope, so the scope's JoinAll waits for it. The scope can
-    only finish once the actor ends, so stop the actor before JoinAll (ActorScope does).
-    @param scope the scope
-    @return this actor
-    ~#
-    method : public : StartIn(scope : TaskScope) ~ Actor {
-      go := false;
-      critical(@lock) {
-        if(@state = 0) {
-          @state := 1;
-          go := true;
-        };
-      };
-      if(go) {
-        me := @self;
-        scope->Spawn(FuncRef->New(\() ~ System.Base : () => {
-          ActorLoop->Run(me);
-          return Nil;
-        })<System.Base>);
-      };
-      return @self;
-    }
-
-    #~
     The name given at creation
     @return the name
     ~#
@@ -1277,7 +1098,7 @@ a->Join()->ToString()->PrintLine();   # stopped
     #~
     Sends a data mail, waiting without limit if a BLOCK mailbox is full
     @param payload what to send, not Nil
-    @return the mailbox status: OK, DROPPED_OLDEST, FULL, CLOSED, INVALID
+    @return the mailbox status: OK, FULL, TIMED_OUT, CLOSED, INVALID
     ~#
     method : public : Send(payload : System.Base) ~ Mailbox->Status {
       return @mailbox->Send(Mail->Data(payload, Nil), -1);
@@ -1667,7 +1488,7 @@ a->Join()->ToString()->PrintLine();   # stopped
     }
 
     #~
-    The actor's receive loop, which runs on its thread. Called by Start and StartIn; do not call it.
+    The actor's receive loop, which runs on its thread. Called by Start; do not call it.
     ~#
     method : public : Loop() ~ Nil {
       failure : String;
@@ -2495,315 +2316,6 @@ sup->Join()->ToString()->PrintLine();
     ~#
     method : public : Join(timeout : Int) ~ ExitReason {
       return @actor->Join(timeout);
-    }
-  }
-
-  #~
-  A table of actors by name. Register is atomic: of several threads registering one name, one
-  wins. An entry whose actor has ended is treated as free and replaced.
-  ~#
-  class Registry {
-    @mutex : ThreadMutex;
-    @names : Map<String, Actor>;
-
-    New() {
-      @mutex := ThreadMutex->New("registry");
-      @names := Map->New()<String, Actor>;
-    }
-
-    #~
-    Registers an actor under a name
-    @param name the name
-    @param actor the actor
-    @return true if it is now registered under that name (also when it already was); false if a running actor holds the name
-    ~#
-    method : public : Register(name : String, actor : Actor) ~ Bool {
-      ok := false;
-      critical(@mutex) {
-        current := @names->Find(name);
-        if(current = Nil) {
-          @names->Insert(name, actor);
-          ok := true;
-        }
-        else if(current = actor) {
-          ok := true;
-        }
-        else if(current->IsExited()) {
-          @names->Remove(name);
-          @names->Insert(name, actor);
-          ok := true;
-        };
-      };
-      return ok;
-    }
-
-    #~
-    Finds a running actor by name
-    @param name the name
-    @return the actor, Nil if there is none or it has ended
-    ~#
-    method : public : Whereis(name : String) ~ Actor {
-      found : Actor;
-      critical(@mutex) {
-        found := @names->Find(name);
-        if(found <> Nil & found->IsExited()) {
-          @names->Remove(name);
-          found := Nil;
-        };
-      };
-      return found;
-    }
-
-    #~
-    Removes a name
-    @param name the name
-    @return true if the name was registered
-    ~#
-    method : public : Unregister(name : String) ~ Bool {
-      removed := false;
-      critical(@mutex) {
-        if(@names->Find(name) <> Nil) {
-          @names->Remove(name);
-          removed := true;
-        };
-      };
-      return removed;
-    }
-
-    #~
-    Sends a data mail to a registered actor
-    @param name the name
-    @param payload what to send
-    @return the mailbox status; CLOSED when no running actor has that name
-    ~#
-    method : public : Send(name : String, payload : System.Base) ~ Mailbox->Status {
-      actor := Whereis(name);
-      if(actor = Nil) {
-        return Mailbox->Status->CLOSED;
-      };
-      return actor->Send(payload);
-    }
-
-    #~
-    Calls a registered actor
-    @param name the name
-    @param payload the question
-    @param timeout milliseconds to wait
-    @return the outcome; DEAD when no running actor has that name
-    ~#
-    method : public : Call(name : String, payload : System.Base, timeout : Int) ~ CallResult {
-      actor := Whereis(name);
-      if(actor = Nil) {
-        return CallResult->New(CallResult->Status->DEAD, Nil, "no running actor is named {$name}", 0);
-      };
-      return actor->Call(payload, timeout);
-    }
-
-    #~
-    The registered names whose actors are running
-    @return the names
-    ~#
-    method : public : Names() ~ Vector<String> {
-      live := Vector->New()<String>;
-      critical(@mutex) {
-        keys := @names->GetKeys();
-        each(i : keys) {
-          a := @names->Find(keys->Get(i));
-          if(a <> Nil & a->IsExited() = false) {
-            live->AddBack(keys->Get(i));
-          };
-        };
-      };
-      return live;
-    }
-  }
-
-  #~
-  Actors started inside a TaskScope: Start runs each actor as a task of the scope, and End
-  stops them all (last started first, each given a time to stop, then killed) and then joins the
-  scope, so no actor outlives the scope's block. Put End in a leaving block. A leaving block does
-  not run when an error unwinds its method; use try and finally if that matters. A scope that is
-  cancelled before an actor's task starts skips that actor, which then never runs, so End waits
-  no longer than its timeout for it.
-  ```
-scope := TaskScope->New();
-actors := ActorScope->New(scope, 1000);
-leaving { actors->End(); };
-actors->Start(Actor->New("a", Echo->New()));
-  ```
-  ~#
-  class ActorScope {
-    @scope : TaskScope;
-    @shutdown : Int;
-    @actors : Vector<Actor>;
-    @mutex : ThreadMutex;
-
-    #~
-    Creates the helper
-    @param scope the scope the actors run in
-    @param shutdown_ms how long End waits for each actor to stop before it kills it
-    ~#
-    New(scope : TaskScope, shutdown_ms : Int) {
-      @scope := scope;
-      @shutdown := shutdown_ms;
-      @actors := Vector->New()<Actor>;
-      @mutex := ThreadMutex->New("actor-scope");
-    }
-
-    #~
-    Starts an actor as a task of the scope
-    @param actor the actor
-    @return the actor
-    ~#
-    method : public : Start(actor : Actor) ~ Actor {
-      critical(@mutex) {
-        @actors->AddBack(actor);
-      };
-      return actor->StartIn(@scope);
-    }
-
-    #~
-    Stops every actor started here, last first, and joins the scope
-    @return how many actors had to be killed because they did not stop in time
-    ~#
-    method : public : End() ~ Int {
-      list := Vector->New()<Actor>;
-      critical(@mutex) {
-        list->AddAll(@actors);
-      };
-      killed := 0;
-      i := list->Size() - 1;
-      while(i >= 0) {
-        a := list->Get(i);
-        a->Stop();
-        if(a->Join(@shutdown) = Nil) {
-          a->Kill();
-          killed += 1;
-          a->Join(SupervisorBehavior->KILL_GRACE());
-        };
-        i -= 1;
-      };
-      @scope->JoinAll();
-      return killed;
-    }
-  }
-
-  #~
-  A convenience that owns a Registry and the actors spawned through it, and ends them together.
-  Spawn starts an actor and registers its name; Shutdown stops them all in reverse order.
-  ~#
-  class ActorSystem {
-    @registry : Registry;
-    @actors : Vector<Actor>;
-    @mutex : ThreadMutex;
-
-    #~
-    Creates an empty system
-    ~#
-    New() {
-      @registry := Registry->New();
-      @actors := Vector->New()<Actor>;
-      @mutex := ThreadMutex->New("actor-system");
-    }
-
-    #~
-    The system's registry
-    @return the registry
-    ~#
-    method : public : GetRegistry() ~ Registry {
-      return @registry;
-    }
-
-    #~
-    Creates, registers and starts an actor
-    @param name the actor's registered name
-    @param behavior what it does
-    @return the actor, or Nil if the name is taken by a running actor
-    ~#
-    method : public : Spawn(name : String, behavior : ActorBehavior) ~ Actor {
-      return Spawn(name, behavior, Mailbox->New());
-    }
-
-    #~
-    Creates, registers and starts an actor with a mailbox of your choosing
-    @param name the actor's registered name
-    @param behavior what it does
-    @param mailbox the actor's mailbox
-    @return the actor, or Nil if the name is taken by a running actor
-    ~#
-    method : public : Spawn(name : String, behavior : ActorBehavior, mailbox : Mailbox) ~ Actor {
-      actor := Actor->New(name, behavior, mailbox);
-      if(@registry->Register(name, actor) = false) {
-        return Nil;
-      };
-      critical(@mutex) {
-        @actors->AddBack(actor);
-      };
-      return actor->Start();
-    }
-
-    #~
-    Starts a supervisor, registered by its name, whose children are its own business
-    @param supervisor a supervisor that has not been started
-    @return the supervisor's actor, or Nil if the name is taken
-    ~#
-    method : public : Spawn(supervisor : Supervisor, name : String) ~ Actor {
-      supervisor->Start();
-      actor := supervisor->GetActor();
-      if(@registry->Register(name, actor) = false) {
-        supervisor->Stop();
-        return Nil;
-      };
-      critical(@mutex) {
-        @actors->AddBack(actor);
-      };
-      return actor;
-    }
-
-    #~
-    Sends a data mail to a named actor
-    @param name the name
-    @param payload what to send
-    @return the mailbox status; CLOSED when there is no such running actor
-    ~#
-    method : public : Send(name : String, payload : System.Base) ~ Mailbox->Status {
-      return @registry->Send(name, payload);
-    }
-
-    #~
-    Calls a named actor
-    @param name the name
-    @param payload the question
-    @param timeout milliseconds to wait
-    @return the outcome
-    ~#
-    method : public : Call(name : String, payload : System.Base, timeout : Int) ~ CallResult {
-      return @registry->Call(name, payload, timeout);
-    }
-
-    #~
-    Stops every actor, last spawned first, each with a time to stop and then a Kill
-    @param timeout_ms how long each actor gets to stop
-    @return how many had to be killed
-    ~#
-    method : public : Shutdown(timeout_ms : Int) ~ Int {
-      list := Vector->New()<Actor>;
-      critical(@mutex) {
-        list->AddAll(@actors);
-      };
-      killed := 0;
-      i := list->Size() - 1;
-      while(i >= 0) {
-        a := list->Get(i);
-        a->Stop();
-        if(a->Join(timeout_ms) = Nil) {
-          a->Kill();
-          killed += 1;
-          a->Join(SupervisorBehavior->KILL_GRACE());
-        };
-        i -= 1;
-      };
-      return killed;
     }
   }
 }

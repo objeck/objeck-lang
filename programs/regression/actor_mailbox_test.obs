@@ -1,9 +1,9 @@
 # EXTRA_LIBS: gen_collect,concurrent,actor
 #~
-System.Actor Mailbox: FIFO order, bounded queues with the three overflow policies (BLOCK with a
-timeout, DROP_OLDEST, REJECT), arrival-order fairness for blocked senders and blocked receivers,
-timed receive, TryReceive, Close (what it wakes, what stays receivable), SendUrgent, selective
-receive and the discard of a call that a DROP_OLDEST mailbox evicts. Waits are for a state (a
+System.Actor Mailbox: FIFO order, bounded queues with the two overflow policies (BLOCK with a
+timeout, REJECT), arrival-order fairness for blocked senders and blocked receivers, timed receive,
+TryReceive, Close (what it wakes, what stays receivable) and the discard of a call that a killed
+actor's mailbox still holds. Waits are for a state (a
 blocked sender is counted by the mailbox), never for a time; the only timing checks are lower bounds.
 ~#
 use System.Actor;
@@ -35,23 +35,16 @@ class SendJob from Thread {
 class RecvJob from Thread {
   @box : Mailbox;
   @timeout : Int;
-  @matcher : MailMatcher;
   @got : System.Base;
 
-  New(box : Mailbox, timeout : Int, matcher : MailMatcher) {
+  New(box : Mailbox, timeout : Int) {
     Parent("recv");
     @box := box;
     @timeout := timeout;
-    @matcher := matcher;
   }
 
   method : public : Run(param : System.Base) ~ Nil {
-    if(@matcher <> Nil) {
-      @got := @box->ReceiveMatching(@matcher, @timeout);
-    }
-    else {
-      @got := @box->Receive(@timeout);
-    };
+    @got := @box->Receive(@timeout);
   }
 
   method : public : GetGot() ~ System.Base {
@@ -74,24 +67,6 @@ class CallJob from Thread {
 
   method : public : GetResult() ~ CallResult {
     return @result;
-  }
-}
-
-class EvenMatcher implements MailMatcher {
-  New() {
-  }
-
-  method : public : Matches(item : System.Base) ~ Bool {
-    return item->TypeOf(IntRef) & item->As(IntRef)->Get() % 2 = 0;
-  }
-}
-
-class BigMatcher implements MailMatcher {
-  New() {
-  }
-
-  method : public : Matches(item : System.Base) ~ Bool {
-    return item->TypeOf(IntRef) & item->As(IntRef)->Get() > 100;
   }
 }
 
@@ -185,16 +160,6 @@ class MailboxTest {
     Check("capacity and policy", box->GetCapacity() = 2 & box->GetPolicy() = Mailbox->Policy->REJECT);
   }
 
-  function : DropOldest() ~ Nil {
-    "DROP_OLDEST policy:"->PrintLine();
-    box := Mailbox->New(2, Mailbox->Policy->DROP_OLDEST);
-    box->Send(IntRef->New(1));
-    box->Send(IntRef->New(2));
-    Check("the third evicts the first", box->Send(IntRef->New(3)) = Mailbox->Status->DROPPED_OLDEST);
-    Check("one dropped", box->GetDroppedCount() = 1 & box->Size() = 2);
-    Check("the queue kept 2 then 3", Val(box->Receive(0)) = 2 & Val(box->Receive(0)) = 3);
-  }
-
   function : BlockTimeout() ~ Nil {
     "BLOCK policy, timeouts:"->PrintLine();
     box := Mailbox->New(1, Mailbox->Policy->BLOCK);
@@ -244,10 +209,10 @@ class MailboxTest {
   function : ReceiverFairness() ~ Nil {
     "waiting receivers:"->PrintLine();
     box := Mailbox->New();
-    r1 := RecvJob->New(box, -1, Nil);
+    r1 := RecvJob->New(box, -1);
     r1->Execute(Nil);
     Check("first receiver is waiting", AwaitReceivers(box, 1));
-    r2 := RecvJob->New(box, -1, Nil);
+    r2 := RecvJob->New(box, -1);
     r2->Execute(Nil);
     Check("second receiver is waiting", AwaitReceivers(box, 2));
     box->Send(IntRef->New(10));
@@ -282,14 +247,13 @@ class MailboxTest {
     Check("closed", box->IsClosed());
     Check("not drained yet", box->IsDrained() = false);
     Check("send after close is CLOSED", box->Send(IntRef->New(3)) = Mailbox->Status->CLOSED);
-    Check("urgent send after close is CLOSED", box->SendUrgent(IntRef->New(3)) = Mailbox->Status->CLOSED);
     Check("queued items stay receivable", Val(box->Receive(0)) = 1 & Val(box->Receive(-1)) = 2);
     Check("then Receive returns Nil at once", box->Receive(-1) = Nil);
     Check("drained", box->IsDrained());
 
     # a blocked receiver wakes
     b2 := Mailbox->New();
-    r := RecvJob->New(b2, -1, Nil);
+    r := RecvJob->New(b2, -1);
     r->Execute(Nil);
     AwaitReceivers(b2, 1);
     b2->Close();
@@ -308,76 +272,28 @@ class MailboxTest {
     Check("the item that was queued survives", Val(b3->Receive(0)) = 1);
   }
 
-  function : Urgent() ~ Nil {
-    "SendUrgent:"->PrintLine();
-    box := Mailbox->New(1, Mailbox->Policy->REJECT);
-    box->Send(IntRef->New(1));
-    Check("a normal send is refused", box->Send(IntRef->New(2)) = Mailbox->Status->FULL);
-    Check("an urgent send goes through", box->SendUrgent(IntRef->New(3)) = Mailbox->Status->OK);
-    Check("past the capacity", box->Size() = 2);
-    Check("in order", Val(box->Receive(0)) = 1 & Val(box->Receive(0)) = 3);
-  }
-
-  function : Selective() ~ Nil {
-    "selective receive:"->PrintLine();
-    box := Mailbox->New();
-    each(i : 6) {
-      box->Send(IntRef->New(i + 1));
-    };
-    Check("takes the first even item", Val(box->ReceiveMatching(EvenMatcher->New(), 0)) = 2);
-    Check("then the next", Val(box->ReceiveMatching(EvenMatcher->New(), 0)) = 4);
-    Check("the others keep their order", Val(box->Receive(0)) = 1 & Val(box->Receive(0)) = 3 & Val(box->Receive(0)) = 5 & Val(box->Receive(0)) = 6);
-    Check("no match, no wait: Nil", box->ReceiveMatching(EvenMatcher->New(), 0) = Nil);
-
-    started := ActorClock->Now();
-    got := box->ReceiveMatching(EvenMatcher->New(), 60);
-    elapsed := ActorClock->Now() - started;
-    Check("no match times out with Nil after the timeout ({$elapsed} ms)", got = Nil & elapsed >= 55);
-
-    # a matching item that arrives later, among others that do not match
-    r := RecvJob->New(box, -1, BigMatcher->New());
-    r->Execute(Nil);
-    box->Send(IntRef->New(1));
-    box->Send(IntRef->New(2));
-    box->Send(IntRef->New(500));
-    box->Send(IntRef->New(3));
-    r->Join();
-    Check("it waited for the item it wanted", Val(r->GetGot()) = 500);
-    Check("the rest stayed queued in order", Val(box->Receive(0)) = 1 & Val(box->Receive(0)) = 2 & Val(box->Receive(0)) = 3);
-
-    # a closed mailbox with no match returns Nil
-    box->Send(IntRef->New(7));
-    box->Close();
-    Check("closed, no match: Nil", box->ReceiveMatching(EvenMatcher->New(), -1) = Nil);
-    Check("the odd item is still there", Val(box->Receive(0)) = 7);
-  }
-
-  function : EvictedCall() ~ Nil {
-    "an evicted call fails at once:"->PrintLine();
-    actor := Actor->New("unstarted", Sleepy->New(), Mailbox->New(1, Mailbox->Policy->DROP_OLDEST));
+  function : DiscardedCall() ~ Nil {
+    "a queued call fails at once when the actor is killed:"->PrintLine();
+    actor := Actor->New("unstarted", Sleepy->New());
     job := CallJob->New(actor);
     job->Execute(Nil);
     Check("the call is queued", AwaitSize(actor->GetMailbox(), 1));
-    actor->Send(IntRef->New(1));
+    actor->Kill();
     job->Join();
     result := job->GetResult();
-    Check("the evicted call returned DEAD, not a timeout", result->GetStatus() = CallResult->Status->DEAD);
-    actor->Kill();
+    Check("the call returned DEAD, not a timeout", result->GetStatus() = CallResult->Status->DEAD);
     Check("an unstarted actor can be killed", actor->Join(5000)->GetKind() = ExitReason->Kind->KILLED);
   }
 
   function : Main(args : String[]) ~ Nil {
     Fifo();
     Reject();
-    DropOldest();
     BlockTimeout();
     BlockUnblocks();
     ReceiverFairness();
     Timeouts();
     Closing();
-    Urgent();
-    Selective();
-    EvictedCall();
+    DiscardedCall();
     if(@failures > 0) {
       "{$@failures} failure(s)"->PrintLine();
       Runtime->Exit(1);

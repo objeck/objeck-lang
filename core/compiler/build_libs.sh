@@ -13,7 +13,7 @@ OBC=${1:?usage: build_libs.sh <path-to-obc>}
 
 $OBC -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 $OBC -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/concurrent.obl
-# Actors with supervision (mailboxes, links, monitors, supervisors, registry). Needs gen_collect and concurrent (TaskScope)
+# Actors with supervision (mailboxes, links, monitors, supervisors). Needs gen_collect and concurrent (threads, mutexes)
 $OBC -src lib_src/actor.obs -lib gen_collect,concurrent -tar lib -opt s3 -dest ../lib/actor.obl
 $OBC -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 $OBC -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl

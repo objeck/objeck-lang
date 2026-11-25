@@ -3,9 +3,8 @@
 System.Actor core: exit reasons (normal, stopped, failed by a raised error and by each runtime fault
 the VM lets a program catch, killed), Init and Terminate hooks, Stop draining the queue, Kill that
 cannot interrupt a blocked handler, Call with a timeout, a late answer, a dead actor and a failing
-handler, monitors (DOWN mail), links (and trapping their EXIT mail), Join with a timeout, a
-Registry under eight racing threads, ActorSystem and ActorScope with a TaskScope. Scripted
-handlers and latches decide every interleaving; no check depends on a sleep.
+handler, monitors (DOWN mail), links (and trapping their EXIT mail) and Join with a timeout.
+Scripted handlers and latches decide every interleaving; no check depends on a sleep.
 ~#
 use System.Actor;
 use System.Concurrency;
@@ -248,29 +247,6 @@ class Scripted implements ActorBehavior, ActorLifecycle {
       @probe->Add("got:{$cmd}");
     };
     return true;
-  }
-}
-
-class Racer from Thread {
-  @registry : Registry;
-  @actor : Actor;
-  @start : CountDownLatch;
-  @won : Bool;
-
-  New(registry : Registry, actor : Actor, start : CountDownLatch) {
-    Parent("racer");
-    @registry := registry;
-    @actor := actor;
-    @start := start;
-  }
-
-  method : public : Run(param : System.Base) ~ Nil {
-    @start->Await();
-    @won := @registry->Register("leader", @actor);
-  }
-
-  method : public : Won() ~ Bool {
-    return @won;
   }
 }
 
@@ -567,105 +543,6 @@ class ActorCoreTest {
     Check("a link to an actor that already failed fails now", Reason(g)->GetKind() = ExitReason->Kind->FAILED);
   }
 
-  function : Registering() ~ Nil {
-    "registry:"->PrintLine();
-    registry := Registry->New();
-    probe := Probe->New();
-    actors := Vector->New()<Actor>;
-    racers := Vector->New()<Racer>;
-    start := CountDownLatch->New(1);
-    each(i : 8) {
-      a := Make("n{$i}", probe)->Start();
-      actors->AddBack(a);
-      r := Racer->New(registry, a, start);
-      racers->AddBack(r);
-      r->Execute(Nil);
-    };
-    start->CountDown();
-    each(i : racers) {
-      racers->Get(i)->Join();
-    };
-    wins := 0;
-    winner := -1;
-    each(i : racers) {
-      if(racers->Get(i)->Won()) {
-        wins += 1;
-        winner := i;
-      };
-    };
-    Check("exactly one of eight racing threads got the name ({$wins})", wins = 1);
-    Check("Whereis finds the winner", registry->Whereis("leader") = actors->Get(winner));
-    Check("registering the same actor again is true", registry->Register("leader", actors->Get(winner)));
-    Check("another actor cannot take a held name", registry->Register("leader", actors->Get((winner + 1) % 8)) = false);
-    Check("an unknown name is Nil", registry->Whereis("nobody") = Nil);
-    Check("Send by name", registry->Send("leader", "hi") = Mailbox->Status->OK & probe->Await("got:hi", 1));
-    Check("Call by name", registry->Call("leader", "q", 5000)->IsOk());
-    Check("Send to an unknown name is CLOSED", registry->Send("nobody", "x") = Mailbox->Status->CLOSED);
-    Check("Call to an unknown name is DEAD", registry->Call("nobody", "x", 100)->GetStatus() = CallResult->Status->DEAD);
-    Check("Names lists it", registry->Names()->Size() = 1);
-
-    # an ended actor frees its name
-    actors->Get(winner)->Stop();
-    Reason(actors->Get(winner));
-    Check("Whereis forgets an ended actor", registry->Whereis("leader") = Nil);
-    heir := actors->Get((winner + 1) % 8);
-    Check("the name can be taken again", registry->Register("leader", heir) & registry->Whereis("leader") = heir);
-    Check("Unregister", registry->Unregister("leader") & registry->Unregister("leader") = false);
-
-    each(i : actors) {
-      actors->Get(i)->Stop();
-    };
-    each(i : actors) {
-      Reason(actors->Get(i));
-    };
-  }
-
-  function : Systems() ~ Nil {
-    "ActorSystem and ActorScope:"->PrintLine();
-    probe := Probe->New();
-    system := ActorSystem->New();
-    a := system->Spawn("alpha", Scripted->New("alpha", probe, CountDownLatch->New(1)));
-    b := system->Spawn("beta", Scripted->New("beta", probe, CountDownLatch->New(1)));
-    Check("Spawn starts and registers", a->IsRunning() & system->GetRegistry()->Whereis("beta") = b);
-    Check("a taken name gives Nil", system->Spawn("alpha", Scripted->New("x", probe, CountDownLatch->New(1))) = Nil);
-    Check("send by name", system->Send("alpha", "hello") = Mailbox->Status->OK & probe->Await("got:hello", 1));
-    Check("call by name", system->Call("beta", "who", 5000)->GetValue()->As(String)->Equals("re:who"));
-    killed := system->Shutdown(5000);
-    Check("Shutdown stops everything without killing", killed = 0 & a->IsExited() & b->IsExited());
-    Check("in reverse order of creation", probe->Text()->Find("term:beta") < probe->Text()->Find("term:alpha"));
-
-    # a stuck actor is killed after the timeout, then abandoned if it still does not end
-    gate := CountDownLatch->New(1);
-    probe2 := Probe->New();
-    system2 := ActorSystem->New();
-    stuck := system2->Spawn("stuck", Scripted->New("stuck", probe2, gate));
-    stuck->Send("block");
-    probe2->Await("blocked", 1);
-    started := ActorClock->Now();
-    killed2 := system2->Shutdown(80);
-    elapsed := ActorClock->Now() - started;
-    Check("Shutdown reports the actor it had to kill", killed2 = 1);
-    Check("it waited for the timeout first ({$elapsed} ms)", elapsed >= 75);
-    Check("the stuck handler is still running", stuck->IsRunning());
-    gate->CountDown();
-    Check("and it ends KILLED when it returns", Reason(stuck)->GetKind() = ExitReason->Kind->KILLED);
-
-    # actors tied to a TaskScope
-    probe3 := Probe->New();
-    scope := TaskScope->New();
-    actors := ActorScope->New(scope, 5000);
-    x := actors->Start(Make("x", probe3));
-    y := actors->Start(Make("y", probe3));
-    x->Send("job");
-    y->Send("job");
-    probe3->Await("got:job", 2);
-    Check("scoped actors run", x->IsRunning() & y->IsRunning());
-    killed3 := actors->End();
-    Check("End stops them and joins the scope, killing none", killed3 = 0 & x->IsExited() & y->IsExited());
-    Check("they ended STOPPED", x->GetExitReason()->GetKind() = ExitReason->Kind->STOPPED);
-    Check("last started stopped first", probe3->Text()->Find("term:y") < probe3->Text()->Find("term:x"));
-  }
-
   function : Main(args : String[]) ~ Nil {
     Exits();
     Failures();
@@ -673,8 +550,6 @@ class ActorCoreTest {
     Calls();
     Monitoring();
     Linking();
-    Registering();
-    Systems();
     if(@failures > 0) {
       "{$@failures} failure(s)"->PrintLine();
       Runtime->Exit(1);

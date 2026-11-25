@@ -5,13 +5,13 @@
   "actor": {
    "deps": ["gen_collect", "concurrent"],
    "bundles": {
-    "System.Actor": ["Actor", "ActorBehavior", "ActorClock", "ActorLifecycle", "ActorScope", "ActorSystem", "BehaviorFactory", "CallResult", "ChildInfo", "ChildSpec", "ExitReason", "Mail", "MailMatcher", "Mailbox", "Registry", "Supervisor", "SupervisorBehavior", "SupervisorFactory", "SupervisorStrategy"]
+    "System.Actor": ["Actor", "ActorBehavior", "ActorClock", "ActorLifecycle", "BehaviorFactory", "CallResult", "ChildInfo", "ChildSpec", "ExitReason", "Mail", "Mailbox", "Supervisor", "SupervisorBehavior", "SupervisorFactory", "SupervisorStrategy"]
    }
   },
   "actor_agents": {
    "deps": ["gen_collect", "concurrent", "actor", "agent", "net", "json", "cipher", "misc"],
    "bundles": {
-    "System.Actor": ["AgentActorBehavior", "AgentActorFactory", "AgentBuilder", "AgentJob"]
+    "System.Actor": ["AgentActorBehavior", "AgentActorFactory", "AgentBuilder"]
    }
   },
   "agent": {
