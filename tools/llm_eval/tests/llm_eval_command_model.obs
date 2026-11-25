@@ -29,7 +29,7 @@ class LlmEvalCommandModel {
 		sandbox := Sandbox->New(work);
 
 		# a "model" that answers with a program and quotes what it was asked
-		answerer := Build(sandbox, "answerer", "use System.IO;\n\nclass Answerer {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"Asked:\"->PrintLine();\n\t\tfor(i := 0; i < 3; i += 1;) {\n\t\t\t\"> \"->Print();\n\t\t\tConsole->ReadLine()->PrintLine();\n\t\t};\n\t\t\"```objeck\\nclass Forty {\\n\\tfunction : Main(args : String[]) ~ Nil {\\n\\t\\t\\\"42\\\"->PrintLine();\\n\\t}\\n}\\n```\"->PrintLine();\n\t}\n}\n");
+		answerer := Build(sandbox, "answerer", "use System.IO;\n\nclass Answerer {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"Asked:\"->PrintLine();\n\t\tfor(i := 0; i < 3; i += 1;) {\n\t\t\t\"> \"->Print();\n\t\t\tline := Console->ReadLine();\n\t\t\tif(line <> Nil) {\n\t\t\t\tline->PrintLine();\n\t\t\t};\n\t\t};\n\t\t\"```objeck\\nclass Forty {\\n\\tfunction : Main(args : String[]) ~ Nil {\\n\\t\\t\\\"42\\\"->PrintLine();\\n\\t}\\n}\\n```\"->PrintLine();\n\t}\n}\n");
 		spinner := Build(sandbox, "spinner", "class Spinner {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\twhile(true) {\n\t\t};\n\t}\n}\n");
 
 		vm := sandbox->GetVm();
