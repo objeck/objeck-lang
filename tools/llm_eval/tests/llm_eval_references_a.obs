@@ -1,4 +1,4 @@
-# EXTRA_LIBS: llm_eval,ml,csv,json,gen_collect
+# Run by tools/llm_eval/run_tests.py, which compiles this file together with ../llm_eval.obs
 use System.LLM.Eval, System.IO.Filesystem, Collection;
 
 #~
@@ -6,7 +6,7 @@ The task suite checks itself: every reference solution in tools/llm_eval/tasks i
 ~#
 class LlmEvalReferencesA {
 	function : Main(args : String[]) ~ Nil {
-		all := TaskSuite->Load("../../tools/llm_eval/tasks");
+		all := TaskSuite->Load("../tasks");
 		if(all = Nil) {
 			"FAIL: {$TaskSuite->GetLastError()}"->PrintLine();
 			Runtime->Exit(1);

@@ -6,6 +6,8 @@
 use Collection;
 
 #~
+Experimental: API may change.
+
 The forecasting models of System.ML.TimeSeries: the Forecaster interface, ForecastResult, the baselines and exponential smoothing (simple, Holt with optional damping, Holt-Winters additive and multiplicative). ARIMA and the automatic selectors are in ml_timeseries_arima.obs.
 ~#
 bundle System.ML.TimeSeries {

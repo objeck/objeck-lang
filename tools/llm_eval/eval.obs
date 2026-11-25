@@ -5,11 +5,11 @@ Runs the llm_eval task suite against one model and writes a Markdown report and 
 
 The model comes from an adapter file compiled in with this program: each adapter defines a class Provider with Create(args) and Usage(). Pick one when you compile (see README.md):
 
-  obc -src eval.obs,adapter_anthropic.obs -lib llm_eval,ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
-  obc -src eval.obs,adapter_openai.obs    -lib llm_eval,ml,csv,json,gen_collect,net,net_server,cipher,misc,openai -dest eval_openai.obe
-  obc -src eval.obs,adapter_gemini.obs    -lib llm_eval,ml,csv,json,gen_collect,net,net_server,cipher,misc,gemini -dest eval_gemini.obe
-  obc -src eval.obs,adapter_ollama.obs    -lib llm_eval,ml,csv,json,gen_collect,net,cipher,misc,ollama -dest eval_ollama.obe
-  obc -src eval.obs,adapter_command.obs   -lib llm_eval,ml,csv,json,gen_collect -dest eval_command.obe
+  obc -src llm_eval.obs,eval.obs,adapter_anthropic.obs -lib ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
+  obc -src llm_eval.obs,eval.obs,adapter_openai.obs    -lib ml,csv,json,gen_collect,net,net_server,cipher,misc,openai -dest eval_openai.obe
+  obc -src llm_eval.obs,eval.obs,adapter_gemini.obs    -lib ml,csv,json,gen_collect,net,net_server,cipher,misc,gemini -dest eval_gemini.obe
+  obc -src llm_eval.obs,eval.obs,adapter_ollama.obs    -lib ml,csv,json,gen_collect,net,cipher,misc,ollama -dest eval_ollama.obe
+  obc -src llm_eval.obs,eval.obs,adapter_command.obs   -lib ml,csv,json,gen_collect -dest eval_command.obe
 
 Common flags (an adapter adds its own, see its Usage):
   --tasks DIR            task directory (default tasks)

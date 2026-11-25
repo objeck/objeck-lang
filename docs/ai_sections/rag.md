@@ -238,6 +238,8 @@ PROMPT HAS 244 CHARACTERS
 
 An embedder returns one row per text (`Nil` and a `GetError()` reason on failure), the same vector for the same text, and rows of one length throughout (`GetDimension()` may be 0 until the first call). Questions and chunks must be embedded by the same model: vectors from different models are not comparable even when their lengths match.
 
+> **Experimental (`rag_adapters`):** API may change.
+
 The adapters in `rag_adapters`:
 
 | Class | Wraps | Notes |
