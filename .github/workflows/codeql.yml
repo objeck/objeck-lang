@@ -208,10 +208,19 @@ jobs:
             echo "$prefix: $total entries (keeping newest $keep)"
             [ "$total" -le "$keep" ] && continue
 
-            # The loop runs in this shell, so a failed delete fails the step.
+            # The loop runs in this shell, so a failed delete fails the step, with one
+            # exception: every push to master starts a prune, and two of them can pick the
+            # same entry, so the second DELETE gets 404. An entry that is already gone is
+            # the state this job wants; the re-read below still catches a delete that
+            # really failed.
             while IFS=$'\t' read -r created id size key; do
               echo "  deleting $key ($((size / 1048576)) MB, $created)"
-              gh api -X DELETE "repos/$REPO/actions/caches/$id"
+              if ! out=$(gh api -X DELETE "repos/$REPO/actions/caches/$id" 2>&1); then
+                case "$out" in
+                  *"HTTP 404"*) echo "    already deleted by another run" ;;
+                  *) echo "$out"; exit 1 ;;
+                esac
+              fi
             done < <(tail -n +$((keep + 1)) family.tsv)
           done
 
