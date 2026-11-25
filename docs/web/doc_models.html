@@ -1,73 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Models for Objeck — Objeck Language</title>
-  <meta name="description" content="Objeck supports two categories of AI model: Ollama (local LLMs via the Ollama server) and ONNX (on-device inference via ONNX Runtime). Neither category requires a cloud API key."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Objeck supports two categories of AI model: Ollama (local LLMs via the Ollama server) and ONNX (on-device inference via ONNX Runtime). Neither category requires a cloud API key.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#language-and-libraries">Language and libraries</a></li><li aria-current="page">AI Models for Objeck</li></ol></nav>
+  <div class="layout has-side">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html" aria-current="page">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">AI Models for Objeck</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md" target="_blank">docs/MODELS.md on GitHub</a></div>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md" target="_blank" rel="noopener">View docs/MODELS.md on GitHub</a></p>
     <p class="page-lead">Objeck supports two categories of AI model: <strong>Ollama</strong> (local LLMs via the Ollama server) and <strong>ONNX</strong> (on-device inference via ONNX Runtime). Neither category requires a cloud API key.</p>
 
     <hr class="section-end">
-    <h3 id="ollama-models">Ollama Models</h3>
-    <h4 id="1-install-ollama">1. Install Ollama</h4>
+    <h2 id="ollama-models">Ollama Models</h2>
+    <h3 id="1-install-ollama">1. Install Ollama</h3>
     <p>Download and install from <strong>https://ollama.com/download</strong> (Windows, macOS, Linux).</p>
     <p>After installation the Ollama server starts automatically. Verify it is running:</p>
 <pre class="plain">ollama list</pre>
-    <h4 id="2-pull-a-model">2. Pull a Model</h4>
+    <h3 id="2-pull-a-model">2. Pull a Model</h3>
 <pre class="cmd">ollama pull &lt;model-name&gt;</pre>
-    <h4 id="3-recommended-models">3. Recommended Models</h4>
+    <h3 id="3-recommended-models">3. Recommended Models</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Task</th><th>Model</th><th>Pull Command</th><th>Size</th></tr>
@@ -81,44 +72,44 @@
      </tbody>
     </table>
     <p>Browse the full library at <strong>https://ollama.com/library</strong>.</p>
-    <h4 id="4-verify-a-model-works">4. Verify a Model Works</h4>
+    <h3 id="4-verify-a-model-works">4. Verify a Model Works</h3>
 <pre class="cmd">ollama run llama3.2 "Say hello in one word"</pre>
-    <h4 id="5-use-in-objeck">5. Use in Objeck</h4>
-<pre class="line-numbers"><code class="language-cpp">use API.Ollama;
+    <h3 id="5-use-in-objeck">5. Use in Objeck</h3>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Ollama;
 
-response := Completion-&gt;Generate("llama3.2", "Why is the sky blue?");
-response-&gt;PrintLine();
+response <span class="t-op">:=</span> <span class="t-cls">Completion</span><span class="t-op">-&gt;</span>Generate(<span class="t-str">"llama3.2"</span>, <span class="t-str">"Why is the sky blue?"</span>);
+response<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
     <p>Compile with: <code>obc -src your.obs -lib net,json,cipher,misc,ollama</code></p>
-    <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/ollama" target="_blank">Ollama examples</a> and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
+    <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/ollama" target="_blank" rel="noopener">Ollama examples</a> and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
     <hr class="section-end">
-    <h3 id="onnx-models">ONNX Models</h3>
+    <h2 id="onnx-models">ONNX Models</h2>
     <p>ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 and ARM64 builds are CPU-only (each links a vendored ONNX Runtime 1.19.0 CPU build). Models must be downloaded separately — they are too large for the repository.</p>
-    <h4 id="supported-models">Supported Models</h4>
+    <h3 id="supported-models">Supported Models</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Session Class</th><th>Task</th><th>Model</th><th>Source</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Session Class"><code>Phi3Session</code></td><td data-label="Task">Text generation (SLM)</td><td data-label="Model">Phi-3 Mini 4K INT4</td><td data-label="Source"><a href="https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx" target="_blank">Hugging Face</a></td></tr>
-      <tr><td data-label="Session Class"><code>Phi3VisionSession</code></td><td data-label="Task">Multimodal image+text</td><td data-label="Model">Phi-3 Vision 128K INT4</td><td data-label="Source"><a href="https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx-directml" target="_blank">Hugging Face</a></td></tr>
-      <tr><td data-label="Session Class"><code>YoloSession</code></td><td data-label="Task">Object detection</td><td data-label="Model">YOLOv11n</td><td data-label="Source"><a href="https://docs.ultralytics.com/models/yolo11/" target="_blank">Ultralytics</a></td></tr>
-      <tr><td data-label="Session Class"><code>ResNetSession</code></td><td data-label="Task">Image classification</td><td data-label="Model">ResNet-34</td><td data-label="Source"><a href="https://github.com/onnx/models/tree/main/validated/vision/classification/resnet" target="_blank">ONNX Model Zoo</a></td></tr>
-      <tr><td data-label="Session Class"><code>DeepLabSession</code></td><td data-label="Task">Semantic segmentation</td><td data-label="Model">DeepLabV3</td><td data-label="Source"><a href="https://github.com/onnx/models/tree/main/validated/vision/object_detection_segmentation" target="_blank">ONNX Model Zoo</a></td></tr>
-      <tr><td data-label="Session Class"><code>OpenPoseSession</code></td><td data-label="Task">Human pose estimation</td><td data-label="Model">OpenPose</td><td data-label="Source"><a href="https://github.com/CMU-Perceptual-Computing-Lab/openpose" target="_blank">CMU OpenPose</a></td></tr>
-      <tr><td data-label="Session Class"><code>FaceSession</code></td><td data-label="Task">Face detection + recognition</td><td data-label="Model">SCRFD + ArcFace R50</td><td data-label="Source"><a href="https://github.com/deepinsight/insightface/releases/tag/v0.7" target="_blank">InsightFace buffalo_l</a></td></tr>
+      <tr><td data-label="Session Class"><code>Phi3Session</code></td><td data-label="Task">Text generation (SLM)</td><td data-label="Model">Phi-3 Mini 4K INT4</td><td data-label="Source"><a href="https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx" target="_blank" rel="noopener">Hugging Face</a></td></tr>
+      <tr><td data-label="Session Class"><code>Phi3VisionSession</code></td><td data-label="Task">Multimodal image+text</td><td data-label="Model">Phi-3 Vision 128K INT4</td><td data-label="Source"><a href="https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx-directml" target="_blank" rel="noopener">Hugging Face</a></td></tr>
+      <tr><td data-label="Session Class"><code>YoloSession</code></td><td data-label="Task">Object detection</td><td data-label="Model">YOLOv11n</td><td data-label="Source"><a href="https://docs.ultralytics.com/models/yolo11/" target="_blank" rel="noopener">Ultralytics</a></td></tr>
+      <tr><td data-label="Session Class"><code>ResNetSession</code></td><td data-label="Task">Image classification</td><td data-label="Model">ResNet-34</td><td data-label="Source"><a href="https://github.com/onnx/models/tree/main/validated/vision/classification/resnet" target="_blank" rel="noopener">ONNX Model Zoo</a></td></tr>
+      <tr><td data-label="Session Class"><code>DeepLabSession</code></td><td data-label="Task">Semantic segmentation</td><td data-label="Model">DeepLabV3</td><td data-label="Source"><a href="https://github.com/onnx/models/tree/main/validated/vision/object_detection_segmentation" target="_blank" rel="noopener">ONNX Model Zoo</a></td></tr>
+      <tr><td data-label="Session Class"><code>OpenPoseSession</code></td><td data-label="Task">Human pose estimation</td><td data-label="Model">OpenPose</td><td data-label="Source"><a href="https://github.com/CMU-Perceptual-Computing-Lab/openpose" target="_blank" rel="noopener">CMU OpenPose</a></td></tr>
+      <tr><td data-label="Session Class"><code>FaceSession</code></td><td data-label="Task">Face detection + recognition</td><td data-label="Model">SCRFD + ArcFace R50</td><td data-label="Source"><a href="https://github.com/deepinsight/insightface/releases/tag/v0.7" target="_blank" rel="noopener">InsightFace buffalo_l</a></td></tr>
      </tbody>
     </table>
-    <h4 id="hugging-face-models-by-name">Hugging Face models by name</h4>
+    <h3 id="hugging-face-models-by-name">Hugging Face models by name</h3>
     <p>Text models published on the Hugging Face Hub with an ONNX export download by name, with no Python: <code>System.AI.Hub.HubClient</code> (<code>-lib net,ai_hub</code>) fetches a repository's files into <code>~/.objeck/hub</code> (or <code>OBJECK_HUB_CACHE</code>), checks each file's size and SHA-256 against the Hub, and works offline from the cache. <code>System.NLP.Onnx.TextClassifier</code> then opens the folder. See <a href="doc_ai.html#models-from-the-hugging-face-hub">AI.md</a>.</p>
-<pre class="line-numbers"><code class="language-cpp">use System.AI.Hub, System.NLP.Onnx;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Hub, <span class="t-cls">System</span>.<span class="t-cls">NLP</span>.Onnx;
 
-folder := HubClient-&gt;New()-&gt;Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
-  ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
-classifier := TextClassifier-&gt;New(folder);
+folder <span class="t-op">:=</span> <span class="t-cls">HubClient</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>Snapshot(<span class="t-str">"Xenova/distilbert-base-uncased-finetuned-sst-2-english"</span>,
+  [<span class="t-str">"config.json"</span>, <span class="t-str">"tokenizer.json"</span>, <span class="t-str">"tokenizer_config.json"</span>, <span class="t-str">"onnx/model.onnx"</span>]);
+classifier <span class="t-op">:=</span> <span class="t-cls">TextClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(folder);
 </code></pre>
     <p>Compile with: <code>obc -src your.obs -lib models,opencv,cipher,json,onnx,nlp,nlp_onnx,net,ai_hub</code>. The tests that cover this path are <code>programs/regression/ai_hub_client.obs</code> (the cache, hash verification, token handling and offline rules, against two in-process servers that stand in for the Hub and its CDN) and <code>programs/regression/nlp_onnx_text_classifier.obs</code> (token ids exactly, logits within 1e-5 of ONNX Runtime and 1e-4 of PyTorch, on three tiny classifiers with fixtures in <code>programs/regression/data/bert/</code>).</p>
-    <h4 id="download-models">Download Models</h4>
+    <h3 id="download-models">Download Models</h3>
     <p><strong>Phi-3 Mini (text generation, ~2 GB)</strong></p>
 <pre class="cmd">pip install huggingface_hub
 huggingface-cli download microsoft/Phi-3-mini-4k-instruct-onnx \
@@ -137,8 +128,8 @@ unzip buffalo_l.zip det_10g.onnx w600k_r50.onnx -d data/models/</pre>
 yolo export model=yolo11n.pt format=onnx
 # rename yolo11n.onnx → data/models/yolov11.onnx</pre>
     <p><strong>ResNet-34 classification</strong></p>
-    <p>Download <code>resnet34-v1-7.onnx</code> from the <a href="https://github.com/onnx/models/tree/main/validated/vision/classification/resnet" target="_blank">ONNX Model Zoo</a>, rename to <code>resnet34.onnx</code>.</p>
-    <h4 id="expected-directory-layout">Expected Directory Layout</h4>
+    <p>Download <code>resnet34-v1-7.onnx</code> from the <a href="https://github.com/onnx/models/tree/main/validated/vision/classification/resnet" target="_blank" rel="noopener">ONNX Model Zoo</a>, rename to <code>resnet34.onnx</code>.</p>
+    <h3 id="expected-directory-layout">Expected Directory Layout</h3>
 <pre class="plain">data/models/
   det_10g.onnx             # face detector (SCRFD)
   w600k_r50.onnx           # face recognizer (ArcFace R50)
@@ -159,7 +150,7 @@ yolo export model=yolo11n.pt format=onnx
       model.onnx + .data
       tokenizer.json
       genai_config.json</pre>
-    <h4 id="execution-providers">Execution Providers</h4>
+    <h3 id="execution-providers">Execution Providers</h3>
     <p>The execution provider is chosen <strong>per session</strong> with the <code>ep</code> key: <code>cpu</code>, <code>cuda</code>, <code>dml</code>, <code>qnn</code>, <code>vitisai</code> or <code>coreml</code> (case-insensitive). The provider has to be in the ONNX Runtime the library loaded: that runtime is what carries the accelerator, and the native library only asks for it. A provider the runtime does not carry is refused with an error that lists the providers it does carry, and no session is created. A session is never quietly run on the CPU instead.</p>
     <p>Leaving <code>ep</code> out uses the build's default provider (<code>OnnxRuntime-&gt;GetDefaultProvider()</code>):</p>
     <table class="ref-table">
@@ -173,31 +164,47 @@ yolo export model=yolo11n.pt format=onnx
       <tr><td data-label="Platform">macOS</td><td data-label="Default accelerator">Apple Neural Engine / GPU via CoreML (<code>coreml</code>)</td><td data-label="Shipped runtime carries">CoreML, CPU</td></tr>
      </tbody>
     </table>
-    <p>No release ships CUDA. <code>ep=cuda</code> works when you provide an ONNX Runtime built with the CUDA provider, plus the NVIDIA driver, CUDA 12 and cuDNN 9 it needs: put that runtime's <code>onnxruntime</code> library beside <code>libobjk_onnx</code> (Windows: replace <code>bin\onnxruntime.dll</code> and add <code>onnxruntime_providers_cuda.dll</code> and its dependencies). On Linux <code>libobjk_onnx</code> is linked to one runtime version, so rebuild it against yours with <code>ORT_ROOT=&lt;dir&gt; ./build.sh cpu</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank">core/lib/onnx/README.md</a>). Which providers a runtime carries:</p>
-<pre class="line-numbers"><code class="language-cpp">use API.Onnx;
+    <p>No release ships CUDA. <code>ep=cuda</code> works when you provide an ONNX Runtime built with the CUDA provider, plus the NVIDIA driver, CUDA 12 and cuDNN 9 it needs: put that runtime's <code>onnxruntime</code> library beside <code>libobjk_onnx</code> (Windows: replace <code>bin\onnxruntime.dll</code> and add <code>onnxruntime_providers_cuda.dll</code> and its dependencies). On Linux <code>libobjk_onnx</code> is linked to one runtime version, so rebuild it against yours with <code>ORT_ROOT=&lt;dir&gt; ./build.sh cpu</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md" target="_blank" rel="noopener">core/lib/onnx/README.md</a>). Which providers a runtime carries:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Onnx;
 
-OnnxRuntime-&gt;GetProviders();            # e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"]
-OnnxRuntime-&gt;HasProvider("cuda");       # Bool, takes the names "ep" takes
-OnnxRuntime-&gt;GetDefaultProvider();      # the provider a session gets without "ep"
+<span class="t-cls">OnnxRuntime</span><span class="t-op">-&gt;</span>GetProviders();            <span class="t-com"># e.g. ["CUDAExecutionProvider", "CPUExecutionProvider"]</span>
+<span class="t-cls">OnnxRuntime</span><span class="t-op">-&gt;</span>HasProvider(<span class="t-str">"cuda"</span>);       <span class="t-com"># Bool, takes the names "ep" takes</span>
+<span class="t-cls">OnnxRuntime</span><span class="t-op">-&gt;</span>GetDefaultProvider();      <span class="t-com"># the provider a session gets without "ep"</span>
 </code></pre>
     <p>Other keys in the same map are provider options and go to the provider (<code>device_id</code>, and for CUDA <code>gpu_mem_limit</code>, <code>cudnn_conv_algo_search</code>, ...). An option the provider does not know is an error, not ignored.</p>
-    <h4 id="use-in-objeck">Use in Objeck</h4>
-<pre class="line-numbers"><code class="language-cpp">use API.Onnx, Collection;
+    <h3 id="use-in-objeck">Use in Objeck</h3>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Onnx, Collection;
 
-config := Map-&gt;New()&lt;String, String&gt;;
-config-&gt;Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cuda" with a CUDA runtime, "cpu" anywhere
-session := Phi3Session-&gt;New("data/models/phi3/directml/directml-int4-awq-block-128/model.onnx", config);
+config <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;;
+config<span class="t-op">-&gt;</span>Insert(<span class="t-str">"ep"</span>, <span class="t-str">"dml"</span>);   <span class="t-com"># Windows x64; "qnn" or "coreml" on those builds, "cuda" with a CUDA runtime, "cpu" anywhere</span>
+session <span class="t-op">:=</span> <span class="t-cls">Phi3Session</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"data/models/phi3/directml/directml-int4-awq-block-128/model.onnx"</span>, config);
 </code></pre>
     <p>Compile with: <code>obc -src your.obs -lib models,net,json,cipher,opencv,onnx</code></p>
-    <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx" target="_blank">ONNX examples</a>, the <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/MODELS.md" target="_blank">detailed model reference</a>, and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
-
+    <p>See the <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx" target="_blank" rel="noopener">ONNX examples</a>, the <a href="https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/MODELS.md" target="_blank" rel="noopener">detailed model reference</a>, and the <a href="https://www.objeck.org/ai_guide.html">AI Developer Guide</a>.</p>
+<!-- content:end -->
    </div>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

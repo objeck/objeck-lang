@@ -1,73 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BERT embeddings and a trainable head — Design — Objeck Language</title>
-  <meta name="description" content="A frozen, pretrained BERT encoder run through API.Onnx, producing sentence embeddings, and a classification head trained in Objeck on top of them. Built for a university cybersecurity-ML lab (&quot;ML Chapter 3 — Building a BERT-Based Malware Cl"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="A frozen, pretrained BERT encoder run through API.Onnx, producing sentence embeddings, and a classification head trained in Objeck on top of them. Built for a university cybersecurity-ML lab (&quot;ML Chapter 3 — Building a BERT-Based Malware Cl">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">BERT embeddings and a trainable head — Design</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ML_BERT_DESIGN.md" target="_blank">docs/ML_BERT_DESIGN.md on GitHub</a></div>
-    <p class="page-lead">A frozen, pretrained BERT encoder run through <code>API.Onnx</code>, producing sentence embeddings, and a classification head trained in Objeck on top of them. Built for a university cybersecurity-ML lab ("ML Chapter 3 — Building a BERT-Based Malware Classifier"), and useful to anyone who wants text embeddings from Objeck.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#why-and-what-this-is-not">Why, and what this is not</a></li>
-      <li><a href="#what-an-exported-bert-looks-like">What an exported BERT looks like</a></li>
-      <li><a href="#api">API</a></li>
-      <li><a href="#test-plan">Test plan</a></li>
-      <li><a href="#stages">Stages</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#design-notes">Design notes</a></li><li aria-current="page">BERT embeddings and a trainable head — Design</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html" aria-current="page">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">BERT embeddings and a trainable head — Design</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ML_BERT_DESIGN.md" target="_blank" rel="noopener">View docs/ML_BERT_DESIGN.md on GitHub</a></p>
+    <p class="page-lead">A frozen, pretrained BERT encoder run through <code>API.Onnx</code>, producing sentence embeddings, and a classification head trained in Objeck on top of them. Built for a university cybersecurity-ML lab ("ML Chapter 3 — Building a BERT-Based Malware Classifier"), and useful to anyone who wants text embeddings from Objeck.</p>
 
     <p><strong>Status: implemented (stages 0 to 4), first released in v2026.10.2.</strong> The tokenizers are <code>351a42f46f</code>, <code>BertEmbedder</code> is <code>d407b058ec</code>, <code>EmbeddingClassifier</code> is <code>18d09ca06e</code> and the lab example is <code>6af3af2c7c</code>, all 2026-10-26 (stage 0's design and tiny models are <code>261419b938</code>). The sections marked "As built" record what differed from the plan. Not built: fine-tuning the encoder (see <a href="doc_ai_foundation.html">AI_FOUNDATION_DESIGN.md</a>).</p>
     <p><strong>How to check.</strong> Compile and run the regression tests this document names with the libraries in their <code># EXTRA_LIBS:</code> line, for example:</p>
@@ -77,7 +58,7 @@ obr nlp_wordpiece_parity.obe
 obc -src ml_embedding_classifier.obs -lib csv,ml -dest ml_embedding_classifier.obe
 obr ml_embedding_classifier.obe</pre>
     <p><code>nlp_onnx_embedder.obs</code> and <code>onnx_tiny_bert_model.obs</code> need the ONNX native library and print <code>SKIP:</code> where it is not deployed. Known limits: the encoder is frozen, so accuracy on API traces is bounded by what BERT's English pretraining transfers; the measured throughput below used a stand-in model, not a real BERT.</p>
-    <h3 id="why-and-what-this-is-not">Why, and what this is not</h3>
+    <h2 id="why-and-what-this-is-not">Why, and what this is not</h2>
     <p>The lab fine-tunes BERT on API-call sequences and runs three experiments:</p>
     <ol>
      <li><strong>Class imbalance.</strong> Training sets with a positive ratio (POSRATIO) of 0.001, 0.01, 0.10 and 0.50, comparing precision, recall, F1 and false negatives, with the <strong>test</strong> set's class distribution held fixed.</li>
@@ -105,7 +86,7 @@ obr ml_embedding_classifier.obe</pre>
      </tbody>
     </table>
     <p>What fine-tuning would add, for the record: back-propagation through 12 transformer layers (attention, layer norm, GELU, the embedding tables), an optimizer state of 2–3× the model's size, and mixed precision to make it affordable. ONNX Runtime has a training API (<code>onnxruntime-training</code>) that could be bound later; nothing here precludes it. <em>Update 2026-11-18:</em> that route was rejected, because ONNX Runtime's training packages are deprecated (AI_FOUNDATION_DESIGN.md section 3.2); the proposed route to fine-tuning is a libtorch binding (its Phase B), which is design only.</p>
-    <h3 id="what-an-exported-bert-looks-like">What an exported BERT looks like</h3>
+    <h2 id="what-an-exported-bert-looks-like">What an exported BERT looks like</h2>
     <p>A Hugging Face export (<code>optimum-cli export onnx --model bert-base-uncased</code>, or <code>torch.onnx.export</code> with <code>dynamic_axes</code>) has:</p>
     <table class="ref-table">
      <thead>
@@ -121,19 +102,19 @@ obr ml_embedding_classifier.obe</pre>
     </table>
     <p><code>Session-&gt;GetModelInfo()</code> reports each with its element type name (<code>"INT64"</code>, <code>"FP32"</code>) and its shape, with <strong>-1 for a dynamic axis</strong> (<code>batch</code>, <code>sequence</code>). An export made without <code>dynamic_axes</code> reports fixed numbers instead — <code>[1, 128]</code> is common.</p>
     <p>Tensors cross the native boundary as <code>Float[]</code>, and the native side converts each input to the element type the <strong>model</strong> declares (#1047): the caller builds <code>Tensor-&gt;New("input_ids", shape, ids)</code> with <code>Int[]</code> ids and never names INT64. <code>Tensor-&gt;AsFloats</code> refuses a value past 2^53, far above any vocabulary id.</p>
-    <h3 id="api">API</h3>
+    <h2 id="api">API</h2>
     <p>Three libraries, each where its dependencies already are.</p>
-    <h4 id="systemnlp-nlpobl-tokenizers--no-model-no-native-code"><code>System.NLP</code> (<code>nlp.obl</code>): tokenizers — no model, no native code</h4>
-<pre class="line-numbers"><code class="language-cpp">tokenizer := WordPieceTokenizer-&gt;New("vocab.txt");            # lowercase + strip accents (uncased BERT)
-cased := WordPieceTokenizer-&gt;New("vocab.txt", false, false);  # cased BERT
+    <h3 id="systemnlp-nlpobl-tokenizers--no-model-no-native-code"><code>System.NLP</code> (<code>nlp.obl</code>): tokenizers — no model, no native code</h3>
+<pre class="line-numbers"><code class="language-objeck">tokenizer <span class="t-op">:=</span> <span class="t-cls">WordPieceTokenizer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"vocab.txt"</span>);            <span class="t-com"># lowercase + strip accents (uncased BERT)</span>
+cased <span class="t-op">:=</span> <span class="t-cls">WordPieceTokenizer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"vocab.txt"</span>, <span class="t-const">false</span>, <span class="t-const">false</span>);  <span class="t-com"># cased BERT</span>
 
-pieces := tokenizer-&gt;Tokenize("unaffable");                   # ["un", "##aff", "##able"]
-enc := tokenizer-&gt;Encode("He's unaffable.", 16);              # TokenEncoding
-enc-&gt;GetIds();             # [CLS] he ' s un ##aff ##able . [SEP] [PAD]...  (16 ids)
-enc-&gt;GetAttentionMask();   # 1 x 9, then 0 x 7
-enc-&gt;GetTokenTypeIds();    # all 0
-pair := tokenizer-&gt;EncodePair("question", "context", 32);   # types 0 ... 0 1 ... 1
-text := tokenizer-&gt;Decode(enc-&gt;GetIds());                     # "he ' s unaffable ."
+pieces <span class="t-op">:=</span> tokenizer<span class="t-op">-&gt;</span>Tokenize(<span class="t-str">"unaffable"</span>);                   <span class="t-com"># ["un", "##aff", "##able"]</span>
+enc <span class="t-op">:=</span> tokenizer<span class="t-op">-&gt;</span>Encode(<span class="t-str">"He's unaffable."</span>, <span class="t-num">16</span>);              <span class="t-com"># TokenEncoding</span>
+enc<span class="t-op">-&gt;</span>GetIds();             <span class="t-com"># [CLS] he ' s un ##aff ##able . [SEP] [PAD]...  (16 ids)</span>
+enc<span class="t-op">-&gt;</span>GetAttentionMask();   <span class="t-com"># 1 x 9, then 0 x 7</span>
+enc<span class="t-op">-&gt;</span>GetTokenTypeIds();    <span class="t-com"># all 0</span>
+pair <span class="t-op">:=</span> tokenizer<span class="t-op">-&gt;</span>EncodePair(<span class="t-str">"question"</span>, <span class="t-str">"context"</span>, <span class="t-num">32</span>);   <span class="t-com"># types 0 ... 0 1 ... 1</span>
+text <span class="t-op">:=</span> tokenizer<span class="t-op">-&gt;</span>Decode(enc<span class="t-op">-&gt;</span>GetIds());                     <span class="t-com"># "he ' s unaffable ."</span>
 </code></pre>
     <ul>
      <li><strong>BasicTokenizer</strong>, as BERT's: drop control characters and U+FFFD, map whitespace to a space, put spaces around CJK ideographs, split on whitespace, then per word lowercase (option), strip accents (option: NFD, then drop combining marks), and split off every punctuation character (ASCII 33–47, 58–64, 91–96, 123–126, and Unicode punctuation). The special tokens (<code>[CLS]</code>, <code>[SEP]</code>, <code>[PAD]</code>, <code>[MASK]</code>, <code>[UNK]</code>) are never split when they appear in the text.</li>
@@ -142,11 +123,11 @@ text := tokenizer-&gt;Decode(enc-&gt;GetIds());                     # "he ' s un
      <li>Special-token ids are read from the vocabulary by name, never assumed: <code>[PAD]</code> is 0 and <code>[CLS]</code> 101 in Google's vocabularies, but not in every vocabulary.</li>
      <li><strong>Unicode without a Unicode database.</strong> Objeck's <code>ToLower</code> is ASCII-only and there is no NFD table in the runtime, so the tokenizer carries its own tables, generated from Python's <code>unicodedata</code> (see "As built" below); Hangul syllables decompose algorithmically into jamo, as NFD does.</li>
     </ul>
-<pre class="line-numbers"><code class="language-cpp">apis := ApiSequenceTokenizer-&gt;New();
-apis-&gt;Fit(training_sequences);                  # vocabulary from training data
-enc := apis-&gt;Encode("CreateFileW,ReadFile,CloseHandle", 64);
-words := apis-&gt;Split("CreateFileW ReadFile");   # ["CreateFileW", "ReadFile"]
-text := apis-&gt;ToText("CreateFileW,ReadFile", 62); # "CreateFileW ReadFile" -- for WordPiece
+<pre class="line-numbers"><code class="language-objeck">apis <span class="t-op">:=</span> <span class="t-cls">ApiSequenceTokenizer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+apis<span class="t-op">-&gt;</span>Fit(training_sequences);                  <span class="t-com"># vocabulary from training data</span>
+enc <span class="t-op">:=</span> apis<span class="t-op">-&gt;</span>Encode(<span class="t-str">"CreateFileW,ReadFile,CloseHandle"</span>, <span class="t-num">64</span>);
+words <span class="t-op">:=</span> apis<span class="t-op">-&gt;</span>Split(<span class="t-str">"CreateFileW ReadFile"</span>);   <span class="t-com"># ["CreateFileW", "ReadFile"]</span>
+text <span class="t-op">:=</span> apis<span class="t-op">-&gt;</span>ToText(<span class="t-str">"CreateFileW,ReadFile"</span>, <span class="t-num">62</span>); <span class="t-com"># "CreateFileW ReadFile" -- for WordPiece</span>
 </code></pre>
     <ul>
      <li>For the malware use case: a sequence is API names separated by commas, whitespace or semicolons. <code>Fit</code> builds a vocabulary <code>[PAD]</code>=0, <code>[UNK]</code>=1, <code>[CLS]</code>=2, <code>[SEP]</code>=3, then names by descending training frequency (ties by name, so it is deterministic), optionally with a minimum count. Names are case-sensitive unless asked otherwise (Windows export names are case-sensitive to <code>GetProcAddress</code>).</li>
@@ -163,16 +144,16 @@ text := apis-&gt;ToText("CreateFileW,ReadFile", 62); # "CreateFileW ReadFile" --
      <li><code>Encode</code> stops splitting once it has more pieces than <code>max_len</code> can hold: truncation keeps the beginning, and an API trace of hundreds of calls was otherwise split in full to keep its first 126 pieces. The ids are the same; the time halves for long traces.</li>
      <li>Throughput (Windows build box, <code>obr</code>, JIT on): the full parity corpus — 39,154 tokenizations of lines averaging ~60 characters, plus reading and comparing — in 5–7 s; <code>Encode</code> of a 200-call API trace in 1.4 ms at <code>max_len</code> 128 and 2.2 ms at 256.</li>
     </ul>
-    <h4 id="systemnlponnx-new-nlp_onnxobl-the-embedder"><code>System.NLP.Onnx</code> (new <code>nlp_onnx.obl</code>): the embedder</h4>
-<pre class="line-numbers"><code class="language-cpp">embedder := BertEmbedder-&gt;New("model.onnx", "vocab.txt", 128);
-if(&lt;&gt;embedder-&gt;IsOpen()) {
-  EndPoint-&gt;GetLastError()-&gt;PrintLine();
-  return;
+    <h3 id="systemnlponnx-new-nlp_onnxobl-the-embedder"><code>System.NLP.Onnx</code> (new <code>nlp_onnx.obl</code>): the embedder</h3>
+<pre class="line-numbers"><code class="language-objeck">embedder <span class="t-op">:=</span> <span class="t-cls">BertEmbedder</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"model.onnx"</span>, <span class="t-str">"vocab.txt"</span>, <span class="t-num">128</span>);
+<span class="t-kw">if</span>(<span class="t-op">&lt;&gt;</span>embedder<span class="t-op">-&gt;</span>IsOpen()) {
+  <span class="t-cls">EndPoint</span><span class="t-op">-&gt;</span>GetLastError()<span class="t-op">-&gt;</span>PrintLine();
+  <span class="t-kw">return</span>;
 };
-embedder-&gt;SetPooling(BertEmbedder-&gt;Pooling-&gt;MEAN);   # or CLS, or POOLER when the model has one
-embedder-&gt;SetBatchSize(16);
-X := embedder-&gt;Embed(texts);               # Float[texts-&gt;Size(), hidden]
-embedder-&gt;Close();
+embedder<span class="t-op">-&gt;</span>SetPooling(<span class="t-cls">BertEmbedder</span><span class="t-op">-&gt;</span><span class="t-cls">Pooling</span><span class="t-op">-&gt;</span>MEAN);   <span class="t-com"># or CLS, or POOLER when the model has one</span>
+embedder<span class="t-op">-&gt;</span>SetBatchSize(<span class="t-num">16</span>);
+X <span class="t-op">:=</span> embedder<span class="t-op">-&gt;</span>Embed(texts);               <span class="t-com"># Float[texts-&gt;Size(), hidden]</span>
+embedder<span class="t-op">-&gt;</span>Close();
 </code></pre>
     <ul>
      <li><code>New(model, vocab, max_len)</code> and <code>New(model, tokenizer, max_len, config)</code>; the second takes a <code>WordPieceTokenizer</code> built with other options and the session configuration (<code>ep</code>).</li>
@@ -195,14 +176,14 @@ embedder-&gt;Close();
     </ul>
     <p>| max_len | batch | per text | peak working set | |---|---|---|---| | 128 | 8 | 1.6 ms | 182 MB | | 256 | 1 | 4.9 ms | 120 MB | | 256 | 8 | 5.5 ms | 235 MB | | 256 | 32 | 2.1 ms | 458 MB |</p>
     <p>Encoding the 512 traces with <code>EncodeBatch</code> took a further 0.7 s at 128 and 1.1 s at 256. A real BERT's encoder adds its own compute on top, which no model here measures. Peak memory grows with batch × max_len × hidden, as the table shows; the batch-8 row at 256 was slower than both batch 1 and batch 32 in repeated runs, so 32 is the better setting at that length when memory allows.</p>
-    <h4 id="systemml-mlobl-embeddingclassifier"><code>System.ML</code> (<code>ml.obl</code>): <code>EmbeddingClassifier</code></h4>
-<pre class="line-numbers"><code class="language-cpp">head := EmbeddingClassifier-&gt;New([64], 0.001, 20, 32, 42);   # hidden sizes, rate, epochs, batch, seed
-head-&gt;SetOptimizer(EmbeddingClassifier-&gt;Optimizer-&gt;ADAM);     # or SGD
-head-&gt;SetClassWeights(1.0, 99.0);                             # negative, positive
-head-&gt;Fit(X_train, y_train);                                  # Float[,], Bool[]
-loss := head-&gt;GetLossHistory();                               # Float[epochs]: mean training loss per epoch
-p := head-&gt;PredictProba(X_test);                              # Float[]
-yhat := head-&gt;PredictClass(X_test, 0.5);                      # Bool[]
+    <h3 id="systemml-mlobl-embeddingclassifier"><code>System.ML</code> (<code>ml.obl</code>): <code>EmbeddingClassifier</code></h3>
+<pre class="line-numbers"><code class="language-objeck">head <span class="t-op">:=</span> <span class="t-cls">EmbeddingClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([<span class="t-num">64</span>], <span class="t-num">0.001</span>, <span class="t-num">20</span>, <span class="t-num">32</span>, <span class="t-num">42</span>);   <span class="t-com"># hidden sizes, rate, epochs, batch, seed</span>
+head<span class="t-op">-&gt;</span>SetOptimizer(<span class="t-cls">EmbeddingClassifier</span><span class="t-op">-&gt;</span><span class="t-cls">Optimizer</span><span class="t-op">-&gt;</span>ADAM);     <span class="t-com"># or SGD</span>
+head<span class="t-op">-&gt;</span>SetClassWeights(<span class="t-num">1.0</span>, <span class="t-num">99.0</span>);                             <span class="t-com"># negative, positive</span>
+head<span class="t-op">-&gt;</span>Fit(X_train, y_train);                                  <span class="t-com"># Float[,], Bool[]</span>
+loss <span class="t-op">:=</span> head<span class="t-op">-&gt;</span>GetLossHistory();                               <span class="t-com"># Float[epochs]: mean training loss per epoch</span>
+p <span class="t-op">:=</span> head<span class="t-op">-&gt;</span>PredictProba(X_test);                              <span class="t-com"># Float[]</span>
+yhat <span class="t-op">:=</span> head<span class="t-op">-&gt;</span>PredictClass(X_test, <span class="t-num">0.5</span>);                      <span class="t-com"># Bool[]</span>
 </code></pre>
     <ul>
      <li>A dense network: zero or more ReLU hidden layers (<code>[]</code> is logistic regression), one sigmoid output, <strong>binary cross-entropy</strong> loss, optionally class-weighted for imbalance (or <code>SetBalancedWeights()</code>: n / (2 n_class) per class).</li>
@@ -220,7 +201,7 @@ yhat := head-&gt;PredictClass(X_test, 0.5);                      # Bool[]
      <li><strong>Found on the way: the AMD64 JIT refused the update method.</strong> With the SGD loops, the Adam loops and the bias loops in one method, <code>OBJECK_JIT_REPORT=1</code> showed "compile failed at instruction 231", and every update ran in the interpreter: 30 s to train a 768→64→1 head for 20 epochs on 2,000 rows. With one loop per method the same training takes 1.8 s, with identical results. The refusal is a JIT defect (a legal method should compile or spill, not fall back silently); a standalone reproduction is reported with this stage rather than fixed in it.</li>
      <li><strong>Measured</strong> (Windows build box, <code>obr</code>, JIT on), 20 epochs, batch 32, Adam, balanced weights: 2,000 × 768 logistic 0.36 s; 2,000 × 768 → 64 → 1 1.8 s; 500 × 768 → 64 → 1 0.47 s (0.31 s with SGD).</li>
     </ul>
-    <h4 id="the-lab-example-programsexamplesmlbert_malware_labobs">The lab example: <code>programs/examples/ml/bert_malware_lab.obs</code></h4>
+    <h3 id="the-lab-example-programsexamplesmlbert_malware_labobs">The lab example: <code>programs/examples/ml/bert_malware_lab.obs</code></h3>
 <pre class="plain">obr bert_malware_lab.obe --model model.onnx --vocab vocab.txt --data traces.csv
 obr bert_malware_lab.obe --synthetic            # no external data</pre>
     <ul>
@@ -239,7 +220,7 @@ obr bert_malware_lab.obe --synthetic            # no external data</pre>
      <li><strong>Measured</strong> with <code>--synthetic</code> and the tiny test model, 2,000 traces of 40–300 calls (Windows, <code>obr</code>): 22 s for all three experiments, most of it encoding (2,000 traces at four lengths). The tables show the effects in kind — recall collapsing at POSRATIO 0.001 and 0.01 without class weights; F1 rising with MAX_SEQ_LENGTH (0.27 at 32 to 0.77 at 256), since the synthetic malicious calls sometimes start late; the lab's three rates barely moving the loss in 20 epochs (0.85 → 0.79 at 1e-5) where 1e-3 and 1e-2 converge — but the tiny model is an embedding lookup, so the numbers say nothing about BERT.</li>
      <li>The six VM modes (<code>-opt s3</code>/<code>s0</code> × JIT, <code>--jit=off</code>, <code>OBJECK_JIT_THRESHOLD=1</code>) print identical tables (<code>--samples 400 --epochs 6</code>).</li>
     </ul>
-    <h3 id="test-plan">Test plan</h3>
+    <h2 id="test-plan">Test plan</h2>
     <p>Correctness is the point. Every test is in <code>programs/regression</code>, exits non-zero on failure, and runs at <code>-opt s3</code> and <code>-opt s0</code>, under <code>obr</code>, <code>obr --jit=off</code> and with <code>OBJECK_JIT_THRESHOLD=1</code>, with identical output.</p>
     <p><strong>The test model.</strong> A real BERT is hundreds of megabytes and the regression tree ships no model. What the tests need is BERT's <em>signature</em>, with numbers simple enough to recompute. <code>programs/regression/data/bert/gen_tiny_bert.py</code> (needs the <code>onnx</code> package; checks its output with <code>onnxruntime</code> when present) writes three models with the export signature above and hidden size 8:</p>
 <pre class="plain">last_hidden_state[b,s,j] = word[id,j] + type[tt,j] + pos[s,j] + 0.25 * attention_mask[b,s]
@@ -264,7 +245,7 @@ pooler_output[b,j]       = tanh(sum_k last_hidden_state[b,0,k] * Wp[k,j] + bp[j]
      <li><em>Head.</em> Converges to 100% training accuracy on linearly separable embeddings; on a convex problem (no hidden layer, small rate) the per-epoch loss is non-increasing to within 1e-9 after the first epoch; class weights move the decision toward the rare class; Adam and SGD both reduce the loss; same seed → identical weights and probabilities; <code>PredictClass</code> thresholds; refusals for mismatched shapes and empty data.</li>
      <li><em>Example.</em> Runs in synthetic mode in under a minute and prints the three tables.</li>
     </ul>
-    <h3 id="stages">Stages</h3>
+    <h2 id="stages">Stages</h2>
     <p>Each is its own pull request against master, merged before the next.</p>
     <ol start="0">
      <li>This document; the tiny-model generator, the three models and the vocabulary; <code>onnx_tiny_bert_model.obs</code>.</li>
@@ -273,14 +254,34 @@ pooler_output[b,j]       = tanh(sum_k last_hidden_state[b,0,k] * Wp[k,j] + bp[j]
      <li><code>EmbeddingClassifier</code> in System.ML; tests.</li>
      <li>The lab example and its documentation.</li>
     </ol>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#why-and-what-this-is-not">Why, and what this is not</a></li><li><a href="#what-an-exported-bert-looks-like">What an exported BERT looks like</a></li><li><a href="#api">API</a></li><li><a href="#test-plan">Test plan</a></li><li><a href="#stages">Stages</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

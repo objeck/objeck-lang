@@ -1,147 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>JSON, XML and regular expressions — Objeck Language</title>
-  <meta name="description" content="Parse JSON, XML and regular expressions, and what they do with missing or malformed input."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Parse JSON, XML and regular expressions, and what they do with missing or malformed input.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">JSON, XML and regular expressions</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html" aria-current="page">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">JSON, XML and regular expressions</h1>
     <p class="page-lead">Three libraries for reading structured text: <code>Data.JSON</code> (the <code>json</code> library), <code>Data.XML</code> (<code>xml</code>) and <code>Query.RegEx</code> (<code>regex</code>). This page shows each in a few lines, then what they do when the input is wrong, which changed in v2026.10.3.</p>
-    <div id="toc_container">
-     <h4>Contents</h4>
-     <ul>
-      <li><a href="#the-basics">The basics</a></li>
-      <li><a href="#when-the-input-is-wrong">When the input is wrong</a></li>
-      <li><a href="#regex-behaviour-worth-knowing">RegEx behaviour worth knowing</a></li>
-      <li><a href="#how-to-check">How to check</a></li>
-      <li><a href="#where-next">Where next</a></li>
-     </ul>
-    </div>
 
 <pre class="cmd">obc -src program.obs -lib json,xml,regex</pre>
-    <p>The shipped examples go further: <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_14.obs" target="_blank"><code>json_14.obs</code></a> (nested documents, <code>FindElements</code> paths, a streaming parser for large files), <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_15.obs" target="_blank"><code>xml_15.obs</code></a>, <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/csv_16.obs" target="_blank"><code>csv_16.obs</code></a> and <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/regex_17.obs" target="_blank"><code>regex_17.obs</code></a>.</p>
-    <h3 id="the-basics">The basics</h3>
-<pre class="line-numbers"><code class="language-cpp">use Data.JSON;
-use Data.XML;
-use Query.RegEx;
+    <p>The shipped examples go further: <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_14.obs" target="_blank" rel="noopener"><code>json_14.obs</code></a> (nested documents, <code>FindElements</code> paths, a streaming parser for large files), <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_15.obs" target="_blank" rel="noopener"><code>xml_15.obs</code></a>, <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/csv_16.obs" target="_blank" rel="noopener"><code>csv_16.obs</code></a> and <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/regex_17.obs" target="_blank" rel="noopener"><code>regex_17.obs</code></a>.</p>
+    <h2 id="the-basics">The basics</h2>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Data</span>.JSON;
+<span class="t-kw">use</span> <span class="t-cls">Data</span>.XML;
+<span class="t-kw">use</span> <span class="t-cls">Query</span>.RegEx;
 
-class DataBasics {
-  function : Main(args : String[]) ~ Nil {
+<span class="t-kw">class</span> <span class="t-cls">DataBasics</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
     Json();
     Xml();
     Regex();
   }
 
-  function : Json() ~ Nil {
-    "-- JSON --"-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Json</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"-- JSON --"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # TextToElement parses text and returns the root, or Nil if it is not JSON
-    root := JsonParser-&gt;TextToElement("{\"city\": \"Oslo\", \"temps\": [-3.5, 0.0, 4.25], \"snow\": true}");
-    city := root-&gt;Get("city")-&gt;GetString();
-    snow := root-&gt;Get("snow")-&gt;GetBool();
-    temps := root-&gt;Get("temps");
-    "{$city}: snow {$snow}, {$(temps-&gt;Size())} readings, first {$(temps-&gt;Get(0)-&gt;GetFloat())}"-&gt;PrintLine();
+    <span class="t-com"># TextToElement parses text and returns the root, or Nil if it is not JSON</span>
+    root <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"city\": \"Oslo\", \"temps\": [-3.5, 0.0, 4.25], \"snow\": true}"</span>);
+    city <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Get(<span class="t-str">"city"</span>)<span class="t-op">-&gt;</span>GetString();
+    snow <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Get(<span class="t-str">"snow"</span>)<span class="t-op">-&gt;</span>GetBool();
+    temps <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Get(<span class="t-str">"temps"</span>);
+    <span class="t-str">"{$city}: snow {$snow}, {$(temps-&gt;Size())} readings, first {$(temps-&gt;Get(0)-&gt;GetFloat())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # build a document and write it as text (object fields come out sorted)
-    doc := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
-    doc-&gt;Insert("name", "Ada");
-    doc-&gt;Insert("age", 36);
-    languages := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;ARRAY);
-    languages-&gt;Add("en");
-    languages-&gt;Add("fr");
-    doc-&gt;Insert("languages", languages);
-    doc-&gt;ToString()-&gt;PrintLine();
+    <span class="t-com"># build a document and write it as text (object fields come out sorted)</span>
+    doc <span class="t-op">:=</span> <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>OBJECT);
+    doc<span class="t-op">-&gt;</span>Insert(<span class="t-str">"name"</span>, <span class="t-str">"Ada"</span>);
+    doc<span class="t-op">-&gt;</span>Insert(<span class="t-str">"age"</span>, <span class="t-num">36</span>);
+    languages <span class="t-op">:=</span> <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>ARRAY);
+    languages<span class="t-op">-&gt;</span>Add(<span class="t-str">"en"</span>);
+    languages<span class="t-op">-&gt;</span>Add(<span class="t-str">"fr"</span>);
+    doc<span class="t-op">-&gt;</span>Insert(<span class="t-str">"languages"</span>, languages);
+    doc<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
   }
 
-  function : Xml() ~ Nil {
-    "-- XML --"-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Xml</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"-- XML --"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    text := "&lt;library&gt;&lt;book year=\"1984\"&gt;&lt;title&gt;Neuromancer&lt;/title&gt;&lt;/book&gt;";
-    text += "&lt;book year=\"1992\"&gt;&lt;title&gt;Snow Crash&lt;/title&gt;&lt;/book&gt;&lt;/library&gt;";
-    parser := XmlParser-&gt;New(text);
-    if(&lt;&gt;parser-&gt;Parse()) {
-      "parse error: {$(parser-&gt;GetError())}"-&gt;PrintLine();
-      return;
+    text <span class="t-op">:=</span> <span class="t-str">"&lt;library&gt;&lt;book year=\"1984\"&gt;&lt;title&gt;Neuromancer&lt;/title&gt;&lt;/book&gt;"</span>;
+    text += <span class="t-str">"&lt;book year=\"1992\"&gt;&lt;title&gt;Snow Crash&lt;/title&gt;&lt;/book&gt;&lt;/library&gt;"</span>;
+    parser <span class="t-op">:=</span> <span class="t-cls">XmlParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(text);
+    <span class="t-kw">if</span>(<span class="t-op">&lt;&gt;</span>parser<span class="t-op">-&gt;</span>Parse()) {
+      <span class="t-str">"parse error: {$(parser-&gt;GetError())}"</span><span class="t-op">-&gt;</span>PrintLine();
+      <span class="t-kw">return</span>;
     };
 
-    # a path names each level from the root; every match comes back
-    titles := parser-&gt;FindElements("/library/book/title");
-    each(i : titles) {
-      "  title: {$(titles-&gt;Get(i)-&gt;GetContent())}"-&gt;PrintLine();
+    <span class="t-com"># a path names each level from the root; every match comes back</span>
+    titles <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>FindElements(<span class="t-str">"/library/book/title"</span>);
+    <span class="t-kw">each</span>(i : titles) {
+      <span class="t-str">"  title: {$(titles-&gt;Get(i)-&gt;GetContent())}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # an attribute is read from its element
-    books := parser-&gt;GetRoot()-&gt;GetChildren("book");
-    year := books-&gt;Get(1)-&gt;GetAttribute("year")-&gt;GetValue();
-    "second book is from {$year}"-&gt;PrintLine();
+    <span class="t-com"># an attribute is read from its element</span>
+    books <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>GetRoot()<span class="t-op">-&gt;</span>GetChildren(<span class="t-str">"book"</span>);
+    year <span class="t-op">:=</span> books<span class="t-op">-&gt;</span>Get(<span class="t-num">1</span>)<span class="t-op">-&gt;</span>GetAttribute(<span class="t-str">"year"</span>)<span class="t-op">-&gt;</span>GetValue();
+    <span class="t-str">"second book is from {$year}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 
-  function : Regex() ~ Nil {
-    "-- RegEx --"-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Regex</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"-- RegEx --"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # a backslash in a pattern is written twice inside an Objeck string
-    pattern := RegEx-&gt;New("(\\d{4})-(\\d{2})-(\\d{2})");
-    text := "released 2026-10-31, patched 2026-11-02";
-    found := pattern-&gt;Find(text);
-    each(i : found) {
-      match := found-&gt;Get(i);
-      "  {$(match-&gt;GetValue())} -&gt; month {$(match-&gt;GetGroup(2))}"-&gt;PrintLine();
+    <span class="t-com"># a backslash in a pattern is written twice inside an Objeck string</span>
+    pattern <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"(\\d{4})-(\\d{2})-(\\d{2})"</span>);
+    text <span class="t-op">:=</span> <span class="t-str">"released 2026-10-31, patched 2026-11-02"</span>;
+    found <span class="t-op">:=</span> pattern<span class="t-op">-&gt;</span>Find(text);
+    <span class="t-kw">each</span>(i : found) {
+      match <span class="t-op">:=</span> found<span class="t-op">-&gt;</span>Get(i);
+      <span class="t-str">"  {$(match-&gt;GetValue())} -&gt; month {$(match-&gt;GetGroup(2))}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # replace every match
-    digits := RegEx-&gt;New("\\d");
-    hidden := digits-&gt;ReplaceAll("call 555-0199", "#");
-    "  {$hidden}"-&gt;PrintLine();
+    <span class="t-com"># replace every match</span>
+    digits <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"\\d"</span>);
+    hidden <span class="t-op">:=</span> digits<span class="t-op">-&gt;</span>ReplaceAll(<span class="t-str">"call 555-0199"</span>, <span class="t-str">"#"</span>);
+    <span class="t-str">"  {$hidden}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -165,95 +141,95 @@ second book is from 1992
      <li>Inside an Objeck string a backslash is written twice: the regular expression <code>\d</code> is typed <code>"\\d"</code>.</li>
      <li>A quote character inside <code>{$...}</code> is a compile error (<code>A quote inside '{$...}' ends the string early</code>); compute the value into a local and interpolate the local.</li>
     </ul>
-    <h3 id="when-the-input-is-wrong">When the input is wrong</h3>
+    <h2 id="when-the-input-is-wrong">When the input is wrong</h2>
     <p>Real input is missing, empty, cut off or mistyped. In v2026.10.3 none of the cases below ends the program; each gives an answer you can test.</p>
-<pre class="line-numbers"><code class="language-cpp">use Data.JSON;
-use Data.XML;
-use Query.RegEx;
-use System.IO.Filesystem;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Data</span>.JSON;
+<span class="t-kw">use</span> <span class="t-cls">Data</span>.XML;
+<span class="t-kw">use</span> <span class="t-cls">Query</span>.RegEx;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-class DataBadInput {
-  function : Main(args : String[]) ~ Nil {
+<span class="t-kw">class</span> <span class="t-cls">DataBadInput</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
     Json();
     Xml();
     Regex();
   }
 
-  function : Json() ~ Nil {
-    "-- JSON --"-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Json</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"-- JSON --"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # a file that does not exist: ReadFile gives Nil
-    text := FileReader-&gt;ReadFile("no_such_file.json");
-    "reading a missing file gives Nil: {$(text = Nil)}"-&gt;PrintLine();
+    <span class="t-com"># a file that does not exist: ReadFile gives Nil</span>
+    text <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadFile(<span class="t-str">"no_such_file.json"</span>);
+    <span class="t-str">"reading a missing file gives Nil: {$(text = Nil)}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    parser := JsonParser-&gt;New(text);
-    "parsing Nil succeeds: {$(parser-&gt;Parse())}"-&gt;PrintLine();
+    parser <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(text);
+    <span class="t-str">"parsing Nil succeeds: {$(parser-&gt;Parse())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # text that is not JSON
-    root := JsonParser-&gt;TextToElement("{\"name\": \"Ada\",");
-    "a document cut off halfway is Nil: {$(root = Nil)}"-&gt;PrintLine();
+    <span class="t-com"># text that is not JSON</span>
+    root <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"name\": \"Ada\","</span>);
+    <span class="t-str">"a document cut off halfway is Nil: {$(root = Nil)}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # the usual pattern: test, then use
-    root := JsonParser-&gt;TextToElement("{\"name\": \"Ada\", \"age\": 36}");
-    if(root &lt;&gt; Nil &amp; root-&gt;Has("name")) {
-      name := root-&gt;Get("name")-&gt;GetString();
-      "name: {$name}"-&gt;PrintLine();
+    <span class="t-com"># the usual pattern: test, then use</span>
+    root <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"name\": \"Ada\", \"age\": 36}"</span>);
+    <span class="t-kw">if</span>(root <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; root<span class="t-op">-&gt;</span>Has(<span class="t-str">"name"</span>)) {
+      name <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Get(<span class="t-str">"name"</span>)<span class="t-op">-&gt;</span>GetString();
+      <span class="t-str">"name: {$name}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
-    has_email := root-&gt;Has("email");
-    "has an 'email' field: {$has_email}"-&gt;PrintLine();
+    has_email <span class="t-op">:=</span> root<span class="t-op">-&gt;</span>Has(<span class="t-str">"email"</span>);
+    <span class="t-str">"has an 'email' field: {$has_email}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 
-  function : Xml() ~ Nil {
-    "-- XML --"-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Xml</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"-- XML --"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # tags that do not match: Parse() is false and GetError says why
-    parser := XmlParser-&gt;New("&lt;orders&gt;&lt;order id=\"1\"&gt;&lt;/orders&gt;");
-    "parsing mismatched tags succeeds: {$(parser-&gt;Parse())}"-&gt;PrintLine();
-    "error: {$(parser-&gt;GetError())}"-&gt;PrintLine();
+    <span class="t-com"># tags that do not match: Parse() is false and GetError says why</span>
+    parser <span class="t-op">:=</span> <span class="t-cls">XmlParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"&lt;orders&gt;&lt;order id=\"1\"&gt;&lt;/orders&gt;"</span>);
+    <span class="t-str">"parsing mismatched tags succeeds: {$(parser-&gt;Parse())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-str">"error: {$(parser-&gt;GetError())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # text with no XML in it at all: FindElements after the failed Parse used
-    # to dereference the missing root; it is an empty vector now
-    parser := XmlParser-&gt;New("this is not XML");
-    parsed := parser-&gt;Parse();
-    found := parser-&gt;FindElements("/orders/order");
-    "parsing plain text succeeds: {$parsed}, elements found: {$(found-&gt;Size())}"-&gt;PrintLine();
+    <span class="t-com"># text with no XML in it at all: FindElements after the failed Parse used</span>
+    <span class="t-com"># to dereference the missing root; it is an empty vector now</span>
+    parser <span class="t-op">:=</span> <span class="t-cls">XmlParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"this is not XML"</span>);
+    parsed <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>Parse();
+    found <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>FindElements(<span class="t-str">"/orders/order"</span>);
+    <span class="t-str">"parsing plain text succeeds: {$parsed}, elements found: {$(found-&gt;Size())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    parser := XmlParser-&gt;New("&lt;orders&gt;&lt;order id=\"1\"/&gt;&lt;order id=\"2\"/&gt;&lt;/orders&gt;");
-    if(parser-&gt;Parse()) {
-      found := parser-&gt;FindElements("/orders/order");
-      "elements found in a good document: {$(found-&gt;Size())}"-&gt;PrintLine();
+    parser <span class="t-op">:=</span> <span class="t-cls">XmlParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"&lt;orders&gt;&lt;order id=\"1\"/&gt;&lt;order id=\"2\"/&gt;&lt;/orders&gt;"</span>);
+    <span class="t-kw">if</span>(parser<span class="t-op">-&gt;</span>Parse()) {
+      found <span class="t-op">:=</span> parser<span class="t-op">-&gt;</span>FindElements(<span class="t-str">"/orders/order"</span>);
+      <span class="t-str">"elements found in a good document: {$(found-&gt;Size())}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
 
-    nothing : String := Nil;
-    parser := XmlParser-&gt;New(nothing);
-    "parsing Nil succeeds: {$(parser-&gt;Parse())}"-&gt;PrintLine();
+    nothing : <span class="t-type">String</span> <span class="t-op">:=</span> <span class="t-const">Nil</span>;
+    parser <span class="t-op">:=</span> <span class="t-cls">XmlParser</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(nothing);
+    <span class="t-str">"parsing Nil succeeds: {$(parser-&gt;Parse())}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 
-  function : Regex() ~ Nil {
-    "-- RegEx --"-&gt;PrintLine();
+  <span class="t-kw">function</span> : <span class="t-fn">Regex</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"-- RegEx --"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # a repeat count is at most 1000; this one used to fill the heap
-    huge := RegEx-&gt;New("a{99999999999}");
-    "a{99999999999} is OK: {$(huge-&gt;IsOk())}"-&gt;PrintLine();
-    matched := huge-&gt;MatchExact("aaa");
-    "  and matches 'aaa': {$matched}"-&gt;PrintLine();
+    <span class="t-com"># a repeat count is at most 1000; this one used to fill the heap</span>
+    huge <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"a{99999999999}"</span>);
+    <span class="t-str">"a{99999999999} is OK: {$(huge-&gt;IsOk())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    matched <span class="t-op">:=</span> huge<span class="t-op">-&gt;</span>MatchExact(<span class="t-str">"aaa"</span>);
+    <span class="t-str">"  and matches 'aaa': {$matched}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    backwards := RegEx-&gt;New("a{2,1}");
-    "a{2,1} is OK: {$(backwards-&gt;IsOk())}"-&gt;PrintLine();
+    backwards <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"a{2,1}"</span>);
+    <span class="t-str">"a{2,1} is OK: {$(backwards-&gt;IsOk())}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    fine := RegEx-&gt;New("a{2,4}");
-    "a{2,4} is OK: {$(fine-&gt;IsOk())}"-&gt;PrintLine();
-    three := fine-&gt;MatchExact("aaa");
-    five := fine-&gt;MatchExact("aaaaa");
-    "  matches 'aaa': {$three}, matches 'aaaaa': {$five}"-&gt;PrintLine();
+    fine <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"a{2,4}"</span>);
+    <span class="t-str">"a{2,4} is OK: {$(fine-&gt;IsOk())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    three <span class="t-op">:=</span> fine<span class="t-op">-&gt;</span>MatchExact(<span class="t-str">"aaa"</span>);
+    five <span class="t-op">:=</span> fine<span class="t-op">-&gt;</span>MatchExact(<span class="t-str">"aaaaa"</span>);
+    <span class="t-str">"  matches 'aaa': {$three}, matches 'aaaaa': {$five}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # Nil as the pattern, and Nil as the text
-    nothing : String := Nil;
-    none := RegEx-&gt;New(nothing);
-    "a Nil pattern is OK: {$(none-&gt;IsOk())}"-&gt;PrintLine();
-    word := RegEx-&gt;New("\\w+");
-    "matching Nil text: {$(word-&gt;MatchExact(nothing))}"-&gt;PrintLine();
-    "finding in Nil text gives Nil: {$(word-&gt;FindFirst(nothing) = Nil)}"-&gt;PrintLine();
+    <span class="t-com"># Nil as the pattern, and Nil as the text</span>
+    nothing : <span class="t-type">String</span> <span class="t-op">:=</span> <span class="t-const">Nil</span>;
+    none <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(nothing);
+    <span class="t-str">"a Nil pattern is OK: {$(none-&gt;IsOk())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    word <span class="t-op">:=</span> <span class="t-cls">RegEx</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"\\w+"</span>);
+    <span class="t-str">"matching Nil text: {$(word-&gt;MatchExact(nothing))}"</span><span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-str">"finding in Nil text gives Nil: {$(word-&gt;FindFirst(nothing) = Nil)}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -289,7 +265,7 @@ finding in Nil text gives Nil: true</pre>
      <li><strong>Nil text.</strong> <code>MatchExact</code>, <code>Match</code>, <code>Find</code>, <code>FindFirst</code>, <code>ReplaceFirst</code> and <code>ReplaceAll</code> on a <code>Nil</code> string match nothing (<code>FindFirst</code> and the replace methods return <code>Nil</code>). A <code>Nil</code> replacement is the empty string.</li>
     </ul>
     <p>Two more 10.3 fixes in the same family, for programs that use them: the JSON-RPC client sends a fresh request id each call and rejects a reply that echoes another id, and a JSON-RPC request without <code>params</code> (allowed by the specification) reaches the handler as an empty object instead of ending the server.</p>
-    <h3 id="regex-behaviour-worth-knowing">RegEx behaviour worth knowing</h3>
+    <h2 id="regex-behaviour-worth-knowing">RegEx behaviour worth knowing</h2>
     <ul>
      <li><strong>How it matches.</strong> A match is the leftmost-longest one. The end of a match is found with a lazily built DFA (one table lookup per character), and capture groups are then recovered from the matched text. Patterns that use <code>\b</code> or <code>\B</code>, or that need more than 1,024 DFA states, run on an NFA instead; the answers are the same, only slower. See <code>docs/performance.md</code>, "Library workloads".</li>
      <li><strong>Repeats.</strong> <code>{n}</code> is exactly n, <code>{n,m}</code> is a range and <code>{n,}</code> is n or more; a count is at most 1000. (Before v2026.11.3, <code>{n}</code> was read as <code>{n,}</code>, so <code>a{2}</code> matched <code>aaa</code>.)</li>
@@ -297,22 +273,42 @@ finding in Nil text gives Nil: true</pre>
      <li><strong>Anchors.</strong> <code>^a</code>, <code>^a+</code>, <code>^a$</code> and <code>^$</code> are valid. <code>ReplaceAll</code> and <code>ReplaceFirst</code> match against the original text, so a replacement never changes where a later match can start (a <code>\b</code> next to replaced text is judged on the input, not on the output).</li>
      <li><strong>Threads.</strong> One <code>RegEx</code> can be shared by several threads; matching on one instance is serialized, so threads that need to match in parallel should each build their own.</li>
     </ul>
-    <h3 id="how-to-check">How to check</h3>
+    <h2 id="how-to-check">How to check</h2>
     <p>The behaviours in the second program are covered by <code>programs/regression/library_nil_input_test.obs</code> (Nil text and partial documents in JSON, XML and RegEx), <code>regex_repeat_bounds.obs</code> (the repeat count and <code>{2,1}</code> rules), <code>regex_lazy_dfa.obs</code>, <code>regex_replace_escapes.obs</code> and <code>regex_threads.obs</code> (the notes above), <code>json_rpc_client_id.obs</code> and <code>json_rpc_nil_handling.obs</code> (the JSON-RPC changes). Compile either program on this page with the line shown under it and compare the output; the output blocks were not re-run for this review.</p>
-    <h3 id="where-next">Where next</h3>
+    <h2 id="where-next">Where next</h2>
     <ul>
      <li><a href="guide_http.html">HTTP client and web server</a>: fetch the JSON you just learned to parse.</li>
      <li><a href="guide_query.html">Query.Structured</a>: <code>from 'data.json'</code> reads a JSON file as a table, and the same works for CSV and XML.</li>
      <li>The full list of fixes is in the <a href="doc_changelog.html">CHANGELOG</a>.</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#the-basics">The basics</a></li><li><a href="#when-the-input-is-wrong">When the input is wrong</a></li><li><a href="#regex-behaviour-worth-knowing">RegEx behaviour worth knowing</a></li><li><a href="#how-to-check">How to check</a></li><li><a href="#where-next">Where next</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

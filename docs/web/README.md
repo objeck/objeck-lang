@@ -6,27 +6,30 @@ Source files for [objeck.org](https://www.objeck.org) — the static landing sit
 
 ```
 web/
-├── index.html             # Landing page
-├── getting_started.html   # Quick start guide
-├── ai_guide.html          # AI & ML developer guide
-├── guides.html            # Index of the getting-started guides
-├── guide_*.html           # The guides (query, http, data, collections, ai, editors, whats_new)
-├── readme.html            # Changelog
-└── style/
-    ├── styles.css         # Shared stylesheet
-    ├── objeck-logo.png    # Logo
-    └── favicon.ico        # Favicon
+├── index.html             # Home page (hand-written <main>; the example and release strip are filled in)
+├── start.html             # Get started        } from docs/site/*.md
+├── learn.html             # Learn              }
+├── community.html         # Community          }
+├── libraries.html         # Libraries, generated from core/compiler/build_libs.sh and lib_src
+├── docs.html, doc_*.html  # Documentation index and pages, from the Markdown in DOCS
+├── guides.html, guide_*.html  # The guides, from docs/guides
+├── getting_started.html, ai_guide.html, readme.html   # hand-written, wrapped by the generator
+├── favicon.ico, robots.txt
+└── style/                 # site.css (the style sheet), site.js (menu button), logos, favicon
 ```
 
-## The guides and the documentation pages
+## Generated pages
 
-`guides.html` and `guide_*.html` are rendered from the Markdown in [`docs/guides`](../guides/), and `docs.html` and `doc_*.html` from the Markdown files the site links to (architecture, design notes, the language reference, performance, editors and the rest; the list is `DOCS` in the script), by `python tools/docs/guides_to_html.py`. Add `--check` to see whether any page is out of date. Edit the Markdown, not these pages. A relative link between two of those files becomes a link between their pages; a link to anything else in the repository goes to GitHub.
+`python tools/docs/guides_to_html.py` writes every page except the hand-written bodies; `--check` fails if a page is out of date (CI runs it). The same script owns the chrome of every page (head, top navigation, section list, breadcrumbs, footer), so a menu change is made once in the script. For the four hand-written pages it keeps the `<main>` content and rewrites everything around it, fills `<!-- version:start -->` and `<!-- release:start -->` regions from `core/shared/version.h` and `CHANGELOG.md`, and highlights their code blocks. Edit the Markdown or the hand-written body, not the chrome.
 
-All pages share `style/styles.css` (the dark, gradient theme, with CSS variables at the top) and copy their head, navigation and footer from `ai_guide.html`, so a new menu entry goes there and in the hand-written pages (`index.html`, `getting_started.html`, `readme.html`).
+- **Libraries**: `LIBS` in the script gives each library one line; the script stops if a library in `build_libs.sh` has no entry or an entry has no library.
+- **Code samples**: files in [`docs/site/examples`](../site/examples/) with the output they printed (`NAME.out`); pages use `{{example:NAME}}`. `python tools/cicd/check_site_examples.py --toolchain DIR` compiles and runs them; `--update` rewrites the `.out` files.
+- **Highlighting** is done at generation time by `tools/docs/objeck_highlight.py`, which reads its keyword lists from the VS Code grammar; `python tools/docs/test_objeck_highlight.py` tests it. No JavaScript is involved.
+- **Style**: `style/site.css` is dark by default and light for `prefers-color-scheme: light`; `style/styles.css` is a stub that imports it, so old cached pages keep working.
 
 ## Deployment
 
-The site is static HTML/CSS hosted on GoDaddy, and nothing in CI deploys it: after changing these files, upload them via the GoDaddy file manager or FTP.
+The site is static files served by Objeck's own web server ([`site_server.obs`](../../programs/web-site/site_server.obs)); nothing in CI deploys it. That server serves only whitelisted extensions (no dotfiles), revalidates HTML on every request and lets other files be cached for a day, which is why new CSS and JS get new file names. Upload with `core/release/deploy_website.sh`.
 
 Separately, `.github/workflows/jekyll-gh-pages.yml` builds this directory and publishes it to GitHub Pages on every push to `master`. The repository sets no custom domain, so that copy is served at [objeck.github.io/objeck-lang](https://objeck.github.io/objeck-lang/), not at objeck.org.
 

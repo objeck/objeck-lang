@@ -2269,6 +2269,15 @@ jobs:
       - name: Site pages match their Markdown
         run: python3 tools/docs/guides_to_html.py --check
 
+      # The code samples on the site are files in docs/site/examples, each with the
+      # output it printed; the pages are built from them. This checks the files agree
+      # (a toolchain run with --toolchain DIR compiles and runs them) and that the
+      # highlighter still produces the expected token classes.
+      - name: Site code samples are consistent and highlight
+        run: |
+          python3 tools/cicd/check_site_examples.py
+          python3 tools/docs/test_objeck_highlight.py
+
       # Same class of guard, for both halves of what the benchmark harness does.
       # Every number on docs/performance.md was measured at the input printed
       # beside it, and perf-results/run_benchmarks.sh holds the input the harness

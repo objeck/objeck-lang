@@ -1,92 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Objeck Language Architecture — Objeck Language</title>
-  <meta name="description" content="This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
-      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
-                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose' });
     await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
   </script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Objeck Language Architecture</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/architecture.md" target="_blank">docs/architecture.md on GitHub</a></div>
-    <p class="page-lead">This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#1-complete-system-overview">1. Complete System Overview</a></li>
-      <li><a href="#2-compiler-pipeline">2. Compiler Pipeline</a></li>
-      <li><a href="#3-virtual-machine-runtime">3. Virtual Machine Runtime</a></li>
-      <li><a href="#4-jit-compilation-architecture">4. JIT Compilation Architecture</a></li>
-      <li><a href="#5-library-ecosystem">5. Library Ecosystem</a></li>
-      <li><a href="#6-development-tools">6. Development Tools</a></li>
-      <li><a href="#7-cicd-pipeline">7. CI/CD Pipeline</a></li>
-      <li><a href="#8-memory-management">8. Memory Management</a></li>
-      <li><a href="#9-platform-abstraction">9. Platform Abstraction</a></li>
-      <li><a href="#10-runtime-errors">10. Runtime Errors</a></li>
-      <li><a href="#summary">Summary</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#how-it-works">How it works</a></li><li aria-current="page">Objeck Language Architecture</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html" aria-current="page">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Objeck Language Architecture</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/architecture.md" target="_blank" rel="noopener">View docs/architecture.md on GitHub</a></p>
+    <p class="page-lead">This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.</p>
 
     <div class="note"><strong>Comprehensive technical architecture with interactive diagrams</strong></div>
     <p><img src="https://raw.githubusercontent.com/objeck/objeck-lang/master/docs/images/objeck-architecture.svg" alt="Objeck toolchain architecture" width="1600" height="1180" loading="lazy"></p>
-    <p><em>The whole toolchain on one page (<a href="https://github.com/objeck/objeck-lang/blob/master/docs/images/objeck-architecture.svg" target="_blank">SVG</a>); the sections below go into each part. For a short written map with the invariants and the page that goes deeper on each part, see <a href="doc_architecture_map.html">ARCHITECTURE_MAP.md</a>.</em></p>
+    <p><em>The whole toolchain on one page (<a href="https://github.com/objeck/objeck-lang/blob/master/docs/images/objeck-architecture.svg" target="_blank" rel="noopener">SVG</a>); the sections below go into each part. For a short written map with the invariants and the page that goes deeper on each part, see <a href="doc_architecture_map.html">ARCHITECTURE_MAP.md</a>.</em></p>
     <hr class="section-end">
-    <h3 id="1-complete-system-overview">1. Complete System Overview</h3>
+    <h2 id="1-complete-system-overview">1. Complete System Overview</h2>
     <p>The whole toolchain, from the editor to the five platforms a release ships to. Source is compiled by <code>obc</code> into an executable (<code>.obe</code>) or a library (<code>.obl</code>); <code>obr</code> runs it, interpreting until a method is hot and then compiling it to native code. The language server analyzes the same source with the compiler's own front end, linked into a native library.</p>
 <pre class="mermaid">flowchart LR
     subgraph AUTHOR["Authoring"]
@@ -168,7 +142,7 @@
     JIT --&gt; PLAT
     COMPILE -.-&gt; CI
     RUN -.-&gt; CI</pre>
-    <h4 id="the-library-stack">The library stack</h4>
+    <h3 id="the-library-stack">The library stack</h3>
     <p>Most libraries are Objeck alone. The rest pair an Objeck interface with a C++ module that the VM loads when the program first calls it, and that module wraps the third-party code a release bundles or the platform supplies.</p>
 <pre class="mermaid">flowchart TB
     subgraph OBJECK["Objeck libraries (.obl)"]
@@ -236,7 +210,7 @@
      <li><strong>CI and release:</strong> five platform legs on every pull request, the regression suite in three JIT modes, LSP, DAP and debugger tests, and a release gate that verifies all five platforms at one commit before tagging.</li>
     </ul>
     <hr class="section-end">
-    <h3 id="2-compiler-pipeline">2. Compiler Pipeline</h3>
+    <h2 id="2-compiler-pipeline">2. Compiler Pipeline</h2>
     <p>Detailed compilation flow from source to bytecode with optimization stages.</p>
 <pre class="mermaid">flowchart LR
     subgraph "Frontend"
@@ -269,8 +243,8 @@
 
     style G fill:#fff4e1
     style K fill:#e1ffe1</pre>
-    <h4 id="optimization-levels">Optimization Levels</h4>
-    <p>The authoritative per-level pass list is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a>; this table is the summary. A <code>-tar lib</code> build stops after dead-block elimination (<code>is_lib</code> in <code>ItermediateOptimizer::OptimizeMethod</code>, <code>core/compiler/optimization.cpp</code>), and <code>--debug</code> forces s0; library code that a program links is optimized when the program is compiled, at the program's level.</p>
+    <h3 id="optimization-levels">Optimization Levels</h3>
+    <p>The authoritative per-level pass list is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank" rel="noopener">optimization_pipeline.md</a>; this table is the summary. A <code>-tar lib</code> build stops after dead-block elimination (<code>is_lib</code> in <code>ItermediateOptimizer::OptimizeMethod</code>, <code>core/compiler/optimization.cpp</code>), and <code>--debug</code> forces s0; library code that a program links is optimized when the program is compiled, at the program's level.</p>
     <table class="ref-table">
      <thead>
       <tr><th>Level</th><th>Name</th><th>Optimizations</th><th>Use Case</th></tr>
@@ -282,7 +256,7 @@
       <tr><td data-label="Level"><strong>s3</strong></td><td data-label="Name">Aggressive</td><td data-label="Optimizations">+ Method inlining (not in libraries), instruction replacement, peephole optimization</td><td data-label="Use Case"><strong>Production (default)</strong></td></tr>
      </tbody>
     </table>
-    <h4 id="optimization-passes-s3">Optimization Passes (s3)</h4>
+    <h3 id="optimization-passes-s3">Optimization Passes (s3)</h3>
     <p>In the order <code>ItermediateOptimizer</code> runs them on each method, once each; the method inliner runs last, after every method of the class has been through the rest.</p>
 <pre class="mermaid">graph TD
     A[Intermediate Code] --&gt; B[Jump Cleanup]
@@ -308,7 +282,7 @@
      <li><code>core/compiler/emit.h/cpp</code> - Bytecode emission</li>
     </ul>
     <hr class="section-end">
-    <h3 id="3-virtual-machine-runtime">3. Virtual Machine Runtime</h3>
+    <h2 id="3-virtual-machine-runtime">3. Virtual Machine Runtime</h2>
     <p>Execution model with interpreter and JIT compilation.</p>
 <pre class="mermaid">flowchart TB
     subgraph "VM Initialization"
@@ -355,7 +329,7 @@
     style F fill:#fff4e1
     style K fill:#e1ffe1
     style O fill:#ffe1e1</pre>
-    <h4 id="execution-modes">Execution Modes</h4>
+    <h3 id="execution-modes">Execution Modes</h3>
 <pre class="mermaid">stateDiagram-v2
     [*] --&gt; Interpreted
     Interpreted --&gt; Counting: Called
@@ -374,7 +348,7 @@
         Platform-specific
         ARM64 or AMD64
     end note</pre>
-    <h4 id="memory-layout">Memory Layout</h4>
+    <h3 id="memory-layout">Memory Layout</h3>
 <pre class="mermaid">graph TB
     subgraph "Memory Regions"
         A[Operand and Call Stacks]
@@ -398,7 +372,7 @@
      <li><strong>Platform-Specific JIT:</strong> Separate compilers for ARM64/x64</li>
      <li><strong>Efficient Memory:</strong> O(1) object lookups, generational GC</li>
     </ul>
-    <h4 id="call-depth">Call Depth</h4>
+    <h3 id="call-depth">Call Depth</h3>
     <p>Each VM thread has its own call stack: an array of frame pointers, with the operand stack beside it (<code>core/vm/call_stack.h</code>). Calls may nest <strong>16,384 frames</strong> deep by default; <code>obr --call-depth=&lt;frames&gt;</code> (or <code>OBJECK_CALL_DEPTH</code>) sets it, from 256 to 1,048,576. Until 2026-10 the limit was a fixed 256 frames, which the Rosetta "Man or boy" test (647 frames at k=10) and a recursive-descent parser on input nested a few hundred deep both exceeded.</p>
     <ul>
      <li><strong>Reserved, then committed as it deepens.</strong> A thread reserves address space for the maximum -- 8 bytes a frame, and 8 operand-stack words a frame -- and commits it as the stack grows, so an idle thread holds a page of frame array and 32 KB of operand stack, not the maximum. Measured on Windows x64 with 1,000 threads: the working set per thread is unchanged (94 KB idle). Frames themselves come from a per-thread pool, as before.</li>
@@ -415,7 +389,7 @@
      <li><code>core/vm/arch/memory.h/cpp</code> - Memory management</li>
     </ul>
     <hr class="section-end">
-    <h3 id="4-jit-compilation-architecture">4. JIT Compilation Architecture</h3>
+    <h2 id="4-jit-compilation-architecture">4. JIT Compilation Architecture</h2>
     <p>Platform-specific native code generation for ARM64 and AMD64.</p>
 <pre class="mermaid">graph TB
     subgraph "JIT Compilation Flow"
@@ -461,7 +435,7 @@
     style C2 fill:#e1f5ff
     style H fill:#e1ffe1</pre>
     <p><strong>Calls between compiled methods.</strong> Since v2026.9.1 a compiled caller enters a compiled callee's <em>native entry</em> directly — arguments in the caller's outgoing area, the frame record built in the callee's own frame, the result in <code>XMM0</code> (<code>D0</code> on ARM64) — with an inline cache at <code>virtual</code> and func-ref sites. The C++ callback bridge remains the slow path (a callee not yet compiled, a full call stack, a <code>Nil</code> receiver, a megamorphic site) and the only path for allocation, traps and conversions. A bound call costs 5.5 ns rather than 26.5 ns as a result. The call path is drawn in <code>core/vm/arch/jit/README.md</code>; the design and its measurements are in <code>docs/JIT_CALLING_CONVENTION_DESIGN.md</code>.</p>
-    <h4 id="jit-frame-structure">JIT Frame Structure</h4>
+    <h3 id="jit-frame-structure">JIT Frame Structure</h3>
 <pre class="mermaid">graph TD
     subgraph "JIT Function Frame"
         A[Prolog: Save registers]
@@ -485,7 +459,7 @@
 
     style B fill:#ffe1e1
     style D fill:#e1ffe1</pre>
-    <h4 id="register-allocation-strategy">Register Allocation Strategy</h4>
+    <h3 id="register-allocation-strategy">Register Allocation Strategy</h3>
     <p>The registers each backend's allocator hands out; neither spills, so an expression that needs more falls back to the interpreter whole.</p>
     <table class="ref-table">
      <thead>
@@ -503,7 +477,7 @@
      <li><code>core/vm/arch/jit/jit_common.h/cpp</code> - Shared JIT infrastructure</li>
     </ul>
     <hr class="section-end">
-    <h3 id="5-library-ecosystem">5. Library Ecosystem</h3>
+    <h2 id="5-library-ecosystem">5. Library Ecosystem</h2>
     <p>56 library sources providing comprehensive functionality.</p>
 <pre class="mermaid">mindmap
     root((Objeck Libraries
@@ -540,7 +514,7 @@
         Media and Gaming
             sdl2 · sdl_game · sdl_gl
             lame: MP3 encoding</pre>
-    <h4 id="library-dependencies">Library Dependencies</h4>
+    <h3 id="library-dependencies">Library Dependencies</h3>
 <pre class="mermaid">graph TB
     subgraph "Core Dependencies"
         A[lang.obl] --&gt; B[All Libraries]
@@ -581,7 +555,7 @@
     style F fill:#e1f5ff
     style R fill:#ffe1e1
     style X fill:#fff4e1</pre>
-    <h4 id="external-dependencies">External Dependencies</h4>
+    <h3 id="external-dependencies">External Dependencies</h3>
     <p>Versions differ by platform (vcpkg, vendored DLLs, apt, Homebrew, static builds); the per-platform table, and how to check each one, is in <a href="doc_dependencies.html">third_party_dependencies.md</a>.</p>
     <table class="ref-table">
      <thead>
@@ -598,24 +572,24 @@
       <tr><td data-label="Category"><strong>Database</strong></td><td data-label="Library">ODBC</td><td data-label="Purpose">System driver manager</td></tr>
      </tbody>
     </table>
-    <h4 id="face-recognition-example">Face Recognition Example</h4>
-<pre class="line-numbers"><code class="language-cpp">use API.OpenCV, API.Onnx;
+    <h3 id="face-recognition-example">Face Recognition Example</h3>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenCV, <span class="t-cls">API</span>.Onnx;
 
-class FaceDemo {
-  function : Main(args : String[]) ~ Nil {
-    session := FaceSession-&gt;New("det_10g.onnx", "w600k_r50.onnx");
+<span class="t-kw">class</span> <span class="t-cls">FaceDemo</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    session <span class="t-op">:=</span> <span class="t-cls">FaceSession</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"det_10g.onnx"</span>, <span class="t-str">"w600k_r50.onnx"</span>);
 
-    img1 := Image-&gt;Load("person_a.jpg")-&gt;Convert(Image-&gt;Format-&gt;JPEG);
-    img2 := Image-&gt;Load("person_b.jpg")-&gt;Convert(Image-&gt;Format-&gt;JPEG);
+    img1 <span class="t-op">:=</span> <span class="t-cls">Image</span><span class="t-op">-&gt;</span>Load(<span class="t-str">"person_a.jpg"</span>)<span class="t-op">-&gt;</span>Convert(<span class="t-cls">Image</span><span class="t-op">-&gt;</span><span class="t-cls">Format</span><span class="t-op">-&gt;</span>JPEG);
+    img2 <span class="t-op">:=</span> <span class="t-cls">Image</span><span class="t-op">-&gt;</span>Load(<span class="t-str">"person_b.jpg"</span>)<span class="t-op">-&gt;</span>Convert(<span class="t-cls">Image</span><span class="t-op">-&gt;</span><span class="t-cls">Format</span><span class="t-op">-&gt;</span>JPEG);
 
-    r1 := session-&gt;Recognize(img1, 0.5);
-    r2 := session-&gt;Recognize(img2, 0.5);
+    r1 <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Recognize(img1, <span class="t-num">0.5</span>);
+    r2 <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Recognize(img2, <span class="t-num">0.5</span>);
 
-    faces1 := r1-&gt;GetResults();
-    faces2 := r2-&gt;GetResults();
-    sim := FaceSession-&gt;Compare(faces1[0]-&gt;GetEmbedding(), faces2[0]-&gt;GetEmbedding());
-    "Similarity: {$sim}"-&gt;PrintLine();   # &gt;0.35 = same person
-    session-&gt;Close();
+    faces1 <span class="t-op">:=</span> r1<span class="t-op">-&gt;</span>GetResults();
+    faces2 <span class="t-op">:=</span> r2<span class="t-op">-&gt;</span>GetResults();
+    sim <span class="t-op">:=</span> <span class="t-cls">FaceSession</span><span class="t-op">-&gt;</span>Compare(faces1[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>GetEmbedding(), faces2[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>GetEmbedding());
+    <span class="t-str">"Similarity: {$sim}"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># &gt;0.35 = same person</span>
+    session<span class="t-op">-&gt;</span>Close();
   }
 }
 </code></pre>
@@ -626,7 +600,7 @@ class FaceDemo {
      <li><code>core/lib/*.obl</code> - Compiled libraries, shipped in a release's <code>lib/</code></li>
     </ul>
     <hr class="section-end">
-    <h3 id="6-development-tools">6. Development Tools</h3>
+    <h2 id="6-development-tools">6. Development Tools</h2>
     <p>Interactive development environment with REPL, debugger, and LSP support.</p>
 <pre class="mermaid">graph TB
     subgraph "REPL (Interactive Shell)"
@@ -657,7 +631,7 @@ class FaceDemo {
 
     style I fill:#e1ffe1
     style J fill:#fff4e1</pre>
-    <h4 id="debugger-architecture">Debugger Architecture</h4>
+    <h3 id="debugger-architecture">Debugger Architecture</h3>
 <pre class="mermaid">sequenceDiagram
     participant User
     participant Debugger
@@ -687,7 +661,7 @@ class FaceDemo {
     User-&gt;&gt;Debugger: Continue
     Debugger-&gt;&gt;VM: Resume execution
     VM-&gt;&gt;VM: Run to completion</pre>
-    <h4 id="lsp-server-integration">LSP Server Integration</h4>
+    <h3 id="lsp-server-integration">LSP Server Integration</h3>
 <pre class="mermaid">graph LR
     subgraph "Editors (tools/lsp/clients)"
         A1[VS Code]
@@ -719,7 +693,7 @@ class FaceDemo {
     style B fill:#e1f5ff
     style D fill:#fff4e1</pre>
     <p>An analyzed program is keyed by the exact texts of its files and its library list. Diagnostics analyze each edit; hover and completion work from the last program that analyzed cleanly. Since v2026.10.2 an edit retires programs rather than freeing them, and a request whose texts and libraries match a retired program reuses it, so each edit is analyzed once instead of twice (about 2× faster per edit). Unclaimed programs are freed at the next edit, and <code>OBJECK_LSP_NO_CACHE=1</code> turns all reuse off.</p>
-    <h4 id="repl-features">REPL Features</h4>
+    <h3 id="repl-features">REPL Features</h3>
     <ul>
      <li><strong>Interactive Evaluation:</strong> Execute code line-by-line</li>
      <li><strong>Syntax Highlighting:</strong> In the full-screen editor (<code>/e</code>); the line prompt colors only its prompt, status and errors</li>
@@ -727,7 +701,7 @@ class FaceDemo {
      <li><strong>File Loading:</strong> Execute entire files</li>
      <li><strong>Inline/File Modes:</strong> Switch between modes</li>
     </ul>
-    <h4 id="full-screen-editor-e">Full-Screen Editor (<code>/e</code>)</h4>
+    <h3 id="full-screen-editor-e">Full-Screen Editor (<code>/e</code>)</h3>
     <p>A terminal editor over the REPL buffer, header-only (<code>core/repl/{term,screen,keymap,tui_editor,highlight,child_run}.h</code>) so it adds no build-system changes on any platform. Raw-mode input and damage-diffed rendering work identically on Windows (VT console) and POSIX (termios), with display-width handling for CJK/wide characters.</p>
     <ul>
      <li><strong>Editing:</strong> movement, selection (Shift+arrows), undo/redo with coalesced typing, an internal clipboard (Ctrl+C/X/V)</li>
@@ -735,9 +709,9 @@ class FaceDemo {
      <li><strong>Binding profiles:</strong> a notepad-style default and an opt-in <code>vi</code> profile (F2) — a second binding table plus a mode field over the same actions, not a second editor</li>
      <li><strong>Read-only shell:</strong> the REPL's class/function frame is dimmed and protected at both the view and model level</li>
     </ul>
-    <h4 id="software-updater-obu">Software Updater (<code>obu</code>)</h4>
+    <h3 id="software-updater-obu">Software Updater (<code>obu</code>)</h3>
     <p><code>core/utils/updater/obu.cpp</code> — in-place version upgrades without reinstalling. <code>obu check</code> compares the installed version against GitHub releases; <code>obu update</code>/<code>rollback</code> download the platform archive, <strong>verify a SHA-256 digest against the release's <code>SHA256SUMS</code> before touching disk</strong>, then perform an all-or-nothing staged swap with an <code>obc -v</code> post-install check and automatic rollback. No shell is used anywhere — curl/tar/obc run via argument vectors (<code>fork</code>/<code>execvp</code> on POSIX, <code>CreateProcess</code> on Windows), including the release-JSON fetch behind <code>obu check</code>. The flow is covered by an offline CI test (<code>test_update.py</code>) that runs on both Linux and Windows: <code>check</code> is exercised on every platform against fake releases, and the update/rollback swap plus a command-injection PoC wherever the swap is implemented. The Windows swap needs no re-exec dance: Windows forbids deleting a running image but allows renaming one, so the running <code>obu.exe</code> moves into <code>.previous</code> and keeps executing. Since v2026.10.0 a release's <code>SHA256SUMS</code> is itself signed with minisign, and <code>obu</code> refuses a manifest whose signature does not verify against the release key compiled into it, so a substituted archive cannot pass with a substituted manifest. Still outstanding (<code>docs/UPDATER_DESIGN.md</code>): reconciling an MSI-managed install's registry entries, and elevation against a real <code>Program Files</code> tree.</p>
-    <h4 id="debugger-features">Debugger Features</h4>
+    <h3 id="debugger-features">Debugger Features</h3>
     <ul>
      <li><strong>Breakpoints:</strong> Set/remove at any line</li>
      <li><strong>Step Execution:</strong> Step over, step into, step out</li>
@@ -757,7 +731,7 @@ class FaceDemo {
      <li><code>core/utils/updater/obu.cpp</code> - software updater</li>
     </ul>
     <hr class="section-end">
-    <h3 id="7-cicd-pipeline">7. CI/CD Pipeline</h3>
+    <h2 id="7-cicd-pipeline">7. CI/CD Pipeline</h2>
     <p>Automated multi-platform testing and build system.</p>
 <pre class="mermaid">graph TB
     subgraph "GitHub Actions Trigger"
@@ -804,7 +778,7 @@ class FaceDemo {
     style N fill:#fff4e1
     style O fill:#e1ffe1
     style P fill:#ffe1e1</pre>
-    <h4 id="platform-matrix">Platform Matrix</h4>
+    <h3 id="platform-matrix">Platform Matrix</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Platform</th><th>Runner</th><th>Architecture</th><th>Compiler</th><th>Tests</th></tr>
@@ -819,7 +793,7 @@ class FaceDemo {
     </table>
     <p>The suite's size is in <code>programs/regression/TESTS.md</code> (generated).</p>
     <p>Every leg builds natively and runs what it builds: the regression suite twice, at the default JIT threshold and with every method compiled on its first call (<code>OBJECK_JIT_THRESHOLD=1</code>), then the debugger, DAP and VM-flag tests. The Windows ARM64 leg used to be <strong>cross-compiled on an x64 host, which cannot execute what it builds</strong>, so its tests were skipped. That blind spot is how an ARM64-only miscompile reached six releases before anyone noticed. The release build still cross-compiles Windows ARM64 on the x64 image; CI's native leg is what tests it.</p>
-    <h4 id="caching-strategy">Caching Strategy</h4>
+    <h3 id="caching-strategy">Caching Strategy</h3>
 <pre class="mermaid">graph LR
     subgraph "Linux Cache"
         A1[APT Packages] --&gt; B1[500MB]
@@ -846,7 +820,7 @@ class FaceDemo {
     style H fill:#e1ffe1</pre>
     <p><strong>The 10 GB ceiling is the constraint that matters.</strong> Actions caches are capped per repository, and past the cap GitHub evicts the oldest entries -- which is how a release build lost its dependency caches and gained about forty minutes. The families that grow without bound are the ones whose key embeds something that changes: CodeQL writes a ~460 MB TRAP cache per analysed <em>commit</em>, and the dependency caches re-key whenever their input hash moves. A superseded entry can never be hit again, because the key names it.</p>
     <p>A <code>prune-caches</code> job in <code>codeql.yml</code> therefore keeps only the newest few of each family, taking <code>&lt;prefix&gt;:&lt;keep&gt;</code> pairs -- currently <code>codeql-trap:3 macOS-brew-downloads:2 Linux-x64-apt:2 Linux-arm64-apt:2</code>. It keeps several rather than one because these actions restore by key <em>prefix</em>, so a recent entry still warm-starts a new run; pruning to exactly one would trade the ceiling problem for a slower build.</p>
-    <h4 id="regression-test-suite">Regression Test Suite</h4>
+    <h3 id="regression-test-suite">Regression Test Suite</h3>
     <p>812 tests under <code>programs/regression/</code> when this was last edited (the generated <code>TESTS.md</code> is the count that stays current), grouped by the prefix on each filename. The counts change with almost every pull request, so they are not repeated here: <code>programs/regression/TESTS.md</code> (generated) has the current number per category.</p>
 <pre class="mermaid">mindmap
     root((Regression Tests
@@ -885,8 +859,8 @@ class FaceDemo {
             closure_* try_* vm_* gc_* opt_* dap_* debugger_* onnx_* and others
                 Closures, error handling, the VM and its collector, AI bindings, debugger</pre>
     <hr class="section-end">
-    <h3 id="8-memory-management">8. Memory Management</h3>
-    <h4 id="multithreaded-collection-cooperative-stop-the-world">Multithreaded Collection (Cooperative Stop-the-World)</h4>
+    <h2 id="8-memory-management">8. Memory Management</h2>
+    <h3 id="multithreaded-collection-cooperative-stop-the-world">Multithreaded Collection (Cooperative Stop-the-World)</h3>
     <p>With multiple threads running, a collection cannot begin until every other thread has reached a known-safe point. Objeck uses a <strong>cooperative</strong> stop-the-world scheme rather than OS thread suspension:</p>
     <ul>
      <li><strong>Safepoints.</strong> The interpreter polls a safepoint every 1,024 instructions of its dispatch loop, and every allocation polls too. When a collection is requested, threads observe the request at their next safepoint and <strong>park</strong> until it completes. The AMD64 and ARM64 JITs emit the same poll at every loop header, so JIT-compiled code parks just as promptly; a compiled loop that starts with values still pending in registers spills them to the frame's typed spill slots before it parks and reloads them after, because a register cannot be relocated; a reference goes to a <code>TMP_REF_*</code> slot the collector reads and relocates, an <code>Int</code> the reference map proves to a <code>TMP_VAL_*</code> slot it never reads.</li>
@@ -895,7 +869,7 @@ class FaceDemo {
      <li><strong>Typed and untyped roots.</strong> A frame's declared locals are walked by type, so only object slots are followed. Some words have no declaration. The operand stacks and a method's <strong>and/or slot</strong> (where a conditional <code>c ? a : b</code> leaves its value between the branch that stores it and the load after the join) are described instead by per-method <em>reference maps</em> computed from the bytecode (<code>core/vm/arch/ref_map.h</code>): a word the map proves <code>Int</code> or <code>Float</code> is not a root and is never relocated, and a word the map types as a reference, leaves unknown or types two ways is treated as a possible reference. Such a word is a root only if it is the address of a live object, and relocated only through a genuine forwarding address. A compiled frame is read through typed spill slots (<code>TMP_REF_*</code> scanned, <code>TMP_VAL_*</code> and scratch slots never). The reference maps shipped in v2026.10.2 (interpreter) and v2026.10.3 (compiled frames); words the maps leave unknown, and stack segments above the first compiled frame on a thread, are still scanned conservatively. Before v2026.10.2 the and/or slot was not a root at all, and a promoted object could be read back through its old nursery address. The residue and the proof obligations are in <a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>; check them with <code>OBJECK_GC_ROOTS=audit</code>.</li>
     </ul>
     <p>The collector remains generational and non-OS-suspending; correctness comes from complete root coverage at the safepoint, not from freezing threads mid-instruction.</p>
-    <h4 id="old-generation-membership">Old-Generation Membership</h4>
+    <h3 id="old-generation-membership">Old-Generation Membership</h3>
     <p>The collector must answer "is this address a live old-generation object?" for words taken from conservative scans — operand stacks and JIT temporaries — which may not be pointers at all. That rules out reading a flag from the candidate: the answer has to be decidable <strong>without dereferencing it</strong>. An object's header does carry <code>GC_OLD_BIT</code>, but reading it means trusting the address first.</p>
     <p>So the old generation keeps a set of known-good addresses, <code>PtrSet</code> (<code>core/vm/arch/ptr_set.h</code>). It is open-addressed: keys live directly in one power-of-two array, probed linearly, with <code>nullptr</code> for an empty slot and an all-ones sentinel for a tombstone.</p>
 <pre class="mermaid">graph LR
@@ -919,7 +893,7 @@ class FaceDemo {
      <li><strong>There is no reference counting.</strong> Collection is generational mark-and-sweep. The header carries <code>GC_MARK_BIT</code>, <code>GC_OLD_BIT</code>, <code>GC_RSET_BIT</code> and <code>GC_TRACED_BIT</code>, and nothing counts references.</li>
     </ul>
     <p>This replaced a <code>std::unordered_set</code> in v2026.9.7. That container is node-based, so every insert was a separate heap allocation, and the old generation gains one entry per promoted object — a minor collection paid that allocation once per survivor, on top of the object's own. On Windows it cost 239.5 ns per insert against the allocation's 38.5 ns. Promotion cost tracks promoted bytes rather than collection count, so it dominated: <code>binarytrees(17)</code> went from 2.392 s to 1.789 s (−25.2%) with peak RSS 194.6 MB → 179.1 MB, closing a 3.5× gap against Linux on the same hardware. <code>ptr_set_test.cpp</code> pins the behaviour the collector relies on, including that <code>count()</code> never dereferences its argument.</p>
-    <h4 id="gc-algorithm-flow">GC Algorithm Flow</h4>
+    <h3 id="gc-algorithm-flow">GC Algorithm Flow</h3>
 <pre class="mermaid">sequenceDiagram
     participant App as Application
     participant MM as Memory Manager
@@ -948,7 +922,7 @@ class FaceDemo {
     MM-&gt;&gt;OG: Major GC only: sweep unmarked old objects into the free lists
 
     MM-&gt;&gt;App: Resume execution</pre>
-    <h4 id="memory-manager-improvements">Memory Manager Improvements</h4>
+    <h3 id="memory-manager-improvements">Memory Manager Improvements</h3>
 <pre class="mermaid">mindmap
     root((Memory Manager))
         Constant-time lookups
@@ -962,7 +936,7 @@ class FaceDemo {
         Old-gen sweeping in place
             No old-object copying
             Better cache locality</pre>
-    <h4 id="where-allocations-go">Where Allocations Go</h4>
+    <h3 id="where-allocations-go">Where Allocations Go</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Region</th><th>What lands there</th><th>Collected by</th></tr>
@@ -973,7 +947,7 @@ class FaceDemo {
       <tr><td data-label="Region"><strong>Operand and call stacks</strong></td><td data-label="What lands there">Locals, frames, temporaries</td><td data-label="Collected by">Scanned as roots, never collected</td></tr>
      </tbody>
     </table>
-    <h4 id="when-collections-run">When Collections Run</h4>
+    <h3 id="when-collections-run">When Collections Run</h3>
     <ul>
      <li><strong>Minor</strong> collections run when the nursery fills.</li>
      <li><strong>Major</strong> collections run when the old generation outgrows its threshold. After each major the next threshold is twice the live heap, never below 8 MB, so collection work stays proportional to allocation (before v2026.10.2 it grew only after eight majors in a row freed nothing, and a program holding a large table collected on nearly every array allocation).</li>
@@ -994,7 +968,7 @@ class FaceDemo {
      <li><code>core/vm/arch/memory_verify.cpp</code> - Heap verifier (<code>OBJECK_GC_VERIFY</code>)</li>
     </ul>
     <hr class="section-end">
-    <h3 id="9-platform-abstraction">9. Platform Abstraction</h3>
+    <h2 id="9-platform-abstraction">9. Platform Abstraction</h2>
     <p>Cross-platform system call abstraction for POSIX and Win32.</p>
 <pre class="mermaid">graph TB
     subgraph "Application Layer"
@@ -1039,7 +1013,7 @@ class FaceDemo {
     style E fill:#fff4e1
     style F1 fill:#e1f5ff
     style F2 fill:#e1f5ff</pre>
-    <h4 id="platform-specific-implementations">Platform-Specific Implementations</h4>
+    <h3 id="platform-specific-implementations">Platform-Specific Implementations</h3>
 <pre class="mermaid">graph LR
     subgraph "File I/O"
         A1[open/read/write] --&gt;|POSIX| B1[open/read/write syscalls]
@@ -1073,7 +1047,7 @@ class FaceDemo {
     style A6 fill:#fff4e1
     style A7 fill:#fff4e1
     style A5 fill:#fff4e1</pre>
-    <h4 id="http-protocol-stack">HTTP Protocol Stack</h4>
+    <h3 id="http-protocol-stack">HTTP Protocol Stack</h3>
     <p>Three protocols, and they do <strong>not</strong> share a serialization path — which is the single most important thing to know before touching this code.</p>
     <table class="ref-table">
      <thead>
@@ -1092,7 +1066,7 @@ class FaceDemo {
      <li><strong>HTTP/3 on Windows must assert the negotiated protocol.</strong> WinHTTP treats HTTP/3 as a <em>preference</em> and falls back to HTTP/2 or HTTP/1.1 transparently, so a 200 proves nothing. Every request checks <code>WINHTTP_OPTION_HTTP_PROTOCOL_USED</code> and fails unless HTTP/3 was really used. (Also non-obvious: <code>WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL</code> must be set on the <strong>session</strong> handle before the request is created; setting it later is accepted and silently ignored.)</li>
      <li><strong>Capability is reportable.</strong> The traps compile unconditionally, so the presence of <code>Http3Client</code> proves nothing about whether an engine is behind it. <code>Runtime-&gt;GetProperty("runtime.feature.http3")</code> (and <code>.http2</code>) returns <code>"1"</code> only when one is compiled in — which is how a caller, or a test, tells <em>unsupported</em> apart from <em>the network failed</em>. The msys2 Windows builds have no HTTP/3 engine and correctly report <code>"0"</code>.</li>
     </ul>
-    <h4 id="threading-model">Threading Model</h4>
+    <h3 id="threading-model">Threading Model</h3>
 <pre class="mermaid">sequenceDiagram
     participant Main as Main Thread
     participant VM as VM Thread Manager
@@ -1122,7 +1096,7 @@ class FaceDemo {
 
     T1-&gt;&gt;VM: Thread complete
     T2-&gt;&gt;VM: Thread complete</pre>
-    <h4 id="platform-detection">Platform Detection</h4>
+    <h3 id="platform-detection">Platform Detection</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Platform</th><th>Macro</th><th>Compiler</th><th>ABI</th></tr>
@@ -1142,19 +1116,19 @@ class FaceDemo {
      <li><code>core/shared/sys.h/cpp</code> - Cross-platform utilities</li>
     </ul>
     <hr class="section-end">
-    <h3 id="10-runtime-errors">10. Runtime Errors</h3>
+    <h2 id="10-runtime-errors">10. Runtime Errors</h2>
     <p>Errors are objects. <code>System.Error</code> and its subclasses are raised with <code>Runtime-&gt;Raise</code> and caught by type with <code>try { } on(e : T) { } finally { }</code>; the runtime's own faults are raised the same way, as <code>NilError</code>, <code>IndexError</code>, <code>DivideByZeroError</code>, <code>CastError</code> and <code>RuntimeError</code>. <code>?-&gt;</code> still recovers from any error in a call chain, yielding <code>Nil</code>. An error nothing handles ends the program.</p>
-<pre class="line-numbers"><code class="language-cpp">try {
-  port := ParsePort(text, line);   # may Runtime-&gt;Raise(ConfigError-&gt;New(...))
+<pre class="line-numbers"><code class="language-objeck">try {
+  port <span class="t-op">:=</span> ParsePort(text, line);   <span class="t-com"># may Runtime-&gt;Raise(ConfigError-&gt;New(...))</span>
 }
-on(e : ConfigError) {               # clauses are tested in order
-  "line {$(e-&gt;GetLine())}: {$(e-&gt;GetMessage())}"-&gt;PrintLine();
+on(e : ConfigError) {               <span class="t-com"># clauses are tested in order</span>
+  <span class="t-str">"line {$(e-&gt;GetLine())}: {$(e-&gt;GetMessage())}"</span><span class="t-op">-&gt;</span>PrintLine();
 }
-on(e : Error) {                     # a catch-all goes last
-  e-&gt;GetMessage()-&gt;PrintLine();
+on(e : Error) {                     <span class="t-com"># a catch-all goes last</span>
+  e<span class="t-op">-&gt;</span>GetMessage()<span class="t-op">-&gt;</span>PrintLine();
 }
-finally {                           # runs on every way out, return/break/continue included
-  "checked"-&gt;PrintLine();
+finally {                           <span class="t-com"># runs on every way out, return/break/continue included</span>
+  <span class="t-str">"checked"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
 <pre class="mermaid">flowchart TB
@@ -1187,28 +1161,48 @@ finally {                           # runs on every way out, return/break/contin
      <li><code>core/vm/interpreter.cpp</code> - error messages and <code>StackErrorUnwind</code></li>
     </ul>
     <hr class="section-end">
-    <h3 id="summary">Summary</h3>
+    <h2 id="summary">Summary</h2>
     <p>This architecture demonstrates a modern, multi-platform language implementation with:</p>
     <p>✅ <strong>Multi-tiered Execution:</strong> Interpreter → call counting → JIT compilation ✅ <strong>Platform-Specific JIT:</strong> Optimized ARM64 and x64 code generation ✅ <strong>Efficient Memory Management:</strong> O(1) lookups, generational GC ✅ <strong>Structured Errors:</strong> <code>try</code>/<code>on</code>/<code>finally</code> over typed <code>Error</code> objects, plus <code>?-&gt;</code> recovery ✅ <strong>Rich Library Ecosystem:</strong> 56 library sources including AI/ML, web servers ✅ <strong>Modern Development Tools:</strong> REPL, debugger, LSP support ✅ <strong>Automated CI/CD:</strong> Multi-platform testing with caching ✅ <strong>Cross-Platform:</strong> Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64 ✅ <strong>Full Unicode:</strong> Emoji and supplementary plane characters on all platforms including Windows console</p>
     <p><strong>For More Information:</strong></p>
     <ul>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/readme.md" target="_blank">Core Implementation README</a></li>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md" target="_blank">Compiler Details</a></li>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/README.md" target="_blank">VM Architecture</a></li>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit/README.md" target="_blank">JIT Compilation</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/readme.md" target="_blank" rel="noopener">Core Implementation README</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md" target="_blank" rel="noopener">Compiler Details</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/README.md" target="_blank" rel="noopener">VM Architecture</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit/README.md" target="_blank" rel="noopener">JIT Compilation</a></li>
      <li><a href="doc_regression.html">Regression Tests</a></li>
     </ul>
-    <p><strong>Contributing:</strong> See <a href="https://github.com/objeck/objeck-lang/blob/master/CONTRIBUTING.md" target="_blank">CONTRIBUTING.md</a> for guidelines on improving this architecture.</p>
+    <p><strong>Contributing:</strong> See <a href="https://github.com/objeck/objeck-lang/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">CONTRIBUTING.md</a> for guidelines on improving this architecture.</p>
     <hr class="section-end">
     <p><em>Last reviewed against the source: November 2026 (master <code>3042a96eee</code>)</em></p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#1-complete-system-overview">1. Complete System Overview</a></li><li><a href="#2-compiler-pipeline">2. Compiler Pipeline</a></li><li><a href="#3-virtual-machine-runtime">3. Virtual Machine Runtime</a></li><li><a href="#4-jit-compilation-architecture">4. JIT Compilation Architecture</a></li><li><a href="#5-library-ecosystem">5. Library Ecosystem</a></li><li><a href="#6-development-tools">6. Development Tools</a></li><li><a href="#7-cicd-pipeline">7. CI/CD Pipeline</a></li><li><a href="#8-memory-management">8. Memory Management</a></li><li><a href="#9-platform-abstraction">9. Platform Abstraction</a></li><li><a href="#10-runtime-errors">10. Runtime Errors</a></li><li><a href="#summary">Summary</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

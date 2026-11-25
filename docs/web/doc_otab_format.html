@@ -1,84 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The .otab table file format, versions 1 and 2 — Objeck Language</title>
-  <meta name="description" content=".otab is the file format of Query.Structured tables: Table-&gt;Save, Append, ToBytes, Load, FromBytes and OtabFile. It stores what the column storage holds, column by column, so loading a table copies arrays rather than parsing text. A reader "/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content=".otab is the file format of Query.Structured tables: Table-&gt;Save, Append, ToBytes, Load, FromBytes and OtabFile. It stores what the column storage holds, column by column, so loading a table copies arrays rather than parsing text. A reader ">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">The <code>.otab</code> table file format, versions 1 and 2</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/OTAB_FORMAT.md" target="_blank">docs/OTAB_FORMAT.md on GitHub</a></div>
-    <p class="page-lead"><code>.otab</code> is the file format of <code>Query.Structured</code> tables: <code>Table-&gt;Save</code>, <code>Append</code>, <code>ToBytes</code>, <code>Load</code>, <code>FromBytes</code> and <code>OtabFile</code>. It stores what the column storage holds, column by column, so loading a table copies arrays rather than parsing text. A reader can open a file by reading only its last few hundred bytes, and then read just the columns it needs.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#at-a-glance">At a glance</a></li>
-      <li><a href="#primitive-values">Primitive values</a></li>
-      <li><a href="#header-12-bytes">Header (12 bytes)</a></li>
-      <li><a href="#trailer-the-last-28-bytes">Trailer (the last 28 bytes)</a></li>
-      <li><a href="#footer">Footer</a></li>
-      <li><a href="#type-codes">Type codes</a></li>
-      <li><a href="#row-groups-and-blocks">Row groups and blocks</a></li>
-      <li><a href="#codecs">Codecs</a></li>
-      <li><a href="#reading-a-file">Reading a file</a></li>
-      <li><a href="#writing-a-file">Writing a file</a></li>
-      <li><a href="#the-change-log">The change log</a></li>
-      <li><a href="#a-worked-example">A worked example</a></li>
-      <li><a href="#compatibility">Compatibility</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#reference">Reference</a></li><li aria-current="page">The .otab table file format, versions 1 and 2</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html" aria-current="page">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">The <code>.otab</code> table file format, versions 1 and 2</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/OTAB_FORMAT.md" target="_blank" rel="noopener">View docs/OTAB_FORMAT.md on GitHub</a></p>
+    <p class="page-lead"><code>.otab</code> is the file format of <code>Query.Structured</code> tables: <code>Table-&gt;Save</code>, <code>Append</code>, <code>ToBytes</code>, <code>Load</code>, <code>FromBytes</code> and <code>OtabFile</code>. It stores what the column storage holds, column by column, so loading a table copies arrays rather than parsing text. A reader can open a file by reading only its last few hundred bytes, and then read just the columns it needs.</p>
 
     <p>Version 2 differs from version 1 in one place: its footer ends with the table's <a href="#indexes-version-2">index definitions</a>. A writer uses version 2 only for a table that has indexes, so a table without any is written exactly as version 1 wrote it, and stays readable by every version 1 reader.</p>
-    <p>This document is the format's specification. The design and its reasons are in <a href="doc_query_design.html#9-persistence-a-native-table-file">QUERY_DESIGN.md §9</a>. An independent reader written from this page, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/otab/otab_dump.py" target="_blank"><code>tools/otab/otab_dump.py</code></a>, decodes every byte of a file and prints an annotated layout; use it to check a writer, or to look inside a file.</p>
+    <p>This document is the format's specification. The design and its reasons are in <a href="doc_query_design.html#9-persistence-a-native-table-file">QUERY_DESIGN.md §9</a>. An independent reader written from this page, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/otab/otab_dump.py" target="_blank" rel="noopener"><code>tools/otab/otab_dump.py</code></a>, decodes every byte of a file and prints an annotated layout; use it to check a writer, or to look inside a file.</p>
     <p><strong>Status: implemented, in v2026.10.2.</strong> Version 1 shipped with phase 3 of <code>Query.Structured</code> (<code>15f5448f52</code>, 2026-10-23); version 2 (index definitions) with phase 6 (<code>539a01b22a</code>, 2026-10-24). The writer and reader are <code>OtabWriter</code> and <code>OtabFile</code> in <code>core/compiler/lib_src/query.obs</code>. The codecs are zlib only (codecs 1 and 2); the design notes in QUERY_DESIGN.md also discuss gzip, Brotli and lighter encodings, which are not in the format.</p>
     <p><strong>How it is validated:</strong> <code>programs/regression/query_persist_roundtrip.obs</code> (every column type, the three compression settings, more than 65,536 rows, <code>Append</code>, damaged and truncated files), <code>query_persist_indexes.obs</code> (version 2, and that an index-free table is byte for byte a version 1 file), <code>query_persist_log.obs</code>, <code>query_persist_crash.obs</code> and <code>query_persist_lock.obs</code> (the change log and the lock). The independent reader <code>tools/otab/otab_dump.py</code> is a second implementation of this page: it exits 0 only for a well formed file.</p>
     <p><strong>How to check:</strong></p>
@@ -87,7 +60,7 @@ obc -src query_persist_roundtrip.obs -lib net,regex,csv,xml,misc,query -dest que
 obr query_persist_roundtrip.obe
 python ../../tools/otab/otab_dump.py &lt;any .otab file&gt;</pre>
     <p><strong>Known limits:</strong> no delta or run-length encodings and no stored index entries; a table whose OBJECT column holds a value other than the six tagged kinds cannot be saved; the lock's stale-recovery race in the last paragraph of "The change log" is accepted, not prevented.</p>
-    <h3 id="at-a-glance">At a glance</h3>
+    <h2 id="at-a-glance">At a glance</h2>
 <pre class="plain">offset 0      header    "OTAB", format version                                     12 bytes
               blocks    row group 0: one block per column, key column first
                         row group 1: ...
@@ -96,7 +69,7 @@ footer_offset footer    table name, next key, schema, then per group:
                         version 2: then the index definitions
               trailer   footer offset, footer size, footer CRC32, "OTAB"            28 bytes</pre>
     <p>A reader starts at the end: the trailer gives the footer's place, the footer gives every block's place. Nothing between the header and the footer needs to be read to open a file.</p>
-    <h3 id="primitive-values">Primitive values</h3>
+    <h2 id="primitive-values">Primitive values</h2>
     <p>Every number is 8 bytes, little-endian, whatever the platform:</p>
     <table class="ref-table">
      <thead>
@@ -110,7 +83,7 @@ footer_offset footer    table name, next key, schema, then per group:
      </tbody>
     </table>
     <p>There is no padding anywhere: each field follows the one before it.</p>
-    <h3 id="header-12-bytes">Header (12 bytes)</h3>
+    <h2 id="header-12-bytes">Header (12 bytes)</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Offset</th><th>Field</th><th>Value</th></tr>
@@ -121,7 +94,7 @@ footer_offset footer    table name, next key, schema, then per group:
      </tbody>
     </table>
     <p>A reader refuses a version below 1 or above the highest it knows. A version 1 reader therefore refuses a version 2 file by its header, before reading anything else, rather than misreading its footer.</p>
-    <h3 id="trailer-the-last-28-bytes">Trailer (the last 28 bytes)</h3>
+    <h2 id="trailer-the-last-28-bytes">Trailer (the last 28 bytes)</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Offset from the end</th><th>Field</th><th>Value</th></tr>
@@ -134,7 +107,7 @@ footer_offset footer    table name, next key, schema, then per group:
      </tbody>
     </table>
     <p>A file is well formed only if <code>footer offset ≥ 12</code>, <code>footer size ≥ 0</code>, and <code>footer offset + footer size + 28</code> is exactly the file's size. A file cut short anywhere fails this test or the footer's CRC, so a truncated file is reported, never half-read.</p>
-    <h3 id="footer">Footer</h3>
+    <h2 id="footer">Footer</h2>
     <p>In order:</p>
     <ol>
      <li><strong>name</strong>: Text, the table's name.</li>
@@ -158,7 +131,7 @@ footer_offset footer    table name, next key, schema, then per group:
     </ol>
     <p>The footer must be consumed exactly: bytes left over make the file malformed.</p>
     <p><strong>Column 0 is always the key column</strong>, named <code>pk</code>, type INT, declared. Its values are the rows' primary keys. The remaining columns are the table's own, in the table's order.</p>
-    <h4 id="indexes-version-2">Indexes (version 2)</h4>
+    <h3 id="indexes-version-2">Indexes (version 2)</h3>
     <p>Each index definition is:</p>
     <table class="ref-table">
      <thead>
@@ -173,7 +146,7 @@ footer_offset footer    table name, next key, schema, then per group:
     <p>No two definitions share a name or a column. A reader refuses a footer that breaks any of these rules, or names a kind it does not know, as malformed, saying which index is wrong.</p>
     <p>Only the definition is stored, not the index's entries: a reader that restores an index builds it from the column, which it has read anyway, so a damaged or stale index can never be loaded, and Append adds rows without rewriting anything. <code>Table-&gt;Load</code>, <code>FromBytes</code>, <code>OtabFile-&gt;Read</code> and <code>TableStore</code> restore the indexes of the columns they read, unbuilt; the first query that uses one builds it. A partial read restores only the indexes of the columns it reads.</p>
     <p><code>Append</code> keeps the file's version and its definitions: it copies the header with the rest of the prefix, and writes the same definitions into the new footer. <code>TableServer</code> sends tables as version 1 (<code>ToBytes(compression, false)</code>), so clients of any version read them.</p>
-    <h4 id="block-info-72-bytes">Block info (72 bytes)</h4>
+    <h3 id="block-info-72-bytes">Block info (72 bytes)</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
@@ -191,7 +164,7 @@ footer_offset footer    table name, next key, schema, then per group:
      </tbody>
     </table>
     <p><strong>Zones</strong> are kept for INT, FLOAT and DATE columns (DATE as its milliseconds), and only when the group has at least one non-empty cell. A reader may use them to skip a group whose range cannot match a filter, without reading the block. They are Floats, so for an INT column they are exact only while every value's magnitude is at most <code>2^53</code>.</p>
-    <h3 id="type-codes">Type codes</h3>
+    <h2 id="type-codes">Type codes</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Code</th><th>Type</th><th>Cell values</th></tr>
@@ -206,11 +179,11 @@ footer_offset footer    table name, next key, schema, then per group:
      </tbody>
     </table>
     <p>A reader refuses a file with a type code it does not know, naming the column.</p>
-    <h3 id="row-groups-and-blocks">Row groups and blocks</h3>
+    <h2 id="row-groups-and-blocks">Row groups and blocks</h2>
     <p>Rows are stored in <strong>row groups</strong> of at most 65,536 rows, in table order. Each group holds one <strong>block</strong> per column, the key column's first, laid out one after another in the file. Every block decodes on its own: nothing in a block refers to another block.</p>
     <p><code>Save</code> writes full groups of 65,536 rows and a last, shorter one. <code>Append</code> adds groups after the existing ones without touching them, so groups of any size from 1 to 65,536 can follow each other. A reader must not assume any group is full.</p>
     <p>A group's rows are its cells in order: the table's rows are the groups' rows concatenated, in group order. Deleted rows are never stored; a saved table has only live rows.</p>
-    <h4 id="block-contents-after-decompression">Block contents (after decompression)</h4>
+    <h3 id="block-contents-after-decompression">Block contents (after decompression)</h3>
     <p>Every block starts with the column's empty cells for the group:</p>
     <ol>
      <li><strong>bitmap words</strong>: Int, <code>W = ceil(rows / 64)</code>;</li>
@@ -249,7 +222,7 @@ footer_offset footer    table name, next key, schema, then per group:
     <p>A table whose OBJECT column holds any other kind of value cannot be saved; <code>Save</code> reports the column instead of writing a file.</p>
     <p><strong>DATE milliseconds</strong> encode a date's calendar fields, read as UTC: days since 1970-01-01 in the proleptic Gregorian calendar, times 86,400,000, plus the time of day. No time zone conversion is applied in either direction, so a date reads back with exactly the fields it was saved with, and ordering the numbers orders the dates. The GMT flag is kept separately and does not change the number.</p>
     <p>A block must be consumed exactly, like the footer.</p>
-    <h3 id="codecs">Codecs</h3>
+    <h2 id="codecs">Codecs</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Code</th><th>Codec</th><th>Written by</th></tr>
@@ -262,7 +235,7 @@ footer_offset footer    table name, next key, schema, then per group:
     </table>
     <p>Codes 1 and 2 decompress the same way; the code records how the block was written. Each block is compressed on its own, so a reader decompresses only the blocks it reads, and a byte range of the file is still meaningful.</p>
     <p>A writer stores a block uncompressed, with codec 0, when the block is under 64 bytes or when compressing it would not make it smaller, so one file usually mixes codecs. After decompressing, a reader checks the length against <strong>raw</strong>.</p>
-    <h3 id="reading-a-file">Reading a file</h3>
+    <h2 id="reading-a-file">Reading a file</h2>
     <ol>
      <li>Read the 12-byte header and check the magic and version.</li>
      <li>Read the 28-byte trailer, check the magic and the size equation, and read the footer.</li>
@@ -271,10 +244,10 @@ footer_offset footer    table name, next key, schema, then per group:
     </ol>
     <p>Every failure names what it found: the column and row group of a damaged block, a footer that does not match its checksum, a file that ends early. A reader never returns partly read data.</p>
     <p><code>OtabFile</code> does exactly this, reading only the footer when it opens a file and only the requested columns, plus the key column, on <code>Read(names)</code>.</p>
-    <h3 id="writing-a-file">Writing a file</h3>
+    <h2 id="writing-a-file">Writing a file</h2>
     <p><code>Save</code> and <code>Append</code> never write in place. They write the whole new file to <code>path.part</code>, then rename it over <code>path</code>, which replaces the old file in one step (POSIX <code>rename</code>; <code>MoveFileExW</code> with <code>MOVEFILE_REPLACE_EXISTING</code> on Windows). A reader therefore sees the old file or the new one, never a mix, and a crash during a save leaves the old file as it was.</p>
     <p><code>Append(path)</code> copies the existing file's bytes up to its footer unchanged. It adds the new rows' groups after them and writes a new footer listing the old groups and the new ones. The new rows' keys continue from the old footer's <strong>next key</strong>. Their columns must match the file's in name, order and type.</p>
-    <h3 id="the-change-log">The change log</h3>
+    <h2 id="the-change-log">The change log</h2>
     <p>A table opened for writing (<code>TableStore-&gt;New(path)</code> or <code>Table-&gt;Open(path)</code>) records every change in <code>path.log</code> beside the file, and reopening replays it over the last save. It uses the same primitive values as the file.</p>
     <p><strong>Header (28 bytes):</strong></p>
     <table class="ref-table">
@@ -317,7 +290,7 @@ footer_offset footer    table name, next key, schema, then per group:
     <p><strong>Reading.</strong> A crash can only cut the log short, so a last record that ends early (fewer than 24 bytes left, or a length past the end) is a torn write: it is dropped and cut from the file. A length whose check disagrees, or a CRC32 that fails on a record that is not the last, is damage, and opening is refused with the byte offset. Replay that does not land on a live key, a known column or the expected next key is refused the same way.</p>
     <p><strong>Checkpoint</strong> writes the table as a new save (by <code>path.part</code> and rename), then replaces the log with an empty one naming that save. <code>Save</code> of a durable table's own file is a checkpoint, and <code>Append</code> onto it is refused. The log records rows, not indexes, so creating or dropping an index on a durable table is saved by a checkpoint: at once, or, inside a SQL statement, when the statement ends. Opening restores the file's indexes before replaying the log, and the replayed changes reach them as any write does.</p>
     <p><strong>The lock</strong>, <code>path.lock</code>, is created only if absent (<code>File-&gt;CreateNew</code>) and holds the writer's process id as text. A writer that finds it held by a running process is refused with that id. One held by a process that is gone, or left empty for a second (a writer that crashed between creating and writing it), is removed and taken. Readers (<code>Table-&gt;Load</code>) take no lock and see the last save or checkpoint. Two processes clearing the same stale lock at the same moment can both proceed; stale-lock recovery assumes that does not happen.</p>
-    <h3 id="a-worked-example">A worked example</h3>
+    <h2 id="a-worked-example">A worked example</h2>
     <p>A table <code>t</code> with an INT column <code>n</code> and a STRING column <code>s</code>, and two rows, <code>(n = 7, s = "hi")</code> and <code>(n = empty, s = "hi")</code>, saved uncompressed (495 bytes). <code>python tools/otab/otab_dump.py t.otab</code> prints:</p>
 <pre class="plain">     0  4f 54 41 42                                          magic "OTAB"
      4  01 00 00 00 00 00 00 00                              format version = 1
@@ -354,21 +327,41 @@ footer_offset footer    table name, next key, schema, then per group:
    491  4f 54 41 42                                          magic "OTAB"
 2 rows in 1 row groups, 3 columns, 495 bytes</pre>
     <p>Row 1's <code>n</code> is empty: bit 1 of <code>n</code>'s bitmap is set (<code>02</code>), and its value slot holds 0. Both rows' <code>s</code> share the dictionary's one entry, code 0. The footer holds the name (<code>01 …</code> then <code>t</code>), next key 2, the three columns (all declared, since the table was created with declared types), one group of two rows, and three 72-byte block infos; <code>pk</code> and <code>n</code> have zones, <code>s</code> has none.</p>
-    <h3 id="compatibility">Compatibility</h3>
+    <h2 id="compatibility">Compatibility</h2>
     <ul>
      <li>A reader must refuse a <strong>newer</strong> version rather than guess at it. Versions only grow; a version 1 file stays readable by every later reader, and a version 2 reader reads both.</li>
      <li>New type codes, codecs, STRING encodings, OBJECT tags or index kinds come with a new version number, so a reader never meets one in a file it accepts. Inside a file of a version it knows, an unknown code means the file is malformed, and the reader says which column or index holds it.</li>
      <li>A writer uses the lowest version that can hold the table: version 1 unless the table has indexes. So adding version 2 changed nothing for tables without indexes; their files are byte for byte what a version 1 writer makes (<code>query_persist_indexes</code> checks this against an image written before version 2 existed).</li>
      <li>Version 2 added index definitions. Not yet in any version, though the design leaves room for them: delta and run-length encodings, and stored index entries.</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#at-a-glance">At a glance</a></li><li><a href="#primitive-values">Primitive values</a></li><li><a href="#header-12-bytes">Header (12 bytes)</a></li><li><a href="#trailer-the-last-28-bytes">Trailer (the last 28 bytes)</a></li><li><a href="#footer">Footer</a></li><li><a href="#type-codes">Type codes</a></li><li><a href="#row-groups-and-blocks">Row groups and blocks</a></li><li><a href="#codecs">Codecs</a></li><li><a href="#reading-a-file">Reading a file</a></li><li><a href="#writing-a-file">Writing a file</a></li><li><a href="#the-change-log">The change log</a></li><li><a href="#a-worked-example">A worked example</a></li><li><a href="#compatibility">Compatibility</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>
