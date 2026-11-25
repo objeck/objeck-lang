@@ -79,7 +79,6 @@ rm -f *.obe
 	$LIB_SRC/ml_boost.obs \
 	$LIB_SRC/ml_vector.obs \
 	$LIB_SRC/ml_report.obs \
-	$LIB_SRC/llm_eval.obs \
 	$LIB_SRC/ml_verify.obs \
 	$LIB_SRC/ml_timeseries.obs \
 	$LIB_SRC/ml_timeseries_models.obs \
@@ -106,7 +105,6 @@ rm -f *.obe
 	$LIB_SRC/ollama.obs \
 	$LIB_SRC/anthropic.obs \
 	$LIB_SRC/llm_util.obs \
-	$LIB_SRC/llm_util_clients.obs \
 	$LIB_SRC/agent.obs \
 	$LIB_SRC/mcp.obs \
 	$LIB_SRC/rag.obs \

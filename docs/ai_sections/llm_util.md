@@ -1,15 +1,8 @@
 ## LLM Utilities (API.LlmUtil)
 
-Four helpers for the work around a chat model, written in Objeck with no network code of their own: **prompt templates** and a message builder, **token estimation** with a context window that keeps a conversation inside a budget, **JSON Schema validation** that reports every problem with a JSON pointer, and **structured calls** that ask any chat backend for JSON matching a schema and retry with the validation errors until the reply is right. They work with the Anthropic, OpenAI, Gemini and Ollama clients through small adapters, and with anything else through the `ChatFn` interface.
+Four helpers for the work around a chat model, written in Objeck with no network code of their own: **prompt templates** and a message builder, **token estimation** with a context window that keeps a conversation inside a budget, **JSON Schema validation** that reports every problem with a JSON pointer, and **structured calls** that ask any chat backend for JSON matching a schema and retry with the validation errors until the reply is right. They work with any chat backend through the `ChatFn` interface, a two-method interface you implement for the client you use.
 
-There are two libraries:
-
-| Library | Holds | Compile with |
-|---|---|---|
-| `llm_util` | everything on this page except the adapters; links no client | `-lib llm_util,regex,json,gen_collect` |
-| `llm_util_clients` | `ChatFn` adapters for the four clients, `GeminiTokenCounter`, `PromptAdapters` | `-lib llm_util_clients,llm_util,regex,json,gen_collect,anthropic,openai,gemini,ollama,net,net_server,cipher,misc` |
-
-The adapters link all four client libraries, whichever one you call, so use `llm_util` alone with your own `ChatFn` when you do not want that. `-lib @ml` lists both libraries and what they need. A program that uses only `llm_util` makes no network call and needs no key.
+The library is `llm_util`, compiled with `-lib llm_util,regex,json,gen_collect`. It links no client, makes no network call and needs no key. `-lib @ml` lists it and what it needs.
 
 ### Prompt templates
 
@@ -62,15 +55,12 @@ missing required variables: sources, text
 - **Escaping.** Values are never scanned for placeholders, so text a user supplies cannot add a `{{variable}}` or a loop to your prompt; a list item that reads `{{secret}}` renders as `{{secret}}`. Use the `json` filter when the value goes inside a JSON string in the prompt.
 - **A bad template is a value, not a crash.** `IsOk()` is false and `GetError()` says what and where: `unclosed '{{' at offset 3`, `the {{#each xs}} block is never closed`, `'{{/each}}' at offset 2 closes nothing`, `unknown filter 'rot13' ...`, `'{{this}}' at offset 0 is only valid inside {{#each}}`. A list used where text is wanted (and the other way round) is a render error too.
 
-`PromptBuilder` collects a conversation: a system prompt (`System`) and user and assistant turns (`User`, `Assistant`), each from text or from a template and values. It is provider-neutral; the conversion to a client's own type is one call:
+`PromptBuilder` collects a conversation: a system prompt (`System`) and user and assistant turns (`User`, `Assistant`), each from text or from a template and values. It is provider-neutral; two calls give the common shapes:
 
 | Call | Gives | For |
 |---|---|---|
 | `builder->ToPairs()` | `Vector<Pair<String,String>>`, system first | `API.OpenAI.Chat.Completion->Complete` |
 | `builder->ToJsonMessages(with_system)` | a JSON array of `role` and `content` objects | OpenAI-style APIs and Ollama (`false` leaves the system prompt out, as Anthropic wants it apart) |
-| `PromptAdapters->FillAnthropic(builder, chat)` | fills an `API.Anthropic.Chat` (system prompt and turns) | Anthropic |
-| `PromptAdapters->FillOllama(builder, chat)` | fills an `API.Ollama.Chat` | Ollama |
-| `PromptAdapters->GeminiContents(turns)` and `GeminiSystem(turns)` | the `contents` array (assistant becomes `model`) and the `systemInstruction` object | Gemini |
 
 A failed template inside the builder adds no turn and is kept in `builder->GetError()`.
 
@@ -98,7 +88,7 @@ claude->Safe(estimate)->PrintLine();                    # 14, with the 10 percen
 
 A single short string can be off by two tokens either way. The regression test holds the estimator to those characters-per-token ranges on fixed samples; it has **not** been compared with a live tokenizer in CI, so treat the table as the design target, not a measured guarantee. Claude's tokenizer usually produces 10 to 20 percent more tokens than cl100k for the same text, so `SetScale(1.15)` is a good setting for Anthropic models, and `SetMargin` plus `Safe()` keeps a budget from being the exact limit. Where a hard limit matters, use the provider's own count.
 
-**Exact counts.** Where a provider exposes a count endpoint, `GeminiTokenCounter` (in `llm_util_clients`) calls it and falls back to the estimator when the call fails, so a budget never stops on a network error; `IsExact()` says which it was. Anthropic reports exact token counts only after a call: `AnthropicChatFn->GetLastInputTokens()` and `GetLastOutputTokens()`. The library core makes no network call: `TokenCounter` is a one-method interface (`Count(text)`), and `TokenEstimator`, `GeminiTokenCounter` and your own class all fit it.
+**Exact counts.** Where a hard limit matters, use the provider's own count. `TokenCounter` is a one-method interface (`Count(text)`), so `TokenEstimator` and a class of your own that asks a provider both fit it.
 
 ### Context windows
 
@@ -238,31 +228,13 @@ ok after 2 attempts: {"age":36,"name":"Ada Lovelace"}
 
 The first reply used single quotes and a trailing comma, so with `SetRepair(true)` it was repaired and parsed, then failed validation (`age` is a string) and the model was shown the exact error. Without repair the first reply would have failed to parse and the feedback would have said so.
 
-With a real model, swap the backend:
-
-```ruby
-use API.LlmUtil;
-use API.LlmUtil.Clients;
-use Data.JSON;
-
-schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"city\"],\"properties\":{\"city\":{\"type\":\"string\"}}}");
-chat := AnthropicChatFn->New("claude-sonnet-5-5", Nil);        # the key comes from the client's own lookup
-outcome := StructuredCall->New(chat, schema)->SetMaxRetries(2)->Ask("Name the capital of France.");
-if(outcome->IsOk()) {
-  outcome->GetValue()->Get("city")->GetString()->PrintLine();
-}
-else {
-  outcome->GetError()->PrintLine();      # the backend's error, or the last reply's first problem
-};
-```
-
-The adapters are `AnthropicChatFn(model, key)`, `OpenAIChatFn(model, key)`, `GeminiChatFn(model, key)` and `OllamaChatFn(model)`. A key of `Nil` uses the client's own lookup. Each `Complete` builds a fresh client conversation from the turns it is given, so a retry replays the longer conversation; the system turns become the provider's system prompt (Anthropic `SetSystem`, a `system` message for OpenAI and Ollama, `systemInstruction` for Gemini) and an assistant turn becomes Gemini's `model` role. A conversation with no user turn, or one that ends on an assistant turn, is refused before any request is sent.
+With a real model, implement `ChatFn` over the client you use (build the client's conversation from the turns, send it, return the reply text, or `Nil` with `GetError()` set) and pass it to `StructuredCall->New(chat, schema)`. A transport failure is the backend's error and is not retried.
 
 - **What counts as success.** Every JSON value found in the reply is tried, fenced blocks first, then each balanced `{...}` or `[...]` span, then the whole text for a bare scalar; the first that matches the schema wins, so a reply with an aside (`see [1]`) before the answer still works. A bare scalar reply works when the schema is a scalar schema (`4` for an integer range).
 - **Retries.** `SetMaxRetries(n)` (default 2, so up to three requests; 0 asks once). The feedback lists up to 8 errors with their pointers and counts the rest. A reply with no JSON gets `Your reply could not be used: the reply holds no JSON object or array.` A transport failure (`Complete` returned `Nil`) is not retried: the outcome's error is `the chat backend failed: <reason>`.
 - **The outcome.** `IsOk()`, `GetValue()` (a `JsonElement`), `GetErrors()` (the last reply's `SchemaError` list), `GetError()` (one line), `GetAttempts()`, `GetReplies()` (every raw reply) and `WasRepaired()`.
 - **Other inputs.** `Ask(builder)` takes a whole conversation (its system prompt is kept and the schema instruction added after it; the builder is not changed) and `Ask(template, vars)` a template. `SetInstruction(text)` replaces the sentence that asks for JSON only; the schema is always appended.
-- **Provider structured modes.** The loop is a plain chat, so it works the same everywhere. A provider's native mode (Anthropic's forced tool through `SendJson`, Gemini's response schema, Ollama's `format`) can be used by wrapping it in your own `ChatFn`; the validation and retry then still apply.
+- **Provider structured modes.** The loop is a plain chat, so it works the same everywhere. A provider's native mode (a forced tool, a response schema, an Ollama `format`) can be used by wrapping it in your own `ChatFn`; the validation and retry then still apply.
 
 #### Finding and repairing JSON
 
@@ -295,7 +267,6 @@ It does not guess further: a missing value (`{"a":,"b":1}`), a missing colon or 
 | `JsonSchema`, `SchemaError` | `New(schema)`, `Validate`, `IsValid`, `Check`, `Describe`, `Same`, `Join`, `SetMaxErrors`; `GetPath`, `GetKeyword`, `GetMessage` |
 | `JsonStrict`, `JsonRepair`, `JsonExtractor` | `Validate`, `GetError`; `Repair`; `Candidates`, `ParseAll`, `Parse`, `SetRepair`, `IsRepaired`, `GetError` |
 | `ChatFn` (interface), `StructuredCall`, `StructuredOutcome` | `Complete`, `GetError`; `Ask` (text, builder or template), `SetMaxRetries`, `SetRepair`, `SetInstruction`; `IsOk`, `GetValue`, `GetErrors`, `GetError`, `GetAttempts`, `GetReplies`, `WasRepaired` |
-| `llm_util_clients` | `AnthropicChatFn`, `OpenAIChatFn`, `GeminiChatFn`, `OllamaChatFn`, `GeminiTokenCounter`, `PromptAdapters`, `TurnSplit` |
 
 ### Limits and caveats
 
@@ -303,7 +274,6 @@ It does not guess further: a missing value (`{"a":,"b":1}`), a missing colon or 
 - **A `String` is a sequence of characters.** `minLength` and the estimator count characters, not UTF-8 bytes.
 - **Not thread-safe.** A `PromptTemplate` keeps its last error and missing list, and a `JsonSchema` its error list, so give each thread its own. A `RegEx` compiled for `pattern` is cached in the validator.
 - **The schema subset above is all there is.** `patternProperties`, `dependencies`, conditional schemas and `format` are ignored without a message, so a schema that relies on them validates more loosely than a full implementation would.
-- **Adapters are tested offline only.** The adapters' request shaping, role mapping, refusals and Gemini reply reading are checked on recorded bodies; the live requests are the clients' own, covered by their tests (the Gemini adapter builds its multi-turn request itself because the client's `Vector<Content>` overload cannot be called from another library). No test calls a real model.
 - **Class names.** The library avoids `Tool`, `ToolCall`, `Message`, `Reply`, `Response` and `Chat` on purpose: generic arguments from another library resolve by short name, and a class with one of those names would hijack the clients' own signatures.
 
 It is tested by `llm_util_template_test.obs`, `llm_util_tokens_test.obs`, `llm_util_schema_test.obs` (a table of about 170 schema, value and expected-error cases), `llm_util_extract_test.obs` (extraction, the repair table and the strict checker), `llm_util_structured_test.obs` (a scripted `ChatFn`: valid first time, fixed on a retry, never valid, chatty and fenced replies, repair, a failing backend) and `llm_util_clients_test.obs`. None uses the network or a key.

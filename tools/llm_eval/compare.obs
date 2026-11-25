@@ -3,7 +3,7 @@ use System.LLM.Eval, Collection;
 #~
 Compares two results files written by eval.obs (the PREFIX_results.json of two runs) with a paired bootstrap, prints the verdict and writes a Markdown report with both models side by side.
 
-Compile: obc -src compare.obs -lib llm_eval,ml,csv,json,gen_collect -dest compare.obe
+Compile: obc -src llm_eval.obs,compare.obs -lib ml,csv,json,gen_collect -dest compare.obe
 Run:     obr compare.obe a_results.json b_results.json [--out PREFIX] [--k 1,5] [--reps 2000] [--seed 1]
 
 The statistic is B minus A, so a positive difference means the second file is the better model. Only tasks both runs were asked, and attempts whose model call worked, are paired.
