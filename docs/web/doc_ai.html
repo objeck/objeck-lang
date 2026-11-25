@@ -1031,7 +1031,7 @@ class AskWithTools {
   }
 }
 </code></pre>
-    <p>The bridge is tested against a local server (<code>mcp_core_test</code>); the Claude and Gemini hand-offs compile but were not run against the live APIs.</p>
+    <p>The bridge is tested against a local server (<code>mcp_core_test</code>). On 2026-11-25 the Claude hand-off was run live: a program connected to the demo server over HTTP, passed <code>ToAnthropicJson()</code>'s tools to <code>claude-haiku-5-5</code>, the model called <code>calculate</code> with <code>17 + 25</code>, <code>bridge-&gt;Run</code> returned <code>42</code>, and the model answered <code>42</code> (two turns, about 1,400 input and 55 output tokens). The MCP <code>inputSchema</code> went into <code>Tool-&gt;New</code> unchanged. The OpenAI and Gemini hand-offs were not run live: <code>ToOpenAiJson()</code> produces the Chat Completions <code>tools</code> array, but <code>API.OpenAI</code> has no call that takes that array or reads a tool call back, so a round trip needs hand-written HTTP.</p>
     <h4 id="limits">Limits</h4>
     <ul>
      <li>The JSON parser is lenient: a malformed message inside well-placed braces can be accepted.</li>
