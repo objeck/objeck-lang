@@ -1,0 +1,59 @@
+Bootstrap: docker
+From: almalinux:8
+
+# Objeck, portable flavor: obr + obc + the .obl libraries + libobjk_ml, built on
+# AlmaLinux 8 (glibc 2.28) with the C++ runtime and TLS/QUIC stacks linked
+# statically. Small (about 150 MB). No ONNX/OpenCV/SDL natives: use
+# objeck-release.def for those.
+#
+# Build (needs --fakeroot or root, and network for the base image):
+#
+#   cd tools/hpc/alderaan/container
+#   cp /path/to/objeck-portable-linux-x64.tgz .      # from build_image.sh portable-tgz
+#   apptainer build --fakeroot objeck-portable.sif objeck-portable.def
+#
+# %files paths are relative to the directory you build from.
+
+%files
+    objeck-portable-linux-x64.tgz /opt/objeck-portable-linux-x64.tgz
+
+%post
+    set -e
+    dnf -y install zlib tar gzip
+    dnf clean all
+    tar xzf /opt/objeck-portable-linux-x64.tgz -C /opt
+    rm -f /opt/objeck-portable-linux-x64.tgz
+    # Run-time self check: fails the build rather than the first job.
+    export OBJECK_LIB_PATH=/opt/objeck-lang/lib
+    /opt/objeck-lang/bin/obc -version
+
+%environment
+    export OBJECK_HOME=/opt/objeck-lang
+    export OBJECK_LIB_PATH=/opt/objeck-lang/lib
+    export PATH=/opt/objeck-lang/bin:$PATH
+
+%runscript
+    exec obr "$@"
+
+%test
+    set -e
+    export OBJECK_LIB_PATH=/opt/objeck-lang/lib
+    cat > /tmp/hello.obs <<'EOS'
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "hello from the container"->PrintLine();
+  }
+}
+EOS
+    /opt/objeck-lang/bin/obc -src /tmp/hello.obs -dest /tmp/hello.obe
+    /opt/objeck-lang/bin/obr /tmp/hello.obe | grep -q "hello from the container"
+
+%labels
+    Description Objeck runtime for the CU Denver Alderaan cluster (portable flavor)
+    Source https://github.com/objeck/objeck-lang
+
+%help
+    obr and obc are on PATH; OBJECK_LIB_PATH is set. Example:
+      singularity exec objeck-portable.sif obr program.obe
+    Pin the CPUs a job may use with Slurm; Objeck honours the cpuset and cgroup
+    (and OBJECK_CPU_COUNT) when it sizes thread pools.

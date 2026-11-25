@@ -2145,6 +2145,13 @@ jobs:
       - name: Traffic snapshot merge logic
         run: python3 tools/release-stats/test_snapshot_traffic.py
 
+      # tools/hpc/alderaan: the Slurm job-array helper and the scaling report, tested with
+      # sbatch/singularity shims and a Python "program" -- no scheduler, no container, no VM.
+      - name: HPC sweep helper and scaling harness
+        run: |
+          python3 tools/hpc/alderaan/tests/test_objeck_slurm.py
+          python3 tools/hpc/alderaan/tests/test_scaling.py
+
       # Same class of guard, for programs/regression/run_differential.py. Its
       # markers take a test out of part of the s0/s3 x JIT comparison, so each
       # one that removes coverage needs a stated reason, and the
