@@ -3,13 +3,31 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "v2026.11.3",
+	"title": "v2026.11.4",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md"
 	},
 	"features": [
+		{
+			"version": "v2026.11.4",
+			"items": [
+				"A toolkit for AI agents: API.Agent is a provider-neutral tool-use loop for Claude, OpenAI, Gemini and Ollama with cancellation, budgets, bounded tool calls and a trace; mcp is a Model Context Protocol server and client over stdio and streamable HTTP; System.Actor adds actors with supervision; and llm_util, rag and System.Telemetry add prompt templates and JSON Schema checks, a retrieval-augmented generation kit and inference timing, all in Objeck.",
+				"OpenAI tool calls: Completion->CompleteWithTools sends a tools array to Chat Completions and Choice->GetToolCalls() returns the calls the model asked for, so the OpenAI client takes part in the same tool loop as the other providers.",
+				"Boosting and forecasting: System.ML.Boost is gradient boosting (regressor and classifier, early stopping, feature importances) and System.ML.TimeSeries is forecasting (imputation, differencing, ACF, an ADF test, exponential smoothing), both in pure Objeck.",
+				"ONNX on the GPU: DeviceTensor and BoundSession keep tensors in the provider's memory (ResNet-34, batch 32, RTX 4090: 48.9 ms per Session->Run, 6.1 ms with the data resident), ep=tensorrt adds an engine cache and CUDA graphs, Half, BFloat16 and Quantization convert exactly for FP16 and INT8 models, and an inference no longer holds up the garbage collector or a session shared by threads.",
+				"Editor support: the language server offers inline completion (off by default, local-first), inlineValue, linkedEditingRange, onTypeFormatting, willRenameFiles and variable semantic tokens, and obd --dap adds stepInTargets, goto, cancel, disassemble and the invalidated and progress events, halts a running program on disconnect, and verifies breakpoints against the program.",
+				"Time limits for HTTP: HttpClient and HttpsClient take SetConnectTimeout, SetReadTimeout and SetDeadline (connect, handshake, reads, redirects and retries), where before a server that dribbled one byte at a time could keep a request alive indefinitely.",
+				"A thread's error need not end the process: --thread-faults=isolate (or OBJECK_THREAD_FAULTS=isolate) ends only the thread that raised an uncaught error, prints its stack, releases its locks and lets the others run.",
+				"Safer secrets: the OpenAI, Gemini and Anthropic clients refuse the API key while OBJECK_TLS_INSECURE_SKIP_VERIFY is set, and Cipher.Encrypt->AES256 writes AES-256-GCM with a PBKDF2 key and a random salt and nonce (the old format is still read, and is no longer produced).",
+				"Input and files: Console->ReadLine returns Nil at the end of input, and File records I/O errors (IsOK(), GetLastError(), ClearError()) instead of ignoring them.",
+				"Faster generated code: the Linux x64 JIT keeps Float loop locals in registers, the ARM64 JIT pins loop locals in callee-saved registers, more methods are JIT-compiled instead of interpreted, the optimizer folds integer identities and uses a control-flow graph for loop-invariant code motion and dead stores, and obc resolves names about 27% faster.",
+				"Compiler and runtime fixes: String->New(Byte[]) no longer reads past the array, a method chain on a parenthesised calculation keeps every call, a local declared without a value in a loop starts empty each iteration, dead-store elimination keeps a store a handler reads, loop-invariant code motion no longer hoists an observable store, function references to method ids of 32768 or more work, threads making the first call of one long-running method no longer run it 20x slower, and an ARM64 hang on the minimum Int is gone.",
+				"Library fixes: KNearestNeighbors->Query, bounded LevenshteinDistance and the threaded VectorIndex search are corrected at their edges, SentimentAnalyzer, View->ToJson, Table->Save and the Gemini and JSON-schema parsers no longer carry a previous value into the next, and a Nil collection lookup reports not-found.",
+				"Build and release: core/lib/*.obl are rebuilt from source and compared in CI, docs/api.zip and the Windows objeck.rc files are generated instead of committed, and tools/hpc/alderaan runs Objeck on a Slurm cluster without root."
+			]
+		},
 		{
 			"version": "v2026.11.3",
 			"items": [
