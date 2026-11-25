@@ -403,7 +403,7 @@ a.box:hover, a.card:hover { border-color: var(--accent); }
 .hero h1 span { display: block; }
 .eyebrow { font-size: 0.9rem; font-weight: 600; color: var(--accent); margin: 0 0 0.75rem; }
 .eyebrow a { color: inherit; }
-.hero h1 { font-size: clamp(2.2rem, 4.6vw, 3.4rem); line-height: 1.1; letter-spacing: -0.03em; margin: 0 0 1.75rem; }
+.hero h1 { font-size: clamp(2.2rem, 4.6vw, 3.4rem); line-height: 1.1; letter-spacing: -0.03em; margin: 0 0 0.75rem; }
 .hero .lead { font-size: 1.2rem; color: var(--text-soft); margin: 0 0 1.75rem; max-width: 34rem; }
 .hero-meta { margin: 1.25rem 0 0; font-size: 0.9rem; color: var(--muted); }
 .hero pre { margin: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); font-size: 0.82rem; }
