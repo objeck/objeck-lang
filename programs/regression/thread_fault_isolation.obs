@@ -1,0 +1,319 @@
+#~
+Thread-fault isolation: an uncaught runtime error in a spawned thread ends THAT
+THREAD, not the process (docs/research/thread_fault_isolation.md).
+
+By default (and under --thread-faults=exit) such an error still ends the program,
+so this test turns the mode on from the program:
+Runtime->SetProperty("runtime.threads.isolation", "isolate"). It then checks, for
+each kind of runtime error a worker can raise (divide by zero, Nil receiver, index
+out of bounds, invalid cast, a raise nothing catches, a failed assert):
+
+- two bystander threads that allocate and compute finish with the right answer
+  and the main thread joins all three and carries on;
+- Join reports the fault: Runtime->GetProperty("runtime.thread.join.fault") is
+  the error text after the faulted thread's Join and empty after the others';
+- runtime.threads.faulted counts it, and runtime.threads.active is back where it
+  was (the dead thread's mutator slot is released, so a collection never waits
+  for it);
+- the fault is raised from a callee the JIT compiles (the helper runs 60 times
+  first), so the default and OBJECK_JIT_THRESHOLD=1 runs unwind compiled frames,
+  and --jit=off the interpreter's;
+- a thread that dies inside critical() releases the lock: the main thread takes
+  it afterwards (it blocked forever before);
+- a ?-> region inside a worker still recovers, and that thread does not count
+  as faulted;
+- 1000 workers fault one after another without leaking a mutator slot.
+
+The bystanders allocate throughout, so --gc-threshold=64k (OBJECK_VM_ARGS) runs
+collections while the faulting threads unwind.
+~#
+use System.Concurrency;
+use Collection;
+
+class BoomError from Error {
+	New(message : String) {
+		Parent(message);
+	}
+}
+
+class Helper {
+	New() {
+	}
+
+	# the fault, raised on the 60th call so a compiled caller and callee are
+	# both on the stack
+	function : Step(kind : Int, i : Int) ~ Int {
+		if(i < 59) {
+			return i;
+		};
+
+		select(kind) {
+			label 0: {
+				z := i - 59;
+				return 100 / z;
+			}
+
+			label 1: {
+				s : String;
+				return s->Size();
+			}
+
+			label 2: {
+				a := Int->New[3];
+				return a[i];
+			}
+
+			label 3: {
+				b : Base := "text";
+				return b->As(IntRef)->Get();
+			}
+
+			label 4: {
+				Runtime->Raise(BoomError->New("worker raised"));
+				return 0;
+			}
+
+			label 5: {
+				Runtime->Assert(false);
+				return 0;
+			}
+		};
+
+		return i;
+	}
+
+	method : public : Guarded(i : Int) ~ IntRef {
+		z := i - i;
+		return IntRef->New(10 / z);
+	}
+}
+
+class Worker from Thread {
+	@kind : Int;
+	@lock : ThreadMutex;
+
+	New(kind : Int, lock : ThreadMutex) {
+		Parent("worker");
+		@kind := kind;
+		@lock := lock;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		total := 0;
+		if(@lock <> Nil) {
+			critical(@lock) {
+				for(i := 0; i < 60; i += 1;) {
+					total += Helper->Step(@kind, i);
+				};
+			};
+		}
+		else {
+			for(i := 0; i < 60; i += 1;) {
+				total += Helper->Step(@kind, i);
+			};
+		};
+		if(@kind >= 0) {
+			"UNREACHABLE: the faulting worker went on ({$total})"->PrintLine();
+		};
+	}
+}
+
+class Bystander from Thread {
+	@sum : Int;
+	@done : Bool;
+
+	New(name : String) {
+		Parent(name);
+		@sum := 0;
+		@done := false;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		kept := Vector->New()<String>;
+		for(i := 0; i < 30000; i += 1;) {
+			s := String->New("bystander {$i}");
+			@sum += s->Size();
+			if(i % 100 = 0) {
+				kept->AddBack(s);
+			};
+			if(i % 5000 = 0) {
+				Thread->Sleep(5);
+			};
+		};
+		@sum += kept->Size();
+		@done := true;
+	}
+
+	method : public : GetSum() ~ Int {
+		return @sum;
+	}
+
+	method : public : IsDone() ~ Bool {
+		return @done;
+	}
+}
+
+class Careful from Thread {
+	@recovered : Bool;
+
+	New() {
+		Parent("careful");
+		@recovered := false;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		h := Helper->New();
+		r := h?->Guarded(3);
+		@recovered := r = Nil & Runtime->GetLastError()->TypeOf(DivideByZeroError);
+	}
+
+	method : public : Recovered() ~ Bool {
+		return @recovered;
+	}
+}
+
+class ThreadFaultIsolation {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Stat(key : String) ~ Int {
+		return Runtime->GetProperty(key)->ToInt();
+	}
+
+	function : Expected() ~ Int {
+		n := 0;
+		for(i := 0; i < 30000; i += 1;) {
+			n += String->New("bystander {$i}")->Size();
+		};
+		return n + 300;
+	}
+
+	method : Scenario(kind : Int, lock : ThreadMutex, expected : Int) ~ Nil {
+		active := Stat("runtime.threads.active");
+		faulted := Stat("runtime.threads.faulted");
+
+		a := Bystander->New("a");
+		b := Bystander->New("b");
+		w := Worker->New(kind, lock);
+		a->Execute(Nil);
+		w->Execute(Nil);
+		b->Execute(Nil);
+
+		a->Join();
+		a_fault := Runtime->GetProperty("runtime.thread.join.fault");
+		w->Join();
+		w_fault := Runtime->GetProperty("runtime.thread.join.fault");
+		b->Join();
+		b_fault := Runtime->GetProperty("runtime.thread.join.fault");
+
+		Check("kind {$kind}: bystanders finished", a->IsDone() & b->IsDone());
+		Check("kind {$kind}: bystanders computed {$expected}", a->GetSum() = expected & b->GetSum() = expected);
+		Check("kind {$kind}: Join reports the worker's fault ({$w_fault})", w_fault->Size() > 0);
+		Check("kind {$kind}: Join of a normal thread reports none", a_fault->Size() = 0 & b_fault->Size() = 0);
+		Check("kind {$kind}: counted", Stat("runtime.threads.faulted") = faulted + 1);
+		Check("kind {$kind}: no mutator slot leaked", Stat("runtime.threads.active") = active);
+	}
+
+	method : Run() ~ Nil {
+		Check("isolation is off until asked for", Stat("runtime.threads.isolation") = 0 | Stat("runtime.threads.isolation") = 1);
+		Runtime->SetProperty("runtime.threads.isolation", "isolate");
+		Check("isolation is on", Stat("runtime.threads.isolation") = 1);
+
+		expected := Expected();
+		for(kind := 0; kind < 6; kind += 1;) {
+			Scenario(kind, Nil, expected);
+		};
+
+		# the text names the error
+		w := Worker->New(0, Nil);
+		w->Execute(Nil);
+		w->Join();
+		Check("divide by zero is named", Runtime->GetProperty("runtime.thread.join.fault")->Find("Divide by zero") >= 0);
+		w2 := Worker->New(4, Nil);
+		w2->Execute(Nil);
+		w2->Join();
+		Check("a raise is named", Runtime->GetProperty("runtime.thread.join.fault")->Find("worker raised") >= 0);
+		Check("the last fault is kept", Runtime->GetProperty("runtime.threads.fault.last")->Find("worker raised") >= 0);
+
+		# a second Join of the same thread returns at once and reports nothing
+		w2->Join();
+		Check("a Join of a joined thread reports none", Runtime->GetProperty("runtime.thread.join.fault")->Size() = 0);
+
+		# the lock a faulting thread held is released
+		shared := ThreadMutex->New("shared");
+		Scenario(1, shared, expected);
+		taken := false;
+		critical(shared) {
+			taken := true;
+		};
+		Check("the dead thread's lock was released", taken);
+
+		# a region inside a worker still recovers; that thread did not fault
+		before := Stat("runtime.threads.faulted");
+		c := Careful->New();
+		c->Execute(Nil);
+		c->Join();
+		Check("a ?-> region in a worker recovers", c->Recovered());
+		Check("and the thread is not counted as faulted", Stat("runtime.threads.faulted") = before & Runtime->GetProperty("runtime.thread.join.fault")->Size() = 0);
+
+		# many faults, one after another: no slot, handle or lock accumulates
+		active := Stat("runtime.threads.active");
+		before := Stat("runtime.threads.faulted");
+		reported := 0;
+		for(i := 0; i < 1000; i += 1;) {
+			t := Worker->New(i % 6, Nil);
+			t->Execute(Nil);
+			t->Join();
+			if(Runtime->GetProperty("runtime.thread.join.fault")->Size() > 0) {
+				reported += 1;
+			};
+		};
+		Check("1000 faulted workers all reported ({$reported})", reported = 1000);
+		Check("and counted", Stat("runtime.threads.faulted") = before + 1000);
+		Check("active threads are back to {$active}", Stat("runtime.threads.active") = active);
+
+		# odd workers fault and even ones do not: Join reports a fault for exactly the
+		# odd ones, so a record is never read by another thread that reuses the id
+		wrong := 0;
+		for(i := 0; i < 1000; i += 1;) {
+			t := Worker->New(i % 2 = 1 ? i % 6 : -1, Nil);
+			t->Execute(Nil);
+			t->Join();
+			faulted := Runtime->GetProperty("runtime.thread.join.fault")->Size() > 0;
+			if(faulted <> (i % 2 = 1)) {
+				wrong += 1;
+			};
+		};
+		Check("odd workers fault, even ones do not ({$wrong} misattributed)", wrong = 0);
+
+		# the program is still healthy: a collection with every thread gone
+		after := 0;
+		for(i := 0; i < 200000; i += 1;) {
+			after += String->New("after {$i}")->Size();
+		};
+		Check("allocation still works", after > 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"thread_fault_isolation: all checks passed"->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ThreadFaultIsolation->New()->Run();
+	}
+}
