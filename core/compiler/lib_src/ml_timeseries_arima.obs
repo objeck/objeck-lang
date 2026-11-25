@@ -6,6 +6,8 @@
 use Collection;
 
 #~
+Experimental: API may change.
+
 ARIMA(p, d, q) with optional seasonal differencing, and the automatic selectors AutoArima and AutoEts. Part of the ml_timeseries library; see ml_timeseries.obs.
 ~#
 bundle System.ML.TimeSeries {

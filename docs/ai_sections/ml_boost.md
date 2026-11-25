@@ -1,5 +1,7 @@
 ## Gradient boosting (System.ML.Boost)
 
+> **Experimental:** API may change.
+
 `System.ML.Boost` adds gradient boosted trees to the machine learning suite: `GradientBoostingRegressor` (squared, absolute and Huber loss) and `GradientBoostingClassifier` (binary logistic and multiclass softmax). It is pure Objeck, in its own library `ml_boost.obl`, which links `ml` (the classifier implements `ScoreModel`, so a binary model drops into `CrossValidation` and the lab's experiments).
 
 Compile with `-lib ml_boost,ml,gen_collect,csv`. The `@ai` alias includes `ml_boost`.

@@ -57,6 +57,21 @@ if(html <> Nil) {
 		@retry_delay_ms : Int;
 		@download_path : String;
 		@download_size : Int;
+		@limits : RequestLimits;
+
+		#~
+		Defaults of the time limits
+		~#
+		consts Timeout {
+			#~
+			The read timeout an HTTPS connection starts with, in milliseconds: how long a read
+			waits for the peer before it fails. It starts again with every byte received. It is
+			longer than a plain HTTP connection's, as a model API can be silent for minutes while
+			it reasons. SetReadTimeout changes it, and SetDeadline bounds the request as a whole.
+			OBJECK_TLS_RECV_TIMEOUT (milliseconds) changes it for every HTTPS client in a process.
+			~#
+			DEFAULT_READ_MS := 300000
+		}
 
 		#~
 		Default constructor
@@ -83,6 +98,7 @@ if(html <> Nil) {
 			@max_redirects := 10;
 			@max_retries := 3;
 			@retry_delay_ms := 1000;
+			@limits := RequestLimits->New(HttpsClient->Timeout->DEFAULT_READ_MS->As(Int));
 		}
 
 		#~
@@ -115,6 +131,140 @@ if(html <> Nil) {
 		method : public : SetRetry(max_retries : Int, delay_ms : Int) ~ Nil {
 			@max_retries := max_retries;
 			@retry_delay_ms := delay_ms;
+		}
+
+		#~
+		Sets the connect timeout: the longest the TCP connect to a server, and then the TLS
+		handshake, may each take. One that does not finish fails the request, with response
+		code 0 and GetErrorCode() CONNECT_TIMEOUT. The default is none, the operating system's
+		own for the connect and the read timeout for the handshake.
+		@param ms milliseconds, 0 for none
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->SetConnectTimeout(2000);
+		response := client->Get(Web.HTTP.Url->New("https://192.0.2.1/"));
+		if(response->GetCode() = 0) {
+		  client->GetError()->PrintLine();  # connect timed out after 2000 ms
+		};
+		```
+		~#
+		method : public : SetConnectTimeout(ms : Int) ~ Nil {
+			@limits->SetConnectTimeout(ms);
+		}
+
+		#~
+		Sets the read timeout: the longest a read waits for the server to send. It starts again
+		with every byte received, so it does not bound the request: a server that sends a byte
+		at a time can keep a request going far past it (see SetDeadline). A read that times out
+		fails the request, with response code 0 and GetErrorCode() READ_TIMEOUT. The default is
+		DEFAULT_READ_MS, 300 seconds.
+		@param ms milliseconds, 0 for the default
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->SetReadTimeout(5000);
+		response := client->Get(Web.HTTP.Url->New("https://example.com/slow"));
+		```
+		~#
+		method : public : SetReadTimeout(ms : Int) ~ Nil {
+			@limits->SetReadTimeout(ms);
+		}
+
+		#~
+		Sets the deadline for a whole request: the longest it may take from the call to its last
+		byte, covering the connect, the TLS handshake, the send, every read, every redirect
+		followed and every retry (a retry's delay is cut short by it). Unlike the read timeout
+		it does not start again with each byte, so a server that dribbles its reply is cut off
+		when the deadline is reached. A request that reaches it fails with response code 0 and
+		GetErrorCode() DEADLINE_EXCEEDED, and its connection is closed. For StreamPost it
+		bounds the stream. The default is none.
+		@param ms milliseconds, 0 for none
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->SetDeadline(30000);
+		response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"));
+		if(response->GetCode() = 0) {
+		  client->GetError()->PrintLine();  # deadline of 30000 ms exceeded
+		};
+		```
+		~#
+		method : public : SetDeadline(ms : Int) ~ Nil {
+			@limits->SetDeadline(ms);
+		}
+
+		#~
+		Gets the connect timeout
+		@return milliseconds, 0 for none
+		~#
+		method : public : GetConnectTimeout() ~ Int {
+			return @limits->GetConnectTimeout();
+		}
+
+		#~
+		Gets the read timeout
+		@return milliseconds, DEFAULT_READ_MS when none was set
+		~#
+		method : public : GetReadTimeout() ~ Int {
+			return @limits->GetReadTimeout();
+		}
+
+		#~
+		Gets the deadline
+		@return milliseconds, 0 for none
+		~#
+		method : public : GetDeadline() ~ Int {
+			return @limits->GetDeadline();
+		}
+
+		#~
+		Why the last request ended on a time limit
+		@return a message, Nil when it did not
+		~#
+		method : public : GetError() ~ String {
+			return @limits->GetError();
+		}
+
+		#~
+		Which time limit the last request ended on
+		@return a RequestLimits->Error code: CONNECT_TIMEOUT, READ_TIMEOUT or DEADLINE_EXCEEDED, 0 when it did not end on one
+		~#
+		method : public : GetErrorCode() ~ Int {
+			return @limits->GetErrorCode();
+		}
+
+		#~
+		Performs a HTTPS GET that ends within a deadline
+		@param url URL
+		@param deadline_ms the longest the request may take, in milliseconds
+		@return the response; code 0 and GetError() when the deadline was reached
+
+		```
+		response := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New("https://example.com/"), 5000);
+		if(response->GetCode() = 0) {
+		  response->GetError()->PrintLine();
+		};
+		```
+		~#
+		function : QuickGet(url : Web.HTTP.Url, deadline_ms : Int) ~ Web.HTTP.Response {
+			client := HttpsClient->New();
+			client->SetDeadline(deadline_ms);
+			return client->Get(url);
+		}
+
+		#~
+		Performs a HTTPS POST that ends within a deadline
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@param deadline_ms the longest the request may take, in milliseconds
+		@return the response; code 0 and GetError() when the deadline was reached
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, deadline_ms : Int) ~ Web.HTTP.Response {
+			client := HttpsClient->New();
+			client->SetDeadline(deadline_ms);
+			return client->Post(url, data, content_type);
 		}
 		
 		#~
@@ -567,10 +717,13 @@ if(html <> Nil) {
 				port := 443;
 			};
 
-			socket := TCPSecureSocket->New(address, port, pem);
+			@limits->Begin();
+			socket := @limits->SecureConnect(address, port, pem);
 			if(<>socket->IsOpen()) {
+				@limits->Timeout(TCPSecureSocket->GetLastError(), true);
 				return Nil;
 			};
+			@limits->Apply(socket);
 
 			@response_headers->Empty();
 
@@ -680,6 +833,7 @@ if(html <> Nil) {
 		}
 
 		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
+			@limits->Begin();
 			response := PushPullOperationInner(url, data, content_type, task, pem, 0, false);
 
 			# retry on transient errors
@@ -688,7 +842,10 @@ if(html <> Nil) {
 				if(code = 429 | code = 503) {
 					delay := @retry_delay_ms;
 					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
-						System.Concurrency.Thread->Sleep(delay);
+						# a retry's wait is cut to the deadline, and none starts past it
+						if(<>@limits->Sleep(delay)) {
+							break;
+						};
 						response := PushPullOperationInner(url, data, content_type, task, pem, 0, false);
 						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
 							break;
@@ -704,6 +861,10 @@ if(html <> Nil) {
 		method : PushPullOperationInner(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task, pem : String, redirect_count : Int, strip : Bool) ~ Web.HTTP.Response {
 			if(redirect_count > @max_redirects) {
 				return Web.HTTP.Response->New(310);
+			};
+
+			if(@limits->Expired()) {
+				return @limits->DeadlineExceeded();
 			};
 
 			content : ByteBuffer;
@@ -734,8 +895,12 @@ if(html <> Nil) {
 					port := 443;
 				};
 
-				socket := TCPSecureSocket->New(address, port, pem);
+				socket := @limits->SecureConnect(address, port, pem);
+				if(<>socket->IsOpen() & @limits->Timeout(TCPSecureSocket->GetLastError(), true)) {
+					return @limits->Failed();
+				};
 				if(socket->IsOpen()) {
+					@limits->Apply(socket);
 					@response_headers->Empty();
 
 					oper : String;
@@ -804,6 +969,12 @@ if(html <> Nil) {
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
+					# no status line because the server did not send one in time
+					if(status_code = 0 & @limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+						socket->Close();
+						return @limits->Failed();
+					};
+
 					# 0 means no status line was parsed -- a dead socket or a reply that
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
@@ -824,6 +995,11 @@ if(html <> Nil) {
 							};
 						}
 						while(line <> Nil & line->Size() > 0);
+
+						if(@limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+							socket->Close();
+							return @limits->Failed();
+						};
 
 						if(status_code = 301 | status_code = 302 | status_code = 303 |
 						   status_code = 307 | status_code = 308) {
@@ -863,6 +1039,12 @@ if(html <> Nil) {
 								content := WebCommon->ReadUntilClose(socket);
 							};
 						};
+					};
+
+					# a body cut short by a limit is no response
+					if(@limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+						socket->Close();
+						return @limits->Failed();
 					};
 					socket->Close();
 				};
@@ -1168,6 +1350,7 @@ if(response <> Nil & response->GetCode() = 200) {
 		}
 
 		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
+			@limits->Begin();
 			return PullOperationWithRetry(url, content_type, task, pem, 0);
 		}
 
@@ -1184,7 +1367,10 @@ if(response <> Nil & response->GetCode() = 200) {
 				if(code = 429 | code = 503) {
 					delay := @retry_delay_ms;
 					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
-						System.Concurrency.Thread->Sleep(delay);
+						# a retry's wait is cut to the deadline, and none starts past it
+						if(<>@limits->Sleep(delay)) {
+							break;
+						};
 						response := PullOperationInner(url, content_type, task, pem, redirect_count, false);
 						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
 							break;
@@ -1200,6 +1386,10 @@ if(response <> Nil & response->GetCode() = 200) {
 		method : PullOperationInner(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task, pem : String, redirect_count : Int, strip : Bool) ~ Web.HTTP.Response {
 			if(redirect_count > @max_redirects) {
 				return Web.HTTP.Response->New(310);
+			};
+
+			if(@limits->Expired()) {
+				return @limits->DeadlineExceeded();
 			};
 
 			content : ByteBuffer;
@@ -1230,8 +1420,12 @@ if(response <> Nil & response->GetCode() = 200) {
 					port := 443;
 				};
 
-				socket := TCPSecureSocket->New(address, port, pem);
+				socket := @limits->SecureConnect(address, port, pem);
+				if(<>socket->IsOpen() & @limits->Timeout(TCPSecureSocket->GetLastError(), true)) {
+					return @limits->Failed();
+				};
 				if(socket->IsOpen()) {
+					@limits->Apply(socket);
 					@response_headers->Empty();
 
 					oper : String;
@@ -1294,6 +1488,12 @@ if(response <> Nil & response->GetCode() = 200) {
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
+					# no status line because the server did not send one in time
+					if(status_code = 0 & @limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+						socket->Close();
+						return @limits->Failed();
+					};
+
 					# 0 means no status line was parsed -- a dead socket or a reply that
 					# is not HTTP. A genuine 500 must fall through here so its headers
 					# and body are read like any other response.
@@ -1314,6 +1514,11 @@ if(response <> Nil & response->GetCode() = 200) {
 							};
 						}
 						while(line <> Nil & line->Size() > 0);
+
+						if(@limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+							socket->Close();
+							return @limits->Failed();
+						};
 
 						if(status_code = 301 | status_code = 302 | status_code = 303 |
 						   status_code = 307 | status_code = 308) {
@@ -1341,6 +1546,10 @@ if(response <> Nil & response->GetCode() = 200) {
 							@download_size := WebCommon->SaveBody(socket, encoding, @response_headers->Find("content-length"), @download_path);
 							content := Nil;
 							if(@download_size < 0) {
+								if(@limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+									socket->Close();
+									return @limits->Failed();
+								};
 								socket->Close();
 								return Nil;
 							};
@@ -1357,6 +1566,12 @@ if(response <> Nil & response->GetCode() = 200) {
 								content := WebCommon->ReadUntilClose(socket);
 							};
 						};
+						# a body cut short by a limit is no response
+						if(@limits->Timeout(TCPSecureSocket->GetLastError(), false)) {
+							socket->Close();
+							return @limits->Failed();
+						};
+
 						@cert_issuer := socket->GetIssuer();
 						@cert_subject := socket->GetSubject();
 					};

@@ -136,7 +136,7 @@ claude mcp add objeck-demo -- /opt/objeck/bin/obr /opt/objeck/examples/mcp_serve
 claude mcp add --transport http objeck-demo http://127.0.0.1:8080/mcp
 ```
 
-**Not tried against Claude Desktop or Claude Code.** The configuration shape and commands above come from the MCP and Claude documentation; the server is tested against a scripted client that speaks the specification's messages (below), not against either product.
+**Verified with Claude Code, not with Claude Desktop.** On 2026-11-24 Claude Code connected to the demo server over stdio on Windows x64, negotiated revision 2025-11-25, listed the tools and called `calculate`. The Claude Desktop configuration shape comes from its documentation and was not run; the server is also tested against a scripted client that speaks the specification's messages (below).
 
 ### A client
 
@@ -305,11 +305,11 @@ a model asked for add(40, 2): 42
   candidates := Model->GenerateContent("models/gemini-2.0-flash", content, funcs, EndPoint->GetApiKey());
   ```
 
-* **OpenAI.** `ToOpenAiJson()` is the `tools` array of function definitions, `ToFunctionType(tool)` builds the `FunctionType` the OpenAI classes take, and `Run` answers a call the model asked for. The functions in `GetFunctions()` are the `Func2Ref<JsonElement, JsonElement>` the OpenAI conversation's `AddFunction` wraps (pass `pair->GetSecond()->Get()`).
+* **OpenAI.** `ToOpenAiJson()` is the `tools` array of function definitions, `ToFunctionType(tool)` builds the `FunctionType` the OpenAI classes take, and `Run` answers a call the model asked for. For Chat Completions, `Completion->CompleteWithTools(model, messages, bridge->ToOpenAiJson(), max_tokens, token)` sends the tools array and `Choice->GetToolCalls()` returns the calls to pass to `Run` (the loop is in [AI.md](../AI.md#openai)). The functions in `GetFunctions()` are the `Func2Ref<JsonElement, JsonElement>` the OpenAI conversation's `AddFunction` wraps (pass `pair->GetSecond()->Get()`).
 
 A function from `GetFunctions()` returns `{"result": text}`, or `{"error": text}` when the tool failed or the call could not be made. `ToFunctionType` maps `string`, `number`, `integer`, `boolean` and `object` properties and an `array` property to its item type as an array; a property with another or no `type` becomes a string.
 
-The two Claude and Gemini programs above were compiled; they were not run against the live APIs, which this repository's tests never call.
+On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live. The repository's tests never call the live APIs; these runs were manual.
 
 ### API
 

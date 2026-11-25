@@ -1,0 +1,24 @@
+{
+  "name": "demo",
+  "program": "../bench/build/sweep_task.obe",
+  "runner": ["obr"],
+  "args": ["{n}", "{seed}"],
+  "grid": {
+    "n": [100000, 1000000, 10000000],
+    "seed": [1, 2, 3, 4]
+  },
+  "repeats": 1,
+  "resources": {
+    "cpus_per_task": 2,
+    "mem": "4G",
+    "time": "00:20:00",
+    "partition": "math-alderaan",
+    "throttle": 8
+  },
+  "container": {
+    "image": "~/objeck-portable.sif",
+    "binds": []
+  },
+  "env": {},
+  "task_timeout": 900
+}

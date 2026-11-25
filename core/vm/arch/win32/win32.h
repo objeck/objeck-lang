@@ -523,10 +523,17 @@ class IPSocket {
   // the first, the address the resolver preferred. A name that does not
   // resolve is a resolver error. type is SOCK_STREAM or SOCK_DGRAM.
   //
-  static SOCKET Connect(const char* address, int port, int type, int timeout_ms, SocketError& error);
+  // deadline_ms, when above 0, is an instant on the SocketNowMs clock that the
+  // whole connect must not outlive: each attempt waits no longer than what is
+  // left of it, and no further address is tried once it has passed ("timed
+  // out"). It does not bound the name lookup, which getaddrinfo cannot be asked
+  // to abandon.
+  //
+  static SOCKET Connect(const char* address, int port, int type, int timeout_ms, SocketError& error, long long deadline_ms = 0);
 
-  // A TCP client socket (Connect), with the default 30 second receive timeout
-  static SOCKET Open(const char* address, int port, int timeout_ms, SocketError& error);
+  // A TCP client socket (Connect), with the default receive timeout
+  // (TCP_DEFAULT_RECV_TIMEOUT_MS, 30 seconds)
+  static SOCKET Open(const char* address, int port, int timeout_ms, SocketError& error, long long deadline_ms = 0);
 
   // Writes, reads: error is the call's WSAGetLastError(), or 0 when it worked
   static int WriteByte(char value, SOCKET sock, int& error) {
@@ -561,11 +568,58 @@ class IPSocket {
     return total;
   }
 
-  static char ReadByte(SOCKET sock, int &status, int& error) {
+  //
+  // Waits until sock can be read, no longer than the deadline (an instant on the
+  // SocketNowMs clock, 0 for none) and read_ms (the longest wait for the peer, 0
+  // for none) allow. true when a read will not block, or when there is no
+  // deadline and the read is left to the socket's own receive timeout. false
+  // with the reason in error (WSAETIMEDOUT when time ran out) otherwise.
+  //
+  // Called before every recv of a read that has a deadline, so a peer that sends
+  // a byte at a time is held to the deadline: each wait is what is left of it, not
+  // a fresh receive timeout.
+  //
+  static bool WaitReadable(SOCKET sock, long long deadline_ms, int read_ms, int& error) {
+    if(deadline_ms <= 0) {
+      return true;
+    }
+
+    const int wait_ms = SocketWaitBudget(deadline_ms, read_ms);
+    if(wait_ms == 0) {
+      error = WSAETIMEDOUT;
+      return false;
+    }
+
+    // select takes a timeval, where SO_RCVTIMEO takes a DWORD of milliseconds
+    fd_set read_set;
+    FD_ZERO(&read_set);
+    FD_SET(sock, &read_set);
+    struct timeval tv;
+    tv.tv_sec = wait_ms / 1000;
+    tv.tv_usec = (wait_ms % 1000) * 1000;
+    const int ready = select(0, &read_set, nullptr, nullptr, &tv);
+    if(ready == 0) {
+      error = WSAETIMEDOUT;
+      return false;
+    }
+    if(ready == SOCKET_ERROR) {
+      error = WSAGetLastError();
+      return false;
+    }
+
+    // readable, or closed or in error: the recv that follows reports which
+    return true;
+  }
+
+  static char ReadByte(SOCKET sock, int &status, int& error, long long deadline_ms = 0, int read_ms = 0) {
     // zero when nothing was read: an orderly close (recv returns 0) leaves the byte
     // untouched, and a caller that looks only at the value, as SockTcpInByte does,
     // would otherwise read whatever was on the stack
     char value = '\0';
+    if(!WaitReadable(sock, deadline_ms, read_ms, error)) {
+      status = -1;
+      return '\0';
+    }
     status = recv(sock, &value, 1, 0);
     if(status == SOCKET_ERROR) {
       error = WSAGetLastError();
@@ -577,10 +631,13 @@ class IPSocket {
   }
 
   // a failure part way still returns what was read, with the reason in error
-  static int ReadBytes(char* values, int len, SOCKET sock, int& error) {
+  static int ReadBytes(char* values, int len, SOCKET sock, int& error, long long deadline_ms = 0, int read_ms = 0) {
     error = 0;
     int total = 0;
     while(total < len) {
+      if(!WaitReadable(sock, deadline_ms, read_ms, error)) {
+        return total > 0 ? total : -1;
+      }
       int status = recv(sock, values + total, len - total, 0);
       if(status == SOCKET_ERROR) {
         error = WSAGetLastError();
@@ -730,7 +787,7 @@ class IPSecureSocket {
   static int DefaultRecvTimeoutMs() {
     static int cached = -1;
     if(cached < 0) {
-      cached = 300000;
+      cached = TLS_DEFAULT_RECV_TIMEOUT_MS;
       size_t len = 0;
       char val[16] = { 0 };
       if(!getenv_s(&len, val, sizeof(val), "OBJECK_TLS_RECV_TIMEOUT") && len > 0) {
@@ -751,8 +808,10 @@ class IPSecureSocket {
   // before trying the next, and on Windows that close resets WSAGetLastError()
   // to 0: a refused TLS connect could only say "the connection failed".
   //
-  static int ConnectNet(mbedtls_net_context& net, const char* address, int port, int type, SocketError& reason) {
-    const SOCKET sock = IPSocket::Connect(address, port, type, 0, reason);
+  // connect_ms above 0 bounds each connect attempt, and deadline_ms (an instant on the
+  // SocketNowMs clock, 0 for none) the connect as a whole (see IPSocket::Connect).
+  static int ConnectNet(mbedtls_net_context& net, const char* address, int port, int type, SocketError& reason, int connect_ms = 0, long long deadline_ms = 0) {
+    const SOCKET sock = IPSocket::Connect(address, port, type, connect_ms, reason, deadline_ms);
     if(sock == INVALID_SOCKET) {
       return reason.resolver ? MBEDTLS_ERR_NET_UNKNOWN_HOST : MBEDTLS_ERR_NET_CONNECT_FAILED;
     }
@@ -836,7 +895,14 @@ class IPSecureSocket {
     return true;
   }
 
-  static bool Open(const char* address, int port, const std::string &pem_file, SecureSocketCtx* &sctx) {
+  //
+  // A TLS client connection. connect_ms above 0 bounds the TCP connect and the TLS
+  // handshake each (a quiet peer ends the handshake with "timed out" rather than
+  // the socket's receive timeout); deadline_ms, an instant on the SocketNowMs clock
+  // (0 for none), bounds the connect, the handshake and every read after it, until
+  // the socket's deadline is changed (SecureSocketCtx::deadline_ms).
+  //
+  static bool Open(const char* address, int port, const std::string &pem_file, SecureSocketCtx* &sctx, int connect_ms = 0, long long deadline_ms = 0, int read_ms = 0) {
     sctx = new SecureSocketCtx();
 
     // Seed the random number generator
@@ -879,7 +945,7 @@ class IPSecureSocket {
     }
 
     SocketError reason;
-    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
+    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason, connect_ms, deadline_ms);
     if(ret != 0) {
       sctx->SetError(ret, reason);
       delete sctx;
@@ -924,7 +990,27 @@ class IPSecureSocket {
       return false;
     }
 
-    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+    // reads go through TlsBioRecv, which holds them to the deadline and the read timeout. A
+    // read timeout of the caller's holds the handshake's reads too
+    if(read_ms > 0) {
+      SetRecvTimeout(sctx, read_ms);
+    }
+    else {
+      sctx->read_ms = DefaultRecvTimeoutMs();
+    }
+    sctx->deadline_ms = deadline_ms;
+    mbedtls_ssl_set_bio(&sctx->ssl, sctx, TlsBioSend, TlsBioRecv, nullptr);
+
+    // The handshake: a connect timeout bounds it as well, as it does in an HTTP client
+    // that has one (the TCP connect and the handshake are one "connect"), and the
+    // deadline bounds it whatever the connect timeout is.
+    if(connect_ms > 0) {
+      const long long handshake_end = SocketNowMs() + connect_ms;
+      if(sctx->deadline_ms <= 0 || handshake_end < sctx->deadline_ms) {
+        sctx->deadline_ms = handshake_end;
+      }
+      sctx->read_ms = connect_ms;
+    }
 
     // Perform TLS handshake
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
@@ -935,6 +1021,11 @@ class IPSecureSocket {
         return false;
       }
     }
+
+    // the handshake's bound is spent: reads after it answer to the deadline and the
+    // read timeout alone
+    sctx->deadline_ms = deadline_ms;
+    sctx->read_ms = read_ms > 0 ? read_ms : DefaultRecvTimeoutMs();
 
     // In the default (secure) mode the handshake already enforced verification
     // via VERIFY_REQUIRED, so reaching here means the cert is valid. In insecure
@@ -1069,6 +1160,7 @@ class IPSecureSocket {
 
   static bool SetRecvTimeout(SecureSocketCtx* sctx, int ms) {
     if(!sctx) return false;
+    sctx->read_ms = ms > 0 ? ms : 0;
     DWORD timeout = (DWORD)ms;
     return setsockopt((SOCKET)sctx->net.fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) == 0;
   }

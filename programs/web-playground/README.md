@@ -38,9 +38,9 @@ Libraries are classified in `backend/app/config.py`:
 
 | set | meaning | now |
 |---|---|---|
-| `allowed_libs` | a program may use them | gen_collect (default), json, xml, regex, cipher, csv, query, query_ml, ml, ml_lab, ml_boost, ml_vector, rag, ml_report, ml_verify, ml_timeseries, stats, plot, nlp, nlp_topics, ai, math, misc, diags, concurrent, llm_util |
+| `allowed_libs` | a program may use them | gen_collect (default), json, xml, regex, cipher, csv, query, query_ml, ml, ml_lab, ml_boost, ml_vector, rag, ml_report, ml_verify, ml_timeseries, stats, plot, nlp, nlp_topics, ai, math, misc, diags, concurrent, actor, llm_util |
 | `dependency_libs` | linked only because an allowed library needs them | net (query and misc are built against it) |
-| `blocked_libs` | refused, with a reason | net_h2, net_quic, net_server, web_server, json_rpc, json_stream, rss, odbc, query_odbc, query_server, query_vision, sdl*, lame, openai, gemini, ollama, inference, models, onnx, opencv, nlp_onnx, ml_cnn, ml_clip |
+| `blocked_libs` | refused, with a reason | net_h2, net_quic, net_server, web_server, json_rpc, json_stream, rss, odbc, query_odbc, query_server, query_vision, sdl*, lame, openai, gemini, ollama, inference, models, onnx, opencv, nlp_onnx, ml_cnn, ml_clip, telemetry |
 
 A library in none of the sets is blocked too, and `test_policy.py` fails until someone decides, so a new `.obl` is never silently exposed or silently dropped.
 
@@ -107,5 +107,5 @@ The playground runs the **released** toolchain, not this checkout's build: `depl
 
 1. Release first. The demos (Query indexes, `BitSet`, `query_ml`, typed errors) need the engine that is on `master`; `v2026.10.1` does not have `CreateIndex`, `BitSet` or `query_ml.obl`, and `build-sandbox.sh` refuses to build an image missing a library it ships.
 2. `bash /opt/playground/repo/programs/web-playground/deploy/update.sh <version>` (see the `deploy-playground` skill). It pulls, installs the toolchain, updates the venv, **rebuilds the sandbox image**, restarts, and now also runs a Query + Cipher program through `/api/run`.
-3. The image must be rebuilt whenever `allowed_libs` or `dependency_libs` change: `docker/build-sandbox.sh` ships `net`, `query_ml`, `ai`, `math`, `concurrent`, and the native modules `libobjk_crypto`, `libobjk_ml` and `libobjk_diags` (earlier images shipped no `lib/native`, so `cipher`, `ml` and `diags` compiled and then failed at run time). `test_policy.py` keeps the script and `config.py` in step.
+3. The image must be rebuilt whenever `allowed_libs` or `dependency_libs` change: `docker/build-sandbox.sh` ships `net`, `query_ml`, `ai`, `math`, `concurrent`, `actor`, and the native modules `libobjk_crypto`, `libobjk_ml` and `libobjk_diags` (earlier images shipped no `lib/native`, so `cipher`, `ml` and `diags` compiled and then failed at run time). `test_policy.py` keeps the script and `config.py` in step.
 4. `container_memory` is now `128m` (was `64m`): linking the Query.Structured closure peaks near 60 MB. Four runs at once is 512 MB.
