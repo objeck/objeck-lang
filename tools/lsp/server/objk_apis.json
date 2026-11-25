@@ -3887,6 +3887,12 @@
 				"GetMessage": {
 					"descriptions": ["**Get message**\n\n```method : public : GetMessage() ~ Pair&lt;String,String&gt;```\n\n\n\nreturn: Pair&lt;String,String&gt;"]
 				},
+				"GetMessageJson": {
+					"descriptions": ["**Get the message object as received, to append to the conversation before the tool results**\n\n```method : public : GetMessageJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetToolCalls": {
+					"descriptions": ["**Get the tool calls the model asked for**\n\n```method : public : GetToolCalls() ~ Vector&lt;API.OpenAI.Chat.ToolCall&gt;```\n\n\n\nreturn: Vector&lt;API.OpenAI.Chat.ToolCall&gt;"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of the object**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
@@ -3898,8 +3904,14 @@
 				"BuildCompleteRequest": {
 					"descriptions": ["**Builds the JSON body POSTed to the chat completions endpoint. The output cap is sent as 'max_completion_tokens': 'max_tokens' is deprecated there and is rejected by reasoning (o-series) models. Public so the request can be checked offline.**\n\n```function : BuildCompleteRequest(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ JsonElement```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: JsonElement"]
 				},
+				"BuildToolRequest": {
+					"descriptions": ["**Builds the JSON body POSTed to the chat completions endpoint for a tool-calling turn. The messages are raw message objects, so an assistant message with 'tool_calls' (Choice->GetMessageJson) and a tool result (ToolResultMessage) go back exactly as received. Public so the request can be checked offline.**\n\n```function : BuildToolRequest(model:String, messages:JsonElement, tools:JsonElement, max_tokens:Int) ~ JsonElement```\n\n\n\nmodel: String\n\nmessages: JsonElement\n\ntools: JsonElement\n\nmax_tokens: Int\n\nreturn: JsonElement"]
+				},
 				"Complete": {
 					"descriptions": ["**Model response for the given query**\n\n```function : Complete(model:String, message:Pair&lt;String,String&gt;, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\ntoken: String\n\nreturn: Completion\n\n```\ntoken := \"sk-...\";\r\nmsg := Pair->New(\"user\", \"What is the speed of light?\")<String, String>;\r\nresult := Completion->Complete(\"gpt-4o-mini\", msg, token);\r\nchoice := result->GetFirstChoice();\r\nchoice->GetMessage()->GetSecond()->PrintLine();\n```", "**Model response for the given query**\n\n```function : Complete(model:String, message:Pair&lt;String,String&gt;, max_tokens:Int, temperature:Float, top_p:Float, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\ntoken: String\n\nreturn: Completion", "**Model response for the given query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: Completion", "**Model response for the given query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: Completion", "**Model response for the given image and query**\n\n```function : Complete(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\ntoken: String\n\nreturn: Completion", "**Model response for the given image and query**\n\n```function : Complete(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, max_tokens:Int, temperature:Float, top_p:Float, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\ntoken: String\n\nreturn: Completion", "**Model response for the given image and query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Completion", "**Model response for the given images and query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Completion"]
+				},
+				"CompleteWithTools": {
+					"descriptions": ["**Model response for a conversation with tools. If the first choice has tool calls (Choice->GetToolCalls), run them, append Choice->GetMessageJson() and one ToolResultMessage per call to the messages, and call again.**\n\n```function : CompleteWithTools(model:String, messages:JsonElement, tools:JsonElement, max_tokens:Int, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessages: JsonElement\n\ntools: JsonElement\n\nmax_tokens: Int\n\ntoken: String\n\nreturn: Completion"]
 				},
 				"GetChoices": {
 					"descriptions": ["**List of chat completion choices**\n\n```method : public : GetChoices() ~ Vector&lt;API.OpenAI.Chat.Choice&gt;```\n\n\n\nreturn: Vector&lt;API.OpenAI.Chat.Choice&gt;\n\n```\nchoices := result->GetChoices();\r\neach(choice in choices) {\r\n  choice->GetMessage()->GetSecond()->PrintLine();\r\n};\n```"]
@@ -3927,6 +3939,9 @@
 				},
 				"ToString": {
 					"descriptions": ["**String representation of the object**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToolResultMessage": {
+					"descriptions": ["**Builds the message that returns a tool's result to the model**\n\n```function : ToolResultMessage(tool_call_id:String, content:String) ~ JsonElement```\n\n\n\ntool_call_id: String\n\ncontent: String\n\nreturn: JsonElement"]
 				}
 			}
 		},
@@ -3944,6 +3959,23 @@
 				},
 				"Send": {
 					"descriptions": ["**Sends a message to the assistant**\n\n```method : public : Send(query:String, user:String) ~ Message```\n\n\n\nquery: String\n\nuser: String\n\nreturn: Message\n\n```\nsession := Conversation->New(assistant, token);\r\nresponse := session->Send(\"Summarize today's news\", \"user\");\r\ncontents := response->GetContents();\r\neach(content in contents) {\r\n  content->GetSecond()->As(String)->PrintLine();\r\n};\r\nsession->Close();\n```"]
+				}
+			}
+		},
+		"API.OpenAI.Chat.ToolCall": {
+			"description": "A function call the model asked for: an ID to answer it by, a function name, and the arguments as JSON text",
+			"functions": {
+				"GetArguments": {
+					"descriptions": ["**Get the arguments as the JSON text the model wrote**\n\n```method : public : GetArguments() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetArgumentsJson": {
+					"descriptions": ["**Parses the arguments, which the model writes as text and may get wrong**\n\n```method : public : GetArgumentsJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetId": {
+					"descriptions": ["**Get the call ID, to pass to Completion->ToolResultMessage**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**Get the function name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
@@ -25956,6 +25988,10 @@
 		"ToolCall": [
 			{
 				"bundle": "API.Ollama",
+				"file": ""
+			},
+			{
+				"bundle": "API.OpenAI.Chat",
 				"file": ""
 			}
 		],

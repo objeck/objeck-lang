@@ -1611,6 +1611,66 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 		
 		#~
+		Builds the JSON body POSTed to the chat completions endpoint for a tool-calling turn. The messages
+		are raw message objects, so an assistant message with 'tool_calls' (Choice->GetMessageJson) and a
+		tool result (ToolResultMessage) go back exactly as received. Public so the request can be checked offline.
+		@param model ID of the model to use
+		@param messages JSON array of message objects
+		@param tools JSON array of tool definitions, such as McpToolBridge->ToOpenAiJson(); Nil or empty for none
+		@param max_tokens cap on generated tokens, -1 to omit
+		@return request body
+		~#
+		function : BuildToolRequest(model : String, messages : JsonElement, tools : JsonElement, max_tokens : Int) ~ JsonElement {
+			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			request_json->Insert("model", model);
+			SetMaxCompletionTokens(request_json, max_tokens);
+			request_json->Insert("messages", messages);
+			if(tools <> Nil & tools->Size() > 0) {
+				request_json->Insert("tools", tools);
+			};
+			return request_json;
+		}
+
+		#~
+		Builds the message that returns a tool's result to the model
+		@param tool_call_id ID of the tool call being answered (ToolCall->GetId)
+		@param content the result text
+		@return message object {"role":"tool","tool_call_id":...,"content":...}
+		~#
+		function : ToolResultMessage(tool_call_id : String, content : String) ~ JsonElement {
+			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message_json->Insert("role", "tool");
+			message_json->Insert("tool_call_id", tool_call_id);
+			message_json->Insert("content", content);
+			return message_json;
+		}
+
+		#~
+		Model response for a conversation with tools. If the first choice has tool calls
+		(Choice->GetToolCalls), run them, append Choice->GetMessageJson() and one
+		ToolResultMessage per call to the messages, and call again.
+		@param model ID of the model to use
+		@param messages JSON array of message objects
+		@param tools JSON array of tool definitions, such as McpToolBridge->ToOpenAiJson()
+		@param max_tokens maximum number of completion tokens, -1 to omit
+		@param token API token
+		@return completion response, or Nil on an error (see GetLastError)
+		~#
+		function : CompleteWithTools(model : String, messages : JsonElement, tools : JsonElement, max_tokens : Int, token : String) ~ Completion {
+			completion_json := BuildToolRequest(model, messages, tools, max_tokens);
+
+			data := completion_json->ToString()->ToByteArray();
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			if(NoReply(response)) {
+				return Nil;
+			};
+
+			return ParseCompletion(ResponseText(response));
+		}
+
+		#~
 		Model response for the given image and query
 		@param message completion message and image query.
 		@param model ID of the model to use
@@ -1762,15 +1822,83 @@ choice->GetMessage()->GetSecond()->PrintLine();
 	}
 
 	#~
+	A function call the model asked for: an ID to answer it by, a function name, and the arguments as JSON text
+	~#
+	class ToolCall {
+		@id : String;
+		@name : String;
+		@arguments : String;
+
+		New(call_json : JsonElement) {
+			@id := Text(call_json, "id");
+			@name := "";
+			@arguments := "";
+			function_json := call_json->Get("function");
+			if(function_json <> Nil & function_json->GetType() = JsonElement->JsonType->OBJECT) {
+				@name := Text(function_json, "name");
+				@arguments := Text(function_json, "arguments");
+			};
+		}
+
+		# a member read as text; empty if it is missing or not a string
+		function : Text(json : JsonElement, name : String) ~ String {
+			member_json := json->Get(name);
+			if(member_json <> Nil & member_json->GetType() = JsonElement->JsonType->STRING) {
+				return member_json->GetString();
+			};
+
+			return "";
+		}
+
+		#~
+		Get the call ID, to pass to Completion->ToolResultMessage
+		@return call ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the function name
+		@return function name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the arguments as the JSON text the model wrote
+		@return arguments text
+		~#
+		method : public : GetArguments() ~ String {
+			return @arguments;
+		}
+
+		#~
+		Parses the arguments, which the model writes as text and may get wrong
+		@return arguments object, or Nil if the text is not valid JSON
+		~#
+		method : public : GetArgumentsJson() ~ JsonElement {
+			if(@arguments->IsEmpty()) {
+				return Nil;
+			};
+			return JsonParser->TextToElement(@arguments);
+		}
+	}
+
+	#~
 	Completion choice
 	~#
 	class Choice {
 		@index : Int;
 		@finish_reason : String;
 		@message : Pair<String, String>;
+		@message_json : JsonElement;
+		@tool_calls : Vector<API.OpenAI.Chat.ToolCall>;
 
 		New(chat_json : JsonElement) {
 			Parent();
+			@tool_calls := Vector->New()<API.OpenAI.Chat.ToolCall>;
 			if(chat_json->Has("index")) {
 				@index := chat_json->Get("index")->GetInt();
 			};
@@ -1782,6 +1910,17 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			role := "assistant";
 			content := "";
 			message_json := chat_json->Get("message");
+			if(message_json <> Nil & message_json->GetType() = JsonElement->JsonType->OBJECT) {
+				@message_json := message_json;
+				calls_json := message_json->Get("tool_calls");
+				if(calls_json <> Nil & calls_json->GetType() = JsonElement->JsonType->ARRAY) {
+					each(call_json in calls_json) {
+						if(call_json->GetType() = JsonElement->JsonType->OBJECT) {
+							@tool_calls->AddBack(ToolCall->New(call_json));
+						};
+					};
+				};
+			};
 			if(message_json <> Nil) {
 				if(message_json->Has("role")) {
 					role := message_json->Get("role")->GetString();
@@ -1815,6 +1954,22 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		~#
 		method : public : GetMessage() ~ Pair<String, String> {
 			return @message;
+		}
+
+		#~
+		Get the tool calls the model asked for
+		@return tool calls, empty if none
+		~#
+		method : public : GetToolCalls() ~ Vector<API.OpenAI.Chat.ToolCall> {
+			return @tool_calls;
+		}
+
+		#~
+		Get the message object as received, to append to the conversation before the tool results
+		@return message JSON, or Nil if the choice had none
+		~#
+		method : public : GetMessageJson() ~ JsonElement {
+			return @message_json;
 		}
 
 		#~
@@ -5858,10 +6013,6 @@ session->Close();
 
 		function : native : GPT_4_1_MINI() ~ String {
 			return "gpt-4.1-mini";
-		}
-
-		function : native : GPT_4_1_NANO() ~ String {
-			return "gpt-4.1-nano";
 		}
 
 		function : native : O3() ~ String {
