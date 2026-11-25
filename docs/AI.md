@@ -1332,7 +1332,7 @@ class AskWithTools {
 }
 ```
 
-The bridge is tested against a local server (`mcp_core_test`). On 2026-11-25 the Claude hand-off was run live: a program connected to the demo server over HTTP, passed `ToAnthropicJson()`'s tools to `claude-haiku-5-5`, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` (two turns, about 1,400 input and 55 output tokens). The MCP `inputSchema` went into `Tool->New` unchanged. The OpenAI and Gemini hand-offs were not run live: `ToOpenAiJson()` produces the Chat Completions `tools` array, but `API.OpenAI` has no call that takes that array or reads a tool call back, so a round trip needs hand-written HTTP.
+The bridge is tested against a local server (`mcp_core_test`). On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live.
 
 ### Limits
 
