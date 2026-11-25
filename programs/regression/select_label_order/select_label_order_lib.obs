@@ -1,0 +1,114 @@
+#~
+Library form of select_label_order.obs, compiled by check_select_label_order.py with -tar lib and
+-asm, because the assembly listing of a library shows the select jump layout (the listing of a
+program does not). Keep the functions identical to the program's; the golden listing next to it
+is what the compiler must emit on every platform.
+~#
+bundle SelectLabelOrder {
+	class Probe {
+		function : Check(got : Int, want : Int) ~ Int {
+			if(got <> want) {
+				"  FAIL: got {$got}, wanted {$want}"->PrintLine();
+				return 1;
+			};
+			return 0;
+		}
+
+		function : One(v : Int) ~ Int {
+			r := -1;
+			select(v) {
+				label 10: { r := 1; }
+				other: { r := 0; }
+			};
+			return Check(r, v = 10 ? 1 : 0);
+		}
+
+		function : Two(v : Int) ~ Int {
+			r := -1;
+			select(v) {
+				label 7: { r := 1; }
+				label 207: { r := 2; }
+				other: { r := 0; }
+			};
+			want := 0;
+			if(v = 7) { want := 1; };
+			if(v = 207) { want := 2; };
+			return Check(r, want);
+		}
+
+		function : Three(v : Int) ~ Int {
+			r := -1;
+			select(v) {
+				label 5: { r := 1; }
+				label 1005: { r := 2; }
+				label 70000: { r := 3; }
+				other: { r := 0; }
+			};
+			want := 0;
+			if(v = 5) { want := 1; };
+			if(v = 1005) { want := 2; };
+			return Check(r, want);
+		}
+
+		function : Four(v : Int) ~ Int {
+			r := -1;
+			select(v) {
+				label 3: { r := 1; }
+				label 53: { r := 2; }
+				label 4003: { r := 3; }
+				label 90000: { r := 4; }
+				other: { r := 0; }
+			};
+			want := 0;
+			if(v = 3) { want := 1; };
+			if(v = 53) { want := 2; };
+			return Check(r, want);
+		}
+
+		function : Five(v : Int) ~ Int {
+			r := -1;
+			select(v) {
+				label 11: { r := 1; }
+				label 311: { r := 2; }
+				label 5000: { r := 3; }
+				label 60000: { r := 4; }
+				label 700000: { r := 5; }
+				other: { r := 0; }
+			};
+			want := 0;
+			if(v = 11) { want := 1; };
+			if(v = 311) { want := 2; };
+			return Check(r, want);
+		}
+
+		function : Seven(v : Int) ~ Int {
+			r := -1;
+			select(v) {
+				label 1: { r := 1; }
+				label 41: { r := 2; }
+				label 900: { r := 3; }
+				label 4000: { r := 4; }
+				label 50000: { r := 5; }
+				label 600000: { r := 6; }
+				label 7000000: { r := 7; }
+				other: { r := 0; }
+			};
+			want := 0;
+			if(v = 1) { want := 1; };
+			if(v = 41) { want := 2; };
+			return Check(r, want);
+		}
+
+		function : Words(i : Int) ~ Int {
+			s := i = 0 ? "beta" : "gamma";
+			r := -1;
+			select(s) {
+				label "alpha": { r := 1; }
+				label "beta": { r := 2; }
+				label "gamma": { r := 3; }
+				other: { r := 0; }
+			};
+			return Check(r, i = 0 ? 2 : 3);
+		}
+	}
+}

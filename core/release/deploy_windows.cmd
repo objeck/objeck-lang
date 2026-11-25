@@ -107,6 +107,21 @@ REM release\licenses holds the notices no package provides, for code ported or
 REM adapted into the .obl libraries: LIBSVM in System.ML's support vector
 REM machine, VADER's lexicon values in the NLP sentiment scorer.
 xcopy /e /y /q licenses %TARGET%\doc\licenses\
+REM Every standard library must exist: core\lib\*.obl are build products of core\compiler\lib_src.
+REM A missing one used to be a copy warning and a tree that cannot link; lang.obl is checked here,
+REM and the rest (names read from build_libs.sh) by require_obl.sh when sh is available.
+if not exist ..\lib\lang.obl (
+	echo.
+	echo ============================================================
+	echo  ERROR: core\lib has no .obl - run core\compiler\build_libs_windows.cmd first
+	echo ============================================================
+	exit /b 1
+)
+where sh >nul 2>&1
+if not errorlevel 1 (
+	sh ./require_obl.sh ../lib
+	if errorlevel 1 exit /b 1
+)
 copy ..\lib\*.obl %TARGET%\lib
 copy ..\lib\*.ini %TARGET%\lib
 

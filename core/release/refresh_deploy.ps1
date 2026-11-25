@@ -300,6 +300,10 @@ if (Test-Path $libSource) {
         New-Item -ItemType Directory -Path $libTarget | Out-Null
     }
     $obls = Get-ChildItem -Path $libSource -Filter *.obl -ErrorAction SilentlyContinue
+    if (-not $obls) {
+        Write-Host "  core\lib has no .obl: they are build products. Run core\compiler\build_libs_windows.cmd first."
+        exit 1
+    }
     $changed = 0
     foreach ($obl in $obls) {
         $destination = Join-Path $libTarget $obl.Name

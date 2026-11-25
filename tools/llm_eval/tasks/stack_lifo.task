@@ -1,0 +1,30 @@
+id: stack_lifo
+category: collections
+difficulty: 2
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that pushes the integers 1 through 5 onto a Collection Stack of IntRef, then pops every element, printing the popped values on one line separated by single spaces.
+--- expected
+5 4 3 2 1
+--- reference
+use Collection;
+
+class StackLifo {
+	function : Main(args : String[]) ~ Nil {
+		stack := Stack->New()<IntRef>;
+		for(i := 1; i <= 5; i += 1;) {
+			stack->Push(i);
+		};
+
+		line := "";
+		while(<>stack->IsEmpty()) {
+			if(line->Size() > 0) {
+				line->Append(" ");
+			};
+			line->Append(stack->Pop()->Get());
+		};
+		line->PrintLine();
+	}
+}

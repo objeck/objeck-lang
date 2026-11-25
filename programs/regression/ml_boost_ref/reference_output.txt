@@ -1,0 +1,34 @@
+REG sklearn test_mse                                           0.03762721077550026
+REG sklearn train_mse                                          0.008236595580216662
+REG xgboost lambda=0 test_mse                                  0.03749525176464665
+REG xgboost lambda=0 train_mse                                 0.008236594532185053
+REG xgboost lambda=0 first5 test predictions                   [1.740381, -0.208675, -0.331803, -0.908788, 0.780714]
+REG xgboost lambda=0 mean test prediction                      0.3258994221687317
+REG xgboost lambda=1 test_mse                                  0.03806844939203181
+REG xgboost lambda=1 train_mse                                 0.009941492192098902
+REG xgboost lambda=1 first5 test predictions                   [1.777216, -0.297663, -0.237144, -0.916149, 0.753162]
+REG xgboost lambda=1 mean test prediction                      0.3244503140449524
+REG sklearn absolute_error test_mae                            0.17042755004883092
+REG sklearn absolute_error test_mse                            0.05089554344818227
+REG sklearn huber test_mae                                     0.15892048643535495
+REG sklearn huber test_mse                                     0.04202530263063526
+BIN sklearn test_accuracy                                      0.78
+BIN sklearn test_logloss                                       0.46099712699964746
+BIN xgboost lambda=0 test_accuracy                             0.81
+BIN xgboost lambda=0 test_logloss                              0.40997663232956255
+BIN xgboost lambda=0 first5 test probabilities                 [0.787554, 0.094832, 0.096388, 0.998784, 0.002038]
+BIN xgboost lambda=1 test_accuracy                             0.79
+BIN xgboost lambda=1 test_logloss                              0.4267559223616263
+BIN xgboost lambda=1 first5 test probabilities                 [0.757344, 0.097297, 0.163664, 0.997049, 0.010977]
+MULTI sklearn test_accuracy                                    0.835
+MULTI sklearn test_logloss                                     0.3561566507517717
+MULTI xgboost lambda=0 test_accuracy                           0.855
+MULTI xgboost lambda=0 test_logloss                            0.33406203985214233
+MULTI xgboost lambda=0 first3 rows of probabilities            [[0.000655, 0.858838, 0.140507], [0.070317, 0.017782, 0.911901], [0.29393, 0.636601, 0.069469]]
+MULTI xgboost lambda=1 test_accuracy                           0.83
+MULTI xgboost lambda=1 test_logloss                            0.33146432042121887
+MULTI xgboost lambda=1 first3 rows of probabilities            [[0.00114, 0.809514, 0.189346], [0.075727, 0.028545, 0.895728], [0.234876, 0.689366, 0.075757]]
+LARGE sklearn 15 stages depth 4 on 8000 rows: seconds          0.5755016803741455
+LARGE sklearn 15 stages test_mse                               0.19376000591527126
+LARGE xgboost exact 15 stages lambda=0 test_mse                0.19376000359206005
+LARGE xgboost hist 50 stages max_bin=255 lambda=0 test_mse     0.12389363974295965

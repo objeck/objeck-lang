@@ -193,6 +193,15 @@ all twelve projects clean, regression 190/190, DAP 20/20, LSP 45/45.
 
 ### 5. Full Linux build via `update_version.sh`
 
+> **Are the libraries still committed?** `git ls-files 'core/lib/*.obl'` decides how much of steps 5-6 you owe.
+> While it lists files, everything below applies: rebuild them and COMMIT them (CI's `libs` job
+> rebuilds them from source and fails on any byte that differs, so a stale one is red on the bump PR).
+> Once it prints nothing (docs/DESIGN_OBL_FROM_SOURCE.md, stage 4) the `.obl` are build products:
+> the `libs` job makes the ones every CI and release job uses, you never `git add core/lib/*.obl`,
+> and these steps are only for testing locally (Windows has its own: `core\compiler\build_libs_windows.cmd`,
+> which builds `lang.obl` with the `Release-Sys` configuration of `compiler.vcxproj` and the rest with the
+> Windows `obc`). The list of libraries is `core/compiler/build_libs.sh`; keep nothing else in step with it.
+
 Run on Linux or WSL. This rebuilds sys_obc, lang.obl, obc, and all standard
 libraries (including `web_server.obl` — added 2026.6.1; keep the lib list here in
 sync with `update_version.sh` / `update_version_arm.sh`). Note it does **not**
@@ -206,6 +215,8 @@ wsl -d Ubuntu -- bash -c 'cd "$REPO"/core/compiler && bash update_version.sh'   
 If WSL is not available, note that the user needs to run `update_version.sh` on Linux/macOS.
 
 ### 6. Copy rebuilt libraries to deploy directory
+
+(Only meaningful for a local deploy tree; whether the `.obl` are committed or not is decided in step 5.)
 
 After the Linux build, the `.obl` files in `core/lib/` are the authoritative rebuilt copies:
 ```bash
