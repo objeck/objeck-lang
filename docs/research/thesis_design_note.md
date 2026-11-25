@@ -2,7 +2,48 @@
 
 Status: DRAFT for advisor review, 2026-11-24. Author: the student, drafted with Claude Code from the repository and pull-request text. Companion file: `docs/research/literature_review.md` (written in parallel on branch `docs/phd-literature-review`; this note does not repeat it and cites no paper it has not opened, see section 8).
 
-Conventions used throughout. **Measured** means a number that appears in the cited PR body or repository document, taken on the machine named there. **Target** means a goal that nobody has measured. Every PR cited from #1737 to #1769 was still **open** (not merged into `master`) when this note was written; where a section says "exists", it means "implemented on a branch with tests", not "released". Section 5 lists what is on `master` and what is not.
+Conventions used throughout. **Measured** means a number that appears in the cited PR body or repository document, taken on the machine named there. **Target** means a goal that nobody has measured. Every PR cited from #1737 to #1769 was still **open** (not merged into `master`) when this note was first drafted on 2026-11-24; by 2026-11-25 all of them are merged (checked with `gh pr view`), but the numbers quoted from them are still the PR authors' own, branch-level measurements, not re-run for this note. Section 5 lists what is on `master`; its status text was brought up to date on 2026-11-25. The one new measurement used here is the cross-runtime baseline of draft PR #1786 (`tools/research/baselines/RESULTS.md`), which is a single-machine, 9 to 10 repetition result on a shared box and is cited as such.
+
+---
+
+## 0. Origins: where the runtime comes from
+
+Dates are author dates of commits on `master`, listed in the table at the end of this section. This section is history, not evidence for H1 to H6.
+
+**Starting point.** Objeck began as a computer science master's project. The aim was a grid-based language that would make distributed computing easier for developers outside the Java ecosystem, at a time when SOAP web services were the usual way to connect machines.
+
+**Supporting components.** The HTTP/S client, the XML and JSON parsers and the web server were the supporting components that matured the language toward distributed use. They belong to that goal and were not a detour from it. SOAP support was added in August 2011 and WSDL support in December 2011. Effort then moved to JSON, which won out over SOAP and WSDL; the first JSON support dates from August 2012. Service discovery, a program finding and calling another program's capabilities, did not catch on in that period. It has caught on with MCP, which is why an MCP library appears in the agent work of this thesis.
+
+**Bottom-up design.** The language was built from the bottom. The instruction set, the JIT compiler and the runtime came first, and the compiler was rewritten to match them. The commit history is consistent with that order. Thread support (March 2010) was followed within days by concurrent garbage marking and concurrent JIT compilation. A JIT for IA-32 was ported to AMD64 later that month, and an x64 JIT followed in May 2010. A collector that stops all execution threads is dated May 2012. The working view is that the backend, meaning the JIT and the collector, is the hard part, and the compiler front end is a fraction of the work. This is why the spine of the thesis is a runtime-systems contribution and not a language-design one (section 2).
+
+**Lessons that shaped the runtime.**
+
+- *Unicode.* Work on Unicode strings started in June 2012 and was merged from a feature branch in April 2013. The difficulty was concrete: `wchar_t` is 16 bits on Windows and 32 bits on POSIX, and a character is not a byte. Fixes in this area are still arriving: #1769 (merged 2026-11-24) corrects `String->New(Byte[])` reading past the end of an exact-length array.
+- *32-bit to 64-bit.* A 64-bit-first refactor of the JIT began in February 2018, and 32-bit support was dropped in May 2022.
+- *Security.* TLS certificate validation was added in November 2016.
+- *New targets.* An ARM JIT arrived in November 2019, a first machine-learning routine (linear regression) in December 2023, and ONNX model support in July 2025.
+
+**How this leads to the thesis.** ONNX support puts blocking native inference calls inside a runtime whose collector stops every thread, which is the setting of H1 and H2: a collector-cooperative inference runtime. The original goal is revisited rather than dropped. Grid and HPC use, through the Alderaan cluster work (#1773, merged 2026-11-25), returns to distributed computing as a setting for the same runtime. Multi-node operation is a stretch result: no hypothesis depends on it.
+
+| Commit | Date | Subject |
+|---|---|---|
+| `fc3639dbfc` | 2010-03-04 | wip - thread support |
+| `641efef026` | 2010-03-12 | added code so that marking of garbage is concurrent (3 threads) |
+| `53e4ff5999` | 2010-03-12 | support for concurrent jit compiling |
+| `1cfa8a5521` | 2010-03-25 | porting JIT compiler from IA32 to AMD64 |
+| `1ef7775d04` | 2010-05-06 | x64 JIT support |
+| `9beefd62f6` | 2011-08-13 | soap support |
+| `7f819a8a62` | 2011-12-20 | wsdl support |
+| `83b98bf741` | 2012-05-22 | added code to stop all execution threads during garbage collection |
+| `3f13c02a91` | 2012-06-24 | adding support for unicode strings... |
+| `1e1182ad91` | 2012-08-08 | adding json support |
+| `3009cbb205` | 2013-04-30 | merged changes from the unicode feature branch into main |
+| `a3d31cee30` | 2016-11-19 | ssl connection now validates certs |
+| `cd8b2bbad2` | 2018-02-01 | inital jit refactor working on posix 64-bit |
+| `a37ef4f069` | 2019-11-26 | arm jit support |
+| `07be454838` | 2022-05-06 | dropping 32-bit support and improving 64-bit performance |
+| `f64bdc5521` | 2023-12-13 | ml linear regression |
+| `fcd682fd42` | 2025-07-21 | adding onnx support |
 
 ---
 
@@ -50,19 +91,23 @@ The spine is a **runtime-systems contribution**; the other two layers depend on 
 
 Each hypothesis has a metric, a baseline, a falsification condition and an honest strength rating. "Preliminary" numbers are quoted from PR bodies and are single-machine, mostly single-run (the PR text itself notes the box was shared).
 
-### H1. Parked blocking inference calls and GC-aware session lifetime cut the allocation stall of co-running threads
+### H1. Parking blocking inference calls removes an Objeck-specific collector stall; relative to other runtimes it restores parity, not an advantage
 
-*Claim.* Parking the calling thread around a blocking native inference call (so a stop-the-world collection need not wait for it) and tying session and tensor lifetime to the collector reduces the **tail** allocation stall of other threads by at least 5x versus the same call made unparked.
+*Claim.* Parking the calling thread around a blocking native inference call (so a stop-the-world collection need not wait for it) reduces the worst-case allocation stall of other threads in the same runtime, compared with the same runtime making the same call unparked. The claim is **not** that parked Objeck beats other managed runtimes: the baseline data (below) show it does not. Where parking leaves Objeck relative to the field is reported as a position, not as a win.
 
 *Metric.* Longest wait and p99/p99.9 of per-round allocation latency of an allocating thread running beside an inference thread, over a fixed duration, repeated at least 30 times with confidence intervals.
 
-*Baselines.* (a) the same native call unparked (the control inside the same VM); (b) a JVM running the same shape of workload with JNI/Panama inference calls and its default collector, to show whether the effect is specific to Objeck's stop-the-world design or general; (c) a Python process with a thread doing ORT inference beside a thread allocating (GIL behaviour makes this a different phenomenon; report, do not over-interpret).
+*Baselines.* (a) the same native call unparked (the control inside the same VM); (b) the same workload on a JVM (G1, Parallel, ZGC), .NET (workstation and server, concurrent and not), Go (cgo), Python and a C++ control with no collector, to show whether the effect is specific to Objeck's stop-the-world design or general. A first pass of (a) and (b) exists in draft PR #1786 (below); (c) a Python process with a thread doing ORT inference beside a thread allocating (GIL behaviour makes this a different phenomenon; report, do not over-interpret).
 
 *Preliminary (PR #1768, RTX 4090, WSL2, ORT-GPU 1.24.2, CUDA 12.6, ResNet-34, `bench_gc_stall.obs`, 10 s each).* Longest wait of an allocating thread, `Session->Run`, batch 32, `ep=cuda`: **176.7 ms to 19.9 ms** (8.9x). Batch 8, `ep=cpu`: **137.9 ms to 53.9 ms** (2.6x). p99 round: batch 32 cuda **4.5 ms to 4.6 ms** (no change); batch 8 cpu **88.8 ms to 10.9 ms** (8.1x).
 
-*Candid reading.* The 8.9x figure is a **maximum**, not a p99, and the cuda p99 did not move. As worded ("p99 allocation stall >= 5x") the hypothesis is *not yet supported* on the GPU case; it is supported on the CPU p99 and on the GPU maximum. The PR also states the residual ~20 ms is the collection itself (a major collection of large arrays), so the floor is the collector, which argues for a second step: shorter major pauses (or concurrent marking) is a different thesis. Wording to adopt: "reduces the worst-case and p99.9 stall by >= 5x; p99 is reported, not claimed". *Strength: medium.* The effect is real and mechanistic but the mechanism (parking) is known; the paper must show the protocol and its failure modes (what runs inside a parked scope, which objects may move), not the speedup alone.
+*Cross-runtime baseline (draft PR #1786, `tools/research/baselines/RESULTS.md`; RTX 4090, WSL2, ResNet-34 batch 32, ORT 1.24.2, paced allocator thread, 60 s runs, 9 to 10 quiet repetitions on a shared machine; median worst allocator stall).* CUDA: C++ control 1.3 ms; Python 1.3 ms; Go 1.0 ms; Java ZGC 2.1 ms; .NET workstation concurrent 5.4 ms; **Objeck parked 5.6 ms**; .NET server concurrent 10.5 ms; .NET non-concurrent 30 to 33 ms; Java Parallel 48 ms; Java G1 81 ms; **Objeck unparked 19.6 ms** (range 4.3 to 54 ms, so the parked and unparked ranges overlap). CPU provider (5 repetitions): Objeck unparked 344 ms, parked 40 ms; the other managed hosts 24 to 123 ms. In the same runs the p99 and p99.9 of the allocator stall did not separate parked from unparked (CUDA p99.9 109 us parked, 92 us unparked); the difference is only in the worst case. Objeck's own longest collection pause fell from 157 ms to 5.7 ms (the pause is measured from the request to stop threads, so it includes the wait for the call).
 
-*Falsified if* the parked/unparked ratio of the p99.9 stall falls below 2x across the contention matrix, or the JVM baseline shows the same ratio from a stock collector without any cooperation.
+*Candid reading of the baseline.* What parking buys, relative to the same runtime without it, is a worst-case stall 3.5x smaller on CUDA (19.6 to 5.6 ms, ranges overlapping) and 8.6x smaller on the CPU provider (344 to 40 ms, ranges not overlapping). Relative to the field, parked Objeck is **level with .NET's concurrent workstation collector, not ahead of it**; ZGC, Go, Python and the C++ control are lower, and G1, Parallel and the non-concurrent .NET collectors are higher. The other runtimes already treat a thread in a native call as stopped for collection purposes (JNI, P/Invoke, cgo), so none of them shows an inference-length stall; parking restores that behaviour to Objeck (this is the explanation given in #1786's write-up; it was not tested separately). The H1 result that can be claimed is therefore a defect removed, not a performance advantage. The PR #1768 figure below (176.7 to 19.9 ms) was **not reproduced** in size by this paced workload; it may still hold for that PR's as-fast-as-possible allocator, which has not been re-measured.
+
+*Candid reading of the PR figures.* The 8.9x figure is a **maximum**, not a p99, and the cuda p99 did not move. As the hypothesis was first worded ("p99 allocation stall >= 5x") it is *not supported* on the GPU case, and the baseline above confirms that p99 and p99.9 do not move on CUDA; the worst-case reduction is supported on the CPU provider (8.6x) and smaller on CUDA (3.5x, overlapping ranges). The PR also states the residual ~20 ms is the collection itself (a major collection of large arrays), so the floor is the collector, which argues for a second step: shorter major pauses (or concurrent marking) is a different thesis. Wording to adopt: "reduces the worst-case allocation stall of co-running threads relative to the same runtime without parking; p99 and p99.9 are reported, not claimed; no claim of an advantage over other runtimes". *Strength: medium for the within-runtime effect, none for a comparative advantage.* The effect is real and mechanistic but the mechanism (parking) is known; the paper must show the protocol and its failure modes (what runs inside a parked scope, which objects may move), not the speedup alone.
+
+*Falsified if* the parked/unparked ratio of the worst-case stall falls below 2x across the contention matrix (the first CUDA pass gives 3.5x with overlapping ranges, so this is open on the GPU and met on the CPU). A comparative claim (parked Objeck below the other runtimes) is **already falsified** by the first baseline pass: ZGC, Go and Python are lower and .NET's concurrent workstation collector is level.
 
 ### H2. Runtime-managed device-resident tensors remove host/device copy and allocation overhead
 
@@ -73,6 +118,8 @@ Each hypothesis has a metric, a baseline, a falsification condition and an hones
 *Baselines.* Plain `Session->Run`; **ONNX Runtime's own Python IO binding** (the essential baseline: if Python+ORT with IO binding matches Objeck bound/resident, H2 is an engineering parity result, not a research claim); Triton or ORT-server with shared CUDA memory where applicable.
 
 *Preliminary (PR #1760, same machine, ResNet-34, `ep=cuda`).* Batch 32: plain run **48.92 ms** (p95 53.78, 654 images/s), bound with the same host traffic **10.14 ms** (3,155/s), resident **6.15 ms** (5,205/s). Batch 8: 14.74 / 4.22 / 3.03 ms. Batch 1: 4.94 / 3.15 / 2.78 ms. Bound results were bit-identical to `Session->Run` on CPU and CUDA. A 30,000-run soak showed flat GPU memory (stated in #1768 as covered by #1760).
+
+*Cross-runtime check (draft PR #1786, same workload shape as H1).* Per-call inference p50 at batch 32 on CUDA: Objeck `Session->Run` 58.2 ms; Objeck `BoundSession` with host copies 9.4 ms; C++, Java, .NET and Go 7.2 to 7.3 ms (plain calls, no IO binding in those hosts); Python 12.4 ms with the default GIL switch interval. So most of what H2 removes is a conversion cost that the other bindings do not pay: bound Objeck closes the gap to those hosts (it does not pass them, 9.4 against 7.3 ms), and the H2 comparison against Python with ORT IO binding, the essential baseline, has not been run.
 
 *Candid reading.* The plain-run overhead is dominated by converting Objeck arrays and by allocation, not only by PCIe copies (the `bound_copy` row moves the same bytes and is already 4.8x faster). So "removes the copy" is not the right explanation; an ablation is needed. The gain shrinks to 1.8x at batch 1. This is the **weakest hypothesis as a research claim**, because a Python user can obtain much of it with ORT IO binding. Its research value is as the substrate for H1 and H6 (lifetime and failure behaviour), not as a headline. *Strength: weak as a claim, necessary as infrastructure.*
 
@@ -130,7 +177,7 @@ Each hypothesis has a metric, a baseline, a falsification condition and an hones
 
 *Preliminary.* Only structural: a session closed while tensors or bindings are attached is released after the last of them (PR #1760, `session_registry.h`), and the VM has a stop-the-world watchdog that reports which threads a collection is waiting for (`OBJECK_STW_WATCHDOG_MS`, `core/vm/arch/memory.cpp`). There is no fault-injection harness. *Strength: untested, likely the cheapest way to turn a robust engineering result into evidence.*
 
-**Summary of strength.** H1 medium (mechanism proven, wording must change), H2 weak as a claim, H3 weak (no data, crowded field), H4 unknown (no corpus), H5 medium-weak (needs a threat model and the type work), H6 untested. The thesis must not depend on H3 or H4 alone.
+**Summary of strength.** H1 medium for the within-runtime effect and none for a comparative advantage (mechanism proven; the baseline puts parked Objeck level with .NET concurrent workstation and behind ZGC and Go), H2 weak as a claim (it recovers a cost other bindings do not pay), H3 weak (no data, crowded field), H4 unknown (no corpus), H5 medium-weak (needs a threat model and the type work), H6 untested. The thesis must not depend on H3 or H4 alone.
 
 ---
 
@@ -142,7 +189,7 @@ Each hypothesis has a metric, a baseline, a falsification condition and an hones
 |---|---|---|
 | Single-model serving | Python + ONNX Runtime (CPU, CUDA, TensorRT EPs), with and without IO binding | Same model files, same ORT version, same batch sizes. ORT IO binding is the control for H2 |
 | Serving stacks | FastAPI wrapper; Ray Serve; NVIDIA Triton | For end-to-end request latency under N concurrent clients. Configure each with its documented batching and report configuration |
-| Managed-runtime behaviour | Java on a JVM (default collector, and a low-pause one) calling the same native library | For H1 and H6: separates "stop-the-world design" from "native calls are hard in any managed runtime". The ORT Java binding or a JNI/Panama shim; state which |
+| Managed-runtime behaviour | Java on a JVM (default collector, and a low-pause one) calling the same native library | For H1 and H6: separates "stop-the-world design" from "native calls are hard in any managed runtime". The ORT Java binding or a JNI/Panama shim; state which. A first pass over Java, .NET, Go, Python and C++ exists in draft PR #1786 |
 | Agents | The same task with `API.Agent`, with a minimal hand-written loop, and with an established framework | For H5 only, on safety and overhead; not on task quality |
 | Static placement | Everything-on-GPU, everything-on-CPU, hand-tuned split | H3 lower bounds |
 
@@ -177,14 +224,14 @@ Statistics: warm-up discarded; at least 30 independent runs for a tail claim; re
 - **Trust model.** `docs/SECURITY_MODEL.md`: `obr` is not a sandbox. API clients refuse an API key while TLS verification is off (#1744, merged).
 - **Design background.** `docs/AI_FOUNDATION_DESIGN.md` (tensor class, native tensors and the GC), `docs/INFERENCE_ENGINES_PLAN.md`.
 
-### 5.2 Implemented on open pull requests (not on `master`; branch-level evidence only)
+### 5.2 Merged pull requests (all on `master` as of 2026-11-25; the evidence quoted is still branch-level, from the PR text)
 
 | Piece | PR | What it provides | Maps to |
 |---|---|---|---|
 | `DeviceTensor`, `BoundSession` (IO binding) | #1760 | Provider-resident tensors (`cuda`, `tensorrt`, host memory for `cpu`), reuse without per-call allocation, ORT-allocated output, a `session_registry.h` that defers closing a session until attached tensors and bindings are gone, 30,000-run flat-memory soak; `onnx_iobinding.obs` runs on CPU everywhere, `_gpu` variant skips without a GPU | H2, H6 |
 | Exact fp16/bfloat16, 8-bit helpers, FP16/INT8 tooling | #1761 | All 65,536 half patterns round-tripped; model-conversion scripts; drift measurements (FP16 max abs 0.034, top-1 16/16; INT8 calibrated on random data is a speed fixture, top-1 5/16) | accuracy axis for H3 |
 | `ep=tensorrt`, session options, CUDA graphs | #1765 | TensorRT provider, documented CUDA options, measured table (batch 32 resident: FP32 cuda 6.39 ms; FP32 tensorrt 5.17; fp16 tensorrt 1.88; fp16 + CUDA graph 1.40; INT8 QDQ + fp16 + graph 1.28 ms) | profile space for H3 |
-| Parked `Session->Run`, shared sessions across threads | #1768 | Parking around plain runs and upload/download; `bench_gc_stall.obs`, `bench_threads.obs`; concurrency tests run under `--gc-threshold=64k`, `OBJECK_GC_VERIFY=1`, `--jit=off` | H1 |
+| Parked `Session->Run`, shared sessions across threads | #1768 | Parking around plain runs and upload/download; `bench_gc_stall.obs`, `bench_threads.obs`; concurrency tests run under `--gc-threshold=64k`, `OBJECK_GC_VERIFY=1`, `--jit=off`. Its 176.7 to 19.9 ms claim was not reproduced by the cross-runtime baseline (H1) | H1 |
 | `API.Agent` | #1753 | Provider-neutral tool-use loop: allow/deny lists, JSON-Schema argument validation, approval gate (fails closed), key redaction, observer, transcript | H5 baseline |
 | `API.MCP` | #1757 | Model Context Protocol server, client and bridge, with a stdio interoperability test driven by an independent Python client | H5 surface |
 | `llm_eval` | #1756 | Evaluation harness with 40-task suite, pass@k, paired-bootstrap comparison | statistics, agent evaluation |
@@ -195,6 +242,8 @@ Statistics: warm-up discarded; at least 30 independent runs for a tail claim; re
 Caveats stated in the PR text and repeated here: the GPU numbers are WSL2 only; the box was shared with other work (differences under about 10% are noise); the per-family sessions (`YoloSession`, `ResNetSession`, `Phi3Session`) still run inference **unparked**; hosted-provider adapters were never run against live services; the library was built with a native-write-barrier discipline (`tools/cicd/check_native_write_barrier.py`) that any new native resource type must follow.
 
 ### 5.3 Missing (nothing exists)
+
+This list was written on 2026-11-24. Since then, pull requests merged into `master` include a telemetry library (#1772, which bears on item 1; the profile store and any energy instrumentation, items 2 and 9, are not claimed here), agent run control (#1785), HTTP client deadlines (#1782) and an opt-in VM mode that ends only the faulting thread on an uncaught error (`--thread-faults=isolate`, #1783; the default is unchanged). Draft PRs #1776 (a fault-injection harness, item 8 in part) and #1786 (a JVM, .NET, Go and Python comparison workload, item 11 in part) exist but are not merged. Items 1 to 11 below are otherwise left as first written and should be re-read against those before they are quoted.
 
 1. **Telemetry.** No unified per-session/per-device counters (queue depth, collector phase seen by a request, device memory, power). Needed for H3 and for every energy claim.
 2. **Profile store.** No persistent record of (model, provider, options, batch, device) to measured latency/energy.
@@ -216,7 +265,7 @@ Quarters are counted from the start of dedicated thesis work (Q1 = the first qua
 
 | Phase | Quarters | Deliverables | Exit criterion |
 |---|---|---|---|
-| 0. Foundation | Q1 | Merge the open ONNX/agent PRs (or consciously drop them); quiet-machine benchmark protocol; fix the testbed (Windows CUDA runtime or declare WSL2 the platform); decide the JVM baseline | Reproducible H1/H2 runs with confidence intervals, scripted end to end |
+| 0. Foundation | Q1 | Merge the open ONNX/agent PRs (done by 2026-11-25) or consciously drop them; quiet-machine benchmark protocol; fix the testbed (Windows CUDA runtime or declare WSL2 the platform); decide the JVM baseline | Reproducible H1/H2 runs with confidence intervals, scripted end to end |
 | 1. Runtime paper | Q1-Q3 | Collector-aware resource protocol (what may run inside a parked scope, lifetime rules, finalization order), parking extended to per-family sessions, fault-injection harness (H6), H1/H2 evaluation with JVM and Python baselines | Draft submitted. Target venues: ISMM, VEE or MPLR; EuroSys/ATC as a poster or short paper; MLSys if the story is framed around serving |
 | 2. Telemetry and profile store | Q3-Q4 | Counters, profile store, energy instrumentation on the 4090 (NVML) and Apple Silicon (`powermetrics`); decision whether to buy an edge board | A day of mixed-load traces collected and replayable |
 | 3. Scheduling paper | Q4-Q6 | Placement/pacing policy using runtime-internal signals; N-model contention experiments; H3 against static and a published scheduler | Submitted (systems venue, or MLSys). Kill criterion: if runtime-internal signals do not change decisions, fold this phase into the runtime paper as a "case study" and move on |
@@ -244,7 +293,7 @@ Quarters are counted from the start of dedicated thesis work (Q1 = the first qua
 
 | Objection | Answer |
 |---|---|
-| "Parking threads around native calls is standard (JNI critical sections, safepoint-aware native transitions)." | True for the mechanism. The claim is the lifetime and resource protocol for device memory and sessions, and its measured effect under contention with a JVM comparison; if the JVM shows the same ratio from a stock collector, the paper becomes a negative-comparison study and should be reframed |
+| "Parking threads around native calls is standard (JNI critical sections, safepoint-aware native transitions)." | True for the mechanism. The claim is the lifetime and resource protocol for device memory and sessions, and its measured effect under contention against a cross-runtime comparison. The first pass (draft PR #1786) already shows the other runtimes have no inference-length stall, so the paper frames parking as removing an Objeck-specific stall and reports where Objeck then sits (level with .NET concurrent workstation, behind ZGC and Go), not as an advantage |
 | "Python with ORT IO binding already avoids the copies." | Agreed; H2 is infrastructure, not the contribution, and the paper says so |
 | "Real-time DNN scheduling is well studied; why another scheduler?" | Not a new algorithm: the claim is that runtime-internal signals change decisions. Kill criterion in section 6 if they do not |
 | "Why a new language rather than a library or an MLIR/compiler approach?" | The research needs a runtime we can modify (collector, safepoints, native-call boundary). Any other runtime (JVM, CLR, V8) would serve the runtime half; Objeck is chosen for access and for the value of one coherent VM. Stated as a limitation: external validity to production runtimes is argued, not shown, unless the H1 experiment is replicated in a JVM prototype |
@@ -290,6 +339,7 @@ Provenance for the numbers above; all on RTX 4090 24 GB, driver 621.24, WSL2 Ubu
 
 - #1760, `ep=cuda`, median (p95) ms and images/s. Batch 1: run 4.94 (7.26), 202/s; bound_copy 3.15 (5.21), 317/s; resident 2.78 (4.66), 359/s. Batch 8: 14.74 (18.23), 543/s; 4.22 (6.47), 1,894/s; 3.03 (6.43), 2,637/s. Batch 32: 48.92 (53.78), 654/s; 10.14 (10.96), 3,155/s; 6.15 (6.99), 5,205/s.
 - #1768, `bench_gc_stall.obs`: longest wait before/after, p99 round before/after, as in H1; `bench_threads.obs` as in H3.
+- Draft PR #1786 (the only measurement in this note not taken from a merged PR's text): `tools/research/baselines/RESULTS.md`, quoted in H1 and H2.
 - #1765 (TensorRT 10.14.1, resident, median ms at batch 1 / 8 / 32): FP32 cuda 2.98 / 3.26 / 6.39; FP32 cuda graph 0.89 / 2.34 / 5.87; FP32 tensorrt 1.14 / 4.75 / 5.17; fp16 tensorrt 0.99 / 2.34 / 1.88; fp16 + graph 0.86 / 0.99 / 1.40; INT8 QDQ + fp16 + graph 0.57 / 0.71 / 1.28.
 - #1761: FP32 run vs resident at batch 32: 44.64 vs 5.81 ms; FP16 resident 4.05 ms; INT8 QDQ resident 10.07 ms (a speed fixture; not a classifier).
 
