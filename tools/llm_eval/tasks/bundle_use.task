@@ -1,0 +1,46 @@
+id: bundle_use
+category: quirks
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program, in a single source file, that declares a bundle named Geometry containing a class Point (integer fields x and y, a constructor New(x : Int, y : Int) and a method DistanceSquared(p : Point) ~ Int). Outside the bundle, import it with a `use Geometry;` statement, create the points (1, 2) and (4, 6), and print the squared distance between them.
+--- expected
+25
+--- reference
+use Geometry;
+
+bundle Geometry {
+	class Point {
+		@x : Int;
+		@y : Int;
+
+		New(x : Int, y : Int) {
+			@x := x;
+			@y := y;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+
+		method : public : DistanceSquared(p : Point) ~ Int {
+			dx := p->GetX() - @x;
+			dy := p->GetY() - @y;
+			return dx * dx + dy * dy;
+		}
+	}
+}
+
+class BundleUse {
+	function : Main(args : String[]) ~ Nil {
+		a := Point->New(1, 2);
+		b := Point->New(4, 6);
+		a->DistanceSquared(b)->PrintLine();
+	}
+}

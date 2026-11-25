@@ -69,7 +69,8 @@ _BLOCK_REASONS: dict[str, str] = {}
 for _libs, _reason in (
     (("net", "net_h2", "net_quic", "net_server", "web_server", "json_rpc", "rss",
       "query_server", "ai_hub"), "the sandbox has no network access"),
-    (("openai", "gemini", "ollama", "anthropic", "agent", "actor_agents", "inference"), "it needs network access to a hosted model"),
+    (("openai", "gemini", "ollama", "anthropic", "agent", "actor_agents", "llm_util_clients", "rag_adapters", "inference"), "it needs network access to a hosted model"),
+    (("mcp",), "it serves and calls other programs over the network"),
     (("models", "onnx", "opencv", "query_vision"), "it needs model files and native vision libraries"),
     (("nlp_onnx",), "it needs a model file and the ONNX runtime"),
     (("ml_cnn",), "it reads image files through OpenCV and trains on many threads"),
@@ -77,6 +78,7 @@ for _libs, _reason in (
     (("odbc", "query_odbc"), "it needs a database driver and network access"),
     (("sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame"), "it needs a display or audio device"),
     (("json_stream",), "it streams from files"),
+    (("llm_eval",), "it starts the compiler and other programs and writes files"),
 ):
     for _l in _libs:
         _BLOCK_REASONS[_l] = _reason
@@ -271,8 +273,11 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "query_ml": ("Query ML", "Models as query sources"),
     "ml": ("ML", "Machine learning and matrix math"),
     "ml_lab": ("ML Lab", "Stratified splits, imbalance resampling, parameter sweeps, result tables and SVG charts"),
+    "ml_boost": ("Gradient Boosting", "Gradient boosted trees for regression and classification: squared, absolute and Huber loss, logistic and softmax, early stopping, importances and a histogram split finder"),
+    "rag": ("Retrieval (RAG)", "Retrieval-augmented generation kit: chunking, a local vector index, grounded prompts with citations and a pipeline, offline with a toy embedder"),
     "ml_vector": ("Vector Search", "A local vector index: exact cosine, dot and L2 nearest-neighbour search over embeddings"),
     "ml_verify": ("Verification", "False acceptance and rejection rates, the equal error rate, ROC and DET points and cosine similarity for a matching system such as face verification"),
+    "ml_timeseries": ("Time Series", "Forecasting: baselines, exponential smoothing, ARIMA with automatic selection, prediction intervals, and rolling-origin evaluation"),
     "ml_report": ("Reports", "Replicate statistics (mean, deviation, t interval, paired test) and a report builder that writes Markdown or one printable HTML file"),
     "stats": ("Statistics", "t-tests with confidence intervals and effect sizes, Pearson correlation, and an OLS regression summary with p-values"),
     "plot": ("Plot", "Scatter, histogram, line and bar charts and subplots as standalone SVG, no display needed"),
@@ -284,6 +289,7 @@ LIB_INFO: dict[str, tuple[str, str]] = {
     "diags": ("Diagnostics", "Parse and analyze Objeck code"),
     "concurrent": ("Concurrency", "Tasks, semaphores and latches"),
     "actor": ("Actors", "Actors with mailboxes, links, monitors, supervisors and restart policies, on threads"),
+    "llm_util": ("LLM Utilities", "Prompt templates, token estimates, JSON Schema validation and structured-output retries for chat models; the model itself is not reachable from the sandbox"),
 }
 
 

@@ -1,0 +1,40 @@
+id: json_build
+category: json
+difficulty: 4
+libs: gen_collect,json
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that uses the Data.JSON library to build a JSON array holding the integers 1, 2 and 3, wraps it as the value "items" of a JSON object that also has the string "kind" set to "list", and then parses the object's own text form back with JsonParser and prints, on separate lines, the "kind" value, the size of the "items" array and the sum of its elements.
+--- expected
+list
+3
+6
+--- reference
+use Data.JSON;
+
+class JsonBuild {
+	function : Main(args : String[]) ~ Nil {
+		items := JsonElement->New(JsonElement->JsonType->ARRAY);
+		items->Add(1);
+		items->Add(2);
+		items->Add(3);
+
+		root := JsonElement->New(JsonElement->JsonType->OBJECT);
+		root->Insert("kind", "list");
+		root->Insert("items", items);
+
+		parser := JsonParser->New(root->ToString());
+		if(parser->Parse()) {
+			parsed := parser->GetRoot();
+			parsed->Get("kind")->GetString()->PrintLine();
+			list := parsed->Get("items");
+			list->Size()->PrintLine();
+			sum := 0;
+			each(i : list->Size()) {
+				sum += list->Get(i)->GetInt();
+			};
+			sum->PrintLine();
+		};
+	}
+}

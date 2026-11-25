@@ -77,9 +77,15 @@ rm -f *.obe
 	$LIB_SRC/ml_outlier.obs \
 	$LIB_SRC/ml_embed.obs \
 	$LIB_SRC/ml_lab.obs \
+	$LIB_SRC/ml_boost.obs \
 	$LIB_SRC/ml_vector.obs \
 	$LIB_SRC/ml_report.obs \
+	$LIB_SRC/llm_eval.obs \
 	$LIB_SRC/ml_verify.obs \
+	$LIB_SRC/ml_timeseries.obs \
+	$LIB_SRC/ml_timeseries_models.obs \
+	$LIB_SRC/ml_timeseries_arima.obs \
+	$LIB_SRC/ml_timeseries_eval.obs \
 	$LIB_SRC/ml_cnn.obs \
 	$LIB_SRC/nlp_topics_text.obs \
 	$LIB_SRC/nlp_topics_lda.obs \
@@ -100,8 +106,13 @@ rm -f *.obe
 	$LIB_SRC/gemini.obs \
 	$LIB_SRC/ollama.obs \
 	$LIB_SRC/anthropic.obs \
+	$LIB_SRC/llm_util.obs \
+	$LIB_SRC/llm_util_clients.obs \
 	$LIB_SRC/agent.obs \
 	$LIB_SRC/actor_agents.obs \
+	$LIB_SRC/mcp.obs \
+	$LIB_SRC/rag.obs \
+	$LIB_SRC/rag_adapters.obs \
 	$LIB_SRC/models.obs \
 	$LIB_SRC/opencv.obs \
 	$LIB_SRC/onnx.obs $LIB_SRC/inference.obs \

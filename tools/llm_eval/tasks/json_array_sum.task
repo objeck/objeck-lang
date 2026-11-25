@@ -1,0 +1,30 @@
+id: json_array_sum
+category: json
+difficulty: 4
+libs: gen_collect,json
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that parses this JSON text with the Data.JSON library:
+{"items":[{"price":2,"qty":5},{"price":7,"qty":3},{"price":1,"qty":4}]}
+and prints the total cost, which is the sum over the items of price times qty. Print only the number.
+--- expected
+35
+--- reference
+use Data.JSON;
+
+class JsonArraySum {
+	function : Main(args : String[]) ~ Nil {
+		text := "{\"items\":[{\"price\":2,\"qty\":5},{\"price\":7,\"qty\":3},{\"price\":1,\"qty\":4}]}";
+		parser := JsonParser->New(text);
+		if(parser->Parse()) {
+			items := parser->GetRoot()->Get("items");
+			total := 0;
+			each(i : items->Size()) {
+				item := items->Get(i);
+				total += item->Get("price")->GetInt() * item->Get("qty")->GetInt();
+			};
+			total->PrintLine();
+		};
+	}
+}

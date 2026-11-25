@@ -229,7 +229,8 @@ class Test {
 				done := false;
 				do {
 					query := Console->ReadLine();
-					if(query->Equals("/quit")) {
+					# end of input quits, as /quit does
+					if(query = Nil | query->Equals("/quit")) {
 						session->Close();		
 						done := true;
 					}

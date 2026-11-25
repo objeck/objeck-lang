@@ -20,8 +20,13 @@ on:
     - cron: '39 13 * * 1'
 
 jobs:
+  libs:
+    name: Libraries
+    uses: ./.github/workflows/libs.yml
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: libs
     # Runner size impacts CodeQL analysis time. To learn more, please see:
     #   - https://gh.io/recommended-hardware-resources-for-running-codeql
     #   - https://gh.io/supported-runners-and-hardware-resources
@@ -86,6 +91,15 @@ jobs:
     # to build your code.
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+    # deploy_posix.sh copies core/lib/*.obl into the tree it builds; they come from the
+    # `libs` job (built from source), not from the checkout.
+    - if: matrix.build-mode == 'manual'
+      name: Download libraries
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: libs
+        path: core/lib/
+
     - if: matrix.build-mode == 'manual'
       name: Build C and C++ code
       run: |
