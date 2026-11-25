@@ -146,7 +146,7 @@ static int ConnectErrorRank(int error) {
 }
 
 // see the declaration in win32.h
-SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms, SocketError& error) {
+SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms, SocketError& error, long long deadline_ms) {
   Startup();
   error = { 0, false };
 
@@ -171,7 +171,20 @@ SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms
   int kept_rank = 0;
   for(struct addrinfo* ptr = result; ptr != nullptr && sock == INVALID_SOCKET; ptr = ptr->ai_next) {
     int attempt_error = 0;
-    sock = ConnectAttempt(ptr, timeout_ms, attempt_error);
+    int attempt_ms = timeout_ms;
+    if(deadline_ms > 0) {
+      const long long left = deadline_ms - SocketNowMs();
+      if(left <= 0) {
+        // out of time: no further address is tried, and this is the reason
+        error = { WSAETIMEDOUT, false };
+        kept_rank = 2;
+        break;
+      }
+      if(attempt_ms <= 0 || left < attempt_ms) {
+        attempt_ms = left > INT_MAX ? INT_MAX : (int)left;
+      }
+    }
+    sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
     if(sock == INVALID_SOCKET) {
       const int rank = ConnectErrorRank(attempt_error);
       if(rank > kept_rank) {
@@ -194,12 +207,12 @@ SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms
 }
 
 // see the declaration in win32.h
-SOCKET IPSocket::Open(const char* address, int port, int timeout_ms, SocketError& error) {
-  const SOCKET sock = Connect(address, port, SOCK_STREAM, timeout_ms, error);
+SOCKET IPSocket::Open(const char* address, int port, int timeout_ms, SocketError& error, long long deadline_ms) {
+  const SOCKET sock = Connect(address, port, SOCK_STREAM, timeout_ms, error, deadline_ms);
 
-  // Set default receive timeout (30 seconds)
+  // Set the default receive timeout
   if(sock != INVALID_SOCKET) {
-    DWORD recv_timeout_ms = 30000;
+    DWORD recv_timeout_ms = TCP_DEFAULT_RECV_TIMEOUT_MS;
     // Best-effort default, left non-fatal: the connection is otherwise usable. The
     // consequence is worth knowing though -- without it a recv here can block
     // indefinitely, so a caller needing the guarantee should use
@@ -427,7 +440,7 @@ SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
 	// while a handler served one request and closed, but a server that holds
 	// the connection open for a second request would park its thread on an
 	// idle peer permanently. Best-effort: the connection is usable either way.
-	DWORD timeout_ms = 30000;
+	DWORD timeout_ms = TCP_DEFAULT_RECV_TIMEOUT_MS;
 	if(setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
 		WSASetLastError(0);
 	}

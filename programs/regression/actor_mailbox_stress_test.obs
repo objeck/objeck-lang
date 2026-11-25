@@ -1,0 +1,282 @@
+# EXTRA_LIBS: gen_collect,concurrent,actor
+#~
+Eight producer threads and one consumer through a Mailbox and through an Actor: every message
+arrives exactly once and, per producer, in the order it was sent. Messages are small heap objects
+(a stamp holding a string and an array), so a collector that loses or moves one badly across the
+thread boundary shows up as a wrong number, a corrupt string or a crash. Run under
+--gc-threshold=64k and OBJECK_GC_VERIFY=1 as well as the default. Variants: unbounded; bounded BLOCK
+(backpressure); bounded REJECT with a retry; and the same traffic into an actor.
+~#
+use System.Actor;
+use System.Concurrency;
+use Collection;
+
+class Stamp {
+  @producer : Int;
+  @seq : Int;
+  @text : String;
+  @pad : Int[];
+
+  New(producer : Int, seq : Int) {
+    @producer := producer;
+    @seq := seq;
+    @text := "p{$producer}-s{$seq}";
+    @pad := Int->New[4];
+    @pad[0] := producer;
+    @pad[1] := seq;
+    @pad[2] := producer * 1000003 + seq;
+    @pad[3] := seq;
+  }
+
+  method : public : GetProducer() ~ Int {
+    return @producer;
+  }
+
+  method : public : GetSeq() ~ Int {
+    return @seq;
+  }
+
+  # true when the object is whole: its text and array still agree with its numbers
+  method : public : IsIntact() ~ Bool {
+    return @text->Equals("p{$@producer}-s{$@seq}") & @pad[0] = @producer & @pad[1] = @seq & @pad[2] = @producer * 1000003 + @seq & @pad[3] = @seq;
+  }
+}
+
+class Producer from Thread {
+  @sink : Mailbox;
+  @actor : Actor;
+  @id : Int;
+  @count : Int;
+  @retry : Bool;
+  @sent : Int;
+  @finished : Bool;
+
+  New(id : Int, count : Int, sink : Mailbox, actor : Actor, retry : Bool) {
+    Parent("producer");
+    @id := id;
+    @count := count;
+    @sink := sink;
+    @actor := actor;
+    @retry := retry;
+    @sent := 0;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    each(i : @count) {
+      stamp := Stamp->New(@id, i);
+      if(@actor <> Nil) {
+        @actor->Send(stamp);
+        @sent += 1;
+      }
+      else if(@retry) {
+        # REJECT: try again until the consumer has made room
+        while(@sink->Send(stamp) = Mailbox->Status->FULL) {
+          Thread->Sleep(0);
+        };
+        @sent += 1;
+      }
+      else {
+        if(@sink->Send(stamp) = Mailbox->Status->OK) {
+          @sent += 1;
+        };
+      };
+    };
+    @finished := true;
+  }
+
+  method : public : IsFinished() ~ Bool {
+    return @finished;
+  }
+
+  method : public : GetSent() ~ Int {
+    return @sent;
+  }
+}
+
+# Counts what an actor receives, per producer
+class Tally implements ActorBehavior {
+  @last : Int[];
+  @seen : Int[];
+  @bad : Int;
+  @order_errors : Int;
+
+  New(producers : Int) {
+    @last := Int->New[producers];
+    @seen := Int->New[producers];
+    each(i : producers) {
+      @last[i] := -1;
+    };
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->CALL) {
+      total := 0;
+      each(i : @seen) {
+        total += @seen[i];
+      };
+      mail->Answer(Report->New(total, @bad, @order_errors));
+    }
+    else {
+      stamp := mail->GetPayload()->As(Stamp);
+      p := stamp->GetProducer();
+      if(stamp->IsIntact() = false) {
+        @bad += 1;
+      };
+      if(stamp->GetSeq() <> @last[p] + 1) {
+        @order_errors += 1;
+      };
+      @last[p] := stamp->GetSeq();
+      @seen[p] += 1;
+    };
+    return true;
+  }
+}
+
+class Report {
+  @total : Int;
+  @bad : Int;
+  @order_errors : Int;
+
+  New(total : Int, bad : Int, order_errors : Int) {
+    @total := total;
+    @bad := bad;
+    @order_errors := order_errors;
+  }
+
+  method : public : GetTotal() ~ Int {
+    return @total;
+  }
+
+  method : public : GetBad() ~ Int {
+    return @bad;
+  }
+
+  method : public : GetOrderErrors() ~ Int {
+    return @order_errors;
+  }
+}
+
+class MailboxStress {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # Consumes until every producer has finished and the mailbox is empty, checking order per producer.
+  # Returns "received:duplicates:order errors:corrupt".
+  function : Consume(box : Mailbox, producers : Vector<Producer>) ~ String {
+    n := producers->Size();
+    last := Int->New[n];
+    each(i : n) {
+      last[i] := -1;
+    };
+    received := 0;
+    dup := 0;
+    order := 0;
+    bad := 0;
+    running := true;
+    while(running) {
+      item := box->Receive(20);
+      if(item <> Nil) {
+        stamp := item->As(Stamp);
+        p := stamp->GetProducer();
+        received += 1;
+        if(stamp->IsIntact() = false) {
+          bad += 1;
+        };
+        if(stamp->GetSeq() = last[p]) {
+          dup += 1;
+        }
+        else if(stamp->GetSeq() <> last[p] + 1) {
+          order += 1;
+        };
+        last[p] := stamp->GetSeq();
+      }
+      else {
+        # finished when every producer has stopped and nothing is left
+        all_done := true;
+        each(i : producers) {
+          if(producers->Get(i)->IsFinished() = false) {
+            all_done := false;
+          };
+        };
+        if(all_done & box->Size() = 0) {
+          running := false;
+        };
+      };
+    };
+    return "{$received}:{$dup}:{$order}:{$bad}";
+  }
+
+  function : Run(title : String, box : Mailbox, producers : Int, count : Int, retry : Bool) ~ Nil {
+    title->PrintLine();
+    threads := Vector->New()<Producer>;
+    each(i : producers) {
+      t := Producer->New(i, count, box, Nil, retry);
+      threads->AddBack(t);
+    };
+    each(i : threads) {
+      threads->Get(i)->Execute(Nil);
+    };
+    outcome := Consume(box, threads);
+    sent := 0;
+    each(i : threads) {
+      threads->Get(i)->Join();
+      sent += threads->Get(i)->GetSent();
+    };
+    # one more pass: anything that arrived after the consumer's last look
+    tail := box->Size();
+    parts := outcome->Split(":");
+    received := parts[0]->ToInt() + tail;
+    Check("every message accounted for (sent {$sent}, received {$received})", received = sent);
+    Check("none lost", received = producers * count);
+    Check("no duplicates", parts[1]->ToInt() = 0);
+    Check("per-producer order held", parts[2]->ToInt() = 0);
+    Check("no corrupt message", parts[3]->ToInt() = 0);
+  }
+
+  function : AgainstActor(producers : Int, count : Int) ~ Nil {
+    "into an actor:"->PrintLine();
+    actor := Actor->New("tally", Tally->New(producers))->Start();
+    threads := Vector->New()<Producer>;
+    each(i : producers) {
+      threads->AddBack(Producer->New(i, count, Nil, actor, false));
+    };
+    each(i : threads) {
+      threads->Get(i)->Execute(Nil);
+    };
+    each(i : threads) {
+      threads->Get(i)->Join();
+    };
+    # every send happened before this call, so the call is answered after all of them
+    result := actor->Call(Nil, 60000);
+    Check("the actor answered", result->IsOk());
+    report := result->GetValue()->As(Report);
+    Check("all {$(producers * count)} messages handled ({$(report->GetTotal())})", report->GetTotal() = producers * count);
+    Check("no corrupt message", report->GetBad() = 0);
+    Check("per-producer order held", report->GetOrderErrors() = 0);
+    actor->Stop();
+    Check("stopped", actor->Join(10000)->GetKind() = ExitReason->Kind->STOPPED);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    producers := 8;
+    count := 2500;
+    Run("unbounded, 8 producers:", Mailbox->New(), producers, count, false);
+    Run("bounded BLOCK (capacity 8, backpressure):", Mailbox->New(8, Mailbox->Policy->BLOCK), producers, count, false);
+    Run("bounded REJECT with retry (capacity 8):", Mailbox->New(8, Mailbox->Policy->REJECT), producers, 600, true);
+    AgainstActor(producers, count);
+    if(@failures > 0) {
+      "{$@failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "all stress checks passed"->PrintLine();
+  }
+}

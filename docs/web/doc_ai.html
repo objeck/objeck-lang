@@ -128,6 +128,30 @@ response := Response-&gt;Respond("o3-mini",
 response-&gt;GetText()-&gt;PrintLine();
 </code></pre>
     <p><strong>Output cap.</strong> The <code>max_tokens</code> argument of <code>Response-&gt;Respond(...)</code> limits the generated tokens (reasoning tokens included) and is sent as the Responses API field <code>max_output_tokens</code>; <code>-1</code> sends no cap. <code>Completion-&gt;Complete(...)</code> (Chat Completions) sends it as <code>max_completion_tokens</code>, because <code>max_tokens</code> is deprecated there and reasoning models reject it. <code>Response-&gt;BuildRespondRequest(...)</code> and <code>Completion-&gt;BuildCompleteRequest(...)</code> return the request body as a <code>JsonElement</code> without any network call.</p>
+    <p><strong>Tool calls.</strong> <code>Completion-&gt;CompleteWithTools(model, messages, tools, max_tokens, token)</code> is the Chat Completions call with a <code>tools</code> array: <code>messages</code> is a <code>JsonElement</code> array of message objects and <code>tools</code> the array of <code>{"type":"function","function":{name, description, parameters}}</code> definitions, such as <code>McpToolBridge-&gt;ToOpenAiJson()</code> (see <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/mcp.md" target="_blank">MCP</a>). If the reply asks for tools, <code>Choice-&gt;GetToolCalls()</code> lists them (<code>GetId()</code>, <code>GetName()</code>, <code>GetArguments()</code> as the JSON text the model wrote, <code>GetArgumentsJson()</code> parsed, <code>Nil</code> if it is not valid JSON). Append <code>Choice-&gt;GetMessageJson()</code> (the assistant message as received) and one <code>Completion-&gt;ToolResultMessage(call-&gt;GetId(), text)</code> per call, then call again until <code>GetToolCalls()</code> is empty. <code>Completion-&gt;BuildToolRequest(...)</code> returns the request body without a network call. The Responses API (<code>Response-&gt;Respond</code>) does not take a tools array yet.</p>
+<pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Chat, Data.JSON;
+
+messages := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;ARRAY);
+user := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
+user-&gt;Insert("role", "user");
+user-&gt;Insert("content", "What is (2 + 3) * 4? Use the calculator.");
+messages-&gt;Add(user);
+
+tools := bridge-&gt;ToOpenAiJson();   # an McpToolBridge
+completion := Completion-&gt;CompleteWithTools(Models-&gt;GPT_4O_MINI(), messages, tools, 512, token);
+choice := completion-&gt;GetChoices()-&gt;Get(0);
+while(choice-&gt;GetToolCalls()-&gt;Size() &gt; 0) {
+  messages-&gt;Add(choice-&gt;GetMessageJson());
+  each(call in choice-&gt;GetToolCalls()) {
+    text := bridge-&gt;Run(call-&gt;GetName(), call-&gt;GetArgumentsJson());
+    messages-&gt;Add(Completion-&gt;ToolResultMessage(call-&gt;GetId(), text));
+  };
+  completion := Completion-&gt;CompleteWithTools(Models-&gt;GPT_4O_MINI(), messages, tools, 512, token);
+  choice := completion-&gt;GetChoices()-&gt;Get(0);
+};
+choice-&gt;GetMessage()-&gt;GetSecond()-&gt;PrintLine();
+</code></pre>
+    <p>This round trip is tested against a local server (<code>openai_tool_calls_test</code>); it was not run against the live API.</p>
     <hr class="section-end">
     <h4 id="vision">Vision</h4>
 <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Responses, System.IO.Filesystem, Collection;

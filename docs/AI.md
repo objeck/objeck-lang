@@ -137,6 +137,34 @@ response->GetText()->PrintLine();
 
 **Output cap.** The `max_tokens` argument of `Response->Respond(...)` limits the generated tokens (reasoning tokens included) and is sent as the Responses API field `max_output_tokens`; `-1` sends no cap. `Completion->Complete(...)` (Chat Completions) sends it as `max_completion_tokens`, because `max_tokens` is deprecated there and reasoning models reject it. `Response->BuildRespondRequest(...)` and `Completion->BuildCompleteRequest(...)` return the request body as a `JsonElement` without any network call.
 
+**Tool calls.** `Completion->CompleteWithTools(model, messages, tools, max_tokens, token)` is the Chat Completions call with a `tools` array: `messages` is a `JsonElement` array of message objects and `tools` the array of `{"type":"function","function":{name, description, parameters}}` definitions, such as `McpToolBridge->ToOpenAiJson()` (see [MCP](ai_sections/mcp.md)). If the reply asks for tools, `Choice->GetToolCalls()` lists them (`GetId()`, `GetName()`, `GetArguments()` as the JSON text the model wrote, `GetArgumentsJson()` parsed, `Nil` if it is not valid JSON). Append `Choice->GetMessageJson()` (the assistant message as received) and one `Completion->ToolResultMessage(call->GetId(), text)` per call, then call again until `GetToolCalls()` is empty. `Completion->BuildToolRequest(...)` returns the request body without a network call. The Responses API (`Response->Respond`) does not take a tools array yet.
+
+```ruby
+use API.OpenAI, API.OpenAI.Chat, Data.JSON;
+
+messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+user := JsonElement->New(JsonElement->JsonType->OBJECT);
+user->Insert("role", "user");
+user->Insert("content", "What is (2 + 3) * 4? Use the calculator.");
+messages->Add(user);
+
+tools := bridge->ToOpenAiJson();   # an McpToolBridge
+completion := Completion->CompleteWithTools(Models->GPT_4O_MINI(), messages, tools, 512, token);
+choice := completion->GetChoices()->Get(0);
+while(choice->GetToolCalls()->Size() > 0) {
+  messages->Add(choice->GetMessageJson());
+  each(call in choice->GetToolCalls()) {
+    text := bridge->Run(call->GetName(), call->GetArgumentsJson());
+    messages->Add(Completion->ToolResultMessage(call->GetId(), text));
+  };
+  completion := Completion->CompleteWithTools(Models->GPT_4O_MINI(), messages, tools, 512, token);
+  choice := completion->GetChoices()->Get(0);
+};
+choice->GetMessage()->GetSecond()->PrintLine();
+```
+
+This round trip is tested against a local server (`openai_tool_calls_test`); it was not run against the live API.
+
 ---
 
 ### Vision

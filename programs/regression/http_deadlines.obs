@@ -1,0 +1,478 @@
+#~
+# HttpClient takes a connect timeout, a read timeout and a deadline for a whole request
+#
+# HttpClient used to give up on a quiet server after a fixed 30 seconds per read, with no way
+# to change it and no limit on the request as a whole. Every byte a server sent started the
+# 30 seconds again, so a server that dribbled its reply a byte at a time kept a request alive
+# for as long as it liked (a fault-injection run saw one succeed after 152 s), and a stalled
+# model server held a calling thread for 30 s or far longer. HttpClient now has:
+#
+#   SetConnectTimeout(ms)  the TCP connect
+#   SetReadTimeout(ms)     one wait for the peer; it starts again with each byte, as it always did
+#   SetDeadline(ms)        the whole request: connect, send, every read, redirects and retries.
+#                          It does not start again, and it holds inside a blocked read, which
+#                          is cut to what is left of it before it blocks
+#
+# A request that ends on one comes back as response code 0 with the reason in
+# Response->GetError() and the client's GetError() / GetErrorCode(). With none set a request is
+# what it always was. Every server here is started by the test, on loopback.
+#
+#   - a server that dribbles the BODY a byte every 100 ms: a 1 s deadline ends the request at ~1 s
+#   - one that dribbles a HEADER line the same way (a read that never returns a line)
+#   - one that accepts and never answers: a read timeout, and a deadline shorter than it
+#   - the same dribble with no deadline, and with a deadline longer than it takes, succeeds
+#   - a read timeout shorter than the whole dribble succeeds: it restarts with every byte
+#   - a refused connect, and a connect to an address that does not answer, with a connect timeout
+#   - a fast request with every limit set, and the kept connection it leaves behind: a client
+#     with no deadline that takes it must not inherit the last one's
+#   - retries stop at the deadline
+#
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.IO.Net, System.Concurrency, System.Time, Web.HTTP;
+
+# What the servers do with a connection
+class Wire {
+	# the request's head: false when the peer sent nothing (it closed)
+	function : ReadHead(socket : TCPSocket) ~ Bool {
+		first := socket->ReadLine();
+		if(first = Nil | first->Size() = 0) {
+			return false;
+		};
+
+		line : String := Nil;
+		do {
+			line := socket->ReadLine();
+		}
+		while(line <> Nil & line->Size() > 0);
+		return true;
+	}
+
+	# a byte at a time, delay_ms apart, until count are sent or the peer is gone
+	function : Dribble(socket : TCPSocket, count : Int, delay_ms : Int) ~ Nil {
+		for(i := 0; i < count; i += 1;) {
+			if(<>socket->WriteByte(120)) {
+				return;
+			};
+			Thread->Sleep(delay_ms);
+		};
+	}
+}
+
+# Answers a connection with a reply that arrives a byte at a time
+class SlowResponder from Thread {
+	@client : TCPSocket;
+	@in_header : Bool;
+	@count : Int;
+	@delay_ms : Int;
+
+	New(client : TCPSocket, in_header : Bool, count : Int, delay_ms : Int) {
+		Parent("slow-responder");
+		@client := client;
+		@in_header := in_header;
+		@count := count;
+		@delay_ms := delay_ms;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		if(Wire->ReadHead(@client)) {
+			if(@in_header) {
+				# a status line, then a header that never ends
+				@client->WriteString("HTTP/1.1 200 OK\r\nX-Slow: ");
+			}
+			else {
+				# the head at once, then the body a byte at a time
+				@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$@count}\r\nConnection: close\r\n\r\n");
+			};
+			Wire->Dribble(@client, @count, @delay_ms);
+		};
+		@client->Close();
+	}
+}
+
+# Answers every request on a connection at once, and keeps the connection
+class FastResponder from Thread {
+	@client : TCPSocket;
+	@code : Int;
+
+	New(client : TCPSocket, code : Int) {
+		Parent("fast-responder");
+		@client := client;
+		@code := code;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(Wire->ReadHead(@client)) {
+			if(@code = 200) {
+				@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: keep-alive\r\n\r\nhello");
+			}
+			else {
+				@client->WriteString("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 4\r\nConnection: keep-alive\r\n\r\nbusy");
+			};
+		};
+		@client->Close();
+	}
+}
+
+# Takes connections and says nothing, ever
+class QuietAcceptor from Thread {
+	@server : TCPSocketServer;
+	@held : Vector<TCPSocket>;
+
+	New(server : TCPSocketServer) {
+		Parent("quiet-acceptor");
+		@server := server;
+		@held := Vector->New()<TCPSocket>;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				@held->AddBack(client);
+			};
+		};
+	}
+}
+
+# What a server does with each connection it takes
+class Acceptor from Thread {
+	@server : TCPSocketServer;
+	@kind : Int;
+	@count : Int;
+	@delay_ms : Int;
+
+	# kind: 0 dribbles a body, 1 dribbles a header, 2 answers 200, 3 answers 503
+	New(server : TCPSocketServer, kind : Int, count : Int, delay_ms : Int) {
+		Parent("acceptor");
+		@server := server;
+		@kind := kind;
+		@count := count;
+		@delay_ms := delay_ms;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				if(@kind = 0) {
+					SlowResponder->New(client, false, @count, @delay_ms)->Execute(Nil);
+				}
+				else if(@kind = 1) {
+					SlowResponder->New(client, true, @count, @delay_ms)->Execute(Nil);
+				}
+				else if(@kind = 2) {
+					FastResponder->New(client, 200)->Execute(Nil);
+				}
+				else {
+					FastResponder->New(client, 503)->Execute(Nil);
+				};
+			};
+		};
+	}
+}
+
+class HttpDeadlines {
+	@failed : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		HttpDeadlines->New()->Run();
+	}
+
+	New() {
+		@failed := 0;
+	}
+
+	method : Run() ~ Nil {
+		Dribbles();
+		Quiet();
+		Connects();
+		Fast();
+		Retries();
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: HttpClient connect timeout, read timeout and deadline"->PrintLine();
+		Runtime->Exit(0);
+	}
+
+	# a listening server on a port the system chose
+	method : Serve(kind : Int, count : Int, delay_ms : Int) ~ Int {
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>server->Listen(16)) {
+			Fail("a test server did not listen");
+			Runtime->Exit(1);
+		};
+		Acceptor->New(server, kind, count, delay_ms)->Execute(Nil);
+		return server->GetPort();
+	}
+
+	method : UrlFor(port : Int) ~ Web.HTTP.Url {
+		return Web.HTTP.Url->New("http://127.0.0.1:{$port}/x");
+	}
+
+	# the seconds a request took
+	method : Elapsed(timer : Timer) ~ Float {
+		timer->End();
+		return timer->GetElapsedTime();
+	}
+
+	method : Code(response : Web.HTTP.Response) ~ Int {
+		return response <> Nil ? response->GetCode() : -1;
+	}
+
+	method : DeadlineCode() ~ Int {
+		return RequestLimits->Error->DEADLINE_EXCEEDED->As(Int);
+	}
+
+	method : ReadCode() ~ Int {
+		return RequestLimits->Error->READ_TIMEOUT->As(Int);
+	}
+
+	method : ConnectCode() ~ Int {
+		return RequestLimits->Error->CONNECT_TIMEOUT->As(Int);
+	}
+
+	# A reply that arrives a byte every 100 ms
+	method : Dribbles() ~ Nil {
+		# 600 bytes would take a minute; the deadline ends it at one second
+		port := Serve(0, 600, 100);
+		client := HttpClient->New();
+		client->SetDeadline(1000);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		Check("body dribble: the request fails (code {$Code(response)})", response <> Nil & response->GetCode() = 0);
+		Check("body dribble: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("body dribble: the reason is on the response too", response->GetErrorCode() = DeadlineCode() & response->GetError() <> Nil);
+		Check("body dribble: GetError says why ('{$client->GetError()}')", client->GetError() <> Nil & client->GetError()->Has("deadline"));
+		Check("body dribble: at about the deadline, not a minute later ({$seconds} s)", seconds > 0.8 & seconds < 5.0);
+
+		# the same through a header line that never ends: one read that never returns a line
+		port := Serve(1, 600, 100);
+		client := HttpClient->New();
+		client->SetDeadline(1000);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		Check("header dribble: the request fails", response <> Nil & response->GetCode() = 0);
+		Check("header dribble: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("header dribble: at about the deadline ({$seconds} s)", seconds > 0.8 & seconds < 5.0);
+
+		# a POST is held to it as well
+		port := Serve(0, 600, 100);
+		client := HttpClient->New();
+		client->SetDeadline(1000);
+		timer := Timer->New(true);
+		response := client->Post(UrlFor(port), "ping"->ToByteArray());
+		seconds := Elapsed(timer);
+		Check("post: the request fails", response <> Nil & response->GetCode() = 0);
+		Check("post: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("post: at about the deadline ({$seconds} s)", seconds > 0.8 & seconds < 5.0);
+
+		# the static helper
+		port := Serve(0, 600, 100);
+		timer := Timer->New(true);
+		response := HttpClient->QuickGet(UrlFor(port), 1000);
+		seconds := Elapsed(timer);
+		Check("QuickGet with a deadline: the request fails", response <> Nil & response->GetCode() = 0);
+		Check("QuickGet with a deadline: the response says why ('{$response->GetError()}')", response->GetErrorCode() = DeadlineCode());
+		Check("QuickGet with a deadline: at about the deadline ({$seconds} s)", seconds > 0.8 & seconds < 5.0);
+
+		# 12 bytes, 100 ms apart: 1.2 s in all, and it is a good reply
+		port := Serve(0, 12, 100);
+		client := HttpClient->New();
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		Check("no deadline: the slow reply is complete (code {$Code(response)})", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+		Check("no deadline: nothing ended it ({$client->GetErrorCode()})", client->GetErrorCode() = 0 & client->GetError() = Nil);
+		Check("no deadline: it took the time the server did ({$seconds} s)", seconds > 1.0);
+
+		# a deadline of 0 is none
+		client := HttpClient->New();
+		client->SetDeadline(0);
+		response := client->Get(UrlFor(port));
+		Check("deadline 0: the slow reply is complete", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+
+		# a deadline the reply fits in
+		client := HttpClient->New();
+		client->SetDeadline(10000);
+		response := client->Get(UrlFor(port));
+		Check("long deadline: the slow reply is complete", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+		Check("long deadline: nothing ended it", client->GetErrorCode() = 0);
+
+		# a read timeout shorter than the whole reply but longer than the gap between bytes:
+		# it starts again with each byte, so it does not end this
+		client := HttpClient->New();
+		client->SetReadTimeout(500);
+		response := client->Get(UrlFor(port));
+		Check("read timeout: restarts with each byte, the slow reply is complete", response <> Nil & response->GetCode() = 200 & response->GetContent()->Size() = 12);
+	}
+
+	# a server that accepts and never answers
+	method : Quiet() ~ Nil {
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		if(<>server->Listen(16)) {
+			Fail("the quiet server did not listen");
+			return;
+		};
+		port := server->GetPort();
+		QuietAcceptor->New(server)->Execute(Nil);
+
+		client := HttpClient->New();
+		client->SetReadTimeout(500);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		Check("read timeout: the request fails (code {$Code(response)})", response <> Nil & response->GetCode() = 0);
+		Check("read timeout: it ends on the read timeout ({$client->GetErrorCode()})", client->GetErrorCode() = ReadCode());
+		Check("read timeout: GetError says why ('{$client->GetError()}')", client->GetError() <> Nil & client->GetError()->Has("read timed out"));
+		Check("read timeout: after the timeout, not a fixed 30 s ({$seconds} s)", seconds > 0.4 & seconds < 5.0);
+		Check("read timeout: GetReadTimeout", client->GetReadTimeout() = 500);
+
+		# a deadline shorter than the read timeout wins
+		client := HttpClient->New();
+		client->SetReadTimeout(20000);
+		client->SetDeadline(600);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		Check("deadline under the read timeout: the request fails", response <> Nil & response->GetCode() = 0);
+		Check("deadline under the read timeout: it ends on the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		Check("deadline under the read timeout: at about the deadline ({$seconds} s)", seconds > 0.5 & seconds < 5.0);
+
+		# the same for a POST, and the client is good for another request afterwards
+		client->SetDeadline(500);
+		timer := Timer->New(true);
+		response := client->Post(UrlFor(port), "ping"->ToByteArray());
+		seconds := Elapsed(timer);
+		Check("post to a quiet server: the request fails", response <> Nil & response->GetCode() = 0 & client->GetErrorCode() = DeadlineCode());
+		Check("post to a quiet server: at about the deadline ({$seconds} s)", seconds > 0.4 & seconds < 5.0);
+
+		# a request that is not cut short clears the last one's error
+		fast := Serve(2, 0, 0);
+		response := client->Get(UrlFor(fast));
+		Check("a later request succeeds (code {$Code(response)})", response <> Nil & response->GetCode() = 200);
+		Check("a later request clears the error", client->GetErrorCode() = 0 & client->GetError() = Nil);
+	}
+
+	method : Connects() ~ Nil {
+		# Refused: not a timeout, and over well inside the connect timeout. Windows takes about
+		# two seconds to report a refused loopback connect (it retries the SYN), so the timeout is
+		# longer than that
+		server := TCPSocketServer->New("127.0.0.1", 0);
+		server->Listen(1);
+		closed_port := server->GetPort();
+		server->Close();
+
+		client := HttpClient->New();
+		client->SetConnectTimeout(10000);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(closed_port));
+		seconds := Elapsed(timer);
+		Check("refused: the request does not succeed", response = Nil | response->GetCode() = 0);
+		Check("refused: it is not reported as a timeout ({$client->GetErrorCode()})", client->GetErrorCode() = 0);
+		Check("refused: soon ({$seconds} s)", seconds < 8.0);
+
+		# An address nothing answers (TEST-NET-1, RFC 5737). Where the network has no route to it
+		# the connect fails at once instead, so what is certain is that it is over soon and does
+		# not succeed; where it times out, it is the connect timeout that says so
+		client := HttpClient->New();
+		client->SetConnectTimeout(500);
+		timer := Timer->New(true);
+		response := client->Get(Web.HTTP.Url->New("http://192.0.2.1:81/x"));
+		seconds := Elapsed(timer);
+		Check("no answer: the request does not succeed", response = Nil | response->GetCode() = 0);
+		Check("no answer: over within the bound ({$seconds} s)", seconds < 10.0);
+		if(client->GetErrorCode() <> 0) {
+			Check("no answer: a timeout is the connect timeout ({$client->GetErrorCode()})", client->GetErrorCode() = ConnectCode());
+			Check("no answer: it took the connect timeout ({$seconds} s)", seconds > 0.4);
+		};
+
+		# the deadline bounds the connect too
+		client := HttpClient->New();
+		client->SetDeadline(500);
+		timer := Timer->New(true);
+		response := client->Get(Web.HTTP.Url->New("http://192.0.2.1:81/x"));
+		seconds := Elapsed(timer);
+		Check("no answer, deadline: the request does not succeed", response = Nil | response->GetCode() = 0);
+		Check("no answer, deadline: over within the bound ({$seconds} s)", seconds < 10.0);
+		if(client->GetErrorCode() <> 0) {
+			Check("no answer, deadline: a timeout is the deadline ({$client->GetErrorCode()})", client->GetErrorCode() = DeadlineCode());
+		};
+	}
+
+	method : Fast() ~ Nil {
+		port := Serve(2, 0, 0);
+
+		# every limit set, and a reply that needs none of them
+		client := HttpClient->New();
+		client->SetConnectTimeout(2000);
+		client->SetReadTimeout(2000);
+		client->SetDeadline(5000);
+		Check("getters", client->GetConnectTimeout() = 2000 & client->GetReadTimeout() = 2000 & client->GetDeadline() = 5000);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		Check("fast: answered (code {$Code(response)})", response <> Nil & response->GetCode() = 200);
+		Check("fast: the body", response <> Nil & response->GetContent() <> Nil & String->New(response->GetContent())->Equals("hello"));
+		Check("fast: nothing was cut short", client->GetErrorCode() = 0 & client->GetError() = Nil);
+		Check("fast: quickly ({$seconds} s)", seconds < 3.0);
+
+		# again, on the connection the first left for reuse
+		response := client->Get(UrlFor(port));
+		Check("fast again: answered", response <> Nil & response->GetCode() = 200);
+		response := client->Post(UrlFor(port), "ping"->ToByteArray());
+		Check("fast post: answered", response <> Nil & response->GetCode() = 200);
+
+		# a client with no limits is as it was
+		plain := HttpClient->New();
+		Check("defaults: no connect timeout, no deadline", plain->GetConnectTimeout() = 0 & plain->GetDeadline() = 0);
+		Check("defaults: the read timeout is the named constant", plain->GetReadTimeout() = HttpClient->Timeout->DEFAULT_READ_MS->As(Int) & plain->GetReadTimeout() = 30000);
+		response := plain->Get(UrlFor(port));
+		Check("defaults: answered", response <> Nil & response->GetCode() = 200 & plain->GetErrorCode() = 0);
+
+		# the connection a deadline left for reuse: its deadline is long past by the time a
+		# client with none takes it, and must not end that client's request
+		port := Serve(2, 0, 0);
+		limited := HttpClient->New();
+		limited->SetDeadline(700);
+		limited->SetReadTimeout(700);
+		response := limited->Get(UrlFor(port));
+		Check("kept connection: the limited request is answered", response <> Nil & response->GetCode() = 200);
+		Thread->Sleep(1500);
+		response := plain->Get(UrlFor(port));
+		Check("kept connection: a client with no deadline is not cut short by the last one's (code {$Code(response)})", response <> Nil & response->GetCode() = 200);
+		Check("kept connection: nothing was cut short", plain->GetErrorCode() = 0);
+	}
+
+	# retries: each wait is cut to the deadline, and none starts past it
+	method : Retries() ~ Nil {
+		port := Serve(3, 0, 0);
+
+		client := HttpClient->New();
+		client->SetRetry(5, 400);
+		client->SetDeadline(1500);
+		timer := Timer->New(true);
+		response := client->Get(UrlFor(port));
+		seconds := Elapsed(timer);
+		# 400 + 800 + 1600 + ... would be over 12 s
+		Check("retries: stopped at the deadline ({$seconds} s)", seconds < 5.0);
+		Check("retries: the last reply is what it was", response <> Nil & (response->GetCode() = 503 | response->GetCode() = 0));
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			Fail(name);
+		};
+	}
+
+	method : Fail(name : String) ~ Nil {
+		"  FAIL: {$name}"->PrintLine();
+		@failed += 1;
+	}
+}

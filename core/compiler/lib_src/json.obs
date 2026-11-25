@@ -2344,12 +2344,13 @@ bundle Data.JSON.Scheme {
 
 				param_type := param_json->Get("type")->GetString();
 
-				param_desc : String;
+				# set on every pass: a parameter with no description has none
+				param_desc : String := Nil;
 				if(param_json->Has("description")) {
 					param_desc := param_json->Get("description")->GetString();
 				};
 
-				param : ParameterType;
+				param : ParameterType := Nil;
 				if(param_type->Equals("string")) {
 					param := ParameterType->New(ParameterType->Type->STRING, param_desc);
 				}
@@ -2366,7 +2367,10 @@ bundle Data.JSON.Scheme {
 					param := ParameterType->New(ParameterType->Type->BOOLEAN, param_desc);
 				};
 
-				@params->Insert(param_name, param);
+				# a type this scheme does not model leaves the parameter out
+				if(param <> Nil) {
+					@params->Insert(param_name, param);
+				};
 				
 				# "param_name='{$param_name}', param_type={$param_type}, param_desc='{$param_desc}'"->PrintLine();
 			};

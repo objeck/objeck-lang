@@ -377,7 +377,7 @@ cp -R core/release/licenses/. core/release/deploy/doc/licenses/ || exit 1
 # and never cloned the repo.
 cp tools/install_deps.sh core/release/deploy
 chmod +x core/release/deploy/install_deps.sh
-unzip docs/api.zip -d core/release/deploy/doc
+sh core/release/include_api_docs.sh core/release/deploy/doc || exit 1
 
 # copy examples
 mkdir core/release/deploy/examples

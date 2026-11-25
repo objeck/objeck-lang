@@ -106,7 +106,7 @@ or a critical problem.
      names the target (`windows-arm64`, never a bare `arm64`), and `regression`,
      `regression_jit1`, `vm_flags`, `debugger` and `dap` are all listed as `PASS`.
 5. **Dry run the release build.** Since #808 a `release-build.yml` dispatch from
-   any non-tag branch is safe: it cannot publish and does not push `api.zip`.
+   any non-tag branch is safe: it cannot publish. (It no longer pushes anything: `api.zip` is not committed.)
    Dispatch it with the real version (never `-rc`: the smoke tests compare the
    full version string) and read every job, including `install-test-macos`.
    A dry run also saves caches the tag build will then hit (a dispatch from master
@@ -115,11 +115,9 @@ or a critical problem.
    failed windows-arm64 on an OpenCV cache the dry run had saved hours earlier.
 6. **Then** run the steps below: tag, watch, body, sign, post-release gates.
 
-On the tag push itself, confirm the two things #808 changed and nothing has exercised
-yet: `build-docs`' "Commit api.zip to repo" ran (not skipped), and Release Publish's
-check-trigger logged `Release Build succeeded on 'v<VERSION>'`. If either skipped:
-`gh workflow run release-publish.yml -f version=<VERSION> -f run_id=<build run>` and
-push `api.zip` by hand.
+On the tag push itself, confirm what #808 changed and nothing has exercised yet: Release
+Publish's check-trigger logged `Release Build succeeded on 'v<VERSION>'`. If it skipped:
+`gh workflow run release-publish.yml -f version=<VERSION> -f run_id=<build run>`.
 
 ## Steps
 
@@ -169,7 +167,7 @@ git add core/shared/version.h core/release/update_version.ps1 \
         programs/deploy/util/readme/readme.json \
         programs/web-playground/backend/app/config.py \
         README.md \
-        core/lib/*.obl docs/api.zip
+        core/lib/*.obl
 git commit -m "Bump version to $VERSION
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
@@ -262,56 +260,22 @@ gh run list --workflow=ci-build.yml --branch=master --limit=1 \
   --json conclusion,status --jq '.[0] | .status + "/" + .conclusion'
 # must return "completed/success"
 
-# Committed docs/api.zip is complete (NOT a stale/broken 3-file zip). A broken one
-# (generated against stale .obl during the bump — see bump-version step 4) fails
-# release-build on every non-windows-x64 target AFTER the tag is pushed. This broke
-# v2026.6.4. Catch it here, before tagging.
-#
-# WHERE it actually breaks (verified 2026-08-19 — the "Generate API Docs" job is NOT
-# the consumer; it contains no unzip and builds docs/api fresh with mkdir -p, since
-# docs/api is untracked). The committed zip is consumed by the DEPLOY SCRIPTS:
-#   deploy_posix.sh:154         -> linux-x64, linux-arm64
-#   deploy_macos_arm64.sh:141   -> macos-arm64
-#   deploy_windows.cmd:774      -> windows-ARM64 only (cross-compiled, cannot run
-#                                  ARM64 code_doc on an x64 host)
-# windows-x64 alone regenerates its own docs via code_doc64.cmd. That is precisely
-# why a bad committed zip takes out "every non-windows-x64 target" — look in the
-# BUILD jobs, not the doc job.
-#
-# It also means the API docs shipped INSIDE every archive except windows-x64 are the
-# committed zip, so a wrong version stamp is visible in the user's install, not just
-# in the repo.
-unzip -l docs/api.zip | grep -c '\.html$'   # must be >= 50 (healthy ~435)
-unzip -l docs/api.zip | head                # paths must be 'api/...', not 'api\...'
-
-# CONTENT, not just structure: every generated page stamps the version it was built
-# for in its footer. The two checks above are structural and pass on a perfectly
-# well-formed zip built against the WRONG version -- which is how the committed
-# api.zip stamped v2026.8.0 while shipping as the docs for v2026.8.1 AND v2026.8.2.
-# Nobody noticed for three releases because 439 HTML files with 'api/' paths is
-# exactly what a healthy zip looks like.
-#
-# Pick the page by LISTING the zip, never by guessing a filename. There is no
-# api/api.system.html: naming a file that is not there makes unzip -p print
-# nothing, grep match nothing, and an empty-vs-empty comparison PASS on any
-# version -- the same silent-pass this gate exists to catch.
-PAGE=$(unzip -l docs/api.zip | awk '/\.html$/{print $4; exit}')
-STAMP=$(unzip -p docs/api.zip "$PAGE" | grep -o 'class="version">v[0-9.]*' | head -1 | sed 's/.*>//')
-[ -n "$STAMP" ] || { echo "api.zip: NO version stamp found in $PAGE -- treat as FAILED"; exit 1; }
-[ "$STAMP" = "v$VERSION" ] || { echo "api.zip stamps $STAMP, expected v$VERSION"; exit 1; }
-echo "api.zip stamp OK: $STAMP"
+# docs/api.zip is NOT committed, so there is nothing to check here. release-build.yml's
+# "Generate API Docs" job runs tools/cicd/gen_api_docs.sh, which refuses to package an
+# incomplete tree (code_doc ERRORs, fewer than 50 pages, archive != tree, wrong version
+# stamp), and every build job of that run downloads the resulting `api-docs` artifact
+# before it deploys, failing if it is missing (OBJECK_REQUIRE_API_DOCS=1). The dry run
+# (step 5) is where that is proven: read the "Generate API Docs" job and the
+# "Verify required binaries" step of each POSIX leg.
 ```
 
 If any gate fails, print the specific failure and stop immediately. Do not propose workarounds.
-If `docs/api.zip` is broken **or stamped with the wrong version**, regenerate it
-(bump-version step 4 note), commit, and restart. Regenerating locally is
-`code_doc64.cmd x64 deploy` from `core/release` against a deploy tree whose `.obl` are
-already at the new version, then zip with `7z`/`zip` (forward-slash paths), never
-PowerShell `Compress-Archive`.
 
-Note the cloud build *does* pass the release version to `code_doc` and commits the
-result back as `chore: update api.zip for v<VERSION> [skip ci]` -- so a wrong stamp in
-the committed file is not simply "CI never refreshes it".
+History (why the generation is gated the way it is): `docs/api.zip` used to be committed,
+regenerated by hand for each bump and again by a bot commit from the tag build
+(`chore: update api.zip for v<VERSION> [skip ci]`). It drifted, and the deploy scripts
+unzipped whatever was committed, so a stale or mis-stamped zip shipped inside four of five
+platforms' archives.
 
 **SOLVED (2026-09-02, commit `b2e137c529`).** This section previously recorded three
 consecutive CI commits each committing a zip stamped **v2026.8.0** as an open
@@ -492,7 +456,7 @@ The `docs/web/` directory contains the website content served from objeck.org. I
 
 ### 5. Commit docs changes to master
 
-Before committing, pull to incorporate any commits that landed while you were working (CI's api.zip `[skip ci]` commit is the most common):
+Before committing, pull to incorporate any commits that landed while you were working:
 
 ```bash
 cd /c/Users/objec/Documents/Code/objeck-lang
@@ -502,21 +466,12 @@ git pull --rebase origin master
 git stash pop
 ```
 
-If `git pull --rebase` reports a conflict on `docs/api.zip` (binary file), accept the remote version — it was committed by CI and is authoritative:
-
-```bash
-git checkout --theirs docs/api.zip
-git add docs/api.zip
-git rebase --continue
-```
-
 Then stage and commit — enumerate paths explicitly, never `git add -A`:
 
 ```bash
 git add README.md CHANGELOG.md docs/readme.html docs/readme.txt \
         docs/web/readme.html docs/web/index.html \
-        programs/deploy/util/readme/readme.json programs/deploy/util/readme/readme.json.in \
-        docs/api.zip
+        programs/deploy/util/readme/readme.json programs/deploy/util/readme/readme.json.in
 git status    # verify what's staged; omit unchanged files
 git commit -m "Release v<VERSION> — <SUMMARY>
 
@@ -564,13 +519,14 @@ network error. An empty query result is a failed query, not a finished run.
 Expected: build ~45-70 min (the arm64 leg dominates; vcpkg rebuilds
 `opencv4:arm64-windows` from source on a cache miss), publish ~15 min.
 
-**CI pushes to master while this runs.** The "Generate API Docs" job commits
-`chore: update api.zip for v<VERSION> [skip ci]`, so any push you make during or after
-the build is rejected as non-fast-forward. Rebase onto it; the tag is unaffected.
+**CI no longer pushes to master during the release.** The "Generate API Docs" job used to
+commit `chore: update api.zip for v<VERSION> [skip ci]`; `docs/api.zip` is now an artifact
+(`api-docs`) of the build run, so a push you make during the build is not rejected on its account.
 
-**Do not match the publish run by the tag's commit SHA.** That same api.zip commit is
-what `release-publish.yml` carries as its `headSha`, because it is triggered by
-`workflow_run` and not by the tag. A watcher looking for a publish run whose headSha
+**Do not match the publish run by the tag's commit SHA.** When the bot's api.zip commit
+existed it was what `release-publish.yml` carried as its `headSha`, because it is triggered by
+`workflow_run` and not by the tag; with that commit gone the headSha should be the tag's own commit,
+but do not rely on either -- find the run through the build run's id. A watcher looking for a publish run whose headSha
 equals the tag's commit finds nothing and reports "build green but publish never
 started" while the publish is running normally -- which is what happened at v2026.9.0.
 Match the publish run by **workflow + recency**, or follow it by run ID:
@@ -708,12 +664,10 @@ At every stage, **fail fast** and report exactly which step failed with the raw 
   otherwise is exactly why every Windows MSI from v2026.4.0 through v2026.8.1 shipped unsigned
   while `signtool` ran and failed on every artifact. `post_release.sh --sign` is a LOCAL step on the
   release machine (attended, or unattended with the saved password file). Do not add signing to any workflow.
-- **Does not generate API docs locally** — but the committed `docs/api.zip` is an INPUT, not only
-  an output. Only `windows-x64` regenerates its own docs; `deploy_posix.sh`,
-  `deploy_macos_arm64.sh` and `deploy_windows.cmd`'s ARM64 branch all unzip the committed file
-  straight into the shipped `doc/` tree. A stale one therefore ships to four of five platforms,
-  which is how v2026.8.0's docs went out inside v2026.8.1 and v2026.8.2. Hence the stamp gate in
-  step 1.
+- **Does not generate API docs locally** -- and `docs/api.zip` is not committed. The release build's
+  "Generate API Docs" job makes it (tools/cicd/gen_api_docs.sh) and every non-windows-x64 build job
+  downloads it as the `api-docs` artifact before deploying; `release_finish.sh` fetches the same
+  artifact for the objeck.org upload (it expires after 7 days).
 - **Does not use `git add -A`.** Explicit file lists only.
 - **Does not amend commits or force-push.** Every commit is new.
 - **Does not delete tags.** If recovery requires tag deletion, the user drives that step.
