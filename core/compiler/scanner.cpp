@@ -1321,14 +1321,26 @@ void Scanner::Whitespace()
  ****************************/
 void Scanner::Comments()
 {
+  // only the last comment before a token can be its tool doc comment
+  pending_doc = -1;
+
   while((cur_char == COMMENT || (cur_char == ALT_COMMENT && (nxt_char == ALT_COMMENT || nxt_char == ALT_EXTENDED_COMMENT))) && cur_char != EOB) {
+    const bool is_hash = cur_char == COMMENT;
+    const int comment_line = line_nbr;
+    const int comment_pos = (int)line_pos - 1;
+    pending_doc = -1;
     NextChar();
 
     // extended comment
     if(cur_char == EXTENDED_COMMENT || (cur_char == ALT_EXTENDED_COMMENT)) {
       NextChar();
+      const size_t body_start = buffer_pos - 1;
       while(!((cur_char == EXTENDED_COMMENT && nxt_char == COMMENT) || (cur_char == ALT_EXTENDED_COMMENT && nxt_char == ALT_COMMENT)) && cur_char != EOB) {
         NextChar();
+      }
+      // a '#~ ... ~#' comment that was closed may be a tool doc comment (see ToolDoc); one that runs to the end of the file is not
+      if(is_hash && cur_char != EOB) {
+        NoteToolDoc(body_start, buffer_pos - 1, comment_line, comment_pos);
       }
       NextChar();
       NextChar();
@@ -1341,6 +1353,58 @@ void Scanner::Comments()
     }
     Whitespace();
   }
+}
+
+/****************************
+ * Records a '#~ ... ~#' comment, given by the buffer range of its text, if one of its lines starts with
+ * '@tool' (after blanks) and the word ends there. '@tools' or '@tool_name' do not count, nor does a
+ * mention in the middle of a line. A comment seen again after a lookahead is not recorded twice.
+ ****************************/
+void Scanner::NoteToolDoc(size_t start, size_t end, int line, int pos)
+{
+  if(end <= start || end > buffer_size) {
+    return;
+  }
+
+  // characters by code (10 line feed, 13 carriage return, 9 tab, 32 space)
+  bool found = false;
+  bool line_start = true;
+  for(size_t i = start; i < end && !found; ++i) {
+    const wchar_t c = buffer[i];
+    if(c == 10) {
+      line_start = true;
+    }
+    else if(c == 32 || c == 9 || c == 13) {
+      // blanks keep a line start
+    }
+    else {
+      if(line_start && c == L'@' && i + 5 <= end && buffer[i + 1] == L't' && buffer[i + 2] == L'o' && buffer[i + 3] == L'o' && buffer[i + 4] == L'l' &&
+         (i + 5 == end || buffer[i + 5] == 32 || buffer[i + 5] == 9 || buffer[i + 5] == 13 || buffer[i + 5] == 10)) {
+        found = true;
+      }
+      line_start = false;
+    }
+  }
+
+  if(!found) {
+    return;
+  }
+
+  // the same comment, met again after a peek
+  for(size_t i = tool_docs.size(); i > 0; --i) {
+    if(tool_docs[i - 1].offset == start) {
+      pending_doc = (int)(i - 1);
+      return;
+    }
+  }
+
+  ToolDoc doc;
+  doc.offset = start;
+  doc.text.assign(buffer + start, end - start);
+  doc.line = line;
+  doc.pos = pos;
+  tool_docs.push_back(doc);
+  pending_doc = (int)tool_docs.size() - 1;
 }
 
 /****************************
@@ -1359,6 +1423,7 @@ void Scanner::ParseToken(int index)
 
   // ignore comments
   Comments();
+  tokens[index]->SetDocId(pending_doc);
 
   // where this token starts, for the errors that belong at its first character
   tok_line = line_nbr;

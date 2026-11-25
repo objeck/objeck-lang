@@ -81,6 +81,29 @@ public:
 /****************************
  * Turns tokens into trees
  ****************************/
+enum McpKind {
+    MK_INT, MK_FLOAT, MK_BOOL, MK_BYTE, MK_CHAR, MK_STRING, MK_JSON, MK_ENUM, MK_RECORD, MK_ARRAY, MK_VECTOR, MK_MAP, MK_CALL
+};
+
+
+// what a parameter, a record field or a collection element is, as far as MCP is concerned
+struct McpTy {
+  McpKind kind = MK_STRING;
+  bool boxed = false;               // IntRef, FloatRef, ...: an element of a collection
+  std::wstring name;                // an enum or a record, as written in the source
+  std::vector<std::wstring> items;  // the items of an enum, the fields of a record (in order)
+  std::vector<McpTy> kids;          // the element of an array, Vector or Map; the types of a record's fields
+  std::wstring text;                // the type as Objeck source text
+};
+
+
+// one tagged function seen in a class
+struct McpCandidate {
+  Method* method;
+  ToolDoc doc;
+};
+
+
 class Parser {
   bool alt_syntax;
   ParsedProgram* program;
@@ -274,6 +297,14 @@ class Parser {
   void ParseBundle(int depth);
   Class* ParseClass(const std::wstring& bundle_id, int depth);
   void GenerateRecordMethods(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
+  // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
+  void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, int depth);
+  void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth);
+  bool McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth);
+  Enum* McpFindEnum(const std::wstring& name);
+  Class* McpFindClass(const std::wstring& name);
+  // a tagged doc comment before something that is not a function
+  void RejectToolDoc(const wchar_t* what);
   Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth);

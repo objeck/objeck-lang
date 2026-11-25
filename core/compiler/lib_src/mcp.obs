@@ -3667,8 +3667,27 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return AddParam(name, type, description, false);
 		}
 
+		#~
+		Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function marked with an @tool doc comment: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say
+		@param name parameter name
+		@param schema_json the schema, a JSON object as text
+		@param description what it means, for the model; Nil or empty for none
+		@param required true when the call must give it
+		@return self for chaining
+		~#
+		method : public : AddSchema(name : String, schema_json : String, description : String, required : Bool) ~ McpToolSpec {
+			schema := JsonParser->TextToElement(schema_json);
+			if(schema = Nil | schema->GetType() <> JsonElement->JsonType->OBJECT) {
+				schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+			return AddSchemaElement(name, schema, description, required);
+		}
+
 		method : AddParam(name : String, type : String, description : String, required : Bool) ~ McpToolSpec {
-			schema := McpToolSpec->SchemaFor(type);
+			return AddSchemaElement(name, McpToolSpec->SchemaFor(type), description, required);
+		}
+
+		method : AddSchemaElement(name : String, schema : JsonElement, description : String, required : Bool) ~ McpToolSpec {
 			if(description <> Nil & description->Size() > 0) {
 				schema->Insert("description", description);
 			};

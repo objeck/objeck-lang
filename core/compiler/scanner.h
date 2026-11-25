@@ -549,6 +549,8 @@ class Token {
   std::wstring error_msg;
   int error_line = 0;
   int error_pos = 0;
+  // index of the Scanner's tool doc comment that directly precedes this token, -1 for none (nearly always)
+  int doc_id = -1;
 
   union {
     INT64_VALUE int64_lit;
@@ -575,6 +577,15 @@ class Token {
     error_msg = token->error_msg;
     error_line = token->error_line;
     error_pos = token->error_pos;
+    doc_id = token->doc_id;
+  }
+
+  inline void SetDocId(int id) {
+    doc_id = id;
+  }
+
+  inline int GetDocId() const {
+    return doc_id;
   }
 
   inline void SetError(const std::wstring& msg, int line = 0, int pos = 0) {
@@ -687,6 +698,15 @@ class Token {
  * Token scanner with k lookahead
  * tokens
  **********************************/
+// A '#~ ... ~#' comment that has a line starting with '@tool' and sits directly before a token: the text
+// between the markers, and where the comment starts. Every other comment is still discarded.
+struct ToolDoc {
+  size_t offset;
+  std::wstring text;
+  int line;
+  int pos;
+};
+
 class Scanner {
  private:
   // syntax
@@ -742,6 +762,12 @@ class Scanner {
   void Whitespace();
   // ignore comments
   void Comments();
+  // the tool doc comments seen so far (see ToolDoc), in source order
+  std::vector<ToolDoc> tool_docs;
+  // the tool doc comment that Comments() left directly before the next token, or -1
+  int pending_doc = -1;
+  // records the comment [start, end) of a '#~' comment when it holds an '@tool' line
+  void NoteToolDoc(size_t start, size_t end, int line, int pos);
   // next character
   void NextChar();
   // load reserved keywords
@@ -779,6 +805,11 @@ class Scanner {
 
   // token accessor
   Token* GetToken(int index = 0);
+
+  // the tool doc comment with this id (Token::GetDocId), or null
+  const ToolDoc* GetToolDoc(int id) const {
+    return id >= 0 && (size_t)id < tool_docs.size() ? &tool_docs[id] : nullptr;
+  }
 
   // token type at any lookahead distance, including past the fixed buffer
   ScannerTokenType PeekType(int index);
