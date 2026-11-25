@@ -1,0 +1,104 @@
+#~
+mcp_stubs: writes a typed Objeck client for an MCP server.
+
+It connects to the server, asks for its tools (tools/list) and prints Objeck source: one class, one method
+per tool, with the parameters typed from the tool's input schema and the tool's description as the
+method's doc comment. A program then calls `weather->Forecast("Denver", 3)` and the compiler checks the
+call, instead of building a JSON argument object by hand. The generator is API.MCP's McpStubGenerator,
+so the same code is what the regression tests check against a golden file.
+
+  --cmd "<command>"   a server that speaks MCP on standard input and output, for example
+                      --cmd "obr mcp_server_demo.obe /some/dir". The command is run once per request.
+  --http <url>        a server at a streamable HTTP endpoint, for example http://127.0.0.1:8080/mcp
+  --class <Name>      the class to write (default: the server's name, then "Client")
+  --out <file>        write the source to a file (default: standard output)
+
+Build:  obc -src mcp_stubs.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest mcp_stubs.obe
+Run:    obr mcp_stubs.obe --cmd "obr server.obe --stdio" --class Weather --out weather_client.obs
+~#
+use API.MCP, Collection, System.IO.Filesystem;
+
+class McpStubs {
+	function : Usage() ~ Nil {
+		"mcp_stubs: writes a typed Objeck client for an MCP server"->PrintLine();
+		"  obr mcp_stubs.obe (--cmd \"<command>\" | --http <url>) [--class <Name>] [--out <file>]"->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		command : String;
+		url : String;
+		class_name : String;
+		out_path : String;
+
+		i := 0;
+		while(i < args->Size()) {
+			flag := args[i];
+			if(i + 1 >= args->Size()) {
+				"mcp_stubs: {$flag} needs a value"->ErrorLine();
+				McpStubs->Usage();
+				Runtime->Exit(2);
+			};
+
+			value := args[i + 1];
+			if(flag->Equals("--cmd")) {
+				command := value;
+			}
+			else if(flag->Equals("--http")) {
+				url := value;
+			}
+			else if(flag->Equals("--class")) {
+				class_name := value;
+			}
+			else if(flag->Equals("--out")) {
+				out_path := value;
+			}
+			else {
+				"mcp_stubs: unknown option {$flag}"->ErrorLine();
+				McpStubs->Usage();
+				Runtime->Exit(2);
+			};
+			i += 2;
+		};
+
+		if((command = Nil & url = Nil) | (command <> Nil & url <> Nil)) {
+			"mcp_stubs: give one of --cmd and --http"->ErrorLine();
+			McpStubs->Usage();
+			Runtime->Exit(2);
+		};
+
+		client : McpClient;
+		if(command <> Nil) {
+			client := McpClient->Command(command);
+		}
+		else {
+			client := McpClient->Http(url);
+		};
+
+		if(<>client->Initialize("mcp_stubs", "1.0")) {
+			reason := client->GetError();
+			"mcp_stubs: could not reach the server: {$reason}"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		tools := client->ListTools();
+		if(tools = Nil) {
+			reason := client->GetError();
+			"mcp_stubs: tools/list failed: {$reason}"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		source := McpStubGenerator->Generate(client->GetServerName(), client->GetServerVersion(), tools, class_name);
+		client->Close();
+
+		if(out_path <> Nil) {
+			writer := FileWriter->New(out_path);
+			writer->WriteString(source);
+			writer->Close();
+			count := tools->Size();
+			"mcp_stubs: wrote {$count} tool(s) to {$out_path}"->PrintLine();
+		}
+		else {
+			source->Print();
+		};
+	}
+}

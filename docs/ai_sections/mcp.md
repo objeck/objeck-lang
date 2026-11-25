@@ -311,6 +311,70 @@ A function from `GetFunctions()` returns `{"result": text}`, or `{"error": text}
 
 On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live. The repository's tests never call the live APIs; these runs were manual.
 
+### Declaring a tool from its types
+
+A function's name and parameter types already say what its JSON Schema says. `McpToolSpec` writes them once and derives the schema, so the hand-written schema string (and the chance that it disagrees with the function) goes away:
+
+```ruby
+McpToolSpec->New("forecast", "Forecast for a city.")
+  ->Add("city", "String", "the city")                    # required
+  ->AddOptional("days", "Int", "how many days, 1 to 7")  # optional: not in "required"
+  ->AddOptional("units", "enum(metric,imperial)", Nil)   # a string with a list of values
+  ->ReadOnly()                                           # readOnlyHint: the tool changes nothing
+  ->AddTo(server, Func2Ref->New(Weather->Forecast(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+```
+
+| Objeck type | JSON Schema |
+|---|---|
+| `Int` / `Float` / `Bool` / `String` | `integer` / `number` / `boolean` / `string` |
+| `Char` | a string of exactly one character |
+| `Byte` | an integer 0 to 255 (the server does not check the bounds) |
+| `T[]`, `T[,]`, `Vector<T>` | an array of `T`, nested once per dimension (a collection of numbers holds `IntRef` or `FloatRef`; both spellings are read) |
+| `Map<String,T>` | an object whose values are `T` |
+| `enum(a,b,c)` | a string, one of `a`, `b`, `c` (checked on every call) |
+| `Json`, `JsonElement` | any value |
+| any other class or record | a bare `{"type":"object"}`; `McpToolSpec->Known(type)` is false, because the mapping cannot see the fields |
+
+The derived schema equals, as JSON (`McpToolSpec->Same`), the hand-written schema of every tool in the repository's own servers and examples; `mcp_declare_test` re-declares fifteen of them and fails on the first difference. A function that takes a model's arguments still reads them with `McpCall`; deriving the reading code from the function itself needs the compiler (see `docs/design/MCP_FIRST_CLASS.md`).
+
+* **Effects.** `ReadOnly()`, `Destructive()`, `Idempotent()` and `OpenWorld()` set the MCP `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), which `tools/list` carries and `McpClient->ListTools` reads back as `McpTool->GetReadOnlyHint()` and so on (`HasReadOnlyHint()` tells "false" from "not stated"). A tool with no hints lists exactly as before. `Returns(schema)` declares the shape of a structured result (`outputSchema`).
+* **Checks.** Besides `required` and `type`, a call is checked against a property's `enum` and an array's `items` type; the reason names the allowed values.
+* **Counters.** `server->EnableStats(true)`, then `server->GetStats()`: calls, errors, rejected arguments, cancellations and handler milliseconds per tool. Off by default; while off a call pays one Bool test.
+
+### A typed client: mcp_stubs
+
+`tools/mcp/mcp_stubs.obs` connects to a server, reads `tools/list` and writes an Objeck class with one typed method per tool:
+
+```
+obc -src mcp_stubs.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest mcp_stubs.obe
+obr mcp_stubs.obe --cmd "obr weather_server.obe --stdio" --class WeatherClient --out WeatherClient.obs
+obr mcp_stubs.obe --http http://127.0.0.1:8080/mcp --class WeatherClient
+```
+
+```ruby
+weather := WeatherClient->New(McpClient->Command("obr weather_server.obe --stdio"));
+text := weather->Forecast("Denver");                 # the optional parameters left out
+text := weather->Forecast("Denver", 5, "imperial");  # a wrong type here is a compile error
+if(text = Nil) { weather->GetError()->ErrorLine(); }; # isError, or the server could not be reached
+hits := weather->LookupJson("Denver");               # a tool with an outputSchema: its structuredContent
+```
+
+`integer` becomes `Int`, `number` `Float`, `boolean` `Bool`, `string` `String` (a string enum lists its values in the doc comment), an array of those `Int[]`, `Float[]`, `Bool[]` or `String[]`, and anything else (an object, a nested array, a schema with no type) `JsonElement`. A JSON object does not keep the order its names were written in, so required parameters come first, in the order of the `required` array, then the optional ones by name. A tool whose name or an argument's name has characters a method cannot carry is skipped with a comment. The output has no timestamp, so it can be checked in and compared; `programs/regression/mcp_stubs/WeatherClient.golden` is that file for the test server.
+
+### Giving functions and servers to an agent
+
+The library `mcp_agent` (`-lib ...,mcp,agent,mcp_agent`) makes `API.Agent` tools without re-describing anything:
+
+```ruby
+registry := ToolRegistry->New();
+registry->Add(McpAgentTools->FromSpec(spec, handler));    # a declared function, run in this process
+McpAgentTools->AddAll(registry, McpClient->Http(url));    # every tool of a server, with its hints
+agent := Agent->New(backend, registry);
+agent->SetApprover(approver)->SetApproveUnlessReadOnly(true);
+```
+
+The agent reads the hints. A tool whose `destructiveHint` is true needs the approver, like one marked `SetDangerous`, and with no approver the call is refused. `SetApproveUnlessReadOnly(true)` asks about every tool not known to be read-only: the safe rule for tools from a server you do not control, because a missing hint says nothing. A tool with no hints behaves as before. The agent's cancellation token (and its deadline) reaches a function run by `FromSpec` as `McpCall->IsCancelled()`, polled every 2 ms, so a handler that checks it stops promptly; one that does not runs to its end. See `programs/deploy/mcp_declare_32.obs`, `mcp_stub_33.obs` and `mcp_agent_34.obs`, and the walkthrough `docs/MCP_WALKTHROUGH.md`.
+
 ### API
 
 | Class | Use |
@@ -321,6 +385,9 @@ On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected
 | `McpToolResult`, `McpContents`, `McpPromptResult` | what a handler returns |
 | `McpClient` | `Initialize`, `Ping`, `ListTools`, `CallTool`, `Cancel`, `ListResources`, `ListResourceTemplates`, `ReadResource`, `ListPrompts`, `GetPrompt`, `Close`, `GetError`, `GetErrorCode` |
 | `McpToolBridge` | `GetTools`, `ToAnthropicJson`, `ToOpenAiJson`, `ToFunctionType`, `GetFunctions`, `Run` |
+| `McpToolSpec` | declare a tool from its types: `Add`, `AddOptional`, `ReadOnly`, `Destructive`, `Idempotent`, `OpenWorld`, `Returns`, `GetSchema`, `ToTool`, `AddTo`; `SchemaFor`, `Known`, `Same` |
+| `McpStubGenerator` | `Generate(server, version, tools, class)`: the source of a typed client (the `mcp_stubs` tool is a command line around it) |
+| `McpAgentTools` (library `mcp_agent`) | `FromSpec`, `FromTool`, `FromClient`, `AddAll`: agent tools from a declared function or a server |
 | `McpTransport`, `McpLoopback`, `McpHttpTransport`, `McpCommandTransport` | how a client reaches a server |
 | `McpSink`, `McpCollector`, `McpStdoutSink`, `McpStdio` | where a server's own messages go, and how standard input is read |
 | `McpProtocol` | `Version()`, `IsSupported(version)` and the error codes |
@@ -328,7 +395,7 @@ On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected
 ### Limits and caveats
 
 * The JSON parser is lenient: it reads a bare word as a string and ignores what follows the first value. The server checks that a message that opens with `{` or `[` ends with the matching closer and that a root string is quoted, which catches the common damage (truncation, trailing text), but a malformed message inside well-placed braces can be accepted.
-* Tool input is validated for `required` names and the `type` of each property only; `enum`, `minimum`, patterns, nested objects and `$ref` are not checked.
+* Tool input is validated for `required` names, the `type` of each property, a property's `enum` and an array's item `type`; `minimum` and `maximum`, patterns, nested objects and `$ref` are not checked.
 * Each `tools/call` takes a thread, with no cap.
 * Standard input is read a byte at a time (a megabyte takes roughly half a second on Linux), which is what makes a line of any length work: the VM's line read keeps 8,192 characters.
 * A server over stdio ends when its input does; there is no `shutdown`, as the specification has none.
@@ -339,3 +406,7 @@ On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected
 * `mcp_core_test` (regression suite): every method; version negotiation; the JSON-RPC errors; a tool that fails, raises, returns nothing, or gets bad arguments; resources, templates and prompts; cancellation and progress; a message of a megabyte; the bridge; and the same client over the HTTP transport on `127.0.0.1` port 0, including the session, `Origin`, protocol-version and method checks.
 * `mcp_stdio_test.py` (its own CI step; `python mcp_stdio_test.py <bin_dir>`): a scripted Python client drives a server process over stdio: the handshake, every method, malformed JSON, an unknown method, bad parameters, a failing and a raising tool, blank lines, CRLF and non-ASCII text, progress and a request cancelled in flight (no reply), megabyte messages in both directions and a line over the limit, that standard output holds nothing but JSON, the end of input, and the Objeck client against the same server. It also passes on Windows.
 * Both fail when the code is broken: a server that answers a cancelled request, or uses the wrong code for an unknown method, fails both.
+* `mcp_declare_test` (regression suite): every row of the type mapping table, the oracle (the derived schema equals the hand-written schema of fifteen tools from the repository's servers and examples), the annotations on the wire and at the client, calls with an optional argument, an array and a structured result, the error cases (missing required argument, wrong type, a fraction for an integer, a value outside an enum, a wrong array item, an unknown tool, a failing tool), the counters, and the generator's names and types.
+* `mcp_agent_test` (regression suite): a declared function and a server's tools as agent tools against a scripted model; the approval rules for destructive, read-only and unmarked tools (and that a refused call never runs its handler); failures; the cancel token reaching the handler.
+* `mcp_stubs_test.py` (its own CI step; `python mcp_stubs_test.py <bin_dir>`): compiles a typed server and the generator, generates a stub over stdio, compares it with the golden file, compiles it with a program that calls it, runs that in two modes, checks that a wrong argument type is a compile error, and the command line's errors.
+* Not covered by tests: a live model through the typed stub (run by hand: `tools/mcp/mcp_live_stub.obs`).

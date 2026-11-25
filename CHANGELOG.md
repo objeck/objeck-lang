@@ -2,6 +2,22 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **MCP tools declared from types (`McpToolSpec`)**: `McpToolSpec->New("add", "Add two integers")->Add("a", "Int", "first")->Add("b", "Int", "second")->ReadOnly()->AddTo(server, handler)` writes the names and types once and derives the JSON Schema (`Int`, `Float`, `Bool`, `String`, `Char`, `Byte`, arrays, `Vector`, `Map<String,T>`, `enum(a,b)`, `Json`; a class is a bare object and `McpToolSpec->Known` says so). The schema equals, as JSON, the hand-written schema of every tool in the repository's MCP servers and examples (`mcp_declare_test`). Design: `docs/design/MCP_FIRST_CLASS.md`.
+- **MCP effect annotations**: `McpTool->SetReadOnlyHint`, `SetDestructiveHint`, `SetIdempotentHint`, `SetOpenWorldHint` and `SetOutputSchema` are listed in `tools/list` as `annotations` and `outputSchema` and read back by `McpClient->ListTools`. A tool with no hints is listed exactly as before.
+- **Typed client stubs for MCP servers**: `McpStubGenerator` and the `tools/mcp/mcp_stubs.obs` command line (`--cmd "<server command>"` or `--http <url>`) write an Objeck class with one typed method per tool (`weather->Forecast("Denver", 3)`), an overload without the optional parameters, `Nil` plus `GetError()` for `isError`, and a `...Json` method for a tool with an `outputSchema`. The output is deterministic; `mcp_stubs_test.py` compares it with a golden file and compiles and runs it.
+- **`mcp_agent` library (`McpAgentTools`)**: `FromSpec` turns a declared function into an `API.Agent` tool, `FromClient` and `AddAll` turn a server's tools into agent tools with their hints, and the agent's cancellation token reaches the handler as `McpCall->IsCancelled()`.
+- **Agent approval by effect**: `AgentTool->SetReadOnlyHint`, `SetDestructiveHint` and `NeedsApproval`; a tool whose destructive hint is true needs the approver like a dangerous one, and `Agent->SetApproveUnlessReadOnly(true)` asks about every tool not known to be read-only. Tools with no hints behave as before.
+- **`McpService->EnableStats(true)` and `GetStats()`**: calls, errors, rejected arguments, cancellations and handler milliseconds per tool; off by default.
+- Examples `mcp_declare_32`, `mcp_stub_33` and `mcp_agent_34` (offline, deterministic), the walkthrough `docs/MCP_WALKTHROUGH.md`, and `mcp_canvas` rebuilt on the declared tools and a generated typed client.
+
+### Changed
+
+- **MCP input checks cover `enum` and array `items`**: a string outside a property's `enum` list, or an array item of the wrong type, is an `isError` result that names the allowed values.
+
 ## [v2026.11.3] - 2026-11-22
 
 ### Performance

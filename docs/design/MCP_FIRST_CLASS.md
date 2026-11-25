@@ -27,7 +27,7 @@ The feature set is the subject of a thesis chapter, so each claim below is state
 
 | RQ | Claim | How it is evaluated | Status |
 |---|---|---|---|
-| RQ1 equivalence | The schema derived from a declaration equals, as JSON, the schema a person wrote by hand for the same tool. | Oracle: every hand-written schema in the repository's servers and examples (`mcp_core_test`, `mcp_stdio_fixture`, `mcp_server_demo`, `mcp_canvas`, 18 schemas at Stage 1) is re-declared; `McpToolSpec->Same` compares them. Fails on the first difference. Stage 2 re-runs the same oracle against the compiler's derivation. | Stage 1: passes for the type-spec path (`mcp_declare_test`). The doc-comment path is **untested**. |
+| RQ1 equivalence | The schema derived from a declaration equals, as JSON, the schema a person wrote by hand for the same tool. | Oracle: every hand-written schema in the repository's servers and examples (`mcp_core_test`, `mcp_stdio_fixture`, `mcp_server_demo`, `mcp_canvas`: fifteen schemas at Stage 1) is re-declared; `McpToolSpec->Same` compares them. Fails on the first difference. Stage 2 re-runs the same oracle against the compiler's derivation. | Stage 1: passes for the type-spec path (`mcp_declare_test`). The doc-comment path is **untested**. |
 | RQ2 agent accuracy | An agent given derived schemas makes no more wrong calls (schema-invalid arguments, wrong tool, refused or failed calls per task) than with hand-written ones. | Equal schemas give identical wire bytes, so for them the difference is zero by construction; the question is only about descriptions derived from doc comments, which differ in wording. Run the same task set, N runs per model, per variant; count calls by `AgentToolResult` status (`ok`, `invalid`, `error`, `refused`, `denied`, `unknown`). | **Untested** (needs the doc-comment path and paid model runs). Stage 1 has one live run (section 9), which is an existence proof, not a rate. |
 | RQ3 cost | Derivation adds no tokens: the tool definitions sent to the model are the same size or smaller. | Bytes and tokens of the `tools` array, and `AgentResult` token totals, derived vs hand-written; latency per call from `McpService->GetStats`. | Stage 1: counters exist; first numbers in section 9. |
 | RQ4 effort and defects | Declaring cuts the lines a tool costs, and typed stubs catch argument errors at compile time that JSON blobs catch at run time (or never). | Lines per tool, hand-written vs declared (the canvas example is the corpus); a catalogue of argument mistakes and when each is reported (compile, schema check, handler). | Stage 1: stub compile error shown (`mcp_stubs_test.py`); line counts in section 9. |
@@ -174,3 +174,22 @@ capability. D4 is acceptable only as a stopgap.
   Stage 2.
 * `.obl` files built from `mcp.obs`, `agent.obs` and the new `mcp_agent.obs` are at the master toolchain
   version and **must be rebuilt after the 2026.11.4 version bump merges**.
+
+## 6. Stage 1 results (what was built and measured)
+
+All numbers are from one Windows x64 machine (Ryzen 9 7950X3D), the current master toolchain, libraries
+rebuilt from source into a scratch copy. They are first measurements, not a study.
+
+| Item | Result |
+|---|---|
+| RQ1 oracle | 15 hand-written schemas from the repository (`mcp_core_test` 3, `mcp_stdio_fixture` 1, `mcp_server_demo` 3, `mcp_canvas` 8) plus 1 mixed example: all 16 re-declared with `McpToolSpec` equal as JSON. The canvas example's own text mini-language was replaced by `McpToolSpec` and its 8 schemas are the oracle for that change. |
+| Tests | `mcp_declare_test` 89 checks, `mcp_agent_test` 29, `mcp_stubs_test.py` 21, `weather_server` self-check, `mcp_canvas --selftest` 23; `mcp_core_test` (122) and the stdio test unchanged. |
+| RQ5, library cost with the hooks unused | In-process `tools/call`, 20,000 calls, five alternating runs: 76.4 us (library before) vs 77.5 us (after, counters off), +1.4 percent, inside the run-to-run spread (72 to 84 us); 79.3 us with counters on. The enum and item checks return before any lookup for a number or a boolean. |
+| RQ4, lines | The canvas example's 8 tool registrations: 36 lines of schema text mini-language (`Schema`) plus 8 `Reg` calls became 8 `McpToolSpec` declarations with no schema helper. The scripted painters' call sites became typed methods; the generated client is 197 lines that nobody writes. A wrong argument type or count in a stub call is a compile error (`mcp_stubs_test.py`), where `CallTool` with JSON text finds it at run time. |
+| RQ6, cancellation | `AgentCancel->Cancel` to handler return through the watcher: 30 runs, median 17.7 ms, p95 33.7 ms, max 50.1 ms, minimum 1.7 ms, on Windows with a handler that polls every 1 ms; the figure includes thread start and Windows timer granularity (about 15 ms), so it is an upper bound on the mechanism, not a floor. **Untested** on Linux and macOS, and for a handler that does not poll. |
+| Live, typed stub behind a model | Claude `claude-sonnet-5-5`: 3 tool calls, 2 turns, 1,711 input and 323 output tokens, 2.6 s. OpenAI `gpt-5.4-mini`: the same 3 calls, 4 turns, 5.1 s; the library exposes no token counts. Server-side handler time 0.01 to 0.77 ms per call. One run each: an existence proof. |
+| Live canvas | Claude and `gpt-5.4-mini` painted one canvas through the declared tools: Claude 33 calls, 4 turns, 15,659 input and 3,036 output tokens; GPT 24 calls, 11 turns; 57 calls, none refused. |
+
+**Not possible without the compiler** (and not faked): `McpService->ExposeObject(obj)`; deriving parameter
+names, defaults, enum values, record fields and descriptions from the function; `obr prog.obe --mcp`;
+a compile error for a spec that disagrees with its function.

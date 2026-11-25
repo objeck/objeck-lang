@@ -47,6 +47,9 @@ install): two of them read files from `data/`, which ships alongside.
 | [`llm_29.obs`](llm_29.obs) | `-lib gemini,net,net_server,json,misc,cipher` | ask a large language model (Gemini) a question |
 | [`ai_search_30.obs`](ai_search_30.obs) | `-lib ai` | A* pathfinding and minimax |
 | [`game_31.obs`](game_31.obs) | `-lib sdl2,sdl_game,json` | an SDL2 game: collect gems, dodge spiders, keep a best score |
+| [`mcp_declare_32.obs`](mcp_declare_32.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: declare a tool from its types, serve it, call it |
+| [`mcp_stub_33.obs`](mcp_stub_33.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: call a server through a generated typed client |
+| [`mcp_agent_34.obs`](mcp_agent_34.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` | MCP: plain functions as agent tools, with approval by effect |
 
 ## Building all of them
 
