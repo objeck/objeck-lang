@@ -1,0 +1,36 @@
+# An uncaught runtime fault in ANY thread ends the whole process (exit 1), including threads that are healthy.
+# obc -src thread_fault_kills_process.obs -dest t.obe && obr t.obe; echo $?
+# prints the fault and exit 1, never "worker done"
+use System.Concurrency;
+
+class Bad from Thread {
+	New() {
+		Parent("bad");
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Thread->Sleep(50);
+		zero := 0;
+		(10 / zero)->PrintLine();
+	}
+}
+
+class Good from Thread {
+	New() {
+		Parent("good");
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Thread->Sleep(500);
+		"worker done"->PrintLine();
+	}
+}
+
+class Repro {
+	function : Main(args : String[]) ~ Nil {
+		g := Good->New();
+		g->Execute(Nil);
+		Bad->New()->Execute(Nil);
+		g->Join();
+	}
+}

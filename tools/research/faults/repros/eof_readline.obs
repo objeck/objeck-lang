@@ -1,0 +1,14 @@
+# Console->ReadLine() at end of input returns "" (not Nil), so a read loop cannot tell EOF from a blank line.
+# obc -src eof_readline.obs -dest e.obe && obr e.obe < /dev/null
+# prints "nil=false reads=5": the loop ends only at the cap, never at EOF
+class EofReadLine {
+	function : Main(args : String[]) ~ Nil {
+		reads := 0;
+		line := System.IO.Console->ReadLine();
+		while(line <> Nil & reads < 5) {
+			reads += 1;
+			line := System.IO.Console->ReadLine();
+		};
+		"nil={$(line = Nil)} reads={$reads}"->PrintLine();
+	}
+}
