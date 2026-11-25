@@ -4041,6 +4041,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_TCP_SET_DEADLINE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_DEADLINE);
+      NextToken();
+      break;
+
     case UNCOMPRESS_ZLIB_TRY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::UNCOMPRESS_ZLIB_TRY);

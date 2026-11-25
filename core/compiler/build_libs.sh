@@ -13,6 +13,8 @@ OBC=${1:?usage: build_libs.sh <path-to-obc>}
 
 $OBC -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 $OBC -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/concurrent.obl
+# Actors with supervision (mailboxes, links, monitors, supervisors). Needs gen_collect and concurrent (threads, mutexes)
+$OBC -src lib_src/actor.obs -lib gen_collect,concurrent -tar lib -opt s3 -dest ../lib/actor.obl
 $OBC -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 $OBC -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 # Exact arithmetic. Depends on nothing but lang.
@@ -30,16 +32,22 @@ $OBC -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex
 $OBC -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 $OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs,lib_src/ml_svm.obs,lib_src/ml_outlier.obs,lib_src/ml_embed.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
 $OBC -src lib_src/ml_lab.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/ml_lab.obl
+# Gradient boosting (System.ML.Boost): regressor and classifier, XGBoost-style trees. Pure Objeck over ml, so ml.obl is untouched
+$OBC -src lib_src/ml_boost.obs -lib gen_collect,csv,ml -tar lib -opt s3 -dest ../lib/ml_boost.obl
 # Local vector index (exact cosine / dot / L2 search). Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/ml_vector.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_vector.obl
 # Verification metrics (FAR, FRR, EER, ROC/DET points) and cosine similarity. Needs only gen_collect, so it links no vision library
 $OBC -src lib_src/ml_verify.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_verify.obl
+# Time series forecasting (System.ML.TimeSeries): a TimeSeries container, transforms, baselines, exponential smoothing, ARIMA, automatic selection, accuracy metrics and rolling-origin cross-validation. Pure Objeck, needs only gen_collect
+$OBC -src lib_src/ml_timeseries.obs,lib_src/ml_timeseries_models.obs,lib_src/ml_timeseries_arima.obs,lib_src/ml_timeseries_eval.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml_timeseries.obl
 # Convolutional networks (the layers are native, in libobjk_ml). Reads images through opencv, scores with ml, writes history tables with ml_lab
 $OBC -src lib_src/ml_cnn.obs -lib gen_collect,csv,json,cipher,ml,ml_lab,opencv -tar lib -opt s3 -dest ../lib/ml_cnn.obl
 # Plotting: scatter, histogram, line and bar charts as SVG. Needs only gen_collect, no display, no SDL
 $OBC -src lib_src/plot.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/plot.obl
 # Statistics: t-tests, correlation, OLS summary. Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/stats.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/stats.obl
+# Telemetry: per-model, per-device inference timing, latency sketches, resource samplers, energy estimate, profiles. Pure Objeck over the runtime monitors; needs gen_collect and json
+$OBC -src lib_src/telemetry.obs -lib gen_collect,json -tar lib -opt s3 -dest ../lib/telemetry.obl
 # ml_report needs ml_lab, stats and plot, so it is built AFTER them (it used to come first, and a version bump failed: the committed stats/plot were still the previous toolchain version)
 # Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
 $OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
@@ -70,10 +78,20 @@ $OBC -src lib_src/openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt 
 $OBC -src lib_src/gemini.obs -lib misc,json,net,net_server,cipher -tar lib -opt s3 -dest ../lib/gemini.obl
 $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl
 $OBC -src lib_src/anthropic.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/anthropic.obl
+# LLM utilities: prompt templates, token estimation, JSON Schema validation, structured calls with retry. Pure Objeck; needs only gen_collect, json and regex, and links no client
+$OBC -src lib_src/llm_util.obs -lib gen_collect,json,regex -tar lib -opt s3 -dest ../lib/llm_util.obl
 $OBC -src lib_src/agent.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/agent.obl
+# API.Agent agents as supervised actors; kept apart from actor so actor itself links nothing heavy
+$OBC -src lib_src/actor_agents.obs -lib gen_collect,concurrent,actor,agent,net,json,cipher,misc -tar lib -opt s3 -dest ../lib/actor_agents.obl
+# Model Context Protocol server (stdio and streamable HTTP) and client, and the bridge that hands a server's tools to the AI clients. After net_server, whose HTTP handler it extends
+$OBC -src lib_src/mcp.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest ../lib/mcp.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 # Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
 $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl
+# Retrieval-augmented generation: chunker, retrieval index, grounded prompts and a pipeline, all offline. Needs only gen_collect and ml_vector
+$OBC -src lib_src/rag.obs -lib gen_collect,ml_vector -tar lib -opt s3 -dest ../lib/rag.obl
+# Adapters that plug BERT, CLIP, Ollama, OpenAI, Gemini and Anthropic into the RAG kit. After every library it links
+$OBC -src lib_src/rag_adapters.obs -lib gen_collect,ml_vector,rag,net,net_server,json,cipher,misc,openai,gemini,ollama,anthropic,models,opencv,onnx,nlp,nlp_onnx,ml_verify,ml_clip -tar lib -opt s3 -dest ../lib/rag_adapters.obl
 $OBC -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 $OBC -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
 $OBC -src lib_src/sdl_gl.obs -lib gen_collect,sdl2 -tar lib -dest ../lib/sdl_gl.obl

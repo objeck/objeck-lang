@@ -1,0 +1,327 @@
+# EXTRA_LIBS: openai,json,net,net_server,cipher,misc
+#~
+API.OpenAI Chat Completions tool calls over the wire, against a local HTTPS server
+that answers with recorded Chat Completions bodies (no key, no network beyond
+loopback). The server presents a self-signed certificate (openssl on PATH, the
+fixture anthropic_http_test uses); the OpenAI client has no certificate pin, so
+the test turns certificate checking off for its own process with
+OBJECK_TLS_INSECURE_SKIP_VERIFY. Covers the whole round trip McpToolBridge->ToOpenAiJson() needs:
+
+  * the request carries the tools array and the messages exactly as given
+  * a 'tool_calls' reply is read into ToolCall (id, name, arguments)
+  * the assistant message is echoed back as received, then a tool result message
+    ({role:'tool', tool_call_id, content}) answers each call
+  * a reply with no tool calls gives an empty vector
+  * a malformed reply is an error (Nil and GetLastError), not a crash
+~#
+use API.OpenAI, API.OpenAI.Chat;
+use Data.JSON;
+use Collection, Web.HTTP.Server;
+
+class ToolCallsMock from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		if(<>request->GetPath()->Equals("/v1/chat/completions")) {
+			response->SetCodeContent(404, "not found");
+			return false;
+		};
+
+		body := request->GetContent();
+		if(body = Nil) {
+			response->SetCodeContent(400, "{\"error\":{\"message\":\"no body\"}}");
+			return false;
+		};
+		OpenAIToolCallsTest->Record(body, request->GetHeader("Authorization"));
+
+		if(body->Find("m-error") > -1) {
+			response->SetCodeContent(401, "{\"error\":{\"message\":\"Incorrect API key provided\",\"type\":\"invalid_request_error\"}}");
+			return false;
+		};
+		if(body->Find("m-garbage") > -1) {
+			response->SetCodeContent(200, "this is not json {");
+			return false;
+		};
+		if(body->Find("m-string-message") > -1) {
+			response->SetCodeContent(200, "{\"choices\":[{\"index\":0,\"message\":\"oops\",\"finish_reason\":\"stop\"}]}");
+			return false;
+		};
+		if(body->Find("m-bad-calls") > -1) {
+			response->SetCodeContent(200, "{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":5,\"function\":\"x\"},\"junk\",{\"id\":\"call_ok\",\"function\":{\"name\":\"f\",\"arguments\":7}}]},\"finish_reason\":\"tool_calls\"}]}");
+			return false;
+		};
+		if(body->Find("m-plain") > -1 | body->Find("\"role\":\"tool\"") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"chatcmpl-2\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"m\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"The weather is 18C.\",\"refusal\":null},\"finish_reason\":\"stop\"}]}");
+			return false;
+		};
+
+		response->SetCodeContent(200, "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"m\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call_abc123\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}},{\"id\":\"call_def456\",\"type\":\"function\",\"function\":{\"name\":\"get_time\",\"arguments\":\"{}\"}}],\"refusal\":null},\"finish_reason\":\"tool_calls\"}]}");
+		return false;
+	}
+}
+
+class OpenAIToolCallsTest {
+	@port : static : Int;
+	@failures : static : Int;
+	@last_body : static : String;
+	@last_auth : static : String;
+
+	function : Record(body : String, auth : String) ~ Nil {
+		@last_body := body;
+		@last_auth := auth;
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Same(a : String, b : String) ~ Bool {
+		return a <> Nil & b <> Nil & a->Equals(b);
+	}
+
+	function : Tools() ~ JsonElement {
+		# the shape McpToolBridge->ToOpenAiJson() returns
+		return JsonParser->TextToElement("[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get the weather\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}}}]");
+	}
+
+	function : UserMessages(text : String) ~ JsonElement {
+		messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+		user := JsonElement->New(JsonElement->JsonType->OBJECT);
+		user->Insert("role", "user");
+		user->Insert("content", text);
+		messages->Add(user);
+		return messages;
+	}
+
+	function : Ask(text : String) ~ Completion {
+		EndPoint->SetLastError(Nil);
+		return Completion->CompleteWithTools("test-model", UserMessages(text), Tools(), 64, "test-key");
+	}
+
+	# A self-signed certificate for the test's servers, valid from 2025 rather than
+	# from the second it is made. `openssl req -x509` starts a certificate "now",
+	# and a clock that steps back after that -- a VM resynchronizing its time, as
+	# WSL2 does by seconds at a time -- sees a certificate that is not valid yet:
+	# the handshake fails "The certificate validity starts in the future". Before
+	# OpenSSL 3.4 only `openssl ca` can set the start, so it signs the request, in a
+	# scratch directory removed afterwards. The extensions are written out rather
+	# than left to each build's defaults.
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		System.IO.Filesystem.Directory->Delete(dir);
+		System.IO.Filesystem.File->Delete(cert);
+		System.IO.Filesystem.File->Delete(key);
+		if(<>System.IO.Filesystem.Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := System.IO.Filesystem.FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		System.IO.Filesystem.FileWriter->New("{$dir}/index.txt")->Close();
+		serial := System.IO.Filesystem.FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		System.IO.Filesystem.Directory->Delete(dir);
+		return made;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@port := 0;
+		cert := "openai-tools-{$Runtime->GetProcessId()}-cert.pem";
+		key := "openai-tools-{$Runtime->GetProcessId()}-key.pem";
+		System.IO.Filesystem.File->Delete(cert);
+		System.IO.Filesystem.File->Delete(key);
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost")) {
+			"  [FAIL] openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(ToolCallsMock->New()->GetClass(), 0, "openai-tools-{$Runtime->GetProcessId()}-cert.pem", "openai-tools-{$Runtime->GetProcessId()}-key.pem", "", false);
+			}
+		};
+		server->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			"  [FAIL] the server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+		EndPoint->SetBaseUrl("https://localhost:{$@port}/v1");
+
+		TestRequest();
+		TestRoundTrip();
+		TestNoToolCalls();
+		TestMalformed();
+
+		System.IO.Filesystem.File->Delete(cert);
+		System.IO.Filesystem.File->Delete(key);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+		# ServeSecure blocks in accept; end the process
+		Runtime->Exit(0);
+	}
+
+	function : TestRequest() ~ Nil {
+		"-- the request body (offline builder)"->PrintLine();
+		request := Completion->BuildToolRequest("m", UserMessages("hi"), Tools(), 32);
+		Check("model", Same(request->Get("model")->GetString(), "m"));
+		Check("cap is max_completion_tokens", request->Has("max_completion_tokens") & request->Get("max_completion_tokens")->GetInt() = 32 & <>request->Has("max_tokens"));
+		Check("tools are sent as given", Same(request->Get("tools")->ToString(), Tools()->ToString()));
+		request := Completion->BuildToolRequest("m", UserMessages("hi"), Nil, -1);
+		Check("no tools and no cap are left out", <>request->Has("tools") & <>request->Has("max_completion_tokens"));
+		request := Completion->BuildToolRequest("m", UserMessages("hi"), JsonElement->New(JsonElement->JsonType->ARRAY), -1);
+		Check("an empty tools array is left out", <>request->Has("tools"));
+
+		"-- the tool result message"->PrintLine();
+		result := Completion->ToolResultMessage("call_1", "18C");
+		Check("role is tool", Same(result->Get("role")->GetString(), "tool"));
+		Check("tool_call_id", Same(result->Get("tool_call_id")->GetString(), "call_1"));
+		Check("content", Same(result->Get("content")->GetString(), "18C"));
+	}
+
+	function : TestRoundTrip() ~ Nil {
+		"-- tool call round trip"->PrintLine();
+		messages := UserMessages("weather in Paris?");
+		completion := Ask("weather in Paris?");
+		Check("a completion comes back", completion <> Nil);
+		if(completion = Nil | completion->GetChoices()->Size() <> 1) {
+			Check("one choice", false);
+			return;
+		};
+
+		sent := JsonParser->TextToElement(@last_body);
+		Check("the server got a JSON body", sent <> Nil);
+		Check("the API key goes in Authorization", Same(@last_auth, "Bearer test-key"));
+		if(sent <> Nil) {
+			Check("the model is sent", Same(sent->Get("model")->GetString(), "test-model"));
+			Check("max_completion_tokens is sent", sent->Get("max_completion_tokens")->GetInt() = 64);
+			Check("the tools array arrives exactly", Same(sent->Get("tools")->ToString(), Tools()->ToString()));
+			Check("the messages arrive exactly", Same(sent->Get("messages")->ToString(), messages->ToString()));
+		};
+
+		choice := completion->GetChoices()->Get(0);
+		Check("finish reason is tool_calls", Same(choice->GetFinishReason(), "tool_calls"));
+		Check("content null reads as empty", Same(choice->GetMessage()->GetSecond(), ""));
+		calls := choice->GetToolCalls();
+		Check("two tool calls", calls->Size() = 2);
+		if(calls->Size() <> 2) {
+			return;
+		};
+		Check("call 1 id", Same(calls->Get(0)->GetId(), "call_abc123"));
+		Check("call 1 name", Same(calls->Get(0)->GetName(), "get_weather"));
+		Check("call 1 arguments text", Same(calls->Get(0)->GetArguments(), "{\"city\":\"Paris\"}"));
+		args := calls->Get(0)->GetArgumentsJson();
+		Check("call 1 arguments parse", args <> Nil & Same(args->Get("city")->GetString(), "Paris"));
+		Check("call 2 id and name", Same(calls->Get(1)->GetId(), "call_def456") & Same(calls->Get(1)->GetName(), "get_time"));
+		Check("call 2 empty object arguments", Same(calls->Get(1)->GetArguments(), "{}"));
+
+		assistant := choice->GetMessageJson();
+		Check("the assistant message is kept as received", assistant <> Nil & assistant->Has("tool_calls") & Same(assistant->Get("role")->GetString(), "assistant"));
+
+		# echo the assistant message and answer every call
+		messages->Add(assistant);
+		each(call in calls) {
+			messages->Add(Completion->ToolResultMessage(call->GetId(), "result for {$call->GetName()}"));
+		};
+		final := Completion->CompleteWithTools("test-model", messages, Tools(), 64, "test-key");
+		Check("the final completion comes back", final <> Nil & final->GetChoices()->Size() = 1);
+
+		sent := JsonParser->TextToElement(@last_body);
+		if(sent <> Nil) {
+			sent_messages := sent->Get("messages");
+			Check("four messages are sent: user, assistant, two tool results", sent_messages->Size() = 4);
+			if(sent_messages->Size() = 4) {
+				Check("the assistant message is echoed with its tool_calls", sent_messages->Get(1)->Get("tool_calls")->Get(0)->Get("id")->GetString()->Equals("call_abc123"));
+				Check("tool result 1 shape", Same(sent_messages->Get(2)->Get("role")->GetString(), "tool") & Same(sent_messages->Get(2)->Get("tool_call_id")->GetString(), "call_abc123") & Same(sent_messages->Get(2)->Get("content")->GetString(), "result for get_weather"));
+				Check("tool result 2 shape", Same(sent_messages->Get(3)->Get("tool_call_id")->GetString(), "call_def456"));
+			};
+		};
+		if(final <> Nil & final->GetChoices()->Size() = 1) {
+			Check("the final text", Same(final->GetChoices()->Get(0)->GetMessage()->GetSecond(), "The weather is 18C."));
+			Check("no tool calls in the final answer", final->GetChoices()->Get(0)->GetToolCalls()->Size() = 0);
+		};
+	}
+
+	function : TestNoToolCalls() ~ Nil {
+		"-- a reply with no tool calls"->PrintLine();
+		completion := Ask("m-plain");
+		Check("a completion comes back", completion <> Nil & completion->GetChoices()->Size() = 1);
+		if(completion <> Nil & completion->GetChoices()->Size() = 1) {
+			choice := completion->GetChoices()->Get(0);
+			Check("the tool call vector is empty, not Nil", choice->GetToolCalls() <> Nil & choice->GetToolCalls()->Size() = 0);
+			Check("the text is read", Same(choice->GetMessage()->GetSecond(), "The weather is 18C."));
+			Check("the message JSON is available", choice->GetMessageJson() <> Nil);
+		};
+	}
+
+	function : TestMalformed() ~ Nil {
+		"-- malformed and error replies"->PrintLine();
+		Check("a non-JSON body gives Nil", Ask("m-garbage") = Nil);
+		Check("with an error recorded", EndPoint->GetLastError() <> Nil & EndPoint->GetLastError()->Size() > 0);
+
+		completion := Ask("m-error");
+		Check("an error object gives Nil", completion = Nil);
+		Check("with the server's message", EndPoint->GetLastError() <> Nil & EndPoint->GetLastError()->Find("Incorrect API key") > -1);
+
+		completion := Ask("m-string-message");
+		Check("a message that is not an object survives", completion <> Nil & completion->GetChoices()->Size() = 1);
+		if(completion <> Nil & completion->GetChoices()->Size() = 1) {
+			choice := completion->GetChoices()->Get(0);
+			Check("with no tool calls and no message JSON", choice->GetToolCalls()->Size() = 0 & choice->GetMessageJson() = Nil);
+		};
+
+		completion := Ask("m-bad-calls");
+		Check("tool calls of the wrong types survive", completion <> Nil & completion->GetChoices()->Size() = 1);
+		if(completion <> Nil & completion->GetChoices()->Size() = 1) {
+			calls := completion->GetChoices()->Get(0)->GetToolCalls();
+			Check("a non-object entry is skipped", calls->Size() = 2);
+			if(calls->Size() = 2) {
+				Check("a non-string id reads empty", Same(calls->Get(0)->GetId(), "") & Same(calls->Get(0)->GetName(), ""));
+				Check("a non-string arguments reads empty", Same(calls->Get(1)->GetId(), "call_ok") & Same(calls->Get(1)->GetName(), "f") & Same(calls->Get(1)->GetArguments(), ""));
+				Check("empty arguments parse to Nil", calls->Get(1)->GetArgumentsJson() = Nil);
+			};
+		};
+
+		# nothing is listening here
+		EndPoint->SetBaseUrl("https://localhost:1/v1");
+		EndPoint->SetLastError(Nil);
+		completion := Completion->CompleteWithTools("test-model", UserMessages("x"), Tools(), 64, "test-key");
+		Check("a refused connection gives Nil", completion = Nil);
+		Check("with an error recorded", EndPoint->GetLastError() <> Nil);
+		EndPoint->SetBaseUrl("https://localhost:{$@port}/v1");
+	}
+}

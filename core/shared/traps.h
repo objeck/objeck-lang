@@ -367,6 +367,10 @@ namespace instructions {
     GC_TEST_ADDRESS,
     // Byte->TryUncompressZlib(input): UncompressZlib that answers Nil for a
     // Nil, damaged, truncated or oversized stream instead of ending the program
-    UNCOMPRESS_ZLIB_TRY
+    UNCOMPRESS_ZLIB_TRY,
+    // TCPSocket->SetDeadline(ms) and TCPSecureSocket->SetDeadline(ms): the
+    // socket's reads fail once ms milliseconds, counted from the call, have
+    // passed (0 clears it); the HTTP clients' total request deadline
+    SOCK_TCP_SET_DEADLINE
   };
 }

@@ -41,6 +41,8 @@ else
 fi
 make clean; make -j3 OBJECK_LIB_PATH=///".///" || ui_fail
 cp obc ../release/deploy/bin
+# every standard library must exist (core/lib/*.obl are build products; names are read from build_libs.sh)
+sh ../release/require_obl.sh ../lib || exit 1
 cp ../lib/*.obl ../release/deploy/lib
 cp ../lib/*.ini ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
@@ -304,7 +306,7 @@ cp core/release/linux/install-desktop.sh core/release/linux/objeck.desktop.in \
    core/release/linux/objeck.png core/release/deploy
 chmod +x core/release/deploy/bin/objeck-shell core/release/deploy/install-desktop.sh
 
-unzip -q docs/api.zip -d core/release/deploy/doc
+sh core/release/include_api_docs.sh core/release/deploy/doc || exit 1
 
 ui_step "examples"
 # copy examples

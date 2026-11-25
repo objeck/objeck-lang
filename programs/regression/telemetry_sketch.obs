@@ -1,0 +1,263 @@
+# EXTRA_LIBS: telemetry,gen_collect,json
+#~
+System.Telemetry LatencySketch: a quantile estimate must be within the stated relative error
+of the exact value at the same nearest rank, on uniform, lognormal, bimodal and constant data,
+on tiny samples, over twelve decades, at two accuracies, and after a merge and a JSON round
+trip. The data come from a fixed-seed LCG, so every run sees the same numbers.
+
+The exact reference is computed here by sorting and by integer permille arithmetic, not by
+the library's NearestRank, so a wrong rank formula is caught too. Tolerances are relative
+with a 1e-9 slack for floating point; no double is compared for equality except where the
+library promises an exact value (the minimum, the maximum, a constant series).
+~#
+use System.Telemetry;
+use Collection;
+
+class TelemetrySketchTest {
+	@seed : static : Int;
+	@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		qs := [500, 900, 950, 990, 999, 1000, 0];
+
+		# uniform 0.1 .. 10 ms
+		@seed := 12345;
+		u := Float->New[20000];
+		for(i := 0; i < u->Size(); i += 1;) {
+			u[i] := 0.1 + 9.9 * Uniform();
+		};
+		CheckDistribution("uniform", u, 0.01, qs);
+		CheckDistribution("uniform at 0.5 percent", u, 0.005, qs);
+
+		# lognormal, median 2 ms, sigma 0.8
+		@seed := 777;
+		ln := Float->New[20000];
+		for(i := 0; i < ln->Size(); i += 1;) {
+			ln[i] := Float->Exp(Float->Log(2.0) + 0.8 * Gauss());
+		};
+		CheckDistribution("lognormal", ln, 0.01, qs);
+
+		# bimodal: 90 percent around 2 ms, 10 percent around 80 ms (a collector pause shape)
+		@seed := 4242;
+		bi := Float->New[20000];
+		for(i := 0; i < bi->Size(); i += 1;) {
+			if(Uniform() < 0.9) {
+				bi[i] := Float->Exp(Float->Log(2.0) + 0.15 * Gauss());
+			}
+			else {
+				bi[i] := Float->Exp(Float->Log(80.0) + 0.2 * Gauss());
+			};
+		};
+		CheckDistribution("bimodal", bi, 0.01, qs);
+
+		# constant: every quantile is that exact value
+		c := Float->New[5000];
+		Float->Fill(c, 3.7);
+		sk := LatencySketch->New();
+		for(i := 0; i < c->Size(); i += 1;) {
+			sk->Add(c[i]);
+		};
+		all_exact := true;
+		for(i := 0; i < qs->Size(); i += 1;) {
+			if(sk->Quantile(qs[i]->As(Float) / 1000.0) <> 3.7) {
+				all_exact := false;
+			};
+		};
+		Check("constant series answers exactly 3.7 at every quantile", all_exact);
+		CheckDistribution("constant", c, 0.01, qs);
+
+		# twelve decades, log-uniform 1e-5 .. 1e7 ms
+		@seed := 99;
+		wide := Float->New[30000];
+		for(i := 0; i < wide->Size(); i += 1;) {
+			wide[i] := Float->Pow(10.0, -5.0 + 12.0 * Uniform());
+		};
+		CheckDistribution("twelve decades", wide, 0.01, qs);
+
+		# tiny samples, through the sketch (series with exact limit 0 forces it)
+		for(n := 1; n <= 9; n += 1;) {
+			@seed := 31 * n;
+			t := Float->New[n];
+			for(i := 0; i < n; i += 1;) {
+				t[i] := 0.5 + 40.0 * Uniform();
+			};
+			CheckDistribution("tiny n={$n}", t, 0.01, qs);
+		};
+		one := LatencySketch->New();
+		one->Add(12.5);
+		Check("one sample: every quantile is the sample", one->Quantile(0.5) = 12.5 & one->Quantile(0.99) = 12.5 & one->Quantile(0.0) = 12.5);
+		two := LatencySketch->New();
+		two->Add(100.0);
+		two->Add(1.0);
+		Check("two samples: p50 is the smaller (nearest rank 1), p99 the larger", two->Quantile(0.5) = 1.0 & two->Quantile(0.99) = 100.0);
+
+		# empty and rejected input
+		empty := LatencySketch->New();
+		q := empty->Quantile(0.5);
+		Check("empty sketch: quantile is NaN", q <> q);
+		Check("min of an empty sketch is NaN", empty->GetMin() <> empty->GetMin());
+		Check("NaN is rejected", empty->Add(Float->NaN()) = false);
+		Check("negative is rejected", empty->Add(-1.0) = false);
+		Check("infinity is rejected", empty->Add(Float->Inf()) = false);
+		Check("nothing was counted", empty->GetCount() = 0);
+		nq := one->Quantile(Float->NaN());
+		Check("NaN quantile is NaN", nq <> nq);
+
+		# range clamping is counted, extremes stay exact
+		cl := LatencySketch->New();
+		cl->Add(0.0);
+		cl->Add(1.0e-9);
+		cl->Add(5.0);
+		cl->Add(2.0e7);
+		Check("0, 1 ns and 2e7 ms are outside the range and counted as clamped", cl->GetClamped() = 3);
+		Check("minimum stays exact when below range", cl->GetMin() = 0.0);
+		Check("maximum stays exact when above range", cl->GetMax() = 2.0e7);
+		Check("p100 is the exact maximum", cl->Quantile(1.0) = 2.0e7);
+
+		# merging two sketches equals one sketch over the union
+		@seed := 5;
+		a := LatencySketch->New();
+		b := LatencySketch->New();
+		whole := LatencySketch->New();
+		for(i := 0; i < 8000; i += 1;) {
+			x := Float->Exp(Float->Log(3.0) + 0.6 * Gauss());
+			whole->Add(x);
+			if(i % 3 = 0) {
+				a->Add(x);
+			}
+			else {
+				b->Add(x);
+			};
+		};
+		Check("merge succeeds", a->Merge(b));
+		same := a->GetCount() = whole->GetCount();
+		for(i := 0; i < qs->Size(); i += 1;) {
+			qq := qs[i]->As(Float) / 1000.0;
+			if(a->Quantile(qq) <> whole->Quantile(qq)) {
+				same := false;
+			};
+		};
+		Check("merged sketch gives the same quantiles as the sketch of the union", same);
+		coarse := LatencySketch->New(0.05);
+		Check("merging sketches of different accuracy is refused", a->Merge(coarse) = false);
+
+		# JSON round trip keeps the quantiles
+		text := whole->ToJson()->ToString();
+		back := LatencySketch->FromJson(Data.JSON.JsonParser->TextToElement(text));
+		Check("sketch JSON parses", back <> Nil);
+		if(back <> Nil) {
+			same := back->GetCount() = whole->GetCount() & back->GetMin() = whole->GetMin() & back->GetMax() = whole->GetMax();
+			for(i := 0; i < qs->Size(); i += 1;) {
+				qq := qs[i]->As(Float) / 1000.0;
+				if(back->Quantile(qq) <> whole->Quantile(qq)) {
+					same := false;
+				};
+			};
+			Check("a sketch read back from JSON answers the same quantiles", same);
+		};
+		Check("JSON that is not a sketch is refused", LatencySketch->FromJson(Data.JSON.JsonParser->TextToElement("{\"alpha\":0.01}")) = Nil);
+
+		# memory is bounded: the bucket count does not depend on the sample count
+		Check("about 1500 buckets at 1 percent", whole->GetBucketCount() > 1000 & whole->GetBucketCount() < 2000);
+		Check("about twice that at 0.5 percent", LatencySketch->New(0.005)->GetBucketCount() > 2 * 1000);
+
+		if(@failures > 0) {
+			"telemetry_sketch: {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"telemetry_sketch: ok"->PrintLine();
+	}
+
+	# the rank of a permille quantile by integer arithmetic: ceil(q * n)
+	function : RankOf(permille : Int, n : Int) ~ Int {
+		r := (permille * n + 999) / 1000;
+		if(r < 1) {
+			r := 1;
+		};
+		if(r > n) {
+			r := n;
+		};
+		return r;
+	}
+
+	function : CheckDistribution(name : String, data : Float[], alpha : Float, qs : Int[]) ~ Nil {
+		sorted := Float->Copy(data);
+		ArraySort->Sort(sorted);
+		n := sorted->Size();
+
+		# the sketch itself
+		sk := LatencySketch->New(alpha);
+		for(i := 0; i < n; i += 1;) {
+			sk->Add(data[i]);
+		};
+		worst := 0.0;
+		for(i := 0; i < qs->Size(); i += 1;) {
+			exact := sorted[RankOf(qs[i], n) - 1];
+			est := sk->Quantile(qs[i]->As(Float) / 1000.0);
+			err := Float->Abs(est - exact);
+			rel := 0.0;
+			if(exact > 0.0) {
+				rel := err / exact;
+			};
+			if(rel > worst) {
+				worst := rel;
+			};
+			if(err > alpha * exact * 1.000000001 + 0.000000000001) {
+				Check("{$name}: q={$qs[i]} permille est {$est} vs exact {$exact}", false);
+			};
+		};
+		Check("{$name}: sketch within {$alpha} relative error at every checked quantile (worst {$worst})", worst <= alpha * 1.000000001);
+
+		# a series forced through the sketch (no exact buffer)
+		series := SeriesStats->New(0, alpha, 4, 0);
+		for(i := 0; i < n; i += 1;) {
+			series->Add(data[i]);
+		};
+		ok := true;
+		for(i := 0; i < qs->Size(); i += 1;) {
+			exact := sorted[RankOf(qs[i], n) - 1];
+			est := series->Quantile(qs[i]->As(Float) / 1000.0);
+			if(Float->Abs(est - exact) > alpha * exact * 1.000000001 + 0.000000000001) {
+				ok := false;
+			};
+		};
+		Check("{$name}: series on the sketch path within the bound", ok & series->IsExact() = false);
+
+		# a series with the exact buffer answers exactly while small
+		if(n <= 512) {
+			exact_series := SeriesStats->New();
+			for(i := 0; i < n; i += 1;) {
+				exact_series->Add(data[i]);
+			};
+			ok := exact_series->IsExact();
+			for(i := 0; i < qs->Size(); i += 1;) {
+				if(exact_series->Quantile(qs[i]->As(Float) / 1000.0) <> sorted[RankOf(qs[i], n) - 1]) {
+					ok := false;
+				};
+			};
+			Check("{$name}: small series is exact", ok);
+		};
+	}
+
+	function : Uniform() ~ Float {
+		@seed := (@seed * 1103515245 + 12345) % 2147483648;
+		return (@seed->As(Float) + 0.5) / 2147483648.0;
+	}
+
+	function : Gauss() ~ Float {
+		u1 := Uniform();
+		u2 := Uniform();
+		return Float->Sqrt(-2.0 * Float->Log(u1)) * Float->Cos(6.283185307179586 * u2);
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+}

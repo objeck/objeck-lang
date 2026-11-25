@@ -1,0 +1,534 @@
+# EXTRA_LIBS: gen_collect,concurrent,actor
+#~
+System.Actor Supervisor: ONE_FOR_ONE, ONE_FOR_ALL and REST_FOR_ONE each with a scripted failing
+child (which children stop and restart, in which order), the permanent / transient / temporary
+restart policies, restart intensity (more restarts than allowed in the window fails the supervisor),
+escalation to a parent supervisor that restarts it, a shutdown timeout with a stuck child (the child
+is killed, then abandoned, and the supervisor still ends), dynamic children, a factory that makes no
+behavior, and the stop order of children. Children are scripted: a mail says "crash", "exit" or
+"stuck". Every wait is for an event a child recorded or for an actor to end, never for a time.
+~#
+use System.Actor;
+use System.Concurrency;
+use Collection;
+
+class Probe {
+  @mutex : ThreadMutex;
+  @changed : Condition;
+  @events : Vector<String>;
+
+  New() {
+    @mutex := ThreadMutex->New("probe");
+    @changed := Condition->New();
+    @events := Vector->New()<String>;
+  }
+
+  method : public : Add(text : String) ~ Nil {
+    critical(@mutex) {
+      @events->AddBack(text);
+      @changed->Broadcast();
+    };
+  }
+
+  method : public : Count(text : String) ~ Int {
+    n := 0;
+    critical(@mutex) {
+      each(i : @events) {
+        if(@events->Get(i)->Equals(text)) {
+          n += 1;
+        };
+      };
+    };
+    return n;
+  }
+
+  # waits until the event has been recorded n times; false after ten seconds
+  method : public : Await(text : String, n : Int) ~ Bool {
+    deadline := ActorClock->Now() + 10000;
+    ok := false;
+    critical(@mutex) {
+      done := false;
+      while(done = false) {
+        c := 0;
+        each(i : @events) {
+          if(@events->Get(i)->Equals(text)) {
+            c += 1;
+          };
+        };
+        if(c >= n) {
+          ok := true;
+          done := true;
+        }
+        else {
+          remaining := deadline - ActorClock->Now();
+          if(remaining <= 0) {
+            done := true;
+          }
+          else {
+            @changed->Wait(@mutex, remaining);
+          };
+        };
+      };
+    };
+    return ok;
+  }
+
+  # position of an event in the log, -1 if it never happened
+  method : public : IndexOf(text : String) ~ Int {
+    index := -1;
+    critical(@mutex) {
+      i := 0;
+      while(i < @events->Size() & index < 0) {
+        if(@events->Get(i)->Equals(text)) {
+          index := i;
+        };
+        i += 1;
+      };
+    };
+    return index;
+  }
+
+  method : public : Text() ~ String {
+    s := "";
+    critical(@mutex) {
+      each(i : @events) {
+        if(i > 0) {
+          s += " ";
+        };
+        s += @events->Get(i);
+      };
+    };
+    return s;
+  }
+}
+
+class Worker implements ActorBehavior, ActorLifecycle {
+  @id : String;
+  @incarnation : Int;
+  @probe : Probe;
+  @gate : CountDownLatch;
+
+  New(id : String, incarnation : Int, probe : Probe, gate : CountDownLatch) {
+    @id := id;
+    @incarnation := incarnation;
+    @probe := probe;
+    @gate := gate;
+  }
+
+  method : public : Init(me : Actor) ~ Nil {
+    @probe->Add("start:{$@id}:{$@incarnation}");
+  }
+
+  method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
+    @probe->Add("stop:{$@id}:{$@incarnation}");
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() <> Mail->Kind->DATA) {
+      return true;
+    };
+    cmd := mail->GetPayload()->As(String);
+    if(cmd->Equals("crash")) {
+      Runtime->Raise(Error->New("scripted crash of {$@id}"));
+    }
+    else if(cmd->Equals("exit")) {
+      return false;
+    }
+    else if(cmd->Equals("stuck")) {
+      @probe->Add("stuck:{$@id}");
+      @gate->Await();
+    };
+    return true;
+  }
+}
+
+# counts its incarnations, so a test can tell the third start of a child from the second
+class WorkerFactory implements BehaviorFactory {
+  @id : String;
+  @probe : Probe;
+  @gate : CountDownLatch;
+  @made : Int;
+
+  New(id : String, probe : Probe, gate : CountDownLatch) {
+    @id := id;
+    @probe := probe;
+    @gate := gate;
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    @made += 1;
+    return Worker->New(@id, @made, @probe, @gate);
+  }
+}
+
+# makes a behavior the first time and none after that
+class FlakyFactory implements BehaviorFactory {
+  @probe : Probe;
+  @made : Int;
+
+  New(probe : Probe) {
+    @probe := probe;
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    @made += 1;
+    if(@made > 1) {
+      return Nil;
+    };
+    return Worker->New("flaky", @made, @probe, CountDownLatch->New(1));
+  }
+}
+
+class SupervisorTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Spec(id : String, probe : Probe, restart : ChildSpec->Restart, shutdown : Int) ~ ChildSpec {
+    return ChildSpec->New(id, WorkerFactory->New(id, probe, CountDownLatch->New(1)), restart, shutdown);
+  }
+
+  # sends the child a mail and waits until the supervisor has dealt with its ending: the
+  # child's DOWN mail reaches the supervisor before Join returns, and a Call is queued behind it
+  function : Crash(sup : Supervisor, id : String, command : String) ~ Nil {
+    child := sup->GetChild(id);
+    child->Send(command);
+    child->Join(10000);
+    sup->GetRestartCount();
+  }
+
+  function : Before(probe : Probe, first : String, second : String) ~ Bool {
+    a := probe->IndexOf(first);
+    b := probe->IndexOf(second);
+    return a > -1 & b > -1 & a < b;
+  }
+
+  function : OneForOne() ~ Nil {
+    "ONE_FOR_ONE:"->PrintLine();
+    probe := Probe->New();
+    sup := Supervisor->New("one", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    sup->AddChild(Spec("a", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->AddChild(Spec("b", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->AddChild(Spec("c", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->Start();
+    probe->Await("start:c:1", 1);
+    Check("children start in order", Before(probe, "start:a:1", "start:b:1") & Before(probe, "start:b:1", "start:c:1"));
+
+    old := sup->GetChild("b");
+    Crash(sup, "b", "crash");
+    Check("the failed child was restarted", probe->Await("start:b:2", 1));
+    Check("only that child", probe->Count("start:a:2") = 0 & probe->Count("start:c:2") = 0 & probe->Count("stop:a:1") = 0 & probe->Count("stop:c:1") = 0);
+    Check("a new incarnation", sup->GetChild("b") <> old & sup->GetChild("b")->IsRunning() & old->IsExited());
+    Check("the supervisor counted one restart", sup->GetRestartCount() = 1);
+
+    infos := sup->Children();
+    Check("children, in order, with their restarts", infos->Size() = 3 & infos->Get(0)->GetId()->Equals("a") & infos->Get(1)->GetRestarts() = 1 & infos->Get(0)->GetRestarts() = 0 & infos->Get(2)->IsRunning());
+
+    sup->Stop();
+    r := sup->Join(10000);
+    Check("Stop ends the supervisor STOPPED", r <> Nil & r->GetKind() = ExitReason->Kind->STOPPED);
+    Check("children stop last-started first", Before(probe, "stop:c:1", "stop:b:2") & Before(probe, "stop:b:2", "stop:a:1"));
+    Check("no child outlives it", old->IsExited() & probe->Count("stop:a:1") = 1 & probe->Count("stop:b:2") = 1 & probe->Count("stop:c:1") = 1);
+  }
+
+  function : OneForAll() ~ Nil {
+    "ONE_FOR_ALL:"->PrintLine();
+    probe := Probe->New();
+    sup := Supervisor->New("all", SupervisorStrategy->Kind->ONE_FOR_ALL, 5, 60);
+    sup->AddChild(Spec("a", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->AddChild(Spec("b", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->AddChild(Spec("c", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->Start();
+    probe->Await("start:c:1", 1);
+    Crash(sup, "b", "crash");
+    Check("every child was restarted", probe->Await("start:a:2", 1) & probe->Await("start:b:2", 1) & probe->Await("start:c:2", 1));
+    Check("the failed child ended first, then the others, last started first", Before(probe, "stop:b:1", "stop:c:1") & Before(probe, "stop:c:1", "stop:a:1"));
+    Check("then they restarted in start order", Before(probe, "stop:a:1", "start:a:2") & Before(probe, "start:a:2", "start:b:2") & Before(probe, "start:b:2", "start:c:2"));
+    Check("one restart event", sup->GetRestartCount() = 1);
+    sup->Stop();
+    sup->Join(10000);
+    Check("all stopped at the end", probe->Count("stop:a:2") = 1 & probe->Count("stop:b:2") = 1 & probe->Count("stop:c:2") = 1);
+  }
+
+  function : RestForOne() ~ Nil {
+    "REST_FOR_ONE:"->PrintLine();
+    probe := Probe->New();
+    sup := Supervisor->New("rest", SupervisorStrategy->Kind->REST_FOR_ONE, 5, 60);
+    ids := ["a", "b", "c", "d"];
+    each(i : ids) {
+      sup->AddChild(Spec(ids[i], probe, ChildSpec->Restart->PERMANENT, 1000));
+    };
+    sup->Start();
+    probe->Await("start:d:1", 1);
+    Crash(sup, "b", "crash");
+    Check("the failed child and the ones after it restarted", probe->Await("start:b:2", 1) & probe->Await("start:c:2", 1) & probe->Await("start:d:2", 1));
+    Check("the one before it was left alone", probe->Count("stop:a:1") = 0 & probe->Count("start:a:2") = 0);
+    Check("the later ones stopped last-started first", Before(probe, "stop:d:1", "stop:c:1"));
+    Check("then restarted in order", Before(probe, "start:b:2", "start:c:2") & Before(probe, "start:c:2", "start:d:2"));
+    sup->Stop();
+    sup->Join(10000);
+  }
+
+  function : Policies() ~ Nil {
+    "restart policies:"->PrintLine();
+    probe := Probe->New();
+    sup := Supervisor->New("policies", SupervisorStrategy->Kind->ONE_FOR_ONE, 20, 60);
+    sup->AddChild(Spec("perm", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->AddChild(Spec("trans", probe, ChildSpec->Restart->TRANSIENT, 1000));
+    sup->AddChild(Spec("temp", probe, ChildSpec->Restart->TEMPORARY, 1000));
+    sup->Start();
+    probe->Await("start:temp:1", 1);
+
+    Crash(sup, "perm", "exit");
+    Check("PERMANENT is restarted after a normal exit", probe->Await("start:perm:2", 1));
+    Crash(sup, "perm", "crash");
+    Check("PERMANENT is restarted after a failure", probe->Await("start:perm:3", 1));
+
+    Crash(sup, "trans", "exit");
+    Check("TRANSIENT is not restarted after a normal exit", sup->GetChild("trans") = Nil & probe->Count("start:trans:2") = 0);
+    Check("it stays in the child list, stopped", sup->Children()->Get(1)->GetId()->Equals("trans") & sup->Children()->Get(1)->IsRunning() = false);
+
+    # a second transient child, to see it restart after a failure
+    probe2 := Probe->New();
+    sup2 := Supervisor->New("policies2", SupervisorStrategy->Kind->ONE_FOR_ONE, 20, 60);
+    sup2->AddChild(Spec("trans", probe2, ChildSpec->Restart->TRANSIENT, 1000));
+    sup2->AddChild(Spec("temp", probe2, ChildSpec->Restart->TEMPORARY, 1000));
+    sup2->Start();
+    probe2->Await("start:temp:1", 1);
+    Crash(sup2, "trans", "crash");
+    Check("TRANSIENT is restarted after a failure", probe2->Await("start:trans:2", 1));
+
+    Crash(sup2, "temp", "crash");
+    Check("TEMPORARY is never restarted", probe2->Count("start:temp:2") = 0);
+    Check("and is forgotten", sup2->Children()->Size() = 1 & sup2->GetChild("temp") = Nil);
+    Check("a restart is counted only for a restarted child", sup2->GetRestartCount() = 1);
+
+    sup->Stop();
+    sup2->Stop();
+    sup->Join(10000);
+    sup2->Join(10000);
+  }
+
+  function : Intensity() ~ Nil {
+    "restart intensity:"->PrintLine();
+    probe := Probe->New();
+    sup := Supervisor->New("intense", SupervisorStrategy->Kind->ONE_FOR_ONE, 2, 60);
+    sup->AddChild(Spec("x", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->Start();
+    probe->Await("start:x:1", 1);
+    Crash(sup, "x", "crash");
+    probe->Await("start:x:2", 1);
+    Crash(sup, "x", "crash");
+    probe->Await("start:x:3", 1);
+    Check("two restarts in the window are allowed", sup->GetActor()->IsRunning());
+
+    child := sup->GetChild("x");
+    child->Send("crash");
+    r := sup->Join(10000);
+    Check("the third fails the supervisor", r <> Nil & r->GetKind() = ExitReason->Kind->FAILED);
+    Check("with the reason", r->GetError()->Find("restart intensity exceeded") > -1 & r->GetError()->Find("more than 2 restarts") > -1);
+    Check("the child was not started a fourth time", probe->Count("start:x:4") = 0);
+    Check("the children were stopped on the way out", child->IsExited() & probe->Count("stop:x:3") = 1);
+
+    # restarts that fall outside the window do not count: a window of zero seconds forgets at once
+    probe2 := Probe->New();
+    sup2 := Supervisor->New("window", SupervisorStrategy->Kind->ONE_FOR_ONE, 1, 0);
+    sup2->AddChild(Spec("y", probe2, ChildSpec->Restart->PERMANENT, 1000));
+    sup2->Start();
+    probe2->Await("start:y:1", 1);
+    each(i : 4) {
+      Crash(sup2, "y", "crash");
+      probe2->Await("start:y:{$(i + 2)}", 1);
+    };
+    Check("restarts outside the window are forgotten", sup2->GetActor()->IsRunning() & sup2->GetRestartCount() = 4);
+    sup2->Stop();
+    sup2->Join(10000);
+
+    # a factory that cannot make a behavior fails the supervisor
+    probe3 := Probe->New();
+    sup3 := Supervisor->New("flaky", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    sup3->AddChild(ChildSpec->New("flaky", FlakyFactory->New(probe3), ChildSpec->Restart->PERMANENT, 1000));
+    sup3->Start();
+    probe3->Await("start:flaky:1", 1);
+    sup3->GetChild("flaky")->Send("crash");
+    r3 := sup3->Join(10000);
+    Check("a factory that makes no behavior fails the supervisor", r3->GetKind() = ExitReason->Kind->FAILED & r3->GetError()->Find("made no behavior") > -1);
+  }
+
+  function : EscalationTree() ~ Nil {
+    "escalation to a parent, in order:"->PrintLine();
+    probe := Probe->New();
+    holder := ChildHolder->New();
+    inner_specs := Vector->New()<ChildSpec>;
+    inner_specs->AddBack(ChildSpec->New("x", HoldingFactory->New("x", probe, holder), ChildSpec->Restart->PERMANENT, 1000));
+
+    parent := Supervisor->New("parent", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    parent->AddChild(ChildSpec->New("inner", SupervisorFactory->New(SupervisorStrategy->Kind->ONE_FOR_ONE, 1, 60, inner_specs), ChildSpec->Restart->PERMANENT, 5000));
+    parent->Start();
+    probe->Await("start:x:1", 1);
+    inner1 := parent->GetChild("inner");
+
+    holder->Get()->Send("crash");
+    probe->Await("start:x:2", 1);
+    Check("the inner supervisor restarted its child once", inner1->IsRunning() & parent->GetRestartCount() = 0);
+
+    holder->Get()->Send("crash");
+    r := inner1->Join(10000);
+    Check("the second failure escalated: the inner supervisor failed", r <> Nil & r->GetKind() = ExitReason->Kind->FAILED & r->GetError()->Find("restart intensity exceeded") > -1);
+    Check("its child was stopped on the way out", probe->Await("stop:x:2", 1));
+    Check("the parent restarted the inner supervisor, which started its child again", probe->Await("start:x:3", 1));
+    inner2 := parent->GetChild("inner");
+    Check("a new inner supervisor", inner2 <> Nil & inner2 <> inner1 & inner2->IsRunning());
+    Check("the parent counted its one restart", parent->GetRestartCount() = 1);
+    parent->Stop();
+    pr := parent->Join(10000);
+    Check("stopping the parent stops the whole tree", pr->GetKind() = ExitReason->Kind->STOPPED & inner2->IsExited() & probe->Await("stop:x:3", 1));
+  }
+
+  function : StuckChild() ~ Nil {
+    "shutdown timeout with a stuck child:"->PrintLine();
+    probe := Probe->New();
+    gate := CountDownLatch->New(1);
+    sup := Supervisor->New("stuck", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    sup->AddChild(ChildSpec->New("s", WorkerFactory->New("s", probe, gate), ChildSpec->Restart->PERMANENT, 150));
+    sup->AddChild(Spec("t", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->Start();
+    probe->Await("start:t:1", 1);
+    child := sup->GetChild("s");
+    child->Send("stuck");
+    Check("the child is stuck in its handler", probe->Await("stuck:s", 1));
+
+    started := ActorClock->Now();
+    sup->Stop();
+    r := sup->Join(30000);
+    elapsed := ActorClock->Now() - started;
+    Check("the supervisor ended anyway", r <> Nil & r->GetKind() = ExitReason->Kind->STOPPED);
+    Check("it waited for the shutdown timeout and the kill grace ({$elapsed} ms)", elapsed >= 230);
+    Check("the stuck child was abandoned and counted", sup->GetAbandonedCount() = 1);
+    Check("the stuck child is still running", child->IsRunning());
+    Check("the other child stopped normally, before the stuck one was dealt with", probe->Count("stop:t:1") = 1);
+    gate->CountDown();
+    cr := child->Join(10000);
+    Check("it ends KILLED once its handler returns", cr <> Nil & cr->GetKind() = ExitReason->Kind->KILLED);
+  }
+
+  function : Dynamic() ~ Nil {
+    "dynamic children:"->PrintLine();
+    probe := Probe->New();
+    sup := Supervisor->New("dyn", SupervisorStrategy->Kind->ONE_FOR_ONE, 5, 60);
+    sup->AddChild(Spec("a", probe, ChildSpec->Restart->PERMANENT, 1000));
+    sup->Start();
+    probe->Await("start:a:1", 1);
+    Check("a child is added to a running supervisor", sup->StartChild(Spec("b", probe, ChildSpec->Restart->PERMANENT, 1000)) & probe->Await("start:b:1", 1));
+    Check("a duplicate id is refused", sup->StartChild(Spec("b", probe, ChildSpec->Restart->PERMANENT, 1000)) = false);
+    Check("two children, in order", sup->Children()->Size() = 2 & sup->Children()->Get(1)->GetId()->Equals("b"));
+
+    Crash(sup, "b", "crash");
+    Check("a dynamic child is supervised like the others", probe->Await("start:b:2", 1));
+
+    Check("a child is removed", sup->TerminateChild("a") & probe->Await("stop:a:1", 1));
+    Check("removing an unknown child fails", sup->TerminateChild("zzz") = false);
+    Check("one child left", sup->Children()->Size() = 1 & sup->GetChild("a") = Nil);
+    Check("the removed child was not restarted", probe->Count("start:a:2") = 0 & sup->GetRestartCount() = 1);
+
+    sup->Stop();
+    sup->Join(10000);
+    Check("the supervisor is gone: calls fail instead of hanging", sup->StartChild(Spec("c", probe, ChildSpec->Restart->PERMANENT, 1000)) = false & sup->Children() = Nil);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    OneForOne();
+    OneForAll();
+    RestForOne();
+    Policies();
+    Intensity();
+    EscalationTree();
+    StuckChild();
+    Dynamic();
+    if(@failures > 0) {
+      "{$@failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "all supervisor checks passed"->PrintLine();
+  }
+}
+
+# lets a test reach the newest incarnation of a child it did not start itself
+class ChildHolder {
+  @mutex : ThreadMutex;
+  @actor : Actor;
+
+  New() {
+    @mutex := ThreadMutex->New("holder");
+  }
+
+  method : public : Set(actor : Actor) ~ Nil {
+    critical(@mutex) {
+      @actor := actor;
+    };
+  }
+
+  method : public : Get() ~ Actor {
+    a : Actor;
+    critical(@mutex) {
+      a := @actor;
+    };
+    return a;
+  }
+}
+
+class HoldingWorker implements ActorBehavior, ActorLifecycle {
+  @id : String;
+  @incarnation : Int;
+  @probe : Probe;
+  @holder : ChildHolder;
+
+  New(id : String, incarnation : Int, probe : Probe, holder : ChildHolder) {
+    @id := id;
+    @incarnation := incarnation;
+    @probe := probe;
+    @holder := holder;
+  }
+
+  method : public : Init(me : Actor) ~ Nil {
+    @holder->Set(me);
+    @probe->Add("start:{$@id}:{$@incarnation}");
+  }
+
+  method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
+    @probe->Add("stop:{$@id}:{$@incarnation}");
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->DATA & mail->GetPayload()->As(String)->Equals("crash")) {
+      Runtime->Raise(Error->New("scripted crash of {$@id}"));
+    };
+    return true;
+  }
+}
+
+class HoldingFactory implements BehaviorFactory {
+  @id : String;
+  @probe : Probe;
+  @holder : ChildHolder;
+  @made : Int;
+
+  New(id : String, probe : Probe, holder : ChildHolder) {
+    @id := id;
+    @probe := probe;
+    @holder := holder;
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    @made += 1;
+    return HoldingWorker->New(@id, @made, @probe, @holder);
+  }
+}

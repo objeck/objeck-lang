@@ -1,0 +1,23 @@
+id: file_delete
+category: file_io
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that creates a file named llm_eval_delete.txt in the current directory containing the text `temp`, prints whether the file exists (true or false), deletes the file, and prints whether it exists again. Output is two lines: `true` then `false`. Use System.IO.Filesystem's File class for the checks.
+--- expected
+true
+false
+--- reference
+use System.IO.Filesystem;
+
+class FileDelete {
+	function : Main(args : String[]) ~ Nil {
+		name := "llm_eval_delete.txt";
+		FileWriter->WriteFile(name, "temp");
+		File->Exists(name)->PrintLine();
+		File->Delete(name);
+		File->Exists(name)->PrintLine();
+	}
+}

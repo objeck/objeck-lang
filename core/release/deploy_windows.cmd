@@ -107,6 +107,21 @@ REM release\licenses holds the notices no package provides, for code ported or
 REM adapted into the .obl libraries: LIBSVM in System.ML's support vector
 REM machine, VADER's lexicon values in the NLP sentiment scorer.
 xcopy /e /y /q licenses %TARGET%\doc\licenses\
+REM Every standard library must exist: core\lib\*.obl are build products of core\compiler\lib_src.
+REM A missing one used to be a copy warning and a tree that cannot link; lang.obl is checked here,
+REM and the rest (names read from build_libs.sh) by require_obl.sh when sh is available.
+if not exist ..\lib\lang.obl (
+	echo.
+	echo ============================================================
+	echo  ERROR: core\lib has no .obl - run core\compiler\build_libs_windows.cmd first
+	echo ============================================================
+	exit /b 1
+)
+where sh >nul 2>&1
+if not errorlevel 1 (
+	sh ./require_obl.sh ../lib
+	if errorlevel 1 exit /b 1
+)
 copy ..\lib\*.obl %TARGET%\lib
 copy ..\lib\*.ini %TARGET%\lib
 
@@ -1053,15 +1068,28 @@ if [%1] == [x64] (
 	@if errorlevel 1 call "%~dp0ui.cmd" :ui_warn "API docs step exited with an error - the deploy continues, as it always has"
 	rmdir /s /q %1
 ) else (
-	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
-	mkdir %TARGET%\doc\api
-	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
-	if errorlevel 1 (
+	REM docs\api.zip is not committed: release-build.yml downloads it from the api-docs
+	REM artifact of its own run, and an x64 deploy writes one here. A missing zip aborts a
+	REM release when OBJECK_REQUIRE_API_DOCS is 1, CI and local builds go on without the docs.
+	if exist ..\..\docs\api.zip (
+		echo ARM64 does not run code_doc - using the pre-built API docs
+		mkdir %TARGET%\doc\api
+		powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
+		if errorlevel 1 (
+			echo.
+			echo ============================================================
+			echo  ERROR: API docs extraction failed - aborting deploy
+			echo ============================================================
+			exit /b 1
+		)
+	) else if "%OBJECK_REQUIRE_API_DOCS%" == "1" (
 		echo.
 		echo ============================================================
-		echo  ERROR: API docs extraction failed - aborting deploy
+		echo  ERROR: docs\api.zip not found and OBJECK_REQUIRE_API_DOCS=1
 		echo ============================================================
 		exit /b 1
+	) else (
+		echo note: docs\api.zip not found - the API reference is not in this ARM64 deploy tree
 	)
 )
 

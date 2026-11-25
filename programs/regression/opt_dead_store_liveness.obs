@@ -1,0 +1,207 @@
+#~
+Dead-store elimination on the control-flow graph: what goes and what must stay.
+
+DeadStore used to call a store dead only when the next thing in the same straight
+line to touch its local was another store (a label, jump or return forgot everything).
+It now also asks the control-flow graph (core/compiler/cfg.h): a store is dead when no
+path from it reads the local before another store writes it, and no exception handler
+of the try region it sits in reads it. That drops a store overwritten on both arms of
+an `if`, and a store nothing ever reads. It must keep a store that any path can still
+read: after a join, around a loop, or in a handler. A store whose value can fault or
+has an effect (a call, a division) keeps its value either way. Every function has the
+answer the unoptimized program (-opt s0) gives, worked out in the comments.
+
+Also see opt_dead_store_first_instr.obs, opt_dead_store_side_effects.obs and
+opt_dead_store_stack_balance.obs. Exits 1 on a failure.
+~#
+class OptDeadStoreLiveness {
+  @fails : static : Int;
+  @calls : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    @fails := 0;
+    @calls := 0;
+
+    # --- a store that is overwritten on every path: it may go ---
+    Expect(OverwrittenOnBothArms(1) = 2, "overwritten on the then arm");
+    Expect(OverwrittenOnBothArms(0) = 3, "overwritten on the else arm");
+    Expect(FloatOverwrittenOnBothArms(1) = 2.5, "a Float overwritten on the then arm");
+    Expect(FloatOverwrittenOnBothArms(0) = 3.5, "a Float overwritten on the else arm");
+    Expect(OverwrittenInLoop(4) = 9, "stores in a loop, then a store after it");
+    Expect(NeverRead(3, 5) = 3, "a local nothing ever reads");
+
+    # --- a store some path still reads: it must stay ---
+    Expect(OverwrittenOnOneArm(1) = 2, "overwritten on one arm, that arm");
+    Expect(OverwrittenOnOneArm(0) = 100, "overwritten on one arm, the other arm reads the old store");
+    Expect(ReadAfterJoin(1) = 27, "read after the join, then stored again");
+    Expect(ReadAfterJoin(0) = 27, "read after the join, no branch taken");
+    Expect(LoopCarried(3) = 11, "stored in a loop, read on the next iteration");
+    Expect(LoopCarried(1) = 0, "stored in a loop, read on the next iteration, one trip");
+    Expect(LoopCarried(0) = -1, "a loop that never runs");
+    Expect(ReadAfterLoop(4) = 6, "stored in a loop, read after it");
+    Expect(ReadAfterLoop(0) = 0, "stored in a loop that never runs, read after it");
+
+    # --- a try region: a handler reads the local ---
+    Expect(HandlerReadsOldStore(0) = 1, "the error comes before the store the handler would see");
+    Expect(HandlerReadsOldStore(5) = 102, "no error");
+    Expect(HandlerReadsNewStore(0) = 2, "the store comes before the error");
+
+    # --- the value of a dead store may have an effect or fault: it stays ---
+    @calls := 0;
+    Expect(NeverReadCall() = 1, "the call whose result is never read still runs");
+    Expect(@calls = 1, "the call ran once");
+    Expect(NeverReadDivide(6, 0) = -1, "the division whose result is never read still faults");
+    Expect(NeverReadDivide(6, 3) = 1, "the division that does not fault");
+
+    if(@fails > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: DeadStore on the control-flow graph keeps every observable result"->PrintLine();
+  }
+
+  function : Expect(ok : Bool, what : String) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$what}"->PrintLine();
+      @fails += 1;
+    };
+  }
+
+  function : Bump() ~ Int {
+    @calls += 1;
+    return @calls;
+  }
+
+  # x := 100 is overwritten on both arms
+  function : OverwrittenOnBothArms(c : Int) ~ Int {
+    x := 100;
+    if(c > 0) {
+      x := 2;
+    }
+    else {
+      x := 3;
+    };
+    return x;
+  }
+
+  function : FloatOverwrittenOnBothArms(c : Int) ~ Float {
+    f := 1.5;
+    if(c > 0) {
+      f := 2.5;
+    }
+    else {
+      f := 3.5;
+    };
+    return f;
+  }
+
+  # x := 5 and the stores in the loop are overwritten by x := 9 before any read
+  function : OverwrittenInLoop(n : Int) ~ Int {
+    x := 5;
+    for(i := 0; i < n; i += 1;) {
+      x := i;
+    };
+    x := 9;
+    return x;
+  }
+
+  # t is stored on every iteration and read never; s = 0 + 1 + 2
+  function : NeverRead(a : Int, b : Int) ~ Int {
+    s := 0;
+    for(i := 0; i < 3; i += 1;) {
+      t := a + b;
+      s += i;
+    };
+    return s;
+  }
+
+  # c = 0: the then arm does not run, so x is still 100
+  function : OverwrittenOnOneArm(c : Int) ~ Int {
+    x := 100;
+    if(c > 0) {
+      x := 2;
+    };
+    return x;
+  }
+
+  # x := 1 is read by z after the join whichever arm ran; z = 2, then x := 7: 2 * 10 + 7
+  function : ReadAfterJoin(c : Int) ~ Int {
+    x := 1;
+    if(c > 0) {
+      y := 2;
+    };
+    z := x + 1;
+    x := 7;
+    return z * 10 + x;
+  }
+
+  # r takes the x of the previous iteration: n = 3 gives r = 0, 10, 11 (x = 10, 11, 12)
+  function : LoopCarried(n : Int) ~ Int {
+    x := 0;
+    r := -1;
+    i := 0;
+    while(i < n) {
+      r := x;
+      x := i + 10;
+      i += 1;
+    };
+    return r;
+  }
+
+  # n = 4: x ends as 3 * 2 = 6; n = 0: x stays 0
+  function : ReadAfterLoop(n : Int) ~ Int {
+    x := 0;
+    for(i := 0; i < n; i += 1;) {
+      x := i * 2;
+    };
+    return x;
+  }
+
+  # z = 0 raises before x := 2: the handler returns 1. Otherwise x is 2 and the result is 2 + 100
+  function : HandlerReadsOldStore(z : Int) ~ Int {
+    x := 1;
+    try {
+      w := 10 / z;
+      x := 2;
+      if(w < 0) {
+        x := 3;
+      };
+    }
+    on(e : Error) {
+      return x;
+    };
+    return x + 100;
+  }
+
+  # z = 0: x := 2 ran before the division raised, and the handler sees it
+  function : HandlerReadsNewStore(z : Int) ~ Int {
+    x := 1;
+    try {
+      x := 2;
+      w := 10 / z;
+      if(w < 0) {
+        x := 3;
+      };
+    }
+    on(e : Error) {
+      return x;
+    };
+    return 0;
+  }
+
+  function : NeverReadCall() ~ Int {
+    unused := Bump();
+    unused := 0;
+    return @calls;
+  }
+
+  function : NeverReadDivide(a : Int, z : Int) ~ Int {
+    try {
+      t := a / z;
+      t := 0;
+    }
+    on(e : Error) {
+      return -1;
+    };
+    return 1;
+  }
+}

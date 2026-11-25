@@ -1,0 +1,19 @@
+#~
+Prints what the Objeck runtime believes about the CPUs it may use, as one
+RESULT line. The harness runs it under taskset and OBJECK_CPU_COUNT to record
+the effective core count of every measurement.
+~#
+class CpuProbe {
+	function : Main(args : String[]) ~ Nil {
+		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
+		slurm_cpus := Runtime->GetEnvironmentVariable("SLURM_CPUS_PER_TASK");
+		override := Runtime->GetEnvironmentVariable("OBJECK_CPU_COUNT");
+		if(slurm_cpus = Nil) {
+			slurm_cpus := "";
+		};
+		if(override = Nil) {
+			override := "";
+		};
+		"RESULT usable_cpus={$cpus} slurm_cpus_per_task={$slurm_cpus} objeck_cpu_count={$override}"->PrintLine();
+	}
+}

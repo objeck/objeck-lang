@@ -67,18 +67,23 @@ SelectNode* SelectArrayTree::Divide(int start, int end)
     if(size == 1) {
       return new SelectNode(++emitter->conditional_label, values[start]);
     }
+    // The label ids are handed out in a FIXED order. These used to be three `++conditional_label`
+    // in one argument list, whose evaluation order C++ leaves unspecified: g++ evaluates the
+    // arguments right to left (right child, left child, then the node), Apple clang left to
+    // right, so the same source compiled to different jump operands on arm64 (8 of the 61
+    // libraries). The order below is what g++ produced, so no committed .obl changes.
     else if(size == 2) {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
-                                        new SelectNode(++emitter->conditional_label, values[start]),
-                                        new SelectNode(++emitter->conditional_label, values[start + 1]));
-      return node;  
+      SelectNode* right = new SelectNode(++emitter->conditional_label, values[start + 1]);
+      SelectNode* left = new SelectNode(++emitter->conditional_label, values[start]);
+      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], left, right);
+      return node;
     }
     else {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, 
-                                        values[start + 1], values[start + 2],
-                                        new SelectNode(++emitter->conditional_label, values[start]),
-                                        new SelectNode(++emitter->conditional_label, values[start + 2]));
-      return node;  
+      SelectNode* right = new SelectNode(++emitter->conditional_label, values[start + 2]);
+      SelectNode* left = new SelectNode(++emitter->conditional_label, values[start]);
+      SelectNode* node = new SelectNode(++emitter->conditional_label,
+                                        values[start + 1], values[start + 2], left, right);
+      return node;
     }
   }
   else {
@@ -2972,6 +2977,13 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_TCP_SET_CONN_TIMEOUT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
+
+  case instructions::SOCK_TCP_SET_DEADLINE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_TCP_SET_DEADLINE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -6546,76 +6558,18 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   cur_line_num = expression->GetLineNumber();
   
   Expression* right = expression->GetRight();
-  switch(right->GetExpressionType()) {
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    EmitCalculation(static_cast<CalculatedExpression*>(right));
-    if(right->GetMethodCall()) {
-      // The attached call is emitted here rather than by EmitExpression, so its
-      // arguments have to be emitted too -- EmitMethodCall only emits the call.
-      // Without this the call consumes whatever happens to be on the stack
-      // beneath the receiver, which for a comparison operand is the other side
-      // of the comparison.
-      EmitMethodCallParameters(right->GetMethodCall());
-      EmitMethodCall(right->GetMethodCall(), false);
-      EmitCast(right->GetMethodCall());
-    }
-    break;
-    
-  default:
-    EmitExpression(right);
-    break;
-  }
+  // EmitExpression emits an operand's whole attached call chain, with the calls'
+  // arguments, casts and Try()/Otherwise() handling. A nested calculation used to
+  // be emitted here by hand, with only its FIRST attached call, so
+  // '(a * b)->Sin()->Abs()->Log() * 2.0' silently dropped Abs() and Log().
+  EmitExpression(right);
   
   Expression* left = expression->GetLeft();
-  switch(left->GetExpressionType()) {
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    EmitCalculation(static_cast<CalculatedExpression*>(left));
-    if(left->GetMethodCall()) {
-      // The attached call is emitted here rather than by EmitExpression, so its
-      // arguments have to be emitted too -- EmitMethodCall only emits the call.
-      // Without this the call consumes whatever happens to be on the stack
-      // beneath the receiver, which for a comparison operand is the other side
-      // of the comparison.
-      EmitMethodCallParameters(left->GetMethodCall());
-      EmitMethodCall(left->GetMethodCall(), false);
-      EmitCast(left->GetMethodCall());
-    }
-    break;
-    
-  default:
-    EmitExpression(left);
-    break;
-  }
+  // EmitExpression emits an operand's whole attached call chain, with the calls'
+  // arguments, casts and Try()/Otherwise() handling. A nested calculation used to
+  // be emitted here by hand, with only its FIRST attached call, so
+  // '(a * b)->Sin()->Abs()->Log() * 2.0' silently dropped Abs() and Log().
+  EmitExpression(left);
   
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
@@ -7564,6 +7518,43 @@ void IntermediateEmitter::EmitDeclaration(Declaration* declaration)
   Statement* statement = declaration->GetAssignment();
   if(statement) {
     EmitStatement(statement);
+    return;
+  }
+
+  // A local declared without an initializer lives in a fixed frame slot that
+  // the VM zeroes once, when the method is entered. Inside a loop the
+  // declaration runs again every iteration, so without a store here the local
+  // kept the previous iteration's value: 'x : Int; if(c) { x := 5; };' read 5
+  // on the later iterations that skipped the assignment. The slot is also a GC
+  // root, so a stale object stayed reachable. Reset it to 0 / 0.0 / Nil each
+  // time the declaration executes. Outside a loop it executes once, right
+  // after the zeroed entry, so nothing is emitted there.
+  SymbolEntry* entry = declaration->GetEntry();
+  if(break_labels.empty() || !entry || !entry->IsLocal() || entry->IsSelf()) {
+    return;
+  }
+
+  frontend::Type* type = entry->GetType();
+  if(!type) {
+    return;
+  }
+
+  Statement* stmt = static_cast<Statement*>(declaration);
+  IntermediateFactory* factory = IntermediateFactory::Instance();
+  const long line = declaration->GetLineNumber();
+  if(type->GetDimension() == 0 && type->GetType() == frontend::FLOAT_TYPE) {
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, STOR_FLOAT_VAR, entry->GetId(), LOCL));
+  }
+  else if(type->GetDimension() == 0 && type->GetType() == frontend::FUNC_TYPE) {
+    // a function reference is two words: the method id and the instance
+    imm_block->AddInstruction(factory->MakeIntLitInstruction(stmt, line, 0));
+    imm_block->AddInstruction(factory->MakeIntLitInstruction(stmt, line, 0));
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, STOR_FUNC_VAR, entry->GetId(), LOCL));
+  }
+  else {
+    imm_block->AddInstruction(factory->MakeIntLitInstruction(stmt, line, 0));
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, STOR_INT_VAR, entry->GetId(), LOCL));
   }
 }
 

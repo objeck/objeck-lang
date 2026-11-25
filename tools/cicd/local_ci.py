@@ -62,7 +62,7 @@ CHECKS = [
     ("Checkers regression test matches the example sources",
      lambda: py("programs/examples/checkers/make_regression_test.py", "--check")),
     ("Generated files match their .in templates", lambda: py("tools/cicd/check_version_templates.py")),
-    ("Committed libraries carry the toolchain version", lambda: py("tools/cicd/check_obl_versions.py")),
+    ("Libraries carry the toolchain version", lambda: py("tools/cicd/check_obl_versions.py")),
     ("Library version check catches a stale library", lambda: py("tools/cicd/check_obl_versions.py", "--test")),
     ("SHA256SUMS re-sign check can detect a missing re-sign", lambda: py("tools/cicd/check_manifest_resign.py", "--test")),
     ("Every SHA256SUMS upload is re-signed", lambda: py("tools/cicd/check_manifest_resign.py")),
@@ -73,6 +73,8 @@ CHECKS = [
     ("Benchmark set/input check catches drift", lambda: py("tools/cicd/test_check_benchmark_inputs.py")),
     ("Native call names are held, not re-allocated",
      lambda: py("tools/cicd/hoist_native_names.py", "--check", *lib_sources())),
+    ("HPC sweep helper (objeck-slurm)", lambda: py("tools/hpc/alderaan/tests/test_objeck_slurm.py")),
+    ("HPC scaling harness and report", lambda: py("tools/hpc/alderaan/tests/test_scaling.py")),
     ("Nightly workflow contract", lambda: py("tools/cicd/test_nightly_contract.py")),
     ("CI package installs retry a network failure", lambda: ["bash", "tools/cicd/test_apt_harden.sh"]),
 ]

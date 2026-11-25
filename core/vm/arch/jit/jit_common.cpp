@@ -30,6 +30,8 @@
  ***************************************************************************/
 
 #include "jit_common.h"
+#include <chrono>
+#include <thread>
 
 #ifndef _NO_JIT
 #if defined(_M_ARM64)
@@ -59,6 +61,42 @@ JitCompiler::~JitCompiler()
 }
 
 #ifndef _NO_JIT
+// Blocks until the thread that claimed `callee`'s compile has settled it (done or
+// failed). A compile is milliseconds; the bound only keeps a wedged compiler from
+// hanging every other thread, which then interprets as it always did. Waiting
+// without polling the collector's safepoint is deliberate and safe: the compiler
+// thread never parks (Compile() runs no interpreter code and allocates nothing
+// on the collected heap), so a collection that is waiting for this thread to park
+// waits at most for the compile.
+void JitCompiler::WaitForCompile(StackMethod* callee)
+{
+  if(callee->GetJitState() != StackMethod::JIT_COMPILING) {
+    return;
+  }
+
+  static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
+
+  const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  const std::chrono::seconds limit(10);
+  int spins = 0;
+  while(callee->GetJitState() == StackMethod::JIT_COMPILING) {
+    if(++spins < 200) {
+      std::this_thread::yield();
+    }
+    else {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+      if(std::chrono::steady_clock::now() - start > limit) {
+        break;
+      }
+    }
+  }
+
+  if(report) {
+    const long us = (long)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
+    std::wcerr << L"[jit] " << callee->GetName() << L": waited " << us << L" us for another thread's compile" << std::endl;
+  }
+}
+
 bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
 {
   if(callee->GetNativeCode()) {
@@ -89,9 +127,15 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return false;
   }
   if(!callee->ClaimJitCompile()) {
-    // Another thread owns (or just settled) the compile. Re-read the outcome:
-    // treat anything but a definitive failure as "will be available" so the
-    // caller does not mark this call site as failed while a compile is in flight.
+    // Another thread owns (or just settled) the compile. If it is still in
+    // flight, wait for it: a caller that returns now finds no native code and
+    // interprets THIS CALL to the end, and compiled code is only picked up at
+    // the next call (no on-stack replacement). For a method hot only through a
+    // loop inside its first call -- a thread's Run, a kernel -- there is no next
+    // call, so the thread that lost the race ran the whole loop ~20x slower.
+    WaitForCompile(callee);
+    // Re-read the outcome: treat anything but a definitive failure as "will be
+    // available" so the caller does not mark this call site as failed.
     return callee->GetJitState() != StackMethod::JIT_FAILED;
   }
 
@@ -850,6 +894,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       VmExit(1);
     }
 
+    // what this Join reports about the thread (thread-fault isolation)
+    Runtime::StackInterpreter::JoinedThreadFault().clear();
+
     // The handle is read BEFORE parking: while parked, another thread's collection
     // can promote this Thread object and leave the local 'instance' pointing into the
     // recycled nursery, so instance[0] would be whatever reused that memory (#874).
@@ -886,6 +933,11 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #else
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
+    if(!vm_thread) {
+      // already joined: the slot was cleared by that join (as on Windows)
+      break;
+    }
+    instance[0] = 0;
 
     // see the note above: the handle is read before this thread parks
     MemoryManager::BeginBlocking();
@@ -899,6 +951,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
+    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
 #ifdef __linux__
     // the stack the VM allocated for it (ProcessAsyncMethodCall)
     Runtime::ThreadStacks::Release(vm_thread);
@@ -907,6 +960,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     MemoryManager::EndBlocking();
 
 #ifdef _WIN32
+    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a

@@ -9859,12 +9859,16 @@ bundle System.IO {
 		}
 		
 		#~
-		Reads a string from STDIN
-		@return string read
+		Reads a line from STDIN, without its line ending. A blank line is an empty
+		string; Nil is returned only at the end of input (a closed or exhausted
+		STDIN, or Ctrl-D), so a loop can tell the two apart.
+		@return string read, Nil at the end of input
 		```
 		"Enter your name: "->Print();
 		name := System.IO.Console->ReadLine();
-		"Hello, {$name}!"->PrintLine();
+		if(name <> Nil) {
+		  "Hello, {$name}!"->PrintLine();
+		};
 		```
 		~#
 		function : ReadLine() ~ System.String {
@@ -10365,7 +10369,11 @@ bundle System.IO {
 
 		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[8192];
-			ReadString(buffer);
+			# false at the end of input: no characters and no line ending were read
+			if(<>ReadString(buffer)) {
+				return Nil;
+			};
+
 			return System.String->New(buffer);
 		}
 
@@ -10404,7 +10412,7 @@ bundle System.IO {
 			return @console;
 		}
 
-		method : ReadString(buffer : Char[]) ~ Nil {
+		method : ReadString(buffer : Char[]) ~ Bool {
 			STD_IN_STRING;
 		}
 		
@@ -10865,6 +10873,7 @@ bundle System.IO.Filesystem {
 	class File {
 		@handle : Int;
 		@name : System.String;
+		@error : Int;
 		
 		#~
 		Default constructor
@@ -10916,10 +10925,47 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Flushes the file buffer
+		Flushes the file buffer. Writes are buffered, so a failed write (a full disk,
+		a closed pipe) is often only discovered here or in Close.
+		@return true if the buffer was written out, false otherwise; see GetLastError
 		~#
-		method : public : Flush() ~ Nil {
+		method : public : Flush() ~ Bool {
 			FILE_FLUSH;
+		}
+
+		#~
+		Checks that no I/O error has occurred on this file since it was opened (or
+		since ClearError). An open that failed counts. Writes are buffered, so check
+		after Flush or Close to be sure that all output was stored.
+		@return true if no error has occurred, false otherwise
+		```
+		writer := System.IO.FileWriter->New("out.txt");
+		writer->WriteString("data");
+		writer->Close();
+		if(<>writer->IsOK()) {
+		  "write failed, error {$writer->GetLastError()}"->PrintLine();
+		};
+		```
+		~#
+		method : public : IsOK() ~ Bool {
+			return @error = 0;
+		}
+
+		#~
+		Gets the first I/O error since the file was opened (or since ClearError), as
+		the C runtime's errno value (ENOENT 2, EACCES 13, EISDIR 21, ENOSPC 28, ...).
+		The numbering is the platform's: compare against 0 rather than a code.
+		@return error code, 0 if there has been none
+		~#
+		method : public : GetLastError() ~ Int {
+			return @error;
+		}
+
+		#~
+		Clears the recorded error
+		~#
+		method : public : ClearError() ~ Nil {
+			@error := 0;
 		}
 
 		#~
@@ -11487,7 +11533,7 @@ bundle System.IO.Filesystem {
 		Write string to file
 		@param name filename
 		@param content string to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		```
 		System.IO.FileWriter->WriteFile("output.txt", "Hello, World!");
 		```
@@ -11496,8 +11542,7 @@ bundle System.IO.Filesystem {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
-				writer->Close();				
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
@@ -11507,7 +11552,7 @@ bundle System.IO.Filesystem {
 		Write bytes to file
 		@param name filename
 		@param content to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		```
 		data := Byte[]{72, 101, 108, 108, 111};
 		System.IO.FileWriter->WriteFile("bytes.bin", data);
@@ -11517,23 +11562,43 @@ bundle System.IO.Filesystem {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteBuffer(content);
-				writer->Close();
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
 		}
 
 		#~
-		Closes a file
+		Closes a file. Buffered output is written out here, so a failure to store it
+		is reported by IsOK and GetLastError after the call (Close itself returns
+		nothing, as the OutputStream interface requires; see CloseChecked).
 		```
 		writer := System.IO.FileWriter->New("file.txt");
 		writer->WriteString("done");
 		writer->Close();
+		if(<>writer->IsOK()) {
+		  "could not store file.txt"->PrintLine();
+		};
 		```
 		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
+		}
+
+		#~
+		Closes a file and reports whether all output was stored
+		@return true if no error occurred while opening, writing, flushing or closing, false otherwise
+		```
+		writer := System.IO.FileWriter->New("file.txt");
+		writer->WriteString("done");
+		if(<>writer->CloseChecked()) {
+		  "could not store file.txt"->PrintLine();
+		};
+		```
+		~#
+		method : public : CloseChecked() ~ Bool {
+			Close();
+			return IsOK();
 		}
 
 		#~
@@ -11751,14 +11816,13 @@ bundle System.IO.Filesystem {
 		Write string to file
 		@param name filename
 		@param content string to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		~#
 		function : WriteFile(name : String, content : String) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
-				writer->Close();				
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
@@ -11768,14 +11832,13 @@ bundle System.IO.Filesystem {
 		Write bytes to file
 		@param name filename
 		@param content to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		~#
 		function : WriteFile(name : String, content : Byte[]) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteBuffer(content);
-				writer->Close();				
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
@@ -12323,6 +12386,9 @@ bundle System.IO.Net {
 		@address : System.String;
 		@port : Int;
 		@connect_timeout : Int;
+		# read by the VM (TcpReadLimits): the deadline, then the longest wait for the peer
+		@deadline : Int;
+		@read_timeout : Int;
 
 		#~
 		Connects to an address, trying each one the name resolves to (IPv6 and
@@ -12352,6 +12418,40 @@ bundle System.IO.Net {
 			@port := port;
 			@connect_timeout := connect_timeout;
 			SOCK_TCP_CONNECT;
+		}
+
+		#~
+		Connects as New(address, port, connect_timeout) does, and gives the socket a
+		deadline: reads on it fail once deadline milliseconds have passed from the start
+		of the connect, however slowly the peer sends its bytes (a receive timeout alone
+		starts again with every byte). The connect itself is cut short by it too, and so
+		is the wait for any further address to try. If the connect fails, IsOpen() is
+		false and GetLastError() says why ("timed out" when the time ran out).
+		@param address network address
+		@param port network port
+		@param connect_timeout connect timeout in milliseconds (0 = blocking)
+		@param deadline milliseconds from now after which reads fail (0 = no deadline)
+		~#
+		New(address : System.String, port : Int, connect_timeout : Int, deadline : Int) {
+			Parent();
+			@address := address;
+			@port := port;
+			@connect_timeout := connect_timeout;
+			@deadline := deadline;
+			SOCK_TCP_CONNECT;
+		}
+
+		#~
+		Sets the socket's deadline: from now, reads on it fail once ms milliseconds have
+		passed, however slowly the peer sends its bytes. Unlike a receive timeout, which
+		starts again with every byte received, it does not reset. A read that reaches it
+		returns what it has, and GetLastError() says "timed out". Setting a new deadline
+		replaces the old, and 0 clears it. Only reads are held to it: set a send timeout
+		(SetSendTimeout) for writes.
+		@param ms milliseconds from now (0 = no deadline)
+		~#
+		method : public : SetDeadline(ms : Int) ~ Nil {
+			SOCK_TCP_SET_DEADLINE;
 		}
 
 		#~
@@ -12667,6 +12767,10 @@ bundle System.IO.Net {
 		@address : System.String;
 		@port : Int;
 		@pem : String;
+		# read by the VM (SockTcpSslConnect): milliseconds, 0 for none
+		@connect_timeout : Int;
+		@deadline : Int;
+		@read_timeout : Int;
 
 		#~
 		Connects and completes a TLS handshake. The server's certificate is
@@ -12690,6 +12794,48 @@ bundle System.IO.Net {
 			@pem := pem;
 
 			SOCK_TCP_SSL_CONNECT;
+		}
+
+		#~
+		Connects and completes a TLS handshake as New(address, port, pem) does, within
+		limits. connect_timeout bounds the TCP connect, and the handshake, each: a peer
+		that accepts and then says nothing fails the connect with "timed out" after that
+		long. read_timeout is how long a read waits for the peer, the handshake's included
+		(the default is 300 seconds), and starts again with every byte. deadline bounds
+		the connect, the handshake and every read afterwards, from the start of the
+		connect, however slowly the peer sends its bytes. A connect that fails leaves
+		IsOpen() false and GetLastError() saying why.
+		@param address network address
+		@param port network port
+		@param pem PEM file of the certificates to trust, in place of the bundled
+		certificate authorities (Nil for the bundled)
+		@param connect_timeout connect and handshake timeout in milliseconds (0 = none)
+		@param read_timeout read timeout in milliseconds (0 = the default)
+		@param deadline milliseconds from now after which the connect and reads fail (0 = no deadline)
+		~#
+		New(address : System.String, port : Int, pem : String, connect_timeout : Int, read_timeout : Int, deadline : Int) {
+			Parent();
+			@address := address;
+			@port := port;
+			@pem := pem;
+			@connect_timeout := connect_timeout;
+			@read_timeout := read_timeout;
+			@deadline := deadline;
+
+			SOCK_TCP_SSL_CONNECT;
+		}
+
+		#~
+		Sets the socket's deadline: from now, reads on it fail once ms milliseconds have
+		passed, however slowly the peer sends its bytes. Unlike a receive timeout, which
+		starts again with every byte received, it does not reset. A read that reaches it
+		fails, and GetLastError() says "timed out". Setting a new deadline replaces the
+		old, and 0 clears it. Only reads are held to it: set a send timeout
+		(SetSendTimeout) for writes.
+		@param ms milliseconds from now (0 = no deadline)
+		~#
+		method : public : SetDeadline(ms : Int) ~ Nil {
+			SOCK_TCP_SET_DEADLINE;
 		}
 
 		#~

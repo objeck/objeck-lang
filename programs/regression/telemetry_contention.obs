@@ -1,0 +1,154 @@
+# EXTRA_LIBS: telemetry,gen_collect,json
+#~
+System.Telemetry ContentionRunner with scripted workers: K threads, each calling a function
+reference N times, with a latency series per worker and one for all calls.
+
+The scripted work sleeps for a time that depends on the worker, so the latency each worker
+should see is known from below (a sleep never returns early, and a lock cannot be taken faster
+than its holder lets go); the checks are lower bounds and loose ratios, never an upper bound on
+a time, so a busy machine cannot fail them. Call bookkeeping (who was called with which
+iteration, how many times) is exact.
+~#
+use System.Telemetry;
+use Collection;
+use System.Concurrency;
+
+class TelemetryContentionTest {
+	@failures : static : Int;
+	@seen : static : Int[];
+	@calls : static : Int;
+	@lock : static : ThreadMutex;
+
+	# worker w sleeps (w + 1) * 20 ms and notes that it was called. The step is far above the
+	# 15.6 ms timer tick of a Windows sleep, so the order of the workers survives it.
+	function : Scripted(worker : Int, call : Int) ~ Nil {
+		@seen[worker * 1000 + call] += 1;
+		Thread->Sleep((worker + 1) * 20);
+	}
+
+	function : Quick(worker : Int, call : Int) ~ Nil {
+		Thread->Sleep(5);
+	}
+
+	function : Locked(worker : Int, call : Int) ~ Nil {
+		critical(@lock) {
+			Thread->Sleep(3);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@lock := ThreadMutex->New("contention-test");
+
+		# bookkeeping: every worker is called with every iteration, once
+		@seen := Int->New[4000];
+		runner := ContentionRunner->New(4, 6, TelemetryContentionTest->Scripted(Int, Int) ~ Nil);
+		report := runner->Run();
+		Check("four workers", report->GetWorkerCount() = 4);
+		once := true;
+		for(w := 0; w < 4; w += 1;) {
+			for(c := 0; c < 6; c += 1;) {
+				if(@seen[w * 1000 + c] <> 1) {
+					once := false;
+				};
+			};
+		};
+		Check("every (worker, call) pair ran exactly once", once);
+		Check("nothing ran outside the 4 x 6 grid", Total(@seen) = 24);
+
+		# per worker series
+		for(w := 0; w < 4; w += 1;) {
+			s := report->GetWorker(w);
+			floor_ms := (w + 1) * 20 - 1.0;
+			Check("worker {$w}: 6 samples, every one at least {$floor_ms} ms", s <> Nil & s->GetCount() = 6 & s->GetMin() >= floor_ms);
+			Check("worker {$w}: its median is at least that too", s->GetP50() >= floor_ms);
+		};
+		Check("an unknown worker is Nil", report->GetWorker(4) = Nil & report->GetWorker(-1) = Nil);
+		comb := report->GetCombined();
+		Check("combined: 24 samples", comb->GetCount() = 24);
+		# which worker is fastest is a matter of timing (a loaded runner can oversleep worker 0),
+		# so the check is against the smallest and largest of the workers' own extremes. Both are
+		# kept exactly, never estimated, so equality is right.
+		lo := report->GetWorker(0)->GetMin();
+		hi := report->GetWorker(0)->GetMax();
+		for(w := 1; w < 4; w += 1;) {
+			if(report->GetWorker(w)->GetMin() < lo) {
+				lo := report->GetWorker(w)->GetMin();
+			};
+			if(report->GetWorker(w)->GetMax() > hi) {
+				hi := report->GetWorker(w)->GetMax();
+			};
+		};
+		Check("combined: min is the smallest of the workers' mins", comb->GetMin() = lo);
+		Check("combined: max is the largest of the workers' maxes", comb->GetMax() = hi);
+		weighted := 0.0;
+		for(w := 0; w < 4; w += 1;) {
+			weighted += report->GetWorker(w)->GetMean() * 6.0;
+		};
+		Check("combined: mean is the call-weighted mean of the workers", Float->Abs(comb->GetMean() - weighted / 24.0) < 1.0e-9);
+		# the spread is the slowest worker's median over the fastest worker's median. A loaded runner
+		# can stretch any one sleep, so no margin between workers is asserted: the report's figure is
+		# checked against the same ratio taken from the workers' own medians, which is exact.
+		med_lo := report->GetWorker(0)->GetP50();
+		med_hi := med_lo;
+		for(w := 1; w < 4; w += 1;) {
+			m := report->GetWorker(w)->GetP50();
+			if(m < med_lo) {
+				med_lo := m;
+			};
+			if(m > med_hi) {
+				med_hi := m;
+			};
+		};
+		spread := report->GetMedianSpread();
+		Check("the median spread is the slowest worker's median over the fastest one's", spread >= 1.0 & Float->Abs(spread - med_hi / med_lo) < 1.0e-9);
+		Check("wall time covers the slowest worker (6 calls of 80 ms)", report->GetWallSeconds() >= 0.45);
+		Check("throughput is calls over wall time", report->GetThroughput() > 0.0 & report->GetThroughput() * report->GetWallSeconds() > 23.9 & report->GetThroughput() * report->GetWallSeconds() < 24.1);
+
+		# warm-up applies per worker
+		warm := ContentionRunner->New(3, 10, TelemetryContentionTest->Quick(Int, Int) ~ Nil);
+		warm->SetWarmup(4);
+		wr := warm->Run();
+		Check("warm-up: 6 counted and 4 discarded per worker", wr->GetWorker(0)->GetCount() = 6 & wr->GetWorker(0)->GetDiscarded() = 4 & wr->GetWorker(2)->GetCount() = 6);
+		Check("warm-up: the combined series has 18", wr->GetCombined()->GetCount() = 18 & wr->GetCombined()->GetDiscarded() = 12);
+
+		# independent sleepers scale with the number of workers; one lock does not
+		one := ContentionRunner->New(1, 20, TelemetryContentionTest->Quick(Int, Int) ~ Nil)->Run();
+		four := ContentionRunner->New(4, 20, TelemetryContentionTest->Quick(Int, Int) ~ Nil)->Run();
+		Check("sleepers in parallel: 4 workers do at least 1.5x the calls per second of 1", four->GetThroughput() > 1.5 * one->GetThroughput());
+		Check("sleepers in parallel: median latency does not grow with the workers", four->GetCombined()->GetP50() < 3.0 * one->GetCombined()->GetP50());
+		alone := ContentionRunner->New(1, 20, TelemetryContentionTest->Locked(Int, Int) ~ Nil)->Run();
+		shared := ContentionRunner->New(4, 20, TelemetryContentionTest->Locked(Int, Int) ~ Nil)->Run();
+		Check("one lock: alone each call takes at least 3 ms", alone->GetCombined()->GetMin() >= 2.5);
+		Check("one lock: four workers queue, so the mean call takes clearly longer than alone", shared->GetCombined()->GetMean() > 1.5 * alone->GetCombined()->GetMean());
+		Check("one lock: the queue costs the tail too", shared->GetCombined()->GetMax() > alone->GetCombined()->GetMax());
+
+		# arguments are made sane
+		sane := ContentionRunner->New(0, 0, TelemetryContentionTest->Quick(Int, Int) ~ Nil)->Run();
+		Check("0 workers and 0 calls become 1 and 1", sane->GetWorkerCount() = 1 & sane->GetWorker(0)->GetCount() = 1);
+
+		if(@failures > 0) {
+			"telemetry_contention: {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"telemetry_contention: ok"->PrintLine();
+	}
+
+	function : Total(a : Int[]) ~ Int {
+		t := 0;
+		for(i := 0; i < a->Size(); i += 1;) {
+			t += a[i];
+		};
+		return t;
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+}
