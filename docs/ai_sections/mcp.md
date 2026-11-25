@@ -305,7 +305,7 @@ a model asked for add(40, 2): 42
   candidates := Model->GenerateContent("models/gemini-2.0-flash", content, funcs, EndPoint->GetApiKey());
   ```
 
-* **OpenAI.** `ToOpenAiJson()` is the `tools` array of function definitions, `ToFunctionType(tool)` builds the `FunctionType` the OpenAI classes take, and `Run` answers a call the model asked for. The functions in `GetFunctions()` are the `Func2Ref<JsonElement, JsonElement>` the OpenAI conversation's `AddFunction` wraps (pass `pair->GetSecond()->Get()`).
+* **OpenAI.** `ToOpenAiJson()` is the `tools` array of function definitions, `ToFunctionType(tool)` builds the `FunctionType` the OpenAI classes take, and `Run` answers a call the model asked for. For Chat Completions, `Completion->CompleteWithTools(model, messages, bridge->ToOpenAiJson(), max_tokens, token)` sends the tools array and `Choice->GetToolCalls()` returns the calls to pass to `Run` (the loop is in [AI.md](../AI.md#openai)). The functions in `GetFunctions()` are the `Func2Ref<JsonElement, JsonElement>` the OpenAI conversation's `AddFunction` wraps (pass `pair->GetSecond()->Get()`).
 
 A function from `GetFunctions()` returns `{"result": text}`, or `{"error": text}` when the tool failed or the call could not be made. `ToFunctionType` maps `string`, `number`, `integer`, `boolean` and `object` properties and an `array` property to its item type as an array; a property with another or no `type` becomes a string.
 

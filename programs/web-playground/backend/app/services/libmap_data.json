@@ -273,7 +273,7 @@
    "bundles": {
     "API.OpenAI": ["Assistant", "Batch", "BatchJob", "Contents", "Embedding", "EndPoint", "File", "FileQuery", "Image", "ImageQuery", "Message", "Models", "Moderation", "ModerationResult", "Realtime", "Run", "Thread", "VectorStore", "VectorStoreFile"],
     "API.OpenAI.Audio": ["Speech", "Transcription"],
-    "API.OpenAI.Chat": ["Choice", "Completion", "Conversation"],
+    "API.OpenAI.Chat": ["Choice", "Completion", "Conversation", "ToolCall"],
     "API.OpenAI.Responses": ["Content", "Output", "ReasoningEffort", "Response", "Tool", "Verbosity"],
     "API.OpenAI.Tuning": ["Checkpoint", "Job", "Tuner"]
    }
