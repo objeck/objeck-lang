@@ -135,4 +135,4 @@ if(<>result->IsCompleted()) {
 
 The behavior is tested in `programs/regression/agent_control_test.obs` on a scripted model, with no key and no network: cancellation before the first step, between steps and calls, and during a slow model call; each budget and its stop reason; a hung tool in `BOUNDED_THREAD` with a bounded wait and an abandoned worker that finishes later without touching the transcript; the trace events and key redaction; and retries.
 
-What is not covered: the provider backends' own deadline (pending the HTTP total-deadline setter, see above), and a fault that kills a thread outside any `try`, which still ends the whole process. A `PROCESS` tool is the containment for that last case.
+What is not covered: the provider backends' own deadline (pending the HTTP total-deadline setter, see above), and a fault that kills a thread outside any `try`, which still ends the whole process. There is no process-isolated tool mode yet (`AgentTool->Mode` is only `IN_THREAD` or `BOUNDED_THREAD`), so a program that must survive such a fault can run with `--thread-faults=isolate`, or put the tool behind its own process.
