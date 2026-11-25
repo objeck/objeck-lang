@@ -9859,12 +9859,16 @@ bundle System.IO {
 		}
 		
 		#~
-		Reads a string from STDIN
-		@return string read
+		Reads a line from STDIN, without its line ending. A blank line is an empty
+		string; Nil is returned only at the end of input (a closed or exhausted
+		STDIN, or Ctrl-D), so a loop can tell the two apart.
+		@return string read, Nil at the end of input
 		```
 		"Enter your name: "->Print();
 		name := System.IO.Console->ReadLine();
-		"Hello, {$name}!"->PrintLine();
+		if(name <> Nil) {
+		  "Hello, {$name}!"->PrintLine();
+		};
 		```
 		~#
 		function : ReadLine() ~ System.String {
@@ -10365,7 +10369,11 @@ bundle System.IO {
 
 		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[8192];
-			ReadString(buffer);
+			# false at the end of input: no characters and no line ending were read
+			if(<>ReadString(buffer)) {
+				return Nil;
+			};
+
 			return System.String->New(buffer);
 		}
 
@@ -10404,7 +10412,7 @@ bundle System.IO {
 			return @console;
 		}
 
-		method : ReadString(buffer : Char[]) ~ Nil {
+		method : ReadString(buffer : Char[]) ~ Bool {
 			STD_IN_STRING;
 		}
 		
@@ -10865,6 +10873,7 @@ bundle System.IO.Filesystem {
 	class File {
 		@handle : Int;
 		@name : System.String;
+		@error : Int;
 		
 		#~
 		Default constructor
@@ -10916,10 +10925,47 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Flushes the file buffer
+		Flushes the file buffer. Writes are buffered, so a failed write (a full disk,
+		a closed pipe) is often only discovered here or in Close.
+		@return true if the buffer was written out, false otherwise; see GetLastError
 		~#
-		method : public : Flush() ~ Nil {
+		method : public : Flush() ~ Bool {
 			FILE_FLUSH;
+		}
+
+		#~
+		Checks that no I/O error has occurred on this file since it was opened (or
+		since ClearError). An open that failed counts. Writes are buffered, so check
+		after Flush or Close to be sure that all output was stored.
+		@return true if no error has occurred, false otherwise
+		```
+		writer := System.IO.FileWriter->New("out.txt");
+		writer->WriteString("data");
+		writer->Close();
+		if(<>writer->IsOK()) {
+		  "write failed, error {$writer->GetLastError()}"->PrintLine();
+		};
+		```
+		~#
+		method : public : IsOK() ~ Bool {
+			return @error = 0;
+		}
+
+		#~
+		Gets the first I/O error since the file was opened (or since ClearError), as
+		the C runtime's errno value (ENOENT 2, EACCES 13, EISDIR 21, ENOSPC 28, ...).
+		The numbering is the platform's: compare against 0 rather than a code.
+		@return error code, 0 if there has been none
+		~#
+		method : public : GetLastError() ~ Int {
+			return @error;
+		}
+
+		#~
+		Clears the recorded error
+		~#
+		method : public : ClearError() ~ Nil {
+			@error := 0;
 		}
 
 		#~
@@ -11487,7 +11533,7 @@ bundle System.IO.Filesystem {
 		Write string to file
 		@param name filename
 		@param content string to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		```
 		System.IO.FileWriter->WriteFile("output.txt", "Hello, World!");
 		```
@@ -11496,8 +11542,7 @@ bundle System.IO.Filesystem {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
-				writer->Close();				
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
@@ -11507,7 +11552,7 @@ bundle System.IO.Filesystem {
 		Write bytes to file
 		@param name filename
 		@param content to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		```
 		data := Byte[]{72, 101, 108, 108, 111};
 		System.IO.FileWriter->WriteFile("bytes.bin", data);
@@ -11517,23 +11562,43 @@ bundle System.IO.Filesystem {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteBuffer(content);
-				writer->Close();
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
 		}
 
 		#~
-		Closes a file
+		Closes a file. Buffered output is written out here, so a failure to store it
+		is reported by IsOK and GetLastError after the call (Close itself returns
+		nothing, as the OutputStream interface requires; see CloseChecked).
 		```
 		writer := System.IO.FileWriter->New("file.txt");
 		writer->WriteString("done");
 		writer->Close();
+		if(<>writer->IsOK()) {
+		  "could not store file.txt"->PrintLine();
+		};
 		```
 		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
+		}
+
+		#~
+		Closes a file and reports whether all output was stored
+		@return true if no error occurred while opening, writing, flushing or closing, false otherwise
+		```
+		writer := System.IO.FileWriter->New("file.txt");
+		writer->WriteString("done");
+		if(<>writer->CloseChecked()) {
+		  "could not store file.txt"->PrintLine();
+		};
+		```
+		~#
+		method : public : CloseChecked() ~ Bool {
+			Close();
+			return IsOK();
 		}
 
 		#~
@@ -11751,14 +11816,13 @@ bundle System.IO.Filesystem {
 		Write string to file
 		@param name filename
 		@param content string to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		~#
 		function : WriteFile(name : String, content : String) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
-				writer->Close();				
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;
@@ -11768,14 +11832,13 @@ bundle System.IO.Filesystem {
 		Write bytes to file
 		@param name filename
 		@param content to write
-		@return true if successful, false otherwise
+		@return true if the file was written and closed without error, false otherwise
 		~#
 		function : WriteFile(name : String, content : Byte[]) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteBuffer(content);
-				writer->Close();				
-				return true;
+				return writer->CloseChecked();
 			};
 
 			return false;

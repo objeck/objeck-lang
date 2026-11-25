@@ -1,0 +1,336 @@
+# EXTRA_LIBS: rag,ml_vector
+#~
+The RAG kit's toy embedder, index and persistence (System.ML.Rag).
+
+RagHashEmbedder is a hashed bag of words, so the nearest neighbours of a query are known by
+counting shared words: the corpus below has five chunks with distinct vocabularies, and each
+query is checked against the neighbour that shares the most words. The index is then checked for
+adding, replacing, removing, searching under each metric, and for the file round trip: the
+chunks (source, offset, text, including accented text) and the vectors come back unchanged, and
+a missing, truncated, damaged or foreign file gives Nil rather than ending the program.
+~#
+use System.ML.Rag;
+use System.ML.VectorSearch;
+use Collection;
+use System.IO.Filesystem;
+
+class RagIndexTest {
+	@failures : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Corpus() ~ String[] {
+		return [
+			"apples oranges bananas fruit market",
+			"python java compiler programming language",
+			"rivers mountains forests hiking trail",
+			"football tennis soccer match players",
+			"compiler optimizer bytecode virtual machine"];
+	}
+
+	function : Build(embedder : RagHashEmbedder, metric : VectorMetric) ~ RagIndex {
+		corpus := Corpus();
+		index := RagIndex->New(embedder->GetDimension(), metric);
+		vectors := embedder->Embed(corpus);
+		each(i : corpus) {
+			row := Float->New[embedder->GetDimension()];
+			each(j : row) {
+				row[j] := vectors[i, j];
+			};
+			index->Add(RagChunk->New("doc#{$i}", "doc", i * 100, corpus[i]), row);
+		};
+
+		return index;
+	}
+
+	function : Query(embedder : RagHashEmbedder, text : String) ~ Float[] {
+		texts := String->New[1];
+		texts[0] := text;
+		vectors := embedder->Embed(texts);
+		row := Float->New[embedder->GetDimension()];
+		each(j : row) {
+			row[j] := vectors[0, j];
+		};
+
+		return row;
+	}
+
+	function : Top(index : RagIndex, embedder : RagHashEmbedder, text : String) ~ String {
+		found := index->Search(Query(embedder, text), 1);
+		if(found->Size() = 0) {
+			return "";
+		};
+
+		return found->Get(0)->GetChunk()->GetId();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		TestEmbedder();
+		TestRanking();
+		TestIndex();
+		TestPersistence();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+	}
+
+	function : TestEmbedder() ~ Nil {
+		"-- the hashing embedder"->PrintLine();
+		e := RagHashEmbedder->New(4096);
+		Check("the dimension is the bucket count", e->GetDimension() = 4096);
+		Check("a size below 1 gives the default", RagHashEmbedder->New(0)->GetDimension() = 256);
+		words := e->Words("The Quick brown fox, and THE lazy dog!");
+		Check("words are lower case, split at punctuation, stop words dropped", words->Size() = 5 & words->Get(0)->Equals("quick") & words->Get(1)->Equals("brown") & words->Get(2)->Equals("fox") & words->Get(3)->Equals("lazy") & words->Get(4)->Equals("dog"));
+		Check("an empty text has no words", e->Words("")->Size() = 0 & e->Words("  ,. ")->Size() = 0);
+
+		a := Query(e, "red apples");
+		b := Query(e, "red apples");
+		same := true;
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				same := false;
+			};
+		};
+		Check("the same text gives the same vector", same);
+
+		sum := 0.0;
+		each(i : a) {
+			sum += a[i];
+		};
+		Check("the vector holds one count per word", sum = 2.0);
+
+		both := e->Embed(["x1", "x2"]);
+		dims := both->Size();
+		Check("a batch is one row per text", dims[0] = 2 & dims[1] = 4096);
+		Check("no texts is refused", e->Embed(Nil) = Nil & e->Embed(String->New[0]) = Nil);
+		Check("the embedder reports no error", e->GetError()->Size() = 0);
+
+		# the first line of a document with an accent: a non-ASCII word is a word
+		accent := "caf" + 233->As(Char) + " au lait";
+		w := e->Words(accent);
+		Check("an accented word stays whole", w->Size() = 3 & w->Get(0)->Size() = 4);
+	}
+
+	function : TestRanking() ~ Nil {
+		"-- nearest neighbours"->PrintLine();
+		e := RagHashEmbedder->New(4096);
+		index := Build(e, VectorMetric->COSINE);
+		Check("five chunks are indexed", index->Size() = 5);
+		Check("fruit query finds the fruit chunk", Top(index, e, "fresh fruit at the market, apples please")->Equals("doc#0"));
+		Check("programming query finds the language chunk", Top(index, e, "which programming language has a compiler")->Equals("doc#1"));
+		Check("hiking query finds the trail chunk", Top(index, e, "a hiking trail through the mountains")->Equals("doc#2"));
+		Check("sports query finds the match chunk", Top(index, e, "tennis match")->Equals("doc#3"));
+		Check("a bytecode query finds the machine chunk", Top(index, e, "bytecode virtual machine")->Equals("doc#4"));
+
+		# "compiler" is in chunks 1 and 4; adding "programming" breaks the tie toward 1, "bytecode" toward 4
+		ranked := index->Search(Query(e, "compiler programming"), 3);
+		Check("the shared word ranks both compiler chunks first", ranked->Get(0)->GetChunk()->GetId()->Equals("doc#1") & ranked->Get(1)->GetChunk()->GetId()->Equals("doc#4"));
+		Check("the third is unrelated and scores zero", ranked->Get(2)->GetScore() = 0.0);
+		Check("scores fall down the list", ranked->Get(0)->GetScore() > ranked->Get(1)->GetScore() & ranked->Get(1)->GetScore() > ranked->Get(2)->GetScore());
+		Check("ranks count from 1", ranked->Get(0)->GetRank() = 1 & ranked->Get(2)->GetRank() = 3);
+		second := index->Search(Query(e, "compiler bytecode"), 2);
+		Check("another word moves the order", second->Get(0)->GetChunk()->GetId()->Equals("doc#4"));
+		Check("a word in no chunk scores zero everywhere", index->Search(Query(e, "zebra"), 5)->Get(0)->GetScore() = 0.0);
+
+		all := index->Search(Query(e, "market"), 50);
+		Check("asking for more than there is returns all of them", all->Size() = 5);
+		Check("the chunk is returned whole, with its source and offset", all->Get(0)->GetChunk()->GetSource()->Equals("doc") & all->Get(0)->GetChunk()->GetOffset() = 0 & all->Get(0)->GetChunk()->GetText()->StartsWith("apples"));
+
+		# L2: a distance, so the closest has the lowest score and the list rises
+		l2 := Build(e, VectorMetric->L2);
+		near := l2->Search(Query(e, "apples oranges bananas fruit market"), 3);
+		Check("L2 finds the identical chunk at distance 0", near->Get(0)->GetChunk()->GetId()->Equals("doc#0") & near->Get(0)->GetScore() = 0.0);
+		Check("L2 scores rise down the list", near->Get(1)->GetScore() >= near->Get(0)->GetScore() & near->Get(2)->GetScore() >= near->Get(1)->GetScore());
+		dot := Build(e, VectorMetric->DOT);
+		Check("DOT agrees on the neighbour", Top(dot, e, "hiking trail")->Equals("doc#2"));
+
+		empty := RagIndex->New(4096, VectorMetric->COSINE);
+		Check("an empty index finds nothing", empty->Search(Query(e, "apples"), 3)->Size() = 0);
+		short := index->Search(Float->New[7], 3);
+		Check("a query of the wrong length finds nothing and says why", short->Size() = 0 & index->GetError()->Size() > 0);
+		Check("k of 0 finds nothing", index->Search(Query(e, "apples"), 0)->Size() = 0);
+	}
+
+	function : TestIndex() ~ Nil {
+		"-- the index"->PrintLine();
+		bad := RagIndex->New(0, VectorMetric->COSINE);
+		Check("a dimension of 0 is not valid", <>bad->IsValid() & bad->GetError()->Size() > 0);
+		Check("an invalid index refuses a chunk", <>bad->Add(RagChunk->New("a", "s", 0, "t"), [1.0]));
+
+		index := RagIndex->New(3, VectorMetric->COSINE);
+		Check("it is valid and empty", index->IsValid() & index->Size() = 0 & index->GetDimension() = 3 & index->GetMetric() = VectorMetric->COSINE);
+		Check("a chunk is added", index->Add(RagChunk->New("a#0", "a", 0, "alpha"), [1.0, 0.0, 0.0]) & index->Size() = 1);
+		Check("a second", index->Add(RagChunk->New("b#0", "b", 7, "beta"), [0.0, 1.0, 0.0]) & index->Add(RagChunk->New("b#1", "b", 20, "gamma"), [0.0, 0.0, 1.0]));
+		Check("Contains and GetChunk", index->Contains("b#0") & <>index->Contains("zz") & index->GetChunk("b#1")->GetText()->Equals("gamma") & index->GetChunk("zz") = Nil);
+		Check("a wrong-length vector is refused with a reason", <>index->Add(RagChunk->New("c#0", "c", 0, "x"), [1.0, 2.0]) & index->GetError()->Size() > 0);
+		Check("a Nil chunk is refused", <>index->Add(Nil, [1.0, 0.0, 0.0]));
+		Check("an empty id is refused", <>index->Add(RagChunk->New("", "c", 0, "x"), [1.0, 0.0, 0.0]));
+		Check("a refused chunk is not kept", index->Size() = 3);
+
+		found := index->Search([0.1, 0.9, 0.0], 1);
+		Check("the nearest vector wins", found->Get(0)->GetChunk()->GetId()->Equals("b#0"));
+
+		# same id: replaced, not duplicated, and it keeps its place in the list
+		Check("a chunk with an existing id is replaced", index->Add(RagChunk->New("b#0", "b", 7, "beta two"), [0.0, 0.0, 1.0]) & index->Size() = 3);
+		Check("the replacement text is served", index->GetChunk("b#0")->GetText()->Equals("beta two"));
+		chunks := index->GetChunks();
+		Check("order is the order of adding", chunks->Get(0)->GetId()->Equals("a#0") & chunks->Get(1)->GetId()->Equals("b#0") & chunks->Get(2)->GetId()->Equals("b#1"));
+		vector := index->GetVector("b#0");
+		Check("the replacement vector is served", vector <> Nil & vector[2] = 1.0 & vector[1] = 0.0);
+
+		Check("Remove deletes a chunk", index->Remove("a#0") & index->Size() = 2 & <>index->Contains("a#0"));
+		Check("removing again says false", <>index->Remove("a#0") & <>index->Remove(Nil));
+		Check("a removed chunk is not returned", index->Search([1.0, 0.0, 0.0], 5)->Size() = 2);
+		Check("RemoveSource counts what it removes", index->RemoveSource("b") = 2 & index->Size() = 0);
+		Check("an unknown source removes nothing", index->RemoveSource("nope") = 0);
+	}
+
+	function : TestPersistence() ~ Nil {
+		"-- saving and loading"->PrintLine();
+		e := RagHashEmbedder->New(512);
+		index := RagIndex->New(512, VectorMetric->DOT);
+		vectors := e->Embed(Corpus());
+		accent := "caf" + 233->As(Char) + " " + 9731->As(Char);
+		corpus := Corpus();
+		each(i : corpus) {
+			row := Float->New[512];
+			each(j : row) {
+				row[j] := vectors[i, j];
+			};
+			text := corpus[i];
+			if(i = 2) {
+				text += " " + accent;
+			};
+			source := "doc{$i}.txt";
+			if(i = 3) {
+				source := "";
+			};
+			index->Add(RagChunk->New("c{$i}", source, i * 1000, text), row);
+		};
+
+		path := "rag_index_test_{$Runtime->GetProcessId()}.idx";
+		File->Delete(path);
+		Check("Store writes the file", index->Store(path) & File->Exists(path));
+		Check("Store with no name is refused", <>index->Store("") & <>index->Store(Nil));
+
+		loaded := RagIndex->Load(path);
+		Check("Load reads it back", loaded <> Nil);
+		if(loaded <> Nil) {
+			Check("the size, dimension and metric survive", loaded->Size() = 5 & loaded->GetDimension() = 512 & loaded->GetMetric() = VectorMetric->DOT);
+			same := true;
+			each(i : 5) {
+				a := index->GetChunk("c{$i}");
+				b := loaded->GetChunk("c{$i}");
+				if(b = Nil) {
+					"    c{$i}: missing after load"->PrintLine();
+					same := false;
+				}
+				else {
+					if(<>a->GetText()->Equals(b->GetText())) {
+						"    c{$i}: text differs: {$a->GetText()->Size()} characters became {$b->GetText()->Size()}"->PrintLine();
+						same := false;
+					};
+					if(<>a->GetSource()->Equals(b->GetSource())) {
+						"    c{$i}: source differs: {$a->GetSource()->Size()} characters became {$b->GetSource()->Size()}"->PrintLine();
+						same := false;
+					};
+					if(a->GetOffset() <> b->GetOffset()) {
+						"    c{$i}: offset differs: {$a->GetOffset()} became {$b->GetOffset()}"->PrintLine();
+						same := false;
+					};
+					va := index->GetVector("c{$i}");
+					vb := loaded->GetVector("c{$i}");
+					if(vb = Nil | va->Size() <> vb->Size()) {
+						"    c{$i}: vector length differs"->PrintLine();
+						same := false;
+					}
+					else {
+						each(j : va) {
+							if(va[j] <> vb[j]) {
+								"    c{$i}: vector[{$j}] {$va[j]} became {$vb[j]}"->PrintLine();
+								same := false;
+							};
+						};
+					};
+				};
+			};
+			Check("every chunk and vector comes back exactly (accents, empty source, offsets)", same);
+			order := loaded->GetChunks();
+			Check("the order is kept", order->Get(0)->GetId()->Equals("c0") & order->Get(4)->GetId()->Equals("c4"));
+			Check("a search gives the same answer before and after", Top(index, e, "hiking trail mountains")->Equals(Top(loaded, e, "hiking trail mountains")) & Top(loaded, e, "hiking trail mountains")->Equals("c2"));
+			Check("the unicode text is intact", loaded->GetChunk("c2")->GetText()->EndsWith(accent));
+		};
+
+		# a file that is not an index, or is damaged, gives Nil
+		Check("a missing file gives Nil", RagIndex->Load("rag_no_such_file.idx") = Nil);
+		Check("Nil and empty names give Nil", RagIndex->Load(Nil) = Nil & RagIndex->Load("") = Nil);
+
+		bytes := FileReader->ReadBinaryFile(path);
+		cut := Byte->New[bytes->Size() - 20];
+		Byte->Copy(cut, 0, bytes, 0, cut->Size());
+		FileWriter->WriteFile(path, cut);
+		Check("a truncated file gives Nil", RagIndex->Load(path) = Nil);
+
+		flipped := Byte->New[bytes->Size()];
+		Byte->Copy(flipped, 0, bytes, 0, bytes->Size());
+		flipped[bytes->Size() / 2] := (flipped[bytes->Size() / 2]->As(Int) + 1)->As(Byte);
+		FileWriter->WriteFile(path, flipped);
+		Check("a damaged byte fails the checksum and gives Nil", RagIndex->Load(path) = Nil);
+
+		magic := Byte->New[bytes->Size()];
+		Byte->Copy(magic, 0, bytes, 0, bytes->Size());
+		magic[0] := 'X'->As(Byte);
+		FileWriter->WriteFile(path, magic);
+		Check("a wrong tag gives Nil", RagIndex->Load(path) = Nil);
+
+		FileWriter->WriteFile(path, "this is not an index file at all"->ToByteArray());
+		Check("a text file gives Nil", RagIndex->Load(path) = Nil);
+
+		# a plain VectorIndex file is not a RagIndex file
+		plain := VectorIndex->New(3, VectorMetric->COSINE);
+		plain->Add("a", [1.0, 0.0, 0.0]);
+		plain->Store(path);
+		Check("a VectorIndex file is refused", RagIndex->Load(path) = Nil);
+
+		# many chunks whose source and text are built by interpolation: a string built that way once
+		# came back from the file with an extra character on macOS arm64 (source "doc0.txt" read
+		# back as nine characters)
+		many := RagIndex->New(3, VectorMetric->COSINE);
+		each(i : 60) {
+			many->Add(RagChunk->New("m{$i}", "doc{$i}.txt", i, "text {$i} " + 233->As(Char) + " end"), [1.0, i->As(Float), 2.0]);
+		};
+		many->Store(path);
+		reread := RagIndex->Load(path);
+		exact := reread <> Nil & reread->Size() = 60;
+		if(exact) {
+			each(i : 60) {
+				c := reread->GetChunk("m{$i}");
+				if(c = Nil | <>c->GetSource()->Equals("doc{$i}.txt") | <>c->GetText()->Equals("text {$i} " + 233->As(Char) + " end")) {
+					exact := false;
+					"    m{$i}: source or text changed in the file"->PrintLine();
+				};
+			};
+		};
+		Check("interpolated sources and texts come back exactly", exact);
+
+		# an empty index round trips too
+		empty := RagIndex->New(9, VectorMetric->L2);
+		Check("an empty index stores", empty->Store(path));
+		again := RagIndex->Load(path);
+		Check("and loads empty with its shape", again <> Nil & again->Size() = 0 & again->GetDimension() = 9 & again->GetMetric() = VectorMetric->L2);
+		File->Delete(path);
+	}
+}

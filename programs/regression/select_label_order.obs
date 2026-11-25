@@ -1,0 +1,148 @@
+#~
+Select statements of 1, 2, 3, 4, 5 and 7 sparse cases compile to the same jump labels on every platform.
+
+SelectArrayTree::Divide gave each node of a small subtree its label id from three
+`++conditional_label` in ONE argument list. C++ leaves the order of those unspecified: g++
+evaluated right to left, Apple clang left to right, so the same source emitted different jump
+operands on arm64 than on x64 (json, misc, net_server, nlp, odbc, query, regex and xml came out
+different, the committed .obl set stopped being reproducible there). The ids are now handed out in
+a fixed order.
+
+This program is also the fixture for check_select_label_order.py, which compiles it at -opt s0 with
+-asm and compares the listing with select_label_order.golden.obm, so a build whose compiler orders
+those ids differently fails on whichever platform it runs. Here it just has to run: every select
+must take the branch for its value, and fall to `other` for a value that is not a case.
+~#
+class SelectLabelOrder {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		for(i := 0; i < 2; i += 1;) {
+			bad += One(i * 10 + 10);
+			bad += Two(i * 200 + 7);
+			bad += Three(i * 1000 + 5);
+			bad += Four(i * 50 + 3);
+			bad += Five(i * 300 + 11);
+			bad += Seven(i * 40 + 1);
+			bad += Words(i);
+		};
+		bad += One(0);
+		bad += Two(1);
+		bad += Three(2);
+		bad += Four(4);
+		bad += Five(6);
+		bad += Seven(8);
+
+		if(bad = 0) {
+			"PASS: select statements of 1 to 7 sparse cases take the right branch"->PrintLine();
+		}
+		else {
+			"FAIL: {$bad} wrong branch(es)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(got : Int, want : Int) ~ Int {
+		if(got <> want) {
+			"  FAIL: got {$got}, wanted {$want}"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	function : One(v : Int) ~ Int {
+		r := -1;
+		select(v) {
+			label 10: { r := 1; }
+			other: { r := 0; }
+		};
+		return Check(r, v = 10 ? 1 : 0);
+	}
+
+	function : Two(v : Int) ~ Int {
+		r := -1;
+		select(v) {
+			label 7: { r := 1; }
+			label 207: { r := 2; }
+			other: { r := 0; }
+		};
+		want := 0;
+		if(v = 7) { want := 1; };
+		if(v = 207) { want := 2; };
+		return Check(r, want);
+	}
+
+	function : Three(v : Int) ~ Int {
+		r := -1;
+		select(v) {
+			label 5: { r := 1; }
+			label 1005: { r := 2; }
+			label 70000: { r := 3; }
+			other: { r := 0; }
+		};
+		want := 0;
+		if(v = 5) { want := 1; };
+		if(v = 1005) { want := 2; };
+		return Check(r, want);
+	}
+
+	function : Four(v : Int) ~ Int {
+		r := -1;
+		select(v) {
+			label 3: { r := 1; }
+			label 53: { r := 2; }
+			label 4003: { r := 3; }
+			label 90000: { r := 4; }
+			other: { r := 0; }
+		};
+		want := 0;
+		if(v = 3) { want := 1; };
+		if(v = 53) { want := 2; };
+		return Check(r, want);
+	}
+
+	function : Five(v : Int) ~ Int {
+		r := -1;
+		select(v) {
+			label 11: { r := 1; }
+			label 311: { r := 2; }
+			label 5000: { r := 3; }
+			label 60000: { r := 4; }
+			label 700000: { r := 5; }
+			other: { r := 0; }
+		};
+		want := 0;
+		if(v = 11) { want := 1; };
+		if(v = 311) { want := 2; };
+		return Check(r, want);
+	}
+
+	function : Seven(v : Int) ~ Int {
+		r := -1;
+		select(v) {
+			label 1: { r := 1; }
+			label 41: { r := 2; }
+			label 900: { r := 3; }
+			label 4000: { r := 4; }
+			label 50000: { r := 5; }
+			label 600000: { r := 6; }
+			label 7000000: { r := 7; }
+			other: { r := 0; }
+		};
+		want := 0;
+		if(v = 1) { want := 1; };
+		if(v = 41) { want := 2; };
+		return Check(r, want);
+	}
+
+	function : Words(i : Int) ~ Int {
+		s := i = 0 ? "beta" : "gamma";
+		r := -1;
+		select(s) {
+			label "alpha": { r := 1; }
+			label "beta": { r := 2; }
+			label "gamma": { r := 3; }
+			other: { r := 0; }
+		};
+		return Check(r, i = 0 ? 2 : 3);
+	}
+}

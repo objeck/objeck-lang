@@ -29,15 +29,15 @@ cp -r $SRC/core/compiler/make/. $BUILD/core/compiler/make/
 cp -r $SRC/core/compiler/lib_src/. $BUILD/core/compiler/lib_src/
 cp $SRC/core/compiler/*.cpp $BUILD/core/compiler/ 2>/dev/null || true
 cp $SRC/core/compiler/*.h $BUILD/core/compiler/ 2>/dev/null || true
-cp $SRC/core/compiler/update_version.sh $BUILD/core/compiler/
+cp $SRC/core/compiler/update_version.sh $SRC/core/compiler/build_libs.sh $BUILD/core/compiler/
 cp -r $SRC/core/vm/make/. $BUILD/core/vm/make/
 cp -r $SRC/core/vm/arch/. $BUILD/core/vm/arch/
 cp -r $SRC/core/vm/misc/. $BUILD/core/vm/misc/
 cp $SRC/core/vm/*.cpp $BUILD/core/vm/ 2>/dev/null || true
 cp $SRC/core/vm/*.h $BUILD/core/vm/ 2>/dev/null || true
 
-# Copy .obl files (pre-built, as fallback)
-cp $SRC/core/lib/*.obl $BUILD/core/lib/
+# Copy .obl files (pre-built, as fallback; they are build products and may not be in the checkout)
+cp $SRC/core/lib/*.obl $BUILD/core/lib/ 2>/dev/null || true
 cp $SRC/core/lib/*.ini $BUILD/core/lib/ 2>/dev/null || true
 
 # Copy test programs

@@ -67,18 +67,23 @@ SelectNode* SelectArrayTree::Divide(int start, int end)
     if(size == 1) {
       return new SelectNode(++emitter->conditional_label, values[start]);
     }
+    // The label ids are handed out in a FIXED order. These used to be three `++conditional_label`
+    // in one argument list, whose evaluation order C++ leaves unspecified: g++ evaluates the
+    // arguments right to left (right child, left child, then the node), Apple clang left to
+    // right, so the same source compiled to different jump operands on arm64 (8 of the 61
+    // libraries). The order below is what g++ produced, so no committed .obl changes.
     else if(size == 2) {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
-                                        new SelectNode(++emitter->conditional_label, values[start]),
-                                        new SelectNode(++emitter->conditional_label, values[start + 1]));
-      return node;  
+      SelectNode* right = new SelectNode(++emitter->conditional_label, values[start + 1]);
+      SelectNode* left = new SelectNode(++emitter->conditional_label, values[start]);
+      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], left, right);
+      return node;
     }
     else {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, 
-                                        values[start + 1], values[start + 2],
-                                        new SelectNode(++emitter->conditional_label, values[start]),
-                                        new SelectNode(++emitter->conditional_label, values[start + 2]));
-      return node;  
+      SelectNode* right = new SelectNode(++emitter->conditional_label, values[start + 2]);
+      SelectNode* left = new SelectNode(++emitter->conditional_label, values[start]);
+      SelectNode* node = new SelectNode(++emitter->conditional_label,
+                                        values[start + 1], values[start + 2], left, right);
+      return node;
     }
   }
   else {
@@ -6553,76 +6558,18 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   cur_line_num = expression->GetLineNumber();
   
   Expression* right = expression->GetRight();
-  switch(right->GetExpressionType()) {
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    EmitCalculation(static_cast<CalculatedExpression*>(right));
-    if(right->GetMethodCall()) {
-      // The attached call is emitted here rather than by EmitExpression, so its
-      // arguments have to be emitted too -- EmitMethodCall only emits the call.
-      // Without this the call consumes whatever happens to be on the stack
-      // beneath the receiver, which for a comparison operand is the other side
-      // of the comparison.
-      EmitMethodCallParameters(right->GetMethodCall());
-      EmitMethodCall(right->GetMethodCall(), false);
-      EmitCast(right->GetMethodCall());
-    }
-    break;
-    
-  default:
-    EmitExpression(right);
-    break;
-  }
+  // EmitExpression emits an operand's whole attached call chain, with the calls'
+  // arguments, casts and Try()/Otherwise() handling. A nested calculation used to
+  // be emitted here by hand, with only its FIRST attached call, so
+  // '(a * b)->Sin()->Abs()->Log() * 2.0' silently dropped Abs() and Log().
+  EmitExpression(right);
   
   Expression* left = expression->GetLeft();
-  switch(left->GetExpressionType()) {
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    EmitCalculation(static_cast<CalculatedExpression*>(left));
-    if(left->GetMethodCall()) {
-      // The attached call is emitted here rather than by EmitExpression, so its
-      // arguments have to be emitted too -- EmitMethodCall only emits the call.
-      // Without this the call consumes whatever happens to be on the stack
-      // beneath the receiver, which for a comparison operand is the other side
-      // of the comparison.
-      EmitMethodCallParameters(left->GetMethodCall());
-      EmitMethodCall(left->GetMethodCall(), false);
-      EmitCast(left->GetMethodCall());
-    }
-    break;
-    
-  default:
-    EmitExpression(left);
-    break;
-  }
+  // EmitExpression emits an operand's whole attached call chain, with the calls'
+  // arguments, casts and Try()/Otherwise() handling. A nested calculation used to
+  // be emitted here by hand, with only its FIRST attached call, so
+  // '(a * b)->Sin()->Abs()->Log() * 2.0' silently dropped Abs() and Log().
+  EmitExpression(left);
   
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {

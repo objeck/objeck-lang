@@ -1,0 +1,200 @@
+# EXTRA_LIBS: ml_boost,ml,gen_collect,csv
+#~
+System.ML.Boost on cases small enough to work out on paper, so the expected numbers are
+exact (they hold to 1e-12) and owe nothing to another library.
+
+Regression: six points x = 1..6, y = 1, 2, 3, 10, 11, 12, learning rate 0.5, depth 1 (a
+stump), two stages.
+  start      F0 = mean(y) = 6.5; the residuals are -5.5 -4.5 -3.5 3.5 4.5 5.5
+  stage 1    the best split is between x = 3 and x = 4; the leaves hold the mean residual
+             -4.5 and +4.5, times 0.5 = -2.25 / +2.25, so F = 4.25 (x <= 3), 8.75 (x > 3)
+  stage 2    the residuals are -3.25 -2.25 -1.25 1.25 2.25 3.25; the same split wins (gain
+             30.375 against 22.6875 for splitting after x = 2); leaves -2.25 / +2.25 times
+             0.5 = -1.125 / +1.125, so F = 3.125 and 9.875
+  gains      0.5 * (13.5^2 / 3 + 13.5^2 / 3) = 60.75, then 15.1875: total 75.9375
+With lambda 1 each leaf is -G / (H + 1) times 0.5: stage 1 gives 4.8125 / 8.1875 and
+stage 2 gives 3.7578125 / 9.2421875.
+
+Classification: x = 1..6, y = 0 0 0 1 1 1, one stump, learning rate 1. The start is
+log odds 0, p = 0.5, g = p - y = +-0.5, h = 0.25, so a leaf is -G / H = -1.5 / 0.75 = -2
+and +2 (lambda 1: -1.5 / 1.75), and the probabilities are sigmoid(+-2).
+
+Missing values: x = 1 2 3 NaN NaN NaN, y = 1 1 1 9 9 9, lr 1: the only useful split is
+"present against missing", leaves 1 and 9. A NaN at predict time goes to the missing side.
+~#
+use System.ML;
+use System.ML.Boost;
+
+class MlBoostHand {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		X := Float->New[6, 1];
+		each(i : 6) {
+			X[i, 0] := (i + 1)->As(Float);
+		};
+
+		y := [1.0, 2.0, 3.0, 10.0, 11.0, 12.0];
+		probe := Float->New[3, 1];
+		probe[0, 0] := 0.5;
+		probe[1, 0] := 3.0;
+		probe[2, 0] := 3.6;
+
+		m := GradientBoostingRegressor->New(2, 0.5, 1, 1);
+		ok := Report("the stump model fits", m->Fit(X, y)) & ok;
+		p := m->Predict(X);
+		expect := [3.125, 3.125, 3.125, 9.875, 9.875, 9.875];
+		ok := Report("two stages: 3.125 for x <= 3, 9.875 for x > 3", Close(p, expect, 0.000000000001)) & ok;
+		pp := m->Predict(probe);
+		ok := Report("a point below the data, the threshold 3 and one past the midpoint 3.5 land in the right leaf", Close(pp, [3.125, 3.125, 9.875], 0.000000000001)) & ok;
+		one := m->Predict(X, 1);
+		ok := Report("Predict(X, 1) is the first stage: 4.25 / 8.75", Close(one, [4.25, 4.25, 4.25, 8.75, 8.75, 8.75], 0.000000000001)) & ok;
+		zero := m->Predict(X, 0);
+		ok := Report("Predict(X, 0) is the starting score, the mean 6.5", Close(zero, [6.5, 6.5, 6.5, 6.5, 6.5, 6.5], 0.000000000001)) & ok;
+		every := m->Predict(X, -1);
+		ok := Report("a negative or too large stage count means all stages", Close(every, expect, 0.000000000001) & Close(m->Predict(X, 99), expect, 0.000000000001)) & ok;
+		staged := m->StagedPredict(X);
+		ok := Report("StagedPredict is 2 stages x 6 rows", staged->Size()[0] = 2 & staged->Size()[1] = 6) & ok;
+		ok := Report("StagedPredict row 0 is 4.25 / 8.75", Float->Abs(staged[0, 0] - 4.25) < 0.000000000001 & Float->Abs(staged[0, 5] - 8.75) < 0.000000000001) & ok;
+		ok := Report("StagedPredict row 1 is the final prediction", Float->Abs(staged[1, 0] - 3.125) < 0.000000000001 & Float->Abs(staged[1, 5] - 9.875) < 0.000000000001) & ok;
+		loss := m->GetTrainLoss();
+		# mean squared error after stage 1: residuals (-3.25 -2.25 -1.25 1.25 2.25 3.25): 34.375 / 6
+		ok := Report("training loss after stage 1 is the mean of the squared residuals 5.7291667", Float->Abs(loss[0] - 5.729166666666667) < 0.000000000001) & ok;
+		ok := Report("training loss after stage 2 is 1.9322916667", Float->Abs(loss[1] - 1.9322916666666667) < 0.000000000001) & ok;
+		gains := m->GetGainTotals();
+		ok := Report("gain total 60.75 + 15.1875 = 75.9375", Float->Abs(gains[0] - 75.9375) < 0.000000000001) & ok;
+		imp := m->GetFeatureImportances();
+		ok := Report("a single feature has importance 1.0", Float->Abs(imp[0] - 1.0) < 0.000000000001) & ok;
+		counts := m->GetSplitCounts();
+		ok := Report("two splits on feature 0", counts[0] = 2) & ok;
+		ok := Report("two stages, four leaves", m->GetNumStages() = 2 & m->GetLeafCount() = 4) & ok;
+
+		l1 := GradientBoostingRegressor->New(2, 0.5, 1, 1);
+		l1->SetLambda(1.0);
+		l1->Fit(X, y);
+		ok := Report("lambda 1: 3.7578125 / 9.2421875", Close(l1->Predict(X), [3.7578125, 3.7578125, 3.7578125, 9.2421875, 9.2421875, 9.2421875], 0.000000000001)) & ok;
+		l1s := l1->Predict(X, 1);
+		ok := Report("lambda 1, first stage: 4.8125 / 8.1875", Float->Abs(l1s[0] - 4.8125) < 0.000000000001 & Float->Abs(l1s[5] - 8.1875) < 0.000000000001) & ok;
+
+		g := GradientBoostingRegressor->New(2, 0.5, 1, 1);
+		g->SetMinSplitGain(100.0);
+		g->Fit(X, y);
+		ok := Report("min split gain above every gain: no split, every row gets the mean 6.5", Close(g->Predict(X), [6.5, 6.5, 6.5, 6.5, 6.5, 6.5], 0.000000000001) & g->GetLeafCount() = 2) & ok;
+		gi := g->GetFeatureImportances();
+		ok := Report("no split: importance all 0.0", gi[0] = 0.0) & ok;
+
+		leaf := GradientBoostingRegressor->New(2, 0.5, 1, 1);
+		leaf->SetMinSamplesLeaf(4);
+		leaf->Fit(X, y);
+		ok := Report("min samples leaf 4 on 6 rows: no valid split", leaf->GetLeafCount() = 2) & ok;
+		leaf3 := GradientBoostingRegressor->New(2, 0.5, 1, 1);
+		leaf3->SetMinSamplesLeaf(3);
+		leaf3->Fit(X, y);
+		ok := Report("min samples leaf 3: the 3 / 3 split is allowed", leaf3->GetLeafCount() = 4) & ok;
+
+		# a deeper tree needs no more stages to fit a step: depth 2 takes the same first split
+		d2 := GradientBoostingRegressor->New(1, 1.0, 3, 1);
+		d2->Fit(X, y);
+		ok := Report("lr 1, one stage, depth 3 reproduces every y exactly (6 points, 6 leaves possible)", Close(d2->Predict(X), y, 0.000000000001)) & ok;
+
+		# ---- binary logistic
+		cy := [0, 0, 0, 1, 1, 1];
+		c := GradientBoostingClassifier->New(1, 1.0, 1, 1);
+		ok := Report("the binary stump fits", c->Fit(X, cy)) & ok;
+		proba := c->PredictProba(X);
+		s2 := 1.0 / (1.0 + (-2.0)->Exp());
+		ok := Report("probability of class 1 is sigmoid(-2) for x <= 3 and sigmoid(2) above", Float->Abs(proba[0, 1] - (1.0 - s2)) < 0.000000000001 & Float->Abs(proba[5, 1] - s2) < 0.000000000001) & ok;
+		ok := Report("the two columns sum to 1", Float->Abs(proba[0, 0] + proba[0, 1] - 1.0) < 0.000000000001) & ok;
+		labels := c->Predict(X);
+		ok := Report("predicted classes 0 0 0 1 1 1", labels[0] = 0 & labels[2] = 0 & labels[3] = 1 & labels[5] = 1) & ok;
+		cls := c->GetClasses();
+		ok := Report("classes are 0 and 1", cls->Size() = 2 & cls[1] = 1) & ok;
+		ls := c->PredictScore(X);
+		ok := Report("PredictScore is the probability of class 1", Float->Abs(ls[5] - s2) < 0.000000000001) & ok;
+		cl1 := GradientBoostingClassifier->New(1, 1.0, 1, 1);
+		cl1->SetLambda(1.0);
+		cl1->Fit(X, cy);
+		s3 := 1.0 / (1.0 + (1.5 / 1.75)->Exp());
+		pl1 := cl1->PredictProba(X);
+		ok := Report("lambda 1: leaf = -1.5 / (0.75 + 1)", Float->Abs(pl1[0, 1] - s3) < 0.000000000001) & ok;
+
+		# the same labels as Bool[] through the ScoreModel interface
+		sm : ScoreModel := GradientBoostingClassifier->New(1, 1.0, 1, 1);
+		ok := Report("ScoreModel Fit(Bool[])", sm->Fit(X, [false, false, false, true, true, true])) & ok;
+		sc := sm->PredictScore(X);
+		ok := Report("ScoreModel PredictScore agrees", Float->Abs(sc[5] - s2) < 0.000000000001) & ok;
+
+		# labels other than 0 and 1 are sorted into classes
+		cs := GradientBoostingClassifier->New(1, 1.0, 1, 1);
+		cs->Fit(X, [7, 7, 7, -3, -3, -3]);
+		scl := cs->GetClasses();
+		spr := cs->Predict(X);
+		ok := Report("labels -3 and 7: classes sorted, the larger is the positive one", scl[0] = -3 & scl[1] = 7 & spr[0] = 7 & spr[5] = -3) & ok;
+
+		# ---- missing values
+		mx := Float->New[6, 1];
+		each(i : 3) {
+			mx[i, 0] := (i + 1)->As(Float);
+		};
+
+		each(i : 3) {
+			mx[3 + i, 0] := Float->NaN();
+		};
+
+		my := [1.0, 1.0, 1.0, 9.0, 9.0, 9.0];
+		mm := GradientBoostingRegressor->New(1, 1.0, 1, 1);
+		ok := Report("a training set with missing values fits", mm->Fit(mx, my)) & ok;
+		ok := Report("present rows 1, missing rows 9", Close(mm->Predict(mx), my, 0.000000000001)) & ok;
+		q := Float->New[3, 1];
+		q[0, 0] := Float->NaN();
+		q[1, 0] := 2.0;
+		q[2, 0] := 1.0e9;
+		qp := mm->Predict(q);
+		ok := Report("a NaN at predict time goes the missing way (9)", Float->Abs(qp[0] - 9.0) < 0.000000000001) & ok;
+		ok := Report("a present value goes the present way (1), even a huge one", Float->Abs(qp[1] - 1.0) < 0.000000000001 & Float->Abs(qp[2] - 1.0) < 0.000000000001) & ok;
+
+		# missing rows that look like the LOW rows: the direction is learned, not fixed
+		fx := Float->New[6, 1];
+		fy := [1.0, 1.0, 1.0, 9.0, 9.0, 9.0];
+		fx[0, 0] := Float->NaN();
+		fx[1, 0] := Float->NaN();
+		fx[2, 0] := Float->NaN();
+		fx[3, 0] := 1.0;
+		fx[4, 0] := 2.0;
+		fx[5, 0] := 3.0;
+		fm := GradientBoostingRegressor->New(1, 1.0, 1, 1);
+		fm->Fit(fx, fy);
+		ok := Report("missing rows that carry the low targets are predicted low", Close(fm->Predict(fx), fy, 0.000000000001)) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_boost_hand: ok"->PrintLine();
+	}
+
+	function : Close(a : Float[], b : Float[], tol : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(Float->Abs(a[i] - b[i]) > tol) {
+				"    index {$i}: {$a[i]} against {$b[i]}"->PrintLine();
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+
+		return passed;
+	}
+}

@@ -2257,12 +2257,14 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     }
 
     size_t* dest_array;
+    // One spare element after the data, as NEW_BYTE_ARY / NEW_CHAR_ARY and ConvertUnicodeToBytes allocate: a
+    // deserialized Byte[] or Char[] that something later reads as a C string must end in a zero.
     if(type == BYTE_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + 1 + ((dest_array_dim + 2) * sizeof(size_t)),
                                                 instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + 1 + ((dest_array_dim + 2) * sizeof(size_t)),
                                                 instructions::CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
@@ -3478,7 +3480,17 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   if(!array) {
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
-  const std::wstring out = BytesToUnicode((char*)(array + 3));
+  // Decode exactly the array's own length. A Byte[] is not NUL-terminated (only strings built by the
+  // runtime are), so handing the bare pointer to a converter that reads until a zero byte reads past the
+  // end of an exact-length array into whatever follows it: a String built from 8 bytes came back 9, 10,
+  // 33 or 73 characters long, varying from run to run (found by rag_index_test on Apple Silicon and
+  // Windows ARM64, where the bytes after the array were not zero).
+  // Within that length a zero byte still ends the string, as it always did (a padded read buffer).
+  const char* bytes = (const char*)(array + 3);
+  const size_t byte_count = array[0];
+  const void* first_zero = memchr(bytes, 0, byte_count);
+  const size_t text_length = first_zero ? (size_t)((const char*)first_zero - bytes) : byte_count;
+  const std::wstring out = BytesToUnicode(std::string(bytes, text_length));
 
   // create character array
   const long char_array_size = (long)out.size();
@@ -4078,14 +4090,17 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     std::wstring wbuffer;
+    // end of input: nothing was read and there was no line ending, so a blank
+    // line (an empty buffer ended by a newline) is told apart from a closed stdin
+    bool at_eof = false;
 #ifdef _WIN32
     if(Runtime::StackInterpreter::IsBinaryStdio()) {
       std::string buffer;
-      std::getline(std::cin, buffer);
+      at_eof = !std::getline(std::cin, buffer);
       wbuffer = BytesToUnicode(buffer);
     }
     else {
-      std::getline(std::wcin, wbuffer);
+      at_eof = !std::getline(std::wcin, wbuffer);
     }
 #else
     // Bytes, as the array reads (fread) are. Reading lines through std::wcin
@@ -4105,6 +4120,7 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     while((c = getc_unlocked(stdin)) != EOF && c != '\n') {
       buffer += (char)c;
     }
+    at_eof = (c == EOF && buffer.empty());
     wbuffer = BytesToUnicode(buffer);
 #endif
     MemoryManager::EndBlocking();
@@ -4121,6 +4137,10 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     wcsncpy(dest, wbuffer.c_str(), count);
     dest[count] = L'\0';
 #endif
+    PushInt(at_eof ? 0 : 1, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;
@@ -8128,6 +8148,19 @@ bool TrapProcessor::TrapProcessor::CRC32Bytes(StackProgram* program, size_t* ins
   return true;
 }
 
+// File (System.IO.File) instance layout: [0] handle, [1] name, [2] error. The error
+// is the first errno seen since the file was opened, kept so that a program can ask
+// File->IsOK() / GetLastError(): stdio buffers writes, so a full disk or a closed
+// pipe usually surfaces at a flush or close, long after the write that lost data.
+static const size_t FILE_ERROR_SLOT = 2;
+
+static void SetFileError(size_t* instance, int error)
+{
+  if(instance && instance[FILE_ERROR_SLOT] == 0) {
+    instance[FILE_ERROR_SLOT] = (size_t)(error ? error : EIO);
+  }
+}
+
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -8136,6 +8169,9 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "rb");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
@@ -8163,6 +8199,9 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "ab");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
@@ -8181,6 +8220,9 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "wb");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
@@ -8199,6 +8241,9 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
@@ -8219,7 +8264,14 @@ bool TrapProcessor::FileClose(StackProgram* program, size_t* inst, size_t* &op_s
     std::wcout << L"# file close: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = 0;
-    fclose(file);
+    // fclose writes out what is buffered: a failure here is the usual way a lost
+    // write is discovered. ferror catches a failed earlier write whose own result
+    // was a short count that the program ignored.
+    const int failed_earlier = ferror(file);
+    const int rc = fclose(file);
+    if(rc != 0 || failed_earlier) {
+      SetFileError(instance, errno);
+    }
   }
 
   return true;
@@ -8236,7 +8288,16 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
     // flush only: clearing instance[0] here (copied from Close) made the file
     // read as closed after a Flush -- later writes were dropped, Close did
     // nothing, and the FILE* leaked, keeping the file locked on Windows (#1180)
-    fflush(file);
+    if(fflush(file) != 0) {
+      SetFileError(instance, errno);
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(ferror(file) ? 0 : 1, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;
@@ -9014,12 +9075,14 @@ bool TrapProcessor::CondSignal(StackProgram* program, size_t* inst, size_t*& op_
 bool TrapProcessor::FileOutString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     FILE* file = (FILE*)instance[0];
     const wchar_t* data = (wchar_t*)(array + 3);
     if(file) {
-      fputs(UnicodeToBytes(data).c_str(), file);
+      if(fputs(UnicodeToBytes(data).c_str(), file) == EOF) {
+        SetFileError(instance, errno);
+      }
     }
   }
 
@@ -11842,11 +11905,16 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::FileOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const int value = (int)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
-    if(fputc(value, file) != value) {
+    const int result = fputc(value, file);
+    if(result == EOF) {
+      SetFileError(instance, errno);
+    }
+
+    if(result != value) {
       PushInt(0, op_stack, stack_pos);
     }
     else {
@@ -11865,12 +11933,16 @@ bool TrapProcessor::FileOutByteAry(StackProgram* program, size_t* inst, size_t* 
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
+    const size_t written = fwrite(buffer + offset, 1, num, file);
+    if(written != (size_t)num) {
+      SetFileError(instance, errno);
+    }
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -11884,7 +11956,7 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
@@ -11893,7 +11965,11 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(fwrite(buffer_out.c_str(), 1, buffer_out.size(), file), op_stack, stack_pos);
+    const size_t written = fwrite(buffer_out.c_str(), 1, buffer_out.size(), file);
+    if(written != buffer_out.size()) {
+      SetFileError(instance, errno);
+    }
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);

@@ -1,0 +1,684 @@
+# EXTRA_LIBS: ml_timeseries,gen_collect
+#~
+System.ML.TimeSeries: the container, the transforms, autocorrelation and the stationarity test.
+
+Hand-checkable cases (differencing and its inverse, the lag matrix, the missing-value policies, timestamps) are
+asserted against numbers worked out here. Everything numerical is compared with ml_timeseries_ref/expected.txt,
+which gen_reference.py wrote with statsmodels, scipy and pandas and never with this library: the special
+functions (to 1e-9), the autocorrelation, partial autocorrelation, Ljung-Box and ADF statistic and critical
+values (1e-8), the classical decomposition (additive and multiplicative, 1e-9), Box-Cox (1e-12, and the
+maximum-likelihood power within the 0.01 grid step) and the rolling mean / std (1e-12). The test series are
+generated here by the library's own Rng / Simulate and their first values are checked against the reference's
+copy of the same generator first. Run from programs/regression.
+~#
+use System.IO.Filesystem;
+use Collection;
+use System.ML.TimeSeries;
+
+#~
+Shared by the ml_timeseries_* tests: reads ml_timeseries_ref/expected.txt (written by gen_reference.py, which
+uses statsmodels / scipy / hand-written numpy and never this library) and keeps the pass / fail tally.
+~#
+class TsRef {
+	@m : Map<String, String>;
+	@ok : Bool;
+	@checks : Int;
+
+	New() {
+		@ok := true;
+		@checks := 0;
+		@m := Map->New()<String, String>;
+		text := FileReader->ReadFile("ml_timeseries_ref/expected.txt");
+		if(text = Nil) {
+			"FAIL: ml_timeseries_ref/expected.txt is not readable (run from programs/regression)"->PrintLine();
+			@ok := false;
+			return;
+		};
+
+		lines := text->Split("\n");
+		each(i : lines) {
+			line := lines[i];
+			if(line->Size() > 0 & line->Get(0) <> '#') {
+				f := line->Split("|");
+				if(f->Size() = 3) {
+					@m->Insert("{$f[0]}|{$f[1]}", f[2]);
+				}
+				else if(f->Size() = 2) {
+					@m->Insert("{$f[0]}|{$f[1]}", "");
+				};
+			};
+		};
+	}
+
+	method : public : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : public : Checks() ~ Int {
+		return @checks;
+	}
+
+	method : public : Check(name : String, cond : Bool) ~ Nil {
+		@checks += 1;
+		if(<>cond) {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : public : Get(name : String, key : String) ~ Float[] {
+		k := "{$name}|{$key}";
+		if(<>@m->Has(k)) {
+			"FAIL: no reference value {$k}"->PrintLine();
+			@ok := false;
+			return Float->New[0];
+		};
+
+		text := @m->Find(k);
+		if(text->Size() = 0) {
+			return Float->New[0];
+		};
+
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			if(parts[i]->Equals("nan")) {
+				out[i] := Float->NaN();
+			}
+			else {
+				out[i] := parts[i]->ToFloat();
+			};
+		};
+
+		return out;
+	}
+
+	method : public : One(name : String, key : String) ~ Float {
+		v := Get(name, key);
+		if(v->Size() = 0) {
+			return Float->NaN();
+		};
+
+		return v[0];
+	}
+
+	# |a - b| <= tol * (1 + |b|); two NaNs are equal
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		if(a <> a | b <> b) {
+			return a <> a & b <> b;
+		};
+
+		d := a - b;
+		if(d < 0.0) {
+			d := -d;
+		};
+
+		return d <= tol * (1.0 + b->Abs());
+	}
+
+	# the largest |a[i] - b[i]| / (1 + |b[i]|), NaN positions must agree; 1e300 on a length mismatch
+	function : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 1.0e300;
+		};
+
+		worst := 0.0;
+		each(i : b) {
+			an := a[i] <> a[i];
+			bn := b[i] <> b[i];
+			if(an | bn) {
+				if(an <> bn) {
+					return 1.0e300;
+				};
+			}
+			else {
+				d := a[i] - b[i];
+				if(d < 0.0) {
+					d := -d;
+				};
+				d := d / (1.0 + b[i]->Abs());
+				if(d > worst) {
+					worst := d;
+				};
+			};
+		};
+
+		return worst;
+	}
+
+	# a named comparison of two arrays: passes when the largest relative difference is within tol
+	method : public : Same(name : String, got : Float[], want : Float[], tol : Float) ~ Nil {
+		d := MaxDiff(got, want);
+		n := want->Size();
+		ok := d <= tol;
+		if(<>ok) {
+			"FAIL: {$name}: {$n} values, max relative difference {$d} > {$tol}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	method : public : SameOne(name : String, got : Float, want : Float, tol : Float) ~ Nil {
+		ok := Near(got, want, tol);
+		if(<>ok) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	# the first values of a series generated here must be the reference's (proves the generator is the same)
+	method : public : Head(name : String, series : Float[]) ~ Nil {
+		want := Get(name, "head");
+		got := Float->New[want->Size()];
+		each(i : got) {
+			got[i] := series[i];
+		};
+		Same("series {$name}: generator matches the reference", got, want, 1.0e-12);
+		Check("series {$name}: length", Near(series->Size()->As(Float), One(name, "n"), 0.0));
+	}
+
+	method : public : Finish(test : String) ~ Nil {
+		c := @checks;
+		if(@ok) {
+			"{$test}: all {$c} checks passed"->PrintLine();
+		}
+		else {
+			"FAIL: {$test}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+#~
+The test series, generated by the library from fixed seeds. gen_reference.py generates the same ones.
+~#
+class TsData {
+	@ar1 : Float[];
+	@ar2 : Float[];
+	@ma1 : Float[];
+	@arma11 : Float[];
+	@ts : Float[];
+	@ms : Float[];
+	@rw : Float[];
+
+	New() {
+		@ar1 := Simulate->Arma([0.7], Nil, 0.0, 1.0, 400, 11);
+		@ma1 := Simulate->Arma(Nil, [0.6], 0.0, 1.0, 500, 12);
+		@arma11 := Simulate->Arma([0.5], [0.4], 2.0, 1.0, 600, 13);
+		@ar2 := Simulate->Arma([0.5, -0.3], Nil, 0.0, 1.0, 500, 14);
+		@ts := Simulate->TrendSeasonal(120, 20.0, 0.3, 5.0, 12, 0.5, 15);
+		@ms := Simulate->MultSeasonal(120, 40.0, 0.2, 0.25, 12, 0.02, 16);
+		@rw := Simulate->RandomWalk(200, 0.3, 1.0, 17);
+	}
+
+	method : public : Get(name : String) ~ Float[] {
+		if(name->Equals("ar1")) {
+			return @ar1;
+		};
+		if(name->Equals("ar2")) {
+			return @ar2;
+		};
+		if(name->Equals("ma1")) {
+			return @ma1;
+		};
+		if(name->Equals("arma11")) {
+			return @arma11;
+		};
+		if(name->Equals("ts")) {
+			return @ts;
+		};
+		if(name->Equals("ms")) {
+			return @ms;
+		};
+
+		return @rw;
+	}
+
+	method : public : Names() ~ String[] {
+		return ["ar1", "ar2", "ma1", "arma11", "ts", "ms", "rw"];
+	}
+}
+
+
+class MlTimeseriesTransform {
+	function : Main(args : String[]) ~ Nil {
+		t := TsRef->New();
+		if(t->IsOk()) {
+			Generators(t);
+			Special(t);
+			Container(t);
+			Differencing(t);
+			Transforms(t);
+			Decomposition(t);
+			Autocorrelation(t);
+			Stationary(t);
+		};
+		t->Finish("ml_timeseries_transform");
+	}
+
+	function : Generators(t : TsRef) ~ Nil {
+		r := Rng->New(42);
+		u := Float->New[5];
+		each(i : 5) {
+			u[i] := r->NextFloat();
+		};
+		t->Same("Rng uniforms (seed 42)", u, t->Get("rng", "uniform"), 1.0e-15);
+
+		g := Float->New[4];
+		each(i : 4) {
+			g[i] := r->NextGaussian();
+		};
+		t->Same("Rng gaussians", g, t->Get("rng", "gauss"), 1.0e-12);
+
+		# the same seed gives the same numbers, a different seed does not
+		a := Rng->New(7);
+		b := Rng->New(7);
+		c := Rng->New(8);
+		t->Check("Rng: same seed, same stream", a->NextFloat() = b->NextFloat() & a->NextGaussian() = b->NextGaussian());
+		t->Check("Rng: different seed, different stream", Rng->New(7)->NextFloat() <> c->NextFloat());
+
+		# uniforms are in [0, 1) and the gaussians have mean near 0 and sd near 1
+		big := Rng->New(3);
+		n := 20000;
+		sum := 0.0;
+		sq := 0.0;
+		inside := true;
+		each(i : n) {
+			x := big->NextFloat();
+			if(x < 0.0 | x >= 1.0) {
+				inside := false;
+			};
+			z := big->NextGaussian();
+			sum += z;
+			sq += z * z;
+		};
+		t->Check("Rng: uniforms in [0, 1)", inside);
+		mean := sum / n->As(Float);
+		sd := (sq / n->As(Float) - mean * mean)->Sqrt();
+		t->Check("Rng: gaussian mean {$mean} and sd {$sd}", mean->Abs() < 0.03 & (sd - 1.0)->Abs() < 0.03);
+
+		s := TsData->New();
+		names := s->Names();
+		each(i : names) {
+			t->Head(names[i], s->Get(names[i]));
+		};
+	}
+
+	function : Special(t : TsRef) ~ Nil {
+		x := t->Get("special", "lgamma_x");
+		got := Float->New[x->Size()];
+		each(i : x) {
+			got[i] := TsMath->LogGamma(x[i]);
+		};
+		t->Same("LogGamma vs math.lgamma", got, t->Get("special", "lgamma"), 1.0e-12);
+
+		p := t->Get("special", "nq_p");
+		got := Float->New[p->Size()];
+		each(i : p) {
+			got[i] := TsMath->NormalQuantile(p[i]);
+		};
+		t->Same("NormalQuantile vs scipy norm.ppf", got, t->Get("special", "nq"), 1.0e-9);
+
+		x := t->Get("special", "ncdf_x");
+		got := Float->New[x->Size()];
+		each(i : x) {
+			got[i] := TsMath->NormalCdf(x[i]);
+		};
+		t->Same("NormalCdf vs scipy norm.cdf", got, t->Get("special", "ncdf"), 1.0e-12);
+
+		cx := t->Get("special", "chi_x");
+		ck := t->Get("special", "chi_k");
+		got := Float->New[cx->Size()];
+		each(i : cx) {
+			got[i] := TsMath->ChiSquareCdf(cx[i], ck[i]);
+		};
+		t->Same("ChiSquareCdf vs scipy chi2.cdf", got, t->Get("special", "chi"), 1.0e-10);
+
+		t->SameOne("IntervalZ(0.95) is 1.96", TsMath->IntervalZ(0.95), 1.959963984540054, 1.0e-9);
+		t->Check("NormalQuantile outside (0, 1) is NaN", TsMath->NormalQuantile(0.0) <> TsMath->NormalQuantile(0.0) & TsMath->NormalQuantile(1.5) <> TsMath->NormalQuantile(1.5));
+
+		# linear algebra on a case worked by hand: [[2, 1], [1, 3]] x = [3, 5] -> x = [0.8, 1.4]
+		a := Float->New[2, 2];
+		a[0, 0] := 2.0; a[0, 1] := 1.0; a[1, 0] := 1.0; a[1, 1] := 3.0;
+		rhs := [3.0, 5.0];
+		sol := TsMath->Solve(a, rhs);
+		t->Check("Solve 2x2", sol <> Nil & RefNear(sol[0], 0.8) & RefNear(sol[1], 1.4));
+		inv := TsMath->Invert(a);
+		t->Check("Invert 2x2", inv <> Nil & RefNear(inv[0, 0], 0.6) & RefNear(inv[0, 1], -0.2) & RefNear(inv[1, 1], 0.4));
+		sing := Float->New[2, 2];
+		sing[0, 0] := 1.0; sing[0, 1] := 2.0; sing[1, 0] := 2.0; sing[1, 1] := 4.0;
+		t->Check("a singular matrix is refused", TsMath->Solve(sing, rhs) = Nil & TsMath->Invert(sing) = Nil);
+
+		# OLS on y = 1 + 2x exactly
+		x2 := Float->New[5, 2];
+		y2 := Float->New[5];
+		each(i : 5) {
+			x2[i, 0] := 1.0;
+			x2[i, 1] := i->As(Float);
+			y2[i] := 1.0 + 2.0 * i->As(Float);
+		};
+		fit := TsMath->Ols(x2, y2);
+		c := fit->GetCoef();
+		t->Check("Ols recovers an exact line", fit->IsValid() & RefNear(c[0], 1.0) & RefNear(c[1], 2.0) & fit->GetSse() < 1.0e-20);
+		t->Check("Ols refuses too few rows", <>TsMath->Ols(x2, [1.0, 2.0])->IsValid());
+	}
+
+	function : RefNear(a : Float, b : Float) ~ Bool {
+		return TsRef->Near(a, b, 1.0e-12);
+	}
+
+	function : Container(t : TsRef) ~ Nil {
+		v := [1.0, 2.0, Float->NaN(), 4.0, Float->NaN(), Float->NaN(), 7.0];
+		s := TimeSeries->New(v);
+		t->Check("a copy is kept: changing the source does not change the series", UnchangedAfter(v, s));
+		t->Check("Size, CountMissing, HasMissing", s->Size() = 7 & s->CountMissing() = 3 & s->HasMissing());
+		t->Check("Check names the missing value", s->Check()->Find("index 2") > -1);
+
+		lin := s->Impute(TimeSeries->Missing->LINEAR)->GetValues();
+		t->Same("Impute LINEAR", lin, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], 1.0e-15);
+		fwd := s->Impute(TimeSeries->Missing->FORWARD)->GetValues();
+		t->Same("Impute FORWARD", fwd, [1.0, 2.0, 2.0, 4.0, 4.0, 4.0, 7.0], 1.0e-15);
+		zero := s->Impute(TimeSeries->Missing->ZERO)->GetValues();
+		t->Same("Impute ZERO", zero, [1.0, 2.0, 0.0, 4.0, 0.0, 0.0, 7.0], 1.0e-15);
+		mean := s->Impute(TimeSeries->Missing->MEAN)->GetValues();
+		t->Same("Impute MEAN (mean of 1, 2, 4, 7 is 3.5)", mean, [1.0, 2.0, 3.5, 4.0, 3.5, 3.5, 7.0], 1.0e-15);
+		drop := s->Impute(TimeSeries->Missing->DROP);
+		t->Same("Impute DROP", drop->GetValues(), [1.0, 2.0, 4.0, 7.0], 1.0e-15);
+		t->Check("Impute ERROR returns Nil", s->Impute(TimeSeries->Missing->ERROR) = Nil);
+		t->Check("the original series is untouched by Impute", s->CountMissing() = 3);
+
+		# gaps at the ends: LINEAR holds the nearest value, FORWARD back-fills a leading gap
+		e := TimeSeries->New([Float->NaN(), Float->NaN(), 5.0, 6.0, Float->NaN()]);
+		t->Same("LINEAR at the ends holds the nearest value", e->Impute(TimeSeries->Missing->LINEAR)->GetValues(), [5.0, 5.0, 5.0, 6.0, 6.0], 1.0e-15);
+		t->Same("FORWARD at the ends", e->Impute(TimeSeries->Missing->FORWARD)->GetValues(), [5.0, 5.0, 5.0, 6.0, 6.0], 1.0e-15);
+		allnan := TimeSeries->New([Float->NaN(), Float->NaN()]);
+		t->Check("an all-missing series cannot be imputed", allnan->Impute(TimeSeries->Missing->LINEAR) = Nil);
+		t->Check("a complete series is returned as is", TimeSeries->New([1.0, 2.0])->Impute(TimeSeries->Missing->ERROR)->Size() = 2);
+
+		# timestamps
+		reg := TimeSeries->New([1.0, 2.0, 3.0, 4.0], [100, 160, 220, 280]);
+		t->Check("regular step", reg->IsRegular() & reg->GetStep() = 60);
+		fut := reg->FutureTimestamps(3);
+		t->Check("FutureTimestamps continues the step", fut <> Nil & fut[0] = 340 & fut[1] = 400 & fut[2] = 460);
+		irr := TimeSeries->New([1.0, 2.0, 3.0, 4.0], [100, 160, 221, 280]);
+		t->Check("irregular series", <>irr->IsRegular() & irr->GetStep() = 0 & irr->FutureTimestamps(2) = Nil);
+		t->Check("a series without timestamps is regular with step 1", TimeSeries->New([1.0, 2.0, 3.0])->GetStep() = 1);
+		bad := TimeSeries->New([1.0, 2.0, 3.0], [5, 5, 6]);
+		t->Check("timestamps must increase", bad->Check()->Size() > 0);
+		t->Check("a length mismatch is reported", TimeSeries->New([1.0, 2.0, 3.0], [5, 6])->Check()->Size() > 0);
+
+		# DROP keeps the timestamps with their values
+		gap := TimeSeries->New([1.0, Float->NaN(), 3.0, 4.0], [10, 20, 30, 40]);
+		dropped := gap->Impute(TimeSeries->Missing->DROP);
+		ts := dropped->GetTimestamps();
+		t->Check("DROP removes the timestamps of dropped values", ts <> Nil & ts->Size() = 3 & ts[0] = 10 & ts[1] = 30 & ts[2] = 40 & <>dropped->IsRegular());
+
+		# slice, period
+		sl := reg->Slice(1, 3);
+		t->Check("Slice", sl->Size() = 2 & sl->Get(0) = 2.0 & sl->GetTimestamps()[0] = 160);
+		t->Check("a bad Slice is Nil", reg->Slice(3, 9) = Nil & reg->Slice(3, 2) = Nil);
+		reg->SetPeriod(4);
+		t->Check("the period survives a Slice", reg->GetPeriod() = 4 & reg->Slice(0, 2)->GetPeriod() = 4);
+		t->Check("Frequency constants", Frequency->Monthly() = 12 & Frequency->Quarterly() = 4 & Frequency->Daily() = 7 & Frequency->Hourly() = 24 & Frequency->Weekly() = 52);
+		t->Check("empty and infinite series are refused", TimeSeries->New(Float->New[0])->Check()->Size() > 0 & TimeSeries->New([1.0, Float->Inf()])->Check()->Size() > 0);
+	}
+
+	function : UnchangedAfter(v : Float[], s : TimeSeries) ~ Bool {
+		v[0] := 99.0;
+		return s->Get(0) = 1.0;
+	}
+
+	function : Differencing(t : TsRef) ~ Nil {
+		x := [1.0, 4.0, 9.0, 16.0, 25.0, 36.0];
+		t->Same("Diff order 1", SeriesTransform->Diff(x, 1, 1), [3.0, 5.0, 7.0, 9.0, 11.0], 1.0e-15);
+		t->Same("Diff order 2 of squares is constant 2", SeriesTransform->Diff(x, 1, 2), [2.0, 2.0, 2.0, 2.0], 1.0e-15);
+		t->Same("Diff lag 2", SeriesTransform->Diff(x, 2, 1), [8.0, 12.0, 16.0, 20.0], 1.0e-15);
+		t->Same("Diff order 0 copies", SeriesTransform->Diff(x, 1, 0), x, 1.0e-15);
+		t->Check("Diff of a too short series is Nil", SeriesTransform->Diff([1.0, 2.0], 1, 2) = Nil & SeriesTransform->Diff([1.0, 2.0], 0, 1) = Nil);
+
+		# Undiff restores the series from the differences and the first lag * order values
+		d2 := SeriesTransform->Diff(x, 1, 2);
+		t->Same("Undiff order 2", SeriesTransform->Undiff(d2, x, 1, 2), x, 1.0e-12);
+		d3 := SeriesTransform->Diff(x, 2, 1);
+		t->Same("Undiff lag 2", SeriesTransform->Undiff(d3, x, 2, 1), x, 1.0e-12);
+		t->Check("Undiff with too short a head is Nil", SeriesTransform->Undiff(d2, [1.0], 1, 2) = Nil);
+
+		# round trip on a long noisy series, for several (lag, order) pairs
+		s := Simulate->TrendSeasonal(60, 5.0, 0.4, 3.0, 12, 1.0, 21);
+		worst := 0.0;
+		lags := [1, 1, 12, 3, 12];
+		orders := [1, 2, 1, 2, 2];
+		each(i : lags) {
+			d := SeriesTransform->Diff(s, lags[i], orders[i]);
+			back := SeriesTransform->Undiff(d, s, lags[i], orders[i]);
+			dd := TsRef->MaxDiff(back, s);
+			if(dd > worst) {
+				worst := dd;
+			};
+		};
+		t->Check("Undiff(Diff(x)) == x for 5 (lag, order) pairs, worst {$worst}", worst < 1.0e-10);
+
+		# Integrate continues a series from forecast differences: a quadratic extended by its constant second difference
+		fut := SeriesTransform->Integrate([2.0, 2.0, 2.0], x, 1, 2);
+		t->Same("Integrate order 2 continues the squares (49, 64, 81 minus 36 -> next differences 13, 15, 17 -> 49, 64, 81)", fut, [49.0, 64.0, 81.0], 1.0e-12);
+		seas := [10.0, 20.0, 30.0, 11.0, 21.0, 31.0];
+		t->Same("Integrate seasonal lag 3: next period is last period + 1", SeriesTransform->Integrate([1.0, 1.0, 1.0, 2.0], seas, 3, 1), [12.0, 22.0, 32.0, 14.0], 1.0e-12);
+	}
+
+	function : Transforms(t : TsRef) ~ Nil {
+		s := TsData->New();
+		x := s->Get("ms");
+		head := Float->New[10];
+		each(i : 10) {
+			head[i] := x[i];
+		};
+
+		t->Same("BoxCox lambda 0.5 vs scipy", SeriesTransform->BoxCox(head, 0.5), t->Get("boxcox", "t05"), 1.0e-12);
+		t->Same("BoxCox lambda -1 vs scipy", SeriesTransform->BoxCox(head, -1.0), t->Get("boxcox", "tm1"), 1.0e-12);
+		t->Same("BoxCox lambda 0 is the log", SeriesTransform->BoxCox(head, 0.0), t->Get("boxcox", "t0"), 1.0e-12);
+		t->Same("Log", SeriesTransform->Log(head), t->Get("boxcox", "t0"), 1.0e-12);
+		lams := [0.5, -1.0, 0.0, 1.0, 2.0];
+		each(i : lams) {
+			lam := lams[i];
+			back := SeriesTransform->InvBoxCox(SeriesTransform->BoxCox(head, lam), lam);
+			t->Same("InvBoxCox(BoxCox(x, {$lam})) == x", back, head, 1.0e-10);
+		};
+
+		lam := SeriesTransform->BoxCoxLambda(x);
+		ref := t->One("boxcox", "lambda_mle");
+		t->Check("BoxCoxLambda {$lam} is within the 0.01 grid of scipy's MLE {$ref}", (lam - ref)->Abs() <= 0.0101);
+		t->Check("BoxCox of a non-positive value is Nil", SeriesTransform->BoxCox([1.0, 0.0, 2.0], 0.5) = Nil & SeriesTransform->Log([1.0, -1.0]) = Nil);
+		t->Check("BoxCoxLambda of a bad series is NaN", SeriesTransform->BoxCoxLambda([1.0, -2.0, 3.0, 4.0]) <> SeriesTransform->BoxCoxLambda([1.0, -2.0, 3.0, 4.0]));
+		t->Check("InvBoxCox outside the range is Nil", SeriesTransform->InvBoxCox([-5.0], 0.5) = Nil);
+
+		a := s->Get("ar1");
+		first := Float->New[40];
+		each(i : 40) {
+			first[i] := a[i];
+		};
+		t->Same("RollingMean(5) vs pandas", SeriesTransform->RollingMean(first, 5), t->Get("rolling", "mean5"), 1.0e-12);
+		t->Same("RollingStd(5) vs pandas", SeriesTransform->RollingStd(first, 5), t->Get("rolling", "std5"), 1.0e-12);
+		t->Same("RollingMean by hand", SeriesTransform->RollingMean([1.0, 2.0, 3.0, 4.0], 2), [Float->NaN(), 1.5, 2.5, 3.5], 1.0e-15);
+		withgap := SeriesTransform->DropNaN([Float->NaN(), 1.0, Float->NaN(), 2.0, 3.0]);
+		t->Same("DropNaN removes the NaNs and keeps the order", withgap, [1.0, 2.0, 3.0], 1.0e-15);
+		t->Check("DropNaN of Nil is Nil", SeriesTransform->DropNaN(Nil) = Nil);
+		t->Check("a bad rolling window is Nil", SeriesTransform->RollingMean([1.0, 2.0], 0) = Nil & SeriesTransform->RollingStd([1.0, 2.0], 1) = Nil);
+
+		# lag matrix by hand: column j is lag j + 1
+		lm := SeriesTransform->LagMatrix([1.0, 2.0, 3.0, 4.0, 5.0], 2);
+		dims := lm->Size();
+		t->Check("LagMatrix is (n - nlags) x nlags", dims[0] = 3 & dims[1] = 2);
+		t->Check("LagMatrix rows hold x[t-1], x[t-2]", lm[0, 0] = 2.0 & lm[0, 1] = 1.0 & lm[1, 0] = 3.0 & lm[1, 1] = 2.0 & lm[2, 0] = 4.0 & lm[2, 1] = 3.0);
+		t->Same("LagTarget", SeriesTransform->LagTarget([1.0, 2.0, 3.0, 4.0, 5.0], 2), [3.0, 4.0, 5.0], 1.0e-15);
+		t->Check("a bad LagMatrix is Nil", SeriesTransform->LagMatrix([1.0, 2.0], 2) = Nil & SeriesTransform->LagMatrix([1.0, 2.0, 3.0], 0) = Nil);
+
+		# the lag matrix is the autoregression design: OLS on it recovers an AR(1) coefficient near 0.7
+		y := s->Get("ar1");
+		fit := TsMath->Ols(SeriesTransform->LagMatrix(y, 1), SeriesTransform->LagTarget(y, 1));
+		phi := fit->GetCoef()[0];
+		t->Check("OLS on the lag matrix recovers phi = 0.7 ({$phi})", fit->IsValid() & (phi - 0.7)->Abs() < 0.08);
+	}
+
+	function : Decomposition(t : TsRef) ~ Nil {
+		s := TsData->New();
+		cases := ["ts", "ms"];
+		each(ci : cases) {
+			kind := cases[ci];
+			mult := kind->Equals("ms");
+			d := SeriesTransform->Decompose(s->Get(kind), 12, mult);
+			t->Check("Decompose {$kind} is valid", d->IsValid() & d->IsMultiplicative() = mult);
+			name := "dec_{$kind}";
+			t->Same("{$kind} trend vs statsmodels seasonal_decompose (NaN ends included)", d->GetTrend(), t->Get(name, "trend"), 1.0e-9);
+			t->Same("{$kind} seasonal figure", d->GetFigure(), t->Get(name, "seasonal"), 1.0e-9);
+			t->Same("{$kind} remainder", d->GetRemainder(), t->Get(name, "resid"), 1.0e-9);
+
+			# the components rebuild the series
+			x := s->Get(kind);
+			tr := d->GetTrend();
+			se := d->GetSeasonal();
+			re := d->GetRemainder();
+			worst := 0.0;
+			each(i : x) {
+				if(tr[i] = tr[i]) {
+					rebuilt := tr[i] + se[i] + re[i];
+					if(mult) {
+						rebuilt := tr[i] * se[i] * re[i];
+					};
+					dd := (rebuilt - x[i])->Abs() / (1.0 + x[i]->Abs());
+					if(dd > worst) {
+						worst := dd;
+					};
+				};
+			};
+			t->Check("{$kind} components rebuild the series (worst {$worst})", worst < 1.0e-12);
+
+			fig := d->GetFigure();
+			total := 0.0;
+			each(i : 12) {
+				total += fig[i];
+			};
+			if(mult) {
+				t->SameOne("{$kind} multiplicative figure averages 1", total / 12.0, 1.0, 1.0e-12);
+			}
+			else {
+				t->SameOne("{$kind} additive figure sums to 0", total, 0.0, 1.0e-12);
+			};
+
+			strength := d->SeasonalStrength();
+			t->Check("{$kind} has strong seasonality ({$strength})", strength > 0.8 & strength <= 1.0);
+		};
+
+		# a hand-checkable additive case: a straight line plus the exact period-4 pattern [1, -1, 2, -2]
+		x := Float->New[16];
+		each(i : 16) {
+			pat := [1.0, -1.0, 2.0, -2.0];
+			x[i] := 10.0 + 0.5 * i->As(Float) + pat[i % 4];
+		};
+		d := SeriesTransform->Decompose(x, 4, false);
+		fig := d->GetFigure();
+		t->Same("hand case: the figure is the pattern", fig, [1.0, -1.0, 2.0, -2.0], 1.0e-12);
+		t->Check("hand case: the remainder is zero where defined", RemainderZero(d->GetRemainder()));
+
+		# refusals
+		t->Check("fewer than two periods is refused with a reason", <>SeriesTransform->Decompose([1.0, 2.0, 3.0, 4.0, 5.0], 3, false)->IsValid() & SeriesTransform->Decompose([1.0, 2.0, 3.0, 4.0, 5.0], 3, false)->GetError()->Size() > 0);
+		t->Check("a zero in a multiplicative decomposition is refused", <>SeriesTransform->Decompose([1.0, 2.0, 0.0, 4.0, 5.0, 6.0, 7.0, 8.0], 4, true)->IsValid());
+		t->Check("a period of 1 is refused", <>SeriesTransform->Decompose([1.0, 2.0, 3.0, 4.0], 1, false)->IsValid());
+		t->Check("a NaN is refused", <>SeriesTransform->Decompose([1.0, Float->NaN(), 3.0, 4.0, 5.0, 6.0], 2, false)->IsValid());
+		t->Check("an invalid decomposition has NaN strength and no arrays", SeriesTransform->Decompose([1.0], 2, false)->GetTrend() = Nil);
+	}
+
+	function : RemainderZero(r : Float[]) ~ Bool {
+		each(i : r) {
+			if(r[i] = r[i] & r[i]->Abs() > 1.0e-12) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Autocorrelation(t : TsRef) ~ Nil {
+		s := TsData->New();
+		x := s->Get("ar1");
+		t->Same("ACF vs statsmodels acf (10 lags)", Acf->Compute(x, 10), t->Get("acf", "acf"), 1.0e-10);
+		t->Same("PACF vs statsmodels pacf ywm (10 lags)", Acf->Partial(x, 10), t->Get("acf", "pacf"), 1.0e-10);
+		t->Same("autocovariance vs statsmodels acovf", Acf->Autocovariance(x, 5), t->Get("acf", "acov"), 1.0e-10);
+		t->Same("MA(1) ACF vs statsmodels", Acf->Compute(s->Get("ma1"), 4), t->Get("acf", "ma1_acf"), 1.0e-10);
+
+		lb := Acf->LjungBox(x, 10, 0);
+		ref := t->Get("acf", "lb");
+		p1 := lb[1];
+		q1 := ref[1];
+		t->SameOne("Ljung-Box Q vs statsmodels", lb[0], ref[0], 1.0e-9);
+		t->Check("Ljung-Box p-value vs statsmodels ({$p1} vs {$q1})", (lb[1] - ref[1])->Abs() < 1.0e-9);
+		lb2 := Acf->LjungBox(s->Get("ma1"), 8, 1);
+		ref2 := t->Get("acf", "lb_ma1_df1");
+		p2 := lb2[1];
+		q2 := ref2[1];
+		t->SameOne("Ljung-Box Q with one fitted parameter", lb2[0], ref2[0], 1.0e-9);
+		t->Check("Ljung-Box p-value with model_df 1 ({$p2} vs {$q2})", (lb2[1] - ref2[1])->Abs() < 1.0e-9);
+
+		# structure: an AR(1) has a PACF that cuts off after lag 1, an MA(1) an ACF that cuts off after lag 1
+		pa := Acf->Partial(x, 6);
+		bound := Acf->Bound(x->Size());
+		t->Check("AR(1): PACF(1) is large, PACF(2..6) inside the 95% bound {$bound}", pa[1] > 0.5 & pa[2]->Abs() < 2.0 * bound & pa[3]->Abs() < 2.0 * bound);
+		ma := Acf->Compute(s->Get("ma1"), 5);
+		t->Check("MA(1): ACF(1) near 0.6 / (1 + 0.36) = 0.44, ACF(3) small", (ma[1] - 0.441)->Abs() < 0.1 & ma[3]->Abs() < 2.0 * Acf->Bound(500));
+		t->SameOne("ACF at lag 0 is 1", Acf->Compute(x, 3)[0], 1.0, 1.0e-15);
+		t->SameOne("PACF at lag 0 is 1", Acf->Partial(x, 3)[0], 1.0, 1.0e-15);
+
+		# by hand: x = [1, 2, 3, 4, 5], mean 3, c0 = 10, c1 = 4 + 1 + 0 + 1 = ... (-2)(-1) + (-1)(0) + 0(1) + 1(2) = 4, r1 = 0.4
+		hand := Acf->Compute([1.0, 2.0, 3.0, 4.0, 5.0], 2);
+		t->Same("ACF by hand", hand, [1.0, 0.4, -0.1], 1.0e-14);
+		t->Check("ACF of a constant series is Nil", Acf->Compute([2.0, 2.0, 2.0, 2.0], 1) = Nil);
+		t->Check("ACF with too many lags is Nil", Acf->Compute([1.0, 2.0, 3.0], 3) = Nil);
+		t->Check("Ljung-Box needs more lags than fitted parameters", Acf->LjungBox(x, 2, 2) = Nil);
+	}
+
+	function : Stationary(t : TsRef) ~ Nil {
+		s := TsData->New();
+		specs := ["rw|c|4", "ar1|c|2", "ar1|ct|3", "ar1|n|1", "rw|ct|0", "ts|c|12"];
+		each(si : specs) {
+			f := specs[si]->Split("|");
+			lags := f[2]->ToInt();
+			r := Stationarity->Adf(s->Get(f[0]), lags, f[1]);
+			key := "{$f[0]}_{$f[1]}_{$f[2]}";
+			t->Check("ADF {$key} is valid", r->IsValid());
+			t->SameOne("ADF {$key} statistic vs statsmodels adfuller", r->GetStatistic(), t->One("adf", "{$key}_stat"), 1.0e-8);
+			t->SameOne("ADF {$key} observations", r->GetObservations()->As(Float), t->One("adf", "{$key}_nobs"), 0.0);
+			crit := t->Get("adf", "{$key}_crit");
+			got := [r->GetCritical(0.01), r->GetCritical(0.05), r->GetCritical(0.10)];
+			t->Same("ADF {$key} critical values vs mackinnoncrit", got, crit, 1.0e-8);
+		};
+
+		# the automatic lag choice (lags = -1) is statsmodels' adfuller(autolag="AIC"): same lag count, same statistic
+		autos := ["rw|c", "ar1|c", "ar1|ct", "ts|c", "ar1|n", "ma1|c", "ar2|ct", "arma11|c"];
+		each(ai : autos) {
+			f := autos[ai]->Split("|");
+			r := Stationarity->Adf(s->Get(f[0]), -1, f[1]);
+			key := "{$f[0]}_{$f[1]}_auto";
+			t->SameOne("ADF {$key}: the AIC-chosen lag count equals statsmodels'", r->GetLags()->As(Float), t->One("adf", "{$key}_lags"), 0.0);
+			t->SameOne("ADF {$key}: statistic", r->GetStatistic(), t->One("adf", "{$key}_stat"), 1.0e-8);
+			t->SameOne("ADF {$key}: observations", r->GetObservations()->As(Float), t->One("adf", "{$key}_nobs"), 0.0);
+			got := [r->GetCritical(0.01), r->GetCritical(0.05), r->GetCritical(0.10)];
+			t->Same("ADF {$key}: critical values", got, t->Get("adf", "{$key}_crit"), 1.0e-8);
+		};
+
+		rw := Stationarity->Adf(s->Get("rw"), 4, "c");
+		ar := Stationarity->Adf(s->Get("ar1"), 2, "c");
+		t->Check("the random walk keeps its unit root, the AR(1) rejects it", <>rw->IsStationary(0.05) & ar->IsStationary(0.01));
+		t->Check("GetCritical of another size is NaN", rw->GetCritical(0.2) <> rw->GetCritical(0.2));
+		t->Check("DefaultLags is the Schwert rule ceil(12 (n/100)^(1/4)), capped at n/2 - ntrend - 1: n = 200 -> 15, n = 40 -> 10, n = 10 -> 3", Stationarity->DefaultLags(200, 1) = 15 & Stationarity->DefaultLags(40, 1) = 10 & Stationarity->DefaultLags(10, 1) = 3 & Stationarity->DefaultLags(10, 0) = 4);
+
+		t->Check("SuggestDiff: AR(1) needs 0", Stationarity->SuggestDiff(s->Get("ar1"), 2) = 0);
+		t->Check("SuggestDiff: random walk with drift needs 1", Stationarity->SuggestDiff(s->Get("rw"), 2) = 1);
+		t->Check("SuggestDiff: capped at maxd", Stationarity->SuggestDiff(SeriesTransform->Undiff(s->Get("rw"), s->Get("rw"), 1, 1), 1) >= 0);
+		t->Check("SuggestSeasonalDiff: the seasonal series wants one, the AR(1) none", Stationarity->SuggestSeasonalDiff(s->Get("ts"), 12) = 1 & Stationarity->SuggestSeasonalDiff(s->Get("ar1"), 12) = 0);
+		t->Check("SuggestSeasonalDiff: too short is -1", Stationarity->SuggestSeasonalDiff([1.0, 2.0, 3.0], 12) = -1);
+
+		# refusals
+		t->Check("ADF refuses a bad regression name", <>Stationarity->Adf(s->Get("rw"), 2, "x")->IsValid());
+		t->Check("ADF refuses a short series", <>Stationarity->Adf([1.0, 2.0, 3.0, 4.0], 2, "c")->IsValid());
+		t->Check("ADF refuses a constant series", <>Stationarity->Adf(Float->New[60], 1, "c")->IsValid());
+		t->Check("ADF refuses NaN", <>Stationarity->Adf([1.0, Float->NaN(), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0], 1, "c")->IsValid());
+	}
+}
