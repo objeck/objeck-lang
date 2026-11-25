@@ -311,9 +311,47 @@ A function from `GetFunctions()` returns `{"result": text}`, or `{"error": text}
 
 On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live. The repository's tests never call the live APIs; these runs were manual.
 
-### Declaring a tool from its types
+### A function is a tool: `@tool`
 
-A function's name and parameter types already say what its JSON Schema says. `McpToolSpec` writes them once and derives the schema, so the hand-written schema string (and the chance that it disagrees with the function) goes away:
+Put a line that starts with `@tool` in a function's doc comment and the compiler writes the tool for you: the name, the description, the JSON Schema, the hints and the code that reads the arguments. The class gets a static function `McpTools(service)` that registers all of its tools.
+
+```ruby
+use API.MCP;
+
+enum Units { METRIC, IMPERIAL }
+
+class Weather {
+  #~
+  Forecast for a city.
+  @tool
+  @readonly
+  @param city the city
+  @param units units of the temperature
+  @param days how many days, 1 to 7
+  ~#
+  function : Forecast(city : String, units : Units, days : Int := 3) ~ String { ... }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("weather", "1.0");
+    Weather->McpTools(server);
+    server->ServeStdio();
+  }
+}
+```
+
+(`days` is optional because it has a default; `units` is an enum, so the model must give one of `METRIC`, `IMPERIAL`.) Compile with `-lib ...,mcp`; the file must `use API.MCP`.
+
+* **The tag.** A `#~ ... ~#` comment with a line that starts with `@tool` (after blanks), directly before a `function`, makes it a tool. `@tool name` sets the tool's name; without one it is the function's name in snake_case (`ReadFile` is `read_file`). A comment that mentions `@tool` mid-line, or `@tools`, or `@tool_name`, is documentation. Only the last comment before the function counts. The same text in a string, in a `//`, `#` or `/* */` comment is nothing.
+* **Description.** The comment's text before its first `@` line, on one line. `@title text` sets a title. `@param name text` describes a parameter (a name the function lacks is an error).
+* **Hints.** `@readonly`, `@destructive`, `@idempotent`, `@openworld` set the MCP annotations; `@readonly` with `@destructive` is an error.
+* **Parameters.** `Int`, `Float`, `Bool`, `Byte`, `Char`, `String`, `JsonElement`, an enum (a string of its item names), a record (an object with its fields, which may themselves be records, enums, arrays), a one-dimensional array, `Vector<T>` or `Map<String,T>` of those. A parameter with a default is optional; the default must be a number, `Bool`, `Char`, `String` or `Nil` literal. A parameter of type `McpCall` is not part of the schema: it gives the function the call (`IsCancelled()`, `ReportProgress`).
+* **Result.** `String`, `Int`, `Float`, `Bool`, nothing, `JsonElement` (the structured result, declared as an object) or `McpToolResult` (sent as it is). A raised error, or a `Nil` String, is an error result the model can read.
+* **Diagnostics.** A parameter or return type that cannot be sent (a function type, a class that is not a record, an array of two dimensions, a `ref` parameter), a default that is not a literal, a tag before a method, constructor, class, enum or variable, `@param` of nothing, two tools with one name, and a file that does not `use API.MCP` are compile errors that name the tool and point at the function.
+* **Limits.** Enums and records must be declared in the sources being compiled, before the class that uses them (the compiler does not read them from a library). An enum cannot be an optional parameter (its default would not be a literal) or an array element. `obr prog.obe --mcp` to serve a program with no code at all is not there yet: the program calls `Class->McpTools(server)` and `ServeStdio()` itself.
+
+### Declaring a tool from its types (the library form)
+
+`@tool` (above) is the way to write a tool. `McpToolSpec` is the same thing as a library: it needs no compiler support, and it is what the compiler's output is checked against. A function's name and parameter types already say what its JSON Schema says; `McpToolSpec` writes them once, as text, and derives the schema:
 
 ```ruby
 McpToolSpec->New("forecast", "Forecast for a city.")
@@ -335,7 +373,7 @@ McpToolSpec->New("forecast", "Forecast for a city.")
 | `Json`, `JsonElement` | any value |
 | any other class or record | a bare `{"type":"object"}`; `McpToolSpec->Known(type)` is false, because the mapping cannot see the fields |
 
-The derived schema equals, as JSON (`McpToolSpec->Same`), the hand-written schema of every tool in the repository's own servers and examples; `mcp_declare_test` re-declares fifteen of them and fails on the first difference. A function that takes a model's arguments still reads them with `McpCall`; deriving the reading code from the function itself needs the compiler (see `docs/design/MCP_FIRST_CLASS.md`).
+The derived schema equals, as JSON (`McpToolSpec->Same`), the hand-written schema of every tool in the repository's own servers and examples; `mcp_declare_test` re-declares fifteen of them and fails on the first difference. With `McpToolSpec` the function still reads its arguments with `McpCall`; with `@tool` the compiler writes that code. `AddSchema(name, json, description, required)` adds a parameter whose schema is given as JSON text, which is how the compiler's output states a record or an enum.
 
 * **Effects.** `ReadOnly()`, `Destructive()`, `Idempotent()` and `OpenWorld()` set the MCP `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), which `tools/list` carries and `McpClient->ListTools` reads back as `McpTool->GetReadOnlyHint()` and so on (`HasReadOnlyHint()` tells "false" from "not stated"). A tool with no hints lists exactly as before. `Returns(schema)` declares the shape of a structured result (`outputSchema`).
 * **Checks.** Besides `required` and `type`, a call is checked against a property's `enum` and an array's `items` type; the reason names the allowed values.

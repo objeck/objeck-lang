@@ -109,6 +109,8 @@ class Parser {
   ParsedProgram* program;
   ParsedBundle* current_bundle;
   Class* current_class;
+  // the 'use' names of the file being parsed, while ParseBundle reads it (null otherwise)
+  std::vector<std::wstring>* current_lib_uses = nullptr;
   Method* current_method;
   // the method being parsed: its type parameters and their bounds, as they erase (#1242)
   std::map<std::wstring, std::wstring> method_generic_bounds;

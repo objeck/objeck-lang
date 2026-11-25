@@ -26,49 +26,62 @@
 #   restock("tea", 12)           -> 12 x tea, standard delivery
 #   restock("tea", 12, true)     -> 12 x tea, rush delivery
 #   searchJson([green, tea])     -> matches=2 exact=true
-#   price("coffee")              -> Nil, GetError() = no such item: coffee
+#   price("coffee")              -> Nil, GetError() = Tool price failed: no such item: coffee
 ~#
 use API.MCP, Data.JSON, Collection;
 
-# the server: three tools declared from their types (see mcp_declare_32)
+# the server: three plain functions, each marked @tool (see mcp_declare_32)
 class Shop {
-	function : Price(call : McpCall) ~ McpToolResult {
-		item := call->GetString("item");
+	#~
+	The price of an item.
+	@tool
+	@readonly
+	@param item the item name
+	~#
+	function : Price(item : String) ~ String {
 		if(item->Equals("tea")) {
-			return McpToolResult->Text("4.50");
+			return "4.50";
 		};
-		return McpToolResult->Error("no such item: {$item}");
+		Runtime->Raise(Error->New("no such item: {$item}"));
+		return Nil;
 	}
 
-	function : Restock(call : McpCall) ~ McpToolResult {
-		item := call->GetString("item");
-		count := call->GetInt("count", 0);
-		rush := call->GetBool("rush", false);
+	#~
+	Order more of an item.
+	@tool
+	@param item the item name
+	@param count how many
+	@param rush rush delivery
+	~#
+	function : Restock(item : String, count : Int, rush : Bool := false) ~ String {
 		speed := "standard";
 		if(rush) {
 			speed := "rush";
 		};
-		return McpToolResult->Text("{$count} x {$item}, {$speed} delivery");
+		return "{$count} x {$item}, {$speed} delivery";
 	}
 
-	function : Search(call : McpCall) ~ McpToolResult {
-		terms := call->GetArguments()->Get("terms");
-		limit := call->GetInt("max_results", 10);
+	#~
+	Search the catalogue.
+	@tool
+	@readonly
+	@param terms words to look for
+	@param max_results most results to return
+	~#
+	function : Search(terms : String[], max_results : Int := 10) ~ JsonElement {
 		found := terms->Size();
-		if(found > limit) {
-			found := limit;
+		if(found > max_results) {
+			found := max_results;
 		};
 		hit := JsonElement->New(JsonElement->JsonType->OBJECT);
 		hit->Insert("matches", found);
 		hit->Insert("exact", true);
-		return McpToolResult->Json(hit);
+		return hit;
 	}
 
 	function : Build() ~ McpService {
 		server := McpService->New("shop", "1.0.0");
-		McpToolSpec->New("price", "The price of an item.")->Add("item", "String", "the item name")->ReadOnly()->AddTo(server, Func2Ref->New(Shop->Price(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
-		McpToolSpec->New("restock", "Order more of an item.")->Add("item", "String", "the item name")->Add("count", "Int", "how many")->AddOptional("rush", "Bool", "rush delivery")->AddTo(server, Func2Ref->New(Shop->Restock(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
-		McpToolSpec->New("search", "Search the catalogue.")->Add("terms", "String[]", "words to look for")->AddOptional("max_results", "Int", "most results to return")->Returns("{\"type\":\"object\",\"properties\":{\"matches\":{\"type\":\"integer\"},\"exact\":{\"type\":\"boolean\"}}}")->ReadOnly()->AddTo(server, Func2Ref->New(Shop->Search(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		Shop->McpTools(server);
 		return server;
 	}
 }

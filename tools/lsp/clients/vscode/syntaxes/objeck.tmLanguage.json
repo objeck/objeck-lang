@@ -43,7 +43,18 @@
 				{
 					"begin": "\\#~",
 					"end": "~\\#",
-					"name": "comment.block.objeck"
+					"name": "comment.block.objeck",
+					"patterns": [
+						{
+							"comment": "doc tags that make a function an MCP tool (docs/design/MCP_FIRST_CLASS.md)",
+							"match": "(?<=^|\\s)@(tool|readonly|destructive|idempotent|openworld|title)(?=\\s|$|~#)",
+							"name": "storage.type.annotation.objeck"
+						},
+						{
+							"match": "(?<=^|\\s)@(param|return|hidden|class)(?=\\s|$|~#)",
+							"name": "keyword.other.documentation.objeck"
+						}
+					]
 				},
 				{
 					"begin": "\\#",

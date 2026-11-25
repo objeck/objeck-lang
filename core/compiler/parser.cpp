@@ -699,6 +699,11 @@ void Parser::ParseBundle(int depth)
 
   // default system uses
   std::vector<std::wstring> lib_uses;
+  current_lib_uses = &lib_uses;
+  struct ResetUses {
+    std::vector<std::wstring>*& slot;
+    ~ResetUses() { slot = nullptr; }
+  } reset_uses{current_lib_uses};
   lib_uses.push_back(L"System");
   lib_uses.push_back(L"System.IO");
   lib_uses.push_back(L"System.Introspection");
@@ -8178,8 +8183,8 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
  * static functions into the class, as source text parsed by this same parser, exactly as the code a person
  * would write:
  *
- *   McpTools(mcp_service : API.MCP.McpService) ~ Nil        declares every tool of the class (schema, hints)
- *   McpTool_<name>(mcp_call : API.MCP.McpCall) ~ API.MCP.McpToolResult   reads the typed arguments, calls the function
+ *   McpTools(mcp_service : McpService) ~ Nil        declares every tool of the class (schema, hints)
+ *   McpTool_<name>(mcp_call : McpCall) ~ McpToolResult   reads the typed arguments, calls the function
  *   McpRead_<n>(mcp_j : Data.JSON.JsonElement) ~ <type>     reads an array, Vector, Map, enum or record argument
  *
  * A class with no '@tool' function gets none of this, and nothing here runs for it. The generated code needs
@@ -8877,6 +8882,13 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
   helpers.cls = klass->GetName();
   const std::wstring file_name = klass->GetFileName();
 
+  // the code written below names API.MCP classes, whose generic arguments resolve by their short names: the file must use the bundle
+  if(!current_lib_uses || std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) == current_lib_uses->end()) {
+    diagnostics.Error(file_name, tools[0].method->GetLineNumber(), tools[0].method->GetLinePosition(),
+                      L"a file with an '@tool' function needs 'use API.MCP;' (and -lib mcp): the tool is registered with that library's classes");
+    return;
+  }
+
   std::vector<std::wstring> registrations;
   std::vector<std::wstring> adapters;
   std::vector<std::wstring> names_seen;
@@ -9080,9 +9092,16 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
           }
           case CHAR_STR_EXPR: {
             CharacterString* text = static_cast<CharacterString*>(expression);
+            // a string with nothing interpolated holds its text itself; one with a '{$...}' in it is not a literal
             std::vector<CharacterStringSegment*> segments = text->GetSegments();
-            if(segments.size() <= 1 && (segments.empty() || segments[0]->GetType() == STRING)) {
-              literal = L"\"" + McpLit(segments.empty() ? L"" : segments[0]->GetString()) + L"\"";
+            bool plain = true;
+            for(size_t k = 0; k < segments.size(); ++k) {
+              if(segments[k]->GetType() != STRING) {
+                plain = false;
+              }
+            }
+            if(plain) {
+              literal = L"\"" + McpLit(text->GetString()) + L"\"";
             }
             break;
           }
@@ -9113,11 +9132,15 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
     if(doc.idempotent) {
       spec += L"->Idempotent()";
     }
+    if(rkind == 3) {
+      // a JsonElement result is the structured result, an object
+      spec += L"->Returns(\"{\\\"type\\\":\\\"object\\\"}\")";
+    }
     if(doc.open_world) {
       spec += L"->OpenWorld()";
     }
     const std::wstring adapter_name = L"McpTool_" + function_name;
-    spec += L"->AddTo(mcp_service, Func2Ref->New(" + helpers.cls + L"->" + adapter_name + L"(API.MCP.McpCall) ~ API.MCP.McpToolResult)<API.MCP.McpCall, API.MCP.McpToolResult>);";
+    spec += L"->AddTo(mcp_service, Func2Ref->New(" + helpers.cls + L"->" + adapter_name + L"(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);";
     registrations.push_back(spec);
 
     const std::wstring invoke = helpers.cls + L"->" + function_name + L"(" + call_args + L")";
@@ -9138,7 +9161,7 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
       body += L"return " + invoke + L";";
       break;
     }
-    adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_call : API.MCP.McpCall) ~ API.MCP.McpToolResult { " + body + L" }");
+    adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_call : McpCall) ~ McpToolResult { " + body + L" }");
   }
 
   if(registrations.empty()) {
@@ -9154,7 +9177,7 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
     McpAddFunction(klass, adapters[i].substr(cut + 1), std::stoi(adapters[i].substr(0, cut)), depth);
   }
 
-  std::wstring all = L"function : McpTools(mcp_service : API.MCP.McpService) ~ Nil { ";
+  std::wstring all = L"function : McpTools(mcp_service : McpService) ~ Nil { ";
   for(size_t i = 0; i < registrations.size(); ++i) {
     all += registrations[i] + L" ";
   }

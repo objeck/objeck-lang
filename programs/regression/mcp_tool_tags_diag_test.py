@@ -24,6 +24,7 @@ import os, subprocess, sys, tempfile
 
 EXE = ".exe" if os.name == "nt" else ""
 LIBS = "gen_collect,json,net,net_server,cipher,misc,mcp"
+EXPECTED = " ".join(str(ord(c)) for c in "Handles ünïcödé 世界.") + " | " + " ".join(str(ord(c)) for c in "öé世")
 HEAD = "use API.MCP, Data.JSON, Collection;\n\n"
 
 
@@ -67,7 +68,7 @@ BAD = [
      ["are called 'same'"], 9),
     ("@tool twice", "class T {\n#~\n@tool\n@tool\n~#\nfunction : F() ~ Int { return 1; }\n}\n",
      ["'@tool' appears twice"], 4),
-    ("a function the compiler writes", "class T {\n\tfunction : McpTools(x : Int) ~ Nil {}\n#~\n@tool\n~#\n\tfunction : F() ~ Int { return 1; }\n}\n",
+    ("a function the compiler writes", "class T {\n\tfunction : McpTools(s : McpService) ~ Nil {}\n#~\n@tool\n~#\n\tfunction : F() ~ Int { return 1; }\n\tfunction : Main(args : String[]) ~ Nil {}\n}\n",
      ["already has a function named 'McpTools'"], 6),
     ("an unsupported class in a record field", "class Thing {\n\tNew() {}\n}\nrecord Box {\n\t@t : Thing;\n}\nclass T {\n#~\n@tool\n~#\nfunction : F(b : Box) ~ Int { return 1; }\n}\n",
      ["field 't' of the record 'Box'"], 11),
@@ -80,7 +81,7 @@ OK = [
     ("@tools and @tool_name", "class T {\n#~\n@tools\n@tool_name x\n~#\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
     ("a tagged comment then another comment", "class T {\n#~\n@tool\n~#\n# another comment\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
     ("a doc comment in a method body", "class T {\n\tfunction : Main(args : String[]) ~ Nil {\n#~\n@tool\n~#\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
-    ("nested markers", "class T {\n#~ outer #~\n@tool\n~# \n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
+    ("nested markers", "class T {\n#~ outer #~ @tool ~# \n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
 ]
 
 
@@ -96,7 +97,8 @@ def main():
     failures = []
 
     def check(name, cond, detail=""):
-        print("  [%s] %s%s" % ("PASS" if cond else "FAIL", name, "" if cond else "\n         " + str(detail)[-700:]))
+        line = "  [%s] %s%s" % ("PASS" if cond else "FAIL", name, "" if cond else "\n         " + str(detail)[-700:])
+        print(line.encode("ascii", "replace").decode("ascii"))
         if not cond:
             failures.append(name)
 
@@ -133,14 +135,14 @@ def main():
                     "\t\tclient := McpClient->InProcess(server);\n\t\tclient->Initialize(\"c\", \"1\");\n"
                     "\t\ttool := client->ListTools()->Get(0);\n\t\td := tool->GetDescription();\n"
                     "\t\tr := client->CallTool(\"greet\", JsonParser->TextToElement(\"{\\\"name\\\":\\\"ö\\\"}\"));\n"
-                    "\t\tt := r->GetText();\n\t\t\"{$d} | {$t}\"->PrintLine();\n\t}\n}\n")
+                    "\t\tt := r->GetText();\n\t\tcodes := String->New();\n\t\tfor(i := 0; i < d->Size(); i += 1;) {\n\t\t\tc := d->Get(i)->As(Int);\n\t\t\tcodes->Append(\"{$c} \");\n\t\t};\n\t\tcodes->Append(\"| \");\n\t\tfor(i := 0; i < t->Size(); i += 1;) {\n\t\t\tc := t->Get(i)->As(Int);\n\t\t\tcodes->Append(\"{$c} \");\n\t\t};\n\t\tcodes->PrintLine();\n\t}\n}\n")
         for label, filler, crlf in (("with CRLF line endings", "", True), ("with a megabyte of comment", "filler words go here\n" * 50000, False), ("plain", "", False)):
             code, out, obe = compile_text("tool_" + label.split()[-1], tool_src % filler, crlf=crlf)
             if code != 0:
                 check("a tool %s compiles" % label, False, out)
                 continue
             code, out = run([obr, obe], env, work)
-            check("a tool %s works" % label, code == 0 and "Handles ünïcödé 世界. | ö" + "é世" in out.replace("\r", ""), out)
+            check("a tool %s works" % label, code == 0 and EXPECTED in " ".join(out.split()), out)
 
         # a comment cut off by the end of the file: the same answer with and without a tag
         for label, text in (("tagged", "class T {\n#~\n@tool\nfunction : F() ~ Int { return 1; }\n}\n"),
@@ -153,7 +155,7 @@ def main():
         with open(src, "w") as f:
             f.write("class T {\n#~\n@tool\n~#\nfunction : F() ~ Int { return 1; }\n\tfunction : Main(args : String[]) ~ Nil {}\n}\n")
         code, out = run([obc, "-src", src, "-lib", "gen_collect", "-dest", os.path.join(work, "nolib.obe")], env, work)
-        check("a tool without -lib mcp is an error naming the missing class", code != 0 and "McpToolSpec" in out or code != 0 and "McpService" in out, out)
+        check("a tool in a file that does not use API.MCP is an error saying so", code != 0 and "use API.MCP" in out, out)
         src = os.path.join(work, "plain.obs")
         with open(src, "w") as f:
             f.write("class T {\n\tfunction : Main(args : String[]) ~ Nil { \"x\"->PrintLine(); }\n}\n")

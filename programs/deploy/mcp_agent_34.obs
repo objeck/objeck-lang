@@ -5,12 +5,12 @@
 # Hand plain functions to an agent, and let the effect of each decide whether
 # the agent may run it. An agent (API.Agent) is a loop: it sends a task to a
 # model, runs the tool calls the model asks for, and sends the results back.
-# McpToolSpec describes a function once; McpAgentTools->FromSpec turns that
-# description into an agent tool, so the same function can be served over MCP
-# or given straight to an agent.
+# The functions below are marked @tool, as in mcp_declare_32, so the compiler
+# writes Tools->McpTools(server); McpAgentTools->AddAll then turns every tool of
+# that server into an agent tool, with its schema and its hints.
 #
-# Three tools: add only reads (ReadOnly), note is not marked either way, and
-# delete_file is Destructive. The agent runs with SetApproveUnlessReadOnly, the
+# Three tools: add only reads (@readonly), note is not marked either way, and
+# delete_file is @destructive. The agent runs with SetApproveUnlessReadOnly, the
 # cautious rule for tools you did not write: only a tool known to be read-only
 # runs unasked. A destructive tool always asks, whatever else is set. Here the
 # "user" is a few lines of code that says no to deletions.
@@ -47,32 +47,39 @@ class Ask implements AgentApprover {
 }
 
 class Tools {
-	function : Add(call : McpCall) ~ McpToolResult {
-		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
-		return McpToolResult->Text("{$sum}");
+	#~
+	Add two integers.
+	@tool
+	@readonly
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
 	}
 
-	function : Note(call : McpCall) ~ McpToolResult {
-		text := call->GetString("text");
-		return McpToolResult->Text("noted: {$text}");
+	#~
+	Save a note.
+	@tool
+	~#
+	function : Note(text : String) ~ String {
+		return "noted: {$text}";
 	}
 
-	function : DeleteFile(call : McpCall) ~ McpToolResult {
-		path := call->GetString("path");
-		return McpToolResult->Text("deleted {$path}");
+	#~
+	Delete a file.
+	@tool
+	@destructive
+	~#
+	function : DeleteFile(path : String) ~ String {
+		return "deleted {$path}";
 	}
 
 	function : Registry() ~ ToolRegistry {
+		server := McpService->New("agent-example", "1.0.0");
+		Tools->McpTools(server);
 		registry := ToolRegistry->New();
-		registry->Add(McpAgentTools->FromSpec(
-			McpToolSpec->New("add", "Add two integers")->Add("a", "Int", Nil)->Add("b", "Int", Nil)->ReadOnly(),
-			Func2Ref->New(Tools->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
-		registry->Add(McpAgentTools->FromSpec(
-			McpToolSpec->New("note", "Save a note")->Add("text", "String", Nil),
-			Func2Ref->New(Tools->Note(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
-		registry->Add(McpAgentTools->FromSpec(
-			McpToolSpec->New("delete_file", "Delete a file")->Add("path", "String", Nil)->Destructive(),
-			Func2Ref->New(Tools->DeleteFile(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
+		client := McpClient->InProcess(server);
+		client->Initialize("agent-example-client", "1.0");
+		McpAgentTools->AddAll(registry, client);
 		return registry;
 	}
 

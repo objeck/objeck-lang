@@ -6,30 +6,48 @@ the programs are in `programs/deploy/` (`mcp_declare_32`, `mcp_stub_33`, `mcp_ag
 libraries on their first line. The reference is [ai_sections/mcp.md](ai_sections/mcp.md); the design and what
 is not possible yet is [design/MCP_FIRST_CLASS.md](design/MCP_FIRST_CLASS.md).
 
-## 1. Declare
+## 1. Declare: a function is a tool
 
-A tool is a function plus a JSON Schema that tells a model its arguments. Writing the schema by hand next to
-the function is where mistakes creep in, so `McpToolSpec` derives it from the Objeck types you name:
+A tool is a function plus a name, a description and a JSON Schema that tells a model its arguments. You write
+the function and a doc comment; a line that says `@tool` in the comment is the whole declaration, and the
+compiler writes the rest from what is already there:
 
 ```ruby
-McpToolSpec->New("greet", "Greet a person")
-  ->Add("name", "String", "who to greet")
-  ->AddOptional("style", "enum(formal,casual)", "how to greet")
-  ->ReadOnly()
-  ->AddTo(server, Func2Ref->New(Tools->Greet(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+enum Style { FORMAL, CASUAL }
+
+class Tools {
+  #~
+  Greet a person.
+  @tool
+  @readonly
+  @param name who to greet
+  @param style how to greet
+  ~#
+  function : Greet(name : String, style : Style) ~ String {
+    if(style = Style->CASUAL) { return "hi {$name}"; };
+    return "Good day, {$name}";
+  }
+}
 ```
 
-`obr mcp_declare_32.obe` lists what the server offers, with the derived schema and the hint, and calls it:
+The description is the comment's text, the schema comes from the parameter types (the enum becomes a list of
+allowed values, a default would make a parameter optional), `@readonly` is the MCP `readOnlyHint`, and
+`Tools->McpTools(server)` registers every tool of the class. `obr mcp_declare_32.obe` lists what the server
+offers and calls it:
 
 ```
-greet (read-only)
-  schema: {"properties":{"name":{"description":"who to greet","type":"string"},"style":{"description":"how to greet","enum":["formal","casual"],"type":"string"}},"required":["name"],"type":"object"}
-greet("Ada")                 -> Good day, Ada
-greet("Ada", "rude")         -> refused: Invalid arguments for greet: argument 'style' must be one of: formal, casual
+greet (read-only): Greet a person.
+  schema: {"properties":{"name":{"description":"who to greet","type":"string"},"style":{"description":"how to greet","enum":["FORMAL","CASUAL"],"type":"string"}},"required":["name","style"],"type":"object"}
+greet("Ada", FORMAL)         -> Good day, Ada
+greet("Ada", "RUDE")         -> refused: Invalid arguments for greet: argument 'style' must be one of: FORMAL, CASUAL
 add(1) with no b             -> refused: Invalid arguments for add: missing required argument 'b'
 ```
 
-Bad arguments never reach the function: the server answers with a result the model can read and correct.
+Bad arguments never reach the function: the server answers with a result the model can read and correct. A
+function type, a class that is not a record, a wrong tag or a default that is not a literal is a compile error
+at the function. The library form of the same declaration, for code that cannot use the tag, is `McpToolSpec`
+(`->Add("name", "String", "who to greet")->ReadOnly()->AddTo(server, handler)`); the compiler's output is
+checked against it.
 
 ## 2. Serve
 
@@ -38,7 +56,8 @@ The same server speaks the protocol on standard input and output with `obr mcp_d
 `{"mcpServers":{"demo":{"command":"obr","args":["mcp_declare_32.obe","--stdio"]}}}` in `.mcp.json`. The
 protocol path is tested against a scripted client, and the MCP reference records the one real-client check
 (Claude Code with `mcp_server_demo`). This example's `--stdio` mode was driven by hand with an initialize and a
-`tools/call` and answered correctly; it has not been tried with Claude Code.
+`tools/call` and answered correctly; it has not been tried with Claude Code. A one-line `obr prog.obe --mcp`
+that serves a program's tools with no code at all is not built yet.
 
 ## 3. Consume through a typed client
 
@@ -62,8 +81,8 @@ shop->Price("tea", 3);              # does not compile
 
 ## 4. Hand functions to an agent, and let the effect decide who approves
 
-`McpAgentTools->FromSpec(spec, handler)` makes an `API.Agent` tool from the same declaration, and the hints
-drive approval. `mcp_agent_34` gives a scripted model three tools (one read-only, one unmarked, one
+`McpAgentTools->AddAll(registry, client)` makes `API.Agent` tools from a server's tools (the server here is the
+`@tool` class), and the hints drive approval; `FromSpec(spec, handler)` does the same for an `McpToolSpec`. `mcp_agent_34` gives a scripted model three tools (one read-only, one unmarked, one
 destructive) and runs the agent with `SetApproveUnlessReadOnly(true)` and an approver that refuses deletions:
 
 ```
@@ -100,7 +119,8 @@ a generated typed client (`obr mcp_canvas.obe --demo`, or `--stub` to print that
 
 ## What this does not do yet
 
-The types are still written twice, once in the function and once in the spec, and the function still reads its
-arguments with `McpCall`. Deriving the spec and the argument reading from the function itself, with its doc
-comment as the description, and `obr prog.obe --mcp` to serve a program with no code, need compiler support;
-reflection cannot give parameter names or call a method. That is the next stage in the design document.
+`obr prog.obe --mcp` and `--mcp-http <port>` (serve a program's tools with no code) are the next stage; today a
+program calls `Class->McpTools(server)` and `ServeStdio()` itself. Enums and records must be declared in the
+sources being compiled, before the class that uses them; an enum cannot be an optional parameter (a default must
+be a literal). A tool's result is text, a `JsonElement` (structured) or an `McpToolResult`; a record result and a
+derived `outputSchema` beyond "an object" are not derived. The design document has the reasons and the plan.
