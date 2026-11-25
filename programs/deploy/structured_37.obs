@@ -1,0 +1,113 @@
+#~
+# compile: obc -src structured_37.obs -lib llm_util,json,regex,gen_collect
+# run:     obr structured_37.obe
+#
+# A program that calls a language model usually wants data, not prose: a record
+# it can read fields from. But models wrap JSON in chatter, leave a comma
+# hanging, or put a number in quotes. API.LlmUtil handles all of it:
+#
+#   PromptTemplate   a prompt with {{holes}}, filled in from PromptVars
+#   StructuredCall   asks a model for JSON matching a JSON Schema, checks the
+#                    reply, and on a mismatch sends the exact errors back and
+#                    asks again (up to SetMaxRetries). SetRepair(true) first
+#                    mends damaged JSON such as single quotes and a trailing
+#                    comma, and strips a code fence.
+#
+# The model is anything with a Complete(turns) method (the ChatFn interface).
+# The one below is a script of canned replies, one per call, so the program
+# runs offline and prints the same thing every time. A real model is another
+# ChatFn; nothing else changes.
+#
+# output:
+#   prompt: Extract the person from: Ada Lovelace was 36 when she wrote it.
+#   --- a reply with the wrong type, then a corrected one
+#   attempts: 2, ok: true
+#   name: Ada, age: 36
+#   --- a damaged reply, mended by SetRepair
+#   attempts: 1, repaired: true
+#   name: Grace, age: 85
+#   --- a model that never gets it right
+#   attempts: 3, ok: false
+#   last problem: /age: expected integer, got string
+~#
+
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+# a fake model: replies come from a list, the last one repeats
+class ScriptedModel implements ChatFn {
+	@replies : Vector<String>;
+	@next : Int;
+
+	New(replies : Vector<String>) {
+		@replies := replies;
+	}
+
+	method : public : Complete(turns : Vector<PromptTurn>) ~ String {
+		index := @next;
+		if(index >= @replies->Size()) {
+			index := @replies->Size() - 1;
+		};
+		@next += 1;
+		return @replies->Get(index);
+	}
+
+	method : public : GetError() ~ String {
+		return Nil;
+	}
+}
+
+class StructuredTour {
+	function : Main(args : String[]) ~ Nil {
+		# the shape we require: a name and a whole-number age, nothing else
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"age\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}");
+
+		# a prompt template, filled in
+		template := PromptTemplate->New("Extract the person from: {{text}}");
+		vars := PromptVars->New()->Set("text", "Ada Lovelace was 36 when she wrote it.");
+		prompt := template->Render(vars);
+		"prompt: {$prompt}"->PrintLine();
+
+		"--- a reply with the wrong type, then a corrected one"->PrintLine();
+		model := ScriptedModel->New(Replies("{\"name\":\"Ada\",\"age\":\"36\"}", "{\"name\":\"Ada\",\"age\":36}"));
+		outcome := StructuredCall->New(model, schema)->Ask(template, vars);
+		Show(outcome);
+
+		"--- a damaged reply, mended by SetRepair"->PrintLine();
+		model := ScriptedModel->New(Replies("```json\n{'name':'Grace','age':85,}\n```", Nil));
+		outcome := StructuredCall->New(model, schema)->SetRepair(true)->Ask("Who wrote the first compiler?");
+		"attempts: {$(outcome->GetAttempts())}, repaired: {$(outcome->WasRepaired())}"->PrintLine();
+		ShowPerson(outcome);
+
+		"--- a model that never gets it right"->PrintLine();
+		model := ScriptedModel->New(Replies("{\"name\":\"Ada\",\"age\":\"old\"}", Nil));
+		outcome := StructuredCall->New(model, schema)->SetMaxRetries(2)->Ask("Who?");
+		"attempts: {$(outcome->GetAttempts())}, ok: {$(outcome->IsOk())}"->PrintLine();
+		last := outcome->GetErrors()->Get(0);
+		"last problem: {$(last->GetPath())}: {$(last->GetMessage())}"->PrintLine();
+	}
+
+	function : Show(outcome : StructuredOutcome) ~ Nil {
+		"attempts: {$(outcome->GetAttempts())}, ok: {$(outcome->IsOk())}"->PrintLine();
+		ShowPerson(outcome);
+	}
+
+	function : ShowPerson(outcome : StructuredOutcome) ~ Nil {
+		if(outcome->IsOk()) {
+			value := outcome->GetValue();
+			name := value->Get("name")->GetString();
+			age := value->Get("age")->GetInt();
+			"name: {$name}, age: {$age}"->PrintLine();
+		};
+	}
+
+	function : Replies(first : String, second : String) ~ Vector<String> {
+		replies := Vector->New()<String>;
+		replies->AddBack(first);
+		if(second <> Nil) {
+			replies->AddBack(second);
+		};
+		return replies;
+	}
+}

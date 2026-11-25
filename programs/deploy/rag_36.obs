@@ -1,0 +1,95 @@
+#~
+# compile: obc -src rag_36.obs -lib rag,ml_vector,gen_collect
+# run:     obr rag_36.obe
+#          obr rag_36.obe "how can an index be saved"
+#
+# Retrieval-augmented generation (RAG) lets a language model answer from your
+# documents instead of from memory. The steps are all here:
+#
+#   1. split each document into chunks and embed every chunk as a vector,
+#   2. embed the question the same way and find the closest chunks,
+#   3. build a prompt that numbers those chunks as sources, and
+#   4. hand it to a model, which cites the sources it used as [1], [2], ...
+#
+# Nothing here needs a key, a model file or a network. The embedder is
+# RagHashEmbedder, a hashed bag of words: it matches shared words, not meaning.
+# The generator is RagStubGenerator, which answers with the first sentence of
+# source [1] and cites it. To use real models, replace those two objects with
+# the adapters in the rag_adapters library (RagOllamaEmbedder and
+# RagOllamaGenerator, for one); nothing else changes.
+#
+# A question with no close chunk is declined rather than guessed at (the last
+# question below).
+#
+# output:
+#   indexed language.txt: 2 chunks
+#   indexed retrieval.txt: 2 chunks
+#   indexed prompts.txt: 2 chunks
+#
+#   Q: What kind of garbage collector does the virtual machine have?
+#   A: The virtual machine has a generational garbage collector, so short-lived objects are cheap. [1]
+#      cited language.txt#1
+#
+#   Q: How can an index be saved and loaded?
+#   A: An index can be saved to a file and loaded again, so the documents are embedded once. [1]
+#      cited retrieval.txt#1
+#
+#   Q: What is the capital of France?
+#   A: I do not know: no relevant source was found.
+~#
+
+use System.ML.Rag;
+use Collection;
+
+class RagTour {
+	function : Main(args : String[]) ~ Nil {
+		# a hashed bag of words with 512 buckets, and the stand-in generator
+		pipeline := RagPipeline->New(RagHashEmbedder->New(512), RagStubGenerator->New());
+		pipeline->SetChunker(RagChunker->New(180, 20, RagSplit->PARAGRAPH));
+		pipeline->SetTopK(2);
+		pipeline->SetMinScore(0.1);
+
+		# the documents: a name and a text of two paragraphs each
+		docs := Vector->New()<Pair<String, String>>;
+		docs->AddBack(Pair->New("language.txt", "Objeck is an object-oriented programming language. Programs are compiled to bytecode and run on a virtual machine with a just-in-time compiler.\n\nThe virtual machine has a generational garbage collector, so short-lived objects are cheap.")<String, String>);
+		docs->AddBack(Pair->New("retrieval.txt", "A vector index stores one embedding vector per chunk of text. A search finds the chunks whose vectors are closest to the vector of the question.\n\nAn index can be saved to a file and loaded again, so the documents are embedded once.")<String, String>);
+		docs->AddBack(Pair->New("prompts.txt", "A grounded prompt numbers the retrieved chunks as sources and asks the model to cite the sources it used as [n].\n\nCitations let a reader check each claim of an answer against the text it came from.")<String, String>);
+
+		each(i : docs) {
+			name := docs->Get(i)->GetFirst();
+			added := pipeline->AddText(name, docs->Get(i)->GetSecond());
+			"indexed {$name}: {$added} chunks"->PrintLine();
+		};
+		""->PrintLine();
+
+		questions := Vector->New()<String>;
+		if(args->Size() > 0) {
+			questions->AddBack(args[0]);
+		}
+		else {
+			questions->AddBack("What kind of garbage collector does the virtual machine have?");
+			questions->AddBack("How can an index be saved and loaded?");
+			questions->AddBack("What is the capital of France?");
+		};
+
+		each(i : questions) {
+			Ask(pipeline, questions->Get(i));
+		};
+	}
+
+	function : Ask(pipeline : RagPipeline, question : String) ~ Nil {
+		"Q: {$question}"->PrintLine();
+		answer := pipeline->Answer(question);
+		if(answer = Nil) {
+			"   no answer: {$(pipeline->GetError())}"->PrintLine();
+		}
+		else {
+			"A: {$(answer->GetText())}"->PrintLine();
+			cited := answer->GetCitedSources();
+			each(i : cited) {
+				"   cited {$(cited->Get(i)->GetChunk()->GetId())}"->PrintLine();
+			};
+		};
+		""->PrintLine();
+	}
+}
