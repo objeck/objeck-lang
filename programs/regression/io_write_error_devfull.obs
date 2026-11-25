@@ -1,0 +1,92 @@
+use System.IO.Filesystem;
+
+# A device that fails every write (Linux /dev/full, ENOSPC) loses output that the
+# program was told was written: WriteBuffer returned the full count (the data sat
+# in the stdio buffer), WriteString and Close returned nothing, and 0 of 640 failed
+# writes were reported (fault-injection finding). The loss is now visible after
+# the fact: Flush() returns false, CloseChecked() returns false, IsOK() is false
+# and GetLastError() names the error (ENOSPC, 28, on Linux).
+#
+# Only Linux has /dev/full. Elsewhere the test prints SKIP and the runner counts
+# it as skipped; the portable error cases are in io_write_errors.
+class IoWriteErrorDevFull {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# File->Exists is false for a device, so the probe is the open itself
+		if(<>Runtime->GetPlatform()->Has("Linux") | <>FileWriter->New("/dev/full")->IsOpen()) {
+			"SKIP: needs Linux /dev/full"->PrintLine();
+			return;
+		};
+
+		"Testing writes to a full device..."->PrintLine();
+
+		# the data is buffered, so the write itself looks fine; the error is found at Flush
+		writer := FileWriter->New("/dev/full");
+		Check("/dev/full opens for writing", writer->IsOpen());
+		writer->WriteString("hello world\n");
+		bytes := "hello world\n"->ToByteArray();
+		written := writer->WriteBuffer(0, bytes->Size(), bytes);
+		Check("a buffered WriteBuffer still returns the count", written = bytes->Size());
+		Check("Flush reports the failure", <>writer->Flush());
+		Check("the writer is not OK after Flush", <>writer->IsOK());
+		Check("the error is ENOSPC", writer->GetLastError() = 28);
+		writer->Close();
+		Check("the error survives Close", <>writer->IsOK() & writer->GetLastError() = 28);
+
+		# the failure is found by Close alone, when nothing flushed before it
+		writer := FileWriter->New("/dev/full");
+		writer->WriteString("only close finds this\n");
+		Check("OK before Close (nothing has reached the device)", writer->IsOK());
+		Check("CloseChecked reports the failure", <>writer->CloseChecked());
+		Check("the error is ENOSPC after CloseChecked", writer->GetLastError() = 28);
+
+		# plain Close returns nothing, IsOK says what happened
+		writer := FileWriter->New("/dev/full");
+		writer->WriteString("plain close\n");
+		writer->Close();
+		Check("IsOK is false after a plain Close", <>writer->IsOK());
+
+		# a write bigger than the buffer fails inside the write call itself
+		big := Byte->New[1048576];
+		writer := FileWriter->New("/dev/full");
+		written := writer->WriteBuffer(0, big->Size(), big);
+		Check("a large write is short", written < big->Size());
+		Check("a large write records the error before any Flush", <>writer->IsOK());
+		writer->Close();
+
+		# the single-byte path
+		writer := FileWriter->New("/dev/full");
+		lost := false;
+		for(i := 0; i < 20000; i += 1;) {
+			if(<>writer->WriteByte(66)) {
+				lost := true;
+				break;
+			};
+		};
+		Check("WriteByte returns false once the buffer cannot be written", lost);
+		Check("and the writer is not OK", <>writer->IsOK());
+		writer->Close();
+
+		# the helper that writes a whole file says so
+		Check("WriteFile to /dev/full is false", <>FileWriter->WriteFile("/dev/full", "data"));
+
+		if(@failures = 0) {
+			"PASS: writes to a full device are reported"->PrintLine();
+		}
+		else {
+			"FAIL: writes to a full device, {$@failures} checks"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
