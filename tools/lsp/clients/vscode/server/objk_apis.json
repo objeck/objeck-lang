@@ -14759,7 +14759,7 @@
 					"descriptions": ["**Reads bytes from STDIN**\n\n```function : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Read characters from STDIN**\n\n```function : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
 				},
 				"ReadLine": {
-					"descriptions": ["**Reads a string from STDIN**\n\n```function : ReadLine() ~ System.String```\n\n\n\nreturn: System.String\n\n```\n\"Enter your name: \"->Print();\nname := System.IO.Console->ReadLine();\n\"Hello, {$name}!\"->PrintLine();\n```"]
+					"descriptions": ["**Reads a line from STDIN, without its line ending. A blank line is an empty string; Nil is returned only at the end of input (a closed or exhausted STDIN, or Ctrl-D), so a loop can tell the two apart.**\n\n```function : ReadLine() ~ System.String```\n\n\n\nreturn: System.String\n\n```\n\"Enter your name: \"->Print();\nname := System.IO.Console->ReadLine();\nif(name <> Nil) {\n  \"Hello, {$name}!\"->PrintLine();\n};\n```"]
 				},
 				"SetFill": {
 					"descriptions": ["**Sets the output fill**\n\n```function : SetFill(fill:Char) ~ ConsoleIO```\n\n\n\nfill: Char\n\nreturn: ConsoleIO"]
@@ -14967,6 +14967,9 @@
 				"AccessedTime": {
 					"descriptions": ["**Returns the time in which the file was accessed**\n\n```function : AccessedTime(n:System.String) ~ Date```\n\n\n\nn: System.String\n\nreturn: Date", "**Returns the time in which the file was accessed**\n\n```method : public : AccessedTime() ~ Date```\n\n\n\nreturn: Date", "**Returns the time in which the file was accessed**\n\n```function : AccessedTime(n:System.String, gmt:Bool) ~ Date```\n\n\n\nn: System.String\n\ngmt: Bool\n\nreturn: Date", "**Returns the time in which the file was accessed**\n\n```method : public : AccessedTime(gmt:Bool) ~ Date```\n\n\n\ngmt: Bool\n\nreturn: Date"]
 				},
+				"ClearError": {
+					"descriptions": ["**Clears the recorded error**\n\n```method : public : ClearError() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"Copy": {
 					"descriptions": ["**Copies a file**\n\n```function : Copy(s:System.String, d:System.String) ~ Bool```\n\n\n\ns: System.String\n\nd: System.String\n\nreturn: Bool\n\n```\nSystem.IO.File->Copy(\"source.txt\", \"backup.txt\");\n```", "**Copies a file**\n\n```function : Copy(s:System.String, d:System.String, o:Bool) ~ Bool```\n\n\n\ns: System.String\n\nd: System.String\n\no: Bool\n\nreturn: Bool"]
 				},
@@ -14983,10 +14986,13 @@
 					"descriptions": ["**Checks if a file exists**\n\n```function : Exists(n:System.String) ~ Bool```\n\n\n\nn: System.String\n\nreturn: Bool\n\n```\nif(System.IO.File->Exists(\"config.json\")) {\n  \"File found\"->PrintLine();\n};\n```", "**Checks if a file exists**\n\n```method : public : Exists() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Flush": {
-					"descriptions": ["**Flushes the file buffer**\n\n```method : public : Flush() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Flushes the file buffer. Writes are buffered, so a failed write (a full disk, a closed pipe) is often only discovered here or in Close.**\n\n```method : public : Flush() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"GetFullName": {
 					"descriptions": ["**Gets the full path name for file**\n\n```function : GetFullName(n:System.String) ~ System.String```\n\n\n\nn: System.String\n\nreturn: System.String", "**Gets the full path name for file**\n\n```method : public : GetFullName() ~ System.String```\n\n\n\nreturn: System.String"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Gets the first I/O error since the file was opened (or since ClearError), as the C runtime's errno value (ENOENT 2, EACCES 13, EISDIR 21, ENOSPC 28, ...). The numbering is the platform's: compare against 0 rather than a code.**\n\n```method : public : GetLastError() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetName": {
 					"descriptions": ["**Gets the filename**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
@@ -14999,6 +15005,9 @@
 				},
 				"IsEoF": {
 					"descriptions": ["**Check if seek pointer is at the end-of-file**\n\n```method : public : IsEoF() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOK": {
+					"descriptions": ["**Checks that no I/O error has occurred on this file since it was opened (or since ClearError). An open that failed counts. Writes are buffered, so check after Flush or Close to be sure that all output was stored.**\n\n```method : public : IsOK() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nwriter := System.IO.FileWriter->New(\"out.txt\");\nwriter->WriteString(\"data\");\nwriter->Close();\nif(<>writer->IsOK()) {\n  \"write failed, error {$writer->GetLastError()}\"->PrintLine();\n};\n```"]
 				},
 				"IsOpen": {
 					"descriptions": ["**Checks of the file is open**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -15106,7 +15115,10 @@
 			"description": "Supports file write operations",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes a file**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nwriter := System.IO.FileWriter->New(\"file.txt\");\nwriter->WriteString(\"done\");\nwriter->Close();\n```"]
+					"descriptions": ["**Closes a file. Buffered output is written out here, so a failure to store it is reported by IsOK and GetLastError after the call (Close itself returns nothing, as the OutputStream interface requires; see CloseChecked).**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nwriter := System.IO.FileWriter->New(\"file.txt\");\nwriter->WriteString(\"done\");\nwriter->Close();\nif(<>writer->IsOK()) {\n  \"could not store file.txt\"->PrintLine();\n};\n```"]
+				},
+				"CloseChecked": {
+					"descriptions": ["**Closes a file and reports whether all output was stored**\n\n```method : public : CloseChecked() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nwriter := System.IO.FileWriter->New(\"file.txt\");\nwriter->WriteString(\"done\");\nif(<>writer->CloseChecked()) {\n  \"could not store file.txt\"->PrintLine();\n};\n```"]
 				},
 				"New": {
 					"descriptions": ["**Opens a new file.**\n\n```New(name:System.String)```\n\n\n\nname: System.String", "**Opens a new file or appends to an existing one.**\n\n```New(name:System.String, append:Bool)```\n\n\n\nname: System.String\n\nappend: Bool"]
