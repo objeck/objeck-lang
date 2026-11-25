@@ -2,7 +2,7 @@
 Copyright (c) 2026 Randy Hollines
 ~~#
 
-use Web.HTTP, Collection, Data.JSON;
+use Web.HTTP, Collection, Data.JSON, System.Concurrency, System.IO.Filesystem;
 
 #~
 A provider-neutral tool-use loop (an agent). A program hands a chat model a set of Objeck functions
@@ -63,6 +63,45 @@ bundle API.Agent {
 		@param result what the call produced
 		~#
 		method : virtual : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil;
+	}
+
+	#~
+	Runs a tool that wants the run's cancellation token. The handler can poll IsCancelled() in a long
+	loop and return early; the token also reports a passed deadline, so a cooperative tool stops for either.
+	~#
+	interface AgentCancelableHandler {
+		#~
+		Runs the tool
+		@param arguments the call's arguments, already checked against the tool's schema
+		@param cancel the run's token, never Nil
+		@return the result text for the model, or Nil when the tool failed
+		~#
+		method : virtual : public : Run(arguments : JsonElement, cancel : AgentCancel) ~ String;
+	}
+
+	#~
+	Receives the structured events of a run (run_start, budget_check, model_start, model_end, model_retry,
+	tool_start, tool_end, halt, run_end). An AgentObserver that also implements this interface gets them too.
+	~#
+	interface AgentTraceSink {
+		#~
+		Called for each event, in order, on the thread that runs the loop
+		@param event the event
+		~#
+		method : virtual : public : OnEvent(event : AgentEvent) ~ Nil;
+	}
+
+	#~
+	An optional extension for a ChatBackend: the loop tells it how long the next call may take, and a
+	backend that can honor a total deadline returns promptly (a Nil reply with GetLastError set) when the
+	time passes. A backend that does not implement it is simply never told.
+	~#
+	interface AgentDeadlineAware {
+		#~
+		Sets the longest the next Chat may take
+		@param millis limit in milliseconds, 0 for none
+		~#
+		method : virtual : public : SetDeadlineMs(millis : Int) ~ Nil;
 	}
 
 	#~
@@ -504,6 +543,33 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		@json_func : Func2Ref<JsonElement, JsonElement>;
 		@dangerous : Bool;
 		@timeout_ms : Int;
+		@cancel_handler : AgentCancelableHandler;
+		@mode : AgentTool->Mode;
+		@mode_set : Bool;
+
+		#~
+		How the loop runs a tool's handler. IN_THREAD runs it on the loop's own thread, which cannot be
+		interrupted: a call over its limit is reported as a timeout only after it returns. BOUNDED_THREAD runs
+		it on a worker thread and waits at most the tool's time limit, the run's deadline and cancellation: when
+		one passes, the worker is abandoned (a thread cannot be killed, so a hung handler keeps its thread and
+		whatever it holds until it returns, if it ever does) and its late result is dropped.
+		~#
+		enum Mode {
+			IN_THREAD,
+			BOUNDED_THREAD
+		}
+
+		#~
+		Constructor for a handler that takes the run's cancellation token
+		@param name tool name
+		@param description what the tool does and when to use it
+		@param schema JSON Schema of the arguments, an object schema; Nil means no arguments
+		@param handler runs the tool
+		~#
+		New(name : String, description : String, schema : JsonElement, handler : AgentCancelableHandler) {
+			Init(name, description, schema);
+			@cancel_handler := handler;
+		}
 
 		#~
 		Constructor for a handler object
@@ -550,6 +616,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 			};
 			@dangerous := false;
 			@timeout_ms := 0;
+			@mode := AgentTool->Mode->IN_THREAD;
 		}
 
 		#~
@@ -596,8 +663,9 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		}
 
 		#~
-		Sets the longest the tool may take, in milliseconds. A running handler cannot be interrupted: a call
-		that takes longer is reported to the model as a timeout and its result is discarded.
+		Sets the longest the tool may take, in milliseconds. In IN_THREAD mode a running handler cannot be
+		interrupted: a call that takes longer is reported to the model as a timeout and its result is discarded.
+		In BOUNDED_THREAD mode the loop stops waiting at the limit.
 		@param timeout_ms limit in milliseconds, 0 for the agent's default
 		@return self for chaining
 		~#
@@ -615,11 +683,56 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		}
 
 		#~
+		Sets how the loop runs this tool, overriding the agent's default (see Mode)
+		@param mode IN_THREAD or BOUNDED_THREAD
+		@return self for chaining
+		~#
+		method : public : SetMode(mode : AgentTool->Mode) ~ AgentTool {
+			@mode := mode;
+			@mode_set := true;
+			return @self;
+		}
+
+		#~
+		Gets the tool's own mode
+		@return the mode set with SetMode, IN_THREAD when none was set
+		~#
+		method : public : GetMode() ~ AgentTool->Mode {
+			return @mode;
+		}
+
+		#~
+		Says whether SetMode was called
+		@return true when the tool has its own mode
+		~#
+		method : public : HasMode() ~ Bool {
+			return @mode_set;
+		}
+
+		#~
 		Runs the handler; errors it raises are not caught here (Agent does that)
 		@param arguments the arguments
 		@return result text, or Nil on failure
 		~#
 		method : public : Invoke(arguments : JsonElement) ~ String {
+			return InvokeWith(arguments, Nil);
+		}
+
+		#~
+		Runs the handler with the run's cancellation token; errors it raises are not caught here
+		@param arguments the arguments
+		@param cancel the token, or Nil for a token that is never cancelled
+		@return result text, or Nil on failure
+		~#
+		method : public : InvokeWith(arguments : JsonElement, cancel : AgentCancel) ~ String {
+			if(@cancel_handler <> Nil) {
+				token := cancel;
+				if(token = Nil) {
+					token := AgentCancel->New();
+				};
+				return @cancel_handler->Run(arguments, token);
+			};
+
 			if(@handler <> Nil) {
 				return @handler->Run(arguments);
 			};
@@ -803,8 +916,9 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 	#~
 	What one tool call produced. The status says how it ended: ok, error (the handler failed), invalid
 	(the arguments broke the schema), unknown (no such tool), denied (an allow or deny list excludes it),
-	refused (the approver said no, or a dangerous tool had no approver), timeout, or skipped (the step
-	limit was reached before it ran).
+	refused (the approver said no, or a dangerous tool had no approver), timeout (over its time limit, or
+	the run's deadline passed while it ran), cancelled (the run was cancelled while it ran), or skipped (the
+	step limit, a budget, a deadline or a cancellation came before it ran).
 	~#
 	class AgentToolResult {
 		@call_id : String;
@@ -820,7 +934,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		@param tool_name tool name
 		@param arguments the arguments as JSON text
 		@param content what goes back to the model
-		@param status ok, error, invalid, unknown, denied, refused, timeout or skipped
+		@param status ok, error, invalid, unknown, denied, refused, timeout, cancelled or skipped
 		@param millis how long the handler took
 		~#
 		New(call_id : String, tool_name : String, arguments : String, content : String, status : String, millis : Int) {
@@ -866,7 +980,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 
 		#~
 		Gets the status
-		@return ok, error, invalid, unknown, denied, refused, timeout or skipped
+		@return ok, error, invalid, unknown, denied, refused, timeout, cancelled or skipped
 		~#
 		method : public : GetStatus() ~ String {
 			return @status;
@@ -948,6 +1062,10 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		@status : String;
 		@error : String;
 		@steps : Vector<AgentStep>;
+		@stop_reason : String;
+		@model_calls : Int;
+		@elapsed_ms : Int;
+		@cost : Float;
 
 		#~
 		Constructor
@@ -955,7 +1073,50 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		New() {
 			@text := "";
 			@status := "completed";
+			@stop_reason := "completed";
 			@steps := Vector->New()<AgentStep>;
+		}
+
+		#~
+		Gets why the run stopped, in one vocabulary: completed, cancelled, deadline, budget_steps (the step
+		limit, SetMaxSteps or the budget's), budget_model_calls, budget_tool_calls, budget_tokens,
+		budget_cost or error. GetStatus gives the same word, except max_steps for the SetMaxSteps limit.
+		@return the stop reason
+		~#
+		method : public : GetStopReason() ~ String {
+			return @stop_reason;
+		}
+
+		#~
+		Counts the model calls of the run, retries and failed calls included
+		@return calls made
+		~#
+		method : public : GetModelCalls() ~ Int {
+			return @model_calls;
+		}
+
+		#~
+		Gets how long the run took
+		@return milliseconds
+		~#
+		method : public : GetElapsedMs() ~ Int {
+			return @elapsed_ms;
+		}
+
+		#~
+		Gets what the run cost by the budget's price table
+		@return cost, 0.0 when no prices were set
+		~#
+		method : public : GetCost() ~ Float {
+			return @cost;
+		}
+
+		#~
+		Counts the tokens the run read and wrote
+		@return tokens, as far as the provider reported them
+		~#
+		method : public : GetTotalTokens() ~ Int {
+			return GetInputTokens() + GetOutputTokens();
 		}
 
 		#~
@@ -968,7 +1129,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 
 		#~
 		Gets how the run ended
-		@return completed, max_steps or error
+		@return completed, max_steps or error, or one of the other stop reasons (see GetStopReason)
 		~#
 		method : public : GetStatus() ~ String {
 			return @status;
@@ -1053,9 +1214,29 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		method : public : Finish(text : String, status : String, error : String) ~ Nil {
 			@text := text;
 			@status := status;
+			@stop_reason := status;
+			if(status->Equals("max_steps")) {
+				@stop_reason := "budget_steps";
+			};
 			if(error <> Nil) {
 				@error := Redactor->Scrub(error);
 			};
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Halt(reason : String, message : String) ~ Nil {
+			Finish("", reason, message);
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : SetStats(model_calls : Int, elapsed_ms : Int, cost : Float) ~ Nil {
+			@model_calls := model_calls;
+			@elapsed_ms := elapsed_ms;
+			@cost := cost;
 		}
 
 		#~
@@ -1119,6 +1300,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		method : public : ToJson() ~ JsonElement {
 			json := AgentJs->Object();
 			json->Insert("status", @status);
+			json->Insert("stop_reason", @stop_reason);
 			json->Insert("text", Redactor->Scrub(@text));
 			if(@error <> Nil) {
 				json->Insert("error", @error);
@@ -1163,6 +1345,683 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 	}
 
 	#~
+	A cancellation token. Any thread may call Cancel(); the loop checks the token before every step and
+	between tool calls and passes it to handlers that take one. A token can be linked to a parent: it
+	counts as cancelled when its parent is.
+
+```
+cancel := AgentCancel->New();
+agent->SetCancel(cancel);
+# from another thread: cancel->Cancel("user pressed stop");
+```
+	~#
+	class AgentCancel {
+		@mutex : ThreadMutex;
+		@cancelled : Bool;
+		@reason : String;
+		@parent : AgentCancel;
+
+		#~
+		Constructor
+		~#
+		New() {
+			@mutex := ThreadMutex->New("agent_cancel");
+		}
+
+		#~
+		Constructor for a token that is cancelled when its parent is
+		@param parent the parent token, or Nil
+		~#
+		New(parent : AgentCancel) {
+			@mutex := ThreadMutex->New("agent_cancel");
+			@parent := parent;
+		}
+
+		#~
+		Cancels the token; safe from any thread and safe to call twice
+		~#
+		method : public : Cancel() ~ Nil {
+			Cancel("cancelled");
+		}
+
+		#~
+		Cancels the token with a reason
+		@param reason short text for the trace
+		~#
+		method : public : Cancel(reason : String) ~ Nil {
+			critical(@mutex) {
+				if(<>@cancelled) {
+					@cancelled := true;
+					@reason := reason;
+				};
+			};
+		}
+
+		#~
+		Says whether the token or a parent was cancelled
+		@return true after Cancel
+		~#
+		method : public : IsCancelled() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				flag := @cancelled;
+			};
+
+			if(<>flag & @parent <> Nil) {
+				return @parent->IsCancelled();
+			};
+			return flag;
+		}
+
+		#~
+		Gets why the token was cancelled
+		@return the reason, or Nil while it is not cancelled
+		~#
+		method : public : GetReason() ~ String {
+			text : String;
+			critical(@mutex) {
+				text := @reason;
+			};
+
+			if(text = Nil & @parent <> Nil) {
+				return @parent->GetReason();
+			};
+			return text;
+		}
+	}
+
+	#~
+	Per-model prices for the cost budget, in currency units per million tokens
+	~#
+	class AgentPrices {
+		@names : Vector<String>;
+		@input : Vector<FloatRef>;
+		@output : Vector<FloatRef>;
+
+		#~
+		Constructor
+		~#
+		New() {
+			@names := Vector->New()<String>;
+			@input := Vector->New()<FloatRef>;
+			@output := Vector->New()<FloatRef>;
+		}
+
+		#~
+		Adds or replaces the price of a model
+		@param model model name
+		@param input_per_million price of a million tokens read
+		@param output_per_million price of a million tokens written
+		@return self for chaining
+		~#
+		method : public : Add(model : String, input_per_million : Float, output_per_million : Float) ~ AgentPrices {
+			i := 0;
+			while(i < @names->Size()) {
+				if(@names->Get(i)->Equals(model)) {
+					@input->Set(FloatRef->New(input_per_million), i);
+					@output->Set(FloatRef->New(output_per_million), i);
+					return @self;
+				};
+				i += 1;
+			};
+
+			@names->AddBack(model);
+			@input->AddBack(FloatRef->New(input_per_million));
+			@output->AddBack(FloatRef->New(output_per_million));
+			return @self;
+		}
+
+		#~
+		Finds a model's row
+		@param model model name
+		@return index, or -1 when the model has no price
+		~#
+		method : public : Find(model : String) ~ Int {
+			i := 0;
+			while(i < @names->Size()) {
+				if(@names->Get(i)->Equals(model)) {
+					return i;
+				};
+				i += 1;
+			};
+			return -1;
+		}
+
+		#~
+		Gets the price of tokens read
+		@param index row from Find
+		@return currency per million
+		~#
+		method : public : GetInput(index : Int) ~ Float {
+			return @input->Get(index)->Get();
+		}
+
+		#~
+		Gets the price of tokens written
+		@param index row from Find
+		@return currency per million
+		~#
+		method : public : GetOutput(index : Int) ~ Float {
+			return @output->Get(index)->Get();
+		}
+	}
+
+	#~
+	What one Run may use. Every limit is off (0) until it is set; the first one reached ends the run with a
+	matching stop reason: budget_steps, budget_model_calls, budget_tool_calls, budget_tokens, budget_cost or
+	deadline (the wall-clock limit). The counters start at zero on every Run. Tokens count only what the
+	backend reports, so a backend that reports none never trips the token or cost limit.
+
+```
+budget := AgentBudget->New()->SetMaxWallMs(30000)->SetMaxToolCalls(20)->SetMaxTokens(50000);
+agent->SetBudget(budget);
+```
+	~#
+	class AgentBudget {
+		@max_steps : Int;
+		@max_wall_ms : Int;
+		@max_model_calls : Int;
+		@max_tool_calls : Int;
+		@max_tokens : Int;
+		@max_cost : Float;
+		@model_call_ms : Int;
+		@price_input : Float;
+		@price_output : Float;
+
+		#~
+		Constructor: no limits
+		~#
+		New() {
+		}
+
+		#~
+		Limits the model replies (steps) of one Run
+		@param max_steps limit, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxSteps(max_steps : Int) ~ AgentBudget {
+			@max_steps := max_steps;
+			return @self;
+		}
+
+		#~
+		Limits the whole Run's wall-clock time: the total deadline. It also bounds every model call (for a
+		backend that is deadline aware) and every tool wait.
+		@param millis limit in milliseconds, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxWallMs(millis : Int) ~ AgentBudget {
+			@max_wall_ms := millis;
+			return @self;
+		}
+
+		#~
+		Limits the model calls of one Run, retries included
+		@param max_calls limit, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxModelCalls(max_calls : Int) ~ AgentBudget {
+			@max_model_calls := max_calls;
+			return @self;
+		}
+
+		#~
+		Limits the tool calls of one Run that actually run
+		@param max_calls limit, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxToolCalls(max_calls : Int) ~ AgentBudget {
+			@max_tool_calls := max_calls;
+			return @self;
+		}
+
+		#~
+		Limits the tokens (read plus written) of one Run
+		@param max_tokens limit, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxTokens(max_tokens : Int) ~ AgentBudget {
+			@max_tokens := max_tokens;
+			return @self;
+		}
+
+		#~
+		Limits the cost of one Run; set the prices with SetPrice or SetPrices
+		@param max_cost limit in the price table's currency, 0.0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxCost(max_cost : Float) ~ AgentBudget {
+			@max_cost := max_cost;
+			return @self;
+		}
+
+		#~
+		Sets how long one model call may take, apart from the run's deadline
+		@param millis limit in milliseconds, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetModelCallMs(millis : Int) ~ AgentBudget {
+			@model_call_ms := millis;
+			return @self;
+		}
+
+		#~
+		Sets one price for every model
+		@param input_per_million price of a million tokens read
+		@param output_per_million price of a million tokens written
+		@return self for chaining
+		~#
+		method : public : SetPrice(input_per_million : Float, output_per_million : Float) ~ AgentBudget {
+			@price_input := input_per_million;
+			@price_output := output_per_million;
+			return @self;
+		}
+
+		#~
+		Takes the price of one model from a table
+		@param prices the table
+		@param model the model's name; a model with no row leaves the price unchanged
+		@return self for chaining
+		~#
+		method : public : SetPrices(prices : AgentPrices, model : String) ~ AgentBudget {
+			index := prices->Find(model);
+			if(index >= 0) {
+				@price_input := prices->GetInput(index);
+				@price_output := prices->GetOutput(index);
+			};
+			return @self;
+		}
+
+		#~
+		Prices a number of tokens
+		@param input_tokens tokens read
+		@param output_tokens tokens written
+		@return cost in the price table's currency
+		~#
+		method : public : Cost(input_tokens : Int, output_tokens : Int) ~ Float {
+			return (input_tokens->As(Float) * @price_input + output_tokens->As(Float) * @price_output) / 1000000.0;
+		}
+
+		#~
+		Gets the step limit
+		@return limit, 0 for none
+		~#
+		method : public : GetMaxSteps() ~ Int {
+			return @max_steps;
+		}
+
+		#~
+		Gets the wall-clock limit
+		@return milliseconds, 0 for none
+		~#
+		method : public : GetMaxWallMs() ~ Int {
+			return @max_wall_ms;
+		}
+
+		#~
+		Gets the model call limit
+		@return limit, 0 for none
+		~#
+		method : public : GetMaxModelCalls() ~ Int {
+			return @max_model_calls;
+		}
+
+		#~
+		Gets the tool call limit
+		@return limit, 0 for none
+		~#
+		method : public : GetMaxToolCalls() ~ Int {
+			return @max_tool_calls;
+		}
+
+		#~
+		Gets the token limit
+		@return limit, 0 for none
+		~#
+		method : public : GetMaxTokens() ~ Int {
+			return @max_tokens;
+		}
+
+		#~
+		Gets the cost limit
+		@return limit, 0.0 for none
+		~#
+		method : public : GetMaxCost() ~ Float {
+			return @max_cost;
+		}
+
+		#~
+		Gets the per-call model limit
+		@return milliseconds, 0 for none
+		~#
+		method : public : GetModelCallMs() ~ Int {
+			return @model_call_ms;
+		}
+	}
+
+	#~
+	One event of a run's trace: a sequence number, the milliseconds since the run began, a kind, the step
+	it belongs to and the kind's own fields
+	~#
+	class AgentEvent {
+		@seq : Int;
+		@millis : Int;
+		@kind : String;
+		@step : Int;
+		@data : JsonElement;
+
+		#~
+		Constructor
+		@param seq number of the event in the run, from 1
+		@param millis milliseconds since the run began
+		@param kind event kind
+		@param step step number, 0 outside a step
+		@param data an object with the kind's fields, or Nil
+		~#
+		New(seq : Int, millis : Int, kind : String, step : Int, data : JsonElement) {
+			@seq := seq;
+			@millis := millis;
+			@kind := kind;
+			@step := step;
+			@data := data;
+			if(@data = Nil) {
+				@data := AgentJs->Object();
+			};
+		}
+
+		#~
+		Gets the sequence number
+		@return number, from 1
+		~#
+		method : public : GetSeq() ~ Int {
+			return @seq;
+		}
+
+		#~
+		Gets the time of the event
+		@return milliseconds since the run began
+		~#
+		method : public : GetMillis() ~ Int {
+			return @millis;
+		}
+
+		#~
+		Gets the kind
+		@return run_start, budget_check, model_start, model_end, model_retry, tool_start, tool_end, halt or run_end
+		~#
+		method : public : GetKind() ~ String {
+			return @kind;
+		}
+
+		#~
+		Gets the step
+		@return step number, 0 outside a step
+		~#
+		method : public : GetStep() ~ Int {
+			return @step;
+		}
+
+		#~
+		Gets the kind's own fields
+		@return an object
+		~#
+		method : public : GetData() ~ JsonElement {
+			return @data;
+		}
+
+		#~
+		Gets one field as text
+		@param name field name
+		@return the value as text, or Nil when the event has no such field
+		~#
+		method : public : Get(name : String) ~ String {
+			return AgentJs->Text(@data, name);
+		}
+
+		#~
+		Writes the event as one JSON object with API keys removed
+		@return seq, ms, event, step and the kind's fields
+		~#
+		method : public : ToJson() ~ JsonElement {
+			json := AgentJs->Object();
+			json->Insert("seq", @seq);
+			json->Insert("ms", @millis);
+			json->Insert("event", @kind);
+			json->Insert("step", @step);
+			names := @data->GetNames();
+			i := 0;
+			while(i < names->Size()) {
+				json->Insert(names->Get(i), @data->Get(names->Get(i)));
+				i += 1;
+			};
+			return JsonParser->TextToElement(Redactor->Scrub(json->ToString()));
+		}
+
+		#~
+		Writes the event as one line of JSON, the trace file format
+		@return JSON text with no line break
+		~#
+		method : public : ToString() ~ String {
+			return Redactor->Scrub(ToJson()->ToString());
+		}
+	}
+
+	#~
+	Keeps the events of a run in memory, for a test or a report
+	~#
+	class AgentTraceBuffer implements AgentTraceSink {
+		@events : Vector<AgentEvent>;
+
+		#~
+		Constructor
+		~#
+		New() {
+			@events := Vector->New()<AgentEvent>;
+		}
+
+		method : public : OnEvent(event : AgentEvent) ~ Nil {
+			@events->AddBack(event);
+		}
+
+		#~
+		Gets the events
+		@return events, oldest first
+		~#
+		method : public : GetEvents() ~ Vector<AgentEvent> {
+			return @events;
+		}
+
+		#~
+		Counts the events of one kind
+		@param kind event kind
+		@return count
+		~#
+		method : public : Count(kind : String) ~ Int {
+			total := 0;
+			i := 0;
+			while(i < @events->Size()) {
+				if(@events->Get(i)->GetKind()->Equals(kind)) {
+					total += 1;
+				};
+				i += 1;
+			};
+			return total;
+		}
+
+		#~
+		Finds the first event of one kind
+		@param kind event kind
+		@return the event, or Nil
+		~#
+		method : public : First(kind : String) ~ AgentEvent {
+			i := 0;
+			while(i < @events->Size()) {
+				if(@events->Get(i)->GetKind()->Equals(kind)) {
+					return @events->Get(i);
+				};
+				i += 1;
+			};
+			return Nil;
+		}
+
+		#~
+		Lists the kinds in order
+		@return kinds separated by commas
+		~#
+		method : public : Kinds() ~ String {
+			text := String->New();
+			i := 0;
+			while(i < @events->Size()) {
+				if(i > 0) {
+					text->Append(',');
+				};
+				text->Append(@events->Get(i)->GetKind());
+				i += 1;
+			};
+			return text;
+		}
+	}
+
+	# milliseconds since a run began; read by the loop thread only
+	class : private : AgentClock {
+		@timer : System.Time.Timer;
+		@total : Float;
+
+		New() {
+			@timer := System.Time.Timer->New(true);
+			@total := 0.0;
+		}
+
+		method : public : Ms() ~ Int {
+			@total += @timer->GetElapsedTime();
+			@timer->Start();
+			return (@total * 1000.0)->As(Int);
+		}
+	}
+
+	# what a worker thread hands back; a worker that was abandoned can no longer write to it
+	class : private : AgentSlot {
+		@mutex : ThreadMutex;
+		@cond : Condition;
+		@done : Bool;
+		@abandoned : Bool;
+		@text : String;
+		@failure : String;
+		@reply : AgentReply;
+		New() {
+			@mutex := ThreadMutex->New("agent_slot");
+			@cond := Condition->New();
+		}
+
+		method : public : Complete(text : String, failure : String, reply : AgentReply) ~ Nil {
+			critical(@mutex) {
+				if(<>@abandoned) {
+					@text := text;
+					@failure := failure;
+					@reply := reply;
+					@done := true;
+				};
+				@cond->Signal();
+			};
+		}
+
+		method : public : WaitDone(millis : Int) ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				if(<>@done) {
+					@cond->Wait(@mutex, millis);
+				};
+				flag := @done;
+			};
+			return flag;
+		}
+
+		# true when the worker had not finished and is now cut loose
+		method : public : Abandon() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				if(<>@done) {
+					@abandoned := true;
+					flag := true;
+				};
+			};
+			return flag;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : GetFailure() ~ String {
+			return @failure;
+		}
+
+		method : public : GetReply() ~ AgentReply {
+			return @reply;
+		}
+	}
+
+	# runs one tool call or model call off the loop's thread
+	class : private : AgentWorker from Thread {
+		@slot : AgentSlot;
+		@kind : Int;
+		@tool : AgentTool;
+		@arguments : JsonElement;
+		@cancel : AgentCancel;
+		@backend : ChatBackend;
+		@conversation : AgentConversation;
+		@tools : Vector<AgentTool>;
+
+		New(slot : AgentSlot) {
+			Parent("agent_worker");
+			@slot := slot;
+		}
+
+		method : public : ForTool(tool : AgentTool, arguments : JsonElement, cancel : AgentCancel) ~ AgentWorker {
+			@kind := 0;
+			@tool := tool;
+			@arguments := arguments;
+			@cancel := cancel;
+			return @self;
+		}
+
+		method : public : ForModel(backend : ChatBackend, conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentWorker {
+			@kind := 1;
+			@backend := backend;
+			@conversation := conversation;
+			@tools := tools;
+			return @self;
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			text : String;
+			failure : String;
+			reply : AgentReply;
+			try {
+				if(@kind = 0) {
+					text := @tool->InvokeWith(@arguments, @cancel);
+				}
+				else if(@kind = 1) {
+					reply := @backend->Chat(@conversation, @tools);
+					if(reply = Nil) {
+						failure := @backend->GetLastError();
+						if(failure = Nil) {
+							failure := "the backend returned no reply";
+						};
+					};
+				};
+			}
+			on(e : Error) {
+				failure := e->GetMessage();
+				if(failure = Nil) {
+					failure := "the worker failed";
+				};
+			};
+			@slot->Complete(text, failure, reply);
+		}
+	}
+
+	#~
 	The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back,
 	until the model answers without a tool call, the step limit is reached or the backend fails. The
 	conversation is kept, so Run can be called again to carry on; Reset starts over.
@@ -1191,6 +2050,23 @@ result->GetText()->PrintLine();
 		@approver : AgentApprover;
 		@approve_all : Bool;
 		@observer : AgentObserver;
+		@cancel : AgentCancel;
+		@budget : AgentBudget;
+		@tool_mode : AgentTool->Mode;
+		@bounded_model : Bool;
+		@retries : Int;
+		@retry_delay_ms : Int;
+		@trace : AgentTraceSink;
+		@clock : AgentClock;
+		@token : AgentCancel;
+		@halt : String;
+		@model_calls : Int;
+		@tool_calls : Int;
+		@tokens_used : Int;
+		@cost_used : Float;
+		@event_seq : Int;
+		@tracing : Bool;
+		@last_error : String;
 
 		#~
 		Constructor
@@ -1208,6 +2084,7 @@ result->GetText()->PrintLine();
 			@tool_timeout_ms := 0;
 			@max_result_chars := 20000;
 			@approve_all := false;
+			@tool_mode := AgentTool->Mode->IN_THREAD;
 		}
 
 		#~
@@ -1300,7 +2177,91 @@ result->GetText()->PrintLine();
 		}
 
 		#~
-		Runs the loop for one user message
+		Sets the cancellation token every Run checks: before each step, between tool calls and while it
+		waits for a model call or a tool in a worker thread
+		@param cancel the token, or Nil for none
+		@return self for chaining
+		~#
+		method : public : SetCancel(cancel : AgentCancel) ~ Agent {
+			@cancel := cancel;
+			return @self;
+		}
+
+		#~
+		Gets the cancellation token
+		@return the token, or Nil
+		~#
+		method : public : GetCancel() ~ AgentCancel {
+			return @cancel;
+		}
+
+		#~
+		Sets the limits of each Run: steps, wall-clock time, model calls, tool calls, tokens and cost
+		@param budget the budget, or Nil for none
+		@return self for chaining
+		~#
+		method : public : SetBudget(budget : AgentBudget) ~ Agent {
+			@budget := budget;
+			return @self;
+		}
+
+		#~
+		Gets the budget
+		@return the budget, or Nil
+		~#
+		method : public : GetBudget() ~ AgentBudget {
+			return @budget;
+		}
+
+		#~
+		Sets how tools run unless a tool sets its own mode (default IN_THREAD, as before)
+		@param mode IN_THREAD or BOUNDED_THREAD
+		@return self for chaining
+		~#
+		method : public : SetToolMode(mode : AgentTool->Mode) ~ Agent {
+			@tool_mode := mode;
+			return @self;
+		}
+
+		#~
+		Runs every model call on a worker thread, so the loop can return at a cancellation or the run's
+		deadline even when the backend cannot be interrupted (the call is then abandoned, with the leak
+		BOUNDED_THREAD describes, and its late reply is dropped). A backend that is deadline aware does not
+		need it. Default off.
+		@param bounded true to run model calls on a worker thread
+		@return self for chaining
+		~#
+		method : public : SetBoundedModelCalls(bounded : Bool) ~ Agent {
+			@bounded_model := bounded;
+			return @self;
+		}
+
+		#~
+		Sets how many times a failed model call is tried again before the run ends with an error (default 0)
+		@param retries extra tries
+		@param delay_ms wait before each try, in milliseconds; a cancellation cuts the wait short
+		@return self for chaining
+		~#
+		method : public : SetModelRetries(retries : Int, delay_ms : Int) ~ Agent {
+			@retries := retries;
+			@retry_delay_ms := delay_ms;
+			return @self;
+		}
+
+		#~
+		Sets who receives the trace events of a run
+		@param sink the receiver, for example an AgentTraceBuffer; Nil for none
+		@return self for chaining
+		~#
+		method : public : SetTrace(sink : AgentTraceSink) ~ Agent {
+			@trace := sink;
+			return @self;
+		}
+
+		#~
+		Runs the loop for one user message. Before every step and between tool calls it checks the
+		cancellation token and the budget; the run then ends with a stop reason (see AgentResult) and the
+		conversation stays valid, because the calls that did not run are answered as skipped.
 		@param prompt what the user asks
 		@return the transcript; check IsCompleted() before trusting GetText()
 		~#
@@ -1308,26 +2269,58 @@ result->GetText()->PrintLine();
 			result := AgentResult->New();
 			@conversation->AddUser(prompt);
 
+			@clock := AgentClock->New();
+			@token := AgentCancel->New(@cancel);
+			@halt := Nil;
+			@model_calls := 0;
+			@tool_calls := 0;
+			@tokens_used := 0;
+			@cost_used := 0.0;
+			@event_seq := 0;
+			@tracing := @trace <> Nil | (@observer <> Nil & @observer->TypeOf(AgentTraceSink));
+			if(@tracing) {
+				data := AgentJs->Object();
+				data->Insert("backend", @backend->GetName());
+				data->Insert("max_steps", @max_steps);
+				data->Insert("tool_mode", ModeName(@tool_mode));
+				Emit("run_start", 0, data);
+			};
+
 			tools := @registry->GetPermitted();
 			step_number := 0;
 			running := true;
 			while(running) {
-				if(step_number >= @max_steps) {
+				stop := BeforeModel(step_number);
+				if(stop <> Nil) {
+					Stop(result, stop);
+					running := false;
+				}
+				else if(step_number >= @max_steps) {
 					result->Finish("", "max_steps", "the model was still asking for tools after {$@max_steps} steps");
 					running := false;
 				}
 				else {
-					reply := @backend->Chat(@conversation, tools);
+					reply := ModelCall(tools, step_number + 1);
 					if(reply = Nil) {
-						message := @backend->GetLastError();
-						if(message = Nil) {
-							message := "the backend returned no reply";
+						if(@halt <> Nil) {
+							Stop(result, @halt);
+						}
+						else {
+							message := @last_error;
+							if(message = Nil) {
+								message := "the backend returned no reply";
+							};
+							result->Finish("", "error", message);
 						};
-						result->Finish("", "error", message);
 						running := false;
 					}
 					else {
 						step_number += 1;
+						@tokens_used += reply->GetInputTokens() + reply->GetOutputTokens();
+						if(@budget <> Nil) {
+							@cost_used += @budget->Cost(reply->GetInputTokens(), reply->GetOutputTokens());
+						};
+
 						@conversation->AddAssistant(reply, @backend->GetName());
 						step := AgentStep->New(step_number, reply);
 						result->AddStep(step);
@@ -1337,8 +2330,18 @@ result->GetText()->PrintLine();
 
 						if(reply->HasToolCalls()) {
 							last_step := step_number >= @max_steps;
+							over := OverBudget();
+							if(over <> Nil & @halt = Nil) {
+								@halt := over;
+								EmitHalt(over, step_number);
+							};
+
 							AnswerCalls(step, reply, last_step);
-							if(last_step) {
+							if(@halt <> Nil) {
+								Stop(result, @halt);
+								running := false;
+							}
+							else if(last_step) {
 								result->Finish("", "max_steps", "the model was still asking for tools after {$@max_steps} steps");
 								running := false;
 							};
@@ -1357,21 +2360,379 @@ result->GetText()->PrintLine();
 				};
 			};
 
+			elapsed := @clock->Ms();
+			result->SetStats(@model_calls, elapsed, @cost_used);
+			if(@tracing) {
+				data := AgentJs->Object();
+				data->Insert("stop_reason", result->GetStopReason());
+				data->Insert("steps", result->GetSteps()->Size());
+				data->Insert("model_calls", @model_calls);
+				data->Insert("tool_calls", @tool_calls);
+				data->Insert("tokens", @tokens_used);
+				data->Insert("cost", @cost_used);
+				data->Insert("elapsed_ms", elapsed);
+				Emit("run_end", step_number, data);
+			};
 			return result;
 		}
 
-		# answers every call of a reply; calls past the last step are not run, but still answered so the conversation stays valid
+		# ends the result with a stop reason and a sentence for it
+		method : Stop(result : AgentResult, reason : String) ~ Nil {
+			message := reason;
+			if(reason->Equals("cancelled")) {
+				message := "the run was cancelled";
+				why := @token->GetReason();
+				if(why <> Nil & <>why->Equals("cancelled")) {
+					message->Append(": ");
+					message->Append(why);
+				};
+			}
+			else if(reason->Equals("deadline")) {
+				limit := @budget->GetMaxWallMs();
+				message := "the run passed its {$limit} ms deadline";
+			}
+			else if(reason->Equals("budget_steps")) {
+				limit := @budget->GetMaxSteps();
+				message := "the step budget of {$limit} was used up";
+			}
+			else if(reason->Equals("budget_model_calls")) {
+				limit := @budget->GetMaxModelCalls();
+				message := "the budget of {$limit} model calls was used up";
+			}
+			else if(reason->Equals("budget_tool_calls")) {
+				limit := @budget->GetMaxToolCalls();
+				message := "the budget of {$limit} tool calls was used up";
+			}
+			else if(reason->Equals("budget_tokens")) {
+				limit := @budget->GetMaxTokens();
+				message := "the token budget of {$limit} was used up ({$@tokens_used} used)";
+			}
+			else if(reason->Equals("budget_cost")) {
+				limit := @budget->GetMaxCost();
+				message := "the cost budget of {$limit} was used up ({$@cost_used} spent)";
+			};
+			result->Halt(reason, message);
+		}
+
+		method : ModeName(mode : AgentTool->Mode) ~ String {
+			if(mode = AgentTool->Mode->BOUNDED_THREAD) {
+				return "bounded_thread";
+			};
+			return "in_thread";
+		}
+
+		# cancelled or deadline when the run must stop now, else Nil; the first answer is kept
+		method : Checkpoint() ~ String {
+			if(@halt <> Nil) {
+				return @halt;
+			};
+
+			reason : String;
+			if(@budget <> Nil & @budget->GetMaxWallMs() > 0 & @clock->Ms() >= @budget->GetMaxWallMs()) {
+				reason := "deadline";
+				@token->Cancel("deadline");
+			}
+			else if(@token->IsCancelled()) {
+				reason := "cancelled";
+			};
+
+			if(reason <> Nil) {
+				@halt := reason;
+				EmitHalt(reason, 0);
+			};
+			return reason;
+		}
+
+		# the budget limits that decide, before a model call, that the run is over
+		method : BeforeModel(step_number : Int) ~ String {
+			reason := Checkpoint();
+			if(reason = Nil & @budget <> Nil) {
+				if(@budget->GetMaxSteps() > 0 & step_number >= @budget->GetMaxSteps()) {
+					reason := "budget_steps";
+				}
+				else if(@budget->GetMaxModelCalls() > 0 & @model_calls >= @budget->GetMaxModelCalls()) {
+					reason := "budget_model_calls";
+				}
+				else {
+					reason := OverBudget();
+				};
+
+				if(@tracing) {
+					data := AgentJs->Object();
+					data->Insert("steps", step_number);
+					data->Insert("model_calls", @model_calls);
+					data->Insert("tool_calls", @tool_calls);
+					data->Insert("tokens", @tokens_used);
+					data->Insert("cost", @cost_used);
+					data->Insert("elapsed_ms", @clock->Ms());
+					word := "none";
+					if(reason <> Nil) {
+						word := reason;
+					};
+					data->Insert("exhausted", word);
+					Emit("budget_check", step_number, data);
+				};
+
+				if(reason <> Nil) {
+					@halt := reason;
+				};
+			};
+			return reason;
+		}
+
+		# tokens and cost, which are known only after a reply
+		method : OverBudget() ~ String {
+			if(@budget = Nil) {
+				return Nil;
+			};
+
+			if(@budget->GetMaxTokens() > 0 & @tokens_used >= @budget->GetMaxTokens()) {
+				return "budget_tokens";
+			};
+
+			if(@budget->GetMaxCost() > 0.0 & @cost_used >= @budget->GetMaxCost()) {
+				return "budget_cost";
+			};
+			return Nil;
+		}
+
+		# milliseconds a model call may take, 0 for no limit
+		method : CallLimit() ~ Int {
+			limit := 0;
+			if(@budget <> Nil) {
+				limit := @budget->GetModelCallMs();
+				if(@budget->GetMaxWallMs() > 0) {
+					left := @budget->GetMaxWallMs() - @clock->Ms();
+					if(left < 1) {
+						left := 1;
+					};
+					if(limit <= 0 | left < limit) {
+						limit := left;
+					};
+				};
+			};
+			return limit;
+		}
+
+		# one model call, with retries; Nil when the run was halted (@halt) or the backend failed (@last_error)
+		method : ModelCall(tools : Vector<AgentTool>, step_number : Int) ~ AgentReply {
+			reply : AgentReply;
+			attempt := 0;
+			finished := false;
+			@last_error := Nil;
+			while(<>finished) {
+				@model_calls += 1;
+				limit := CallLimit();
+				started := @clock->Ms();
+				if(@tracing) {
+					data := AgentJs->Object();
+					data->Insert("attempt", attempt + 1);
+					data->Insert("limit_ms", limit);
+					data->Insert("bounded", @bounded_model);
+					Emit("model_start", step_number, data);
+				};
+
+				reply := Nil;
+				@last_error := Nil;
+				if(@backend->TypeOf(AgentDeadlineAware)) {
+					@backend->As(AgentDeadlineAware)->SetDeadlineMs(limit);
+				};
+
+				if(@bounded_model) {
+					slot := AgentSlot->New();
+					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools);
+					worker->Execute(Nil);
+					how := Await(slot, limit);
+					if(how->Equals("done")) {
+						reply := slot->GetReply();
+						@last_error := slot->GetFailure();
+					}
+					else if(how->Equals("timeout")) {
+						@last_error := "the model call took longer than {$limit} ms and was abandoned";
+					};
+				}
+				else {
+					reply := @backend->Chat(@conversation, tools);
+					if(reply = Nil) {
+						@last_error := @backend->GetLastError();
+					};
+				};
+
+				if(reply <> Nil) {
+					finished := true;
+				}
+				else {
+					if(@last_error = Nil) {
+						@last_error := "the backend returned no reply";
+					};
+
+					NearDeadline();
+					if(Checkpoint() <> Nil) {
+						finished := true;
+					}
+					else if(attempt < @retries) {
+						if(@budget <> Nil & @budget->GetMaxModelCalls() > 0 & @model_calls >= @budget->GetMaxModelCalls()) {
+							@halt := "budget_model_calls";
+							EmitHalt(@halt, step_number);
+							finished := true;
+						}
+						else {
+							attempt += 1;
+						};
+					}
+					else {
+						finished := true;
+					};
+				};
+
+				if(@tracing) {
+					data := AgentJs->Object();
+					data->Insert("ok", reply <> Nil);
+					data->Insert("ms", @clock->Ms() - started);
+					if(reply <> Nil) {
+						data->Insert("input_tokens", reply->GetInputTokens());
+						data->Insert("output_tokens", reply->GetOutputTokens());
+						data->Insert("tool_calls", reply->GetToolCalls()->Size());
+					}
+					else {
+						data->Insert("error", Redactor->Scrub(@last_error));
+					};
+					Emit("model_end", step_number, data);
+
+					if(reply = Nil & <>finished) {
+						retry := AgentJs->Object();
+						retry->Insert("attempt", attempt + 1);
+						retry->Insert("after_error", Redactor->Scrub(@last_error));
+						Emit("model_retry", step_number, retry);
+					};
+				};
+
+				if(reply = Nil & <>finished) {
+					Pause(@retry_delay_ms);
+					if(Checkpoint() <> Nil) {
+						finished := true;
+					};
+				};
+			};
+			return reply;
+		}
+
+		# a deadline-aware backend gives up a moment before the loop's own clock says the deadline passed
+		method : NearDeadline() ~ Nil {
+			if(@halt = Nil & @budget <> Nil & @budget->GetMaxWallMs() > 0 & @clock->Ms() + 25 >= @budget->GetMaxWallMs()) {
+				@halt := "deadline";
+				@token->Cancel("deadline");
+				EmitHalt("deadline", 0);
+			};
+		}
+
+		# sleeps in short slices, so a cancellation or the deadline cuts it short
+		method : Pause(millis : Int) ~ Nil {
+			waited := 0;
+			while(waited < millis & Checkpoint() = Nil) {
+				System.Concurrency.Thread->Sleep(10);
+				waited += 10;
+			};
+		}
+
+		# a copy of the conversation for a worker that may outlive the call
+		method : Snapshot() ~ AgentConversation {
+			copy := AgentConversation->New();
+			copy->SetSystem(@conversation->GetSystem());
+			entries := @conversation->GetEntries();
+			i := 0;
+			while(i < entries->Size()) {
+				copy->GetEntries()->AddBack(entries->Get(i));
+				i += 1;
+			};
+			return copy;
+		}
+
+		# waits for a worker: done, timeout (over limit), cancelled or deadline. A worker still running when
+		# the wait ends is abandoned 
+		method : Await(slot : AgentSlot, limit : Int) ~ String {
+			start := @clock->Ms();
+			how := "";
+			while(how->Size() = 0) {
+				slice := 10;
+				if(limit > 0) {
+					left := limit - (@clock->Ms() - start);
+					if(left < slice) {
+						slice := left;
+					};
+				};
+
+				if(slice < 1) {
+					slice := 1;
+				};
+
+				if(slot->WaitDone(slice)) {
+					how := "done";
+				}
+				else {
+					reason := Checkpoint();
+					if(reason <> Nil) {
+						how := reason;
+					}
+					else if(limit > 0 & @clock->Ms() - start >= limit) {
+						how := "timeout";
+					};
+				};
+			};
+
+			if(<>how->Equals("done")) {
+				# a worker that finished in the meantime is dropped too: the wait already ended
+				slot->Abandon();
+			};
+			return how;
+		}
+
+		method : Emit(kind : String, step : Int, data : JsonElement) ~ Nil {
+			@event_seq += 1;
+			event := AgentEvent->New(@event_seq, @clock->Ms(), kind, step, data);
+			if(@trace <> Nil) {
+				@trace->OnEvent(event);
+			};
+
+			if(@observer <> Nil & @observer->TypeOf(AgentTraceSink)) {
+				@observer->As(AgentTraceSink)->OnEvent(event);
+			};
+		}
+
+		method : EmitHalt(reason : String, step : Int) ~ Nil {
+			if(@tracing) {
+				data := AgentJs->Object();
+				data->Insert("reason", reason);
+				Emit("halt", step, data);
+			};
+		}
+
+		# answers every call of a reply; calls that are not run (past the last step, or after the run was
+		# halted) are still answered so the conversation stays valid
 		method : AnswerCalls(step : AgentStep, reply : AgentReply, skip : Bool) ~ Nil {
 			calls := reply->GetToolCalls();
 			i := 0;
 			while(i < calls->Size()) {
 				call := calls->Get(i);
+				if(<>skip & @halt = Nil) {
+					Checkpoint();
+					if(@halt = Nil & @budget <> Nil & @budget->GetMaxToolCalls() > 0 & @tool_calls >= @budget->GetMaxToolCalls()) {
+						@halt := "budget_tool_calls";
+						EmitHalt(@halt, step->GetIndex());
+					};
+				};
+
 				outcome : AgentToolResult;
 				if(skip) {
 					outcome := AgentToolResult->New(call->GetId(), call->GetName(), ArgumentText(call), "Error: the step limit was reached, so this call was not run", "skipped", 0);
 				}
+				else if(@halt <> Nil) {
+					reason := @halt;
+					outcome := AgentToolResult->New(call->GetId(), call->GetName(), ArgumentText(call), "Error: the run was stopped ({$reason}), so this call was not run", "skipped", 0);
+				}
 				else {
 					outcome := Execute(call);
+					@tool_calls += 1;
 				};
 
 				step->AddResult(outcome);
@@ -1451,23 +2812,79 @@ result->GetText()->PrintLine();
 			output : String;
 			failure : String;
 
-			timer := System.Time.Timer->New(true);
-			try {
-				output := tool->Invoke(call->GetArguments());
-			}
-			on(e : Error) {
-				failure := e->GetMessage();
-				if(failure = Nil) {
-					failure := "the tool failed";
-				};
-			};
-			timer->End();
-			millis := (timer->GetElapsedTime() * 1000.0)->As(Int);
-
 			limit := tool->GetTimeout();
 			if(limit <= 0) {
 				limit := @tool_timeout_ms;
 			};
+
+			mode := @tool_mode;
+			if(tool->HasMode()) {
+				mode := tool->GetMode();
+			};
+
+			if(@tracing) {
+				data := AgentJs->Object();
+				data->Insert("id", id);
+				data->Insert("tool", name);
+				data->Insert("mode", ModeName(mode));
+				data->Insert("limit_ms", limit);
+				data->Insert("arguments", Redactor->Scrub(arguments->Truncate(500, "...")));
+				Emit("tool_start", 0, data);
+			};
+
+			how := "done";
+			started := @clock->Ms();
+			if(mode = AgentTool->Mode->IN_THREAD) {
+				try {
+					output := tool->InvokeWith(call->GetArguments(), @token);
+				}
+				on(e : Error) {
+					failure := e->GetMessage();
+					if(failure = Nil) {
+						failure := "the tool failed";
+					};
+				};
+			}
+			else {
+				slot := AgentSlot->New();
+				worker := AgentWorker->New(slot);
+				worker->ForTool(tool, call->GetArguments(), @token);
+				worker->Execute(Nil);
+				how := Await(slot, limit);
+				if(how->Equals("done")) {
+					failure := slot->GetFailure();
+					output := slot->GetText();
+				};
+			};
+			millis := @clock->Ms() - started;
+
+			outcome := Finish(tool, id, name, arguments, output, failure, how, limit, millis);
+			if(@tracing) {
+				data := AgentJs->Object();
+				data->Insert("id", id);
+				data->Insert("tool", name);
+				data->Insert("status", outcome->GetStatus());
+				data->Insert("ms", millis);
+				data->Insert("chars", outcome->GetContent()->Size());
+				Emit("tool_end", 0, data);
+			};
+			return outcome;
+		}
+
+		# turns how a call ended into the result the model reads
+		method : Finish(tool : AgentTool, id : String, name : String, arguments : String, output : String, failure : String, how : String, limit : Int, millis : Int) ~ AgentToolResult {
+			if(how->Equals("cancelled")) {
+				return AgentToolResult->New(id, name, arguments, "Error: the run was cancelled while the tool '{$name}' was running, so its result was discarded", "cancelled", millis);
+			};
+
+			if(how->Equals("deadline")) {
+				return AgentToolResult->New(id, name, arguments, "Error: the run's deadline passed while the tool '{$name}' was running, so its result was discarded", "timeout", millis);
+			};
+
+			if(how->Equals("timeout")) {
+				return AgentToolResult->New(id, name, arguments, "Error: the tool '{$name}' did not finish within its {$limit} ms limit and was stopped, so it has no result", "timeout", millis);
+			};
+
 			if(limit > 0 & millis > limit) {
 				return AgentToolResult->New(id, name, arguments, "Error: the tool '{$name}' took {$millis} ms, over its {$limit} ms limit, so its result was discarded", "timeout", millis);
 			};
@@ -1482,10 +2899,11 @@ result->GetText()->PrintLine();
 				return AgentToolResult->New(id, name, arguments, "Error: the tool '{$name}' returned no result", "error", millis);
 			};
 
-			if(@max_result_chars > 0 & output->Size() > @max_result_chars) {
-				output := output->Truncate(@max_result_chars, "... [truncated]");
+			text := output;
+			if(@max_result_chars > 0 & text->Size() > @max_result_chars) {
+				text := text->Truncate(@max_result_chars, "... [truncated]");
 			};
-			return AgentToolResult->New(id, name, arguments, output, "ok", millis);
+			return AgentToolResult->New(id, name, arguments, text, "ok", millis);
 		}
 	}
 
@@ -1999,9 +3417,12 @@ script->AddBack(AgentReply->Say("The answer is 42."));
 backend := ScriptedBackend->New(script);
 ```
 	~#
-	class ScriptedBackend implements ChatBackend {
+	class ScriptedBackend implements ChatBackend, AgentDeadlineAware {
 		@script : Vector<AgentReply>;
 		@used : Int;
+		@asked : Int;
+		@delay_ms : Int;
+		@deadline_ms : Int;
 		@last_error : String;
 		@last_conversation : AgentConversation;
 		@offered : String;
@@ -2036,11 +3457,34 @@ backend := ScriptedBackend->New(script);
 		}
 
 		#~
-		Gets how many times the model was asked
+		Gets how many replies the model has given
 		@return count
 		~#
 		method : public : GetCallCount() ~ Int {
 			return @used;
+		}
+
+		#~
+		Gets how many times the model was asked, including calls that ran out of time or script
+		@return count
+		~#
+		method : public : GetAskedCount() ~ Int {
+			return @asked;
+		}
+
+		#~
+		Makes every call take this long before it answers, to test cancellation and deadlines. The wait is
+		in short slices, and ends early with no reply when a deadline set with SetDeadlineMs passes.
+		@param millis delay in milliseconds, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetDelayMs(millis : Int) ~ ScriptedBackend {
+			@delay_ms := millis;
+			return @self;
+		}
+
+		method : public : SetDeadlineMs(millis : Int) ~ Nil {
+			@deadline_ms := millis;
 		}
 
 		#~
@@ -2061,6 +3505,7 @@ backend := ScriptedBackend->New(script);
 
 		method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
 			@last_error := Nil;
+			@asked += 1;
 			@last_conversation := conversation;
 			@offered := "";
 			if(tools <> Nil) {
@@ -2072,6 +3517,16 @@ backend := ScriptedBackend->New(script);
 					@offered->Append(tools->Get(i)->GetName());
 					i += 1;
 				};
+			};
+
+			waited := 0;
+			while(waited < @delay_ms) {
+				if(@deadline_ms > 0 & waited >= @deadline_ms) {
+					@last_error := "the model call passed its deadline of {$@deadline_ms} ms";
+					return Nil;
+				};
+				System.Concurrency.Thread->Sleep(10);
+				waited += 10;
 			};
 
 			if(@used >= @script->Size()) {

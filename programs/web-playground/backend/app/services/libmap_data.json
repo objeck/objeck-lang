@@ -17,7 +17,7 @@
   "agent": {
    "deps": ["net", "json", "cipher", "misc"],
    "bundles": {
-    "API.Agent": ["Agent", "AgentApprover", "AgentConversation", "AgentEntry", "AgentObserver", "AgentReply", "AgentResult", "AgentSchema", "AgentStep", "AgentTool", "AgentToolCall", "AgentToolHandler", "AgentToolResult", "AgentTools", "AnthropicBackend", "ChatBackend", "GeminiBackend", "OllamaBackend", "OpenAIBackend", "Redactor", "ScriptedBackend", "ToolRegistry"]
+    "API.Agent": ["Agent", "AgentApprover", "AgentBudget", "AgentCancel", "AgentCancelableHandler", "AgentConversation", "AgentDeadlineAware", "AgentEntry", "AgentEvent", "AgentObserver", "AgentPrices", "AgentReply", "AgentResult", "AgentSchema", "AgentStep", "AgentTool", "AgentToolCall", "AgentToolHandler", "AgentToolResult", "AgentTools", "AgentTraceBuffer", "AgentTraceSink", "AnthropicBackend", "ChatBackend", "GeminiBackend", "OllamaBackend", "OpenAIBackend", "Redactor", "ScriptedBackend", "ToolRegistry"]
    }
   },
   "ai": {
