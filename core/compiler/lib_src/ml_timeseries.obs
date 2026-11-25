@@ -6,6 +6,8 @@
 use Collection;
 
 #~
+Experimental: API may change.
+
 System.ML.TimeSeries: forecasting for one numeric series, in pure Objeck. This file has the container (TimeSeries), the transforms (differencing and its inverse, Box-Cox, rolling mean and standard deviation, classical seasonal decomposition, lag matrices), autocorrelation (Acf), the stationarity test (Stationarity) and the numerical helpers (TsMath). The models (baselines, exponential smoothing, ARIMA, automatic selection) are in ml_timeseries_models.obs and the accuracy metrics and rolling-origin cross-validation in ml_timeseries_eval.obs; all three files are one library. Needs only gen_collect: compile with -lib ml_timeseries,gen_collect.
 
 Conventions follow System.ML: an estimator has Fit, Forecast (the predict step) and GetError; no call ends the program on bad input (Fit returns false and GetError says why, the static helpers return Nil or NaN). Everything is deterministic: there is no hidden random number generator, the optimizer is a fixed-start Nelder-Mead, and the simulation helper (Simulate) takes its seed.

@@ -31,6 +31,9 @@ bundle API.Onnx {
 	refused, with the list of those it does, and the session does not open; it
 	never silently runs on the CPU instead.
 
+	Experimental: API may change. This covers the TensorRT provider ("tensorrt") and
+	its engine-cache options (engine_cache, engine_cache_path, timing_cache).
+
 	```
 	providers := OnnxRuntime->GetProviders();
 	each(p in providers) {
