@@ -15,7 +15,7 @@ All notable changes to Objeck will be documented in this file.
 - **`mcp_agent` library (`McpAgentTools`)**: `FromSpec` turns a declared function into an `API.Agent` tool, `FromClient` and `AddAll` turn a server's tools into agent tools with their hints, and the agent's cancellation token reaches the handler as `McpCall->IsCancelled()`.
 - **Agent approval by effect**: `AgentTool->SetReadOnlyHint`, `SetDestructiveHint` and `NeedsApproval`; a tool whose destructive hint is true needs the approver like a dangerous one, and `Agent->SetApproveUnlessReadOnly(true)` asks about every tool not known to be read-only. Tools with no hints behave as before.
 - **`McpService->EnableStats(true)` and `GetStats()`**: calls, errors, rejected arguments, cancellations and handler milliseconds per tool; off by default.
-- Examples `mcp_declare_32`, `mcp_stub_33` and `mcp_agent_34` (offline, deterministic), the walkthrough `docs/MCP_WALKTHROUGH.md`, and `mcp_canvas` rebuilt on the declared tools and a generated typed client.
+- Examples `mcp_declare_40`, `mcp_stub_41` and `mcp_agent_42` (offline, deterministic), the walkthrough `docs/MCP_WALKTHROUGH.md`, and `mcp_canvas` rebuilt on the declared tools and a generated typed client.
 
 ### Changed
 

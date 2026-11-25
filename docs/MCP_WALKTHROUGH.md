@@ -2,7 +2,7 @@
 
 The Model Context Protocol (MCP) is how an AI model finds and calls a program's functions. This walkthrough
 builds one small tool four ways. Every output below is from a real run on the build that wrote this page;
-the programs are in `programs/deploy/` (`mcp_declare_32`, `mcp_stub_33`, `mcp_agent_34`) and compile with the
+the programs are in `programs/deploy/` (`mcp_declare_40`, `mcp_stub_41`, `mcp_agent_42`) and compile with the
 libraries on their first line. The reference is [ai_sections/mcp.md](ai_sections/mcp.md); the design and what
 is not possible yet is [design/MCP_FIRST_CLASS.md](design/MCP_FIRST_CLASS.md).
 
@@ -32,7 +32,7 @@ class Tools {
 
 The description is the comment's text, the schema comes from the parameter types (the enum becomes a list of
 allowed values, a default would make a parameter optional), `@readonly` is the MCP `readOnlyHint`, and
-`Tools->McpTools(server)` registers every tool of the class. `obr mcp_declare_32.obe` lists what the server
+`Tools->McpTools(server)` registers every tool of the class. `obr mcp_declare_40.obe` lists what the server
 offers and calls it:
 
 ```
@@ -51,9 +51,9 @@ checked against it.
 
 ## 2. Serve
 
-The same server speaks the protocol on standard input and output with `obr mcp_declare_32.obe --stdio`
+The same server speaks the protocol on standard input and output with `obr mcp_declare_40.obe --stdio`
 (or `server->ServeHttp(8080)`), which is what Claude Code and Claude Desktop launch: put
-`{"mcpServers":{"demo":{"command":"obr","args":["mcp_declare_32.obe","--stdio"]}}}` in `.mcp.json`. The
+`{"mcpServers":{"demo":{"command":"obr","args":["mcp_declare_40.obe","--stdio"]}}}` in `.mcp.json`. The
 protocol path is tested against a scripted client, and the MCP reference records the one real-client check
 (Claude Code with `mcp_server_demo`). This example's `--stdio` mode was driven by hand with an initialize and a
 `tools/call` and answered correctly; it has not been tried with Claude Code. A one-line `obr prog.obe --mcp`
@@ -77,12 +77,12 @@ shop->Price("coffee");              # Nil, and shop->GetError() is "no such item
 shop->Price("tea", 3);              # does not compile
 ```
 
-`mcp_stub_33` runs this end to end in one process and prints those lines.
+`mcp_stub_41` runs this end to end in one process and prints those lines.
 
 ## 4. Hand functions to an agent, and let the effect decide who approves
 
 `McpAgentTools->AddAll(registry, client)` makes `API.Agent` tools from a server's tools (the server here is the
-`@tool` class), and the hints drive approval; `FromSpec(spec, handler)` does the same for an `McpToolSpec`. `mcp_agent_34` gives a scripted model three tools (one read-only, one unmarked, one
+`@tool` class), and the hints drive approval; `FromSpec(spec, handler)` does the same for an `McpToolSpec`. `mcp_agent_42` gives a scripted model three tools (one read-only, one unmarked, one
 destructive) and runs the agent with `SetApproveUnlessReadOnly(true)` and an approver that refuses deletions:
 
 ```

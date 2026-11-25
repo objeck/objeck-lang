@@ -18,7 +18,7 @@ exposes no token counts, so only Claude's are reported.
 ~#
 use API.MCP, API.Anthropic, Data.JSON, Collection;
 
-# the server: three plain functions, each marked @tool (see mcp_declare_32)
+# the server: three plain functions, each marked @tool (see mcp_declare_40)
 class Shop {
 	#~
 	The price of an item.

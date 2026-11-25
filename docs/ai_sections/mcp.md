@@ -411,7 +411,7 @@ agent := Agent->New(backend, registry);
 agent->SetApprover(approver)->SetApproveUnlessReadOnly(true);
 ```
 
-The agent reads the hints. A tool whose `destructiveHint` is true needs the approver, like one marked `SetDangerous`, and with no approver the call is refused. `SetApproveUnlessReadOnly(true)` asks about every tool not known to be read-only: the safe rule for tools from a server you do not control, because a missing hint says nothing. A tool with no hints behaves as before. The agent's cancellation token (and its deadline) reaches a function run by `FromSpec` as `McpCall->IsCancelled()`, polled every 2 ms, so a handler that checks it stops promptly; one that does not runs to its end. See `programs/deploy/mcp_declare_32.obs`, `mcp_stub_33.obs` and `mcp_agent_34.obs`, and the walkthrough `docs/MCP_WALKTHROUGH.md`.
+The agent reads the hints. A tool whose `destructiveHint` is true needs the approver, like one marked `SetDangerous`, and with no approver the call is refused. `SetApproveUnlessReadOnly(true)` asks about every tool not known to be read-only: the safe rule for tools from a server you do not control, because a missing hint says nothing. A tool with no hints behaves as before. The agent's cancellation token (and its deadline) reaches a function run by `FromSpec` as `McpCall->IsCancelled()`, polled every 2 ms, so a handler that checks it stops promptly; one that does not runs to its end. See `programs/deploy/mcp_declare_40.obs`, `mcp_stub_41.obs` and `mcp_agent_42.obs`, and the walkthrough `docs/MCP_WALKTHROUGH.md`.
 
 ### API
 

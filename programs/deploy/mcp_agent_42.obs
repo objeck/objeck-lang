@@ -1,11 +1,11 @@
 #~
-# compile: obc -src mcp_agent_34.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
-# run:     obr mcp_agent_34.obe
+# compile: obc -src mcp_agent_42.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
+# run:     obr mcp_agent_42.obe
 #
 # Hand plain functions to an agent, and let the effect of each decide whether
 # the agent may run it. An agent (API.Agent) is a loop: it sends a task to a
 # model, runs the tool calls the model asks for, and sends the results back.
-# The functions below are marked @tool, as in mcp_declare_32, so the compiler
+# The functions below are marked @tool, as in mcp_declare_40, so the compiler
 # writes Tools->McpTools(server); McpAgentTools->AddAll then turns every tool of
 # that server into an agent tool, with its schema and its hints.
 #

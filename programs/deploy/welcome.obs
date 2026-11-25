@@ -25,7 +25,7 @@ class Welcome {
 			"serialize_20.obs", "odbc_21.obs", "http_client_22.obs", "web_server_23.obs",
 			"rss_reader_24.obs", "ml_regression_25.obs", "ml_classify_26.obs", "ml_outliers_27.obs",
 			"nlp_28.obs", "llm_29.obs", "ai_search_30.obs", "game_31.obs",
-			"mcp_declare_32.obs", "mcp_stub_33.obs", "mcp_agent_34.obs"];
+			"mcp_declare_40.obs", "mcp_stub_41.obs", "mcp_agent_42.obs"];
 
 		libs := [
 			"",
