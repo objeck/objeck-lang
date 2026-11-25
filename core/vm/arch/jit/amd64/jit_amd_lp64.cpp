@@ -1958,6 +1958,9 @@ void JitAmd64::EmitBoundsStubs() {
   const Register arg1 = RDI;
   const Register arg2 = RSI;
 #endif
+  // the stubs belong to no pinned loop; call_reg would otherwise write the
+  // pinned floats back before the call (SysV), for a frame nobody reads again
+  active_pin_region = -1;
   for(const BoundsSite& site : bounds_sites) {
     const long stub_index = code_index;
     int32_t rel = (int32_t)(stub_index - (site.less_pos + 4));
