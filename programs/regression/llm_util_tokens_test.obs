@@ -1,0 +1,214 @@
+# EXTRA_LIBS: llm_util,regex
+#~
+API.LlmUtil token estimation and the context window. The estimator is checked on
+fixed samples: two whose cl100k counts are known exactly (it must match them), and
+longer English, code, JSON, digit and CJK samples whose characters-per-token ratio
+must fall in the documented bounds. The context window is checked for what it keeps
+and what it drops. No network, no key.
+~#
+
+use API.LlmUtil;
+use Collection;
+
+class LlmUtilTokensTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Ratio(text : String) ~ Float {
+    est := TokenEstimator->New();
+    return text->Size()->As(Float) / est->Estimate(text)->As(Float);
+  }
+
+  function : InRange(name : String, text : String, low : Float, high : Float) ~ Nil {
+    ratio := Ratio(text);
+    if(ratio >= low & ratio <= high) {
+      "  [PASS] {$name} (chars per token {$ratio})"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: chars per token {$ratio} is outside {$low} to {$high}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    TestExact();
+    TestBounds();
+    TestStructure();
+    TestKnobs();
+    TestTurns();
+    TestWindow();
+    TestWindowEdges();
+    TestTruncate();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestExact() ~ Nil {
+    "-- exact references"->PrintLine();
+    est := TokenEstimator->New();
+    Check("empty text is 0", est->Estimate("") = 0);
+    Check("Nil is 0", est->Estimate(Nil) = 0);
+    Check("Hello, world! is 4 (cl100k: 4)", est->Estimate("Hello, world!") = 4);
+    Check("the fox sentence is 10 (cl100k: 10)", est->Estimate("The quick brown fox jumps over the lazy dog.") = 10);
+    Check("one letter is 1", est->Estimate("a") = 1);
+    Check("Count is Estimate", est->Count("Hello, world!") = 4);
+  }
+
+  function : TestBounds() ~ Nil {
+    "-- documented bounds on longer samples"->PrintLine();
+    prose := "Large language models read text as a sequence of tokens, which are pieces of words rather than whole words. A short common word is usually a single token, while a long or unusual word is split into several. Punctuation marks, numbers and line breaks also take up tokens, so the cost of a prompt depends on its content as much as on its length. Developers who send long documents to a model need a quick way to guess how much of the context window they are about to use, before they pay for the request.";
+    InRange("English prose", prose, 3.8, 5.0);
+
+    code := "def add(a, b):\n    result = a + b\n    return result\n\nclass Counter:\n    def __init__(self):\n        self.count = 0\n\n    def increment(self, step=1):\n        self.count += step\n        return self.count\n";
+    InRange("Python source", code, 2.4, 3.8);
+
+    json := "{\"name\": \"Ada Lovelace\", \"age\": 36, \"skills\": [\"math\", \"engines\"], \"active\": true}";
+    InRange("JSON", json, 2.2, 3.6);
+
+    InRange("digits", "The year 2026 had 365 days and 1234567890 stars.", 2.8, 4.2);
+    InRange("camelCase identifier", "getHttpResponseCodeFromServerConnection", 3.5, 5.5);
+    InRange("CJK text, one to two tokens a character", "今天天气很好，我们去公园散步。", 0.5, 1.0);
+  }
+
+  function : TestStructure() ~ Nil {
+    "-- structure"->PrintLine();
+    est := TokenEstimator->New();
+    Check("longer text costs more", est->Estimate("one two three four five six") > est->Estimate("one two three"));
+    Check("a 12 letter word is 2 tokens", est->Estimate("abcdefghijkl") = 2);
+    Check("a 13 letter word is 3 tokens", est->Estimate("abcdefghijklm") = 3);
+    Check("camelCase splits", est->Estimate("fooBar") = 2 & est->Estimate("foobar") = 1);
+    Check("digits are 3 to a token", est->Estimate("123456") = 2 & est->Estimate("1234567") = 3);
+    Check("a run of punctuation is half a token a character", est->Estimate("...") = 2 & est->Estimate("(") = 1 & est->Estimate("):") = 1);
+    Check("a line break costs", est->Estimate("a\nb") = 3 & est->Estimate("a\n\nb") = 3);
+    Check("indentation after a line break costs one", est->Estimate("a\n    b") = est->Estimate("a\nb") + 1);
+    Check("spaces between words are free", est->Estimate("a b") = 2 & est->Estimate("a  b") = 2);
+    Check("repeating a text roughly multiplies the estimate", est->Estimate("hello world hello world hello world") = 6);
+  }
+
+  function : TestKnobs() ~ Nil {
+    "-- scale, margin and overhead"->PrintLine();
+    base := TokenEstimator->New()->Estimate("The quick brown fox jumps over the lazy dog.");
+    scaled := TokenEstimator->New()->SetScale(1.5)->Estimate("The quick brown fox jumps over the lazy dog.");
+    Check("scale 1.5 turns 10 into 15", base = 10 & scaled = 15);
+    Check("a zero or negative scale is ignored", TokenEstimator->New()->SetScale(0.0)->Estimate("Hello, world!") = 4);
+    est := TokenEstimator->New()->SetMargin(0.1);
+    Check("Safe adds the margin and rounds up", est->Safe(100) = 110 & est->Safe(5) = 6);
+    Check("no margin, no change", TokenEstimator->New()->Safe(100) = 100);
+    Check("overhead default is 4", TokenEstimator->New()->GetTurnOverhead() = 4);
+    Check("overhead can be set", TokenEstimator->New()->SetTurnOverhead(7)->GetTurnOverhead() = 7);
+  }
+
+  function : TestTurns() ~ Nil {
+    "-- conversations"->PrintLine();
+    est := TokenEstimator->New();
+    turns := Vector->New()<PromptTurn>;
+    turns->AddBack(PromptTurn->New("user", "Hello, world!"));
+    turns->AddBack(PromptTurn->New("assistant", "The quick brown fox jumps over the lazy dog."));
+    Check("each turn adds its text and the framing", est->EstimateTurns(turns) = 4 + 4 + 10 + 4);
+    Check("no turns, no tokens", est->EstimateTurns(Vector->New()<PromptTurn>) = 0 & est->EstimateTurns(Nil) = 0);
+  }
+
+  # a conversation of numbered turns, each "word word ..." with the same estimated cost
+  function : Conversation(turns : Int) ~ PromptBuilder {
+    b := PromptBuilder->New()->System("You are a careful assistant.");
+    for(i := 0; i < turns; i += 1;) {
+      if(i % 2 = 0) {
+        b->User("question {$i} about the topic");
+      }
+      else {
+        b->Assistant("answer {$i} about the topic");
+      };
+    };
+    return b;
+  }
+
+  function : TestWindow() ~ Nil {
+    "-- context window"->PrintLine();
+    est := TokenEstimator->New();
+    full := Conversation(11);
+    window := ContextWindow->New(1000, est);
+    whole := window->Fit(full);
+    Check("a conversation that fits is kept whole", whole->Size() = 11 & window->GetDropped() = 0 & <>window->IsOverBudget());
+    Check("Measure matches the kept tokens", window->Measure(full) = window->GetTokens());
+
+    one := window->Measure(full);
+    # room for the system prompt and about 5 turns
+    per_turn := (one - window->Measure(PromptBuilder->New()->System("You are a careful assistant."))) / 11;
+    budget := window->Measure(PromptBuilder->New()->System("You are a careful assistant.")) + 5 * per_turn + 2;
+    small := ContextWindow->New(budget, est);
+    trimmed := small->Fit(full);
+    Check("the oldest turns go", trimmed->Size() <= 5 & trimmed->Size() > 0 & small->GetDropped() = 11 - trimmed->Size());
+    Check("the system prompt stays", trimmed->GetSystem() <> Nil & trimmed->GetSystem()->Equals("You are a careful assistant."));
+    last := trimmed->GetTurns()->Get(trimmed->Size() - 1);
+    Check("the newest turn stays", last->GetText()->Equals("question 10 about the topic"));
+    Check("it fits the budget", small->Measure(trimmed) <= budget & small->GetTokens() <= budget & <>small->IsOverBudget());
+    Check("it starts with the user", trimmed->GetTurns()->Get(0)->GetRole()->Equals("user"));
+    Check("the input is not changed", full->Size() = 11);
+    dropped := small->GetDropped();
+    expect_first := "question {$dropped} about the topic";
+    Check("the kept turns are the newest, in order", trimmed->GetTurns()->Get(0)->GetText()->Equals(expect_first));
+
+    noted := ContextWindow->New(budget, est)->SetOmissionNote("[earlier messages were omitted]");
+    result := noted->Fit(full);
+    Check("an omission note is added when turns were dropped", result->GetSystem()->EndsWith("[earlier messages were omitted]") & result->GetSystem()->StartsWith("You are a careful assistant."));
+    kept := ContextWindow->New(1000, est)->SetOmissionNote("[omitted]")->Fit(full);
+    Check("no note when nothing was dropped", kept->GetSystem()->Equals("You are a careful assistant."));
+  }
+
+  function : TestWindowEdges() ~ Nil {
+    "-- context window edges"->PrintLine();
+    est := TokenEstimator->New();
+    full := Conversation(6);
+
+    tiny := ContextWindow->New(3, est);
+    result := tiny->Fit(full);
+    Check("a budget too small keeps the system prompt and the newest turn and says so", result->Size() = 1 & tiny->IsOverBudget() & tiny->GetDropped() = 5);
+
+    empty := ContextWindow->New(100, est)->Fit(PromptBuilder->New());
+    Check("an empty conversation stays empty", empty->Size() = 0 & empty->GetSystem() = Nil);
+
+    no_system := PromptBuilder->New()->User("first")->Assistant("second")->User("third");
+    kept := ContextWindow->New(1000, est)->Fit(no_system);
+    Check("no system prompt is fine", kept->Size() = 3 & kept->GetSystem() = Nil);
+
+    # assistant turns at the cut are dropped too, the conversation must start with the user
+    b := PromptBuilder->New()->User("aaa")->Assistant("bbb")->User("ccc")->Assistant("ddd")->User("eee");
+    exact := ContextWindow->New(1000, est);
+    cost := exact->Measure(PromptBuilder->New()->User("eee"));
+    cut := ContextWindow->New(cost * 2 + 1, est);
+    out := cut->Fit(b);
+    Check("never starts on an assistant turn", out->GetTurns()->Get(0)->GetRole()->Equals("user") & out->GetTurns()->Get(out->Size() - 1)->GetText()->Equals("eee"));
+    Check("the dropped count includes the stranded assistant turn", cut->GetDropped() = 4);
+
+    overhead := ContextWindow->New(1000, est)->SetTurnOverhead(0);
+    Check("overhead can be set to 0", overhead->Measure(PromptBuilder->New()->User("Hello, world!")) = 4);
+  }
+
+  function : TestTruncate() ~ Nil {
+    "-- truncating one text"->PrintLine();
+    est := TokenEstimator->New();
+    window := ContextWindow->New(100, est);
+    text := "The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.";
+    Check("a text that fits is returned unchanged", window->Truncate(text, 100, "...")->Equals(text));
+    cut := window->Truncate(text, 12, "...");
+    Check("a longer text is cut and marked", cut->EndsWith("...") & cut->Size() < text->Size() & est->Estimate(cut) <= 12 + 2);
+    Check("the cut is on a word boundary", <>cut->EndsWith("jum...") & <>cut->EndsWith("do..."));
+    bare := window->Truncate(text, 12, Nil);
+    Check("no marker, no suffix", text->StartsWith(bare) & est->Estimate(bare) <= 12);
+    Check("Nil stays Nil", window->Truncate(Nil, 5, "...") = Nil);
+    Check("zero tokens leaves just the marker", window->Truncate(text, 0, "...")->Equals("..."));
+  }
+}

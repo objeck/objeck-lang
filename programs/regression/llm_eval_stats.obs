@@ -1,0 +1,235 @@
+# EXTRA_LIBS: llm_eval,ml,csv,json,gen_collect
+use System.LLM.Eval, System.ML, System.IO.Filesystem, Collection;
+
+#~
+The numbers of the harness on data whose answers are known: the pass@k estimator, the aggregates of ModelResults (compile rate, pass@k, error categories, category rates, tokens), the results file round trip, and the paired comparison of two models (a clear winner, a tie, the reverse, no shared task, a repeatable seed). No compiler and no model is involved. Exits 1 on a failure.
+~#
+class LlmEvalStats {
+	@fails : static : Int;
+
+	function : Expect(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.00001;
+	}
+
+	function : Add(results : ModelResults, task : String, category : String, index : Int, outcome : String, error_category : String) ~ Nil {
+		attempt := Attempt->New(task, category, index);
+		if(outcome->Equals("compile_error")) {
+			attempt->SetCompileError(error_category, "line of {$error_category}");
+		}
+		else {
+			attempt->SetOutcome(outcome);
+		};
+		attempt->SetUsage(100, 10, 1.5);
+		results->Add(attempt);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+		PassAtKValues();
+		Aggregates();
+		Comparisons();
+
+		if(@fails > 0) {
+			"{$@fails} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"llm_eval stats: all checks passed"->PrintLine();
+	}
+
+	function : PassAtKValues() ~ Nil {
+		# 1 - C(n-c, k) / C(n, k), worked out by hand or with exact binomials
+		Expect(Near(PassAtK->Estimate(5, 2, 1), 0.4), "pass@1 of 2 in 5 is 0.4: {$PassAtK->Estimate(5, 2, 1)}");
+		Expect(Near(PassAtK->Estimate(5, 2, 2), 0.7), "pass@2 of 2 in 5 is 1 - 3/10: {$PassAtK->Estimate(5, 2, 2)}");
+		Expect(Near(PassAtK->Estimate(10, 3, 5), 0.9166667), "pass@5 of 3 in 10 is 1 - 21/252: {$PassAtK->Estimate(10, 3, 5)}");
+		Expect(Near(PassAtK->Estimate(100, 7, 10), 0.5332596), "pass@10 of 7 in 100: {$PassAtK->Estimate(100, 7, 10)}");
+		Expect(Near(PassAtK->Estimate(20, 5, 3), 0.6008772), "pass@3 of 5 in 20: {$PassAtK->Estimate(20, 5, 3)}");
+		Expect(Near(PassAtK->Estimate(5, 0, 3), 0.0), "no correct sample gives 0");
+		Expect(Near(PassAtK->Estimate(5, 5, 3), 1.0), "all correct gives 1");
+		Expect(Near(PassAtK->Estimate(5, 4, 2), 1.0), "fewer wrong samples than k gives 1");
+		Expect(Near(PassAtK->Estimate(1, 1, 1), 1.0) & Near(PassAtK->Estimate(1, 0, 1), 0.0), "one sample");
+
+		# k = 1 is the plain share correct
+		for(c := 0; c <= 7; c += 1;) {
+			Expect(Near(PassAtK->Estimate(7, c, 1), c->As(Float) / 7.0), "pass@1 of {$c} in 7 is c/n");
+		};
+
+		# the estimate never falls as k grows
+		previous := 0.0;
+		for(k := 1; k <= 12; k += 1;) {
+			value := PassAtK->Estimate(12, 3, k);
+			Expect(value >= previous - 0.0000001, "pass@k grows with k: {$k}");
+			previous := value;
+		};
+
+		# a large n does not overflow
+		Expect(Near(PassAtK->Estimate(100000, 500, 100), 0.3943803), "n of 100000 does not overflow (close to 1 - 0.995^100)");
+
+		Expect(Near(PassAtK->Estimate(5, 2, 6), -1.0), "k above n has no estimate");
+		Expect(Near(PassAtK->Estimate(0, 0, 1), -1.0), "n of 0 has no estimate");
+		Expect(Near(PassAtK->Estimate(5, 6, 1), -1.0), "c above n has no estimate");
+		Expect(Near(PassAtK->Estimate(5, -1, 1), -1.0), "negative c has no estimate");
+		Expect(Near(PassAtK->Estimate(5, 2, 0), -1.0), "k of 0 has no estimate");
+	}
+
+	# four tasks of five attempts:
+	#   t1 basics   5 pass
+	#   t2 basics   2 pass, 3 runtime_error
+	#   t3 quirks   2 wrong_output, 2 compile_error undefined_class, 1 compile_error syntax
+	#   t4 quirks   3 pass, 2 timeout
+	# plus 2 attempts of t5 whose model call failed
+	function : Sample(name : String) ~ ModelResults {
+		results := ModelResults->New(name, 5);
+		for(i := 0; i < 5; i += 1;) {
+			Add(results, "t1", "basics", i, "pass", Nil);
+			Add(results, "t2", "basics", i, i < 2 ? "pass" : "runtime_error", Nil);
+			if(i < 2) {
+				Add(results, "t3", "quirks", i, "wrong_output", Nil);
+			}
+			else {
+				Add(results, "t3", "quirks", i, "compile_error", i < 4 ? "undefined_class" : "syntax");
+			};
+			Add(results, "t4", "quirks", i, i < 3 ? "pass" : "timeout", Nil);
+		};
+
+		for(i := 0; i < 2; i += 1;) {
+			failed := Attempt->New("t5", "basics", i);
+			failed->SetModelError("HTTP 429");
+			results->Add(failed);
+		};
+
+		return results;
+	}
+
+	function : Aggregates() ~ Nil {
+		results := Sample("sample");
+		Expect(results->GetAttempts()->Size() = 22, "22 attempts");
+		Expect(results->GetCounted() = 20 & results->GetModelErrors() = 2, "20 counted, 2 model errors");
+		Expect(Near(results->GetCompileRate(), 17.0 / 20.0), "17 of 20 compiled: {$results->GetCompileRate()}");
+		Expect(Near(results->GetPassAtK(1), 0.5), "pass@1 = (1 + 0.4 + 0 + 0.6) / 4: {$results->GetPassAtK(1)}");
+		Expect(Near(results->GetPassAtK(2), 0.65), "pass@2 = (1 + 0.7 + 0 + 0.9) / 4: {$results->GetPassAtK(2)}");
+		Expect(Near(results->GetPassAtK(5), 0.75), "pass@5 = (1 + 1 + 0 + 1) / 4: {$results->GetPassAtK(5)}");
+		Expect(Near(results->GetPassAtK(6), -1.0), "no task has 6 attempts");
+
+		tallies := results->GetTaskTallies();
+		Expect(tallies->Size() = 5, "5 tasks");
+		Expect(tallies->Get(1)->GetId()->Equals("t2") & tallies->Get(1)->GetN() = 5 & tallies->Get(1)->GetCorrect() = 2 & tallies->Get(1)->GetCompiled() = 5, "t2: 2 of 5 correct, all compiled");
+		Expect(tallies->Get(2)->GetCompiled() = 2, "t3: only the 2 wrong_output attempts compiled");
+		Expect(tallies->Get(4)->GetN() = 0, "t5 counted nothing");
+
+		errors := results->GetErrorCategories();
+		Expect(errors->Size() = 2, "2 error categories");
+		Expect(errors->Get(0)->GetLabel()->Equals("undefined_class") & errors->Get(0)->GetCount() = 2, "undefined_class first, twice");
+		Expect(errors->Get(1)->GetLabel()->Equals("syntax") & errors->Get(1)->GetCount() = 1, "syntax once");
+		Expect(errors->Get(0)->GetExample()->Equals("line of undefined_class"), "an example line is kept");
+
+		rates := results->GetCategoryRates();
+		Expect(rates->Size() = 2, "2 task categories");
+		Expect(rates->Get(0)->GetLabel()->Equals("basics") & rates->Get(0)->GetCount() = 2 & Near(rates->Get(0)->GetValue(), 0.7), "basics: 2 tasks, pass@1 0.7: {$rates->Get(0)->GetValue()}");
+		Expect(rates->Get(1)->GetLabel()->Equals("quirks") & Near(rates->Get(1)->GetValue(), 0.3), "quirks: 0.3: {$rates->Get(1)->GetValue()}");
+
+		outcomes := results->GetOutcomes();
+		Expect(outcomes->Get(0)->GetLabel()->Equals("pass") & outcomes->Get(0)->GetCount() = 10, "10 passes first");
+
+		Expect(results->GetInputTokens() = 2000 & results->GetOutputTokens() = 200, "tokens add up over 20 attempts: {$results->GetInputTokens()}");
+		Expect(Near(results->GetMeanLatency(), 1.5), "mean latency");
+
+		# a model that reports no tokens
+		silent := ModelResults->New("silent", 1);
+		attempt := Attempt->New("t1", "basics", 0);
+		attempt->SetOutcome("pass");
+		silent->Add(attempt);
+		Expect(silent->GetInputTokens() = -1, "unknown tokens stay -1");
+		Expect(Near(ModelResults->New("empty", 1)->GetCompileRate(), -1.0), "no attempts, no rate");
+
+		# the results file
+		json := results->ToJson();
+		again := ModelResults->FromJson(json);
+		Expect(again <> Nil & again->GetAttempts()->Size() = 22, "round trip through JSON objects");
+		parser := Data.JSON.JsonParser->New(json->ToFormattedString());
+		Expect(parser->Parse(), "the results file is valid JSON");
+		text_again := ModelResults->FromJson(parser->GetRoot());
+		Expect(text_again <> Nil, "round trip through text");
+		if(text_again <> Nil) {
+			Expect(Near(text_again->GetPassAtK(2), 0.65) & Near(text_again->GetCompileRate(), 0.85), "numbers survive the text round trip");
+			Expect(text_again->GetErrorCategories()->Get(0)->GetLabel()->Equals("undefined_class"), "categories survive");
+			Expect(text_again->GetModelErrors() = 2, "model errors survive");
+		};
+
+		Expect(ModelResults->FromJson(Nil) = Nil, "Nil is not a results file");
+		bad := Data.JSON.JsonParser->New("{\"model\":\"x\"}");
+		Expect(bad->Parse() & ModelResults->FromJson(bad->GetRoot()) = Nil, "a file without attempts is not a results file");
+	}
+
+	# 12 tasks of 5 attempts; A is right on the attempts whose position is 0 mod 3 (20 of 60),
+	# B on every position except 2 mod 3 (40 of 60)
+	function : Grid(name : String, shifted : Bool) ~ ModelResults {
+		results := ModelResults->New(name, 5);
+		for(t := 0; t < 12; t += 1;) {
+			for(i := 0; i < 5; i += 1;) {
+				position := t * 5 + i;
+				right := false;
+				if(shifted) {
+					right := position % 3 <> 2;
+				}
+				else {
+					right := position % 3 = 0;
+				};
+
+				Add(results, "task{$t}", "basics", i, right ? "pass" : "wrong_output", Nil);
+			};
+		};
+
+		return results;
+	}
+
+	function : Comparisons() ~ Nil {
+		a := Grid("weak", false);
+		b := Grid("strong", true);
+
+		better := ModelComparison->Of(a, b, 1000, 42);
+		Expect(better->GetInterval() <> Nil, "an interval for 60 pairs");
+		Expect(better->GetPairs() = 60 & better->GetTasks() = 12, "60 pairs on 12 tasks");
+		Expect(Near(better->GetRateA(), 20.0 / 60.0) & Near(better->GetRateB(), 40.0 / 60.0), "rates 1/3 and 2/3");
+		if(better->GetInterval() <> Nil) {
+			Expect(Near(better->GetInterval()->GetPoint(), 20.0 / 60.0), "B minus A is 1/3");
+			Expect(better->GetInterval()->GetLow() > 0.0 & better->GetInterval()->GetHigh() > better->GetInterval()->GetLow(), "the interval is above 0");
+		};
+		Expect(better->GetVerdict()->StartsWith("strong is better than weak"), "verdict names the winner: {$better->GetVerdict()}");
+
+		worse := ModelComparison->Of(b, a, 1000, 42);
+		Expect(worse->GetVerdict()->StartsWith("weak is better than strong") | worse->GetVerdict()->Contains("is better than"), "swapped: {$worse->GetVerdict()}");
+		Expect(worse->GetInterval() <> Nil & worse->GetInterval()->GetHigh() < 0.0, "swapped: the interval is below 0");
+
+		tie := ModelComparison->Of(a, Grid("same", false), 1000, 42);
+		Expect(tie->GetVerdict()->StartsWith("No significant difference"), "identical models tie: {$tie->GetVerdict()}");
+		Expect(tie->GetInterval() <> Nil & Near(tie->GetInterval()->GetPoint(), 0.0), "the difference is 0");
+
+		# the same seed gives the same interval, another seed a (slightly) different one
+		again := ModelComparison->Of(a, b, 1000, 42);
+		Expect(Near(again->GetInterval()->GetLow(), better->GetInterval()->GetLow()) & Near(again->GetInterval()->GetHigh(), better->GetInterval()->GetHigh()), "repeatable from the seed");
+
+		# attempts whose call failed are not paired
+		with_errors := Grid("errors", false);
+		failed := Attempt->New("task0", "basics", 5);
+		failed->SetModelError("HTTP 500");
+		with_errors->Add(failed);
+		Expect(ModelComparison->Of(with_errors, b, 200, 1)->GetPairs() = 60, "a failed call is left out of the pairs");
+
+		# no task in common
+		stranger := ModelResults->New("stranger", 1);
+		Add(stranger, "elsewhere", "basics", 0, "pass", Nil);
+		none := ModelComparison->Of(a, stranger, 200, 1);
+		Expect(none->GetInterval() = Nil & none->GetPairs() = 0 & none->GetVerdict()->StartsWith("Not enough"), "no shared task, no comparison");
+
+		json := better->ToJson();
+		Expect(json->Has("verdict") & json->Has("low") & json->Has("high") & json->Get("pairs")->GetInt() = 60, "the comparison as JSON");
+	}
+}

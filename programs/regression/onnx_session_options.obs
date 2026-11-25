@@ -1,0 +1,202 @@
+#~
+# Session options in the config map, and the TensorRT provider's refusal.
+#
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
+#
+# The config map handed to a Session used to carry only the provider and the provider's
+# own options. Now the keys the SESSION owns are understood too: intra_op_threads,
+# inter_op_threads, graph_optimization, execution_mode, mem_pattern, cpu_mem_arena, and
+# any raw ONNX Runtime session config entry as session_config.<key>. What must hold:
+#
+#   * each of them, with a good value, opens a session on ep=cpu and gives the SAME answer
+#     as the default session (the options change how the model runs, never what it says),
+#   * a value it does not understand is REFUSED -- the session does not open -- instead of
+#     being dropped and the session opened with the default, which would read as success,
+#   * the key names are not case sensitive, as "ep" is not,
+#   * ep=tensorrt, which a CPU-only ONNX Runtime does not carry, is refused with the same
+#     message as any absent provider, however it is spelled, and never run on the CPU.
+#
+# Needs no GPU. Where the runtime does carry TensorRT, that last check is a SKIP line and
+# onnx_gpu_options.obs covers the provider.
+#
+# The model is the tiny BERT classifier tracked under data/bert.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.IO.Filesystem;
+
+class OnnxSessionOptions {
+	@ok : Bool;
+	@expected : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxSessionOptions->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	function : Model() ~ String {
+		return "data/bert/classifier/bert_one_label/model.onnx";
+	}
+
+	function : With(key : String, value : String) ~ Map<String, String> {
+		config := Map->New()<String, String>;
+		config->Insert("ep", "cpu");
+		config->Insert(key, value);
+		return config;
+	}
+
+	# logits for a fixed batch of two rows, or Nil when the session did not open
+	function : Answer(config : Map<String, String>) ~ Float[] {
+		session := Session->New(Model(), config);
+		if(<>session->IsOpen()) {
+			return Nil;
+		};
+
+		ids := Float->New[12];
+		for(i := 0; i < 12; i += 1;) {
+			ids[i] := ((i * 7) % 25)->ToFloat();
+		};
+		ones := Float->New[12];
+		for(i := 0; i < 12; i += 1;) {
+			ones[i] := 1.0;
+		};
+
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New("input_ids", "INT64", [2, 6], ids));
+		inputs->AddBack(Tensor->New("attention_mask", "INT64", [2, 6], ones));
+		inputs->AddBack(Tensor->New("token_type_ids", "INT64", [2, 6], Float->New[12]));
+		outputs := session->Run(inputs);
+		session->Close();
+		if(outputs = Nil | outputs->Size() = 0) {
+			return Nil;
+		};
+
+		return outputs->Get(0)->GetFloats();
+	}
+
+	function : Close(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		for(i := 0; i < a->Size(); i += 1;) {
+			if((a[i] - b[i])->Abs() > 0.00001) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	# a session option with this value opens and answers like the default
+	method : Accepts(key : String, value : String) ~ Nil {
+		got := Answer(With(key, value));
+		Report("{$key}={$value} opens and answers like the default session", Close(got, @expected));
+	}
+
+	method : Refuses(key : String, value : String) ~ Nil {
+		Report("{$key}={$value} is refused, the session does not open", Answer(With(key, value)) = Nil);
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		if(<>File->Exists(Model())) {
+			Report("the tiny BERT classifier is present at {$Model()}", false);
+			Runtime->Exit(1);
+		};
+
+		config := Map->New()<String, String>;
+		config->Insert("ep", "cpu");
+		@expected := Answer(config);
+		Report("the default ep=cpu session answers (one logit per row)", @expected <> Nil & @expected->Size() = 2);
+
+		Accepts("intra_op_threads", "1");
+		Accepts("intra_op_threads", "4");
+		Accepts("intra_op_threads", "0");
+		Accepts("inter_op_threads", "1");
+		Accepts("graph_optimization", "disable");
+		Accepts("graph_optimization", "basic");
+		Accepts("graph_optimization", "extended");
+		Accepts("graph_optimization", "all");
+		Accepts("execution_mode", "sequential");
+		Accepts("execution_mode", "parallel");
+		Accepts("mem_pattern", "0");
+		Accepts("mem_pattern", "1");
+		Accepts("cpu_mem_arena", "0");
+		Accepts("cpu_mem_arena", "1");
+		Accepts("session_config.session.disable_prepacking", "1");
+		Accepts("INTRA_OP_THREADS", "2");
+		Accepts("Graph_Optimization", "ALL");
+
+		Refuses("intra_op_threads", "-1");
+		Refuses("intra_op_threads", "many");
+		Refuses("intra_op_threads", "");
+		Refuses("inter_op_threads", "1.5");
+		Refuses("graph_optimization", "maximum");
+		Refuses("execution_mode", "fast");
+		Refuses("mem_pattern", "2");
+		Refuses("cpu_mem_arena", "maybe");
+		Refuses("session_config.", "1");
+
+		# the refusals did not poison the library
+		Report("and the default session still opens afterwards", Close(Answer(config), @expected));
+
+		Tensorrt();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	method : Tensorrt() ~ Nil {
+		if(OnnxRuntime->HasProvider("tensorrt")) {
+			"SKIP: this runtime carries TensorRT; onnx_gpu_options covers ep=tensorrt"->PrintLine();
+			return;
+		};
+
+		names := ["tensorrt", "TensorRT", "trt", "TensorrtExecutionProvider"];
+		each(name in names) {
+			config := Map->New()<String, String>;
+			config->Insert("ep", name);
+			session := Session->New(Model(), config);
+			Report("ep={$name} is refused by a runtime without TensorRT, not run on the CPU", <>session->IsOpen());
+		};
+
+		Report("HasProvider does not claim tensorrt", <>OnnxRuntime->HasProvider("tensorrt"));
+		Report("nor its short name", <>OnnxRuntime->HasProvider("trt"));
+	}
+}

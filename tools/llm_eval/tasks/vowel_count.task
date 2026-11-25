@@ -1,0 +1,24 @@
+id: vowel_count
+category: basics
+difficulty: 2
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that counts the vowels (a, e, i, o, u, in either case) in the string "The quick brown fox jumps over the lazy dog" and prints only the count.
+--- expected
+11
+--- reference
+class VowelCount {
+	function : Main(args : String[]) ~ Nil {
+		text := "The quick brown fox jumps over the lazy dog"->ToLower();
+		count := 0;
+		each(i : text) {
+			c := text->Get(i);
+			if(c = 'a' | c = 'e' | c = 'i' | c = 'o' | c = 'u') {
+				count += 1;
+			};
+		};
+		count->PrintLine();
+	}
+}

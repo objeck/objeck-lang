@@ -292,6 +292,8 @@ cd core/release
 4. Binaries: core\release\deploy-x64\bin\
 ```
 
+**Libraries.** `core/lib/*.obl` are build products of `core/compiler/lib_src` (CI builds them once per run, in the `libs` job, and every other job downloads them). The deploy scripts stop with the way out when one is missing. To make them by hand: `cd core/compiler && ./update_version.sh` on Linux/macOS (`./update_version.sh arm64` on ARM64), or `core\compiler\build_libs_windows.cmd` on Windows (a Visual Studio developer prompt plus Git for Windows' `sh`; it builds `lang.obl` with the `Release-Sys` bootstrap compiler, then `obc.exe`, then the rest). While they are still tracked in git this is only needed after a library source changes.
+
 **Version resources.** The five `objeck.rc` files (compiler, VM, debugger, REPL, launcher builder) are not in the repository. Each project renders its own from the `objeck.in` beside it, stamping `VERSION_STRING` from `core/shared/version.h`, as a build step (`core/shared/rc_version.targets`, which calls `gen_rc.ps1`), so a fresh clone builds with plain `MSBuild core\release\objeck.sln` or from the Visual Studio IDE with no preparatory step. The MSYS2 makefiles do the same with `core/shared/gen_rc.sh`. Edit the `objeck.in`, never an `objeck.rc`.
 
 #### ARM64 Build

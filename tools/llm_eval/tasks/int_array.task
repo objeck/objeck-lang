@@ -1,0 +1,38 @@
+id: int_array
+category: quirks
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that creates an Int array of length 5, fills element i with i * i, reverses the array in place using index swaps, and prints the elements separated by commas on one line (no spaces).
+--- expected
+16,9,4,1,0
+--- reference
+class IntArray {
+	function : Main(args : String[]) ~ Nil {
+		values := Int->New[5];
+		for(i := 0; i < values->Size(); i += 1;) {
+			values[i] := i * i;
+		};
+
+		left := 0;
+		right := values->Size() - 1;
+		while(left < right) {
+			temp := values[left];
+			values[left] := values[right];
+			values[right] := temp;
+			left += 1;
+			right -= 1;
+		};
+
+		line := "";
+		each(i : values) {
+			if(i > 0) {
+				line->Append(",");
+			};
+			line->Append(values[i]);
+		};
+		line->PrintLine();
+	}
+}
