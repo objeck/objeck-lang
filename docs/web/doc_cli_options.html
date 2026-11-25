@@ -1,80 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Objeck CLI Options — Objeck Language</title>
-  <meta name="description" content="See optimization_pipeline.md for what each -opt level enables."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="See optimization_pipeline.md for what each -opt level enables.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
-      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
-                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose' });
     await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
   </script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Objeck CLI Options</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/cli_options.md" target="_blank">docs/cli_options.md on GitHub</a></div>
-    <p class="page-lead">See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a> for what each <code>-opt</code> level enables.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#compiler--obc">Compiler — <code>obc</code></a></li>
-      <li><a href="#virtual-machine--obr">Virtual machine — <code>obr</code></a></li>
-      <li><a href="#notes">Notes</a></li>
-      <li><a href="#how-to-check">How to check</a></li>
-      <li><a href="#source">Source</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#reference">Reference</a></li><li aria-current="page">Objeck CLI Options</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html" aria-current="page">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Objeck CLI Options</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/cli_options.md" target="_blank" rel="noopener">View docs/cli_options.md on GitHub</a></p>
+    <p class="page-lead">See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank" rel="noopener">optimization_pipeline.md</a> for what each <code>-opt</code> level enables.</p>
 
     <div class="note">Command-line options for the two core tools: the compiler <strong><code>obc</code></strong> and the virtual machine <strong><code>obr</code></strong>.</div>
 <pre class="mermaid">graph TD
@@ -120,7 +100,7 @@
     V_ENV --&gt; E_depth["OBJECK_CALL_DEPTH=&amp;lt;frames&amp;gt;  (call-nesting limit)"]
     V_ENV --&gt; E_nursery["OBJECK_NURSERY=&amp;lt;size&amp;gt;  (young-generation size)"]
     V_ENV --&gt; E_gcstats["OBJECK_GC_STATS=1  (GC summary on stderr at exit)"]</pre>
-    <h3 id="compiler--obc">Compiler — <code>obc</code></h3>
+    <h2 id="compiler--obc">Compiler — <code>obc</code></h2>
     <table class="ref-table">
      <thead>
       <tr><th>Option</th><th>Aliases</th><th>Description</th></tr>
@@ -139,7 +119,7 @@
       <tr><td data-label="Option"><code>--version</code></td><td data-label="Aliases"><code>-ver</code>, <code>-v</code></td><td data-label="Description">Show version</td></tr>
      </tbody>
     </table>
-    <h4 id="library-groups">Library groups</h4>
+    <h3 id="library-groups">Library groups</h3>
     <p>An entry in <code>--library</code> that begins with <code>@</code> is a <strong>group</strong>, expanded from <code>lib/configobjk.ini</code> beside the installed <code>.obl</code> files. <code>-lib @web</code> is shorthand for the eight libraries that group lists.</p>
     <table class="ref-table">
      <thead>
@@ -164,7 +144,7 @@
     <p>If a group name is not found, the compiler prints the config file's path and every group defined in it. If a class cannot be resolved, it names the library that would supply it:</p>
 <pre class="plain">Error: Unable to resolve external library class: 'Web.HTTP.Server.Request'.
         Add it with '-lib net_server'</pre>
-    <h3 id="virtual-machine--obr">Virtual machine — <code>obr</code></h3>
+    <h2 id="virtual-machine--obr">Virtual machine — <code>obr</code></h2>
     <table class="ref-table">
      <thead>
       <tr><th>Option</th><th>Legacy form</th><th>Description</th></tr>
@@ -174,15 +154,15 @@
       <tr><td data-label="Option"><code>--nursery=&lt;n&gt;(k|m)</code></td><td data-label="Legacy form">env <code>OBJECK_NURSERY=&lt;n&gt;(k|m)</code></td><td data-label="Description">Young-generation (nursery) size, from <code>64k</code> to <code>128m</code> (default <code>128m</code>). A full nursery triggers a minor collection, so a smaller one collects more often. The 128 MB region stays reserved; this only lowers the limit. The flag wins over the variable, and a bad value in either is an error</td></tr>
       <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_GC_STATS=1</code></td><td data-label="Description">At exit, print one line to stderr: <code>[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=</code>. Percentiles are nearest-rank over the first 1,048,576 recorded pauses (<code>GC_STATS_SAMPLE_MAX</code>); <code>pause_max_us</code> covers every collection. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan</td></tr>
       <tr><td data-label="Option"><code>--call-depth=&lt;frames&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_CALL_DEPTH=&lt;frames&gt;</code></td><td data-label="Description">How deep calls may nest, from <code>256</code> to <code>1048576</code> (default <code>16384</code>). Past it the program stops with <code>call stack bounds have been exceeded</code>, which a <code>Try()</code> can recover from. Compiled code can reach the end of the native stack first and reports the same error. The flag wins over the variable; a bad value in either is an error. Changes the size of the threads' native stacks too (<code>call_stack.h</code>)</td></tr>
-      <tr><td data-label="Option"><code>--thread-faults=exit|isolate</code></td><td data-label="Legacy form">env <code>OBJECK_THREAD_FAULTS=isolate</code></td><td data-label="Description">What an error nothing catches (divide by zero, a Nil receiver, an index out of bounds, an invalid cast, an unhandled <code>Runtime-&gt;Raise</code>) does in a thread the program started. <code>exit</code> (default): the program ends, as it always has. <code>isolate</code>: only that thread ends; the error is still printed to stderr, its frames are released, the locks it held are released, <code>runtime.threads.active</code> drops, and <code>Thread-&gt;Join</code> returns normally with the error text readable as <code>Runtime-&gt;GetProperty("runtime.thread.join.fault")</code>. The main thread, <code>Runtime-&gt;Exit</code> and the VM's own failures (out of memory, a corrupt program) always end the program. A program can also switch it with <code>Runtime-&gt;SetProperty("runtime.threads.isolation", "isolate")</code>. The flag wins over the variable. See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/research/thread_fault_isolation.md" target="_blank">thread_fault_isolation</a></td></tr>
-      <tr><td data-label="Option"><code>--jit=off</code> / <code>--jit=&lt;calls&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_JIT_DISABLE=1</code> / <code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Description"><code>off</code> runs the interpreter only, <code>native</code> methods included; a positive number is how many calls a method makes before it is compiled (default <code>10</code>). A method with a loop is compiled on its first call or entry while the threshold is at or below the default, see <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank">optimization_pipeline.md</a></td></tr>
+      <tr><td data-label="Option"><code>--thread-faults=exit|isolate</code></td><td data-label="Legacy form">env <code>OBJECK_THREAD_FAULTS=isolate</code></td><td data-label="Description">What an error nothing catches (divide by zero, a Nil receiver, an index out of bounds, an invalid cast, an unhandled <code>Runtime-&gt;Raise</code>) does in a thread the program started. <code>exit</code> (default): the program ends, as it always has. <code>isolate</code>: only that thread ends; the error is still printed to stderr, its frames are released, the locks it held are released, <code>runtime.threads.active</code> drops, and <code>Thread-&gt;Join</code> returns normally with the error text readable as <code>Runtime-&gt;GetProperty("runtime.thread.join.fault")</code>. The main thread, <code>Runtime-&gt;Exit</code> and the VM's own failures (out of memory, a corrupt program) always end the program. A program can also switch it with <code>Runtime-&gt;SetProperty("runtime.threads.isolation", "isolate")</code>. The flag wins over the variable. See <a href="https://github.com/objeck/objeck-lang/blob/master/docs/research/thread_fault_isolation.md" target="_blank" rel="noopener">thread_fault_isolation</a></td></tr>
+      <tr><td data-label="Option"><code>--jit=off</code> / <code>--jit=&lt;calls&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_JIT_DISABLE=1</code> / <code>OBJECK_JIT_THRESHOLD=N</code></td><td data-label="Description"><code>off</code> runs the interpreter only, <code>native</code> methods included; a positive number is how many calls a method makes before it is compiled (default <code>10</code>). A method with a loop is compiled on its first call or entry while the threshold is at or below the default, see <a href="https://github.com/objeck/objeck-lang/blob/master/docs/optimization_pipeline.md" target="_blank" rel="noopener">optimization_pipeline.md</a></td></tr>
       <tr><td data-label="Option">—</td><td data-label="Legacy form">env <code>OBJECK_JIT_REPORT=1</code></td><td data-label="Description">Print, to stderr, every method the JIT hands back to the interpreter and why: an unsupported opcode (number per <code>obc -asm</code>), or the instruction at which compilation failed. Diagnostic; no effect on execution</td></tr>
       <tr><td data-label="Option"><code>--lib-path=&lt;dir&gt;</code></td><td data-label="Legacy form">env <code>OBJECK_LIB_PATH</code></td><td data-label="Description">The Objeck <code>lib</code> root. <code>obc</code> reads the <code>.obl</code> files from it; <code>obr</code> loads the native libraries from <code>&lt;dir&gt;/native/</code> (`libobjk_*.dll</td><td data-label="">.so</td><td data-label="">.dylib<code>), reads </code>&lt;dir&gt;/cacert.pem<code> for TLS, and reports it as the </code>lib_dir<code> runtime property. On Windows the third-party runtime DLLs those libraries import (SDL2, onnxruntime, opencv, lame, the VC runtime) are resolved from </code>obr.exe<code>'s own directory, so </code>bin/<code> keeps them wherever </code>lib/` is</td></tr>
       <tr><td data-label="Option"><code>--objeck-stdio=binary|utf16|utf8</code></td><td data-label="Legacy form"><code>--OBJECK_STDIO=</code></td><td data-label="Description">Console I/O mode. Acted on by <strong>Windows</strong>; accepted and ignored elsewhere so one script works on every platform</td></tr>
      </tbody>
     </table>
     <p>Any other value for any of these is an error that names what was expected — <code>--objeck-stdio=1</code> used to be accepted and silently do nothing.</p>
-    <h4 id="environment-variables">Environment variables</h4>
+    <h3 id="environment-variables">Environment variables</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Variable</th><th>Effect</th></tr>
@@ -197,7 +177,7 @@
       <tr><td data-label="Variable"><code>OBJECK_GC_STATS=1</code></td><td data-label="Effect">One-line GC summary (counts, pause percentiles, promoted bytes, peak RSS) on stderr at exit</td></tr>
      </tbody>
     </table>
-    <h3 id="notes">Notes</h3>
+    <h2 id="notes">Notes</h2>
     <ul>
      <li><strong>VM flag parsing is positional</strong> — <code>obr</code> consumes its own options before the program path, so VM options must come <em>before</em> the <code>.obe</code> and any program arguments.</li>
      <li><strong><code>--objeck-stdio</code> only has an effect on Windows.</strong> Every platform accepts and consumes it, so a shared script does not have to know which one is running.</li>
@@ -205,26 +185,46 @@
      <li>A <code>g</code> suffix on <code>--gc-threshold</code> is 2³⁰. Before v2026.9.1 it was 2⁴⁰, so <code>1g</code> asked for a terabyte.</li>
      <li>Combining <code>--library</code> with <code>--strict</code> drops the implicit <code>lang,gen_collect</code> defaults.</li>
     </ul>
-    <h3 id="how-to-check">How to check</h3>
+    <h2 id="how-to-check">How to check</h2>
     <ul>
      <li><code>obr</code> with no arguments prints the usage text that this page mirrors (<code>VmUsage()</code> in <code>core/vm/vm_options.h</code>); <code>obc</code> with no arguments prints the compiler's (<code>posix_main.cpp</code>). If this page and the usage text disagree, trust the parsing code named under Source.</li>
      <li>A bad value fails loudly: <code>obr --nursery=1g prog.obe</code>, <code>obr --call-depth=10 prog.obe</code> and <code>obr --objeck-stdio=1 prog.obe</code> each print what was expected.</li>
      <li><code>OBJECK_GC_STATS=1 obr prog.obe</code> prints the <code>[gc-stats]</code> line to stderr at exit.</li>
     </ul>
-    <h3 id="source">Source</h3>
+    <h2 id="source">Source</h2>
     <ul>
      <li>Compiler option parsing: <code>core/compiler/compiler.cpp</code>, usage string in <code>core/compiler/posix_main.cpp</code></li>
      <li>VM option parsing: <code>core/vm/vm_options.h</code> (one parser, called from <code>core/vm/win_main.cpp</code> and <code>core/vm/posix_main.cpp</code>)</li>
      <li>JIT threshold tunables: <code>core/vm/arch/jit/jit_common.h</code></li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#compiler--obc">Compiler — <code>obc</code></a></li><li><a href="#virtual-machine--obr">Virtual machine — <code>obr</code></a></li><li><a href="#notes">Notes</a></li><li><a href="#how-to-check">How to check</a></li><li><a href="#source">Source</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

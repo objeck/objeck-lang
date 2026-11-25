@@ -1,0 +1,18 @@
+use Query.Structured;
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    sales := Table->New("sales", ["region", "qty"]);
+    Add(sales, "east", 10);
+    Add(sales, "west", 4);
+    Add(sales, "east", 3);
+    result := sales->Query("select region, sum(qty) as total from sales group by region");
+    result->ToCsv()->Print();
+  }
+
+  function : Add(table : Table, region : String, qty : Int) ~ Nil {
+    row := table->Insert();
+    row->Set("region", region);
+    row->Set("qty", IntRef->New(qty));
+  }
+}

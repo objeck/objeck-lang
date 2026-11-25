@@ -1,62 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Getting-started guides — Objeck Language</title>
-  <meta name="description" content="Short, task-oriented Objeck guides, each built around a complete program that was compiled and run."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Short, task-oriented Objeck guides, each built around a complete program that was compiled and run.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li aria-current="page">Getting-started guides</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html" aria-current="page">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Getting-started guides</h1>
-    <p class="page-lead">Short, task-oriented guides, each built around a complete program you can compile and run. The programs are in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/guides" target="_blank"><code>programs/examples/guides/</code></a>; every one was compiled and run, and the output printed in a guide is what it printed. If you have not yet written a first program, start with the <a href="https://www.objeck.org/getting_started.html">Quick Start</a>, then the 32 numbered examples in <a href="doc_deploy_examples.html"><code>programs/deploy</code></a> that ship with every release.</p>
+    <p class="page-lead">Short, task-oriented guides, each built around a complete program you can compile and run. The programs are in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/guides" target="_blank" rel="noopener"><code>programs/examples/guides/</code></a>; every one was compiled and run, and the output printed in a guide is what it printed. If you have not yet written a first program, start with the <a href="https://www.objeck.org/getting_started.html">Quick Start</a>, then the 32 numbered examples in <a href="doc_deploy_examples.html"><code>programs/deploy</code></a> that ship with every release.</p>
 
     <table class="ref-table">
      <thead>
@@ -72,48 +58,68 @@
       <tr><td data-label="Guide"><a href="guide_editors.html">Editor setup and the language server</a></td><td data-label="Libraries"></td><td data-label="What you learn">VS Code and the other editors, debugging</td></tr>
      </tbody>
     </table>
-    <h3 id="the-programs">The programs</h3>
+    <h2 id="the-programs">The programs</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Program</th><th>Compile with <code>-lib</code></th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/query_start.obs" target="_blank"><code>query_start.obs</code></a></td><td data-label="Compile with -lib"><code>query,misc,net,json,regex,xml,csv,cipher</code></td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/query_join.obs" target="_blank"><code>query_join.obs</code></a></td><td data-label="Compile with -lib"><code>query,misc,net,json,regex,xml,csv,cipher</code></td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/query_otab.obs" target="_blank"><code>query_otab.obs</code></a></td><td data-label="Compile with -lib"><code>query,misc,net,json,regex,xml,csv,cipher</code></td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/http_keepalive.obs" target="_blank"><code>http_keepalive.obs</code></a></td><td data-label="Compile with -lib"><code>net,net_server,json,cipher</code></td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/data_basics.obs" target="_blank"><code>data_basics.obs</code></a></td><td data-label="Compile with -lib"><code>json,xml,regex</code></td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/data_bad_input.obs" target="_blank"><code>data_bad_input.obs</code></a></td><td data-label="Compile with -lib"><code>json,xml,regex</code></td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/collections_tour.obs" target="_blank"><code>collections_tour.obs</code></a></td><td data-label="Compile with -lib">none</td></tr>
-      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/ai_tictactoe.obs" target="_blank"><code>ai_tictactoe.obs</code></a></td><td data-label="Compile with -lib"><code>ai</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/query_start.obs" target="_blank" rel="noopener"><code>query_start.obs</code></a></td><td data-label="Compile with -lib"><code>query,misc,net,json,regex,xml,csv,cipher</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/query_join.obs" target="_blank" rel="noopener"><code>query_join.obs</code></a></td><td data-label="Compile with -lib"><code>query,misc,net,json,regex,xml,csv,cipher</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/query_otab.obs" target="_blank" rel="noopener"><code>query_otab.obs</code></a></td><td data-label="Compile with -lib"><code>query,misc,net,json,regex,xml,csv,cipher</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/http_keepalive.obs" target="_blank" rel="noopener"><code>http_keepalive.obs</code></a></td><td data-label="Compile with -lib"><code>net,net_server,json,cipher</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/data_basics.obs" target="_blank" rel="noopener"><code>data_basics.obs</code></a></td><td data-label="Compile with -lib"><code>json,xml,regex</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/data_bad_input.obs" target="_blank" rel="noopener"><code>data_bad_input.obs</code></a></td><td data-label="Compile with -lib"><code>json,xml,regex</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/collections_tour.obs" target="_blank" rel="noopener"><code>collections_tour.obs</code></a></td><td data-label="Compile with -lib">none</td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/ai_tictactoe.obs" target="_blank" rel="noopener"><code>ai_tictactoe.obs</code></a></td><td data-label="Compile with -lib"><code>ai</code></td></tr>
      </tbody>
     </table>
-    <p>The seven <code>readme_*.obs</code> programs are the short examples shown in the project <a href="https://github.com/objeck/objeck-lang/blob/master/README.md#examples" target="_blank">README</a>: <code>readme_tour</code>, <code>readme_query</code>, <code>readme_json</code>, <code>readme_regex</code>, <code>readme_collections</code>, <code>readme_http</code> and <code>readme_ai</code>.</p>
+    <p>The seven <code>readme_*.obs</code> programs are the short examples shown in the project <a href="https://github.com/objeck/objeck-lang/blob/master/README.md#examples" target="_blank" rel="noopener">README</a>: <code>readme_tour</code>, <code>readme_query</code>, <code>readme_json</code>, <code>readme_regex</code>, <code>readme_collections</code>, <code>readme_http</code> and <code>readme_ai</code>.</p>
     <p>Each file opens with a comment giving its exact compile and run lines. To build one:</p>
 <pre class="cmd">cd programs/examples/guides
 obc -src collections_tour.obs
 obr collections_tour.obe</pre>
     <p><code>obc</code> does not pull in a library's own dependencies, which is why a <code>-lib</code> list can name libraries the program never uses directly.</p>
-    <h3 id="more">More</h3>
+    <h2 id="more">More</h2>
     <ul>
      <li><a href="doc_examples.html"><code>docs/EXAMPLES.md</code></a>: networking and AI snippets.</li>
      <li><a href="doc_features.html"><code>docs/FEATURES.md</code></a>: language features with examples.</li>
      <li><a href="https://www.objeck.org/ai_guide.html">AI &amp; ML developer guide</a> and <a href="doc_ai.html"><code>docs/AI.md</code></a>.</li>
      <li><a href="doc_collections.html"><code>docs/COLLECTIONS_GUIDE.md</code></a> and <a href="doc_errors.html"><code>docs/ERROR_CONVENTIONS.md</code></a>.</li>
     </ul>
-    <h3 id="keeping-the-site-in-step">Keeping the site in step</h3>
-    <p>The site pages <code>guides.html</code> and <code>guide_*.html</code> in <a href="https://github.com/objeck/objeck-lang/tree/master/docs/web" target="_blank"><code>docs/web</code></a> are rendered from the Markdown in this folder, so edit the Markdown and run</p>
+    <h2 id="keeping-the-site-in-step">Keeping the site in step</h2>
+    <p>The site pages <code>guides.html</code> and <code>guide_*.html</code> in <a href="https://github.com/objeck/objeck-lang/tree/master/docs/web" target="_blank" rel="noopener"><code>docs/web</code></a> are rendered from the Markdown in this folder, so edit the Markdown and run</p>
 <pre class="cmd">python tools/docs/guides_to_html.py          write the pages
 python tools/docs/guides_to_html.py --check  fail if a page is out of date</pre>
     <p>When you change a program, run it again and paste its new output into the guide that shows it.</p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#the-programs">The programs</a></li><li><a href="#more">More</a></li><li><a href="#keeping-the-site-in-step">Keeping the site in step</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

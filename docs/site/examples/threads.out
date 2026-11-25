@@ -1,0 +1,3 @@
+$ obc -src threads.obs -lib concurrent
+$ obr threads.obe
+4000

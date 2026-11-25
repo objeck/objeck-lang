@@ -1,77 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Architecture assessment, November 2026 — Objeck Language</title>
-  <meta name="description" content="An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master 5faaca629f (v2026.10.3 in development)."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master 5faaca629f (v2026.10.3 in development).">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">Architecture assessment, November 2026</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARCHITECTURE_ASSESSMENT_2026_11.md" target="_blank">docs/ARCHITECTURE_ASSESSMENT_2026_11.md on GitHub</a></div>
-    <p class="page-lead">An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master <code>5faaca629f</code> (v2026.10.3 in development).</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#how-this-was-done">How this was done</a></li>
-      <li><a href="#verdict">Verdict</a></li>
-      <li><a href="#what-is-well-done">What is well done</a></li>
-      <li><a href="#findings">Findings</a></li>
-      <li><a href="#roadmap">Roadmap</a></li>
-      <li><a href="#not-assessed">Not assessed</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#how-it-works">How it works</a></li><li aria-current="page">Architecture assessment, November 2026</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html" aria-current="page">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Architecture assessment, November 2026</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ARCHITECTURE_ASSESSMENT_2026_11.md" target="_blank" rel="noopener">View docs/ARCHITECTURE_ASSESSMENT_2026_11.md on GitHub</a></p>
+    <p class="page-lead">An assessment of the language, compiler, runtime, JIT and collector, debugger, language server, standard library and the build, test and release machinery, as of master <code>5faaca629f</code> (v2026.10.3 in development).</p>
 
     <p><strong>Status: snapshot.</strong> Several findings have been fixed since: 1.1 (the dead parser copy is gone), 2.3 (<code>VMContext</code> carries <code>abi_version</code> and <code>struct_size</code>), 2.2 (the loader returns an error instead of calling <code>exit(1)</code>; the compiler back end throws <code>CompilerFatal</code>, with one <code>exit(1)</code> left in <code>linker.cpp</code>), part of 2.1 (<code>Loader::Verify</code> exists; see <a href="doc_security.html">SECURITY_MODEL.md</a>), 5.1 (the nightly workflow's cron is live) and 1.4, 3.1 and 3.2 (the shared frame-layout header, typed compiled-frame slots and the <code>Int[]</code> tag: phases 3, 4 and 6 of <a href="doc_gc_roots.html">GC_ROOTS_DESIGN.md</a>). The tables below are left as they were written.</p>
-    <h4 id="resolved-since-the-snapshot">Resolved since the snapshot</h4>
+    <h3 id="resolved-since-the-snapshot">Resolved since the snapshot</h3>
     <p>Checked against master <code>3042a96eee</code> on 2026-11-18 with <code>git log</code>; the findings below are unchanged. Dates are commit dates. "Part" means the finding's recommendation was done in part and the remainder still applies.</p>
     <table class="ref-table">
      <thead>
@@ -99,7 +79,7 @@
      </tbody>
     </table>
     <p>Not re-checked and so not marked: 1.5, 1.6, 2.4, 2.5, 3.3, 3.4, 4.5, 5.5, 5.6, and sections 6 to 8 other than 8.2.</p>
-    <h3 id="how-this-was-done">How this was done</h3>
+    <h2 id="how-this-was-done">How this was done</h2>
     <p>Seven reviewers each read one component with no ability to build or run anything: compiler and language, VM runtime and native interface, JIT and garbage collector, debugger and command-line tools, language server, standard library, and build/test/release engineering. The coordinator then checked the claims below that could be checked cheaply, and ran one experiment of its own (the <code>Int[]</code> finding).</p>
     <p>Every finding carries a tag:</p>
     <ul>
@@ -108,10 +88,10 @@
      <li><strong>I</strong>: an inference the reviewer marked as such.</li>
     </ul>
     <p>Cost estimates are rough, from the reviewers. Nothing here was benchmarked except where stated. This is a static review: it can miss what only running the system shows.</p>
-    <h3 id="verdict">Verdict</h3>
+    <h2 id="verdict">Verdict</h2>
     <p>The design is sound where it matters most and disciplined about proving itself: the collector has named invariants and a verifier that can inject faults to show it notices; CI checks carry negative controls; the updater verifies a signature before trusting a byte of the manifest; the debugger's object-layout knowledge now lives in one header. The recurring weakness is not any single component but <strong>facts that must stay in agreement by hand</strong>: a new intrinsic touches about nine places, a version bump touches 58 files, frame-layout offsets must agree across five, and a dead copy of a parser function silently swallows edits. The second theme is <strong>trust and robustness at the edges</strong>: the VM treats an <code>.obe</code> as trusted native code, and library-load failures call <code>exit(1)</code> inside processes that embed the compiler (the language server, the REPL, the debugger).</p>
     <p>None of this is alarming for a project of this size and age. The risk is that the same few classes of defect keep recurring (recent releases show stale-layout, stale-version and skipped-gate bugs), so the best investments are the ones that turn a convention into a check.</p>
-    <h3 id="what-is-well-done">What is well done</h3>
+    <h2 id="what-is-well-done">What is well done</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Area</th><th>Strength</th><th>Tag</th></tr>
@@ -129,8 +109,8 @@
       <tr><td data-label="Area">LSP</td><td data-label="Strength">Content-keyed analysis caching, debounce, cancellation of queued requests, negotiated position encoding, per-window servers</td><td data-label="Tag">R</td></tr>
      </tbody>
     </table>
-    <h3 id="findings">Findings</h3>
-    <h4 id="1-facts-that-must-agree-by-hand">1. Facts that must agree by hand</h4>
+    <h2 id="findings">Findings</h2>
+    <h3 id="1-facts-that-must-agree-by-hand">1. Facts that must agree by hand</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -144,7 +124,7 @@
       <tr><td data-label="#">1.6</td><td data-label="Finding"><code>VER_NUM</code> is a release id used as a format version, so every point release invalidates every user <code>.obl</code> and <code>.obe</code>. It is the dotless concatenation of year, month and release, so it is not monotonic across ranges (<code>2026.1.10</code> and <code>2026.11.0</code> both give 2026110). Only equality is tested today.</td><td data-label="Evidence"><code>linker.cpp:924</code>, <code>loader.cpp:71</code></td><td data-label="Tag">V (the check) / I (the collision)</td><td data-label="Recommendation (cost)">A separate format version plus an instruction-set hash (2 to 3 days; creates a compatibility promise)</td></tr>
      </tbody>
     </table>
-    <h4 id="2-trust-and-robustness-at-the-edges">2. Trust and robustness at the edges</h4>
+    <h3 id="2-trust-and-robustness-at-the-edges">2. Trust and robustness at the edges</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -157,7 +137,7 @@
       <tr><td data-label="#">2.5</td><td data-label="Finding">The updater does not bind the downloaded version to the signature: the signed trusted comment is parsed but only printed, and the post-install health check runs <code>obc -v</code>, never <code>obr</code> against <code>lang.obl</code>.</td><td data-label="Evidence"><code>obu.cpp:1456</code>, <code>:1994-1998</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Sign "version, asset" and compare to the tag; run a trivial program as the health check (2 days plus a key-rotation design)</td></tr>
      </tbody>
     </table>
-    <h4 id="3-the-collectors-root-model-work-in-progress">3. The collector's root model (work in progress)</h4>
+    <h3 id="3-the-collectors-root-model-work-in-progress">3. The collector's root model (work in progress)</h3>
     <p>Phases 0 to 2 of <code>docs/GC_ROOTS_DESIGN.md</code> shipped in v2026.10.2: the interpreter's operand stacks are typed, so an <code>Int</code> is no longer rewritten there. Phases 3 to 6 (compiled frames, removal of the conservative scans, closure capture blocks) are under way.</p>
     <table class="ref-table">
      <thead>
@@ -192,7 +172,7 @@ class IntArrayAddr {
   }
 }</pre>
     <p>Run with <code>OBJECK_GC_TEST_HOOKS=1 obr --nursery=64k</code>. Exposure today is low: since #1472 an Objeck program cannot produce an address-valued <code>Int</code> without the hook, and native handles live outside the nursery range. It is a hole in the model all the same. The fix is a distinct reference-array tag emitted by the compiler (a format change).</p>
-    <h4 id="4-concurrency-details">4. Concurrency details</h4>
+    <h3 id="4-concurrency-details">4. Concurrency details</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -205,7 +185,7 @@ class IntArrayAddr {
       <tr><td data-label="#">4.5</td><td data-label="Finding">Safepoint polls appear only at loop-header back edges, so deep compiled recursion with no loop may not poll.</td><td data-label="Evidence"><code>jit_amd_lp64.cpp:537-548</code></td><td data-label="Tag">I</td><td data-label="Recommendation (cost)">Check function prologues; add a poll if absent</td></tr>
      </tbody>
     </table>
-    <h4 id="5-test-and-ci-depth">5. Test and CI depth</h4>
+    <h3 id="5-test-and-ci-depth">5. Test and CI depth</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -219,7 +199,7 @@ class IntArrayAddr {
       <tr><td data-label="#">5.6</td><td data-label="Finding">The <code>threads_12</code> retry loop masks a race signature, against the project's own rule.</td><td data-label="Evidence"><code>ci-build.yml:825-838</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Quarantine with a tracking issue, or fix the race</td></tr>
      </tbody>
     </table>
-    <h4 id="6-standard-library-and-api-design">6. Standard library and API design</h4>
+    <h3 id="6-standard-library-and-api-design">6. Standard library and API design</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -235,7 +215,7 @@ class IntArrayAddr {
       <tr><td data-label="#">6.8</td><td data-label="Finding">Parameter names are public API since named arguments, but CI compares only the class set of the editor index, not signatures.</td><td data-label="Evidence"><code>ci-build.yml:1923-1938</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">Diff <code>objk_apis.json</code> between release tags (a day)</td></tr>
      </tbody>
     </table>
-    <h4 id="7-compiler-and-language">7. Compiler and language</h4>
+    <h3 id="7-compiler-and-language">7. Compiler and language</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -248,7 +228,7 @@ class IntArrayAddr {
       <tr><td data-label="#">7.5</td><td data-label="Finding">Back-end singletons are plain statics, unlike the thread-local tree and type factories.</td><td data-label="Evidence"><code>emit.h:249</code>, <code>:950</code></td><td data-label="Tag">R / I</td><td data-label="Recommendation (cost)">Make them thread-local or owned by the parsed program (a day)</td></tr>
      </tbody>
     </table>
-    <h4 id="8-debugger-repl-language-server">8. Debugger, REPL, language server</h4>
+    <h3 id="8-debugger-repl-language-server">8. Debugger, REPL, language server</h3>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Finding</th><th>Evidence</th><th>Tag</th><th>Recommendation (cost)</th></tr>
@@ -261,7 +241,7 @@ class IntArrayAddr {
       <tr><td data-label="#">8.5</td><td data-label="Finding">The language server re-analyzes the whole program twice per edit and drops every cache on a single global generation; there is no mid-analysis cancellation and no "cached equals fresh" test.</td><td data-label="Evidence"><code>frameworks.obs:1347</code>, <code>server.obs:1065-1081</code>; <code>docs/INCREMENTAL_ANALYSIS_DESIGN.md</code></td><td data-label="Tag">R</td><td data-label="Recommendation (cost)">The design's phases (days to months)</td></tr>
      </tbody>
     </table>
-    <h3 id="roadmap">Roadmap</h3>
+    <h2 id="roadmap">Roadmap</h2>
     <p><strong>In flight (started with this document).</strong> Six workers each own one workstream and open their own PRs; the coordinator merges when CI is green.</p>
     <table class="ref-table">
      <thead>
@@ -287,16 +267,36 @@ class IntArrayAddr {
      <li>Promote tested artifacts at release instead of rebuilding (5.4).</li>
      <li><code>debug_view.h</code>, then the language server's analysis in a child process (8.1, 2.4).</li>
     </ol>
-    <h3 id="not-assessed">Not assessed</h3>
+    <h2 id="not-assessed">Not assessed</h2>
     <p>The JIT code-memory lifecycle beyond the README; lock contention and pause behavior (nothing was profiled); the correctness of generics rules, the optimizer's passes and the Query planner; numerical correctness of the ML and NLP libraries; the TLS, HTTP/2 and HTTP/3 handlers beyond sampling; macOS, Windows ARM64 and Linux arm64 specifics; the contents of CI secrets and variables.</p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#how-this-was-done">How this was done</a></li><li><a href="#verdict">Verdict</a></li><li><a href="#what-is-well-done">What is well done</a></li><li><a href="#findings">Findings</a></li><li><a href="#roadmap">Roadmap</a></li><li><a href="#not-assessed">Not assessed</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

@@ -12,5 +12,11 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    groups:
+      # init and analyze must run the same codeql-action version, or the job fails with a
+      # configuration error, so they are always bumped in one pull request.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     commit-message:
       prefix: "ci"

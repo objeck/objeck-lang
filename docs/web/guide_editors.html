@@ -1,74 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Editor setup and the language server — Objeck Language</title>
-  <meta name="description" content="Install the Objeck language server for VS Code and other editors, and debug a program."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Install the Objeck language server for VS Code and other editors, and debug a program.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">Editor setup and the language server</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html" aria-current="page">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Editor setup and the language server</h1>
     <p class="page-lead">Objeck ships a language server (LSP) and a debug adapter (DAP) that work in VS Code, Sublime Text, Neovim, Emacs, Kate, ecode and Helix. Every editor gets the same server, so the features below do not depend on which one you use.</p>
-    <div id="toc_container">
-     <h4>Contents</h4>
-     <ul>
-      <li><a href="#install">Install</a></li>
-      <li><a href="#how-to-check">How to check</a></li>
-      <li><a href="#what-you-get">What you get</a></li>
-      <li><a href="#what-changed-in-v2026-10-3">What changed in v2026.10.3</a></li>
-     </ul>
-    </div>
 
-    <h3 id="install">Install</h3>
-    <p>Download <code>objeck-lsp_&lt;version&gt;.zip</code> from the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank">releases page</a> and unzip it. Then, from the unzipped folder, run the install script, giving the folder Objeck is installed in and the editor (<code>vscode</code>, <code>sublime</code>, <code>neovim</code>, <code>emacs</code>, <code>helix</code>, <code>vim</code> or <code>all</code>):</p>
+    <h2 id="install">Install</h2>
+    <p>Download <code>objeck-lsp_&lt;version&gt;.zip</code> from the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank" rel="noopener">releases page</a> and unzip it. Then, from the unzipped folder, run the install script, giving the folder Objeck is installed in and the editor (<code>vscode</code>, <code>sublime</code>, <code>neovim</code>, <code>emacs</code>, <code>helix</code>, <code>vim</code> or <code>all</code>):</p>
 <pre class="cmd">scripts\install.cmd "C:\Program Files\Objeck" vscode
 ./scripts/install.sh /usr/local/objeck vscode</pre>
     <p>The first line is for Windows and the second for Linux and macOS. VS Code can also install the extension directly:</p>
@@ -76,33 +53,53 @@
     <p>Then set the install folder in the editor's settings (<code>objk.win.install.dir</code> on Windows, <code>objk.posix.install.dir</code> elsewhere). The per-editor steps, including Vim, Kate and the editors that only have syntax highlighting, are in <strong><a href="doc_editors.html"><code>docs/editors.md</code></a></strong>, and <a href="doc_lsp.html"><code>tools/lsp/README.md</code></a> covers the server itself.</p>
     <p>For a project of several files, put a <code>build.json</code> in the project folder that lists them:</p>
 <pre class="line-numbers"><code class="language-json">{
-  "files": ["main.obs", "helper.obs"],
-  "libs": ["gen_collect.obl", "net.obl", "json.obl"],
-  "flags": ""
+  <span class="t-str">"files"</span>: [<span class="t-str">"main.obs"</span>, <span class="t-str">"helper.obs"</span>],
+  <span class="t-str">"libs"</span>: [<span class="t-str">"gen_collect.obl"</span>, <span class="t-str">"net.obl"</span>, <span class="t-str">"json.obl"</span>],
+  <span class="t-str">"flags"</span>: <span class="t-str">""</span>
 }
 </code></pre>
-    <h3 id="how-to-check">How to check</h3>
+    <h2 id="how-to-check">How to check</h2>
     <p><code>tools/lsp/tests/</code> holds the server's tests (<code>run_lsp_tests.py</code>), the timing harness <code>bench_incremental.py</code>, and <code>validate_cached_analysis.py</code>, which asks the cached and uncached servers the same questions and requires identical answers (the claim below), and <code>programs/regression/run_dap_tests.py &lt;bin_dir&gt;</code> drives the debug adapter (<code>obd --dap</code>). Running either needs a built deploy tree; neither was run for this review. The install steps above are the ones <code>tools/lsp/scripts/install.cmd</code> and <code>install.sh</code> implement.</p>
-    <h3 id="what-you-get">What you get</h3>
+    <h2 id="what-you-get">What you get</h2>
     <p>Diagnostics as you type, completion with signature help, hover, go to definition, declaration, type definition and implementation, find references, rename, code actions, formatting, document and workspace symbols, call and type hierarchy, inlay hints, semantic tokens, folding and document highlight. The full list is in <a href="doc_editors.html#4-lsp-features"><code>docs/editors.md</code></a>.</p>
     <p>Debugging needs a program compiled with debug symbols, or no breakpoint will bind:</p>
 <pre class="cmd">obc -src myprogram.obs -debug</pre>
     <p>then start a debug session from the editor (F5 in VS Code). Breakpoints, conditional breakpoints, logpoints, stepping, variable inspection and the call stack all work.</p>
-    <h3 id="what-changed-in-v2026-10-3">What changed in v2026.10.3</h3>
+    <h2 id="what-changed-in-v2026-10-3">What changed in v2026.10.3</h2>
     <ul>
-     <li><strong>Edits analyze faster.</strong> The diagnostics library inflates each library once per process instead of on every edit, and a folder's analysed program is kept until a newer one replaces it. On Windows a hover after an edit in a small workspace went from 165 ms to 53 ms, and a hover in a second folder from about 600 ms to about 60 ms (<a href="https://github.com/objeck/objeck-lang/pull/1531" target="_blank">#1531</a>, <a href="https://github.com/objeck/objeck-lang/pull/1532" target="_blank">#1532</a>). The cached and uncached servers gave identical answers for every file in more than 6,000 edited texts. Setting <code>OBJECK_LSP_NO_CACHE=1</code> runs the uncached server, which is useful if you suspect a stale answer.</li>
-     <li><strong>A broken library no longer takes the server down.</strong> A fatal compiler error is returned instead of ending the host process, so a library that fails to load leaves the server running (<a href="https://github.com/objeck/objeck-lang/pull/1507" target="_blank">#1507</a>).</li>
-     <li><strong>The debug adapter keeps output whole.</strong> Partial UTF-8 is carried across reads, messages are ordered, an unknown request fails instead of being ignored, you can pause, and breakpoints keep their file and have their own ids (<a href="https://github.com/objeck/objeck-lang/pull/1487" target="_blank">#1487</a>, <a href="https://github.com/objeck/objeck-lang/pull/1495" target="_blank">#1495</a>).</li>
+     <li><strong>Edits analyze faster.</strong> The diagnostics library inflates each library once per process instead of on every edit, and a folder's analysed program is kept until a newer one replaces it. On Windows a hover after an edit in a small workspace went from 165 ms to 53 ms, and a hover in a second folder from about 600 ms to about 60 ms (<a href="https://github.com/objeck/objeck-lang/pull/1531" target="_blank" rel="noopener">#1531</a>, <a href="https://github.com/objeck/objeck-lang/pull/1532" target="_blank" rel="noopener">#1532</a>). The cached and uncached servers gave identical answers for every file in more than 6,000 edited texts. Setting <code>OBJECK_LSP_NO_CACHE=1</code> runs the uncached server, which is useful if you suspect a stale answer.</li>
+     <li><strong>A broken library no longer takes the server down.</strong> A fatal compiler error is returned instead of ending the host process, so a library that fails to load leaves the server running (<a href="https://github.com/objeck/objeck-lang/pull/1507" target="_blank" rel="noopener">#1507</a>).</li>
+     <li><strong>The debug adapter keeps output whole.</strong> Partial UTF-8 is carried across reads, messages are ordered, an unknown request fails instead of being ignored, you can pause, and breakpoints keep their file and have their own ids (<a href="https://github.com/objeck/objeck-lang/pull/1487" target="_blank" rel="noopener">#1487</a>, <a href="https://github.com/objeck/objeck-lang/pull/1495" target="_blank" rel="noopener">#1495</a>).</li>
     </ul>
     <p>The design of the incremental analysis, and the two phases that are not started, is in <a href="doc_incremental.html"><code>docs/INCREMENTAL_ANALYSIS_DESIGN.md</code></a>.</p>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#install">Install</a></li><li><a href="#how-to-check">How to check</a></li><li><a href="#what-you-get">What you get</a></li><li><a href="#what-changed-in-v2026-10-3">What changed in v2026.10.3</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

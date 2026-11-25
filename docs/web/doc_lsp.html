@@ -1,83 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>tools/lsp/README.md — Objeck Language</title>
-  <meta name="description" content="The Objeck LSP server brings code intelligence to the Objeck programming language &amp;mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on Windows, Linux, and macOS (AMD64 and ARM64)."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="The Objeck LSP server brings code intelligence to the Objeck programming language &amp;mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on Windows, Linux, and macOS (AMD64 and ARM64).">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',
-      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',
-                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose' });
     await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
   </script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">tools/lsp/README.md</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.md" target="_blank">tools/lsp/README.md on GitHub</a></div>
-    <p class="page-lead">The Objeck LSP server brings code intelligence to the <a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck</a> programming language &amp;mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong> (AMD64 and ARM64).</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#quick-start">Quick Start</a></li>
-      <li><a href="#supported-editors">Supported Editors</a></li>
-      <li><a href="#features">Features</a></li>
-      <li><a href="#debugging-features">Debugging Features</a></li>
-      <li><a href="#architecture">Architecture</a></li>
-      <li><a href="#inline-completion-ghost-text-off-by-default">Inline completion (ghost text), off by default</a></li>
-      <li><a href="#development">Development</a></li>
-      <li><a href="#resources">Resources</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#tools">Tools</a></li><li aria-current="page">tools/lsp/README.md</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html" aria-current="page">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">tools/lsp/README.md</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.md" target="_blank" rel="noopener">View tools/lsp/README.md on GitHub</a></p>
+    <p class="page-lead">The Objeck LSP server brings code intelligence to the <a href="https://github.com/objeck/objeck-lang" target="_blank" rel="noopener">Objeck</a> programming language &amp;mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong> (AMD64 and ARM64).</p>
 
     <div class="raw"><p align="center">
     <strong>Objeck LSP</strong><br>
@@ -89,8 +66,8 @@
       <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
       <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lang?sort=date" alt="Latest Release"></a>
     </p></div>
-    <h3 id="quick-start">Quick Start</h3>
-    <p><strong>1. Install Objeck</strong> from <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank">github.com/objeck/objeck-lang</a></p>
+    <h2 id="quick-start">Quick Start</h2>
+    <p><strong>1. Install Objeck</strong> from <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank" rel="noopener">github.com/objeck/objeck-lang</a></p>
     <p>On <strong>Linux</strong>, the Objeck runtime dynamically links mbedTLS for crypto/TLS; HTTP/2 and HTTP/3 are linked into it. Install mbedTLS first — the install script checks for it and stops with the same hint if it's missing. macOS and Windows releases need nothing extra:</p>
 <pre class="cmd"># Debian / Ubuntu
 sudo apt-get install libmbedtls-dev</pre>
@@ -107,37 +84,37 @@ scripts\install.cmd "C:\Program Files\Objeck" vscode
 # Linux / macOS - system-wide install
 ./scripts/install.sh /usr/local/objeck vscode</pre>
     <p>This creates a self-contained deployment at <code>~/.objeck-lsp/</code> and configures your editor. Replace <code>vscode</code> with <code>sublime</code>, <code>neovim</code>, <code>emacs</code>, or <code>all</code>. The first argument is wherever you installed Objeck.</p>
-    <p><strong>3. Or configure manually</strong> &amp;mdash; pick your editor below, then see the <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/docs/install_guide.html" target="_blank">Install Guide</a> for step-by-step instructions. Set environment variables (required for STDIO transport):</p>
+    <p><strong>3. Or configure manually</strong> &amp;mdash; pick your editor below, then see the <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/docs/install_guide.html" target="_blank" rel="noopener">Install Guide</a> for step-by-step instructions. Set environment variables (required for STDIO transport):</p>
 <pre class="cmd">export OBJECK_LIB_PATH=&lt;objeck_install_dir&gt;/lib
 export OBJECK_STDIO=binary</pre>
     <p><strong>4. Create a workspace</strong> &amp;mdash; add a <code>build.json</code> to your project root for multi-file projects:</p>
 <pre class="line-numbers"><code class="language-json">{
-  "files": ["main.obs", "helper.obs"],
-  "libs": ["gen_collect.obl", "net.obl", "json.obl"],
-  "flags": ""
+  <span class="t-str">"files"</span>: [<span class="t-str">"main.obs"</span>, <span class="t-str">"helper.obs"</span>],
+  <span class="t-str">"libs"</span>: [<span class="t-str">"gen_collect.obl"</span>, <span class="t-str">"net.obl"</span>, <span class="t-str">"json.obl"</span>],
+  <span class="t-str">"flags"</span>: <span class="t-str">""</span>
 }
 </code></pre>
     <p>Open the folder in your editor and the LSP server handles the rest.</p>
     <p><strong>5. To debug</strong> &amp;mdash; compile with debug symbols first, or no breakpoint will bind:</p>
 <pre class="cmd">obc -src myprog.obs --debug -dest myprog.obe</pre>
     <p>Then add a launch configuration. In <strong>VS Code</strong> the extension contributes an <code>objeck</code> debug type, so <code>Run &gt; Add Configuration...</code> writes a <code>launch.json</code> entry for you. In <strong>Sublime</strong> put a <code>debugger_configurations</code> block in a <code>.sublime-project</code>, or a <code>global_debugger_configurations</code> block in <code>Packages/User/Debugger.sublime-settings</code> to debug without a project at all &amp;mdash; see <a href="doc_sublime.html"><code>clients/sublime/README.md</code></a> for both routes and their example files. The <code>.obe</code> is what runs, so recompile after every edit.</p>
-    <h3 id="supported-editors">Supported Editors</h3>
+    <h2 id="supported-editors">Supported Editors</h2>
     <table class="ref-table">
      <thead>
       <tr><th>Editor</th><th>Transport</th><th>Setup</th></tr>
      </thead>
      <tbody>
-      <tr><td data-label="Editor"><strong>VS Code</strong></td><td data-label="Transport">STDIO (one server per window)</td><td data-label="Setup">Install the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank"><code>.vsix</code> extension</a>, set install path in settings</td></tr>
-      <tr><td data-label="Editor"><strong>Sublime Text</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add config from <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/sublime" target="_blank"><code>clients/sublime/</code></a> to LSP settings</td></tr>
-      <tr><td data-label="Editor"><strong>Kate</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add server entry in LSP Client settings (<a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank">instructions</a>)</td></tr>
-      <tr><td data-label="Editor"><strong>ecode</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add server to <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank"><code>lspclient.json</code></a></td></tr>
-      <tr><td data-label="Editor"><strong>Neovim</strong> (0.11+)</td><td data-label="Transport">STDIO</td><td data-label="Setup">Copy <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/neovim" target="_blank"><code>objeck.lua</code></a> + <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/neovim" target="_blank"><code>objeck.vim</code></a> to nvim config</td></tr>
-      <tr><td data-label="Editor"><strong>Emacs</strong> (29+)</td><td data-label="Transport">STDIO</td><td data-label="Setup">Copy <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/emacs" target="_blank"><code>objeck-mode.el</code></a> to your load-path (includes syntax highlighting)</td></tr>
-      <tr><td data-label="Editor"><strong>Helix</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Merge <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/helix" target="_blank"><code>clients/helix/languages.toml</code></a> into your config</td></tr>
+      <tr><td data-label="Editor"><strong>VS Code</strong></td><td data-label="Transport">STDIO (one server per window)</td><td data-label="Setup">Install the <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank" rel="noopener"><code>.vsix</code> extension</a>, set install path in settings</td></tr>
+      <tr><td data-label="Editor"><strong>Sublime Text</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add config from <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/sublime" target="_blank" rel="noopener"><code>clients/sublime/</code></a> to LSP settings</td></tr>
+      <tr><td data-label="Editor"><strong>Kate</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add server entry in LSP Client settings (<a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank" rel="noopener">instructions</a>)</td></tr>
+      <tr><td data-label="Editor"><strong>ecode</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Add server to <a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank" rel="noopener"><code>lspclient.json</code></a></td></tr>
+      <tr><td data-label="Editor"><strong>Neovim</strong> (0.11+)</td><td data-label="Transport">STDIO</td><td data-label="Setup">Copy <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/neovim" target="_blank" rel="noopener"><code>objeck.lua</code></a> + <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/neovim" target="_blank" rel="noopener"><code>objeck.vim</code></a> to nvim config</td></tr>
+      <tr><td data-label="Editor"><strong>Emacs</strong> (29+)</td><td data-label="Transport">STDIO</td><td data-label="Setup">Copy <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/emacs" target="_blank" rel="noopener"><code>objeck-mode.el</code></a> to your load-path (includes syntax highlighting)</td></tr>
+      <tr><td data-label="Editor"><strong>Helix</strong></td><td data-label="Transport">STDIO</td><td data-label="Setup">Merge <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp/clients/helix" target="_blank" rel="noopener"><code>clients/helix/languages.toml</code></a> into your config</td></tr>
      </tbody>
     </table>
     <p>Install scripts (<code>scripts/install.cmd</code> and <code>scripts/install.sh</code>) automate setup for VS Code, Sublime, Neovim, and Emacs. Use <code>scripts/update_lsp</code> to refresh the runtime after rebuilding Objeck.</p>
-    <h3 id="features">Features</h3>
+    <h2 id="features">Features</h2>
     <ul>
      <li><strong>Diagnostics</strong> &amp;mdash; Real-time error and warning reporting</li>
      <li><strong>Code Completion</strong> &amp;mdash; Variables, methods, and functions with trigger characters (<code>@</code>, <code>.</code>, <code>&gt;</code>)</li>
@@ -151,7 +128,7 @@ export OBJECK_STDIO=binary</pre>
      <li><strong>Formatting</strong> &amp;mdash; Document and range formatting</li>
      <li><strong>Multi-root Workspaces</strong> &amp;mdash; JSON-configured project support via <code>build.json</code></li>
     </ul>
-    <h3 id="debugging-features">Debugging Features</h3>
+    <h2 id="debugging-features">Debugging Features</h2>
     <p>The debug adapter (<code>obd --dap</code>) is shared by every editor that speaks DAP.</p>
     <ul>
      <li><strong>Structured variable inspection</strong> &amp;mdash; objects expand into their instance fields, arrays into indexed elements, and <code>Vector</code>, <code>Map</code> and <code>Hash</code> into their contents. A <code>Map</code> shows <code>key → value</code> in key order rather than an address, and each child expands recursively</li>
@@ -164,7 +141,7 @@ export OBJECK_STDIO=binary</pre>
      <li><strong>Also supported</strong> &amp;mdash; conditional breakpoints, function breakpoints, logpoints, exception breakpoints with <code>exceptionInfo</code>, <code>setVariable</code>/<code>setExpression</code>, <code>restart</code>, <code>terminate</code>, <code>modules</code> and <code>loadedSources</code></li>
     </ul>
     <p>Not supported: stepping backwards, and <code>goto</code>/<code>restartFrame</code> &amp;mdash; the last two would need the VM's interpreter loop to expose its program counter, which it currently passes to the debugger by value.</p>
-    <h3 id="architecture">Architecture</h3>
+    <h2 id="architecture">Architecture</h2>
 <pre class="mermaid">graph LR
     subgraph Editors
         VSCode[VS Code]
@@ -208,7 +185,7 @@ export OBJECK_STDIO=binary</pre>
     Socket --&gt; Workspace</pre>
     <div class="raw"><details>
     <summary><strong>LSP Protocol Coverage</strong></summary></div>
-    <h4 id="notifications">Notifications</h4>
+    <h3 id="notifications">Notifications</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Event</th><th>Method</th></tr>
@@ -223,7 +200,7 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Event">Exit</td><td data-label="Method"><code>exit</code></td></tr>
      </tbody>
     </table>
-    <h4 id="requests">Requests</h4>
+    <h3 id="requests">Requests</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Feature</th><th>Method</th></tr>
@@ -260,7 +237,7 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Feature">Type Hierarchy</td><td data-label="Method"><code>textDocument/prepareTypeHierarchy</code>, <code>typeHierarchy/supertypes</code>, <code>typeHierarchy/subtypes</code></td></tr>
      </tbody>
     </table>
-    <h4 id="server-to-client">Server to client</h4>
+    <h3 id="server-to-client">Server to client</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Feature</th><th>Method</th></tr>
@@ -272,7 +249,7 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Feature">Watch build.json</td><td data-label="Method"><code>client/registerCapability</code></td></tr>
      </tbody>
     </table>
-    <h4 id="workspace">Workspace</h4>
+    <h3 id="workspace">Workspace</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Feature</th><th>Method</th></tr>
@@ -286,7 +263,7 @@ export OBJECK_STDIO=binary</pre>
      </tbody>
     </table>
     <div class="raw"></details></div>
-    <h3 id="inline-completion-ghost-text-off-by-default">Inline completion (ghost text), off by default</h3>
+    <h2 id="inline-completion-ghost-text-off-by-default">Inline completion (ghost text), off by default</h2>
     <p><code>textDocument/inlineCompletion</code> (LSP 3.18) suggests the next statement as ghost text from a language model. <strong>It is off by default, and with the provider <code>none</code> nothing leaves your machine.</strong> Code is sent to a model only after you choose a provider:</p>
     <table class="ref-table">
      <thead>
@@ -313,30 +290,50 @@ export OBJECK_STDIO=binary</pre>
       <tr><td data-label="Setting"><code>timeoutMs</code></td><td data-label="Default"><code>3000</code></td><td data-label="">200 to 30000</td></tr>
      </tbody>
     </table>
-    <h3 id="development">Development</h3>
+    <h2 id="development">Development</h2>
     <p><strong>Building the VS Code extension:</strong></p>
 <pre class="cmd">npm install -g yo generator-code typescript @vscode/vsce
 cd clients/vscode &amp;&amp; npm run compile</pre>
-    <p><strong>Building the LSP server</strong> (requires <a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck</a>):</p>
+    <p><strong>Building the LSP server</strong> (requires <a href="https://github.com/objeck/objeck-lang" target="_blank" rel="noopener">Objeck</a>):</p>
 <pre class="cmd">cd server
 obc -src frameworks.obs,proxy.obs,server.obs,inline_completion.obs,format_code/scanner.obs,format_code/formatter.obs \
     -lib diags,net,json,regex,cipher,net_server,misc,ollama,anthropic,openai,gemini -dest objeck_lsp.obe</pre>
     <p><strong>Testing the server:</strong> <code>python tests/run_lsp_tests.py &lt;objeck&gt;/bin [server_dir]</code>. The server keeps each parsed and analyzed program until a document changes; set <code>OBJECK_LSP_NO_CACHE=1</code> to parse afresh for every request instead, and compare the two when a result looks wrong.</p>
-    <h3 id="resources">Resources</h3>
+    <h2 id="resources">Resources</h2>
     <ul>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/docs/install_guide.html" target="_blank">Install Guide</a> &amp;mdash; detailed setup for all editors</li>
-     <li><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank">README.txt</a> &amp;mdash; quick-reference setup instructions</li>
-     <li><a href="https://github.com/objeck/objeck-lang" target="_blank">Objeck Language</a> &amp;mdash; compiler, runtime, and documentation</li>
-     <li><a href="https://github.com/objeck/objeck-lang/issues" target="_blank">Issues</a> &amp;mdash; bug reports and feature requests</li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/docs/install_guide.html" target="_blank" rel="noopener">Install Guide</a> &amp;mdash; detailed setup for all editors</li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/tools/lsp/README.txt" target="_blank" rel="noopener">README.txt</a> &amp;mdash; quick-reference setup instructions</li>
+     <li><a href="https://github.com/objeck/objeck-lang" target="_blank" rel="noopener">Objeck Language</a> &amp;mdash; compiler, runtime, and documentation</li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues" target="_blank" rel="noopener">Issues</a> &amp;mdash; bug reports and feature requests</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#quick-start">Quick Start</a></li><li><a href="#supported-editors">Supported Editors</a></li><li><a href="#features">Features</a></li><li><a href="#debugging-features">Debugging Features</a></li><li><a href="#architecture">Architecture</a></li><li><a href="#inline-completion-ghost-text-off-by-default">Inline completion (ghost text), off by default</a></li><li><a href="#development">Development</a></li><li><a href="#resources">Resources</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

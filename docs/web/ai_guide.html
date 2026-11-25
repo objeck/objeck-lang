@@ -1,58 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>AI &amp; ML Developer Guide — Objeck Language</title>
-  <meta name="description" content="Build AI and ML applications with Objeck's built-in libraries: OpenAI, Gemini, Ollama, ONNX, OpenCV, ML, and NLP — no third-party packages required."/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI & ML Developer Guide — Objeck Language</title>
+  <meta name="description" content="Build AI and ML applications with Objeck&#x27;s built-in libraries: OpenAI, Gemini, Ollama, ONNX, OpenCV, ML, and NLP — no third-party packages required.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li aria-current="page">AI &amp; ML Developer Guide</li></ol></nav>
+  <div class="layout has-side">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html" aria-current="page">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
    <div class="container">
 
     <h1 class="page-title">AI &amp; ML Developer Guide</h1>
@@ -64,7 +52,7 @@
 
     <!-- ─── Table of Contents ─── -->
     <div id="toc_container">
-     <h4>Contents</h4>
+     <p class="toc-title">Contents</p>
      <ul>
       <li><a href="#auth">Authentication</a></li>
       <li><a href="#openai">OpenAI</a>
@@ -111,245 +99,245 @@
     </div>
 
     <!-- ═══════════════════════════════════════ Authentication ═══ -->
-    <h3 id="auth">Authentication</h3>
+    <h2 id="auth">Authentication</h2>
     <p>Cloud APIs use API keys stored in plain text files in your working directory.</p>
 
-    <h4>OpenAI</h4>
+    <h3>OpenAI</h3>
     <p>Create <code>openai_api_key.dat</code> containing your key, then read it at startup:</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-token := FileReader->ReadFile("openai_api_key.dat")->Trim();
+token <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadFile(<span class="t-str">"openai_api_key.dat"</span>)<span class="t-op">-&gt;</span>Trim();
 </code></pre>
 
-    <h4>Gemini</h4>
+    <h3>Gemini</h3>
     <p>Create <code>gemini_api_key.dat</code> and use the built-in helper:</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini;
 
-token := EndPoint->GetApiKey();   # reads gemini_api_key.dat
+token <span class="t-op">:=</span> <span class="t-cls">EndPoint</span><span class="t-op">-&gt;</span>GetApiKey();   <span class="t-com"># reads gemini_api_key.dat</span>
 </code></pre>
 
-    <h4>Ollama</h4>
+    <h3>Ollama</h3>
     <p>No key required. Start the daemon and pull a model:</p>
     <pre class="cmd">ollama serve
 ollama pull llama3.2</pre>
 
     <!-- ═══════════════════════════════════════ OpenAI ═══ -->
-    <h3 id="openai">OpenAI</h3>
+    <h2 id="openai">OpenAI</h2>
     <div class="lib-flag">net,net_server,json,cipher,misc,openai</div>
 
-    <h4 id="openai-chat">Chat &amp; Text</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI.Responses, System.IO.Filesystem, Collection;
+    <h3 id="openai-chat">Chat &amp; Text</h3>
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">OpenAI</span>.Responses, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem, Collection;
 
-class ChatExample {
-  function : Main(args : String[]) ~ Nil {
-    token := FileReader->ReadFile("openai_api_key.dat")->Trim();
+<span class="t-kw">class</span> <span class="t-cls">ChatExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    token <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadFile(<span class="t-str">"openai_api_key.dat"</span>)<span class="t-op">-&gt;</span>Trim();
 
-    # single-turn
-    response := Response->Respond("gpt-4o-mini",
-      Pair->New("user", "Explain JIT compilation in one sentence.")&lt;String, String&gt;,
+    <span class="t-com"># single-turn</span>
+    response <span class="t-op">:=</span> <span class="t-cls">Response</span><span class="t-op">-&gt;</span>Respond(<span class="t-str">"gpt-4o-mini"</span>,
+      <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>, <span class="t-str">"Explain JIT compilation in one sentence."</span>)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;,
       token);
-    response->GetText()->PrintLine();
+    response<span class="t-op">-&gt;</span>GetText()<span class="t-op">-&gt;</span>PrintLine();
 
-    # multi-turn conversation
-    messages := Vector->New()&lt;Pair&lt;String, String&gt;&gt;;
-    messages->AddBack(Pair->New("system", "You are a concise coding assistant.")&lt;String, String&gt;);
-    messages->AddBack(Pair->New("user",   "What is a closure?")&lt;String, String&gt;);
-    messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")&lt;String, String&gt;);
-    messages->AddBack(Pair->New("user",   "Show me one in Objeck.")&lt;String, String&gt;);
+    <span class="t-com"># multi-turn conversation</span>
+    messages <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;Pair&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;&gt;;
+    messages<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"system"</span>, <span class="t-str">"You are a concise coding assistant."</span>)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;);
+    messages<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>,   <span class="t-str">"What is a closure?"</span>)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;);
+    messages<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"assistant"</span>, <span class="t-str">"A closure captures its enclosing scope."</span>)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;);
+    messages<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>,   <span class="t-str">"Show me one in Objeck."</span>)&lt;<span class="t-type">String</span>, <span class="t-type">String</span>&gt;);
 
-    response := Response->Respond("gpt-4o-mini", messages, Nil, token);   # Nil: no output schema
-    response->GetText()->PrintLine();
+    response <span class="t-op">:=</span> <span class="t-cls">Response</span><span class="t-op">-&gt;</span>Respond(<span class="t-str">"gpt-4o-mini"</span>, messages, <span class="t-const">Nil</span>, token);   <span class="t-com"># Nil: no output schema</span>
+    response<span class="t-op">-&gt;</span>GetText()<span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
     <pre class="cmd">&gt; obc -src chat.obs -lib net,net_server,json,cipher,misc,openai
 &gt; obr chat</pre>
 
-    <h4 id="openai-vision">Vision</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Responses, System.IO.Filesystem, Collection;
+    <h3 id="openai-vision">Vision</h3>
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI, <span class="t-cls">API</span>.<span class="t-cls">OpenAI</span>.Responses, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem, Collection;
 
-bytes   := FileReader->ReadBinaryFile("photo.jpg");
-image   := ImageQuery->New("What is in this image?", bytes, ImageQuery->MimeType->JPEG);
-query   := Pair->New("user", image)&lt;String, ImageQuery&gt;;
-response := Response->Respond("gpt-4o", query, token);
-response->GetText()->PrintLine();
+bytes   <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"photo.jpg"</span>);
+image   <span class="t-op">:=</span> <span class="t-cls">ImageQuery</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"What is in this image?"</span>, bytes, <span class="t-cls">ImageQuery</span><span class="t-op">-&gt;</span><span class="t-cls">MimeType</span><span class="t-op">-&gt;</span>JPEG);
+query   <span class="t-op">:=</span> <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>, image)&lt;<span class="t-type">String</span>, ImageQuery&gt;;
+response <span class="t-op">:=</span> <span class="t-cls">Response</span><span class="t-op">-&gt;</span>Respond(<span class="t-str">"gpt-4o"</span>, query, token);
+response<span class="t-op">-&gt;</span>GetText()<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
 
-    <h4 id="openai-embed">Embeddings</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
+    <h3 id="openai-embed">Embeddings</h3>
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI;
 
-values := Embedding->Create("Objeck is a JIT-compiled language",
-  "text-embedding-3-small", token);
-if(values <> Nil) {
-  "Dimensions: {$values->Size()}"->PrintLine();   # 1536
+values <span class="t-op">:=</span> <span class="t-cls">Embedding</span><span class="t-op">-&gt;</span>Create(<span class="t-str">"Objeck is a JIT-compiled language"</span>,
+  <span class="t-str">"text-embedding-3-small"</span>, token);
+<span class="t-kw">if</span>(values <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+  <span class="t-str">"Dimensions: {$values-&gt;Size()}"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># 1536</span>
 };
 </code></pre>
 
-    <h4 id="openai-moderation">Moderation</h4>
+    <h3 id="openai-moderation">Moderation</h3>
     <p>Per-category safety flags and confidence scores:</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI;
 
-result := Moderation->Check("I want to hurt someone.", token);
-if(result <> Nil) {
-  "Flagged: {$result->IsFlagged()}"->PrintLine();
-  if(result->IsFlagged()) {
-    score := result->GetScore("violence");
-    "violence score: {$score}"->PrintLine();
+result <span class="t-op">:=</span> <span class="t-cls">Moderation</span><span class="t-op">-&gt;</span>Check(<span class="t-str">"I want to hurt someone."</span>, token);
+<span class="t-kw">if</span>(result <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+  <span class="t-str">"Flagged: {$result-&gt;IsFlagged()}"</span><span class="t-op">-&gt;</span>PrintLine();
+  <span class="t-kw">if</span>(result<span class="t-op">-&gt;</span>IsFlagged()) {
+    score <span class="t-op">:=</span> result<span class="t-op">-&gt;</span>GetScore(<span class="t-str">"violence"</span>);
+    <span class="t-str">"violence score: {$score}"</span><span class="t-op">-&gt;</span>PrintLine();
   };
 };
 </code></pre>
     <p>Categories: <code>harassment</code>, <code>hate</code>, <code>self-harm</code>, <code>sexual</code>, <code>violence</code> (and <code>/threatening</code>, <code>/graphic</code>, <code>/instructions</code>, <code>/intent</code> variants).</p>
 
-    <h4 id="openai-batch">Batch Processing</h4>
+    <h3 id="openai-batch">Batch Processing</h3>
     <p>Up to 50,000 requests at 50% cost. Results within 24 hours.</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI;
 
-# 1. upload request file (or reuse the one already uploaded)
-file := File->LoadOrCreate("requests.jsonl", "batch", token);
+<span class="t-com"># 1. upload request file (or reuse the one already uploaded)</span>
+file <span class="t-op">:=</span> <span class="t-cls">File</span><span class="t-op">-&gt;</span>LoadOrCreate(<span class="t-str">"requests.jsonl"</span>, <span class="t-str">"batch"</span>, token);
 
-# 2. submit
-job := Batch->Create(file->GetId(), "/v1/chat/completions", token);
-"Batch ID: {$job->GetId()}"->PrintLine();
+<span class="t-com"># 2. submit</span>
+job <span class="t-op">:=</span> <span class="t-cls">Batch</span><span class="t-op">-&gt;</span>Create(file<span class="t-op">-&gt;</span>GetId(), <span class="t-str">"/v1/chat/completions"</span>, token);
+<span class="t-str">"Batch ID: {$job-&gt;GetId()}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-# 3. poll for completion
-job := Batch->Get(job->GetId(), token);
-if(job->IsComplete()) {
-  "Output file: {$job->GetOutputFileId()}"->PrintLine();
+<span class="t-com"># 3. poll for completion</span>
+job <span class="t-op">:=</span> <span class="t-cls">Batch</span><span class="t-op">-&gt;</span>Get(job<span class="t-op">-&gt;</span>GetId(), token);
+<span class="t-kw">if</span>(job<span class="t-op">-&gt;</span>IsComplete()) {
+  <span class="t-str">"Output file: {$job-&gt;GetOutputFileId()}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
     <p><strong>Request format</strong> — one JSON object per line in <code>requests.jsonl</code>:</p>
-    <pre class="line-numbers"><code class="language-json">{"custom_id":"r1","method":"POST","url":"/v1/chat/completions","body":{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}}
+    <pre class="line-numbers"><code class="language-json">{<span class="t-str">"custom_id"</span>:<span class="t-str">"r1"</span>,<span class="t-str">"method"</span>:<span class="t-str">"POST"</span>,<span class="t-str">"url"</span>:<span class="t-str">"/v1/chat/completions"</span>,<span class="t-str">"body"</span>:{<span class="t-str">"model"</span>:<span class="t-str">"gpt-4o-mini"</span>,<span class="t-str">"messages"</span>:[{<span class="t-str">"role"</span>:<span class="t-str">"user"</span>,<span class="t-str">"content"</span>:<span class="t-str">"Hello"</span>}]}}
 </code></pre>
 
-    <h4 id="openai-realtime">Realtime Audio</h4>
+    <h3 id="openai-realtime">Realtime Audio</h3>
     <p>Text or audio over WebSocket; returns transcript and PCM audio. Requires <code>-lib sdl2</code> for playback.</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, Game.SDL2;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenAI, <span class="t-cls">Game</span>.SDL2;
 
-response := Realtime->Respond("What time is it in Tokyo?",
-  "gpt-4o-realtime-preview", token);
-if(response <> Nil) {
-  response->GetFirst()->PrintLine();                      # transcript
-  audio := response->GetSecond();
-  Mixer->PlayPcm(audio->Get(), 24000,
-    AudioFormat->SDL_AUDIO_S16LSB, 1);                   # 24 kHz mono PCM
+response <span class="t-op">:=</span> <span class="t-cls">Realtime</span><span class="t-op">-&gt;</span>Respond(<span class="t-str">"What time is it in Tokyo?"</span>,
+  <span class="t-str">"gpt-4o-realtime-preview"</span>, token);
+<span class="t-kw">if</span>(response <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+  response<span class="t-op">-&gt;</span>GetFirst()<span class="t-op">-&gt;</span>PrintLine();                      <span class="t-com"># transcript</span>
+  audio <span class="t-op">:=</span> response<span class="t-op">-&gt;</span>GetSecond();
+  <span class="t-cls">Mixer</span><span class="t-op">-&gt;</span>PlayPcm(audio<span class="t-op">-&gt;</span>Get(), <span class="t-num">24000</span>,
+    <span class="t-cls">AudioFormat</span><span class="t-op">-&gt;</span>SDL_AUDIO_S16LSB, <span class="t-num">1</span>);                   <span class="t-com"># 24 kHz mono PCM</span>
 };
 </code></pre>
 
     <!-- ═══════════════════════════════════════ Gemini ═══ -->
-    <h3 id="gemini">Gemini</h3>
+    <h2 id="gemini">Gemini</h2>
     <div class="lib-flag">net,net_server,json,cipher,misc,gemini</div>
 
-    <h4 id="gemini-chat">Chat &amp; Vision</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
+    <h3 id="gemini-chat">Chat &amp; Vision</h3>
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini;
 
-class GeminiChat {
-  function : Main(args : String[]) ~ Nil {
-    token := EndPoint->GetApiKey();
+<span class="t-kw">class</span> <span class="t-cls">GeminiChat</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    token <span class="t-op">:=</span> <span class="t-cls">EndPoint</span><span class="t-op">-&gt;</span>GetApiKey();
 
-    # single-turn text
-    content := Content->New("user")
-      ->AddPart(TextPart->New("Why is the sky blue?"));
-    candidates := Model->GenerateContent("models/gemini-2.0-flash", content, token);
-    if(candidates <> Nil & <>candidates->IsEmpty()) {
-      candidates->First()->GetAllText()->PrintLine();
+    <span class="t-com"># single-turn text</span>
+    content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)
+      <span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Why is the sky blue?"</span>));
+    candidates <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>GenerateContent(<span class="t-str">"models/gemini-2.0-flash"</span>, content, token);
+    <span class="t-kw">if</span>(candidates <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; <span class="t-op">&lt;&gt;</span>candidates<span class="t-op">-&gt;</span>IsEmpty()) {
+      candidates<span class="t-op">-&gt;</span>First()<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # image + text
-    bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("chart.png");
-    content := Content->New("user")
-      ->AddPart(TextPart->New("Summarize this chart."))
-      ->AddPart(BinaryPart->New(bytes, "image/png"));
-    candidates := Model->GenerateContent("models/gemini-2.0-flash", content, token);
-    if(candidates <> Nil & <>candidates->IsEmpty()) {
-      candidates->First()->GetAllText()->PrintLine();
+    <span class="t-com"># image + text</span>
+    bytes <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Filesystem</span>.<span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"chart.png"</span>);
+    content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)
+      <span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Summarize this chart."</span>))
+      <span class="t-op">-&gt;</span>AddPart(<span class="t-cls">BinaryPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(bytes, <span class="t-str">"image/png"</span>));
+    candidates <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>GenerateContent(<span class="t-str">"models/gemini-2.0-flash"</span>, content, token);
+    <span class="t-kw">if</span>(candidates <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; <span class="t-op">&lt;&gt;</span>candidates<span class="t-op">-&gt;</span>IsEmpty()) {
+      candidates<span class="t-op">-&gt;</span>First()<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
     };
 
-    # multi-turn with system instruction
-    chat := Chat->New("models/gemini-2.0-flash", token);
-    chat->SetSystemInstruction(
-      Content->New("system")->AddPart(TextPart->New("You are a coding assistant.")));
-    chat->SendPart(TextPart->New("What is a closure?"), "user")->GetAllText()->PrintLine();
-    chat->SendPart(TextPart->New("Show me one in Objeck."), "user")->GetAllText()->PrintLine();
+    <span class="t-com"># multi-turn with system instruction</span>
+    chat <span class="t-op">:=</span> <span class="t-cls">Chat</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"models/gemini-2.0-flash"</span>, token);
+    chat<span class="t-op">-&gt;</span>SetSystemInstruction(
+      <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"system"</span>)<span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"You are a coding assistant."</span>)));
+    chat<span class="t-op">-&gt;</span>SendPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"What is a closure?"</span>), <span class="t-str">"user"</span>)<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
+    chat<span class="t-op">-&gt;</span>SendPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Show me one in Objeck."</span>), <span class="t-str">"user"</span>)<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
 
-    <h4 id="gemini-grounding">Search Grounding</h4>
+    <h3 id="gemini-grounding">Search Grounding</h3>
     <p>Anchor responses in live Google Search results for up-to-date answers:</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini;
 
-content := Content->New("user")
-  ->AddPart(TextPart->New("What major AI models were released this month?"));
+content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)
+  <span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"What major AI models were released this month?"</span>));
 
-candidates := Model->GenerateContentWithGrounding(
-  "models/gemini-2.0-flash", content, token);
-if(candidates <> Nil & <>candidates->IsEmpty()) {
-  candidates->First()->GetAllText()->PrintLine();
+candidates <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>GenerateContentWithGrounding(
+  <span class="t-str">"models/gemini-2.0-flash"</span>, content, token);
+<span class="t-kw">if</span>(candidates <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; <span class="t-op">&lt;&gt;</span>candidates<span class="t-op">-&gt;</span>IsEmpty()) {
+  candidates<span class="t-op">-&gt;</span>First()<span class="t-op">-&gt;</span>GetAllText()<span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
 
-    <h4 id="gemini-files">Files API</h4>
+    <h3 id="gemini-files">Files API</h3>
     <p>Upload once, reference across many requests without re-uploading:</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-# upload
-data := FileReader->ReadBinaryFile("report.pdf");
-file := FileManager->Upload("Q1 Report", data, "application/pdf", token);
-if(file <> Nil & file->IsActive()) {
-  "URI: {$file->GetUri()}"->PrintLine();
+<span class="t-com"># upload</span>
+data <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"report.pdf"</span>);
+file <span class="t-op">:=</span> <span class="t-cls">FileManager</span><span class="t-op">-&gt;</span>Upload(<span class="t-str">"Q1 Report"</span>, data, <span class="t-str">"application/pdf"</span>, token);
+<span class="t-kw">if</span>(file <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span> &amp; file<span class="t-op">-&gt;</span>IsActive()) {
+  <span class="t-str">"URI: {$file-&gt;GetUri()}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 
-# list active files
-files := FileManager->List(token);
-each(f in files) {
-  "{$f->GetName()}: {$f->GetState()}"->PrintLine();
+<span class="t-com"># list active files</span>
+files <span class="t-op">:=</span> <span class="t-cls">FileManager</span><span class="t-op">-&gt;</span>List(token);
+<span class="t-kw">each</span>(f <span class="t-kw">in</span> files) {
+  <span class="t-str">"{$f-&gt;GetName()}: {$f-&gt;GetState()}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 
-# delete
-FileManager->Delete("files/abc123", token);
+<span class="t-com"># delete</span>
+<span class="t-cls">FileManager</span><span class="t-op">-&gt;</span>Delete(<span class="t-str">"files/abc123"</span>, token);
 </code></pre>
 
-    <h4 id="gemini-cache">Context Caching</h4>
+    <h3 id="gemini-cache">Context Caching</h3>
     <p>Cache large reused content server-side to avoid re-tokenization cost on every request:</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-large_context := FileReader->ReadFile("legal_document.txt");
-content := Content->New("user")->AddPart(TextPart->New(large_context));
+large_context <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadFile(<span class="t-str">"legal_document.txt"</span>);
+content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)<span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(large_context));
 
-# cache for 5 minutes (300 seconds)
-item := CachedContent->Create(
-  "models/gemini-1.5-pro-001", content, 300, "legal-doc-cache", token);
-if(item <> Nil) {
-  "Tokens cached: {$item->GetTokenCount()}"->PrintLine();
-  "Expires: {$item->GetExpireTime()}"->PrintLine();
+<span class="t-com"># cache for 5 minutes (300 seconds)</span>
+item <span class="t-op">:=</span> <span class="t-cls">CachedContent</span><span class="t-op">-&gt;</span>Create(
+  <span class="t-str">"models/gemini-1.5-pro-001"</span>, content, <span class="t-num">300</span>, <span class="t-str">"legal-doc-cache"</span>, token);
+<span class="t-kw">if</span>(item <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+  <span class="t-str">"Tokens cached: {$item-&gt;GetTokenCount()}"</span><span class="t-op">-&gt;</span>PrintLine();
+  <span class="t-str">"Expires: {$item-&gt;GetExpireTime()}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 
-CachedContent->Delete("cachedContents/abc123", token);
+<span class="t-cls">CachedContent</span><span class="t-op">-&gt;</span>Delete(<span class="t-str">"cachedContents/abc123"</span>, token);
 </code></pre>
 
-    <h4 id="gemini-embed">Embeddings</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, Collection;
+    <h3 id="gemini-embed">Embeddings</h3>
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.<span class="t-cls">Google</span>.Gemini, Collection;
 
-# single embedding (768 dimensions)
-content := Content->New("user")->AddPart(TextPart->New("machine learning"));
-values := Model->EmbedContent(content, token);
-"Dimensions: {$values->Size()}"->PrintLine();
+<span class="t-com"># single embedding (768 dimensions)</span>
+content <span class="t-op">:=</span> <span class="t-cls">Content</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"user"</span>)<span class="t-op">-&gt;</span>AddPart(<span class="t-cls">TextPart</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"machine learning"</span>));
+values <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>EmbedContent(content, token);
+<span class="t-str">"Dimensions: {$values-&gt;Size()}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-# batch — multiple texts in one round-trip
-texts := Vector->New()&lt;String&gt;;
-texts->AddBack("Objeck is JIT-compiled");
-texts->AddBack("Python uses an interpreter");
-texts->AddBack("Rust is memory-safe");
+<span class="t-com"># batch — multiple texts in one round-trip</span>
+texts <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+texts<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Objeck is JIT-compiled"</span>);
+texts<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Python uses an interpreter"</span>);
+texts<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"Rust is memory-safe"</span>);
 
-embeddings := Model->BatchEmbedContent("models/text-embedding-004", texts, token);
-each(i : embeddings) {
-  dim := embeddings->Get(i)->Size();
-  "  [{$i}] dim={$dim}"->PrintLine();
+embeddings <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>BatchEmbedContent(<span class="t-str">"models/text-embedding-004"</span>, texts, token);
+<span class="t-kw">each</span>(i : embeddings) {
+  dim <span class="t-op">:=</span> embeddings<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>Size();
+  <span class="t-str">"  [{$i}] dim={$dim}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 </code></pre>
 
     <!-- ═══════════════════════════════════════ Ollama ═══ -->
-    <h3 id="ollama">Ollama (Local LLMs)</h3>
+    <h2 id="ollama">Ollama (Local LLMs)</h2>
     <div class="lib-flag">net,json,cipher,misc,ollama</div>
     <p>
       Run open-source models locally. No API key, no data leaves your machine.
@@ -357,29 +345,29 @@ each(i : embeddings) {
     </p>
     <pre class="cmd">ollama serve &amp;&amp; ollama pull llama3.2</pre>
 
-    <pre class="line-numbers"><code class="language-cpp">use API.Ollama;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Ollama;
 
-class LocalChat {
-  function : Main(args : String[]) ~ Nil {
-    # one-shot generation
-    Completion->Generate("llama3.2", "What is 2 + 2?")->PrintLine();
+<span class="t-kw">class</span> <span class="t-cls">LocalChat</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># one-shot generation</span>
+    <span class="t-cls">Completion</span><span class="t-op">-&gt;</span>Generate(<span class="t-str">"llama3.2"</span>, <span class="t-str">"What is 2 + 2?"</span>)<span class="t-op">-&gt;</span>PrintLine();
 
-    # with temperature control
-    opts := Options->New()->SetTemperature(0.2);
-    Completion->Generate("llama3.2", "List 3 capitals of Europe.", opts)->PrintLine();
+    <span class="t-com"># with temperature control</span>
+    opts <span class="t-op">:=</span> <span class="t-cls">Options</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetTemperature(<span class="t-num">0.2</span>);
+    <span class="t-cls">Completion</span><span class="t-op">-&gt;</span>Generate(<span class="t-str">"llama3.2"</span>, <span class="t-str">"List 3 capitals of Europe."</span>, opts)<span class="t-op">-&gt;</span>PrintLine();
 
-    # multi-turn — context maintained automatically
-    chat := Chat->New("llama3.2");
-    chat->Send("My name is Alice.");
-    chat->Send("What is my name?")->PrintLine();   # "Your name is Alice."
+    <span class="t-com"># multi-turn — context maintained automatically</span>
+    chat <span class="t-op">:=</span> <span class="t-cls">Chat</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"llama3.2"</span>);
+    chat<span class="t-op">-&gt;</span>Send(<span class="t-str">"My name is Alice."</span>);
+    chat<span class="t-op">-&gt;</span>Send(<span class="t-str">"What is my name?"</span>)<span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># "Your name is Alice."</span>
 
-    # vision (multimodal models)
-    image := System.IO.Filesystem.File->New("photo.jpg");
-    Completion->Generate("llava", "Describe this image.", image)->PrintLine();
+    <span class="t-com"># vision (multimodal models)</span>
+    image <span class="t-op">:=</span> <span class="t-cls">System</span>.<span class="t-cls">IO</span>.<span class="t-cls">Filesystem</span>.<span class="t-cls">File</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"photo.jpg"</span>);
+    <span class="t-cls">Completion</span><span class="t-op">-&gt;</span>Generate(<span class="t-str">"llava"</span>, <span class="t-str">"Describe this image."</span>, image)<span class="t-op">-&gt;</span>PrintLine();
 
-    # local embeddings
-    values := Model->Embeddings("nomic-embed-text", "machine learning");
-    "Dimensions: {$values->Size()}"->PrintLine();
+    <span class="t-com"># local embeddings</span>
+    values <span class="t-op">:=</span> <span class="t-cls">Model</span><span class="t-op">-&gt;</span>Embeddings(<span class="t-str">"nomic-embed-text"</span>, <span class="t-str">"machine learning"</span>);
+    <span class="t-str">"Dimensions: {$values-&gt;Size()}"</span><span class="t-op">-&gt;</span>PrintLine();
   }
 }
 </code></pre>
@@ -387,75 +375,75 @@ class LocalChat {
 &gt; obr local_chat</pre>
 
     <!-- ═══════════════════════════════════════ Machine Learning ═══ -->
-    <h3 id="ml">Machine Learning</h3>
+    <h2 id="ml">Machine Learning</h2>
     <div class="lib-flag">ml,gen_collect,csv</div>
     <p>
       Pure Objeck ML routines backed by the Eigen C++ library — no Python, no external frameworks.
       Covers linear algebra, regression, neural networks, clustering, kernel and one-class SVMs, outlier detection, and model evaluation. The new <code>System.ML.Lab</code> library (<code>ml_lab</code>) adds train/test partitions, resampling, experiments, result tables and SVG charts.
     </p>
 
-    <h4 id="ml-matrix">Matrix Operations</h4>
+    <h3 id="ml-matrix">Matrix Operations</h3>
     <p><code>Matrix2D</code> provides the foundational matrix math used by all other ML classes, plus activation functions used in neural architectures:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class MatrixExample {
-  function : Main(args : String[]) ~ Nil {
-    a := [[1.0, 2.0], [3.0, 4.0]];
-    b := [[5.0, 6.0], [7.0, 8.0]];
+<span class="t-kw">class</span> <span class="t-cls">MatrixExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    a <span class="t-op">:=</span> [[<span class="t-num">1.0</span>, <span class="t-num">2.0</span>], [<span class="t-num">3.0</span>, <span class="t-num">4.0</span>]];
+    b <span class="t-op">:=</span> [[<span class="t-num">5.0</span>, <span class="t-num">6.0</span>], [<span class="t-num">7.0</span>, <span class="t-num">8.0</span>]];
 
-    # matrix dot product: [[19,22],[43,50]]
-    c := Matrix2D->DotProduct(a, b);
-    dims := c->Size();       # [rows, columns]
-    each(r : dims[0]) {
-      each(col : dims[1]) {
-        value := c[r,col];
-        "{$value} "->Print();
+    <span class="t-com"># matrix dot product: [[19,22],[43,50]]</span>
+    c <span class="t-op">:=</span> <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>DotProduct(a, b);
+    dims <span class="t-op">:=</span> c<span class="t-op">-&gt;</span>Size();       <span class="t-com"># [rows, columns]</span>
+    <span class="t-kw">each</span>(r : dims[<span class="t-num">0</span>]) {
+      <span class="t-kw">each</span>(col : dims[<span class="t-num">1</span>]) {
+        value <span class="t-op">:=</span> c[r,col];
+        <span class="t-str">"{$value} "</span><span class="t-op">-&gt;</span>Print();
       };
-      '\n'->Print();
+      <span class="t-str">'\n'</span><span class="t-op">-&gt;</span>Print();
     };
-    # 19.000000 22.000000
-    # 43.000000 50.000000
+    <span class="t-com"># 19.000000 22.000000</span>
+    <span class="t-com"># 43.000000 50.000000</span>
 
-    # activation functions (element-wise)
-    x := [[0.5, -0.3], [1.2, -0.8]];
-    Matrix2D->ReLU(x);       # max(0, x): [[0.5,0.0],[1.2,0.0]]
-    Matrix2D->Sigmoid(x);    # 1/(1+e^-x)
-    Matrix2D->Tanh(x);       # hyperbolic tangent
-    Matrix2D->Softmax(x);    # probability distribution over all elements (sums to 1)
+    <span class="t-com"># activation functions (element-wise)</span>
+    x <span class="t-op">:=</span> [[<span class="t-num">0.5</span>, -<span class="t-num">0.3</span>], [<span class="t-num">1.2</span>, -<span class="t-num">0.8</span>]];
+    <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>ReLU(x);       <span class="t-com"># max(0, x): [[0.5,0.0],[1.2,0.0]]</span>
+    <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>Sigmoid(x);    <span class="t-com"># 1/(1+e^-x)</span>
+    <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>Tanh(x);       <span class="t-com"># hyperbolic tangent</span>
+    <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>Softmax(x);    <span class="t-com"># probability distribution over all elements (sums to 1)</span>
 
-    # statistical helpers
-    "Row 0 avg: {$Matrix2D->AverageRow(0, a)}"->PrintLine();   # 1.500000
-    "Col 1 sum: {$Matrix2D->SumColumn(1, a)}"->PrintLine();    # 6.000000
-    "Std dev:   {$Matrix2D->StdDevColumn(0, a)}"->PrintLine(); # 1.414214 (sample)
+    <span class="t-com"># statistical helpers</span>
+    <span class="t-str">"Row 0 avg: {$Matrix2D-&gt;AverageRow(0, a)}"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># 1.500000</span>
+    <span class="t-str">"Col 1 sum: {$Matrix2D-&gt;SumColumn(1, a)}"</span><span class="t-op">-&gt;</span>PrintLine();    <span class="t-com"># 6.000000</span>
+    <span class="t-str">"Std dev:   {$Matrix2D-&gt;StdDevColumn(0, a)}"</span><span class="t-op">-&gt;</span>PrintLine(); <span class="t-com"># 1.414214 (sample)</span>
 
-    # random matrices for weight initialization
-    weights := Matrix2D->Random(3, 4);          # uniform [0,1]
-    weights := Matrix2D->RandomNormal(0.0, 0.1, 3, 4);  # Gaussian
+    <span class="t-com"># random matrices for weight initialization</span>
+    weights <span class="t-op">:=</span> <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>Random(<span class="t-num">3</span>, <span class="t-num">4</span>);          <span class="t-com"># uniform [0,1]</span>
+    weights <span class="t-op">:=</span> <span class="t-cls">Matrix2D</span><span class="t-op">-&gt;</span>RandomNormal(<span class="t-num">0.0</span>, <span class="t-num">0.1</span>, <span class="t-num">3</span>, <span class="t-num">4</span>);  <span class="t-com"># Gaussian</span>
   }
 }
 </code></pre>
 
-    <h4 id="ml-regression">Regression</h4>
+    <h3 id="ml-regression">Regression</h3>
     <p><strong>Linear Regression</strong> — least-squares fit for continuous target prediction:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class RegressionExample {
-  function : Main(args : String[]) ~ Nil {
-    # features: [size_sqft, rooms]  →  price
-    X := [[800.0, 2.0], [1200.0, 3.0], [1600.0, 4.0], [2000.0, 5.0]];
-    y := [[150000.0], [220000.0], [300000.0], [380000.0]];
+<span class="t-kw">class</span> <span class="t-cls">RegressionExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># features: [size_sqft, rooms]  →  price</span>
+    X <span class="t-op">:=</span> [[<span class="t-num">800.0</span>, <span class="t-num">2.0</span>], [<span class="t-num">1200.0</span>, <span class="t-num">3.0</span>], [<span class="t-num">1600.0</span>, <span class="t-num">4.0</span>], [<span class="t-num">2000.0</span>, <span class="t-num">5.0</span>]];
+    y <span class="t-op">:=</span> [[<span class="t-num">150000.0</span>], [<span class="t-num">220000.0</span>], [<span class="t-num">300000.0</span>], [<span class="t-num">380000.0</span>]];
 
-    model := LinearRegression->New();
-    if(model->Fit(X, y)) {
-      preds := model->Predict([[1400.0, 3.0]]);
-      price := preds[0,0];
-      "Predicted price: {$price}"->PrintLine();       # ~263148
-      "R²: {$model->GetRSquared()}"->PrintLine();      # ~0.998
+    model <span class="t-op">:=</span> <span class="t-cls">LinearRegression</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    <span class="t-kw">if</span>(model<span class="t-op">-&gt;</span>Fit(X, y)) {
+      preds <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>Predict([[<span class="t-num">1400.0</span>, <span class="t-num">3.0</span>]]);
+      price <span class="t-op">:=</span> preds[<span class="t-num">0</span>,<span class="t-num">0</span>];
+      <span class="t-str">"Predicted price: {$price}"</span><span class="t-op">-&gt;</span>PrintLine();       <span class="t-com"># ~263148</span>
+      <span class="t-str">"R²: {$model-&gt;GetRSquared()}"</span><span class="t-op">-&gt;</span>PrintLine();      <span class="t-com"># ~0.998</span>
 
-      coefficients := model->GetCoefficients();
-      each(i : coefficients->Size()) {
-        weight := coefficients[i];
-        "w[{$i}] = {$weight}"->PrintLine();
+      coefficients <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>GetCoefficients();
+      <span class="t-kw">each</span>(i : coefficients<span class="t-op">-&gt;</span>Size()) {
+        weight <span class="t-op">:=</span> coefficients[i];
+        <span class="t-str">"w[{$i}] = {$weight}"</span><span class="t-op">-&gt;</span>PrintLine();
       };
     };
   }
@@ -463,180 +451,180 @@ class RegressionExample {
 </code></pre>
 
     <p><strong>Logistic Regression</strong> — gradient descent binary classifier with sigmoid activation:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class ClassifierExample {
-  function : Main(args : String[]) ~ Nil {
-    # features: [hours_studied, prev_score]  →  pass/fail
-    X := [[2.0, 55.0], [3.0, 60.0], [7.0, 80.0], [9.0, 90.0]];
-    y := [[0.0], [0.0], [1.0], [1.0]];
+<span class="t-kw">class</span> <span class="t-cls">ClassifierExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># features: [hours_studied, prev_score]  →  pass/fail</span>
+    X <span class="t-op">:=</span> [[<span class="t-num">2.0</span>, <span class="t-num">55.0</span>], [<span class="t-num">3.0</span>, <span class="t-num">60.0</span>], [<span class="t-num">7.0</span>, <span class="t-num">80.0</span>], [<span class="t-num">9.0</span>, <span class="t-num">90.0</span>]];
+    y <span class="t-op">:=</span> [[<span class="t-num">0.0</span>], [<span class="t-num">0.0</span>], [<span class="t-num">1.0</span>], [<span class="t-num">1.0</span>]];
 
-    model := LogisticRegression->New(0.01, 2000);
-    if(model->Fit(X, y)) {
-      probs   := model->Predict([[5.0, 72.0]]);
-      classes := model->PredictClass([[5.0, 72.0]]);
-      probability := probs[0];
-      passed      := classes[0];
-      "Probability: {$probability}"->PrintLine();    # ~0.43
-      "Predicted pass: {$passed}"->PrintLine();      # false
+    model <span class="t-op">:=</span> <span class="t-cls">LogisticRegression</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">0.01</span>, <span class="t-num">2000</span>);
+    <span class="t-kw">if</span>(model<span class="t-op">-&gt;</span>Fit(X, y)) {
+      probs   <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>Predict([[<span class="t-num">5.0</span>, <span class="t-num">72.0</span>]]);
+      classes <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>PredictClass([[<span class="t-num">5.0</span>, <span class="t-num">72.0</span>]]);
+      probability <span class="t-op">:=</span> probs[<span class="t-num">0</span>];
+      passed      <span class="t-op">:=</span> classes[<span class="t-num">0</span>];
+      <span class="t-str">"Probability: {$probability}"</span><span class="t-op">-&gt;</span>PrintLine();    <span class="t-com"># ~0.43</span>
+      <span class="t-str">"Predicted pass: {$passed}"</span><span class="t-op">-&gt;</span>PrintLine();      <span class="t-com"># false</span>
     };
   }
 }
 </code></pre>
 
-    <h4 id="ml-neural">Neural Networks</h4>
+    <h3 id="ml-neural">Neural Networks</h3>
     <p>Configurable multi-layer network trained with backpropagation. Models can be saved and reloaded:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML, Collection;
 
-class XorNet {
-  function : Main(args : String[]) ~ Nil {
-    # XOR training data: each sample is a column vector, one row per input node
-    inputs  := Vector->New()&lt;FloatMatrixRef&gt;;
-    targets := Vector->New()&lt;FloatMatrixRef&gt;;
+<span class="t-kw">class</span> <span class="t-cls">XorNet</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># XOR training data: each sample is a column vector, one row per input node</span>
+    inputs  <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;FloatMatrixRef&gt;;
+    targets <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;FloatMatrixRef&gt;;
 
-    inputs->AddBack(FloatMatrixRef->New([[0.0], [0.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
-    inputs->AddBack(FloatMatrixRef->New([[0.0], [1.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
-    inputs->AddBack(FloatMatrixRef->New([[1.0], [0.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
-    inputs->AddBack(FloatMatrixRef->New([[1.0], [1.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
+    inputs<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">0.0</span>], [<span class="t-num">0.0</span>]])); targets<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">0.0</span>]]));
+    inputs<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">0.0</span>], [<span class="t-num">1.0</span>]])); targets<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">1.0</span>]]));
+    inputs<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">1.0</span>], [<span class="t-num">0.0</span>]])); targets<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">1.0</span>]]));
+    inputs<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">1.0</span>], [<span class="t-num">1.0</span>]])); targets<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">0.0</span>]]));
 
-    # Train: 2 inputs → 6 hidden (2 × factor 3) → 1 output
-    net := NeuralNetwork->Train(2, inputs, 3, 1, targets, 0.3, 10000);
-    if(net <> Nil) {
-      query := FloatMatrixRef->New([[1.0], [0.0]]);
-      "1 XOR 0 — confidence: {$net->Confidence(query)}"->PrintLine();  # for example 0.987407 (weights start random)
-      "1 XOR 0 — activated:  {$net->Query(query)}"->PrintLine();       # true
-      net->Store("xor.dat");
+    <span class="t-com"># Train: 2 inputs → 6 hidden (2 × factor 3) → 1 output</span>
+    net <span class="t-op">:=</span> <span class="t-cls">NeuralNetwork</span><span class="t-op">-&gt;</span>Train(<span class="t-num">2</span>, inputs, <span class="t-num">3</span>, <span class="t-num">1</span>, targets, <span class="t-num">0.3</span>, <span class="t-num">10000</span>);
+    <span class="t-kw">if</span>(net <span class="t-op">&lt;&gt;</span> <span class="t-const">Nil</span>) {
+      query <span class="t-op">:=</span> <span class="t-cls">FloatMatrixRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([[<span class="t-num">1.0</span>], [<span class="t-num">0.0</span>]]);
+      <span class="t-str">"1 XOR 0 — confidence: {$net-&gt;Confidence(query)}"</span><span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># for example 0.987407 (weights start random)</span>
+      <span class="t-str">"1 XOR 0 — activated:  {$net-&gt;Query(query)}"</span><span class="t-op">-&gt;</span>PrintLine();       <span class="t-com"># true</span>
+      net<span class="t-op">-&gt;</span>Store(<span class="t-str">"xor.dat"</span>);
     };
   }
 }
 </code></pre>
     <p>Load CSV training data with the built-in reader — it splits inputs and targets automatically:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML, Collection;
 
-# iris.csv: no header row; 4 feature columns scaled to 0..1, then 3 one-hot class columns
-# LoadSplitMatrices: filename, number of target columns (the last 3), train fraction, line ending
-# each row becomes a 4x1 input and a 3x1 target, the column shapes Train expects
-splits := MatrixReader->LoadSplitMatrices("iris.csv", 3, 0.8, "\n");
+<span class="t-com"># iris.csv: no header row; 4 feature columns scaled to 0..1, then 3 one-hot class columns</span>
+<span class="t-com"># LoadSplitMatrices: filename, number of target columns (the last 3), train fraction, line ending</span>
+<span class="t-com"># each row becomes a 4x1 input and a 3x1 target, the column shapes Train expects</span>
+splits <span class="t-op">:=</span> <span class="t-cls">MatrixReader</span><span class="t-op">-&gt;</span>LoadSplitMatrices(<span class="t-str">"iris.csv"</span>, <span class="t-num">3</span>, <span class="t-num">0.8</span>, <span class="t-str">"\n"</span>);
 
-# splits[0]=train_inputs  splits[1]=train_targets
-# splits[2]=test_inputs   splits[3]=test_targets
-train_inputs  := splits[0];
-train_targets := splits[1];
+<span class="t-com"># splits[0]=train_inputs  splits[1]=train_targets</span>
+<span class="t-com"># splits[2]=test_inputs   splits[3]=test_targets</span>
+train_inputs  <span class="t-op">:=</span> splits[<span class="t-num">0</span>];
+train_targets <span class="t-op">:=</span> splits[<span class="t-num">1</span>];
 
-net := NeuralNetwork->Train(4, train_inputs, 6, 3, train_targets, 0.05, 5000);
+net <span class="t-op">:=</span> <span class="t-cls">NeuralNetwork</span><span class="t-op">-&gt;</span>Train(<span class="t-num">4</span>, train_inputs, <span class="t-num">6</span>, <span class="t-num">3</span>, train_targets, <span class="t-num">0.05</span>, <span class="t-num">5000</span>);
 </code></pre>
     <pre class="cmd">&gt; obc -src xor_net.obs -lib ml,gen_collect,csv
 &gt; obr xor_net</pre>
 
-    <h4 id="ml-cluster">Clustering &amp; Classification</h4>
+    <h3 id="ml-cluster">Clustering &amp; Classification</h3>
     <p><strong>K-Nearest Neighbors</strong> — instance-based classification over float feature vectors:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class KNNExample {
-  function : Main(args : String[]) ~ Nil {
-    # training: [height_cm, weight_kg] with size labels
-    data   := [[162.0, 55.0], [175.0, 75.0], [185.0, 90.0], [155.0, 48.0]];
-    labels := ["S", "M", "L", "XS"];
+<span class="t-kw">class</span> <span class="t-cls">KNNExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># training: [height_cm, weight_kg] with size labels</span>
+    data   <span class="t-op">:=</span> [[<span class="t-num">162.0</span>, <span class="t-num">55.0</span>], [<span class="t-num">175.0</span>, <span class="t-num">75.0</span>], [<span class="t-num">185.0</span>, <span class="t-num">90.0</span>], [<span class="t-num">155.0</span>, <span class="t-num">48.0</span>]];
+    labels <span class="t-op">:=</span> [<span class="t-str">"S"</span>, <span class="t-str">"M"</span>, <span class="t-str">"L"</span>, <span class="t-str">"XS"</span>];
 
-    knn := KNearestNeighbors->New(data, labels);
-    neighbors := knn->Query(3, [170.0, 68.0]);
+    knn <span class="t-op">:=</span> <span class="t-cls">KNearestNeighbors</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(data, labels);
+    neighbors <span class="t-op">:=</span> knn<span class="t-op">-&gt;</span>Query(<span class="t-num">3</span>, [<span class="t-num">170.0</span>, <span class="t-num">68.0</span>]);
 
-    each(n in neighbors) {
-      "{$n->GetCategory()}: distance={$n->GetDistance()}"->PrintLine();
+    <span class="t-kw">each</span>(n <span class="t-kw">in</span> neighbors) {
+      <span class="t-str">"{$n-&gt;GetCategory()}: distance={$n-&gt;GetDistance()}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
   }
 }
 </code></pre>
 
     <p><strong>K-Means Clustering</strong> — unsupervised grouping with Dunn index quality score:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML, Collection;
 
-class ClusterExample {
-  function : Main(args : String[]) ~ Nil {
-    records := Vector->New()&lt;FloatArrayRef&gt;;
-    records->AddBack(FloatArrayRef->New([1.0, 1.5]));
-    records->AddBack(FloatArrayRef->New([1.2, 1.3]));
-    records->AddBack(FloatArrayRef->New([8.0, 8.5]));
-    records->AddBack(FloatArrayRef->New([7.8, 8.2]));
-    records->AddBack(FloatArrayRef->New([4.5, 4.0]));
+<span class="t-kw">class</span> <span class="t-cls">ClusterExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    records <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">FloatArrayRef</span>&gt;;
+    records<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FloatArrayRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([<span class="t-num">1.0</span>, <span class="t-num">1.5</span>]));
+    records<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FloatArrayRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([<span class="t-num">1.2</span>, <span class="t-num">1.3</span>]));
+    records<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FloatArrayRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([<span class="t-num">8.0</span>, <span class="t-num">8.5</span>]));
+    records<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FloatArrayRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([<span class="t-num">7.8</span>, <span class="t-num">8.2</span>]));
+    records<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FloatArrayRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>([<span class="t-num">4.5</span>, <span class="t-num">4.0</span>]));
 
-    groups   := ["high", "low"];   # one label per cluster: K = 2
-    grouping := KMeans->Group(groups, records, 2, 0.0, 10.0);
+    groups   <span class="t-op">:=</span> [<span class="t-str">"high"</span>, <span class="t-str">"low"</span>];   <span class="t-com"># one label per cluster: K = 2</span>
+    grouping <span class="t-op">:=</span> <span class="t-cls">KMeans</span><span class="t-op">-&gt;</span>Group(groups, records, <span class="t-num">2</span>, <span class="t-num">0.0</span>, <span class="t-num">10.0</span>);
 
-    "Dunn Index: {$grouping->GetDunnIndex()}"->PrintLine();   # 1.241838
-    each(i : grouping->Size()) {
-      g := grouping->Get(i);
-      "Group '{$g->GetName()}': {$g->Size()} members"->PrintLine();
+    <span class="t-str">"Dunn Index: {$grouping-&gt;GetDunnIndex()}"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># 1.241838</span>
+    <span class="t-kw">each</span>(i : grouping<span class="t-op">-&gt;</span>Size()) {
+      g <span class="t-op">:=</span> grouping<span class="t-op">-&gt;</span>Get(i);
+      <span class="t-str">"Group '{$g-&gt;GetName()}': {$g-&gt;Size()} members"</span><span class="t-op">-&gt;</span>PrintLine();
     };
-    # Group 'high': 2 members
-    # Group 'low': 3 members
+    <span class="t-com"># Group 'high': 2 members</span>
+    <span class="t-com"># Group 'low': 3 members</span>
   }
 }
 </code></pre>
 
     <p><strong>Naive Bayes</strong> — probabilistic text classification (spam detection, sentiment, etc.):</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class SpamFilter {
-  function : Main(args : String[]) ~ Nil {
-    # "ham" group (index 0)
-    ham := BayesGroup->New(0.6);
-    ham->AddEntry(BayesEntry->New("meeting",  15));
-    ham->AddEntry(BayesEntry->New("report",   12));
-    ham->AddEntry(BayesEntry->New("project",  18));
+<span class="t-kw">class</span> <span class="t-cls">SpamFilter</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># "ham" group (index 0)</span>
+    ham <span class="t-op">:=</span> <span class="t-cls">BayesGroup</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">0.6</span>);
+    ham<span class="t-op">-&gt;</span>AddEntry(<span class="t-cls">BayesEntry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"meeting"</span>,  <span class="t-num">15</span>));
+    ham<span class="t-op">-&gt;</span>AddEntry(<span class="t-cls">BayesEntry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"report"</span>,   <span class="t-num">12</span>));
+    ham<span class="t-op">-&gt;</span>AddEntry(<span class="t-cls">BayesEntry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"project"</span>,  <span class="t-num">18</span>));
 
-    # "spam" group (index 1)
-    spam := BayesGroup->New(0.4);
-    spam->AddEntry(BayesEntry->New("buy",   30));
-    spam->AddEntry(BayesEntry->New("free",  25));
-    spam->AddEntry(BayesEntry->New("click", 20));
+    <span class="t-com"># "spam" group (index 1)</span>
+    spam <span class="t-op">:=</span> <span class="t-cls">BayesGroup</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">0.4</span>);
+    spam<span class="t-op">-&gt;</span>AddEntry(<span class="t-cls">BayesEntry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"buy"</span>,   <span class="t-num">30</span>));
+    spam<span class="t-op">-&gt;</span>AddEntry(<span class="t-cls">BayesEntry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"free"</span>,  <span class="t-num">25</span>));
+    spam<span class="t-op">-&gt;</span>AddEntry(<span class="t-cls">BayesEntry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"click"</span>, <span class="t-num">20</span>));
 
-    classifier := NaiveBayes->New(ham, spam);
+    classifier <span class="t-op">:=</span> <span class="t-cls">NaiveBayes</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(ham, spam);
 
-    result := classifier->Query(["buy", "free"]);
-    if(result = 1) {
-      "Spam"->PrintLine();
-    } else {
-      "Ham"->PrintLine();
+    result <span class="t-op">:=</span> classifier<span class="t-op">-&gt;</span>Query([<span class="t-str">"buy"</span>, <span class="t-str">"free"</span>]);
+    <span class="t-kw">if</span>(result = <span class="t-num">1</span>) {
+      <span class="t-str">"Spam"</span><span class="t-op">-&gt;</span>PrintLine();
+    } <span class="t-kw">else</span> {
+      <span class="t-str">"Ham"</span><span class="t-op">-&gt;</span>PrintLine();
     };
   }
 }
 </code></pre>
 
-    <h4 id="ml-eval">Evaluation &amp; Preprocessing</h4>
+    <h3 id="ml-eval">Evaluation &amp; Preprocessing</h3>
     <p><code>FeatureScaler</code> normalizes inputs before training; <code>Metrics</code> evaluates classifier performance:</p>
-    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.ML;
 
-class EvalExample {
-  function : Main(args : String[]) ~ Nil {
-    # ── Feature scaling ──────────────────────────────
-    raw := [[10.0, 200.0], [20.0, 400.0], [30.0, 600.0]];
+<span class="t-kw">class</span> <span class="t-cls">EvalExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># ── Feature scaling ──────────────────────────────</span>
+    raw <span class="t-op">:=</span> [[<span class="t-num">10.0</span>, <span class="t-num">200.0</span>], [<span class="t-num">20.0</span>, <span class="t-num">400.0</span>], [<span class="t-num">30.0</span>, <span class="t-num">600.0</span>]];
 
-    scaled  := FeatureScaler->MinMaxScaler(raw);    # [0, 1]
-    z_score := FeatureScaler->StandardScaler(raw);  # mean=0, std=1
-    l2_norm := FeatureScaler->Normalize(raw);       # L2 row normalization
+    scaled  <span class="t-op">:=</span> <span class="t-cls">FeatureScaler</span><span class="t-op">-&gt;</span>MinMaxScaler(raw);    <span class="t-com"># [0, 1]</span>
+    z_score <span class="t-op">:=</span> <span class="t-cls">FeatureScaler</span><span class="t-op">-&gt;</span>StandardScaler(raw);  <span class="t-com"># mean=0, std=1</span>
+    l2_norm <span class="t-op">:=</span> <span class="t-cls">FeatureScaler</span><span class="t-op">-&gt;</span>Normalize(raw);       <span class="t-com"># L2 row normalization</span>
 
-    # ── Metrics ──────────────────────────────────────
-    predictions := [true,  false, true,  true,  false];
-    actuals     := [true,  true,  false, true,  false];
+    <span class="t-com"># ── Metrics ──────────────────────────────────────</span>
+    predictions <span class="t-op">:=</span> [<span class="t-const">true</span>,  <span class="t-const">false</span>, <span class="t-const">true</span>,  <span class="t-const">true</span>,  <span class="t-const">false</span>];
+    actuals     <span class="t-op">:=</span> [<span class="t-const">true</span>,  <span class="t-const">true</span>,  <span class="t-const">false</span>, <span class="t-const">true</span>,  <span class="t-const">false</span>];
 
-    "Accuracy:  {$Metrics->Accuracy(predictions, actuals)}"->PrintLine();   # 0.600000
-    "Precision: {$Metrics->Precision(predictions, actuals)}"->PrintLine();  # 0.666667
-    "Recall:    {$Metrics->Recall(predictions, actuals)}"->PrintLine();     # 0.666667
-    "F1 Score:  {$Metrics->F1Score(predictions, actuals)}"->PrintLine();    # 0.666667
-    "MCC:       {$Metrics->MCC(predictions, actuals)}"->PrintLine();        # 0.166667
+    <span class="t-str">"Accuracy:  {$Metrics-&gt;Accuracy(predictions, actuals)}"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># 0.600000</span>
+    <span class="t-str">"Precision: {$Metrics-&gt;Precision(predictions, actuals)}"</span><span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># 0.666667</span>
+    <span class="t-str">"Recall:    {$Metrics-&gt;Recall(predictions, actuals)}"</span><span class="t-op">-&gt;</span>PrintLine();     <span class="t-com"># 0.666667</span>
+    <span class="t-str">"F1 Score:  {$Metrics-&gt;F1Score(predictions, actuals)}"</span><span class="t-op">-&gt;</span>PrintLine();    <span class="t-com"># 0.666667</span>
+    <span class="t-str">"MCC:       {$Metrics-&gt;MCC(predictions, actuals)}"</span><span class="t-op">-&gt;</span>PrintLine();        <span class="t-com"># 0.166667</span>
 
-    cm := Metrics->ConfusionMatrix(predictions, actuals);   # [[TN, FP], [FN, TP]] = [[1, 1], [1, 2]]
-    Metrics->PrintConfusionMatrix(cm);
+    cm <span class="t-op">:=</span> <span class="t-cls">Metrics</span><span class="t-op">-&gt;</span>ConfusionMatrix(predictions, actuals);   <span class="t-com"># [[TN, FP], [FN, TP]] = [[1, 1], [1, 2]]</span>
+    <span class="t-cls">Metrics</span><span class="t-op">-&gt;</span>PrintConfusionMatrix(cm);
 
-    # ── Train/test split ─────────────────────────────
-    data   := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [9.0, 10.0]];
-    splits := CrossValidation->TrainTestSplit(data, 0.2);  # 80/20, rows shuffled
-    train_dims := splits[0]->Get()->Size();  # [rows, columns]
-    test_dims  := splits[1]->Get()->Size();
-    train_rows := train_dims[0];
-    test_rows  := test_dims[0];
-    "Train rows: {$train_rows}, Test rows: {$test_rows}"->PrintLine();  # Train rows: 4, Test rows: 1
+    <span class="t-com"># ── Train/test split ─────────────────────────────</span>
+    data   <span class="t-op">:=</span> [[<span class="t-num">1.0</span>, <span class="t-num">2.0</span>], [<span class="t-num">3.0</span>, <span class="t-num">4.0</span>], [<span class="t-num">5.0</span>, <span class="t-num">6.0</span>], [<span class="t-num">7.0</span>, <span class="t-num">8.0</span>], [<span class="t-num">9.0</span>, <span class="t-num">10.0</span>]];
+    splits <span class="t-op">:=</span> <span class="t-cls">CrossValidation</span><span class="t-op">-&gt;</span>TrainTestSplit(data, <span class="t-num">0.2</span>);  <span class="t-com"># 80/20, rows shuffled</span>
+    train_dims <span class="t-op">:=</span> splits[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span>Size();  <span class="t-com"># [rows, columns]</span>
+    test_dims  <span class="t-op">:=</span> splits[<span class="t-num">1</span>]<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span>Size();
+    train_rows <span class="t-op">:=</span> train_dims[<span class="t-num">0</span>];
+    test_rows  <span class="t-op">:=</span> test_dims[<span class="t-num">0</span>];
+    <span class="t-str">"Train rows: {$train_rows}, Test rows: {$test_rows}"</span><span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># Train rows: 4, Test rows: 1</span>
   }
 }
 </code></pre>
@@ -644,7 +632,7 @@ class EvalExample {
 &gt; obr eval</pre>
 
     <!-- ═══════════════════════════════════════ ONNX ═══ -->
-    <h3 id="onnx">ONNX Local Inference</h3>
+    <h2 id="onnx">ONNX Local Inference</h2>
     <div class="lib-flag">models,json,cipher,opencv,onnx</div>
     <p>
       Run ONNX models locally with hardware acceleration: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS.
@@ -653,135 +641,135 @@ class EvalExample {
       <code>-lib models</code> is required since v2026.10.0: <code>API.Models</code> holds the <code>Tensor</code> the ONNX and inference libraries share, and library dependencies are not transitive.
     </p>
 
-    <h4 id="onnx-face">Face Recognition</h4>
+    <h3 id="onnx-face">Face Recognition</h3>
     <p>
       Uses <a href="https://github.com/deepinsight/insightface" target="_blank">InsightFace buffalo_l</a>:
       SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings.
     </p>
     <pre class="cmd">curl -L -o buffalo_l.zip https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip
 unzip buffalo_l.zip   # det_10g.onnx and w600k_r50.onnx</pre>
-    <pre class="line-numbers"><code class="language-cpp">use API.Onnx, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Onnx, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
+session <span class="t-op">:=</span> <span class="t-cls">FaceSession</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"det_10g.onnx"</span>, <span class="t-str">"w600k_r50.onnx"</span>);
 
-img1 := FileReader->ReadBinaryFile("person_a.jpg");
-img2 := FileReader->ReadBinaryFile("person_b.jpg");
+img1 <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"person_a.jpg"</span>);
+img2 <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"person_b.jpg"</span>);
 
-r1 := session->Recognize(img1, 0.5);
-r2 := session->Recognize(img2, 0.5);
+r1 <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Recognize(img1, <span class="t-num">0.5</span>);
+r2 <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Recognize(img2, <span class="t-num">0.5</span>);
 
-if(r1->GetSize() > 0 & r2->GetSize() > 0) {
-  emb1 := r1->GetResults()[0]->GetEmbedding();
-  emb2 := r2->GetResults()[0]->GetEmbedding();
-  sim  := FaceSession->Compare(emb1, emb2);
-  "Similarity: {$sim}"->PrintLine();
-  "Same person: {$(sim > 0.35)}"->PrintLine();
+<span class="t-kw">if</span>(r1<span class="t-op">-&gt;</span>GetSize() &gt; <span class="t-num">0</span> &amp; r2<span class="t-op">-&gt;</span>GetSize() &gt; <span class="t-num">0</span>) {
+  emb1 <span class="t-op">:=</span> r1<span class="t-op">-&gt;</span>GetResults()[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>GetEmbedding();
+  emb2 <span class="t-op">:=</span> r2<span class="t-op">-&gt;</span>GetResults()[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>GetEmbedding();
+  sim  <span class="t-op">:=</span> <span class="t-cls">FaceSession</span><span class="t-op">-&gt;</span>Compare(emb1, emb2);
+  <span class="t-str">"Similarity: {$sim}"</span><span class="t-op">-&gt;</span>PrintLine();
+  <span class="t-str">"Same person: {$(sim &gt; 0.35)}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
-session->Close();
+session<span class="t-op">-&gt;</span>Close();
 </code></pre>
 
-    <h4 id="onnx-yolo">Object Detection (YOLO)</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.Onnx, System.IO.Filesystem;
+    <h3 id="onnx-yolo">Object Detection (YOLO)</h3>
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Onnx, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-labels := String->New[80];   # COCO class labels
-labels[0] := "person"; labels[1] := "bicycle"; # ... fill all 80
+labels <span class="t-op">:=</span> <span class="t-type">String</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">80</span>];   <span class="t-com"># COCO class labels</span>
+labels[<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-str">"person"</span>; labels[<span class="t-num">1</span>] <span class="t-op">:=</span> <span class="t-str">"bicycle"</span>; <span class="t-com"># ... fill all 80</span>
 
-session := YoloSession->New("yolov11n.onnx");
-img     := FileReader->ReadBinaryFile("street.jpg");
-result  := session->Inference(img, 640, 640, 0.5, labels);
+session <span class="t-op">:=</span> <span class="t-cls">YoloSession</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"yolov11n.onnx"</span>);
+img     <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"street.jpg"</span>);
+result  <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Inference(img, <span class="t-num">640</span>, <span class="t-num">640</span>, <span class="t-num">0.5</span>, labels);
 
-detections := result->GetClassifications();
-each(d in detections) {
-  "{$d->GetName()}: {$d->GetConfidence()}"->PrintLine();
+detections <span class="t-op">:=</span> result<span class="t-op">-&gt;</span>GetClassifications();
+<span class="t-kw">each</span>(d <span class="t-kw">in</span> detections) {
+  <span class="t-str">"{$d-&gt;GetName()}: {$d-&gt;GetConfidence()}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
-session->Close();
+session<span class="t-op">-&gt;</span>Close();
 </code></pre>
 
-    <h4 id="onnx-phi3">Phi-3 Mini (Local SLM)</h4>
+    <h3 id="onnx-phi3">Phi-3 Mini (Local SLM)</h3>
     <p>Run Microsoft's Phi-3 Mini locally — no internet at inference time. (~2 GB model)</p>
     <pre class="cmd">huggingface-cli download microsoft/Phi-3-mini-4k-instruct-onnx \
   --include "directml/directml-int4-awq-block-128/*"</pre>
-    <pre class="line-numbers"><code class="language-cpp">use API.Onnx, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Onnx, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-tokenizer := Phi3Tokenizer->New("tokenizer.json");
-session   := Phi3Session->New("phi3-mini-4k-instruct.onnx");
+tokenizer <span class="t-op">:=</span> <span class="t-cls">Phi3Tokenizer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"tokenizer.json"</span>);
+session   <span class="t-op">:=</span> <span class="t-cls">Phi3Session</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"phi3-mini-4k-instruct.onnx"</span>);
 
-prompt    := "<|user|>\nWhat is the capital of France?<|end|>\n<|assistant|>\n";
-token_ids := tokenizer->Encode(prompt);
-eos       := Int->New[1]; eos[0] := 32007;
+prompt    <span class="t-op">:=</span> <span class="t-str">"\nWhat is the capital of France?\n\n"</span>;
+token_ids <span class="t-op">:=</span> tokenizer<span class="t-op">-&gt;</span>Encode(prompt);
+eos       <span class="t-op">:=</span> <span class="t-type">Int</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">1</span>]; eos[<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-num">32007</span>;
 
-result    := session->Generate(token_ids, 200, 0.7, eos);
-tokenizer->Decode(result->GetTokens())->PrintLine();
-session->Close();
+result    <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Generate(token_ids, <span class="t-num">200</span>, <span class="t-num">0.7</span>, eos);
+tokenizer<span class="t-op">-&gt;</span>Decode(result<span class="t-op">-&gt;</span>GetTokens())<span class="t-op">-&gt;</span>PrintLine();
+session<span class="t-op">-&gt;</span>Close();
 </code></pre>
 
     <!-- ═══════════════════════════════════════ OpenCV ═══ -->
-    <h3 id="opencv">Computer Vision (OpenCV)</h3>
+    <h2 id="opencv">Computer Vision (OpenCV)</h2>
     <div class="lib-flag">json,cipher,opencv</div>
 
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenCV, API.Onnx, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.OpenCV, <span class="t-cls">API</span>.Onnx, <span class="t-cls">System</span>.<span class="t-cls">IO</span>.Filesystem;
 
-class VisionExample {
-  function : Main(args : String[]) ~ Nil {
-    # load, process, save
-    image   := Image->Load("photo.jpg");
-    gray    := image->CvtColor(ColorConversionCodes->BGR2GRAY);
-    blurred := gray->GaussianBlur(5, 5, 0.0);   # sigma 0: derived from the kernel size
-    edges   := blurred->Canny(50, 150);
-    edges->Save("edges.jpg");
+<span class="t-kw">class</span> <span class="t-cls">VisionExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># load, process, save</span>
+    image   <span class="t-op">:=</span> <span class="t-cls">Image</span><span class="t-op">-&gt;</span>Load(<span class="t-str">"photo.jpg"</span>);
+    gray    <span class="t-op">:=</span> image<span class="t-op">-&gt;</span>CvtColor(<span class="t-cls">ColorConversionCodes</span><span class="t-op">-&gt;</span>BGR2GRAY);
+    blurred <span class="t-op">:=</span> gray<span class="t-op">-&gt;</span>GaussianBlur(<span class="t-num">5</span>, <span class="t-num">5</span>, <span class="t-num">0.0</span>);   <span class="t-com"># sigma 0: derived from the kernel size</span>
+    edges   <span class="t-op">:=</span> blurred<span class="t-op">-&gt;</span>Canny(<span class="t-num">50</span>, <span class="t-num">150</span>);
+    edges<span class="t-op">-&gt;</span>Save(<span class="t-str">"edges.jpg"</span>);
 
-    # face detection: no cascade classifier in the OpenCV bundle, so detect
-    # with ONNX (FaceSession, add onnx to -lib) and draw with OpenCV
-    bytes   := FileReader->ReadBinaryFile("group.jpg");
-    session := FaceSession->New("det_10g.onnx");
-    faces   := session->Detect(bytes, 0.5);
-    "Faces detected: {$faces->GetSize()}"->PrintLine();
+    <span class="t-com"># face detection: no cascade classifier in the OpenCV bundle, so detect</span>
+    <span class="t-com"># with ONNX (FaceSession, add onnx to -lib) and draw with OpenCV</span>
+    bytes   <span class="t-op">:=</span> <span class="t-cls">FileReader</span><span class="t-op">-&gt;</span>ReadBinaryFile(<span class="t-str">"group.jpg"</span>);
+    session <span class="t-op">:=</span> <span class="t-cls">FaceSession</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"det_10g.onnx"</span>);
+    faces   <span class="t-op">:=</span> session<span class="t-op">-&gt;</span>Detect(bytes, <span class="t-num">0.5</span>);
+    <span class="t-str">"Faces detected: {$faces-&gt;GetSize()}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    group := Image->Load(bytes);
-    detections := faces->GetDetections();
-    each(face in detections) {
-      group := group->DrawRectangle(face->GetBounds(), Scalar->New(0.0, 255.0, 0.0), 2);
+    group <span class="t-op">:=</span> <span class="t-cls">Image</span><span class="t-op">-&gt;</span>Load(bytes);
+    detections <span class="t-op">:=</span> faces<span class="t-op">-&gt;</span>GetDetections();
+    <span class="t-kw">each</span>(face <span class="t-kw">in</span> detections) {
+      group <span class="t-op">:=</span> group<span class="t-op">-&gt;</span>DrawRectangle(face<span class="t-op">-&gt;</span>GetBounds(), <span class="t-cls">Scalar</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">0.0</span>, <span class="t-num">255.0</span>, <span class="t-num">0.0</span>), <span class="t-num">2</span>);
     };
-    group->Save("faces.jpg");
-    session->Close();
+    group<span class="t-op">-&gt;</span>Save(<span class="t-str">"faces.jpg"</span>);
+    session<span class="t-op">-&gt;</span>Close();
 
-    # resize and color space conversion
-    resized := image->Resize(Size->New(320, 240));
-    resized->CvtColor(ColorConversionCodes->BGR2HSV)->Save("hsv_output.jpg");
+    <span class="t-com"># resize and color space conversion</span>
+    resized <span class="t-op">:=</span> image<span class="t-op">-&gt;</span>Resize(<span class="t-cls">Size</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">320</span>, <span class="t-num">240</span>));
+    resized<span class="t-op">-&gt;</span>CvtColor(<span class="t-cls">ColorConversionCodes</span><span class="t-op">-&gt;</span>BGR2HSV)<span class="t-op">-&gt;</span>Save(<span class="t-str">"hsv_output.jpg"</span>);
   }
 }
 </code></pre>
 
     <!-- ═══════════════════════════════════════ NLP ═══ -->
-    <h3 id="nlp">Natural Language Processing</h3>
+    <h2 id="nlp">Natural Language Processing</h2>
     <div class="lib-flag">gen_collect,nlp</div>
     <p>Built-in NLP primitives — no model download required. Pure Objeck bytecode. For sentence embeddings from a BERT-family ONNX export, <code>System.NLP.Onnx.BertEmbedder</code> is in the <code>nlp_onnx</code> library (<code>-lib @vision</code> includes it); <code>WordPieceTokenizer</code> and <code>System.ML.EmbeddingClassifier</code> complete the pipeline.</p>
 
-    <pre class="line-numbers"><code class="language-cpp">use System.NLP;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.NLP;
 
-class NLPExample {
-  function : Main(args : String[]) ~ Nil {
-    # sentiment
-    SentimentAnalyzer->Classify("This product is absolutely wonderful!")->PrintLine();  # "positive"
+<span class="t-kw">class</span> <span class="t-cls">NLPExample</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># sentiment</span>
+    <span class="t-cls">SentimentAnalyzer</span><span class="t-op">-&gt;</span>Classify(<span class="t-str">"This product is absolutely wonderful!"</span>)<span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># "positive"</span>
 
-    # TF-IDF vectorization
-    docs := String->New[3];
-    docs[0] := "cats are pets";
-    docs[1] := "dogs are pets";
-    docs[2] := "birds can fly";
+    <span class="t-com"># TF-IDF vectorization</span>
+    docs <span class="t-op">:=</span> <span class="t-type">String</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">3</span>];
+    docs[<span class="t-num">0</span>] <span class="t-op">:=</span> <span class="t-str">"cats are pets"</span>;
+    docs[<span class="t-num">1</span>] <span class="t-op">:=</span> <span class="t-str">"dogs are pets"</span>;
+    docs[<span class="t-num">2</span>] <span class="t-op">:=</span> <span class="t-str">"birds can fly"</span>;
 
-    tfidf := TF_IDF->New();
-    tfidf->Fit(docs);
-    vector := tfidf->Transform("cats and dogs");
-    each(v in vector) { v->PrintLine(); };
+    tfidf <span class="t-op">:=</span> <span class="t-cls">TF_IDF</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    tfidf<span class="t-op">-&gt;</span>Fit(docs);
+    vector <span class="t-op">:=</span> tfidf<span class="t-op">-&gt;</span>Transform(<span class="t-str">"cats and dogs"</span>);
+    <span class="t-kw">each</span>(v <span class="t-kw">in</span> vector) { v<span class="t-op">-&gt;</span>PrintLine(); };
 
-    # cosine similarity of two TF-IDF vectors
-    sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf->Transform("dogs are pets"));
-    "Similarity: {$sim}"->PrintLine();
+    <span class="t-com"># cosine similarity of two TF-IDF vectors</span>
+    sim <span class="t-op">:=</span> <span class="t-cls">TextSimilarity</span><span class="t-op">-&gt;</span>CosineSimilarity(tfidf<span class="t-op">-&gt;</span>Transform(<span class="t-str">"cats are pets"</span>), tfidf<span class="t-op">-&gt;</span>Transform(<span class="t-str">"dogs are pets"</span>));
+    <span class="t-str">"Similarity: {$sim}"</span><span class="t-op">-&gt;</span>PrintLine();
 
-    # tokenization
-    tokens := Tokenizer->WordTokenize("The quick brown fox");
-    each(t in tokens) { t->PrintLine(); };
+    <span class="t-com"># tokenization</span>
+    tokens <span class="t-op">:=</span> <span class="t-cls">Tokenizer</span><span class="t-op">-&gt;</span>WordTokenize(<span class="t-str">"The quick brown fox"</span>);
+    <span class="t-kw">each</span>(t <span class="t-kw">in</span> tokens) { t<span class="t-op">-&gt;</span>PrintLine(); };
   }
 }
 </code></pre>
@@ -789,34 +777,34 @@ class NLPExample {
 &gt; obr nlp</pre>
 
     <!-- ═══════════════════════════════════════ Hugging Face ═══ -->
-    <h3 id="hf">Hugging Face Models</h3>
+    <h2 id="hf">Hugging Face Models</h2>
     <div class="lib-flag">cipher,gen_collect,json,net,ai_hub,models,opencv,onnx,nlp,nlp_onnx</div>
     <p>Download a model by name and run it the way Python's <code>transformers</code> does, with no Python installed. <code>System.AI.Hub.HubClient</code> fetches a repository's files from the Hugging Face Hub into a cache (<code>OBJECK_HUB_CACHE</code>, default <code>~/.objeck/hub</code>, in <code>huggingface_hub</code>'s layout), checks each file's size and SHA-256 against what the Hub reports, and serves from the cache when offline (<code>OBJECK_HUB_OFFLINE=1</code>) or when the Hub cannot be reached. A token in <code>HF_TOKEN</code> goes to the Hub only, never to the file CDN.</p>
     <p><code>System.NLP.Onnx.TextClassifier</code> opens such a folder (what <code>save_pretrained</code> writes, with an ONNX export) and classifies text as <code>pipeline("text-classification")</code> does: the tokenizer from <code>tokenizer.json</code>, labels from <code>config.json</code>, the same sigmoid or softmax scoring, and the maximum length the model allows. This release reads WordPiece (BERT, DistilBERT) tokenizers; <code>System.NLP.BpeTokenizer</code>, RoBERTa's and GPT-2's tokenizer, is available on its own.</p>
 
-    <pre class="line-numbers"><code class="language-cpp">use System.AI.Hub, System.NLP.Onnx;
+    <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Hub, <span class="t-cls">System</span>.<span class="t-cls">NLP</span>.Onnx;
 
-class HfClassify {
-  function : Main(args : String[]) ~ Nil {
-    # download by name, checked against the Hub's sizes and SHA-256
-    hub := HubClient->New();
-    folder := hub->Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
-      ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
-    if(folder = Nil) {
-      hub->GetError()->ErrorLine();
-      return;
+<span class="t-kw">class</span> <span class="t-cls">HfClassify</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-com"># download by name, checked against the Hub's sizes and SHA-256</span>
+    hub <span class="t-op">:=</span> <span class="t-cls">HubClient</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    folder <span class="t-op">:=</span> hub<span class="t-op">-&gt;</span>Snapshot(<span class="t-str">"Xenova/distilbert-base-uncased-finetuned-sst-2-english"</span>,
+      [<span class="t-str">"config.json"</span>, <span class="t-str">"tokenizer.json"</span>, <span class="t-str">"tokenizer_config.json"</span>, <span class="t-str">"onnx/model.onnx"</span>]);
+    <span class="t-kw">if</span>(folder = <span class="t-const">Nil</span>) {
+      hub<span class="t-op">-&gt;</span>GetError()<span class="t-op">-&gt;</span>ErrorLine();
+      <span class="t-kw">return</span>;
     };
 
-    # classify as pipeline("text-classification") does
-    classifier := TextClassifier->New(folder);
-    if(<>classifier->IsOpen()) {
-      classifier->GetError()->ErrorLine();
-      return;
+    <span class="t-com"># classify as pipeline("text-classification") does</span>
+    classifier <span class="t-op">:=</span> <span class="t-cls">TextClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(folder);
+    <span class="t-kw">if</span>(<span class="t-op">&lt;&gt;</span>classifier<span class="t-op">-&gt;</span>IsOpen()) {
+      classifier<span class="t-op">-&gt;</span>GetError()<span class="t-op">-&gt;</span>ErrorLine();
+      <span class="t-kw">return</span>;
     };
-    each(p in classifier->Classify(["I loved it", "Not worth the ticket"])) {
-      p->ToString()->PrintLine();   # POSITIVE 0.9998, then NEGATIVE 0.9991
+    <span class="t-kw">each</span>(p <span class="t-kw">in</span> classifier<span class="t-op">-&gt;</span>Classify([<span class="t-str">"I loved it"</span>, <span class="t-str">"Not worth the ticket"</span>])) {
+      p<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># POSITIVE 0.9998, then NEGATIVE 0.9991</span>
     };
-    classifier->Close();
+    classifier<span class="t-op">-&gt;</span>Close();
   }
 }
 </code></pre>
@@ -825,7 +813,7 @@ class HfClassify {
     <p>Files of any size download with <code>HttpClient-&gt;GetToFile(url, path)</code> and <code>HttpsClient-&gt;GetToFile(url, path)</code>, which stream the body to <code>path.part</code> and move it into place only once it is complete.</p>
 
     <!-- ═══════════════════════════════════════ Quick Reference ═══ -->
-    <h3 id="ref">Quick Reference</h3>
+    <h2 id="ref">Quick Reference</h2>
 
     <table class="ref-table">
      <thead>
@@ -863,7 +851,7 @@ class HfClassify {
      </tbody>
     </table>
 
-    <h4>Model Recommendations</h4>
+    <h3>Model Recommendations</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Task</th><th>OpenAI</th><th>Gemini</th><th>Ollama (local)</th></tr>
@@ -878,7 +866,7 @@ class HfClassify {
      </tbody>
     </table>
 
-    <h4>Example Programs</h4>
+    <h3>Example Programs</h3>
     <p>Full working examples in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks" target="_blank"><code>programs/frameworks/</code></a>:</p>
     <div class="file-tree">
       <span class="dir">openai/</span>      <span class="file">openai_chat.obs</span>  <span class="file">openai_vision.obs</span>  <span class="file">openai_moderation.obs</span><br>
@@ -893,12 +881,31 @@ class HfClassify {
     </div>
 
    </div>
+  
+<!-- content:end -->
+   </div>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

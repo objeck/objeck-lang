@@ -1,89 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Foundation — Design (BERT is the first consumer) — Objeck Language</title>
-  <meta name="description" content="Objeck is meant to be a language for AI research. Today it can run models (API.Onnx), call hosted models (API.OpenAI, API.Google, API.Ollama), and train small networks (System.ML). It cannot train or fine-tune a transformer, and every model"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Objeck is meant to be a language for AI research. Today it can run models (API.Onnx), call hosted models (API.OpenAI, API.Google, API.Ollama), and train small networks (System.ML). It cannot train or fine-tune a transformer, and every model">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">AI Foundation — Design (BERT is the first consumer)</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/AI_FOUNDATION_DESIGN.md" target="_blank">docs/AI_FOUNDATION_DESIGN.md on GitHub</a></div>
-    <p class="page-lead">Objeck is meant to be a language for AI research. Today it can <em>run</em> models (<code>API.Onnx</code>), call hosted models (<code>API.OpenAI</code>, <code>API.Google</code>, <code>API.Ollama</code>), and train small networks (<code>System.ML</code>). It cannot train or fine-tune a transformer, and every model needs hand downloading and, often, Python.</p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#status-checked-against-master-on-2026-11-18">Status (checked against <code>master</code> on 2026-11-18)</a></li>
-      <li><a href="#summary">Summary</a></li>
-      <li><a href="#1-goals-rules-and-non-goals">1. Goals, rules and non-goals</a></li>
-      <li><a href="#2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</a></li>
-      <li><a href="#3-dependency-status-primary-sources">3. Dependency status (primary sources)</a></li>
-      <li><a href="#4-what-future-ai-work-needs-from-the-foundation">4. What future AI work needs from the foundation</a></li>
-      <li><a href="#5-the-layers">5. The layers</a></li>
-      <li><a href="#6-language-and-vm-fit">6. Language and VM fit</a></li>
-      <li><a href="#7-phase-a--use-models-hub-tokenizers-pipelines-over-onnx">7. Phase A — use models: hub, tokenizers, pipelines (over ONNX)</a></li>
-      <li><a href="#8-phase-b--the-training-foundation-libtorch">8. Phase B — the training foundation (libtorch)</a></li>
-      <li><a href="#9-onnx-as-the-export-target-phase-e">9. ONNX as the export target (Phase E)</a></li>
-      <li><a href="#10-the-lab-end-to-end">10. The lab, end to end</a></li>
-      <li><a href="#11-phases">11. Phases</a></li>
-      <li><a href="#12-decisions-for-the-user">12. Decisions for the user</a></li>
-      <li><a href="#13-first-pr-and-follow-ups">13. First PR, and follow-ups</a></li>
-      <li><a href="#appendix-how-the-numbers-were-measured">Appendix: how the numbers were measured</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#design-notes">Design notes</a></li><li aria-current="page">AI Foundation — Design (BERT is the first consumer)</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html" aria-current="page">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">AI Foundation — Design (BERT is the first consumer)</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/AI_FOUNDATION_DESIGN.md" target="_blank" rel="noopener">View docs/AI_FOUNDATION_DESIGN.md on GitHub</a></p>
+    <p class="page-lead">Objeck is meant to be a language for AI research. Today it can <em>run</em> models (<code>API.Onnx</code>), call hosted models (<code>API.OpenAI</code>, <code>API.Google</code>, <code>API.Ollama</code>), and train small networks (<code>System.ML</code>). It cannot train or fine-tune a transformer, and every model needs hand downloading and, often, Python.</p>
 
     <p>This document designs a foundation that closes that gap: tensors on CPU and GPU, autograd, <code>nn</code> modules, optimizers, data loading, <code>safetensors</code> and a Hugging Face hub cache, tokenizers, task pipelines, and ONNX as both a runtime and an export target. BERT, "like with Python's <code>transformers</code>", is the first thing built on it.</p>
     <p>This is a design only. No library code changes with it. Target: the release <strong>after</strong> v2026.10.2.</p>
     <p>Every number below marked <em>measured</em> was measured for this document on 2026-10-29 (method in the appendix). Everything else is labelled as an estimate or as something a phase must check.</p>
-    <h3 id="status-checked-against-master-on-2026-11-18">Status (checked against <code>master</code> on 2026-11-18)</h3>
+    <h2 id="status-checked-against-master-on-2026-11-18">Status (checked against <code>master</code> on 2026-11-18)</h2>
     <p>The design above is the 2026-10-29 text; this section records what the code has done with it. Phase A is partly built. Phase B and everything after it is design only.</p>
     <table class="ref-table">
      <thead>
@@ -112,7 +82,7 @@
      <li><code>Download(repo, file, revision)</code> and <code>Snapshot(repo, files, revision)</code> exist as designed.</li>
     </ul>
     <p>The section 7.4 measurement that DeBERTa's <code>tokenizer.json</code> takes 15.8 s to parse has not been re-checked.</p>
-    <h3 id="summary">Summary</h3>
+    <h2 id="summary">Summary</h2>
     <ul>
      <li><strong>Two tracks that meet.</strong>
     <ul>
@@ -137,7 +107,7 @@
      <li><strong>The first end-to-end target is the user's lab model:</strong> DistilBERT fine-tuned as a malware classifier on Colab, run from Objeck through the Phase A <code>TextClassifier</code>. Later, the same model is fine-tuned in Objeck itself through Phase B.</li>
      <li><strong>First PR:</strong> <code>TextClassifier</code> over a local model folder, with a tiny checked-in DistilBERT-shaped fixture and a parity test (§11). It is small and testable, and it serves the lab directly.</li>
     </ul>
-    <h3 id="1-goals-rules-and-non-goals">1. Goals, rules and non-goals</h3>
+    <h2 id="1-goals-rules-and-non-goals">1. Goals, rules and non-goals</h2>
     <p><strong>Goals</strong></p>
     <ol>
      <li><strong>Use pretrained models by name</strong>, as in Python's <code>pipeline("text-classification", model=...)</code>: no hand downloads, no Python.</li>
@@ -164,7 +134,7 @@
      <li><strong>Distributed or multi-node training, and serving at scale.</strong></li>
      <li><strong>Replacing hosted-model clients</strong> (OpenAI, Gemini, Ollama). They stay, and agents keep using them (§4).</li>
     </ul>
-    <h3 id="2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</h3>
+    <h2 id="2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</h2>
     <p>Line counts are from the <code>master</code> checkout at <code>c816f3f9ae</code>.</p>
     <table class="ref-table">
      <thead>
@@ -184,8 +154,8 @@
      </tbody>
     </table>
     <p><strong>The compatibility rule.</strong> No existing class changes its public signatures. Where a class gains a second backend, that is a new constructor or a new configuration key. Each phase's PR runs the existing ML, NLP and ONNX regression tests unchanged.</p>
-    <h3 id="3-dependency-status-primary-sources">3. Dependency status (primary sources)</h3>
-    <h4 id="31-proposed-dependencies">3.1 Proposed dependencies</h4>
+    <h2 id="3-dependency-status-primary-sources">3. Dependency status (primary sources)</h2>
+    <h3 id="31-proposed-dependencies">3.1 Proposed dependencies</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Dependency</th><th>Role</th><th>Status evidence</th><th>License</th></tr>
@@ -199,7 +169,7 @@
       <tr><td data-label="Dependency"><strong>ONNX</strong> (the format)</td><td data-label="Role">The export target (Phase E). Objeck writes the protobuf itself</td><td data-label="Status evidence"><code>onnx/onnx</code> v1.23.2 on 2026-10-06. Not linked</td><td data-label="License">Apache-2.0</td></tr>
      </tbody>
     </table>
-    <h4 id="32-rejected">3.2 Rejected</h4>
+    <h3 id="32-rejected">3.2 Rejected</h3>
     <ul>
      <li><strong>ONNX Runtime training API.</strong>
     <ul>
@@ -226,7 +196,7 @@
     </ul>
      </li>
     </ul>
-    <h4 id="33-gaps-the-rule-leaves-stated-plainly">3.3 Gaps the rule leaves, stated plainly</h4>
+    <h3 id="33-gaps-the-rule-leaves-stated-plainly">3.3 Gaps the rule leaves, stated plainly</h3>
     <table class="ref-table">
      <thead>
       <tr><th>Gap</th><th>Why</th><th>What users get</th></tr>
@@ -239,7 +209,7 @@
       <tr><td data-label="Gap"><strong>Objeck's own Windows ONNX GPU path uses DirectML</strong></td><td data-label="Why">The DirectML README says it is in maintenance mode. Objeck ships the DirectML 1.22.1 ONNX Runtime build on Windows x64 and arm64</td><td data-label="What users get"><strong>Outside this design, but flagged:</strong> an existing dependency violates the new rule. A separate design should move Windows GPU inference to a maintained execution provider; ONNX Runtime publishes plugin EPs such as <code>plugin-ep-webgpu/v0.5.0</code> (2026-10-29). See the follow-ups (§13)</td></tr>
      </tbody>
     </table>
-    <h3 id="4-what-future-ai-work-needs-from-the-foundation">4. What future AI work needs from the foundation</h3>
+    <h2 id="4-what-future-ai-work-needs-from-the-foundation">4. What future AI work needs from the foundation</h2>
     <p>A short survey, to make sure the layers are the right ones. The foundation's job is to make each of these a library on top, not a new binding.</p>
     <table class="ref-table">
      <thead>
@@ -265,7 +235,7 @@
      <li><strong>Sharded <code>safetensors</code> files.</strong></li>
     </ul>
     <p>Every one of these is in libtorch. The binding must not paint them out: the native shim's tensor handle carries any dtype and device from day one, even though BERT needs only f32 and i64 (§6).</p>
-    <h3 id="5-the-layers">5. The layers</h3>
+    <h2 id="5-the-layers">5. The layers</h2>
     <p>Each layer is its own library, so a program links only what it uses. This follows the rule that made <code>nlp_onnx</code> a separate library: the compiler resolves every class a linked library names, so an inference-only program must never need libtorch.</p>
 <pre class="plain"> programs ─────────────────────────────────────────────────────────────────────────────
    pipelines        System.NLP.Onnx   (nlp_onnx.obl)      TextClassifier, TokenClassifier, QuestionAnswerer,
@@ -289,8 +259,8 @@
      <li><code>nlp_onnx</code>, the pipelines, needs ONNX and never libtorch. The torch runner lives in its own library, which depends on both. So a pipeline program links libtorch only when it asks for the torch backend.</li>
     </ul>
     <p><strong>Bundle names.</strong> The new bundles extend the existing <code>System.AI</code> family, which today holds the classic AI library: search, games, optimisation and RL. Decision D7 below.</p>
-    <h3 id="6-language-and-vm-fit">6. Language and VM fit</h3>
-    <h4 id="61-one-tensor-class-dtype-as-a-value">6.1 One <code>Tensor</code> class, dtype as a value</h4>
+    <h2 id="6-language-and-vm-fit">6. Language and VM fit</h2>
+    <h3 id="61-one-tensor-class-dtype-as-a-value">6.1 One <code>Tensor</code> class, dtype as a value</h3>
     <p>The compute tensor is <code>System.AI.Tensor.Tensor</code>: a handle to a libtorch tensor, plus a reference to any Objeck array it views.</p>
     <ul>
      <li><strong>Dtype and device are values on the tensor</strong>, not type parameters. Code like <code>x-&gt;To(DType-&gt;F16)-&gt;To(Device-&gt;Cuda(0))</code> changes them at run time. A generic <code>Tensor&lt;T&gt;</code> would put the dtype into the static type and break that. PyTorch, candle and JAX all keep the dtype dynamic for the same reason.</li>
@@ -303,19 +273,19 @@
      </li>
      <li><strong><code>API.Models.Tensor</code> stays the interchange type for named model I/O.</strong> The core tensor converts to and from it:</li>
     </ul>
-<pre class="line-numbers"><code class="language-cpp">t := Tensor-&gt;From(api_tensor);
-api := t-&gt;ToModelTensor("logits");
+<pre class="line-numbers"><code class="language-objeck">t <span class="t-op">:=</span> <span class="t-cls">Tensor</span><span class="t-op">-&gt;</span>From(api_tensor);
+api <span class="t-op">:=</span> t<span class="t-op">-&gt;</span>ToModelTensor(<span class="t-str">"logits"</span>);
 </code></pre>
-    <h4 id="62-no-operator-overloading-methods-chained">6.2 No operator overloading: methods, chained</h4>
+    <h3 id="62-no-operator-overloading-methods-chained">6.2 No operator overloading: methods, chained</h3>
     <p>Objeck has no operator overloading (<code>docs/ROSETTA_HARDENING.md</code>: "Objeck has no operator overloading. Arithmetic types expose named methods."). The tensor API is therefore method-based and fluent:</p>
-<pre class="line-numbers"><code class="language-cpp">scores := q-&gt;MatMul(k-&gt;Transpose(-2, -1))-&gt;Mul(scale)-&gt;Add(mask);   # Python: q @ k.transpose(-2, -1) * scale + mask
-probs := scores-&gt;Softmax(-1);
+<pre class="line-numbers"><code class="language-objeck">scores <span class="t-op">:=</span> q<span class="t-op">-&gt;</span>MatMul(k<span class="t-op">-&gt;</span>Transpose(-<span class="t-num">2</span>, -<span class="t-num">1</span>))<span class="t-op">-&gt;</span>Mul(scale)<span class="t-op">-&gt;</span>Add(mask);   <span class="t-com"># Python: q @ k.transpose(-2, -1) * scale + mask</span>
+probs <span class="t-op">:=</span> scores<span class="t-op">-&gt;</span>Softmax(-<span class="t-num">1</span>);
 </code></pre>
     <ul>
      <li><strong>This is enough to write every architecture in §8.</strong></li>
      <li><strong>Operator overloading is a language change, so it is decision L1:</strong> <code>a + b</code>, <code>a * b</code> and <code>a @ b</code> dispatching to <code>Add</code>, <code>Mul</code> and <code>MatMul</code> on any class that declares them. Recommended <strong>later</strong>, as its own design, once the tensor API exists and real model code shows where the method chains hurt. It is not a prerequisite for anything here.</li>
     </ul>
-    <h4 id="63-memory-native-tensors-the-gc-and-zero-copy">6.3 Memory: native tensors, the GC, and zero-copy</h4>
+    <h3 id="63-memory-native-tensors-the-gc-and-zero-copy">6.3 Memory: native tensors, the GC, and zero-copy</h3>
     <ul>
      <li><strong>Tensor storage is native memory owned by libtorch.</strong> An Objeck <code>Tensor</code> object holds the handle as an <code>Int</code> and stores <strong>no object references inside C++</strong>, so no <code>WriteBarrier</code> is needed. Results that come back as Objeck arrays are allocated by the VM in the old generation (<code>docs/native_interface.md</code>, and the native-allocation rule since PR #650).</li>
      <li><strong>Zero-copy from Objeck arrays is possible, but only for 64-bit types.</strong>
@@ -332,9 +302,9 @@ probs := scores-&gt;Softmax(-1);
     </ul>
      </li>
     </ul>
-<pre class="line-numbers"><code class="language-cpp">loss := Tensor-&gt;Scope(\() =&gt; {
-  logits := model-&gt;Forward(batch);
-  return logits-&gt;CrossEntropy(batch-&gt;GetLabels());     # survives the scope
+<pre class="line-numbers"><code class="language-objeck">loss <span class="t-op">:=</span> <span class="t-cls">Tensor</span><span class="t-op">-&gt;</span>Scope(\() <span class="t-op">=&gt;</span> {
+  logits <span class="t-op">:=</span> model<span class="t-op">-&gt;</span>Forward(batch);
+  <span class="t-kw">return</span> logits<span class="t-op">-&gt;</span>CrossEntropy(batch<span class="t-op">-&gt;</span>GetLabels());     <span class="t-com"># survives the scope</span>
 });
 </code></pre>
     <ul>
@@ -342,7 +312,7 @@ probs := scores-&gt;Softmax(-1);
      <li><strong>Native-side backstop:</strong> a debug counter of live handles, which the tests assert returns to the baseline after each step.</li>
      <li><strong>Finalizers, or a <code>using</code>-style block, are decision L2:</strong> a VM change, recommended as a separate design that would let scopes become a convenience rather than a requirement.</li>
     </ul>
-    <h4 id="64-autograd-lives-in-libtorch-closures-serve-the-training-loop">6.4 Autograd lives in libtorch; closures serve the training loop</h4>
+    <h3 id="64-autograd-lives-in-libtorch-closures-serve-the-training-loop">6.4 Autograd lives in libtorch; closures serve the training loop</h3>
     <ul>
      <li><strong>Gradients are recorded and computed by libtorch's autograd</strong>, the same engine as PyTorch:
     <ul>
@@ -360,14 +330,14 @@ probs := scores-&gt;Softmax(-1);
      </li>
     </ul>
     <p>The FEATURES guide's lambda forms (<code>\() =&gt; body</code>, and the annotated <code>\(T) ~ R : (x) =&gt; body</code>) are enough for all of these.</p>
-    <h4 id="65-the-jit-and-native-call-overhead">6.5 The JIT and native-call overhead</h4>
+    <h3 id="65-the-jit-and-native-call-overhead">6.5 The JIT and native-call overhead</h3>
     <ul>
      <li><strong>Every tensor op is one native call.</strong> A BERT-base forward is about 12 layers × ~25 ops ≈ 300 calls per batch, against about 1.5 s of compute for a batch of 32 at length 128 (measured, §10.2). Call overhead is noise at that scale.</li>
      <li><strong>Where it matters:</strong> RL with tiny networks and many small steps. B0 measures the per-call cost under the JIT and under the interpreter. If it is significant, the shim adds fused calls for the hot paths (<code>Linear</code>, attention) rather than changing the VM.</li>
      <li><strong>Threads:</strong> libtorch's intra-op pool does the parallel work. Objeck threads may each run their own models. A tensor shared across Objeck threads is the user's responsibility, as in PyTorch.</li>
     </ul>
-    <h3 id="7-phase-a--use-models-hub-tokenizers-pipelines-over-onnx">7. Phase A — use models: hub, tokenizers, pipelines (over ONNX)</h3>
-    <h4 id="71-the-hub-has-the-models-measured">7.1 The Hub has the models (measured)</h4>
+    <h2 id="7-phase-a--use-models-hub-tokenizers-pipelines-over-onnx">7. Phase A — use models: hub, tokenizers, pipelines (over ONNX)</h2>
+    <h3 id="71-the-hub-has-the-models-measured">7.1 The Hub has the models (measured)</h3>
     <p>Exports that already exist cover the common BERT family. Counted from the Hub API (<code>/api/models</code>, 2026-10-29):</p>
     <table class="ref-table">
      <thead>
@@ -417,7 +387,7 @@ probs := scores-&gt;Softmax(-1);
      <li><code>model_fp16</code>, <code>model_q4</code>, <code>model_q4f16</code>, <code>model_bnb4</code>;</li>
      <li>sentence-transformers' <code>model_O1</code>…<code>O4</code> and <code>model_qint8_*</code>.</li>
     </ul>
-    <h4 id="72-model-signatures-measured-from-real-exports">7.2 Model signatures (measured from real exports)</h4>
+    <h3 id="72-model-signatures-measured-from-real-exports">7.2 Model signatures (measured from real exports)</h3>
     <p>Read with the <code>onnx</code> package from the downloaded files:</p>
     <table class="ref-table">
      <thead>
@@ -440,7 +410,7 @@ probs := scores-&gt;Softmax(-1);
      <li>build only the inputs the session declares;</li>
      <li>ask only for the outputs they need.</li>
     </ul>
-    <h4 id="73-hub-client-and-cache-systemaihub-ai_hubobl">7.3 Hub client and cache (<code>System.AI.Hub</code>, <code>ai_hub.obl</code>)</h4>
+    <h3 id="73-hub-client-and-cache-systemaihub-ai_hubobl">7.3 Hub client and cache (<code>System.AI.Hub</code>, <code>ai_hub.obl</code>)</h3>
     <p><strong>What the Hub answers (measured with raw HEAD requests, no redirects followed):</strong></p>
     <ul>
      <li><strong><code>GET https://huggingface.co/{repo}/resolve/{revision}/{path}</code></strong>
@@ -528,14 +498,14 @@ probs := scores-&gt;Softmax(-1);
     </ul>
      </li>
     </ul>
-<pre class="line-numbers"><code class="language-cpp">use System.AI.Hub;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Hub;
 
-hub := HubClient-&gt;New();                                  # cache, token and offline mode from the environment
-dir := hub-&gt;Snapshot("Xenova/distilbert-base-uncased-finetuned-sst-2-english",
-                     ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model.onnx"]);
-if(dir = Nil) { hub-&gt;GetError()-&gt;ErrorLine(); return; };
+hub <span class="t-op">:=</span> <span class="t-cls">HubClient</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();                                  <span class="t-com"># cache, token and offline mode from the environment</span>
+dir <span class="t-op">:=</span> hub<span class="t-op">-&gt;</span>Snapshot(<span class="t-str">"Xenova/distilbert-base-uncased-finetuned-sst-2-english"</span>,
+                     [<span class="t-str">"config.json"</span>, <span class="t-str">"tokenizer.json"</span>, <span class="t-str">"tokenizer_config.json"</span>, <span class="t-str">"onnx/model.onnx"</span>]);
+<span class="t-kw">if</span>(dir = <span class="t-const">Nil</span>) { hub<span class="t-op">-&gt;</span>GetError()<span class="t-op">-&gt;</span>ErrorLine(); <span class="t-kw">return</span>; };
 </code></pre>
-    <h4 id="74-tokenizers-systemnlp-nlpobl">7.4 Tokenizers (<code>System.NLP</code>, <code>nlp.obl</code>)</h4>
+    <h3 id="74-tokenizers-systemnlp-nlpobl">7.4 Tokenizers (<code>System.NLP</code>, <code>nlp.obl</code>)</h3>
     <p><strong>What real <code>tokenizer.json</code> files contain</strong> (measured, from the downloaded files):</p>
     <table class="ref-table">
      <thead>
@@ -602,7 +572,7 @@ if(dir = Nil) { hub-&gt;GetError()-&gt;ErrorLine(); return; };
      <li><strong>The test is byte-exact.</strong> Every id and every offset must match, with no tolerance.</li>
      <li><strong>Optional network job:</strong> the same corpus through the <em>real</em> <code>tokenizer.json</code> of each model in §7.1, against ids stored in a small fixture. It is non-gating, like the other network tests.</li>
     </ul>
-    <h4 id="75-task-pipelines-systemnlponnx-nlp_onnxobl">7.5 Task pipelines (<code>System.NLP.Onnx</code>, <code>nlp_onnx.obl</code>)</h4>
+    <h3 id="75-task-pipelines-systemnlponnx-nlp_onnxobl">7.5 Task pipelines (<code>System.NLP.Onnx</code>, <code>nlp_onnx.obl</code>)</h3>
     <p><strong>Shared base.</strong> <code>TransformerTask</code> handles everything every task needs:</p>
     <ul>
      <li>it opens a model folder (a local path or a hub snapshot): <code>config.json</code>, the tokenizer and the ONNX file;</li>
@@ -610,30 +580,30 @@ if(dir = Nil) { hub-&gt;GetError()-&gt;ErrorLine(); return; };
      <li>it batches, sorting texts by length and padding each batch to its longest text. Truncating to the model's <code>max_position_embeddings</code> is the default;</li>
      <li>it chooses the execution provider, with CPU fallback, as <code>BertEmbedder</code> does.</li>
     </ul>
-<pre class="line-numbers"><code class="language-cpp">use System.NLP.Onnx;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">NLP</span>.Onnx;
 
-classifier := TextClassifier-&gt;New("Xenova/distilbert-base-uncased-finetuned-sst-2-english");  # a hub id or a folder
-results := classifier-&gt;Classify(["I loved it", "Not worth the ticket"]);     # Prediction[]: label, score
-results[0]-&gt;GetLabel()-&gt;PrintLine();                                          # POSITIVE
+classifier <span class="t-op">:=</span> <span class="t-cls">TextClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Xenova/distilbert-base-uncased-finetuned-sst-2-english"</span>);  <span class="t-com"># a hub id or a folder</span>
+results <span class="t-op">:=</span> classifier<span class="t-op">-&gt;</span>Classify([<span class="t-str">"I loved it"</span>, <span class="t-str">"Not worth the ticket"</span>]);     <span class="t-com"># Prediction[]: label, score</span>
+results[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>GetLabel()<span class="t-op">-&gt;</span>PrintLine();                                          <span class="t-com"># POSITIVE</span>
 
-ner := TokenClassifier-&gt;New("Xenova/bert-base-NER", TokenClassifier-&gt;Aggregation-&gt;SIMPLE);
-each(e : ner-&gt;Extract("Ada Lovelace worked with Charles Babbage in London.")) {
-  "{$e-&gt;GetGroup()} '{$e-&gt;GetWord()}' [{$e-&gt;GetStart()}, {$e-&gt;GetEnd()}) {$e-&gt;GetScore()}"-&gt;PrintLine();
+ner <span class="t-op">:=</span> <span class="t-cls">TokenClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Xenova/bert-base-NER"</span>, <span class="t-cls">TokenClassifier</span><span class="t-op">-&gt;</span><span class="t-cls">Aggregation</span><span class="t-op">-&gt;</span>SIMPLE);
+<span class="t-kw">each</span>(e : ner<span class="t-op">-&gt;</span>Extract(<span class="t-str">"Ada Lovelace worked with Charles Babbage in London."</span>)) {
+  <span class="t-str">"{$e-&gt;GetGroup()} '{$e-&gt;GetWord()}' [{$e-&gt;GetStart()}, {$e-&gt;GetEnd()}) {$e-&gt;GetScore()}"</span><span class="t-op">-&gt;</span>PrintLine();
 };
 
-qa := QuestionAnswerer-&gt;New("Xenova/distilbert-base-cased-distilled-squad");
-answer := qa-&gt;Answer("Where did she work?", long_context);     # Answer: text, score, start, end
+qa <span class="t-op">:=</span> <span class="t-cls">QuestionAnswerer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Xenova/distilbert-base-cased-distilled-squad"</span>);
+answer <span class="t-op">:=</span> qa<span class="t-op">-&gt;</span>Answer(<span class="t-str">"Where did she work?"</span>, long_context);     <span class="t-com"># Answer: text, score, start, end</span>
 
-mask := FillMask-&gt;New("Xenova/bert-base-uncased");
-fills := mask-&gt;Fill("Paris is the [MASK] of France.", 5);      # MaskFill[]: token, text, score, sequence
+mask <span class="t-op">:=</span> <span class="t-cls">FillMask</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"Xenova/bert-base-uncased"</span>);
+fills <span class="t-op">:=</span> mask<span class="t-op">-&gt;</span>Fill(<span class="t-str">"Paris is the [MASK] of France."</span>, <span class="t-num">5</span>);      <span class="t-com"># MaskFill[]: token, text, score, sequence</span>
 
-embedder := SentenceEmbedder-&gt;New("sentence-transformers/all-MiniLM-L6-v2");   # reads modules.json / 1_Pooling
-sims := embedder-&gt;Similarity(["a cat sits"], ["a kitten is sitting", "stock prices fell"]);
+embedder <span class="t-op">:=</span> <span class="t-cls">SentenceEmbedder</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"sentence-transformers/all-MiniLM-L6-v2"</span>);   <span class="t-com"># reads modules.json / 1_Pooling</span>
+sims <span class="t-op">:=</span> embedder<span class="t-op">-&gt;</span>Similarity([<span class="t-str">"a cat sits"</span>], [<span class="t-str">"a kitten is sitting"</span>, <span class="t-str">"stock prices fell"</span>]);
 
-reranker := CrossEncoder-&gt;New("cross-encoder/ms-marco-MiniLM-L6-v2");
-ranked := reranker-&gt;Rank("what is BERT?", passages);         # scored pairs, best first
+reranker <span class="t-op">:=</span> <span class="t-cls">CrossEncoder</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"cross-encoder/ms-marco-MiniLM-L6-v2"</span>);
+ranked <span class="t-op">:=</span> reranker<span class="t-op">-&gt;</span>Rank(<span class="t-str">"what is BERT?"</span>, passages);         <span class="t-com"># scored pairs, best first</span>
 
-classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   # Python pipeline() spelling
+classify <span class="t-op">:=</span> <span class="t-cls">Pipeline</span><span class="t-op">-&gt;</span>Create(<span class="t-str">"text-classification"</span>, <span class="t-str">"Xenova/toxic-bert"</span>);   <span class="t-com"># Python pipeline() spelling</span>
 </code></pre>
     <p><strong>How each task reads the model, matching <code>transformers</code> behaviour:</strong></p>
     <ul>
@@ -688,13 +658,13 @@ classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   #
      </li>
     </ul>
     <p><strong>Runner interface.</strong> Each task calls an <code>EncoderRunner</code>:</p>
-<pre class="line-numbers"><code class="language-cpp">interface EncoderRunner {
-  method : virtual : public : Inputs() ~ String[];
-  method : virtual : public : Run(inputs : Vector&lt;API.Models.Tensor&gt;, outputs : String[]) ~ Vector&lt;API.Models.Tensor&gt;;
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">interface</span> <span class="t-cls">EncoderRunner</span> {
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">Inputs</span>() <span class="t-op">~</span> <span class="t-type">String</span>[];
+  <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">Run</span>(inputs : Vector&lt;<span class="t-cls">API</span>.<span class="t-cls">Models</span>.Tensor&gt;, outputs : <span class="t-type">String</span>[]) <span class="t-op">~</span> Vector&lt;<span class="t-cls">API</span>.<span class="t-cls">Models</span>.Tensor&gt;;
 }
 </code></pre>
     <p><code>OnnxRunner</code> is the only implementation in Phase A. Phase B adds <code>TorchRunner</code> in its own library, so a model defined and fine-tuned in Objeck runs through the same <code>TextClassifier</code> (§8.1).</p>
-    <h4 id="76-parity-tests-for-the-pipelines">7.6 Parity tests for the pipelines</h4>
+    <h3 id="76-parity-tests-for-the-pipelines">7.6 Parity tests for the pipelines</h3>
     <p>Two tiers, following <code>programs/regression/data/bert/</code>.</p>
     <p><strong>Tier 1: gating, offline, small checked-in fixtures.</strong></p>
     <ul>
@@ -726,8 +696,8 @@ classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   #
      <li>Compare against stored Python outputs (a few KB each) for fixed inputs, with the same tolerances.</li>
      <li>Non-gating, and cached in Actions under its own key. This repository has hit the Actions cache ceiling before, so the job's budget is stated in the workflow.</li>
     </ul>
-    <h3 id="8-phase-b--the-training-foundation-libtorch">8. Phase B — the training foundation (libtorch)</h3>
-    <h4 id="81-why-libtorch-compared-fairly">8.1 Why libtorch, compared fairly</h4>
+    <h2 id="8-phase-b--the-training-foundation-libtorch">8. Phase B — the training foundation (libtorch)</h2>
+    <h3 id="81-why-libtorch-compared-fairly">8.1 Why libtorch, compared fairly</h3>
     <p>ONNX Runtime's training API is excluded (§3.2). The remaining credible, maintained routes:</p>
     <table class="ref-table">
      <thead>
@@ -750,7 +720,7 @@ classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   #
      <li><strong>Its one real cost is size (§8.4).</strong> That is solved by packaging, not by choosing a lesser engine.</li>
      <li><strong>Next durable option, if B0 finds a blocker</strong> such as a load conflict, a size that is unacceptable, or a license issue: <strong>candle</strong>. It is maintained, Apache-2.0, small, has training (backprop and AdamW), and already has BERT, DistilBERT and XLM-R implementations to cross-check against. Its costs are a pre-1.0 API and a Rust toolchain in the build.</li>
     </ul>
-    <h4 id="82-the-native-shim-libobjk_torch">8.2 The native shim (<code>libobjk_torch</code>)</h4>
+    <h3 id="82-the-native-shim-libobjk_torch">8.2 The native shim (<code>libobjk_torch</code>)</h3>
     <ul>
      <li><strong>libtorch has no general C API, so Objeck gets a C++ shim.</strong> It is built per platform against that platform's libtorch, exactly as <code>core/lib/onnx</code> builds <code>libobjk_onnx</code> against ONNX Runtime.</li>
      <li><strong>The shim exposes the Objeck native-function convention:</strong>
@@ -785,7 +755,7 @@ classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   #
      <li><strong>Windows:</strong> MSVC, <code>/MD</code>, matching libtorch's CRT.</li>
      <li><strong>Loading:</strong> the shim is loaded the way the ONNX library is loaded. B0 checks that <code>torch_cpu.dll</code> and <code>onnxruntime.dll</code> coexist in one Objeck process; both bring OpenMP or thread-pool runtimes.</li>
     </ul>
-    <h4 id="83-architectures-in-objeck-weights-from-safetensors">8.3 Architectures in Objeck, weights from <code>safetensors</code></h4>
+    <h3 id="83-architectures-in-objeck-weights-from-safetensors">8.3 Architectures in Objeck, weights from <code>safetensors</code></h3>
     <p><code>System.AI.NN</code> provides the following building blocks, each with <code>Forward</code> and named parameters in Hugging Face's naming:</p>
     <ul>
      <li><code>Module</code>, <code>Parameter</code>;</li>
@@ -795,50 +765,50 @@ classify := Pipeline-&gt;Create("text-classification", "Xenova/toxic-bert");   #
     </ul>
     <p>Because the parameter names match, <code>module-&gt;LoadState(SafeTensors-&gt;Read(path))</code> maps one-to-one onto a Hugging Face checkpoint.</p>
     <p><strong>BERT, as it is written in <code>System.AI.Transformers</code></strong> (abridged):</p>
-<pre class="line-numbers"><code class="language-cpp">class BertLayer from Module {
-  @attention : MultiHeadAttention;    # attention.self.{query,key,value}, attention.output.dense
-  @attn_norm : LayerNorm;             # attention.output.LayerNorm
-  @intermediate : Linear;             # intermediate.dense
-  @output : Linear;                   # output.dense
-  @out_norm : LayerNorm;              # output.LayerNorm
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">BertLayer</span> <span class="t-kw">from</span> <span class="t-cls">Module</span> {
+  @attention : MultiHeadAttention;    <span class="t-com"># attention.self.{query,key,value}, attention.output.dense</span>
+  @attn_norm : LayerNorm;             <span class="t-com"># attention.output.LayerNorm</span>
+  @intermediate : Linear;             <span class="t-com"># intermediate.dense</span>
+  @output : Linear;                   <span class="t-com"># output.dense</span>
+  @out_norm : LayerNorm;              <span class="t-com"># output.LayerNorm</span>
   @dropout : Dropout;
 
-  method : public : Forward(x : Tensor, mask : Tensor) ~ Tensor {
-    a := @attn_norm-&gt;Forward(x-&gt;Add(@dropout-&gt;Forward(@attention-&gt;Forward(x, mask))));
-    h := @intermediate-&gt;Forward(a)-&gt;Gelu();
-    return @out_norm-&gt;Forward(a-&gt;Add(@dropout-&gt;Forward(@output-&gt;Forward(h))));
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Forward</span>(x : Tensor, mask : Tensor) <span class="t-op">~</span> Tensor {
+    a <span class="t-op">:=</span> @attn_norm<span class="t-op">-&gt;</span>Forward(x<span class="t-op">-&gt;</span>Add(@dropout<span class="t-op">-&gt;</span>Forward(@attention<span class="t-op">-&gt;</span>Forward(x, mask))));
+    h <span class="t-op">:=</span> @intermediate<span class="t-op">-&gt;</span>Forward(a)<span class="t-op">-&gt;</span>Gelu();
+    <span class="t-kw">return</span> @out_norm<span class="t-op">-&gt;</span>Forward(a<span class="t-op">-&gt;</span>Add(@dropout<span class="t-op">-&gt;</span>Forward(@output<span class="t-op">-&gt;</span>Forward(h))));
   }
 }
 
-class BertForSequenceClassification from Module {
-  @bert : BertModel;                  # embeddings + encoder.layer.N + pooler
+<span class="t-kw">class</span> <span class="t-cls">BertForSequenceClassification</span> <span class="t-kw">from</span> <span class="t-cls">Module</span> {
+  @bert : BertModel;                  <span class="t-com"># embeddings + encoder.layer.N + pooler</span>
   @classifier : Linear;
 
-  function : FromPretrained(dir : String) ~ BertForSequenceClassification {
-    config := ModelConfig-&gt;Read(dir + "/config.json");            # hidden_size, num_attention_heads, id2label, …
-    model := BertForSequenceClassification-&gt;New(config);
-    model-&gt;LoadState(SafeTensors-&gt;Read(dir + "/model.safetensors"));   # strict: missing or unexpected names fail
-    return model;
+  <span class="t-kw">function</span> : <span class="t-fn">FromPretrained</span>(dir : <span class="t-type">String</span>) <span class="t-op">~</span> BertForSequenceClassification {
+    config <span class="t-op">:=</span> <span class="t-cls">ModelConfig</span><span class="t-op">-&gt;</span>Read(dir + <span class="t-str">"/config.json"</span>);            <span class="t-com"># hidden_size, num_attention_heads, id2label, …</span>
+    model <span class="t-op">:=</span> <span class="t-cls">BertForSequenceClassification</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(config);
+    model<span class="t-op">-&gt;</span>LoadState(<span class="t-cls">SafeTensors</span><span class="t-op">-&gt;</span>Read(dir + <span class="t-str">"/model.safetensors"</span>));   <span class="t-com"># strict: missing or unexpected names fail</span>
+    <span class="t-kw">return</span> model;
   }
 
-  method : public : Forward(ids : Tensor, mask : Tensor, types : Tensor) ~ Tensor {
-    return @classifier-&gt;Forward(@bert-&gt;Forward(ids, mask, types)-&gt;GetPooled());
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Forward</span>(ids : Tensor, mask : Tensor, types : Tensor) <span class="t-op">~</span> Tensor {
+    <span class="t-kw">return</span> @classifier<span class="t-op">-&gt;</span>Forward(@bert<span class="t-op">-&gt;</span>Forward(ids, mask, types)<span class="t-op">-&gt;</span>GetPooled());
   }
 }
 </code></pre>
     <p>The other two worked examples, abridged, show the same layers serving other models:</p>
-<pre class="line-numbers"><code class="language-cpp"># A small GPT-style decoder: the same Embedding, Linear and attention, with a causal mask and a KV cache.
-class GptBlock from Module {
-  method : public : Forward(x : Tensor, cache : KvCache) ~ Tensor {
-    h := x-&gt;Add(@attn-&gt;Forward(@ln1-&gt;Forward(x), true, cache));    # causal = true; the cache is updated in place
-    return h-&gt;Add(@mlp-&gt;Forward(@ln2-&gt;Forward(h)));
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># A small GPT-style decoder: the same Embedding, Linear and attention, with a causal mask and a KV cache.</span>
+<span class="t-kw">class</span> <span class="t-cls">GptBlock</span> <span class="t-kw">from</span> <span class="t-cls">Module</span> {
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Forward</span>(x : Tensor, cache : KvCache) <span class="t-op">~</span> Tensor {
+    h <span class="t-op">:=</span> x<span class="t-op">-&gt;</span>Add(@attn<span class="t-op">-&gt;</span>Forward(@ln1<span class="t-op">-&gt;</span>Forward(x), <span class="t-const">true</span>, cache));    <span class="t-com"># causal = true; the cache is updated in place</span>
+    <span class="t-kw">return</span> h<span class="t-op">-&gt;</span>Add(@mlp<span class="t-op">-&gt;</span>Forward(@ln2<span class="t-op">-&gt;</span>Forward(h)));
   }
 }
-next := Sampler-&gt;TopP(gpt-&gt;Forward(last_token, cache)-&gt;Select(1, -1), 0.9, 0.8, rng);
+next <span class="t-op">:=</span> <span class="t-cls">Sampler</span><span class="t-op">-&gt;</span>TopP(gpt<span class="t-op">-&gt;</span>Forward(last_token, cache)<span class="t-op">-&gt;</span>Select(<span class="t-num">1</span>, -<span class="t-num">1</span>), <span class="t-num">0.9</span>, <span class="t-num">0.8</span>, rng);
 
-# A ViT: Conv2d patch embedding + the same encoder layers + a CLS head; images from OpenCV with no Objeck-side loop.
-patches := @patch_embed-&gt;Forward(Tensor-&gt;FromImage(mat)-&gt;Div(255.0))-&gt;Flatten(2)-&gt;Transpose(1, 2);
-logits := @head-&gt;Forward(@encoder-&gt;Forward(@cls-&gt;Concat(patches, 1)-&gt;Add(@pos))-&gt;Select(1, 0));
+<span class="t-com"># A ViT: Conv2d patch embedding + the same encoder layers + a CLS head; images from OpenCV with no Objeck-side loop.</span>
+patches <span class="t-op">:=</span> @patch_embed<span class="t-op">-&gt;</span>Forward(<span class="t-cls">Tensor</span><span class="t-op">-&gt;</span>FromImage(mat)<span class="t-op">-&gt;</span>Div(<span class="t-num">255.0</span>))<span class="t-op">-&gt;</span>Flatten(<span class="t-num">2</span>)<span class="t-op">-&gt;</span>Transpose(<span class="t-num">1</span>, <span class="t-num">2</span>);
+logits <span class="t-op">:=</span> @head<span class="t-op">-&gt;</span>Forward(@encoder<span class="t-op">-&gt;</span>Forward(@cls<span class="t-op">-&gt;</span>Concat(patches, <span class="t-num">1</span>)<span class="t-op">-&gt;</span>Add(@pos))<span class="t-op">-&gt;</span>Select(<span class="t-num">1</span>, <span class="t-num">0</span>));
 </code></pre>
     <p><strong>Weights and Python-freedom (measured):</strong></p>
     <ul>
@@ -852,7 +822,7 @@ logits := @head-&gt;Forward(@encoder-&gt;Forward(@cls-&gt;Concat(patches, 1)-&gt
      <li>Inference on the fine-tuned model runs through <code>TorchRunner</code> in the same pipeline classes (§7.5).</li>
      <li>ONNX export comes later (Phase E, §9).</li>
     </ul>
-    <h4 id="84-size-and-packaging-measured">8.4 Size and packaging (measured)</h4>
+    <h3 id="84-size-and-packaging-measured">8.4 Size and packaging (measured)</h3>
     <p>Runtime libraries in the official 2.15.0 archives, uncompressed. They were read from each zip's central directory over HTTP ranges, so nothing was downloaded in full:</p>
     <table class="ref-table">
      <thead>
@@ -887,7 +857,7 @@ logits := @head-&gt;Forward(@encoder-&gt;Forward(@cls-&gt;Concat(patches, 1)-&gt
     </ul>
      </li>
     </ul>
-    <h4 id="85-training-time-measured">8.5 Training time (measured)</h4>
+    <h3 id="85-training-time-measured">8.5 Training time (measured)</h3>
     <p>PyTorch 2.15.0 CPU, from Python. The Python layer is a thin wrapper here; the kernels and autograd are libtorch's, so a C++ shim should land close to these numbers. B0 checks that.</p>
     <ul>
      <li><strong>Hardware:</strong> AMD Ryzen AI 9 HX 370, 12 cores, 12 intra-op threads, 31 GB.</li>
@@ -920,32 +890,32 @@ logits := @head-&gt;Forward(@encoder-&gt;Forward(@cls-&gt;Concat(patches, 1)-&gt
      </tbody>
     </table>
     <p>That is why GPU support matters. The lab itself used Colab's GPU, which was not measured here. The example defaults to MiniLM-L6 or DistilBERT on CPU, prints its estimate before starting, and takes <code>--max-train</code>.</p>
-    <h4 id="86-training-api">8.6 Training API</h4>
-<pre class="line-numbers"><code class="language-cpp">use System.AI.Tensor;
-use System.AI.Transformers;
-use System.AI.Optim;
-use System.AI.Data;
+    <h3 id="86-training-api">8.6 Training API</h3>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Tensor;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Transformers;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Optim;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.<span class="t-cls">AI</span>.Data;
 
-model := DistilBertForSequenceClassification-&gt;FromPretrained(hub-&gt;Snapshot("distilbert/distilbert-base-cased"), 2);
-model-&gt;To(Device-&gt;Best());                                    # CUDA / MPS / XPU when present, else CPU
+model <span class="t-op">:=</span> <span class="t-cls">DistilBertForSequenceClassification</span><span class="t-op">-&gt;</span>FromPretrained(hub<span class="t-op">-&gt;</span>Snapshot(<span class="t-str">"distilbert/distilbert-base-cased"</span>), <span class="t-num">2</span>);
+model<span class="t-op">-&gt;</span>To(<span class="t-cls">Device</span><span class="t-op">-&gt;</span>Best());                                    <span class="t-com"># CUDA / MPS / XPU when present, else CPU</span>
 
-tokenizer := TokenizerJson-&gt;Load(dir + "/tokenizer.json");
-train := TextDataset-&gt;New(texts, labels, tokenizer, 128);     # pads to MAX_SEQ_LENGTH
-loader := DataLoader-&gt;New(train, 16, true, Generator-&gt;New(42));   # batch, shuffle, seed
+tokenizer <span class="t-op">:=</span> <span class="t-cls">TokenizerJson</span><span class="t-op">-&gt;</span>Load(dir + <span class="t-str">"/tokenizer.json"</span>);
+train <span class="t-op">:=</span> <span class="t-cls">TextDataset</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(texts, labels, tokenizer, <span class="t-num">128</span>);     <span class="t-com"># pads to MAX_SEQ_LENGTH</span>
+loader <span class="t-op">:=</span> <span class="t-cls">DataLoader</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(train, <span class="t-num">16</span>, <span class="t-const">true</span>, <span class="t-cls">Generator</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">42</span>));   <span class="t-com"># batch, shuffle, seed</span>
 
-optimizer := AdamW-&gt;New(model-&gt;Parameters(), 2e-5, 0.01);     # lr, weight decay; no decay on bias / LayerNorm
-schedule := LinearSchedule-&gt;New(optimizer, warmup, total);
+optimizer <span class="t-op">:=</span> <span class="t-cls">AdamW</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(model<span class="t-op">-&gt;</span>Parameters(), <span class="t-num">2e-5</span>, <span class="t-num">0.01</span>);     <span class="t-com"># lr, weight decay; no decay on bias / LayerNorm</span>
+schedule <span class="t-op">:=</span> <span class="t-cls">LinearSchedule</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(optimizer, warmup, total);
 
-trainer := Trainer-&gt;New(model, optimizer, schedule);
-trainer-&gt;SetClassWeights([1.0, 99.0]);                        # weighted cross-entropy for the lab's POSRATIO runs
-trainer-&gt;OnStep(\(StepInfo) ~ Nil : (s) =&gt; { s-&gt;GetLoss()-&gt;PrintLine(); });
-trainer-&gt;Fit(loader, 3);                                      # epochs
+trainer <span class="t-op">:=</span> <span class="t-cls">Trainer</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(model, optimizer, schedule);
+trainer<span class="t-op">-&gt;</span>SetClassWeights([<span class="t-num">1.0</span>, <span class="t-num">99.0</span>]);                        <span class="t-com"># weighted cross-entropy for the lab's POSRATIO runs</span>
+trainer<span class="t-op">-&gt;</span>OnStep(\(StepInfo) <span class="t-op">~</span> <span class="t-const">Nil</span> : (s) <span class="t-op">=&gt;</span> { s<span class="t-op">-&gt;</span>GetLoss()<span class="t-op">-&gt;</span>PrintLine(); });
+trainer<span class="t-op">-&gt;</span>Fit(loader, <span class="t-num">3</span>);                                      <span class="t-com"># epochs</span>
 
-model-&gt;Save("malware_distilbert");                            # config.json + model.safetensors + tokenizer.json
-classifier := TextClassifier-&gt;New(TorchRunner-&gt;New(model), tokenizer);   # the Phase A API, the torch backend
+model<span class="t-op">-&gt;</span>Save(<span class="t-str">"malware_distilbert"</span>);                            <span class="t-com"># config.json + model.safetensors + tokenizer.json</span>
+classifier <span class="t-op">:=</span> <span class="t-cls">TextClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">TorchRunner</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(model), tokenizer);   <span class="t-com"># the Phase A API, the torch backend</span>
 </code></pre>
     <p><code>FineTuner</code> is a convenience over these calls, and implements <code>ScoreModel</code>.</p>
-    <h3 id="9-onnx-as-the-export-target-phase-e">9. ONNX as the export target (Phase E)</h3>
+    <h2 id="9-onnx-as-the-export-target-phase-e">9. ONNX as the export target (Phase E)</h2>
     <p>Every op an Objeck model runs goes through the tensor API, so the API can <strong>record</strong> a forward pass and write the ONNX graph:</p>
     <ul>
      <li><code>OnnxExporter-&gt;Export(model, example_inputs, path)</code>;</li>
@@ -956,9 +926,9 @@ classifier := TextClassifier-&gt;New(TorchRunner-&gt;New(model), tokenizer);   #
     </ul>
     <p>A model fine-tuned in Objeck can then run in <code>API.Onnx</code>, on any execution provider ONNX Runtime has, including the NPUs and GPUs libtorch does not reach (§3.3). That narrows the GPU gaps for <em>inference</em>.</p>
     <p><strong>The test:</strong> export, then run in Objeck's ONNX session, in Python ONNX Runtime and against the torch-backend logits, within 1e-5.</p>
-    <h3 id="10-the-lab-end-to-end">10. The lab, end to end</h3>
+    <h2 id="10-the-lab-end-to-end">10. The lab, end to end</h2>
     <p>The user's Lab 1 Part 4 fine-tunes <code>distilbert-base-cased</code> as a binary malware classifier over API-call sequences on Colab: <code>MAX_SEQ_LENGTH</code> 128, AdamW, linear warm-up. <code>part4_bert_malware.py</code> evaluates in PyTorch and <strong>does not save the model</strong> (no <code>save_pretrained</code> call).</p>
-    <h4 id="101-first-target-run-the-colab-model-from-objeck-phase-a1">10.1 First target: run the Colab model from Objeck (Phase A1)</h4>
+    <h3 id="101-first-target-run-the-colab-model-from-objeck-phase-a1">10.1 First target: run the Colab model from Objeck (Phase A1)</h3>
     <ol>
      <li><strong>In the notebook</strong> (the user's code, Python, once):
     <ul>
@@ -976,8 +946,8 @@ classifier := TextClassifier-&gt;New(TorchRunner-&gt;New(model), tokenizer);   #
      </li>
      <li><strong>In Objeck:</strong></li>
     </ol>
-<pre class="line-numbers"><code class="language-cpp">classifier := TextClassifier-&gt;New("malware_distilbert");
-preds := classifier-&gt;Classify(test_sequences);
+<pre class="line-numbers"><code class="language-objeck">classifier <span class="t-op">:=</span> <span class="t-cls">TextClassifier</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"malware_distilbert"</span>);
+preds <span class="t-op">:=</span> classifier<span class="t-op">-&gt;</span>Classify(test_sequences);
 </code></pre>
     <p>Then compute precision, recall and F1 with <code>System.ML</code>'s existing metrics.</p>
     <ol start="4">
@@ -988,14 +958,14 @@ preds := classifier-&gt;Classify(test_sequences);
     </ul>
      </li>
     </ol>
-    <h4 id="102-second-target-fine-tune-it-in-objeck-phase-b2">10.2 Second target: fine-tune it in Objeck (Phase B2)</h4>
+    <h3 id="102-second-target-fine-tune-it-in-objeck-phase-b2">10.2 Second target: fine-tune it in Objeck (Phase B2)</h3>
     <ul>
      <li>The same experiment runs with <code>Trainer</code> (§8.6): POSRATIO, unweighted and weighted, then <code>MAX_SEQ_LENGTH</code>, then learning rate.</li>
      <li>On CPU it takes 33–39 minutes per run for DistilBERT at 5,000 rows (§8.5).</li>
      <li><strong>The check:</strong> the loss trajectory over the first 20 steps matches PyTorch within 1e-4 relative, with the same initial <code>safetensors</code>, batch order and seed, dropout off for the parity run, and one thread.</li>
      <li>Then the final metrics are within run-to-run noise of the Python lab.</li>
     </ul>
-    <h3 id="11-phases">11. Phases</h3>
+    <h2 id="11-phases">11. Phases</h2>
     <p>Sizes are engineering days for one person, including tests and docs. They are estimates, except where an earlier phase measures them.</p>
     <p><strong>Phase A: use models (no new native dependency)</strong></p>
     <table class="ref-table">
@@ -1048,7 +1018,7 @@ preds := classifier-&gt;Classify(test_sequences);
      <li>A2–A8 and B1–B5 are independent tracks until B3, which joins them.</li>
      <li>The lab's first target needs only A1. Its second target needs B2.</li>
     </ul>
-    <h3 id="12-decisions-for-the-user">12. Decisions for the user</h3>
+    <h2 id="12-decisions-for-the-user">12. Decisions for the user</h2>
     <table class="ref-table">
      <thead>
       <tr><th>#</th><th>Decision</th><th>Recommendation</th></tr>
@@ -1067,7 +1037,7 @@ preds := classifier-&gt;Classify(test_sequences);
       <tr><td data-label="#">—</td><td data-label="Decision">The lab notebook adding <code>save_pretrained</code> + export (§10.1)</td><td data-label="Recommendation"><strong>Yes.</strong> It is the user's notebook, so the user's call</td></tr>
      </tbody>
     </table>
-    <h3 id="13-first-pr-and-follow-ups">13. First PR, and follow-ups</h3>
+    <h2 id="13-first-pr-and-follow-ups">13. First PR, and follow-ups</h2>
     <p><strong>First PR: A1, <code>TextClassifier</code> over a local folder.</strong></p>
     <ul>
      <li><strong>Files:</strong>
@@ -1110,7 +1080,7 @@ preds := classifier-&gt;Classify(test_sequences);
      <li><strong>DirectML.</strong> Objeck's Windows ONNX GPU path depends on DirectML, which its README says is in maintenance mode (§3.3). It needs its own design for a maintained Windows execution provider.</li>
      <li><strong>The <code>HttpsClient</code> header leak.</strong> Its <code>Authorization</code> forwarding on cross-origin redirects (§7.3) is a security fix worth landing on its own, before A2, because any current caller that sets <code>Authorization</code> and hits a redirect is affected.</li>
     </ul>
-    <h3 id="appendix-how-the-numbers-were-measured">Appendix: how the numbers were measured</h3>
+    <h2 id="appendix-how-the-numbers-were-measured">Appendix: how the numbers were measured</h2>
     <p>All on 2026-10-29, on the Windows build box (AMD Ryzen AI 9 HX 370, 12 cores, 31 GB).</p>
     <ul>
      <li><strong>Hub counts and files:</strong>
@@ -1150,14 +1120,34 @@ preds := classifier-&gt;Classify(test_sequences);
     </ul>
      </li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#status-checked-against-master-on-2026-11-18">Status (checked against <code>master</code> on 2026-11-18)</a></li><li><a href="#summary">Summary</a></li><li><a href="#1-goals-rules-and-non-goals">1. Goals, rules and non-goals</a></li><li><a href="#2-what-exists-and-what-happens-to-it">2. What exists, and what happens to it</a></li><li><a href="#3-dependency-status-primary-sources">3. Dependency status (primary sources)</a></li><li><a href="#4-what-future-ai-work-needs-from-the-foundation">4. What future AI work needs from the foundation</a></li><li><a href="#5-the-layers">5. The layers</a></li><li><a href="#6-language-and-vm-fit">6. Language and VM fit</a></li><li><a href="#7-phase-a--use-models-hub-tokenizers-pipelines-over-onnx">7. Phase A — use models: hub, tokenizers, pipelines (over ONNX)</a></li><li><a href="#8-phase-b--the-training-foundation-libtorch">8. Phase B — the training foundation (libtorch)</a></li><li><a href="#9-onnx-as-the-export-target-phase-e">9. ONNX as the export target (Phase E)</a></li><li><a href="#10-the-lab-end-to-end">10. The lab, end to end</a></li><li><a href="#11-phases">11. Phases</a></li><li><a href="#12-decisions-for-the-user">12. Decisions for the user</a></li><li><a href="#13-first-pr-and-follow-ups">13. First PR, and follow-ups</a></li><li><a href="#appendix-how-the-numbers-were-measured">Appendix: how the numbers were measured</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>
