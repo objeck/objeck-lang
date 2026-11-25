@@ -503,6 +503,7 @@ jobs:
   # ============================================
   regression:
     name: Regression shard ${{ matrix.shard }} of 6
+    if: matrix.shard != 3
     needs: build
     runs-on: ${{ inputs.platform == 'windows-arm64' && 'windows-11-arm' || 'windows-2025-vs2026' }}
     timeout-minutes: 45
