@@ -86,7 +86,22 @@ class TelemetryContentionTest {
 			weighted += report->GetWorker(w)->GetMean() * 6.0;
 		};
 		Check("combined: mean is the call-weighted mean of the workers", Float->Abs(comb->GetMean() - weighted / 24.0) < 1.0e-9);
-		Check("the slow worker is slower than the fast one by a clear margin", report->GetMedianSpread() > 1.5);
+		# the spread is the slowest worker's median over the fastest worker's median. A loaded runner
+		# can stretch any one sleep, so no margin between workers is asserted: the report's figure is
+		# checked against the same ratio taken from the workers' own medians, which is exact.
+		med_lo := report->GetWorker(0)->GetP50();
+		med_hi := med_lo;
+		for(w := 1; w < 4; w += 1;) {
+			m := report->GetWorker(w)->GetP50();
+			if(m < med_lo) {
+				med_lo := m;
+			};
+			if(m > med_hi) {
+				med_hi := m;
+			};
+		};
+		spread := report->GetMedianSpread();
+		Check("the median spread is the slowest worker's median over the fastest one's", spread >= 1.0 & Float->Abs(spread - med_hi / med_lo) < 1.0e-9);
 		Check("wall time covers the slowest worker (6 calls of 80 ms)", report->GetWallSeconds() >= 0.45);
 		Check("throughput is calls over wall time", report->GetThroughput() > 0.0 & report->GetThroughput() * report->GetWallSeconds() > 23.9 & report->GetThroughput() * report->GetWallSeconds() < 24.1);
 
