@@ -1,0 +1,32 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP TextSimilarity->LevenshteinDistance with a ceiling: an effectively unbounded ceiling
+(Int->MaxSize() and values near it) must not overflow the band arithmetic, on short and long inputs,
+and must give the exact distance, as the unbounded form does.
+~#
+use System.NLP;
+
+class NlpLevenshteinCeiling {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		ceilings := [Int->MaxSize(), Int->MaxSize() - 1, Int->MaxSize() - 5, 2147483647, 1000000];
+		a := ["kitten", "", "a", "abc", "flaw"];
+		b := ["sitting", "xyz", "", "abc", "lawn"];
+		each(c : 5) {
+			each(i : 5) {
+				want := TextSimilarity->LevenshteinDistance(a[i], b[i]);
+				got := TextSimilarity->LevenshteinDistance(a[i], b[i], ceilings[c]);
+				if(got <> want) {
+					"FAIL: '{$a[i]}' vs '{$b[i]}' ceiling {$ceilings[c]}: got {$got}, want {$want}"->PrintLine();
+					bad += 1;
+				};
+			};
+		};
+
+		if(bad > 0) {
+			"FAIL: nlp_levenshtein_ceiling, {$bad} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: nlp_levenshtein_ceiling"->PrintLine();
+	}
+}

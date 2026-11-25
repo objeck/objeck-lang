@@ -345,8 +345,8 @@ knn->Classify(3, [57.0, 170.0])->PrintLine();
 						worst := keys[0];
 					};
 				}
-				else if(acc < worst) {
-					# rows come in ascending order, so an equal distance ranks below the ones held
+				else if(acc < worst & acc->Sqrt() < worst->Sqrt()) {
+					# rows come in ascending order, so an equal reported distance ranks below the ones held
 					keys[0] := acc;
 					slots[0] := i;
 					KnnDown(keys, slots, size, 0);
@@ -373,6 +373,10 @@ knn->Classify(3, [57.0, 170.0])->PrintLine();
 
 		# whether entry a ranks below entry b: a larger distance, or an equal one and a larger row
 		method : KnnWorse(key_a : Float, row_a : Int, key_b : Float, row_b : Int) ~ Bool {
+			# ranked by the distance as reported (the rounded square root), so two squared sums
+			# that differ in the last place but report the same distance tie, and row order decides
+			key_a := key_a->Sqrt();
+			key_b := key_b->Sqrt();
 			if(key_a > key_b) {
 				return true;
 			};

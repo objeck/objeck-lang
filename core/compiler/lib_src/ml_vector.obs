@@ -96,6 +96,11 @@ bundle System.ML.VectorSearch {
 
 		New(blocks : Vector<VectorBlock>, rows : Int, dim : Int, metric : Int, query : Float[], q_scale : Float, want : Int, lo : Int, hi : Int) {
 			Parent("vector-scan");
+			# a scan of a run of rows can never hold more than the run: size its heap by the run,
+			# not by k (the merging scan, with no rows of its own, keeps the full k)
+			if(hi > lo & hi - lo < want) {
+				want := hi - lo;
+			};
 			@blocks := blocks;
 			@rows := rows;
 			@dim := dim;
