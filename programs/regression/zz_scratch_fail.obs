@@ -1,0 +1,6 @@
+class ZzScratchFail {
+  function : Main(args : String[]) ~ Nil {
+    "scratch: deliberate failure"->PrintLine();
+    Runtime->Exit(1);
+  }
+}
