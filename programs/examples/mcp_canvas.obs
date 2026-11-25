@@ -1,0 +1,1777 @@
+#~
+Two painters, one canvas: a visual demo of Objeck's MCP support.
+
+The program hosts an MCP server IN-PROCESS whose tools ARE a tile canvas
+(look, set_color, move, plot, line, fill_rect, circle, stamp). Two painters connect to it
+through McpClient->InProcess and paint at the same time, each on its own thread,
+on one shared canvas. An SDL2 window shows the canvas, each painter's cursor, a
+side panel of the tools/call requests as they happen (tool, arguments, result),
+and sparks that fly from a painter's card to the cells its call just changed.
+
+Live (needs keys; each painter falls back to the scripted painter without its key):
+  painter A  Claude  (API.Anthropic, claude-sonnet-5-5)           "sunset over the sea"
+  painter B  OpenAI  (API.OpenAI.Chat, gpt-5.4-mini)              "a boat, birds, an island"
+  The LLM gets the tools through McpToolBridge (ToAnthropicJson / ToOpenAiJson,
+  bridge->Run). Keys: ANTHROPIC_API_KEY / OPENAI_API_KEY, or anthropic_api_key.dat /
+  openai_api_key.dat in the working directory.
+
+Offline (no keys, no network): --demo runs two scripted painters through the same
+in-process MCP client, and --selftest checks the tools without a window.
+
+Build:  obc -src mcp_canvas.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,anthropic,openai,sdl2 -dest mcp_canvas.obe
+Run:    obr mcp_canvas.obe --demo
+        obr mcp_canvas.obe                        (live: Claude + OpenAI)
+        obr mcp_canvas.obe --selftest             (no window, no network)
+        obr mcp_canvas.obe --demo --shot out.png  (no window: renders to a surface,
+                                                   writes out_mid.png and out.png)
+
+Options: --claude MODEL  --openai MODEL  --turns N  --prompt-a TEXT  --prompt-b TEXT
+         --shot-after N (calls before the mid screenshot, default 18)  --seconds N (cap, default 240)
+ESC or closing the window quits.
+~#
+use API.MCP, API.Anthropic, Collection, Data.JSON, Game.SDL2;
+
+#~ the 17 colors of the canvas: one letter each, as `look` prints them ~#
+class Palette {
+	@keys : static : String;
+	@rgb : static : Int[];
+	@names : static : String[];
+
+	function : Init() ~ Nil {
+		@keys := ".kwaroygftcsbnpmu";
+		@names := "empty,black,white,gray,red,orange,yellow,green,forest,teal,cyan,sky,blue,navy,purple,pink,brown"->Split(',');
+		@rgb := Int->New[17];
+		@rgb[0] := 0x151a26;
+		@rgb[1] := 0x050507;
+		@rgb[2] := 0xf4f4f4;
+		@rgb[3] := 0x8a8f98;
+		@rgb[4] := 0xe03c31;
+		@rgb[5] := 0xf28c28;
+		@rgb[6] := 0xf9d849;
+		@rgb[7] := 0x4cb944;
+		@rgb[8] := 0x1f6b34;
+		@rgb[9] := 0x1aa39a;
+		@rgb[10] := 0x55d6e8;
+		@rgb[11] := 0x8ec9f5;
+		@rgb[12] := 0x2f6fe0;
+		@rgb[13] := 0x1a2a6c;
+		@rgb[14] := 0x8a4fd3;
+		@rgb[15] := 0xf277b3;
+		@rgb[16] := 0x7a4a26;
+	}
+
+	function : Count() ~ Int {
+		return 17;
+	}
+
+	function : Rgb(index : Int) ~ Int {
+		return @rgb[index];
+	}
+
+	function : Name(index : Int) ~ String {
+		return @names[index];
+	}
+
+	function : KeyAt(index : Int) ~ Char {
+		return @keys->Get(index);
+	}
+
+	function : IndexOf(key : Char) ~ Int {
+		return @keys->Find(key);
+	}
+
+	function : Legend() ~ String {
+		text := "";
+		each(i : @names) {
+			k := @keys->Get(i);
+			n := @names[i];
+			text->Append("{$k}={$n} ");
+		};
+		return text;
+	}
+
+	# the palette entry closest to a 0xRRGGBB value
+	function : Nearest(want : Int) ~ Int {
+		wr := (want >> 16) and 0xFF;
+		wg := (want >> 8) and 0xFF;
+		wb := want and 0xFF;
+		best := 0;
+		best_d := 1000000000;
+		for(n := 1; n < 17; n += 1;) {
+			c := @rgb[n];
+			dr := ((c >> 16) and 0xFF) - wr;
+			dg := ((c >> 8) and 0xFF) - wg;
+			db := (c and 0xFF) - wb;
+			d := dr * dr + dg * dg + db * db;
+			if(d < best_d) {
+				best_d := d;
+				best := n;
+			};
+		};
+		return best;
+	}
+
+	# a color name ("sky"), its letter ("s") or #rrggbb (the nearest of the 17); -1 when unknown
+	function : Resolve(color : String) ~ Int {
+		if(color = Nil | color->Size() = 0) {
+			return -1;
+		};
+
+		low := "";
+		each(i : color) {
+			ch := color->Get(i);
+			lower := Char->ToLower(ch);
+			low->Append(lower);
+		};
+		if(low->Equals("grey")) {
+			low := "gray";
+		};
+
+		each(i : @names) {
+			nm := @names[i];
+			if(nm->Equals(low)) {
+				return i;
+			};
+		};
+
+		if(low->Size() = 1) {
+			return IndexOf(low->Get(0));
+		};
+
+		if(low->Size() = 7) {
+			if(low->Get(0) = '#') {
+				return Nearest(low->SubString(1, 6)->ToInt(16));
+			};
+		};
+
+		return -1;
+	}
+}
+
+#~ one tools/call, as the painters and the window see it ~#
+class Ev {
+	@pid : Int;
+	@tool : String;
+	@args : String;
+	@result : String;
+	@ok : Bool;
+	@x0 : Int;
+	@y0 : Int;
+	@x1 : Int;
+	@y1 : Int;
+	@color : Int;
+
+	New(pid : Int, tool : String, args : String, result : String, ok : Bool, site : Int[], color : Int) {
+		@pid := pid;
+		@tool := tool;
+		@args := args;
+		@result := result;
+		@ok := ok;
+		@x0 := site[0];
+		@y0 := site[1];
+		@x1 := site[2];
+		@y1 := site[3];
+		@color := color;
+	}
+
+	method : public : GetPid() ~ Int { return @pid; }
+	method : public : GetTool() ~ String { return @tool; }
+	method : public : GetArgs() ~ String { return @args; }
+	method : public : GetResult() ~ String { return @result; }
+	method : public : IsOk() ~ Bool { return @ok; }
+	method : public : GetX0() ~ Int { return @x0; }
+	method : public : GetY0() ~ Int { return @y0; }
+	method : public : GetX1() ~ Int { return @x1; }
+	method : public : GetY1() ~ Int { return @y1; }
+	method : public : GetColor() ~ Int { return @color; }
+}
+
+#~ the shared canvas. Every tool call runs under one lock, so two painters can never tear a cell ~#
+class Board {
+	@w : static : Int;
+	@h : static : Int;
+	@cells : static : Int[];
+	@cx : static : Int[];
+	@cy : static : Int[];
+	@cc : static : Int[];
+	@calls : static : Int[];
+	@total : static : Int;
+	@pname : static : String[];
+	@events : static : Vector<Ev>;
+	@mutex : static : System.Concurrency.ThreadMutex;
+	@quit : static : Bool;
+
+	function : Init() ~ Nil {
+		Palette->Init();
+		@w := 40;
+		@h := 24;
+		@cells := Int->New[@w * @h];
+		@cx := Int->New[2];
+		@cy := Int->New[2];
+		@cc := Int->New[2];
+		@calls := Int->New[2];
+		@pname := String->New[2];
+		@pname[0] := "Painter A";
+		@pname[1] := "Painter B";
+		@cx[0] := 4;
+		@cy[0] := 4;
+		@cx[1] := 30;
+		@cy[1] := 16;
+		@cc[0] := 2;
+		@cc[1] := 2;
+		@total := 0;
+		@events := Vector->New()<Ev>;
+		@mutex := System.Concurrency.ThreadMutex->New("canvas");
+		@quit := false;
+	}
+
+	function : GetW() ~ Int { return @w; }
+	function : GetH() ~ Int { return @h; }
+	function : GetMutex() ~ System.Concurrency.ThreadMutex { return @mutex; }
+	function : IsQuit() ~ Bool { return @quit; }
+	function : SetQuit() ~ Nil { @quit := true; }
+	function : GetTotal() ~ Int { return @total; }
+	function : GetCalls(pid : Int) ~ Int { return @calls[pid]; }
+	function : GetName(pid : Int) ~ String { return @pname[pid]; }
+	function : SetName(pid : Int, name : String) ~ Nil { @pname[pid] := name; }
+	function : GetCursorX(pid : Int) ~ Int { return @cx[pid]; }
+	function : GetCursorY(pid : Int) ~ Int { return @cy[pid]; }
+	function : GetCell(x : Int, y : Int) ~ Int { return @cells[y * @w + x]; }
+
+	# a copy of the cells for one frame
+	function : Snapshot() ~ Int[] {
+		copy := Int->New[@w * @h];
+		m := @mutex;
+		critical(m) {
+			each(i : @cells) {
+				copy[i] := @cells[i];
+			};
+		};
+		return copy;
+	}
+
+	function : Drain() ~ Vector<Ev> {
+		out := Vector->New()<Ev>;
+		m := @mutex;
+		critical(m) {
+			each(i : @events) {
+				out->AddBack(@events->Get(i));
+			};
+			@events->Empty();
+		};
+		return out;
+	}
+
+	# a status line from a painter (what the model said, why it fell back) in the call panel
+	function : Note(pid : Int, text : String) ~ Nil {
+		site := Int->New[4];
+		site[0] := -1;
+		m := @mutex;
+		critical(m) {
+			@events->AddBack(Ev->New(pid, "note", "", text, true, site, 0));
+		};
+	}
+
+	function : Put(x : Int, y : Int, color : Int) ~ Int {
+		if(x < 0 | y < 0 | x >= @w | y >= @h) {
+			return 0;
+		};
+		@cells[y * @w + x] := color;
+		return 1;
+	}
+
+	function : Grow(site : Int[], x : Int, y : Int) ~ Nil {
+		if(x < 0 | y < 0 | x >= @w | y >= @h) {
+			return;
+		};
+		if(site[0] < 0) {
+			site[0] := x;
+			site[1] := y;
+			site[2] := x;
+			site[3] := y;
+			return;
+		};
+		if(x < site[0]) { site[0] := x; };
+		if(y < site[1]) { site[1] := y; };
+		if(x > site[2]) { site[2] := x; };
+		if(y > site[3]) { site[3] := y; };
+	}
+
+	function : Mark(pid : Int, x : Int, y : Int, site : Int[]) ~ Int {
+		count := Put(x, y, @cc[pid]);
+		if(count > 0) {
+			Grow(site, x, y);
+		};
+		return count;
+	}
+
+	# --- the tools; all of them run under the lock ---
+
+	function : Arg(call : McpCall, name : String) ~ Int {
+		if(call->Has(name) = false) {
+			return -99999;
+		};
+		return call->GetInt(name, -99999);
+	}
+
+	function : Missing(name : String) ~ String {
+		return "error: missing or non-integer argument '{$name}'";
+	}
+
+	function : Look(pid : Int) ~ String {
+		w := @w;
+		h := @h;
+		out := "canvas {$w}x{$h}: x 0..";
+		out->Append(w - 1);
+		out->Append(" left to right, y 0..");
+		out->Append(h - 1);
+		out->Append(" top to bottom. Letters are colors, '.' is empty.\n");
+		out->Append("     ");
+		for(x := 0; x < w; x += 1;) {
+			out->Append(x % 10);
+		};
+		out->Append("\n");
+		for(y := 0; y < h; y += 1;) {
+			if(y < 10) {
+				out->Append(" ");
+			};
+			out->Append(y);
+			out->Append("   ");
+			for(x := 0; x < w; x += 1;) {
+				out->Append(Palette->KeyAt(@cells[y * w + x]));
+			};
+			out->Append("\n");
+		};
+		for(p := 0; p < 2; p += 1;) {
+			px := @cx[p];
+			py := @cy[p];
+			pn := Palette->Name(@cc[p]);
+			who := "other painter";
+			if(p = pid) {
+				who := "you";
+			};
+			name := @pname[p];
+			out->Append("{$who} ({$name}): cursor ({$px},{$py}), color {$pn}\n");
+		};
+		return out;
+	}
+
+	function : Exec(pid : Int, name : String, call : McpCall, site : Int[]) ~ String {
+		site[0] := -1;
+
+		if(name->Equals("look")) {
+			site[0] := 0;
+			site[1] := 0;
+			site[2] := @w - 1;
+			site[3] := @h - 1;
+			return Look(pid);
+		};
+
+		if(name->Equals("set_color")) {
+			ci := Palette->Resolve(call->GetString("color"));
+			if(ci < 0) {
+				legend := Palette->Legend();
+				return "error: unknown color. Use a name or letter: {$legend}";
+			};
+			@cc[pid] := ci;
+			site[0] := @cx[pid];
+			site[1] := @cy[pid];
+			site[2] := site[0];
+			site[3] := site[1];
+			cn := Palette->Name(ci);
+			return "ok: color is {$cn}";
+		};
+
+		if(name->Equals("move")) {
+			x := Arg(call, "x");
+			y := Arg(call, "y");
+			if(x = -99999) { return Missing("x"); };
+			if(y = -99999) { return Missing("y"); };
+			w := @w;
+			h := @h;
+			if(x < 0 | y < 0 | x >= w | y >= h) {
+				return "error: ({$x},{$y}) is off the canvas ({$w}x{$h})";
+			};
+			@cx[pid] := x;
+			@cy[pid] := y;
+			Grow(site, x, y);
+			return "ok: cursor at ({$x},{$y})";
+		};
+
+		if(name->Equals("plot")) {
+			x := @cx[pid];
+			y := @cy[pid];
+			if(call->Has("x")) { x := Arg(call, "x"); };
+			if(call->Has("y")) { y := Arg(call, "y"); };
+			if(x = -99999) { return Missing("x"); };
+			if(y = -99999) { return Missing("y"); };
+			if(Mark(pid, x, y, site) = 0) {
+				return "error: ({$x},{$y}) is off the canvas";
+			};
+			@cx[pid] := x;
+			@cy[pid] := y;
+			return "ok: painted ({$x},{$y})";
+		};
+
+		if(name->Equals("line")) {
+			x1 := Arg(call, "x1");
+			y1 := Arg(call, "y1");
+			x2 := Arg(call, "x2");
+			y2 := Arg(call, "y2");
+			if(x1 = -99999) { return Missing("x1"); };
+			if(y1 = -99999) { return Missing("y1"); };
+			if(x2 = -99999) { return Missing("x2"); };
+			if(y2 = -99999) { return Missing("y2"); };
+			count := Line(pid, x1, y1, x2, y2, site);
+			if(x2 >= 0 & y2 >= 0 & x2 < @w & y2 < @h) {
+				@cx[pid] := x2;
+				@cy[pid] := y2;
+			};
+			return "ok: line painted {$count} cells";
+		};
+
+		if(name->Equals("fill_rect")) {
+			x := Arg(call, "x");
+			y := Arg(call, "y");
+			rw := Arg(call, "w");
+			rh := Arg(call, "h");
+			if(x = -99999) { return Missing("x"); };
+			if(y = -99999) { return Missing("y"); };
+			if(rw = -99999) { return Missing("w"); };
+			if(rh = -99999) { return Missing("h"); };
+			count := 0;
+			for(j := y; j < y + rh; j += 1;) {
+				for(i := x; i < x + rw; i += 1;) {
+					count += Mark(pid, i, j, site);
+				};
+			};
+			@cx[pid] := x;
+			if(@cx[pid] >= @w) { @cx[pid] := @w - 1; };
+			if(@cx[pid] < 0) { @cx[pid] := 0; };
+			@cy[pid] := y;
+			if(@cy[pid] >= @h) { @cy[pid] := @h - 1; };
+			if(@cy[pid] < 0) { @cy[pid] := 0; };
+			return "ok: rectangle painted {$count} cells";
+		};
+
+		if(name->Equals("circle")) {
+			cx := Arg(call, "x");
+			cy := Arg(call, "y");
+			r := Arg(call, "r");
+			if(cx = -99999) { return Missing("x"); };
+			if(cy = -99999) { return Missing("y"); };
+			if(r = -99999) { return Missing("r"); };
+			filled := call->GetBool("filled", true);
+			count := 0;
+			limit := r * r + r;
+			inner := (r - 1) * (r - 1) + (r - 1);
+			for(j := cy - r; j <= cy + r; j += 1;) {
+				for(i := cx - r; i <= cx + r; i += 1;) {
+					d := (i - cx) * (i - cx) + (j - cy) * (j - cy);
+					if(d <= limit & (filled | d > inner)) {
+						count += Mark(pid, i, j, site);
+					};
+				};
+			};
+			if(cx >= 0 & cy >= 0 & cx < @w & cy < @h) {
+				@cx[pid] := cx;
+				@cy[pid] := cy;
+			};
+			return "ok: circle painted {$count} cells";
+		};
+
+		if(name->Equals("stamp")) {
+			sprite := Sprites->Get(call->GetString("name"));
+			x := Arg(call, "x");
+			y := Arg(call, "y");
+			if(sprite = Nil) {
+				names := Sprites->Names();
+				return "error: unknown sprite. Use one of: {$names}";
+			};
+			if(x = -99999) { return Missing("x"); };
+			if(y = -99999) { return Missing("y"); };
+			count := 0;
+			rows := sprite->Split('|');
+			each(j : rows) {
+				row := rows[j];
+				each(i : row) {
+					ch := row->Get(i);
+					if(ch <> ' ') {
+						ci := Palette->IndexOf(ch);
+						if(ci >= 0) {
+							count += Put(x + i, y + j, ci);
+							Grow(site, x + i, y + j);
+						};
+					};
+				};
+			};
+			if(count = 0) {
+				return "error: the sprite is entirely off the canvas";
+			};
+			if(x >= 0 & y >= 0 & x < @w & y < @h) {
+				@cx[pid] := x;
+				@cy[pid] := y;
+			};
+			return "ok: stamped {$count} cells";
+		};
+
+		return "error: unknown tool";
+	}
+
+	function : Line(pid : Int, x1 : Int, y1 : Int, x2 : Int, y2 : Int, site : Int[]) ~ Int {
+		dx := Int->Abs(x2 - x1);
+		dy := Int->Abs(y2 - y1);
+		sx := 1;
+		if(x1 > x2) { sx := -1; };
+		sy := 1;
+		if(y1 > y2) { sy := -1; };
+		err := dx - dy;
+		x := x1;
+		y := y1;
+		count := 0;
+		steps := 0;
+		done := false;
+		while(<>done & steps < 400) {
+			count += Mark(pid, x, y, site);
+			steps += 1;
+			if(x = x2 & y = y2) {
+				done := true;
+			}
+			else {
+				e2 := 2 * err;
+				if(e2 > -dy) {
+					err -= dy;
+					x += sx;
+				};
+				if(e2 < dx) {
+					err += dx;
+					y += sy;
+				};
+			};
+		};
+		return count;
+	}
+
+	# every tool call ends here: run it, record it for the window
+	function : Run(pid : Int, name : String, call : McpCall) ~ String {
+		site := Int->New[4];
+		text := "";
+		args := call->GetArguments()->ToString();
+		m := @mutex;
+		critical(m) {
+			text := Exec(pid, name, call, site);
+			ok := true;
+			if(text->StartsWith("error:")) {
+				ok := false;
+			};
+			@calls[pid] += 1;
+			@total += 1;
+			@events->AddBack(Ev->New(pid, name, args, text, ok, site, @cc[pid]));
+		};
+		return text;
+	}
+}
+
+#~ stamps: rows separated by |, letters are palette colors, a space is transparent ~#
+class Sprites {
+	function : Names() ~ String {
+		return "sun cloud boat bird star tree house";
+	}
+
+	function : Get(name : String) ~ String {
+		if(name = Nil) {
+			return Nil;
+		};
+		if(name->Equals("sun")) {
+			return "  yyy  | yyyyy |yyyyyyy|yyyyyyy|yyyyyyy| yyyyy |  yyy  ";
+		};
+		if(name->Equals("cloud")) {
+			return "  www   | wwwwww |wwwwwwww| wwwwww ";
+		};
+		if(name->Equals("boat")) {
+			return "    u    |    uw   |    uww  |    uwww |    u    |rrrrrrrrr| rrrrrrr ";
+		};
+		if(name->Equals("bird")) {
+			return "k   k| k k |  k  ";
+		};
+		if(name->Equals("star")) {
+			return " y |yyy| y ";
+		};
+		if(name->Equals("tree")) {
+			return "  g  | ggg |ggggg|  u  |  u  |  u  ";
+		};
+		if(name->Equals("house")) {
+			return "  rrr  | rrrrr |rrrrrrr|wwwwwww|wbwwwbw|wwwuwww|wwwuwww";
+		};
+		return Nil;
+	}
+}
+
+#~ the MCP server: one per painter, so a handler knows who is calling; all of them share the Board ~#
+class CanvasTools {
+	function : Schema(props : String, required : String) ~ String {
+		json := "{\"type\":\"object\",\"properties\":{";
+		if(props->Size() > 0) {
+			parts := props->Split(',');
+			each(i : parts) {
+				kv := parts[i]->Split(':');
+				ty := "string";
+				if(kv[1]->Equals("i")) {
+					ty := "integer";
+				}
+				else if(kv[1]->Equals("b")) {
+					ty := "boolean";
+				};
+				if(i > 0) {
+					json->Append(",");
+				};
+				pn := kv[0];
+				json->Append("\"{$pn}\":{\"type\":\"{$ty}\"}");
+			};
+		};
+		json->Append("}");
+		if(required->Size() > 0) {
+			names := required->Split(',');
+			json->Append(",\"required\":[");
+			each(i : names) {
+				if(i > 0) {
+					json->Append(",");
+				};
+				rn := names[i];
+				json->Append("\"{$rn}\"");
+			};
+			json->Append("]");
+		};
+		json->Append("}");
+		return json;
+	}
+
+	function : Reg(svc : McpService, pid : Int, name : String, description : String, schema : String) ~ Nil {
+		svc->AddTool(name, description, schema, Func2Ref->New(\(call) => CanvasTools->Call(pid, name, call))<McpCall, McpToolResult>);
+	}
+
+	function : Call(pid : Int, name : String, call : McpCall) ~ McpToolResult {
+		text := Board->Run(pid, name, call);
+		if(text->StartsWith("error:")) {
+			return McpToolResult->Error(text);
+		};
+		return McpToolResult->Text(text);
+	}
+
+	function : Service(pid : Int) ~ McpService {
+		svc := McpService->New("canvas", "1.0");
+		svc->SetInstructions("A shared 40x24 tile canvas. Another painter works on it at the same time.");
+		Reg(svc, pid, "look", "See the canvas as a text grid (one letter per tile) plus both painters' cursors and colors. It is large: call it rarely.", Schema("", ""));
+		Reg(svc, pid, "set_color", "Choose your paint color: black white gray red orange yellow green forest teal cyan sky blue navy purple pink brown, or empty to erase.", Schema("color:s", "color"));
+		Reg(svc, pid, "move", "Move your cursor to a tile (x 0..39, y 0..23; 0,0 is the top left).", Schema("x:i,y:i", "x,y"));
+		Reg(svc, pid, "plot", "Paint one tile with your color; at (x,y), or at your cursor when they are left out.", Schema("x:i,y:i", ""));
+		Reg(svc, pid, "line", "Paint a straight line of tiles from (x1,y1) to (x2,y2) with your color.", Schema("x1:i,y1:i,x2:i,y2:i", "x1,y1,x2,y2"));
+		Reg(svc, pid, "fill_rect", "Paint a filled rectangle with its top-left tile at (x,y), w tiles wide and h tall, with your color. It is clipped to the canvas.", Schema("x:i,y:i,w:i,h:i", "x,y,w,h"));
+		Reg(svc, pid, "circle", "Paint a circle centered on (x,y) with radius r (filled unless filled is false) with your color.", Schema("x:i,y:i,r:i,filled:b", "x,y,r"));
+		Reg(svc, pid, "stamp", "Stamp a ready-made sprite (sun cloud boat bird star tree house) with its top-left tile at (x,y). Sprites bring their own colors. sun is 7x7, cloud 8x4, boat 9x7, bird 5x3, star 3x3, tree 5x6, house 7x7.", Schema("name:s,x:i,y:i", "name,x,y"));
+		return svc;
+	}
+}
+
+#~ a painter: an in-process MCP client plus whatever drives it (a script, Claude or an OpenAI model) ~#
+class Agent {
+	@pid : Int;
+	@kind : String;
+	@model : String;
+	@prompt : String;
+	@system : String;
+	@max_turns : Int;
+	@client : McpClient;
+	@bridge : McpToolBridge;
+	@state : String;
+	@turn : Int;
+	@in_tok : Int;
+	@out_tok : Int;
+	@done : Bool;
+	@error : String;
+
+	New(pid : Int, kind : String, model : String, prompt : String, max_turns : Int) {
+		@pid := pid;
+		@kind := kind;
+		@model := model;
+		@prompt := prompt;
+		@max_turns := max_turns;
+		@state := "starting";
+	}
+
+	method : public : GetPid() ~ Int { return @pid; }
+	method : public : GetKind() ~ String { return @kind; }
+	method : public : GetModel() ~ String { return @model; }
+	method : public : GetPrompt() ~ String { return @prompt; }
+	method : public : GetState() ~ String { return @state; }
+	method : public : GetTurn() ~ Int { return @turn; }
+	method : public : GetMaxTurns() ~ Int { return @max_turns; }
+	method : public : GetInTokens() ~ Int { return @in_tok; }
+	method : public : GetOutTokens() ~ Int { return @out_tok; }
+	method : public : IsDone() ~ Bool { return @done; }
+	method : public : GetError() ~ String { return @error; }
+	method : public : GetClient() ~ McpClient { return @client; }
+
+	method : public : Connect() ~ Bool {
+		@client := McpClient->InProcess(CanvasTools->Service(@pid));
+		if(<>@client->Initialize("canvas-painter", "1.0")) {
+			@error := @client->GetError();
+			return false;
+		};
+		@bridge := McpToolBridge->New(@client);
+		return true;
+	}
+
+	method : public : Work() ~ Nil {
+		if(<>Connect()) {
+			Board->Note(@pid, "cannot connect to the canvas server");
+			@done := true;
+			return;
+		};
+
+		name := Board->GetName(@pid);
+				@system := "You are {$name}, a painter on a shared tile canvas. Another painter works on the same canvas at the same time: never paint over a sprite or detail that you did not paint yourself: paint around it, or add to it. You paint only through the tools. Plan the picture, then issue MANY tool calls per turn (several in one turn). Call look at most twice: once at the start and once near the end. The canvas is 40 wide and 24 tall and has no text; use bands of color (fill_rect), lines, circles and stamp sprites. Use at most {$@max_turns} turns, then end with ONE short sentence about what you painted.";
+
+		WaitForNeighbor();
+		if(@kind->Equals("claude")) {
+			@state := "painting";
+			RunClaude();
+		}
+		else if(@kind->Equals("openai")) {
+			@state := "painting";
+			RunOpenAi();
+		}
+		else {
+			@state := "painting";
+			RunScript();
+		};
+
+		if(@error <> Nil) {
+			Board->Note(@pid, "stopped: {$@error}");
+		};
+		@state := "done";
+		@done := true;
+	}
+
+	# the second live painter starts once the first has laid down some background
+	method : WaitForNeighbor() ~ Nil {
+		is_script := @kind->Equals("script");
+		if(@pid = 1) {
+			if(is_script = false) {
+				@state := "waiting";
+				waited := 0;
+				while(Board->GetCalls(0) < 12 & waited < 100 & Board->IsQuit() = false) {
+					System.Concurrency.Thread->Sleep(200);
+					waited += 1;
+				};
+			};
+		};
+	}
+
+	# --- Claude: Chat + Tool built from the bridge's tool list ---
+	method : RunClaude() ~ Nil {
+		if(API.Anthropic.EndPoint->GetApiKey() = Nil) {
+			Board->Note(@pid, "no Anthropic key: scripted painter instead");
+			@kind := "script";
+			RunScript();
+			return;
+		};
+
+		tools := Vector->New()<Tool>;
+		each(t in @bridge->GetTools()) {
+			tools->AddBack(Tool->New(t->GetName(), t->GetDescription(), t->GetInputSchema()));
+		};
+
+		chat := API.Anthropic.Chat->New(@model, Nil);
+		chat->SetMaxTokens(2500);
+		chat->SetSystem(@system);
+		msg := @prompt;
+		done := false;
+		while(<>done & @turn < @max_turns & <>Board->IsQuit()) {
+			@state := "thinking";
+			reply := chat->SendReply(msg, tools);
+			msg := Nil;
+			@turn += 1;
+			if(reply = Nil) {
+				@error := API.Anthropic.EndPoint->GetLastError();
+				return;
+			};
+			@in_tok += reply->GetInputTokens();
+			@out_tok += reply->GetOutputTokens();
+			if(reply->HasToolUses()) {
+				@state := "painting";
+				each(u in reply->GetToolUses()) {
+					out := @bridge->Run(u->GetName(), u->GetInput());
+					chat->AddToolResult(u->GetId(), out, out->StartsWith("error:"));
+					System.Concurrency.Thread->Sleep(120);
+				};
+			}
+			else {
+				done := true;
+				Said(reply->GetText());
+			};
+		};
+	}
+
+	# --- OpenAI: chat completions with tools ---
+	method : RunOpenAi() ~ Nil {
+		key := API.OpenAI.EndPoint->GetApiKey();
+		if(key = Nil) {
+			Board->Note(@pid, "no OpenAI key: scripted painter instead");
+			@kind := "script";
+			RunScript();
+			return;
+		};
+
+		msgs := JsonElement->New(JsonElement->JsonType->ARRAY);
+		sys := JsonElement->New(JsonElement->JsonType->OBJECT);
+		sys->Insert("role", "system");
+		sys->Insert("content", @system);
+		msgs->Add(sys);
+		usr := JsonElement->New(JsonElement->JsonType->OBJECT);
+		usr->Insert("role", "user");
+		usr->Insert("content", @prompt);
+		msgs->Add(usr);
+		tools := @bridge->ToOpenAiJson();
+
+		done := false;
+		while(<>done & @turn < @max_turns & <>Board->IsQuit()) {
+			@state := "thinking";
+			comp := API.OpenAI.Chat.Completion->CompleteWithTools(@model, msgs, tools, 2500, key);
+			@turn += 1;
+			if(comp = Nil) {
+				@error := API.OpenAI.EndPoint->GetLastError();
+				return;
+			};
+			choice := comp->GetChoices()->Get(0);
+			msgs->Add(choice->GetMessageJson());
+			calls := choice->GetToolCalls();
+			if(calls->Size() > 0) {
+				@state := "painting";
+				each(c in calls) {
+					out := @bridge->Run(c->GetName(), c->GetArgumentsJson());
+					msgs->Add(API.OpenAI.Chat.Completion->ToolResultMessage(c->GetId(), out));
+					System.Concurrency.Thread->Sleep(120);
+				};
+			}
+			else {
+				done := true;
+				Said(choice->GetMessage()->GetSecond());
+			};
+		};
+	}
+
+	method : Said(text : String) ~ Nil {
+		if(text <> Nil & text->Size() > 0) {
+			Board->Note(@pid, text);
+		};
+	}
+
+	# --- the scripted painter: the same tools, through the same client ---
+	method : RunScript() ~ Nil {
+		lines := Scripts->Get(@pid)->Split(';');
+		each(i : lines) {
+			if(Board->IsQuit()) {
+				return;
+			};
+			Step(lines[i]->Trim());
+			@turn += 1;
+		};
+	}
+
+	method : Step(line : String) ~ Nil {
+		words := line->Split(' ');
+		tool := words[0];
+		if(tool->Equals("sleep")) {
+			System.Concurrency.Thread->Sleep(words[1]->ToInt());
+			return;
+		};
+
+		keys := Scripts->ArgNames(tool);
+		args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		for(i := 0; i < keys->Size() & i + 1 < words->Size(); i += 1;) {
+			value := words[i + 1];
+			c := value->Get(0);
+			if(c = '-' | (c >= '0' & c <= '9')) {
+				args->Insert(keys[i], value->ToInt());
+			}
+			else {
+				args->Insert(keys[i], value);
+			};
+		};
+		@client->CallTool(tool, args);
+		System.Concurrency.Thread->Sleep(170);
+	}
+}
+
+#~ what the scripted painters paint ~#
+class Scripts {
+	function : ArgNames(tool : String) ~ String[] {
+		if(tool->Equals("set_color")) { return "color"->Split(','); };
+		if(tool->Equals("move") | tool->Equals("plot")) { return "x,y"->Split(','); };
+		if(tool->Equals("line")) { return "x1,y1,x2,y2"->Split(','); };
+		if(tool->Equals("fill_rect")) { return "x,y,w,h"->Split(','); };
+		if(tool->Equals("circle")) { return "x,y,r"->Split(','); };
+		if(tool->Equals("stamp")) { return "name,x,y"->Split(','); };
+		return String->New[0];
+	}
+
+	function : Get(pid : Int) ~ String {
+		if(pid = 0) {
+			# a sunset: sky bands, the sun sinking into the sea, its reflection, clouds, stars
+			return "look;set_color navy;fill_rect 0 0 40 3;set_color purple;fill_rect 0 3 40 3;set_color pink;fill_rect 0 6 40 3;set_color orange;fill_rect 0 9 40 3;set_color yellow;fill_rect 0 12 40 2;stamp sun 17 8;set_color blue;fill_rect 0 14 40 6;set_color navy;fill_rect 0 20 40 4;sleep 500;set_color orange;line 16 15 24 15;line 17 17 23 17;set_color yellow;line 18 16 22 16;line 19 18 21 18;stamp cloud 3 4;stamp cloud 27 6;set_color white;plot 7 0;plot 21 1;plot 33 0;plot 12 2;stamp star 36 1;set_color sky;line 2 22 9 22;line 26 21 36 21;look";
+		};
+		# a boat, birds and a palm island, started a beat later so it lands on A's work
+		return "sleep 900;look;stamp boat 21 14;sleep 300;stamp bird 9 4;stamp bird 30 3;stamp bird 33 8;stamp tree 34 12;set_color brown;fill_rect 31 18 9 2;set_color forest;fill_rect 33 17 5 1;set_color white;line 20 20 29 20;sleep 400;stamp boat 6 15;set_color red;circle 36 6 1;look";
+	}
+}
+
+#~ one effect of a tools/call: a spark flying from a painter to the call site, a flash, a beam or a scan ~#
+class Fx {
+	@kind : Int;
+	@x0 : Float;
+	@y0 : Float;
+	@x1 : Float;
+	@y1 : Float;
+	@cx : Float;
+	@cy : Float;
+	@start : Float;
+	@life : Float;
+	@rgb : Int;
+
+	New(kind : Int, x0 : Float, y0 : Float, x1 : Float, y1 : Float, start : Float, life : Float, rgb : Int) {
+		@kind := kind;
+		@x0 := x0;
+		@y0 := y0;
+		@x1 := x1;
+		@y1 := y1;
+		@start := start;
+		@life := life;
+		@rgb := rgb;
+		@cx := (x0 + x1) / 2.0 + Float->Random(-60.0, 60.0);
+		@cy := Float->Min(y0, y1) - 40.0 - Float->Random(0.0, 80.0);
+	}
+
+	method : public : GetKind() ~ Int { return @kind; }
+	method : public : GetX0() ~ Float { return @x0; }
+	method : public : GetY0() ~ Float { return @y0; }
+	method : public : GetX1() ~ Float { return @x1; }
+	method : public : GetY1() ~ Float { return @y1; }
+	method : public : GetCX() ~ Float { return @cx; }
+	method : public : GetCY() ~ Float { return @cy; }
+	method : public : GetStart() ~ Float { return @start; }
+	method : public : GetLife() ~ Float { return @life; }
+	method : public : GetRgb() ~ Int { return @rgb; }
+}
+
+class TexEntry {
+	@texture : Texture;
+	@w : Int;
+	@h : Int;
+
+	New(texture : Texture, w : Int, h : Int) {
+		@texture := texture;
+		@w := w;
+		@h := h;
+	}
+
+	method : public : GetTexture() ~ Texture { return @texture; }
+	method : public : GetW() ~ Int { return @w; }
+	method : public : GetH() ~ Int { return @h; }
+}
+
+#~ all the drawing; it only needs an SDL Renderer, so it draws to a window or to a surface alike ~#
+class Gfx {
+	@r : Renderer;
+	@width : Int;
+	@height : Int;
+	@tile : Int;
+	@ox : Int;
+	@oy : Int;
+	@font_path : String;
+	@fonts : Hash<String, Font>;
+	@cache : Hash<String, TexEntry>;
+	@entries : Vector<TexEntry>;
+	@fx : Vector<Fx>;
+	@log : Vector<Ev>;
+	@fcx : Float[];
+	@fcy : Float[];
+	@accent : Int[];
+	@now : Float;
+	@agents : Agent[];
+	@total_calls : Int;
+
+	New(r : Renderer, width : Int, height : Int, agents : Agent[]) {
+		@r := r;
+		@width := width;
+		@height := height;
+		@agents := agents;
+		@tile := 18;
+		@ox := 24;
+		@oy := 84;
+		@fonts := Hash->New()<String, Font>;
+		@cache := Hash->New()<String, TexEntry>;
+		@entries := Vector->New()<TexEntry>;
+		@fx := Vector->New()<Fx>;
+		@log := Vector->New()<Ev>;
+		@fcx := Float->New[2];
+		@fcy := Float->New[2];
+		@accent := Int->New[2];
+		@accent[0] := 0xff9d4d;
+		@accent[1] := 0x2ee6b0;
+		each(p : @fcx) {
+			@fcx[p] := Board->GetCursorX(p)->As(Float);
+			@fcy[p] := Board->GetCursorY(p)->As(Float);
+		};
+		@font_path := FindFont();
+		r->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND);
+	}
+
+	function : FindFont() ~ String {
+		root := System.Runtime->GetProperty("lib_dir");
+		if(root <> Nil) {
+			path := "{$root}/sdl/fonts/lato.ttf";
+			if(System.IO.Filesystem.File->Exists(path)) {
+				return path;
+			};
+		};
+		root := System.Runtime->GetEnvironmentVariable("OBJECK_LIB_PATH");
+		if(root <> Nil & root->Size() > 0) {
+			path := "{$root}/sdl/fonts/lato.ttf";
+			if(System.IO.Filesystem.File->Exists(path)) {
+				return path;
+			};
+		};
+		return "../lib/sdl/fonts/lato.ttf";
+	}
+
+	method : public : Accent(pid : Int) ~ Int {
+		return @accent[pid];
+	}
+
+	method : Color(rgb : Int, a : Int) ~ Nil {
+		@r->SetDrawColor((rgb >> 16) and 0xFF, (rgb >> 8) and 0xFF, rgb and 0xFF, a);
+	}
+
+	method : Fill(x : Int, y : Int, w : Int, h : Int) ~ Nil {
+		@r->FillRect(Rect->New(x, y, w, h));
+	}
+
+	method : Frame(x : Int, y : Int, w : Int, h : Int) ~ Nil {
+		@r->DrawRect(Rect->New(x, y, w, h));
+	}
+
+	# --- text ---
+	method : GetFont(size : Int) ~ Font {
+		key := "{$size}";
+		font := @fonts->Find(key);
+		if(font = Nil) {
+			font := Font->New(@font_path, size);
+			if(font->IsNull()) {
+				return Nil;
+			};
+			@fonts->Insert(key, font);
+		};
+		return font;
+	}
+
+	method : public : Text(text : String, x : Int, y : Int, size : Int, rgb : Int) ~ Int {
+		if(text = Nil | text->Size() = 0) {
+			return 0;
+		};
+		key := "{$size}|{$rgb}|{$text}";
+		entry := @cache->Find(key);
+		if(entry = Nil) {
+			font := GetFont(size);
+			if(font = Nil) {
+				return 0;
+			};
+			surface := font->RenderUTF8Blended(text, Color->New((rgb >> 16) and 0xFF, (rgb >> 8) and 0xFF, rgb and 0xFF));
+			if(surface->IsNull()) {
+				return 0;
+			};
+			w := surface->GetW();
+			h := surface->GetH();
+			texture := surface->CreateTexture(@r);
+			surface->Free();
+			if(texture->IsNull()) {
+				return 0;
+			};
+			if(@entries->Size() > 500) {
+				ClearCache();
+			};
+			entry := TexEntry->New(texture, w, h);
+			@cache->Insert(key, entry);
+			@entries->AddBack(entry);
+		};
+		@r->Copy(entry->GetTexture(), Nil->As(Rect), Rect->New(x, y, entry->GetW(), entry->GetH()));
+		return entry->GetW();
+	}
+
+	method : ClearCache() ~ Nil {
+		each(i : @entries) {
+			@entries->Get(i)->GetTexture()->Destroy();
+		};
+		@entries := Vector->New()<TexEntry>;
+		@cache := Hash->New()<String, TexEntry>;
+	}
+
+	method : public : Close() ~ Nil {
+		ClearCache();
+	}
+
+	function : Clip(text : String, n : Int) ~ String {
+		if(text = Nil) {
+			return "";
+		};
+		if(text->Size() <= n) {
+			return text;
+		};
+		return text->SubString(n - 1) + "~";
+	}
+
+	# the k-th line (0 or 1) of text wrapped at a space before n characters; the second is clipped
+	function : Wrap(text : String, n : Int, k : Int) ~ String {
+		if(text->Size() <= n) {
+			if(k = 0) {
+				return text;
+			};
+			return "";
+		};
+		cut := n;
+		while(cut > n / 2 & text->Get(cut) <> ' ') {
+			cut -= 1;
+		};
+		if(text->Get(cut) <> ' ') {
+			cut := n;
+		};
+		if(k = 0) {
+			return text->SubString(cut);
+		};
+		return Clip(text->SubString(cut, text->Size() - cut)->Trim(), n);
+	}
+
+	# one line, no JSON whitespace
+	function : Flat(text : String) ~ String {
+		out := "";
+		each(i : text) {
+			c := text->Get(i);
+			if(c = '\n' | c = '\r' | c = '\t') {
+				c := ' ';
+			};
+			if(c <> ' ' | (out->Size() > 0 & out->Get(out->Size() - 1) <> ' ')) {
+				out->Append(c);
+			};
+		};
+		return out;
+	}
+
+	# --- events -> effects ---
+	method : public : Take(events : Vector<Ev>) ~ Nil {
+		each(i : events) {
+			ev := events->Get(i);
+			@log->AddBack(ev);
+			@total_calls += 1;
+			if(@log->Size() > 40) {
+				@log->Remove(0);
+			};
+			if(ev->GetX0() >= 0) {
+				Spawn(ev);
+			};
+		};
+	}
+
+	method : CardDot(pid : Int) ~ Float {
+		return (CardX(pid) + 22)->As(Float);
+	}
+
+	method : CardX(pid : Int) ~ Int {
+		return 24 + pid * 372;
+	}
+
+	method : Spawn(ev : Ev) ~ Nil {
+		pid := ev->GetPid();
+		rgb := @accent[pid];
+		sx := CardDot(pid);
+		sy := 548.0;
+		t := @tile;
+		x0 := (@ox + ev->GetX0() * t)->As(Float);
+		y0 := (@oy + ev->GetY0() * t)->As(Float);
+		x1 := (@ox + (ev->GetX1() + 1) * t)->As(Float);
+		y1 := (@oy + (ev->GetY1() + 1) * t)->As(Float);
+		tool := ev->GetTool();
+
+		count := 7;
+		if(tool->Equals("look")) {
+			count := 3;
+		};
+		for(i := 0; i < count; i += 1;) {
+			tx := Float->Random(x0, x1);
+			ty := Float->Random(y0, y1);
+			@fx->AddBack(Fx->New(0, sx, sy, tx, ty, @now + i->As(Float) * 0.035, 0.55 + Float->Random(0.0, 0.2), rgb));
+		};
+
+		if(tool->Equals("look")) {
+			@fx->AddBack(Fx->New(3, x0, y0, x1, y1, @now + 0.3, 0.9, rgb));
+		}
+		else if(tool->Equals("line")) {
+			@fx->AddBack(Fx->New(2, x0, y0, x1, y1, @now + 0.3, 0.7, rgb));
+			@fx->AddBack(Fx->New(1, x0, y0, x1, y1, @now + 0.5, 0.8, rgb));
+		}
+		else {
+			@fx->AddBack(Fx->New(1, x0, y0, x1, y1, @now + 0.45, 0.8, rgb));
+		};
+	}
+
+	# --- one frame ---
+	method : public : Draw(dt : Float) ~ Nil {
+		@now += dt;
+		Color(0x0d1017, 255);
+		@r->Clear();
+
+		# cursors glide to where the painters last pointed them
+		each(p : @fcx) {
+			tx := Board->GetCursorX(p)->As(Float);
+			ty := Board->GetCursorY(p)->As(Float);
+			k := 1.0 - Float->Pow(0.0008, dt);
+			@fcx[p] += (tx - @fcx[p]) * k;
+			@fcy[p] += (ty - @fcy[p]) * k;
+		};
+
+		DrawHeader();
+		DrawCanvas();
+		DrawFx();
+		DrawCursors();
+		DrawCards();
+		DrawLog();
+	}
+
+	method : DrawHeader() ~ Nil {
+		Text("Two painters, one canvas", 24, 14, 26, 0xf2f4f8);
+		Text("an MCP server inside this process; its tools are the canvas", 24, 48, 14, 0x8b93a7);
+		total := Board->GetTotal();
+		Text("{$total} tool calls", 1060, 22, 18, 0xf2f4f8);
+	}
+
+	method : DrawCanvas() ~ Nil {
+		w := Board->GetW();
+		h := Board->GetH();
+		t := @tile;
+		Color(0x2a3142, 255);
+		Frame(@ox - 3, @oy - 3, w * t + 6, h * t + 6);
+		Frame(@ox - 2, @oy - 2, w * t + 4, h * t + 4);
+		cells := Board->Snapshot();
+		for(y := 0; y < h; y += 1;) {
+			x := 0;
+			while(x < w) {
+				c := cells[y * w + x];
+				run := 1;
+				while(x + run < w & cells[y * w + x + run] = c) {
+					run += 1;
+				};
+				Color(Palette->Rgb(c), 255);
+				Fill(@ox + x * t, @oy + y * t, run * t, t);
+				x += run;
+			};
+		};
+		# the tile grid, faint
+		Color(0x000000, 28);
+		for(x := 0; x <= w; x += 1;) {
+			@r->DrawLine(@ox + x * t, @oy, @ox + x * t, @oy + h * t);
+		};
+		for(y := 0; y <= h; y += 1;) {
+			@r->DrawLine(@ox, @oy + y * t, @ox + w * t, @oy + y * t);
+		};
+	}
+
+	method : Ease(u : Float) ~ Float {
+		return u * u * (3.0 - 2.0 * u);
+	}
+
+	method : DrawFx() ~ Nil {
+		alive := Vector->New()<Fx>;
+		each(i : @fx) {
+			f := @fx->Get(i);
+			u := (@now - f->GetStart()) / f->GetLife();
+			if(u < 1.0) {
+				alive->AddBack(f);
+			};
+			if(u >= 0.0 & u < 1.0) {
+				DrawOne(f, u);
+			};
+		};
+		@fx := alive;
+	}
+
+	method : DrawOne(f : Fx, u : Float) ~ Nil {
+		kind := f->GetKind();
+		rgb := f->GetRgb();
+		if(kind = 0) {
+			# a spark along a curve from the painter to the call site
+			for(s := 0; s < 4; s += 1;) {
+				v := u - s->As(Float) * 0.04;
+				if(v >= 0.0) {
+					e := Ease(v);
+					m := 1.0 - e;
+					x := m * m * f->GetX0() + 2.0 * m * e * f->GetCX() + e * e * f->GetX1();
+					y := m * m * f->GetY0() + 2.0 * m * e * f->GetCY() + e * e * f->GetY1();
+					size := 6 - s;
+					Color(rgb, 230 - s * 55);
+					Fill(x->As(Int) - size / 2, y->As(Int) - size / 2, size, size);
+				};
+			};
+		}
+		else if(kind = 1) {
+			# the cells it changed: an outline that spreads and fades
+			grow := (u * 10.0)->As(Int);
+			alpha := ((1.0 - u) * 255.0)->As(Int);
+			x0 := f->GetX0()->As(Int);
+			y0 := f->GetY0()->As(Int);
+			w := (f->GetX1() - f->GetX0())->As(Int);
+			h := (f->GetY1() - f->GetY0())->As(Int);
+			Color(rgb, alpha / 3);
+			Fill(x0, y0, w, h);
+			Color(rgb, alpha);
+			Frame(x0 - grow, y0 - grow, w + grow * 2, h + grow * 2);
+			Frame(x0 - grow - 1, y0 - grow - 1, w + grow * 2 + 2, h + grow * 2 + 2);
+		}
+		else if(kind = 2) {
+			# a line: a bright segment travels along it
+			e := Ease(u);
+			ex := f->GetX0() + (f->GetX1() - f->GetX0()) * e;
+			ey := f->GetY0() + (f->GetY1() - f->GetY0()) * e;
+			Color(0xffffff, ((1.0 - u) * 255.0)->As(Int));
+			@r->DrawLine(f->GetX0()->As(Int), f->GetY0()->As(Int), ex->As(Int), ey->As(Int));
+			Color(rgb, 255);
+			Fill(ex->As(Int) - 3, ey->As(Int) - 3, 7, 7);
+		}
+		else {
+			# look: a scan bar sweeps down the canvas
+			y := f->GetY0() + (f->GetY1() - f->GetY0()) * u;
+			Color(rgb, 90);
+			Fill(f->GetX0()->As(Int), y->As(Int) - 6, (f->GetX1() - f->GetX0())->As(Int), 12);
+			Color(rgb, 255);
+			Fill(f->GetX0()->As(Int), y->As(Int) - 1, (f->GetX1() - f->GetX0())->As(Int), 3);
+		};
+	}
+
+	method : DrawCursors() ~ Nil {
+		t := @tile;
+		each(p : @fcx) {
+			x := @ox + (@fcx[p] * t->As(Float))->As(Int);
+			y := @oy + (@fcy[p] * t->As(Float))->As(Int);
+			rgb := @accent[p];
+			Color(0x000000, 160);
+			Frame(x - 3, y - 3, t + 6, t + 6);
+			Color(rgb, 255);
+			Frame(x - 2, y - 2, t + 4, t + 4);
+			Frame(x - 1, y - 1, t + 2, t + 2);
+			tag := Board->GetName(p);
+			Color(rgb, 255);
+			Fill(x - 2, y - 18, tag->Size() * 7 + 8, 16);
+			Text(tag, x + 2, y - 19, 12, 0x10141c);
+		};
+	}
+
+	method : DrawCards() ~ Nil {
+		for(p := 0; p < 2; p += 1;) {
+			a := @agents[p];
+			x := CardX(p);
+			y := 528;
+			rgb := @accent[p];
+			Color(0x151a24, 255);
+			Fill(x, y, 360, 88);
+			Color(rgb, 255);
+			Fill(x, y, 4, 88);
+			# the spark source
+			pulse := 5 + ((Float->Sin(@now * 5.0) + 1.0) * 2.0)->As(Int);
+			if(a->GetState()->Equals("done")) {
+				pulse := 4;
+			};
+			Color(rgb, 255);
+			Fill(x + 22 - pulse / 2, y + 20 - pulse / 2, pulse, pulse);
+			name := Board->GetName(p);
+			Text(name, x + 36, y + 6, 17, 0xf2f4f8);
+			model := a->GetModel();
+			Text(model, x + 36 + 12 + Board->GetName(p)->Size() * 9, y + 9, 13, rgb);
+			prompt := a->GetPrompt();
+			Text(Wrap(prompt, 62, 0), x + 14, y + 34, 13, 0xb4bccd);
+			Text(Wrap(prompt, 62, 1), x + 14, y + 50, 13, 0xb4bccd);
+			turn := a->GetTurn();
+			calls := Board->GetCalls(p);
+			state := a->GetState();
+			stat := "{$state}  |  turn {$turn}  |  {$calls} calls";
+			tok := a->GetInTokens() + a->GetOutTokens();
+			if(tok > 0) {
+				stat := "{$stat}  |  {$tok} tokens";
+			};
+			Text(stat, x + 14, y + 68, 13, 0x8b93a7);
+		};
+	}
+
+	method : DrawLog() ~ Nil {
+		px := 770;
+		py := 84;
+		pw := 406;
+		ph := 432;
+		Color(0x151a24, 255);
+		Fill(px, py, pw, ph);
+		Color(0x2a3142, 255);
+		Frame(px, py, pw, ph);
+		Text("tools/call", px, py - 26, 16, 0xf2f4f8);
+		Text("JSON-RPC to the in-process MCP server", px + 84, py - 24, 12, 0x8b93a7);
+
+		rows := 12;
+		first := @log->Size() - rows;
+		if(first < 0) {
+			first := 0;
+		};
+		slot := 0;
+		for(i := first; i < @log->Size(); i += 1;) {
+			ev := @log->Get(i);
+			y := py + 8 + slot * 35;
+			slot += 1;
+			rgb := @accent[ev->GetPid()];
+			Color(rgb, 255);
+			Fill(px + 8, y + 1, 4, 30);
+			tool := ev->GetTool();
+			if(tool->Equals("note")) {
+				text := Flat(ev->GetResult());
+				Text(Wrap(text, 52, 0), px + 20, y, 13, rgb);
+				Text(Wrap(text, 52, 1), px + 20, y + 16, 13, rgb);
+			}
+			else {
+				w := Text(tool, px + 20, y, 14, 0xf2f4f8);
+				args := Flat(ev->GetArgs());
+				Text(Clip(args, 42), px + 28 + w, y + 1, 12, 0x8b93a7);
+				res := Flat(ev->GetResult());
+				if(ev->IsOk()) {
+					Text(Clip("-> {$res}", 54), px + 20, y + 17, 12, 0x6fd08c);
+				}
+				else {
+					Text(Clip("-> {$res}", 54), px + 20, y + 17, 12, 0xff7b7b);
+				};
+			};
+		};
+	}
+}
+
+class Gate {
+	@pass : static : Int;
+	@fail : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Pass() ~ Int { return @pass; }
+	function : Fail() ~ Int { return @fail; }
+}
+
+class McpCanvas {
+	function : Main(args : String[]) ~ Nil {
+		demo := false;
+		selftest := false;
+		verbose := false;
+		shot : String;
+		shot_after := 18;
+		max_turns := 12;
+		seconds := 240;
+		claude_model := "claude-sonnet-5-5";
+		openai_model := "gpt-5.4-mini";
+		prompt_a := "Paint a sunset over the sea. First the background: a banded sky from deep blue through purple and pink to orange, a big sun half sunk at the horizon (row 14), and the sea below. Then call look to see what the other painter, who adds a boat, birds and an island, has put there, and add finishing touches (clouds, stars, the sun's reflection in the water) without painting over their work.";
+		prompt_b := "Add to a sunset scene that the other painter is painting right now: a sailboat on the water, three birds in the sky and a small palm island at the right. Call look first to see how far they are. If their paint covers something of yours, put it back.";
+
+		i := 0;
+		while(i < args->Size()) {
+			a := args[i];
+			if(a->Equals("--demo")) { demo := true; }
+			else if(a->Equals("--selftest")) { selftest := true; }
+			else if(a->Equals("--verbose")) { verbose := true; }
+			else if(a->Equals("--shot") & i + 1 < args->Size()) { i += 1; shot := args[i]; }
+			else if(a->Equals("--shot-after") & i + 1 < args->Size()) { i += 1; shot_after := args[i]->ToInt(); }
+			else if(a->Equals("--turns") & i + 1 < args->Size()) { i += 1; max_turns := args[i]->ToInt(); }
+			else if(a->Equals("--seconds") & i + 1 < args->Size()) { i += 1; seconds := args[i]->ToInt(); }
+			else if(a->Equals("--claude") & i + 1 < args->Size()) { i += 1; claude_model := args[i]; }
+			else if(a->Equals("--openai") & i + 1 < args->Size()) { i += 1; openai_model := args[i]; }
+			else if(a->Equals("--prompt-a") & i + 1 < args->Size()) { i += 1; prompt_a := args[i]; }
+			else if(a->Equals("--prompt-b") & i + 1 < args->Size()) { i += 1; prompt_b := args[i]; };
+			i += 1;
+		};
+
+		if(selftest) {
+			SelfTest();
+			return;
+		};
+
+		Board->Init();
+		agents := Agent->New[2];
+		if(demo) {
+			Board->SetName(0, "Painter A");
+			Board->SetName(1, "Painter B");
+			agents[0] := Agent->New(0, "script", "scripted", "Scripted: a sunset over the sea with its reflection, clouds and stars.", max_turns);
+			agents[1] := Agent->New(1, "script", "scripted", "Scripted: a boat, birds and a palm island; it paints over the sunset's reflection.", max_turns);
+		}
+		else {
+			Board->SetName(0, "Claude");
+			Board->SetName(1, "GPT");
+			agents[0] := Agent->New(0, "claude", claude_model, prompt_a, max_turns);
+			agents[1] := Agent->New(1, "openai", openai_model, prompt_b, max_turns);
+		};
+
+		Show(agents, shot, shot_after, seconds, verbose);
+	}
+
+	function : Show(agents : Agent[], shot : String, shot_after : Int, seconds : Int, verbose : Bool) ~ Nil {
+		width := 1200;
+		height := 630;
+		headless := shot <> Nil;
+
+		if(Core->Init(SubsystemFlags->SDL_INIT_VIDEO or SubsystemFlags->SDL_INIT_EVENTS) <> 0) {
+			"SDL could not start (no display?); try --selftest"->ErrorLine();
+			return;
+		};
+		if(Font->Init() < 0) {
+			"SDL_ttf could not start"->ErrorLine();
+		};
+
+		window : Window;
+		surface : Surface;
+		renderer : Renderer;
+		if(headless) {
+			surface := Surface->New(0, width, height, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+			renderer := Renderer->CreateSoftwareRenderer(surface);
+		}
+		else {
+			window := Window->New("Objeck MCP canvas: two painters, one canvas", WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, WindowFlags->SDL_WINDOW_SHOWN);
+			if(window->IsNull()) {
+				"cannot open a window; try --demo --shot out.png"->ErrorLine();
+				return;
+			};
+			renderer := Renderer->New(window, -1, RendererFlags->SDL_RENDERER_ACCELERATED);
+			if(renderer->IsNull()) {
+				renderer := Renderer->New(window, -1, RendererFlags->SDL_RENDERER_SOFTWARE);
+			};
+		};
+		if(renderer->IsNull()) {
+			"cannot create a renderer"->ErrorLine();
+			return;
+		};
+
+		gfx := Gfx->New(renderer, width, height, agents);
+		threads := System.Concurrency.Thread->New[2];
+		for(p := 0; p < 2; p += 1;) {
+			threads[p] := PainterThread->New();
+			threads[p]->Execute(agents[p]);
+		};
+
+		event := Event->New();
+		quit := false;
+		frame := 0;
+		mid_at := -1;
+		mid_done := false;
+		end_frames := 0;
+		dt := 0.033;
+		started := Timer->GetTicks();
+
+		while(<>quit) {
+			while(quit = false & event->Poll() <> 0) {
+				if(event->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				}
+				else if(event->GetType() = EventType->SDL_KEYDOWN & event->GetKey()->GetKeysym()->GetSym() = 27) {
+					quit := true;
+				};
+			};
+
+			fresh := Board->Drain();
+			if(verbose) {
+				each(e : fresh) {
+					ev := fresh->Get(e);
+					en := Board->GetName(ev->GetPid());
+					et := ev->GetTool();
+					ea := Gfx->Flat(ev->GetArgs());
+					er := Gfx->Flat(ev->GetResult());
+					"{$en} {$et} {$ea} -> {$er}"->PrintLine();
+				};
+			};
+			gfx->Take(fresh);
+			gfx->Draw(dt);
+
+			if(headless) {
+				if(<>mid_done & mid_at < 0 & Board->GetTotal() >= shot_after) {
+					mid_at := frame + 10;
+				};
+				if(<>mid_done & mid_at >= 0 & frame >= mid_at) {
+					renderer->SavePNG(Suffix(shot, "_mid"));
+					mid_done := true;
+				};
+			};
+
+			alive := false;
+			each(p : agents) {
+				if(<>agents[p]->IsDone()) {
+					alive := true;
+				};
+			};
+			if(<>alive) {
+				end_frames += 1;
+			};
+			if(headless & end_frames > 70) {
+				if(<>mid_done) {
+					renderer->SavePNG(Suffix(shot, "_mid"));
+				};
+				renderer->SavePNG(shot);
+				quit := true;
+			};
+			if((Timer->GetTicks() - started) / 1000 > seconds) {
+				quit := true;
+			};
+
+			if(<>headless) {
+				renderer->Present();
+				Timer->Delay(16);
+				dt := 0.016;
+			}
+			else {
+				Timer->Delay(33);
+			};
+			frame += 1;
+		};
+
+		Board->SetQuit();
+		for(p := 0; p < 2; p += 1;) {
+			if(agents[p]->IsDone()) {
+				threads[p]->Join();
+			};
+		};
+
+		each(p : agents) {
+			a := agents[p];
+			name := Board->GetName(p);
+			calls := Board->GetCalls(p);
+			turns := a->GetTurn();
+			in_tok := a->GetInTokens();
+			out_tok := a->GetOutTokens();
+			err := a->GetError();
+			"{$name}: {$calls} calls, {$turns} turns, tokens in={$in_tok} out={$out_tok}"->PrintLine();
+			if(err <> Nil) {
+				"  error: {$err}"->PrintLine();
+			};
+		};
+
+		gfx->Close();
+		renderer->Destroy();
+		if(window <> Nil) {
+			window->Destroy();
+		};
+		Core->Quit();
+		System.Runtime->Exit(0);
+	}
+
+	function : Suffix(path : String, tag : String) ~ String {
+		dot := path->FindLast('.');
+		if(dot < 0) {
+			return "{$path}{$tag}";
+		};
+		head := path->SubString(dot);
+		tail := path->SubString(dot, path->Size() - dot);
+		return "{$head}{$tag}{$tail}";
+	}
+
+	# the tools, end to end, with no window and no network: two painters over in-process MCP
+	function : SelfTest() ~ Nil {
+		Board->Init();
+		svc_a := CanvasTools->Service(0);
+		svc_b := CanvasTools->Service(1);
+		ca := McpClient->InProcess(svc_a);
+		cb := McpClient->InProcess(svc_b);
+		Gate->Check(ca->Initialize("self", "1.0") & cb->Initialize("self", "1.0"), "both clients initialize");
+
+		tools := ca->ListTools();
+		Gate->Check(tools <> Nil & tools->Size() = 8, "tools/list offers 8 tools");
+
+		sky := Palette->Resolve("sky");
+		red := Palette->Resolve("#ff0000");
+		white := Palette->Resolve("w");
+		Gate->Check(sky = 11 & red = 4 & white = 2, "colors resolve by name, letter and hex");
+
+		Say(ca, "set_color", "{\"color\":\"sky\"}");
+		r := Say(ca, "fill_rect", "{\"x\":0,\"y\":0,\"w\":40,\"h\":3}");
+		Gate->Check(r <> Nil & r->GetText()->Find("120 cells") > -1, "fill_rect paints 120 cells");
+		Gate->Check(Board->GetCell(0, 0) = sky & Board->GetCell(39, 2) = sky & Board->GetCell(0, 3) = 0, "the rectangle is exactly 3 rows");
+
+		# the second painter has its own color and cursor
+		Say(cb, "set_color", "{\"color\":\"red\"}");
+		Say(cb, "line", "{\"x1\":0,\"y1\":10,\"x2\":39,\"y2\":10}");
+		Gate->Check(Board->GetCell(0, 10) = red & Board->GetCell(39, 10) = red & Board->GetCell(20, 10) = red, "line paints end to end");
+		Gate->Check(Board->GetCell(5, 5) = 0, "painter B's line did not touch the sky");
+		Say(ca, "plot", "{\"x\":5,\"y\":10}");
+		Gate->Check(Board->GetCell(5, 10) = sky, "painter A paints in its own color on B's line");
+
+		Say(cb, "circle", "{\"x\":20,\"y\":16,\"r\":3}");
+		Gate->Check(Board->GetCell(20, 16) = red & Board->GetCell(23, 16) = red & Board->GetCell(25, 16) = 0, "a filled circle");
+		Say(cb, "circle", "{\"x\":20,\"y\":16,\"r\":3,\"filled\":false}");
+		Say(ca, "stamp", "{\"name\":\"boat\",\"x\":1,\"y\":14}");
+		Gate->Check(Board->GetCell(5, 14) = Palette->Resolve("brown") & Board->GetCell(1, 19) = red, "stamp brings its own colors");
+
+		bad := Say(ca, "move", "{\"x\":99,\"y\":1}");
+		Gate->Check(bad <> Nil & bad->IsError(), "an off-canvas move is a tool error");
+		bad := Say(ca, "set_color", "{\"color\":\"chartreuse\"}");
+		Gate->Check(bad <> Nil & bad->IsError(), "an unknown color is a tool error");
+		bad := Say(ca, "stamp", "{\"name\":\"unicorn\",\"x\":1,\"y\":1}");
+		Gate->Check(bad <> Nil & bad->IsError(), "an unknown sprite is a tool error");
+		bad := Say(ca, "line", "{\"x1\":1}");
+		Gate->Check(bad <> Nil & bad->IsError(), "a missing argument is a tool error");
+
+		look := Say(cb, "look", "{}");
+		text := "";
+		if(look <> Nil) {
+			text := look->GetText();
+		};
+		Gate->Check(text->Find("canvas 40x24") > -1 & text->Find("you (Painter B)") > -1 & text->Find("other painter (Painter A)") > -1, "look reports the grid and both cursors");
+
+		bridge := McpToolBridge->New(ca);
+		Gate->Check(bridge->ToAnthropicJson()->Size() = 8 & bridge->ToOpenAiJson()->Size() = 8, "the bridge hands 8 tools to both LLM clients");
+		input := JsonElement->New(JsonElement->JsonType->OBJECT);
+		input->Insert("x", 2);
+		input->Insert("y", 22);
+		out := bridge->Run("plot", input);
+		Gate->Check(out->StartsWith("ok:") & Board->GetCell(2, 22) = sky, "bridge->Run paints like a model's tool call");
+
+		events := Board->Drain();
+		en := events->Size();
+		tt := Board->GetTotal();
+		Gate->Check(en = tt & en >= 13, "every call was recorded for the window");
+
+		pass := Gate->Pass();
+		fail := Gate->Fail();
+		if(fail = 0) {
+			"PASS: MCP canvas, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP canvas, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			System.Runtime->Exit(1);
+		};
+	}
+
+	function : Say(client : McpClient, tool : String, json : String) ~ McpToolResult {
+		return client->CallTool(tool, json);
+	}
+}
+
+class PainterThread from System.Concurrency.Thread {
+	New() {
+		Parent();
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		arg->As(Agent)->Work();
+	}
+}
