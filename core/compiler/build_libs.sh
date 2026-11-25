@@ -49,9 +49,6 @@ $OBC -src lib_src/stats.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/stats
 # ml_report needs ml_lab, stats and plot, so it is built AFTER them (it used to come first, and a version bump failed: the committed stats/plot were still the previous toolchain version)
 # Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
 $OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
-# LLM evaluation harness: tasks, a model interface, answer extraction, compile-and-run under a timeout, pass@k and a paired bootstrap comparison
-# (Metrics->PairedBootstrapDifference from ml). Pure Objeck, no network: the provider adapters live in tools/llm_eval. After ml
-$OBC -src lib_src/llm_eval.obs -lib gen_collect,csv,json,ml -tar lib -opt s3 -dest ../lib/llm_eval.obl
 # Topic modeling: BSON reader, dictionary, LDA, coherence and an SVG topic report. After json and plot, which it links
 $OBC -src lib_src/nlp_topics_text.obs,lib_src/nlp_topics_lda.obs,lib_src/nlp_topics_metrics.obs,lib_src/nlp_topics_viz.obs -lib gen_collect,json,plot -tar lib -opt s3 -dest ../lib/nlp_topics.obl
 $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
@@ -81,8 +78,6 @@ $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ..
 $OBC -src lib_src/anthropic.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/anthropic.obl
 # LLM utilities: prompt templates, token estimation, JSON Schema validation, structured calls with retry. Pure Objeck; needs only gen_collect, json and regex, and links no client
 $OBC -src lib_src/llm_util.obs -lib gen_collect,json,regex -tar lib -opt s3 -dest ../lib/llm_util.obl
-# Adapters from llm_util's ChatFn and TokenCounter to the Anthropic, OpenAI, Gemini and Ollama clients. A library of its own so llm_util links no client
-$OBC -src lib_src/llm_util_clients.obs -lib gen_collect,json,regex,llm_util,net,net_server,cipher,misc,anthropic,openai,gemini,ollama -tar lib -opt s3 -dest ../lib/llm_util_clients.obl
 $OBC -src lib_src/agent.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/agent.obl
 # API.Agent agents as supervised actors; kept apart from actor so actor itself links nothing heavy
 $OBC -src lib_src/actor_agents.obs -lib gen_collect,concurrent,actor,agent,net,json,cipher,misc -tar lib -opt s3 -dest ../lib/actor_agents.obl

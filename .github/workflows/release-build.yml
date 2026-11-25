@@ -1174,7 +1174,6 @@ jobs:
             ../../../compiler/lib_src/ml_boost.obs \
             ../../../compiler/lib_src/ml_vector.obs \
             ../../../compiler/lib_src/ml_report.obs \
-            ../../../compiler/lib_src/llm_eval.obs \
             ../../../compiler/lib_src/ml_verify.obs \
             ../../../compiler/lib_src/ml_timeseries.obs \
             ../../../compiler/lib_src/ml_timeseries_models.obs \
@@ -1197,7 +1196,6 @@ jobs:
             ../../../compiler/lib_src/ollama.obs \
             ../../../compiler/lib_src/anthropic.obs \
             ../../../compiler/lib_src/llm_util.obs \
-            ../../../compiler/lib_src/llm_util_clients.obs \
             ../../../compiler/lib_src/agent.obs \
             ../../../compiler/lib_src/actor_agents.obs \
             ../../../compiler/lib_src/mcp.obs \

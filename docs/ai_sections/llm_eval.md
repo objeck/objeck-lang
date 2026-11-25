@@ -2,13 +2,13 @@
 
 `System.LLM.Eval` measures how well a language model writes programs, and in general evaluates any model on tasks whose answer can be checked. It sends each task of a suite to the model N times, takes the code block out of the answer, compiles it with the real compiler (`obc`), runs the program under a timeout and compares what it printed with the expected output. Every attempt records whether it compiled, ran and was correct, the first compiler error (normalized into a category), and the tokens and latency when the client exposes them. The results become a compile rate, pass@k, the most common error categories and, for two models, a paired-bootstrap comparison with a plain verdict.
 
-The library is pure Objeck and needs no network and no key: the tests drive it with scripted models. Compile with `-lib llm_eval,ml,csv,json,gen_collect` (it uses `Metrics->PairedBootstrapDifference` from `ml`). The adapters for OpenAI, Anthropic, Gemini and Ollama are in `tools/llm_eval`, one file per provider, because the four clients cannot be linked into one program (two of them define a `Tool` class).
+It is a research harness, not part of the runtime API: the source is `tools/llm_eval/llm_eval.obs` and there is no `llm_eval.obl`; compile it together with your program, as `obc -src yourprogram.obs,tools/llm_eval/llm_eval.obs -lib ml,csv,json,gen_collect` (it uses `Metrics->PairedBootstrapDifference` from `ml`). The library is pure Objeck and needs no network and no key: the tests drive it with scripted models. The adapters for OpenAI, Anthropic, Gemini and Ollama are in `tools/llm_eval`, one file per provider, because the four clients cannot be linked into one program (two of them define a `Tool` class).
 
 ### Try it without a model
 
 A `ScriptedModel` answers from a script, so the whole path (extract, compile, run, check, aggregate) can be run without a key. The second answer below does not compile.
 
-**Compile:** `obc -src demo.obs -lib llm_eval,ml,csv,json,gen_collect`
+**Compile:** `obc -src demo.obs,tools/llm_eval/llm_eval.obs -lib ml,csv,json,gen_collect`
 
 ```ruby
 use System.LLM.Eval, System.IO.Filesystem, Collection;
@@ -103,10 +103,10 @@ class StdinSum { ... }
 
 The checkers: `exact` compares line by line ignoring line-end style, blanks at the end of a line and blank lines at the end of the output; `lines` is the same lines in any order; `numeric` compares whitespace-separated tokens, numbers within 1e-6 of each other; `contains` wants every non-blank expected line to appear in the output.
 
-**Every reference is checked.** The regression tests `llm_eval_references_a` and `llm_eval_references_b` compile and run all 40 references with the real compiler and require the expected output, so a task that fails for every model is not a broken task. To check them by hand:
+**Every reference is checked.** The harness tests `llm_eval_references_a` and `llm_eval_references_b` (run by `python3 tools/llm_eval/run_tests.py <deploy bin dir>`, which compiles each test with `llm_eval.obs`) compile and run all 40 references with the real compiler and require the expected output, so a task that fails for every model is not a broken task. To check them by hand:
 
 ```
-obc -src tools/llm_eval/verify_references.obs -lib llm_eval,ml,csv,json,gen_collect -dest verify_references.obe
+obc -src tools/llm_eval/llm_eval.obs,tools/llm_eval/verify_references.obs -lib ml,csv,json,gen_collect -dest verify_references.obe
 obr verify_references.obe tools/llm_eval/tasks
 ```
 
@@ -117,7 +117,7 @@ obr verify_references.obe tools/llm_eval/tasks
 **Compile and run (Anthropic):**
 
 ```
-obc -src tools/llm_eval/eval.obs,tools/llm_eval/adapter_anthropic.obs -lib llm_eval,ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
+obc -src tools/llm_eval/llm_eval.obs,tools/llm_eval/eval.obs,tools/llm_eval/adapter_anthropic.obs -lib ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
 export ANTHROPIC_API_KEY=...        # or create anthropic_api_key.dat
 obr eval_anthropic.obe --tasks tools/llm_eval/tasks --model claude-sonnet-5-5 --n 5 --k 1,5 --out claude
 ```
@@ -150,7 +150,7 @@ Flags of `eval.obs` (an adapter adds `--model` and `--temperature`; the command 
 The run costs `tasks x n` model calls and prints the count first. Any tool with a command line can be evaluated without an adapter: the prompt (system prompt, blank line, user prompt) is fed to the command's standard input and its output is the answer:
 
 ```
-obc -src tools/llm_eval/eval.obs,tools/llm_eval/adapter_command.obs -lib llm_eval,ml,csv,json,gen_collect -dest eval_command.obe
+obc -src tools/llm_eval/llm_eval.obs,tools/llm_eval/eval.obs,tools/llm_eval/adapter_command.obs -lib ml,csv,json,gen_collect -dest eval_command.obe
 obr eval_command.obe --command "ollama run llama3.2" --name llama3.2-cli --n 3
 ```
 
@@ -159,7 +159,7 @@ obr eval_command.obe --command "ollama run llama3.2" --name llama3.2-cli --n 3
 Run `eval.obs` for each model, then compare the two `_results.json` files with `compare.obs`:
 
 ```
-obc -src tools/llm_eval/compare.obs -lib llm_eval,ml,csv,json,gen_collect -dest compare.obe
+obc -src tools/llm_eval/llm_eval.obs,tools/llm_eval/compare.obs -lib ml,csv,json,gen_collect -dest compare.obe
 obr compare.obe claude_results.json gpt_results.json --out claude_vs_gpt
 ```
 
