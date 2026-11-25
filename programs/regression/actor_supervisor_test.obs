@@ -411,7 +411,8 @@ class SupervisorTest {
     r := sup->Join(30000);
     elapsed := ActorClock->Now() - started;
     Check("the supervisor ended anyway", r <> Nil & r->GetKind() = ExitReason->Kind->STOPPED);
-    Check("it waited for the shutdown timeout and the kill grace ({$elapsed} ms)", elapsed >= 230);
+    "  waited {$elapsed} ms"->ErrorLine();
+    Check("it waited for the shutdown timeout and the kill grace", elapsed >= 230);
     Check("the stuck child was abandoned and counted", sup->GetAbandonedCount() = 1);
     Check("the stuck child is still running", child->IsRunning());
     Check("the other child stopped normally, before the stuck one was dealt with", probe->Count("stop:t:1") = 1);

@@ -60,7 +60,9 @@ class MlBoostPerf {
 		ok := Report("exact fit", exact->Fit(trx, tr)) & ok;
 		exact_s := exact->GetFitSeconds();
 		exact_mse := exact->Score(tex, te);
-		"  exact search: {$exact_s} s, test mse {$exact_mse}"->PrintLine();
+		# wall-clock seconds go to stderr: the differential runner compares stdout only
+		"  exact search: {$exact_s} s"->ErrorLine();
+		"  exact search: test mse {$exact_mse}"->PrintLine();
 		ok := Report("exact search finishes within 20 s", exact_s < 20.0) & ok;
 		ok := Report("exact test mse {$exact_mse} within 1% of XGBoost exact {$REF_XGB_EXACT_MSE}", Float->Abs(exact_mse - REF_XGB_EXACT_MSE) / REF_XGB_EXACT_MSE < 0.01) & ok;
 		ok := Report("exact test mse within 2% of scikit-learn {$REF_SK_MSE}", Float->Abs(exact_mse - REF_SK_MSE) / REF_SK_MSE < 0.02) & ok;
@@ -70,7 +72,8 @@ class MlBoostPerf {
 		ok := Report("histogram fit", hist->Fit(trx, tr)) & ok;
 		hist_s := hist->GetFitSeconds();
 		hist_mse := hist->Score(tex, te);
-		"  histogram search: {$hist_s} s, test mse {$hist_mse}"->PrintLine();
+		"  histogram search: {$hist_s} s"->ErrorLine();
+		"  histogram search: test mse {$hist_mse}"->PrintLine();
 		ok := Report("histogram search finishes within 20 s", hist_s < 20.0) & ok;
 		ok := Report("histogram test mse {$hist_mse} within 3% of XGBoost hist {$REF_XGB_HIST_MSE}", Float->Abs(hist_mse - REF_XGB_HIST_MSE) / REF_XGB_HIST_MSE < 0.03) & ok;
 
@@ -88,7 +91,8 @@ class MlBoostPerf {
 		multi := GradientBoostingClassifier->New(8, 0.1, 4, 1);
 		multi->SetHistogram(255);
 		ok := Report("multiclass histogram fit", multi->Fit(trx, labels)) & ok;
-		"  3-class histogram, 8 stages: {$multi->GetFitSeconds()} s, training accuracy {$multi->Score(trx, labels)}"->PrintLine();
+		"  3-class histogram, 8 stages: {$multi->GetFitSeconds()} s"->ErrorLine();
+		"  3-class histogram, 8 stages: training accuracy {$multi->Score(trx, labels)}"->PrintLine();
 		ok := Report("multiclass fit within 20 s and learns", multi->GetFitSeconds() < 20.0 & multi->Score(trx, labels) > 0.75) & ok;
 
 		if(ok = false) {
