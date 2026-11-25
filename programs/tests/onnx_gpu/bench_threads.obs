@@ -1,0 +1,205 @@
+#~
+Throughput of ONE session used from several Objeck threads at once.
+
+  bench_threads.obe <model.onnx> <ep> <batch> <threads> <seconds> <mode> [key=value ...]
+
+mode is `run` (every thread calls Session->Run on the shared session) or `bound` (every
+thread has its own BoundSession and device tensors on the shared session; a BoundSession
+belongs to one thread at a time). The threads start together, run for <seconds>, and the
+total number of completed runs is divided by the time.
+
+Output: THREADS|mode|ep|batch|threads|seconds|runs|runs_per_second|images_per_second|per_thread_median_ms
+
+ONNX Runtime allows concurrent Run on one session; the CUDA provider gives every run its own
+stream, so GPU work from different threads overlaps. A model that already fills the GPU
+(a large batch) gains nothing; a small one gains until the GPU or the host is the limit.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.Concurrency;
+use System.Time;
+
+class Shared {
+	@mutex : ThreadMutex;
+	@stop : Bool;
+
+	New() {
+		@mutex := ThreadMutex->New("threads");
+	}
+
+	method : public : Stopped() ~ Bool {
+		critical(@mutex) {
+			return @stop;
+		};
+
+		return false;
+	}
+
+	method : public : Stop() ~ Nil {
+		critical(@mutex) {
+			@stop := true;
+		};
+	}
+}
+
+class Worker from Thread {
+	@session : Session;
+	@shared : Shared;
+	@bound : Bool;
+	@batch : Int;
+	@runs : Int;
+	@times : Float[];
+
+	New(id : Int, session : Session, shared : Shared, bound : Bool, batch : Int) {
+		Parent("worker {$id}");
+		@session := session;
+		@shared := shared;
+		@bound := bound;
+		@batch := batch;
+		@times := Float->New[100000];
+	}
+
+	method : public : GetRuns() ~ Int {
+		return @runs;
+	}
+
+	method : public : GetTimes() ~ Float[] {
+		return @times;
+	}
+
+	method : Resolve(spec : TensorSpec) ~ Int[] {
+		declared := spec->GetShape();
+		shape := Int->New[declared->Size()];
+		for(i := 0; i < declared->Size(); i += 1;) {
+			shape[i] := declared[i];
+			if(declared[i] < 0) {
+				shape[i] := @batch;
+			};
+		};
+
+		return shape;
+	}
+
+	method : Count(shape : Int[]) ~ Int {
+		count := 1;
+		for(i := 0; i < shape->Size(); i += 1;) {
+			count *= shape[i];
+		};
+
+		return count;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		info := @session->GetModelInfo();
+		in_spec := info->GetInputs()->Get(0);
+		out_spec := info->GetOutputs()->Get(0);
+		in_shape := Resolve(in_spec);
+		out_shape := Resolve(out_spec);
+		values := Float->New[Count(in_shape)];
+		for(i := 0; i < values->Size(); i += 1;) {
+			values[i] := ((i * 7919) % 1000)->ToFloat() / 1000.0;
+		};
+
+		timer := Timer->New();
+		if(@bound) {
+			input := DeviceTensor->ForInput(@session, in_spec->GetName(), in_shape);
+			output := DeviceTensor->ForOutput(@session, out_spec->GetName(), out_shape);
+			bound := BoundSession->New(@session);
+			input->Upload(values);
+			bound->BindInput(in_spec->GetName(), input);
+			bound->BindOutput(out_spec->GetName(), output);
+			# warm up this thread's binding before the clock starts mattering
+			for(w := 0; w < 3; w += 1;) {
+				bound->Run();
+			};
+			while(<>@shared->Stopped() & @runs < @times->Size()) {
+				timer->Start();
+				bound->Run();
+				timer->End();
+				@times[@runs] := timer->GetElapsedTime() * 1000.0;
+				@runs += 1;
+			};
+			bound->Close();
+			input->Close();
+			output->Close();
+		}
+		else {
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(Tensor->New(in_spec->GetName(), in_spec->GetDatatype(), in_shape, values));
+			for(w := 0; w < 3; w += 1;) {
+				@session->Run(inputs);
+			};
+			while(<>@shared->Stopped() & @runs < @times->Size()) {
+				timer->Start();
+				outputs := @session->Run(inputs);
+				timer->End();
+				@times[@runs] := timer->GetElapsedTime() * 1000.0;
+				@runs += 1;
+			};
+		};
+	}
+}
+
+class BenchThreads {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 6) {
+			"usage: bench_threads.obe <model.onnx> <ep> <batch> <threads> <seconds> <run|bound> [key=value ...]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		config := Map->New()<String, String>;
+		config->Insert("ep", args[1]);
+		for(i := 6; i < args->Size(); i += 1;) {
+			pair := args[i];
+			eq := pair->Find("=");
+			if(eq > 0) {
+				config->Insert(pair->SubString(eq), pair->SubString(eq + 1, pair->Size() - eq - 1));
+			};
+		};
+
+		session := Session->New(args[0], config);
+		if(<>session->IsOpen()) {
+			"the session did not open"->ErrorLine();
+			Runtime->Exit(3);
+		};
+
+		ep := args[1];
+		batch := args[2]->ToInt();
+		count := args[3]->ToInt();
+		seconds := args[4]->ToInt();
+		mode := args[5];
+		shared := Shared->New();
+		workers := Vector->New()<Worker>;
+		for(w := 0; w < count; w += 1;) {
+			workers->AddBack(Worker->New(w, session, shared, mode->Equals("bound"), batch));
+		};
+
+		started := Timer->New();
+		started->Start();
+		each(w : workers) { workers->Get(w)->Execute(Nil); };
+		Thread->Sleep(seconds * 1000);
+		shared->Stop();
+		each(w : workers) { workers->Get(w)->Join(); };
+		started->End();
+		elapsed := started->GetElapsedTime();
+
+		total := 0;
+		first_runs := workers->Get(0)->GetRuns();
+		per_thread := Float->New[first_runs];
+		for(w := 0; w < count; w += 1;) {
+			total += workers->Get(w)->GetRuns();
+		};
+		for(i := 0; i < first_runs; i += 1;) {
+			per_thread[i] := workers->Get(0)->GetTimes()[i];
+		};
+
+		sorted := Float->Sort(per_thread);
+		median := sorted[first_runs / 2];
+		rate := total->ToFloat() / elapsed;
+		images := rate * batch->ToFloat();
+		"THREADS|{$mode}|{$ep}|{$batch}|{$count}|{$seconds}|{$total}|{$rate}|{$images}|{$median}"->PrintLine();
+		session->Close();
+	}
+}

@@ -101,6 +101,10 @@ class Brainfu_k {
 	method : Read() ~ Byte {		
 		if(@input = Nil) {
 			@input := System.IO.Console → ReadLine();
+			# end of input: no more characters
+			if(@input = Nil) {
+				return 0;
+			};
 		};
 		
 		if(@input_ptr < @input → Size()) {

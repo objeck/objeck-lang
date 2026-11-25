@@ -1,0 +1,27 @@
+id: try_divide
+category: exceptions
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that divides the integer 10 by a variable holding 0 inside a try block and catches the division error with an `on` clause for the DivideByZeroError type, printing `caught` in that clause. A finally block must print `done`. Output must be `caught` then `done` on separate lines.
+--- expected
+caught
+done
+--- reference
+class TryDivide {
+	function : Main(args : String[]) ~ Nil {
+		zero := 0;
+		try {
+			result := 10 / zero;
+			result->PrintLine();
+		}
+		on(e : DivideByZeroError) {
+			"caught"->PrintLine();
+		}
+		finally {
+			"done"->PrintLine();
+		};
+	}
+}

@@ -1,0 +1,111 @@
+# EXTRA_LIBS: ml_boost,ml,gen_collect,csv
+#~
+System.ML.Boost performance guard: 10,000 rows x 20 features.
+
+Fits depth-4 trees (learning rate 0.1) on the first 8,000 rows and scores the other 2,000:
+15 stages with the exact search, 50 with the histogram search. The data come from
+boost_ref.py's make_large (the same MINSTD recipe); scikit-learn 1.9.1 needs 0.6 s for the
+15-stage fit, and its test mse and XGBoost's are the REF_* numbers below.
+
+Time budget, documented in docs/ai_sections/ml_boost.md: each fit must finish within 20 s,
+which leaves room on a loaded machine (on the development PC the exact fit takes about 1 s
+with the JIT and 11 s with --jit=off, the histogram fit 0.6 s and 12 s); the whole test runs
+under the regression runner's 60 s cap.
+~#
+use System.ML;
+use System.ML.Boost;
+
+class MlBoostPerf {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		n := 10000;
+		p := 20;
+		X := Float->New[n, p];
+		y := Float->New[n];
+		r := System.ML.Random->New(14);
+		each(i : n) {
+			each(j : p) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			y[i] := (2.0 * X[i, 0])->Sin() + X[i, 1] * X[i, 2] + 0.5 * X[i, 3] - X[i, 4] * X[i, 4] + 0.3 * (r->NextReal() - 0.5);
+		};
+
+		trx := Float->New[8000, p];
+		tr := Float->New[8000];
+		tex := Float->New[2000, p];
+		te := Float->New[2000];
+		each(i : n) {
+			if(i < 8000) {
+				each(j : p) {
+					trx[i, j] := X[i, j];
+				};
+
+				tr[i] := y[i];
+			}
+			else {
+				each(j : p) {
+					tex[i - 8000, j] := X[i, j];
+				};
+
+				te[i - 8000] := y[i];
+			};
+		};
+
+		REF_XGB_EXACT_MSE := 0.19376000359206005;
+		REF_SK_MSE := 0.19376000591527126;
+		REF_XGB_HIST_MSE := 0.12389363974295965;
+
+		exact := GradientBoostingRegressor->New(15, 0.1, 4, 1);
+		ok := Report("exact fit", exact->Fit(trx, tr)) & ok;
+		exact_s := exact->GetFitSeconds();
+		exact_mse := exact->Score(tex, te);
+		"  exact search: {$exact_s} s, test mse {$exact_mse}"->PrintLine();
+		ok := Report("exact search finishes within 20 s", exact_s < 20.0) & ok;
+		ok := Report("exact test mse {$exact_mse} within 1% of XGBoost exact {$REF_XGB_EXACT_MSE}", Float->Abs(exact_mse - REF_XGB_EXACT_MSE) / REF_XGB_EXACT_MSE < 0.01) & ok;
+		ok := Report("exact test mse within 2% of scikit-learn {$REF_SK_MSE}", Float->Abs(exact_mse - REF_SK_MSE) / REF_SK_MSE < 0.02) & ok;
+
+		hist := GradientBoostingRegressor->New(50, 0.1, 4, 1);
+		hist->SetHistogram(255);
+		ok := Report("histogram fit", hist->Fit(trx, tr)) & ok;
+		hist_s := hist->GetFitSeconds();
+		hist_mse := hist->Score(tex, te);
+		"  histogram search: {$hist_s} s, test mse {$hist_mse}"->PrintLine();
+		ok := Report("histogram search finishes within 20 s", hist_s < 20.0) & ok;
+		ok := Report("histogram test mse {$hist_mse} within 3% of XGBoost hist {$REF_XGB_HIST_MSE}", Float->Abs(hist_mse - REF_XGB_HIST_MSE) / REF_XGB_HIST_MSE < 0.03) & ok;
+
+		# a 3-class problem of the same size runs three trees per stage
+		labels := Int->New[8000];
+		each(i : 8000) {
+			if(tr[i] > 0.4) {
+				labels[i] := 2;
+			}
+			else if(tr[i] > -0.4) {
+				labels[i] := 1;
+			};
+		};
+
+		multi := GradientBoostingClassifier->New(8, 0.1, 4, 1);
+		multi->SetHistogram(255);
+		ok := Report("multiclass histogram fit", multi->Fit(trx, labels)) & ok;
+		"  3-class histogram, 8 stages: {$multi->GetFitSeconds()} s, training accuracy {$multi->Score(trx, labels)}"->PrintLine();
+		ok := Report("multiclass fit within 20 s and learns", multi->GetFitSeconds() < 20.0 & multi->Score(trx, labels) > 0.75) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+
+		"ml_boost_perf: ok"->PrintLine();
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+
+		return passed;
+	}
+}

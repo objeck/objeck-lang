@@ -1,0 +1,244 @@
+#~
+Does an inference on one thread hold up the garbage collector for the others?
+
+  bench_gc_stall.obe <model.onnx> <ep> <batch> <seconds> <mode> [key=value ...]
+
+mode is `run` (Session->Run) or `bound` (BoundSession->Run on resident tensors).
+
+One thread runs the model back to back for <seconds>. Another allocates and drops small
+objects as fast as it can and times every round of that work. Objeck's collector is
+stop-the-world: when the allocating thread needs a collection it waits until every other
+thread is at a safe point, and a thread inside a native call is not, unless the library
+says it is blocking (APITools_Parked). If the library does not, a round that triggers a
+collection takes as long as the rest of the inference in progress.
+
+Output: GCSTALL|mode|ep|batch|seconds|runs|inference_median_ms|rounds|round_median_us|round_p99_us|round_max_ms|minor_gcs|major_gcs
+
+round_max_ms is the number to look at: the longest the allocating thread was kept waiting.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.Concurrency;
+use System.Time;
+
+class Shared {
+	@mutex : ThreadMutex;
+	@stop : Bool;
+
+	New() {
+		@mutex := ThreadMutex->New("gc_stall");
+	}
+
+	method : public : Stopped() ~ Bool {
+		critical(@mutex) {
+			return @stop;
+		};
+
+		return false;
+	}
+
+	method : public : Stop() ~ Nil {
+		critical(@mutex) {
+			@stop := true;
+		};
+	}
+}
+
+class Allocator from Thread {
+	@shared : Shared;
+	@rounds : Int;
+	@times : Float[];
+
+	New(shared : Shared) {
+		Parent("allocator");
+		@shared := shared;
+		@times := Float->New[2000000];
+	}
+
+	method : public : GetRounds() ~ Int {
+		return @rounds;
+	}
+
+	method : public : GetTimes() ~ Float[] {
+		return @times;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		timer := Timer->New();
+		while(<>@shared->Stopped() & @rounds < @times->Size()) {
+			timer->Start();
+			keep := Vector->New()<String>;
+			for(i := 0; i < 300; i += 1;) {
+				keep->AddBack(String->New("garbage {$i}"));
+				block := Float->New[64];
+				block[0] := i->ToFloat();
+			};
+			timer->End();
+			@times[@rounds] := timer->GetElapsedTime() * 1000000.0;
+			@rounds += 1;
+		};
+	}
+}
+
+class Inference from Thread {
+	@session : Session;
+	@shared : Shared;
+	@bound : Bool;
+	@batch : Int;
+	@runs : Int;
+	@times : Float[];
+
+	New(session : Session, shared : Shared, bound : Bool, batch : Int) {
+		Parent("inference");
+		@session := session;
+		@shared := shared;
+		@bound := bound;
+		@batch := batch;
+		@times := Float->New[200000];
+	}
+
+	method : public : GetRuns() ~ Int {
+		return @runs;
+	}
+
+	method : public : GetTimes() ~ Float[] {
+		return @times;
+	}
+
+	method : Resolve(spec : TensorSpec) ~ Int[] {
+		declared := spec->GetShape();
+		shape := Int->New[declared->Size()];
+		for(i := 0; i < declared->Size(); i += 1;) {
+			shape[i] := declared[i];
+			if(declared[i] < 0) {
+				shape[i] := @batch;
+			};
+		};
+
+		return shape;
+	}
+
+	method : Count(shape : Int[]) ~ Int {
+		count := 1;
+		for(i := 0; i < shape->Size(); i += 1;) {
+			count *= shape[i];
+		};
+
+		return count;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		info := @session->GetModelInfo();
+		in_spec := info->GetInputs()->Get(0);
+		out_spec := info->GetOutputs()->Get(0);
+		in_shape := Resolve(in_spec);
+		out_shape := Resolve(out_spec);
+		values := Float->New[Count(in_shape)];
+		for(i := 0; i < values->Size(); i += 1;) {
+			values[i] := ((i * 7919) % 1000)->ToFloat() / 1000.0;
+		};
+
+		timer := Timer->New();
+		if(@bound) {
+			input := DeviceTensor->ForInput(@session, in_spec->GetName(), in_shape);
+			output := DeviceTensor->ForOutput(@session, out_spec->GetName(), out_shape);
+			bound := BoundSession->New(@session);
+			input->Upload(values);
+			bound->BindInput(in_spec->GetName(), input);
+			bound->BindOutput(out_spec->GetName(), output);
+			while(<>@shared->Stopped() & @runs < @times->Size()) {
+				timer->Start();
+				bound->Run();
+				timer->End();
+				@times[@runs] := timer->GetElapsedTime() * 1000.0;
+				@runs += 1;
+			};
+			bound->Close();
+			input->Close();
+			output->Close();
+		}
+		else {
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(Tensor->New(in_spec->GetName(), in_spec->GetDatatype(), in_shape, values));
+			while(<>@shared->Stopped() & @runs < @times->Size()) {
+				timer->Start();
+				outputs := @session->Run(inputs);
+				timer->End();
+				@times[@runs] := timer->GetElapsedTime() * 1000.0;
+				@runs += 1;
+			};
+		};
+	}
+}
+
+class BenchGcStall {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 5) {
+			"usage: bench_gc_stall.obe <model.onnx> <ep> <batch> <seconds> <run|bound> [key=value ...]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		config := Map->New()<String, String>;
+		config->Insert("ep", args[1]);
+		for(i := 5; i < args->Size(); i += 1;) {
+			pair := args[i];
+			eq := pair->Find("=");
+			if(eq > 0) {
+				config->Insert(pair->SubString(eq), pair->SubString(eq + 1, pair->Size() - eq - 1));
+			};
+		};
+
+		session := Session->New(args[0], config);
+		if(<>session->IsOpen()) {
+			"the session did not open"->ErrorLine();
+			Runtime->Exit(3);
+		};
+
+		batch := args[2]->ToInt();
+		seconds := args[3]->ToInt();
+		mode := args[4];
+		ep := args[1];
+		shared := Shared->New();
+		inference := Inference->New(session, shared, mode->Equals("bound"), batch);
+		allocator := Allocator->New(shared);
+
+		minor_before := Monitor->MinorCollections();
+		major_before := Monitor->MajorCollections();
+		inference->Execute(Nil);
+		allocator->Execute(Nil);
+		Thread->Sleep(seconds * 1000);
+		shared->Stop();
+		inference->Join();
+		allocator->Join();
+		minor := Monitor->MinorCollections() - minor_before;
+		major := Monitor->MajorCollections() - major_before;
+
+		runs := inference->GetRuns();
+		rounds := allocator->GetRounds();
+		if(runs < 3 | rounds < 3) {
+			"too few samples"->ErrorLine();
+			Runtime->Exit(4);
+		};
+
+		run_times := Float->New[runs];
+		for(i := 0; i < runs; i += 1;) {
+			run_times[i] := inference->GetTimes()[i];
+		};
+		round_times := Float->New[rounds];
+		for(i := 0; i < rounds; i += 1;) {
+			round_times[i] := allocator->GetTimes()[i];
+		};
+
+		run_sorted := Float->Sort(run_times);
+		round_sorted := Float->Sort(round_times);
+		run_median := run_sorted[runs / 2];
+		round_median := round_sorted[rounds / 2];
+		p99_at := ((rounds - 1)->ToFloat() * 0.99)->ToInt();
+		round_p99 := round_sorted[p99_at];
+		round_max := round_sorted[rounds - 1] / 1000.0;
+		"GCSTALL|{$mode}|{$ep}|{$batch}|{$seconds}|{$runs}|{$run_median}|{$rounds}|{$round_median}|{$round_p99}|{$round_max}|{$minor}|{$major}"->PrintLine();
+		session->Close();
+	}
+}

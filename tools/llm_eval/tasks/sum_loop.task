@@ -1,0 +1,20 @@
+id: sum_loop
+category: basics
+difficulty: 1
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that adds the integers from 1 to 100 inclusive using a loop and prints only the total.
+--- expected
+5050
+--- reference
+class SumLoop {
+	function : Main(args : String[]) ~ Nil {
+		total := 0;
+		for(i := 1; i <= 100; i += 1;) {
+			total += i;
+		};
+		total->PrintLine();
+	}
+}

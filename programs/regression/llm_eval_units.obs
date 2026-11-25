@@ -1,0 +1,217 @@
+# EXTRA_LIBS: llm_eval,ml,csv,json,gen_collect
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+The small parts of the harness, one by one and without a model: normalizing a compiler error and sorting it into a category, finding the program in an answer, the four output checkers, the task file format and the suite loader, the prompt a model is sent, and the number formatting the report uses. Exits 1 on a failure.
+~#
+class LlmEvalUnits {
+	@fails : static : Int;
+
+	function : Expect(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+		Categories();
+		Extraction();
+		Checkers();
+		TaskFiles();
+		Text();
+
+		if(@fails > 0) {
+			"{$@fails} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"llm_eval units: all checks passed"->PrintLine();
+	}
+
+	function : Category(message : String, expected : String) ~ Nil {
+		got := ErrorCategory->Categorize(message);
+		Expect(got->Equals(expected), "'{$message}' is {$expected}, got {$got}");
+		# normalizing the names out must not change the category
+		got := ErrorCategory->Categorize(ErrorCategory->Normalize(message));
+		Expect(got->Equals(expected), "normalized '{$message}' is {$expected}, got {$got}");
+	}
+
+	function : Categories() ~ Nil {
+		Category("Undefined class or interface: 'Foo'", "undefined_class");
+		Category("Undefined class or enum: 'Color'", "undefined_class");
+		Category("Undefined alias: 'Bar'", "undefined_class");
+		Category("Undefined variable: 'count'", "undefined_variable");
+		Category("Undefined function/method call: 'WriteLine(..)'", "undefined_method");
+		Category("Undefined class or method call: 'Frobnicate'", "undefined_class");
+		Category("Variable already defined in this scope: 'x'", "duplicate_definition");
+		Category("Method/function already defined or overloaded 'Run'", "duplicate_definition");
+		Category("Invalid operation using classes: 'System.String' and 'System.Int'", "type_mismatch");
+		Category("Invalid cast between classes: 'A' and 'B'", "type_mismatch");
+		Category("Invalid operation with 'Nil' value", "type_mismatch");
+		Category("Generic type mismatch for class 'Box'", "generics");
+		Category("All method/function paths must return a value", "missing_return");
+		Category("Method call returns no value, value expected", "missing_return");
+		Category("Not all virtual methods have been defined for class/interface 'Dog'", "virtual_methods");
+		Category("Cannot reference an instance variable from this context", "scope");
+		Category("Parent call required", "scope");
+		Category("Dimension size mismatch", "array");
+		Category("Expected ';', found '{'", "syntax");
+		Category("Expected identifier, found keyword 'other'", "syntax");
+		Category("Invalid expression in string interpolation: 'x'", "string_interpolation");
+		Category("Something the compiler has never said", "other");
+		Expect(ErrorCategory->Categorize("")->Equals("no_message") & ErrorCategory->Categorize(Nil)->Equals("no_message"), "an empty message has its own category");
+
+		# the first error of a compile, warnings skipped, file and position dropped
+		output := "Compiled 0 classes.\r\nanswer.obs:(3,5): Warning: Unused variable: 'q'\r\nanswer.obs:(12,8): Undefined variable: 'foo'\r\nanswer.obs:(14,1): Expected ';', found '}'\r\n";
+		Expect(ErrorCategory->FirstError(output)->Equals("Undefined variable: 'foo'"), "first error: {$ErrorCategory->FirstError(output)}");
+		Expect(ErrorCategory->FirstError("Unable to open file: 'x.obs'\n")->Equals("Unable to open file: 'x.obs'"), "no position: the first line");
+		Expect(ErrorCategory->FirstError("")->Equals("") & ErrorCategory->FirstError(Nil)->Equals(""), "no output, no error");
+		Expect(ErrorCategory->FirstError("/tmp/work dir/a.obs:(1,2): Expected ')'\n\tmore\n")->Equals("Expected ')'"), "a path with a space");
+
+		Expect(ErrorCategory->Normalize("Undefined class or interface: 'Foo'")->Equals("Undefined class or interface: '_'"), "one name normalized");
+		Expect(ErrorCategory->Normalize("Invalid cast between classes: 'A' and 'B'")->Equals("Invalid cast between classes: '_' and '_'"), "two names normalized");
+		Expect(ErrorCategory->Normalize("no names here")->Equals("no names here"), "nothing to normalize");
+		Expect(ErrorCategory->Normalize("Undefined variable: 'x")->Equals("Undefined variable: '_'"), "an unclosed quote is closed");
+	}
+
+	function : Extraction() ~ Nil {
+		one := "Sure.\n```objeck\nclass A {\n}\n```\nDone.";
+		Expect(CodeExtractor->Best(one)->Equals("class A {\n}\n"), "one block: {$CodeExtractor->Best(one)}");
+		Expect(CodeExtractor->Blocks(one)->Size() = 1, "one block found");
+
+		# the block with Main wins over a longer block without
+		two := "```objeck\nfunction : Main(args : String[]) ~ Nil { }\n```\n\nand a helper:\n\n```objeck\nclass Helper { a; b; c; d; e; f; g; h; i; j; k; l; m; n; o; p; q; r; s; t; u; v; w; x; y; z; }\n```\n";
+		Expect(CodeExtractor->Best(two)->Contains("Main("), "the block with Main wins");
+
+		# without Main the longest wins
+		three := "```\nshort\n```\n```objeck\na much longer block\n```\n";
+		Expect(CodeExtractor->Best(three)->Contains("much longer"), "the longest block wins when none has Main");
+
+		# a block cut off by the token limit still comes back
+		cut := "```objeck\nclass Cut {\n\tfunction : Main(args : String[]) ~ Nil {\n";
+		Expect(CodeExtractor->Best(cut)->Contains("class Cut"), "an unterminated block runs to the end");
+
+		Expect(CodeExtractor->Best("I cannot do that.") = Nil, "prose has no program");
+		Expect(CodeExtractor->Best("") = Nil & CodeExtractor->Best(Nil) = Nil, "an empty answer has no program");
+		Expect(CodeExtractor->Best("```objeck\n\n```\n") = Nil, "a blank block is no program");
+		Expect(CodeExtractor->Best("```objeck\r\nclass Crlf {}\r\n```\r\n")->Equals("class Crlf {}\n"), "CRLF answers");
+		Expect(CodeExtractor->Best("  ```objeck\n  class Indented {}\n  ```\n")->Contains("class Indented"), "an indented fence");
+		Expect(CodeExtractor->Best("```ruby\nclass Tagged {}\n```")->Contains("Tagged"), "any language tag");
+	}
+
+	function : Checkers() ~ Nil {
+		Expect(OutputChecker->Matches("exact", "a\nb", "a\nb\n"), "exact: a trailing newline");
+		Expect(OutputChecker->Matches("exact", "a\nb", "a\r\nb\r\n\r\n"), "exact: CRLF and blank lines at the end");
+		Expect(OutputChecker->Matches("exact", "a  \nb", "a\nb  "), "exact: trailing blanks");
+		Expect(<>OutputChecker->Matches("exact", "a\nb", "b\na"), "exact: order matters");
+		Expect(<>OutputChecker->Matches("exact", "a\nb", "a\nb\nc"), "exact: an extra line");
+		Expect(<>OutputChecker->Matches("exact", "a\nb", "a\n\nb"), "exact: a blank line inside");
+		Expect(<>OutputChecker->Matches("exact", "a", " a"), "exact: leading blanks count");
+		Expect(<>OutputChecker->Matches("exact", "42", ""), "exact: no output");
+		Expect(OutputChecker->Matches("exact", "", ""), "exact: nothing expected, nothing printed");
+
+		Expect(OutputChecker->Matches("lines", "a\nb\nc", "c\na\nb\n"), "lines: any order");
+		Expect(<>OutputChecker->Matches("lines", "a\nb\nc", "a\nb"), "lines: a missing line");
+		Expect(<>OutputChecker->Matches("lines", "a\nb", "a\na"), "lines: the same lines, not the same set");
+
+		Expect(OutputChecker->Matches("contains", "b\nd", "a\nb\nc\nd\n"), "contains: the lines occur");
+		Expect(<>OutputChecker->Matches("contains", "b\nz", "a\nb\nc"), "contains: one is missing");
+
+		Expect(OutputChecker->Matches("numeric", "1 2.5 x", "1.0000001\n2.5 x"), "numeric: within tolerance, text equal");
+		Expect(OutputChecker->Matches("numeric", "1000000", "1000000.5"), "numeric: relative tolerance");
+		Expect(<>OutputChecker->Matches("numeric", "1 2", "1 2.1"), "numeric: out of tolerance");
+		Expect(<>OutputChecker->Matches("numeric", "1 2", "1 2 3"), "numeric: another count");
+		Expect(<>OutputChecker->Matches("numeric", "a", "b"), "numeric: text differs");
+
+		Expect(OutputChecker->IsKnown("exact") & OutputChecker->IsKnown("lines") & OutputChecker->IsKnown("numeric") & OutputChecker->IsKnown("contains"), "four kinds");
+		Expect(<>OutputChecker->IsKnown("regex"), "no regex checker");
+	}
+
+	function : TaskFiles() ~ Nil {
+		text := "id: demo_task\ncategory: basics\ndifficulty: 3\nlibs: json, gen_collect\nchecker: lines\ntimeout: 2.5\n--- prompt\nPrint the answer.\n\n--- starter\nclass Start {\n}\n--- input\n7\n8\n--- expected\n15\n--- reference\nclass Ref {\n}\n";
+		task := EvalTask->Parse(text);
+		Expect(task <> Nil, "a task parses: {$TaskSuite->GetLastError()}");
+		if(task <> Nil) {
+			Expect(task->GetId()->Equals("demo_task") & task->GetCategory()->Equals("basics") & task->GetDifficulty() = 3, "header fields");
+			Expect(task->GetLibs()->Equals("json,gen_collect"), "libs lose their blanks: {$task->GetLibs()}");
+			Expect(task->GetChecker()->Equals("lines") & Float->Abs(task->GetTimeout() - 2.5) < 0.0001, "checker and timeout");
+			Expect(task->GetPrompt()->Equals("Print the answer."), "the prompt is trimmed: [{$task->GetPrompt()}]");
+			Expect(task->GetStarter()->Equals("class Start {\n}"), "the starter code");
+			Expect(task->GetInput()->Equals("7\n8\n"), "the input ends with one newline");
+			Expect(task->GetExpected()->Equals("15"), "the expected output");
+			Expect(task->GetReference()->Equals("class Ref {\n}"), "the reference");
+
+			prompt := task->BuildPrompt();
+			Expect(prompt->Contains("Print the answer."), "prompt: the statement");
+			Expect(prompt->Contains("class Start {"), "prompt: the starter code");
+			Expect(prompt->Contains("standard input"), "prompt: says there is input");
+			Expect(prompt->Contains("json, gen_collect"), "prompt: names the libraries");
+			Expect(prompt->Contains("```objeck"), "prompt: asks for a code block");
+			Expect(<>prompt->Contains("15"), "prompt: never carries the expected output");
+		};
+
+		defaults := EvalTask->Parse("id: bare\n--- prompt\nDo it.\n--- expected\nok\n");
+		Expect(defaults <> Nil, "a task needs only an id, a prompt and the expected output");
+		if(defaults <> Nil) {
+			Expect(defaults->GetChecker()->Equals("exact") & defaults->GetCategory()->Equals("general") & defaults->GetDifficulty() = 1, "defaults");
+			Expect(defaults->GetStarter() = Nil & defaults->GetInput() = Nil & defaults->GetReference() = Nil, "no starter, input or reference");
+			Expect(<>defaults->BuildPrompt()->Contains("standard input") & <>defaults->BuildPrompt()->Contains("libraries"), "a plain prompt");
+		};
+
+		Expect(EvalTask->Parse("--- prompt\nx\n--- expected\ny\n") = Nil & TaskSuite->GetLastError()->Contains("id"), "no id");
+		Expect(EvalTask->Parse("id: a\n--- expected\ny\n") = Nil & TaskSuite->GetLastError()->Contains("prompt"), "no prompt");
+		Expect(EvalTask->Parse("id: a\n--- prompt\nx\n") = Nil & TaskSuite->GetLastError()->Contains("expected"), "no expected output");
+		Expect(EvalTask->Parse("id: a\nchecker: fuzzy\n--- prompt\nx\n--- expected\ny\n") = Nil & TaskSuite->GetLastError()->Contains("fuzzy"), "an unknown checker");
+		Expect(EvalTask->Parse("id: crlf\r\n--- prompt\r\nx\r\n--- expected\r\ny\r\n") <> Nil, "a task file with CRLF line ends");
+
+		# a directory of tasks
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_units_{$Runtime->GetProcessId()}";
+		sandbox := Sandbox->New(work);
+		slash := Directory->GetSlash() = '\\' ? "\\" : "/";
+		FileWriter->WriteFile("{$sandbox->GetDirectory()}{$slash}b.task", "id: second\ncategory: x\n--- prompt\np\n--- expected\ne\n");
+		FileWriter->WriteFile("{$sandbox->GetDirectory()}{$slash}a.task", "id: first\ncategory: y\n--- prompt\np\n--- expected\ne\n");
+		FileWriter->WriteFile("{$sandbox->GetDirectory()}{$slash}notes.txt", "not a task");
+		tasks := TaskSuite->Load(sandbox->GetDirectory());
+		Expect(tasks <> Nil & tasks->Size() = 2, "two tasks loaded, the other file ignored");
+		if(tasks <> Nil & tasks->Size() = 2) {
+			Expect(tasks->Get(0)->GetId()->Equals("first") & tasks->Get(1)->GetId()->Equals("second"), "in file-name order");
+			Expect(TaskSuite->Select(tasks, "second", Nil)->Size() = 1, "select by id");
+			Expect(TaskSuite->Select(tasks, Nil, "x,y")->Size() = 2, "select by categories");
+			Expect(TaskSuite->Select(tasks, "first", "x")->Size() = 0, "select by both");
+			Expect(TaskSuite->Select(tasks, "", "")->Size() = 2, "select nothing, get everything");
+			Expect(TaskSuite->Part(tasks, 0, 2)->Size() = 1 & TaskSuite->Part(tasks, 1, 2)->Get(0)->GetId()->Equals("second"), "parts of a suite");
+		};
+
+		FileWriter->WriteFile("{$sandbox->GetDirectory()}{$slash}c.task", "id: first\n--- prompt\np\n--- expected\ne\n");
+		Expect(TaskSuite->Load(sandbox->GetDirectory()) = Nil & TaskSuite->GetLastError()->Contains("duplicate"), "a duplicate id fails the load");
+		FileWriter->WriteFile("{$sandbox->GetDirectory()}{$slash}c.task", "id: broken\n--- prompt\np\n");
+		Expect(TaskSuite->Load(sandbox->GetDirectory()) = Nil & TaskSuite->GetLastError()->Contains("expected"), "a malformed task fails the load, naming it");
+		File->Delete("{$sandbox->GetDirectory()}{$slash}a.task");
+		File->Delete("{$sandbox->GetDirectory()}{$slash}b.task");
+		File->Delete("{$sandbox->GetDirectory()}{$slash}c.task");
+		File->Delete("{$sandbox->GetDirectory()}{$slash}notes.txt");
+		Expect(TaskSuite->Load(sandbox->GetDirectory()) = Nil & TaskSuite->GetLastError()->Contains("no *.task"), "an empty directory fails the load");
+		sandbox->Close();
+	}
+
+	function : Text() ~ Nil {
+		Expect(EvalText->Fixed(3.14159, 2)->Equals("3.14"), "Fixed 3.14: {$EvalText->Fixed(3.14159, 2)}");
+		Expect(EvalText->Fixed(2.0, 2)->Equals("2.00"), "Fixed pads: {$EvalText->Fixed(2.0, 2)}");
+		Expect(EvalText->Fixed(0.04, 2)->Equals("0.04"), "Fixed keeps the zero after the point: {$EvalText->Fixed(0.04, 2)}");
+		Expect(EvalText->Fixed(7.0, 0)->Equals("7"), "Fixed with no decimals");
+		Expect(EvalText->Fixed(-2.5, 1)->Equals("-2.5"), "Fixed negative: {$EvalText->Fixed(-2.5, 1)}");
+		Expect(EvalText->Fixed(0.0, 1)->Equals("0.0"), "Fixed zero");
+		Expect(EvalText->Percent(0.8333)->Equals("83.3%"), "Percent: {$EvalText->Percent(0.8333)}");
+		Expect(EvalText->Percent(1.0)->Equals("100.0%") & EvalText->Percent(0.0)->Equals("0.0%"), "Percent bounds");
+		Expect(EvalText->Percent(-1.0)->Equals("n/a"), "Percent of a marker");
+		Expect(EvalText->Clip("abcdef", 3)->Equals("abc..."), "Clip");
+		Expect(EvalText->Clip("abc", 3)->Equals("abc") & EvalText->Clip(Nil, 3)->Equals(""), "Clip leaves a short text");
+		cell := EvalText->Cell("a|b\nc");
+		Expect(cell->Equals("a\\|b c"), "a table cell is escaped: {$cell}");
+		Expect(EvalText->FirstLine("\n\n  hello \nworld")->Equals("hello"), "first line");
+		Expect(EvalText->SafeName("my task-1")->Equals("my_task_1"), "safe name");
+		Expect(EvalText->IsAbsolute("/tmp") & EvalText->IsAbsolute("C:\\tmp") & EvalText->IsAbsolute("\\\\host\\share") & <>EvalText->IsAbsolute("work") & <>EvalText->IsAbsolute("."), "absolute paths");
+	}
+}

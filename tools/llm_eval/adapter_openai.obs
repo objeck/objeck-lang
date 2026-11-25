@@ -1,0 +1,72 @@
+use System.LLM.Eval, API.OpenAI, API.OpenAI.Responses, Collection;
+
+#~
+Adapter for the OpenAI Responses API. The key comes from OPENAI_API_KEY or openai_api_key.dat in the working directory; it is never printed or stored. The client does not expose token usage, so the report shows n/a for tokens.
+Flags: --model NAME (required), --temperature T (omitted from the request by default; some reasoning models reject it)
+~#
+class OpenAIAdapter implements ModelAdapter {
+	@model : String;
+	@temperature : Float;
+	@key : String;
+
+	New(model : String, temperature : Float, key : String) {
+		@model := model;
+		@temperature := temperature;
+		@key := key;
+	}
+
+	method : public : GetName() ~ String {
+		return @model;
+	}
+
+	method : public : Complete(request : ModelRequest) ~ ModelReply {
+		messages := Vector->New()<Pair<String, String>>;
+		if(request->GetSystem() <> Nil & request->GetSystem()->Size() > 0) {
+			messages->AddBack(Pair->New("system", request->GetSystem())<String, String>);
+		};
+		messages->AddBack(Pair->New("user", request->GetUser())<String, String>);
+
+		response := Response->Respond(@model, messages, request->GetMaxTokens(), @temperature, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, Nil, @key);
+		if(response = Nil) {
+			error := API.OpenAI.EndPoint->GetLastError();
+			if(error = Nil) {
+				error := "the request failed";
+			};
+
+			return ModelReply->Failure(EvalText->Clip(error, 300));
+		};
+
+		return ModelReply->New(response->GetText(), -1, -1);
+	}
+}
+
+class Provider {
+	function : Usage() ~ String {
+		return "provider openai: --model NAME [--temperature T]; the key is read from OPENAI_API_KEY or openai_api_key.dat";
+	}
+
+	function : Create(args : String[]) ~ ModelAdapter {
+		model := EvalArgs->Value(args, "--model", Nil);
+		if(model = Nil) {
+			return Nil;
+		};
+
+		key := Runtime->GetEnvironmentVariable("OPENAI_API_KEY");
+		if(key = Nil | key->Trim()->Size() = 0) {
+			key := API.OpenAI.EndPoint->GetApiKey();
+		};
+
+		if(key = Nil) {
+			">>> no OpenAI key: set OPENAI_API_KEY or create openai_api_key.dat"->ErrorLine();
+			return Nil;
+		};
+
+		temperature := -1.0;
+		text := EvalArgs->Value(args, "--temperature", Nil);
+		if(text <> Nil) {
+			temperature := text->ToFloat();
+		};
+
+		return OpenAIAdapter->New(model, temperature, key->Trim());
+	}
+}

@@ -1,0 +1,182 @@
+# EXTRA_LIBS: llm_eval,ml,csv,json,gen_collect
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+The evaluation harness against a scripted model with canned answers, so every number is known beforehand and nothing touches the network. Each answer is compiled with the real compiler and run with the real VM:
+
+  ok          a correct program                          (2 of 2 correct)
+  echo        a correct program that reads its stdin     (2 of 2)
+  nocompile   an undefined variable                      (compile_error, undefined_variable)
+  wrong       compiles, prints the wrong number          (wrong_output)
+  loop        never ends                                 (timeout after 1 s)
+  nocode      prose with no code block                   (no_code)
+  mixed       correct, then wrong                        (1 of 2)
+  crash       an index out of range, uncaught            (runtime_error)
+  down        the model call fails                       (model_error, left out of every rate)
+
+With 2 attempts per task, 16 of the 18 attempts count (the two failed calls are left out), 12 of them compiled (75%) and 5 are correct, so pass@1 = 2.5 / 8 and pass@2 = 3 / 8. A second run gives a program that prints without end and must be stopped, not fill the disk. Exits 1 on a failure.
+~#
+class LlmEvalHarness {
+	@fails : static : Int;
+
+	function : Expect(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.0001;
+	}
+
+	function : Task(id : String, expected : String, input : String, timeout : Float) ~ EvalTask {
+		return EvalTask->New(id, "test", 1, "", "exact", timeout, "Print the answer for {$id}.", Nil, input, expected, Nil);
+	}
+
+	function : Block(code : String) ~ String {
+		answer := "Here is the program.\n\n```objeck\n";
+		answer->Append(code);
+		answer->Append("\n```\n\nIt prints the answer.\n");
+		return answer;
+	}
+
+	function : Printer(value : String) ~ String {
+		return Block("class Answer {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"{$value}\"->PrintLine();\n\t}\n}");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+
+		tasks := Vector->New()<EvalTask>;
+		tasks->AddBack(Task("ok", "42", Nil, 10.0));
+		tasks->AddBack(Task("echo", "hello", "hello\n", 10.0));
+		tasks->AddBack(Task("nocompile", "42", Nil, 10.0));
+		tasks->AddBack(Task("wrong", "42", Nil, 10.0));
+		tasks->AddBack(Task("loop", "42", Nil, 1.0));
+		tasks->AddBack(Task("nocode", "42", Nil, 10.0));
+		tasks->AddBack(Task("mixed", "42", Nil, 10.0));
+		tasks->AddBack(Task("crash", "42", Nil, 10.0));
+		tasks->AddBack(Task("down", "42", Nil, 10.0));
+
+		model := ScriptedModel->New("fake");
+		model->Add("ok", Printer("42"));
+		model->Add("echo", Block("use System.IO;\n\nclass Echo {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tConsole->ReadLine()->PrintLine();\n\t}\n}"));
+		model->Add("nocompile", Block("class Bad {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tmissing_value->PrintLine();\n\t}\n}"));
+		model->Add("wrong", Printer("41"));
+		model->Add("loop", Block("class Spin {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\twhile(true) {\n\t\t};\n\t}\n}"));
+		model->Add("nocode", "I am sorry, I cannot write that program.");
+		model->Add("mixed", Printer("42"));
+		model->Add("mixed", Printer("7"));
+		model->Add("crash", Block("class Crash {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tvalues := Int->New[2];\n\t\tindex := 5;\n\t\tvalues[index]->PrintLine();\n\t}\n}"));
+		model->AddFailure("down", "HTTP 503");
+		model->SetTokens(100, 20);
+
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_harness_{$Runtime->GetProcessId()}";
+		sandbox := Sandbox->New(work);
+		runner := EvalRunner->New(model, tasks, 2, sandbox);
+		timer := System.Time.Timer->New();
+		timer->Start();
+		results := runner->Run();
+		timer->End();
+
+		Expect(model->GetCalls() = 18, "the model was called 9 tasks x 2 attempts = 18 times, got {$model->GetCalls()}");
+		Expect(results->GetAttempts()->Size() = 18, "18 attempts recorded");
+		Expect(results->GetCounted() = 16, "16 attempts counted, got {$results->GetCounted()}");
+		Expect(results->GetModelErrors() = 2, "2 model errors, got {$results->GetModelErrors()}");
+		Expect(Near(results->GetCompileRate(), 12.0 / 16.0), "compile rate 12/16 (the failed calls are left out), got {$results->GetCompileRate()}");
+		Expect(Near(results->GetPassAtK(1), 2.5 / 8.0), "pass@1 = 2.5/8 over the 8 tasks that were answered, got {$results->GetPassAtK(1)}");
+		Expect(Near(results->GetPassAtK(2), 3.0 / 8.0), "pass@2 = 3/8, got {$results->GetPassAtK(2)}");
+		Expect(Near(results->GetPassAtK(3), -1.0), "pass@3 has no task with 3 attempts");
+		Expect(results->GetInputTokens() = 1600 & results->GetOutputTokens() = 320, "tokens 100/20 on the 16 answered calls, got {$results->GetInputTokens()} / {$results->GetOutputTokens()}");
+
+		attempts := results->GetAttempts();
+
+		# every attempt, by outcome
+		Expect(Outcome(attempts, "ok", 0)->Equals("pass") & Outcome(attempts, "ok", 1)->Equals("pass"), "ok passes twice");
+		Expect(Outcome(attempts, "echo", 0)->Equals("pass"), "the program reads its standard input");
+		Expect(Outcome(attempts, "nocompile", 0)->Equals("compile_error"), "an undefined variable is a compile error");
+		Expect(Outcome(attempts, "wrong", 1)->Equals("wrong_output"), "a wrong number is wrong_output");
+		Expect(Outcome(attempts, "loop", 0)->Equals("timeout") & Outcome(attempts, "loop", 1)->Equals("timeout"), "a program that never ends is a timeout");
+		Expect(Outcome(attempts, "nocode", 0)->Equals("no_code"), "an answer with no code block is no_code");
+		Expect(Outcome(attempts, "mixed", 0)->Equals("pass") & Outcome(attempts, "mixed", 1)->Equals("wrong_output"), "mixed: pass then wrong");
+		Expect(Outcome(attempts, "crash", 0)->Equals("runtime_error"), "an uncaught error is a runtime_error");
+		Expect(Outcome(attempts, "down", 0)->Equals("model_error"), "a failed call is a model_error");
+
+		# what was recorded on the way
+		nocompile := Find(attempts, "nocompile", 0);
+		Expect(nocompile->GetErrorCategory()->Equals("undefined_variable"), "category undefined_variable, got {$nocompile->GetErrorCategory()}");
+		Expect(nocompile->GetErrorLine()->StartsWith("Undefined variable"), "the first error line, normalized: {$nocompile->GetErrorLine()}");
+		Expect(<>nocompile->IsCompiled() & <>nocompile->IsRan() & <>nocompile->IsCorrect(), "nocompile: not compiled, not run");
+		wrong := Find(attempts, "wrong", 0);
+		Expect(wrong->IsCompiled() & wrong->IsRan() & <>wrong->IsCorrect(), "wrong: compiled and ran, not correct");
+		loop := Find(attempts, "loop", 0);
+		Expect(loop->IsCompiled() & <>loop->IsRan(), "loop: compiled, did not finish");
+		nocode := Find(attempts, "nocode", 0);
+		Expect(<>nocode->IsCompiled() & nocode->GetCode() = Nil, "nocode: no program");
+		down := Find(attempts, "down", 0);
+		Expect(down->GetModelError()->Equals("HTTP 503"), "the model's error is kept");
+		ok := Find(attempts, "ok", 0);
+		Expect(ok->GetInputTokens() = 100 & ok->GetOutputTokens() = 20, "tokens kept per attempt");
+		Expect(ok->GetLatency() >= 0.0, "latency recorded");
+		Expect(ok->GetCode()->Contains("PrintLine"), "the program is kept");
+		Expect(ok->GetOutput()->Trim()->Equals("42"), "the program's output is kept");
+
+		# the compile errors: only the two undefined-variable attempts
+		errors := results->GetErrorCategories();
+		Expect(errors->Size() = 1 & errors->Get(0)->GetLabel()->Equals("undefined_variable") & errors->Get(0)->GetCount() = 2, "one error category with 2 attempts");
+
+		# the timeout really stops the program: 2 s of loop at most 1 s each, plus compiles
+		Expect(timer->GetElapsedTime() < 60.0, "the run finished in {$timer->GetElapsedTime()} s");
+
+		# a program that prints without end is stopped and does not fill the disk
+		flood := Vector->New()<EvalTask>;
+		flood->AddBack(Task("flood", "42", Nil, 2.0));
+		flooder := ScriptedModel->New("flooder");
+		flooder->Add("flood", Block("class Flood {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\twhile(true) {\n\t\t\t\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"->PrintLine();\n\t\t};\n\t}\n}"));
+		flood_results := EvalRunner->New(flooder, flood, 1, sandbox)->Run();
+		flood_outcome := flood_results->GetAttempts()->Get(0)->GetOutcome();
+		Expect(flood_outcome->Equals("timeout") | flood_outcome->Equals("runtime_error"), "an endless printer is stopped: {$flood_outcome}");
+		Expect(flood_results->GetAttempts()->Get(0)->GetOutput()->Size() <= 4003, "its output is clipped");
+
+		# the results file round trips
+		path := sandbox->Path("results.json");
+		Expect(results->Save(path), "results saved");
+		loaded := ModelResults->Load(path);
+		Expect(loaded <> Nil & loaded->GetAttempts()->Size() = 18, "results loaded");
+		if(loaded <> Nil) {
+			Expect(Near(loaded->GetPassAtK(1), results->GetPassAtK(1)) & Near(loaded->GetCompileRate(), results->GetCompileRate()), "the loaded results give the same numbers");
+			Expect(loaded->GetModel()->Equals("fake"), "model name kept");
+		};
+
+		File->Delete(path);
+		sandbox->Close();
+
+		if(@fails > 0) {
+			"{$@fails} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"llm_eval harness: all checks passed"->PrintLine();
+	}
+
+	function : Find(attempts : Vector<Attempt>, id : String, index : Int) ~ Attempt {
+		each(i : attempts) {
+			attempt := attempts->Get(i);
+			if(attempt->GetTaskId()->Equals(id) & attempt->GetIndex() = index) {
+				return attempt;
+			};
+		};
+
+		return Nil;
+	}
+
+	function : Outcome(attempts : Vector<Attempt>, id : String, index : Int) ~ String {
+		attempt := Find(attempts, id, index);
+		if(attempt = Nil) {
+			return "missing";
+		};
+
+		return attempt->GetOutcome();
+	}
+}

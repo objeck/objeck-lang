@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Every committed core/lib/*.obl must carry the toolchain version in version.h.
+"""Every core/lib/*.obl in the tree must carry the toolchain version in version.h.
+
+(In CI the tree's libraries are the `libs` job's source build, downloaded over core/lib; while
+they are still committed they are checked too. The same check runs inside that job.)
 
 A library is tied to the toolchain that built it. The linker
 (core/compiler/linker.cpp, Library::LoadFile) and the runtime loader refuse a

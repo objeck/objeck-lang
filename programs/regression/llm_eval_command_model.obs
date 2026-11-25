@@ -1,0 +1,93 @@
+# EXTRA_LIBS: llm_eval,ml,csv,json,gen_collect
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+CommandModel and Sandbox: a model that is a command line. Three small programs are compiled with the real compiler and used as the "model": one answers with a code block and echoes its prompt, one never ends (the call must be stopped at its time limit), and a command that does not exist (the call must fail, not hang). The harness then runs a task through the first one end to end. No network and no key. Exits 1 on a failure.
+~#
+class LlmEvalCommandModel {
+	@fails : static : Int;
+
+	function : Expect(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	function : Build(sandbox : Sandbox, name : String, source : String) ~ String {
+		path := sandbox->Path("{$name}.obs");
+		target := sandbox->Path("{$name}.obe");
+		FileWriter->WriteFile(path, source);
+		result := sandbox->Compile(path, "", target, 120.0);
+		Expect(result->GetExitCode() = 0 & File->Exists(target), "{$name} compiles: {$result->GetOutput()}");
+		return target;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_command_{$Runtime->GetProcessId()}";
+		sandbox := Sandbox->New(work);
+
+		# a "model" that answers with a program and quotes what it was asked
+		answerer := Build(sandbox, "answerer", "use System.IO;\n\nclass Answerer {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"Asked:\"->PrintLine();\n\t\tfor(i := 0; i < 3; i += 1;) {\n\t\t\t\"> \"->Print();\n\t\t\tline := Console->ReadLine();\n\t\t\tif(line <> Nil) {\n\t\t\t\tline->PrintLine();\n\t\t\t};\n\t\t};\n\t\t\"```objeck\\nclass Forty {\\n\\tfunction : Main(args : String[]) ~ Nil {\\n\\t\\t\\\"42\\\"->PrintLine();\\n\\t}\\n}\\n```\"->PrintLine();\n\t}\n}\n");
+		spinner := Build(sandbox, "spinner", "class Spinner {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\twhile(true) {\n\t\t};\n\t}\n}\n");
+
+		vm := sandbox->GetVm();
+		model := CommandModel->New("answerer", "{$EvalText->Quote(vm)} {$EvalText->Quote(answerer)}", sandbox);
+		Expect(model->GetName()->Equals("answerer"), "the model's name");
+
+		request := ModelRequest->New("You are terse.", "Write 42.", "t", 0, 100);
+		reply := model->Complete(request);
+		Expect(reply->GetError() = Nil, "the call worked: {$reply->GetError()}");
+		if(reply->GetError() = Nil) {
+			text := reply->GetText();
+			Expect(text->Contains("> You are terse.") & text->Contains("> Write 42."), "the system and user prompts reach standard input: {$text}");
+			Expect(CodeExtractor->Best(text)->Contains("\"42\"->PrintLine()"), "the answer carries the program");
+			Expect(reply->GetInputTokens() = -1, "a command cannot say its tokens");
+		};
+
+		# end to end through the runner
+		tasks := Vector->New()<EvalTask>;
+		tasks->AddBack(EvalTask->New("forty_two", "test", 1, "", "exact", 10.0, "Print 42.", Nil, Nil, "42", Nil));
+		results := EvalRunner->New(model, tasks, 2, sandbox)->Run();
+		Expect(results->GetAttempts()->Size() = 2 & results->GetAttempts()->Get(0)->IsCorrect() & results->GetAttempts()->Get(1)->IsCorrect(), "two correct attempts through a command model");
+		Expect(results->GetModel()->Equals("answerer"), "results carry the model name");
+
+		# a command that never ends is stopped at its limit
+		slow := CommandModel->New("slow", "{$EvalText->Quote(vm)} {$EvalText->Quote(spinner)}", sandbox);
+		slow->SetTimeout(1.0);
+		timer := System.Time.Timer->New();
+		timer->Start();
+		stopped := slow->Complete(request);
+		timer->End();
+		Expect(stopped->GetError() <> Nil & stopped->GetError()->Contains("out of time"), "a command that never ends fails with a time-out");
+		Expect(timer->GetElapsedTime() < 30.0, "and is stopped, in {$timer->GetElapsedTime()} s");
+		Expect(stopped->GetText() = Nil, "a failed call has no text");
+
+		# a command that fails
+		missing := sandbox->Path("no_such_program.obe");
+		broken := CommandModel->New("broken", "{$EvalText->Quote(vm)} {$EvalText->Quote(missing)}", sandbox);
+		failed := broken->Complete(request);
+		Expect(failed->GetError() <> Nil & failed->GetError()->Contains("exited with"), "a failing command is a failed call: {$failed->GetError()}");
+
+		# the sandbox's own results
+		quick := sandbox->Execute("{$EvalText->Quote(vm)} {$EvalText->Quote(answerer)}", Nil, 30.0);
+		Expect(quick->GetExitCode() = 0 & <>quick->TimedOut() & quick->GetOutput()->Contains("Asked:"), "Execute returns the exit code and the output");
+		Expect(quick->GetSeconds() >= 0.0, "and the seconds");
+		stuck := sandbox->Execute("{$EvalText->Quote(vm)} {$EvalText->Quote(spinner)}", Nil, 1.0);
+		Expect(stuck->TimedOut() & stuck->GetExitCode() <> 0, "a program past its limit is stopped and marked");
+
+		File->Delete(answerer);
+		File->Delete(spinner);
+		File->Delete(sandbox->Path("answerer.obs"));
+		File->Delete(sandbox->Path("spinner.obs"));
+		sandbox->Close();
+
+		if(@fails > 0) {
+			"{$@fails} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"llm_eval command model: all checks passed"->PrintLine();
+	}
+}
