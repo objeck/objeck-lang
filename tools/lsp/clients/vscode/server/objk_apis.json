@@ -14561,6 +14561,392 @@
 				}
 			}
 		},
+		"System.Actor.Actor": {
+			"description": "A thread with a mailbox and a behavior. Create it, Start it, Send it mail; it handles one mail at a time, in arrival order. It ends when the handler returns false (NORMAL), when Stop empties the queue (STOPPED), when Kill is called (KILLED), or when something fails (FAILED). Join waits for the end and returns the reason. Stop is graceful and Kill is cooperative: neither can interrupt a handler that is blocked or looping.",
+			"functions": {
+				"AwaitStarted": {
+					"descriptions": ["**Waits until the actor's Init hook has finished, so the actor is ready for mail (a Supervisor does this before it starts the next child, which makes the start order real)**\n\n```method : public : AwaitStarted(timeout:Int) ~ Bool```\n\n\n\ntimeout: Int\n\nreturn: Bool"]
+				},
+				"Call": {
+					"descriptions": ["**Asks the actor something and waits for the answer. The handler answers with Mail->Answer. If the wait times out the call is abandoned, and an answer that arrives later is dropped and counted (GetLateAnswers). A call to an actor that ends first, or whose handler fails on it, returns DEAD or FAILED at once. Do not call an actor from its own handler, or in a cycle: it deadlocks until the timeout.**\n\n```method : public : Call(payload:System.Base, timeout:Int) ~ CallResult```\n\n\n\npayload: System.Base\n\ntimeout: Int\n\nreturn: CallResult"]
+				},
+				"Demonitor": {
+					"descriptions": ["**Stops watching**\n\n```method : public : Demonitor(watcher:Mailbox) ~ Nil```\n\n\n\nwatcher: Mailbox\n\nreturn: Nil"]
+				},
+				"GetDiscardedCount": {
+					"descriptions": ["**Number of mails thrown away unread when the actor ended or was killed**\n\n```method : public : GetDiscardedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetExitReason": {
+					"descriptions": ["**Why the actor ended**\n\n```method : public : GetExitReason() ~ ExitReason```\n\n\n\nreturn: ExitReason"]
+				},
+				"GetLateAnswers": {
+					"descriptions": ["**Number of answers that arrived after their caller had given up**\n\n```method : public : GetLateAnswers() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMailbox": {
+					"descriptions": ["**The actor's mailbox**\n\n```method : public : GetMailbox() ~ Mailbox```\n\n\n\nreturn: Mailbox"]
+				},
+				"GetName": {
+					"descriptions": ["**The name given at creation**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetProcessedCount": {
+					"descriptions": ["**Number of mails the handler has taken so far**\n\n```method : public : GetProcessedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsExited": {
+					"descriptions": ["**Says whether the actor has ended (its exit reason is known)**\n\n```method : public : IsExited() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsRunning": {
+					"descriptions": ["**Says whether the actor has been started and has not ended**\n\n```method : public : IsRunning() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Join": {
+					"descriptions": ["**Waits for the actor to end**\n\n```method : public : Join() ~ ExitReason```\n\n\n\nreturn: ExitReason", "**Waits for the actor to end, for a while**\n\n```method : public : Join(timeout:Int) ~ ExitReason```\n\n\n\ntimeout: Int\n\nreturn: ExitReason"]
+				},
+				"Kill": {
+					"descriptions": ["**Asks the actor to end now: queued mail is thrown away (waiting calls fail) and the actor ends with KILLED as soon as its current handler returns. This is cooperative: a handler that is blocked or looping cannot be interrupted, and the actor stays alive until it returns.**\n\n```method : public : Kill() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Link": {
+					"descriptions": ["**Links this actor and another: when either ends abnormally (FAILED or KILLED) the other is told, and fails with it unless it traps exits (SetTrapExits), in which case it gets an EXIT mail. An orderly end (NORMAL or STOPPED) is not passed on. If one of them has ended already, the other is told now.**\n\n```method : public : Link(peer:Actor) ~ Nil```\n\n\n\npeer: Actor\n\nreturn: Nil"]
+				},
+				"Loop": {
+					"descriptions": ["**The actor's receive loop, which runs on its thread. Called by Start; do not call it.**\n\n```method : public : Loop() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Monitor": {
+					"descriptions": ["**Watches this actor: when it ends, a DOWN mail naming it and the reason is put in the watcher's mailbox (past its capacity). If it has ended already, the notice is sent now.**\n\n```method : public : Monitor(watcher:Mailbox) ~ Nil```\n\n\n\nwatcher: Mailbox\n\nreturn: Nil", "**Watches this actor with another actor's mailbox**\n\n```method : public : Monitor(watcher:Actor) ~ Nil```\n\n\n\nwatcher: Actor\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Creates an actor with an unbounded mailbox; Start runs it**\n\n```New(name:String, behavior:ActorBehavior)```\n\n\n\nname: String\n\nbehavior: ActorBehavior", "**Creates an actor with a mailbox of your choosing, to bound its queue**\n\n```New(name:String, behavior:ActorBehavior, mailbox:Mailbox)```\n\n\n\nname: String\n\nbehavior: ActorBehavior\n\nmailbox: Mailbox"]
+				},
+				"Send": {
+					"descriptions": ["**Sends a data mail, waiting without limit if a BLOCK mailbox is full**\n\n```method : public : Send(payload:System.Base) ~ Mailbox-&gt;Status```\n\n\n\npayload: System.Base\n\nreturn: Mailbox-&gt;Status", "**Sends a data mail**\n\n```method : public : Send(payload:System.Base, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\npayload: System.Base\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status", "**Sends a data mail that says who it is from**\n\n```method : public : Send(payload:System.Base, sender:Actor, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\npayload: System.Base\n\nsender: Actor\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status"]
+				},
+				"SetTrapExits": {
+					"descriptions": ["**Makes the actor receive an EXIT mail, instead of failing, when a linked actor ends abnormally**\n\n```method : public : SetTrapExits(trap:Bool) ~ Actor```\n\n\n\ntrap: Bool\n\nreturn: Actor"]
+				},
+				"Start": {
+					"descriptions": ["**Starts the actor's thread**\n\n```method : public : Start() ~ Actor```\n\n\n\nreturn: Actor"]
+				},
+				"Stop": {
+					"descriptions": ["**Asks the actor to end after it has handled what is already queued. The mailbox stops taking new mail. A handler that is blocked keeps the actor alive.**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Actor.ActorBehavior": {
+			"description": "What an actor does. Implement it, keep the state in fields (only the actor's thread touches them), and write Handle. A handler may raise an error or fault: the actor ends FAILED. A behavior that also implements ActorLifecycle gets Init and Terminate calls.",
+			"functions": {
+				"Handle": {
+					"descriptions": ["**Handles one mail**\n\n```method : public : virutal : Handle(me:Actor, mail:Mail) ~ Bool```\n\n\n\nme: Actor\n\nmail: Mail\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Actor.ActorClock": {
+			"description": "A clock for timeouts: milliseconds since the program started, from the VM's steady clock, so a change of the wall clock cannot shorten or lengthen a wait.",
+			"functions": {
+				"Now": {
+					"descriptions": ["**Milliseconds since the program started**\n\n```function : Now() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.Actor.ActorLifecycle": {
+			"description": "Optional hooks for an ActorBehavior: implement this as well to run code when the actor starts and when it ends.",
+			"functions": {
+				"Init": {
+					"descriptions": ["**Runs once on the actor's thread before the first mail. Raising an error here fails the actor.**\n\n```method : public : virutal : Init(me:Actor) ~ Nil```\n\n\n\nme: Actor\n\nreturn: Nil"]
+				},
+				"Terminate": {
+					"descriptions": ["**Runs once on the actor's thread when it ends, whatever the reason (a Kill cannot interrupt a blocked handler, so it does not run then). An error raised here turns an orderly exit into FAILED.**\n\n```method : public : virutal : Terminate(me:Actor, reason:ExitReason) ~ Nil```\n\n\n\nme: Actor\n\nreason: ExitReason\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Actor.AgentActorBehavior": {
+			"description": "The behavior of an agent actor. Each mail is one String prompt, run to completion with Agent->Run; the conversation carries over from one prompt to the next until the actor is restarted. For a CALL the AgentResult is the answer; for data mail it goes to the sending actor as the payload of a data mail (Actor->Send(payload, sender, timeout)). With fail_on_error, a run that does not complete (a model error, the step limit) fails the actor, so its supervisor restarts it with a fresh agent; without it the failed AgentResult is delivered like any other. An agent run cannot be interrupted: Stop waits for the run in progress, and Kill cannot stop it.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Creates the behavior**\n\n```New(builder:AgentBuilder, fail_on_error:Bool)```\n\n\n\nbuilder: AgentBuilder\n\nfail_on_error: Bool"]
+				}
+			}
+		},
+		"System.Actor.AgentActorFactory": {
+			"description": "Makes agent actors for a Supervisor: a new AgentActorBehavior, with a new Agent from the builder, at every start and restart.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Creates the factory**\n\n```New(builder:AgentBuilder, fail_on_error:Bool)```\n\n\n\nbuilder: AgentBuilder\n\nfail_on_error: Bool"]
+				}
+			}
+		},
+		"System.Actor.AgentBuilder": {
+			"description": "Builds a fresh Agent. A supervisor restarts a failed agent actor by building a new one, so the restarted agent starts a new conversation with fresh state.",
+			"functions": {
+				"Build": {
+					"descriptions": ["**Builds the agent: its backend, tools and limits**\n\n```method : public : virutal : Build() ~ Agent```\n\n\n\nreturn: Agent"]
+				}
+			}
+		},
+		"System.Actor.BehaviorFactory": {
+			"description": "Makes a fresh ActorBehavior each time a Supervisor starts or restarts a child, so a restarted child begins with clean state.",
+			"functions": {
+				"Create": {
+					"descriptions": ["**Makes a behavior**\n\n```method : public : virutal : Create() ~ ActorBehavior```\n\n\n\nreturn: ActorBehavior"]
+				}
+			}
+		},
+		"System.Actor.CallResult": {
+			"description": "What a Call came back with",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Why a call did not succeed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetId": {
+					"descriptions": ["**The correlation id of the call, unique among the calls to one actor**\n\n```method : public : GetId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStatus": {
+					"descriptions": ["**How the call ended: OK (answered), TIMED_OUT, DEAD (the actor was not accepting mail, or ended before answering) or FAILED (the handler failed on this call)**\n\n```method : public : GetStatus() ~ CallResult-&gt;Status```\n\n\n\nreturn: CallResult-&gt;Status"]
+				},
+				"GetValue": {
+					"descriptions": ["**The answer**\n\n```method : public : GetValue() ~ System.Base```\n\n\n\nreturn: System.Base"]
+				},
+				"IsOk": {
+					"descriptions": ["**Says whether the call was answered**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Actor.ChildInfo": {
+			"description": "A snapshot of one child of a supervisor",
+			"functions": {
+				"GetActor": {
+					"descriptions": ["**The running incarnation**\n\n```method : public : GetActor() ~ Actor```\n\n\n\nreturn: Actor"]
+				},
+				"GetId": {
+					"descriptions": ["**The child's id**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRestarts": {
+					"descriptions": ["**How many times the supervisor restarted the child**\n\n```method : public : GetRestarts() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsRunning": {
+					"descriptions": ["**Says whether the child is running**\n\n```method : public : IsRunning() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Actor.ChildSpec": {
+			"description": "How a Supervisor treats one child: its id, how to build it, when to restart it, and how long it gets to stop.",
+			"functions": {
+				"GetFactory": {
+					"descriptions": ["**The behavior factory**\n\n```method : public : GetFactory() ~ BehaviorFactory```\n\n\n\nreturn: BehaviorFactory"]
+				},
+				"GetId": {
+					"descriptions": ["**The id**\n\n```method : public : GetId() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRestart": {
+					"descriptions": ["**The restart policy**\n\n```method : public : GetRestart() ~ ChildSpec-&gt;Restart```\n\n\n\nreturn: ChildSpec-&gt;Restart"]
+				},
+				"GetShutdown": {
+					"descriptions": ["**The shutdown timeout**\n\n```method : public : GetShutdown() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Creates a spec**\n\n```New(id:String, factory:BehaviorFactory, restart:ChildSpec-&gt;Restart, shutdown_ms:Int)```\n\n\n\nid: String\n\nfactory: BehaviorFactory\n\nrestart: ChildSpec-&gt;Restart\n\nshutdown_ms: Int"]
+				},
+				"NewMailbox": {
+					"descriptions": ["**Makes the mailbox for a new incarnation of the child**\n\n```method : public : NewMailbox() ~ Mailbox```\n\n\n\nreturn: Mailbox"]
+				},
+				"SetMailbox": {
+					"descriptions": ["**Bounds the child's mailbox**\n\n```method : public : SetMailbox(capacity:Int, policy:Mailbox-&gt;Policy) ~ ChildSpec```\n\n\n\ncapacity: Int\n\npolicy: Mailbox-&gt;Policy\n\nreturn: ChildSpec"]
+				}
+			}
+		},
+		"System.Actor.ExitReason": {
+			"description": "Why an actor ended. NORMAL: the handler asked to end. STOPPED: Stop was called and the queue was drained. FAILED: the init, a handler or the terminate hook raised an error or hit a runtime fault, or a linked actor failed; GetError says what. KILLED: Kill was called.",
+			"functions": {
+				"Failed": {
+					"descriptions": ["**A failure**\n\n```function : Failed(error:String) ~ ExitReason```\n\n\n\nerror: String\n\nreturn: ExitReason"]
+				},
+				"GetError": {
+					"descriptions": ["**The error of a failure**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetKind": {
+					"descriptions": ["**The kind of exit**\n\n```method : public : GetKind() ~ ExitReason-&gt;Kind```\n\n\n\nreturn: ExitReason-&gt;Kind"]
+				},
+				"IsAbnormal": {
+					"descriptions": ["**Says whether the exit was FAILED or KILLED, which is what makes a linked actor fail and a transient child restart**\n\n```method : public : IsAbnormal() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOrderly": {
+					"descriptions": ["**Says whether the exit was NORMAL or STOPPED**\n\n```method : public : IsOrderly() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Killed": {
+					"descriptions": ["**An exit after Kill**\n\n```function : Killed() ~ ExitReason```\n\n\n\nreturn: ExitReason"]
+				},
+				"Normal": {
+					"descriptions": ["**A normal exit**\n\n```function : Normal() ~ ExitReason```\n\n\n\nreturn: ExitReason"]
+				},
+				"Stopped": {
+					"descriptions": ["**An exit after Stop**\n\n```function : Stopped() ~ ExitReason```\n\n\n\nreturn: ExitReason"]
+				},
+				"ToString": {
+					"descriptions": ["**The reason as text**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Actor.Mail": {
+			"description": "What an actor receives: a Mail carries a payload (DATA), a question to answer (CALL), or a notice that a watched actor ended (DOWN, from Monitor) or that a linked actor ended (EXIT, from Link, delivered only to an actor that traps exits).",
+			"functions": {
+				"Answer": {
+					"descriptions": ["**Answers a CALL. May be done after the handler returns (keep the Mail and answer later).**\n\n```method : public : Answer(value:System.Base) ~ Bool```\n\n\n\nvalue: System.Base\n\nreturn: Bool"]
+				},
+				"Data": {
+					"descriptions": ["**A data mail**\n\n```function : Data(payload:System.Base, sender:Actor) ~ Mail```\n\n\n\npayload: System.Base\n\nsender: Actor\n\nreturn: Mail"]
+				},
+				"Discarded": {
+					"descriptions": ["**Called when the mail is thrown away unread**\n\n```method : public : Discarded() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Down": {
+					"descriptions": ["**A down notice**\n\n```function : Down(source:Actor, reason:ExitReason) ~ Mail```\n\n\n\nsource: Actor\n\nreason: ExitReason\n\nreturn: Mail"]
+				},
+				"Exit": {
+					"descriptions": ["**An exit notice**\n\n```function : Exit(source:Actor, reason:ExitReason) ~ Mail```\n\n\n\nsource: Actor\n\nreason: ExitReason\n\nreturn: Mail"]
+				},
+				"Fail": {
+					"descriptions": ["**Fails a CALL, so the caller returns FAILED with this message instead of waiting**\n\n```method : public : Fail(error:String) ~ Bool```\n\n\n\nerror: String\n\nreturn: Bool"]
+				},
+				"GetCallId": {
+					"descriptions": ["**The correlation id of a CALL**\n\n```method : public : GetCallId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetKind": {
+					"descriptions": ["**The kind of mail**\n\n```method : public : GetKind() ~ Mail-&gt;Kind```\n\n\n\nreturn: Mail-&gt;Kind"]
+				},
+				"GetPayload": {
+					"descriptions": ["**The payload of a DATA or CALL mail**\n\n```method : public : GetPayload() ~ System.Base```\n\n\n\nreturn: System.Base"]
+				},
+				"GetReason": {
+					"descriptions": ["**Why the actor of a DOWN or EXIT notice ended**\n\n```method : public : GetReason() ~ ExitReason```\n\n\n\nreturn: ExitReason"]
+				},
+				"GetSender": {
+					"descriptions": ["**Who sent a DATA mail**\n\n```method : public : GetSender() ~ Actor```\n\n\n\nreturn: Actor"]
+				},
+				"GetSource": {
+					"descriptions": ["**The actor a DOWN or EXIT notice is about**\n\n```method : public : GetSource() ~ Actor```\n\n\n\nreturn: Actor"]
+				},
+				"IsPendingCall": {
+					"descriptions": ["**Says whether this mail is a question waiting for an answer**\n\n```method : public : IsPendingCall() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Actor.Mailbox": {
+			"description": "A thread-safe FIFO queue between threads. Unbounded by default; with a capacity it applies an overflow policy when full: BLOCK makes the sender wait (in arrival order, with an optional timeout), REJECT refuses the new item. Receivers are served in arrival order too. Items are never Nil. Close() ends sending but lets the receivers drain what is queued, then Receive returns Nil.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Ends sending: later sends return CLOSED and blocked senders and receivers wake. What is queued can still be received.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"DiscardAll": {
+					"descriptions": ["**Removes every queued item, and tells the Mail among them that they were discarded (a waiting Call fails at once instead of waiting for its timeout)**\n\n```method : public : DiscardAll() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCapacity": {
+					"descriptions": ["**The capacity**\n\n```method : public : GetCapacity() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPolicy": {
+					"descriptions": ["**The overflow policy**\n\n```method : public : GetPolicy() ~ Mailbox-&gt;Policy```\n\n\n\nreturn: Mailbox-&gt;Policy"]
+				},
+				"GetReceivedCount": {
+					"descriptions": ["**Number of items handed to receivers so far**\n\n```method : public : GetReceivedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRejectedCount": {
+					"descriptions": ["**Number of items refused by the REJECT policy**\n\n```method : public : GetRejectedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetSentCount": {
+					"descriptions": ["**Number of items accepted so far**\n\n```method : public : GetSentCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWaitingReceivers": {
+					"descriptions": ["**Number of receivers waiting for an item**\n\n```method : public : GetWaitingReceivers() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWaitingSenders": {
+					"descriptions": ["**Number of senders waiting for room in a full BLOCK mailbox**\n\n```method : public : GetWaitingSenders() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsClosed": {
+					"descriptions": ["**Says whether Close was called**\n\n```method : public : IsClosed() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsDrained": {
+					"descriptions": ["**Says whether the mailbox is closed and empty, so no item will ever come out of it**\n\n```method : public : IsDrained() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Creates an unbounded mailbox**\n\n```New()```\n\n", "**Creates a bounded mailbox**\n\n```New(capacity:Int, policy:Mailbox-&gt;Policy)```\n\n\n\ncapacity: Int\n\npolicy: Mailbox-&gt;Policy"]
+				},
+				"Receive": {
+					"descriptions": ["**Takes the oldest item, waiting without limit**\n\n```method : public : Receive() ~ System.Base```\n\n\n\nreturn: System.Base", "**Takes the oldest item. Waiting receivers are served in arrival order.**\n\n```method : public : Receive(timeout:Int) ~ System.Base```\n\n\n\ntimeout: Int\n\nreturn: System.Base"]
+				},
+				"Send": {
+					"descriptions": ["**Queues an item, waiting without limit while a BLOCK mailbox is full**\n\n```method : public : Send(item:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\nreturn: Mailbox-&gt;Status", "**Queues an item**\n\n```method : public : Send(item:System.Base, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status"]
+				},
+				"Size": {
+					"descriptions": ["**Number of items queued now**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"TryReceive": {
+					"descriptions": ["**Takes the oldest item if there is one, without waiting**\n\n```method : public : TryReceive() ~ System.Base```\n\n\n\nreturn: System.Base"]
+				}
+			}
+		},
+		"System.Actor.Supervisor": {
+			"description": "A supervisor: an actor that starts child actors in order, restarts them when they end (by strategy and by each child's restart policy) and fails itself when the restarts come too fast. Add the children, Start it, and Stop it to stop the children in reverse order.",
+			"functions": {
+				"AddChild": {
+					"descriptions": ["**Adds a child to the start order. Before Start only; use StartChild afterwards.**\n\n```method : public : AddChild(spec:ChildSpec) ~ Supervisor```\n\n\n\nspec: ChildSpec\n\nreturn: Supervisor"]
+				},
+				"AsFactory": {
+					"descriptions": ["**A factory for this supervisor's design, to use it as a child of another supervisor**\n\n```method : public : AsFactory() ~ BehaviorFactory```\n\n\n\nreturn: BehaviorFactory"]
+				},
+				"Children": {
+					"descriptions": ["**A snapshot of the children, in start order**\n\n```method : public : Children() ~ Vector&lt;ChildInfo&gt;```\n\n\n\nreturn: Vector&lt;ChildInfo&gt;"]
+				},
+				"GetAbandonedCount": {
+					"descriptions": ["**How many children the supervisor had to abandon because they ignored both Stop and Kill (a handler that never returns): their threads are still running**\n\n```method : public : GetAbandonedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetActor": {
+					"descriptions": ["**The supervisor's own actor**\n\n```method : public : GetActor() ~ Actor```\n\n\n\nreturn: Actor"]
+				},
+				"GetChild": {
+					"descriptions": ["**The running actor of a child**\n\n```method : public : GetChild(id:String) ~ Actor```\n\n\n\nid: String\n\nreturn: Actor"]
+				},
+				"GetRestartCount": {
+					"descriptions": ["**How many restarts the supervisor has done**\n\n```method : public : GetRestartCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Join": {
+					"descriptions": ["**Waits for the supervisor to end**\n\n```method : public : Join() ~ ExitReason```\n\n\n\nreturn: ExitReason", "**Waits for the supervisor to end, for a while**\n\n```method : public : Join(timeout:Int) ~ ExitReason```\n\n\n\ntimeout: Int\n\nreturn: ExitReason"]
+				},
+				"New": {
+					"descriptions": ["**Creates a supervisor**\n\n```New(name:String, strategy:SupervisorStrategy-&gt;Kind, max_restarts:Int, period_seconds:Int)```\n\n\n\nname: String\n\nstrategy: SupervisorStrategy-&gt;Kind\n\nmax_restarts: Int\n\nperiod_seconds: Int"]
+				},
+				"Start": {
+					"descriptions": ["**Starts the supervisor, which starts its children in the order they were added**\n\n```method : public : Start() ~ Supervisor```\n\n\n\nreturn: Supervisor"]
+				},
+				"StartChild": {
+					"descriptions": ["**Starts one more child, after the existing ones**\n\n```method : public : StartChild(spec:ChildSpec) ~ Bool```\n\n\n\nspec: ChildSpec\n\nreturn: Bool"]
+				},
+				"Stop": {
+					"descriptions": ["**Asks the supervisor to end: it stops its children, last started first**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"TerminateChild": {
+					"descriptions": ["**Stops a child and removes it**\n\n```method : public : TerminateChild(id:String) ~ Bool```\n\n\n\nid: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Actor.SupervisorBehavior": {
+			"description": "The behavior of a supervisor. Use Supervisor, which wraps it in an actor; use this directly (through SupervisorFactory) to put a supervisor under another supervisor. It starts its children in order, watches them, restarts them by the strategy and the children's policies, and fails itself when it has to restart more than max_restarts times in period_seconds (so its own supervisor, if any, decides what to do next). When it ends it stops its children, last started first, each with its shutdown timeout and then a Kill.",
+			"functions": {
+				"GetAbandoned": {
+					"descriptions": ["**How many children had to be abandoned (they ignored Stop and Kill) so far**\n\n```method : public : GetAbandoned() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Creates a supervisor behavior**\n\n```New(strategy:SupervisorStrategy-&gt;Kind, max_restarts:Int, period_seconds:Int, specs:Vector&lt;ChildSpec&gt;)```\n\n\n\nstrategy: SupervisorStrategy-&gt;Kind\n\nmax_restarts: Int\n\nperiod_seconds: Int\n\nspecs: Vector&lt;ChildSpec&gt;"]
+				}
+			}
+		},
+		"System.Actor.SupervisorFactory": {
+			"description": "Makes SupervisorBehavior objects, so a supervisor can be a child of another supervisor: the parent builds a new supervisor, with its children, at every restart.",
+			"functions": {
+
+			}
+		},
+		"System.Actor.SupervisorStrategy": {
+			"description": "Supervision strategies, shared by Supervisor and SupervisorBehavior.<br/> ONE_FOR_ONE restarts only the child that ended. ONE_FOR_ALL stops the others (last started first) and restarts all. REST_FOR_ONE stops the children started after the one that ended and restarts it and them.",
+			"functions": {
+
+			}
+		},
 		"System.Concurrency.Barrier": {
 			"description": "Cyclic barrier: each of a fixed number of threads calls Await, and none returns until all of them have arrived. The barrier then resets, so the same threads can meet at it again (a checkpoint per round). A thread that has finished calls Leave, and the rest carry on without it.",
 			"functions": {
@@ -28022,6 +28408,114 @@
 				"file": ""
 			}
 		],
+		"Actor": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"ActorBehavior": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"ActorClock": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"ActorLifecycle": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"AgentActorBehavior": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"AgentActorFactory": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"AgentBuilder": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"BehaviorFactory": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"CallResult": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"ChildInfo": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"ChildSpec": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"ExitReason": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"Mail": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"Mailbox": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"Supervisor": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"SupervisorBehavior": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"SupervisorFactory": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
+		"SupervisorStrategy": [
+			{
+				"bundle": "System.Actor",
+				"file": ""
+			}
+		],
 		"Barrier": [
 			{
 				"bundle": "System.Concurrency",
@@ -31732,6 +32226,94 @@
 				{ "name": "SIGINT", "value": "-37", "description": "" },
 				{ "name": "SIGSEGV", "value": "-36", "description": "" },
 				{ "name": "SIGTERM", "value": "-35", "description": "" }
+			]
+		},
+		"System.Actor.CallResult#Status": {
+			"name": "Status",
+			"bundle": "System.Actor",
+			"class": "System.Actor.CallResult",
+			"kind": "enum",
+			"description": "How the call ended.<br/> <p><pre>CallResult->Status</pre></p>",
+			"items": [
+				{ "name": "OK", "value": "0", "description": "" },
+				{ "name": "TIMED_OUT", "value": "1", "description": "" },
+				{ "name": "DEAD", "value": "2", "description": "" },
+				{ "name": "FAILED", "value": "3", "description": "" }
+			]
+		},
+		"System.Actor.ChildSpec#Restart": {
+			"name": "Restart",
+			"bundle": "System.Actor",
+			"class": "System.Actor.ChildSpec",
+			"kind": "enum",
+			"description": "When a child is restarted.<br/> <p><pre>ChildSpec->Restart</pre></p>",
+			"items": [
+				{ "name": "PERMANENT", "value": "0", "description": "" },
+				{ "name": "TRANSIENT", "value": "1", "description": "" },
+				{ "name": "TEMPORARY", "value": "2", "description": "" }
+			]
+		},
+		"System.Actor.ExitReason#Kind": {
+			"name": "Kind",
+			"bundle": "System.Actor",
+			"class": "System.Actor.ExitReason",
+			"kind": "enum",
+			"description": "The kinds of exit.<br/> <p><pre>ExitReason->Kind</pre></p>",
+			"items": [
+				{ "name": "NORMAL", "value": "0", "description": "" },
+				{ "name": "STOPPED", "value": "1", "description": "" },
+				{ "name": "FAILED", "value": "2", "description": "" },
+				{ "name": "KILLED", "value": "3", "description": "" }
+			]
+		},
+		"System.Actor.Mail#Kind": {
+			"name": "Kind",
+			"bundle": "System.Actor",
+			"class": "System.Actor.Mail",
+			"kind": "enum",
+			"description": "The kinds of mail.<br/> <p><pre>Mail->Kind</pre></p>",
+			"items": [
+				{ "name": "DATA", "value": "0", "description": "" },
+				{ "name": "CALL", "value": "1", "description": "" },
+				{ "name": "DOWN", "value": "2", "description": "" },
+				{ "name": "EXIT", "value": "3", "description": "" }
+			]
+		},
+		"System.Actor.Mailbox#Policy": {
+			"name": "Policy",
+			"bundle": "System.Actor",
+			"class": "System.Actor.Mailbox",
+			"kind": "enum",
+			"description": "What a full bounded mailbox does with a new item.<br/> <p><pre>Mailbox->Policy</pre></p>",
+			"items": [
+				{ "name": "BLOCK", "value": "0", "description": "" },
+				{ "name": "REJECT", "value": "1", "description": "" }
+			]
+		},
+		"System.Actor.Mailbox#Status": {
+			"name": "Status",
+			"bundle": "System.Actor",
+			"class": "System.Actor.Mailbox",
+			"kind": "enum",
+			"description": "What Send reports.<br/> <p><pre>Mailbox->Status</pre></p>",
+			"items": [
+				{ "name": "OK", "value": "0", "description": "" },
+				{ "name": "FULL", "value": "1", "description": "" },
+				{ "name": "TIMED_OUT", "value": "2", "description": "" },
+				{ "name": "CLOSED", "value": "3", "description": "" },
+				{ "name": "INVALID", "value": "4", "description": "" }
+			]
+		},
+		"System.Actor.SupervisorStrategy#Kind": {
+			"name": "Kind",
+			"bundle": "System.Actor",
+			"class": "System.Actor.SupervisorStrategy",
+			"kind": "enum",
+			"description": "The strategies.<br/> <p><pre>SupervisorStrategy->Kind</pre></p>",
+			"items": [
+				{ "name": "ONE_FOR_ONE", "value": "0", "description": "" },
+				{ "name": "ONE_FOR_ALL", "value": "1", "description": "" },
+				{ "name": "REST_FOR_ONE", "value": "2", "description": "" }
 			]
 		},
 		"System.Diagnostics.Result#Kind": {

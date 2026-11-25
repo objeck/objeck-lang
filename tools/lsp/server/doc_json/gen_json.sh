@@ -56,6 +56,7 @@ rm -f *.obe
 	$LIB_SRC/sdl_gl.obs \
 	$LIB_SRC/gen_collect.obs \
 	$LIB_SRC/concurrent.obs \
+	$LIB_SRC/actor.obs \
 	$LIB_SRC/net_common.obs \
 	$LIB_SRC/net.obs \
 	$LIB_SRC/net_secure.obs \
@@ -109,6 +110,7 @@ rm -f *.obe
 	$LIB_SRC/llm_util.obs \
 	$LIB_SRC/llm_util_clients.obs \
 	$LIB_SRC/agent.obs \
+	$LIB_SRC/actor_agents.obs \
 	$LIB_SRC/mcp.obs \
 	$LIB_SRC/rag.obs \
 	$LIB_SRC/rag_adapters.obs \

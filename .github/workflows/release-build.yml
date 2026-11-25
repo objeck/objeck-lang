@@ -1149,6 +1149,7 @@ jobs:
             ../../../compiler/lib_src/sdl_gl.obs \
             ../../../compiler/lib_src/gen_collect.obs \
             ../../../compiler/lib_src/concurrent.obs \
+            ../../../compiler/lib_src/actor.obs \
             ../../../compiler/lib_src/net_common.obs \
             ../../../compiler/lib_src/net.obs \
             ../../../compiler/lib_src/net_secure.obs \
@@ -1199,6 +1200,7 @@ jobs:
             ../../../compiler/lib_src/llm_util.obs \
             ../../../compiler/lib_src/llm_util_clients.obs \
             ../../../compiler/lib_src/agent.obs \
+            ../../../compiler/lib_src/actor_agents.obs \
             ../../../compiler/lib_src/mcp.obs \
             ../../../compiler/lib_src/rag.obs \
             ../../../compiler/lib_src/rag_adapters.obs \
