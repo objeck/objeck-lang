@@ -192,7 +192,7 @@ cp docs/readme.html core/release/deploy-msys2-clang
 cp docs/style/readme.css core/release/deploy-msys2-clang/doc
 
 cp LICENSE core/release/deploy-msys2-clang
-unzip docs/api.zip -d core/release/deploy-msys2-clang/doc
+sh core/release/include_api_docs.sh core/release/deploy-msys2-clang/doc || exit 1
 
 ui_step "examples"
 # copy examples

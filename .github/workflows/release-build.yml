@@ -122,8 +122,19 @@ jobs:
 
   build:
     name: Build ${{ matrix.platform }}
-    needs: [prepare, libs]
+    # build-docs runs first: docs/api.zip is no longer committed, so the deploy scripts
+    # that package the API reference (every leg but windows-x64, which generates its
+    # own with code_doc64.cmd) need the zip build-docs produces. build-docs is skipped
+    # for pre-release versions (a hyphen), so the legs run when it succeeded OR was
+    # skipped, never when it failed.
+    needs: [prepare, libs, build-docs]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && needs.libs.result == 'success' && (needs.build-docs.result == 'success' || needs.build-docs.result == 'skipped') }}
     runs-on: ${{ matrix.os }}
+    # A release must never ship without its API reference: with this set, the deploy
+    # scripts fail on a missing docs/api.zip instead of noting it and carrying on (the
+    # way CI and local builds do). Pre-releases skip build-docs and so ship without.
+    env:
+      OBJECK_REQUIRE_API_DOCS: ${{ contains(needs.prepare.outputs.version, '-') && '0' || '1' }}
     # Backstop so a hung step can never tie up a runner for the 6-hour default.
     # ci-build.yml has carried this since it was added; the release build -- the
     # longer and more expensive of the two -- had none. Sized off real data: the
@@ -510,6 +521,15 @@ jobs:
         if: runner.os == 'macOS'
         uses: ./.github/actions/macos-bundle-deps
 
+      # The API reference this run's build-docs job generated, stamped with this version.
+      # windows-x64 builds its own (code_doc64.cmd writes docs/api.zip), so it skips this.
+      - name: Download API docs
+        if: matrix.platform != 'windows-x64' && !contains(needs.prepare.outputs.version, '-')
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: api-docs
+          path: docs/
+
       - name: Build release
         working-directory: ./core/release
         run: ${{ matrix.deploy_script }}
@@ -615,6 +635,9 @@ jobs:
             exit 1
           fi
           echo "✅ All required binaries present in $DEPLOY_DIR/bin"
+          case "${{ needs.prepare.outputs.version }}" in
+            *-*) echo "pre-release: no API docs expected"; exit 0 ;;
+          esac
           HTML_COUNT=$(find "$DEPLOY_DIR/doc/api" -name "*.html" 2>/dev/null | wc -l)
           if [ "$HTML_COUNT" -lt 50 ]; then
             echo "❌ API docs incomplete in $DEPLOY_DIR/doc/api: only $HTML_COUNT HTML files (expected 50+)"
@@ -1096,204 +1119,13 @@ jobs:
           cp ../lib/*.obl ../release/deploy/lib/
           echo "✅ Libraries copied to deploy"
 
-      - name: Generate API documentation
-        working-directory: ./core/release/deploy/bin
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          export OBJECK_LIB_PATH=$(pwd)/../lib
-
-          # code_doc writes every page to a HARDCODED '../html/' -- relative to
-          # obr's cwd, so core/release/deploy/html -- and it does NOT create that
-          # directory. doc_html.obs builds its paths as GetClassLink(.., "../html/")
-          # and opens them with FileWriter, which fails silently when the directory
-          # is absent: the run prints "Writing API files...", spins through every
-          # class, exits 0, and writes nothing.
-          #
-          # This step only ever created docs/api and then looked there, so on POSIX
-          # it generated zero pages on every release. Nothing noticed because the old
-          # packaging gate counted entries inside the tracked docs/api.zip, which the
-          # checkout always supplies -- that is the undiagnosed cause of v2026.8.0's
-          # docs shipping as the docs for v2026.8.1 and v2026.8.2. The current gate
-          # counts generated files instead, so it finally failed here rather than
-          # shipping stale docs a fourth time.
-          #
-          # code_doc64.cmd has always done this mkdir-then-copy; the POSIX path never
-          # did. Mirror it.
-          rm -rf ../html
-          mkdir -p ../html
-          mkdir -p ../../../../docs/api
-
-          ./obc -src ../../../lib/code_doc/doc_html.obs,../../../lib/code_doc/doc_parser.obs \
-            -lib cipher,json,xml,misc,net -dest code_doc.obe
-
-          set -o pipefail
-          ./obr code_doc.obe \
-            ../../../lib/code_doc/templates \
-            "$VERSION" \
-            ../../../compiler/lib_src/lang.obs \
-            ../../../compiler/lib_src/regex.obs \
-            ../../../compiler/lib_src/json_stream.obs \
-            ../../../compiler/lib_src/json.obs \
-            ../../../compiler/lib_src/xml.obs \
-            ../../../compiler/lib_src/cipher.obs \
-            ../../../compiler/lib_src/odbc.obs \
-            ../../../compiler/lib_src/csv.obs \
-            ../../../compiler/lib_src/math.obs \
-            ../../../compiler/lib_src/query.obs \
-            ../../../compiler/lib_src/query_server.obs \
-            ../../../compiler/lib_src/query_ml.obs \
-            ../../../compiler/lib_src/query_odbc.obs \
-            ../../../compiler/lib_src/query_vision.obs \
-            ../../../compiler/lib_src/sdl2.obs \
-            ../../../compiler/lib_src/sdl_game.obs \
-            ../../../compiler/lib_src/sdl_gl.obs \
-            ../../../compiler/lib_src/gen_collect.obs \
-            ../../../compiler/lib_src/concurrent.obs \
-            ../../../compiler/lib_src/actor.obs \
-            ../../../compiler/lib_src/net_common.obs \
-            ../../../compiler/lib_src/net.obs \
-            ../../../compiler/lib_src/net_secure.obs \
-            ../../../compiler/lib_src/net_server.obs \
-            ../../../compiler/lib_src/net_h2.obs \
-            ../../../compiler/lib_src/net_quic.obs \
-            ../../../compiler/lib_src/web_server.obs \
-            ../../../compiler/lib_src/rss.obs \
-            ../../../compiler/lib_src/misc.obs \
-            ../../../compiler/lib_src/diags.obs \
-            ../../../compiler/lib_src/ml_core.obs \
-            ../../../compiler/lib_src/ml_linear.obs \
-            ../../../compiler/lib_src/ml_tree.obs \
-            ../../../compiler/lib_src/ml_bayes.obs \
-            ../../../compiler/lib_src/ml_neighbors.obs \
-            ../../../compiler/lib_src/ml_cluster.obs \
-            ../../../compiler/lib_src/ml_data.obs \
-            ../../../compiler/lib_src/ml_svm.obs \
-            ../../../compiler/lib_src/ml_outlier.obs \
-            ../../../compiler/lib_src/ml_embed.obs \
-            ../../../compiler/lib_src/ml_lab.obs \
-            ../../../compiler/lib_src/ml_boost.obs \
-            ../../../compiler/lib_src/ml_vector.obs \
-            ../../../compiler/lib_src/ml_report.obs \
-            ../../../compiler/lib_src/ml_verify.obs \
-            ../../../compiler/lib_src/ml_timeseries.obs \
-            ../../../compiler/lib_src/ml_timeseries_models.obs \
-            ../../../compiler/lib_src/ml_timeseries_arima.obs \
-            ../../../compiler/lib_src/ml_timeseries_eval.obs \
-            ../../../compiler/lib_src/ml_cnn.obs \
-            ../../../compiler/lib_src/nlp_topics_text.obs \
-            ../../../compiler/lib_src/nlp_topics_lda.obs \
-            ../../../compiler/lib_src/nlp_topics_metrics.obs \
-            ../../../compiler/lib_src/nlp_topics_viz.obs \
-            ../../../compiler/lib_src/plot.obs \
-            ../../../compiler/lib_src/plot_sdl.obs \
-            ../../../compiler/lib_src/stats.obs \
-            ../../../compiler/lib_src/telemetry.obs \
-            ../../../compiler/lib_src/ai_search.obs \
-            ../../../compiler/lib_src/ai_game.obs \
-            ../../../compiler/lib_src/ai_optimize.obs \
-            ../../../compiler/lib_src/ai_rl.obs \
-            ../../../compiler/lib_src/openai.obs \
-            ../../../compiler/lib_src/gemini.obs \
-            ../../../compiler/lib_src/ollama.obs \
-            ../../../compiler/lib_src/anthropic.obs \
-            ../../../compiler/lib_src/llm_util.obs \
-            ../../../compiler/lib_src/agent.obs \
-            ../../../compiler/lib_src/actor_agents.obs \
-            ../../../compiler/lib_src/mcp.obs \
-            ../../../compiler/lib_src/rag.obs \
-            ../../../compiler/lib_src/rag_adapters.obs \
-            ../../../compiler/lib_src/json_rpc.obs \
-            ../../../compiler/lib_src/models.obs \
-            ../../../compiler/lib_src/opencv.obs \
-            ../../../compiler/lib_src/onnx.obs \
-            ../../../compiler/lib_src/inference.obs \
-            ../../../compiler/lib_src/nlp.obs \
-            ../../../compiler/lib_src/nlp_onnx.obs \
-            ../../../compiler/lib_src/ml_clip.obs \
-            ../../../compiler/lib_src/ai_hub.obs \
-            ../../../compiler/lib_src/lame.obs 2>&1 | tee code_doc.log
-          # A doc comment the parser rejects drops its member from the API reference with
-          # only an ERROR line to show for it: two GLWindow members shipped undocumented
-          # for weeks that way (issue #729). Refuse to package such a build.
-          if grep -q '^ERROR:' code_doc.log; then
-            echo "code_doc rejected doc comment(s); their members would be missing from api.zip:"
-            grep '^ERROR:' code_doc.log | head -20
-            exit 1
-          fi
-
-          # Move the generated tree to where the packaging step looks, and bring the
-          # stylesheet and logos across as code_doc64.cmd does -- without style/ every
-          # page renders unstyled.
-          cp -r ../html/. ../../../../docs/api/
-          mkdir -p ../../../../docs/api/style
-          cp ../../../lib/code_doc/templates/resources/* ../../../../docs/api/style/
-
-          echo "generated $(find ../../../../docs/api -name '*.html' | wc -l) HTML pages"
-
-      - name: Package API documentation
-        working-directory: ./docs
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-
-          # Count what code_doc ACTUALLY generated, before any zip exists. The old
-          # gate counted entries inside api.zip -- but docs/api.zip is tracked, so a
-          # copy is always present from the checkout, and `zip -r` UPDATES it in
-          # place rather than creating it fresh. When generation produced nothing,
-          # zip wrote only the bare directory entry ("updating: api/ (stored 0%)")
-          # and the gate then counted the 439 STALE entries already in the archive
-          # and passed. That shipped v2026.8.0's docs as the docs for v2026.8.1 and
-          # v2026.8.2 -- every non-windows-x64 deploy script unzips this committed
-          # file straight into the shipped doc/ tree.
-          GEN_COUNT=$(find api -name '*.html' 2>/dev/null | wc -l)
-          if [ "$GEN_COUNT" -lt 50 ]; then
-            echo "::error::code_doc generated only $GEN_COUNT HTML files (expected 50+)"
-            exit 1
-          fi
-
-          # Build the archive FRESH. Never update the checked-in one.
-          rm -f api.zip
-          zip -r api.zip api/ > /dev/null
-
-          HTML_COUNT=$(unzip -l api.zip | grep -c "\.html$" || true)
-          if [ "$HTML_COUNT" -ne "$GEN_COUNT" ]; then
-            echo "::error::packaged $HTML_COUNT HTML files but generated $GEN_COUNT -- archive does not match the generated tree"
-            exit 1
-          fi
-
-          # Content, not just shape: assert the pages carry THIS release's version.
-          # A well-formed archive built against the wrong version passes every
-          # structural check, which is precisely how the stale docs went unnoticed.
-          PAGE=$(find api -name '*.html' | head -1)
-          STAMP=$(grep -o 'class="version">v[0-9.]*' "$PAGE" | head -1 | sed 's/.*>//')
-          if [ -z "$STAMP" ]; then
-            echo "::error::no version stamp found in $PAGE -- treat as failure, not a pass"
-            exit 1
-          fi
-          if [ "$STAMP" != "v$VERSION" ]; then
-            echo "::error::api docs stamp $STAMP but this release is v$VERSION"
-            exit 1
-          fi
-
-          echo "✅ API documentation packaged: $HTML_COUNT HTML files, stamped $STAMP"
-
-      # Only a build of a release tag may push. This step checks out and pushes
-      # master whatever ref the run started from, so a workflow_dispatch dry run
-      # from a branch used to commit its api.zip straight to master; the job-level
-      # '-' check was the only thing that skipped it. The api-docs artifact below
-      # is still uploaded for dry runs.
-      - name: Commit api.zip to repo
-        if: github.ref_type == 'tag'
-        run: |
-          cp docs/api.zip /tmp/api.zip
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin master
-          git checkout -f master
-          cp /tmp/api.zip docs/api.zip
-          git add docs/api.zip
-          git diff --cached --quiet && echo "api.zip unchanged" || \
-            git commit -m "chore: update api.zip for v${{ needs.prepare.outputs.version }} [skip ci]"
-          git push origin master || echo "Push skipped (no changes)"
+      # tools/cicd/gen_api_docs.sh holds the generation and every gate (code_doc errors,
+      # page count, archive == tree, version stamp). It writes docs/api.zip, which is NOT
+      # committed: the artifact below is how this run's build jobs and release-publish.yml
+      # get it. (This job used to commit it to master from a tag build, `git push ... ||
+      # echo`, which could fail silently and always left the tarballs one commit behind.)
+      - name: Generate and package API documentation
+        run: bash tools/cicd/gen_api_docs.sh "${{ needs.prepare.outputs.version }}"
 
       - name: Upload API docs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

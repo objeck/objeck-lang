@@ -1068,15 +1068,28 @@ if [%1] == [x64] (
 	@if errorlevel 1 call "%~dp0ui.cmd" :ui_warn "API docs step exited with an error - the deploy continues, as it always has"
 	rmdir /s /q %1
 ) else (
-	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
-	mkdir %TARGET%\doc\api
-	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
-	if errorlevel 1 (
+	REM docs\api.zip is not committed: release-build.yml downloads it from the api-docs
+	REM artifact of its own run, and an x64 deploy writes one here. A missing zip aborts a
+	REM release when OBJECK_REQUIRE_API_DOCS is 1, CI and local builds go on without the docs.
+	if exist ..\..\docs\api.zip (
+		echo ARM64 does not run code_doc - using the pre-built API docs
+		mkdir %TARGET%\doc\api
+		powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
+		if errorlevel 1 (
+			echo.
+			echo ============================================================
+			echo  ERROR: API docs extraction failed - aborting deploy
+			echo ============================================================
+			exit /b 1
+		)
+	) else if "%OBJECK_REQUIRE_API_DOCS%" == "1" (
 		echo.
 		echo ============================================================
-		echo  ERROR: API docs extraction failed - aborting deploy
+		echo  ERROR: docs\api.zip not found and OBJECK_REQUIRE_API_DOCS=1
 		echo ============================================================
 		exit /b 1
+	) else (
+		echo note: docs\api.zip not found - the API reference is not in this ARM64 deploy tree
 	)
 )
 

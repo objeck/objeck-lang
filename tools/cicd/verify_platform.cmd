@@ -14,7 +14,7 @@ REM   2. regression suite, default JIT, and with OBJECK_JIT_THRESHOLD=1
 REM   3. VM flag tests, debugger tests, DAP tests
 REM
 REM Writes rc-results\<VERSION>\windows-<arch>.txt and .log, restores the tracked
-REM files deploy_windows.cmd rewrites (version stamps, api.zip), and exits 0 only
+REM files deploy_windows.cmd rewrites (version stamps), and exits 0 only
 REM when every step passed. A skipped test phase is a FAIL. Tests run only when
 REM <arch> is this machine's architecture, so verifying another one is refused;
 REM --build-only builds without testing (cross-building arm64 on an x64 host,
