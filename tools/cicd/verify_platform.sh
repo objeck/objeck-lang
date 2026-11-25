@@ -223,7 +223,7 @@ else
 	for tool in obc obr obd obi obb obu; do
 		[ -x "$BIN/$tool" ] || { record "tool_$tool" "FAIL (missing from $BIN)"; }
 	done
-	# The deploy rewrites tracked files (version stamps, api.zip); the tree was clean
+	# The deploy rewrites tracked files (version stamps); the tree was clean
 	# at the start, so put them back and list what changed.
 	CHANGED=$(git status --porcelain --untracked-files=no | awk '{print $2}' | tr '\n' ' ')
 	[ -n "$CHANGED" ] && { echo "restoring tracked files rewritten by the deploy: $CHANGED" >> "$LOG"; git checkout -- . ; }

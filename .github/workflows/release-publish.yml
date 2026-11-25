@@ -881,7 +881,7 @@ jobs:
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           echo "ℹ️  objeck.org API docs deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
-          echo "   Deploy by hand from this run's api-docs artifact (or master's docs/api.zip):"
+          echo "   Deploy by hand from this run's api-docs artifact (gh run download <build run> -n api-docs):"
           echo "     bash core/release/deploy_website.sh --source api/ --key <key>"
 
       - name: Missing objeck.org credentials
@@ -893,8 +893,8 @@ jobs:
           echo "  OBJECK_ORG_SSH_KEY  - private key authorized on objeck.org"
           echo "  OBJECK_ORG_USER     - the ssh user"
           echo ""
-          echo "The docs that should have shipped are in this run's api-docs artifact,"
-          echo "and on master at docs/api.zip. To deploy by hand:"
+          echo "The docs that should have shipped are in the api-docs artifact of the release build"
+          echo "run (docs/api.zip is no longer committed). To deploy by hand:"
           echo "  bash core/release/deploy_website.sh --source docs/api.zip --key <your key>"
           echo "  (there are no versioned /api/v<VERSION>/ directories - 'latest' is the only served path)"
           echo ""
