@@ -21,9 +21,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Backstop so a hung test/step can never tie up a runner for the default
     # 6 hours (per-test timeouts in run_regression.sh are the first line of
-    # defense; this caps the whole job). windows-arm64 runs the regression twice on a slow runner
-    # and finished in 55 minutes on a good day, so it gets a longer cap; the others stay at 60.
-    timeout-minutes: ${{ matrix.platform == 'windows-arm64' && 90 || 60 }}
+    # defense; this caps the whole job). The Windows legs run the regression twice on slow
+    # runners: windows-arm64 took 55 minutes on a good day, and windows-x64 took 42 to 56 minutes
+    # across the runs of 2026-11-25 and was cancelled at exactly 60 on one of them. They get a
+    # longer cap; the POSIX legs stay at 60.
+    timeout-minutes: ${{ startsWith(matrix.platform, 'windows') && 90 || 60 }}
 
     strategy:
       fail-fast: false
