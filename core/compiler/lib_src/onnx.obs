@@ -2943,6 +2943,15 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 		}
 
 		#~
+		The native session handle, for the classes that attach to it (DeviceTensor,
+		BoundSession). 0 once the session is closed.
+		@return handle
+		~#
+		method : public : GetHandle() ~ Int {
+			return @session;
+		}
+
+		#~
 		Releases the model.
 
 		Zeroing the handle afterwards is what makes a second Close safe and makes
@@ -3124,6 +3133,882 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 			return array_args[0]->As(API.Onnx.RunResult);
 		}
 	}
+	# Calls the native converter for Half and BFloat16
+	class : private : FloatBits {
+		@fn_onnx_convert_float16 : static : String;
+
+		# kind 0 = binary16, 1 = bfloat16
+		function : Pack(kind : Int, values : Float[]) ~ Int[] {
+			if(values = Nil) {
+				return Nil;
+			};
+
+			bits := Int->New[values->Size()];
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(kind);
+			array_args[2] := IntRef->New(0);
+			array_args[3] := FloatArrayRef->New(values);
+			array_args[4] := IntArrayRef->New(bits);
+
+			if(@fn_onnx_convert_float16 = Nil) { @fn_onnx_convert_float16 := "onnx_convert_float16"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_convert_float16, array_args);
+			if(array_args[0]->As(IntRef)->Get() = 0) {
+				return Nil;
+			};
+
+			return bits;
+		}
+
+		function : Unpack(kind : Int, bits : Int[]) ~ Float[] {
+			if(bits = Nil) {
+				return Nil;
+			};
+
+			values := Float->New[bits->Size()];
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(kind);
+			array_args[2] := IntRef->New(1);
+			array_args[3] := IntArrayRef->New(bits);
+			array_args[4] := FloatArrayRef->New(values);
+
+			if(@fn_onnx_convert_float16 = Nil) { @fn_onnx_convert_float16 := "onnx_convert_float16"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_convert_float16, array_args);
+			if(array_args[0]->As(IntRef)->Get() = 0) {
+				return Nil;
+			};
+
+			return values;
+		}
+
+		function : PackOne(kind : Int, value : Float) ~ Int {
+			one := Float->New[1];
+			one[0] := value;
+			bits := Pack(kind, one);
+			if(bits = Nil) {
+				return 0;
+			};
+
+			return bits[0];
+		}
+
+		function : UnpackOne(kind : Int, pattern : Int) ~ Float {
+			one := Int->New[1];
+			one[0] := pattern;
+			values := Unpack(kind, one);
+			if(values = Nil) {
+				return 0.0;
+			};
+
+			return values[0];
+		}
+	}
+
+	#~
+	IEEE 754 binary16 (FP16), converted exactly as a GPU or an FP16 model would.
+
+	A model whose input or output is FP16 needs no help from this class:
+	`Session->Run` and `DeviceTensor->Upload` convert from the model's declared type.
+	It is for a program that wants the 16-bit patterns themselves, or to know what a
+	value becomes in half precision: to pack a whole array once and reuse it, to
+	upload with `UploadBits` and skip the conversion in the loop, to read an FP16
+	result with `DownloadBits`, or to check a half-precision result.
+
+	Rounding is to nearest, ties to even, from the Float itself (not through FP32, which
+	would round twice): 65519.99 is 65504, the largest finite half; 65520 and above is
+	infinity; below half of the smallest subnormal (2^-24) is a signed zero; a NaN stays
+	a NaN and an infinity stays an infinity, with their signs.
+
+	```
+	bits := Half->ToBits(1.0);              # 15360, 0x3C00
+	value := Half->FromBits(bits);          # 1.0
+	rounded := Half->Round(0.1);            # 0.0999755859375, the nearest half
+	packed := Half->Pack(pixels);           # Float[] to Int[]
+	back := Half->Unpack(packed);
+	```
+	~#
+	class Half {
+		#~
+		The 16-bit pattern of a value.
+		@param value the value
+		@return the half-precision bits, 0 to 65535
+		~#
+		function : ToBits(value : Float) ~ Int {
+			return FloatBits->PackOne(0, value);
+		}
+
+		#~
+		The value of a 16-bit pattern. Only the low 16 bits of the Int are read.
+		@param bits half-precision bits
+		@return the value
+		~#
+		function : FromBits(bits : Int) ~ Float {
+			return FloatBits->UnpackOne(0, bits);
+		}
+
+		#~
+		The nearest half-precision value, as a Float.
+		@param value the value
+		@return the value after a trip through binary16
+		~#
+		function : Round(value : Float) ~ Float {
+			return FromBits(ToBits(value));
+		}
+
+		#~
+		Patterns for every element.
+		@param values the values
+		@return one 16-bit pattern per element, or Nil for a Nil array
+		~#
+		function : Pack(values : Float[]) ~ Int[] {
+			return FloatBits->Pack(0, values);
+		}
+
+		#~
+		Values for every pattern.
+		@param bits half-precision bits, one per element
+		@return one value per element, or Nil for a Nil array
+		~#
+		function : Unpack(bits : Int[]) ~ Float[] {
+			return FloatBits->Unpack(0, bits);
+		}
+	}
+
+	#~
+	bfloat16 (BF16): the top 16 bits of an FP32 with its own rounding. The range of
+	FP32 and the precision of about two decimal digits. Same calls and the same
+	rounding rules as `Half`, with the range of FP32: 3.4e38 is finite, and a value
+	only becomes infinity past the largest bfloat16.
+	~#
+	class BFloat16 {
+		#~
+		The 16-bit pattern of a value.
+		@param value the value
+		@return the bfloat16 bits, 0 to 65535
+		~#
+		function : ToBits(value : Float) ~ Int {
+			return FloatBits->PackOne(1, value);
+		}
+
+		#~
+		The value of a 16-bit pattern. Only the low 16 bits of the Int are read.
+		@param bits bfloat16 bits
+		@return the value
+		~#
+		function : FromBits(bits : Int) ~ Float {
+			return FloatBits->UnpackOne(1, bits);
+		}
+
+		#~
+		The nearest bfloat16 value, as a Float.
+		@param value the value
+		@return the value after a trip through bfloat16
+		~#
+		function : Round(value : Float) ~ Float {
+			return FromBits(ToBits(value));
+		}
+
+		#~
+		Patterns for every element.
+		@param values the values
+		@return one 16-bit pattern per element, or Nil for a Nil array
+		~#
+		function : Pack(values : Float[]) ~ Int[] {
+			return FloatBits->Pack(1, values);
+		}
+
+		#~
+		Values for every pattern.
+		@param bits bfloat16 bits, one per element
+		@return one value per element, or Nil for a Nil array
+		~#
+		function : Unpack(bits : Int[]) ~ Float[] {
+			return FloatBits->Unpack(1, bits);
+		}
+	}
+
+	#~
+	Linear 8-bit quantization of Float values, for a model whose input or output is
+	INT8 or UINT8 (a quantized network exported with quantized inputs).
+
+	  q = clamp(round(x / scale) + zero_point, low, high)        x = (q - zero_point) * scale
+
+	Rounding is to nearest, ties away from zero, and the result SATURATES at the
+	type's range rather than wrapping. The values come back as Floats holding whole
+	numbers, which is what `Tensor` and `DeviceTensor->Upload` take for an INT8 or UINT8
+	input. The scale and the zero point are the ones the model was quantized with
+	(they are in the model: look at the QuantizeLinear node's inputs, or the script
+	that quantized it); a model that quantizes its own FP32 input internally needs none
+	of this.
+	~#
+	class Quantization {
+		#~
+		Quantizes to a signed 8-bit range, -128 to 127.
+		@param values the real values
+		@param scale the step between neighbouring quantized values
+		@param zero_point the quantized value that stands for 0
+		@return whole numbers in -128 to 127
+		~#
+		function : ToInt8(values : Float[], scale : Float, zero_point : Int) ~ Float[] {
+			return Quantize(values, scale, zero_point, -128.0, 127.0);
+		}
+
+		#~
+		Quantizes to an unsigned 8-bit range, 0 to 255.
+		@param values the real values
+		@param scale the step between neighbouring quantized values
+		@param zero_point the quantized value that stands for 0
+		@return whole numbers in 0 to 255
+		~#
+		function : ToUInt8(values : Float[], scale : Float, zero_point : Int) ~ Float[] {
+			return Quantize(values, scale, zero_point, 0.0, 255.0);
+		}
+
+		#~
+		Back to real values.
+		@param quantized whole numbers, as an INT8 or UINT8 tensor reads out
+		@param scale the step the model used
+		@param zero_point the quantized value that stood for 0
+		@return (q - zero_point) * scale for every element
+		~#
+		function : Dequantize(quantized : Float[], scale : Float, zero_point : Int) ~ Float[] {
+			if(quantized = Nil) {
+				return Nil;
+			};
+
+			values := Float->New[quantized->Size()];
+			zero := zero_point->ToFloat();
+			for(i := 0; i < quantized->Size(); i += 1;) {
+				values[i] := (quantized[i] - zero) * scale;
+			};
+
+			return values;
+		}
+
+		function : Quantize(values : Float[], scale : Float, zero_point : Int, low : Float, high : Float) ~ Float[] {
+			if(values = Nil | scale <= 0.0) {
+				return Nil;
+			};
+
+			quantized := Float->New[values->Size()];
+			zero := zero_point->ToFloat();
+			for(i := 0; i < values->Size(); i += 1;) {
+				scaled := values[i] / scale;
+				# nearest whole number, ties away from zero
+				rounded := 0.0;
+				if(scaled >= 0.0) {
+					rounded := Float->Floor(scaled + 0.5);
+				}
+				else {
+					rounded := Float->Ceil(scaled - 0.5);
+				};
+
+				q := rounded + zero;
+				if(q < low) {
+					q := low;
+				};
+				if(q > high) {
+					q := high;
+				};
+				quantized[i] := q;
+			};
+
+			return quantized;
+		}
+	}
+
+	#~
+	A tensor that lives in the execution provider's memory.
+
+	A normal `Session->Run` copies every input from host memory to the device and
+	every output back, and allocates for both, on every call. A DeviceTensor is
+	allocated once, filled with `Upload`, bound to a model input or output by a
+	`BoundSession`, and read back with `Download` only when the program wants the
+	numbers. With `ep=cuda` or `ep=tensorrt` the memory is on the GPU; with
+	`ep=cpu` it is ordinary host memory, so the same program runs (and gives the
+	same answers) on a machine with no GPU. Other providers are refused.
+
+	Close it when done: the memory is the provider's, not the garbage collector's.
+	A session that is closed while device tensors still use it is released once the
+	last of them is closed.
+
+	```
+	session := Session->New("resnet34.onnx", config);
+	input := DeviceTensor->ForInput(session, "data", [1, 3, 224, 224]);
+	input->Upload(pixels);
+	```
+	~#
+	class DeviceTensor {
+		@fn_onnx_device_new : static : String;
+		@fn_onnx_device_free : static : String;
+		@fn_onnx_device_upload : static : String;
+		@fn_onnx_device_download : static : String;
+		@fn_onnx_device_upload_bits : static : String;
+		@fn_onnx_device_download_bits : static : String;
+		@fn_onnx_device_meta : static : String;
+		@handle : Int;
+		@session : Session;
+		@datatype : String;
+		@shape : Int[];
+		@count : Int;
+
+		#~
+		Allocates a tensor of an element type and shape in the session's device memory.
+		@param session an open session on ep=cuda, ep=tensorrt or ep=cpu
+		@param datatype element type: FP32, FP16, FP64, INT8, INT32, INT64, UINT8, BOOL ...
+		@param shape concrete dimensions
+		~#
+		New(session : Session, datatype : String, shape : Int[]) {
+			@session := session;
+			@datatype := datatype;
+			@shape := shape;
+			@count := 0;
+
+			if(session = Nil | shape = Nil | session->GetHandle() = 0) {
+				">>> ONNX: a device tensor needs an open session and a shape. <<<"->ErrorLine();
+				return;
+			};
+
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(session->GetHandle());
+			array_args[2] := datatype;
+			array_args[3] := IntArrayRef->New(shape);
+
+			if(@fn_onnx_device_new = Nil) { @fn_onnx_device_new := "onnx_device_new"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_new, array_args);
+			@handle := array_args[0]->As(IntRef)->Get();
+
+			if(@handle <> 0) {
+				@count := Meta(2);
+			};
+		}
+
+		#~
+		Wraps a native tensor ONNX Runtime allocated (an output of a BoundSession). Internal.
+		@param session the session it belongs to
+		@param handle native handle
+		~#
+		New(session : Session, handle : Int) {
+			@session := session;
+			@handle := handle;
+			@count := 0;
+
+			if(@handle <> 0) {
+				@datatype := TypeName(Meta(0));
+				@count := Meta(2);
+				rank := Meta(1);
+				@shape := Int->New[rank];
+				for(d := 0; d < rank; d += 1;) {
+					@shape[d] := Meta(10 + d);
+				};
+			};
+		}
+
+		#~
+		Allocates a tensor for a model input, taking its element type from the model.
+		@param session an open session
+		@param name the model input's name
+		@param shape concrete dimensions (the model's own -1 is for you to choose)
+		@return the tensor, or Nil when the model has no such input
+		~#
+		function : ForInput(session : Session, name : String, shape : Int[]) ~ DeviceTensor {
+			info := session->GetModelInfo();
+			if(info = Nil) {
+				return Nil;
+			};
+
+			spec := info->Find(name);
+			if(spec = Nil) {
+				">>> ONNX: the model has no tensor named '{$name}'. <<<"->ErrorLine();
+				return Nil;
+			};
+
+			return DeviceTensor->New(session, spec->GetDatatype(), shape);
+		}
+
+		#~
+		Allocates a tensor for a model output, taking its element type from the model.
+		Preallocating an output avoids the allocation ONNX Runtime would otherwise make
+		on every run; the shape must be the one the run will produce.
+		@param session an open session
+		@param name the model output's name
+		@param shape concrete dimensions
+		@return the tensor, or Nil when the model has no such output
+		~#
+		function : ForOutput(session : Session, name : String, shape : Int[]) ~ DeviceTensor {
+			return ForInput(session, name, shape);
+		}
+
+		function : TypeName(code : Int) ~ String {
+			if(code = 1) { return "FP32"; };
+			if(code = 2) { return "UINT8"; };
+			if(code = 3) { return "INT8"; };
+			if(code = 4) { return "UINT16"; };
+			if(code = 5) { return "INT16"; };
+			if(code = 6) { return "INT32"; };
+			if(code = 7) { return "INT64"; };
+			if(code = 9) { return "BOOL"; };
+			if(code = 10) { return "FP16"; };
+			if(code = 11) { return "FP64"; };
+			if(code = 12) { return "UINT32"; };
+			if(code = 13) { return "UINT64"; };
+			if(code = 16) { return "BF16"; };
+			return "UNSUPPORTED";
+		}
+
+		method : Meta(which : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntRef->New(which);
+
+			if(@fn_onnx_device_meta = Nil) { @fn_onnx_device_meta := "onnx_device_meta"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_meta, array_args);
+			return array_args[0]->As(IntRef)->Get();
+		}
+
+		#~
+		Whether the tensor was allocated.
+		@return true when it can be bound
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @handle <> 0;
+		}
+
+		#~
+		The native handle. Internal: BoundSession binds by it.
+		@return handle, 0 when closed
+		~#
+		method : public : GetHandle() ~ Int {
+			return @handle;
+		}
+
+		#~
+		The element type, as the model spells it.
+		@return FP32, FP16, INT64 ...
+		~#
+		method : public : GetDatatype() ~ String {
+			return @datatype;
+		}
+
+		#~
+		Dimensions, outermost first.
+		@return shape
+		~#
+		method : public : GetShape() ~ Int[] {
+			return @shape;
+		}
+
+		#~
+		How many elements.
+		@return element count
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		Whether the memory is on the GPU (true) or in host memory (ep=cpu).
+		@return true on a GPU
+		~#
+		method : public : IsOnDevice() ~ Bool {
+			if(@handle = 0) {
+				return false;
+			};
+
+			return Meta(4) <> 0;
+		}
+
+		#~
+		Copies values into the tensor, converting to its element type.
+		@param values every element, flat and row-major; exactly GetCount() of them
+		@return true when the copy succeeded
+		~#
+		method : public : Upload(values : Float[]) ~ Bool {
+			if(@handle = 0 | values = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := FloatArrayRef->New(values);
+
+			if(@fn_onnx_device_upload = Nil) { @fn_onnx_device_upload := "onnx_device_upload"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_upload, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Copies a Tensor's elements into the device tensor.
+		@param tensor the tensor; its element count must match
+		@return true when the copy succeeded
+		~#
+		method : public : Upload(tensor : Tensor) ~ Bool {
+			if(tensor = Nil) {
+				return false;
+			};
+
+			values := tensor->AsFloats();
+			if(values = Nil) {
+				return false;
+			};
+
+			return Upload(values);
+		}
+
+		#~
+		Copies the tensor into a Float[] the caller already owns, so a loop that reads
+		a result every iteration allocates nothing.
+		@param into exactly GetCount() elements
+		@return true when the copy succeeded
+		~#
+		method : public : Download(into : Float[]) ~ Bool {
+			if(@handle = 0 | into = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := FloatArrayRef->New(into);
+
+			if(@fn_onnx_device_download = Nil) { @fn_onnx_device_download := "onnx_device_download"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_download, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Copies raw element patterns into the tensor, with no conversion: for an FP16 or
+		BF16 tensor the 16-bit patterns `Half->Pack` makes, for INT8 or UINT8 the byte,
+		for INT32 or FP32 the 32 bits. The low bits of each Int are stored, by the
+		element size of the tensor. Packing once and uploading the patterns each
+		iteration skips the conversion that `Upload` does.
+		@param bits one pattern per element, exactly GetCount() of them
+		@return true when the copy succeeded
+		~#
+		method : public : UploadBits(bits : Int[]) ~ Bool {
+			if(@handle = 0 | bits = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntArrayRef->New(bits);
+
+			if(@fn_onnx_device_upload_bits = Nil) { @fn_onnx_device_upload_bits := "onnx_device_upload_bits"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_upload_bits, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Copies the tensor's raw element patterns into an Int[] the caller owns (the
+		counterpart of UploadBits): an FP16 result comes back as the 16-bit patterns
+		`Half->Unpack` reads.
+		@param into exactly GetCount() elements
+		@return true when the copy succeeded
+		~#
+		method : public : DownloadBits(into : Int[]) ~ Bool {
+			if(@handle = 0 | into = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntArrayRef->New(into);
+
+			if(@fn_onnx_device_download_bits = Nil) { @fn_onnx_device_download_bits := "onnx_device_download_bits"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_download_bits, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		Copies the tensor into a new Float[].
+		@return the elements, or Nil when the copy failed
+		~#
+		method : public : Download() ~ Float[] {
+			if(@handle = 0) {
+				return Nil;
+			};
+
+			values := Float->New[@count];
+			if(<>Download(values)) {
+				return Nil;
+			};
+
+			return values;
+		}
+
+		#~
+		Copies the tensor into a Tensor, the form Session->Run returns.
+		@param name the name to give the tensor
+		@return the tensor, or Nil when the copy failed
+		~#
+		method : public : ToTensor(name : String) ~ Tensor {
+			values := Download();
+			if(values = Nil) {
+				return Nil;
+			};
+
+			return Tensor->New(name, @datatype, @shape, values);
+		}
+
+		#~
+		Frees the memory. Safe to call more than once.
+		~#
+		method : public : Close() ~ Nil {
+			if(@handle = 0) {
+				return;
+			};
+
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(@handle);
+
+			if(@fn_onnx_device_free = Nil) { @fn_onnx_device_free := "onnx_device_free"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_device_free, array_args);
+			@handle := 0;
+		}
+	}
+
+	#~
+	A session's inputs and outputs bound to device tensors, so a run reads and
+	writes memory that is already on the device.
+
+	Bind each input to a DeviceTensor you fill with `Upload`, and each output
+	either to a DeviceTensor you preallocated (`BindOutput`) or to ONNX Runtime's
+	own device memory (`BindOutputToDevice`, read with `GetOutput`). `Run` then
+	executes the model with no host copy and, for a preallocated output, no
+	allocation. Update an input by uploading into the same tensor again; the
+	binding stays valid and is reused by every `Run`.
+
+	A BoundSession belongs to one thread at a time. For several threads, give each
+	thread its own BoundSession and tensors: the Session underneath is shared.
+
+	```
+	bound := BoundSession->New(session);
+	bound->BindInput("data", input);
+	bound->BindOutput("output", result);
+	for(i := 0; i < 1000; i += 1;) {
+	  input->Upload(next_frame);
+	  bound->Run();
+	};
+	result->Download(scores);
+	bound->Close();
+	```
+	~#
+	class BoundSession {
+		@fn_onnx_bound_new : static : String;
+		@fn_onnx_bound_free : static : String;
+		@fn_onnx_bound_bind : static : String;
+		@fn_onnx_bound_clear : static : String;
+		@fn_onnx_bound_run : static : String;
+		@fn_onnx_bound_output : static : String;
+		@handle : Int;
+		@session : Session;
+		@outputs : Vector<String>;
+
+		#~
+		Creates an IO binding for a session.
+		@param session an open session on ep=cuda, ep=tensorrt or ep=cpu
+		~#
+		New(session : Session) {
+			@session := session;
+			@outputs := Vector->New()<String>;
+
+			if(session = Nil | session->GetHandle() = 0) {
+				">>> ONNX: an IO binding needs an open session. <<<"->ErrorLine();
+				return;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(session->GetHandle());
+
+			if(@fn_onnx_bound_new = Nil) { @fn_onnx_bound_new := "onnx_bound_new"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_bound_new, array_args);
+			@handle := array_args[0]->As(IntRef)->Get();
+		}
+
+		#~
+		Whether the binding was created.
+		@return true when it can be bound and run
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @handle <> 0;
+		}
+
+		method : Bind(name : String, tensor : DeviceTensor, is_output : Bool) ~ Bool {
+			if(@handle = 0 | name = Nil) {
+				return false;
+			};
+
+			tensor_handle := 0;
+			if(tensor <> Nil) {
+				tensor_handle := tensor->GetHandle();
+				if(tensor_handle = 0) {
+					">>> ONNX: the device tensor is closed. <<<"->ErrorLine();
+					return false;
+				};
+			};
+
+			kind := 0;
+			if(is_output) {
+				kind := 1;
+			};
+
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := name;
+			array_args[3] := IntRef->New(tensor_handle);
+			array_args[4] := IntRef->New(kind);
+
+			if(@fn_onnx_bound_bind = Nil) { @fn_onnx_bound_bind := "onnx_bound_bind"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_bound_bind, array_args);
+			bound := array_args[0]->As(IntRef)->Get() <> 0;
+			if(bound & is_output) {
+				@outputs->AddBack(name);
+			};
+
+			return bound;
+		}
+
+		#~
+		Points a model input at a device tensor.
+		@param name the model input's name
+		@param tensor the tensor to read it from
+		@return true when bound
+		~#
+		method : public : BindInput(name : String, tensor : DeviceTensor) ~ Bool {
+			if(tensor = Nil) {
+				">>> ONNX: input '{$name}' needs a device tensor. <<<"->ErrorLine();
+				return false;
+			};
+
+			return Bind(name, tensor, false);
+		}
+
+		#~
+		Points a model output at a preallocated device tensor: no allocation per run.
+		@param name the model output's name
+		@param tensor where to write it
+		@return true when bound
+		~#
+		method : public : BindOutput(name : String, tensor : DeviceTensor) ~ Bool {
+			if(tensor = Nil) {
+				">>> ONNX: output '{$name}' needs a device tensor, or use BindOutputToDevice. <<<"->ErrorLine();
+				return false;
+			};
+
+			return Bind(name, tensor, true);
+		}
+
+		#~
+		Lets ONNX Runtime allocate a model output in device memory on each run, for an
+		output whose shape is not known in advance. Read it with GetOutput.
+		@param name the model output's name
+		@return true when bound
+		~#
+		method : public : BindOutputToDevice(name : String) ~ Bool {
+			return Bind(name, Nil, true);
+		}
+
+		#~
+		Runs the model on the bound tensors. The calling thread is parked for the
+		length of the inference, so a garbage collection in another thread does not
+		wait for it.
+		@return true when the run completed
+		~#
+		method : public : Run() ~ Bool {
+			if(@handle = 0) {
+				">>> ONNX: run on an IO binding that is not open. <<<"->ErrorLine();
+				return false;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+
+			if(@fn_onnx_bound_run = Nil) { @fn_onnx_bound_run := "onnx_bound_run"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_bound_run, array_args);
+			return array_args[0]->As(IntRef)->Get() <> 0;
+		}
+
+		#~
+		The tensor a bound output holds after the last run. For an output bound with
+		BindOutputToDevice this is ONNX Runtime's allocation for that run; for a
+		preallocated output it is a handle onto the same memory. Close it when done.
+		@param name the model output's name
+		@return the device tensor, or Nil when the output is not bound or has not run
+		~#
+		method : public : GetOutput(name : String) ~ DeviceTensor {
+			if(@handle = 0) {
+				return Nil;
+			};
+
+			position := -1;
+			for(i := 0; i < @outputs->Size(); i += 1;) {
+				if(@outputs->Get(i)->Equals(name)) {
+					position := i;
+				};
+			};
+			if(position < 0) {
+				">>> ONNX: output '{$name}' is not bound. <<<"->ErrorLine();
+				return Nil;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@handle);
+			array_args[2] := IntRef->New(position);
+
+			if(@fn_onnx_bound_output = Nil) { @fn_onnx_bound_output := "onnx_bound_output"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_bound_output, array_args);
+			output_handle := array_args[0]->As(IntRef)->Get();
+			if(output_handle = 0) {
+				return Nil;
+			};
+
+			return DeviceTensor->New(@session, output_handle);
+		}
+
+		#~
+		Unbinds every input and output, to bind a different set.
+		~#
+		method : public : Clear() ~ Nil {
+			if(@handle = 0) {
+				return;
+			};
+
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(@handle);
+
+			if(@fn_onnx_bound_clear = Nil) { @fn_onnx_bound_clear := "onnx_bound_clear"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_bound_clear, array_args);
+			@outputs->Empty();
+		}
+
+		#~
+		Releases the binding. The device tensors stay valid; close them separately.
+		~#
+		method : public : Close() ~ Nil {
+			if(@handle = 0) {
+				return;
+			};
+
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(@handle);
+
+			if(@fn_onnx_bound_free = Nil) { @fn_onnx_bound_free := "onnx_bound_free"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_bound_free, array_args);
+			@handle := 0;
+		}
+	}
+
 	#~
 	API.Onnx as an Engine: a model run in-process.
 	

@@ -1,0 +1,82 @@
+use System.LLM.Eval, API.Google.Gemini, Collection;
+
+#~
+Adapter for the Gemini API. The key comes from GEMINI_API_KEY or gemini_api_key.dat in the working directory; it is never printed or stored. The client does not expose token usage, so the report shows n/a for tokens.
+Flags: --model NAME (required; with or without the models/ prefix), --temperature T
+~#
+class GeminiAdapter implements ModelAdapter {
+	@model : String;
+	@temperature : Float;
+	@key : String;
+
+	New(model : String, temperature : Float, key : String) {
+		@model := model;
+		@temperature := temperature;
+		@key := key;
+	}
+
+	method : public : GetName() ~ String {
+		return @model;
+	}
+
+	method : public : Complete(request : ModelRequest) ~ ModelReply {
+		content := Content->New("user")->AddPart(TextPart->New(request->GetUser()));
+		system : Content;
+		if(request->GetSystem() <> Nil & request->GetSystem()->Size() > 0) {
+			system := Content->New("system")->AddPart(TextPart->New(request->GetSystem()));
+		};
+
+		config := GenerationConfig->New()->SetMaxOutputTokens(request->GetMaxTokens());
+		if(@temperature >= 0.0) {
+			config->SetTemperature(@temperature);
+		};
+
+		name := @model;
+		if(<>name->StartsWith("models/")) {
+			name := "models/{$@model}";
+		};
+
+		candidates := Model->GenerateContent(name, content, Nil, Nil, Nil, config, system, @key);
+		if(candidates = Nil | candidates->IsEmpty()) {
+			error := EndPoint->GetLastError();
+			if(error = Nil) {
+				error := "the request returned no candidate";
+			};
+
+			return ModelReply->Failure(EvalText->Clip(error, 300));
+		};
+
+		return ModelReply->New(candidates->First()->GetAllText(), -1, -1);
+	}
+}
+
+class Provider {
+	function : Usage() ~ String {
+		return "provider gemini: --model NAME [--temperature T]; the key is read from GEMINI_API_KEY or gemini_api_key.dat";
+	}
+
+	function : Create(args : String[]) ~ ModelAdapter {
+		model := EvalArgs->Value(args, "--model", Nil);
+		if(model = Nil) {
+			return Nil;
+		};
+
+		key := Runtime->GetEnvironmentVariable("GEMINI_API_KEY");
+		if(key = Nil | key->Trim()->Size() = 0) {
+			key := EndPoint->GetApiKey();
+		};
+
+		if(key = Nil) {
+			">>> no Gemini key: set GEMINI_API_KEY or create gemini_api_key.dat"->ErrorLine();
+			return Nil;
+		};
+
+		temperature := -1.0;
+		text := EvalArgs->Value(args, "--temperature", Nil);
+		if(text <> Nil) {
+			temperature := text->ToFloat();
+		};
+
+		return GeminiAdapter->New(model, temperature, key->Trim());
+	}
+}

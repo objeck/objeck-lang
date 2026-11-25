@@ -109,10 +109,34 @@
     "System.Time": ["Alarm", "Date", "Timer"]
    }
   },
+  "llm_eval": {
+   "deps": ["gen_collect", "csv", "json", "ml"],
+   "bundles": {
+    "System.LLM.Eval": ["Attempt", "CodeExtractor", "CommandModel", "ErrorCategory", "EvalArgs", "EvalReport", "EvalRunner", "EvalTally", "EvalTask", "EvalText", "ExecResult", "ModelAdapter", "ModelComparison", "ModelReply", "ModelRequest", "ModelResults", "OutputChecker", "PassAtK", "ReferenceModel", "Sandbox", "ScriptedModel", "TaskSuite", "TaskTally"]
+   }
+  },
+  "llm_util": {
+   "deps": ["gen_collect", "json", "regex"],
+   "bundles": {
+    "API.LlmUtil": ["ChatFn", "ContextWindow", "JsonExtractor", "JsonRepair", "JsonSchema", "JsonStrict", "LlmChars", "PromptBuilder", "PromptTemplate", "PromptTurn", "PromptVars", "SchemaError", "StructuredCall", "StructuredOutcome", "TemplateNode", "TokenCounter", "TokenEstimator"]
+   }
+  },
+  "llm_util_clients": {
+   "deps": ["gen_collect", "json", "regex", "llm_util", "net", "net_server", "cipher", "misc", "anthropic", "openai", "gemini", "ollama"],
+   "bundles": {
+    "API.LlmUtil.Clients": ["AnthropicChatFn", "GeminiChatFn", "GeminiTokenCounter", "OllamaChatFn", "OpenAIChatFn", "PromptAdapters", "TurnSplit"]
+   }
+  },
   "math": {
    "deps": [],
    "bundles": {
     "System.Math": ["BigInt", "Complex", "Rational"]
+   }
+  },
+  "mcp": {
+   "deps": ["json", "net", "net_server", "cipher", "misc"],
+   "bundles": {
+    "API.MCP": ["McpCall", "McpClient", "McpCollector", "McpCommandTransport", "McpContents", "McpHttpHandler", "McpHttpTransport", "McpLoopback", "McpPrompt", "McpPromptResult", "McpProtocol", "McpResource", "McpService", "McpSink", "McpStdio", "McpStdoutSink", "McpTool", "McpToolBridge", "McpToolResult", "McpTransport"]
    }
   },
   "misc": {
@@ -126,6 +150,12 @@
    "deps": ["gen_collect", "csv"],
    "bundles": {
     "System.ML": ["AdaBoost", "AucMetric", "AutoencoderDetector", "AveragePrecisionMetric", "BayesEntry", "BayesGroup", "BoolMatrixRef", "ConfInterval", "ConfusionMatrix", "CrossValResult", "CrossValidation", "DBSCAN", "DbscanDetector", "DecisionTree", "DecisionTreeClassifier", "DenseNetwork", "ElasticNet", "EllipticEnvelope", "EmbeddingClassifier", "FeatureScaler", "FloatMatrixRef", "FoldSplit", "GaussianMixture", "GaussianNaiveBayes", "GradientBoostedClassifier", "GradientBoostedTrees", "GroupRecall", "IsolationForest", "KDTree", "KMeans", "KMeansGroup", "KMeansGrouping", "KNearestNeighbors", "KNeighbor", "KernelSVM", "LassoRegression", "LinearRegression", "LinearResult", "LinearSolver", "LocalOutlierFactor", "LogisticRegression", "Matrix2D", "MatrixReader", "Metrics", "NaiveBayes", "NeuralNetwork", "OneClassSVM", "OneClassSvmDetector", "OutlierDetector", "PCA", "Perceptron", "Random", "RandomForest", "RandomForestClassifier", "RecallAtFprMetric", "RegressionTree", "RegressionTreeNode", "RidgeRegression", "SVM", "ScoreMetric", "ScoreModel", "SensitivitySweep", "Split", "SvmKernel", "SweepResult", "TableEncoder", "ThresholdResult", "TreeNode", "ZScoreDetector"]
+   }
+  },
+  "ml_boost": {
+   "deps": ["gen_collect", "csv", "ml"],
+   "bundles": {
+    "System.ML.Boost": ["BoostLoss", "BoostModel", "BoostTree", "GradientBoostingClassifier", "GradientBoostingRegressor"]
    }
   },
   "ml_clip": {
@@ -150,6 +180,12 @@
    "deps": ["gen_collect", "csv", "json", "ml", "ml_lab", "stats", "plot"],
    "bundles": {
     "System.ML.Report": ["ReplicateCell", "Replicates", "Report", "ReportBlock", "ReportText", "ResultTables"]
+   }
+  },
+  "ml_timeseries": {
+   "deps": ["gen_collect"],
+   "bundles": {
+    "System.ML.TimeSeries": ["Acf", "AdfResult", "ArimaModel", "AutoArima", "AutoEts", "BaselineForecaster", "CvResult", "Decomposition", "Evaluation", "ExponentialSmoothing", "ForecastMetrics", "ForecastResult", "Forecaster", "Frequency", "ModelKit", "NelderMead", "Objective", "OlsFit", "Rng", "SelectionCriterion", "SeriesTransform", "Simulate", "Stationarity", "TimeSeries", "TsMath"]
    }
   },
   "ml_vector": {
@@ -229,7 +265,7 @@
   "onnx": {
    "deps": ["models", "opencv", "cipher", "json"],
    "bundles": {
-    "API.Onnx": ["DeepLabClassification", "DeepLabResult", "DeepLabSession", "FaceDetection", "FaceDetectionResult", "FaceRecognitionResult", "FaceResult", "FaceSession", "ModelInfo", "OnnxEngine", "OnnxRuntime", "OpenPoseClassification", "OpenPoseResult", "OpenPoseSession", "Phi3Result", "Phi3Session", "Phi3Tokenizer", "Phi3VisionSession", "ResNetResult", "ResNetSession", "RunResult", "Session", "YoloClassification", "YoloResult", "YoloSession"]
+    "API.Onnx": ["BFloat16", "BoundSession", "DeepLabClassification", "DeepLabResult", "DeepLabSession", "DeviceTensor", "FaceDetection", "FaceDetectionResult", "FaceRecognitionResult", "FaceResult", "FaceSession", "Half", "ModelInfo", "OnnxEngine", "OnnxRuntime", "OpenPoseClassification", "OpenPoseResult", "OpenPoseSession", "Phi3Result", "Phi3Session", "Phi3Tokenizer", "Phi3VisionSession", "Quantization", "ResNetResult", "ResNetSession", "RunResult", "Session", "YoloClassification", "YoloResult", "YoloSession"]
    }
   },
   "openai": {
@@ -288,6 +324,18 @@
    "deps": ["gen_collect", "models", "opencv", "onnx", "cipher", "json", "net", "regex", "csv", "xml", "misc", "query"],
    "bundles": {
     "Query.Structured.Vision": ["Detection", "Detector", "ImageHeader", "VisionSource", "YoloDetector"]
+   }
+  },
+  "rag": {
+   "deps": ["gen_collect", "ml_vector"],
+   "bundles": {
+    "System.ML.Rag": ["RagAnswer", "RagChunk", "RagChunker", "RagEmbedder", "RagGenerator", "RagHashEmbedder", "RagIndex", "RagMatch", "RagPipeline", "RagPromptBuilder", "RagSplit", "RagStubGenerator"]
+   }
+  },
+  "rag_adapters": {
+   "deps": ["gen_collect", "ml_vector", "rag", "net", "net_server", "json", "cipher", "misc", "openai", "gemini", "ollama", "anthropic", "models", "opencv", "onnx", "nlp", "nlp_onnx", "ml_verify", "ml_clip"],
+   "bundles": {
+    "System.ML.Rag": ["RagAnthropicGenerator", "RagBertEmbedder", "RagClipImageEmbedder", "RagGeminiEmbedder", "RagGeminiGenerator", "RagOllamaEmbedder", "RagOllamaGenerator", "RagOpenAIEmbedder", "RagOpenAIGenerator"]
    }
   },
   "regex": {

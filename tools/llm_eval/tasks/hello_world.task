@@ -1,0 +1,18 @@
+id: hello_world
+category: basics
+difficulty: 1
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that prints exactly this line to standard output:
+
+Hello, Objeck!
+--- expected
+Hello, Objeck!
+--- reference
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		"Hello, Objeck!"->PrintLine();
+	}
+}

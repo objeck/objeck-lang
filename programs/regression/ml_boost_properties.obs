@@ -1,0 +1,663 @@
+# EXTRA_LIBS: ml_boost,ml,gen_collect,csv
+#~
+System.ML.Boost properties that must hold whatever the data: the training loss never goes
+up (squared loss, mean-residual leaves), early stopping stops and cuts the model back to
+the best stage, a seed fixes a subsampled model and another seed changes it, staged
+predictions end at the prediction, probabilities sum to 1, importances sum to 1 and the
+split counts add up to the number of splits, the histogram search equals the exact search
+when no feature has more distinct values than bins, weights of 2 equal weights of 1 at
+lambda 0, missing values train and predict, robust losses shrug off outliers, and every bad
+input is refused with a reason (never a crash).
+~#
+use System.ML;
+use System.ML.Boost;
+
+class MlBoostProperties {
+	@trx : static : Float[,];
+	@try_ : static : Float[];
+	@tex : static : Float[,];
+	@tey : static : Float[];
+	@btrx : static : Float[,];
+	@btry : static : Int[];
+	@btex : static : Float[,];
+	@mtrx : static : Float[,];
+	@mtry : static : Int[];
+	@mtex : static : Float[,];
+	@mtey : static : Int[];
+	@m : static : GradientBoostingRegressor;
+	@bc : static : GradientBoostingClassifier;
+	@mc : static : GradientBoostingClassifier;
+
+	function : Main(args : String[]) ~ Nil {
+		Setup();
+		ok := true;
+		ok := Section1() & ok;
+		ok := Section2() & ok;
+		ok := Section3() & ok;
+		ok := Section4() & ok;
+		ok := Section5() & ok;
+		ok := Section6() & ok;
+		ok := Section7() & ok;
+		ok := Section8() & ok;
+		ok := Section9() & ok;
+		ok := Section10() & ok;
+		ok := Section11() & ok;
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+
+		"ml_boost_properties: ok"->PrintLine();
+	}
+
+	function : Setup() ~ Nil {
+		X := Float->New[700, 6];
+		y := Float->New[700];
+		MakeRegression(X, y);
+		@trx := Rows(X, 0, 500);
+		@try_ := Part(y, 0, 500);
+		@tex := Rows(X, 500, 200);
+		@tey := Part(y, 500, 200);
+		@m := GradientBoostingRegressor->New(60, 0.1, 3, 1);
+		@m->Fit(@trx, @try_);
+
+		bx := Float->New[700, 6];
+		by := Int->New[700];
+		MakeBinary(bx, by);
+		@btrx := Rows(bx, 0, 500);
+		@btry := IntPart(by, 0, 500);
+		@btex := Rows(bx, 500, 200);
+		@bc := GradientBoostingClassifier->New(60, 0.1, 3, 1);
+		@bc->SetLambda(1.0);
+		@bc->Fit(@btrx, @btry);
+
+		mx := Float->New[700, 5];
+		my := Int->New[700];
+		MakeMulticlass(mx, my);
+		@mtrx := Rows(mx, 0, 500);
+		@mtry := IntPart(my, 0, 500);
+		@mtex := Rows(mx, 500, 200);
+		@mtey := IntPart(my, 500, 200);
+		@mc := GradientBoostingClassifier->New(30, 0.2, 3, 1);
+		@mc->Fit(@mtrx, @mtry);
+	}
+
+	function : Section1() ~ Bool {
+		ok := true;
+		# ---- monotone training loss
+		loss := @m->GetTrainLoss();
+		down := loss->Size() = 60;
+		for(i := 0; i < loss->Size() - 1; i += 1;) {
+			if(loss[i + 1] > loss[i]) {
+				down := false;
+			};
+		};
+
+		ok := Report("squared loss: training loss never rises over 60 stages ({$loss[0]} -> {$loss[59]})", down & loss[59] < loss[0]) & ok;
+		ml := GradientBoostingRegressor->New(60, 0.1, 3, 1);
+		ml->SetLambda(5.0);
+		ml->Fit(@trx, @try_);
+		loss := ml->GetTrainLoss();
+		down := true;
+		for(i := 0; i < loss->Size() - 1; i += 1;) {
+			if(loss[i + 1] > loss[i]) {
+				down := false;
+			};
+		};
+
+		ok := Report("squared loss with lambda 5: training loss never rises", down) & ok;
+
+		loss := @bc->GetTrainLoss();
+		down := true;
+		for(i := 0; i < loss->Size() - 1; i += 1;) {
+			if(loss[i + 1] > loss[i] + 0.000000000001) {
+				down := false;
+			};
+		};
+
+		ok := Report("logistic loss with lambda 1: training log loss never rises ({$loss[0]} -> {$loss[59]})", down & loss[59] < loss[0]) & ok;
+		return ok;
+	}
+
+	function : Section2() ~ Bool {
+		ok := true;
+		# ---- early stopping
+		es := GradientBoostingRegressor->New(500, 0.3, 3, 5);
+		ok := Report("SetEarlyStopping accepts 8, 0.2", es->SetEarlyStopping(8, 0.2)) & ok;
+		ok := Report("early stopping fits", es->Fit(@trx, @try_)) & ok;
+		ok := Report("early stopping stops before 500 stages (kept {$es->GetNumStages()})", es->GetStopped() & es->GetNumStages() < 500) & ok;
+		vl := es->GetValidationLoss();
+		best := 0;
+		each(i : vl->Size()) {
+			if(vl[i] < vl[best]) {
+				best := i;
+			};
+		};
+
+		ok := Report("the model is cut back to the stage with the lowest validation loss ({$best})", es->GetBestIteration() = best & es->GetNumStages() = best + 1) & ok;
+		ok := Report("the loop ran exactly patience stages past the best", vl->Size() = best + 1 + 8) & ok;
+		ok := Report("the train loss history covers the stages that ran", es->GetTrainLoss()->Size() = vl->Size()) & ok;
+		sp := es->StagedPredict(@tex);
+		ok := Report("staged predictions cover the kept stages", sp->Size()[0] = best + 1) & ok;
+
+		# pure noise: nothing to learn, so it stops almost at once
+		nx := Float->New[300, 3];
+		ny := Float->New[300];
+		rnd := System.ML.Random->New(77);
+		each(i : 300) {
+			each(j : 3) {
+				nx[i, j] := rnd->NextReal();
+			};
+
+			ny[i] := rnd->NextReal();
+		};
+
+		ns := GradientBoostingRegressor->New(400, 0.2, 3, 1);
+		ns->SetEarlyStopping(5, 0.25);
+		ns->Fit(nx, ny);
+		ok := Report("pure noise stops early ({$ns->GetNumStages()} stages kept)", ns->GetStopped() & ns->GetNumStages() < 60) & ok;
+
+		# a validation set of the caller's own
+		ev := GradientBoostingRegressor->New(500, 0.3, 3, 5);
+		ev->SetEarlyStopping(8, 0.2);
+		ev->Fit(@trx, @try_, @tex, @tey);
+		ok := Report("an explicit validation set stops too ({$ev->GetNumStages()} stages)", ev->GetStopped() & ev->GetNumStages() < 500) & ok;
+		ok := Report("the explicit validation loss at the best stage is the model's own test mse", Float->Abs(ev->GetValidationLoss()[ev->GetBestIteration()] - ev->Score(@tex, @tey)) < 0.000000000001) & ok;
+
+		# no early stopping when patience is 0
+		full := GradientBoostingRegressor->New(40, 0.3, 3, 5);
+		full->Fit(@trx, @try_, @tex, @tey);
+		ok := Report("patience 0 runs every stage and keeps them", full->GetNumStages() = 40 & full->GetStopped() = false & full->GetValidationLoss()->Size() = 40) & ok;
+
+		# a classifier stops too
+		cs := GradientBoostingClassifier->New(500, 0.3, 4, 5);
+		cs->SetEarlyStopping(6, 0.2);
+		cs->Fit(@btrx, @btry);
+		ok := Report("a classifier stops early ({$cs->GetNumStages()} stages)", cs->GetStopped() & cs->GetNumStages() < 500) & ok;
+		return ok;
+	}
+
+	function : Section3() ~ Bool {
+		ok := true;
+		# ---- seeds
+		a1 := GradientBoostingRegressor->New(40, 0.1, 3, 9);
+		a1->SetSubsample(0.5);
+		a1->SetColumnSample(0.5);
+		a1->Fit(@trx, @try_);
+		a2 := GradientBoostingRegressor->New(40, 0.1, 3, 9);
+		a2->SetSubsample(0.5);
+		a2->SetColumnSample(0.5);
+		a2->Fit(@trx, @try_);
+		a3 := GradientBoostingRegressor->New(40, 0.1, 3, 10);
+		a3->SetSubsample(0.5);
+		a3->SetColumnSample(0.5);
+		a3->Fit(@trx, @try_);
+		ok := Report("the same seed gives the same subsampled model", Same(a1->Predict(@tex), a2->Predict(@tex))) & ok;
+		ok := Report("another seed gives a different one", Same(a1->Predict(@tex), a3->Predict(@tex)) = false) & ok;
+		full1 := GradientBoostingRegressor->New(40, 0.1, 3, 9);
+		full1->Fit(@trx, @try_);
+		full2 := GradientBoostingRegressor->New(40, 0.1, 3, 10);
+		full2->Fit(@trx, @try_);
+		ok := Report("without subsampling the seed changes nothing", Same(full1->Predict(@tex), full2->Predict(@tex))) & ok;
+		ok := Report("subsampled training is still a good model (mse {$a1->Score(@tex, @tey)})", a1->Score(@tex, @tey) < 0.08) & ok;
+		cs1 := GradientBoostingClassifier->New(40, 0.1, 3, 3);
+		cs1->SetSubsample(0.6);
+		cs1->Fit(@btrx, @btry);
+		cs2 := GradientBoostingClassifier->New(40, 0.1, 3, 3);
+		cs2->SetSubsample(0.6);
+		cs2->Fit(@btrx, @btry);
+		ok := Report("a subsampled classifier with the same seed repeats", Same(cs1->PredictScore(@btex), cs2->PredictScore(@btex))) & ok;
+		return ok;
+	}
+
+	function : Section4() ~ Bool {
+		ok := true;
+		# ---- staged predictions
+		stg := @m->StagedPredict(@tex);
+		last := Float->New[200];
+		each(i : 200) {
+			last[i] := stg[59, i];
+		};
+
+		ok := Report("StagedPredict last row equals Predict", Same(last, @m->Predict(@tex))) & ok;
+		mid := Float->New[200];
+		each(i : 200) {
+			mid[i] := stg[19, i];
+		};
+
+		ok := Report("StagedPredict row 19 equals Predict(X, 20)", Same(mid, @m->Predict(@tex, 20))) & ok;
+		ok := Report("StagedPredict row 0 equals Predict(X, 1)", Float->Abs(stg[0, 7] - @m->Predict(@tex, 1)[7]) < 0.000000000001) & ok;
+
+		scl := @mc->StagedPredict(@mtex);
+		pl := @mc->Predict(@mtex);
+		same := scl->Size()[0] = 30;
+		each(i : 200) {
+			if(scl[29, i] <> pl[i]) {
+				same := false;
+			};
+		};
+
+		ok := Report("classifier StagedPredict last row equals Predict", same) & ok;
+		p10 := @mc->Predict(@mtex, 10);
+		same := true;
+		each(i : 200) {
+			if(scl[9, i] <> p10[i]) {
+				same := false;
+			};
+		};
+
+		ok := Report("classifier StagedPredict row 9 equals Predict(X, 10)", same) & ok;
+		return ok;
+	}
+
+	function : Section5() ~ Bool {
+		ok := true;
+		# ---- probabilities
+		pl := @mc->Predict(@mtex);
+		pr := @mc->PredictProba(@mtex);
+		sums := true;
+		inrange := true;
+		each(i : 200) {
+			s := 0.0;
+			each(k : 3) {
+				s += pr[i, k];
+				if(pr[i, k] < 0.0 | pr[i, k] > 1.0) {
+					inrange := false;
+				};
+			};
+
+			if(Float->Abs(s - 1.0) > 0.000000000001) {
+				sums := false;
+			};
+		};
+
+		ok := Report("multiclass probabilities sum to 1 and lie in [0, 1]", sums & inrange & pr->Size()[1] = 3) & ok;
+		ok := Report("Predict is the arg max of PredictProba", ArgMaxAgrees(pr, pl)) & ok;
+		bp := @bc->PredictProba(@btex);
+		sums := true;
+		each(i : 200) {
+			if(Float->Abs(bp[i, 0] + bp[i, 1] - 1.0) > 0.000000000001) {
+				sums := false;
+			};
+		};
+
+		ok := Report("binary probabilities sum to 1", sums & bp->Size()[1] = 2) & ok;
+		st0 := @mc->PredictProba(@mtex, 0);
+		ok := Report("with no stages the probabilities are the class priors (sum 1, equal rows)", Float->Abs(st0[0, 0] - st0[7, 0]) < 0.000000000001 & Float->Abs(st0[0, 0] + st0[0, 1] + st0[0, 2] - 1.0) < 0.000000000001) & ok;
+		return ok;
+	}
+
+	function : Section6() ~ Bool {
+		ok := true;
+		# ---- importances
+		imp := @m->GetFeatureImportances();
+		total := 0.0;
+		top := 0;
+		each(j : imp) {
+			total += imp[j];
+			if(imp[j] > imp[top]) {
+				top := j;
+			};
+		};
+
+		ok := Report("importances sum to 1", Float->Abs(total - 1.0) < 0.000000000001) & ok;
+		ok := Report("the feature that drives sin(3 x0) is the most important (feature {$top})", top = 0) & ok;
+		ok := Report("the noise-only feature 5 has little importance ({$imp[5]})", imp[5] < 0.02) & ok;
+		counts := @m->GetSplitCounts();
+		splits := 0;
+		each(j : counts) {
+			splits += counts[j];
+		};
+
+		ok := Report("split counts add up to leaves - trees", splits = @m->GetLeafCount() - @m->GetNumStages()) & ok;
+		mimp := @mc->GetFeatureImportances();
+		total := 0.0;
+		each(j : mimp) {
+			total += mimp[j];
+		};
+
+		ok := Report("multiclass importances sum to 1", Float->Abs(total - 1.0) < 0.000000000001 & mimp->Size() = 5) & ok;
+		raw := @m->GetGainTotals();
+		ok := Report("gain totals are all non-negative", raw[0] > 0.0 & raw[5] >= 0.0) & ok;
+		return ok;
+	}
+
+	function : Section7() ~ Bool {
+		ok := true;
+		# ---- histogram search equals the exact search when features have few distinct values
+		cx := Float->New[500, 6];
+		each(i : 500) {
+			each(j : 6) {
+				cx[i, j] := ((@trx[i, j] * 5.0)->Floor())->As(Float);
+			};
+		};
+
+		ex := GradientBoostingRegressor->New(40, 0.1, 3, 1);
+		ex->Fit(cx, @try_);
+		hx := GradientBoostingRegressor->New(40, 0.1, 3, 1);
+		ok := Report("SetHistogram(255) accepted", hx->SetHistogram(255)) & ok;
+		hx->Fit(cx, @try_);
+		ok := Report("11 distinct values per feature: histogram search equals exact search", Close(ex->Predict(cx), hx->Predict(cx), 0.000000001)) & ok;
+		hb := GradientBoostingRegressor->New(40, 0.1, 3, 1);
+		hb->SetHistogram(16);
+		hb->Fit(@trx, @try_);
+		ok := Report("16 bins on continuous data still learns (test mse {$hb->Score(@tex, @tey)})", hb->Score(@tex, @tey) < 0.08) & ok;
+		hc := GradientBoostingClassifier->New(40, 0.1, 3, 1);
+		hc->SetHistogram(64);
+		hc->Fit(@mtrx, @mtry);
+		ok := Report("histogram multiclass learns (accuracy {$hc->Score(@mtex, @mtey)})", hc->Score(@mtex, @mtey) > 0.7) & ok;
+		return ok;
+	}
+
+	function : Section8() ~ Bool {
+		ok := true;
+		# ---- weights
+		ones := Float->New[500];
+		twos := Float->New[500];
+		each(i : 500) {
+			ones[i] := 1.0;
+			twos[i] := 2.0;
+		};
+
+		w1 := GradientBoostingRegressor->New(30, 0.1, 3, 1);
+		w1->Fit(@trx, @try_, ones);
+		w2 := GradientBoostingRegressor->New(30, 0.1, 3, 1);
+		w2->Fit(@trx, @try_, twos);
+		plain := GradientBoostingRegressor->New(30, 0.1, 3, 1);
+		plain->Fit(@trx, @try_);
+		ok := Report("weights of 1 equal no weights", Close(w1->Predict(@tex), plain->Predict(@tex), 0.000000000001)) & ok;
+		ok := Report("weights of 2 equal weights of 1 at lambda 0", Close(w2->Predict(@tex), plain->Predict(@tex), 0.000001)) & ok;
+		heavy := Float->New[500];
+		each(i : 500) {
+			heavy[i] := 1.0;
+			if(i < 250) {
+				heavy[i] := 0.0;
+			};
+		};
+
+		wz := GradientBoostingRegressor->New(30, 0.1, 3, 1);
+		wz->Fit(@trx, @try_, heavy);
+		ok := Report("zero weights fit (those rows steer nothing)", wz->IsFitted()) & ok;
+		return ok;
+	}
+
+	function : Section9() ~ Bool {
+		ok := true;
+		# ---- missing values
+		gx := Float->New[500, 6];
+		rm := System.ML.Random->New(5);
+		holes := 0;
+		each(i : 500) {
+			each(j : 6) {
+				gx[i, j] := @trx[i, j];
+				if(rm->NextReal() < 0.15) {
+					gx[i, j] := Float->NaN();
+					holes += 1;
+				};
+			};
+		};
+
+		gm := GradientBoostingRegressor->New(60, 0.1, 3, 1);
+		ok := Report("a matrix with {$holes} NaNs fits", gm->Fit(gx, @try_)) & ok;
+		gp := gm->Predict(@tex);
+		finite := true;
+		each(i : gp) {
+			if(gp[i] <> gp[i]) {
+				finite := false;
+			};
+		};
+
+		ok := Report("and predicts finite values", finite) & ok;
+		ok := Report("and still beats the constant predictor (mse {$gm->Score(@tex, @tey)} against {$Variance(@tey)})", gm->Score(@tex, @tey) < 0.6 * Variance(@tey)) & ok;
+		gh := GradientBoostingRegressor->New(60, 0.1, 3, 1);
+		gh->SetHistogram(64);
+		ok := Report("the histogram search takes missing values too", gh->Fit(gx, @try_) & gh->Score(@tex, @tey) < 0.6 * Variance(@tey)) & ok;
+		gc := GradientBoostingClassifier->New(40, 0.1, 3, 1);
+		ok := Report("a classifier takes missing values", gc->Fit(gx, @btry) & gc->PredictProba(gx) <> Nil) & ok;
+		return ok;
+	}
+
+	function : Section10() ~ Bool {
+		ok := true;
+		# ---- robust losses against outliers in the training targets
+		oy := Float->New[500];
+		each(i : 500) {
+			oy[i] := @try_[i];
+			if(i % 25 = 0) {
+				oy[i] := @try_[i] + 200.0;
+			};
+		};
+
+		sq := GradientBoostingRegressor->New(60, 0.1, 3, 1);
+		sq->SetMinSamplesLeaf(5);
+		sq->Fit(@trx, oy);
+		ab := GradientBoostingRegressor->New(BoostLoss->ABSOLUTE, 60, 0.1, 3, 1);
+		ab->SetMinSamplesLeaf(5);
+		ab->Fit(@trx, oy);
+		hu := GradientBoostingRegressor->New(BoostLoss->HUBER, 60, 0.1, 3, 1);
+		hu->SetMinSamplesLeaf(5);
+		hu->Fit(@trx, oy);
+		sq_mse := Mse(sq->Predict(@tex), @tey);
+		ab_mse := Mse(ab->Predict(@tex), @tey);
+		hu_mse := Mse(hu->Predict(@tex), @tey);
+		ok := Report("20 outliers of +200: absolute loss mse {$ab_mse} beats squared {$sq_mse}", ab_mse < 0.25 * sq_mse & ab_mse < 0.2) & ok;
+		ok := Report("huber loss mse {$hu_mse} beats squared {$sq_mse}", hu_mse < 0.25 * sq_mse) & ok;
+		ok := Report("GetLoss reports the loss", ab->GetLoss() = BoostLoss->ABSOLUTE & hu->GetLoss() = BoostLoss->HUBER & @m->GetLoss() = BoostLoss->SQUARED) & ok;
+		hf := GradientBoostingRegressor->New(BoostLoss->HUBER, 60, 0.1, 3, 1);
+		ok := Report("SetHuber(0.5, 0.9) accepted", hf->SetHuber(0.5, 0.9)) & ok;
+		hf->SetMinSamplesLeaf(5);
+		hf->Fit(@trx, oy);
+		ok := Report("a fixed huber delta fits and resists the outliers", Mse(hf->Predict(@tex), @tey) < 0.25 * sq_mse) & ok;
+		return ok;
+	}
+
+	function : Section11() ~ Bool {
+		ok := true;
+		# ---- refusals
+		bad := GradientBoostingRegressor->New(10, 0.1, 3, 1);
+		ok := Report("unfitted: Predict is Nil", bad->Predict(@tex) = Nil & bad->StagedPredict(@tex) = Nil & bad->GetFeatureImportances() = Nil & bad->GetNumStages() = 0) & ok;
+		ok := Report("unfitted: Score is NaN", bad->Score(@tex, @tey) <> bad->Score(@tex, @tey)) & ok;
+		ok := Report("Nil X refused", bad->Fit(Nil, @try_) = false & bad->GetError()->Size() > 0) & ok;
+		ok := Report("y of the wrong length refused", bad->Fit(@trx, Part(@try_, 0, 10)) = false) & ok;
+		ok := Report("one row refused", bad->Fit(Rows(@trx, 0, 1), Part(@try_, 0, 1)) = false) & ok;
+		nan_y := Part(@try_, 0, 500);
+		nan_y[7] := Float->NaN();
+		ok := Report("NaN in y refused, row named", bad->Fit(@trx, nan_y) = false & bad->GetError()->Find("row 7") >= 0) & ok;
+		ok := Report("negative weight refused", bad->Fit(@trx, @try_, Neg(500)) = false) & ok;
+		ok := Report("a failed fit leaves the model unfitted", bad->IsFitted() = false) & ok;
+		ok := Report("setter: learning rate 0 refused at fit", GradientBoostingRegressor->New(10, 0.0, 3, 1)->Fit(@trx, @try_) = false) & ok;
+		ok := Report("setter: depth 0 refused at fit", GradientBoostingRegressor->New(10, 0.1, 0, 1)->Fit(@trx, @try_) = false) & ok;
+		ok := Report("setter: zero stages refused at fit", GradientBoostingRegressor->New(0, 0.1, 3, 1)->Fit(@trx, @try_) = false) & ok;
+		ok := Report("SetSubsample(0.0) refused", bad->SetSubsample(0.0) = false & bad->GetError()->Size() > 0) & ok;
+		ok := Report("SetSubsample(1.5) refused", bad->SetSubsample(1.5) = false) & ok;
+		ok := Report("SetColumnSample(0.0) refused", bad->SetColumnSample(0.0) = false) & ok;
+		ok := Report("SetLambda(-1.0) refused", bad->SetLambda(-1.0) = false) & ok;
+		ok := Report("SetMinSplitGain(-1.0) refused", bad->SetMinSplitGain(-1.0) = false) & ok;
+		ok := Report("SetMinChildWeight(-1.0) refused", bad->SetMinChildWeight(-1.0) = false) & ok;
+		ok := Report("SetMinSamplesLeaf(0) refused", bad->SetMinSamplesLeaf(0) = false) & ok;
+		ok := Report("SetHistogram(1) and SetHistogram(256) refused", bad->SetHistogram(1) = false & bad->SetHistogram(256) = false) & ok;
+		ok := Report("SetEarlyStopping(-1, 0.1) and (3, 0.9) refused", bad->SetEarlyStopping(-1, 0.1) = false & bad->SetEarlyStopping(3, 0.9) = false) & ok;
+		ok := Report("SetHuber(-1.0, 0.9) and SetHuber(1.0, 1.0) refused", bad->SetHuber(-1.0, 0.9) = false & bad->SetHuber(1.0, 1.0) = false) & ok;
+
+		# a refused refit keeps the earlier model
+		keep := GradientBoostingRegressor->New(20, 0.1, 3, 1);
+		keep->Fit(@trx, @try_);
+		before := keep->Predict(@tex);
+		keep->Fit(Nil, @try_);
+		ok := Report("a refused refit keeps the earlier model", keep->IsFitted() & Same(before, keep->Predict(@tex))) & ok;
+		narrow := Float->New[3, 4];
+		ok := Report("a wrong-width X at predict time gives Nil, with a reason", keep->Predict(narrow) = Nil & keep->GetError()->Find("6 columns") >= 0) & ok;
+
+		oneclass := GradientBoostingClassifier->New(10, 0.1, 3, 1);
+		ok := Report("a single class is refused", oneclass->Fit(@btrx, Int->New[500]) = false & oneclass->GetError()->Size() > 0) & ok;
+		ok := Report("unfitted classifier: PredictProba, Predict, GetClasses are Nil", oneclass->PredictProba(@btex) = Nil & oneclass->Predict(@btex) = Nil & oneclass->GetClasses() = Nil) & ok;
+		unk := GradientBoostingClassifier->New(10, 0.1, 3, 1);
+		unk->SetEarlyStopping(3, 0.2);
+		ok := Report("a validation label the training set lacks is refused", unk->Fit(@btrx, @btry, @btex, Fill(200, 9)) = false) & ok;
+		return ok;
+	}
+
+	function : Neg(n : Int) ~ Float[] {
+		w := Float->New[n];
+		w[3] := -1.0;
+		return w;
+	}
+
+	function : Fill(n : Int, v : Int) ~ Int[] {
+		a := Int->New[n];
+		each(i : n) {
+			a[i] := v;
+		};
+
+		return a;
+	}
+
+	function : ArgMaxAgrees(P : Float[,], labels : Int[]) ~ Bool {
+		each(i : labels->Size()) {
+			top := 0;
+			each(k : P->Size()[1]) {
+				if(P[i, k] > P[i, top]) {
+					top := k;
+				};
+			};
+
+			if(top <> labels[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Variance(y : Float[]) ~ Float {
+		mean := 0.0;
+		each(i : y) {
+			mean += y[i];
+		};
+
+		mean /= y->Size()->As(Float);
+		v := 0.0;
+		each(i : y) {
+			v += (y[i] - mean) * (y[i] - mean);
+		};
+
+		return v / y->Size()->As(Float);
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		return Close(a, b, 0.0);
+	}
+
+	function : Close(a : Float[], b : Float[], tol : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(Float->Abs(a[i] - b[i]) > tol) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Mse(p : Float[], y : Float[]) ~ Float {
+		s := 0.0;
+		each(i : p) {
+			d := p[i] - y[i];
+			s += d * d;
+		};
+
+		return s / p->Size()->As(Float);
+	}
+
+	function : Rows(X : Float[,], start : Int, count : Int) ~ Float[,] {
+		cols := X->Size()[1];
+		result := Float->New[count, cols];
+		each(i : count) {
+			each(j : cols) {
+				result[i, j] := X[start + i, j];
+			};
+		};
+
+		return result;
+	}
+
+	function : Part(y : Float[], start : Int, count : Int) ~ Float[] {
+		result := Float->New[count];
+		each(i : count) {
+			result[i] := y[start + i];
+		};
+
+		return result;
+	}
+
+	function : IntPart(y : Int[], start : Int, count : Int) ~ Int[] {
+		result := Int->New[count];
+		each(i : count) {
+			result[i] := y[start + i];
+		};
+
+		return result;
+	}
+
+	function : MakeRegression(X : Float[,], y : Float[]) ~ Nil {
+		r := System.ML.Random->New(11);
+		each(i : 700) {
+			each(j : 6) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			noise := r->NextReal() - 0.5;
+			y[i] := (3.0 * X[i, 0])->Sin() + X[i, 1] * X[i, 1] + 0.5 * X[i, 2] * X[i, 3] + 0.3 * X[i, 4] + 0.2 * noise;
+		};
+	}
+
+	function : MakeBinary(X : Float[,], y : Int[]) ~ Nil {
+		r := System.ML.Random->New(12);
+		each(i : 700) {
+			each(j : 6) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			noise := r->NextReal() - 0.5;
+			z := 1.5 * X[i, 0] + 2.0 * X[i, 1] * X[i, 2] - X[i, 3] + 1.2 * noise;
+			if(z > 0.0) {
+				y[i] := 1;
+			};
+		};
+	}
+
+	function : MakeMulticlass(X : Float[,], y : Int[]) ~ Nil {
+		r := System.ML.Random->New(13);
+		each(i : 700) {
+			each(j : 5) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			s := [X[i, 0] + X[i, 1], X[i, 2] - X[i, 0], X[i, 3] + X[i, 4] * X[i, 1]];
+			best := -1.0e300;
+			bk := 0;
+			each(k : 3) {
+				v := s[k] + 0.6 * (r->NextReal() - 0.5);
+				if(v > best) {
+					best := v;
+					bk := k;
+				};
+			};
+
+			y[i] := bk;
+		};
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+
+		return passed;
+	}
+}

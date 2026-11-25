@@ -1,0 +1,130 @@
+#~
+Gradient boosting with System.ML.Boost: a regressor, a multiclass classifier,
+early stopping, feature importances, staged predictions and a model file.
+
+Compile with:  obc -src gradient_boosting.obs -lib ml_boost,ml,gen_collect,csv
+~#
+use System.ML;
+use System.ML.Boost;
+
+class GradientBoostingDemo {
+	function : Main(args : String[]) ~ Nil {
+		# a seeded data set: y = sin(3 a) + b^2 + 0.5 c d + 0.3 e + noise, with a noise-only feature f
+		rand := System.ML.Random->New(11);
+		rows := 700;
+		X := Float->New[rows, 6];
+		y := Float->New[rows];
+		each(i : rows) {
+			each(j : 6) {
+				X[i, j] := 2.0 * rand->NextReal() - 1.0;
+			};
+
+			y[i] := (3.0 * X[i, 0])->Sin() + X[i, 1] * X[i, 1] + 0.5 * X[i, 2] * X[i, 3] + 0.3 * X[i, 4] + 0.2 * (rand->NextReal() - 0.5);
+		};
+
+		train_x := Slice(X, 0, 500);
+		test_x := Slice(X, 500, 200);
+		train_y := Float->New[500];
+		test_y := Float->New[200];
+		each(i : 500) {
+			train_y[i] := y[i];
+		};
+
+		each(i : 200) {
+			test_y[i] := y[500 + i];
+		};
+
+		# ---- regression
+		model := GradientBoostingRegressor->New(100, 0.1, 3, 42);
+		model->SetSubsample(0.8);
+		if(<>model->Fit(train_x, train_y)) {
+			"fit refused: {$model->GetError()}"->PrintLine();
+			return;
+		};
+
+		"regression: {$model->GetNumStages()} stages, test mean squared error {$model->Score(test_x, test_y)}"->PrintLine();
+
+		importance := model->GetFeatureImportances();
+		each(j : importance) {
+			"  feature {$j}: importance {$importance[j]}"->PrintLine();
+		};
+
+		# the prediction after each stage: the error falls as stages are added
+		staged := model->StagedPredict(test_x);
+		shown := [0, 9, 49, 99];
+		each(s : shown) {
+			stage := shown[s];
+			sum := 0.0;
+			each(i : 200) {
+				d := staged[stage, i] - test_y[i];
+				sum += d * d;
+			};
+
+			count := stage + 1;
+			mse := sum / 200.0;
+			"  after {$count} stages: test mse {$mse}"->PrintLine();
+		};
+
+		# ---- early stopping on a held-out tenth of the training rows
+		stopper := GradientBoostingRegressor->New(1000, 0.1, 3, 42);
+		stopper->SetEarlyStopping(10, 0.1);
+		stopper->Fit(train_x, train_y);
+		"early stopping: asked for 1000 stages, kept {$stopper->GetNumStages()}, stopped {$stopper->GetStopped()}"->PrintLine();
+
+		# ---- a three-class problem
+		labels := Int->New[rows];
+		each(i : rows) {
+			if(y[i] > 1.0) {
+				labels[i] := 2;
+			}
+			else if(y[i] > 0.0) {
+				labels[i] := 1;
+			};
+		};
+
+		train_labels := Int->New[500];
+		test_labels := Int->New[200];
+		each(i : 500) {
+			train_labels[i] := labels[i];
+		};
+
+		each(i : 200) {
+			test_labels[i] := labels[500 + i];
+		};
+
+		classifier := GradientBoostingClassifier->New(60, 0.1, 3, 42);
+		classifier->SetLambda(1.0);
+		classifier->SetHistogram(64);
+		classifier->Fit(train_x, train_labels);
+		proba := classifier->PredictProba(test_x);
+		"classifier: accuracy {$classifier->Score(test_x, test_labels)}, log loss {$classifier->LogLoss(test_x, test_labels)}"->PrintLine();
+		"  first test row: P(class 0) = {$proba[0, 0]}, P(class 1) = {$proba[0, 1]}, P(class 2) = {$proba[0, 2]}"->PrintLine();
+
+		# ---- a model file
+		path := Runtime->GetTempDir() + "/gradient_boosting_demo.bmod";
+		classifier->Store(path);
+		loaded := GradientBoostingClassifier->Load(path);
+		same := true;
+		again := loaded->Predict(test_x);
+		first := classifier->Predict(test_x);
+		each(i : again) {
+			if(again[i] <> first[i]) {
+				same := false;
+			};
+		};
+
+		"stored and loaded: identical predictions {$same}"->PrintLine();
+	}
+
+	function : Slice(X : Float[,], start : Int, count : Int) ~ Float[,] {
+		cols := X->Size()[1];
+		result := Float->New[count, cols];
+		each(i : count) {
+			each(j : cols) {
+				result[i, j] := X[start + i, j];
+			};
+		};
+
+		return result;
+	}
+}

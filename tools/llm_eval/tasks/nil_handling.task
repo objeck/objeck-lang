@@ -1,0 +1,35 @@
+id: nil_handling
+category: quirks
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a function Lookup(id : Int) ~ String that returns "Ada" for id 1 and Nil for any other id. Main calls Lookup(1) and Lookup(2); for each result it prints the name when it is not Nil and prints `missing` when it is Nil. Output is `Ada` then `missing`.
+--- expected
+Ada
+missing
+--- reference
+class NilHandling {
+	function : Lookup(id : Int) ~ String {
+		if(id = 1) {
+			return "Ada";
+		};
+
+		return Nil;
+	}
+
+	function : Show(name : String) ~ Nil {
+		if(name = Nil) {
+			"missing"->PrintLine();
+		}
+		else {
+			name->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Show(Lookup(1));
+		Show(Lookup(2));
+	}
+}

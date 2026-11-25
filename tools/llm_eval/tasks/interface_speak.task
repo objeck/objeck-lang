@@ -1,0 +1,54 @@
+id: interface_speak
+category: classes
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that declares an interface Animal with the method Speak() ~ String and two classes Dog and Cat that implement it (Dog returns "Woof", Cat returns "Meow"). Put one Dog and one Cat in an array of Animal and print, in that order, the lines `Dog says Woof` and `Cat says Meow`, calling Speak through the interface.
+--- expected
+Dog says Woof
+Cat says Meow
+--- reference
+interface Animal {
+	method : virtual : public : Speak() ~ String;
+	method : virtual : public : GetName() ~ String;
+}
+
+class Dog implements Animal {
+	New() {
+	}
+
+	method : public : Speak() ~ String {
+		return "Woof";
+	}
+
+	method : public : GetName() ~ String {
+		return "Dog";
+	}
+}
+
+class Cat implements Animal {
+	New() {
+	}
+
+	method : public : Speak() ~ String {
+		return "Meow";
+	}
+
+	method : public : GetName() ~ String {
+		return "Cat";
+	}
+}
+
+class Zoo {
+	function : Main(args : String[]) ~ Nil {
+		animals := Animal->New[2];
+		animals[0] := Dog->New();
+		animals[1] := Cat->New();
+		each(i : animals) {
+			animal := animals[i];
+			"{$animal->GetName()} says {$animal->Speak()}"->PrintLine();
+		};
+	}
+}

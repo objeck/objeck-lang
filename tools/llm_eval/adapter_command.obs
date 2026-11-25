@@ -1,0 +1,27 @@
+use System.LLM.Eval;
+
+#~
+Adapter for any command line: the prompt is the command's standard input and its standard output is the answer (llm_eval's CommandModel). It evaluates a local runner, a wrapper script around any service, or a canned-answer script, with no client library and no key.
+Flags: --command "LINE" (required, quoted as your shell needs it), --name NAME (the name in the report), --call-timeout SECONDS (default 300)
+~#
+class Provider {
+	function : Usage() ~ String {
+		return "provider command: --command \"LINE\" [--name NAME] [--call-timeout SECONDS]; the prompt is fed to the command's standard input";
+	}
+
+	function : Create(args : String[]) ~ ModelAdapter {
+		command := EvalArgs->Value(args, "--command", Nil);
+		if(command = Nil) {
+			return Nil;
+		};
+
+		work := EvalArgs->Value(args, "--workdir", Nil);
+		if(work = Nil) {
+			work := "{$Runtime->GetTempDir()}{$System.IO.Filesystem.Directory->GetSlash()}llm_eval_command_{$Runtime->GetProcessId()}";
+		};
+
+		model := CommandModel->New(EvalArgs->Value(args, "--name", "command"), command, Sandbox->New(work));
+		model->SetTimeout(EvalArgs->Value(args, "--call-timeout", "300")->ToFloat());
+		return model;
+	}
+}

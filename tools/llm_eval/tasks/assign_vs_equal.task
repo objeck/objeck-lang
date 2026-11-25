@@ -1,0 +1,27 @@
+id: assign_vs_equal
+category: quirks
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that finds the smallest positive integer n whose square is greater than 200. Start n at 1 and use a while loop that keeps incrementing n while n * n is less than or equal to 200. Print n, then print `equal` if n is equal to 15 and `different` otherwise. Remember that Objeck assigns with := and compares with =.
+--- expected
+15
+equal
+--- reference
+class AssignVsEqual {
+	function : Main(args : String[]) ~ Nil {
+		n := 1;
+		while(n * n <= 200) {
+			n := n + 1;
+		};
+		n->PrintLine();
+		if(n = 15) {
+			"equal"->PrintLine();
+		}
+		else {
+			"different"->PrintLine();
+		};
+	}
+}

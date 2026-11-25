@@ -1,0 +1,602 @@
+# EXTRA_LIBS: ml_timeseries,gen_collect
+#~
+System.ML.TimeSeries: the baseline forecasters and exponential smoothing.
+
+Baselines are checked on a small hand-worked series (forecasts, fitted values, residual spread, interval widths
+from the FPP3 formulas) and on a 120-point seasonal series against numpy code in gen_reference.py (1e-10).
+
+Exponential smoothing is checked three ways. (1) Hand recursions: SES on [3, 5, 4] with alpha 0.5 is worked out
+below. (2) With the smoothing parameters FIXED (SetParameters) the fitted SSE and the 14-step forecasts of
+SES, Holt, damped Holt, additive and multiplicative Holt-Winters, additive without trend, and damped additive
+Holt-Winters must equal both gen_reference.py's own recursion and statsmodels' ExponentialSmoothing run with the
+same initial states and optimized=False (1e-9): the initial-state rule is also compared. (3) With the
+parameters FITTED the SSE must be no worse than the best of 25 L-BFGS-B starts on the same objective and the
+forecasts must agree with that optimum's. Intervals are compared with the reference formula. Run from
+programs/regression.
+~#
+use System.IO.Filesystem;
+use Collection;
+use System.ML.TimeSeries;
+
+#~
+Shared by the ml_timeseries_* tests: reads ml_timeseries_ref/expected.txt (written by gen_reference.py, which
+uses statsmodels / scipy / hand-written numpy and never this library) and keeps the pass / fail tally.
+~#
+class TsRef {
+	@m : Map<String, String>;
+	@ok : Bool;
+	@checks : Int;
+
+	New() {
+		@ok := true;
+		@checks := 0;
+		@m := Map->New()<String, String>;
+		text := FileReader->ReadFile("ml_timeseries_ref/expected.txt");
+		if(text = Nil) {
+			"FAIL: ml_timeseries_ref/expected.txt is not readable (run from programs/regression)"->PrintLine();
+			@ok := false;
+			return;
+		};
+
+		lines := text->Split("\n");
+		each(i : lines) {
+			line := lines[i];
+			if(line->Size() > 0 & line->Get(0) <> '#') {
+				f := line->Split("|");
+				if(f->Size() = 3) {
+					@m->Insert("{$f[0]}|{$f[1]}", f[2]);
+				}
+				else if(f->Size() = 2) {
+					@m->Insert("{$f[0]}|{$f[1]}", "");
+				};
+			};
+		};
+	}
+
+	method : public : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : public : Checks() ~ Int {
+		return @checks;
+	}
+
+	method : public : Check(name : String, cond : Bool) ~ Nil {
+		@checks += 1;
+		if(<>cond) {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : public : Get(name : String, key : String) ~ Float[] {
+		k := "{$name}|{$key}";
+		if(<>@m->Has(k)) {
+			"FAIL: no reference value {$k}"->PrintLine();
+			@ok := false;
+			return Float->New[0];
+		};
+
+		text := @m->Find(k);
+		if(text->Size() = 0) {
+			return Float->New[0];
+		};
+
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			if(parts[i]->Equals("nan")) {
+				out[i] := Float->NaN();
+			}
+			else {
+				out[i] := parts[i]->ToFloat();
+			};
+		};
+
+		return out;
+	}
+
+	method : public : One(name : String, key : String) ~ Float {
+		v := Get(name, key);
+		if(v->Size() = 0) {
+			return Float->NaN();
+		};
+
+		return v[0];
+	}
+
+	# |a - b| <= tol * (1 + |b|); two NaNs are equal
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		if(a <> a | b <> b) {
+			return a <> a & b <> b;
+		};
+
+		d := a - b;
+		if(d < 0.0) {
+			d := -d;
+		};
+
+		return d <= tol * (1.0 + b->Abs());
+	}
+
+	# the largest |a[i] - b[i]| / (1 + |b[i]|), NaN positions must agree; 1e300 on a length mismatch
+	function : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 1.0e300;
+		};
+
+		worst := 0.0;
+		each(i : b) {
+			an := a[i] <> a[i];
+			bn := b[i] <> b[i];
+			if(an | bn) {
+				if(an <> bn) {
+					return 1.0e300;
+				};
+			}
+			else {
+				d := a[i] - b[i];
+				if(d < 0.0) {
+					d := -d;
+				};
+				d := d / (1.0 + b[i]->Abs());
+				if(d > worst) {
+					worst := d;
+				};
+			};
+		};
+
+		return worst;
+	}
+
+	# a named comparison of two arrays: passes when the largest relative difference is within tol
+	method : public : Same(name : String, got : Float[], want : Float[], tol : Float) ~ Nil {
+		d := MaxDiff(got, want);
+		n := want->Size();
+		ok := d <= tol;
+		if(<>ok) {
+			"FAIL: {$name}: {$n} values, max relative difference {$d} > {$tol}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	method : public : SameOne(name : String, got : Float, want : Float, tol : Float) ~ Nil {
+		ok := Near(got, want, tol);
+		if(<>ok) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	# the first values of a series generated here must be the reference's (proves the generator is the same)
+	method : public : Head(name : String, series : Float[]) ~ Nil {
+		want := Get(name, "head");
+		got := Float->New[want->Size()];
+		each(i : got) {
+			got[i] := series[i];
+		};
+		Same("series {$name}: generator matches the reference", got, want, 1.0e-12);
+		Check("series {$name}: length", Near(series->Size()->As(Float), One(name, "n"), 0.0));
+	}
+
+	method : public : Finish(test : String) ~ Nil {
+		c := @checks;
+		if(@ok) {
+			"{$test}: all {$c} checks passed"->PrintLine();
+		}
+		else {
+			"FAIL: {$test}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+#~
+The test series, generated by the library from fixed seeds. gen_reference.py generates the same ones.
+~#
+class TsData {
+	@ar1 : Float[];
+	@ar2 : Float[];
+	@ma1 : Float[];
+	@arma11 : Float[];
+	@ts : Float[];
+	@ms : Float[];
+	@rw : Float[];
+
+	New() {
+		@ar1 := Simulate->Arma([0.7], Nil, 0.0, 1.0, 400, 11);
+		@ma1 := Simulate->Arma(Nil, [0.6], 0.0, 1.0, 500, 12);
+		@arma11 := Simulate->Arma([0.5], [0.4], 2.0, 1.0, 600, 13);
+		@ar2 := Simulate->Arma([0.5, -0.3], Nil, 0.0, 1.0, 500, 14);
+		@ts := Simulate->TrendSeasonal(120, 20.0, 0.3, 5.0, 12, 0.5, 15);
+		@ms := Simulate->MultSeasonal(120, 40.0, 0.2, 0.25, 12, 0.02, 16);
+		@rw := Simulate->RandomWalk(200, 0.3, 1.0, 17);
+	}
+
+	method : public : Get(name : String) ~ Float[] {
+		if(name->Equals("ar1")) {
+			return @ar1;
+		};
+		if(name->Equals("ar2")) {
+			return @ar2;
+		};
+		if(name->Equals("ma1")) {
+			return @ma1;
+		};
+		if(name->Equals("arma11")) {
+			return @arma11;
+		};
+		if(name->Equals("ts")) {
+			return @ts;
+		};
+		if(name->Equals("ms")) {
+			return @ms;
+		};
+
+		return @rw;
+	}
+
+	method : public : Names() ~ String[] {
+		return ["ar1", "ar2", "ma1", "arma11", "ts", "ms", "rw"];
+	}
+}
+
+
+class MlTimeseriesSmoothing {
+	function : Main(args : String[]) ~ Nil {
+		t := TsRef->New();
+		if(t->IsOk()) {
+			Baselines(t);
+			HandSes(t);
+			Fixed(t);
+			Fitted(t);
+			Intervals(t);
+			Criteria(t);
+			Refusals(t);
+		};
+		t->Finish("ml_timeseries_smoothing");
+	}
+
+	function : Baselines(t : TsRef) ~ Nil {
+		# hand case: y = [2, 4, 6, 8, 10, 12, 14, 16], period 4
+		y := TimeSeries->New([2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0]);
+		naive := BaselineForecaster->New(BaselineForecaster->Kind->NAIVE);
+		t->Check("naive fits", naive->Fit(y) & naive->IsFitted());
+		f := naive->Forecast(3, 0.9);
+		t->Same("naive forecasts the last value", f->GetMean(), [16.0, 16.0, 16.0], 1.0e-15);
+		# one-step errors are all 2: sigma = sqrt(7 * 4 / 7) = 2, sd = 2 sqrt(h)
+		t->SameOne("naive sigma = 2", naive->GetSigma(), 2.0, 1.0e-14);
+		t->Same("naive sd = 2 sqrt(h)", f->GetSd(), [2.0, 2.0 * Float->Sqrt(2.0), 2.0 * Float->Sqrt(3.0)], 1.0e-14);
+		z := TsMath->IntervalZ(0.9);
+		lo := f->GetLower();
+		hi := f->GetUpper();
+		t->Check("naive interval is mean -/+ z sd, z = {$z}", RefNear(lo[0], 16.0 - z * 2.0) & RefNear(hi[0], 16.0 + z * 2.0));
+		t->SameOne("the interval level is kept", f->GetLevel(), 0.9, 1.0e-15);
+
+		drift := BaselineForecaster->New(BaselineForecaster->Kind->DRIFT);
+		drift->Fit(y);
+		t->SameOne("drift per step is 2", drift->GetDrift(), 2.0, 1.0e-15);
+		t->Same("drift forecasts", drift->Forecast(3, 0.8)->GetMean(), [18.0, 20.0, 22.0], 1.0e-14);
+		# the drift fits y[t-1] + 2 exactly, so the residuals are 0 and the spread is 0
+		t->SameOne("a perfectly linear series has zero drift residual spread", drift->GetSigma(), 0.0, 1.0e-12);
+
+		sn := BaselineForecaster->New(BaselineForecaster->Kind->SEASONAL_NAIVE, 4);
+		sn->Fit(y);
+		t->Same("seasonal naive repeats the last cycle", sn->Forecast(6, 0.8)->GetMean(), [10.0, 12.0, 14.0, 16.0, 10.0, 12.0], 1.0e-15);
+		sd := sn->Forecast(6, 0.8)->GetSd();
+		t->Check("seasonal naive sd steps up each cycle (sqrt(k + 1))", RefNear(sd[0], sd[3]) & RefNear(sd[4], sd[0] * Float->Sqrt(2.0)));
+
+		mean := BaselineForecaster->New(BaselineForecaster->Kind->MEAN);
+		mean->Fit(y);
+		t->Same("mean forecasts the average", mean->Forecast(2, 0.8)->GetMean(), [9.0, 9.0], 1.0e-15);
+		ma := BaselineForecaster->New(BaselineForecaster->Kind->MOVING_AVERAGE, 3);
+		ma->Fit(y);
+		t->Same("moving average of the last 3", ma->Forecast(2, 0.8)->GetMean(), [14.0, 14.0], 1.0e-15);
+		fit := naive->GetFitted();
+		res := naive->GetResiduals();
+		t->Check("naive fitted: NaN first, then the previous value", fit[0] <> fit[0] & fit[1] = 2.0 & fit[7] = 14.0 & res[1] = 2.0 & res[0] <> res[0]);
+
+		# against the reference on the seasonal series
+		s := TsData->New()->Get("ts");
+		series := TimeSeries->New(s);
+		names := ["naive", "snaive", "drift", "mean", "ma"];
+		params := [1, 12, 1, 1, 4];
+		each(i : names) {
+			m := BaselineForecaster->New(KindOf(i), params[i]);
+			t->Check("{$names[i]} fits", m->Fit(series));
+			r := m->Forecast(15, 0.95);
+			t->Same("{$names[i]} forecasts vs numpy", r->GetMean(), t->Get("base_{$names[i]}", "mean"), 1.0e-10);
+			t->Same("{$names[i]} sd vs the FPP3 formula", r->GetSd(), t->Get("base_{$names[i]}", "sd"), 1.0e-10);
+			t->Same("{$names[i]} 95% lower bound", r->GetLower(), t->Get("base_{$names[i]}", "lower95"), 1.0e-10);
+			t->SameOne("{$names[i]} residual sd", m->GetSigma(), t->One("base_{$names[i]}", "sigma"), 1.0e-10);
+		};
+
+		t->Check("names", naive->GetName()->Equals("Naive") & sn->GetName()->Equals("SeasonalNaive(4)") & ma->GetName()->Equals("MovingAverage(3)"));
+		c := sn->Copy();
+		unfitted := <>c->IsFitted();
+		t->Check("Copy is unfitted but configured", unfitted & c->GetName()->Equals("SeasonalNaive(4)") & c->Fit(y));
+		cm := c->Forecast(1, 0.8)->GetMean();
+		t->Check("and forecasts like the original", cm[0] = 10.0);
+	}
+
+	function : KindOf(i : Int) ~ BaselineForecaster->Kind {
+		if(i = 0) {
+			return BaselineForecaster->Kind->NAIVE;
+		};
+		if(i = 1) {
+			return BaselineForecaster->Kind->SEASONAL_NAIVE;
+		};
+		if(i = 2) {
+			return BaselineForecaster->Kind->DRIFT;
+		};
+		if(i = 3) {
+			return BaselineForecaster->Kind->MEAN;
+		};
+
+		return BaselineForecaster->Kind->MOVING_AVERAGE;
+	}
+
+	function : RefNear(a : Float, b : Float) ~ Bool {
+		return TsRef->Near(a, b, 1.0e-12);
+	}
+
+	# SES on [3, 5, 4], alpha 0.5, initial level 3 (y[0]): forecasts 3, 3, 4 -> errors 0, 2, 0 (see the worked table)
+	function : HandSes(t : TsRef) ~ Nil {
+		ses := ExponentialSmoothing->Simple();
+		ses->SetParameters(0.5, 0.0, 0.0, 1.0);
+		t->Check("SES fits [3, 5, 4]", ses->Fit(TimeSeries->New([3.0, 5.0, 4.0])));
+		# t0: f = 3, e = 0, l = 3; t1: f = 3, e = 2, l = 0.5 * 5 + 0.5 * 3 = 4; t2: f = 4, e = 0, l = 4
+		t->Same("SES fitted values", ses->GetFitted(), [3.0, 3.0, 4.0], 1.0e-15);
+		t->Same("SES residuals", ses->GetResiduals(), [0.0, 2.0, 0.0], 1.0e-15);
+		t->SameOne("SES SSE", ses->GetSse(), 4.0, 1.0e-15);
+		f := ses->Forecast(3, 0.8);
+		t->Same("SES forecasts the final level 4", f->GetMean(), [4.0, 4.0, 4.0], 1.0e-15);
+		# sigma^2 = 4 / 3; c[j] = alpha = 0.5: sd = sigma sqrt(1 + (h - 1) * 0.25)
+		sg := Float->Sqrt(4.0 / 3.0);
+		t->Same("SES interval widens as sqrt(1 + (h-1) alpha^2)", f->GetSd(), [sg, sg * Float->Sqrt(1.25), sg * Float->Sqrt(1.5)], 1.0e-13);
+
+		# Holt by hand on a straight line y = 1, 3, 5, 7, 9 with alpha 0.5, beta 0.5: the initial line (slope 2, level -1 before the start)
+		holt := ExponentialSmoothing->Holt(false);
+		holt->SetParameters(0.5, 0.5, 0.0, 1.0);
+		t->Check("Holt fits a line", holt->Fit(TimeSeries->New([1.0, 3.0, 5.0, 7.0, 9.0])));
+		t->SameOne("initial trend 2", holt->GetInitialTrend(), 2.0, 1.0e-12);
+		t->SameOne("initial level -1", holt->GetInitialLevel(), -1.0, 1.0e-12);
+		t->SameOne("an exact line has SSE 0", holt->GetSse(), 0.0, 1.0e-20);
+		t->Same("Holt extends the line", holt->Forecast(3, 0.8)->GetMean(), [11.0, 13.0, 15.0], 1.0e-12);
+
+		# damped trend: forecast is l + (phi + phi^2 + ...) b
+		dh := ExponentialSmoothing->Holt(true);
+		dh->SetParameters(0.5, 0.5, 0.0, 0.5);
+		dh->Fit(TimeSeries->New([1.0, 3.0, 5.0, 7.0, 9.0]));
+		l := dh->GetFinalLevel();
+		b := dh->GetFinalTrend();
+		t->Same("damped Holt forecast = l + (phi + phi^2) b", dh->Forecast(2, 0.8)->GetMean(), [l + 0.5 * b, l + 0.75 * b], 1.0e-12);
+	}
+
+	function : Config(name : String) ~ ExponentialSmoothing {
+		add := ExponentialSmoothing->Season->ADDITIVE;
+		if(name->Equals("ses")) {
+			return ExponentialSmoothing->Simple();
+		};
+		if(name->Equals("holt")) {
+			return ExponentialSmoothing->Holt(false);
+		};
+		if(name->Equals("holtd")) {
+			return ExponentialSmoothing->Holt(true);
+		};
+		if(name->Equals("hwa")) {
+			return ExponentialSmoothing->HoltWinters(12, false);
+		};
+		if(name->Equals("hwm")) {
+			return ExponentialSmoothing->HoltWinters(12, true);
+		};
+		if(name->Equals("hwa_notrend")) {
+			return ExponentialSmoothing->New(false, false, add, 12);
+		};
+
+		return ExponentialSmoothing->New(true, true, add, 12);
+	}
+
+	function : Names() ~ String[] {
+		return ["ses", "holt", "holtd", "hwa", "hwm", "hwa_notrend", "hwad"];
+	}
+
+	function : Data(t : TsRef, name : String) ~ TimeSeries {
+		d := TsData->New();
+		if(name->Equals("hwm")) {
+			return TimeSeries->New(d->Get("ms"));
+		};
+
+		return TimeSeries->New(d->Get("ts"));
+	}
+
+	function : Skip(a : Float[], name : String) ~ Float[] {
+		if(<>(name->Equals("hwa") | name->Equals("hwm") | name->Equals("hwa_notrend") | name->Equals("hwad"))) {
+			return a;
+		};
+
+		out := Float->New[a->Size() - 1];
+		k := 0;
+		each(i : a) {
+			if(i <> 11) {
+				out[k] := a[i];
+				k += 1;
+			};
+		};
+
+		return out;
+	}
+
+	function : Fixed(t : TsRef) ~ Nil {
+		names := Names();
+		each(i : names) {
+			n := names[i];
+			key := "es_{$n}";
+			p := t->Get(key, "fixed_params");
+			m := Config(n);
+			m->SetParameters(p[0], p[1], p[2], p[3]);
+			t->Check("{$n}: fits with fixed parameters", m->Fit(Data(t, n)));
+			t->SameOne("{$n}: initial level vs the documented rule", m->GetInitialLevel(), t->One(key, "init_level"), 1.0e-10);
+			t->SameOne("{$n}: initial trend", m->GetInitialTrend(), t->One(key, "init_trend"), 1.0e-10);
+			if(n->Equals("hwa") | n->Equals("hwm") | n->Equals("hwa_notrend") | n->Equals("hwad")) {
+				t->Same("{$n}: initial seasonal values", m->GetInitialSeasonal(), t->Get(key, "init_seasonal"), 1.0e-10);
+			};
+
+			t->SameOne("{$n}: SSE vs the reference recursion", m->GetSse(), t->One(key, "fixed_sse"), 1.0e-10);
+			t->SameOne("{$n}: SSE vs statsmodels (known initial states, optimized=False)", m->GetSse(), t->One(key, "sm_fixed_sse"), 1.0e-9);
+			t->Same("{$n}: 14 forecasts vs the reference recursion", m->Forecast(14, 0.95)->GetMean(), t->Get(key, "fixed_fc"), 1.0e-10);
+			# statsmodels forecasts a step that is a multiple of the period (h = 12 here) with the seasonal value from
+			# BEFORE the last update (s[n - m]); the textbook forecast, which the recursion in gen_reference.py and this
+			# library use, takes the updated s[n]. So that one step is left out of the statsmodels comparison.
+			t->Same("{$n}: 14 forecasts vs statsmodels (h = 12 excluded for seasonal models)", Skip(m->Forecast(14, 0.95)->GetMean(), n), Skip(t->Get(key, "sm_fixed_fc"), n), 1.0e-9);
+			fit := m->GetFitted();
+			head := Float->New[8];
+			each(k : 8) {
+				head[k] := fit[k];
+			};
+			t->Same("{$n}: first fitted values", head, t->Get(key, "fixed_fitted_head"), 1.0e-10);
+		};
+	}
+
+	function : Fitted(t : TsRef) ~ Nil {
+		names := Names();
+		each(i : names) {
+			n := names[i];
+			key := "es_{$n}";
+			m := Config(n);
+			ok := m->Fit(Data(t, n));
+			t->Check("{$n}: fits", ok);
+			sse := m->GetSse();
+			ref := t->One(key, "opt_sse");
+			t->Check("{$n}: fitted SSE {$sse} is no worse than the best of 25 reference starts {$ref}", sse <= ref * 1.0001);
+			sm := t->One(key, "sm_opt_sse");
+			# statsmodels allows damping up to 0.995; ours stops at 0.98, so only the undamped / equal-bounds cases must match its optimum
+			if(<>(n->Equals("hwad") | n->Equals("holtd"))) {
+				t->Check("{$n}: no worse than statsmodels' optimizer {$sm} (it allows a = 1, ours stops at 0.9999)", sse <= sm * 1.001);
+			};
+			# the optimum is found: not noticeably better than ours either, so the two minimize the same function
+			t->Check("{$n}: and not suspiciously below the reference ({$sse} vs {$ref})", sse >= ref * 0.999);
+			t->Check("{$n}: parameters are inside their bounds", m->GetAlpha() > 0.0 & m->GetAlpha() < 1.0 & m->GetBeta() >= 0.0 & m->GetBeta() < 1.0 & m->GetGamma() >= 0.0 & m->GetGamma() < 1.0 & m->GetPhi() >= 0.8 & m->GetPhi() <= 1.0);
+			if(sse <= ref * 1.0000001 & sse >= ref * 0.9999999) {
+				# same optimum: the forecasts agree
+				t->Same("{$n}: forecasts at the optimum", m->Forecast(14, 0.95)->GetMean(), t->Get(key, "opt_fc"), 1.0e-6);
+			};
+		};
+
+		# the optimizer is deterministic
+		a := ExponentialSmoothing->HoltWinters(12, false);
+		b := ExponentialSmoothing->HoltWinters(12, false);
+		a->Fit(Data(t, "hwa"));
+		b->Fit(Data(t, "hwa"));
+		t->Check("fitting twice gives identical parameters", a->GetAlpha() = b->GetAlpha() & a->GetBeta() = b->GetBeta() & a->GetGamma() = b->GetGamma() & a->GetSse() = b->GetSse());
+	}
+
+	function : Intervals(t : TsRef) ~ Nil {
+		names := Names();
+		each(i : names) {
+			n := names[i];
+			key := "es_{$n}";
+			m := Config(n);
+			m->Fit(Data(t, n));
+			sse := m->GetSse();
+			ref := t->One(key, "opt_sse");
+			if(sse <= ref * 1.0000001 & sse >= ref * 0.9999999) {
+				f := m->Forecast(14, 0.95);
+				t->Same("{$n}: forecast sd vs the reference formula", f->GetSd(), t->Get(key, "opt_sd"), 1.0e-5);
+				lo := f->GetLower();
+				hi := f->GetUpper();
+				mean := f->GetMean();
+				sd := f->GetSd();
+				z := 1.959963984540054;
+				good := true;
+				each(k : 14) {
+					if(<>TsRef->Near(lo[k], mean[k] - z * sd[k], 1.0e-12) | <>TsRef->Near(hi[k], mean[k] + z * sd[k], 1.0e-12)) {
+						good := false;
+					};
+				};
+				t->Check("{$n}: interval is mean -/+ 1.96 sd", good);
+				widening := true;
+				for(k := 1; k < 14; k += 1;) {
+					if(sd[k] < sd[k - 1] - 1.0e-12 & <>n->Equals("hwm")) {
+						widening := false;
+					};
+				};
+				t->Check("{$n}: the interval never narrows (multiplicative scales with the forecast, so it is exempt)", widening);
+			};
+		};
+
+		# a wider level gives a wider interval
+		m := ExponentialSmoothing->HoltWinters(12, false);
+		m->Fit(Data(t, "hwa"));
+		w80 := m->Forecast(3, 0.8);
+		w99 := m->Forecast(3, 0.99);
+		u99 := w99->GetUpper();
+		l99 := w99->GetLower();
+		u80 := w80->GetUpper();
+		l80 := w80->GetLower();
+		t->Check("a 99% interval is wider than an 80% one", u99[0] - l99[0] > u80[0] - l80[0]);
+	}
+
+	function : Criteria(t : TsRef) ~ Nil {
+		names := Names();
+		each(i : names) {
+			n := names[i];
+			key := "es_{$n}";
+			m := Config(n);
+			m->Fit(Data(t, n));
+			ref := t->One(key, "opt_sse");
+			if(m->GetSse() <= ref * 1.0000001 & m->GetSse() >= ref * 0.9999999) {
+				kref := t->One(key, "opt_k");
+				kgot := m->GetNumParams();
+				t->Check("{$n}: parameter count k = {$kgot} vs reference {$kref}", kgot->As(Float) = kref);
+				t->SameOne("{$n}: AIC", m->GetAic(), t->One(key, "opt_aic"), 1.0e-6);
+				t->SameOne("{$n}: AICc", m->GetAicc(), t->One(key, "opt_aicc"), 1.0e-6);
+				t->SameOne("{$n}: BIC", m->GetBic(), t->One(key, "opt_bic"), 1.0e-6);
+			};
+		};
+
+		m := Config("holt");
+		m->Fit(Data(t, "holt"));
+		t->Check("AICc exceeds AIC and BIC exceeds AIC for n = 120", m->GetAicc() > m->GetAic() & m->GetBic() > m->GetAic());
+		t->Check("GetLogLik is consistent with AIC", TsRef->Near(m->GetAic(), -2.0 * m->GetLogLik() + 2.0 * m->GetNumParams()->As(Float), 1.0e-12));
+		t->Check("GetSigma2 is SSE / n", TsRef->Near(m->GetSigma2(), m->GetSse() / 120.0, 1.0e-12));
+		t->Check("names", Config("ses")->GetName()->Equals("ES(N,N)") & Config("holtd")->GetName()->Equals("ES(Ad,N)") & Config("hwm")->GetName()->Equals("ES(A,M,12)") & Config("hwad")->GetName()->Equals("ES(Ad,A,12)"));
+	}
+
+	function : Refusals(t : TsRef) ~ Nil {
+		short := TimeSeries->New([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0]);
+		hw := ExponentialSmoothing->HoltWinters(12, false);
+		t->Check("a series shorter than two periods is refused with a reason", <>hw->Fit(short) & hw->GetError()->Size() > 0 & <>hw->IsFitted());
+		f := hw->Forecast(3, 0.9);
+		t->Check("forecasting an unfitted model is refused, not fatal", <>f->IsValid() & f->GetError()->Size() > 0 & f->GetMean() = Nil);
+
+		zero := Float->New[36];
+		each(i : 36) {
+			zero[i] := 1.0 + (i % 12)->As(Float);
+		};
+		zero[5] := 0.0;
+		mult := ExponentialSmoothing->HoltWinters(12, true);
+		t->Check("a zero in a multiplicative model is refused", <>mult->Fit(TimeSeries->New(zero)) & mult->GetError()->Find("> 0") > -1);
+		add := ExponentialSmoothing->HoltWinters(12, false);
+		t->Check("the same series is fine for the additive model", add->Fit(TimeSeries->New(zero)));
+
+		nan := TimeSeries->New([1.0, 2.0, Float->NaN(), 4.0, 5.0]);
+		ses := ExponentialSmoothing->Simple();
+		t->Check("NaN is refused naming the index", <>ses->Fit(nan) & ses->GetError()->Find("index 2") > -1);
+		t->Check("a one-point series is refused", <>ses->Fit(TimeSeries->New([1.0])));
+		t->Check("a bad horizon and a bad level are refused", <>Config("ses")->Forecast(2, 0.9)->IsValid());
+
+		good := ExponentialSmoothing->Simple();
+		good->Fit(TimeSeries->New([1.0, 2.0, 3.0, 2.0, 1.0, 2.0]));
+		t->Check("horizon 0 is refused", <>good->Forecast(0, 0.9)->IsValid());
+		t->Check("level 1 is refused", <>good->Forecast(2, 1.0)->IsValid() & <>good->Forecast(2, 0.0)->IsValid());
+
+		c := ExponentialSmoothing->Simple();
+		t->Check("a constant series fits with zero SSE", c->Fit(TimeSeries->New([5.0, 5.0, 5.0, 5.0, 5.0, 5.0])) & c->GetSse() < 1.0e-20);
+		t->Same("and forecasts the constant", c->Forecast(2, 0.9)->GetMean(), [5.0, 5.0], 1.0e-12);
+
+		bad := BaselineForecaster->New(BaselineForecaster->Kind->SEASONAL_NAIVE, 5);
+		t->Check("seasonal naive needs more than one period", <>bad->Fit(TimeSeries->New([1.0, 2.0, 3.0])) & bad->GetError()->Size() > 0);
+		t->Check("the period must be positive", <>BaselineForecaster->New(BaselineForecaster->Kind->MOVING_AVERAGE, 0)->Fit(short));
+	}
+}
