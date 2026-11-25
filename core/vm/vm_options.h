@@ -76,6 +76,9 @@ namespace Runtime {
     // Maximum call depth in frames; 0 means the VM default (CALL_DEPTH_DEFAULT).
     // From --call-depth, else OBJECK_CALL_DEPTH.
     long call_depth = 0;
+    // From --thread-faults: -1 not given (OBJECK_THREAD_FAULTS decides, default exit),
+    // 0 = an uncaught error in any thread ends the process, 1 = it ends only that thread.
+    int thread_faults = -1;
     // "" (unset), "binary", "utf16" or "utf8". Acted on by Windows only.
     std::wstring stdio_mode;
     // "" means OBJECK_LIB_PATH or the install default. This is the lib ROOT
@@ -267,6 +270,25 @@ namespace Runtime {
       }
     }
 
+    // --thread-faults=exit|isolate   (env OBJECK_THREAD_FAULTS=isolate; the flag wins)
+    {
+      const std::vector<std::wstring> names = {L"thread-faults", L"THREAD_FAULTS", L"THREAD-FAULTS"};
+      if(HasCommandLineArgumentWithAliases(args, names)) {
+        ++opts.consumed;
+        const std::wstring value = GetCommandLineArgumentWithAliases(args, names, L"");
+        if(value == L"isolate") {
+          opts.thread_faults = 1;
+        }
+        else if(value == L"exit") {
+          opts.thread_faults = 0;
+        }
+        else {
+          opts.error = L"--thread-faults: expected 'exit' or 'isolate', got '" + value + L"'";
+          return opts;
+        }
+      }
+    }
+
     // --objeck-stdio=binary|utf16   (legacy --OBJECK_STDIO, --OBJECK-STDIO)
     //
     // Accepted on every platform so a script shared across them does not have
@@ -338,6 +360,8 @@ namespace Runtime {
   void SetNurserySize(size_t size);
   // Defined in interpreter.cpp; read when each thread's call stack is created.
   void SetMaxCallDepth(long depth);
+  // Defined in interpreter.cpp; read when a spawned thread starts.
+  void SetThreadFaults(bool isolate);
 
   // Applies the options that must be in place before the program loads: the
   // library directory (the loader reads OBJECK_LIB_PATH, so the flag sets the
@@ -362,6 +386,9 @@ namespace Runtime {
     if(opts.call_depth != 0) {
       SetMaxCallDepth(opts.call_depth);
     }
+    if(opts.thread_faults >= 0) {
+      SetThreadFaults(opts.thread_faults == 1);
+    }
   }
 
   // The one usage text. Every flag states its valid values, because a flag
@@ -384,6 +411,13 @@ namespace Runtime {
     usage += L"                            (default 16384). Compiled code can reach the end\n";
     usage += L"                            of the native stack first: the same error\n";
     usage += L"                            Env: OBJECK_CALL_DEPTH=<frames>\n";
+    usage += L"  --thread-faults=exit|isolate\n";
+    usage += L"                            What an error nothing catches does in a thread the\n";
+    usage += L"                            program started: 'exit' (default) ends the program;\n";
+    usage += L"                            'isolate' ends only that thread, and Thread->Join\n";
+    usage += L"                            can report it (runtime.thread.join.fault). The main\n";
+    usage += L"                            thread and Runtime->Exit always end the program\n";
+    usage += L"                            Env: OBJECK_THREAD_FAULTS=isolate\n";
     usage += L"  --jit=off|<calls>         JIT control: 'off' runs the interpreter only;\n";
     usage += L"                            a positive number is how many calls a method\n";
     usage += L"                            makes before it is compiled (default 10)\n";

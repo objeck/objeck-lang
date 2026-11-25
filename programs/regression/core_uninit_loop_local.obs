@@ -1,0 +1,228 @@
+#~
+A local declared without an initializer starts as 0, 0.0, false, Nil or an empty reference every time its
+declaration runs, not only the first time. It lives in a fixed frame slot that the VM zeroes when the method is
+entered, and inside a loop the declaration ran again without writing the slot, so on a later iteration that skipped
+the assignment the local still held the previous iteration's value (and kept a stale object reachable).
+Covers Int, Float, Bool, Char, Byte, String, object, array and several-names-in-one declarations in while, for,
+each and do-while loops, nested loops, and a method called repeatedly.
+~#
+class UninitLoopLocal {
+	@failed : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$what}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# every type, set on the first iteration only; the later iterations must see the empty value
+	function : Scalars() ~ Nil {
+		i := 0;
+		while(i < 4) {
+			n : Int;
+			f : Float;
+			b : Bool;
+			c : Char;
+			y : Byte;
+			s : String;
+			o : IntRef;
+			a : Int[];
+			fa : Float[];
+			sa : String[];
+			if(i = 0) {
+				n := 42;
+				f := 2.5;
+				b := true;
+				c := 'x';
+				y := 200;
+				s := "set";
+				o := IntRef->New(7);
+				a := Int->New[3];
+				fa := Float->New[3];
+				sa := String->New[3];
+			}
+			else {
+				Check("while n i={$i}", n = 0);
+				Check("while f i={$i}", f = 0.0);
+				Check("while b i={$i}", <>b);
+				Check("while c i={$i}", c = 0);
+				Check("while y i={$i}", y = 0);
+				Check("while s i={$i}", s = Nil);
+				Check("while o i={$i}", o = Nil);
+				Check("while a i={$i}", a = Nil);
+				Check("while fa i={$i}", fa = Nil);
+				Check("while sa i={$i}", sa = Nil);
+			};
+			i += 1;
+		};
+	}
+
+	function : ForLoop() ~ Nil {
+		for(i := 0; i < 4; i += 1;) {
+			n : Int;
+			f : Float;
+			s : String;
+			if(i = 0) {
+				n := 42;
+				f := 2.5;
+				s := "set";
+			}
+			else {
+				Check("for n i={$i}", n = 0);
+				Check("for f i={$i}", f = 0.0);
+				Check("for s i={$i}", s = Nil);
+			};
+		};
+	}
+
+	function : EachLoop() ~ Nil {
+		each(i : 4) {
+			n : Int;
+			f : Float;
+			b : Bool;
+			o : IntRef;
+			if(i = 0) {
+				n := 42;
+				f := 2.5;
+				b := true;
+				o := IntRef->New(7);
+			}
+			else {
+				Check("each n i={$i}", n = 0);
+				Check("each f i={$i}", f = 0.0);
+				Check("each b i={$i}", <>b);
+				Check("each o i={$i}", o = Nil);
+			};
+		};
+	}
+
+	function : DoWhileLoop() ~ Nil {
+		i := 0;
+		do {
+			n : Int;
+			s : String;
+			if(i = 0) {
+				n := 42;
+				s := "set";
+			}
+			else {
+				Check("do-while n i={$i}", n = 0);
+				Check("do-while s i={$i}", s = Nil);
+			};
+			i += 1;
+		}
+		while(i < 4);
+	}
+
+	# the declaration is inside an if inside the loop, and one declaration names several variables
+	function : Nested() ~ Nil {
+		for(i := 0; i < 3; i += 1;) {
+			each(j : 3) {
+				if(j >= 0) {
+					p, q : Int;
+					r : Float;
+					if(i = 0 & j = 0) {
+						p := 1;
+						q := 2;
+						r := 3.0;
+					}
+					else {
+						Check("nested p i={$i} j={$j}", p = 0);
+						Check("nested q i={$i} j={$j}", q = 0);
+						Check("nested r i={$i} j={$j}", r = 0.0);
+					};
+				};
+			};
+		};
+	}
+
+	# a conditional assignment, the shape that hid a failed call's result behind the previous one
+	function : Conditional() ~ Nil {
+		seen := 0;
+		for(i := 0; i < 6; i += 1;) {
+			got : String;
+			count : Int;
+			if(i % 3 = 0) {
+				got := "hit {$i}";
+				count := i + 1;
+			};
+			if(i % 3 <> 0) {
+				Check("conditional got i={$i}", got = Nil);
+				Check("conditional count i={$i}", count = 0);
+				seen += 1;
+			}
+			else {
+				Check("conditional set i={$i}", got->Size() > 0 & count = i + 1);
+			};
+		};
+		Check("conditional seen", seen = 4);
+	}
+
+	# no loop in the method: every call must start from zero
+	function : OneCall(first : Bool) ~ Int {
+		n : Int;
+		s : String;
+		if(first) {
+			n := 99;
+			s := "first";
+			return n;
+		};
+		Check("call n", n = 0);
+		Check("call s", s = Nil);
+		return n;
+	}
+
+	function : LoopCalled(first : Bool) ~ Nil {
+		for(i := 0; i < 2; i += 1;) {
+			n : Int;
+			o : IntRef;
+			if(first & i = 0) {
+				n := 5;
+				o := IntRef->New(5);
+			}
+			else {
+				Check("called n first={$first} i={$i}", n = 0);
+				Check("called o first={$first} i={$i}", o = Nil);
+			};
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing uninitialized locals in loops..."->PrintLine();
+		each(round : 3) {
+			Scalars();
+			ForLoop();
+			EachLoop();
+			DoWhileLoop();
+			Nested();
+			Conditional();
+			OneCall(true);
+			OneCall(false);
+			LoopCalled(true);
+			LoopCalled(false);
+		};
+
+		# enough iterations for the JIT to compile the loop
+		total := 0;
+		for(k := 0; k < 20000; k += 1;) {
+			v : Int;
+			w : Float;
+			if(k = 0) {
+				v := 7;
+				w := 7.5;
+			};
+			total += v;
+			if(w <> 0.0 & k > 0) {
+				total += 1000000;
+			};
+		};
+		Check("hot loop total={$total}", total = 7);
+
+		if(@failed > 0) {
+			"{$@failed} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"All uninitialized-local tests passed"->PrintLine();
+	}
+}

@@ -1,5 +1,7 @@
 ## Time series forecasting (System.ML.TimeSeries)
 
+> **Experimental:** API may change.
+
 `System.ML.TimeSeries` forecasts one numeric series: a trend, a seasonal cycle, an autoregression, or all of them, with a prediction interval around every forecast. It is pure Objeck in `ml_timeseries.obl` (`-lib ml_timeseries,gen_collect`, or `-lib @ai`), needs nothing from `System.ML`, and so runs in the web playground. It has the pieces a forecasting workflow uses, in the order it uses them: a container with a missing-value policy, transforms and a classical decomposition, autocorrelation and a stationarity test, the benchmark forecasters, exponential smoothing, ARIMA, automatic selection, and accuracy metrics with rolling-origin cross-validation.
 
 It follows the `System.ML` conventions: a model is fitted with `Fit` and used with `Forecast`, and nothing ends the program on bad input. `Fit` returns `false` and `GetError()` says why (a missing value, too short a series, a zero under a multiplicative model); a helper returns `Nil` or `NaN`. Everything is deterministic: there is no random start, the optimizer is a Nelder-Mead from fixed points, and the simulation helpers take a seed.

@@ -3299,6 +3299,9 @@ bool EndsWith(std::wstring const& str, std::wstring const& ending);
 void ThreadMutexCreate(size_t* instance);
 void ThreadMutexLock(size_t* instance);
 void ThreadMutexUnlock(size_t* instance);
+// Releases every lock the calling thread still holds (thread-fault isolation:
+// a thread that ends in a fault inside a critical section); returns how many
+size_t ThreadMutexReleaseAll();
 
 /********************************
  * Call back for DLL method calls
