@@ -71,6 +71,10 @@
       <li><a href="#agents-apiagent">Agents (API.Agent)</a></li>
       <li><a href="#model-context-protocol-apimcp">Model Context Protocol (API.MCP)</a></li>
       <li><a href="#retrieval-augmented-generation-systemmlrag">Retrieval-augmented generation (System.ML.Rag)</a></li>
+      <li><a href="#actors-and-supervision-systemactor">Actors and supervision (System.Actor)</a></li>
+      <li><a href="#inference-telemetry-systemtelemetry">Inference telemetry (System.Telemetry)</a></li>
+      <li><a href="#llm-utilities-apillmutil">LLM utilities (API.LlmUtil)</a></li>
+      <li><a href="#llm-evaluation-systemllmeval">LLM evaluation (System.LLM.Eval)</a></li>
       <li><a href="#computer-vision-opencv">Computer Vision (OpenCV)</a></li>
       <li><a href="#natural-language-processing">Natural Language Processing</a></li>
       <li><a href="#machine-learning-systemml">Machine Learning (System.ML)</a></li>
@@ -152,6 +156,83 @@ while(choice-&gt;GetToolCalls()-&gt;Size() &gt; 0) {
 choice-&gt;GetMessage()-&gt;GetSecond()-&gt;PrintLine();
 </code></pre>
     <p>This round trip is tested against a local server (<code>openai_tool_calls_test</code>); it was not run against the live API.</p>
+    <p>The loop above needs an <code>McpToolBridge</code>. This one is self-contained: it declares one function tool by hand, runs it in Objeck, and bounds the loop. <code>Completion-&gt;BuildToolRequest(...)</code> returns the request body without a network call, so <code>Main</code> prints it before any request; with an argument it runs the loop against the API (it reads the key with <code>EndPoint-&gt;GetApiKey()</code>).</p>
+    <p><strong>Compile:</strong> <code>obc -src tool_loop.obs -lib net,net_server,json,cipher,misc,openai</code></p>
+<pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Chat;
+use Data.JSON;
+
+class WeatherTools {
+  # one function tool: {"type":"function","function":{name, description, parameters}}
+  function : Tools() ~ JsonElement {
+    parameters := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    spec := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
+    spec-&gt;Insert("name", "get_weather");
+    spec-&gt;Insert("description", "Get the current weather for a city");
+    spec-&gt;Insert("parameters", parameters);
+    tool := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
+    tool-&gt;Insert("type", "function");
+    tool-&gt;Insert("function", spec);
+    tools := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;ARRAY);
+    tools-&gt;Add(tool);
+    return tools;
+  }
+
+  function : Run(call : ToolCall) ~ String {
+    arguments := call-&gt;GetArgumentsJson();     # Nil when the model wrote invalid JSON
+    if(arguments = Nil | call-&gt;GetName()-&gt;Equals("get_weather") = false) {
+      return "error: bad call";
+    };
+    city := arguments-&gt;Get("city")-&gt;GetString();
+    return "18C and sunny in {$city}";
+  }
+
+  function : Ask(question : String, token : String) ~ String {
+    messages := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;ARRAY);
+    user := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
+    user-&gt;Insert("role", "user");
+    user-&gt;Insert("content", question);
+    messages-&gt;Add(user);
+
+    tools := Tools();
+    model := Models-&gt;GPT_4O_MINI();
+    for(step := 0; step &lt; 5; step += 1;) {           # bound the loop
+      completion := Completion-&gt;CompleteWithTools(model, messages, tools, 512, token);
+      if(completion = Nil) {
+        return "error: {$Completion-&gt;GetLastError()}";
+      };
+
+      choice := completion-&gt;GetChoices()-&gt;Get(0);
+      calls := choice-&gt;GetToolCalls();
+      if(calls-&gt;Size() = 0) {
+        return choice-&gt;GetMessage()-&gt;GetSecond();    # a plain answer: done
+      };
+
+      messages-&gt;Add(choice-&gt;GetMessageJson());       # the assistant message, as received
+      each(call in calls) {
+        messages-&gt;Add(Completion-&gt;ToolResultMessage(call-&gt;GetId(), Run(call)));
+      };
+    };
+    return "error: the model kept asking for tools";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # no network: the request body the first call would send
+    first := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;ARRAY);
+    user := JsonElement-&gt;New(JsonElement-&gt;JsonType-&gt;OBJECT);
+    user-&gt;Insert("role", "user");
+    user-&gt;Insert("content", "What is the weather in Paris?");
+    first-&gt;Add(user);
+    Completion-&gt;BuildToolRequest(Models-&gt;GPT_4O_MINI(), first, Tools(), 512)-&gt;ToString()-&gt;PrintLine();
+
+    if(args-&gt;Size() &gt; 0) {
+      Ask("What is the weather in Paris?", EndPoint-&gt;GetApiKey())-&gt;PrintLine();
+    };
+  }
+}
+</code></pre>
+    <p>Running it without an argument prints (verified):</p>
+<pre class="plain">{"max_completion_tokens":512,"messages":[{"content":"What is the weather in Paris?","role":"user"}],"model":"gpt-4o-mini","tools":[{"function":{"description":"Get the current weather for a city","name":"get_weather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}},"type":"function"}]}</pre>
+    <p>The program compiled with the current toolchain. The loop itself (<code>Ask</code>) was <strong>not run</strong> against the live API; the same round trip is tested against a local server by <code>openai_tool_calls_test</code>. A reply with no <code>tool_calls</code> gives an empty vector from <code>GetToolCalls()</code>, and a malformed reply is <code>Nil</code> with <code>Completion-&gt;GetLastError()</code>, not a crash.</p>
     <hr class="section-end">
     <h4 id="vision">Vision</h4>
 <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Responses, System.IO.Filesystem, Collection;
@@ -1055,7 +1136,7 @@ class AskWithTools {
   }
 }
 </code></pre>
-    <p>The bridge is tested against a local server (<code>mcp_core_test</code>). On 2026-11-25 the Claude hand-off was run live: a program connected to the demo server over HTTP, passed <code>ToAnthropicJson()</code>'s tools to <code>claude-haiku-5-5</code>, the model called <code>calculate</code> with <code>17 + 25</code>, <code>bridge-&gt;Run</code> returned <code>42</code>, and the model answered <code>42</code> (two turns, about 1,400 input and 55 output tokens). The MCP <code>inputSchema</code> went into <code>Tool-&gt;New</code> unchanged. The OpenAI and Gemini hand-offs were not run live: <code>ToOpenAiJson()</code> produces the Chat Completions <code>tools</code> array, but <code>API.OpenAI</code> has no call that takes that array or reads a tool call back, so a round trip needs hand-written HTTP.</p>
+    <p>The bridge is tested against a local server (<code>mcp_core_test</code>). On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called <code>calculate</code> with <code>17 + 25</code>, <code>bridge-&gt;Run</code> returned <code>42</code>, and the model answered <code>42</code> in two turns. Claude: <code>claude-haiku-5-5</code>, <code>claude-sonnet-5-5</code>, <code>claude-opus-5-5</code> and <code>claude-fable-5-2</code> through <code>Chat-&gt;SendReply</code> (the same 1,404 input and 55 output tokens each time); the MCP <code>inputSchema</code> went into <code>Tool-&gt;New</code> unchanged. OpenAI: <code>gpt-4.1-mini</code>, <code>gpt-5.4-mini</code> and <code>gpt-5.5</code> through <code>Completion-&gt;CompleteWithTools</code>, <code>Choice-&gt;GetToolCalls</code>, <code>Choice-&gt;GetMessageJson</code> and <code>Completion-&gt;ToolResultMessage</code>. Two OpenAI models could not take part: <code>gpt-5.3-codex</code> is served only by the Responses API, and <code>gpt-5.6-sol</code> rejects function tools on Chat Completions unless <code>reasoning_effort</code> is <code>none</code>; this library has no Responses API client. The Gemini hand-off was not run live.</p>
     <h4 id="limits">Limits</h4>
     <ul>
      <li>The JSON parser is lenient: a malformed message inside well-placed braces can be accepted.</li>
@@ -1140,6 +1221,373 @@ class Local {
      <li>Adapter requests are one prompt with no history, and replies are not streamed.</li>
     </ul>
     <p><code>programs/examples/rag_demo.obs</code> runs the whole offline pipeline, including saving and reloading an index. The tests are <code>rag_chunking_test</code>, <code>rag_index_test</code>, <code>rag_pipeline_test</code> and <code>rag_adapters_ollama_test</code>; none needs a key, a model or a network.</p>
+    <hr class="section-end">
+    <h3 id="actors-and-supervision-systemactor">Actors and supervision (System.Actor)</h3>
+    <p><code>System.Actor</code> is the substrate for multi-agent programs: a running agent, a tool server or a worker is an <strong>actor</strong>, a thread with a private <strong>mailbox</strong> and a user object that handles one message at a time. Actors share no state; they send each other messages. When one fails, its <strong>supervisor</strong> restarts it by a stated policy, and when restarts come too fast the supervisor itself fails and its own supervisor decides what happens next. This is the Erlang/OTP model on the stock <code>Thread</code>, <code>ThreadMutex</code> and <code>Condition</code>, in Objeck with no VM change. Compile with <code>-lib gen_collect,concurrent,actor</code>. Agents as actors are a separate library, <code>actor_agents</code>, so <code>actor</code> links nothing heavy.</p>
+    <p><strong>The limit to know first.</strong> An uncaught VM fault on any thread ends the whole process, so supervision recovers only from failures that surface as errors the actor can catch. The receive loop wraps <code>Init</code>, every <code>Handle</code> and <code>Terminate</code> in a <code>try</code>, and these become the exit reason <code>FAILED</code> instead of killing the program: a raised <code>Error</code>, divide by zero, index out of bounds, a <code>Nil</code> dereference, a bad cast, a failed <code>Runtime-&gt;Assert</code>, and unbounded recursion (the <code>--call-depth</code> limit). It cannot catch memory exhaustion, a crash in a native library or the VM, <code>Runtime-&gt;Exit</code> or a signal; those end every actor with the process. Actors isolate state and errors, not VM faults.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.Actor;
+
+class Counter implements ActorBehavior {
+  @n : Int;
+
+  New() {
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail-&gt;GetKind() = Mail-&gt;Kind-&gt;CALL) {
+      mail-&gt;Answer(IntRef-&gt;New(@n));          # answer a question
+    }
+    else {
+      @n += mail-&gt;GetPayload()-&gt;As(IntRef)-&gt;Get();
+    };
+    return true;                              # false ends the actor with the reason NORMAL
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    counter := Actor-&gt;New("counter", Counter-&gt;New())-&gt;Start();
+    counter-&gt;Send(IntRef-&gt;New(2));
+    counter-&gt;Send(IntRef-&gt;New(3));
+    answer := counter-&gt;Call(Nil, 1000);       # waits up to 1000 ms
+    answer-&gt;GetValue()-&gt;As(IntRef)-&gt;Get()-&gt;PrintLine();
+    counter-&gt;Stop();
+    counter-&gt;Join()-&gt;ToString()-&gt;PrintLine();
+
+    # a bounded mailbox that refuses when full
+    box := Mailbox-&gt;New(2, Mailbox-&gt;Policy-&gt;REJECT);
+    box-&gt;Send("a");
+    box-&gt;Send("b");
+    box-&gt;Send("c")-&gt;PrintLine();              # FULL, printed as its number
+    box-&gt;Receive(100)-&gt;As(String)-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="plain">5
+stopped
+1
+a</pre>
+    <p>The behavior object's fields are the actor's state; only the actor's thread touches them, so they need no lock. A behavior that also implements <code>ActorLifecycle</code> gets <code>Init</code> (before the first message; raising fails the actor) and <code>Terminate</code>. A <code>Mail</code> has a kind: <code>DATA</code>, <code>CALL</code>, <code>DOWN</code> (a watched actor ended) or <code>EXIT</code> (a linked actor ended, delivered to an actor that traps exits).</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>Piece</th><th>What it does</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="Piece"><code>Mailbox</code></td><td data-label="What it does">thread-safe FIFO, usable alone. Unbounded, or bounded with <code>BLOCK</code> (senders wait in arrival order, up to a timeout) or <code>REJECT</code>. <code>Send</code> returns <code>OK</code>, <code>FULL</code>, <code>TIMED_OUT</code>, <code>CLOSED</code> or <code>INVALID</code>; <code>Receive</code>, <code>Receive(timeout)</code>, <code>TryReceive</code>, <code>Close</code> (queued items stay receivable)</td></tr>
+      <tr><td data-label="Piece"><code>Actor</code></td><td data-label="What it does"><code>Start</code>, <code>Send</code>, <code>Call</code>, <code>Stop</code> (graceful: the queue is drained), <code>Kill</code> (cooperative: queued mail is dropped), <code>Join</code> (an <code>ExitReason</code>: <code>NORMAL</code>, <code>STOPPED</code>, <code>FAILED</code> with the error, <code>KILLED</code>)</td></tr>
+      <tr><td data-label="Piece"><code>Call(payload, timeout)</code></td><td data-label="What it does">a question with a correlation id: <code>OK</code> with the value, <code>TIMED_OUT</code>, <code>DEAD</code> or <code>FAILED</code>. A late answer is dropped and counted; a call to an actor that ends returns at once</td></tr>
+      <tr><td data-label="Piece"><code>Monitor</code>, <code>Link</code></td><td data-label="What it does"><code>Monitor</code> puts a <code>DOWN</code> mail in a mailbox when the target ends; <code>Link</code> fails the partner with an abnormal end unless it called <code>SetTrapExits(true)</code></td></tr>
+      <tr><td data-label="Piece"><code>Supervisor</code>, <code>ChildSpec</code></td><td data-label="What it does">restarts children from a <code>BehaviorFactory</code>, so a restart begins with clean state</td></tr>
+     </tbody>
+    </table>
+    <p><strong>Supervisor policies.</strong> Strategy: <code>ONE_FOR_ONE</code> (only that child restarts), <code>ONE_FOR_ALL</code> (the others stop, last started first, then all restart in order), <code>REST_FOR_ONE</code> (the children started after it, then it). Restart: <code>PERMANENT</code> (always), <code>TRANSIENT</code> (after <code>FAILED</code> or <code>KILLED</code>, not after a normal end), <code>TEMPORARY</code> (never). <code>Supervisor-&gt;New(name, strategy, max_restarts, period_seconds)</code>: more than <code>max_restarts</code> in the period fails the supervisor (the escalation: put it under a parent supervisor with <code>inner-&gt;AsFactory()</code>). Stopping a child sends <code>Stop</code>, waits its shutdown timeout, then <code>Kill</code>s it, then abandons it if it still has not ended (<code>GetAbandonedCount()</code>). <code>StartChild</code>, <code>TerminateChild</code>, <code>Children</code>, <code>GetChild</code> and <code>GetRestartCount</code> manage children while it runs; each returns after the supervisor has dealt with every child ending queued before it, which makes them a barrier in tests.</p>
+    <p>A handler that divides by zero fails its actor, and the supervisor starts a fresh one:</p>
+<pre class="line-numbers"><code class="language-cpp">use System.Actor;
+
+class Flaky implements ActorBehavior {
+  @starts : static : Int;
+  @n : Int;
+
+  New() {
+    @starts += 1;
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail-&gt;GetKind() = Mail-&gt;Kind-&gt;CALL) {
+      mail-&gt;Answer(IntRef-&gt;New(@n));
+      return true;
+    };
+    value := mail-&gt;GetPayload()-&gt;As(IntRef)-&gt;Get();
+    if(value = 0) {
+      x := 1 / value;                         # divide by zero: the actor fails, the process does not
+    };
+    @n += value;
+    return true;
+  }
+
+  function : GetStarts() ~ Int {
+    return @starts;
+  }
+}
+
+class FlakyFactory implements BehaviorFactory {
+  New() {
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    return Flaky-&gt;New();
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    sup := Supervisor-&gt;New("team", SupervisorStrategy-&gt;Kind-&gt;ONE_FOR_ONE, 3, 10);   # 3 restarts per 10 s
+    sup-&gt;AddChild(ChildSpec-&gt;New("flaky", FlakyFactory-&gt;New(), ChildSpec-&gt;Restart-&gt;PERMANENT, 1000));
+    sup-&gt;Start();
+    child := sup-&gt;GetChild("flaky");
+    child-&gt;Send(IntRef-&gt;New(5));
+    child-&gt;Send(IntRef-&gt;New(0));              # fails and is restarted
+    sup-&gt;Children();                          # a barrier: returns after the restart
+    "restarts: {$sup-&gt;GetRestartCount()}"-&gt;PrintLine();
+    child := sup-&gt;GetChild("flaky");          # the old reference is dead after a restart
+    child-&gt;Send(IntRef-&gt;New(7));
+    child-&gt;Call(Nil, 1000)-&gt;GetValue()-&gt;As(IntRef)-&gt;Get()-&gt;PrintLine();
+    "starts: {$Flaky-&gt;GetStarts()}"-&gt;PrintLine();
+    sup-&gt;Stop();
+    sup-&gt;Join()-&gt;ToString()-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="plain">restarts: 1
+7
+starts: 2
+stopped</pre>
+    <p>The 5 sent before the failure is gone: the new incarnation answers 7, not 12.</p>
+    <p><strong>Agents as actors.</strong> <code>actor_agents</code> (<code>-lib gen_collect,concurrent,actor,actor_agents,agent,net,json,cipher,misc</code>) runs an <code>API.Agent</code> agent as an actor: <code>AgentActorFactory-&gt;New(builder, fail_on_error)</code> is the child factory and an <code>AgentBuilder</code> makes a fresh <code>Agent</code> for each start, so a restart begins a new conversation. A prompt is a <code>String</code> payload; a <code>Call</code> returns the <code>AgentResult</code>. With <code>fail_on_error</code> a run that does not complete is delivered and then fails the actor, so the supervisor restarts that agent and the others are untouched. An agent run is one blocking call: <code>Stop</code> waits for it and <code>Kill</code> cannot end it, so give agents a shutdown timeout that fits a model call and set a step limit and a tool timeout on the <code>Agent</code>. The library is blocked in the hosted playground (it links the model clients); <code>actor</code> is not.</p>
+    <p><strong>What is not guaranteed.</strong></p>
+    <ul>
+     <li>A blocked or looping handler cannot be interrupted. <code>Stop</code> and <code>Kill</code> are requests; a supervisor abandons such a child after the shutdown timeout and the thread leaks until the handler returns. There is no preemption, no per-handler time limit and no hang detection.</li>
+     <li>Delivery is in-process, at most once and unacknowledged. A message to an actor that fails before handling it is lost (<code>GetDiscardedCount()</code>), <code>REJECT</code> loses mail by design, nothing is retried, and there is no ordering between different senders.</li>
+     <li>A restart loses state, and mail queued for the failed incarnation is discarded.</li>
+     <li>Two actors that <code>Call</code> each other (or one that calls itself) wait until the timeout.</li>
+     <li>Every actor is an operating-system thread with a stack; thousands of actors are thousands of threads.</li>
+     <li>Left out on purpose: a <code>DROP_OLDEST</code> policy, selective receive, a name registry, an <code>ActorSystem</code> convenience and a <code>TaskScope</code> tie.</li>
+    </ul>
+    <p>Tests: <code>actor_mailbox_test</code>, <code>actor_mailbox_stress_test</code> (eight producers, one consumer), <code>actor_core_test</code>, <code>actor_supervisor_test</code> and <code>actor_agents_test</code>, with scripted handlers and latches, no network and no key. The two programs above were compiled and run for this guide; the <code>actor_agents</code> library was not run here (see <code>actor_agents_test</code>). Example: <code>programs/examples/actor_supervision_demo.obs</code>; the full reference is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/actor.md" target="_blank">ai_sections/actor.md</a>.</p>
+    <hr class="section-end">
+    <h3 id="inference-telemetry-systemtelemetry">Inference telemetry (System.Telemetry)</h3>
+    <p><code>System.Telemetry</code> is the measurement base for resource-aware inference: it times a call, keeps latency statistics per (model, device, batch, tag) in bounded memory, samples the resources around the call, estimates energy from sampled power, saves the result as a profile and answers <code>Predict</code> from it. It is pure Objeck, in its own library with no dependency on <code>onnx</code>: wrap your own session calls with it. Compile with <code>-lib telemetry,gen_collect,json</code> or <code>-lib @telemetry</code>. Every latency is in <strong>milliseconds</strong>, a <code>Float</code>.</p>
+<pre class="line-numbers"><code class="language-cpp">use System.Telemetry;
+
+class Work {
+  function : Spin() ~ Nil {
+    sum := 0.0;
+    for(i := 0; i &lt; 20000; i += 1;) {
+      sum += (i * 1.5)-&gt;Sqrt();
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    for(i := 0; i &lt; 40; i += 1;) {
+      probe := Telemetry-&gt;Start("spin", "cpu", 8, "run");   # model, device, batch, phase tag
+      Work-&gt;Spin();
+      probe-&gt;Stop();                                        # elapsed milliseconds, recorded
+    };
+
+    store := Telemetry-&gt;Default()-&gt;GetStore();
+    p := store-&gt;Predict("spin", "cpu", 8);
+    if(p = Nil) {
+      store-&gt;GetError()-&gt;PrintLine();
+    }
+    else {
+      "count {$p-&gt;GetCount()}, exact {$p-&gt;IsExact()}, p50 &lt;= p95: {$(p-&gt;GetP50() &lt;= p-&gt;GetP95())}"-&gt;PrintLine();
+    };
+
+    # a batch never measured is a miss with the reason, not an interpolation
+    if(store-&gt;Predict("spin", "cpu", 16) = Nil) {
+      store-&gt;GetError()-&gt;PrintLine();
+    };
+
+    s := SeriesStats-&gt;New(0);                 # 0: no warm-up discard
+    s-&gt;Add(2.0); s-&gt;Add(4.0); s-&gt;Add(4.0); s-&gt;Add(4.0); s-&gt;Add(5.0); s-&gt;Add(5.0); s-&gt;Add(7.0); s-&gt;Add(9.0);
+    "n={$s-&gt;GetCount()} p50={$s-&gt;GetP50()}"-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="plain">count 40, exact true, p50 &lt;= p95: true
+model 'spin' on 'cpu' has no profile at batch 16 (observed batches: 8)
+n=8 p50=4.000000</pre>
+    <p><strong>The clock.</strong> Every duration comes from <code>System.Time.Timer</code>, the C++ <code>steady_clock</code>: monotonic, never jumping with the wall clock, with nanosecond ticks (the Windows tick is 100 ns). A latency is <code>GetElapsedTime() * 1000.0</code>. The runtime exposes no absolute nanosecond timestamp, so anything placed on a timeline (a sampler reading, the energy attributed to a call) uses <code>Telemetry-&gt;NowMs()</code>, at one millisecond resolution. An empty <code>Start</code> plus <code>Stop</code> measured 29 ns at the median on Linux (WSL2); <code>Telemetry-&gt;MeasureOverhead(n)</code> measures it on your machine. A handle that is never stopped records nothing, <code>Cancel()</code> drops a failed call, and <code>Telemetry-&gt;Time(model, device, batch, tag, fn)</code> times a function reference. The static calls share one process-wide recorder; make a <code>TimingRecorder-&gt;New()</code> to keep profiles apart (it is safe to share between threads).</p>
+    <p><strong>Statistics.</strong> <code>SeriesStats</code> keeps the count, minimum, maximum, mean and sample standard deviation by Welford's update (a test checks a 1e9 offset), a warm-up discard (<code>SeriesStats-&gt;New(n)</code> drops the first n samples and nothing smarter: there is no steady-state detection) and a ring of the last 256 raw samples. Quantiles are nearest rank: the sample at rank <code>ceil(q * n)</code>, so p50 of 2 4 4 4 5 5 7 9 is 4 and a value never appears that was not observed. Up to 512 samples they are exact (<code>IsExact()</code>); beyond that <code>LatencySketch</code> answers, a log-bucketed histogram (the DDSketch construction) whose estimate is within a stated relative error of the order statistic, 1 percent by default with about 12 KB, whatever the count. The regression test measured the worst error against exact sorting at 0.99 percent on a bimodal set, 0.87 on lognormal, 0.66 on uniform, 0.65 over twelve decades and 0 on a constant, and fails if any quantile exceeds the bound; merging two sketches gives the sketch of the union. There are no confidence intervals: a p99 from 200 samples is the 198th value, a p99.9 needs at least 1,000 samples, and samples from one process are not independent, so compare configurations in the same process, interleaved.</p>
+    <p><strong>Resources.</strong> <code>RuntimeSampler</code> reads the runtime's own <code>runtime.*</code> monitors (resident and peak memory, heap, CPU time and percent, threads, collector counts and pauses); <code>GpuSampler</code> runs <code>nvidia-smi</code> (an absent GPU is a graceful no-op: <code>IsAvailable()</code> is false and <code>GetError()</code> says why); <code>SamplerLoop</code> samples on its own thread, and once a second is enough because each GPU sample starts a process. <code>PowermetricsSampler</code> for Apple Silicon is the interface only and always unavailable: <code>powermetrics</code> needs root and no Apple hardware was used. <code>EnergyEstimator</code> integrates sampled power with the trapezoid rule, and <strong>it is an estimate</strong>: board power is itself a sensor reading, and the energy attributed to a call is the average board power over the call times its duration, which includes whatever else runs on the GPU. The collector exports counts and the last, maximum and average pause, but no total pause, no pause distribution and no safepoint wait; the full list of gaps is in <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/telemetry.md" target="_blank">ai_sections/telemetry.md</a>.</p>
+    <p><strong>Profiles.</strong> <code>ProfileStore</code> aggregates by model, device, batch and tag. <code>Save</code> writes lossless JSON (moments, exact samples, the sketch), so a loaded profile gives the same quantiles and <code>Merge</code> makes the profile of the union; <code>SaveCsv</code> writes a summary for a spreadsheet, and a profile loaded from CSV works for <code>Predict</code> but merges with NaN quantiles rather than an invented number. <code>Predict</code> returns what was observed in that cell (p50, p95, p99, mean, extremes, memory, and energy per run when a power source was attached) or <code>Nil</code> with the reason; a batch is never interpolated, because latency against batch is not linear. <code>ContentionRunner-&gt;New(workers, calls, fn)-&gt;Run()</code> runs K threads and reports throughput and <code>GetMedianSpread()</code>, the slowest worker's median over the fastest; run one worker first as the baseline.</p>
+    <p><strong>What it is not.</strong> It is the host-side latency of a call: for an asynchronous GPU launch it measures the call, not the kernel, and it uses no CUDA events. It decides nothing; the policy that uses a profile is a later layer. Five regression programs (<code>telemetry_sketch</code>, <code>telemetry_stats</code>, <code>telemetry_profile</code>, <code>telemetry_sampler</code>, <code>telemetry_contention</code>) need no network and no GPU, and the timing tests check lower bounds only. The program above was compiled and run for this guide; the GPU sampler, <code>PowermetricsSampler</code>, the energy estimator, JSON and CSV profiles and <code>ContentionRunner</code> were not run here (the regression tests cover them). Examples: <code>programs/examples/telemetry_demo.obs</code> (offline) and <code>programs/examples/telemetry_onnx.obs</code>; reference: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/telemetry.md" target="_blank">ai_sections/telemetry.md</a>.</p>
+    <hr class="section-end">
+    <h3 id="llm-utilities-apillmutil">LLM utilities (API.LlmUtil)</h3>
+    <p>Helpers for the work around a chat model, in Objeck with no network code and no key: <strong>prompt templates</strong> and a message builder, <strong>token estimation</strong> with a context window that keeps a conversation inside a budget, <strong>JSON Schema validation</strong> that reports every problem with a JSON pointer, and <strong>structured calls</strong> that ask any chat backend for JSON matching a schema and retry with the validation errors until the reply is right. Any backend works through the two-method <code>ChatFn</code> interface, which you implement over the client you use. Compile with <code>-lib llm_util,regex,json,gen_collect</code>.</p>
+<pre class="line-numbers"><code class="language-cpp">use API.LlmUtil;
+use Collection;
+
+class Example1 {
+  function : Main(args : String[]) ~ Nil {
+    template := PromptTemplate-&gt;New("Summarize for {{audience|a general reader}}.\n{{#if style}}Style: {{style:lower}}\n{{/if}}Sources:\n{{#each sources}}{{@number}}. {{this}}\n{{/each}}Text: {{text:json}}");
+    vars := PromptVars-&gt;New()
+      -&gt;Set("text", "She said \"hello\".")
+      -&gt;Set("style", "TERSE")
+      -&gt;SetArray("sources", ["Wikipedia", "RFC 8259"]);
+    template-&gt;Render(vars)-&gt;PrintLine();
+
+    "---"-&gt;PrintLine();
+    broken := PromptVars-&gt;New()-&gt;Set("style", "x");
+    if(template-&gt;Render(broken) = Nil) {
+      template-&gt;GetError()-&gt;PrintLine();
+    };
+  }
+}
+</code></pre>
+<pre class="plain">Summarize for a general reader.
+Style: terse
+Sources:
+1. Wikipedia
+2. RFC 8259
+Text: She said \"hello\".
+---
+missing required variables: sources, text</pre>
+    <p>Placeholders: <code>{{name}}</code> (required), <code>{{name?}}</code> (optional), <code>{{name|fallback}}</code> (a default), <code>{{name:json}}</code> (a filter: <code>json</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>), <code>{{#each items}}...{{/each}}</code> (with <code>{{this}}</code>, <code>{{@index}}</code>, <code>{{@number}}</code>), <code>{{#if name}}...{{else}}...{{/if}}</code> and <code>\{{</code> for a literal. <code>Render</code> returns <code>Nil</code> and <code>GetError()</code> names every missing variable at once. Values are never scanned for placeholders, so text a user supplies cannot add a variable or a loop to your prompt. A bad template is a value, not a crash: <code>IsOk()</code> is false and <code>GetError()</code> says what and where. <code>PromptBuilder</code> collects a conversation (<code>System</code>, <code>User</code>, <code>Assistant</code>, each from text or a template) and gives it as <code>ToPairs()</code> for <code>Completion-&gt;Complete</code>, or as <code>ToJsonMessages(with_system)</code> for OpenAI-style APIs and Ollama.</p>
+    <p><strong>Tokens and context.</strong> <code>TokenEstimator</code> counts what a byte-pair tokenizer usually produces, with no tokenizer and no network call (<code>Estimate("Hello, world!")</code> is 4). Its bounds, calibrated by hand against cl100k: English prose within about 15 percent (a little high), source code and JSON within about 30 percent, CJK within about 50 percent, and a single short string can be off by two tokens. The regression test holds it to characters-per-token ranges on fixed samples and <strong>has not been compared with a live tokenizer</strong>, so use it for a budget with a margin (<code>SetScale(1.15)</code> suits Claude, whose tokenizer gives 10 to 20 percent more tokens; <code>SetMargin</code> and <code>Safe()</code>), and use the provider's own count where a limit is hard (<code>TokenCounter</code> is a one-method interface that both fit). <code>ContextWindow-&gt;New(budget, counter)-&gt;Fit(conversation)</code> drops the oldest turns first, keeps the system prompt and the newest turn, never starts on an assistant turn and can add an omission note to the system prompt. It drops turns; it does not summarize them.</p>
+<pre class="line-numbers"><code class="language-cpp">use API.LlmUtil;
+
+class Example2 {
+  function : Main(args : String[]) ~ Nil {
+    claude := TokenEstimator-&gt;New()-&gt;SetScale(1.15)-&gt;SetMargin(0.1);
+    estimate := claude-&gt;Estimate("The quick brown fox jumps over the lazy dog.");   # 12
+    claude-&gt;Safe(estimate)-&gt;PrintLine();                    # 14, with the 10 percent margin
+
+    conversation := PromptBuilder-&gt;New()-&gt;System("You are a careful assistant.");
+    for(i := 0; i &lt; 20; i += 1;) {
+      if(i % 2 = 0) {
+        conversation-&gt;User("question {$i} about the topic");
+      }
+      else {
+        conversation-&gt;Assistant("answer {$i} about the topic");
+      };
+    };
+
+    window := ContextWindow-&gt;New(120, TokenEstimator-&gt;New())-&gt;SetOmissionNote("[earlier messages omitted]");
+    fitted := window-&gt;Fit(conversation);
+    "kept {$fitted-&gt;Size()} of {$conversation-&gt;Size()} turns, dropped {$window-&gt;GetDropped()}, {$window-&gt;GetTokens()} tokens"-&gt;PrintLine();
+  }
+}
+</code></pre>
+<pre class="plain">14
+kept 10 of 20 turns, dropped 10, 119 tokens</pre>
+    <p><strong>JSON Schema.</strong> <code>JsonSchema-&gt;Check(schema, value)</code> (or a reusable <code>JsonSchema-&gt;New(schema)</code> with <code>Validate</code> and <code>IsValid</code>) returns every problem as a <code>SchemaError</code> with a JSON pointer, the keyword that objected and a message:</p>
+<pre class="line-numbers"><code class="language-cpp">use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class Example3 {
+  function : Main(args : String[]) ~ Nil {
+    schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\",\"tags\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"age\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":150},\"email\":{\"type\":\"string\",\"pattern\":\"^[^@ ]+@[^@ ]+$\"},\"tags\":{\"type\":\"array\",\"items\":{\"enum\":[\"a\",\"b\",\"c\"]}}},\"additionalProperties\":false}");
+    value := JsonParser-&gt;TextToElement("{\"name\":\"\",\"age\":200,\"email\":\"nobody\",\"tags\":[\"a\",\"z\"],\"extra\":1}");
+
+    errors := JsonSchema-&gt;Check(schema, value);
+    each(i : errors) {
+      error := errors-&gt;Get(i);
+      "  {$error-&gt;ToString()}   [{$error-&gt;GetKeyword()}]"-&gt;PrintLine();
+    };
+  }
+}
+</code></pre>
+<pre class="plain">  /age: 200 is above the maximum 150   [maximum]
+  /email: "nobody" does not match the pattern '^[^@ ]+@[^@ ]+$'   [pattern]
+  /name: is 0 characters, shorter than the minimum 1   [minLength]
+  /tags/1: "z" is not one of: "a", "b", "c"   [enum]
+  /extra: the property 'extra' is not allowed   [additionalProperties]</pre>
+    <p>Supported: <code>type</code>, <code>enum</code>, <code>const</code>, <code>allOf</code>, <code>anyOf</code>, <code>oneOf</code>, <code>not</code>, local <code>$ref</code> (recursive ones included, stopped at depth 64), <code>minLength</code>, <code>maxLength</code>, <code>pattern</code>, <code>minimum</code>, <code>maximum</code>, the exclusive bounds, <code>multipleOf</code>, <code>properties</code>, <code>required</code>, <code>additionalProperties</code>, <code>minProperties</code>, <code>maxProperties</code>, <code>items</code>, <code>minItems</code>, <code>maxItems</code> and <code>uniqueItems</code>. Ignored without a message: <code>format</code>, <code>patternProperties</code>, <code>dependencies</code>, <code>if</code>/<code>then</code>/<code>else</code> and every unknown keyword, so a schema that relies on them validates more loosely than a full implementation would. A malformed schema is reported as a <code>schema</code> error, not a crash.</p>
+    <p><strong>Structured calls.</strong> <code>StructuredCall-&gt;New(chat, schema)</code> adds the schema to the system prompt, finds the JSON in the reply (a fenced block, a sentence around it or the whole text), validates it and, on a failure, sends the model its own reply with the exact errors, up to <code>SetMaxRetries(n)</code> times (default 2). <code>SetRepair(true)</code> turns on a lenient <code>JsonRepair</code>, off by default and used only after the strict parse failed: trailing commas, single quotes, unquoted keys, a reply cut off, raw line breaks in strings, <code>True</code>, <code>None</code> and <code>NaN</code>, comments and text after the value. It does not guess further (a missing value, colon or comma stays an error), and a repaired value is still validated. This program runs with no key; its <code>ChatFn</code> plays a model that answers wrongly first and then in a fence:</p>
+<pre class="line-numbers"><code class="language-cpp">use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class ScriptedModel implements ChatFn {
+  @replies : Vector&lt;String&gt;;
+  @asked : Int;
+
+  New() {
+    @replies := Vector-&gt;New()&lt;String&gt;;
+    @replies-&gt;AddBack("{'name': 'Ada Lovelace', 'age': '36',}");
+    @replies-&gt;AddBack("Sure, here it is:\n```json\n{\"name\": \"Ada Lovelace\", \"age\": 36}\n```");
+  }
+
+  method : public : Complete(turns : Vector&lt;PromptTurn&gt;) ~ String {
+    number := @asked + 1;
+    "request {$number}: {$turns-&gt;Size()} turns, last turn:"-&gt;PrintLine();
+    turns-&gt;Last()-&gt;GetText()-&gt;PrintLine();
+    reply := @replies-&gt;Get(@asked);
+    @asked += 1;
+    return reply;
+  }
+
+  method : public : GetError() ~ String {
+    return Nil;
+  }
+}
+
+class Example4 {
+  function : Main(args : String[]) ~ Nil {
+    schema := JsonParser-&gt;TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\"}}}");
+
+    call := StructuredCall-&gt;New(ScriptedModel-&gt;New(), schema)-&gt;SetMaxRetries(2)-&gt;SetRepair(true);
+    outcome := call-&gt;Ask("Extract the person: Ada Lovelace is 36.");
+    "---"-&gt;PrintLine();
+    if(outcome-&gt;IsOk()) {
+      "ok after {$outcome-&gt;GetAttempts()} attempts: {$outcome-&gt;GetValue()-&gt;ToString()}"-&gt;PrintLine();
+    }
+    else {
+      outcome-&gt;GetError()-&gt;PrintLine();
+    };
+  }
+}
+</code></pre>
+<pre class="plain">request 1: 2 turns, last turn:
+Extract the person: Ada Lovelace is 36.
+request 2: 4 turns, last turn:
+Your reply did not match the schema. Problems:
+- /age: expected integer, got string
+Reply again with only the corrected JSON value.
+---
+ok after 2 attempts: {"age":36,"name":"Ada Lovelace"}</pre>
+    <p>The first reply was repaired and parsed, then failed validation (<code>age</code> is a string), and the model was shown the exact error. A transport failure (<code>Complete</code> returned <code>Nil</code>) is the backend's error and is not retried. The outcome has <code>IsOk</code>, <code>GetValue</code>, <code>GetErrors</code>, <code>GetError</code>, <code>GetAttempts</code>, <code>GetReplies</code> and <code>WasRepaired</code>; <code>Ask</code> also takes a whole <code>PromptBuilder</code>, or a template and values.</p>
+    <p><strong>Caveats.</strong> A <code>PromptTemplate</code> and a <code>JsonSchema</code> keep their last error, so give each thread its own. <code>minLength</code> and the estimator count characters, not UTF-8 bytes. The library avoids the class names <code>Tool</code>, <code>ToolCall</code>, <code>Message</code>, <code>Reply</code>, <code>Response</code> and <code>Chat</code> on purpose, because another library's generic argument resolves by its short name. It ships no provider adapters: implement <code>ChatFn</code> over the client you use (or use <code>API.Agent</code>). Tests, none using the network or a key: <code>llm_util_template_test</code>, <code>llm_util_tokens_test</code>, <code>llm_util_schema_test</code> (about 170 schema cases), <code>llm_util_extract_test</code> and <code>llm_util_structured_test</code>. The four programs above were compiled and run for this guide; the token-count bounds are design targets, not a measurement against a live tokenizer. Reference: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/llm_util.md" target="_blank">ai_sections/llm_util.md</a>.</p>
+    <hr class="section-end">
+    <h3 id="llm-evaluation-systemllmeval">LLM evaluation (System.LLM.Eval)</h3>
+    <p><code>System.LLM.Eval</code> measures how well a language model writes programs, and in general evaluates any model on tasks whose answer can be checked. It sends each task of a suite to the model N times, takes the code block out of the answer, compiles it with the real compiler (<code>obc</code>), runs it under a timeout and compares what it printed with the expected output. Each attempt records whether it compiled, ran and was correct, the first compiler error (normalized into a category), and tokens and latency when the client exposes them. The results become a compile rate, pass@k, the most common error categories and, for two models, a paired-bootstrap comparison with a plain verdict.</p>
+    <p>It is a research harness, not a shipped library: the source is <code>tools/llm_eval/llm_eval.obs</code>, and you compile it with your program, <code>obc -src yourprogram.obs,tools/llm_eval/llm_eval.obs -lib ml,csv,json,gen_collect</code>. It needs no network and no key; the provider adapters (OpenAI, Anthropic, Gemini, Ollama, or any command line) are one file each in <code>tools/llm_eval</code>, because the four clients cannot be linked into one program. <code>obc</code> must be on the path or beside the running VM. A <code>ScriptedModel</code> answers from a script, so the whole path runs without a key (the second answer below does not compile):</p>
+<pre class="line-numbers"><code class="language-cpp">use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+class Demo {
+    function : Main(args : String[]) ~ Nil {
+        tasks := Vector-&gt;New()&lt;EvalTask&gt;;
+        tasks-&gt;AddBack(EvalTask-&gt;New("answer", "demo", 1, "", "exact", 10.0, "Print 42.", Nil, Nil, "42", Nil));
+
+        model := ScriptedModel-&gt;New("scripted");
+        model-&gt;Add("answer", "```objeck\nclass A {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"42\"-&gt;PrintLine();\n\t}\n}\n```");
+        model-&gt;Add("answer", "```objeck\nclass B {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tmissing-&gt;PrintLine();\n\t}\n}\n```");
+
+        work := "{$Runtime-&gt;GetTempDir()}{$Directory-&gt;GetSlash()}llm_eval_demo";
+        sandbox := Sandbox-&gt;New(work);
+        results := EvalRunner-&gt;New(model, tasks, 2, sandbox)-&gt;Run();
+        "compile rate {$EvalText-&gt;Percent(results-&gt;GetCompileRate())}"-&gt;PrintLine();
+        "pass@1 {$EvalText-&gt;Percent(results-&gt;GetPassAtK(1))}, pass@2 {$EvalText-&gt;Percent(results-&gt;GetPassAtK(2))}"-&gt;PrintLine();
+
+        errors := results-&gt;GetErrorCategories();
+        each(i : errors) {
+            "{$errors-&gt;Get(i)-&gt;GetLabel()}: {$errors-&gt;Get(i)-&gt;GetCount()} ({$errors-&gt;Get(i)-&gt;GetExample()})"-&gt;PrintLine();
+        };
+
+        sandbox-&gt;Close();
+    }
+}
+</code></pre>
+<pre class="plain">compile rate 50.0%
+pass@1 50.0%, pass@2 100.0%
+undefined_variable: 1 (Undefined variable: '_')</pre>
+    <p><strong>The task suite.</strong> <code>tools/llm_eval/tasks</code> holds 40 tasks graded 1 to 5 across basics, collections, classes, generics, lambdas, exceptions, file I/O, JSON, recursion and the quirks models trip on in Objeck (the <code>~</code> before a return type, <code>Nil</code>, <code>:=</code> against <code>=</code>, <code>Int[]</code> arrays, <code>use</code>). A <code>.task</code> file is <code>key: value</code> header lines (<code>id</code>, <code>category</code>, <code>difficulty</code>, <code>libs</code>, <code>checker</code>, <code>timeout</code>) and sections introduced by <code>--- </code> (<code>prompt</code>, <code>starter</code>, <code>input</code>, <code>expected</code>, <code>reference</code>). The checkers: <code>exact</code> (line by line, ignoring line-end style and trailing blanks), <code>lines</code> (the same lines in any order), <code>numeric</code> (tokens, numbers within 1e-6) and <code>contains</code>. Every reference solution is compiled and run by the tests <code>llm_eval_references_a</code> and <code>llm_eval_references_b</code> (run with <code>python3 tools/llm_eval/run_tests.py &lt;deploy bin dir&gt;</code>), so a task that fails for every model is not a broken task.</p>
+    <p><strong>Against a real model.</strong> <code>tools/llm_eval/eval.obs</code> is the ready-to-run program; add one adapter file and the provider's libraries. The key is read by the provider's client (an environment variable or a <code>*_api_key.dat</code> file), never taken from the command line, never printed and never stored in the results.</p>
+<pre class="plain">obc -src tools/llm_eval/llm_eval.obs,tools/llm_eval/eval.obs,tools/llm_eval/adapter_anthropic.obs -lib ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
+obr eval_anthropic.obe --tasks tools/llm_eval/tasks --model claude-sonnet-5-5 --n 5 --k 1,5 --out claude</pre>
+    <p>The run costs <code>tasks x n</code> model calls and prints the count first. Flags include <code>--n</code> (attempts per task; pass@k needs n of at least k, and attempts differ only with a temperature above 0), <code>--k</code>, <code>--ids</code>, <code>--categories</code>, <code>--out PREFIX</code> (writes <code>PREFIX.md</code>, <code>PREFIX.json</code> and <code>PREFIX_results.json</code>), <code>--baseline FILE</code>, <code>--system-file</code>, <code>--max-tokens</code>, <code>--keep-files</code> and <code>--list</code>. <code>adapter_command.obs</code> evaluates any tool with a command line: the prompt goes to its standard input and its output is the answer. To compare two runs, <code>compare.obs</code> reads two <code>_results.json</code> files, and <code>ModelComparison-&gt;Of(a, b, reps, seed)</code> pairs attempt j of a task for model A with attempt j for model B and gives <code>Metrics-&gt;PairedBootstrapDifference</code> those pairs. A positive difference means B is better, and the verdict is one of <code>&lt;model&gt; is better than &lt;model&gt;: +33.3 points of pass rate, 95% interval [21.7, 46.7] excludes 0.</code> (either way round) or <code>No significant difference: ... includes 0.</code> The pairs are attempts, not tasks, so with several attempts per task the interval is a little narrower than a resampling of whole tasks would give.</p>
+    <p><strong>Reading the report.</strong> <code>EvalReport-&gt;Markdown</code> writes a summary row per model (compile rate, pass@k, failed API calls, mean latency, tokens in and out, <code>n/a</code> when the client does not say), pass@1 by category, the compile-error categories (<code>undefined_class</code>, <code>undefined_variable</code>, <code>undefined_method</code>, <code>type_mismatch</code>, <code>generics</code>, <code>missing_return</code>, <code>scope</code>, <code>syntax</code>, <code>array</code>, <code>string_interpolation</code> and others, with quoted names replaced by <code>'_'</code> so messages that differ only in a name group together), the outcomes (<code>pass</code>, <code>wrong_output</code>, <code>runtime_error</code>, <code>timeout</code>, <code>compile_error</code>, <code>no_code</code>, <code>model_error</code>), a per-task table and, for two models, the verdict. pass@k is the unbiased estimator of Chen et al. (2021), <code>1 - C(n-c, k) / C(n, k)</code> averaged over tasks (<code>PassAtK-&gt;Estimate(10, 3, 5)</code> is 0.916667); a task with fewer than k counted attempts is left out, and attempts whose model call failed are left out of every rate.</p>
+    <p><strong>Limits.</strong></p>
+    <ul>
+     <li>A program runs through a small watchdog script (a shell script on Linux and macOS, PowerShell on Windows) that kills it past its time and caps what it prints, but <strong>it is not otherwise sandboxed</strong>: it runs with your permissions and can read and write files and use the network. Evaluate untrusted models in a container or a throwaway account.</li>
+     <li>Attempts run one after another, and a task is judged by standard output only. An answer without a fenced code block is <code>no_code</code>; with several blocks the longest one that defines <code>Main</code> is used.</li>
+     <li>Only the Anthropic and Ollama clients report token counts.</li>
+     <li>Each compile is a real <code>obc</code> run, about 0.1 to 0.5 s.</li>
+     <li>The provider adapters are compiled but not exercised against the live services by the regression suite. The library, the checkers, the watchdog, <code>CommandModel</code> and the report are.</li>
+    </ul>
+    <p>The program above was compiled with the current toolchain and run for this guide, with the output shown. The live adapters, <code>eval.obs</code>, <code>compare.obs</code> and the 40-task suite were not run here. Reference: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/llm_eval.md" target="_blank">ai_sections/llm_eval.md</a>.</p>
     <hr class="section-end">
     <h3 id="computer-vision-opencv">Computer Vision (OpenCV)</h3>
     <p><strong>Compile:</strong> <code>obc -src your.obs -lib json,cipher,opencv</code></p>
@@ -2237,6 +2685,10 @@ values := mdp-&gt;GetValues();
       <tr><td data-label="Capability">Image embeddings (CLIP) and LFW pair scoring</td><td data-label="Class"><code>ClipEncoder</code>, <code>ClipPreprocessor</code>, <code>FacePairs</code></td><td data-label="Library"><code>ml_clip</code> + <code>onnx</code>, <code>opencv</code>, <code>models</code>, <code>ml_verify</code></td><td data-label="Key">A CLIP image ONNX model</td></tr>
       <tr><td data-label="Capability">FAR, FRR, EER, ROC and DET points for a verifier</td><td data-label="Class"><code>Verification</code>, <code>VerificationResult</code>, <code>Similarity</code></td><td data-label="Library"><code>ml_verify</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Hugging Face Hub downloads</td><td data-label="Class"><code>HubClient</code></td><td data-label="Library"><code>ai_hub</code> + <code>net</code>, <code>json</code>, <code>cipher</code></td><td data-label="Key">Network (cache works offline)</td></tr>
+      <tr><td data-label="Capability">Actors, mailboxes and supervisors</td><td data-label="Class"><code>Actor</code>, <code>Mailbox</code>, <code>Supervisor</code></td><td data-label="Library"><code>actor</code> + <code>gen_collect</code>, <code>concurrent</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Inference latency, resources and profiles</td><td data-label="Class"><code>Telemetry</code>, <code>SeriesStats</code>, <code>ProfileStore</code></td><td data-label="Library"><code>telemetry</code> + <code>gen_collect</code>, <code>json</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Prompt templates, token budgets, JSON Schema, structured calls</td><td data-label="Class"><code>PromptTemplate</code>, <code>ContextWindow</code>, <code>JsonSchema</code>, <code>StructuredCall</code></td><td data-label="Library"><code>llm_util</code> + <code>regex</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="Key">None</td></tr>
+      <tr><td data-label="Capability">Evaluate a model on checkable tasks</td><td data-label="Class"><code>EvalRunner</code>, <code>ModelResults</code>, <code>ModelComparison</code></td><td data-label="Library">compile <code>tools/llm_eval/llm_eval.obs</code> with <code>ml</code>, <code>csv</code>, <code>json</code>, <code>gen_collect</code></td><td data-label="Key">Provider key for a live model</td></tr>
       <tr><td data-label="Capability">Linear / regularized regression</td><td data-label="Class"><code>LinearRegression</code>, <code>RidgeRegression</code>, <code>LassoRegression</code>, <code>ElasticNet</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Linear classifiers</td><td data-label="Class"><code>LogisticRegression</code>, <code>SVM</code>, <code>Perceptron</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
       <tr><td data-label="Capability">Kernel SVMs</td><td data-label="Class"><code>KernelSVM</code> (linear, RBF, poly, sigmoid), <code>OneClassSVM</code></td><td data-label="Library"><code>ml</code></td><td data-label="Key">None</td></tr>
