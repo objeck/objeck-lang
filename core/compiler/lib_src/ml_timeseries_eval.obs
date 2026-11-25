@@ -6,6 +6,8 @@
 use Collection;
 
 #~
+Experimental: API may change.
+
 Accuracy metrics for point forecasts, interval coverage and rolling-origin (walk-forward) cross-validation. Part of the ml_timeseries library; see ml_timeseries.obs.
 ~#
 bundle System.ML.TimeSeries {

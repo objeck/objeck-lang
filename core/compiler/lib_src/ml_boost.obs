@@ -7,6 +7,8 @@ use Collection;
 use System.ML;
 
 #~
+Experimental: API may change.
+
 Gradient boosting: GradientBoostingRegressor (squared, absolute and Huber loss) and GradientBoostingClassifier (binary logistic and multiclass softmax). XGBoost-style second-order trees with L2-regularized leaf values, shrinkage, row and column subsampling, early stopping on a validation split, gain and split-count importances, staged predictions, model files, and an optional histogram split finder. Compile with -lib ml_boost,ml,gen_collect,csv. Design and measurements: docs/ai_sections/ml_boost.md.
 ~#
 bundle System.ML.Boost {

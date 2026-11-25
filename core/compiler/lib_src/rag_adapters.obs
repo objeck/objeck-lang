@@ -8,6 +8,8 @@ use System.ML.Rag;
 use API.Google.Gemini;
 
 #~
+Experimental: API may change.
+
 Adapters that plug the existing model libraries into the RAG kit (library rag): embedders over BERT sentence models (System.NLP.Onnx), CLIP image models (System.ML.Clip), Ollama, OpenAI and Gemini, and generators over Ollama, OpenAI, Anthropic and Gemini. Each implements RagEmbedder or RagGenerator, so a RagPipeline takes any of them, and mixing is fine: embed locally with BERT and generate with Claude.
 
 An adapter holds no state beyond its settings. A failed call returns Nil and GetError() carries the library's own reason (the same text the library's EndPoint->GetLastError() gives), so nothing here ends the program. Keys: an adapter takes a key, or Nil to use the library's own lookup (OPENAI_API_KEY, ANTHROPIC_API_KEY, the Gemini key file); the host of a local server is set with the library's own EndPoint->SetHost or SetBaseUrl before the call.
