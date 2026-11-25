@@ -8,7 +8,7 @@ use Data.JSON;
 use Query.RegEx;
 
 #~
-Helpers for talking to a chat model, written in Objeck with no network code of their own: PromptTemplate and PromptBuilder build prompts, TokenEstimator and ContextWindow keep them inside a budget, JsonSchema checks a JSON value against a schema and reports every problem with a JSON pointer, and StructuredCall asks any chat backend (the ChatFn interface) for JSON that matches a schema, extracting the JSON from a chatty reply and retrying with the validation errors until the reply is right. Compile with -lib llm_util,regex,json,gen_collect. The adapters that connect ChatFn to the Anthropic, OpenAI, Gemini and Ollama clients are in the separate llm_util_clients library, so this one links none of them. Guide: docs/AI.md, "LLM utilities".
+Helpers for talking to a chat model, written in Objeck with no network code of their own: PromptTemplate and PromptBuilder build prompts, TokenEstimator and ContextWindow keep them inside a budget, JsonSchema checks a JSON value against a schema and reports every problem with a JSON pointer, and StructuredCall asks any chat backend (the ChatFn interface) for JSON that matches a schema, extracting the JSON from a chatty reply and retrying with the validation errors until the reply is right. Compile with -lib llm_util,regex,json,gen_collect. It links no client: implement ChatFn over the one you use. Guide: docs/AI.md, "LLM utilities".
 ~#
 bundle API.LlmUtil {
 	#~
@@ -808,7 +808,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 	}
 
 	#~
-	A conversation under construction: an optional system prompt and a list of user and assistant turns. The builder is provider-neutral; the ToPairs and ToJsonMessages methods here, and the llm_util_clients library, turn it into what each client takes.
+	A conversation under construction: an optional system prompt and a list of user and assistant turns. The builder is provider-neutral; the ToPairs and ToJsonMessages methods turn it into what a client takes.
 
 ```
 b := PromptBuilder->New()->System("You are terse.")->User("Name a colour.")->Assistant("Blue.")->User("Another.");
@@ -1004,7 +1004,7 @@ b->Size()->PrintLine();   # 3 turns, the system prompt is kept apart
 	}
 
 	#~
-	Anything that can count the tokens in a text: the offline TokenEstimator here, or an exact counter that asks a provider (GeminiTokenCounter in llm_util_clients).
+	Anything that can count the tokens in a text: the offline TokenEstimator here, or an exact counter of your own that asks a provider.
 	~#
 	interface TokenCounter {
 		#~
@@ -2838,7 +2838,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 	}
 
 	#~
-	A chat backend, as far as StructuredCall needs one: send a conversation, get the reply text. Implement it for any model or service; the llm_util_clients library has adapters for the Anthropic, OpenAI, Gemini and Ollama clients, and a test can implement it with a scripted fake.
+	A chat backend, as far as StructuredCall needs one: send a conversation, get the reply text. Implement it for any model or service; a test can implement it with a scripted fake.
 	~#
 	interface ChatFn {
 		#~
