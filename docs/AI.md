@@ -31,8 +31,13 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Phi-3 / Phi-3 Vision](#phi-3--phi-3-vision)
   - [Image Classification (ResNet)](#image-classification-resnet)
   - [Any Model (generic run)](#any-model-generic-run)
+  - [GPU inference: IO binding, half precision, shared sessions](#gpu-inference-io-binding-half-precision-shared-sessions)
+    - [TensorRT and the engine cache](#tensorrt-and-the-engine-cache)
 - [Remote Inference Servers](#remote-inference-servers)
   - [One interface over both](#one-interface-over-both)
+- [Agents (API.Agent)](#agents-apiagent)
+- [Model Context Protocol (API.MCP)](#model-context-protocol-apimcp)
+- [Retrieval-augmented generation (System.ML.Rag)](#retrieval-augmented-generation-systemmlrag)
 - [Computer Vision (OpenCV)](#computer-vision-opencv)
 - [Natural Language Processing](#natural-language-processing)
   - [BERT tokens and sentence embeddings](#bert-tokens-and-sentence-embeddings)
@@ -49,6 +54,8 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Replicates and reports (System.ML.Report)](#replicates-and-reports-systemmlreport)
   - [Face verification: FAR, FRR, EER and CLIP embeddings (System.ML.Verification, System.ML.Clip)](#face-verification-far-frr-eer-and-clip-embeddings-systemmlverification-systemmlclip)
   - [Convolutional networks (System.ML.Cnn)](#convolutional-networks-systemmlcnn)
+  - [Gradient boosting (System.ML.Boost)](#gradient-boosting-systemmlboost)
+  - [Time series forecasting (System.ML.TimeSeries)](#time-series-forecasting-systemmltimeseries)
   - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
     - [In a window, or as a PNG (System.Plot.SDL)](#in-a-window-or-as-a-png-systemplotsdl)
@@ -812,6 +819,112 @@ than `YoloSession`, and it works for models no per-family class exists for.
 `programs/frameworks/opencv_onnx/ab_phi3.obs` drives Phi-3 through it with 67
 inputs, which is what the shape is for.
 
+### GPU inference: IO binding, half precision, shared sessions
+
+A `Session` chooses its execution provider with the `ep` config key (`cpu`, `cuda`, `tensorrt`, `dml`, `qnn`, `vitisai`, `coreml`). The ONNX Runtime beside `libobjk_onnx` must carry the provider ([Choosing the provider](../core/lib/onnx/README.md#choosing-the-provider)); a session asks the runtime and **refuses** an absent one, so nothing is silently moved to the CPU. CUDA 12, cuDNN 9 and the NVIDIA driver are yours to supply; no Objeck release ships them. `OnnxRuntime->HasProvider("cuda")` asks what is available. A session option, or a provider option ONNX Runtime does not know, is refused with a reason rather than ignored.
+
+```ruby
+config := Map->New()<String, String>;
+config->Insert("ep", "cuda");
+config->Insert("device_id", "0");                       # provider options go straight through
+config->Insert("cudnn_conv_algo_search", "HEURISTIC");
+session := Session->New("resnet34.onnx", config);
+```
+
+**IO binding: tensors that stay on the device.** A plain `Session->Run` converts and copies every input to the device and every output back on every call. A `DeviceTensor` is a tensor in the provider's memory, allocated once, filled with `Upload` and read with `Download` only when the program wants the numbers; a `BoundSession` points the model's inputs and outputs, by name, at device tensors, and `Run()` reads and writes them in place:
+
+```ruby
+use API.Onnx, Collection;
+
+class Bound {
+  function : Main(args : String[]) ~ Nil {
+    config := Map->New()<String, String>;
+    config->Insert("ep", "cuda");
+    session := Session->New("resnet34.onnx", config);
+    if(<>session->IsOpen()) {
+      "no session, the reason was printed above"->PrintLine();
+      return;
+    };
+
+    # the model's input is FP32[-1,3,224,224]: the batch is yours to choose
+    input := DeviceTensor->ForInput(session, "data", [8, 3, 224, 224]);
+    scores := DeviceTensor->ForOutput(session, "resnetv23_dense0_fwd", [8, 1000]);
+
+    bound := BoundSession->New(session);
+    bound->BindInput("data", input);
+    bound->BindOutput("resnetv23_dense0_fwd", scores);
+
+    frame := Float->New[8 * 3 * 224 * 224];
+    host := Float->New[8 * 1000];
+    for(i := 0; i < 10; i += 1;) {
+      input->Upload(frame);             # skip this when the input is already resident
+      bound->Run();
+      scores->Download(host);           # skip this when the output stays on the device
+    };
+
+    bound->Close();
+    input->Close();
+    scores->Close();
+    session->Close();
+  }
+}
+```
+
+The program needs a ResNet-34 model and a CUDA runtime, so it was compiled here but not run. `ForInput` and `ForOutput` take the element type from the model (`DeviceTensor->New(session, "FP16", shape)` names it); an output whose shape you do not know is bound with `BindOutputToDevice(name)` and fetched with `GetOutput(name)`. On `ep=cpu` a device tensor is ordinary host memory, so the same program runs without a GPU.
+
+What the tests assert: a bound `Run` gives exactly the answer `Session->Run` gives on the same provider and input (`onnx_iobinding` on the CPU provider everywhere, `onnx_iobinding_gpu` where a GPU session opens; without one it prints `SKIP:`). Against the CPU, a GPU result is within float tolerance, not bit-identical: the CUDA provider convolves in TF32 on recent cards, and the provider option `use_tf32=0` turns that off.
+
+Device memory is the provider's, not the garbage collector's: `Close()` every `DeviceTensor` and `BoundSession`. A session closed while tensors still use it is released after the last of them.
+
+**Half precision, bfloat16 and 8-bit models.** You never have to say what type a model wants: `Session->Run` reads the model's declaration and converts, rounding an FP16 or BF16 input from the `Float` you gave (to nearest, ties to even, overflow to infinity) and widening outputs back to `Float`. Integer inputs truncate toward zero and **saturate** at the type's range, so a 300 sent to an INT8 input is 127. For the bit patterns themselves there are `Half`, `BFloat16` and `Quantization`:
+
+```ruby
+use API.Onnx;
+
+class Bits {
+  function : Main(args : String[]) ~ Nil {
+    Half->ToBits(1.0)->PrintLine();                  # 15360 (0x3C00)
+    Half->Round(0.1)->PrintLine();                   # 0.0999756, the nearest binary16
+    Half->FromBits(31743)->PrintLine();              # 65504, the largest finite half
+    BFloat16->ToBits(3.0)->PrintLine();              # 16448 (0x4040)
+    packed := Half->Pack([1.0, 0.5]);                # Float[] -> Int[] of 16-bit patterns
+    Half->Unpack(packed)->Size()->PrintLine();       # 2
+    # a model with an INT8 input: scale and zero point are the ones it was quantized with
+    q := Quantization->ToInt8([300.0, -3.0], 0.0078125, 0);   # Float[] of whole numbers, saturated
+    q->Size()->PrintLine();                          # 2
+  }
+}
+```
+
+`DeviceTensor->UploadBits(Int[])` and `DownloadBits(Int[])` move raw element patterns, so a half-precision model can be fed without a per-element conversion. `Quantization` also has `ToUInt8` and `Dequantize`. `onnx_float16` needs no GPU or model file: it checks known patterns, the round trip of all 65,536 half and bfloat16 patterns, every rounding midpoint between neighbouring finite values, and a tiny generated model with FP16, BF16, INT8 and UINT8 inputs and outputs. An FP16 or INT8 model is made offline from an FP32 one with Python (`programs/tests/onnx_gpu/make_models.py`); INT8 needs calibration on representative data before its accuracy means anything.
+
+**One session, many threads.** `Session->Run` from several Objeck threads on the same `Session` is supported on every provider. `Session->Run`, `BoundSession->Run` and the device copies hand the calling thread to the collector for the length of the native work, so a long inference does not hold up garbage collection for other threads. Give each thread its own `BoundSession` and `DeviceTensor`s over the shared `Session`: a `BoundSession` belongs to one thread at a time. `onnx_concurrency` (CPU provider) and `onnx_concurrency_gpu` (`SKIP:` without a GPU) run four threads on one shared session beside a thread that allocates garbage without pause, and check every answer against the single-threaded one. The per-family sessions (`YoloSession`, `ResNetSession`, `Phi3Session`, ...) are not changed by this and still run their inference without handing over the thread.
+
+**CUDA graphs.** `enable_cuda_graph=1` (for `ep=cuda`; `cuda_graph=1` for `ep=tensorrt`) records the kernels of a run and replays them with one launch. It needs fixed shapes, every node on the GPU and tensors that stay at the same addresses, which is what a bound `DeviceTensor` is: refill it with `Upload`, never replace it. A session that asks for a graph runs the CUDA provider sequentially.
+
+#### TensorRT and the engine cache
+
+**Experimental: API may change.** `ep=tensorrt` (`trt`) compiles the model, or the parts of it TensorRT supports, into an engine for this GPU. It needs the NVIDIA driver, CUDA 12, cuDNN 9 and TensorRT 10 beside a GPU ONNX Runtime that carries the TensorRT provider; a runtime without it refuses the session.
+
+```ruby
+config := Map->New()<String, String>;
+config->Insert("ep", "tensorrt");
+config->Insert("fp16", "1");                  # half precision kernels where TensorRT can
+config->Insert("cuda_graph", "1");
+session := Session->New("resnet34.onnx", config);
+```
+
+| Key | Meaning |
+|---|---|
+| `fp16=1`, `int8=1` | half precision, or INT8 (the model must be QDQ-quantized); both off by default |
+| `engine_cache=0\|1` | engine cache, **on by default** |
+| `engine_cache_path=` | where engines go; default a per-user directory (`~/.cache/objeck-onnx/tensorrt_cache` on Linux, `%LOCALAPPDATA%\objeck-onnx\tensorrt_cache` on Windows), one subdirectory per precision setting |
+| `timing_cache`, `workspace_mb`, `opt_level` | the matching TensorRT builder options |
+| `cuda_fallback=0\|1` | append the CUDA provider for nodes TensorRT cannot take, **on by default** (`cuda.<option>` configures it) |
+| `trt_*` | any other TensorRT provider option, unchanged |
+
+TensorRT builds an engine the first time it sees a model, a precision and an input shape, which is slow; the cache keeps it for the next run. An engine is tied to the model, the GPU, the TensorRT version and these settings, so delete the cache directory after upgrading TensorRT or ONNX Runtime. Not checked: INT8 with a calibration table instead of a QDQ model, DLA, dynamic-shape profiles (each new batch size builds a new engine), and the Windows TensorRT libraries (the Windows build of `libobjk_onnx` was only checked to compile). Timings for these settings are in [`programs/tests/onnx_gpu`](../programs/tests/onnx_gpu/README.md), with the scripts to reproduce them on your own hardware.
+
 ---
 
 ## Remote Inference Servers
@@ -912,6 +1025,383 @@ What the interface deliberately leaves out is anything only one backend has --
 `GetModelInfo` on ONNX, `Metadata` and `DescribeRequest` on HTTP. Reach them
 through `GetSession()` or `GetClient()`; an interface that carried the union of
 two backends would describe neither.
+
+---
+
+## Agents (API.Agent)
+
+`API.Agent` is a provider-neutral tool-use loop. You give a chat model Objeck functions as tools; the library sends the conversation, runs the tool calls the model asks for, sends the results back, and repeats until the model answers in plain text. The same program runs against Anthropic, OpenAI, Gemini or a local Ollama by changing one line, and against a scripted fake model with no key and no network. Compile with `-lib agent,net,json,cipher,misc`.
+
+The library talks to the providers itself, so it does not need the `anthropic`, `openai`, `gemini` or `ollama` libraries. Its classes have distinctive names (`AgentTool`, `AgentReply`, ...) because the compiler resolves another library's `Vector<Tool>` by its short name.
+
+A tool is a name, a description the model reads, a JSON Schema for its arguments and a handler: a function `(JsonElement) ~ String` wrapped in a `Func2Ref`, or an object that implements `AgentToolHandler`. `ScriptedBackend` replays a list of replies, so a tool can be tried without a model:
+
+```ruby
+use API.Agent;
+use Collection;
+use Data.JSON;
+
+class Weather {
+  function : Get(arguments : JsonElement) ~ String {
+    city := arguments->Get("city")->GetString();
+    return "18C and sunny in {$city}";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("get_weather", "Get the weather for a city", schema, Func2Ref->New(Weather->Get(JsonElement) ~ String)<JsonElement, String>));
+
+    # a scripted model: it asks for the tool, then answers
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("call_1", "get_weather", "{\"city\":\"Paris\"}"));
+    script->AddBack(AgentReply->Say("It is 18C and sunny in Paris."));
+
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    result := agent->Run("What is the weather in Paris?");
+    result->GetText()->PrintLine();
+    result->ToString()->PrintLine();
+  }
+}
+```
+
+```
+It is 18C and sunny in Paris.
+[1] call get_weather {"city":"Paris"} -> ok: 18C and sunny in Paris
+[2] model: It is 18C and sunny in Paris.
+result: completed
+answer: It is 18C and sunny in Paris.
+```
+
+To use a real model, swap the backend. Each looks for its key in the argument, then an environment variable, then a key file in the working directory:
+
+| Backend | Constructor | Key |
+|---|---|---|
+| `AnthropicBackend` | `New(model, key)` | `ANTHROPIC_API_KEY`, `anthropic_api_key.dat` |
+| `OpenAIBackend` | `New(model, key)` | `OPENAI_API_KEY`, `openai_api_key.dat` (Chat Completions; `SetBaseUrl` points it at a compatible server) |
+| `GeminiBackend` | `New(model, key)` | `GOOGLE_API_KEY` or `GEMINI_API_KEY`, `gemini_api_key.dat` |
+| `OllamaBackend` | `New(model)` | none; `http://localhost:11434`, `SetHost` to change; the model must support tools |
+| `ScriptedBackend` | `New(script)` | none |
+
+```ruby
+use API.Agent;
+
+class Live {
+  function : Main(args : String[]) ~ Nil {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+    registry->Add(AgentTools->CurrentTime());
+
+    # pick one; each looks for its key in the environment or a key file
+    backend : ChatBackend;
+    backend := AnthropicBackend->New("claude-sonnet-5-5", Nil);
+    # backend := OpenAIBackend->New("gpt-5", Nil);
+    # backend := GeminiBackend->New("gemini-2.5-flash", Nil);
+    # backend := OllamaBackend->New("llama3.2");
+
+    agent := Agent->New(backend, registry);
+    agent->SetSystem("Use the tools for any arithmetic or date question.");
+    result := agent->Run("What is 17 * 23, and what is today's date in UTC?");
+    if(result->IsCompleted()) {
+      result->GetText()->PrintLine();
+    }
+    else {
+      "run failed ({$(result->GetStatus())}): {$(result->GetError())}"->ErrorLine();
+    };
+  }
+}
+```
+
+**What the loop does with a call.** Whatever fails becomes an error result the model can read, and the loop carries on. A call is answered `unknown` (no such tool), `denied` (the registry's `Allow` or `Deny` list excludes it), `invalid` (the arguments broke the tool's schema; the handler did not run), `refused` (a dangerous tool, or `SetApproveAll(true)`, and the `AgentApprover` said no or there is none), `error` (the handler raised, returned `Nil` or faulted), `timeout`, `skipped` (the step limit was reached) or `ok`. `Run` returns an `AgentResult` with `GetText()`, `GetStatus()` (`completed`, `max_steps` or `error`), `GetSteps()`, `ToString()` and `ToJson()`; the conversation is kept, so a second `Run` carries on and `Reset()` forgets it.
+
+**Safety.**
+
+- Offer the least: `ToolRegistry->Allow(name)` restricts the model to the listed tools, and `Deny(name)` always wins.
+- `AgentTool->SetDangerous(true)` sends every call through the `AgentApprover`; with no approver the call is refused.
+- Arguments are checked against the tool's schema before the handler runs. Write schemas with `required`, `enum`, bounds and `"additionalProperties": false`; a path or command line still needs checking inside the handler.
+- Model output and tool output are untrusted. Do not give one agent both a tool that reads untrusted content and a tool that can send or delete without approval.
+- API keys are masked in error messages and in `AgentResult->ToString()` and `ToJson()` (`Redactor->Scrub(text)` does the same for anything else you log).
+- `AgentTools` has three ready-made, non-dangerous tools: `Calculator()`, `CurrentTime()` and `ReadFile(directory)`. The file reader is lexical: it refuses `..` and absolute paths but does not detect a symbolic link that points outside the directory.
+
+**Limits.**
+
+- `SetMaxSteps(n)` (default 10) bounds the model calls in one `Run`; a model still asking for tools on the last step gets `skipped` answers and the result is `max_steps`.
+- Timeouts are not interruptions: `SetToolTimeout(ms)` reports a slow handler as `timeout` and discards its result, but a handler that never returns still hangs the run.
+- Tool calls run one after another, even when the model asks for several at once.
+- The schema checker covers `type`, `properties`, `required`, `additionalProperties`, `enum`, `const`, the numeric, string and array bounds, `items`, `anyOf` and `oneOf`; `pattern`, `format` and `$ref` are not checked.
+- No token streaming: an `AgentObserver` sees each step as it happens, and the model's text arrives whole.
+- Tested without the live services. `agent_loop_test`, `agent_backend_test` and `agent_http_test` use a scripted model, recorded provider response bodies and a local HTTPS server; nothing in the tests calls api.anthropic.com, api.openai.com, Google or a real Ollama.
+
+`programs/examples/agent_demo.obs` takes a provider, a model and a question and runs against the scripted model when it gets none.
+
+---
+
+## Model Context Protocol (API.MCP)
+
+`API.MCP` is a pure-Objeck implementation of the [Model Context Protocol](https://modelcontextprotocol.io). A **server** offers tools, resources and prompts that an MCP client (Claude Desktop, Claude Code, or this library's own client) can discover with the `tools/list`, `resources/list` and `prompts/list` requests and then call; a **client** does the same against another program; and a **bridge** hands a connected server's tools to the Anthropic, OpenAI and Gemini clients. Compile with `-lib mcp` plus the libraries it links:
+
+```
+obc -src server.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest server.obe
+```
+
+The protocol revision is **2025-11-25** (a client asking for 2025-06-18, 2025-03-26 or 2024-11-05 is answered with that revision). The newer stateless 2026-07-28 revision is not implemented.
+
+| | |
+|---|---|
+| Transports | stdio (newline-delimited JSON-RPC 2.0) and streamable HTTP; the client also reaches a server in the same process, or a server program started once per request |
+| Server methods | `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`, `resources/templates/list`, `resources/read`, `prompts/list`, `prompts/get`, cancellation, and progress notifications (sent) |
+| Not implemented | `logging/setLevel`, `completion/complete`, `resources/subscribe`, `list_changed` notifications, pagination, sampling, roots, elicitation, tasks, OAuth for HTTP, resumable streams, JSON-RPC batches |
+
+### A server over stdio
+
+A tool is a name, a description, the JSON Schema of its input and a function that takes a `McpCall` and returns a `McpToolResult`. `ServeStdio()` reads one message per line from standard input and writes one reply per line to standard output until the input ends:
+
+```ruby
+use API.MCP;
+
+class Greeter {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("greeter", "1.0.0");
+    server->AddTool("greet", "Greet a person by name",
+      "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}",
+      Func2Ref->New(Greeter->Greet(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+    server->ServeStdio();
+  }
+
+  function : Greet(call : McpCall) ~ McpToolResult {
+    name := call->GetString("name");
+    return McpToolResult->Text("Hello, {$name}!");
+  }
+}
+```
+
+Fed an `initialize` request, the `initialized` notification, a `tools/list` and a `tools/call`, it printed (the notification gets no reply):
+
+```
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"greeter","version":"1.0.0"}}}
+{"id":2,"jsonrpc":"2.0","result":{"tools":[{"description":"Greet a person by name","inputSchema":{"properties":{"name":{"type":"string"}},"required":["name"],"type":"object"},"name":"greet"}]}}
+{"id":3,"jsonrpc":"2.0","result":{"content":[{"text":"Hello, Ada!","type":"text"}],"isError":false}}
+```
+
+Nothing but protocol may reach standard output while the server runs; log with `ErrorLine()`. Resources and prompts are added the same way (`AddResource`, `AddPrompt`); a resource URI containing `{` is a template. A handler can poll `call->IsCancelled()` and send `call->ReportProgress(progress, total, message)`.
+
+A tool that fails is not a protocol error: a handler that returns `McpToolResult->Error("...")`, raises, returns `Nil` or gets arguments that miss the schema's `required` names or `type`s produces a normal reply with `isError` true, so the model can read it and retry. Protocol errors (`-32700` parse, `-32600` invalid request, `-32601` unknown method, `-32602` bad parameters, `-32002` resource not found) are for malformed requests.
+
+### A client
+
+`McpClient` initializes a connection, lists and calls tools, reads resources and gets prompts. A refused request returns `Nil` (or `false`) and `GetError()` and `GetErrorCode()` say why; a tool that ran and failed is a result whose `IsError()` is true:
+
+```ruby
+use API.MCP, Collection, Data.JSON;
+
+class Tour {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("tour", "1.0.0");
+    server->AddTool("add", "Add two integers",
+      "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}",
+      Func2Ref->New(Tour->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+    server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "Hello from a resource"));
+
+    # a client of a server in the same process
+    client := McpClient->InProcess(server);
+    if(client->Initialize("tour-client", "1.0")) {
+      "server: {$client->GetServerName()} {$client->GetServerVersion()}, revision {$client->GetProtocolVersion()}"->PrintLine();
+
+      tools := client->ListTools();
+      each(tool in tools) {
+        "tool: {$tool->GetName()} - {$tool->GetDescription()}"->PrintLine();
+      };
+
+      result := client->CallTool("add", "{\"a\":2,\"b\":3}");
+      "add(2, 3) = {$result->GetText()}"->PrintLine();
+
+      # a tool that ran and failed is a result; a request the server refuses is Nil with a reason
+      missing := client->CallTool("add", "{\"a\":2}");
+      if(missing->IsError()) {
+        "add(2) failed: {$missing->GetText()}"->PrintLine();
+      };
+      if(client->CallTool("nope", "{}") = Nil) {
+        "nope: {$client->GetError()} (code {$client->GetErrorCode()})"->PrintLine();
+      };
+
+      contents := client->ReadResource("notes://readme");
+      "resource: {$contents->Get(0)->GetText()}"->PrintLine();
+    };
+  }
+
+  function : Add(call : McpCall) ~ McpToolResult {
+    sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+    return McpToolResult->Text("{$sum}");
+  }
+}
+```
+
+```
+server: tour 1.0.0, revision 2025-11-25
+tool: add - Add two integers
+add(2, 3) = 5
+add(2) failed: Invalid arguments for add: missing required argument 'b'
+nope: Unknown tool: nope (code -32602)
+resource: Hello from a resource
+```
+
+A client reaches a server through a transport: `McpClient->Http(url)` (streamable HTTP), `McpClient->InProcess(service)`, `McpClient->Command(command)` (a server program started by the shell **once per request**, so only for servers whose tools do not depend on earlier requests; the runtime has no process with pipes) or `McpClient->New(transport)` for your own `McpTransport`.
+
+### Serving over HTTP
+
+`server->ServeHttp(8080)` listens on `127.0.0.1` (port 0 takes a free port, `GetBoundPort()` says which; `ServeHttp("", 8080)` listens on every interface). The server issues an `Mcp-Session-Id`, refuses a browser `Origin` that is not loopback unless you add it with `AllowOrigin`, and answers every `POST` with JSON. Limits: there is no authorization, so keep the loopback address unless something in front of it authenticates; replies are never an event stream, so progress notifications are dropped (cancellation works); sessions live in memory and never expire; only one HTTP server runs in a process.
+
+### Using a server from Claude Desktop and Claude Code
+
+`programs/examples/mcp_server_demo.obs` is a server with a calculator and two read-only file tools restricted to one directory. Claude Desktop reads `claude_desktop_config.json`; Claude Code reads `.mcp.json` in the project or `~/.claude.json`. The entry has the same shape in both:
+
+```json
+{
+  "mcpServers": {
+    "objeck-demo": {
+      "command": "/opt/objeck/bin/obr",
+      "args": ["/opt/objeck/examples/mcp_server_demo.obe", "/home/me/shared"],
+      "env": { "OBJECK_LIB_PATH": "/opt/objeck/lib" }
+    }
+  }
+}
+```
+
+**This was not tried against Claude Desktop or Claude Code.** The configuration shape comes from their documentation; the server is tested against a scripted client that speaks the specification's messages.
+
+### Giving a server's tools to Claude, OpenAI and Gemini
+
+`McpToolBridge->New(client)` lists a connected server's tools and converts them: `ToAnthropicJson()` and `ToOpenAiJson()` are the `tools` arrays those APIs take, `GetFunctions()` is the map `API.Google.Gemini.Model->GenerateContent` takes, and `Run(name, input)` runs the call a model asked for and returns the text to give back (`"error: ..."` for a tool that failed). With Claude:
+
+```ruby
+use API.MCP, API.Anthropic, Collection, Data.JSON;
+
+# compile with -lib anthropic,gen_collect,json,net,net_server,cipher,misc,mcp
+class AskWithTools {
+  function : Main(args : String[]) ~ Nil {
+    client := McpClient->Http("http://127.0.0.1:8080/mcp");
+    client->Initialize("agent", "1.0");
+    bridge := McpToolBridge->New(client);
+
+    tools := Vector->New()<Tool>;
+    each(tool in bridge->GetTools()) {
+      tools->AddBack(Tool->New(tool->GetName(), tool->GetDescription(), tool->GetInputSchema()));
+    };
+
+    chat := Chat->New("claude-sonnet-5-5", Nil);
+    reply := chat->SendReply("What is (2 + 3) * 4? Use the calculator.", tools);
+    while(reply <> Nil & reply->HasToolUses()) {
+      uses := reply->GetToolUses();
+      each(i : uses) {
+        call := uses->Get(i);
+        text := bridge->Run(call->GetName(), call->GetInput());
+        chat->AddToolResult(call->GetId(), text, text->StartsWith("error: "));
+      };
+      reply := chat->SendReply(Nil, tools);
+    };
+    reply->GetText()->PrintLine();
+  }
+}
+```
+
+The bridge is tested against a local server (`mcp_core_test`); the Claude and Gemini hand-offs compile but were not run against the live APIs.
+
+### Limits
+
+- The JSON parser is lenient: a malformed message inside well-placed braces can be accepted.
+- Tool input is validated for `required` names and each property's `type` only; `enum`, `minimum`, patterns, nested objects and `$ref` are not checked.
+- Each `tools/call` takes a thread of its own, with no cap.
+- Standard input is read a byte at a time, which makes a line of any length work and is slow for very large messages.
+- A stdio server ends when its input does; there is no `shutdown`.
+
+Tests: `mcp_core_test` in the regression suite (every method, version negotiation, the error codes, failing tools, cancellation, the bridge, and the client over HTTP on loopback) and `mcp_stdio_test.py`, a scripted Python client that drives a server process over stdio.
+
+---
+
+## Retrieval-augmented generation (System.ML.Rag)
+
+RAG answers from your documents instead of from what a model was trained on: split the documents into chunks, embed them, keep the vectors in an index, and for each question retrieve the closest chunks, put them in the prompt as numbered sources, and ask the model to cite them. The kit is glue over parts that already exist: `VectorIndex` (see [Local vector search](#local-vector-search-systemmlvectorsearch)), the embedders and the chat clients.
+
+| Library | Holds | `-lib` |
+|---|---|---|
+| `rag` | the chunker, the `RagEmbedder` and `RagGenerator` interfaces, an offline toy embedder and generator, `RagIndex`, the prompt builder, `RagAnswer`, `RagPipeline` | `rag,ml_vector,gen_collect` |
+| `rag_adapters` (**Experimental: API may change**) | adapters over BERT, the CLIP image tower, Ollama, OpenAI, Gemini and Anthropic | `@rag` |
+
+Nothing in either library ends the program on bad input or a failed call: it returns `Nil`, `false` or `-1`, and the object keeps the reason (`GetError()`).
+
+`RagHashEmbedder` (hashed bag of words) and `RagStubGenerator` (answers with the sentence of source [1] that shares the most words with the question, and cites it) need no key, model or network, so a whole pipeline runs anywhere:
+
+```ruby
+use System.ML.Rag;
+
+class Quickstart {
+  function : Main(args : String[]) ~ Nil {
+    pipeline := RagPipeline->New(RagHashEmbedder->New(512), RagStubGenerator->New());
+    pipeline->AddText("faq.txt", "Objeck is an object-oriented language. It compiles to bytecode.\n\nThe virtual machine has a generational garbage collector.");
+    pipeline->AddText("net.txt", "The net library speaks HTTP and TLS.");
+
+    answer := pipeline->Answer("What kind of garbage collector is there?");
+    answer->GetText()->PrintLine();
+
+    source := answer->GetCitedSources()->Get(0)->GetChunk();
+    "from {$source->GetSource()} at offset {$source->GetOffset()}"->PrintLine();
+  }
+}
+```
+
+```
+The virtual machine has a generational garbage collector. [1]
+from faq.txt at offset 0
+```
+
+The toy embedder matches shared words, not meaning, so it demonstrates the plumbing and is what the tests use. For real retrieval swap in an adapter; nothing else changes.
+
+- **Chunking.** `RagChunker->New(size, overlap, mode)` cuts text into `RagChunk` pieces with an id, source name, character offset and text. The modes (`RagSplit`) are `SIZE`, `PARAGRAPH` and `SENTENCE`.
+- **The index.** `RagIndex` is a `VectorIndex` that also remembers each chunk, so `Search` returns `RagMatch` objects (chunk, score, rank). `Store(file)` writes vectors and chunks to one file and `RagIndex->Load(file)` returns `Nil` for a missing, damaged or foreign file; `pipeline->SetIndex(index)` carries on from a loaded one.
+- **Prompt and answer.** `RagPromptBuilder` asks the model to answer only from the numbered sources and cite them as `[n]`. `RagAnswer` has `GetText()`, `GetSources()`, `GetPrompt()` and `GetCitations()`, which read the `[n]` markers out of the text. With nothing retrieved the generator is not called and the answer is the no-answer text.
+- **The pipeline.** `AddText(source, text)` (adding a source again replaces its chunks), `Retrieve(question)`, `Answer(question)`, `SetTopK`, `SetMinScore`, `SetChunker`, `SetPromptBuilder`.
+
+**Plugging in models.** An embedder is any class implementing `RagEmbedder` (`GetDimension`, `Embed(texts) ~ Float[,]`, `GetError`); a generator implements `RagGenerator` (`Generate(prompt)`, `GetError`). Questions and chunks must be embedded by the same model.
+
+**Adapters (Experimental: API may change).** `RagBertEmbedder`, `RagClipImageEmbedder` (the "text" is an image path, so a search is by example image), `RagOllamaEmbedder`, `RagOpenAIEmbedder`, `RagGeminiEmbedder`, `RagOllamaGenerator`, `RagOpenAIGenerator`, `RagAnthropicGenerator` and `RagGeminiGenerator`. Hosts and keys are the underlying clients' own. Mixing is fine: embed locally with BERT and generate with Claude. With a local Ollama server (compile with `-lib @rag`):
+
+```ruby
+use System.ML.Rag;
+
+class Local {
+  function : Main(args : String[]) ~ Nil {
+    # a local server: `ollama pull nomic-embed-text` and `ollama pull llama3.2` first
+    embedder := RagOllamaEmbedder->New("nomic-embed-text");
+    generator := RagOllamaGenerator->New("llama3.2");
+
+    pipeline := RagPipeline->New(embedder, generator);
+    if(pipeline->AddText("faq.txt", "Objeck is an object-oriented language.") < 0) {
+      "could not index: {$pipeline->GetError()}"->PrintLine();
+      return;
+    };
+
+    answer := pipeline->Answer("What is Objeck?");
+    if(answer = Nil) {
+      "could not answer: {$pipeline->GetError()}"->PrintLine();
+      return;
+    };
+    answer->GetText()->PrintLine();
+  }
+}
+```
+
+With no Ollama server this prints `could not index: embedder: empty response (HTTP 0)` and ends. The Ollama adapters are tested against a fake server on loopback (`rag_adapters_ollama_test`); the OpenAI, Gemini, Anthropic, BERT and CLIP adapters compile and are thin wrappers, but no test exercises them against a live service or model.
+
+**Limits.**
+
+- Retrieval is only as good as the embedder.
+- Citations are asked for, not enforced: a model may cite nothing, cite wrongly, or answer from what it knows, and the kit does not check that a claim is supported by its source.
+- The index is exact and in memory (`SetThreads` parallelizes the scan of a large one); it is not a hosted vector store.
+- There is no check that the embedder asking a question is the one that built a loaded index, only that the dimensions agree.
+- A `RagIndex`, `RagChunker` or `RagPipeline` is for one thread at a time.
+- Adapter requests are one prompt with no history, and replies are not streamed.
+
+`programs/examples/rag_demo.obs` runs the whole offline pipeline, including saving and reloading an index. The tests are `rag_chunking_test`, `rag_index_test`, `rag_pipeline_test` and `rag_adapters_ollama_test`; none needs a key, a model or a network.
 
 ---
 
@@ -1832,6 +2322,154 @@ The GPU is as close to PyTorch as the CPU engine is. The test allows 2e-5 per la
 
 *Not verified.* The whole path through Objeck (tests, speed, parity) was run on Windows x64 with an RTX 4090 (compute capability 8.9, driver 621.24, CUDA 13.1) only. On Linux (Ubuntu 24.04 under WSL2, g++ 13, CUDA 13.1, the same GPU) `build_cuda.sh` builds the library and a standalone C++ program that loads it with `dlopen` trains the baseline through it next to the CPU engine, agreeing to 1.2e-4 over 20 Adam steps on random labels; `libobjk_ml`'s own loader compiles there but was not run, and macOS has no CUDA. No other GPU generation, no multi-GPU machine and no older toolkit were tried; TF32 was measured on one batch only.
 
+### Gradient boosting (System.ML.Boost)
+
+**Experimental: API may change.** `System.ML.Boost` adds gradient boosted trees: `GradientBoostingRegressor` (squared, absolute and Huber loss) and `GradientBoostingClassifier` (binary logistic and multiclass softmax). It is pure Objeck in its own library; compile with `-lib ml_boost,ml,gen_collect,csv` (`@ai` includes it). The trees are XGBoost's second-order trees, grown level by level; the classifier implements `ScoreModel`, so a binary model drops into `CrossValidation`.
+
+```ruby
+use System.ML;
+use System.ML.Boost;
+
+class BoostDemo {
+  # y = a^2 + 0.5 b on seeded random rows
+  function : Fill(rand : System.ML.Random, X : Float[,], y : Float[]) ~ Nil {
+    each(i : y) {
+      X[i, 0] := 2.0 * rand->NextReal() - 1.0;
+      X[i, 1] := 2.0 * rand->NextReal() - 1.0;
+      y[i] := X[i, 0] * X[i, 0] + 0.5 * X[i, 1];
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    rand := System.ML.Random->New(7);
+    train_x := Float->New[300, 2];
+    train_y := Float->New[300];
+    test_x := Float->New[100, 2];
+    test_y := Float->New[100];
+    Fill(rand, train_x, train_y);
+    Fill(rand, test_x, test_y);
+
+    model := GradientBoostingRegressor->New(100, 0.1, 3, 42);   # stages, learning rate, max depth, seed
+    model->SetSubsample(0.8);
+    if(<>model->Fit(train_x, train_y)) {
+      "fit refused: {$model->GetError()}"->PrintLine();
+      return;
+    };
+    "stages {$model->GetNumStages()}, test mean squared error {$model->Score(test_x, test_y)}"->PrintLine();
+    importance := model->GetFeatureImportances();
+    each(j : importance) {
+      "feature {$j}: importance {$importance[j]}"->PrintLine();
+    };
+  }
+}
+```
+
+```
+stages 100, test mean squared error 0.001871
+feature 0: importance 0.470712
+feature 1: importance 0.529288
+```
+
+- **Classification.** `GradientBoostingClassifier->New(60, 0.1, 3, 42)`; `Fit(X, labels)` takes `Int` labels (two classes use the logistic loss, more use softmax), `PredictProba(X)` returns one row per sample, `Predict(X)` the labels, `Score(X, labels)` the accuracy and `LogLoss(X, labels)`. Use `SetLambda(1.0)` for classifiers, as XGBoost does by default.
+- **Loss.** `GradientBoostingRegressor->New(BoostLoss->HUBER, 100, 0.1, 3, 42)`; `SQUARED` is the default, `ABSOLUTE` and `HUBER` are the robust options.
+- **Early stopping and staged predictions.** `SetEarlyStopping(patience, held_out_share)` or `Fit(X, y, Xv, yv)` with a validation set; `StagedPredict(X)` returns the prediction after every stage.
+- **Other settings.** `SetMinSamplesLeaf`, `SetSubsample`, `SetColumnSample`, `SetLambda`, `SetMinSplitGain`, `SetMinChildWeight` and `SetHistogram(bins)` (approximate splits on a histogram). A setter returns `false` and sets `GetError()` for a value it refuses; `Fit` returns `false` rather than ending the program. A `NaN` feature is a missing value; a `NaN` target is refused.
+- **Model files.** `Store(file)` and `GradientBoostingClassifier->Load(file)` (or `Export` and `Import` for a string); `Load` returns `Nil` for a missing, damaged or wrong-kind file.
+
+Limits: trees grow level by level to `max_depth` (1 to 30), there are no categorical features or monotone constraints, training is single threaded, and a loaded model predicts but cannot be refitted. The tests compare against numbers from scikit-learn and XGBoost generated by `programs/regression/ml_boost_ref/boost_ref.py` (`ml_boost_accuracy`); the classifier at `lambda` 0 agrees only loosely, because tiny arithmetic differences move a tree choice. A longer program is [`programs/examples/ml/gradient_boosting.obs`](../programs/examples/ml/gradient_boosting.obs).
+
+### Time series forecasting (System.ML.TimeSeries)
+
+**Experimental: API may change.** `System.ML.TimeSeries` forecasts one numeric series with a prediction interval around every forecast: benchmark forecasters, exponential smoothing (simple, Holt, damped Holt, Holt-Winters), ARIMA with optional seasonal differencing, automatic selection, and rolling-origin evaluation. It also has what a forecasting workflow needs around the models: a container with a missing-value policy, transforms and a classical decomposition, autocorrelation, and an augmented Dickey-Fuller test. It is pure Objeck in one library, `ml_timeseries`, which needs only `gen_collect` (`-lib ml_timeseries,gen_collect`, or `@ai`).
+
+A model is fitted with `Fit` and used with `Forecast`. Nothing ends the program on bad input: `Fit` returns `false` and `GetError()` says why (a missing value, a series that is too short), and helpers return `Nil` or `NaN`. Results are deterministic.
+
+```ruby
+use System.ML.TimeSeries;
+
+class Forecasting {
+  function : Main(args : String[]) ~ Nil {
+    # n, level, slope, amplitude, period, noise sd, seed
+    y := TimeSeries->New(Simulate->TrendSeasonal(120, 20.0, 0.3, 5.0, 12, 0.5, 15));
+    hw := ExponentialSmoothing->HoltWinters(12, false);
+    if(<>hw->Fit(y)) {
+      hw->GetError()->PrintLine();
+      return;
+    };
+
+    f := hw->Forecast(6, 0.9);        # 6 steps ahead, 90% interval
+    m := f->GetMean();
+    lo := f->GetLower();
+    hi := f->GetUpper();
+    each(i : 6) {
+      "+{$i + 1}: {$m[i]}  [{$lo[i]}, {$hi[i]}]"->PrintLine();
+    };
+
+    # walk-forward check: fit on 60 values, forecast 6, move the origin 6, refit
+    cv := Evaluation->RollingOrigin(hw, y, 60, 6, 6, 0.9, 12);
+    "{$cv->GetFolds()} folds: MAE {$cv->GetMae()}  RMSE {$cv->GetRmse()}  MASE {$cv->GetMase()}"->PrintLine();
+  }
+}
+```
+
+```
++1: 56.339340  [55.452744, 57.225937]
++2: 58.839322  [57.950277, 59.728366]
++3: 60.825144  [59.933409, 61.716878]
++4: 61.889253  [60.994577, 62.783929]
++5: 61.525722  [60.627842, 62.423601]
++6: 59.881050  [58.979696, 60.782403]
+10 folds: MAE 0.417388  RMSE 0.542908  MASE 0.114954
+```
+
+Look at the data, then let the library choose:
+
+```ruby
+use System.ML.TimeSeries;
+
+class Choosing {
+  function : Main(args : String[]) ~ Nil {
+    values := Simulate->TrendSeasonal(72, 100.0, 1.5, 12.0, 12, 2.0, 2026);
+    adf := Stationarity->Adf(values, -1, "c");     # -1: choose the lag count by AIC
+    "ADF {$adf->GetStatistic()}, 5% value {$adf->GetCritical(0.05)}, stationary {$adf->IsStationary(0.05)}"->PrintLine();
+
+    y := TimeSeries->New(Simulate->RandomWalk(200, 0.3, 1.0, 17));
+    auto := AutoArima->New(2, 2, 2, 1, SelectionCriterion->Kind->AICC);   # max p, max q, max d, period (1 = none), criterion
+    if(auto->Fit(y)) {
+      "{$auto->GetName()}, criterion {$auto->GetBestCriterion()}"->PrintLine();
+      f := auto->Forecast(3, 0.95);
+      m := f->GetMean();
+      each(i : m) {
+        "+{$i + 1}: {$m[i]}"->PrintLine();
+      };
+    };
+  }
+}
+```
+
+```
+ADF 0.591916, 5% value -2.911939, stationary false
+AutoARIMA(1,1,1), criterion 539.577740
++1: 62.054499
++2: 62.344310
++3: 62.653396
+```
+
+- **Container.** `TimeSeries->New(values)` or `New(values, times)`, `SetPeriod(Frequency->Monthly())`, `Check()`, and `Impute(TimeSeries->Missing->LINEAR)` (also `FORWARD`, `MEAN`, `ZERO`, `DROP`). The models refuse a series with a `NaN`; fill it first.
+- **Models** (all implement `Forecaster`): `BaselineForecaster` (naive, seasonal naive, drift, mean, moving average), `ExponentialSmoothing` (`Simple()`, `Holt(damped)`, `HoltWinters(period, multiplicative)`), `ArimaModel->New(p, d, q)` or `New(p, d, q, D, period)`, and the selectors `AutoArima` and `AutoEts`.
+- **Tools.** `SeriesTransform` (`Diff`, `BoxCox`, `Decompose`, rolling statistics, lag matrices), `Acf` (`Compute`, `Partial`, `LjungBox`), `Stationarity` (`Adf`, `SuggestDiff`), `ForecastMetrics` (`Mae`, `Rmse`, `Mape`, `Smape`, `Mase`, `Coverage`) and `Evaluation->RollingOrigin`, which copies the model per fold and never changes the one you pass.
+- **Accuracy.** The regression tests (`ml_timeseries_transform`, `_smoothing`, `_arima`, `_eval`, `_edges`) compare the library against numbers computed by statsmodels, scipy and numpy (`programs/regression/ml_timeseries_ref/gen_reference.py`). The ACF, ADF, decomposition and fixed-parameter smoothing recursions agree to rounding; ARIMA agrees with a conditional-least-squares reference, and with statsmodels' maximum-likelihood fit only to about 0.03 on the coefficients.
+
+Limits:
+
+- **One series, evenly spaced.** There are no exogenous regressors and no multivariate models; timestamps are kept but the models treat observations as equally spaced.
+- **Exponential smoothing** is the additive-error family: no multiplicative trend, no multiplicative-error models. The initial states come from a fixed rule, so the fit is not the exact state-space maximum likelihood, and the multiplicative-season interval is an approximation.
+- **ARIMA** is conditional least squares, not exact maximum likelihood. The seasonal part is differencing only (no seasonal AR or MA terms, so the common "airline" model is not available); check residuals with `Acf->LjungBox`. Intervals do not include coefficient uncertainty.
+- **Stationarity.** `Adf` gives a statistic and critical values but no p-value, and there is no KPSS test. `SuggestDiff` is a heuristic for a first guess.
+- Results are deterministic on a platform; across platforms compare with a tolerance, not for equality.
+
+A whole workflow (decompose, test, compare four models by walk-forward evaluation, forecast, let `AutoArima` choose) is [`programs/examples/ml/timeseries_forecast.obs`](../programs/examples/ml/timeseries_forecast.obs).
+
 ### Statistics (System.Stats)
 
 Classical statistics for the analysis that comes before (or instead of) a model: descriptive statistics, t-tests with confidence intervals and effect sizes, Pearson correlation with a p-value, and an ordinary least squares fit with the full `statsmodels`-style summary. It is `stats.obl` (`-lib stats,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`. No call ends the program on bad input: a `Float` function returns NaN, and a result object comes back with `IsValid()` false and `GetError()` saying why (Nil, a single value, zero variance, mismatched lengths, NaN or infinity, a confidence level outside (0, 1), a rank-deficient design).
@@ -2077,7 +2715,8 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_verify`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_boost`, `ml_vector`, `ml_report`, `ml_verify`, `ml_timeseries`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json`, and others listed in `configobjk.ini` | local System.ML / System.ML.Lab / System.ML.Boost / System.ML.TimeSeries / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
+| `@rag` | `rag`, `rag_adapters`, `ml_vector`, the OpenAI, Gemini, Ollama and Anthropic clients, BERT, CLIP and their dependencies | `System.ML.Rag` with every adapter |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `ml_clip`, `ml_verify`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks, image loading and history tables |
@@ -2146,6 +2785,12 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Decomposition | `PCA` | `ml` | None |
 | Neural network | `NeuralNetwork` | `ml` | None |
 | Classifier head over embeddings | `EmbeddingClassifier` | `ml` | None |
+| Tool-use loop over any chat model | `Agent`, `ToolRegistry`, `AgentTool` | `agent` + `net`, `json`, `cipher`, `misc` | The provider's, or None for Ollama and the scripted backend |
+| MCP server, client and tool bridge | `McpService`, `McpClient`, `McpToolBridge` | `mcp` + `gen_collect`, `json`, `net`, `net_server`, `cipher`, `misc` | None |
+| Retrieval-augmented generation | `RagPipeline`, `RagIndex`, `RagChunker` | `rag` + `ml_vector` | None (offline); the adapters use their provider's |
+| Gradient boosted trees (experimental) | `GradientBoostingRegressor`, `GradientBoostingClassifier` | `ml_boost` + `ml` | None |
+| Time series forecasting (experimental) | `TimeSeries`, `ExponentialSmoothing`, `ArimaModel`, `AutoArima` | `ml_timeseries` | None |
+| Tensors on the GPU, half precision | `DeviceTensor`, `BoundSession`, `Half`, `BFloat16` | `onnx` | None |
 | Graph search | `Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst` | `ai` | None |
 | Game playing | `Minimax`, `MonteCarloTreeSearch` | `ai` | None |
 | Metaheuristics | `GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing` | `ai` | None |

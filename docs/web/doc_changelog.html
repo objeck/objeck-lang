@@ -177,6 +177,7 @@
     <h4 id="documentation">Documentation</h4>
     <ul>
      <li><strong><code>docs/performance.md</code> has a Library workloads section</strong>: regex, vector search, nearest-neighbor, edit-distance, string and JSON timings, with what was not measured. The data and text guide lists the RegEx behaviours above, and <code>docs/AI.md</code> documents <code>SetThreads</code> and the bounded edit distance.</li>
+     <li><strong><code>docs/AI.md</code> covers the libraries that were missing from it</strong>: <code>API.Agent</code>, <code>API.MCP</code> (server, client and the bridge to the Anthropic, OpenAI and Gemini clients), <code>System.ML.Rag</code>, <code>System.ML.Boost</code>, <code>System.ML.TimeSeries</code> and the <code>API.Onnx</code> GPU additions (IO binding, half precision, shared sessions, TensorRT), each with a program that was compiled and its stated limits; <code>ml_boost</code>, <code>ml_timeseries</code>, <code>rag_adapters</code> and the TensorRT options are marked experimental.</li>
     </ul>
     <h4 id="tests">Tests</h4>
     <ul>
