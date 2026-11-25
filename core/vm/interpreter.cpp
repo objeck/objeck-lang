@@ -82,6 +82,9 @@
 
 #include <sstream>
 #include <math.h>
+#include <atomic>
+#include <mutex>
+#include <unordered_map>
 
 using namespace Runtime;
 
@@ -558,6 +561,12 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 #endif
     // check for try error recovery
     long recovery_ip = CheckTryRecovery();
+    if(recovery_ip == THREAD_FAULT_IP) {
+      // the error went to the thread's sentinel: nothing is left to run. The
+      // thread body (ExecuteThreadBody) takes the fault and releases the frames.
+      halt = true;
+      break;
+    }
     if(recovery_ip >= 0) {
       ip = recovery_ip;
 #ifdef OBJECK_CFG_TRACE
@@ -1654,6 +1663,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   // recycled nursery. Reading instance[0] there returned whatever reused that memory
   // -- once on macOS CI a handle of 0x4, and pthread_join answered ESRCH (#874). The
   // handle value itself never moves, so reading it first is enough.
+  JoinedThreadFault().clear();
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)instance[0];
   if(!vm_thread) {
@@ -1682,6 +1692,13 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #else
   void* status;
   pthread_t vm_thread = (pthread_t)instance[0];
+  if(!vm_thread) {
+    // already joined: the slot was cleared by that join (as on Windows)
+    return;
+  }
+  // cleared now, while 'instance' is the live object: a second Join finds it empty
+  // instead of joining a thread that no longer exists
+  instance[0] = 0;
 
   // see the note above: the handle is read before this thread parks
   MemoryManager::BeginBlocking();
@@ -1699,6 +1716,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
     VmExit(1);
 #endif
   }
+  TakeThreadFault(ThreadKey(vm_thread));
 #ifdef __linux__
   // the stack the VM allocated for it (ProcessAsyncMethodCall)
   ThreadStacks::Release(vm_thread);
@@ -1707,6 +1725,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   MemoryManager::EndBlocking();
 
 #ifdef _WIN32
+  TakeThreadFault(ThreadKey(vm_thread));
   // The thread has finished and been joined. Close its handle, which nothing did: each
   // thread a program started kept a kernel object for the life of the process. The Thread
   // object is read again from the frame, because a collection may have moved it while this
@@ -2243,10 +2262,19 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
 // interpreter.
 //
 static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack, size_t* stack_pos,
-                              StackMethod* called, size_t* self)
+                              StackMethod* called, size_t* self, bool isolate = false)
 {
   try {
+    if(isolate) {
+      // an error nothing catches ends this thread, not the process
+      StackInterpreter::EnterIsolatedThread();
+    }
     intpr->Execute(op_stack, stack_pos, 0, called, self, false);
+    std::wstring fault;
+    if(isolate && StackInterpreter::ThreadEndedInFault(fault)) {
+      intpr->FinishThreadFault();
+      StackInterpreter::RecordThreadFault(StackInterpreter::CurrentThreadKey(), fault);
+    }
   }
   catch(const std::bad_alloc&) {
     std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
@@ -2320,7 +2348,9 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self);
+  StackInterpreter::ForgetThreadFault(StackInterpreter::CurrentThreadKey());
+  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
+                    StackInterpreter::ThreadFaultIsolation());
   MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
@@ -2382,7 +2412,9 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self);
+  StackInterpreter::ForgetThreadFault(StackInterpreter::CurrentThreadKey());
+  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
+                    StackInterpreter::ThreadFaultIsolation());
   MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
@@ -4001,4 +4033,209 @@ void Runtime::SetMaxCallDepth(long depth)
   if(depth >= CALL_DEPTH_MIN && depth <= CALL_DEPTH_MAX) {
     MaxCallDepthRef() = depth;
   }
+}
+
+//
+// Thread-fault isolation (docs/research/thread_fault_isolation.md)
+//
+// By default an error nothing catches ends the process from whichever thread
+// raised it. With OBJECK_THREAD_FAULTS=isolate (or --thread-faults=isolate) a
+// spawned thread ends alone: the error is reported as before, the thread's
+// frames are released, its mutator registration and interpreter go through the
+// ordinary thread teardown, the locks it held are released, and the fault is
+// kept for Thread->Join to report. The main thread, Runtime->Exit and the
+// VM's own internal failures (out of memory, a corrupt program, a failed
+// join) still end the process.
+//
+static std::atomic<int> thread_fault_mode(-1);   // -1 unread, 0 exit, 1 isolate
+
+bool StackInterpreter::ThreadFaultIsolation()
+{
+  int mode = thread_fault_mode.load(std::memory_order_acquire);
+  if(mode < 0) {
+    char value[32] = { 0 };
+#ifdef _WIN32
+    size_t len = 0;
+    if(getenv_s(&len, value, sizeof(value), "OBJECK_THREAD_FAULTS")) {
+      value[0] = '\0';
+    }
+#else
+    const char* env = getenv("OBJECK_THREAD_FAULTS");
+    if(env) {
+      strncpy(value, env, sizeof(value) - 1);
+    }
+#endif
+    mode = strcmp(value, "isolate") == 0 ? 1 : 0;
+    thread_fault_mode.store(mode, std::memory_order_release);
+  }
+  return mode == 1;
+}
+
+void StackInterpreter::SetThreadFaultIsolation(bool isolate)
+{
+  thread_fault_mode.store(isolate ? 1 : 0, std::memory_order_release);
+}
+
+void StackInterpreter::EnterIsolatedThread()
+{
+  TryHandlerState& state = TryState();
+  state.isolated = true;
+  state.fault_reported = false;
+  state.faulted = false;
+  state.fault_message.clear();
+  // depth -1: below every bridge, so a bridge always hands an error outward
+  state.stack.assign(1, THREAD_FAULT_IP);
+  state.stack_pos.assign(1, 0);
+  state.call_stack_pos.assign(1, -1);
+  state.pos = 1;
+  state.recovery_ip = -1;
+}
+
+bool StackInterpreter::ThreadEndedInFault(std::wstring& message)
+{
+  TryHandlerState& state = TryState();
+  // an early return from Execute (a method compiled on entry) leaves the sentinel's
+  // recovery pending
+  state.recovery_ip = -1;
+  if(!state.faulted) {
+    return false;
+  }
+  state.faulted = false;
+  message = state.fault_message;
+  return true;
+}
+
+// The report the process-ending path prints, then the frames it unwinds.
+void StackInterpreter::ReportThreadFault()
+{
+  TryHandlerState& state = TryState();
+  state.fault_reported = true;
+
+  const RecoveredErrorState& error = RecoveredError();
+  std::wstring text = error.message;
+  if(error.kind == RECOVERED_RAISED) {
+    StackClass* cls = RaisedError().object ? MemoryManager::GetClass(RaisedError().object) : nullptr;
+    text = std::wstring(L"Unhandled ") + (cls ? cls->GetName() : L"System.Error") + L": " + text;
+  }
+  else if(text.empty()) {
+    text = L"A runtime library call failed";
+  }
+  state.fault_message = text;
+
+  std::wcerr << L">>> " << text << L" <<<" << std::endl;
+  if(*stack_frame && (*stack_frame)->method) {
+    StackErrorUnwind();
+  }
+}
+
+// Releases what the recovery left: the entry frame. Locks the thread held are
+// released here too (see ThreadMutexReleaseAll), so a thread that died inside a
+// critical section does not leave the others waiting for it forever.
+void StackInterpreter::FinishThreadFault()
+{
+  while(*call_stack_pos > 0) {
+    StackFrame* current = *stack_frame;
+    *stack_frame = PopFrame();
+    if(current != *stack_frame) {
+      ReleaseStackFrame(current);
+    }
+  }
+  if(*stack_frame) {
+    ReleaseStackFrame(*stack_frame);
+    *stack_frame = nullptr;
+  }
+  halt = true;
+
+  const size_t released = ThreadMutexReleaseAll();
+  if(released) {
+    std::wcerr << L"  (released " << released << L" lock(s) the thread held)" << std::endl;
+  }
+}
+
+// What Join reports. Keyed by the OS thread id, which Join derives from the
+// handle it holds; an entry is dropped when the thread's id is taken by a new one.
+static std::mutex thread_fault_lock;
+static std::unordered_map<size_t, std::wstring>& ThreadFaults()
+{
+  static std::unordered_map<size_t, std::wstring> faults;
+  return faults;
+}
+static std::atomic<size_t> thread_fault_count(0);
+static std::wstring last_thread_fault;
+
+size_t StackInterpreter::CurrentThreadKey()
+{
+#ifdef _WIN32
+  return (size_t)GetCurrentThreadId();
+#else
+  return (size_t)pthread_self();
+#endif
+}
+
+#ifdef _WIN32
+size_t StackInterpreter::ThreadKey(HANDLE handle)
+{
+  return (size_t)GetThreadId(handle);
+}
+#else
+size_t StackInterpreter::ThreadKey(pthread_t handle)
+{
+  return (size_t)handle;
+}
+#endif
+
+void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message)
+{
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  // bounded: a program that never joins its faulted threads keeps the newest
+  if(ThreadFaults().size() >= 4096) {
+    ThreadFaults().clear();
+  }
+  ThreadFaults()[key] = message;
+  last_thread_fault = message;
+  thread_fault_count.fetch_add(1, std::memory_order_relaxed);
+}
+
+void StackInterpreter::ForgetThreadFault(size_t key)
+{
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  ThreadFaults().erase(key);
+}
+
+std::wstring& StackInterpreter::JoinedThreadFault()
+{
+  static thread_local std::wstring fault;
+  return fault;
+}
+
+// Join found the thread: its fault, if it had one, is what this thread's
+// Runtime->GetProperty("runtime.thread.join.fault") now reads
+void StackInterpreter::TakeThreadFault(size_t key)
+{
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  auto found = ThreadFaults().find(key);
+  if(found != ThreadFaults().end()) {
+    JoinedThreadFault() = found->second;
+    ThreadFaults().erase(found);
+  }
+  else {
+    JoinedThreadFault().clear();
+  }
+}
+
+size_t StackInterpreter::ThreadFaultCount()
+{
+  return thread_fault_count.load(std::memory_order_relaxed);
+}
+
+std::wstring StackInterpreter::LastThreadFault()
+{
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  return last_thread_fault;
+}
+
+// --thread-faults / OBJECK_THREAD_FAULTS, validated by ParseVmOptions
+void Runtime::SetThreadFaults(bool isolate)
+{
+  StackInterpreter::SetThreadFaultIsolation(isolate);
 }
