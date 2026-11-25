@@ -1,0 +1,31 @@
+# One Dockerfile for both Alderaan image flavors; build_image.sh drives it.
+#
+#   portable: FROM almalinux:8, the tarball from `build_image.sh portable-tgz`
+#   release : FROM ubuntu:24.04, the official release tarball + its runtime packages
+#
+# The result is converted to a .sif with `apptainer build x.sif docker-archive:x.tar`,
+# which needs neither root nor Docker on the cluster.
+ARG BASE=almalinux:8
+FROM ${BASE}
+ARG FLAVOR=portable
+COPY objeck.tgz /opt/objeck.tgz
+RUN set -e; \
+    if [ "$FLAVOR" = release ]; then \
+        export DEBIAN_FRONTEND=noninteractive; \
+        apt-get update; \
+        apt-get install -y --no-install-recommends ca-certificates tar gzip \
+            libmbedtls14t64 libmbedx509-1t64 libmbedcrypto7t64 zlib1g libreadline8t64 \
+            libodbc2 libmp3lame0 libgl1 libsdl2-2.0-0 libsdl2-image-2.0-0 \
+            libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0 \
+            libopencv-core406t64 libopencv-imgproc406t64 libopencv-imgcodecs406t64 \
+            libopencv-calib3d406t64 libopencv-dnn406t64 libopencv-highgui406t64 \
+            libopencv-videoio406t64; \
+        rm -rf /var/lib/apt/lists/*; \
+    else \
+        dnf -y install zlib tar gzip; dnf clean all; \
+    fi; \
+    tar xzf /opt/objeck.tgz -C /opt; rm -f /opt/objeck.tgz; \
+    OBJECK_LIB_PATH=/opt/objeck-lang/lib /opt/objeck-lang/bin/obc -version
+ENV OBJECK_HOME=/opt/objeck-lang \
+    OBJECK_LIB_PATH=/opt/objeck-lang/lib \
+    PATH=/opt/objeck-lang/bin:${PATH}

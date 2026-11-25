@@ -38,7 +38,7 @@ Building, packaging and publishing are automated with GitHub Actions: pushing a 
 - Sourceforge (mirrors the GitHub release through a GitHub webhook)
 
 ✅ **Documentation**
-- API documentation generation (a tag build commits it to master as `docs/api.zip`)
+- API documentation generation (the `api-docs` artifact of the build run; `docs/api.zip` is not committed)
 
 ❌ **Not Automated** (see [Manual Steps](#manual-steps))
 - Windows MSI signing (the certificate is on a hardware token)
@@ -132,7 +132,7 @@ The release skill runs these steps with their gates; this is the outline.
 
 ### Step 1: Release Build (`release-build.yml`)
 
-**Trigger:** Git tag matching `v*.*.*` (e.g., `v2026.2.1`), or a manual dispatch from a branch, which is a dry run: it cannot publish and does not push `docs/api.zip`
+**Trigger:** Git tag matching `v*.*.*` (e.g., `v2026.2.1`), or a manual dispatch from a branch, which is a dry run: it cannot publish
 
 **What Happens:**
 1. **Version extraction** from git tag
@@ -146,7 +146,7 @@ The release skill runs these steps with their gates; this is the outline.
    - LSP package (ZIP)
 
    Every leg except Windows ARM64 then compiles and runs a small program with the toolchain it is about to ship, and checks that it reports the tag's version.
-4. **API documentation generation** (a tag build commits the result to master as `docs/api.zip`)
+4. **API documentation generation** (a job that runs before the build jobs; its `api-docs` artifact is downloaded by each of them and deployed to objeck.org by Release Publish)
 5. **macOS install test:** installs the `.pkg` on clean `macos-14` and `macos-26` runners; a failure fails the run, so nothing is published
 6. **Artifact uploads** (retained for 7 days)
 
@@ -234,7 +234,7 @@ Run `programs/web-playground/deploy/update.sh <VERSION>` on the playground host 
 
 ### 3. Upload the API docs to objeck.org
 
-The tag build commits the generated docs to master as `docs/api.zip` (it is also the run's `api-docs` artifact). Upload the contents of its `api/` folder to objeck.org's `/api/latest/`, the only path the site serves; there are no per-version directories. It is done when https://objeck.org/api/latest/index.html shows `v<VERSION>` in its footer.
+The tag build's `api-docs` artifact holds the generated docs as `api.zip` (`docs/api.zip` is not committed; `gh run download <build run> -n api-docs`). Upload the contents of its `api/` folder to objeck.org's `/api/latest/`, the only path the site serves; there are no per-version directories. It is done when https://objeck.org/api/latest/index.html shows `v<VERSION>` in its footer.
 
 ### 4. Update the Objeck-served site
 

@@ -216,6 +216,59 @@ Now `HttpClient` keeps plain-HTTP connections:
 If your program stops one server and starts another on the same port within four seconds, and
 relied on every request getting a fresh connection, wait for the old server to exit first.
 
+## Time limits
+
+A request has three limits, each in milliseconds and each off at 0, on both `HttpClient` and
+`HttpsClient`:
+
+| Setter | Bounds |
+|--------|--------|
+| `SetConnectTimeout(ms)` | the TCP connect and, for HTTPS, the TLS handshake, each |
+| `SetReadTimeout(ms)` | one wait for the server. It starts again with every byte received |
+| `SetDeadline(ms)` | the whole request: connect, handshake, send, every read, every redirect and every retry. It does not start again |
+
+The difference between the last two matters. A read timeout of 30 seconds is satisfied by a
+server that sends one byte every 29 seconds, so it bounds the silence between bytes, not the
+request: a server that dribbled its reply a byte at a time kept a request alive for 152 seconds
+in a fault-injection run. The deadline is the request's budget. Every wait for the server is cut to
+what is left of it before it blocks, so it holds even while the client is inside one read.
+
+```objeck
+client := Web.HTTP.HttpClient->New();
+client->SetConnectTimeout(2000);   # 2 s to connect
+client->SetReadTimeout(10000);     # 10 s of silence is too much
+client->SetDeadline(30000);        # and 30 s for the whole request, however it is paced
+
+response := client->Get(Web.HTTP.Url->New("http://example.com/report"));
+if(response->GetCode() = 0) {
+  # the request ended on a limit: CONNECT_TIMEOUT, READ_TIMEOUT or DEADLINE_EXCEEDED
+  "{$client->GetErrorCode()}: {$client->GetError()}"->PrintLine();
+};
+```
+
+A request that ends on a limit comes back as response code 0, never as a half-read body, with the
+reason in `response->GetError()` and `GetErrorCode()` (the same two are on the client, for the last
+request). Its connection is closed. A connect that fails for another reason, such as a refused
+port, is not a timeout and is reported as it always was. For a one-off, `QuickGet(url, deadline_ms)`
+and `QuickPost(url, data, content_type, deadline_ms)` take just the deadline.
+
+With nothing set a request is what it was: plain HTTP waits up to
+`HttpClient->Timeout->DEFAULT_READ_MS` (30 seconds) for each read, and HTTPS up to
+`HttpsClient->Timeout->DEFAULT_READ_MS` (300 seconds, because a model API can be silent for minutes
+while it reasons; `OBJECK_TLS_RECV_TIMEOUT` changes it for a whole process).
+
+What the limits do not cover: the name lookup (the system's resolver cannot be asked to stop), and
+a blocked write, which is held by the socket's send timeout per write (the deadline sets it to what
+is left). `StreamPost` honors all three, and the deadline then bounds the stream. The HTTP/2 and
+HTTP/3 clients (`Http2Client`, `Http3Client`) run on their own transports and take none of them yet.
+
+A library that calls HTTP for you, such as an LLM client, passes the deadline to the client it
+builds: `client->SetDeadline(60000)` before `Get`, `Post` or `StreamPost`.
+
+The tests are `programs/regression/http_deadlines.obs` and `programs/regression/https_deadlines.obs`;
+each starts its own servers on `127.0.0.1`: one that dribbles a byte every 100 ms, one that accepts
+and says nothing, and one that answers at once.
+
 ## How to check
 
 Connection reuse is covered by `programs/regression/http_client_reuse.obs`. The program above
