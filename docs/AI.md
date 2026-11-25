@@ -1244,13 +1244,127 @@ class Live {
 **Limits.**
 
 - `SetMaxSteps(n)` (default 10) bounds the model calls in one `Run`; a model still asking for tools on the last step gets `skipped` answers and the result is `max_steps`.
-- Timeouts are not interruptions: `SetToolTimeout(ms)` reports a slow handler as `timeout` and discards its result, but a handler that never returns still hangs the run.
+- Timeouts are not interruptions: `SetToolTimeout(ms)` reports a slow handler as `timeout` and discards its result, but a handler that never returns still hangs the run unless the tool runs in `BOUNDED_THREAD` mode (see run control below).
 - Tool calls run one after another, even when the model asks for several at once.
 - The schema checker covers `type`, `properties`, `required`, `additionalProperties`, `enum`, `const`, the numeric, string and array bounds, `items`, `anyOf` and `oneOf`; `pattern`, `format` and `$ref` are not checked.
 - No token streaming: an `AgentObserver` sees each step as it happens, and the model's text arrives whole.
 - Tested without the live services. `agent_loop_test`, `agent_backend_test` and `agent_http_test` use a scripted model, recorded provider response bodies and a local HTTPS server; nothing in the tests calls api.anthropic.com, api.openai.com, Google or a real Ollama.
 
 `programs/examples/agent_demo.obs` takes a provider, a model and a question and runs against the scripted model when it gets none.
+
+**Run control (cancel, budgets, isolated tools, trace).** By default a run cannot be stopped from outside, a tool's time limit is reported only after the handler returns, and nothing bounds a run in time, tokens or money. Four opt-in pieces add that; an agent that sets none of them behaves as before. The full reference is the "Agent run control" section of `docs/ai_sections/agent_control.md`.
+
+| You want | You use |
+|---|---|
+| to stop a run from another thread | `AgentCancel`, `agent->SetCancel(token)` |
+| a deadline, or a cap on steps, model calls, tool calls, tokens or cost | `AgentBudget`, `agent->SetBudget(budget)` |
+| a hung tool or model call to stop costing the run | `AgentTool->Mode->BOUNDED_THREAD`, `agent->SetBoundedModelCalls(true)` |
+| to see each step | `agent->SetTrace(sink)`, `AgentTraceBuffer` |
+
+- **Cancel.** `AgentCancel` is a thread-safe token; any thread calls `Cancel("reason")`. The loop checks it before every step and between tool calls; a cancelled run ends with the stop reason `cancelled`, the calls that did not run are answered `skipped`, and the same agent can run again with a fresh token. `AgentCancel->New(parent)` links a token to a parent, so one cancel stops a group. A handler that implements `AgentCancelableHandler` (`Run(arguments, cancel)`) is handed the token, which also becomes cancelled when the run's deadline passes, so it can poll `IsCancelled()` and stop early.
+- **Budgets.** `AgentBudget` limits one `Run`; every limit is off (0) until set and the first one reached ends the run: `SetMaxSteps` (`budget_steps`), `SetMaxModelCalls` (`budget_model_calls`, retries count), `SetMaxToolCalls` (`budget_tool_calls`; the call over the limit is `skipped`), `SetMaxTokens` (`budget_tokens`), `SetMaxCost` with `SetPrice(in, out)` or `SetPrices(table, model)` (`budget_cost`; prices are currency per million tokens) and `SetMaxWallMs` (`deadline`, enforced everywhere the loop waits). Tokens and cost count only what the backend reports; a backend that reports none never trips them. A reply that crosses a token or cost limit and asks for tools ends the run before those tools run; a final answer is kept as `completed`.
+- **Stop reasons.** `result->GetStopReason()` is one of `completed`, `cancelled`, `deadline`, `budget_steps`, `budget_model_calls`, `budget_tool_calls`, `budget_tokens`, `budget_cost` or `error` (the backend failed after its retries, or the reply was cut off or filtered). `GetStatus()` returns the same word, so `IsCompleted()` is true only for `completed`. `GetModelCalls()`, `GetElapsedMs()`, `GetTotalTokens()` and `GetCost()` say what the run used.
+- **Tool modes.** `IN_THREAD` (the default) runs the handler on the loop's thread, so a limit or a cancel is seen only after it returns. `BOUNDED_THREAD` runs it on a worker and the loop stops waiting at the tool's limit (`SetTimeout`, else `SetToolTimeout`), the deadline or the cancel. Set the default with `agent->SetToolMode(mode)` and one tool's with `tool->SetMode(mode)`. An abandoned worker is a leak: a thread cannot be killed, so a handler that never returns keeps its thread until the process exits. What the mode guarantees is that the run does not wait for it and that its late result never reaches the transcript. There is no separate process-isolated mode: `IN_THREAD` and `BOUNDED_THREAD` are the only two, and a fault that kills a thread outside any `try` still ends the whole process.
+- **A blocked model call.** A cancel is seen between model calls. To cut a call that is blocked inside the backend, `agent->SetBoundedModelCalls(true)` runs it on a worker and abandons it at the budget's per-call limit (`SetModelCallMs`), the deadline or a cancel. A backend that implements `AgentDeadlineAware` is told its time limit before each call and returns by itself; `ScriptedBackend` does (`SetDelayMs` makes a call slow), the four provider backends do not yet.
+- **Trace.** `agent->SetTrace(sink)` delivers one `AgentEvent` per step to an `AgentTraceSink` (an `AgentObserver` may implement it too). The events, in order: `run_start`, `budget_check` (only with a budget), `model_start`, `model_end`, `model_retry`, `tool_start`, `tool_end`, `halt` (a cancel, deadline or budget was noticed) and `run_end`; each has `seq` (from 1), `ms` and `step`. `AgentTraceBuffer` keeps them in memory (`GetEvents()`, `Kinds()`, `Count(kind)`, `First(kind)`), and `AgentEvent->ToString()` is one JSON object, so a custom sink can write its own file. Every event goes through the library's key redaction before delivery, like the transcript: registered keys and key-shaped tokens become `[REDACTED]`, and a tool's arguments are cut at 500 characters.
+
+A scripted model shows all three controls with no key and no network. Compile with `-lib agent,net,json,cipher,misc`:
+
+```ruby
+use API.Agent;
+use Collection;
+use Data.JSON;
+use System.Concurrency;
+
+class Quick implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return "done";
+  }
+}
+
+class Hang implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(3000);
+    return "too late";
+  }
+}
+
+class Stopper from Thread {
+  @token : AgentCancel;
+
+  New(token : AgentCancel) {
+    Parent("stopper");
+    @token := token;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    Thread->Sleep(200);
+    @token->Cancel("user pressed stop");
+  }
+}
+
+class Control {
+  function : Tools() ~ ToolRegistry {
+    schema := JsonParser->TextToElement("{\"type\":\"object\"}");
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("quick", "Returns at once", schema, Quick->New()));
+    hang := AgentTool->New("hang", "Never returns in time", schema, Hang->New());
+    hang->SetMode(AgentTool->Mode->BOUNDED_THREAD);
+    hang->SetTimeout(300);
+    registry->Add(hang);
+    return registry;
+  }
+
+  function : Script(name : String, count : Int) ~ Vector<AgentReply> {
+    script := Vector->New()<AgentReply>;
+    each(i : count) {
+      script->AddBack(AgentReply->Ask("call_{$i}", name, "{}"));
+    };
+    script->AddBack(AgentReply->Say("finished"));
+    return script;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # 1. a budget: the third tool call is skipped and the run stops
+    agent := Agent->New(ScriptedBackend->New(Script("quick", 5)), Tools());
+    agent->SetBudget(AgentBudget->New()->SetMaxToolCalls(2));
+    result := agent->Run("go");
+    "budget: {$result->GetStopReason()}"->PrintLine();
+
+    # 2. a hung tool in BOUNDED_THREAD: the run waits 300 ms, not 3 s
+    agent2 := Agent->New(ScriptedBackend->New(Script("hang", 1)), Tools());
+    trace := AgentTraceBuffer->New();
+    agent2->SetTrace(trace);
+    result2 := agent2->Run("go");
+    "hung tool: {$result2->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus()}, {$result2->GetStopReason()}"->PrintLine();
+    "trace: {$trace->Kinds()}"->PrintLine();
+
+    # 3. a cancel from another thread during a slow model call
+    cancel := AgentCancel->New();
+    agent3 := Agent->New(ScriptedBackend->New(Script("quick", 1))->SetDelayMs(2000), Tools());
+    agent3->SetCancel(cancel);
+    agent3->SetBoundedModelCalls(true);
+    Stopper->New(cancel)->Execute(Nil);
+    result3 := agent3->Run("go");
+    "cancel: {$result3->GetStopReason()} after {$result3->GetElapsedMs()} ms"->PrintLine();
+  }
+}
+```
+
+```
+budget: budget_tool_calls
+hung tool: timeout, completed
+trace: run_start,model_start,model_end,tool_start,tool_end,model_start,model_end,run_end
+cancel: cancelled after 231 ms
+```
+
+Compiled and run with the current toolchain; the elapsed time varies. `agent_control_test` in the regression suite covers each budget and stop reason, the cancel cases, a hung tool with an abandoned worker, the trace and its key redaction, and retries, all on a scripted model. The provider backends' own total deadline is not covered.
 
 ---
 
