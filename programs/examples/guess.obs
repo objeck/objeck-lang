@@ -11,6 +11,11 @@ class GuessNumber {
 		rand_num := (Float->Random() * 10.0)->As(Int) + 1;
 		while(done = false) {
 			guess := Console->ReadLine();
+			# end of input: stop rather than ask again forever
+			if(guess = Nil) {
+				break;
+			};
+
 			number := guess->ToInt();
 			if(number <> 0) {
 				if(number <> rand_num) {

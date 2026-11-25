@@ -1,0 +1,594 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+The MCP library (API.MCP) with no process and no network beyond loopback: a server
+in the same process and a client on a loopback transport, then the same client over
+the streamable HTTP transport to the server on 127.0.0.1 (port 0). It covers the
+handshake and version negotiation, every method (ping, tools/list, tools/call,
+resources/list, resources/templates/list, resources/read, prompts/list,
+prompts/get), the JSON-RPC errors (parse error, invalid request, method not
+found, invalid params), a tool that fails, a tool that raises, a tool that
+returns nothing, bad arguments, cancellation, progress, a one-megabyte message,
+and the bridge that hands a server's tools to the AI clients. The stdio
+transport is tested by mcp_stdio_test.py, which drives a server process.
+~#
+use API.MCP, Data.JSON, Data.JSON.Scheme, Collection;
+
+class McpCoreTest {
+	@pass : static : Int;
+	@fail : static : Int;
+	@service : static : McpService;
+	@saw_cancel : static : Bool;
+	@started : static : Bool;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Service() ~ McpService {
+		return @service;
+	}
+
+	# ---- handlers ----
+
+	function : Add(call : McpCall) ~ McpToolResult {
+		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+		return McpToolResult->Text("{$sum}");
+	}
+
+	function : Fails(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Error("the disk is full");
+	}
+
+	function : Raises(call : McpCall) ~ McpToolResult {
+		nothing : String;
+		size := nothing->Size();
+		return McpToolResult->Text("{$size}");
+	}
+
+	function : Nothing(call : McpCall) ~ McpToolResult {
+		result : McpToolResult;
+		return result;
+	}
+
+	function : Echo(call : McpCall) ~ McpToolResult {
+		text := call->GetString("text");
+		size := text->Size();
+		result := McpToolResult->Text("{$size}");
+		return result;
+	}
+
+	function : Structured(call : McpCall) ~ McpToolResult {
+		value := JsonElement->New(JsonElement->JsonType->OBJECT);
+		value->Insert("x", 7);
+		return McpToolResult->Json(value);
+	}
+
+	# works until the client cancels, reporting progress as it goes
+	function : Slow(call : McpCall) ~ McpToolResult {
+		call->ReportProgress(1.0, 10.0, "started");
+		call->ReportProgress(2.0, 10.0, "working");
+		waited := 0;
+		while(<>call->IsCancelled() & waited < 20000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+
+		if(call->IsCancelled()) {
+			@saw_cancel := true;
+		};
+		return McpToolResult->Text("done");
+	}
+
+	function : ReadNotes(uri : String) ~ McpContents {
+		if(uri->Equals("notes://missing")) {
+			return Nil;
+		};
+		return McpContents->OfText(uri, "text/plain", "note for {$uri}");
+	}
+
+	function : Greet(call : McpCall) ~ McpPromptResult {
+		name := call->GetString("name");
+		result := McpPromptResult->New("A greeting");
+		result->AddMessage("user", "Say hello to {$name}");
+		return result;
+	}
+
+	function : Build() ~ McpService {
+		server := McpService->New("core-test", "1.2.3");
+		server->SetInstructions("for tests");
+
+		add_schema := "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}";
+		server->AddTool("add", "Add two integers", add_schema, Func2Ref->New(McpCoreTest->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("fails", "A tool that fails", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpCoreTest->Fails(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("raises", "A tool that raises", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpCoreTest->Raises(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("nothing", "A tool that returns nothing", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpCoreTest->Nothing(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("echo", "Count the characters of a text", "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}", Func2Ref->New(McpCoreTest->Echo(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("structured", "A structured result", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpCoreTest->Structured(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("slow", "Works until cancelled", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpCoreTest->Slow(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "hello readme"));
+		server->AddResource(McpResource->New("notes://{name}", "note", "A note by name", "text/plain", Func2Ref->New(McpCoreTest->ReadNotes(String) ~ McpContents)<String, McpContents>));
+
+		prompt := McpPrompt->New("greet", "Greet someone", Func2Ref->New(McpCoreTest->Greet(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>);
+		prompt->AddArgument("name", "who to greet", true);
+		server->AddPrompt(prompt);
+		return server;
+	}
+
+	# ---- helpers ----
+
+	# one message in, the parsed reply out (Nil when the server sends none)
+	function : Ask(server : McpService, text : String) ~ JsonElement {
+		reply := server->Handle(text, Nil);
+		if(reply = Nil) {
+			return Nil;
+		};
+		return JsonParser->TextToElement(reply);
+	}
+
+	function : ErrorCode(reply : JsonElement) ~ Int {
+		if(reply = Nil | <>reply->Has("error")) {
+			return 0;
+		};
+		return reply->Get("error")->Get("code")->GetInt();
+	}
+
+	function : Req(id : Int, rpc : String, params : String) ~ String {
+		text := "{\"jsonrpc\":\"2.0\",\"id\":{$id},\"method\":\"{$rpc}\"";
+		if(params <> Nil) {
+			text += ",\"params\":{$params}";
+		};
+		return text + "}";
+	}
+
+	function : Init(version : String) ~ String {
+		return Req(1, "initialize", "{\"protocolVersion\":\"{$version}\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"1\"}}");
+	}
+
+	# ---- the protocol, message by message ----
+
+	function : Protocol(server : McpService) ~ Nil {
+		# the handshake: our revision, and the older ones negotiated as they are
+		reply := Ask(server, Init("2025-11-25"));
+		Check(reply <> Nil & reply->Get("result")->Get("protocolVersion")->GetString()->Equals("2025-11-25"), "initialize answers the revision asked for");
+		Check(reply->Get("result")->Get("serverInfo")->Get("name")->GetString()->Equals("core-test"), "initialize names the server");
+		Check(reply->Get("result")->Get("instructions")->GetString()->Equals("for tests"), "initialize carries the instructions");
+		caps := reply->Get("result")->Get("capabilities");
+		Check(caps->Has("tools") & caps->Has("resources") & caps->Has("prompts"), "capabilities name what is registered");
+		Check(reply->Get("id")->GetInt() = 1, "the id is echoed");
+
+		Check(Ask(server, Init("2024-11-05"))->Get("result")->Get("protocolVersion")->GetString()->Equals("2024-11-05"), "an older revision is answered as asked");
+		Check(Ask(server, Init("2099-01-01"))->Get("result")->Get("protocolVersion")->GetString()->Equals("2025-11-25"), "an unknown revision is answered with ours");
+		Check(ErrorCode(Ask(server, Req(1, "initialize", "{}"))) = -32602, "initialize without a revision is invalid params");
+
+		# notifications are never answered
+		Check(server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}", Nil) = Nil, "initialized has no reply");
+		Check(server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"no/such/notification\"}", Nil) = Nil, "an unknown notification has no reply");
+		Check(server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}", Nil) = Nil, "a ping with no id is a notification");
+
+		reply := Ask(server, Req(2, "ping", Nil));
+		Check(reply->Has("result") & reply->Get("result")->Size() = 0, "ping answers {}");
+
+		# tools
+		reply := Ask(server, Req(3, "tools/list", Nil));
+		tools := reply->Get("result")->Get("tools");
+		Check(tools->Size() = 7, "tools/list lists the seven tools");
+		Check(tools->Get(0)->Get("name")->GetString()->Equals("add") & tools->Get(0)->Get("inputSchema")->Get("required")->Size() = 2, "a tool lists its name and input schema");
+
+		reply := Ask(server, Req(4, "tools/call", "{\"name\":\"add\",\"arguments\":{\"a\":2,\"b\":40}}"));
+		Check(reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Equals("42"), "tools/call runs the handler");
+		Check(reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->FALSE, "a good call is not an error");
+
+		reply := Ask(server, Req(5, "tools/call", "{\"name\":\"fails\"}"));
+		Check(reply->Has("result") & <>reply->Has("error"), "a tool that fails is a result, not a protocol error");
+		Check(reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->TRUE, "a tool that fails sets isError");
+		Check(reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Equals("the disk is full"), "and says why");
+
+		reply := Ask(server, Req(6, "tools/call", "{\"name\":\"raises\"}"));
+		Check(reply->Has("result") & reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->TRUE, "a tool that raises is an isError result");
+		Check(reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->StartsWith("Tool raises failed"), "the failure names the tool");
+		Check(Ask(server, Req(7, "ping", Nil))->Has("result"), "the server serves on after a tool raised");
+
+		reply := Ask(server, Req(8, "tools/call", "{\"name\":\"nothing\"}"));
+		Check(reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->TRUE, "a tool that returns nothing is an isError result");
+
+		reply := Ask(server, Req(9, "tools/call", "{\"name\":\"structured\"}"));
+		Check(reply->Get("result")->Get("structuredContent")->Get("x")->GetInt() = 7, "a structured result is carried");
+		Check(reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Has("\"x\""), "and also written out as text");
+
+		# bad arguments are a result the model can read, bad params a protocol error
+		reply := Ask(server, Req(10, "tools/call", "{\"name\":\"add\",\"arguments\":{\"a\":1}}"));
+		Check(reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->TRUE & reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Has("missing required argument 'b'"), "a missing required argument is an isError result");
+		reply := Ask(server, Req(11, "tools/call", "{\"name\":\"add\",\"arguments\":{\"a\":\"x\",\"b\":1}}"));
+		Check(reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Has("must be of type integer"), "a wrongly typed argument is an isError result");
+		reply := Ask(server, Req(12, "tools/call", "{\"name\":\"add\",\"arguments\":{\"a\":1.5,\"b\":1}}"));
+		Check(reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->TRUE, "1.5 is not an integer");
+
+		Check(ErrorCode(Ask(server, Req(13, "tools/call", "{\"name\":\"nope\"}"))) = -32602, "an unknown tool is invalid params");
+		Check(ErrorCode(Ask(server, Req(14, "tools/call", "{}"))) = -32602, "a call without a name is invalid params");
+		Check(ErrorCode(Ask(server, Req(15, "tools/call", "{\"name\":\"add\",\"arguments\":[1,2]}"))) = -32602, "arguments that are not an object are invalid params");
+		Check(ErrorCode(Ask(server, Req(16, "tools/call", "[1]"))) = -32602, "params that are not an object are invalid params");
+		Check(ErrorCode(Ask(server, Req(17, "tools/call", "{\"name\":7}"))) = -32602, "a name that is not a string is invalid params");
+
+		# resources
+		reply := Ask(server, Req(20, "resources/list", Nil));
+		Check(reply->Get("result")->Get("resources")->Size() = 1 & reply->Get("result")->Get("resources")->Get(0)->Get("uri")->GetString()->Equals("notes://readme"), "resources/list lists the fixed resource, not the template");
+		reply := Ask(server, Req(21, "resources/templates/list", Nil));
+		Check(reply->Get("result")->Get("resourceTemplates")->Get(0)->Get("uriTemplate")->GetString()->Equals("notes://{name}"), "resources/templates/list lists the template");
+		reply := Ask(server, Req(22, "resources/read", "{\"uri\":\"notes://readme\"}"));
+		Check(reply->Get("result")->Get("contents")->Get(0)->Get("text")->GetString()->Equals("hello readme"), "resources/read reads a fixed resource");
+		reply := Ask(server, Req(23, "resources/read", "{\"uri\":\"notes://abc\"}"));
+		Check(reply->Get("result")->Get("contents")->Get(0)->Get("text")->GetString()->Equals("note for notes://abc"), "resources/read reads through a template");
+		reply := Ask(server, Req(24, "resources/read", "{\"uri\":\"notes://missing\"}"));
+		Check(ErrorCode(reply) = -32002 & reply->Get("error")->Get("data")->Get("uri")->GetString()->Equals("notes://missing"), "a resource that is not there is -32002 with its uri");
+		Check(ErrorCode(Ask(server, Req(25, "resources/read", "{\"uri\":\"other://x\"}"))) = -32002, "an unknown uri is -32002");
+		Check(ErrorCode(Ask(server, Req(26, "resources/read", "{}"))) = -32602, "a read without a uri is invalid params");
+
+		# prompts
+		reply := Ask(server, Req(30, "prompts/list", Nil));
+		Check(reply->Get("result")->Get("prompts")->Get(0)->Get("arguments")->Get(0)->Get("required")->GetType() = JsonElement->JsonType->TRUE, "prompts/list lists the arguments");
+		reply := Ask(server, Req(31, "prompts/get", "{\"name\":\"greet\",\"arguments\":{\"name\":\"Ada\"}}"));
+		Check(reply->Get("result")->Get("messages")->Get(0)->Get("content")->Get("text")->GetString()->Equals("Say hello to Ada") & reply->Get("result")->Get("messages")->Get(0)->Get("role")->GetString()->Equals("user"), "prompts/get expands the prompt");
+		Check(ErrorCode(Ask(server, Req(32, "prompts/get", "{\"name\":\"greet\"}"))) = -32602, "a missing required prompt argument is invalid params");
+		Check(ErrorCode(Ask(server, Req(33, "prompts/get", "{\"name\":\"nope\"}"))) = -32602, "an unknown prompt is invalid params");
+
+		# the errors of JSON-RPC itself
+		reply := Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":");
+		Check(ErrorCode(reply) = -32700 & reply->Get("id")->IsNull(), "truncated JSON is a parse error with a null id");
+		Check(ErrorCode(Ask(server, "not json")) = -32700, "a bare word is a parse error");
+		Check(ErrorCode(Ask(server, "")) = -32700, "an empty message is a parse error");
+		Check(ErrorCode(Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1} trailing")) = -32700, "text after the value is a parse error");
+		Check(ErrorCode(Ask(server, "42")) = -32600, "a number is an invalid request");
+		Check(ErrorCode(Ask(server, "[]")) = -32600, "a batch is an invalid request");
+		Check(ErrorCode(Ask(server, "{\"jsonrpc\":\"1.0\",\"id\":1,\"method\":\"ping\"}")) = -32600, "a wrong jsonrpc version is an invalid request");
+		Check(ErrorCode(Ask(server, "{\"id\":1,\"method\":\"ping\"}")) = -32600, "a missing jsonrpc is an invalid request");
+		reply := Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":9}");
+		Check(ErrorCode(reply) = -32600 & reply->Get("id")->GetInt() = 9, "a message with no method is an invalid request and keeps its id");
+		Check(ErrorCode(Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":5}")) = -32600, "a method that is not a string is an invalid request");
+		Check(ErrorCode(Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":true,\"method\":\"ping\"}")) = -32600, "an id that is a boolean is an invalid request");
+		Check(ErrorCode(Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":null,\"method\":\"ping\"}")) = -32600, "a null id is an invalid request");
+		reply := Ask(server, Req(40, "no/such/method", Nil));
+		Check(ErrorCode(reply) = -32601 & reply->Get("id")->GetInt() = 40, "an unknown method is -32601");
+		reply := Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"method\":\"ping\"}");
+		Check(reply->Get("id")->GetString()->Equals("abc"), "a string id is echoed as a string");
+		reply := Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":4000000000,\"method\":\"ping\"}");
+		Check(reply->Get("id")->GetInt() = 4000000000, "a large id is echoed");
+		Check(server->Handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}", Nil) = Nil, "a response from the peer is ignored");
+	}
+
+	# ---- messages that are JSON but wrong in every way a client might get them wrong ----
+
+	function : Hostile() ~ Nil {
+		server := Build();
+		server->AddTool("weird", "A tool with a strange schema", "{\"type\":\"object\",\"properties\":{\"x\":5,\"y\":{\"type\":7}},\"required\":[5,{\"a\":1},true]}", Func2Ref->New(McpCoreTest->Fails(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		deep := String->New();
+		for(i := 0; i < 200; i += 1;) {
+			deep->Append("[");
+		};
+		for(i := 0; i < 200; i += 1;) {
+			deep->Append("]");
+		};
+
+		bodies := [
+			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":5,\"capabilities\":1,\"clientInfo\":\"x\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":null,\"clientInfo\":null}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"weird\",\"arguments\":{\"x\":1}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":null}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":[\"add\"],\"arguments\":{}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":null}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":{\"a\":{},\"b\":[]},\"_meta\":5}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":{\"a\":1,\"b\":2},\"_meta\":{\"progressToken\":{\"x\":1}}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"resources/read\",\"params\":{\"uri\":7}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"resources/read\",\"params\":{\"uri\":[\"notes://readme\"]}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"resources/read\",\"params\":{\"uri\":\"\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"prompts/get\",\"params\":{\"name\":7}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"prompts/get\",\"params\":{\"name\":\"greet\",\"arguments\":{\"name\":{\"a\":1}}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"ping\",\"params\":null}",
+			"{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"ping\",\"params\":[]}",
+			"{\"jsonrpc\":\"2.0\",\"id\":16,\"method\":\"\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":17,\"method\":\"tools/call\",\"params\":{\"name\":\"add\",\"arguments\":{\"a\":1e999,\"b\":-0}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":[1],\"method\":\"ping\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":{},\"method\":\"ping\"}",
+			"{\"jsonrpc\":2.0,\"id\":18,\"method\":\"ping\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":19,\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":[1,2]}}",
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":{\"a\":1}}}",
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":null}",
+			deep,
+			"{\"jsonrpc\":\"2.0\",\"id\":20,\"method\":\"ping\",\"extra\":{\"a\":[1,2,{\"b\":null}]}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"tools/list\",\"params\":{\"cursor\":\"abc\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":\"\",\"method\":\"ping\"}"
+		];
+
+		answered := 0;
+		for(i := 0; i < bodies->Size(); i += 1;) {
+			reply := server->Handle(bodies[i], Nil);
+			if(reply <> Nil) {
+				parsed := JsonParser->TextToElement(reply);
+				if(parsed <> Nil & parsed->Get("jsonrpc")->GetString()->Equals("2.0") & (parsed->Has("result") | parsed->Has("error"))) {
+					answered += 1;
+				}
+				else {
+					Check(false, "message {$i} got a reply that is not JSON-RPC: {$reply}");
+				};
+			};
+
+			if(<>Ask(server, Req(900, "ping", Nil))->Has("result")) {
+				Check(false, "the server stopped answering after message {$i}");
+				return;
+			};
+		};
+		Check(answered >= 20, "the hostile messages that are requests are answered, {$answered} were");
+		Check(ErrorCode(Ask(server, bodies[2])) <> 0 | Ask(server, bodies[2])->Has("result"), "a tool with a strange schema is answered, as a result or an error");
+		Check(ErrorCode(Ask(server, bodies[0])) = -32602 & ErrorCode(Ask(server, bodies[1])) = -32602, "initialize with the wrong types is invalid params");
+		Check(ErrorCode(Ask(server, bodies[13])) = -32602 & ErrorCode(Ask(server, bodies[14])) = -32602, "params that are null or an array are invalid params");
+		Check(ErrorCode(Ask(server, bodies[23])) = -32700, "JSON nested past the parser's limit is a parse error");
+		Check(Ask(server, bodies[26])->Get("id")->GetString()->Equals(""), "an empty string id is a valid id");
+	}
+
+	# ---- the client, on a loopback transport ----
+
+	function : Client(server : McpService) ~ Nil {
+		transport := McpLoopback->New(server);
+		client := McpClient->New(transport);
+		Check(client->Initialize("core-test-client", "1.0"), "the client initializes");
+		Check(client->GetServerName()->Equals("core-test") & client->GetServerVersion()->Equals("1.2.3"), "the client reads the server info");
+		Check(client->GetProtocolVersion()->Equals("2025-11-25") & client->GetInstructions()->Equals("for tests"), "and the revision and instructions");
+		Check(client->Ping(), "the client pings");
+
+		tools := client->ListTools();
+		Check(tools <> Nil & tools->Size() = 7 & tools->Get(0)->GetName()->Equals("add"), "the client lists tools");
+
+		result := client->CallTool("add", "{\"a\":20,\"b\":22}");
+		Check(result <> Nil & result->GetText()->Equals("42") & <>result->IsError(), "the client calls a tool");
+		result := client->CallTool("fails", Nil->As(String));
+		Check(result <> Nil & result->IsError() & result->GetText()->Equals("the disk is full"), "a tool failure arrives as a result with IsError");
+		Check(client->CallTool("nope", "{}") = Nil & client->GetErrorCode() = -32602, "an unknown tool is an error with its code");
+		Check(client->GetError()->Has("nope"), "and a reason");
+		Check(client->CallTool("add", "{") = Nil, "arguments that are not JSON fail at the client");
+
+		resources := client->ListResources();
+		Check(resources <> Nil & resources->Size() = 1 & resources->Get(0)->GetName()->Equals("readme"), "the client lists resources");
+		templates := client->ListResourceTemplates();
+		Check(templates <> Nil & templates->Size() = 1 & templates->Get(0)->IsTemplate(), "and templates");
+		contents := client->ReadResource("notes://readme");
+		Check(contents <> Nil & contents->Size() = 1 & contents->Get(0)->GetText()->Equals("hello readme"), "the client reads a resource");
+		Check(client->ReadResource("notes://missing") = Nil & client->GetErrorCode() = -32002, "a missing resource is -32002 at the client");
+
+		prompts := client->ListPrompts();
+		Check(prompts <> Nil & prompts->Size() = 1 & prompts->Get(0)->GetRequired()->Size() = 1, "the client lists prompts");
+		args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		args->Insert("name", "Grace");
+		prompt := client->GetPrompt("greet", args);
+		Check(prompt <> Nil & prompt->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("Say hello to Grace"), "the client gets a prompt");
+		Check(client->GetPrompt("greet", Nil) = Nil & client->GetErrorCode() = -32602, "a prompt without its argument fails");
+
+		# a megabyte through a tool, and back out as a count
+		big := String->New();
+		chunk := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+		for(i := 0; i < 16384; i += 1;) {
+			big->Append(chunk);
+		};
+		arguments := JsonElement->New(JsonElement->JsonType->OBJECT);
+		arguments->Insert("text", big);
+		result := client->CallTool("echo", arguments);
+		Check(result <> Nil & result->GetText()->Equals("1048576"), "a message of a megabyte goes through");
+
+		client->Close();
+	}
+
+	# ---- cancellation and progress ----
+
+	function : Cancellation(server : McpService) ~ Nil {
+		transport := McpLoopback->New(server);
+		client := McpClient->New(transport);
+		client->Initialize("core-test-client", "1.0");
+
+		# made here, before the worker starts: Sink() creates it on first use, and two threads
+		# calling it first would each make a collector and lose the other's messages
+		Sink()->Clear();
+		@saw_cancel := false;
+		worker := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				reply := McpCoreTest->Service()->Handle("{\"jsonrpc\":\"2.0\",\"id\":100,\"method\":\"tools/call\",\"params\":{\"name\":\"slow\",\"_meta\":{\"progressToken\":\"tok-1\"}}}", McpCoreTest->Sink());
+				McpCoreTest->SetReply(reply);
+			}
+		};
+		@reply_set := false;
+		@reply := "unset";
+		worker->Execute(Nil);
+
+		# wait until the call reports progress, which means it is in flight
+		waited := 0;
+		while(Sink()->GetMessages()->Size() < 2 & waited < 60000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		Check(Sink()->GetMessages()->Size() = 2, "the call reports two progress notifications");
+		if(Sink()->GetMessages()->Size() < 2) {
+			return;
+		};
+		note := JsonParser->TextToElement(Sink()->GetMessages()->Get(0));
+		Check(note <> Nil & note->Get("method")->GetString()->Equals("notifications/progress") & note->Get("params")->Get("progressToken")->GetString()->Equals("tok-1"), "progress goes out as notifications/progress with the token");
+		Check(note->Get("params")->Get("progress")->GetFloat() = 1.0 & note->Get("params")->Get("total")->GetFloat() = 10.0 & note->Get("params")->Get("message")->GetString()->Equals("started"), "with progress, total and message");
+		Check(note->Has("id") = false, "a notification has no id");
+
+		server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":100,\"reason\":\"test\"}}", Nil);
+		waited := 0;
+		while(<>@reply_set & waited < 60000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		Check(@reply_set, "the cancelled call ended");
+		Check(@saw_cancel, "the handler saw IsCancelled");
+		Check(@reply = Nil, "and a cancelled request is not answered");
+
+		# cancelling what is not running changes nothing
+		server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":9999}}", Nil);
+		server->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{}}", Nil);
+		Check(client->Ping(), "the server is fine after a stray cancellation");
+		client->Close();
+	}
+
+	@sink : static : McpCollector;
+	@reply_set : static : Bool;
+	@reply : static : String;
+
+	function : Sink() ~ McpCollector {
+		if(@sink = Nil) {
+			@sink := McpCollector->New();
+		};
+		return @sink;
+	}
+
+	function : SetReply(reply : String) ~ Nil {
+		@reply := reply;
+		@reply_set := true;
+	}
+
+	# ---- the tools handed to the AI clients ----
+
+	function : Bridge(server : McpService) ~ Nil {
+		client := McpClient->InProcess(server);
+		client->Initialize("bridge-test", "1.0");
+		bridge := McpToolBridge->New(client);
+		Check(bridge->GetTools()->Size() = 7, "the bridge lists the tools");
+
+		anthropic := bridge->ToAnthropicJson();
+		Check(anthropic->Get(0)->Get("name")->GetString()->Equals("add") & anthropic->Get(0)->Get("input_schema")->Get("type")->GetString()->Equals("object") & anthropic->Get(0)->Get("description")->GetString()->Equals("Add two integers"), "Anthropic tool definitions: name, description, input_schema");
+		openai := bridge->ToOpenAiJson();
+		Check(openai->Get(0)->Get("type")->GetString()->Equals("function") & openai->Get(0)->Get("function")->Get("parameters")->Get("required")->Size() = 2, "OpenAI tool definitions: type function, parameters");
+
+		funcs := bridge->GetFunctions();
+		Check(funcs->Size() = 7 & funcs->Has("add"), "the bridge builds the function map the Gemini and OpenAI clients take");
+		pair := funcs->Find("add");
+		function_type := pair->GetFirst();
+		Check(function_type->GetName()->Equals("add") & function_type->GetParams()->Size() = 2 & function_type->GetDesc()->Equals("Add two integers"), "its function type has the name, the parameters and the description");
+		json := JsonParser->TextToElement(function_type->ToString());
+		Check(json <> Nil & json->Get("properties")->Has("a") & json->Get("required")->Size() = 2, "and serializes with its required list");
+
+		func := pair->GetSecond()->Get();
+		input := JsonParser->TextToElement("{\"a\":5,\"b\":6}");
+		output := func(input);
+		Check(output <> Nil & output->Get("result")->GetString()->Equals("11"), "the function runs the tool through the client");
+		failing := funcs->Find("fails")->GetSecond()->Get();
+		output := failing(JsonParser->TextToElement("{}"));
+		Check(output->Get("error")->GetString()->Equals("the disk is full"), "a tool that failed comes back as an error");
+
+		Check(bridge->Run("add", input)->Equals("11"), "Run returns the text of the result");
+		Check(bridge->Run("fails", JsonParser->TextToElement("{}"))->Equals("error: the disk is full"), "Run marks a failed tool");
+		Check(bridge->Run("nope", JsonParser->TextToElement("{}"))->StartsWith("error: "), "and a call the server refused");
+	}
+
+	# ---- the streamable HTTP transport ----
+
+	function : Http(server : McpService) ~ Nil {
+		thread := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				McpCoreTest->Service()->ServeHttp(0);
+			}
+		};
+		thread->Execute(Nil);
+
+		waited := 0;
+		while(server->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := server->GetBoundPort();
+		Check(port > 0, "the HTTP transport listens");
+		if(port <= 0) {
+			return;
+		};
+		url := "http://127.0.0.1:{$port}/mcp";
+
+		client := McpClient->Http(url);
+		Check(client->Initialize("http-test", "1.0"), "the client initializes over HTTP");
+		Check(client->GetServerName()->Equals("core-test"), "and reads the server info");
+		Check(client->Ping(), "pings over HTTP");
+		tools := client->ListTools();
+		Check(tools <> Nil & tools->Size() = 7, "lists tools over HTTP");
+		result := client->CallTool("add", "{\"a\":1,\"b\":2}");
+		Check(result <> Nil & result->GetText()->Equals("3"), "calls a tool over HTTP");
+		result := client->CallTool("raises", "{}");
+		Check(result <> Nil & result->IsError(), "a tool that raises is an isError result over HTTP");
+		Check(client->CallTool("nope", "{}") = Nil & client->GetErrorCode() = -32602, "an unknown tool is -32602 over HTTP");
+		contents := client->ReadResource("notes://x");
+		Check(contents <> Nil & contents->Get(0)->GetText()->Equals("note for notes://x"), "reads a resource over HTTP");
+
+		bridge := McpToolBridge->New(client);
+		Check(bridge->Run("add", JsonParser->TextToElement("{\"a\":3,\"b\":4}"))->Equals("7"), "the bridge works over HTTP");
+
+		# what the server must refuse, with the status the transport specifies
+		raw := Web.HTTP.HttpClient->New();
+		raw->AddHeader("Accept", "application/json, text/event-stream");
+		body := Req(1, "tools/list", Nil)->ToByteArray();
+		response := raw->Post(Web.HTTP.Url->New(url), body, "application/json");
+		Check(response <> Nil & response->GetCode() = 400, "a request with no session is refused");
+
+		response := raw->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"->ToByteArray(), "application/json");
+		Check(response <> Nil & response->GetCode() = 400, "even a notification needs the session");
+
+		bad := Web.HTTP.HttpClient->New();
+		bad->AddHeader("Mcp-Session-Id", "no-such-session");
+		response := bad->Post(Web.HTTP.Url->New(url), body, "application/json");
+		Check(response <> Nil & response->GetCode() = 404, "an unknown session is 404");
+
+		response := raw->Post(Web.HTTP.Url->New(url), "{not json"->ToByteArray(), "application/json");
+		Check(response <> Nil & response->GetCode() = 400 & String->New(response->GetContent())->Has("-32700"), "malformed JSON is 400 with a parse error");
+
+		hostile := Web.HTTP.HttpClient->New();
+		hostile->AddHeader("Origin", "https://evil.example");
+		response := hostile->Post(Web.HTTP.Url->New(url), Init("2025-11-25")->ToByteArray(), "application/json");
+		Check(response <> Nil & response->GetCode() = 403, "a request from a foreign Origin is refused");
+
+		local := Web.HTTP.HttpClient->New();
+		local->AddHeader("Origin", "http://localhost:3000");
+		response := local->Post(Web.HTTP.Url->New(url), Init("2025-11-25")->ToByteArray(), "application/json");
+		Check(response <> Nil & response->GetCode() = 200, "a loopback Origin is accepted");
+
+		old := Web.HTTP.HttpClient->New();
+		old->AddHeader("MCP-Protocol-Version", "1999-01-01");
+		response := old->Post(Web.HTTP.Url->New(url), body, "application/json");
+		Check(response <> Nil & response->GetCode() = 400, "an unknown MCP-Protocol-Version is refused");
+
+		response := raw->Get(Web.HTTP.Url->New(url));
+		Check(response <> Nil & response->GetCode() = 405, "GET is 405: the server opens no stream");
+
+		client->Close();
+		again := McpClient->Http(url);
+		Check(again->Initialize("http-test-2", "1.0") & again->Ping(), "a new session works after the first was deleted");
+		again->Close();
+
+		Web.HTTP.Server.WebServer->Stop();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@service := Build();
+
+		Protocol(@service);
+		Hostile();
+		Client(@service);
+		Cancellation(@service);
+		Bridge(@service);
+		Http(@service);
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP core, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP core, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

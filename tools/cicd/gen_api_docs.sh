@@ -63,6 +63,7 @@ set -o pipefail
   "$SRC/sdl_gl.obs" \
   "$SRC/gen_collect.obs" \
   "$SRC/concurrent.obs" \
+  "$SRC/actor.obs" \
   "$SRC/net_common.obs" \
   "$SRC/net.obs" \
   "$SRC/net_secure.obs" \
@@ -84,9 +85,14 @@ set -o pipefail
   "$SRC/ml_outlier.obs" \
   "$SRC/ml_embed.obs" \
   "$SRC/ml_lab.obs" \
+  "$SRC/ml_boost.obs" \
   "$SRC/ml_vector.obs" \
   "$SRC/ml_report.obs" \
   "$SRC/ml_verify.obs" \
+  "$SRC/ml_timeseries.obs" \
+  "$SRC/ml_timeseries_models.obs" \
+  "$SRC/ml_timeseries_arima.obs" \
+  "$SRC/ml_timeseries_eval.obs" \
   "$SRC/ml_cnn.obs" \
   "$SRC/nlp_topics_text.obs" \
   "$SRC/nlp_topics_lda.obs" \
@@ -103,7 +109,12 @@ set -o pipefail
   "$SRC/gemini.obs" \
   "$SRC/ollama.obs" \
   "$SRC/anthropic.obs" \
+  "$SRC/llm_util.obs" \
   "$SRC/agent.obs" \
+  "$SRC/actor_agents.obs" \
+  "$SRC/mcp.obs" \
+  "$SRC/rag.obs" \
+  "$SRC/rag_adapters.obs" \
   "$SRC/json_rpc.obs" \
   "$SRC/models.obs" \
   "$SRC/opencv.obs" \

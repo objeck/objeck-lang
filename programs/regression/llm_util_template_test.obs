@@ -1,0 +1,268 @@
+# EXTRA_LIBS: llm_util,regex
+#~
+API.LlmUtil prompt templates and the prompt builder: every placeholder form, the
+filters, loops, conditionals, escaping, every error message, and the conversions the
+builder offers. No network, no key.
+~#
+
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class LlmUtilTemplateTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    if(a = Nil | b = Nil) {
+      return a = Nil & b = Nil;
+    };
+    return a->Equals(b);
+  }
+
+  # renders and compares; a Nil expectation means the render must fail
+  function : Render(name : String, source : String, vars : PromptVars, expected : String) ~ Nil {
+    tpl := PromptTemplate->New(source);
+    out := tpl->Render(vars);
+    if(Same(out, expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: got '{$out}', error '{$tpl->GetError()}'"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : RenderError(name : String, source : String, vars : PromptVars, expected_error : String) ~ Nil {
+    tpl := PromptTemplate->New(source);
+    out := tpl->Render(vars);
+    if(out = Nil & Same(tpl->GetError(), expected_error)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: out '{$out}', error '{$tpl->GetError()}', wanted '{$expected_error}'"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : ParseError(name : String, source : String, expected_error : String) ~ Nil {
+    tpl := PromptTemplate->New(source);
+    if(<>tpl->IsOk() & Same(tpl->GetError(), expected_error) & tpl->Render(PromptVars->New()) = Nil & Same(tpl->GetError(), expected_error)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: ok {$tpl->IsOk()}, error '{$tpl->GetError()}', wanted '{$expected_error}'"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    TestSubstitution();
+    TestMissing();
+    TestOptionalAndDefault();
+    TestFilters();
+    TestEscaping();
+    TestLoops();
+    TestConditionals();
+    TestParseErrors();
+    TestMisuse();
+    TestIntrospection();
+    TestBuilder();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestSubstitution() ~ Nil {
+    "-- substitution"->PrintLine();
+    vars := PromptVars->New()->Set("name", "Ada")->SetInt("age", 36)->SetFloat("pi", 3.5)->SetBool("ok", true);
+    Render("one variable", "Hello {{name}}!", vars, "Hello Ada!");
+    Render("several", "{{name}} is {{age}}, pi {{pi}}, ok {{ok}}", vars, "Ada is 36, pi 3.5, ok true");
+    Render("spaces inside the braces", "{{ name }}|{{  age  }}", vars, "Ada|36");
+    Render("same variable twice", "{{name}}{{name}}", vars, "AdaAda");
+    Render("no placeholders", "plain text", vars, "plain text");
+    Render("empty template", "", vars, "");
+    Render("a lone brace is text", "a { b } c", vars, "a { b } c");
+    Render("a closing pair alone is text", "x }} y", vars, "x }} y");
+    Render("an empty value is not missing", "[{{e}}]", PromptVars->New()->Set("e", ""), "[]");
+    Render("a Nil value is stored empty", "[{{e}}]", PromptVars->New()->Set("e", Nil), "[]");
+    Render("dots, dashes and underscores in names", "{{user.first-name}} {{a_b}}", PromptVars->New()->Set("user.first-name", "A")->Set("a_b", "B"), "A B");
+    Render("a Nil vars object means no variables", "none", Nil, "none");
+  }
+
+  function : TestMissing() ~ Nil {
+    "-- missing required variables"->PrintLine();
+    RenderError("one missing", "Hi {{name}}", PromptVars->New(), "missing required variable: name");
+    RenderError("all missing are listed", "{{b}} {{a}} {{c}} {{a}}", PromptVars->New()->Set("c", "x"), "missing required variables: b, a");
+    RenderError("missing list", "{{#each xs}}{{this}}{{/each}}", PromptVars->New(), "missing required variable: xs");
+    RenderError("missing inside an if body", "{{#if f}}{{g}}{{/if}}", PromptVars->New()->Set("f", "1"), "missing required variable: g");
+    Render("a missing variable in an unused branch is fine", "[{{#if f}}{{g}}{{/if}}]", PromptVars->New(), "[]");
+
+    tpl := PromptTemplate->New("{{a}} {{b}}");
+    Check("Render returns Nil", tpl->Render(PromptVars->New()->Set("a", "1")) = Nil);
+    Check("GetMissing lists b", tpl->GetMissing()->Size() = 1 & tpl->GetMissing()->Get(0)->Equals("b"));
+    Check("a later good render works and clears the error", Same(tpl->Render(PromptVars->New()->Set("a", "1")->Set("b", "2")), "1 2") & tpl->GetError() = Nil & tpl->GetMissing()->Size() = 0);
+    Check("Check() lists the missing without rendering text", tpl->Check(PromptVars->New())->Size() = 2);
+  }
+
+  function : TestOptionalAndDefault() ~ Nil {
+    "-- optional and default"->PrintLine();
+    Render("optional missing is empty", "a{{x?}}b", PromptVars->New(), "ab");
+    Render("optional present", "a{{x?}}b", PromptVars->New()->Set("x", "-"), "a-b");
+    Render("default used", "a{{x|dflt}}b", PromptVars->New(), "adfltb");
+    Render("default ignored when set", "a{{x|dflt}}b", PromptVars->New()->Set("x", "v"), "avb");
+    Render("default text is verbatim", "[{{x|a  b, c: d}}]", PromptVars->New(), "[a  b, c: d]");
+    Render("empty default", "[{{x|}}]", PromptVars->New(), "[]");
+    Render("an empty value beats the default", "[{{x|d}}]", PromptVars->New()->Set("x", ""), "[]");
+    Render("filter applies to the default", "{{x:upper|none}}", PromptVars->New(), "NONE");
+    Render("filter on a set value that has a default", "{{x:upper|none}}", PromptVars->New()->Set("x", "ok"), "OK");
+  }
+
+  function : TestFilters() ~ Nil {
+    "-- filters"->PrintLine();
+    quote := String->New();
+    quote->Append("say \"hi\"");
+    quote->Append('\n');
+    vars := PromptVars->New()->Set("q", quote)->Set("m", "MiXed")->Set("p", "  pad  ");
+    Render("json escapes quote and newline", "\"{{q:json}}\"", vars, "\"say \\\"hi\\\"\\n\"");
+    Render("upper", "{{m:upper}}", vars, "MIXED");
+    Render("lower", "{{m:lower}}", vars, "mixed");
+    Render("trim", "[{{p:trim}}]", vars, "[pad]");
+    Render("json output parses back to the original", "{\"v\":\"{{q:json}}\"}", vars, "{\"v\":\"say \\\"hi\\\"\\n\"}");
+    elem := JsonParser->TextToElement("{\"v\":\"say \\\"hi\\\"\\n\"}");
+    Check("the json filter's output is valid JSON text", elem <> Nil & elem->Get("v")->GetString()->Equals(quote));
+    ParseError("unknown filter", "{{x:rot13}}", "unknown filter 'rot13' in '{{x:rot13}}' at offset 0 (json, upper, lower, trim)");
+  }
+
+  function : TestEscaping() ~ Nil {
+    "-- escaping"->PrintLine();
+    Render("a backslash makes the braces literal", "\\{{name}} and {{name}}", PromptVars->New()->Set("name", "x"), "{{name}} and x");
+    Render("a value is never scanned for placeholders", "{{v}}", PromptVars->New()->Set("v", "{{secret}} {{#each xs}}"), "{{secret}} {{#each xs}}");
+    Render("a value with a closing pair is kept", "<{{v}}>", PromptVars->New()->Set("v", "a}}b"), "<a}}b>");
+    Render("a list item is not scanned either", "{{#each xs}}[{{this}}]{{/each}}", PromptVars->New()->SetArray("xs", ["{{a}}", "b"]), "[{{a}}][b]");
+    Render("a lone backslash stays", "a\\b", PromptVars->New(), "a\\b");
+  }
+
+  function : TestLoops() ~ Nil {
+    "-- loops"->PrintLine();
+    items := PromptVars->New()->SetArray("xs", ["a", "b", "c"])->Set("sep", "-");
+    Render("each with this", "{{#each xs}}<{{this}}>{{/each}}", items, "<a><b><c>");
+    Render("index and number", "{{#each xs}}{{@index}}={{this}}/{{@number}} {{/each}}", items, "0=a/1 1=b/2 2=c/3 ");
+    Render("an outer variable inside a loop", "{{#each xs}}{{this}}{{sep}}{{/each}}", items, "a-b-c-");
+    Render("an empty list renders nothing", "[{{#each xs}}x{{/each}}]", PromptVars->New()->SetList("xs", Vector->New()<String>), "[]");
+    Render("a list from a Vector", "{{#each v}}{{this}},{{/each}}", PromptVars->New()->SetList("v", ListOf("p", "q")), "p,q,");
+    Render("an optional list that is missing", "[{{#each xs?}}x{{/each}}]", PromptVars->New(), "[]");
+    Render("a loop with text around", "Items:\n{{#each xs}}- {{this}}\n{{/each}}End", items, "Items:\n- a\n- b\n- c\nEnd");
+    Render("nested loops, this is the innermost", "{{#each xs}}{{this}}:{{#each ys}}{{this}}{{@index}}{{/each}};{{/each}}", PromptVars->New()->SetArray("xs", ["a", "b"])->SetArray("ys", ["1", "2"]), "a:1021;b:1021;");
+    Render("an if inside a loop", "{{#each xs}}{{#if this}}[{{this}}]{{else}}[-]{{/if}}{{/each}}", PromptVars->New()->SetArray("xs", ["a", "", "c"]), "[a][-][c]");
+    Render("a loop inside an if", "{{#if go}}{{#each xs}}{{this}}{{/each}}{{/if}}", PromptVars->New()->Set("go", "y")->SetArray("xs", ["a", "b"]), "ab");
+  }
+
+  function : ListOf(a : String, b : String) ~ Vector<String> {
+    v := Vector->New()<String>;
+    v->AddBack(a);
+    v->AddBack(b);
+    return v;
+  }
+
+  function : TestConditionals() ~ Nil {
+    "-- conditionals"->PrintLine();
+    Render("if true", "{{#if a}}yes{{/if}}", PromptVars->New()->Set("a", "1"), "yes");
+    Render("if missing", "[{{#if a}}yes{{/if}}]", PromptVars->New(), "[]");
+    Render("if empty text", "[{{#if a}}yes{{/if}}]", PromptVars->New()->Set("a", ""), "[]");
+    Render("else when missing", "{{#if a}}yes{{else}}no{{/if}}", PromptVars->New(), "no");
+    Render("else not taken when set", "{{#if a}}yes{{else}}no{{/if}}", PromptVars->New()->Set("a", "x"), "yes");
+    Render("if on a non-empty list", "{{#if xs}}some{{else}}none{{/if}}", PromptVars->New()->SetArray("xs", ["a"]), "some");
+    Render("if on an empty list", "{{#if xs}}some{{else}}none{{/if}}", PromptVars->New()->SetList("xs", Vector->New()<String>), "none");
+    Render("if with an optional name marker", "{{#if a?}}y{{/if}}", PromptVars->New()->Set("a", "1"), "y");
+    Render("nested ifs", "{{#if a}}A{{#if b}}B{{else}}b{{/if}}{{else}}a{{/if}}", PromptVars->New()->Set("a", "1"), "Ab");
+    Render("variables inside the taken branch", "{{#if a}}{{a}}!{{/if}}", PromptVars->New()->Set("a", "hey"), "hey!");
+  }
+
+  function : TestParseErrors() ~ Nil {
+    "-- parse errors"->PrintLine();
+    ParseError("unclosed tag", "ab {{name", "unclosed '{{' at offset 3");
+    ParseError("unclosed each", "{{#each xs}}x", "the {{#each xs}} block is never closed");
+    ParseError("unclosed if", "{{#if a}}x", "the {{#if a}} block is never closed");
+    ParseError("stray end each", "x {{/each}}", "'{{/each}}' at offset 2 closes nothing");
+    ParseError("end if closing an each", "{{#each xs}}{{/if}}", "'{{/if}}' at offset 12 closes nothing");
+    ParseError("each without a name", "{{#each}}", "block '#each' at offset 0 needs a variable name");
+    ParseError("if without a name", "{{#if }}", "block '#if' at offset 0 needs a variable name");
+    ParseError("else outside an if", "{{else}}", "'{{else}}' at offset 0 is not inside an {{#if}}");
+    ParseError("two elses", "{{#if a}}x{{else}}y{{else}}z{{/if}}", "'{{else}}' at offset 19 is not inside an {{#if}}");
+    ParseError("this outside a loop", "{{this}}", "'{{this}}' at offset 0 is only valid inside {{#each}}");
+    ParseError("index outside a loop", "x{{@index}}", "'{{@index}}' at offset 1 is only valid inside {{#each}}");
+    ParseError("empty variable", "{{}}", "invalid variable '' at offset 0");
+    ParseError("a space in a name", "{{a b}}", "invalid variable 'a b' at offset 0");
+    ParseError("a bad character in a name", "{{a$}}", "invalid variable 'a$' at offset 0");
+    tpl := PromptTemplate->New(Nil);
+    Check("a Nil template is an error", <>tpl->IsOk() & tpl->Render(PromptVars->New()) = Nil);
+    Check("a parse error is reported again by every render", tpl->Render(PromptVars->New()) = Nil & tpl->GetError() <> Nil);
+  }
+
+  function : TestMisuse() ~ Nil {
+    "-- list and text mix-ups"->PrintLine();
+    RenderError("a list used as text", "{{xs}}", PromptVars->New()->SetArray("xs", ["a"]), "'xs' is a list, but {{xs}} needs text; use {{#each xs}}");
+    RenderError("text used as a list", "{{#each a}}x{{/each}}", PromptVars->New()->Set("a", "t"), "'a' is text, but {{#each a}} needs a list");
+    RenderError("missing and misuse together", "{{m}}{{xs}}", PromptVars->New()->SetArray("xs", ["a"]), "missing required variable: m; 'xs' is a list, but {{xs}} needs text; use {{#each xs}}");
+  }
+
+  function : TestIntrospection() ~ Nil {
+    "-- required and optional variables"->PrintLine();
+    tpl := PromptTemplate->New("{{a}} {{b?}} {{c|d}} {{#each xs}}{{this}}{{z}}{{/each}} {{#each ys?}}{{/each}} {{#if f}}{{a}}{{/if}} {{a}}");
+    required := tpl->GetRequired();
+    optional := tpl->GetOptional();
+    Check("required names in order, no duplicates", required->Size() = 3 & required->Get(0)->Equals("a") & required->Get(1)->Equals("xs") & required->Get(2)->Equals("z"));
+    Check("optional names", optional->Size() = 4 & optional->Get(0)->Equals("b") & optional->Get(1)->Equals("c") & optional->Get(2)->Equals("ys") & optional->Get(3)->Equals("f"));
+    Check("GetSource", tpl->GetSource()->StartsWith("{{a}}"));
+  }
+
+  function : TestBuilder() ~ Nil {
+    "-- prompt builder"->PrintLine();
+    b := PromptBuilder->New()->System("Be brief.")->User("Name a colour.")->Assistant("Blue.")->User("Another.");
+    Check("size counts turns without the system prompt", b->Size() = 3);
+    Check("system prompt", Same(b->GetSystem(), "Be brief."));
+    all := b->GetAll();
+    Check("GetAll puts system first", all->Size() = 4 & all->Get(0)->GetRole()->Equals("system") & all->Get(3)->GetText()->Equals("Another."));
+
+    pairs := b->ToPairs();
+    Check("ToPairs shape", pairs->Size() = 4 & pairs->Get(0)->GetFirst()->Equals("system") & pairs->Get(0)->GetSecond()->Equals("Be brief.") & pairs->Get(2)->GetFirst()->Equals("assistant"));
+
+    with_sys := b->ToJsonMessages(true);
+    Check("ToJsonMessages with the system", with_sys->Size() = 4 & with_sys->Get(0)->Get("role")->GetString()->Equals("system") & with_sys->Get(1)->Get("content")->GetString()->Equals("Name a colour."));
+    without := b->ToJsonMessages(false);
+    Check("ToJsonMessages without the system", without->Size() = 3 & without->Get(0)->Get("role")->GetString()->Equals("user"));
+
+    copy := b->Clone();
+    copy->User("More.");
+    copy->System("Changed.");
+    Check("a clone is independent", b->Size() = 3 & copy->Size() = 4 & Same(b->GetSystem(), "Be brief."));
+
+    Check("no system prompt means no system turn", PromptBuilder->New()->User("x")->GetAll()->Size() = 1 & PromptBuilder->New()->User("x")->ToJsonMessages(true)->Size() = 1);
+    Check("Add with the system role sets the system prompt", Same(PromptBuilder->New()->Add("system", "S")->GetSystem(), "S"));
+    Check("Add with another role adds a turn", PromptBuilder->New()->Add("assistant", "A")->Size() = 1);
+
+    tpl := PromptTemplate->New("Translate '{{text}}' to {{lang|French}}.");
+    t := PromptBuilder->New()->User(tpl, PromptVars->New()->Set("text", "cat"));
+    Check("a template user turn", Same(t->GetTurns()->Get(0)->GetText(), "Translate 'cat' to French.") & t->GetError() = Nil);
+    s := PromptBuilder->New()->System(PromptTemplate->New("You are {{role}}."), PromptVars->New()->Set("role", "a poet"));
+    Check("a template system prompt", Same(s->GetSystem(), "You are a poet."));
+
+    bad := PromptBuilder->New()->User(tpl, PromptVars->New());
+    Check("a failed render adds no turn and records the error", bad->Size() = 0 & Same(bad->GetError(), "missing required variable: text"));
+    bad_system := PromptBuilder->New()->System("keep")->System(tpl, PromptVars->New());
+    Check("a failed system render leaves the system prompt", Same(bad_system->GetSystem(), "keep"));
+  }
+}

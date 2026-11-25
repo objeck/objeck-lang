@@ -1,0 +1,29 @@
+id: stdin_sum
+category: basics
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that reads from standard input. The first line holds a count N, and each of the next N lines holds one integer (possibly negative). Print the sum of those N integers and nothing else.
+--- input
+4
+10
+20
+30
+-5
+--- expected
+55
+--- reference
+use System.IO;
+
+class StdinSum {
+	function : Main(args : String[]) ~ Nil {
+		n := Console->ReadLine()->ToInt();
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			total += Console->ReadLine()->ToInt();
+		};
+		total->PrintLine();
+	}
+}

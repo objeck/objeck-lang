@@ -10,13 +10,20 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # Every core/lib/*.obl built from source on one Linux job; the other jobs download them.
+  libs:
+    name: Libraries
+    uses: ./.github/workflows/libs.yml
+
   build:
     name: Build ${{ matrix.platform }}
+    needs: libs
     runs-on: ${{ matrix.os }}
     # Backstop so a hung test/step can never tie up a runner for the default
     # 6 hours (per-test timeouts in run_regression.sh are the first line of
-    # defense; this caps the whole job).
-    timeout-minutes: 60
+    # defense; this caps the whole job). windows-arm64 runs the regression twice on a slow runner
+    # and finished in 55 minutes on a good day, so it gets a longer cap; the others stay at 60.
+    timeout-minutes: ${{ matrix.platform == 'windows-arm64' && 90 || 60 }}
 
     strategy:
       fail-fast: false
@@ -80,6 +87,16 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    # The libraries, built once from source by the `libs` job (libs.yml). Today they are
+    # also committed and `libs` fails on any byte of difference, so this overwrites each
+    # file with an identical one; it is what the deploy scripts will find once the
+    # .obl are no longer tracked (docs/DESIGN_OBL_FROM_SOURCE.md).
+    - name: Download libraries
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: libs
+        path: core/lib/
 
     # ============================================
     # Dependency Installation
@@ -631,6 +648,24 @@ jobs:
         sh ./build_libs.sh "$OBC"
         echo "Libraries rebuilt successfully"
 
+    # Windows can build its own lang.obl: the Release-Sys configuration of compiler.vcxproj is
+    # the _SYSTEM bootstrap compiler, the same sources the POSIX flow builds as sys_obc. The
+    # result must equal the file in core/lib (the `libs` job's Linux build, which is also the
+    # committed one today), byte for byte.
+    - name: lang.obl built by the Windows _SYSTEM compiler equals the Linux build
+      if: runner.os == 'Windows'
+      shell: cmd
+      working-directory: ./core/compiler
+      run: |
+        call .\build_lang_windows.cmd ${{ matrix.arch }} %RUNNER_TEMP%\lang_windows.obl
+        if errorlevel 1 exit /b 1
+        fc /b %RUNNER_TEMP%\lang_windows.obl ..\lib\lang.obl
+        if errorlevel 1 (
+          echo ERROR: the Windows-built lang.obl differs from the library build
+          exit /b 1
+        )
+        echo lang.obl: Windows build is byte-identical
+
     - name: Update deploy with rebuilt libraries
       if: matrix.platform != 'linux-x64'
       shell: bash
@@ -1009,6 +1044,24 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
 
+    # llm_eval is a research harness (tools/llm_eval), not a shipped library: its tests
+    # compile the source together with each test instead of linking an .obl.
+    - name: Run llm_eval harness tests (POSIX)
+      if: runner.os != 'Windows'
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
+        python3 tools/llm_eval/run_tests.py "$BIN"
+
+    - name: Run llm_eval harness tests (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        set BIN=core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=core\release\deploy\bin
+        python tools\llm_eval\run_tests.py "%BIN%"
+
     # GC root coverage (advisory): 30 generated programs that keep references live in loops,
     # pending expression temporaries, inlined callees, ?-> regions, fields and threads, run
     # interpreted, default-JIT, compile-everything and under a 64k nursery with the roots audit
@@ -1256,6 +1309,27 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_funcref_range.py "%BIN%"
 
+    # The MCP server library speaks newline-delimited JSON-RPC on standard input and output:
+    # a scripted client starts a server process and covers the handshake, every method, the
+    # JSON-RPC errors, a request cancelled in flight and megabyte messages (no network).
+    - name: the MCP server answers a scripted stdio client (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_stdio_test.py "$BIN"
+
+    - name: the MCP server answers a scripted stdio client (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_stdio_test.py "%BIN%"
+
     # A build of several files reports each file's errors together, in the order the
     # files were given, rather than interleaved by line number.
     - name: obc reports a multi-file build's errors file by file (POSIX)
@@ -1316,6 +1390,30 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_label_fatal.py "%BIN%"
+
+    # Select statements hand out jump label ids in a fixed order. They used to take three
+    # `++conditional_label` from one argument list, whose evaluation order C++ leaves open: g++
+    # went right to left, Apple clang left to right, so the same source compiled to different
+    # jump operands on arm64 than on x64 (8 of the libraries differed from the committed set).
+    # This compiles a fixture of select statements at -opt s0 with -asm and compares the listing
+    # with one produced on x64, so the leg that builds with a different compiler notices.
+    - name: select statements emit the same jump labels on every compiler (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_select_label_order.py "$BIN"
+
+    - name: select statements emit the same jump labels on every compiler (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_select_label_order.py "%BIN%"
 
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
@@ -1450,6 +1548,28 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obi_stdin_eof.py "%BIN%"
+
+    # Console->ReadLine returned an empty string at the end of input, forever, so a
+    # loop on `line <> Nil` never ended. It now returns Nil there and "" only for a
+    # blank line. The regression runner cannot set a test's stdin, so this feeds
+    # each case in.
+    - name: Console ReadLine returns Nil at EOF (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_console_eof.py "$BIN"
+
+    - name: Console ReadLine returns Nil at EOF (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_console_eof.py "%BIN%"
 
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
@@ -1804,6 +1924,7 @@ jobs:
           ../../../compiler/lib_src/sdl_gl.obs \
           ../../../compiler/lib_src/gen_collect.obs \
           ../../../compiler/lib_src/concurrent.obs \
+          ../../../compiler/lib_src/actor.obs \
           ../../../compiler/lib_src/net_common.obs \
           ../../../compiler/lib_src/net.obs \
           ../../../compiler/lib_src/net_secure.obs \
@@ -1824,9 +1945,14 @@ jobs:
           ../../../compiler/lib_src/ml_outlier.obs \
           ../../../compiler/lib_src/ml_embed.obs \
           ../../../compiler/lib_src/ml_lab.obs \
+          ../../../compiler/lib_src/ml_boost.obs \
           ../../../compiler/lib_src/ml_vector.obs \
           ../../../compiler/lib_src/ml_report.obs \
           ../../../compiler/lib_src/ml_verify.obs \
+          ../../../compiler/lib_src/ml_timeseries.obs \
+          ../../../compiler/lib_src/ml_timeseries_models.obs \
+          ../../../compiler/lib_src/ml_timeseries_arima.obs \
+          ../../../compiler/lib_src/ml_timeseries_eval.obs \
           ../../../compiler/lib_src/ml_cnn.obs \
           ../../../compiler/lib_src/nlp_topics_text.obs \
           ../../../compiler/lib_src/nlp_topics_lda.obs \
@@ -1843,7 +1969,12 @@ jobs:
           ../../../compiler/lib_src/gemini.obs \
           ../../../compiler/lib_src/ollama.obs \
           ../../../compiler/lib_src/anthropic.obs \
+          ../../../compiler/lib_src/llm_util.obs \
           ../../../compiler/lib_src/agent.obs \
+          ../../../compiler/lib_src/actor_agents.obs \
+          ../../../compiler/lib_src/mcp.obs \
+          ../../../compiler/lib_src/rag.obs \
+          ../../../compiler/lib_src/rag_adapters.obs \
           ../../../compiler/lib_src/json_rpc.obs \
           ../../../compiler/lib_src/models.obs \
           ../../../compiler/lib_src/opencv.obs \
@@ -1908,10 +2039,17 @@ jobs:
   # pairs them with the .obl libraries committed under core/lib.
   tools:
     name: Tools (formatter, LSP, VS Code extension)
+    needs: libs
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       # First, because it needs nothing built and fails in seconds. Five files
       # hard-code the list of core/compiler/lib_src/*.obs and nothing keeps them
@@ -2058,7 +2196,7 @@ jobs:
       # #1010). Read straight from the committed bytes; nothing is built. The
       # self-test comes first for the usual reason: a check that can only say
       # "ok" has not checked anything.
-      - name: Committed libraries carry the toolchain version
+      - name: Libraries carry the toolchain version
         run: |
           python3 tools/cicd/check_obl_versions.py --test
           python3 tools/cicd/check_obl_versions.py
@@ -2345,7 +2483,7 @@ jobs:
   status:
     name: CI Status
     runs-on: ubuntu-24.04
-    needs: [build, tools]
+    needs: [libs, build, tools]
     if: always()
     permissions:
       contents: read
@@ -2356,7 +2494,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ needs.build.result }}" = "success" ] \
+          if [ "${{ needs.libs.result }}" = "success" ] \
+             && [ "${{ needs.build.result }}" = "success" ] \
              && [ "${{ needs.tools.result }}" = "success" ]; then
             echo "✅ All platform builds and tooling checks succeeded"
             echo "### ✅ CI — all platform builds and tooling checks succeeded" >> "$GITHUB_STEP_SUMMARY"

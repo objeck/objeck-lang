@@ -1,0 +1,133 @@
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+Runs the llm_eval task suite against one model and writes a Markdown report and a JSON results file.
+
+The model comes from an adapter file compiled in with this program: each adapter defines a class Provider with Create(args) and Usage(). Pick one when you compile (see README.md):
+
+  obc -src llm_eval.obs,eval.obs,adapter_anthropic.obs -lib ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
+  obc -src llm_eval.obs,eval.obs,adapter_openai.obs    -lib ml,csv,json,gen_collect,net,net_server,cipher,misc,openai -dest eval_openai.obe
+  obc -src llm_eval.obs,eval.obs,adapter_gemini.obs    -lib ml,csv,json,gen_collect,net,net_server,cipher,misc,gemini -dest eval_gemini.obe
+  obc -src llm_eval.obs,eval.obs,adapter_ollama.obs    -lib ml,csv,json,gen_collect,net,cipher,misc,ollama -dest eval_ollama.obe
+  obc -src llm_eval.obs,eval.obs,adapter_command.obs   -lib ml,csv,json,gen_collect -dest eval_command.obe
+
+Common flags (an adapter adds its own, see its Usage):
+  --tasks DIR            task directory (default tasks)
+  --n N                  attempts per task (default 1; pass@k needs n >= k)
+  --k 1,5                the k values to report pass@k for (default 1)
+  --ids a,b / --categories x,y   run only these tasks
+  --out PREFIX           write PREFIX.md, PREFIX.json and PREFIX_results.json (default llm_eval_<model>)
+  --baseline FILE.json   an earlier PREFIX_results.json; the report then compares this run (B) with it (A)
+  --system-file FILE     replace the system prompt, for example with a language primer
+  --max-tokens N         most tokens an answer may use (default 4096)
+  --workdir DIR          where programs are compiled and run (default a temp directory)
+  --keep-files           keep the sources and executables
+  --list                 print the selected tasks and exit
+~#
+class Eval {
+	function : Main(args : String[]) ~ Nil {
+		if(EvalArgs->Has(args, "--help") | EvalArgs->Has(args, "-h")) {
+			Usage();
+			return;
+		};
+
+		tasks := TaskSuite->Load(EvalArgs->Value(args, "--tasks", "tasks"));
+		if(tasks = Nil) {
+			">>> {$TaskSuite->GetLastError()}"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		tasks := TaskSuite->Select(tasks, EvalArgs->Value(args, "--ids", Nil), EvalArgs->Value(args, "--categories", Nil));
+		if(tasks->Size() = 0) {
+			">>> no task matches --ids / --categories"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		if(EvalArgs->Has(args, "--list")) {
+			each(i : tasks) {
+				task := tasks->Get(i);
+				"{$task->GetId()}\t{$task->GetCategory()}\tdifficulty {$task->GetDifficulty()}"->PrintLine();
+			};
+			return;
+		};
+
+		model := Provider->Create(args);
+		if(model = Nil) {
+			Usage();
+			Runtime->Exit(1);
+		};
+
+		per_task := EvalArgs->Value(args, "--n", "1")->ToInt();
+		if(per_task < 1) {
+			per_task := 1;
+		};
+
+		ks := EvalArgs->Ints(EvalArgs->Value(args, "--k", "1"), [1]);
+		"{$tasks->Size()} tasks x {$per_task} attempts = {$tasks->Size() * per_task} calls to {$model->GetName()}"->PrintLine();
+
+		work := EvalArgs->Value(args, "--workdir", Nil);
+		if(work = Nil) {
+			work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_{$Runtime->GetProcessId()}";
+		};
+
+		sandbox := Sandbox->New(work);
+		sandbox->SetKeepFiles(EvalArgs->Has(args, "--keep-files"));
+		runner := EvalRunner->New(model, tasks, per_task, sandbox);
+		runner->SetProgress(true);
+		runner->SetMaxTokens(EvalArgs->Value(args, "--max-tokens", "4096")->ToInt());
+
+		system_file := EvalArgs->Value(args, "--system-file", Nil);
+		if(system_file <> Nil) {
+			system := FileReader->ReadFile(system_file);
+			if(system = Nil) {
+				">>> cannot read {$system_file}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			runner->SetSystemPrompt(system);
+		};
+
+		results := runner->Run();
+
+		prefix := EvalArgs->Value(args, "--out", Nil);
+		if(prefix = Nil) {
+			prefix := "llm_eval_{$EvalText->SafeName(model->GetName())}";
+		};
+
+		all := Vector->New()<ModelResults>;
+		comparison : ModelComparison;
+		baseline_path := EvalArgs->Value(args, "--baseline", Nil);
+		if(baseline_path <> Nil) {
+			baseline := ModelResults->Load(baseline_path);
+			if(baseline = Nil) {
+				">>> {$baseline_path} is not a results file"->ErrorLine();
+			}
+			else {
+				all->AddBack(baseline);
+				comparison := ModelComparison->Of(baseline, results, 2000, 1);
+			};
+		};
+		all->AddBack(results);
+
+		EvalReport->Save(prefix, all, ks, comparison, "LLM evaluation: {$results->GetModel()}");
+		results->Save("{$prefix}_results.json");
+
+		"compile rate {$EvalText->Percent(results->GetCompileRate())}"->PrintLine();
+		each(i : ks) {
+			"pass@{$ks[i]} {$EvalText->Percent(results->GetPassAtK(ks[i]))}"->PrintLine();
+		};
+		if(results->GetModelErrors() > 0) {
+			"{$results->GetModelErrors()} calls failed and are left out of the rates"->PrintLine();
+		};
+		if(comparison <> Nil) {
+			comparison->GetVerdict()->PrintLine();
+		};
+		"wrote {$prefix}.md, {$prefix}.json and {$prefix}_results.json"->PrintLine();
+		sandbox->Close();
+	}
+
+	function : Usage() ~ Nil {
+		"usage: obr eval.obe [--tasks DIR] [--n N] [--k 1,5] [--ids a,b] [--categories x,y] [--out PREFIX]"->PrintLine();
+		"                    [--baseline FILE] [--system-file FILE] [--max-tokens N] [--workdir DIR] [--list] [provider flags]"->PrintLine();
+		Provider->Usage()->PrintLine();
+	}
+}

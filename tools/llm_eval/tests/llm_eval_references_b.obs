@@ -1,0 +1,75 @@
+# Run by tools/llm_eval/run_tests.py, which compiles this file together with ../llm_eval.obs
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+The second half of the suite's self-check (see llm_eval_references_a): every second task's reference solution is compiled, run and compared with the expected output. This half also checks the shape of the whole suite: 40 or more tasks, every task with a reference, an expected output and a difficulty from 1 to 5, and each of the ten areas the suite promises (basics, collections, classes, generics, lambdas, exceptions, file_io, json, recursion, quirks) present with at least three tasks. No model and no network. Exits 1 on a failure.
+~#
+class LlmEvalReferencesB {
+	function : Main(args : String[]) ~ Nil {
+		all := TaskSuite->Load("../tasks");
+		if(all = Nil) {
+			"FAIL: {$TaskSuite->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		failed := 0;
+		if(all->Size() < 40) {
+			"FAIL: the suite has {$all->Size()} tasks, 40 expected"->PrintLine();
+			failed += 1;
+		};
+
+		areas := Map->New()<String, IntRef>;
+		each(i : all) {
+			task := all->Get(i);
+			if(task->GetReference() = Nil | task->GetReference()->Size() = 0) {
+				"FAIL: {$task->GetId()} has no reference solution"->PrintLine();
+				failed += 1;
+			};
+
+			if(task->GetExpected()->Size() = 0) {
+				"FAIL: {$task->GetId()} expects no output"->PrintLine();
+				failed += 1;
+			};
+
+			if(task->GetDifficulty() < 1 | task->GetDifficulty() > 5) {
+				"FAIL: {$task->GetId()} has difficulty {$task->GetDifficulty()}"->PrintLine();
+				failed += 1;
+			};
+
+			area := task->GetCategory();
+			if(<>areas->Has(area)) {
+				areas->Insert(area, IntRef->New(0));
+			};
+			areas->Find(area)->Set(areas->Find(area)->Get() + 1);
+		};
+
+		required := ["basics", "collections", "classes", "generics", "lambdas", "exceptions", "file_io", "json", "recursion", "quirks"];
+		each(i : required) {
+			if(<>areas->Has(required[i]) | areas->Find(required[i])->Get() < 3) {
+				"FAIL: the area {$required[i]} has fewer than 3 tasks"->PrintLine();
+				failed += 1;
+			};
+		};
+
+		tasks := TaskSuite->Part(all, 1, 2);
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_refs_b_{$Runtime->GetProcessId()}";
+		sandbox := Sandbox->New(work);
+		results := EvalRunner->New(ReferenceModel->New(tasks), tasks, 1, sandbox)->Run();
+
+		attempts := results->GetAttempts();
+		each(i : attempts) {
+			attempt := attempts->Get(i);
+			if(<>attempt->IsCorrect()) {
+				failed += 1;
+				"FAIL: {$attempt->GetTaskId()}: {$attempt->GetOutcome()} {$attempt->GetErrorLine()} {$attempt->GetOutput()}"->PrintLine();
+			};
+		};
+
+		sandbox->Close();
+		if(failed > 0) {
+			Runtime->Exit(1);
+		};
+
+		"{$tasks->Size()} of {$tasks->Size()} reference solutions pass, {$all->Size()} tasks in {$areas->Size()} areas"->PrintLine();
+	}
+}

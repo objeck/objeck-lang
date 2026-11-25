@@ -1,0 +1,29 @@
+id: hanoi_moves
+category: recursion
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that solves Towers of Hanoi for 10 discs recursively, counting the individual disc moves rather than using a closed formula (a function Move(n, src, dst, via) that recurses and increments a counter), and prints only the number of moves.
+--- expected
+1023
+--- reference
+class Hanoi {
+	@moves : static : Int;
+
+	function : Move(n : Int, src : Int, dst : Int, via : Int) ~ Nil {
+		if(n = 0) {
+			return;
+		};
+
+		Move(n - 1, src, via, dst);
+		@moves += 1;
+		Move(n - 1, via, dst, src);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Move(10, 1, 3, 2);
+		@moves->PrintLine();
+	}
+}

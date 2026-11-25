@@ -279,3 +279,11 @@ programs/regression/probe/results/
 # happened on v2026.10.0: the run left 78 MB of signed installers sitting
 # untracked in the repository root, exactly where `git add -A` would take them.
 sign-staging/
+
+# The _SYSTEM bootstrap compiler (core/compiler/build_lang_windows.cmd)
+**/Release-Sys/
+
+# Windows sys_obc build output (accidental artifact from #1766)
+core/compiler/Release-Sys/
+# the one assembly listing that is committed: the golden of check_select_label_order.py
+!programs/regression/select_label_order.golden.obm

@@ -77,6 +77,22 @@ No release ships CUDA. It needs an ONNX Runtime built with the CUDA provider, th
 
 Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=cpu` vs `ep=cuda`, see `docs/ONNX_CUDA_PLAN.md`): about 460-500 ms per image on the CPU and 42 ms on CUDA on Windows (roughly 11x), 340-510 ms and 44 ms on Linux under WSL2. The time includes JPEG decoding, preprocessing and decoding the detections, which stay on the CPU.
 
+### IO binding (keeping tensors on the device)
+
+`Session->Run` copies every input to the device and every output back on each call. `DeviceTensor` and `BoundSession` (`device_tensor.h`, `onnx.obs`) allocate tensors once in the provider's memory (`ep=cuda`, `ep=tensorrt`; host memory for `ep=cpu`), bind them to the model's inputs and outputs by name, and run on them in place: ResNet-34 at batch 32 on an RTX 4090 went from 48.9 ms to 6.1 ms per run with the data resident. A bound run is bit-identical to `Session->Run` on the same provider. The CUDA runtime calls it needs (a copy, a stream) are looked up from the cudart library the CUDA provider already loaded, so building the library still needs no CUDA. A session closed while tensors still use it is released after the last of them (`session_registry.h`). See `docs/ai_sections/onnx_gpu.md`.
+
+### Half precision and 8-bit
+
+`Session->Run` converts to whatever the model declares (FP32, FP16, BF16, FP64, INT8 to INT64, UINT8 to UINT64, BOOL). The FP16 and BF16 conversions round to nearest, ties to even, straight from the `Float`; integers saturate at the type's range. `Half`, `BFloat16` and `Quantization` (`onnx.obs`) expose the conversions, `DeviceTensor->UploadBits` / `DownloadBits` move raw element patterns, and `programs/tests/onnx_gpu/make_models.py` produces FP16 and INT8 (QDQ) variants of an FP32 model. See `docs/ai_sections/onnx_gpu.md`.
+
+### TensorRT, session options and CUDA graphs
+
+`ep=tensorrt` (`session_options.h`) appends the TensorRT provider, then the CUDA provider for what TensorRT cannot take, with the engine cache on by default in a per-user directory. Session-level keys in the config map (`intra_op_threads`, `inter_op_threads`, `graph_optimization`, `execution_mode`, `mem_pattern`, `cpu_mem_arena`, `session_config.<key>`) are checked and refused when unreadable; every other key is a provider option. `enable_cuda_graph=1` (CUDA) and `cuda_graph=1` (TensorRT) replay the recorded kernels for a bound run. A runtime that lacks the provider refuses the session. Keys, defaults and measurements: `docs/ai_sections/onnx_gpu.md`.
+
+### Threads
+
+`Session->Run`, a bound run and the `DeviceTensor` copies park the calling thread for the length of the native work, so a stop-the-world collection started by another Objeck thread does not wait for an inference (longest wait 176.7 ms to 19.9 ms for ResNet-34 at batch 32). A `Session` may be shared by threads; give each thread its own `BoundSession` and tensors. See `docs/ai_sections/onnx_gpu.md`.
+
 ## Quick Start
 
 ```objeck
