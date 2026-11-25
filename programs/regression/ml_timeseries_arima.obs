@@ -1,0 +1,598 @@
+# EXTRA_LIBS: ml_timeseries,gen_collect
+#~
+System.ML.TimeSeries: ARIMA(p, d, q) with optional seasonal differencing.
+
+Series with known parameters are generated here (AR(1) 0.7, AR(2) 0.5 / -0.3, MA(1) 0.6, ARMA(1,1) 0.5 / 0.4 with
+mean 4, a random walk with drift 0.3, a trend + seasonal series) from fixed seeds. The fitted values are
+checked against, in order of authority:
+  1. statsmodels AutoReg (ordinary least squares), which solves the same problem as a pure autoregression
+     exactly: coefficient and intercept to 1e-8;
+  2. gen_reference.py's own conditional-least-squares fit (scipy least_squares with residual code written
+     there) for every model, including MA and ARMA, with forecasts, forecast standard deviations (psi
+     weights), AIC / AICc / BIC and the residual count, to 1e-6 (measured worst case 2e-8);
+  3. statsmodels' state-space maximum-likelihood ARIMA, a loose cross-check (0.03 on coefficients: CSS and the exact
+     likelihood differ by a little on 400 to 600 points);
+  4. the true generating parameters, within sampling error (0.1 to 0.15).
+Hand cases cover the stability checks, ARIMA(0,1,0) with and without drift, the fitted / residual alignment and the
+refusals. Run from programs/regression.
+~#
+use System.IO.Filesystem;
+use Collection;
+use System.ML.TimeSeries;
+
+#~
+Shared by the ml_timeseries_* tests: reads ml_timeseries_ref/expected.txt (written by gen_reference.py, which
+uses statsmodels / scipy / hand-written numpy and never this library) and keeps the pass / fail tally.
+~#
+class TsRef {
+	@m : Map<String, String>;
+	@ok : Bool;
+	@checks : Int;
+
+	New() {
+		@ok := true;
+		@checks := 0;
+		@m := Map->New()<String, String>;
+		text := FileReader->ReadFile("ml_timeseries_ref/expected.txt");
+		if(text = Nil) {
+			"FAIL: ml_timeseries_ref/expected.txt is not readable (run from programs/regression)"->PrintLine();
+			@ok := false;
+			return;
+		};
+
+		lines := text->Split("\n");
+		each(i : lines) {
+			line := lines[i];
+			if(line->Size() > 0 & line->Get(0) <> '#') {
+				f := line->Split("|");
+				if(f->Size() = 3) {
+					@m->Insert("{$f[0]}|{$f[1]}", f[2]);
+				}
+				else if(f->Size() = 2) {
+					@m->Insert("{$f[0]}|{$f[1]}", "");
+				};
+			};
+		};
+	}
+
+	method : public : IsOk() ~ Bool {
+		return @ok;
+	}
+
+	method : public : Checks() ~ Int {
+		return @checks;
+	}
+
+	method : public : Check(name : String, cond : Bool) ~ Nil {
+		@checks += 1;
+		if(<>cond) {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : public : Get(name : String, key : String) ~ Float[] {
+		k := "{$name}|{$key}";
+		if(<>@m->Has(k)) {
+			"FAIL: no reference value {$k}"->PrintLine();
+			@ok := false;
+			return Float->New[0];
+		};
+
+		text := @m->Find(k);
+		if(text->Size() = 0) {
+			return Float->New[0];
+		};
+
+		parts := text->Split(",");
+		out := Float->New[parts->Size()];
+		each(i : parts) {
+			if(parts[i]->Equals("nan")) {
+				out[i] := Float->NaN();
+			}
+			else {
+				out[i] := parts[i]->ToFloat();
+			};
+		};
+
+		return out;
+	}
+
+	method : public : One(name : String, key : String) ~ Float {
+		v := Get(name, key);
+		if(v->Size() = 0) {
+			return Float->NaN();
+		};
+
+		return v[0];
+	}
+
+	# |a - b| <= tol * (1 + |b|); two NaNs are equal
+	function : Near(a : Float, b : Float, tol : Float) ~ Bool {
+		if(a <> a | b <> b) {
+			return a <> a & b <> b;
+		};
+
+		d := a - b;
+		if(d < 0.0) {
+			d := -d;
+		};
+
+		return d <= tol * (1.0 + b->Abs());
+	}
+
+	# the largest |a[i] - b[i]| / (1 + |b[i]|), NaN positions must agree; 1e300 on a length mismatch
+	function : MaxDiff(a : Float[], b : Float[]) ~ Float {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return 1.0e300;
+		};
+
+		worst := 0.0;
+		each(i : b) {
+			an := a[i] <> a[i];
+			bn := b[i] <> b[i];
+			if(an | bn) {
+				if(an <> bn) {
+					return 1.0e300;
+				};
+			}
+			else {
+				d := a[i] - b[i];
+				if(d < 0.0) {
+					d := -d;
+				};
+				d := d / (1.0 + b[i]->Abs());
+				if(d > worst) {
+					worst := d;
+				};
+			};
+		};
+
+		return worst;
+	}
+
+	# a named comparison of two arrays: passes when the largest relative difference is within tol
+	method : public : Same(name : String, got : Float[], want : Float[], tol : Float) ~ Nil {
+		d := MaxDiff(got, want);
+		n := want->Size();
+		ok := d <= tol;
+		if(<>ok) {
+			"FAIL: {$name}: {$n} values, max relative difference {$d} > {$tol}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	method : public : SameOne(name : String, got : Float, want : Float, tol : Float) ~ Nil {
+		ok := Near(got, want, tol);
+		if(<>ok) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+		};
+		Check(name, ok);
+	}
+
+	# the first values of a series generated here must be the reference's (proves the generator is the same)
+	method : public : Head(name : String, series : Float[]) ~ Nil {
+		want := Get(name, "head");
+		got := Float->New[want->Size()];
+		each(i : got) {
+			got[i] := series[i];
+		};
+		Same("series {$name}: generator matches the reference", got, want, 1.0e-12);
+		Check("series {$name}: length", Near(series->Size()->As(Float), One(name, "n"), 0.0));
+	}
+
+	method : public : Finish(test : String) ~ Nil {
+		c := @checks;
+		if(@ok) {
+			"{$test}: all {$c} checks passed"->PrintLine();
+		}
+		else {
+			"FAIL: {$test}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+#~
+The test series, generated by the library from fixed seeds. gen_reference.py generates the same ones.
+~#
+class TsData {
+	@ar1 : Float[];
+	@ar2 : Float[];
+	@ma1 : Float[];
+	@arma11 : Float[];
+	@ts : Float[];
+	@ms : Float[];
+	@rw : Float[];
+
+	New() {
+		@ar1 := Simulate->Arma([0.7], Nil, 0.0, 1.0, 400, 11);
+		@ma1 := Simulate->Arma(Nil, [0.6], 0.0, 1.0, 500, 12);
+		@arma11 := Simulate->Arma([0.5], [0.4], 2.0, 1.0, 600, 13);
+		@ar2 := Simulate->Arma([0.5, -0.3], Nil, 0.0, 1.0, 500, 14);
+		@ts := Simulate->TrendSeasonal(120, 20.0, 0.3, 5.0, 12, 0.5, 15);
+		@ms := Simulate->MultSeasonal(120, 40.0, 0.2, 0.25, 12, 0.02, 16);
+		@rw := Simulate->RandomWalk(200, 0.3, 1.0, 17);
+	}
+
+	method : public : Get(name : String) ~ Float[] {
+		if(name->Equals("ar1")) {
+			return @ar1;
+		};
+		if(name->Equals("ar2")) {
+			return @ar2;
+		};
+		if(name->Equals("ma1")) {
+			return @ma1;
+		};
+		if(name->Equals("arma11")) {
+			return @arma11;
+		};
+		if(name->Equals("ts")) {
+			return @ts;
+		};
+		if(name->Equals("ms")) {
+			return @ms;
+		};
+
+		return @rw;
+	}
+
+	method : public : Names() ~ String[] {
+		return ["ar1", "ar2", "ma1", "arma11", "ts", "ms", "rw"];
+	}
+}
+
+
+class MlTimeseriesArima {
+	function : Main(args : String[]) ~ Nil {
+		t := TsRef->New();
+		if(t->IsOk()) {
+			PureAr(t);
+			Arma(t);
+			Differenced(t);
+			Criteria(t);
+			Structure(t);
+			Residuals(t);
+			Stability(t);
+			Refusals(t);
+		};
+		t->Finish("ml_timeseries_arima");
+	}
+
+	function : Fit(m : ArimaModel, y : Float[]) ~ Bool {
+		return m->Fit(TimeSeries->New(y));
+	}
+
+	function : Vec(a : Float[], b : Float[]) ~ Float[] {
+		out := Float->New[a->Size() + b->Size()];
+		each(i : a) {
+			out[i] := a[i];
+		};
+		each(i : b) {
+			out[a->Size() + i] := b[i];
+		};
+
+		return out;
+	}
+
+	# one model against the numpy / scipy CSS reference named ref
+	function : Against(t : TsRef, lbl : String, m : ArimaModel, ref : String, h : Int, tol : Float) ~ Nil {
+		t->Same("{$lbl}: AR coefficients", m->GetAr(), t->Get(ref, "phi"), tol);
+		t->Same("{$lbl}: MA coefficients", m->GetMa(), t->Get(ref, "theta"), tol);
+		t->SameOne("{$lbl}: mean of the differenced series", m->GetMean(), t->One(ref, "mu"), tol);
+		t->SameOne("{$lbl}: SSE", m->GetSse(), t->One(ref, "sse"), 1.0e-6);
+		t->SameOne("{$lbl}: residual count", m->GetObservations()->As(Float), t->One(ref, "nres"), 0.0);
+		t->SameOne("{$lbl}: sigma^2", m->GetSigma2(), t->One(ref, "sigma2"), 1.0e-6);
+		f := m->Forecast(h, 0.95);
+		t->Check("{$lbl}: forecast is valid", f->IsValid());
+		t->Same("{$lbl}: {$h} forecasts", f->GetMean(), t->Get(ref, "fc"), 1.0e-6);
+		t->Same("{$lbl}: forecast standard deviations (psi weights)", f->GetSd(), t->Get(ref, "sd"), 1.0e-6);
+		t->SameOne("{$lbl}: AIC", m->GetAic(), t->One(ref, "aic"), 1.0e-6);
+		t->SameOne("{$lbl}: AICc", m->GetAicc(), t->One(ref, "aicc"), 1.0e-6);
+		t->SameOne("{$lbl}: BIC", m->GetBic(), t->One(ref, "bic"), 1.0e-6);
+	}
+
+	function : PureAr(t : TsRef) ~ Nil {
+		d := TsData->New();
+
+		m1 := ArimaModel->New(1, 0, 0);
+		t->Check("AR(1) fits", Fit(m1, d->Get("ar1")));
+		ar := m1->GetAr();
+		t->Check("AR(1) phi {$ar[0]} is near the true 0.7", (ar[0] - 0.7)->Abs() < 0.1);
+		reg := t->Get("autoreg_ar1", "params");
+		t->SameOne("AR(1) intercept equals statsmodels AutoReg", m1->GetIntercept(), reg[0], 1.0e-8);
+		t->SameOne("AR(1) phi equals statsmodels AutoReg", ar[0], reg[1], 1.0e-8);
+		t->SameOne("AR(1) sigma^2 is AutoReg's (SSE / N)", m1->GetSigma2(), t->One("autoreg_ar1", "sigma2"), 1.0e-8);
+		t->Check("AR(1) needs no iteration (exact least squares)", m1->GetIterations() = 0);
+		Against(t, "AR(1)", m1, "arima_ar1", 12, 1.0e-8);
+
+		m2 := ArimaModel->New(2, 0, 0);
+		t->Check("AR(2) fits", Fit(m2, d->Get("ar2")));
+		ar2 := m2->GetAr();
+		reg2 := t->Get("autoreg_ar2", "params");
+		t->SameOne("AR(2) intercept equals statsmodels AutoReg", m2->GetIntercept(), reg2[0], 1.0e-8);
+		t->SameOne("AR(2) phi1 equals statsmodels AutoReg", ar2[0], reg2[1], 1.0e-8);
+		t->SameOne("AR(2) phi2 equals statsmodels AutoReg", ar2[1], reg2[2], 1.0e-8);
+		t->Check("AR(2) is near the true 0.5, -0.3", (ar2[0] - 0.5)->Abs() < 0.1 & (ar2[1] + 0.3)->Abs() < 0.1);
+		Against(t, "AR(2)", m2, "arima_ar2", 12, 1.0e-8);
+
+		# a different CSS start (the first 5 differenced values only seed the lags): AR(1) refit by the reference
+		m3 := ArimaModel->New(1, 0, 0);
+		m3->SetCssStart(5);
+		t->Check("AR(1) with start 5 fits", Fit(m3, d->Get("ar1")));
+		Against(t, "AR(1) start 5", m3, "arima_ar1_start5", 12, 1.0e-8);
+
+		# the mean can be switched off: zero-mean AR(1) is the regression through the origin
+		m4 := ArimaModel->New(1, 0, 0);
+		m4->SetIncludeMean(false);
+		t->Check("AR(1) without a mean fits", Fit(m4, d->Get("ar1")));
+		y := d->Get("ar1");
+		num := 0.0;
+		den := 0.0;
+		for(i := 1; i < y->Size(); i += 1;) {
+			num += y[i] * y[i - 1];
+			den += y[i - 1] * y[i - 1];
+		};
+		a4 := m4->GetAr();
+		t->SameOne("zero-mean AR(1) is sum(y[t] y[t-1]) / sum(y[t-1]^2)", a4[0], num / den, 1.0e-10);
+		t->Check("and its mean is exactly 0", m4->GetMean() = 0.0);
+
+		# ARIMA(0, 0, 0) with a mean: the sample mean, forecasts are flat
+		m5 := ArimaModel->New(0, 0, 0);
+		t->Check("ARIMA(0,0,0) fits", Fit(m5, d->Get("ar1")));
+		sum := 0.0;
+		each(i : y) {
+			sum += y[i];
+		};
+		t->SameOne("ARIMA(0,0,0) mean is the sample mean", m5->GetMean(), sum / y->Size()->As(Float), 1.0e-12);
+		f5 := m5->Forecast(3, 0.9);
+		sd5 := f5->GetSd();
+		mean5 := f5->GetMean();
+		t->Check("white-noise forecasts are flat with a constant sd", mean5[0] = mean5[2] & RefNear(sd5[0], sd5[2]));
+	}
+
+	function : RefNear(a : Float, b : Float) ~ Bool {
+		return TsRef->Near(a, b, 1.0e-12);
+	}
+
+	function : Arma(t : TsRef) ~ Nil {
+		d := TsData->New();
+
+		ma := ArimaModel->New(0, 0, 1);
+		t->Check("MA(1) fits", Fit(ma, d->Get("ma1")));
+		th := ma->GetMa();
+		t->Check("MA(1) theta {$th[0]} is near the true 0.6 and invertible", (th[0] - 0.6)->Abs() < 0.1 & ma->IsInvertible());
+		Against(t, "MA(1)", ma, "arima_ma1", 12, 1.0e-6);
+		mle := t->Get("mle_ma1", "params");
+		t->Check("MA(1) is within 0.03 of the maximum-likelihood estimate {$mle[1]}", (th[0] - mle[1])->Abs() < 0.03 & (ma->GetMean() - mle[0])->Abs() < 0.05);
+		t->Check("MA(1) took Levenberg-Marquardt iterations", ma->GetIterations() > 0);
+
+		ma4 := ArimaModel->New(0, 0, 1);
+		ma4->SetCssStart(4);
+		Fit(ma4, d->Get("ma1"));
+		Against(t, "MA(1) start 4", ma4, "arima_ma1_start4", 12, 1.0e-6);
+
+		am := ArimaModel->New(1, 0, 1);
+		t->Check("ARMA(1,1) fits", Fit(am, d->Get("arma11")));
+		ph := am->GetAr();
+		tt := am->GetMa();
+		t->Check("ARMA(1,1) is near the true 0.5, 0.4 ({$ph[0]}, {$tt[0]}) and its mean near 4", (ph[0] - 0.5)->Abs() < 0.15 & (tt[0] - 0.4)->Abs() < 0.15 & (am->GetMean() - 4.0)->Abs() < 0.5);
+		Against(t, "ARMA(1,1)", am, "arima_arma11", 12, 1.0e-6);
+		mle2 := t->Get("mle_arma11", "params");
+		t->Check("ARMA(1,1) is within 0.03 of the maximum-likelihood estimate", (ph[0] - mle2[1])->Abs() < 0.03 & (tt[0] - mle2[2])->Abs() < 0.03 & (am->GetMean() - mle2[0])->Abs() < 0.05);
+		t->Check("ARMA(1,1) is stationary and invertible", am->IsStationary() & am->IsInvertible());
+
+		# forecasts decay to the mean: 36 steps ahead the forecast is within 0.01 of mu
+		f := am->Forecast(36, 0.95);
+		fm := f->GetMean();
+		t->Check("ARMA forecasts revert to the mean", (fm[35] - am->GetMean())->Abs() < 0.01);
+		sd := f->GetSd();
+		t->Check("the forecast sd grows to the series sd", sd[35] > sd[0] & sd[35] < 4.0 * sd[0]);
+	}
+
+	function : Differenced(t : TsRef) ~ Nil {
+		d := TsData->New();
+		rw := d->Get("rw");
+
+		m := ArimaModel->New(1, 1, 0);
+		t->Check("ARIMA(1,1,0) fits", Fit(m, rw));
+		Against(t, "ARIMA(1,1,0)", m, "arima_rw_110", 12, 1.0e-8);
+		mle := t->Get("mle_rw_110", "params");
+		ph := m->GetAr();
+		t->Check("ARIMA(1,1,0) phi {$ph[0]} is within 0.03 of the maximum-likelihood estimate {$mle[0]}", (ph[0] - mle[0])->Abs() < 0.03);
+		t->Check("a differenced model has no mean by default", m->GetMean() = 0.0);
+
+		m2 := ArimaModel->New(0, 1, 1);
+		t->Check("ARIMA(0,1,1) fits", Fit(m2, rw));
+		Against(t, "ARIMA(0,1,1)", m2, "arima_rw_011", 12, 1.0e-6);
+
+		# with a drift: ARIMA(0,1,0) + mean = last value + h * mean step
+		dr := ArimaModel->New(0, 1, 0);
+		dr->SetIncludeMean(true);
+		t->Check("ARIMA(0,1,0) with drift fits", Fit(dr, rw));
+		Against(t, "ARIMA(0,1,0) with drift", dr, "arima_rw_010_drift", 12, 1.0e-8);
+		last := rw[rw->Size() - 1];
+		step := (last - rw[0]) / (rw->Size() - 1)->As(Float);
+		df := dr->Forecast(3, 0.9)->GetMean();
+		t->Check("drift forecast = last + h * mean step ({$step})", RefNear(df[0], last + step) & RefNear(df[2], last + 3.0 * step));
+		t->SameOne("the drift is the true 0.3 within sampling error", dr->GetMean(), 0.3, 0.2);
+
+		# no drift: the random walk forecast is flat at the last value, sd grows like sqrt(h)
+		rwm := ArimaModel->New(0, 1, 0);
+		Fit(rwm, rw);
+		f := rwm->Forecast(4, 0.9);
+		fm := f->GetMean();
+		fsd := f->GetSd();
+		t->Check("ARIMA(0,1,0) is the naive forecast", RefNear(fm[0], last) & RefNear(fm[3], last));
+		t->Check("and its sd is sigma sqrt(h)", RefNear(fsd[3], fsd[0] * 2.0) & RefNear(fsd[1], fsd[0] * Float->Sqrt(2.0)));
+		naive := BaselineForecaster->New(BaselineForecaster->Kind->NAIVE);
+		naive->Fit(TimeSeries->New(rw));
+		t->Check("and sigma is the naive baseline's (one-step differences), up to the 1/N vs 1/(N - 1) divisor", (rwm->GetSigma2()->Sqrt() - naive->GetSigma())->Abs() / naive->GetSigma() < 0.01);
+
+		# seasonal differencing: ARIMA(1,0,0) with D = 1 and period 12, with a mean (the trend becomes a drift)
+		ts := d->Get("ts");
+		sm := ArimaModel->New(1, 0, 0, 1, 12);
+		sm->SetIncludeMean(true);
+		t->Check("seasonal ARIMA fits", Fit(sm, ts));
+		Against(t, "ARIMA(1,0,0) D=1 [12]", sm, "arima_ts_seas", 12, 1.0e-8);
+		t->Check("its name says so", sm->GetName()->Equals("ARIMA(1,0,0)D1[12]"));
+		# the drift of the seasonally differenced series is 12 * 0.3 = 3.6
+		t->SameOne("the seasonal-difference mean is near 12 * 0.3", sm->GetMean(), 3.6, 0.1);
+		sf := sm->Forecast(13, 0.95)->GetMean();
+		t->Check("the forecast keeps the seasonal shape and trend: forecast[12] - forecast[0] is near 3.6", (sf[12] - sf[0] - 3.6)->Abs() < 0.8);
+	}
+
+	function : Criteria(t : TsRef) ~ Nil {
+		d := TsData->New();
+		m := ArimaModel->New(1, 0, 1);
+		Fit(m, d->Get("arma11"));
+		k := m->GetNumParams();
+		n := m->GetObservations();
+		t->Check("k = p + q + mean + variance = 4", k = 4);
+		ll := m->GetLogLik();
+		sse := m->GetSse();
+		nf := n->As(Float);
+		hand := -0.5 * nf * (Float->Log(2.0 * Float->Pi() * sse / nf) + 1.0);
+		t->SameOne("log-likelihood is -N/2 (ln(2 pi sigma^2) + 1)", ll, hand, 1.0e-12);
+		kf := k->As(Float);
+		t->SameOne("AIC = -2 ll + 2k", m->GetAic(), -2.0 * ll + 2.0 * kf, 1.0e-12);
+		t->SameOne("AICc = AIC + 2k(k+1)/(N-k-1)", m->GetAicc(), m->GetAic() + 2.0 * kf * (kf + 1.0) / (nf - kf - 1.0), 1.0e-12);
+		t->SameOne("BIC = -2 ll + k ln N", m->GetBic(), -2.0 * ll + kf * Float->Log(nf), 1.0e-12);
+		t->Check("AIC < AICc and AIC < BIC for N = 599", m->GetAic() < m->GetAicc() & m->GetAic() < m->GetBic());
+
+		# the generating model beats an underfit model on the criteria: AR(1) data, AR(1) vs white noise
+		a1 := ArimaModel->New(1, 0, 0);
+		a0 := ArimaModel->New(0, 0, 0);
+		a1->SetCssStart(1);
+		a0->SetCssStart(1);
+		Fit(a1, d->Get("ar1"));
+		Fit(a0, d->Get("ar1"));
+		t->Check("on AR(1) data the AR(1) beats white noise by AICc and BIC", a1->GetAicc() < a0->GetAicc() & a1->GetBic() < a0->GetBic());
+		# on AR(2) data the second lag earns its penalty (common start 2)
+		c2 := ArimaModel->New(2, 0, 0);
+		c1 := ArimaModel->New(1, 0, 0);
+		c2->SetCssStart(2);
+		c1->SetCssStart(2);
+		Fit(c2, d->Get("ar2"));
+		Fit(c1, d->Get("ar2"));
+		t->Check("on AR(2) data the AR(2) beats AR(1) by AIC, AICc and BIC", c2->GetAic() < c1->GetAic() & c2->GetAicc() < c1->GetAicc() & c2->GetBic() < c1->GetBic());
+	}
+
+	function : Structure(t : TsRef) ~ Nil {
+		d := TsData->New();
+		y := d->Get("rw");
+		m := ArimaModel->New(1, 1, 1);
+		Fit(m, y);
+		fit := m->GetFitted();
+		res := m->GetResiduals();
+		t->Check("fitted and residuals have the length of the series", fit->Size() = y->Size() & res->Size() = y->Size());
+		lead := 0;
+		while(fit[lead] <> fit[lead]) {
+			lead += 1;
+		};
+		t->Check("the leading NaNs are d + max(p, start) = 2 ({$lead})", lead = 2);
+		worst := 0.0;
+		for(i := lead; i < y->Size(); i += 1;) {
+			dd := (fit[i] + res[i] - y[i])->Abs();
+			if(dd > worst) {
+				worst := dd;
+			};
+		};
+		t->Check("fitted + residual = observation (worst {$worst})", worst < 1.0e-12);
+
+		# the residuals are the one-step errors of the model: sum of squares matches GetSse
+		ss := 0.0;
+		for(i := lead; i < y->Size(); i += 1;) {
+			ss += res[i] * res[i];
+		};
+		t->Check("the residual sum of squares is GetSse", RefNear(ss, m->GetSse()) | TsRef->Near(ss, m->GetSse(), 1.0e-10));
+
+		# a seasonal model loses d + D * period leading values
+		sm := ArimaModel->New(1, 0, 0, 1, 12);
+		Fit(sm, d->Get("ts"));
+		sf := sm->GetFitted();
+		first := 0;
+		while(sf[first] <> sf[first]) {
+			first += 1;
+		};
+		t->Check("a seasonal model loses 12 + 1 leading values ({$first})", first = 13);
+
+		# Copy gives an unfitted model of the same order
+		c := m->Copy();
+		t->Check("Copy is unfitted, same name", <>c->IsFitted() & c->GetName()->Equals("ARIMA(1,1,1)"));
+		t->Check("and fits to the same result", c->Fit(TimeSeries->New(y)) & RefNear(c->As(ArimaModel)->GetSse(), m->GetSse()));
+
+		# the Forecaster interface
+		f : Forecaster := m;
+		t->Check("ArimaModel is a Forecaster", f->IsFitted() & f->Forecast(2, 0.8)->IsValid());
+	}
+
+	function : Residuals(t : TsRef) ~ Nil {
+		d := TsData->New();
+		m := ArimaModel->New(1, 0, 1);
+		Fit(m, d->Get("arma11"));
+		clean := SeriesTransform->DropNaN(m->GetResiduals());
+		t->Check("DropNaN removed the one leading NaN", clean->Size() = 599);
+
+		# a correct model leaves white residuals: Ljung-Box with 2 fitted parameters does not reject at 1%
+		lb := Acf->LjungBox(clean, 12, 2);
+		t->Check("ARMA(1,1) residuals are white (Ljung-Box p = {$lb[1]})", lb <> Nil & lb[1] > 0.01);
+
+		# a wrong model (white noise on an AR(1) series) leaves autocorrelated residuals
+		w := ArimaModel->New(0, 0, 0);
+		Fit(w, d->Get("ar1"));
+		wr := SeriesTransform->DropNaN(w->GetResiduals());
+		lb2 := Acf->LjungBox(wr, 12, 0);
+		t->Check("white-noise residuals of an AR(1) series are rejected (p = {$lb2[1]})", lb2[1] < 1.0e-6);
+	}
+
+	function : Stability(t : TsRef) ~ Nil {
+		t->Check("AR polynomial stability: 0.5 stable", ArimaModel->StableAr([0.5]));
+		t->Check("1.2 unstable, -1.2 unstable, 1.0 unstable", <>ArimaModel->StableAr([1.2]) & <>ArimaModel->StableAr([-1.2]) & <>ArimaModel->StableAr([1.0]));
+		t->Check("AR(2) triangle: (0.5, 0.3) stable", ArimaModel->StableAr([0.5, 0.3]));
+		t->Check("(0.5, 0.6) is outside the triangle (phi1 + phi2 > 1)", <>ArimaModel->StableAr([0.5, 0.6]));
+		t->Check("(0.0, -1.1) is outside (|phi2| > 1)", <>ArimaModel->StableAr([0.0, -1.1]));
+		t->Check("(-0.5, -0.3) stable", ArimaModel->StableAr([-0.5, -0.3]));
+		t->Check("the empty polynomial is stable", ArimaModel->StableAr(Float->New[0]));
+		t->Check("MA invertibility: 0.6 yes, 1.5 no, -0.9 yes", ArimaModel->StableMa([0.6]) & <>ArimaModel->StableMa([1.5]) & ArimaModel->StableMa([-0.9]));
+		t->Check("MA(2) (0.4, 0.3) invertible, (0.4, 1.2) not", ArimaModel->StableMa([0.4, 0.3]) & <>ArimaModel->StableMa([0.4, 1.2]));
+
+		# an AR(1) fitted to a random walk without differencing comes out near the unit circle (but usually inside)
+		d := TsData->New();
+		m := ArimaModel->New(1, 0, 0);
+		Fit(m, d->Get("rw"));
+		ph := m->GetAr();
+		t->Check("an AR(1) on a random walk has phi {$ph[0]} close to 1", ph[0] > 0.95);
+	}
+
+	function : Refusals(t : TsRef) ~ Nil {
+		d := TsData->New();
+		short := TimeSeries->New([1.0, 2.0, 3.0, 2.0, 1.0, 2.0, 3.0]);
+		m := ArimaModel->New(2, 1, 2);
+		t->Check("a short series is refused with a reason", <>m->Fit(short) & m->GetError()->Size() > 0 & <>m->IsFitted());
+		f := m->Forecast(3, 0.9);
+		t->Check("forecasting an unfitted model is refused", <>f->IsValid() & f->GetMean() = Nil);
+		t->Check("accessors on an unfitted model are NaN", m->GetAic() <> m->GetAic() & m->GetSse() <> m->GetSse());
+
+		t->Check("orders out of range are refused", <>ArimaModel->New(-1, 0, 0)->Fit(TimeSeries->New(d->Get("ar1"))) & <>ArimaModel->New(0, 4, 0)->Fit(TimeSeries->New(d->Get("ar1"))) & <>ArimaModel->New(25, 0, 0)->Fit(TimeSeries->New(d->Get("ar1"))));
+		t->Check("seasonal differencing needs a period", <>ArimaModel->New(1, 0, 0, 1, 1)->Fit(TimeSeries->New(d->Get("ar1"))));
+
+		nan := d->Get("ar1");
+		nan[10] := Float->NaN();
+		bad := ArimaModel->New(1, 0, 0);
+		t->Check("a NaN is refused naming the index", <>bad->Fit(TimeSeries->New(nan)) & bad->GetError()->Find("index 10") > -1);
+
+		# a constant series: the model fits exactly, which is refused (zero variance)
+		c := Float->New[50];
+		each(i : 50) {
+			c[i] := 3.0;
+		};
+		cm := ArimaModel->New(1, 0, 0);
+		t->Check("a constant series is refused", <>cm->Fit(TimeSeries->New(c)) & cm->GetError()->Size() > 0);
+
+		ok := ArimaModel->New(1, 0, 0);
+		ok->Fit(TimeSeries->New(d->Get("ar1")));
+		t->Check("horizon 0 and level 1 are refused", <>ok->Forecast(0, 0.9)->IsValid() & <>ok->Forecast(3, 1.0)->IsValid());
+	}
+}

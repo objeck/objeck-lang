@@ -1,0 +1,21 @@
+id: string_reverse
+category: basics
+difficulty: 2
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that reverses the string "Objeck is fun" character by character (build the result yourself, do not rely on a library reverse) and prints the reversed string.
+--- expected
+nuf si kcejbO
+--- reference
+class StringReverse {
+	function : Main(args : String[]) ~ Nil {
+		text := "Objeck is fun";
+		reversed := "";
+		for(i := text->Size() - 1; i >= 0; i -= 1;) {
+			reversed->Append(text->Get(i));
+		};
+		reversed->PrintLine();
+	}
+}

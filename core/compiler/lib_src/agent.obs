@@ -544,7 +544,6 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		@dangerous : Bool;
 		@timeout_ms : Int;
 		@cancel_handler : AgentCancelableHandler;
-		@process : AgentProcess;
 		@mode : AgentTool->Mode;
 		@mode_set : Bool;
 
@@ -553,14 +552,11 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		interrupted: a call over its limit is reported as a timeout only after it returns. BOUNDED_THREAD runs
 		it on a worker thread and waits at most the tool's time limit, the run's deadline and cancellation: when
 		one passes, the worker is abandoned (a thread cannot be killed, so a hung handler keeps its thread and
-		whatever it holds until it returns, if it ever does) and its late result is dropped. PROCESS applies
-		to a tool made from an AgentProcess, which runs in a child process that is killed on timeout or
-		cancellation; a tool that is not process-backed falls back to BOUNDED_THREAD.
+		whatever it holds until it returns, if it ever does) and its late result is dropped.
 		~#
 		enum Mode {
 			IN_THREAD,
-			BOUNDED_THREAD,
-			PROCESS
+			BOUNDED_THREAD
 		}
 
 		#~
@@ -573,19 +569,6 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		New(name : String, description : String, schema : JsonElement, handler : AgentCancelableHandler) {
 			Init(name, description, schema);
 			@cancel_handler := handler;
-		}
-
-		#~
-		Constructor for a tool that runs in a child process. The arguments go to the child as JSON on standard
-		input and its standard output is the result. The tool always runs in PROCESS mode.
-		@param name tool name
-		@param description what the tool does and when to use it
-		@param schema JSON Schema of the arguments, an object schema; Nil means no arguments
-		@param process the child process
-		~#
-		New(name : String, description : String, schema : JsonElement, process : AgentProcess) {
-			Init(name, description, schema);
-			@process := process;
 		}
 
 		#~
@@ -682,7 +665,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		#~
 		Sets the longest the tool may take, in milliseconds. In IN_THREAD mode a running handler cannot be
 		interrupted: a call that takes longer is reported to the model as a timeout and its result is discarded.
-		In BOUNDED_THREAD and PROCESS mode the loop stops waiting at the limit.
+		In BOUNDED_THREAD mode the loop stops waiting at the limit.
 		@param timeout_ms limit in milliseconds, 0 for the agent's default
 		@return self for chaining
 		~#
@@ -701,7 +684,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 
 		#~
 		Sets how the loop runs this tool, overriding the agent's default (see Mode)
-		@param mode IN_THREAD, BOUNDED_THREAD or PROCESS
+		@param mode IN_THREAD or BOUNDED_THREAD
 		@return self for chaining
 		~#
 		method : public : SetMode(mode : AgentTool->Mode) ~ AgentTool {
@@ -727,22 +710,6 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		}
 
 		#~
-		Says whether the tool runs in a child process
-		@return true for a tool made from an AgentProcess
-		~#
-		method : public : IsProcess() ~ Bool {
-			return @process <> Nil;
-		}
-
-		#~
-		Gets the child process of a process tool
-		@return the process, or Nil
-		~#
-		method : public : GetProcess() ~ AgentProcess {
-			return @process;
-		}
-
-		#~
 		Runs the handler; errors it raises are not caught here (Agent does that)
 		@param arguments the arguments
 		@return result text, or Nil on failure
@@ -764,15 +731,6 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 					token := AgentCancel->New();
 				};
 				return @cancel_handler->Run(arguments, token);
-			};
-
-			if(@process <> Nil) {
-				done := @process->Prepare(arguments->ToString())->Execute();
-				if(done->IsOk()) {
-					return done->GetOutput();
-				};
-				Runtime->Raise(Error->New(done->Describe()));
-				return Nil;
 			};
 
 			if(@handler <> Nil) {
@@ -1924,34 +1882,6 @@ agent->SetBudget(budget);
 		}
 	}
 
-	#~
-	Writes the events of a run to a file, one JSON object per line (JSON lines), with API keys removed.
-	The file is opened for append on every event, so a crash loses at most the event being written.
-	~#
-	class AgentTraceWriter implements AgentTraceSink {
-		@path : String;
-		@mutex : ThreadMutex;
-
-		#~
-		Constructor
-		@param path the trace file; it is added to, never truncated
-		~#
-		New(path : String) {
-			@path := path;
-			@mutex := ThreadMutex->New("agent_trace");
-		}
-
-		method : public : OnEvent(event : AgentEvent) ~ Nil {
-			line := event->ToString();
-			critical(@mutex) {
-				writer := FileWriter->New(@path, true);
-				writer->WriteString(line);
-				writer->WriteString("\n");
-				writer->Close();
-			};
-		}
-	}
-
 	# milliseconds since a run began; read by the loop thread only
 	class : private : AgentClock {
 		@timer : System.Time.Timer;
@@ -1978,20 +1908,17 @@ agent->SetBudget(budget);
 		@text : String;
 		@failure : String;
 		@reply : AgentReply;
-		@process : AgentProcessResult;
-
 		New() {
 			@mutex := ThreadMutex->New("agent_slot");
 			@cond := Condition->New();
 		}
 
-		method : public : Complete(text : String, failure : String, reply : AgentReply, process : AgentProcessResult) ~ Nil {
+		method : public : Complete(text : String, failure : String, reply : AgentReply) ~ Nil {
 			critical(@mutex) {
 				if(<>@abandoned) {
 					@text := text;
 					@failure := failure;
 					@reply := reply;
-					@process := process;
 					@done := true;
 				};
 				@cond->Signal();
@@ -2032,13 +1959,9 @@ agent->SetBudget(budget);
 		method : public : GetReply() ~ AgentReply {
 			return @reply;
 		}
-
-		method : public : GetProcess() ~ AgentProcessResult {
-			return @process;
-		}
 	}
 
-	# runs one tool call, model call or child process off the loop's thread
+	# runs one tool call or model call off the loop's thread
 	class : private : AgentWorker from Thread {
 		@slot : AgentSlot;
 		@kind : Int;
@@ -2048,7 +1971,6 @@ agent->SetBudget(budget);
 		@backend : ChatBackend;
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
-		@run : AgentProcessRun;
 
 		New(slot : AgentSlot) {
 			Parent("agent_worker");
@@ -2071,17 +1993,10 @@ agent->SetBudget(budget);
 			return @self;
 		}
 
-		method : public : ForProcess(run : AgentProcessRun) ~ AgentWorker {
-			@kind := 2;
-			@run := run;
-			return @self;
-		}
-
 		method : public : Run(param : System.Base) ~ Nil {
 			text : String;
 			failure : String;
 			reply : AgentReply;
-			process : AgentProcessResult;
 			try {
 				if(@kind = 0) {
 					text := @tool->InvokeWith(@arguments, @cancel);
@@ -2094,9 +2009,6 @@ agent->SetBudget(budget);
 							failure := "the backend returned no reply";
 						};
 					};
-				}
-				else {
-					process := @run->Execute();
 				};
 			}
 			on(e : Error) {
@@ -2105,623 +2017,7 @@ agent->SetBudget(budget);
 					failure := "the worker failed";
 				};
 			};
-			@slot->Complete(text, failure, reply, process);
-		}
-	}
-
-	#~
-	What a child process produced: its exit code and output, and whether it was stopped
-	~#
-	class AgentProcessResult {
-		@exit_code : Int;
-		@timed_out : Bool;
-		@cancelled : Bool;
-		@truncated : Bool;
-		@output : String;
-		@error_text : String;
-
-		#~
-		Constructor
-		@param exit_code the exit code, -1 when it is not known
-		@param timed_out true when the process was killed for its time
-		@param cancelled true when the process was killed because the run was cancelled
-		@param truncated true when the output reached its cap
-		@param output standard output, cut to the cap
-		@param error_text the start of standard error, or the reason the process was not started
-		~#
-		New(exit_code : Int, timed_out : Bool, cancelled : Bool, truncated : Bool, output : String, error_text : String) {
-			@exit_code := exit_code;
-			@timed_out := timed_out;
-			@cancelled := cancelled;
-			@truncated := truncated;
-			@output := output;
-			@error_text := error_text;
-		}
-
-		#~
-		Gets the exit code
-		@return code, 137 for a killed process, -1 when unknown
-		~#
-		method : public : GetExitCode() ~ Int {
-			return @exit_code;
-		}
-
-		#~
-		Says whether the process was killed for its time
-		@return true when it timed out
-		~#
-		method : public : IsTimedOut() ~ Bool {
-			return @timed_out;
-		}
-
-		#~
-		Says whether the process was killed because the run was cancelled
-		@return true when cancelled
-		~#
-		method : public : IsCancelled() ~ Bool {
-			return @cancelled;
-		}
-
-		#~
-		Says whether the output reached its cap
-		@return true when it was cut
-		~#
-		method : public : IsTruncated() ~ Bool {
-			return @truncated;
-		}
-
-		#~
-		Gets standard output
-		@return text, cut to the cap
-		~#
-		method : public : GetOutput() ~ String {
-			return @output;
-		}
-
-		#~
-		Gets the start of standard error
-		@return text, or the reason the process was not started
-		~#
-		method : public : GetError() ~ String {
-			return @error_text;
-		}
-
-		#~
-		Says whether the process ended on its own with exit code 0
-		@return true for a result the tool can return
-		~#
-		method : public : IsOk() ~ Bool {
-			return @exit_code = 0 & <>@timed_out & <>@cancelled;
-		}
-
-		#~
-		Describes a failure in a sentence
-		@return what went wrong
-		~#
-		method : public : Describe() ~ String {
-			if(@timed_out) {
-				return "the process was killed for taking too long";
-			};
-			if(@truncated & @exit_code <> 0) {
-				return "the process wrote more than its output limit and was stopped";
-			};
-			if(@cancelled) {
-				return "the process was killed because the run was cancelled";
-			};
-
-			text := "the process exited with code {$@exit_code}";
-			if(@error_text->Size() > 0) {
-				text->Append(": ");
-				text->Append(@error_text);
-			};
-			return text;
-		}
-	}
-
-	#~
-	A tool that runs in a child process: the tool's arguments go to the child as JSON on standard input,
-	whatever the child writes to standard output is the result, and an exit code other than 0 is a failure.
-	The child is started through a small watchdog (a shell script on POSIX, PowerShell on Windows) that kills
-	it, and everything it started on Windows, when the agent's time limit passes or the run is cancelled, so a
-	hung or crashing child cannot take the agent down. The child sees only the environment variables on the
-	allow list (PATH, plus the system ones Windows needs, by default) and runs in a working directory that
-	must be the scratch directory or a directory on the directory allow list. Output past the cap is cut. On
-	POSIX a grandchild the child started may outlive a kill.
-
-```
-process := AgentProcess->New("sh -c 'cat >/dev/null; echo done'");
-tool := AgentTool->New("lookup", "Looks something up", Nil, process);
-```
-	~#
-	class AgentProcess {
-		@command : String;
-		@work_dir : String;
-		@scratch : String;
-		@env : Vector<String>;
-		@dirs : Vector<String>;
-		@max_output : Int;
-		@windows : Bool;
-		@seq : static : Int;
-
-		#~
-		Constructor
-		@param command the command line, program and arguments, already quoted for the shell
-		~#
-		New(command : String) {
-			@command := command;
-			@windows := Directory->GetSlash() = '\\';
-			@max_output := 65536;
-			@env := Vector->New()<String>;
-			@dirs := Vector->New()<String>;
-			@env->AddBack("PATH");
-			if(@windows) {
-				@env->AddBack("SystemRoot");
-				@env->AddBack("SystemDrive");
-				@env->AddBack("windir");
-				@env->AddBack("ComSpec");
-				@env->AddBack("PATHEXT");
-				@env->AddBack("TEMP");
-				@env->AddBack("TMP");
-			};
-		}
-
-		#~
-		A process that runs an Objeck program with the VM beside the running one
-		@param program path of the compiled program
-		@return the process
-		~#
-		function : ForObjeck(program : String) ~ AgentProcess {
-			windows := Directory->GetSlash() = '\\';
-			vm := "obr";
-			path := Runtime->GetInstallDir();
-			if(path <> Nil & path->Size() > 0) {
-				slash := windows ? "\\" : "/";
-				full := "{$path}{$slash}bin{$slash}obr";
-				if(windows) {
-					full->Append(".exe");
-				};
-				if(File->Exists(full)) {
-					vm := full;
-				};
-			};
-			return AgentProcess->New("{$Quote(vm)} {$Quote(program)}");
-		}
-
-		#~
-		Quotes a path or argument for the command line of this system
-		@param text the text
-		@return the text in quotes
-		~#
-		function : Quote(text : String) ~ String {
-			if(Directory->GetSlash() = '\\') {
-				return "\"{$text}\"";
-			};
-			escaped := text->ReplaceAll("'", "'\\''");
-			return "'{$escaped}'";
-		}
-
-		#~
-		Sets the directory for the files a run makes (default: the system's temporary directory)
-		@param dir an existing directory
-		@return self for chaining
-		~#
-		method : public : SetScratchDir(dir : String) ~ AgentProcess {
-			@scratch := dir;
-			return @self;
-		}
-
-		#~
-		Sets the working directory of the child. It must be the scratch directory or inside it or inside a
-		directory on the allow list, otherwise the call is refused.
-		@param dir the directory
-		@return self for chaining
-		~#
-		method : public : SetWorkDir(dir : String) ~ AgentProcess {
-			@work_dir := dir;
-			return @self;
-		}
-
-		#~
-		Allows a directory as a working directory
-		@param dir the directory
-		@return self for chaining
-		~#
-		method : public : AllowDirectory(dir : String) ~ AgentProcess {
-			@dirs->AddBack(dir);
-			return @self;
-		}
-
-		#~
-		Lets an environment variable of the agent's process through to the child
-		@param name variable name
-		@return self for chaining
-		~#
-		method : public : AllowEnv(name : String) ~ AgentProcess {
-			@env->AddBack(name);
-			return @self;
-		}
-
-		#~
-		Sets the most output kept, in bytes (default 65536). POSIX also stops a child that writes far more.
-		@param bytes the cap
-		@return self for chaining
-		~#
-		method : public : SetMaxOutput(bytes : Int) ~ AgentProcess {
-			@max_output := bytes;
-			return @self;
-		}
-
-		#~
-		Gets the command line
-		@return command
-		~#
-		method : public : GetCommand() ~ String {
-			return @command;
-		}
-
-		#~
-		Gets the output cap
-		@return bytes
-		~#
-		method : public : GetMaxOutput() ~ Int {
-			return @max_output;
-		}
-
-		#~
-		Gets the allowed environment names
-		@return names
-		~#
-		method : public : GetEnvNames() ~ Vector<String> {
-			return @env;
-		}
-
-		#~
-		Gets the working directory, or the scratch directory when none was set
-		@return directory
-		~#
-		method : public : GetWorkDir() ~ String {
-			if(@work_dir <> Nil) {
-				return @work_dir;
-			};
-			return GetScratchDir();
-		}
-
-		#~
-		Gets the scratch directory
-		@return directory
-		~#
-		method : public : GetScratchDir() ~ String {
-			if(@scratch <> Nil) {
-				return @scratch;
-			};
-
-			dir : String;
-			if(@windows) {
-				dir := Runtime->GetEnvironmentVariable("TEMP");
-			}
-			else {
-				dir := Runtime->GetEnvironmentVariable("TMPDIR");
-			};
-
-			if(dir = Nil | dir->Size() = 0) {
-				dir := @windows ? "." : "/tmp";
-			};
-			return dir;
-		}
-
-		#~
-		Checks the working directory against the allow list
-		@return Nil when the child may run there, else why not
-		~#
-		method : public : CheckWorkDir() ~ String {
-			dir := GetWorkDir();
-			if(dir->Has("..")) {
-				return "the working directory '{$dir}' is not allowed";
-			};
-
-			if(Inside(dir, GetScratchDir())) {
-				return Nil;
-			};
-
-			i := 0;
-			while(i < @dirs->Size()) {
-				if(Inside(dir, @dirs->Get(i))) {
-					return Nil;
-				};
-				i += 1;
-			};
-			return "the working directory '{$dir}' is not allowed";
-		}
-
-		method : Inside(dir : String, root : String) ~ Bool {
-			a := Flatten(dir);
-			b := Flatten(root);
-			if(a->Equals(b)) {
-				return true;
-			};
-			prefix := "{$b}/";
-			return a->StartsWith(prefix);
-		}
-
-		# one slash style, no trailing slash; lower case on Windows, where paths ignore case
-		method : Flatten(path : String) ~ String {
-			out := String->New();
-			i := 0;
-			while(i < path->Size()) {
-				c := path->Get(i);
-				if(c = '\\') {
-					c := '/';
-				}
-				else if(@windows) {
-					c := c->ToLower();
-				};
-
-				if(<>(c = '/' & i = path->Size() - 1 & i > 0)) {
-					out->Append(c);
-				};
-				i += 1;
-			};
-			return out;
-		}
-
-		#~
-		Prepares one run of the child with the arguments it will read on standard input
-		@param arguments JSON text
-		@return the run; Execute starts it and Stop kills it
-		~#
-		method : public : Prepare(arguments : String) ~ AgentProcessRun {
-			@seq += 1;
-			return AgentProcessRun->New(@self, arguments, @seq);
-		}
-	}
-
-	#~
-	One run of an AgentProcess. Execute blocks until the child ends, so a caller that wants to cancel it
-	runs Execute on another thread and calls Stop; the agent loop does this.
-	~#
-	class AgentProcessRun {
-		@process : AgentProcess;
-		@arguments : String;
-		@id : Int;
-		@windows : Bool;
-		@finished : Bool;
-		@stop_path : String;
-		@refusal : String;
-
-		#~
-		Constructor; use AgentProcess->Prepare
-		@param process the process
-		@param arguments JSON text for standard input
-		@param seq number of the run
-		~#
-		New(process : AgentProcess, arguments : String, seq : Int) {
-			@process := process;
-			@arguments := arguments;
-			@windows := Directory->GetSlash() = '\\';
-			@id := seq * 100000 + System.Concurrency.Thread->GetCurrentId();
-			@refusal := process->CheckWorkDir();
-			if(@refusal = Nil) {
-				# another agent process may share the scratch directory: claim a file name no one else holds
-				tries := 0;
-				while(<>File->CreateNew(Path("claim")) & tries < 50) {
-					@id += 7919;
-					tries += 1;
-				};
-			};
-			@stop_path := Path("stop");
-		}
-
-		method : Path(kind : String) ~ String {
-			slash := @windows ? "\\" : "/";
-			scratch := @process->GetScratchDir();
-			ext := ".txt";
-			if(kind->Equals("wd")) {
-				ext := @windows ? ".ps1" : ".sh";
-			}
-			else if(kind->Equals("step") & <>@windows) {
-				ext := ".sh";
-			};
-			return "{$scratch}{$slash}objk_agent_{$@id}_{$kind}{$ext}";
-		}
-
-		#~
-		Kills the child; safe from any thread, and safe after the child ended
-		@param reason timeout or cancelled
-		~#
-		method : public : Stop(reason : String) ~ Nil {
-			if(<>@finished) {
-				FileWriter->WriteFile(@stop_path, reason);
-			};
-		}
-
-		#~
-		Starts the child, waits for it and collects the result
-		@return the result
-		~#
-		method : public : Execute() ~ AgentProcessResult {
-			if(@refusal <> Nil) {
-				return AgentProcessResult->New(-1, false, false, false, "", @refusal);
-			};
-
-			input := Path("in");
-			out := Path("out");
-			err := Path("err");
-			marker := Path("mark");
-			rc := Path("rc");
-			step := Path("step");
-			watchdog := Path("wd");
-			env_file := Path("env");
-			dir := @process->GetWorkDir();
-			cap := @process->GetMaxOutput();
-
-			FileWriter->WriteFile(input, @arguments);
-			launch : String;
-			if(@windows) {
-				WriteEnvFile(env_file);
-				FileWriter->WriteFile(step, "{$@process->GetCommand()} < \"{$input}\" > \"{$out}\" 2> \"{$err}\"");
-				FileWriter->WriteFile(watchdog, WindowsWatchdog());
-				launch := "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{$watchdog}\" \"{$step}\" \"{$marker}\" \"{$rc}\" \"{$@stop_path}\" \"{$dir}\" \"{$env_file}\" \"{$out}\" {$cap}";
-				# cmd /c strips the first and last quote of a line that starts with one
-				launch := "\"{$launch}\"";
-			}
-			else {
-				blocks := cap / 512 + 8;
-				qdir := AgentProcess->Quote(dir);
-				script := "cd {$qdir} || exit 1\nulimit -f {$blocks} 2>/dev/null\nexec env -i";
-				names := @process->GetEnvNames();
-				i := 0;
-				while(i < names->Size()) {
-					value := Runtime->GetEnvironmentVariable(names->Get(i));
-					if(value <> Nil & value->Size() > 0) {
-						script->Append(' ');
-						script->Append(names->Get(i));
-						script->Append('=');
-						script->Append(AgentProcess->Quote(value));
-					};
-					i += 1;
-				};
-
-				qin := AgentProcess->Quote(input);
-				qout := AgentProcess->Quote(out);
-				qerr := AgentProcess->Quote(err);
-				script->Append(" {$@process->GetCommand()} < {$qin} > {$qout} 2> {$qerr}\n");
-				FileWriter->WriteFile(step, script);
-				FileWriter->WriteFile(watchdog, PosixWatchdog());
-
-				qwd := AgentProcess->Quote(watchdog);
-				qstep := AgentProcess->Quote(step);
-				qmark := AgentProcess->Quote(marker);
-				qrc := AgentProcess->Quote(rc);
-				qstop := AgentProcess->Quote(@stop_path);
-				launch := "sh {$qwd} {$qstep} {$qmark} {$qrc} {$qstop} 2>/dev/null";
-			};
-
-			Runtime->Command(launch);
-
-			exit_code := -1;
-			if(File->Exists(rc)) {
-				text := FileReader->ReadFile(rc);
-				if(text <> Nil & text->Trim()->IsInt()) {
-					exit_code := text->Trim()->ToInt();
-				};
-			};
-
-			reason := "";
-			if(File->Exists(marker)) {
-				reason := FileReader->ReadFile(marker)->Trim();
-			};
-
-			output := "";
-			truncated := false;
-			if(reason->Equals("flood")) {
-				truncated := true;
-			};
-
-			if(File->Exists(out)) {
-				size := File->Size(out);
-				output := FileReader->ReadFile(out);
-				if(output = Nil) {
-					output := "";
-				};
-				output := output->ReplaceAll("\r\n", "\n");
-				if(size >= cap | output->Size() > cap) {
-					truncated := true;
-					output := output->Truncate(cap, "... [output cut]");
-				};
-			};
-
-			error_text := "";
-			if(File->Exists(err)) {
-				text := FileReader->ReadFile(err);
-				if(text <> Nil) {
-					error_text := text->ReplaceAll("\r\n", "\n")->Trim()->Truncate(300, "...");
-				};
-			};
-
-			@finished := true;
-			File->Delete(input);
-			File->Delete(out);
-			File->Delete(err);
-			File->Delete(marker);
-			File->Delete(rc);
-			File->Delete(step);
-			File->Delete(watchdog);
-			File->Delete(@stop_path);
-			File->Delete(Path("claim"));
-			if(@windows) {
-				File->Delete(env_file);
-			};
-
-			return AgentProcessResult->New(exit_code, reason->Equals("timeout"), reason->Equals("cancelled"), truncated, output, error_text);
-		}
-
-		method : WriteEnvFile(path : String) ~ Nil {
-			lines := String->New();
-			names := @process->GetEnvNames();
-			i := 0;
-			while(i < names->Size()) {
-				value := Runtime->GetEnvironmentVariable(names->Get(i));
-				if(value <> Nil & value->Size() > 0) {
-					lines->Append(names->Get(i));
-					lines->Append('=');
-					lines->Append(value);
-					lines->Append("\r\n");
-				};
-				i += 1;
-			};
-			FileWriter->WriteFile(path, lines);
-		}
-
-		method : PosixWatchdog() ~ String {
-			lines := Vector->New()<String>;
-			lines->AddBack("step=$1; marker=$2; rcfile=$3; stopf=$4");
-			lines->AddBack("rm -f \"$marker\" \"$rcfile\"");
-			lines->AddBack("sh \"$step\" &");
-			lines->AddBack("pid=$!");
-			lines->AddBack("( while kill -0 \"$pid\" 2>/dev/null; do");
-			lines->AddBack("  if [ -f \"$stopf\" ]; then");
-			lines->AddBack("    cat \"$stopf\" > \"$marker\"");
-			lines->AddBack("    pkill -9 -P \"$pid\" 2>/dev/null");
-			lines->AddBack("    kill -9 \"$pid\" 2>/dev/null");
-			lines->AddBack("    exit 0");
-			lines->AddBack("  fi");
-			lines->AddBack("  sleep 0.05");
-			lines->AddBack("done ) >/dev/null 2>&1 &");
-			lines->AddBack("guard=$!");
-			lines->AddBack("wait \"$pid\"");
-			lines->AddBack("rc=$?");
-			lines->AddBack("kill \"$guard\" 2>/dev/null");
-			lines->AddBack("echo \"$rc\" > \"$rcfile\"");
-			return String->Join(lines->ToArray(), "\n");
-		}
-
-		method : WindowsWatchdog() ~ String {
-			lines := Vector->New()<String>;
-			lines->AddBack("param([string]$StepFile, [string]$Marker, [string]$RcFile, [string]$StopFile, [string]$Dir, [string]$EnvFile, [string]$OutFile, [long]$Cap)");
-			lines->AddBack("Remove-Item -LiteralPath $Marker, $RcFile -ErrorAction SilentlyContinue");
-			lines->AddBack("$line = (Get-Content -Raw -LiteralPath $StepFile).Trim()");
-			lines->AddBack("$psi = New-Object System.Diagnostics.ProcessStartInfo");
-			lines->AddBack("$psi.FileName = $env:ComSpec");
-			lines->AddBack("$psi.Arguments = '/c \"' + $line + '\"'");
-			lines->AddBack("$psi.WorkingDirectory = $Dir");
-			lines->AddBack("$psi.UseShellExecute = $false");
-			lines->AddBack("$psi.CreateNoWindow = $true");
-			lines->AddBack("$psi.EnvironmentVariables.Clear()");
-			lines->AddBack("foreach ($e in (Get-Content -LiteralPath $EnvFile)) { $i = $e.IndexOf('='); if ($i -gt 0) { $psi.EnvironmentVariables[$e.Substring(0, $i)] = $e.Substring($i + 1) } }");
-			lines->AddBack("$p = [System.Diagnostics.Process]::Start($psi)");
-			lines->AddBack("while (-not $p.WaitForExit(50)) {");
-			lines->AddBack("  $why = ''");
-			lines->AddBack("  if (Test-Path -LiteralPath $StopFile) { $why = (Get-Content -Raw -LiteralPath $StopFile) } elseif ((Test-Path -LiteralPath $OutFile) -and ((Get-Item -LiteralPath $OutFile).Length -gt $Cap)) { $why = 'flood' }");
-			lines->AddBack("  if ($why -ne '') {");
-			lines->AddBack("    Set-Content -LiteralPath $Marker -Value $why");
-			lines->AddBack("    & taskkill /F /T /PID $p.Id | Out-Null");
-			lines->AddBack("    $p.WaitForExit(5000) | Out-Null");
-			lines->AddBack("    Set-Content -LiteralPath $RcFile -Value 137");
-			lines->AddBack("    exit 0");
-			lines->AddBack("  }");
-			lines->AddBack("}");
-			lines->AddBack("Set-Content -LiteralPath $RcFile -Value $p.ExitCode");
-			return String->Join(lines->ToArray(), "\r\n");
+			@slot->Complete(text, failure, reply);
 		}
 	}
 
@@ -2882,7 +2178,7 @@ result->GetText()->PrintLine();
 
 		#~
 		Sets the cancellation token every Run checks: before each step, between tool calls and while it
-		waits for a model call or a tool in a worker thread or child process
+		waits for a model call or a tool in a worker thread
 		@param cancel the token, or Nil for none
 		@return self for chaining
 		~#
@@ -2919,7 +2215,7 @@ result->GetText()->PrintLine();
 
 		#~
 		Sets how tools run unless a tool sets its own mode (default IN_THREAD, as before)
-		@param mode IN_THREAD, BOUNDED_THREAD or PROCESS
+		@param mode IN_THREAD or BOUNDED_THREAD
 		@return self for chaining
 		~#
 		method : public : SetToolMode(mode : AgentTool->Mode) ~ Agent {
@@ -2954,7 +2250,7 @@ result->GetText()->PrintLine();
 
 		#~
 		Sets who receives the trace events of a run
-		@param sink the receiver, for example an AgentTraceWriter or an AgentTraceBuffer; Nil for none
+		@param sink the receiver, for example an AgentTraceBuffer; Nil for none
 		@return self for chaining
 		~#
 		method : public : SetTrace(sink : AgentTraceSink) ~ Agent {
@@ -3122,9 +2418,6 @@ result->GetText()->PrintLine();
 			if(mode = AgentTool->Mode->BOUNDED_THREAD) {
 				return "bounded_thread";
 			};
-			if(mode = AgentTool->Mode->PROCESS) {
-				return "process";
-			};
 			return "in_thread";
 		}
 
@@ -3249,7 +2542,7 @@ result->GetText()->PrintLine();
 					slot := AgentSlot->New();
 					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools);
 					worker->Execute(Nil);
-					how := Await(slot, limit, Nil);
+					how := Await(slot, limit);
 					if(how->Equals("done")) {
 						reply := slot->GetReply();
 						@last_error := slot->GetFailure();
@@ -3356,8 +2649,8 @@ result->GetText()->PrintLine();
 		}
 
 		# waits for a worker: done, timeout (over limit), cancelled or deadline. A worker still running when
-		# the wait ends is abandoned (a child process is killed first, and abandoned only if it will not die).
-		method : Await(slot : AgentSlot, limit : Int, run : AgentProcessRun) ~ String {
+		# the wait ends is abandoned 
+		method : Await(slot : AgentSlot, limit : Int) ~ String {
 			start := @clock->Ms();
 			how := "";
 			while(how->Size() = 0) {
@@ -3388,14 +2681,6 @@ result->GetText()->PrintLine();
 			};
 
 			if(<>how->Equals("done")) {
-				if(run <> Nil) {
-					run->Stop(how);
-					grace := 0;
-					while(grace < 8000 & <>slot->WaitDone(20)) {
-						grace += 20;
-					};
-				};
-
 				# a worker that finished in the meantime is dropped too: the wait already ended
 				slot->Abandon();
 			};
@@ -3537,13 +2822,6 @@ result->GetText()->PrintLine();
 				mode := tool->GetMode();
 			};
 
-			if(tool->IsProcess()) {
-				mode := AgentTool->Mode->PROCESS;
-			}
-			else if(mode = AgentTool->Mode->PROCESS) {
-				mode := AgentTool->Mode->BOUNDED_THREAD;
-			};
-
 			if(@tracing) {
 				data := AgentJs->Object();
 				data->Insert("id", id);
@@ -3570,29 +2848,12 @@ result->GetText()->PrintLine();
 			else {
 				slot := AgentSlot->New();
 				worker := AgentWorker->New(slot);
-				run : AgentProcessRun;
-				if(mode = AgentTool->Mode->PROCESS) {
-					run := tool->GetProcess()->Prepare(arguments);
-					worker->ForProcess(run);
-				}
-				else {
-					worker->ForTool(tool, call->GetArguments(), @token);
-				};
-
+				worker->ForTool(tool, call->GetArguments(), @token);
 				worker->Execute(Nil);
-				how := Await(slot, limit, run);
+				how := Await(slot, limit);
 				if(how->Equals("done")) {
 					failure := slot->GetFailure();
 					output := slot->GetText();
-					done := slot->GetProcess();
-					if(done <> Nil) {
-						if(done->IsOk()) {
-							output := done->GetOutput();
-						}
-						else {
-							failure := done->Describe();
-						};
-					};
 				};
 			};
 			millis := @clock->Ms() - started;

@@ -1,0 +1,110 @@
+use System.IO.Filesystem;
+
+# A FileWriter cannot report a failed write through WriteString or Close (they
+# return nothing, and the OutputStream interface fixes that), and stdio buffers,
+# so a lost write used to be invisible: 0 of 640 failed writes to a full device
+# were reported (fault-injection finding). The file now records the first I/O
+# error: IsOK(), GetLastError(), Flush() and CloseChecked() report it, and the
+# open of a file that cannot be created counts too.
+#
+# Everything here fails portably, with no special device: a parent directory that
+# does not exist, a directory named as the file, and a file that is fine. The full
+# device case, which needs /dev/full, is io_write_error_devfull.
+class IoWriteErrors {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing FileWriter error reporting..."->PrintLine();
+
+		dir := "io_write_errors_dir.tmp";
+		good := "io_write_errors_good.tmp";
+		missing := "io_write_errors_no_such_dir.tmp/inner/file.txt";
+
+		Directory->Create(dir);
+		File->Delete(good);
+
+		# a file that is fine reports nothing, at every step
+		writer := FileWriter->New(good);
+		Check("good file is open", writer->IsOpen());
+		Check("good file starts OK", writer->IsOK());
+		Check("good file has no error code", writer->GetLastError() = 0);
+		writer->WriteString("hello\n");
+		writer->WriteByte(65);
+		writer->WriteBuffer("tail\n"->ToByteArray());
+		Check("Flush of a good file is true", writer->Flush());
+		Check("good file is OK after Flush", writer->IsOK());
+		Check("CloseChecked of a good file is true", writer->CloseChecked());
+		Check("good file is OK after Close", writer->IsOK() & writer->GetLastError() = 0);
+		Check("good file holds what was written", File->Size(good) = 6 + 1 + 5);
+
+		# Close, which returns nothing, is observed through IsOK
+		writer := FileWriter->New(good);
+		writer->WriteString("again");
+		writer->Close();
+		Check("IsOK after a plain Close of a good file", writer->IsOK());
+
+		# the static helpers say whether the data was stored
+		Check("WriteFile(String) to a good path is true", FileWriter->WriteFile(good, "static"));
+		Check("WriteFile(Byte[]) to a good path is true", FileWriter->WriteFile(good, "bytes"->ToByteArray()));
+		Check("WriteFile into a missing directory is false", <>FileWriter->WriteFile(missing, "x"));
+		Check("WriteFile onto a directory is false", <>FileWriter->WriteFile(dir, "x"));
+		Check("WriteFile(Byte[]) into a missing directory is false", <>FileWriter->WriteFile(missing, "x"->ToByteArray()));
+
+		# a parent directory that does not exist
+		bad := FileWriter->New(missing);
+		Check("missing parent: not open", <>bad->IsOpen());
+		Check("missing parent: not OK", <>bad->IsOK());
+		Check("missing parent: error code is set", bad->GetLastError() <> 0);
+		# writing to a file that never opened must not crash, and stays an error
+		bad->WriteString("ignored");
+		bad->WriteByte(1);
+		Check("missing parent: write to a closed file keeps the error", <>bad->IsOK());
+		Check("missing parent: Flush is false", <>bad->Flush());
+		Check("missing parent: CloseChecked is false", <>bad->CloseChecked());
+		code := bad->GetLastError();
+		bad->ClearError();
+		Check("ClearError resets the state", bad->IsOK() & bad->GetLastError() = 0);
+		Check("the code was not zero before ClearError", code <> 0);
+
+		# a directory named as the file
+		bad := FileWriter->New(dir);
+		Check("directory: not open", <>bad->IsOpen());
+		Check("directory: not OK", <>bad->IsOK());
+		Check("directory: error code is set", bad->GetLastError() <> 0);
+		Check("directory: CloseChecked is false", <>bad->CloseChecked());
+
+		# appending, and read/write, report an open that failed the same way
+		bad := FileWriter->New(missing, true);
+		Check("append to a missing directory: not OK", <>bad->IsOpen() & <>bad->IsOK());
+		rw := FileReaderWriter->New(missing);
+		Check("read/write in a missing directory: not OK", <>rw->IsOpen() & <>rw->IsOK());
+
+		# readers record a failed open too
+		reader := FileReader->New("io_write_errors_does_not_exist.tmp");
+		Check("reader of a missing file: not open, not OK", <>reader->IsOpen() & <>reader->IsOK() & reader->GetLastError() <> 0);
+		reader := FileReader->New(good);
+		Check("reader of a good file: open and OK", reader->IsOpen() & reader->IsOK());
+		reader->Close();
+
+		File->Delete(good);
+		Directory->Delete(dir);
+
+		if(@failures = 0) {
+			"PASS: FileWriter error reporting"->PrintLine();
+		}
+		else {
+			"FAIL: FileWriter error reporting, {$@failures} checks"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

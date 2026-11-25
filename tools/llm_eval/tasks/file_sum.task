@@ -1,0 +1,33 @@
+id: file_sum
+category: file_io
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that writes the numbers 1 to 5, one per line, to a file named llm_eval_sum.txt in the current directory, then reads the whole file back as one string with FileReader->ReadFile, splits it into lines, sums the numbers and prints only the sum. Delete the file before exiting.
+--- expected
+15
+--- reference
+use System.IO.Filesystem;
+
+class FileSum {
+	function : Main(args : String[]) ~ Nil {
+		name := "llm_eval_sum.txt";
+
+		content := "";
+		for(i := 1; i <= 5; i += 1;) {
+			content->Append(i);
+			content->Append("\n");
+		};
+		FileWriter->WriteFile(name, content);
+
+		lines := FileReader->ReadFile(name)->Trim()->Split('\n');
+		sum := 0;
+		each(i : lines) {
+			sum += lines[i]->Trim()->ToInt();
+		};
+		sum->PrintLine();
+		File->Delete(name);
+	}
+}

@@ -1,0 +1,682 @@
+Class: id=N; name='SelectLabelOrder.Probe'; parent='System.Base'; pid=75;
+ interface=false; virtual=0; num_generics=0; num_methods=8; class_mem_size=0;
+ instance_mem_size=0; is_debug=false
+
+Interfaces:
+=========================================================
+memory types: none
+---------------------------------------------------------
+memory types: none
+=========================================================
+---------------------------------------------------------
+Method: id=N,0; name='SelectLabelOrder.Probe:Check:i,i,'; return='i';
+  blocks=1; is_function=true; num_params=2; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: OBJ_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     STOR_INT_VAR: id=0; local=true
+  2     LBL
+  3     LOAD_INT_VAR: id=1; local=true
+  4     LOAD_INT_VAR: id=0; local=true
+  5     NEQL_INT
+  6     JMP: index=1073741824, conditional=false
+  7     LOAD_INT_LIT: value=12
+  8     NEW_CHAR_ARY: dimension=1
+  9     LOAD_INT_LIT: value=0
+  10    LOAD_INT_LIT: value=-3994
+  11    TRAP_RTRN: args=3
+  12    LIB_NEW_OBJ_INST: class='System.String'
+  13    LIB_MTHD_CALL: method='System.String:New:c*,'; native=false
+  14    STOR_INT_VAR: id=2; local=true
+  15    LOAD_INT_VAR: id=0; local=true
+  16    LOAD_INT_VAR: id=2; local=true
+  17    LIB_MTHD_CALL: method='System.String:Append:i,'; native=false
+  18    LOAD_INT_LIT: value=9
+  19    NEW_CHAR_ARY: dimension=1
+  20    LOAD_INT_LIT: value=1
+  21    LOAD_INT_LIT: value=-3994
+  22    TRAP_RTRN: args=3
+  23    LIB_NEW_OBJ_INST: class='System.String'
+  24    LIB_MTHD_CALL: method='System.String:New:c*,'; native=false
+  25    LOAD_INT_VAR: id=2; local=true
+  26    LIB_MTHD_CALL: method='System.String:Append:o.System.String,'; native=false
+  27    LOAD_INT_VAR: id=1; local=true
+  28    LOAD_INT_VAR: id=2; local=true
+  29    LIB_MTHD_CALL: method='System.String:Append:i,'; native=false
+  30    LOAD_INT_VAR: id=2; local=true
+  31    LIB_MTHD_CALL: method='System.String:PrintLine:'; native=false
+  32    LOAD_INT_LIT: value=1
+  33    RTRN
+  34    LBL
+  35    LOAD_INT_LIT: value=0
+  36    RTRN
+--
+---------------------------------------------------------
+Method: id=N,1; name='SelectLabelOrder.Probe:One:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=16
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=-1
+  2     STOR_INT_VAR: id=2; local=true
+  3     LOAD_INT_LIT: value=10
+  4     LOAD_INT_VAR: id=1; local=true
+  5     EQL_INT
+  6     JMP: index=2, conditional=false
+  7     LOAD_INT_LIT: value=1
+  8     STOR_INT_VAR: id=2; local=true
+  9     JMP: index=1073741825
+  10    LBL
+  11    LOAD_INT_LIT: value=0
+  12    STOR_INT_VAR: id=2; local=true
+  13    LBL
+  14    LOAD_INT_VAR: id=2; local=true
+  15    LOAD_INT_LIT: value=10
+  16    LOAD_INT_VAR: id=1; local=true
+  17    EQL_INT
+  18    JMP: index=3, conditional=false
+  19    LOAD_INT_LIT: value=1
+  20    STOR_INT_VAR: id=0; local=true
+  21    JMP: index=1073741826
+  22    LBL
+  23    LOAD_INT_LIT: value=0
+  24    STOR_INT_VAR: id=0; local=true
+  25    LBL
+  26    LOAD_INT_VAR: id=0; local=true
+  27    LOAD_INST_MEM
+  28    LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  29    RTRN
+--
+---------------------------------------------------------
+Method: id=N,2; name='SelectLabelOrder.Probe:Two:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: INT_PARM
+  3: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=-1
+  2     STOR_INT_VAR: id=2; local=true
+  3     LOAD_INT_VAR: id=1; local=true
+  4     STOR_INT_VAR: id=0; local=true
+  5     LBL
+  6     LOAD_INT_LIT: value=207
+  7     LOAD_INT_VAR: id=0; local=true
+  8     LES_INT
+  9     JMP: index=8, conditional=true
+  10    JMP: index=7
+  11    LBL
+  12    LOAD_INT_LIT: value=7
+  13    LOAD_INT_VAR: id=0; local=true
+  14    EQL_INT
+  15    JMP: index=4, conditional=true
+  16    JMP: index=6
+  17    LBL
+  18    LOAD_INT_LIT: value=207
+  19    LOAD_INT_VAR: id=0; local=true
+  20    EQL_INT
+  21    JMP: index=5, conditional=true
+  22    JMP: index=6
+  23    LBL
+  24    LOAD_INT_LIT: value=1
+  25    STOR_INT_VAR: id=2; local=true
+  26    JMP: index=1073741827
+  27    LBL
+  28    LOAD_INT_LIT: value=2
+  29    STOR_INT_VAR: id=2; local=true
+  30    JMP: index=1073741827
+  31    LBL
+  32    LOAD_INT_LIT: value=0
+  33    STOR_INT_VAR: id=2; local=true
+  34    LBL
+  35    LOAD_INT_LIT: value=0
+  36    STOR_INT_VAR: id=3; local=true
+  37    LBL
+  38    LOAD_INT_LIT: value=7
+  39    LOAD_INT_VAR: id=1; local=true
+  40    EQL_INT
+  41    JMP: index=1073741828, conditional=false
+  42    LOAD_INT_LIT: value=1
+  43    STOR_INT_VAR: id=3; local=true
+  44    LBL
+  45    LBL
+  46    LOAD_INT_LIT: value=207
+  47    LOAD_INT_VAR: id=1; local=true
+  48    EQL_INT
+  49    JMP: index=1073741829, conditional=false
+  50    LOAD_INT_LIT: value=2
+  51    STOR_INT_VAR: id=3; local=true
+  52    LBL
+  53    LOAD_INT_VAR: id=2; local=true
+  54    LOAD_INT_VAR: id=3; local=true
+  55    LOAD_INST_MEM
+  56    LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  57    RTRN
+--
+---------------------------------------------------------
+Method: id=N,3; name='SelectLabelOrder.Probe:Three:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: INT_PARM
+  3: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=-1
+  2     STOR_INT_VAR: id=2; local=true
+  3     LOAD_INT_VAR: id=1; local=true
+  4     STOR_INT_VAR: id=0; local=true
+  5     LBL
+  6     LOAD_INT_LIT: value=1005
+  7     LOAD_INT_VAR: id=0; local=true
+  8     EQL_INT
+  9     JMP: index=15, conditional=true
+  10    LOAD_INT_LIT: value=70000
+  11    LOAD_INT_VAR: id=0; local=true
+  12    LES_INT
+  13    JMP: index=19, conditional=true
+  14    JMP: index=18
+  15    LBL
+  16    LOAD_INT_LIT: value=5
+  17    LOAD_INT_VAR: id=0; local=true
+  18    EQL_INT
+  19    JMP: index=14, conditional=true
+  20    JMP: index=17
+  21    LBL
+  22    LOAD_INT_LIT: value=70000
+  23    LOAD_INT_VAR: id=0; local=true
+  24    EQL_INT
+  25    JMP: index=16, conditional=true
+  26    JMP: index=17
+  27    LBL
+  28    LOAD_INT_LIT: value=1
+  29    STOR_INT_VAR: id=2; local=true
+  30    JMP: index=1073741830
+  31    LBL
+  32    LOAD_INT_LIT: value=2
+  33    STOR_INT_VAR: id=2; local=true
+  34    JMP: index=1073741830
+  35    LBL
+  36    LOAD_INT_LIT: value=3
+  37    STOR_INT_VAR: id=2; local=true
+  38    JMP: index=1073741830
+  39    LBL
+  40    LOAD_INT_LIT: value=0
+  41    STOR_INT_VAR: id=2; local=true
+  42    LBL
+  43    LOAD_INT_LIT: value=0
+  44    STOR_INT_VAR: id=3; local=true
+  45    LBL
+  46    LOAD_INT_LIT: value=5
+  47    LOAD_INT_VAR: id=1; local=true
+  48    EQL_INT
+  49    JMP: index=1073741831, conditional=false
+  50    LOAD_INT_LIT: value=1
+  51    STOR_INT_VAR: id=3; local=true
+  52    LBL
+  53    LBL
+  54    LOAD_INT_LIT: value=1005
+  55    LOAD_INT_VAR: id=1; local=true
+  56    EQL_INT
+  57    JMP: index=1073741832, conditional=false
+  58    LOAD_INT_LIT: value=2
+  59    STOR_INT_VAR: id=3; local=true
+  60    LBL
+  61    LOAD_INT_VAR: id=2; local=true
+  62    LOAD_INT_VAR: id=3; local=true
+  63    LOAD_INST_MEM
+  64    LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  65    RTRN
+--
+---------------------------------------------------------
+Method: id=N,4; name='SelectLabelOrder.Probe:Four:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: INT_PARM
+  3: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=-1
+  2     STOR_INT_VAR: id=2; local=true
+  3     LOAD_INT_VAR: id=1; local=true
+  4     STOR_INT_VAR: id=0; local=true
+  5     LBL
+  6     LOAD_INT_LIT: value=4003
+  7     LOAD_INT_VAR: id=0; local=true
+  8     LES_INT
+  9     JMP: index=32, conditional=true
+  10    JMP: index=35
+  11    LBL
+  12    LOAD_INT_LIT: value=53
+  13    LOAD_INT_VAR: id=0; local=true
+  14    LES_INT
+  15    JMP: index=31, conditional=true
+  16    JMP: index=30
+  17    LBL
+  18    LOAD_INT_LIT: value=3
+  19    LOAD_INT_VAR: id=0; local=true
+  20    EQL_INT
+  21    JMP: index=25, conditional=true
+  22    JMP: index=29
+  23    LBL
+  24    LOAD_INT_LIT: value=53
+  25    LOAD_INT_VAR: id=0; local=true
+  26    EQL_INT
+  27    JMP: index=26, conditional=true
+  28    JMP: index=29
+  29    LBL
+  30    LOAD_INT_LIT: value=90000
+  31    LOAD_INT_VAR: id=0; local=true
+  32    LES_INT
+  33    JMP: index=34, conditional=true
+  34    JMP: index=33
+  35    LBL
+  36    LOAD_INT_LIT: value=4003
+  37    LOAD_INT_VAR: id=0; local=true
+  38    EQL_INT
+  39    JMP: index=27, conditional=true
+  40    JMP: index=29
+  41    LBL
+  42    LOAD_INT_LIT: value=90000
+  43    LOAD_INT_VAR: id=0; local=true
+  44    EQL_INT
+  45    JMP: index=28, conditional=true
+  46    JMP: index=29
+  47    LBL
+  48    LOAD_INT_LIT: value=1
+  49    STOR_INT_VAR: id=2; local=true
+  50    JMP: index=1073741833
+  51    LBL
+  52    LOAD_INT_LIT: value=2
+  53    STOR_INT_VAR: id=2; local=true
+  54    JMP: index=1073741833
+  55    LBL
+  56    LOAD_INT_LIT: value=3
+  57    STOR_INT_VAR: id=2; local=true
+  58    JMP: index=1073741833
+  59    LBL
+  60    LOAD_INT_LIT: value=4
+  61    STOR_INT_VAR: id=2; local=true
+  62    JMP: index=1073741833
+  63    LBL
+  64    LOAD_INT_LIT: value=0
+  65    STOR_INT_VAR: id=2; local=true
+  66    LBL
+  67    LOAD_INT_LIT: value=0
+  68    STOR_INT_VAR: id=3; local=true
+  69    LBL
+  70    LOAD_INT_LIT: value=3
+  71    LOAD_INT_VAR: id=1; local=true
+  72    EQL_INT
+  73    JMP: index=1073741834, conditional=false
+  74    LOAD_INT_LIT: value=1
+  75    STOR_INT_VAR: id=3; local=true
+  76    LBL
+  77    LBL
+  78    LOAD_INT_LIT: value=53
+  79    LOAD_INT_VAR: id=1; local=true
+  80    EQL_INT
+  81    JMP: index=1073741835, conditional=false
+  82    LOAD_INT_LIT: value=2
+  83    STOR_INT_VAR: id=3; local=true
+  84    LBL
+  85    LOAD_INT_VAR: id=2; local=true
+  86    LOAD_INT_VAR: id=3; local=true
+  87    LOAD_INST_MEM
+  88    LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  89    RTRN
+--
+---------------------------------------------------------
+Method: id=N,5; name='SelectLabelOrder.Probe:Five:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: INT_PARM
+  3: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=-1
+  2     STOR_INT_VAR: id=2; local=true
+  3     LOAD_INT_VAR: id=1; local=true
+  4     STOR_INT_VAR: id=0; local=true
+  5     LBL
+  6     LOAD_INT_LIT: value=5000
+  7     LOAD_INT_VAR: id=0; local=true
+  8     EQL_INT
+  9     JMP: index=43, conditional=true
+  10    LOAD_INT_LIT: value=5000
+  11    LOAD_INT_VAR: id=0; local=true
+  12    LES_INT
+  13    JMP: index=49, conditional=true
+  14    JMP: index=52
+  15    LBL
+  16    LOAD_INT_LIT: value=311
+  17    LOAD_INT_VAR: id=0; local=true
+  18    LES_INT
+  19    JMP: index=48, conditional=true
+  20    JMP: index=47
+  21    LBL
+  22    LOAD_INT_LIT: value=11
+  23    LOAD_INT_VAR: id=0; local=true
+  24    EQL_INT
+  25    JMP: index=41, conditional=true
+  26    JMP: index=46
+  27    LBL
+  28    LOAD_INT_LIT: value=311
+  29    LOAD_INT_VAR: id=0; local=true
+  30    EQL_INT
+  31    JMP: index=42, conditional=true
+  32    JMP: index=46
+  33    LBL
+  34    LOAD_INT_LIT: value=700000
+  35    LOAD_INT_VAR: id=0; local=true
+  36    LES_INT
+  37    JMP: index=51, conditional=true
+  38    JMP: index=50
+  39    LBL
+  40    LOAD_INT_LIT: value=60000
+  41    LOAD_INT_VAR: id=0; local=true
+  42    EQL_INT
+  43    JMP: index=44, conditional=true
+  44    JMP: index=46
+  45    LBL
+  46    LOAD_INT_LIT: value=700000
+  47    LOAD_INT_VAR: id=0; local=true
+  48    EQL_INT
+  49    JMP: index=45, conditional=true
+  50    JMP: index=46
+  51    LBL
+  52    LOAD_INT_LIT: value=1
+  53    STOR_INT_VAR: id=2; local=true
+  54    JMP: index=1073741836
+  55    LBL
+  56    LOAD_INT_LIT: value=2
+  57    STOR_INT_VAR: id=2; local=true
+  58    JMP: index=1073741836
+  59    LBL
+  60    LOAD_INT_LIT: value=3
+  61    STOR_INT_VAR: id=2; local=true
+  62    JMP: index=1073741836
+  63    LBL
+  64    LOAD_INT_LIT: value=4
+  65    STOR_INT_VAR: id=2; local=true
+  66    JMP: index=1073741836
+  67    LBL
+  68    LOAD_INT_LIT: value=5
+  69    STOR_INT_VAR: id=2; local=true
+  70    JMP: index=1073741836
+  71    LBL
+  72    LOAD_INT_LIT: value=0
+  73    STOR_INT_VAR: id=2; local=true
+  74    LBL
+  75    LOAD_INT_LIT: value=0
+  76    STOR_INT_VAR: id=3; local=true
+  77    LBL
+  78    LOAD_INT_LIT: value=11
+  79    LOAD_INT_VAR: id=1; local=true
+  80    EQL_INT
+  81    JMP: index=1073741837, conditional=false
+  82    LOAD_INT_LIT: value=1
+  83    STOR_INT_VAR: id=3; local=true
+  84    LBL
+  85    LBL
+  86    LOAD_INT_LIT: value=311
+  87    LOAD_INT_VAR: id=1; local=true
+  88    EQL_INT
+  89    JMP: index=1073741838, conditional=false
+  90    LOAD_INT_LIT: value=2
+  91    STOR_INT_VAR: id=3; local=true
+  92    LBL
+  93    LOAD_INT_VAR: id=2; local=true
+  94    LOAD_INT_VAR: id=3; local=true
+  95    LOAD_INST_MEM
+  96    LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  97    RTRN
+--
+---------------------------------------------------------
+Method: id=N,6; name='SelectLabelOrder.Probe:Seven:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: INT_PARM
+  3: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=-1
+  2     STOR_INT_VAR: id=2; local=true
+  3     LOAD_INT_VAR: id=1; local=true
+  4     STOR_INT_VAR: id=0; local=true
+  5     LBL
+  6     LOAD_INT_LIT: value=4000
+  7     LOAD_INT_VAR: id=0; local=true
+  8     EQL_INT
+  9     JMP: index=61, conditional=true
+  10    LOAD_INT_LIT: value=4000
+  11    LOAD_INT_VAR: id=0; local=true
+  12    LES_INT
+  13    JMP: index=68, conditional=true
+  14    JMP: index=71
+  15    LBL
+  16    LOAD_INT_LIT: value=41
+  17    LOAD_INT_VAR: id=0; local=true
+  18    EQL_INT
+  19    JMP: index=59, conditional=true
+  20    LOAD_INT_LIT: value=900
+  21    LOAD_INT_VAR: id=0; local=true
+  22    LES_INT
+  23    JMP: index=67, conditional=true
+  24    JMP: index=66
+  25    LBL
+  26    LOAD_INT_LIT: value=1
+  27    LOAD_INT_VAR: id=0; local=true
+  28    EQL_INT
+  29    JMP: index=58, conditional=true
+  30    JMP: index=65
+  31    LBL
+  32    LOAD_INT_LIT: value=900
+  33    LOAD_INT_VAR: id=0; local=true
+  34    EQL_INT
+  35    JMP: index=60, conditional=true
+  36    JMP: index=65
+  37    LBL
+  38    LOAD_INT_LIT: value=600000
+  39    LOAD_INT_VAR: id=0; local=true
+  40    EQL_INT
+  41    JMP: index=63, conditional=true
+  42    LOAD_INT_LIT: value=7000000
+  43    LOAD_INT_VAR: id=0; local=true
+  44    LES_INT
+  45    JMP: index=70, conditional=true
+  46    JMP: index=69
+  47    LBL
+  48    LOAD_INT_LIT: value=50000
+  49    LOAD_INT_VAR: id=0; local=true
+  50    EQL_INT
+  51    JMP: index=62, conditional=true
+  52    JMP: index=65
+  53    LBL
+  54    LOAD_INT_LIT: value=7000000
+  55    LOAD_INT_VAR: id=0; local=true
+  56    EQL_INT
+  57    JMP: index=64, conditional=true
+  58    JMP: index=65
+  59    LBL
+  60    LOAD_INT_LIT: value=1
+  61    STOR_INT_VAR: id=2; local=true
+  62    JMP: index=1073741839
+  63    LBL
+  64    LOAD_INT_LIT: value=2
+  65    STOR_INT_VAR: id=2; local=true
+  66    JMP: index=1073741839
+  67    LBL
+  68    LOAD_INT_LIT: value=3
+  69    STOR_INT_VAR: id=2; local=true
+  70    JMP: index=1073741839
+  71    LBL
+  72    LOAD_INT_LIT: value=4
+  73    STOR_INT_VAR: id=2; local=true
+  74    JMP: index=1073741839
+  75    LBL
+  76    LOAD_INT_LIT: value=5
+  77    STOR_INT_VAR: id=2; local=true
+  78    JMP: index=1073741839
+  79    LBL
+  80    LOAD_INT_LIT: value=6
+  81    STOR_INT_VAR: id=2; local=true
+  82    JMP: index=1073741839
+  83    LBL
+  84    LOAD_INT_LIT: value=7
+  85    STOR_INT_VAR: id=2; local=true
+  86    JMP: index=1073741839
+  87    LBL
+  88    LOAD_INT_LIT: value=0
+  89    STOR_INT_VAR: id=2; local=true
+  90    LBL
+  91    LOAD_INT_LIT: value=0
+  92    STOR_INT_VAR: id=3; local=true
+  93    LBL
+  94    LOAD_INT_LIT: value=1
+  95    LOAD_INT_VAR: id=1; local=true
+  96    EQL_INT
+  97    JMP: index=1073741840, conditional=false
+  98    LOAD_INT_LIT: value=1
+  99    STOR_INT_VAR: id=3; local=true
+  100   LBL
+  101   LBL
+  102   LOAD_INT_LIT: value=41
+  103   LOAD_INT_VAR: id=1; local=true
+  104   EQL_INT
+  105   JMP: index=1073741841, conditional=false
+  106   LOAD_INT_LIT: value=2
+  107   STOR_INT_VAR: id=3; local=true
+  108   LBL
+  109   LOAD_INT_VAR: id=2; local=true
+  110   LOAD_INT_VAR: id=3; local=true
+  111   LOAD_INST_MEM
+  112   LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  113   RTRN
+--
+---------------------------------------------------------
+Method: id=N,7; name='SelectLabelOrder.Probe:Words:i,'; return='i';
+  blocks=1; is_function=true; num_params=1; mem_size=24
+---------------------------------------------------------
+memory types:
+  0: INT_PARM
+  1: INT_PARM
+  2: OBJ_PARM
+  3: INT_PARM
+---------------------------------------------------------
+instructions:
+  0     STOR_INT_VAR: id=1; local=true
+  1     LOAD_INT_LIT: value=0
+  2     LOAD_INT_VAR: id=1; local=true
+  3     EQL_INT
+  4     JMP: index=77, conditional=false
+  5     LOAD_INT_LIT: value=4
+  6     NEW_CHAR_ARY: dimension=1
+  7     LOAD_INT_LIT: value=2
+  8     LOAD_INT_LIT: value=-3994
+  9     TRAP_RTRN: args=3
+  10    LIB_NEW_OBJ_INST: class='System.String'
+  11    LIB_MTHD_CALL: method='System.String:New:c*,'; native=false
+  12    STOR_INT_VAR: id=0; local=true
+  13    JMP: index=1073741842
+  14    LBL
+  15    LOAD_INT_LIT: value=5
+  16    NEW_CHAR_ARY: dimension=1
+  17    LOAD_INT_LIT: value=3
+  18    LOAD_INT_LIT: value=-3994
+  19    TRAP_RTRN: args=3
+  20    LIB_NEW_OBJ_INST: class='System.String'
+  21    LIB_MTHD_CALL: method='System.String:New:c*,'; native=false
+  22    STOR_INT_VAR: id=0; local=true
+  23    LBL
+  24    LOAD_INT_VAR: id=0; local=true
+  25    STOR_INT_VAR: id=2; local=true
+  26    LOAD_INT_LIT: value=-1
+  27    STOR_INT_VAR: id=3; local=true
+  28    LOAD_INT_VAR: id=2; local=true
+  29    LIB_MTHD_CALL: method='System.String:HashID:'; native=false
+  30    STOR_INT_VAR: id=0; local=true
+  31    LBL
+  32    LOAD_INT_LIT: value=2490902623560640874
+  33    LOAD_INT_VAR: id=0; local=true
+  34    EQL_INT
+  35    JMP: index=79, conditional=true
+  36    LOAD_INT_LIT: value=8513880941419438247
+  37    LOAD_INT_VAR: id=0; local=true
+  38    LES_INT
+  39    JMP: index=83, conditional=true
+  40    JMP: index=82
+  41    LBL
+  42    LOAD_INT_LIT: value=-8447022563750764501
+  43    LOAD_INT_VAR: id=0; local=true
+  44    EQL_INT
+  45    JMP: index=78, conditional=true
+  46    JMP: index=81
+  47    LBL
+  48    LOAD_INT_LIT: value=8513880941419438247
+  49    LOAD_INT_VAR: id=0; local=true
+  50    EQL_INT
+  51    JMP: index=80, conditional=true
+  52    JMP: index=81
+  53    LBL
+  54    LOAD_INT_LIT: value=1
+  55    STOR_INT_VAR: id=3; local=true
+  56    JMP: index=1073741843
+  57    LBL
+  58    LOAD_INT_LIT: value=3
+  59    STOR_INT_VAR: id=3; local=true
+  60    JMP: index=1073741843
+  61    LBL
+  62    LOAD_INT_LIT: value=2
+  63    STOR_INT_VAR: id=3; local=true
+  64    JMP: index=1073741843
+  65    LBL
+  66    LOAD_INT_LIT: value=0
+  67    STOR_INT_VAR: id=3; local=true
+  68    LBL
+  69    LOAD_INT_VAR: id=3; local=true
+  70    LOAD_INT_LIT: value=0
+  71    LOAD_INT_VAR: id=1; local=true
+  72    EQL_INT
+  73    JMP: index=85, conditional=false
+  74    LOAD_INT_LIT: value=2
+  75    STOR_INT_VAR: id=0; local=true
+  76    JMP: index=1073741844
+  77    LBL
+  78    LOAD_INT_LIT: value=3
+  79    STOR_INT_VAR: id=0; local=true
+  80    LBL
+  81    LOAD_INT_VAR: id=0; local=true
+  82    LOAD_INST_MEM
+  83    LIB_MTHD_CALL: method='SelectLabelOrder.Probe:Check:i,i,'; native=false
+  84    RTRN
+--

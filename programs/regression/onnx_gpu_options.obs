@@ -1,0 +1,335 @@
+#~
+# GPU provider options: the CUDA and TensorRT option sets, CUDA graphs and the engine cache.
+#
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
+#
+# This test SKIPs, as a whole, on a machine where neither ep=cuda nor ep=tensorrt opens a
+# session: CI runners have no GPU, and a runtime can LIST a provider on a machine with no
+# driver, CUDA, cuDNN or TensorRT, so a session must really open. The GPU-free half of the
+# option handling is onnx_session_options.obs.
+#
+# The model is a 683-byte convolution network written out below as hex (a 3x3 Conv with
+# weights that are exactly representable in half precision, Relu, GlobalAveragePool,
+# Flatten; a fixed [1,3,8,8] input and a [1,4] output): every node runs on the GPU, the
+# shapes are fixed, so it is a legal subject for a CUDA graph, and no model file is tracked.
+# The test saves it to a scratch file and deletes it.
+#
+# For each provider that opens:
+#
+#   * the answer is the CPU's, to a stated tolerance (1e-4; 5e-3 for half precision, where
+#     the input is rounded to 11 bits),
+#   * each documented option opens a session and answers the same,
+#   * an option the provider does not know is REFUSED (the session does not open), as is a
+#     device that does not exist,
+#   * with a CUDA graph (enable_cuda_graph for ep=cuda, cuda_graph for ep=tensorrt) a bound
+#     run keeps answering correctly across many runs and after the input tensor is
+#     refilled in place, which is what a replayed graph reads,
+#   * ep=tensorrt writes its engine into the directory it was given.
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.IO.Filesystem;
+
+class OnnxGpuOptions {
+	@ok : Bool;
+	@cpu_a : Float[];
+	@cpu_b : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxGpuOptions->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		return System.IO.Filesystem.File->Exists("{$base}.dll") |
+			System.IO.Filesystem.File->Exists("{$base}.so") |
+			System.IO.Filesystem.File->Exists("{$base}.dylib");
+	}
+
+	function : ModelPath() ~ String {
+		return "onnx_gpu_options_scratch_model.onnx";
+	}
+
+	function : ModelHex() ~ String {
+		text := "";
+		text += "08083aa0050a3c0a01780a01570a01421201632204436f6e762a150a0c6b65726e656c5f736861706540034003a001072a110a047061647340014001";
+		text += "40014001a001070a0c0a0163120172220452656c750a190a01721201672211476c6f62616c41766572616765506f6f6c0a1c0a01671201792207466c";
+		text += "617474656e2a0b0a04617869731801a00102120974696e795f636f6e762ac003080408030803080310014201574ab0030040a1390000993d00608cbd";
+		text += "000064be00c0e8bd00e07dbe0060763c0080ab3e0000fcbd00e01ebe00c0fa3d00c0b63d00e0d73c00406ebe00a0efbb0000323e0000acbe0040eabd";
+		text += "0060f3be0000a5be00c0ebbe00c070bd0040a2be00e08a3d0080203d00603fbd002021bf00e009be00a046bc0000e83c00e0c3be00a0f4bd00807abe";
+		text += "00004fbe00c0873e00c04ebe004005bc0060623e006015be00c0e4bc0040e23c00a0823c00c09cbe00e09b3c00e0ad3e0000c6be00005c3e0060f43c";
+		text += "004024be0000003f0020433e008099be00a0983c00a0133e006041bd00e02e3e004088bc00e02a3e0020b83e00002dbe0000503d0040edbd0060023d";
+		text += "000098be004014be00e048bd0020663e00a0923e0060a9be00604bbe00a0253e0000ffbe0020edbd0040c7bc00e0a03e0080303e0080a7bd00c0bcbd";
+		text += "002080bd0000c33e0020dbbd00809bbd0080b43d0060f7bc00004abd00a08ebe00c03cbb0020e3bd0040953e0040273e00c0c5bb00202b3e0000aebd";
+		text += "00a0863e00e0b0ba0060153e0040a5be0080b13d0020d8be004002bf00e09bbd006066be0000283d00a00f3f00e054be00c01fbe0060523d0060fc3d";
+		text += "2a19080410014201424a10cdcccc3dcdcc4cbe9a99993ecdcc4c3d5a1b0a017812160a14080112100a0208010a0208030a0208080a02080862130a01";
+		text += "79120e0a0c080112080a0208010a02080442040a00100d";
+		return text;
+	}
+
+	method : WriteModel() ~ Bool {
+		hex := ModelHex();
+		digits := "0123456789abcdef";
+		bytes := Byte->New[hex->Size() / 2];
+		for(i := 0; i < bytes->Size(); i += 1;) {
+			high := digits->Find(hex->SubString(i * 2, 1));
+			low := digits->Find(hex->SubString(i * 2 + 1, 1));
+			bytes[i] := high * 16 + low;
+		};
+
+		writer := FileWriter->New(ModelPath());
+		written := writer->WriteBuffer(bytes);
+		writer->Close();
+		return written = bytes->Size();
+	}
+
+	# two different 3x8x8 images
+	function : Image(shift : Int) ~ Float[] {
+		values := Float->New[192];
+		for(i := 0; i < 192; i += 1;) {
+			values[i] := (((i * 37 + shift * 11) % 64)->ToFloat() - 20.0) / 16.0;
+		};
+
+		return values;
+	}
+
+	function : Open(ep : String, extra : Map<String, String>) ~ Session {
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+		if(extra <> Nil) {
+			pairs := extra->GetKeyValues()<Pair<String, String>>;
+			each(pair in pairs) {
+				config->Insert(pair->GetFirst(), pair->GetSecond());
+			};
+		};
+
+		return Session->New(ModelPath(), config);
+	}
+
+	function : One(key : String, value : String) ~ Map<String, String> {
+		options := Map->New()<String, String>;
+		options->Insert(key, value);
+		return options;
+	}
+
+	function : Run(session : Session, image : Float[]) ~ Float[] {
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New("x", [1, 3, 8, 8], image));
+		outputs := session->Run(inputs);
+		if(outputs = Nil | outputs->Size() = 0) {
+			return Nil;
+		};
+
+		return outputs->Get(0)->GetFloats();
+	}
+
+	function : Within(a : Float[], b : Float[], tolerance : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		for(i := 0; i < a->Size(); i += 1;) {
+			if((a[i] - b[i])->Abs() > tolerance) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		Report("the test model is written to a scratch file", WriteModel());
+
+		usable := Vector->New()<String>;
+		candidates := ["cuda", "tensorrt"];
+		each(provider in candidates) {
+			if(OnnxRuntime->HasProvider(provider)) {
+				probe := Open(provider, Nil);
+				if(probe->IsOpen()) {
+					probe->Close();
+					usable->AddBack(provider);
+				}
+				else {
+					"note: ep={$provider} is listed by this runtime but a session did not open"->PrintLine();
+				};
+			};
+		};
+
+		if(usable->Size() = 0) {
+			System.IO.Filesystem.File->Delete(ModelPath());
+			"SKIP: no GPU execution provider opens a session here (needs a CUDA or TensorRT ONNX Runtime, the NVIDIA driver, CUDA 12 and cuDNN 9; TensorRT 10 for ep=tensorrt)"->PrintLine();
+			return;
+		};
+
+		cpu := Open("cpu", Nil);
+		Report("the CPU reference opens", cpu->IsOpen());
+		@cpu_a := Run(cpu, Image(0));
+		@cpu_b := Run(cpu, Image(3));
+		cpu->Close();
+		Report("and answers (four values)", @cpu_a <> Nil & @cpu_a->Size() = 4 & @cpu_b <> Nil);
+		Report("two different images give different answers", <>Within(@cpu_a, @cpu_b, 0.0001));
+
+		each(provider in usable) {
+			Provider(provider);
+		};
+
+		System.IO.Filesystem.File->Delete(ModelPath());
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	method : Matches(tag : String, ep : String, options : Map<String, String>, tolerance : Float) ~ Nil {
+		session := Open(ep, options);
+		if(<>session->IsOpen()) {
+			Report("{$tag}: the session opens", false);
+			return;
+		};
+
+		Report("{$tag}: the answer is the CPU's (within {$tolerance})", Within(Run(session, Image(0)), @cpu_a, tolerance));
+		session->Close();
+	}
+
+	method : Refused(tag : String, ep : String, options : Map<String, String>) ~ Nil {
+		session := Open(ep, options);
+		Report("{$tag}: is refused, the session does not open", <>session->IsOpen());
+	}
+
+	method : Provider(ep : String) ~ Nil {
+		tag := "ep={$ep}";
+		Matches("{$tag} defaults", ep, Nil, 0.0001);
+		Matches("{$tag} execution_mode=sequential", ep, One("execution_mode", "sequential"), 0.0001);
+		Matches("{$tag} execution_mode=parallel", ep, One("execution_mode", "parallel"), 0.0001);
+		Matches("{$tag} graph_optimization=basic", ep, One("graph_optimization", "basic"), 0.0001);
+		Matches("{$tag} intra_op_threads=2", ep, One("intra_op_threads", "2"), 0.0001);
+		Matches("{$tag} device_id=0", ep, One("device_id", "0"), 0.0001);
+		Refused("{$tag} an option no provider has (no_such_option)", ep, One("no_such_option", "1"));
+		Refused("{$tag} a device that does not exist (device_id=99)", ep, One("device_id", "99"));
+		Refused("{$tag} a session option it cannot read (intra_op_threads=-1)", ep, One("intra_op_threads", "-1"));
+
+		if(ep->Equals("cuda")) {
+			Cuda();
+		}
+		else {
+			Tensorrt();
+		};
+	}
+
+	method : Cuda() ~ Nil {
+		Matches("cuda cudnn_conv_algo_search=EXHAUSTIVE", "cuda", One("cudnn_conv_algo_search", "EXHAUSTIVE"), 0.0001);
+		Matches("cuda cudnn_conv_algo_search=HEURISTIC", "cuda", One("cudnn_conv_algo_search", "HEURISTIC"), 0.0001);
+		Matches("cuda cudnn_conv_algo_search=DEFAULT", "cuda", One("cudnn_conv_algo_search", "DEFAULT"), 0.0001);
+		Matches("cuda use_tf32=0 (strict FP32 convolutions)", "cuda", One("use_tf32", "0"), 0.00001);
+		Matches("cuda arena_extend_strategy=kSameAsRequested", "cuda", One("arena_extend_strategy", "kSameAsRequested"), 0.0001);
+		Matches("cuda gpu_mem_limit=268435456 (256 MiB)", "cuda", One("gpu_mem_limit", "268435456"), 0.0001);
+		Refused("cuda cudnn_conv_algo_search=FASTEST (not a mode)", "cuda", One("cudnn_conv_algo_search", "FASTEST"));
+		Graph("cuda", One("enable_cuda_graph", "1"));
+	}
+
+	method : Tensorrt() ~ Nil {
+		Matches("tensorrt fp16=1 (half precision kernels)", "tensorrt", One("fp16", "1"), 0.005);
+		Matches("tensorrt cuda_fallback=0", "tensorrt", One("cuda_fallback", "0"), 0.0001);
+		Matches("tensorrt engine_cache=0", "tensorrt", One("engine_cache", "0"), 0.0001);
+		Matches("tensorrt opt_level=2", "tensorrt", One("opt_level", "2"), 0.0001);
+		Matches("tensorrt workspace_mb=512", "tensorrt", One("workspace_mb", "512"), 0.0001);
+		Refused("tensorrt cuda_fallback=maybe", "tensorrt", One("cuda_fallback", "maybe"));
+		Refused("tensorrt workspace_mb=lots", "tensorrt", One("workspace_mb", "lots"));
+		Refused("tensorrt trt_no_such_option", "tensorrt", One("trt_no_such_option", "1"));
+		Refused("tensorrt engine_cache=2", "tensorrt", One("engine_cache", "2"));
+
+		# the engine is written where it was told to go
+		dir := "onnx_gpu_options_scratch_engines";
+		Directory->Create(dir);
+		options := Map->New()<String, String>;
+		options->Insert("engine_cache", "1");
+		options->Insert("engine_cache_path", dir);
+		session := Open("tensorrt", options);
+		Report("tensorrt engine_cache_path: the session opens", session->IsOpen());
+		if(session->IsOpen()) {
+			Report("tensorrt engine_cache_path: a run answers", Within(Run(session, Image(0)), @cpu_a, 0.0001));
+			session->Close();
+			files := Directory->List(dir);
+			Report("tensorrt engine_cache_path: an engine file is in the directory", files <> Nil & files->Size() > 0);
+			if(files <> Nil) {
+				each(file in files) {
+					System.IO.Filesystem.File->Delete("{$dir}/{$file}");
+				};
+			};
+		};
+		Directory->Delete(dir);
+
+		Graph("tensorrt", One("cuda_graph", "1"));
+	}
+
+	# A CUDA graph records the kernels of a run and replays them on the SAME memory: the
+	# bound input tensor is refilled in place and the answer must follow it.
+	method : Graph(ep : String, options : Map<String, String>) ~ Nil {
+		tag := "{$ep} CUDA graph";
+		session := Open(ep, options);
+		if(<>session->IsOpen()) {
+			Report("{$tag}: the session opens", false);
+			return;
+		};
+
+		input := DeviceTensor->New(session, "FP32", [1, 3, 8, 8]);
+		output := DeviceTensor->New(session, "FP32", [1, 4]);
+		bound := BoundSession->New(session);
+		Report("{$tag}: tensors and binding", input->IsOpen() & output->IsOpen() & bound->IsOpen());
+		bound->BindInput("x", input);
+		bound->BindOutput("y", output);
+
+		input->Upload(Image(0));
+		good := true;
+		for(i := 0; i < 6; i += 1;) {
+			if(<>bound->Run()) {
+				good := false;
+			}
+			else if(<>Within(output->Download(), @cpu_a, 0.0001)) {
+				good := false;
+			};
+		};
+		Report("{$tag}: six runs (the first ones record the graph, the rest replay it) all answer the CPU's", good);
+
+		input->Upload(Image(3));
+		bound->Run();
+		Report("{$tag}: the input refilled in place: the replay answers for the NEW image", Within(output->Download(), @cpu_b, 0.0001));
+		input->Upload(Image(0));
+		bound->Run();
+		Report("{$tag}: and back to the first", Within(output->Download(), @cpu_a, 0.0001));
+
+		bound->Close();
+		input->Close();
+		output->Close();
+		session->Close();
+	}
+}

@@ -7,8 +7,7 @@
 | to stop a run from another thread | `AgentCancel`, `agent->SetCancel(token)` |
 | a total deadline, or a cap on steps, model calls, tool calls, tokens or cost | `AgentBudget`, `agent->SetBudget(budget)` |
 | a hung tool to stop costing the run | `AgentTool->Mode->BOUNDED_THREAD` |
-| a tool that cannot crash or hang the agent | `AgentTool->Mode->PROCESS`, `AgentProcess` |
-| to see what happened, step by step | `agent->SetTrace(sink)`, `AgentTraceWriter`, `AgentTraceBuffer` |
+| to see what happened, step by step | `agent->SetTrace(sink)`, `AgentTraceBuffer` |
 
 Compile with the same libraries as before: `-lib agent,net,json,cipher,misc`.
 
@@ -89,29 +88,10 @@ Budgets compose with the cancel token: whichever fires first decides the stop re
 |---|---|---|
 | `IN_THREAD` (the default) | on the loop's thread | reported as a timeout only after the handler returns; a cancel is seen after it returns |
 | `BOUNDED_THREAD` | on a worker thread | the loop stops waiting at the limit, the deadline or the cancel and abandons the worker |
-| `PROCESS` | in a child process | the child is killed |
 
 Set the default with `agent->SetToolMode(mode)` and a tool's own with `tool->SetMode(mode)`. The limit is the tool's `SetTimeout` or the agent's `SetToolTimeout`.
 
-**An abandoned worker is a leak.** A thread cannot be killed. A `BOUNDED_THREAD` handler that never returns keeps its thread, and whatever it holds, until the process exits. What the mode guarantees is that the run does not wait for it and that nothing it does later reaches the transcript: each call has its own result slot, and an abandoned worker's write to it is dropped. A handler that touches shared state still touches it; hand such a tool a token (`AgentCancelableHandler`) or use `PROCESS`. The model-call worker gets a copy of the conversation, so a late backend cannot read a conversation the caller has moved on with.
-
-### Tools in a child process
-
-`AgentProcess` turns an external command, or an Objeck program, into a tool. The arguments go to the child as JSON on standard input, whatever it writes to standard output is the result, and any other exit code is an error result carrying the start of its standard error.
-
-```ruby
-# an Objeck program as a tool; ForObjeck finds the obr beside the running VM
-process := AgentProcess->ForObjeck("lookup.obe")->SetMaxOutput(16384)->AllowEnv("HTTPS_PROXY");
-tool := AgentTool->New("lookup", "Looks a name up", schema, process)->SetTimeout(10000);
-```
-
-- **Killed, not abandoned.** The child runs behind a small watchdog script (a shell script on POSIX, PowerShell on Windows), the same pattern as the `llm_eval` sandbox. When the limit passes or the run is cancelled the agent writes a stop file, the watchdog kills the child (`taskkill /F /T` on Windows, so its children go too; `kill -9` of the child and its direct children on POSIX), and the call returns a `timeout` or `cancelled` result. A crash, a nonzero exit or a signal in the child is an error result; the agent process is not touched.
-- **Output cap.** At most `SetMaxOutput` bytes (65536 by default) are kept. A child that writes far past it is stopped (a file size limit on POSIX, a size check in the watchdog on Windows) and the call is an error.
-- **Environment allow list.** The child sees only the variables `AllowEnv` names; `PATH` is always allowed and, on Windows, the handful the system needs to start a process. The values come from the agent's own environment.
-- **Directory allow list.** The child runs in the scratch directory (the system's temporary directory unless `SetScratchDir`) or in a directory inside `SetWorkDir`/`AllowDirectory`. A working directory outside the list, or one containing `..`, is refused before anything starts.
-- **A tool that is not process-backed** and is set to `PROCESS` runs as `BOUNDED_THREAD`.
-
-Limits: the child is not otherwise confined (it runs with the agent's user, its file and network access); a grandchild a POSIX child starts may outlive a kill; and each call starts a shell, or PowerShell on Windows, so a call costs tens to hundreds of milliseconds more than a thread.
+**An abandoned worker is a leak.** A thread cannot be killed. A `BOUNDED_THREAD` handler that never returns keeps its thread, and whatever it holds, until the process exits. What the mode guarantees is that the run does not wait for it and that nothing it does later reaches the transcript: each call has its own result slot, and an abandoned worker's write to it is dropped. A handler that touches shared state still touches it; hand such a tool a token (`AgentCancelableHandler`). The model-call worker gets a copy of the conversation, so a late backend cannot read a conversation the caller has moved on with.
 
 ### Trace
 
@@ -129,15 +109,15 @@ Limits: the child is not otherwise confined (it runs with the agent's user, its 
 | `halt` | reason (a cancel, a deadline or a budget was noticed) |
 | `run_end` | stop_reason, steps, model_calls, tool_calls, tokens, cost, elapsed_ms |
 
-Each event also has `seq` (from 1), `ms` (since the run began) and `step`. `AgentTraceWriter->New(path)` appends one JSON object per line to a file, so an experiment can rebuild what happened from the file alone; `AgentTraceBuffer` keeps them in memory (`Kinds()`, `Count(kind)`, `First(kind)`). Every event is passed through the library's key redaction before it is written, the same as the transcript: registered keys and key-shaped tokens become `[REDACTED]`, and a tool's arguments are cut at 500 characters.
+Each event also has `seq` (from 1), `ms` (since the run began) and `step`. `AgentTraceBuffer` keeps them in memory (`GetEvents()`, `Kinds()`, `Count(kind)`, `First(kind)`); an `AgentEvent`'s `ToString()` is one JSON object, so a program can write its own file from a custom `AgentTraceSink`. Every event is passed through the library's key redaction before it is delivered, the same as the transcript: registered keys and key-shaped tokens become `[REDACTED]`, and a tool's arguments are cut at 500 characters.
 
 ```ruby
-agent->SetTrace(AgentTraceWriter->New("run.jsonl"));
+agent->SetTrace(AgentTraceBuffer->New());
 ```
 
 ### Using it
 
-A bounded, cancellable, traced agent with a risky tool in a child process:
+A bounded, cancellable, traced agent:
 
 ```ruby
 agent := Agent->New(backend, registry);
@@ -145,13 +125,14 @@ agent->SetCancel(cancel);
 agent->SetBudget(AgentBudget->New()->SetMaxWallMs(120000)->SetMaxToolCalls(30)->SetMaxTokens(200000));
 agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
 agent->SetBoundedModelCalls(true);
-agent->SetTrace(AgentTraceWriter->New("run.jsonl"));
+trace := AgentTraceBuffer->New();
+agent->SetTrace(trace);
 result := agent->Run(prompt);
 if(<>result->IsCompleted()) {
   "stopped: {$result->GetStopReason()}: {$result->GetError()}"->PrintLine();
 };
 ```
 
-The behavior is tested in `programs/regression/agent_control_test.obs` on a scripted model, with no key and no network: cancellation before the first step, between steps and calls, and during a slow model call; each budget and its stop reason; a hung tool in `BOUNDED_THREAD` with a bounded wait and an abandoned worker that finishes later without touching the transcript; `PROCESS` with a hung child, a failing child, a crashing child, a flooding child, a cancel, and the environment and directory allow lists; the trace events, the JSON-lines file and key redaction; and retries.
+The behavior is tested in `programs/regression/agent_control_test.obs` on a scripted model, with no key and no network: cancellation before the first step, between steps and calls, and during a slow model call; each budget and its stop reason; a hung tool in `BOUNDED_THREAD` with a bounded wait and an abandoned worker that finishes later without touching the transcript; the trace events and key redaction; and retries.
 
 What is not covered: the provider backends' own deadline (pending the HTTP total-deadline setter, see above), and a fault that kills a thread outside any `try`, which still ends the whole process. A `PROCESS` tool is the containment for that last case.

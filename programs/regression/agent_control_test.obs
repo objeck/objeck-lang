@@ -3,8 +3,7 @@
 Run control for API.Agent, against a scripted fake model (no key, no network): the cancellation token
 (before the first step, between steps, between tool calls, during a slow model call, linked to a parent),
 each budget (steps, model calls, tool calls, tokens, cost, wall-clock deadline) and its stop reason, the
-tool modes (IN_THREAD, BOUNDED_THREAD with an abandoned worker, PROCESS with a hung, a failing and a
-chatty child), the trace events and the JSON-lines trace file, retries, and the safety of a worker that
+tool modes (IN_THREAD, BOUNDED_THREAD with an abandoned worker), the trace events, retries, and the safety of a worker that
 finishes after the run moved on. Waits are generous so a loaded CI machine does not fail them.
 ~#
 use API.Agent;
@@ -596,131 +595,6 @@ class AgentControlTest {
     Thread->Sleep(900);
   }
 
-  # ---- PROCESS mode
-
-  function : HangCommand() ~ String {
-    if(Windows()) {
-      return "ping -n 60 127.0.0.1";
-    };
-    return "sleep 60";
-  }
-
-  function : FailCommand() ~ String {
-    if(Windows()) {
-      return "powershell -NoProfile -Command \"[Console]::Error.WriteLine('boom'); exit 7\"";
-    };
-    return "sh -c 'echo boom >&2; exit 7'";
-  }
-
-  function : CrashCommand() ~ String {
-    if(Windows()) {
-      return "powershell -NoProfile -Command \"[Environment]::FailFast('crash')\"";
-    };
-    return "sh -c 'kill -SEGV $$'";
-  }
-
-  function : EchoCommand() ~ String {
-    if(Windows()) {
-      return "findstr \"^\"";
-    };
-    return "cat";
-  }
-
-  function : EnvCommand() ~ String {
-    if(Windows()) {
-      return "set";
-    };
-    return "env";
-  }
-
-  function : PwdCommand() ~ String {
-    if(Windows()) {
-      return "cd";
-    };
-    return "pwd";
-  }
-
-  function : FloodCommand() ~ String {
-    if(Windows()) {
-      return "powershell -NoProfile -Command \"while($true){'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}\"";
-    };
-    return "yes";
-  }
-
-  function : ProcessResult(command : AgentProcess, limit : Int, token : AgentCancel, cancel_after : Int) ~ AgentToolResult {
-    script := Vector->New()<AgentReply>;
-    script->AddBack(AgentReply->Ask("p1", "child", "{\"text\":\"hello child\"}"));
-    script->AddBack(AgentReply->Say("done"));
-    schema := Json("{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}}}");
-    tool := AgentTool->New("child", "runs a child process", schema, command);
-    if(limit > 0) {
-      tool->SetTimeout(limit);
-    };
-
-    agent := Agent->New(ScriptedBackend->New(script), Registry(tool));
-    if(token <> Nil) {
-      agent->SetCancel(token);
-      if(cancel_after > 0) {
-        Canceller->New(token, cancel_after)->Execute(Nil);
-      };
-    };
-
-    last := agent->Run("go");
-    return last->GetSteps()->Get(0)->GetResults()->Get(0);
-  }
-
-  function : TestProcess() ~ Nil {
-    "-- PROCESS"->PrintLine();
-    echoed := ProcessResult(AgentProcess->New(EchoCommand()), 0, Nil, 0);
-    Check("the child reads the arguments as JSON on stdin", Same(echoed->GetStatus(), "ok") & Has(echoed->GetContent(), "hello child") & Has(echoed->GetContent(), "text"));
-
-    timer := Now();
-    hung := ProcessResult(AgentProcess->New(HangCommand()), 1500, Nil, 0);
-    elapsed := Millis(timer);
-    Check("a hung child is killed at the tool's limit", Same(hung->GetStatus(), "timeout") & Has(hung->GetContent(), "1500 ms"));
-    Check("the agent did not wait for the child", elapsed < 25000);
-
-    failed := ProcessResult(AgentProcess->New(FailCommand()), 0, Nil, 0);
-    Check("a failing child is an error result with its stderr", Same(failed->GetStatus(), "error") & Has(failed->GetContent(), "code 7") & Has(failed->GetContent(), "boom"));
-
-    crashed := ProcessResult(AgentProcess->New(CrashCommand()), 0, Nil, 0);
-    Check("a crashing child cannot take the agent down", Same(crashed->GetStatus(), "error") & Has(crashed->GetContent(), "exited with code"));
-
-    # the output cap
-    flood := ProcessResult(AgentProcess->New(FloodCommand())->SetMaxOutput(4000), 20000, Nil, 0);
-    Check("a child that floods its output is stopped", Same(flood->GetStatus(), "error") & Has(flood->GetContent(), "output limit"));
-
-    # a cancel kills the child
-    token := AgentCancel->New();
-    timer2 := Now();
-    stopped := ProcessResult(AgentProcess->New(HangCommand()), 0, token, 1200);
-    Check("a cancel kills a running child", Same(stopped->GetStatus(), "cancelled") & Millis(timer2) < 25000);
-  }
-
-  function : TestProcessSandbox() ~ Nil {
-    "-- PROCESS environment and working directory"->PrintLine();
-    Runtime->SetEnvironmentVariable("OBJK_AGENT_SECRET", "s3cret-value-9876");
-    plain := ProcessResult(AgentProcess->New(EnvCommand()), 0, Nil, 0);
-    Check("the child's environment is the allow list only", Same(plain->GetStatus(), "ok") & <>Has(plain->GetContent(), "OBJK_AGENT_SECRET") & Has(plain->GetContent(), "PATH"));
-
-    shared := ProcessResult(AgentProcess->New(EnvCommand())->AllowEnv("OBJK_AGENT_SECRET"), 0, Nil, 0);
-    Check("an allowed variable reaches the child", Has(shared->GetContent(), "OBJK_AGENT_SECRET") & Has(shared->GetContent(), "s3cret-value-9876"));
-
-    scratch := AgentProcess->New(PwdCommand())->GetScratchDir();
-    here := ProcessResult(AgentProcess->New(PwdCommand()), 0, Nil, 0);
-    Check("the child starts in the scratch directory", Same(here->GetStatus(), "ok") & Has(here->GetContent(), scratch->SubString(scratch->Size() - 4, 4)));
-
-    home := Windows() ? "C:\\Windows" : "/etc";
-    refused := ProcessResult(AgentProcess->New(PwdCommand())->SetWorkDir(home), 0, Nil, 0);
-    Check("a directory off the allow list is refused", Same(refused->GetStatus(), "error") & Has(refused->GetContent(), "not allowed"));
-
-    allowed := ProcessResult(AgentProcess->New(PwdCommand())->SetWorkDir(home)->AllowDirectory(home), 0, Nil, 0);
-    Check("a directory on the allow list runs", Same(allowed->GetStatus(), "ok"));
-
-    climb := ProcessResult(AgentProcess->New(PwdCommand())->SetWorkDir("{$scratch}/../.."), 0, Nil, 0);
-    Check("climbing out of the scratch directory is refused", Same(climb->GetStatus(), "error") & Has(climb->GetContent(), "not allowed"));
-  }
-
   # ---- the trace
 
   function : TestTrace() ~ Nil {
@@ -732,8 +606,6 @@ class AgentControlTest {
     registry := ToolRegistry->New();
     registry->Add(AgentTool->New("fast", "a test tool", schema, FastHandler->New()));
     buffer := AgentTraceBuffer->New();
-    path := "agent_control_trace.jsonl";
-    File->Delete(path);
     agent := Agent->New(ScriptedBackend->New(script), registry);
     agent->SetTrace(buffer);
     agent->Run("go");
@@ -747,20 +619,6 @@ class AgentControlTest {
     Check("run_end carries the stop reason and counts", Same(last->Get("stop_reason"), "completed") & Same(last->Get("model_calls"), "2") & Same(last->Get("tool_calls"), "1"));
     Check("events are numbered from 1", buffer->GetEvents()->Get(0)->GetSeq() = 1 & buffer->GetEvents()->Get(7)->GetSeq() = 8);
     Check("a key in an argument is redacted in the event", <>Has(first->ToString(), "abcdefghijklmnop") & Has(first->ToString(), "[REDACTED]"));
-
-    # the same events as JSON lines in a file
-    hello := Vector->New()<AgentReply>;
-    hello->AddBack(AgentReply->Say("hi"));
-    agent2 := Agent->New(ScriptedBackend->New(hello), Nil);
-    agent2->SetTrace(AgentTraceWriter->New(path));
-    agent2->SetBudget(AgentBudget->New()->SetMaxSteps(5));
-    agent2->Run("go");
-    text := FileReader->ReadFile(path);
-    lines := text->Trim()->Split('\n');
-    Check("one line per event", lines->Size() = 5);
-    Check("each line is JSON with its event name", Same(Json(lines[0])->Get("event")->GetString(), "run_start") & Same(Json(lines[4])->Get("event")->GetString(), "run_end"));
-    Check("the budget check is traced", Same(Json(lines[1])->Get("event")->GetString(), "budget_check") & Same(Json(lines[1])->Get("exhausted")->GetString(), "none"));
-    File->Delete(path);
 
     # an observer that also takes events gets them, without a separate sink
     watcher := TraceObserver->New();
@@ -829,8 +687,6 @@ class AgentControlTest {
     TestAbandonedWorker();
     TestTrace();
     TestRetries();
-    TestProcess();
-    TestProcessSandbox();
     Thread->Sleep(1700);
 
     if(@failures > 0) {

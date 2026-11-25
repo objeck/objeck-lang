@@ -1,0 +1,34 @@
+id: vector_stats
+category: collections
+difficulty: 2
+libs: gen_collect
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that stores the integers 4, 8, 15, 16, 23, 42 in a Collection Vector (the generic vector from the collection library, holding IntRef) and prints one line in exactly this form, computing both values from the vector:
+
+sum=108 max=42
+--- expected
+sum=108 max=42
+--- reference
+use Collection;
+
+class VectorStats {
+	function : Main(args : String[]) ~ Nil {
+		values := Vector->New()<IntRef>;
+		each(v in [4, 8, 15, 16, 23, 42]) {
+			values->AddBack(v);
+		};
+
+		sum := 0;
+		max := 0;
+		each(i : values) {
+			value := values->Get(i)->Get();
+			sum += value;
+			if(value > max) {
+				max := value;
+			};
+		};
+		"sum={$sum} max={$max}"->PrintLine();
+	}
+}

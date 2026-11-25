@@ -1,0 +1,58 @@
+use System.LLM.Eval, Collection;
+
+#~
+Compares two results files written by eval.obs (the PREFIX_results.json of two runs) with a paired bootstrap, prints the verdict and writes a Markdown report with both models side by side.
+
+Compile: obc -src compare.obs -lib llm_eval,ml,csv,json,gen_collect -dest compare.obe
+Run:     obr compare.obe a_results.json b_results.json [--out PREFIX] [--k 1,5] [--reps 2000] [--seed 1]
+
+The statistic is B minus A, so a positive difference means the second file is the better model. Only tasks both runs were asked, and attempts whose model call worked, are paired.
+~#
+class CompareResults {
+	function : Main(args : String[]) ~ Nil {
+		files := Vector->New()<String>;
+		i := 0;
+		while(i < args->Size()) {
+			if(args[i]->StartsWith("--")) {
+				# a flag without = takes the next argument as its value
+				if(<>args[i]->Contains("=")) {
+					i += 1;
+				};
+			}
+			else {
+				files->AddBack(args[i]);
+			};
+
+			i += 1;
+		};
+
+		if(files->Size() < 2) {
+			"usage: obr compare.obe a_results.json b_results.json [--out PREFIX] [--k 1,5] [--reps 2000] [--seed 1]"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		a := ModelResults->Load(files->Get(0));
+		b := ModelResults->Load(files->Get(1));
+		if(a = Nil | b = Nil) {
+			">>> both arguments must be results files written by eval.obs"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		reps := EvalArgs->Value(args, "--reps", "2000")->ToInt();
+		seed := EvalArgs->Value(args, "--seed", "1")->ToInt();
+		ks := EvalArgs->Ints(EvalArgs->Value(args, "--k", "1"), [1]);
+		comparison := ModelComparison->Of(a, b, reps, seed);
+
+		both := Vector->New()<ModelResults>;
+		both->AddBack(a);
+		both->AddBack(b);
+		prefix := EvalArgs->Value(args, "--out", "llm_eval_compare");
+		EvalReport->Save(prefix, both, ks, comparison, "LLM comparison: {$a->GetModel()} vs {$b->GetModel()}");
+
+		each(i : both) {
+			"{$both->Get(i)->GetModel()}: compile rate {$EvalText->Percent(both->Get(i)->GetCompileRate())}, pass@1 {$EvalText->Percent(both->Get(i)->GetPassAtK(1))}"->PrintLine();
+		};
+		comparison->GetVerdict()->PrintLine();
+		"wrote {$prefix}.md and {$prefix}.json"->PrintLine();
+	}
+}

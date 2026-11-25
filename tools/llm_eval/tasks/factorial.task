@@ -1,0 +1,24 @@
+id: factorial
+category: recursion
+difficulty: 2
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a recursive function Factorial(n : Int) ~ Int and print Factorial(10).
+--- expected
+3628800
+--- reference
+class Factorial {
+	function : Factorial(n : Int) ~ Int {
+		if(n <= 1) {
+			return 1;
+		};
+
+		return n * Factorial(n - 1);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Factorial(10)->PrintLine();
+	}
+}

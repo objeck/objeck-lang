@@ -1,0 +1,334 @@
+# EXTRA_LIBS: rag,ml_vector
+#~
+The RAG kit's prompt builder, answer and pipeline (System.ML.Rag), end to end with the toy
+embedder and the stub generator, so no key, model or network is involved.
+
+The prompt is compared with the exact text it must have (numbered sources, the cite-as-[n]
+instruction, the question). The pipeline is run over a three-document corpus: the answer must
+come from the document that holds it and cite it, a question the corpus does not cover must
+not reach the generator, re-adding a document must replace it, and a saved index must give the
+same answers when loaded into a fresh pipeline. Failures of the embedder and the generator are
+surfaced with their reason instead of ending the program, and user classes that implement
+RagEmbedder and RagGenerator plug in like the built-in ones.
+~#
+use System.ML.Rag;
+use System.ML.VectorSearch;
+use Collection;
+use System.IO.Filesystem;
+
+# a generator that fails on demand and records nothing: shows a user class implementing the interface
+class FailingGenerator implements RagGenerator {
+	New() {
+	}
+
+	method : public : Generate(prompt : String) ~ String {
+		return Nil;
+	}
+
+	method : public : GetError() ~ String {
+		return "model offline";
+	}
+}
+
+# an embedder that always fails
+class FailingEmbedder implements RagEmbedder {
+	New() {
+	}
+
+	method : public : GetDimension() ~ Int {
+		return 0;
+	}
+
+	method : public : GetError() ~ String {
+		return "no embedding service";
+	}
+
+	method : public : Embed(texts : String[]) ~ Float[,] {
+		return Nil;
+	}
+}
+
+# a user embedder: one dimension per vowel, so retrieval depends on its own rule
+class VowelEmbedder implements RagEmbedder {
+	@calls : Int;
+
+	New() {
+		@calls := 0;
+	}
+
+	method : public : GetCalls() ~ Int {
+		return @calls;
+	}
+
+	method : public : GetDimension() ~ Int {
+		return 5;
+	}
+
+	method : public : GetError() ~ String {
+		return "";
+	}
+
+	method : public : Embed(texts : String[]) ~ Float[,] {
+		@calls += 1;
+		out := Float->New[texts->Size(), 5];
+		vowels := "aeiou";
+		each(i : texts) {
+			lower := texts[i]->ToLower();
+			each(c : lower) {
+				at := vowels->Find(lower->Get(c));
+				if(at > -1) {
+					out[i, at] := out[i, at] + 1.0;
+				};
+			};
+		};
+
+		return out;
+	}
+}
+
+class RagPipelineTest {
+	@failures : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Match(id : String, text : String, rank : Int) ~ RagMatch {
+		return RagMatch->New(RagChunk->New(id, "src", 0, text), 1.0 / rank->As(Float), rank);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		TestPrompt();
+		TestCitations();
+		TestPipeline();
+		TestSaveLoad();
+		TestFailures();
+		TestUserClasses();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+	}
+
+	function : TestPrompt() ~ Nil {
+		"-- the prompt"->PrintLine();
+		builder := RagPromptBuilder->New();
+		matches := Vector->New()<RagMatch>;
+		matches->AddBack(Match("a#0", "Objeck is a language.", 1));
+		matches->AddBack(Match("b#3", "It has a\ngarbage   collector.\r\n", 2));
+
+		expected := builder->GetInstruction() + "\n\nSources:\n[1] Objeck is a language.\n[2] It has a garbage collector.\n\nQuestion: What is Objeck?\nAnswer:";
+		prompt := builder->Build("What is Objeck?", matches);
+		Check("the prompt is the instruction, numbered sources and the question", prompt->Equals(expected));
+		Check("it asks for [n] citations", prompt->Find("Cite the sources you use as [n]") > -1);
+		Check("it allows an I-do-not-know", prompt->Find("say that you do not know") > -1);
+		Check("line breaks inside a source become spaces", prompt->Find("[2] It has a garbage collector.\n") > -1);
+
+		none := builder->Build("Anything?", Vector->New()<RagMatch>);
+		Check("with no sources the prompt says so", none->Find("Sources:\n(none)\n") > -1 & none->Find("Question: Anything?\nAnswer:") > -1);
+		Check("a Nil list is the same as an empty one", builder->Build("Anything?", Nil)->Equals(none));
+
+		custom := RagPromptBuilder->New();
+		custom->SetInstruction("Reply in French. Cite as [n].");
+		Check("the instruction can be changed", custom->Build("q", matches)->StartsWith("Reply in French. Cite as [n].\n\nSources:\n[1]"));
+		custom->SetInstruction(Nil);
+		Check("a Nil instruction is ignored", custom->GetInstruction()->Equals("Reply in French. Cite as [n]."));
+
+		# a cap: the first source is always kept; later ones only while they fit
+		capped := RagPromptBuilder->New();
+		capped->SetMaxContext(30);
+		many := Vector->New()<RagMatch>;
+		many->AddBack(Match("a", "aaaaaaaaaaaaaaaaaaaa", 1));
+		many->AddBack(Match("b", "bbbbbbbbbb", 2));
+		many->AddBack(Match("c", "cc", 3));
+		chosen := capped->Select(many);
+		Check("sources are kept while they fit under the cap, in order", chosen->Size() = 2 & chosen->Get(1)->GetChunk()->GetId()->Equals("b"));
+		Check("the chunk after a refusal is not slipped in", capped->Select(many)->Size() = 2);
+		capped->SetMaxContext(5);
+		Check("the first source is kept even when it alone passes the cap", capped->Select(many)->Size() = 1);
+		capped->SetMaxContext(0);
+		Check("no cap keeps all", capped->Select(many)->Size() = 3 & capped->GetMaxContext() = 0);
+		Check("the prompt numbers only what was selected", capped->Build("q", many)->Find("[3] cc") > -1);
+	}
+
+	function : TestCitations() ~ Nil {
+		"-- citations"->PrintLine();
+		sources := Vector->New()<RagMatch>;
+		sources->AddBack(Match("a", "first", 1));
+		sources->AddBack(Match("b", "second", 2));
+		sources->AddBack(Match("c", "third", 3));
+
+		answer := RagAnswer->New("q", "See [2], and also [1, 3]; again [2]; but [9], [0], [x], [1x] and [ are not sources.", sources, "p");
+		cites := answer->GetCitations();
+		Check("citations are distinct, in order of first appearance, valid only", cites->Size() = 3 & cites[0] = 2 & cites[1] = 1 & cites[2] = 3);
+		cited := answer->GetCitedSources();
+		Check("cited sources follow the citations", cited->Size() = 3 & cited->Get(0)->GetChunk()->GetId()->Equals("b") & cited->Get(1)->GetChunk()->GetId()->Equals("a"));
+		Check("the question, text, prompt and sources are kept", answer->GetQuestion()->Equals("q") & answer->GetPrompt()->Equals("p") & answer->GetSources()->Size() = 3 & answer->GetText()->StartsWith("See"));
+		Check("no brackets, no citations", RagAnswer->New("q", "plain", sources, "")->GetCitations()->Size() = 0);
+		Check("a Nil text has none", RagAnswer->New("q", Nil, sources, "")->GetCitations()->Size() = 0);
+		Check("a bracket never closed is ignored", RagAnswer->New("q", "end [1", sources, "")->GetCitations()->Size() = 0);
+		Check("[1][2] adjacent", RagAnswer->New("q", "x[1][2]y", sources, "")->GetCitations()->Size() = 2);
+	}
+
+	function : Pipeline() ~ RagPipeline {
+		pipeline := RagPipeline->New(RagHashEmbedder->New(2048), RagStubGenerator->New());
+		pipeline->SetChunker(RagChunker->New(120, 10, RagSplit->PARAGRAPH));
+		pipeline->SetTopK(2);
+		pipeline->SetMinScore(0.15);
+		return pipeline;
+	}
+
+	function : Load(pipeline : RagPipeline) ~ Nil {
+		pipeline->AddText("vm.txt", "The virtual machine runs bytecode with a just-in-time compiler.\n\nIts garbage collector is generational and collects short-lived objects cheaply.");
+		pipeline->AddText("net.txt", "The net library speaks HTTP and TLS. A server answers requests on a port.\n\nSockets can be opened for TCP and UDP traffic.");
+		pipeline->AddText("ml.txt", "A vector index finds the nearest embeddings to a query vector.\n\nA classifier learns labels from features.");
+	}
+
+	function : TestPipeline() ~ Nil {
+		"-- the pipeline end to end"->PrintLine();
+		pipeline := Pipeline();
+		Check("there is no index before the first document", pipeline->GetIndex() = Nil);
+		Check("an empty index retrieves nothing and is not an error", pipeline->Retrieve("anything")->Size() = 0 & pipeline->GetError()->Size() = 0);
+		empty := pipeline->Answer("What does the garbage collector collect?");
+		Check("with nothing indexed the answer is the no-answer text", empty <> Nil & empty->GetText()->StartsWith("I do not know") & empty->GetSources()->Size() = 0);
+
+		Load(pipeline);
+		index := pipeline->GetIndex();
+		Check("the documents became chunks", index <> Nil & index->Size() = 5 & index->GetDimension() = 2048);
+		first := index->GetChunk("vm.txt#1");
+		Check("a chunk knows its source and offset", first <> Nil & first->GetSource()->Equals("vm.txt") & first->GetOffset() = 65);
+
+		answer := pipeline->Answer("What does the garbage collector collect?");
+		Check("a question is answered", answer <> Nil);
+		Check("the answer comes from the chunk that holds it", answer->GetText()->Equals("Its garbage collector is generational and collects short-lived objects cheaply. [1]"));
+		Check("the top source is that chunk", answer->GetSources()->Get(0)->GetChunk()->GetId()->Equals("vm.txt#1"));
+		Check("the answer cites it", answer->GetCitations()->Size() = 1 & answer->GetCitations()[0] = 1 & answer->GetCitedSources()->Get(0)->GetChunk()->GetSource()->Equals("vm.txt"));
+		Check("at most top-k sources are used", answer->GetSources()->Size() <= 2);
+		Check("the prompt was built from the sources", answer->GetPrompt()->Find("[1] Its garbage collector is generational") > -1 & answer->GetPrompt()->EndsWith("Question: What does the garbage collector collect?\nAnswer:"));
+
+		net := pipeline->Answer("Which protocols does the net library speak?");
+		Check("another question finds another document", net <> Nil & net->GetSources()->Get(0)->GetChunk()->GetSource()->Equals("net.txt") & net->GetText()->Find("HTTP and TLS") > -1);
+		vec := pipeline->Answer("Which index finds the nearest vector to a query?");
+		Check("and a third", vec <> Nil & vec->GetSources()->Get(0)->GetChunk()->GetSource()->Equals("ml.txt"));
+
+		retrieved := pipeline->Retrieve("garbage collector");
+		Check("Retrieve gives ranked matches", retrieved->Size() >= 1 & retrieved->Get(0)->GetRank() = 1 & retrieved->Get(0)->GetChunk()->GetId()->Equals("vm.txt#1"));
+
+		# a question the corpus does not cover: nothing clears the floor, and the generator is not asked
+		stub := RagStubGenerator->New();
+		quiet := RagPipeline->New(RagHashEmbedder->New(2048), stub);
+		quiet->SetMinScore(0.15);
+		Load(quiet);
+		Check("no generator call has happened while loading", stub->GetCalls() = 0);
+		none := quiet->Answer("What is the capital of Atlantis?");
+		Check("an uncovered question gets the no-answer text", none <> Nil & none->GetText()->StartsWith("I do not know") & none->GetSources()->Size() = 0 & none->GetPrompt()->Size() = 0);
+		Check("and the generator was not called", stub->GetCalls() = 0);
+		quiet->SetNoAnswerText("No idea.");
+		Check("the no-answer text can be changed", quiet->Answer("What is the capital of Atlantis?")->GetText()->Equals("No idea."));
+		quiet->Answer("What does the garbage collector collect?");
+		Check("a covered question calls the generator once with the prompt", stub->GetCalls() = 1 & stub->GetLastPrompt()->Find("Sources:\n[1]") > -1);
+
+		# re-adding a source replaces it
+		before := index->Size();
+		pipeline->AddText("net.txt", "Only one short paragraph about sockets now.");
+		Check("adding a document again replaces its chunks", index->Size() = before - 2 + 1 & <>index->Contains("net.txt#1"));
+		Check("the old text is no longer retrieved", pipeline->Retrieve("HTTP TLS server port")->Size() = 0);
+
+		# settings
+		pipeline->SetTopK(0);
+		Check("a top-k below 1 is ignored", pipeline->GetTopK() = 2);
+		pipeline->SetTopK(1);
+		Check("top-k limits retrieval", pipeline->Retrieve("virtual machine bytecode compiler garbage collector")->Size() = 1);
+		Check("an empty question is refused", pipeline->Retrieve("") = Nil & pipeline->GetError()->Size() > 0);
+		Check("and so is Answer", pipeline->Answer("") = Nil);
+	}
+
+	function : TestSaveLoad() ~ Nil {
+		"-- a saved index serves the same answers"->PrintLine();
+		pipeline := Pipeline();
+		Load(pipeline);
+		path := "rag_pipeline_test_{$Runtime->GetProcessId()}.idx";
+		File->Delete(path);
+		Check("the index is saved", pipeline->GetIndex()->Store(path));
+
+		fresh := Pipeline();
+		loaded := RagIndex->Load(path);
+		File->Delete(path);
+		Check("it loads", loaded <> Nil);
+		Check("a pipeline takes the loaded index", fresh->SetIndex(loaded));
+
+		questions := ["What does the garbage collector collect?", "Which protocols does the net library speak?", "Which index finds the nearest vector to a query?", "What is the capital of Atlantis?"];
+		same := true;
+		each(i : questions) {
+			a := pipeline->Answer(questions[i]);
+			b := fresh->Answer(questions[i]);
+			if(a = Nil | b = Nil | <>a->GetText()->Equals(b->GetText()) | <>a->GetPrompt()->Equals(b->GetPrompt())) {
+				same := false;
+			};
+		};
+		Check("the original and the reloaded pipeline give the same text and prompt for every question", same);
+
+		# the loaded index keeps growing with new documents
+		fresh->AddText("extra.txt", "Photosynthesis turns light into sugar in the leaves.");
+		Check("a loaded index takes new documents", loaded->Size() = 6 & fresh->Answer("How do leaves make sugar from light?")->GetSources()->Get(0)->GetChunk()->GetSource()->Equals("extra.txt"));
+
+		# a loaded index of another dimension is refused by an embedder of known size
+		wrong := RagPipeline->New(RagHashEmbedder->New(64), RagStubGenerator->New());
+		Check("an index of another dimension is refused", <>wrong->SetIndex(loaded) & wrong->GetError()->Find("2048") > -1);
+		Check("a Nil index is refused", <>wrong->SetIndex(Nil));
+	}
+
+	function : TestFailures() ~ Nil {
+		"-- failures are reported, not fatal"->PrintLine();
+		bad_embed := RagPipeline->New(FailingEmbedder->New(), RagStubGenerator->New());
+		Check("an embedder failure fails AddText with its reason", bad_embed->AddText("d", "some text") = -1 & bad_embed->GetError()->Find("no embedding service") > -1);
+		Check("and nothing is indexed", bad_embed->GetIndex() = Nil);
+
+		bad_gen := RagPipeline->New(RagHashEmbedder->New(256), FailingGenerator->New());
+		bad_gen->AddText("d", "The sky is blue on a clear day.");
+		Check("a generator failure gives Nil with its reason", bad_gen->Answer("What colour is the sky?") = Nil & bad_gen->GetError()->Find("model offline") > -1);
+
+		stub := RagStubGenerator->New();
+		stub->SetFail(true);
+		failing := RagPipeline->New(RagHashEmbedder->New(256), stub);
+		failing->AddText("d", "The sky is blue on a clear day.");
+		Check("the stub can be told to fail", failing->Answer("What colour is the sky?") = Nil & failing->GetError()->Find("generator") > -1);
+
+		p := RagPipeline->New(RagHashEmbedder->New(256), RagStubGenerator->New());
+		Check("a source is required", p->AddText("", "text") = -1 & p->AddText(Nil, "text") = -1);
+		p->SetChunker(RagChunker->New(0, 0));
+		Check("an invalid chunker is reported", p->AddText("d", "text") = -1 & p->GetError()->Find("chunker") > -1);
+		Check("Nil chunks are refused", p->AddChunks(Nil) = -1);
+		p->SetChunker(RagChunker->New(100, 0));
+		Check("an empty document adds no chunks", p->AddText("empty", "") = 0 & p->GetError()->Size() = 0);
+	}
+
+	function : TestUserClasses() ~ Nil {
+		"-- classes written by the user plug in"->PrintLine();
+		embedder := VowelEmbedder->New();
+		pipeline := RagPipeline->New(embedder, RagStubGenerator->New());
+		pipeline->SetBatchSize(2);
+		chunker := RagChunker->New(30, 0);
+		pipeline->SetChunker(chunker);
+		# 100 characters: chunks of 30, 30, 30 and 10; batches of 2 chunks are 2 embedder calls
+		text := "";
+		each(i : 10) {
+			text += "abcdefghij";
+		};
+		added := pipeline->AddText("t", text);
+		Check("chunks are embedded in batches", added = 4 & embedder->GetCalls() = 2);
+		Check("the index takes the dimension of the user's embedder", pipeline->GetIndex()->GetDimension() = 5);
+		pipeline->Answer("anything with vowels");
+		Check("a question costs one embedder call", embedder->GetCalls() = 3);
+	}
+}
