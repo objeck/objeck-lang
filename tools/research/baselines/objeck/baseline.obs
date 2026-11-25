@@ -1,0 +1,370 @@
+#~
+Cross-runtime baseline: allocator stall beside an ONNX Runtime inference loop (Objeck host).
+See tools/research/baselines/README.md for the workload definition shared by every host.
+
+  baseline.obe <model.onnx> <ep> <batch> <warmup_s> <measure_s>
+
+Prints one line:  RESULT {json}
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+use System.Concurrency;
+use System.Time;
+
+class Shared {
+	@mutex : ThreadMutex;
+	@phase : Int;	# 0 warm-up, 1 measuring, 2 stop
+
+	New() {
+		@mutex := ThreadMutex->New("baseline");
+	}
+
+	method : public : Phase() ~ Int {
+		phase := 0;
+		critical(@mutex) {
+			phase := @phase;
+		};
+		return phase;
+	}
+
+	method : public : SetPhase(p : Int) ~ Nil {
+		critical(@mutex) {
+			@phase := p;
+		};
+	}
+}
+
+class Block {
+	@data : Byte[];
+
+	New(data : Byte[]) {
+		@data := data;
+	}
+}
+
+class Allocator from Thread {
+	@shared : Shared;
+	@count : Int;
+	@times : Float[];
+	@seed : Int;
+	@a : Timer;
+	@b : Timer;
+	@cur : Int;
+
+	New(shared : Shared) {
+		Parent("allocator");
+		@shared := shared;
+		@times := Float->New[1200000];
+		@seed := 12345;
+	}
+
+	method : public : GetCount() ~ Int {
+		return @count;
+	}
+
+	method : public : GetTimes() ~ Float[] {
+		return @times;
+	}
+
+	method : Tick() ~ Float {
+		if(@cur = 0) {
+			@b->Start();
+			@a->End();
+			@cur := 1;
+			return @a->GetElapsedTime();
+		};
+
+		@a->Start();
+		@b->End();
+		@cur := 0;
+		return @b->GetElapsedTime();
+	}
+
+	method : Next() ~ Int {
+		@seed := (@seed * 1103515245 + 12345) % 2147483648;
+		return @seed;
+	}
+
+	method : Size() ~ Int {
+		return 1024 + (Next() / 256) % 64513;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		live := Block->New[8192];
+		for(i := 0; i < 8192; i += 1;) {
+			live[i] := Block->New(Byte->New[Size()]);
+		};
+
+		# Timer->End() overwrites its start with the elapsed time, so there is no "now" to read.
+		# Two timers are handed off instead (start one, then end the other): every Tick() returns
+		# the time since the previous Tick() and no interval is lost between them.
+		@a := Timer->New(true);
+		@b := Timer->New();
+		@cur := 0;
+		period := 0.0001;
+		# The handoff counts a few hundred nanoseconds twice per Tick(), so the spin target is
+		# stretched until the realised rate is 10 k/s (the sample count in the output shows it).
+		spin_target := 0.000124;
+		k := 0;
+		phase := 0;
+		while(phase < 2) {
+			spent := 0.0;
+			while(spent < spin_target) {
+				spent += Tick();
+			};
+
+			size := Size();
+			data := Byte->New[size];
+			data[0] := (k % 251)->As(Byte);
+			data[size - 1] := (k % 251)->As(Byte);
+			if(k % 16 = 0) {
+				live[Next() % 8192] := Block->New(data);
+			};
+
+			spent += Tick();
+			if(phase = 1 & @count < @times->Size()) {
+				stall := (spent - period) * 1000000.0;
+				if(stall < 0.0) {
+					stall := 0.0;
+				};
+				@times[@count] := stall;
+				@count += 1;
+			};
+			k += 1;
+			if(k % 64 = 0) {
+				p := @shared->Phase();
+				if(p <> phase) {
+					phase := p;
+					if(p = 1) {
+						@count := 0;
+					};
+				};
+			};
+		};
+	}
+}
+
+class Inference from Thread {
+	@session : Session;
+	@shared : Shared;
+	@batch : Int;
+	@runs : Int;
+	@times : Float[];
+	@first : Float[];
+
+	@bound : Bool;
+
+	New(session : Session, shared : Shared, batch : Int, bound : Bool) {
+		Parent("inference");
+		@session := session;
+		@shared := shared;
+		@batch := batch;
+		@bound := bound;
+		@times := Float->New[400000];
+	}
+
+	method : public : GetRuns() ~ Int {
+		return @runs;
+	}
+
+	method : public : GetTimes() ~ Float[] {
+		return @times;
+	}
+
+	method : public : GetFirst() ~ Float[] {
+		return @first;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		info := @session->GetModelInfo();
+		in_spec := info->GetInputs()->Get(0);
+		declared := in_spec->GetShape();
+		shape := Int->New[declared->Size()];
+		count := 1;
+		for(i := 0; i < declared->Size(); i += 1;) {
+			shape[i] := declared[i];
+			if(declared[i] < 0) {
+				shape[i] := @batch;
+			};
+			count *= shape[i];
+		};
+
+		values := Float->New[count];
+		for(i := 0; i < count; i += 1;) {
+			values[i] := ((i * 7919) % 1000)->ToFloat() / 1000.0;
+		};
+
+		if(@bound) {
+			RunBound(in_spec, shape, values);
+			return;
+		};
+
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New(in_spec->GetName(), in_spec->GetDatatype(), shape, values));
+
+		timer := Timer->New();
+		phase := 0;
+		while(phase < 2) {
+			timer->Start();
+			outputs := @session->Run(inputs);
+			timer->End();
+			if(@first = Nil) {
+				@first := outputs->Get(0)->GetFloats();
+			};
+			phase := @shared->Phase();
+			if(phase = 1 & @runs < @times->Size()) {
+				@times[@runs] := timer->GetElapsedTime() * 1000.0;
+				@runs += 1;
+			};
+			if(phase = 0) {
+				@runs := 0;
+			};
+		};
+	}
+
+	# BoundSession with the same host traffic per run as every other host (upload the input, run, download
+	# the output): the "bound_copy" mode of programs/tests/onnx_gpu/bench_run.obs.
+	method : RunBound(in_spec : TensorSpec, shape : Int[], values : Float[]) ~ Nil {
+		out_spec := @session->GetModelInfo()->GetOutputs()->Get(0);
+		declared := out_spec->GetShape();
+		out_shape := Int->New[declared->Size()];
+		out_count := 1;
+		for(i := 0; i < declared->Size(); i += 1;) {
+			out_shape[i] := declared[i];
+			if(declared[i] < 0) {
+				out_shape[i] := @batch;
+			};
+			out_count *= out_shape[i];
+		};
+
+		input := DeviceTensor->ForInput(@session, in_spec->GetName(), shape);
+		output := DeviceTensor->ForOutput(@session, out_spec->GetName(), out_shape);
+		bound := BoundSession->New(@session);
+		bound->BindInput(in_spec->GetName(), input);
+		bound->BindOutput(out_spec->GetName(), output);
+		host := Float->New[out_count];
+
+		timer := Timer->New();
+		phase := 0;
+		while(phase < 2) {
+			timer->Start();
+			input->Upload(values);
+			bound->Run();
+			output->Download(host);
+			timer->End();
+			if(@first = Nil) {
+				@first := Float->New[out_count];
+				for(i := 0; i < out_count; i += 1;) {
+					@first[i] := host[i];
+				};
+			};
+			phase := @shared->Phase();
+			if(phase = 1 & @runs < @times->Size()) {
+				@times[@runs] := timer->GetElapsedTime() * 1000.0;
+				@runs += 1;
+			};
+			if(phase = 0) {
+				@runs := 0;
+			};
+		};
+
+		bound->Close();
+		input->Close();
+		output->Close();
+	}
+}
+
+class Baseline {
+	function : Pct(sorted : Float[], n : Int, p : Float) ~ Float {
+		at := ((n - 1)->ToFloat() * p)->ToInt();
+		return sorted[at];
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 5) {
+			"usage: baseline.obe <model.onnx> <ep> <batch> <warmup_s> <measure_s>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		config := Map->New()<String, String>;
+		config->Insert("ep", args[1]);
+		session := Session->New(args[0], config);
+		if(<>session->IsOpen()) {
+			"the session did not open"->ErrorLine();
+			Runtime->Exit(3);
+		};
+
+		ep := args[1];
+		batch := args[2]->ToInt();
+		warmup := args[3]->ToInt();
+		measure := args[4]->ToInt();
+		shared := Shared->New();
+		bound := false;
+		if(args->Size() > 5) {
+			bound := args[5]->Equals("bound");
+		};
+		inference := Inference->New(session, shared, batch, bound);
+		allocator := Allocator->New(shared);
+
+		inference->Execute(Nil);
+		allocator->Execute(Nil);
+		Thread->Sleep(warmup * 1000);
+		minor0 := Monitor->MinorCollections();
+		major0 := Monitor->MajorCollections();
+		shared->SetPhase(1);
+		wall := Timer->New(true);
+		Thread->Sleep(measure * 1000);
+		wall->End();
+		elapsed := wall->GetElapsedTime();
+		minor1 := Monitor->MinorCollections();
+		major1 := Monitor->MajorCollections();
+		max_pause := Monitor->MaxPauseMicros();
+		avg_pause := Monitor->AvgPauseMicros();
+		shared->SetPhase(2);
+		inference->Join();
+		allocator->Join();
+
+		runs := inference->GetRuns();
+		n := allocator->GetCount();
+		if(runs < 3 | n < 3) {
+			"too few samples"->ErrorLine();
+			Runtime->Exit(4);
+		};
+
+		st := Float->New[n];
+		for(i := 0; i < n; i += 1;) {
+			st[i] := allocator->GetTimes()[i];
+		};
+		it := Float->New[runs];
+		for(i := 0; i < runs; i += 1;) {
+			it[i] := inference->GetTimes()[i];
+		};
+		st := Float->Sort(st);
+		it := Float->Sort(it);
+
+		first := inference->GetFirst();
+		total := 0.0;
+		for(i := 0; i < first->Size(); i += 1;) {
+			total += first[i];
+		};
+		best := 0;
+		for(i := 0; i < 1000; i += 1;) {
+			if(first[i] > first[best]) {
+				best := i;
+			};
+		};
+
+		minor := minor1 - minor0;
+		major := major1 - major0;
+		tput := (runs * batch)->ToFloat() / elapsed;
+		p95 := Pct(st, n, 0.95);
+		p99 := Pct(st, n, 0.99);
+		p999 := Pct(st, n, 0.999);
+		ip95 := Pct(it, runs, 0.95);
+		ip99 := Pct(it, runs, 0.99);
+		"RESULT {\"stall_us\":{\"n\":{$n},\"p50\":{$st[n / 2]},\"p95\":{$p95},\"p99\":{$p99},\"p999\":{$p999},\"max\":{$st[n - 1]}},\"infer_ms\":{\"n\":{$runs},\"p50\":{$it[runs / 2]},\"p95\":{$ip95},\"p99\":{$ip99},\"max\":{$it[runs - 1]}},\"img_s\":{$tput},\"gc\":{\"minor\":{$minor},\"major\":{$major},\"max_pause_us_cum\":{$max_pause},\"avg_pause_us_cum\":{$avg_pause}},\"checksum\":{\"sum\":{$total},\"argmax0\":{$best},\"v0\":{$first[0]},\"v1\":{$first[1]},\"v2\":{$first[2]}}}"->PrintLine();
+		session->Close();
+	}
+}
