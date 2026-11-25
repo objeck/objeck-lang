@@ -1,0 +1,305 @@
+# EXTRA_LIBS: ml_boost,ml,gen_collect,csv
+#~
+System.ML.Boost against scikit-learn and XGBoost.
+
+The datasets are generated here with System.ML.Random (a MINSTD generator, state = 16807 *
+state mod 2147483647) and the same recipe as programs/regression/ml_boost_ref/boost_ref.py,
+which produced the REF_* numbers below in a scratch virtual environment (scikit-learn 1.9.1,
+xgboost 3.4.1; rerun the script to regenerate them). 500 rows train, 200 test, 100 stages,
+learning rate 0.1, depth 3.
+
+XGBoost ran with tree_method=exact, min_child_weight 0 and the same starting scores as
+ml_boost, so ml_boost must agree with it almost exactly: predictions to 1e-4 (its leaf
+values are float32), losses to 0.5%. scikit-learn grows each tree on the first derivative
+alone and fits leaves by line search, so against it the test losses must agree within 2%
+for squared error (and 5% to 15% where the two methods differ more, noted per check).
+~#
+use System.ML;
+use System.ML.Boost;
+
+class MlBoostAccuracy {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# ---- squared error regression
+		X := Float->New[700, 6];
+		y := Float->New[700];
+		MakeRegression(X, y);
+		trx := Rows(X, 0, 500);
+		try_ := Part(y, 0, 500);
+		tex := Rows(X, 500, 200);
+		tey := Part(y, 500, 200);
+
+		REF_SK_REG_MSE := 0.03762721077550026;
+		REF_XGB0_REG_MSE := 0.03749525176464665;
+		REF_XGB1_REG_MSE := 0.03806844939203181;
+		REF_SK_ABS_MAE := 0.17042755004883092;
+		REF_SK_HUBER_MAE := 0.15892048643535495;
+		xgb0_first := [1.740381, -0.208675, -0.331803, -0.908788, 0.780714];
+		xgb1_first := [1.777216, -0.297663, -0.237144, -0.916149, 0.753162];
+
+		m0 := GradientBoostingRegressor->New(100, 0.1, 3, 1);
+		ok := Report("regression lambda 0 fits", m0->Fit(trx, try_)) & ok;
+		p0 := m0->Predict(tex);
+		mse0 := Mse(p0, tey);
+		ok := Report("regression lambda 0: test mse {$mse0} within 0.5% of xgboost {$REF_XGB0_REG_MSE}", Rel(mse0, REF_XGB0_REG_MSE) < 0.005) & ok;
+		ok := Report("regression lambda 0: test mse within 2% of scikit-learn {$REF_SK_REG_MSE}", Rel(mse0, REF_SK_REG_MSE) < 0.02) & ok;
+		close := true;
+		each(i : 5) {
+			if(Float->Abs(p0[i] - xgb0_first[i]) > 0.0001) {
+				close := false;
+			};
+		};
+		ok := Report("regression lambda 0: first five predictions match xgboost to 1e-4", close) & ok;
+		ok := Report("regression lambda 0: Score is the test mse", Float->Abs(m0->Score(tex, tey) - mse0) < 0.000000000001) & ok;
+
+		m1 := GradientBoostingRegressor->New(100, 0.1, 3, 1);
+		m1->SetLambda(1.0);
+		m1->Fit(trx, try_);
+		p1 := m1->Predict(tex);
+		mse1 := Mse(p1, tey);
+		ok := Report("regression lambda 1: test mse {$mse1} within 0.5% of xgboost {$REF_XGB1_REG_MSE}", Rel(mse1, REF_XGB1_REG_MSE) < 0.005) & ok;
+		close := true;
+		each(i : 5) {
+			if(Float->Abs(p1[i] - xgb1_first[i]) > 0.0001) {
+				close := false;
+			};
+		};
+		ok := Report("regression lambda 1: first five predictions match xgboost to 1e-4", close) & ok;
+
+		# absolute and Huber loss: scikit-learn's leaf rules (median / median + clipped mean)
+		ma := GradientBoostingRegressor->New(BoostLoss->ABSOLUTE, 100, 0.1, 3, 1);
+		ma->Fit(trx, try_);
+		mae_a := Mae(ma->Predict(tex), tey);
+		ok := Report("absolute loss: test mae {$mae_a} within 10% of scikit-learn {$REF_SK_ABS_MAE}", Rel(mae_a, REF_SK_ABS_MAE) < 0.10) & ok;
+		mh := GradientBoostingRegressor->New(BoostLoss->HUBER, 100, 0.1, 3, 1);
+		mh->Fit(trx, try_);
+		mae_h := Mae(mh->Predict(tex), tey);
+		ok := Report("huber loss: test mae {$mae_h} within 10% of scikit-learn {$REF_SK_HUBER_MAE}", Rel(mae_h, REF_SK_HUBER_MAE) < 0.10) & ok;
+
+		# ---- binary classification
+		bx := Float->New[700, 6];
+		by := Int->New[700];
+		MakeBinary(bx, by);
+		btrx := Rows(bx, 0, 500);
+		btry := IntPart(by, 0, 500);
+		btex := Rows(bx, 500, 200);
+		btey := IntPart(by, 500, 200);
+
+		REF_SK_BIN_ACC := 0.78;
+		REF_SK_BIN_LL := 0.46099712699964746;
+		REF_XGB0_BIN_ACC := 0.81;
+		REF_XGB0_BIN_LL := 0.40997663232956255;
+		REF_XGB1_BIN_ACC := 0.79;
+		REF_XGB1_BIN_LL := 0.4267559223616263;
+		xgb0_bin := [0.787554, 0.094832, 0.096388, 0.998784, 0.002038];
+
+		c0 := GradientBoostingClassifier->New(100, 0.1, 3, 1);
+		ok := Report("binary lambda 0 fits", c0->Fit(btrx, btry)) & ok;
+		acc0 := c0->Score(btex, btey);
+		ll0 := c0->LogLoss(btex, btey);
+		ok := Report("binary lambda 0: accuracy {$acc0} equals xgboost {$REF_XGB0_BIN_ACC}", Float->Abs(acc0 - REF_XGB0_BIN_ACC) < 0.0000001) & ok;
+		ok := Report("binary lambda 0: log loss {$ll0} within 1% of xgboost {$REF_XGB0_BIN_LL}", Rel(ll0, REF_XGB0_BIN_LL) < 0.01) & ok;
+		proba := c0->PredictProba(btex);
+		close := true;
+		each(i : 5) {
+			if(Float->Abs(proba[i, 1] - xgb0_bin[i]) > 0.03) {
+				close := false;
+				"    row {$i}: {$proba[i, 1]} against xgboost {$xgb0_bin[i]}"->PrintLine();
+			};
+		};
+		ok := Report("binary lambda 0: first five probabilities match xgboost to 0.03 (lambda 0 divides by tiny Hessians, so tree choices drift; lambda 1 below agrees to 1e-5)", close) & ok;
+		ok := Report("binary lambda 0: accuracy within 0.04 of scikit-learn {$REF_SK_BIN_ACC} (a different split rule)", Float->Abs(acc0 - REF_SK_BIN_ACC) <= 0.04) & ok;
+		ok := Report("binary lambda 0: log loss within 15% of scikit-learn {$REF_SK_BIN_LL}", Rel(ll0, REF_SK_BIN_LL) < 0.15) & ok;
+
+		c1 := GradientBoostingClassifier->New(100, 0.1, 3, 1);
+		c1->SetLambda(1.0);
+		c1->Fit(btrx, btry);
+		acc1 := c1->Score(btex, btey);
+		ll1 := c1->LogLoss(btex, btey);
+		ok := Report("binary lambda 1: accuracy {$acc1} equals xgboost {$REF_XGB1_BIN_ACC}", Float->Abs(acc1 - REF_XGB1_BIN_ACC) < 0.0000001) & ok;
+		ok := Report("binary lambda 1: log loss {$ll1} within 1% of xgboost {$REF_XGB1_BIN_LL}", Rel(ll1, REF_XGB1_BIN_LL) < 0.01) & ok;
+
+		xgb1_bin := [0.757344, 0.097297, 0.163664, 0.997049, 0.010977];
+		p1b := c1->PredictProba(btex);
+		close := true;
+		each(i : 5) {
+			if(Float->Abs(p1b[i, 1] - xgb1_bin[i]) > 0.001) {
+				close := false;
+			};
+		};
+		ok := Report("binary lambda 1: first five probabilities match xgboost to 1e-3", close) & ok;
+
+		# ---- multiclass
+		mx := Float->New[700, 5];
+		my := Int->New[700];
+		MakeMulticlass(mx, my);
+		mtrx := Rows(mx, 0, 500);
+		mtry := IntPart(my, 0, 500);
+		mtex := Rows(mx, 500, 200);
+		mtey := IntPart(my, 500, 200);
+
+		REF_SK_MULTI_ACC := 0.835;
+		REF_SK_MULTI_LL := 0.3561566507517717;
+		REF_XGB0_MULTI_ACC := 0.855;
+		REF_XGB0_MULTI_LL := 0.33406203985214233;
+		REF_XGB1_MULTI_ACC := 0.83;
+		REF_XGB1_MULTI_LL := 0.33146432042121887;
+		xgb0_rows := [0.000655, 0.858838, 0.140507, 0.070317, 0.017782, 0.911901, 0.29393, 0.636601, 0.069469];
+
+		d0 := GradientBoostingClassifier->New(100, 0.1, 3, 1);
+		ok := Report("multiclass lambda 0 fits", d0->Fit(mtrx, mtry)) & ok;
+		macc0 := d0->Score(mtex, mtey);
+		mll0 := d0->LogLoss(mtex, mtey);
+		ok := Report("multiclass lambda 0: accuracy {$macc0} equals xgboost {$REF_XGB0_MULTI_ACC}", Float->Abs(macc0 - REF_XGB0_MULTI_ACC) < 0.0000001) & ok;
+		ok := Report("multiclass lambda 0: log loss {$mll0} within 1% of xgboost {$REF_XGB0_MULTI_LL}", Rel(mll0, REF_XGB0_MULTI_LL) < 0.01) & ok;
+		mp := d0->PredictProba(mtex);
+		close := true;
+		each(i : 3) {
+			each(k : 3) {
+				if(Float->Abs(mp[i, k] - xgb0_rows[i * 3 + k]) > 0.001) {
+					close := false;
+				};
+			};
+		};
+		ok := Report("multiclass lambda 0: first three probability rows match xgboost to 1e-3", close) & ok;
+		ok := Report("multiclass lambda 0: accuracy within 0.04 of scikit-learn {$REF_SK_MULTI_ACC}", Float->Abs(macc0 - REF_SK_MULTI_ACC) <= 0.04) & ok;
+		ok := Report("multiclass lambda 0: log loss within 15% of scikit-learn {$REF_SK_MULTI_LL}", Rel(mll0, REF_SK_MULTI_LL) < 0.15) & ok;
+
+		d1 := GradientBoostingClassifier->New(100, 0.1, 3, 1);
+		d1->SetLambda(1.0);
+		d1->Fit(mtrx, mtry);
+		macc1 := d1->Score(mtex, mtey);
+		mll1 := d1->LogLoss(mtex, mtey);
+		ok := Report("multiclass lambda 1: accuracy {$macc1} equals xgboost {$REF_XGB1_MULTI_ACC}", Float->Abs(macc1 - REF_XGB1_MULTI_ACC) < 0.0000001) & ok;
+		ok := Report("multiclass lambda 1: log loss {$mll1} within 1% of xgboost {$REF_XGB1_MULTI_LL}", Rel(mll1, REF_XGB1_MULTI_LL) < 0.01) & ok;
+
+		# ---- the histogram search is a different (coarser) split finder; it must stay close
+		h0 := GradientBoostingRegressor->New(100, 0.1, 3, 1);
+		h0->SetHistogram(255);
+		h0->Fit(trx, try_);
+		hmse := Mse(h0->Predict(tex), tey);
+		ok := Report("histogram search: test mse {$hmse} within 15% of the exact search {$mse0}", Rel(hmse, mse0) < 0.15) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+		"ml_boost_accuracy: ok"->PrintLine();
+	}
+
+	function : Rel(a : Float, b : Float) ~ Float {
+		return Float->Abs(a - b) / Float->Abs(b);
+	}
+
+	function : Mse(p : Float[], y : Float[]) ~ Float {
+		s := 0.0;
+		each(i : p) {
+			d := p[i] - y[i];
+			s += d * d;
+		};
+
+		return s / p->Size()->As(Float);
+	}
+
+	function : Mae(p : Float[], y : Float[]) ~ Float {
+		s := 0.0;
+		each(i : p) {
+			s += Float->Abs(p[i] - y[i]);
+		};
+
+		return s / p->Size()->As(Float);
+	}
+
+	function : Rows(X : Float[,], start : Int, count : Int) ~ Float[,] {
+		cols := X->Size()[1];
+		result := Float->New[count, cols];
+		each(i : count) {
+			each(j : cols) {
+				result[i, j] := X[start + i, j];
+			};
+		};
+
+		return result;
+	}
+
+	function : Part(y : Float[], start : Int, count : Int) ~ Float[] {
+		result := Float->New[count];
+		each(i : count) {
+			result[i] := y[start + i];
+		};
+
+		return result;
+	}
+
+	function : IntPart(y : Int[], start : Int, count : Int) ~ Int[] {
+		result := Int->New[count];
+		each(i : count) {
+			result[i] := y[start + i];
+		};
+
+		return result;
+	}
+
+	# seed 11: y = sin(3 x0) + x1^2 + 0.5 x2 x3 + 0.3 x4 + 0.2 noise
+	function : MakeRegression(X : Float[,], y : Float[]) ~ Nil {
+		r := System.ML.Random->New(11);
+		each(i : 700) {
+			each(j : 6) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			noise := r->NextReal() - 0.5;
+			y[i] := (3.0 * X[i, 0])->Sin() + X[i, 1] * X[i, 1] + 0.5 * X[i, 2] * X[i, 3] + 0.3 * X[i, 4] + 0.2 * noise;
+		};
+	}
+
+	# seed 12: class 1 when 1.5 x0 + 2 x1 x2 - x3 + 1.2 noise > 0
+	function : MakeBinary(X : Float[,], y : Int[]) ~ Nil {
+		r := System.ML.Random->New(12);
+		each(i : 700) {
+			each(j : 6) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			noise := r->NextReal() - 0.5;
+			z := 1.5 * X[i, 0] + 2.0 * X[i, 1] * X[i, 2] - X[i, 3] + 1.2 * noise;
+			if(z > 0.0) {
+				y[i] := 1;
+			};
+		};
+	}
+
+	# seed 13: the class with the largest of x0 + x1, x2 - x0, x3 + x4 x1, each plus 0.6 noise
+	function : MakeMulticlass(X : Float[,], y : Int[]) ~ Nil {
+		r := System.ML.Random->New(13);
+		each(i : 700) {
+			each(j : 5) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			s := [X[i, 0] + X[i, 1], X[i, 2] - X[i, 0], X[i, 3] + X[i, 4] * X[i, 1]];
+			best := -1.0e300;
+			bk := 0;
+			each(k : 3) {
+				v := s[k] + 0.6 * (r->NextReal() - 0.5);
+				if(v > best) {
+					best := v;
+					bk := k;
+				};
+			};
+
+			y[i] := bk;
+		};
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+
+		return passed;
+	}
+}

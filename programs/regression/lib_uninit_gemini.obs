@@ -1,0 +1,27 @@
+# EXTRA_LIBS: gemini,misc,json,net,net_server,cipher
+#~
+A reply part of a kind the Gemini library does not model (here a function call with no callback
+registered) was added as a copy of the part before it, because the part variable declared in the
+loop kept the previous iteration's value. The library source now sets it on every pass, so the reply
+below has the one text part it carries.
+~#
+use Collection, API.Google.Gemini;
+
+class LibUninitGemini {
+	function : Main(args : String[]) ~ Nil {
+		body := "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"hi\"},{\"functionCall\":{\"name\":\"get_current_weather\",\"args\":{\"location\":\"Boston\"}}}]},\"finishReason\":\"STOP\",\"index\":0}]}";
+		candidates := Model->ParseCandidates(body);
+		if(candidates = Nil | candidates->Size() <> 1) {
+			"FAIL: the reply does not parse"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		text := candidates->Get(0)->GetAllText();
+		if(text = Nil | <>text->Equals("hi")) {
+			"FAIL: the unmodelled part was added as a copy of the text part: '{$text}'"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"All library uninitialized-local tests passed"->PrintLine();
+	}
+}

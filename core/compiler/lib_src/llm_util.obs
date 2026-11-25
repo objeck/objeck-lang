@@ -1,0 +1,3159 @@
+#~~
+Objeck LLM utilities: prompt templates, token estimation, JSON Schema validation and structured calls
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use Data.JSON;
+use Query.RegEx;
+
+#~
+Helpers for talking to a chat model, written in Objeck with no network code of their own: PromptTemplate and PromptBuilder build prompts, TokenEstimator and ContextWindow keep them inside a budget, JsonSchema checks a JSON value against a schema and reports every problem with a JSON pointer, and StructuredCall asks any chat backend (the ChatFn interface) for JSON that matches a schema, extracting the JSON from a chatty reply and retrying with the validation errors until the reply is right. Compile with -lib llm_util,regex,json,gen_collect. It links no client: implement ChatFn over the one you use. Guide: docs/AI.md, "LLM utilities".
+~#
+bundle API.LlmUtil {
+	#~
+	Character tests shared by the classes in this library. Plain ASCII; bytes above 127 are never a letter, digit or space.
+	~#
+	class LlmChars {
+		function : IsLetter(c : Char) ~ Bool {
+			return (c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z');
+		}
+
+		function : IsUpper(c : Char) ~ Bool {
+			return c >= 'A' & c <= 'Z';
+		}
+
+		function : IsLower(c : Char) ~ Bool {
+			return c >= 'a' & c <= 'z';
+		}
+
+		function : IsDigit(c : Char) ~ Bool {
+			return c >= '0' & c <= '9';
+		}
+
+		function : IsSpace(c : Char) ~ Bool {
+			return c = ' ' | c = '\t' | c = '\n' | c = '\r';
+		}
+
+		function : IsNameChar(c : Char) ~ Bool {
+			return IsLetter(c) | IsDigit(c) | c = '_' | c = '.' | c = '-' | c = '@';
+		}
+
+		function : Contains(set : String, c : Char) ~ Bool {
+			return set->Find(c) > -1;
+		}
+	}
+
+	#~
+	One message of a conversation: a role ("system", "user" or "assistant") and its text.
+	~#
+	class PromptTurn {
+		@role : String;
+		@text : String;
+
+		#~
+		Constructor
+		@param role "system", "user" or "assistant"
+		@param text message text
+		~#
+		New(role : String, text : String) {
+			@role := role;
+			@text := text;
+		}
+
+		#~
+		Gets the role
+		@return role
+		~#
+		method : public : GetRole() ~ String {
+			return @role;
+		}
+
+		#~
+		Gets the text
+		@return text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		The turn as "role: text"
+		@return string form
+		~#
+		method : public : ToString() ~ String {
+			return "{$@role}: {$@text}";
+		}
+	}
+
+	#~
+	The values a PromptTemplate renders with: named text values and named lists of text.
+
+```
+vars := PromptVars->New()->Set("name", "Ada")->SetInt("age", 36);
+vars->SetArray("skills", ["math", "engines"]);
+```
+	~#
+	class PromptVars {
+		@scalars : Map<String, String>;
+		@lists : Map<String, Vector<String>>;
+
+		New() {
+			@scalars := Map->New()<String, String>;
+			@lists := Map->New()<String, Vector<String>>;
+		}
+
+		#~
+		Sets a text value
+		@param name variable name
+		@param value text; a Nil value is stored as empty text
+		@return self for chaining
+		~#
+		method : public : Set(name : String, value : String) ~ PromptVars {
+			if(name <> Nil) {
+				if(value = Nil) {
+					@scalars->Insert(name, "");
+				}
+				else {
+					@scalars->Insert(name, value);
+				};
+			};
+			return @self;
+		}
+
+		#~
+		Sets an integer value, rendered as text
+		@param name variable name
+		@param value value
+		@return self for chaining
+		~#
+		method : public : SetInt(name : String, value : Int) ~ PromptVars {
+			return Set(name, value->ToString());
+		}
+
+		#~
+		Sets a float value, rendered as text
+		@param name variable name
+		@param value value
+		@return self for chaining
+		~#
+		method : public : SetFloat(name : String, value : Float) ~ PromptVars {
+			return Set(name, value->ToShortString());
+		}
+
+		#~
+		Sets a Boolean value, rendered as "true" or "false"
+		@param name variable name
+		@param value value
+		@return self for chaining
+		~#
+		method : public : SetBool(name : String, value : Bool) ~ PromptVars {
+			if(value) {
+				return Set(name, "true");
+			};
+			return Set(name, "false");
+		}
+
+		#~
+		Sets a list of text values for {{#each name}}
+		@param name variable name
+		@param values the items
+		@return self for chaining
+		~#
+		method : public : SetList(name : String, values : Vector<String>) ~ PromptVars {
+			if(name <> Nil & values <> Nil) {
+				@lists->Insert(name, values);
+			};
+			return @self;
+		}
+
+		#~
+		Sets a list of text values from an array
+		@param name variable name
+		@param values the items
+		@return self for chaining
+		~#
+		method : public : SetArray(name : String, values : String[]) ~ PromptVars {
+			if(name <> Nil & values <> Nil) {
+				list := Vector->New()<String>;
+				each(i : values) {
+					list->AddBack(values[i]);
+				};
+				@lists->Insert(name, list);
+			};
+			return @self;
+		}
+
+		#~
+		Gets a text value
+		@param name variable name
+		@return the value, or Nil when it is not set
+		~#
+		method : public : Get(name : String) ~ String {
+			if(name = Nil) {
+				return Nil;
+			};
+			return @scalars->Find(name);
+		}
+
+		#~
+		Gets a list
+		@param name variable name
+		@return the list, or Nil when it is not set
+		~#
+		method : public : GetList(name : String) ~ Vector<String> {
+			if(name = Nil) {
+				return Nil;
+			};
+			return @lists->Find(name);
+		}
+
+		#~
+		Checks for a text value
+		@param name variable name
+		@return true if set
+		~#
+		method : public : Has(name : String) ~ Bool {
+			return Get(name) <> Nil;
+		}
+
+		#~
+		Checks for a list
+		@param name variable name
+		@return true if set
+		~#
+		method : public : HasList(name : String) ~ Bool {
+			return GetList(name) <> Nil;
+		}
+	}
+
+	#~
+	One parsed piece of a template: literal text, a variable, an {{#each}} loop or an {{#if}} block.
+	~#
+	class TemplateNode {
+		@kind : Int;
+		@text : String;
+		@filter : String;
+		@fallback : String;
+		@optional : Bool;
+		@in_else : Bool;
+		@body : Vector<TemplateNode>;
+		@else_body : Vector<TemplateNode>;
+
+		# kind: 0 literal text, 1 variable, 2 each, 3 if
+		New(kind : Int, text : String) {
+			@kind := kind;
+			@text := text;
+			@optional := false;
+			@in_else := false;
+			@body := Vector->New()<TemplateNode>;
+			@else_body := Vector->New()<TemplateNode>;
+		}
+
+		method : public : GetKind() ~ Int {
+			return @kind;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : GetFilter() ~ String {
+			return @filter;
+		}
+
+		method : public : SetFilter(filter : String) ~ Nil {
+			@filter := filter;
+		}
+
+		method : public : GetFallback() ~ String {
+			return @fallback;
+		}
+
+		method : public : SetFallback(fallback : String) ~ Nil {
+			@fallback := fallback;
+		}
+
+		method : public : IsOptional() ~ Bool {
+			return @optional;
+		}
+
+		method : public : SetOptional(optional : Bool) ~ Nil {
+			@optional := optional;
+		}
+
+		method : public : InElse() ~ Bool {
+			return @in_else;
+		}
+
+		method : public : SetInElse(in_else : Bool) ~ Nil {
+			@in_else := in_else;
+		}
+
+		method : public : GetBody() ~ Vector<TemplateNode> {
+			return @body;
+		}
+
+		method : public : GetElse() ~ Vector<TemplateNode> {
+			return @else_body;
+		}
+
+		# the vector that receives nodes while this block is open
+		method : public : Target() ~ Vector<TemplateNode> {
+			if(@in_else) {
+				return @else_body;
+			};
+			return @body;
+		}
+	}
+
+	#~
+	A prompt with {{placeholders}}. Syntax:
+
+	<ul>
+	<li>{{name}} a required variable; rendering fails, listing every missing variable, when it is not set</li>
+	<li>{{name?}} an optional variable, empty when it is not set</li>
+	<li>{{name|fallback}} a variable with a default, the text after the bar, used verbatim</li>
+	<li>{{name:json}} a filter: json (escape for the inside of a JSON string), upper, lower or trim; combine with the others as {{name:json|fallback}}</li>
+	<li>{{#each items}} ... {{/each}} repeats the body for each item of a list; inside it {{this}} is the item, {{@index}} its position from 0 and {{@number}} from 1; {{#each items?}} allows a missing list</li>
+	<li>{{#if name}} ... {{else}} ... {{/if}} renders the first part when the variable is set and not empty (a list: not empty); the else part is optional</li>
+	<li>\{{ writes a literal {{</li>
+	</ul>
+
+	Values are never scanned for placeholders, so text a user supplies cannot inject a placeholder or a block.
+
+```
+tpl := PromptTemplate->New("Hello {{name}}!{{#each tags}} #{{this}}{{/each}}");
+vars := PromptVars->New()->Set("name", "Ada")->SetArray("tags", ["a", "b"]);
+tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
+```
+	~#
+	class PromptTemplate {
+		@source : String;
+		@root : Vector<TemplateNode>;
+		@error : String;
+		@parse_error : String;
+		@missing : Vector<String>;
+		@problems : Vector<String>;
+
+		#~
+		Parses a template. A malformed template is not an exception: IsOk() is false and GetError() says what and where.
+		@param source template text
+		~#
+		New(source : String) {
+			@source := source;
+			@root := Vector->New()<TemplateNode>;
+			@missing := Vector->New()<String>;
+			@problems := Vector->New()<String>;
+			Parse();
+			@parse_error := @error;
+		}
+
+		#~
+		Checks that the template parsed
+		@return true if it is well formed
+		~#
+		method : public : IsOk() ~ Bool {
+			return @parse_error = Nil;
+		}
+
+		#~
+		Gets the last parse or render error
+		@return the error, or Nil
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the variables the last render found missing
+		@return names in order of first use
+		~#
+		method : public : GetMissing() ~ Vector<String> {
+			return @missing;
+		}
+
+		#~
+		Gets the template text
+		@return source
+		~#
+		method : public : GetSource() ~ String {
+			return @source;
+		}
+
+		method : FindClose(chars : Char[], start : Int) ~ Int {
+			n := chars->Size();
+			i := start;
+			while(i + 1 < n) {
+				if(chars[i] = '}' & chars[i + 1] = '}') {
+					return i;
+				};
+				i += 1;
+			};
+			return -1;
+		}
+
+		method : Flush(lit : String, into : Vector<TemplateNode>) ~ Nil {
+			if(lit->Size() > 0) {
+				into->AddBack(TemplateNode->New(0, lit->Copy()));
+				lit->Clear();
+			};
+		}
+
+		method : ValidName(name : String) ~ Bool {
+			if(name = Nil | name->Size() = 0) {
+				return false;
+			};
+			chars := name->ToCharArray();
+			each(i : chars) {
+				if(<>LlmChars->IsNameChar(chars[i])) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		method : Parse() ~ Nil {
+			if(@source = Nil) {
+				@error := "the template is Nil";
+				return;
+			};
+
+			chars := @source->ToCharArray();
+			n := chars->Size();
+			stack := Vector->New()<TemplateNode>;
+			cur := @root;
+			lit := String->New();
+			loops := 0;
+			i := 0;
+			while(i < n & @error = Nil) {
+				c := chars[i];
+				if(c = '\\' & i + 2 < n & chars[i + 1] = '{' & chars[i + 2] = '{') {
+					lit->Append("{{");
+					i += 3;
+				}
+				else if(c = '{' & i + 1 < n & chars[i + 1] = '{') {
+					close := FindClose(chars, i + 2);
+					if(close < 0) {
+						@error := "unclosed '{{' at offset {$i}";
+					}
+					else {
+						inner := @source->SubString(i + 2, close - i - 2)->Trim();
+						Flush(lit, cur);
+
+						if(inner->Equals("#each") | inner->StartsWith("#each ") | inner->Equals("#if") | inner->StartsWith("#if ")) {
+							is_each := inner->StartsWith("#each");
+							name := "";
+							if(is_each & inner->Size() > 5) {
+								name := inner->SubString(5, inner->Size() - 5)->Trim();
+							}
+							else if(<>is_each & inner->Size() > 3) {
+								name := inner->SubString(3, inner->Size() - 3)->Trim();
+							};
+							optional := false;
+							if(name->EndsWith('?')) {
+								optional := true;
+								name := name->SubString(0, name->Size() - 1);
+							};
+							if(<>ValidName(name)) {
+								@error := "block '{$inner}' at offset {$i} needs a variable name";
+							}
+							else {
+								node : TemplateNode;
+								if(is_each) {
+									node := TemplateNode->New(2, name);
+									loops += 1;
+								}
+								else {
+									node := TemplateNode->New(3, name);
+								};
+								node->SetOptional(optional);
+								cur->AddBack(node);
+								stack->AddBack(node);
+								cur := node->Target();
+							};
+						}
+						else if(inner->Equals("/each") | inner->Equals("/if")) {
+							want := 2;
+							if(inner->Equals("/if")) {
+								want := 3;
+							};
+							if(stack->Size() = 0 | stack->Last()->GetKind() <> want) {
+								@error := "'{{{$inner}}}' at offset {$i} closes nothing";
+							}
+							else {
+								stack->RemoveBack();
+								if(want = 2) {
+									loops -= 1;
+								};
+								if(stack->Size() = 0) {
+									cur := @root;
+								}
+								else {
+									cur := stack->Last()->Target();
+								};
+							};
+						}
+						else if(inner->Equals("else")) {
+							if(stack->Size() = 0 | stack->Last()->GetKind() <> 3 | stack->Last()->InElse()) {
+								@error := "'{{else}}' at offset {$i} is not inside an {{#if}}";
+							}
+							else {
+								stack->Last()->SetInElse(true);
+								cur := stack->Last()->Target();
+							};
+						}
+						else {
+							node := ParseVariable(inner, i, loops);
+							if(node <> Nil) {
+								cur->AddBack(node);
+							};
+						};
+
+						i := close + 2;
+					};
+				}
+				else {
+					lit->Append(c);
+					i += 1;
+				};
+			};
+
+			if(@error = Nil) {
+				Flush(lit, cur);
+				if(stack->Size() > 0) {
+					open := stack->Last();
+					if(open->GetKind() = 2) {
+						@error := "the {{#each {$open->GetText()}}} block is never closed";
+					}
+					else {
+						@error := "the {{#if {$open->GetText()}}} block is never closed";
+					};
+				};
+			};
+		}
+
+		method : ParseVariable(inner : String, offset : Int, loops : Int) ~ TemplateNode {
+			left := inner;
+			fallback : String;
+			bar := inner->Find('|');
+			if(bar > -1) {
+				left := inner->SubString(0, bar)->Trim();
+				fallback := inner->SubString(bar + 1, inner->Size() - bar - 1);
+			};
+
+			optional := false;
+			if(left->EndsWith('?')) {
+				optional := true;
+				left := left->SubString(0, left->Size() - 1);
+			};
+
+			filter : String;
+			colon := left->Find(':');
+			name := left;
+			if(colon > -1) {
+				name := left->SubString(0, colon)->Trim();
+				filter := left->SubString(colon + 1, left->Size() - colon - 1)->Trim();
+				if(<>(filter->Equals("json") | filter->Equals("upper") | filter->Equals("lower") | filter->Equals("trim"))) {
+					@error := "unknown filter '{$filter}' in '{{{$inner}}}' at offset {$offset} (json, upper, lower, trim)";
+					return Nil;
+				};
+			};
+
+			if(<>ValidName(name)) {
+				@error := "invalid variable '{$inner}' at offset {$offset}";
+				return Nil;
+			};
+			if(loops = 0 & (name->Equals("this") | name->Equals("@index") | name->Equals("@number"))) {
+				@error := "'{{{$name}}}' at offset {$offset} is only valid inside {{#each}}";
+				return Nil;
+			};
+
+			node := TemplateNode->New(1, name);
+			node->SetOptional(optional);
+			node->SetFilter(filter);
+			node->SetFallback(fallback);
+			return node;
+		}
+
+		method : IsSpecial(name : String) ~ Bool {
+			return name->Equals("this") | name->Equals("@index") | name->Equals("@number");
+		}
+
+		method : AddUnique(list : Vector<String>, name : String) ~ Nil {
+			each(i : list) {
+				if(list->Get(i)->Equals(name)) {
+					return;
+				};
+			};
+			list->AddBack(name);
+		}
+
+		method : Collect(nodes : Vector<TemplateNode>, required : Vector<String>, optional : Vector<String>) ~ Nil {
+			each(i : nodes) {
+				node := nodes->Get(i);
+				kind := node->GetKind();
+				name := node->GetText();
+				if(kind = 1 & <>IsSpecial(name)) {
+					if(node->IsOptional() | node->GetFallback() <> Nil) {
+						AddUnique(optional, name);
+					}
+					else {
+						AddUnique(required, name);
+					};
+				}
+				else if(kind = 2) {
+					if(node->IsOptional()) {
+						AddUnique(optional, name);
+					}
+					else {
+						AddUnique(required, name);
+					};
+					Collect(node->GetBody(), required, optional);
+				}
+				else if(kind = 3) {
+					AddUnique(optional, name);
+					Collect(node->GetBody(), required, optional);
+					Collect(node->GetElse(), required, optional);
+				};
+			};
+		}
+
+		#~
+		Lists the variables a render must be given
+		@return names in order of first use
+		~#
+		method : public : GetRequired() ~ Vector<String> {
+			required := Vector->New()<String>;
+			optional := Vector->New()<String>;
+			Collect(@root, required, optional);
+			return required;
+		}
+
+		#~
+		Lists the variables a render may be given
+		@return names in order of first use
+		~#
+		method : public : GetOptional() ~ Vector<String> {
+			required := Vector->New()<String>;
+			optional := Vector->New()<String>;
+			Collect(@root, required, optional);
+			return optional;
+		}
+
+		#~
+		Lists what a render would find missing, without rendering
+		@param vars values
+		@return missing required names (empty when the render would succeed)
+		~#
+		method : public : Check(vars : PromptVars) ~ Vector<String> {
+			Render(vars);
+			return @missing;
+		}
+
+		#~
+		Renders the template. A missing required variable is not silently blanked: the render fails with an error that names every one of them.
+		@param vars values
+		@return the text, or Nil with GetError() set (a missing variable, a list used as text, a text value used as a list)
+		~#
+		method : public : Render(vars : PromptVars) ~ String {
+			@missing->Empty();
+			@problems->Empty();
+			if(@parse_error <> Nil) {
+				@error := @parse_error;
+				return Nil;
+			};
+
+			@error := Nil;
+			if(vars = Nil) {
+				vars := PromptVars->New();
+			};
+
+			out := String->New();
+			Walk(@root, vars, out, Nil, 0, 0);
+
+			if(@missing->Size() > 0 | @problems->Size() > 0) {
+				text := String->New();
+				if(@missing->Size() > 0) {
+					text->Append("missing required variable");
+					if(@missing->Size() > 1) {
+						text->Append('s');
+					};
+					text->Append(": ");
+					each(i : @missing) {
+						if(i > 0) {
+							text->Append(", ");
+						};
+						text->Append(@missing->Get(i));
+					};
+				};
+				each(i : @problems) {
+					if(text->Size() > 0) {
+						text->Append("; ");
+					};
+					text->Append(@problems->Get(i));
+				};
+				@error := text->ToString();
+				return Nil;
+			};
+
+			return out->ToString();
+		}
+
+		method : Walk(nodes : Vector<TemplateNode>, vars : PromptVars, out : String, item : String, index : Int, depth : Int) ~ Nil {
+			each(i : nodes) {
+				node := nodes->Get(i);
+				kind := node->GetKind();
+				if(kind = 0) {
+					out->Append(node->GetText());
+				}
+				else if(kind = 1) {
+					WriteVariable(node, vars, out, item, index);
+				}
+				else if(kind = 2) {
+					name := node->GetText();
+					list := vars->GetList(name);
+					if(list = Nil) {
+						if(vars->Has(name)) {
+							@problems->AddBack("'{$name}' is text, but {{#each {$name}}} needs a list");
+						}
+						else if(<>node->IsOptional()) {
+							AddUnique(@missing, name);
+						};
+					}
+					else if(depth < 32) {
+						each(k : list) {
+							Walk(node->GetBody(), vars, out, list->Get(k), k, depth + 1);
+						};
+					};
+				}
+				else {
+					if(Truthy(node->GetText(), vars, item)) {
+						Walk(node->GetBody(), vars, out, item, index, depth);
+					}
+					else {
+						Walk(node->GetElse(), vars, out, item, index, depth);
+					};
+				};
+			};
+		}
+
+		method : Truthy(name : String, vars : PromptVars, item : String) ~ Bool {
+			if(name->Equals("this")) {
+				return item <> Nil & item->Size() > 0;
+			};
+			value := vars->Get(name);
+			if(value <> Nil) {
+				return value->Size() > 0;
+			};
+			list := vars->GetList(name);
+			if(list <> Nil) {
+				return list->Size() > 0;
+			};
+			return false;
+		}
+
+		method : WriteVariable(node : TemplateNode, vars : PromptVars, out : String, item : String, index : Int) ~ Nil {
+			name := node->GetText();
+			value : String;
+			if(name->Equals("this")) {
+				value := item;
+			}
+			else if(name->Equals("@index")) {
+				value := index->ToString();
+			}
+			else if(name->Equals("@number")) {
+				value := (index + 1)->ToString();
+			}
+			else {
+				value := vars->Get(name);
+				if(value = Nil) {
+					if(vars->HasList(name)) {
+						@problems->AddBack("'{$name}' is a list, but {{{$name}}} needs text; use {{#each {$name}}}");
+						return;
+					};
+					if(node->GetFallback() <> Nil) {
+						value := node->GetFallback();
+					}
+					else if(node->IsOptional()) {
+						value := "";
+					}
+					else {
+						AddUnique(@missing, name);
+						return;
+					};
+				};
+			};
+
+			if(value = Nil) {
+				value := "";
+			};
+			filter := node->GetFilter();
+			if(filter <> Nil) {
+				if(filter->Equals("json")) {
+					value := JsonElement->Encode(value);
+				}
+				else if(filter->Equals("upper")) {
+					value := value->ToUpper();
+				}
+				else if(filter->Equals("lower")) {
+					value := value->ToLower();
+				}
+				else if(filter->Equals("trim")) {
+					value := value->Trim();
+				};
+			};
+			out->Append(value);
+		}
+	}
+
+	#~
+	A conversation under construction: an optional system prompt and a list of user and assistant turns. The builder is provider-neutral; the ToPairs and ToJsonMessages methods turn it into what a client takes.
+
+```
+b := PromptBuilder->New()->System("You are terse.")->User("Name a colour.")->Assistant("Blue.")->User("Another.");
+b->Size()->PrintLine();   # 3 turns, the system prompt is kept apart
+```
+	~#
+	class PromptBuilder {
+		@system : String;
+		@turns : Vector<PromptTurn>;
+		@error : String;
+
+		New() {
+			@turns := Vector->New()<PromptTurn>;
+		}
+
+		#~
+		Sets the system prompt, replacing an earlier one
+		@param text system prompt
+		@return self for chaining
+		~#
+		method : public : System(text : String) ~ PromptBuilder {
+			@system := text;
+			return @self;
+		}
+
+		#~
+		Sets the system prompt from a template
+		@param template the template
+		@param vars its values
+		@return self for chaining; a failed render is kept in GetError() and the prompt is left as it was
+		~#
+		method : public : System(template : PromptTemplate, vars : PromptVars) ~ PromptBuilder {
+			text := Rendered(template, vars);
+			if(text <> Nil) {
+				@system := text;
+			};
+			return @self;
+		}
+
+		#~
+		Adds a user turn
+		@param text message
+		@return self for chaining
+		~#
+		method : public : User(text : String) ~ PromptBuilder {
+			@turns->AddBack(PromptTurn->New("user", text));
+			return @self;
+		}
+
+		#~
+		Adds a user turn from a template
+		@param template the template
+		@param vars its values
+		@return self for chaining; a failed render adds no turn and is kept in GetError()
+		~#
+		method : public : User(template : PromptTemplate, vars : PromptVars) ~ PromptBuilder {
+			text := Rendered(template, vars);
+			if(text <> Nil) {
+				@turns->AddBack(PromptTurn->New("user", text));
+			};
+			return @self;
+		}
+
+		#~
+		Adds an assistant turn
+		@param text message
+		@return self for chaining
+		~#
+		method : public : Assistant(text : String) ~ PromptBuilder {
+			@turns->AddBack(PromptTurn->New("assistant", text));
+			return @self;
+		}
+
+		#~
+		Adds a turn with a given role
+		@param role "user" or "assistant" ("system" sets the system prompt)
+		@param text message
+		@return self for chaining
+		~#
+		method : public : Add(role : String, text : String) ~ PromptBuilder {
+			if(role <> Nil & role->Equals("system")) {
+				@system := text;
+			}
+			else {
+				@turns->AddBack(PromptTurn->New(role, text));
+			};
+			return @self;
+		}
+
+		method : Rendered(template : PromptTemplate, vars : PromptVars) ~ String {
+			text := template->Render(vars);
+			if(text = Nil) {
+				@error := template->GetError();
+			};
+			return text;
+		}
+
+		#~
+		Gets the last template render error
+		@return the error, or Nil
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the system prompt
+		@return system prompt, or Nil
+		~#
+		method : public : GetSystem() ~ String {
+			return @system;
+		}
+
+		#~
+		Gets the user and assistant turns, without the system prompt
+		@return the turns
+		~#
+		method : public : GetTurns() ~ Vector<PromptTurn> {
+			return @turns;
+		}
+
+		#~
+		Counts the user and assistant turns
+		@return number of turns
+		~#
+		method : public : Size() ~ Int {
+			return @turns->Size();
+		}
+
+		#~
+		Gets every turn, the system prompt first as a "system" turn
+		@return the turns
+		~#
+		method : public : GetAll() ~ Vector<PromptTurn> {
+			all := Vector->New()<PromptTurn>;
+			if(@system <> Nil) {
+				all->AddBack(PromptTurn->New("system", @system));
+			};
+			each(i : @turns) {
+				all->AddBack(@turns->Get(i));
+			};
+			return all;
+		}
+
+		#~
+		Copies the builder
+		@return an independent builder
+		~#
+		method : public : Clone() ~ PromptBuilder {
+			copy := PromptBuilder->New();
+			copy->System(@system);
+			each(i : @turns) {
+				copy->GetTurns()->AddBack(@turns->Get(i));
+			};
+			return copy;
+		}
+
+		#~
+		The conversation as role and text pairs, the system prompt first as a "system" pair: the shape API.OpenAI.Chat.Completion->Complete takes
+		@return the pairs
+		~#
+		method : public : ToPairs() ~ Vector<Pair<String, String>> {
+			pairs := Vector->New()<Pair<String, String>>;
+			all := GetAll();
+			each(i : all) {
+				pairs->AddBack(Pair->New(all->Get(i)->GetRole(), all->Get(i)->GetText())<String, String>);
+			};
+			return pairs;
+		}
+
+		#~
+		The conversation as a JSON array of role and content objects, the shape of the OpenAI chat API and of Ollama
+		@param with_system true to put the system prompt first as a "system" message, false to leave it out (Anthropic keeps it apart)
+		@return the array
+		~#
+		method : public : ToJsonMessages(with_system : Bool) ~ JsonElement {
+			array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(with_system & @system <> Nil) {
+				array->Add(Message("system", @system));
+			};
+			each(i : @turns) {
+				array->Add(Message(@turns->Get(i)->GetRole(), @turns->Get(i)->GetText()));
+			};
+			return array;
+		}
+
+		method : Message(role : String, text : String) ~ JsonElement {
+			obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+			obj->Insert("role", role);
+			obj->Insert("content", text);
+			return obj;
+		}
+	}
+
+	#~
+	Anything that can count the tokens in a text: the offline TokenEstimator here, or an exact counter of your own that asks a provider.
+	~#
+	interface TokenCounter {
+		#~
+		Counts the tokens in a text
+		@param text the text
+		@return token count
+		~#
+		method : virtual : public : Count(text : String) ~ Int;
+	}
+
+	#~
+	A fast, offline token estimator with no dependencies. It does not run a tokenizer; it counts the pieces a byte-pair tokenizer usually produces: a word costs one token per 6 letters (and a new piece at each lower-to-upper case change, so camelCase splits), digits cost one token per 3, a run of punctuation costs one token per 2 characters, a line break costs one token per 2 (a blank line is one), an indent of 2 or more spaces costs one, and a run of non-ASCII bytes costs one token per 2 bytes.
+
+	Accuracy, measured against the cl100k tokenizer on hand-counted samples: plain English prose lands within about 15 percent of the true count and typical source code within about 30 percent; a single short string can be off by two tokens either way. Text that is mostly non-Latin script is the weakest case (the bound there is about 50 percent). Claude's tokenizer usually yields 10 to 20 percent more tokens than cl100k for the same text, so SetScale(1.15) is a good setting for Anthropic models. Use SetMargin to keep a budget safe; do not use an estimate where a hard limit must hold (ask the provider's count endpoint, or leave room).
+	~#
+	class TokenEstimator implements TokenCounter {
+		@scale : Float;
+		@margin : Float;
+		@turn_overhead : Int;
+
+		#~
+		Constructor: scale 1.0, no margin, 4 tokens of framing per message
+		~#
+		New() {
+			@scale := 1.0;
+			@margin := 0.0;
+			@turn_overhead := 4;
+		}
+
+		#~
+		Scales every estimate, to match a provider whose tokenizer is wordier (or terser) than cl100k
+		@param scale factor above 0, default 1.0
+		@return self for chaining
+		~#
+		method : public : SetScale(scale : Float) ~ TokenEstimator {
+			if(scale > 0.0) {
+				@scale := scale;
+			};
+			return @self;
+		}
+
+		#~
+		Sets the safety margin used by Safe()
+		@param margin fraction of the estimate to add, 0.1 for 10 percent
+		@return self for chaining
+		~#
+		method : public : SetMargin(margin : Float) ~ TokenEstimator {
+			if(margin >= 0.0) {
+				@margin := margin;
+			};
+			return @self;
+		}
+
+		#~
+		Sets the framing cost of one message (role and separators)
+		@param tokens tokens per message, default 4
+		@return self for chaining
+		~#
+		method : public : SetTurnOverhead(tokens : Int) ~ TokenEstimator {
+			if(tokens >= 0) {
+				@turn_overhead := tokens;
+			};
+			return @self;
+		}
+
+		#~
+		Gets the per-message framing cost
+		@return tokens per message
+		~#
+		method : public : GetTurnOverhead() ~ Int {
+			return @turn_overhead;
+		}
+
+		method : PieceTokens(length : Int) ~ Int {
+			if(length <= 0) {
+				return 0;
+			};
+			return (length + 5) / 6;
+		}
+
+		#~
+		Estimates the tokens in a text
+		@param text the text, Nil counts as empty
+		@return estimated tokens, 0 for empty text
+		~#
+		method : public : Estimate(text : String) ~ Int {
+			if(text = Nil | text->Size() = 0) {
+				return 0;
+			};
+
+			chars := text->ToCharArray();
+			n := chars->Size();
+			tokens := 0;
+			i := 0;
+			while(i < n) {
+				c := chars[i];
+				if(LlmChars->IsLetter(c)) {
+					piece := 0;
+					j := i;
+					while(j < n & LlmChars->IsLetter(chars[j])) {
+						if(piece > 0 & LlmChars->IsUpper(chars[j]) & LlmChars->IsLower(chars[j - 1])) {
+							tokens += PieceTokens(piece);
+							piece := 0;
+						};
+						piece += 1;
+						j += 1;
+					};
+					tokens += PieceTokens(piece);
+					i := j;
+				}
+				else if(LlmChars->IsDigit(c)) {
+					j := i;
+					while(j < n & LlmChars->IsDigit(chars[j])) {
+						j += 1;
+					};
+					tokens += (j - i + 2) / 3;
+					i := j;
+				}
+				else if(LlmChars->IsSpace(c)) {
+					j := i;
+					newlines := 0;
+					last_break := i - 1;
+					while(j < n & LlmChars->IsSpace(chars[j])) {
+						if(chars[j] = '\n') {
+							newlines += 1;
+							last_break := j;
+						};
+						j += 1;
+					};
+					if(newlines > 0) {
+						tokens += (newlines + 1) / 2;
+						if(j - last_break - 1 >= 2) {
+							tokens += 1;
+						};
+					}
+					else if(j - i >= 3) {
+						tokens += 1;
+					};
+					i := j;
+				}
+				else if(c->As(Int) >= 128) {
+					j := i;
+					while(j < n & chars[j]->As(Int) >= 128) {
+						j += 1;
+					};
+					m := j - i;
+					tokens += m + m / 2;
+					i := j;
+				}
+				else {
+					j := i;
+					while(j < n & chars[j]->As(Int) < 128 & <>LlmChars->IsLetter(chars[j]) & <>LlmChars->IsDigit(chars[j]) & <>LlmChars->IsSpace(chars[j])) {
+						j += 1;
+					};
+					tokens += (j - i + 1) / 2;
+					i := j;
+				};
+			};
+
+			scaled := tokens->As(Float) * @scale;
+			result := Float->Ceil(scaled - 0.000001)->As(Int);
+			if(result < 1) {
+				result := 1;
+			};
+			return result;
+		}
+
+		#~
+		Estimates the tokens in a text (TokenCounter)
+		@param text the text
+		@return estimated tokens
+		~#
+		method : public : Count(text : String) ~ Int {
+			return Estimate(text);
+		}
+
+		#~
+		Adds the safety margin to a token count
+		@param tokens a count
+		@return the count plus the margin, rounded up
+		~#
+		method : public : Safe(tokens : Int) ~ Int {
+			return Float->Ceil(tokens->As(Float) * (1.0 + @margin) - 0.000001)->As(Int);
+		}
+
+		#~
+		Estimates a whole conversation: each turn's text plus the per-message framing
+		@param turns the turns
+		@return estimated tokens
+		~#
+		method : public : EstimateTurns(turns : Vector<PromptTurn>) ~ Int {
+			total := 0;
+			if(turns <> Nil) {
+				each(i : turns) {
+					total += Estimate(turns->Get(i)->GetText()) + @turn_overhead;
+				};
+			};
+			return total;
+		}
+	}
+
+	#~
+	Keeps a conversation inside a token budget. Fit() drops the oldest turns first, always keeps the system prompt and the newest turn, never leaves the conversation starting on an assistant turn, and can note in the system prompt that earlier turns were left out.
+
+```
+window := ContextWindow->New(2000, TokenEstimator->New());
+short := window->Fit(long_conversation);
+"{$window->GetDropped()} turns dropped"->PrintLine();
+```
+	~#
+	class ContextWindow {
+		@budget : Int;
+		@counter : TokenCounter;
+		@overhead : Int;
+		@note : String;
+		@dropped : Int;
+		@tokens : Int;
+		@over : Bool;
+
+		#~
+		Constructor
+		@param budget most tokens the conversation may use
+		@param counter how to count them, a TokenEstimator or an exact counter
+		~#
+		New(budget : Int, counter : TokenCounter) {
+			@budget := budget;
+			@counter := counter;
+			@overhead := 4;
+		}
+
+		#~
+		Sets the framing cost of one message
+		@param tokens tokens per message, default 4
+		@return self for chaining
+		~#
+		method : public : SetTurnOverhead(tokens : Int) ~ ContextWindow {
+			if(tokens >= 0) {
+				@overhead := tokens;
+			};
+			return @self;
+		}
+
+		#~
+		Sets a note appended to the system prompt when turns were dropped, so the model knows the history is partial
+		@param note the note, Nil for none
+		@return self for chaining
+		~#
+		method : public : SetOmissionNote(note : String) ~ ContextWindow {
+			@note := note;
+			return @self;
+		}
+
+		method : Cost(text : String) ~ Int {
+			return @counter->Count(text) + @overhead;
+		}
+
+		#~
+		Counts the tokens a conversation uses: every turn and the system prompt, with framing
+		@param builder the conversation
+		@return tokens
+		~#
+		method : public : Measure(builder : PromptBuilder) ~ Int {
+			total := 0;
+			if(builder->GetSystem() <> Nil) {
+				total += Cost(builder->GetSystem());
+			};
+			turns := builder->GetTurns();
+			each(i : turns) {
+				total += Cost(turns->Get(i)->GetText());
+			};
+			return total;
+		}
+
+		#~
+		Fits a conversation to the budget by dropping the oldest turns. The input is not changed.
+		@param source the conversation
+		@return a conversation within the budget; if even the system prompt and the newest turn together exceed it, those two are still returned and IsOverBudget() is true
+		~#
+		method : public : Fit(source : PromptBuilder) ~ PromptBuilder {
+			@dropped := 0;
+			@over := false;
+			turns := source->GetTurns();
+			count := turns->Size();
+
+			base := 0;
+			if(source->GetSystem() <> Nil) {
+				base += Cost(source->GetSystem());
+			};
+			if(@note <> Nil) {
+				base += Cost(@note);
+			};
+
+			total := base;
+			first := count;
+			i := count - 1;
+			stop := false;
+			while(i >= 0 & stop = false) {
+				c := Cost(turns->Get(i)->GetText());
+				if(first = count) {
+					first := i;
+					total += c;
+					if(total > @budget) {
+						@over := true;
+					};
+				}
+				else if(total + c <= @budget) {
+					first := i;
+					total += c;
+				}
+				else {
+					stop := true;
+				};
+				i -= 1;
+			};
+
+			# a conversation has to start with the user
+			while(first < count - 1 & turns->Get(first)->GetRole()->Equals("assistant")) {
+				total -= Cost(turns->Get(first)->GetText());
+				first += 1;
+			};
+
+			@dropped := first;
+			result := PromptBuilder->New();
+			system := source->GetSystem();
+			if(@dropped > 0 & @note <> Nil) {
+				if(system = Nil) {
+					system := @note;
+				}
+				else {
+					system := "{$system}\n\n{$@note}";
+				};
+			};
+			result->System(system);
+			for(k := first; k < count; k += 1;) {
+				result->GetTurns()->AddBack(turns->Get(k));
+			};
+			@tokens := total;
+			return result;
+		}
+
+		#~
+		Gets how many turns the last Fit() dropped
+		@return dropped turns
+		~#
+		method : public : GetDropped() ~ Int {
+			return @dropped;
+		}
+
+		#~
+		Gets the tokens the last Fit() result uses
+		@return tokens
+		~#
+		method : public : GetTokens() ~ Int {
+			return @tokens;
+		}
+
+		#~
+		Tells whether the last Fit() result is still over the budget (the system prompt and the newest turn alone do not fit)
+		@return true if over budget
+		~#
+		method : public : IsOverBudget() ~ Bool {
+			return @over;
+		}
+
+		#~
+		Shortens one text to a token budget, cutting at a word boundary and ending with the marker
+		@param text the text
+		@param max_tokens most tokens to keep
+		@param marker text added after a cut, such as "..."; Nil for none
+		@return the text unchanged if it fits, else its longest prefix that fits
+		~#
+		method : public : Truncate(text : String, max_tokens : Int, marker : String) ~ String {
+			if(text = Nil) {
+				return Nil;
+			};
+			if(@counter->Count(text) <= max_tokens) {
+				return text;
+			};
+
+			lo := 0;
+			hi := text->Size();
+			while(lo < hi) {
+				mid := (lo + hi + 1) / 2;
+				if(@counter->Count(text->SubString(0, mid)) <= max_tokens) {
+					lo := mid;
+				}
+				else {
+					hi := mid - 1;
+				};
+			};
+
+			if(lo = 0) {
+				if(marker <> Nil) {
+					return marker;
+				};
+				return "";
+			};
+
+			cut := lo;
+			while(cut > 0 & <>LlmChars->IsSpace(text->Get(cut - 1)) & cut < text->Size() & <>LlmChars->IsSpace(text->Get(cut))) {
+				cut -= 1;
+			};
+			if(cut = 0) {
+				cut := lo;
+			};
+
+			kept := text->SubString(0, cut)->TrimBack();
+			if(marker <> Nil) {
+				return "{$kept}{$marker}";
+			};
+			return kept;
+		}
+	}
+
+	#~
+	One problem found while checking a value against a schema: where it is (a JSON pointer), which schema keyword objected, and what is wrong.
+	~#
+	class SchemaError {
+		@path : String;
+		@keyword : String;
+		@message : String;
+
+		#~
+		Constructor
+		@param path JSON pointer to the offending value, "" for the root
+		@param keyword the schema keyword that failed
+		@param message what is wrong
+		~#
+		New(path : String, keyword : String, message : String) {
+			@path := path;
+			@keyword := keyword;
+			@message := message;
+		}
+
+		#~
+		Gets the JSON pointer (RFC 6901) of the value: "" is the root, "/items/2/name" the name of the third item
+		@return pointer
+		~#
+		method : public : GetPath() ~ String {
+			return @path;
+		}
+
+		#~
+		Gets the schema keyword that failed
+		@return keyword such as "type", "required" or "minimum"
+		~#
+		method : public : GetKeyword() ~ String {
+			return @keyword;
+		}
+
+		#~
+		Gets the message
+		@return what is wrong
+		~#
+		method : public : GetMessage() ~ String {
+			return @message;
+		}
+
+		#~
+		The error as "pointer: message"
+		@return string form
+		~#
+		method : public : ToString() ~ String {
+			if(@path->Size() = 0) {
+				return "(root): {$@message}";
+			};
+			return "{$@path}: {$@message}";
+		}
+	}
+
+	#~
+	Checks a JSON value against a JSON Schema and reports every problem it finds, each with a JSON pointer.
+
+	Supported keywords: type (one name or an array of names: string, number, integer, boolean, object, array, null), properties, required, additionalProperties (false or a schema), minProperties, maxProperties, items (a schema, or an array for a tuple), minItems, maxItems, uniqueItems, enum, const, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minLength, maxLength, pattern (an unanchored search, with the Query.RegEx dialect), allOf, anyOf, oneOf, not, and $ref to a place in the same document ("#", "#/definitions/x", "#/$defs/x"). A boolean schema is accepted. Other keywords, format among them, are ignored.
+
+```
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"id\"],\"properties\":{\"id\":{\"type\":\"integer\"}}}");
+errors := JsonSchema->Check(schema, JsonParser->TextToElement("{\"id\":\"x\"}"));
+each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected integer, got string
+```
+	~#
+	class JsonSchema {
+		@root : JsonElement;
+		@errors : Vector<SchemaError>;
+		@max_errors : Int;
+		@patterns : Map<String, RegEx>;
+
+		#~
+		Constructor
+		@param schema the schema
+		~#
+		New(schema : JsonElement) {
+			@root := schema;
+			@errors := Vector->New()<SchemaError>;
+			@max_errors := 100;
+			@patterns := Map->New()<String, RegEx>;
+		}
+
+		#~
+		Sets how many errors to collect before stopping
+		@param max most errors, default 100
+		@return self for chaining
+		~#
+		method : public : SetMaxErrors(max : Int) ~ JsonSchema {
+			if(max > 0) {
+				@max_errors := max;
+			};
+			return @self;
+		}
+
+		#~
+		Checks a value against a schema in one call
+		@param schema the schema
+		@param value the value
+		@return the errors, empty when the value is valid
+		~#
+		function : Check(schema : JsonElement, value : JsonElement) ~ Vector<SchemaError> {
+			return JsonSchema->New(schema)->Validate(value);
+		}
+
+		#~
+		Checks a value against the schema
+		@param value the value
+		@return the errors in a fixed order (keywords as listed in the class description), empty when the value is valid
+		~#
+		method : public : Validate(value : JsonElement) ~ Vector<SchemaError> {
+			@errors := Vector->New()<SchemaError>;
+			if(value = Nil) {
+				Fail("", "type", "there is no value to check");
+				return @errors;
+			};
+			Walk(@root, value, "", 0);
+			return @errors;
+		}
+
+		#~
+		Tells whether a value is valid
+		@param value the value
+		@return true if there are no errors
+		~#
+		method : public : IsValid(value : JsonElement) ~ Bool {
+			return Validate(value)->Size() = 0;
+		}
+
+		#~
+		Joins the error list into lines
+		@param errors the errors
+		@return one error per line
+		~#
+		function : Describe(errors : Vector<SchemaError>) ~ String {
+			out := String->New();
+			each(i : errors) {
+				if(i > 0) {
+					out->Append('\n');
+				};
+				out->Append(errors->Get(i)->ToString());
+			};
+			return out->ToString();
+		}
+
+		#~
+		Adds a name to a JSON pointer, escaping "~" as "~0" and "/" as "~1"
+		@param path the pointer so far
+		@param name the property name
+		@return the longer pointer
+		~#
+		function : Join(path : String, name : String) ~ String {
+			escaped := name->ReplaceAll("~", "~0")->ReplaceAll("/", "~1");
+			return "{$path}/{$escaped}";
+		}
+
+		method : Fail(path : String, keyword : String, message : String) ~ Nil {
+			if(@errors->Size() < @max_errors) {
+				@errors->AddBack(SchemaError->New(path, keyword, message));
+			};
+		}
+
+		method : TypeName(value : JsonElement) ~ String {
+			select(value->GetType()) {
+				label JsonElement->JsonType->STRING: {
+					return "string";
+				}
+
+				label JsonElement->JsonType->NUMBER: {
+					return "number";
+				}
+
+				label JsonElement->JsonType->TRUE: {
+					return "boolean";
+				}
+
+				label JsonElement->JsonType->FALSE: {
+					return "boolean";
+				}
+
+				label JsonElement->JsonType->NULL: {
+					return "null";
+				}
+
+				label JsonElement->JsonType->ARRAY: {
+					return "array";
+				}
+
+				label JsonElement->JsonType->OBJECT: {
+					return "object";
+				}
+			};
+			return "unknown";
+		}
+
+		method : IsIntegral(value : JsonElement) ~ Bool {
+			text := value->GetValue();
+			if(text = Nil) {
+				return false;
+			};
+			if(<>(text->Has('.') | text->Has('e') | text->Has('E'))) {
+				return true;
+			};
+			f := value->GetFloat();
+			return f = Float->Floor(f);
+		}
+
+		method : TypeMatches(name : String, value : JsonElement) ~ Bool {
+			actual := TypeName(value);
+			if(name->Equals("integer")) {
+				return actual->Equals("number") & IsIntegral(value);
+			};
+			return name->Equals(actual);
+		}
+
+		method : Show(value : JsonElement) ~ String {
+			text := value->ToString();
+			if(text->Size() > 60) {
+				head := text->SubString(0, 57);
+				return "{$head}...";
+			};
+			return text;
+		}
+
+		#~
+		Compares two JSON values by content: numbers by value, objects regardless of member order
+		@param a one value
+		@param b the other
+		@return true if they are equal
+		~#
+		function : Same(a : JsonElement, b : JsonElement) ~ Bool {
+			if(a = Nil | b = Nil) {
+				return a = Nil & b = Nil;
+			};
+			ta := a->GetType();
+			tb := b->GetType();
+			if(ta <> tb) {
+				return false;
+			};
+
+			if(ta = JsonElement->JsonType->NUMBER) {
+				return a->GetFloat() = b->GetFloat();
+			}
+			else if(ta = JsonElement->JsonType->STRING) {
+				return a->GetValue()->Equals(b->GetValue());
+			}
+			else if(ta = JsonElement->JsonType->ARRAY) {
+				if(a->Size() <> b->Size()) {
+					return false;
+				};
+				for(i := 0; i < a->Size(); i += 1;) {
+					if(<>Same(a->Get(i), b->Get(i))) {
+						return false;
+					};
+				};
+				return true;
+			}
+			else if(ta = JsonElement->JsonType->OBJECT) {
+				if(a->Size() <> b->Size()) {
+					return false;
+				};
+				names := a->GetNames();
+				each(i : names) {
+					name := names->Get(i);
+					if(<>b->Has(name)) {
+						return false;
+					};
+					if(<>Same(a->Get(name), b->Get(name))) {
+						return false;
+					};
+				};
+				return true;
+			};
+
+			return true;
+		}
+
+		method : Resolve(ref : String) ~ JsonElement {
+			if(ref->Equals("#")) {
+				return @root;
+			};
+			if(<>ref->StartsWith("#/")) {
+				return Nil;
+			};
+
+			node := @root;
+			parts := ref->SubString(2, ref->Size() - 2)->Split('/');
+			each(i : parts) {
+				token := parts[i]->ReplaceAll("~1", "/")->ReplaceAll("~0", "~");
+				if(node = Nil) {
+					return Nil;
+				};
+				if(node->GetType() = JsonElement->JsonType->ARRAY & token->IsInt()) {
+					node := node->Get(token->ToInt());
+				}
+				else {
+					node := node->Get(token);
+				};
+			};
+			return node;
+		}
+
+		# runs a sub-schema on the side, returning its errors without keeping them
+		method : Probe(schema : JsonElement, value : JsonElement, path : String, depth : Int) ~ Vector<SchemaError> {
+			saved := @errors;
+			@errors := Vector->New()<SchemaError>;
+			Walk(schema, value, path, depth);
+			found := @errors;
+			@errors := saved;
+			return found;
+		}
+
+		method : Walk(schema : JsonElement, value : JsonElement, path : String, depth : Int) ~ Nil {
+			if(schema = Nil) {
+				return;
+			};
+			if(schema->GetType() = JsonElement->JsonType->TRUE) {
+				return;
+			};
+			if(schema->GetType() = JsonElement->JsonType->FALSE) {
+				Fail(path, "schema", "no value is allowed here");
+				return;
+			};
+			if(schema->GetType() <> JsonElement->JsonType->OBJECT) {
+				Fail(path, "schema", "a schema must be an object or a boolean");
+				return;
+			};
+			if(depth > 64) {
+				Fail(path, "schema", "the schema is nested too deeply (a $ref loop?)");
+				return;
+			};
+
+			ref := schema->Get("$ref");
+			if(ref <> Nil & ref->GetType() = JsonElement->JsonType->STRING) {
+				target := Resolve(ref->GetString());
+				if(target = Nil) {
+					Fail(path, "$ref", "cannot resolve the reference '{$ref->GetString()}'");
+				}
+				else {
+					Walk(target, value, path, depth + 1);
+				};
+			};
+
+			if(<>CheckType(schema, value, path)) {
+				return;
+			};
+
+			CheckEnum(schema, value, path);
+			vt := value->GetType();
+			if(vt = JsonElement->JsonType->STRING) {
+				CheckString(schema, value, path);
+			}
+			else if(vt = JsonElement->JsonType->NUMBER) {
+				CheckNumber(schema, value, path);
+			}
+			else if(vt = JsonElement->JsonType->ARRAY) {
+				CheckArray(schema, value, path, depth);
+			}
+			else if(vt = JsonElement->JsonType->OBJECT) {
+				CheckObject(schema, value, path, depth);
+			};
+			CheckCombinators(schema, value, path, depth);
+		}
+
+		method : CheckType(schema : JsonElement, value : JsonElement, path : String) ~ Bool {
+			type := schema->Get("type");
+			if(type = Nil) {
+				return true;
+			};
+
+			if(type->GetType() = JsonElement->JsonType->STRING) {
+				if(TypeMatches(type->GetString(), value)) {
+					return true;
+				};
+				Fail(path, "type", "expected {$type->GetString()}, got {$TypeName(value)}");
+				return false;
+			};
+
+			if(type->GetType() = JsonElement->JsonType->ARRAY) {
+				names := String->New();
+				for(i := 0; i < type->Size(); i += 1;) {
+					name := type->Get(i)->GetString();
+					if(name <> Nil & TypeMatches(name, value)) {
+						return true;
+					};
+					if(i > 0) {
+						names->Append(" or ");
+					};
+					names->Append(name);
+				};
+				Fail(path, "type", "expected {$names}, got {$TypeName(value)}");
+				return false;
+			};
+
+			return true;
+		}
+
+		method : CheckEnum(schema : JsonElement, value : JsonElement, path : String) ~ Nil {
+			allowed := schema->Get("enum");
+			if(allowed <> Nil & allowed->GetType() = JsonElement->JsonType->ARRAY) {
+				found := false;
+				for(i := 0; i < allowed->Size() & found = false; i += 1;) {
+					if(Same(allowed->Get(i), value)) {
+						found := true;
+					};
+				};
+				if(<>found) {
+					list := String->New();
+					for(i := 0; i < allowed->Size() & i < 8; i += 1;) {
+						if(i > 0) {
+							list->Append(", ");
+						};
+						list->Append(allowed->Get(i)->ToString());
+					};
+					if(allowed->Size() > 8) {
+						list->Append(", ...");
+					};
+					Fail(path, "enum", "{$Show(value)} is not one of: {$list}");
+				};
+			};
+
+			if(schema->Has("const")) {
+				if(<>Same(schema->Get("const"), value)) {
+					wanted := Show(schema->Get("const"));
+					Fail(path, "const", "{$Show(value)} is not the required value {$wanted}");
+				};
+			};
+		}
+
+		# length in characters (a String holds characters, not bytes)
+		method : Length(text : String) ~ Int {
+			return text->Size();
+		}
+
+		method : CheckString(schema : JsonElement, value : JsonElement, path : String) ~ Nil {
+			text := value->GetString();
+			if(text = Nil) {
+				text := "";
+			};
+			len := Length(text);
+
+			min := schema->Get("minLength");
+			if(min <> Nil & len < min->GetInt()) {
+				Fail(path, "minLength", "is {$len} characters, shorter than the minimum {$min->GetInt()}");
+			};
+			max := schema->Get("maxLength");
+			if(max <> Nil & len > max->GetInt()) {
+				Fail(path, "maxLength", "is {$len} characters, longer than the maximum {$max->GetInt()}");
+			};
+
+			pattern := schema->Get("pattern");
+			if(pattern <> Nil & pattern->GetType() = JsonElement->JsonType->STRING) {
+				source := pattern->GetString();
+				re := @patterns->Find(source);
+				if(re = Nil) {
+					re := RegEx->New(source);
+					@patterns->Insert(source, re);
+				};
+				if(<>re->IsOk()) {
+					Fail(path, "pattern", "the schema pattern '{$source}' is not a valid expression");
+				}
+				else if(re->FindFirst(text) = Nil) {
+					Fail(path, "pattern", "{$Show(value)} does not match the pattern '{$source}'");
+				};
+			};
+		}
+
+		method : CheckNumber(schema : JsonElement, value : JsonElement, path : String) ~ Nil {
+			n := value->GetFloat();
+			text := value->GetValue();
+
+			bound := schema->Get("minimum");
+			if(bound <> Nil & n < bound->GetFloat()) {
+				Fail(path, "minimum", "{$text} is below the minimum {$bound->GetValue()}");
+			};
+			bound := schema->Get("maximum");
+			if(bound <> Nil & n > bound->GetFloat()) {
+				Fail(path, "maximum", "{$text} is above the maximum {$bound->GetValue()}");
+			};
+			bound := schema->Get("exclusiveMinimum");
+			if(bound <> Nil & bound->GetType() = JsonElement->JsonType->NUMBER & n <= bound->GetFloat()) {
+				Fail(path, "exclusiveMinimum", "{$text} is not above {$bound->GetValue()}");
+			};
+			bound := schema->Get("exclusiveMaximum");
+			if(bound <> Nil & bound->GetType() = JsonElement->JsonType->NUMBER & n >= bound->GetFloat()) {
+				Fail(path, "exclusiveMaximum", "{$text} is not below {$bound->GetValue()}");
+			};
+
+			step := schema->Get("multipleOf");
+			if(step <> Nil & step->GetFloat() > 0.0) {
+				ratio := n / step->GetFloat();
+				if(Float->Abs(ratio - Float->Round(ratio)) > 0.000000001) {
+					Fail(path, "multipleOf", "{$text} is not a multiple of {$step->GetValue()}");
+				};
+			};
+		}
+
+		method : CheckArray(schema : JsonElement, value : JsonElement, path : String, depth : Int) ~ Nil {
+			size := value->Size();
+
+			min := schema->Get("minItems");
+			if(min <> Nil & size < min->GetInt()) {
+				Fail(path, "minItems", "has {$size} items, fewer than the minimum {$min->GetInt()}");
+			};
+			max := schema->Get("maxItems");
+			if(max <> Nil & size > max->GetInt()) {
+				Fail(path, "maxItems", "has {$size} items, more than the maximum {$max->GetInt()}");
+			};
+
+			items := schema->Get("items");
+			if(items <> Nil) {
+				if(items->GetType() = JsonElement->JsonType->ARRAY) {
+					for(i := 0; i < size & i < items->Size(); i += 1;) {
+						Walk(items->Get(i), value->Get(i), "{$path}/{$i}", depth + 1);
+					};
+				}
+				else {
+					for(i := 0; i < size; i += 1;) {
+						Walk(items, value->Get(i), "{$path}/{$i}", depth + 1);
+					};
+				};
+			};
+
+			unique := schema->Get("uniqueItems");
+			if(unique <> Nil & unique->GetType() = JsonElement->JsonType->TRUE) {
+				for(i := 0; i < size; i += 1;) {
+					for(j := i + 1; j < size; j += 1;) {
+						if(Same(value->Get(i), value->Get(j))) {
+							Fail("{$path}/{$j}", "uniqueItems", "duplicates the item at {$path}/{$i}");
+						};
+					};
+				};
+			};
+		}
+
+		method : CheckObject(schema : JsonElement, value : JsonElement, path : String, depth : Int) ~ Nil {
+			size := value->Size();
+
+			required := schema->Get("required");
+			if(required <> Nil & required->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < required->Size(); i += 1;) {
+					name := required->Get(i)->GetString();
+					if(name <> Nil & <>value->Has(name)) {
+						Fail(Join(path, name), "required", "the required property '{$name}' is missing");
+					};
+				};
+			};
+
+			min := schema->Get("minProperties");
+			if(min <> Nil & size < min->GetInt()) {
+				Fail(path, "minProperties", "has {$size} properties, fewer than the minimum {$min->GetInt()}");
+			};
+			max := schema->Get("maxProperties");
+			if(max <> Nil & size > max->GetInt()) {
+				Fail(path, "maxProperties", "has {$size} properties, more than the maximum {$max->GetInt()}");
+			};
+
+			props := schema->Get("properties");
+			if(props <> Nil & props->GetType() = JsonElement->JsonType->OBJECT) {
+				names := props->GetNames();
+				each(i : names) {
+					name := names->Get(i);
+					member := value->Get(name);
+					if(member <> Nil) {
+						Walk(props->Get(name), member, Join(path, name), depth + 1);
+					};
+				};
+			};
+
+			extra := schema->Get("additionalProperties");
+			if(extra <> Nil) {
+				names := value->GetNames();
+				each(i : names) {
+					name := names->Get(i);
+					if(props = Nil | <>props->Has(name)) {
+						if(extra->GetType() = JsonElement->JsonType->FALSE) {
+							Fail(Join(path, name), "additionalProperties", "the property '{$name}' is not allowed");
+						}
+						else if(extra->GetType() = JsonElement->JsonType->OBJECT) {
+							Walk(extra, value->Get(name), Join(path, name), depth + 1);
+						};
+					};
+				};
+			};
+		}
+
+		method : CheckCombinators(schema : JsonElement, value : JsonElement, path : String, depth : Int) ~ Nil {
+			all := schema->Get("allOf");
+			if(all <> Nil & all->GetType() = JsonElement->JsonType->ARRAY) {
+				for(i := 0; i < all->Size(); i += 1;) {
+					Walk(all->Get(i), value, path, depth + 1);
+				};
+			};
+
+			any := schema->Get("anyOf");
+			if(any <> Nil & any->GetType() = JsonElement->JsonType->ARRAY & any->Size() > 0) {
+				hit := false;
+				for(i := 0; i < any->Size() & hit = false; i += 1;) {
+					if(Probe(any->Get(i), value, path, depth + 1)->Size() = 0) {
+						hit := true;
+					};
+				};
+				if(<>hit) {
+					why := Closest(any, value, path, depth);
+					Fail(path, "anyOf", "matches none of the {$any->Size()} allowed shapes: {$why}");
+				};
+			};
+
+			one := schema->Get("oneOf");
+			if(one <> Nil & one->GetType() = JsonElement->JsonType->ARRAY & one->Size() > 0) {
+				hits := 0;
+				for(i := 0; i < one->Size(); i += 1;) {
+					if(Probe(one->Get(i), value, path, depth + 1)->Size() = 0) {
+						hits += 1;
+					};
+				};
+				if(hits = 0) {
+					why := Closest(one, value, path, depth);
+					Fail(path, "oneOf", "matches none of the {$one->Size()} allowed shapes: {$why}");
+				}
+				else if(hits > 1) {
+					Fail(path, "oneOf", "matches {$hits} of the {$one->Size()} shapes, but exactly one is allowed");
+				};
+			};
+
+			negated := schema->Get("not");
+			if(negated <> Nil) {
+				if(Probe(negated, value, path, depth + 1)->Size() = 0) {
+					Fail(path, "not", "{$Show(value)} matches a shape that is not allowed");
+				};
+			};
+		}
+
+		# the failures of the alternative that got closest (fewest errors), to say why none matched
+		method : Closest(alternatives : JsonElement, value : JsonElement, path : String, depth : Int) ~ String {
+			best : Vector<SchemaError>;
+			best_score := 0;
+			for(i := 0; i < alternatives->Size(); i += 1;) {
+				found := Probe(alternatives->Get(i), value, path, depth + 1);
+				# fewest errors wins, and a shape of the wrong type at this very place is the furthest off
+				score := found->Size();
+				each(k : found) {
+					if(found->Get(k)->GetPath()->Equals(path) & found->Get(k)->GetKeyword()->Equals("type")) {
+						score += 1000;
+					};
+				};
+				if(best = Nil | score < best_score) {
+					best := found;
+					best_score := score;
+				};
+			};
+			if(best = Nil | best->Size() = 0) {
+				return "no detail";
+			};
+			text := best->Get(0)->ToString();
+			if(best->Size() > 1) {
+				more := best->Size() - 1;
+				return "{$text} (and {$more} more)";
+			};
+			return text;
+		}
+	}
+
+	#~
+	A strict JSON checker (RFC 8259). Data.JSON.JsonParser is forgiving: it accepts trailing commas, bare words and missing commas, which is no use for deciding whether a model's reply needed repair. JsonStrict says exactly whether a text is one valid JSON value, and where the first problem is.
+	~#
+	class JsonStrict {
+		@chars : Char[];
+		@pos : Int;
+		@error : String;
+
+		New() {
+		}
+
+		#~
+		Checks a text
+		@param text the text, one JSON value with optional surrounding white space
+		@return true if it is valid JSON, false otherwise (GetError() says where and why)
+		~#
+		method : public : Validate(text : String) ~ Bool {
+			@error := Nil;
+			if(text = Nil) {
+				@error := "there is no text";
+				return false;
+			};
+			@chars := text->ToCharArray();
+			@pos := 0;
+			SkipSpace();
+			if(@pos >= @chars->Size()) {
+				@error := "the text is empty";
+				return false;
+			};
+			if(<>Value(0)) {
+				return false;
+			};
+			SkipSpace();
+			if(@pos < @chars->Size()) {
+				Fail("unexpected text after the value");
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Gets why the last Validate() said no
+		@return the reason with its character offset, Nil after a success
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Fail(message : String) ~ Nil {
+			if(@error = Nil) {
+				@error := "{$message} at offset {$@pos}";
+			};
+		}
+
+		method : SkipSpace() ~ Nil {
+			while(@pos < @chars->Size() & LlmChars->IsSpace(@chars[@pos])) {
+				@pos += 1;
+			};
+		}
+
+		method : Literal(word : String) ~ Bool {
+			for(i := 0; i < word->Size(); i += 1;) {
+				if(@pos >= @chars->Size() | @chars[@pos] <> word->Get(i)) {
+					Fail("invalid literal");
+					return false;
+				};
+				@pos += 1;
+			};
+			return true;
+		}
+
+		method : Value(depth : Int) ~ Bool {
+			if(depth > 200) {
+				Fail("nested too deeply");
+				return false;
+			};
+			if(@pos >= @chars->Size()) {
+				Fail("the value is cut off");
+				return false;
+			};
+
+			c := @chars[@pos];
+			if(c = '{') {
+				return Obj(depth);
+			}
+			else if(c = '[') {
+				return Arr(depth);
+			}
+			else if(c = '"') {
+				return Str();
+			}
+			else if(c = 't') {
+				return Literal("true");
+			}
+			else if(c = 'f') {
+				return Literal("false");
+			}
+			else if(c = 'n') {
+				return Literal("null");
+			}
+			else if(c = '-' | LlmChars->IsDigit(c)) {
+				return Num();
+			};
+
+			Fail("unexpected character");
+			return false;
+		}
+
+		method : Obj(depth : Int) ~ Bool {
+			@pos += 1;
+			SkipSpace();
+			if(@pos < @chars->Size() & @chars[@pos] = '}') {
+				@pos += 1;
+				return true;
+			};
+
+			while(true) {
+				SkipSpace();
+				if(@pos >= @chars->Size() | @chars[@pos] <> '"') {
+					Fail("expected a quoted member name");
+					return false;
+				};
+				if(<>Str()) {
+					return false;
+				};
+				SkipSpace();
+				if(@pos >= @chars->Size() | @chars[@pos] <> ':') {
+					Fail("expected ':'");
+					return false;
+				};
+				@pos += 1;
+				SkipSpace();
+				if(<>Value(depth + 1)) {
+					return false;
+				};
+				SkipSpace();
+				if(@pos >= @chars->Size()) {
+					Fail("the object is cut off");
+					return false;
+				};
+				if(@chars[@pos] = ',') {
+					@pos += 1;
+				}
+				else if(@chars[@pos] = '}') {
+					@pos += 1;
+					return true;
+				}
+				else {
+					Fail("expected ',' or '}'");
+					return false;
+				};
+			};
+
+			return false;
+		}
+
+		method : Arr(depth : Int) ~ Bool {
+			@pos += 1;
+			SkipSpace();
+			if(@pos < @chars->Size() & @chars[@pos] = ']') {
+				@pos += 1;
+				return true;
+			};
+
+			while(true) {
+				SkipSpace();
+				if(<>Value(depth + 1)) {
+					return false;
+				};
+				SkipSpace();
+				if(@pos >= @chars->Size()) {
+					Fail("the array is cut off");
+					return false;
+				};
+				if(@chars[@pos] = ',') {
+					@pos += 1;
+				}
+				else if(@chars[@pos] = ']') {
+					@pos += 1;
+					return true;
+				}
+				else {
+					Fail("expected ',' or ']'");
+					return false;
+				};
+			};
+
+			return false;
+		}
+
+		method : Str() ~ Bool {
+			@pos += 1;
+			while(@pos < @chars->Size()) {
+				c := @chars[@pos];
+				if(c = '"') {
+					@pos += 1;
+					return true;
+				};
+				if(c->As(Int) < 32) {
+					Fail("a raw control character in a string");
+					return false;
+				};
+				if(c = '\\') {
+					@pos += 1;
+					if(@pos >= @chars->Size()) {
+						Fail("the string is cut off");
+						return false;
+					};
+					e := @chars[@pos];
+					if(e = 'u') {
+						for(k := 0; k < 4; k += 1;) {
+							@pos += 1;
+							if(@pos >= @chars->Size() | <>IsHex(@chars[@pos])) {
+								Fail("a bad unicode escape");
+								return false;
+							};
+						};
+					}
+					else if(<>LlmChars->Contains("\"\\/bfnrt", e)) {
+						Fail("a bad escape");
+						return false;
+					};
+				};
+				@pos += 1;
+			};
+
+			Fail("the string is cut off");
+			return false;
+		}
+
+		method : IsHex(c : Char) ~ Bool {
+			return LlmChars->IsDigit(c) | (c >= 'a' & c <= 'f') | (c >= 'A' & c <= 'F');
+		}
+
+		method : Digits() ~ Bool {
+			start := @pos;
+			while(@pos < @chars->Size() & LlmChars->IsDigit(@chars[@pos])) {
+				@pos += 1;
+			};
+			return @pos > start;
+		}
+
+		method : Num() ~ Bool {
+			if(@chars[@pos] = '-') {
+				@pos += 1;
+			};
+			if(@pos >= @chars->Size() | <>LlmChars->IsDigit(@chars[@pos])) {
+				Fail("a bad number");
+				return false;
+			};
+			if(@chars[@pos] = '0') {
+				@pos += 1;
+			}
+			else {
+				Digits();
+			};
+			if(@pos < @chars->Size() & @chars[@pos] = '.') {
+				@pos += 1;
+				if(<>Digits()) {
+					Fail("a bad number");
+					return false;
+				};
+			};
+			if(@pos < @chars->Size() & (@chars[@pos] = 'e' | @chars[@pos] = 'E')) {
+				@pos += 1;
+				if(@pos < @chars->Size() & (@chars[@pos] = '+' | @chars[@pos] = '-')) {
+					@pos += 1;
+				};
+				if(<>Digits()) {
+					Fail("a bad number");
+					return false;
+				};
+			};
+			return true;
+		}
+	}
+
+	#~
+	Repairs the JSON that models get wrong. Repair() is a single pass over the text that fixes: single-quoted strings, unquoted object keys, trailing commas, raw line breaks and tabs inside strings, Python and JavaScript literals (True, False, None, undefined, NaN), comments, a missing colon value, and a reply cut off in the middle (open strings, objects and arrays are closed). Text after the first complete value is dropped. It does not guess at anything else; whatever it returns still goes through the strict parser.
+	~#
+	class JsonRepair {
+		# removes trailing blanks and commas; a dangling colon gets null
+		function : Tidy(out : String, need_colon : Bool) ~ Nil {
+			if(need_colon) {
+				out->Append(":null");
+				return;
+			};
+			done := false;
+			while(out->Size() > 0 & done = false) {
+				last := out->Last();
+				if(LlmChars->IsSpace(last) | last = ',') {
+					out->Pop();
+				}
+				else {
+					done := true;
+				};
+			};
+			if(out->Size() > 0 & out->Last() = ':') {
+				out->Append("null");
+			};
+		}
+
+		function : AppendStringChar(out : String, d : Char) ~ Nil {
+			if(d = '\n') {
+				out->Append("\\n");
+			}
+			else if(d = '\r') {
+				out->Append("\\r");
+			}
+			else if(d = '\t') {
+				out->Append("\\t");
+			}
+			else if(d->As(Int) < 32) {
+				out->Append(' ');
+			}
+			else {
+				out->Append(d);
+			};
+		}
+
+		function : NextSignificant(src : Char[], start : Int) ~ Int {
+			j := start;
+			while(j < src->Size() & LlmChars->IsSpace(src[j])) {
+				j += 1;
+			};
+			return j;
+		}
+
+		#~
+		Repairs JSON text as described in the class description
+		@param text the damaged text, starting at the value (use JsonExtractor to find it in a reply)
+		@return the repaired text, Nil for Nil
+		~#
+		function : Repair(text : String) ~ String {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			src := text->ToCharArray();
+			n := src->Size();
+			out := String->New();
+			stack := Char->New[256];
+			depth := 0;
+			expect_key := false;
+			need_colon := false;
+			last_num := false;
+			finished := false;
+			i := 0;
+
+			while(i < n & finished = false) {
+				c := src[i];
+				if(c = '"' | c = '\'') {
+					quote := c;
+					out->Append('"');
+					i += 1;
+					closed := false;
+					while(i < n & closed = false) {
+						d := src[i];
+						if(d = '\\') {
+							if(i + 1 < n) {
+								e := src[i + 1];
+								if(e = '\'') {
+									out->Append('\'');
+								}
+								else {
+									out->Append(d);
+									AppendStringChar(out, e);
+								};
+								i += 2;
+							}
+							else {
+								i += 1;
+							};
+						}
+						else if(d = quote) {
+							closed := true;
+							i += 1;
+						}
+						else if(d = '"') {
+							out->Append("\\\"");
+							i += 1;
+						}
+						else {
+							AppendStringChar(out, d);
+							i += 1;
+						};
+					};
+					out->Append('"');
+					if(expect_key) {
+						need_colon := true;
+						expect_key := false;
+					};
+					last_num := false;
+				}
+				else if(c = '{' | c = '[') {
+					if(depth < 256) {
+						if(c = '{') {
+							stack[depth] := '}';
+						}
+						else {
+							stack[depth] := ']';
+						};
+						depth += 1;
+					};
+					out->Append(c);
+					expect_key := c = '{';
+					need_colon := false;
+					last_num := false;
+					i += 1;
+				}
+				else if(c = '}' | c = ']') {
+					if(depth > 0) {
+						Tidy(out, need_colon);
+						need_colon := false;
+						depth -= 1;
+						out->Append(stack[depth]);
+						expect_key := false;
+						last_num := false;
+						if(depth = 0) {
+							finished := true;
+						};
+					};
+					i += 1;
+				}
+				else if(c = ',') {
+					j := NextSignificant(src, i + 1);
+					if(j >= n | src[j] = '}' | src[j] = ']' | need_colon) {
+						i += 1;
+					}
+					else {
+						out->Append(',');
+						expect_key := depth > 0 & stack[depth - 1] = '}';
+						last_num := false;
+						i += 1;
+					};
+				}
+				else if(c = ':') {
+					out->Append(':');
+					need_colon := false;
+					last_num := false;
+					i += 1;
+				}
+				else if(c = '/' & i + 1 < n & src[i + 1] = '/') {
+					while(i < n & src[i] <> '\n') {
+						i += 1;
+					};
+				}
+				else if(c = '/' & i + 1 < n & src[i + 1] = '*') {
+					i += 2;
+					while(i + 1 < n & <>(src[i] = '*' & src[i + 1] = '/')) {
+						i += 1;
+					};
+					i += 2;
+				}
+				else if(LlmChars->IsSpace(c)) {
+					out->Append(c);
+					i += 1;
+				}
+				else if(LlmChars->IsLetter(c) | c = '_' | c = '$') {
+					j := i;
+					while(j < n & (LlmChars->IsLetter(src[j]) | LlmChars->IsDigit(src[j]) | src[j] = '_' | src[j] = '$')) {
+						j += 1;
+					};
+					word := text->SubString(i, j - i);
+					k := NextSignificant(src, j);
+					is_key := expect_key | (depth > 0 & stack[depth - 1] = '}' & k < n & src[k] = ':');
+					if(is_key) {
+						out->Append('"');
+						out->Append(word);
+						out->Append('"');
+						need_colon := true;
+						expect_key := false;
+					}
+					else {
+						lower := word->ToLower();
+						if(lower->Equals("true") | lower->Equals("false") | lower->Equals("null")) {
+							out->Append(lower);
+						}
+						else if(lower->Equals("none") | lower->Equals("undefined") | lower->Equals("nan")) {
+							out->Append("null");
+						}
+						else {
+							out->Append('"');
+							out->Append(word);
+							out->Append('"');
+						};
+					};
+					last_num := false;
+					i := j;
+				}
+				else if(LlmChars->IsDigit(c) | c = '-' | c = '.') {
+					while(i < n & (LlmChars->IsDigit(src[i]) | src[i] = '-' | src[i] = '+' | src[i] = '.' | src[i] = 'e' | src[i] = 'E')) {
+						out->Append(src[i]);
+						i += 1;
+					};
+					last_num := true;
+				}
+				else {
+					i += 1;
+				};
+			};
+
+			if(finished = false) {
+				if(last_num) {
+					while(out->Size() > 0 & LlmChars->Contains("-+.eE", out->Last())) {
+						out->Pop();
+					};
+				};
+				while(depth > 0) {
+					Tidy(out, need_colon);
+					need_colon := false;
+					depth -= 1;
+					out->Append(stack[depth]);
+				};
+			};
+
+			return out->ToString();
+		}
+	}
+
+	#~
+	Finds the JSON in a model reply. Models wrap JSON in a code fence, introduce it with a sentence, or trail off after it; the extractor collects every fenced block and every balanced {...} or [...] span, in that order, and parses each strictly. With SetRepair(true), candidates that fail the strict parse are also tried after JsonRepair (off by default, and only ever after the strict parse failed).
+	~#
+	class JsonExtractor {
+		@repair : Bool;
+		@error : String;
+		@strict_count : Int;
+
+		New() {
+			@repair := false;
+			@strict_count := 0;
+		}
+
+		#~
+		Turns the lenient repair of failed candidates on or off
+		@param repair true to repair, default false
+		@return self for chaining
+		~#
+		method : public : SetRepair(repair : Bool) ~ JsonExtractor {
+			@repair := repair;
+			return @self;
+		}
+
+		#~
+		Gets the last parse error
+		@return why nothing parsed, or Nil
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Tells whether a value returned by the last ParseAll() came from a repaired candidate
+		@param index position in the list ParseAll() returned
+		@return true if it was repaired
+		~#
+		method : public : IsRepaired(index : Int) ~ Bool {
+			return index >= @strict_count;
+		}
+
+		# index of the bracket that closes the one at start, -1 when the text ends first
+		function : SpanEnd(chars : Char[], start : Int) ~ Int {
+			depth := 0;
+			in_string := false;
+			i := start;
+			while(i < chars->Size()) {
+				c := chars[i];
+				if(in_string) {
+					if(c = '\\') {
+						i += 1;
+					}
+					else if(c = '"') {
+						in_string := false;
+					};
+				}
+				else if(c = '"') {
+					in_string := true;
+				}
+				else if(c = '{' | c = '[') {
+					depth += 1;
+				}
+				else if(c = '}' | c = ']') {
+					depth -= 1;
+					if(depth = 0) {
+						return i;
+					};
+				};
+				i += 1;
+			};
+			return -1;
+		}
+
+		method : AddUnique(list : Vector<String>, text : String) ~ Nil {
+			each(i : list) {
+				if(list->Get(i)->Equals(text)) {
+					return;
+				};
+			};
+			list->AddBack(text);
+		}
+
+		#~
+		Lists the places in a reply that may hold JSON: fenced blocks first, then balanced spans, then the whole text (for a bare scalar)
+		@param text the reply
+		@return candidate texts, possibly empty
+		~#
+		method : public : Candidates(text : String) ~ Vector<String> {
+			found := Vector->New()<String>;
+			if(text = Nil) {
+				return found;
+			};
+
+			chars := text->ToCharArray();
+			n := chars->Size();
+
+			# fenced blocks
+			fence := "```";
+			at := text->Find(fence);
+			while(at > -1 & found->Size() < 16) {
+				body := text->Find(at + 3, '\n');
+				if(body < 0) {
+					at := -1;
+				}
+				else {
+					close := text->Find(body + 1, fence);
+					content : String;
+					if(close < 0) {
+						content := text->SubString(body + 1, n - body - 1);
+						at := -1;
+					}
+					else {
+						content := text->SubString(body + 1, close - body - 1);
+						at := text->Find(close + 3, fence);
+					};
+					content := content->Trim();
+					if(content->Size() > 0 & (content->StartsWith('{') | content->StartsWith('['))) {
+						AddUnique(found, content);
+					};
+				};
+			};
+
+			# balanced spans
+			i := 0;
+			while(i < n & found->Size() < 32) {
+				if(chars[i] = '{' | chars[i] = '[') {
+					end := SpanEnd(chars, i);
+					if(end < 0) {
+						AddUnique(found, text->SubString(i, n - i)->Trim());
+						i := n;
+					}
+					else {
+						AddUnique(found, text->SubString(i, end - i + 1));
+						i := end + 1;
+					};
+				}
+				else {
+					i += 1;
+				};
+			};
+
+			whole := text->Trim();
+			if(whole->Size() > 0) {
+				AddUnique(found, whole);
+			};
+			return found;
+		}
+
+		method : TryParse(candidate : String, values : Vector<JsonElement>) ~ Bool {
+			strict := JsonStrict->New();
+			if(strict->Validate(candidate)) {
+				parser := JsonParser->New(candidate);
+				if(parser->Parse() & parser->GetRoot() <> Nil) {
+					values->AddBack(parser->GetRoot());
+					return true;
+				};
+			};
+			if(@error = Nil) {
+				why := strict->GetError();
+				@error := "the reply holds JSON that does not parse: {$why}";
+			};
+			return false;
+		}
+
+		method : Holds(values : Vector<JsonElement>, value : JsonElement) ~ Bool {
+			text := value->ToString();
+			each(i : values) {
+				if(values->Get(i)->ToString()->Equals(text)) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		#~
+		Parses every candidate in a reply, strictly. With repair on, the candidates that failed are then repaired and parsed again; IsRepaired() tells which values came from that second pass.
+		@param text the reply
+		@return the values that parsed, in order, possibly empty (GetError() then says why)
+		~#
+		method : public : ParseAll(text : String) ~ Vector<JsonElement> {
+			@error := Nil;
+			values := Vector->New()<JsonElement>;
+			candidates := Candidates(text);
+			failed := Vector->New()<String>;
+			each(i : candidates) {
+				if(<>TryParse(candidates->Get(i), values)) {
+					failed->AddBack(candidates->Get(i));
+				};
+			};
+			@strict_count := values->Size();
+
+			if(@repair) {
+				each(i : failed) {
+					fixed := JsonRepair->Repair(failed->Get(i));
+					first := failed->Get(i)->Get(0);
+					if(fixed <> Nil & fixed->Size() > 0 & (first = '{' | first = '[') & JsonStrict->New()->Validate(fixed)) {
+						parser := JsonParser->New(fixed);
+						if(parser->Parse() & parser->GetRoot() <> Nil & <>Holds(values, parser->GetRoot())) {
+							values->AddBack(parser->GetRoot());
+						};
+					};
+				};
+			};
+
+			if(values->Size() = 0) {
+				if(candidates->Size() = 0) {
+					@error := "the reply is empty";
+				}
+				else if(text->Find('{') < 0 & text->Find('[') < 0) {
+					@error := "the reply holds no JSON object or array";
+				}
+				else if(@error = Nil) {
+					@error := "the reply holds JSON that does not parse";
+				};
+			}
+			else {
+				@error := Nil;
+			};
+			return values;
+		}
+
+		#~
+		Parses the first candidate that works
+		@param text the reply
+		@return the value, or Nil with GetError() set
+		~#
+		method : public : Parse(text : String) ~ JsonElement {
+			values := ParseAll(text);
+			if(values->Size() > 0) {
+				return values->Get(0);
+			};
+			return Nil;
+		}
+	}
+
+	#~
+	A chat backend, as far as StructuredCall needs one: send a conversation, get the reply text. Implement it for any model or service; a test can implement it with a scripted fake.
+	~#
+	interface ChatFn {
+		#~
+		Sends a conversation and returns the model's reply text
+		@param turns the conversation: an optional "system" turn first, then "user" and "assistant" turns ending with a "user" turn
+		@return the reply text, or Nil with GetError() set
+		~#
+		method : virtual : public : Complete(turns : Vector<PromptTurn>) ~ String;
+
+		#~
+		Gets why the last Complete() returned Nil
+		@return the error text
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	What StructuredCall::Ask returns: the valid value, or why there is none.
+	~#
+	class StructuredOutcome {
+		@value : JsonElement;
+		@errors : Vector<SchemaError>;
+		@error : String;
+		@attempts : Int;
+		@replies : Vector<String>;
+		@repaired : Bool;
+
+		New() {
+			@errors := Vector->New()<SchemaError>;
+			@replies := Vector->New()<String>;
+			@attempts := 0;
+		}
+
+		method : public : SetValue(value : JsonElement) ~ Nil {
+			@value := value;
+		}
+
+		method : public : SetErrors(errors : Vector<SchemaError>) ~ Nil {
+			@errors := errors;
+		}
+
+		method : public : SetError(error : String) ~ Nil {
+			@error := error;
+		}
+
+		method : public : SetAttempts(attempts : Int) ~ Nil {
+			@attempts := attempts;
+		}
+
+		method : public : SetRepaired(repaired : Bool) ~ Nil {
+			@repaired := repaired;
+		}
+
+		method : public : AddReply(reply : String) ~ Nil {
+			@replies->AddBack(reply);
+		}
+
+		#~
+		Tells whether a value matching the schema was obtained
+		@return true on success
+		~#
+		method : public : IsOk() ~ Bool {
+			return @value <> Nil;
+		}
+
+		#~
+		Gets the JSON value that matched the schema
+		@return the value, Nil on failure
+		~#
+		method : public : GetValue() ~ JsonElement {
+			return @value;
+		}
+
+		#~
+		Gets the validation errors of the last reply (empty on success, or when the backend itself failed)
+		@return the errors
+		~#
+		method : public : GetErrors() ~ Vector<SchemaError> {
+			return @errors;
+		}
+
+		#~
+		Gets a one-line reason for a failure: the backend's error, or the last reply's first problem
+		@return the reason, Nil on success
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets how many times the backend was asked
+		@return attempts, 1 when the first reply was right
+		~#
+		method : public : GetAttempts() ~ Int {
+			return @attempts;
+		}
+
+		#~
+		Gets every reply text received, oldest first
+		@return the replies
+		~#
+		method : public : GetReplies() ~ Vector<String> {
+			return @replies;
+		}
+
+		#~
+		Tells whether the value came from a repaired reply (JSON repair is off unless asked for)
+		@return true if repaired
+		~#
+		method : public : WasRepaired() ~ Bool {
+			return @repaired;
+		}
+	}
+
+	#~
+	Asks a chat backend for JSON that matches a schema. The schema is added to the system prompt, the JSON is pulled out of the reply (fenced or chatty replies are fine), checked with JsonSchema, and when it is wrong the model is shown the exact errors and asked again, up to a retry limit. The outcome is the typed JSON element or the final error list. The retry loop is a plain chat, so it works with every backend; a provider's native structured mode (a forced tool call, a response schema) can be used by wrapping it in your own ChatFn.
+
+```
+call := StructuredCall->New(chat, schema)->SetMaxRetries(2);
+outcome := call->Ask("Extract the person from: Ada Lovelace, 36");
+if(outcome->IsOk()) {
+  outcome->GetValue()->Get("name")->GetString()->PrintLine();
+};
+```
+
+	~#
+	class StructuredCall {
+		@chat : ChatFn;
+		@schema : JsonElement;
+		@validator : JsonSchema;
+		@retries : Int;
+		@repair : Bool;
+		@instruction : String;
+		@listed : Int;
+
+		#~
+		Constructor
+		@param chat the backend
+		@param schema JSON Schema the reply must match
+		~#
+		New(chat : ChatFn, schema : JsonElement) {
+			@chat := chat;
+			@schema := schema;
+			@validator := JsonSchema->New(schema);
+			@retries := 2;
+			@repair := false;
+			@listed := 8;
+		}
+
+		#~
+		Sets how many times to retry after an invalid reply
+		@param retries retries, default 2 (so up to 3 requests); 0 asks once
+		@return self for chaining
+		~#
+		method : public : SetMaxRetries(retries : Int) ~ StructuredCall {
+			if(retries >= 0) {
+				@retries := retries;
+			};
+			return @self;
+		}
+
+		#~
+		Turns the lenient JSON repair on: trailing commas, single quotes, unquoted keys, truncated replies. Off by default; used only after the strict parse failed.
+		@param repair true to allow repair
+		@return self for chaining
+		~#
+		method : public : SetRepair(repair : Bool) ~ StructuredCall {
+			@repair := repair;
+			return @self;
+		}
+
+		#~
+		Replaces the sentence that tells the model to answer with JSON; the schema is always appended
+		@param instruction new instruction text
+		@return self for chaining
+		~#
+		method : public : SetInstruction(instruction : String) ~ StructuredCall {
+			@instruction := instruction;
+			return @self;
+		}
+
+		method : SystemText(base : String) ~ String {
+			out := String->New();
+			if(base <> Nil & base->Size() > 0) {
+				out->Append(base);
+				out->Append("\n\n");
+			};
+			if(@instruction = Nil) {
+				out->Append("Reply with a single JSON value that conforms to the JSON Schema below. Output only the JSON: no explanation, no markdown code fence.");
+			}
+			else {
+				out->Append(@instruction);
+			};
+			out->Append("\n\nJSON Schema:\n");
+			out->Append(@schema->ToString());
+			return out->ToString();
+		}
+
+		method : Feedback(errors : Vector<SchemaError>, parse_error : String) ~ String {
+			out := String->New();
+			if(parse_error <> Nil) {
+				out->Append("Your reply could not be used: ");
+				out->Append(parse_error);
+				out->Append(".\n");
+			}
+			else {
+				out->Append("Your reply did not match the schema. Problems:\n");
+				for(i := 0; i < errors->Size() & i < @listed; i += 1;) {
+					out->Append("- ");
+					out->Append(errors->Get(i)->ToString());
+					out->Append('\n');
+				};
+				if(errors->Size() > @listed) {
+					more := errors->Size() - @listed;
+					out->Append("- ... and {$more} more\n");
+				};
+			};
+			out->Append("Reply again with only the corrected JSON value.");
+			return out->ToString();
+		}
+
+		#~
+		Asks with a single user message
+		@param prompt the question or the text to process
+		@return the outcome
+		~#
+		method : public : Ask(prompt : String) ~ StructuredOutcome {
+			return Ask(PromptBuilder->New()->User(prompt));
+		}
+
+		#~
+		Asks with a conversation. The builder is not changed; its system prompt is kept and the schema instruction is added to it.
+		@param builder the conversation, ending with a user turn
+		@return the outcome
+		~#
+		method : public : Ask(builder : PromptBuilder) ~ StructuredOutcome {
+			outcome := StructuredOutcome->New();
+
+			turns := Vector->New()<PromptTurn>;
+			turns->AddBack(PromptTurn->New("system", SystemText(builder->GetSystem())));
+			source := builder->GetTurns();
+			each(i : source) {
+				turns->AddBack(source->Get(i));
+			};
+
+			extractor := JsonExtractor->New()->SetRepair(@repair);
+			attempt := 0;
+			while(attempt <= @retries) {
+				attempt += 1;
+				outcome->SetAttempts(attempt);
+
+				reply := @chat->Complete(turns);
+				if(reply = Nil) {
+					reason := @chat->GetError();
+					if(reason = Nil) {
+						reason := "no reply";
+					};
+					outcome->SetError("the chat backend failed: {$reason}");
+					outcome->SetErrors(Vector->New()<SchemaError>);
+					return outcome;
+				};
+				outcome->AddReply(reply);
+
+				values := extractor->ParseAll(reply);
+				errors : Vector<SchemaError>;
+				parse_error : String;
+				if(values->Size() = 0) {
+					parse_error := extractor->GetError();
+					errors := Vector->New()<SchemaError>;
+					errors->AddBack(SchemaError->New("", "parse", parse_error));
+				}
+				else {
+					for(i := 0; i < values->Size() & outcome->GetValue() = Nil; i += 1;) {
+						found := @validator->Validate(values->Get(i));
+						if(found->Size() = 0) {
+							outcome->SetValue(values->Get(i));
+							outcome->SetRepaired(extractor->IsRepaired(i));
+						}
+						else if(errors = Nil) {
+							errors := found;
+						};
+					};
+				};
+
+				if(outcome->IsOk()) {
+					outcome->SetErrors(Vector->New()<SchemaError>);
+					return outcome;
+				};
+
+				outcome->SetErrors(errors);
+				outcome->SetError(errors->Get(0)->ToString());
+
+				if(attempt <= @retries) {
+					turns->AddBack(PromptTurn->New("assistant", reply));
+					turns->AddBack(PromptTurn->New("user", Feedback(errors, parse_error)));
+				};
+			};
+
+			return outcome;
+		}
+
+		#~
+		Asks with a template as the user message
+		@param template the prompt template
+		@param vars its values
+		@return the outcome; a failed render is an outcome with the render error and no request sent
+		~#
+		method : public : Ask(template : PromptTemplate, vars : PromptVars) ~ StructuredOutcome {
+			text := template->Render(vars);
+			if(text = Nil) {
+				outcome := StructuredOutcome->New();
+				outcome->SetError("the prompt template failed: {$template->GetError()}");
+				return outcome;
+			};
+			return Ask(text);
+		}
+	}
+}

@@ -1,0 +1,314 @@
+# EXTRA_LIBS: llm_util,regex
+#~
+API.LlmUtil JSON Schema validation, as a table of (schema, value, expected errors).
+Each expected entry is "pointer:keyword"; entries are joined with ";" and appear in
+the order the validator reports them. A few cases also check the full messages.
+No network, no key.
+~#
+
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class LlmUtilSchemaTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Summary(errors : Vector<SchemaError>) ~ String {
+    out := String->New();
+    each(i : errors) {
+      if(i > 0) {
+        out->Append(';');
+      };
+      out->Append(errors->Get(i)->GetPath());
+      out->Append(':');
+      out->Append(errors->Get(i)->GetKeyword());
+    };
+    return out->ToString();
+  }
+
+  function : Case(name : String, schema_text : String, value_text : String, expected : String) ~ Nil {
+    schema := JsonParser->TextToElement(schema_text);
+    value := JsonParser->TextToElement(value_text);
+    if(schema = Nil | value = Nil) {
+      "  [FAIL] {$name}: the case itself does not parse"->PrintLine();
+      @failures += 1;
+      return;
+    };
+    got := Summary(JsonSchema->Check(schema, value));
+    if(got->Equals(expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: got '{$got}', wanted '{$expected}'"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Message(name : String, schema_text : String, value_text : String, expected : String) ~ Nil {
+    errors := JsonSchema->Check(JsonParser->TextToElement(schema_text), JsonParser->TextToElement(value_text));
+    got := JsonSchema->Describe(errors);
+    if(got->Equals(expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: got '{$got}', wanted '{$expected}'"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    TestTypes();
+    TestStrings();
+    TestNumbers();
+    TestEnumConst();
+    TestObjects();
+    TestArrays();
+    TestNested();
+    TestCombinators();
+    TestRefs();
+    TestPointers();
+    TestMessages();
+    TestApi();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestTypes() ~ Nil {
+    "-- type"->PrintLine();
+    Case("string ok", "{\"type\":\"string\"}", "\"a\"", "");
+    Case("string wrong", "{\"type\":\"string\"}", "1", ":type");
+    Case("number accepts int", "{\"type\":\"number\"}", "3", "");
+    Case("number accepts float", "{\"type\":\"number\"}", "3.5", "");
+    Case("number rejects string", "{\"type\":\"number\"}", "\"3\"", ":type");
+    Case("integer ok", "{\"type\":\"integer\"}", "3", "");
+    Case("integer accepts 1.0", "{\"type\":\"integer\"}", "1.0", "");
+    Case("integer accepts 1e2", "{\"type\":\"integer\"}", "1e2", "");
+    Case("integer rejects 1.5", "{\"type\":\"integer\"}", "1.5", ":type");
+    Case("boolean true", "{\"type\":\"boolean\"}", "true", "");
+    Case("boolean false", "{\"type\":\"boolean\"}", "false", "");
+    Case("boolean rejects 0", "{\"type\":\"boolean\"}", "0", ":type");
+    Case("null ok", "{\"type\":\"null\"}", "null", "");
+    Case("null rejects empty string", "{\"type\":\"null\"}", "\"\"", ":type");
+    Case("object ok", "{\"type\":\"object\"}", "{}", "");
+    Case("object rejects array", "{\"type\":\"object\"}", "[]", ":type");
+    Case("array ok", "{\"type\":\"array\"}", "[]", "");
+    Case("array rejects object", "{\"type\":\"array\"}", "{}", ":type");
+    Case("a type list accepts either", "{\"type\":[\"string\",\"null\"]}", "null", "");
+    Case("a type list accepts the other", "{\"type\":[\"string\",\"null\"]}", "\"x\"", "");
+    Case("a type list rejects the rest", "{\"type\":[\"string\",\"null\"]}", "5", ":type");
+    Case("no type accepts anything", "{}", "[1,{\"a\":null}]", "");
+    Case("a true schema accepts anything", "true", "5", "");
+    Case("a false schema rejects everything", "false", "5", ":schema");
+    Case("a bad schema is reported", "5", "5", ":schema");
+    Case("a type error stops the other checks", "{\"type\":\"string\",\"minimum\":5}", "1", ":type");
+  }
+
+  function : TestStrings() ~ Nil {
+    "-- strings"->PrintLine();
+    Case("minLength ok", "{\"minLength\":2}", "\"ab\"", "");
+    Case("minLength short", "{\"minLength\":2}", "\"a\"", ":minLength");
+    Case("maxLength ok", "{\"maxLength\":2}", "\"ab\"", "");
+    Case("maxLength long", "{\"maxLength\":2}", "\"abc\"", ":maxLength");
+    Case("length counts characters, not bytes", "{\"maxLength\":2}", "\"éé\"", "");
+    Case("both bounds", "{\"minLength\":3,\"maxLength\":4}", "\"a\"", ":minLength");
+    Case("empty string with minLength 1", "{\"minLength\":1}", "\"\"", ":minLength");
+    Case("pattern matches", "{\"pattern\":\"^[a-z]+$\"}", "\"abc\"", "");
+    Case("pattern fails", "{\"pattern\":\"^[a-z]+$\"}", "\"abc1\"", ":pattern");
+    Case("pattern is a search, not a full match", "{\"pattern\":\"b+\"}", "\"abbbc\"", "");
+    Case("pattern anchors are honoured", "{\"pattern\":\"^b\"}", "\"abbbc\"", ":pattern");
+    Case("pattern with digits", "{\"pattern\":\"^\\\\d{3}-\\\\d{4}$\"}", "\"555-1234\"", "");
+    Case("pattern with digits fails", "{\"pattern\":\"^\\\\d{3}-\\\\d{4}$\"}", "\"5551234\"", ":pattern");
+    Case("an invalid pattern is reported", "{\"pattern\":\"(\"}", "\"x\"", ":pattern");
+    Case("string keywords ignore other types", "{\"minLength\":5,\"pattern\":\"^x\"}", "3", "");
+  }
+
+  function : TestNumbers() ~ Nil {
+    "-- numbers"->PrintLine();
+    Case("minimum ok (equal)", "{\"minimum\":5}", "5", "");
+    Case("minimum below", "{\"minimum\":5}", "4.9", ":minimum");
+    Case("maximum ok (equal)", "{\"maximum\":5}", "5", "");
+    Case("maximum above", "{\"maximum\":5}", "5.1", ":maximum");
+    Case("exclusiveMinimum equal fails", "{\"exclusiveMinimum\":5}", "5", ":exclusiveMinimum");
+    Case("exclusiveMinimum above ok", "{\"exclusiveMinimum\":5}", "5.01", "");
+    Case("exclusiveMaximum equal fails", "{\"exclusiveMaximum\":5}", "5", ":exclusiveMaximum");
+    Case("exclusiveMaximum below ok", "{\"exclusiveMaximum\":5}", "4.99", "");
+    Case("negative bounds", "{\"minimum\":-10,\"maximum\":-5}", "-7", "");
+    Case("negative below", "{\"minimum\":-10,\"maximum\":-5}", "-11", ":minimum");
+    Case("range both violated is impossible, one reported", "{\"minimum\":10,\"maximum\":1}", "5", ":minimum;:maximum");
+    Case("multipleOf ok", "{\"multipleOf\":5}", "15", "");
+    Case("multipleOf fails", "{\"multipleOf\":5}", "16", ":multipleOf");
+    Case("multipleOf with a fraction", "{\"multipleOf\":0.1}", "0.3", "");
+    Case("integer and range together", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":10}", "11", ":maximum");
+    Case("an integer with a float bound", "{\"type\":\"integer\",\"minimum\":1.5}", "1", ":minimum");
+    Case("number keywords ignore strings", "{\"minimum\":5}", "\"1\"", "");
+  }
+
+  function : TestEnumConst() ~ Nil {
+    "-- enum and const"->PrintLine();
+    Case("enum of strings ok", "{\"enum\":[\"a\",\"b\"]}", "\"b\"", "");
+    Case("enum of strings fails", "{\"enum\":[\"a\",\"b\"]}", "\"c\"", ":enum");
+    Case("enum mixed types", "{\"enum\":[1,\"1\",null,true]}", "null", "");
+    Case("enum 1 is not \"1\"", "{\"enum\":[\"1\"]}", "1", ":enum");
+    Case("enum 1 equals 1.0", "{\"enum\":[1]}", "1.0", "");
+    Case("enum compares objects by content", "{\"enum\":[{\"a\":1,\"b\":[1,2]}]}", "{\"b\":[1,2],\"a\":1}", "");
+    Case("enum objects differ", "{\"enum\":[{\"a\":1}]}", "{\"a\":2}", ":enum");
+    Case("enum arrays are ordered", "{\"enum\":[[1,2]]}", "[2,1]", ":enum");
+    Case("const ok", "{\"const\":\"x\"}", "\"x\"", "");
+    Case("const fails", "{\"const\":\"x\"}", "\"y\"", ":const");
+    Case("const null", "{\"const\":null}", "null", "");
+    Case("const false vs true", "{\"const\":false}", "true", ":const");
+    Case("const object", "{\"const\":{\"k\":[1]}}", "{\"k\":[1]}", "");
+    Case("enum is checked with the type", "{\"type\":\"string\",\"enum\":[\"a\"]}", "\"b\"", ":enum");
+  }
+
+  function : TestObjects() ~ Nil {
+    "-- objects"->PrintLine();
+    person := "{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\",\"minimum\":0}}}";
+    Case("valid object", person, "{\"name\":\"Ada\",\"age\":36}", "");
+    Case("extra members are allowed by default", person, "{\"name\":\"Ada\",\"age\":36,\"x\":1}", "");
+    Case("a missing required member", person, "{\"name\":\"Ada\"}", "/age:required");
+    Case("all missing are reported, in order", person, "{}", "/name:required;/age:required");
+    Case("a wrong member type", person, "{\"name\":5,\"age\":36}", "/name:type");
+    Case("two wrong members", person, "{\"name\":5,\"age\":-1}", "/age:minimum;/name:type");
+    Case("required missing and another wrong", person, "{\"age\":\"x\"}", "/name:required;/age:type");
+    Case("null where a string is wanted", person, "{\"name\":null,\"age\":1}", "/name:type");
+    Case("additionalProperties false", "{\"properties\":{\"a\":{}},\"additionalProperties\":false}", "{\"a\":1,\"b\":2,\"c\":3}", "/b:additionalProperties;/c:additionalProperties");
+    Case("additionalProperties false, none extra", "{\"properties\":{\"a\":{}},\"additionalProperties\":false}", "{\"a\":1}", "");
+    Case("additionalProperties false with no properties", "{\"additionalProperties\":false}", "{\"a\":1}", "/a:additionalProperties");
+    Case("additionalProperties as a schema", "{\"properties\":{\"a\":{}},\"additionalProperties\":{\"type\":\"integer\"}}", "{\"a\":\"x\",\"b\":1,\"c\":\"y\"}", "/c:type");
+    Case("additionalProperties true", "{\"additionalProperties\":true}", "{\"a\":1}", "");
+    Case("minProperties", "{\"minProperties\":2}", "{\"a\":1}", ":minProperties");
+    Case("maxProperties", "{\"maxProperties\":1}", "{\"a\":1,\"b\":2}", ":maxProperties");
+    Case("an empty object against required", "{\"required\":[\"a\"]}", "{}", "/a:required");
+    Case("object keywords ignore arrays", "{\"required\":[\"a\"]}", "[]", "");
+  }
+
+  function : TestArrays() ~ Nil {
+    "-- arrays"->PrintLine();
+    Case("items ok", "{\"items\":{\"type\":\"integer\"}}", "[1,2,3]", "");
+    Case("items one wrong", "{\"items\":{\"type\":\"integer\"}}", "[1,\"x\",3]", "/1:type");
+    Case("items several wrong", "{\"items\":{\"type\":\"integer\"}}", "[\"a\",2,\"c\"]", "/0:type;/2:type");
+    Case("empty array is fine", "{\"items\":{\"type\":\"integer\"}}", "[]", "");
+    Case("minItems", "{\"minItems\":2}", "[1]", ":minItems");
+    Case("maxItems", "{\"maxItems\":2}", "[1,2,3]", ":maxItems");
+    Case("both bounds ok", "{\"minItems\":1,\"maxItems\":2}", "[1,2]", "");
+    Case("uniqueItems ok", "{\"uniqueItems\":true}", "[1,2,3]", "");
+    Case("uniqueItems duplicate", "{\"uniqueItems\":true}", "[1,2,1]", "/2:uniqueItems");
+    Case("uniqueItems compares by content", "{\"uniqueItems\":true}", "[{\"a\":1},{\"a\":1.0}]", "/1:uniqueItems");
+    Case("uniqueItems false allows duplicates", "{\"uniqueItems\":false}", "[1,1]", "");
+    Case("tuple items", "{\"items\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "[\"a\",1]", "");
+    Case("tuple items wrong", "{\"items\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "[1,\"a\"]", "/0:type;/1:type");
+    Case("tuple items ignores the extras", "{\"items\":[{\"type\":\"string\"}]}", "[\"a\",1,2]", "");
+    Case("array keywords ignore objects", "{\"minItems\":3}", "{}", "");
+  }
+
+  function : TestNested() ~ Nil {
+    "-- nested values and pointer paths"->PrintLine();
+    schema := "{\"type\":\"object\",\"required\":[\"users\"],\"properties\":{\"users\":{\"type\":\"array\",\"minItems\":1,\"items\":{\"type\":\"object\",\"required\":[\"id\",\"tags\"],\"properties\":{\"id\":{\"type\":\"integer\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":2}},\"address\":{\"type\":\"object\",\"required\":[\"zip\"],\"properties\":{\"zip\":{\"type\":\"string\",\"pattern\":\"^[0-9]{5}$\"}}}}}}}}";
+    Case("deep valid", schema, "{\"users\":[{\"id\":1,\"tags\":[\"ab\",\"cd\"],\"address\":{\"zip\":\"12345\"}}]}", "");
+    Case("deep: a wrong id in the second user", schema, "{\"users\":[{\"id\":1,\"tags\":[]},{\"id\":\"x\",\"tags\":[]}]}", "/users/1/id:type");
+    Case("deep: a short tag", schema, "{\"users\":[{\"id\":1,\"tags\":[\"ab\",\"c\"]}]}", "/users/0/tags/1:minLength");
+    Case("deep: a bad zip", schema, "{\"users\":[{\"id\":1,\"tags\":[],\"address\":{\"zip\":\"1234\"}}]}", "/users/0/address/zip:pattern");
+    Case("deep: a missing member of a nested object", schema, "{\"users\":[{\"id\":1,\"tags\":[],\"address\":{}}]}", "/users/0/address/zip:required");
+    Case("deep: missing tags", schema, "{\"users\":[{\"id\":1}]}", "/users/0/tags:required");
+    Case("deep: an empty users array", schema, "{\"users\":[]}", "/users:minItems");
+    Case("deep: several problems at once", schema, "{\"users\":[{\"id\":\"a\",\"tags\":[7]},{\"tags\":[\"x\"],\"address\":{\"zip\":5}}]}", "/users/0/id:type;/users/0/tags/0:type;/users/1/id:required;/users/1/address/zip:type;/users/1/tags/0:minLength");
+    Case("deep: the root has the wrong type", schema, "[1]", ":type");
+    Case("deep: users is not an array", schema, "{\"users\":{}}", "/users:type");
+  }
+
+  function : TestCombinators() ~ Nil {
+    "-- allOf, anyOf, oneOf, not"->PrintLine();
+    Case("allOf ok", "{\"allOf\":[{\"type\":\"integer\"},{\"minimum\":3}]}", "5", "");
+    Case("allOf reports each failure", "{\"allOf\":[{\"type\":\"integer\"},{\"minimum\":3},{\"maximum\":4}]}", "5", ":maximum");
+    Case("allOf reports all", "{\"allOf\":[{\"minimum\":10},{\"maximum\":1}]}", "5", ":minimum;:maximum");
+    Case("anyOf first", "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "\"a\"", "");
+    Case("anyOf second", "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "1", "");
+    Case("anyOf none", "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "true", ":anyOf");
+    Case("anyOf with both matching is fine", "{\"anyOf\":[{\"type\":\"number\"},{\"type\":\"integer\"}]}", "1", "");
+    Case("oneOf exactly one", "{\"oneOf\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "1", "");
+    Case("oneOf none", "{\"oneOf\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "null", ":oneOf");
+    Case("oneOf two match", "{\"oneOf\":[{\"type\":\"number\"},{\"type\":\"integer\"}]}", "1", ":oneOf");
+    Case("oneOf with a shape per kind", "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"a\"]},{\"type\":\"object\",\"required\":[\"b\"]}]}", "{\"a\":1}", "");
+    Case("oneOf shapes, both present", "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"a\"]},{\"type\":\"object\",\"required\":[\"b\"]}]}", "{\"a\":1,\"b\":2}", ":oneOf");
+    Case("not ok", "{\"not\":{\"type\":\"string\"}}", "1", "");
+    Case("not fails", "{\"not\":{\"type\":\"string\"}}", "\"x\"", ":not");
+    Case("anyOf inside a property reports the property path", "{\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}}}", "{\"v\":[]}", "/v:anyOf");
+    Case("a combinator next to type", "{\"type\":\"object\",\"anyOf\":[{\"required\":[\"a\"]},{\"required\":[\"b\"]}]}", "{\"c\":1}", ":anyOf");
+  }
+
+  function : TestRefs() ~ Nil {
+    "-- $ref"->PrintLine();
+    defs := "{\"definitions\":{\"pos\":{\"type\":\"integer\",\"minimum\":1}},\"type\":\"object\",\"properties\":{\"a\":{\"$ref\":\"#/definitions/pos\"},\"b\":{\"$ref\":\"#/definitions/pos\"}}}";
+    Case("$ref ok", defs, "{\"a\":1,\"b\":2}", "");
+    Case("$ref reports at the use site", defs, "{\"a\":0,\"b\":\"x\"}", "/a:minimum;/b:type");
+    Case("$defs", "{\"$defs\":{\"s\":{\"type\":\"string\"}},\"items\":{\"$ref\":\"#/$defs/s\"}}", "[\"a\",1]", "/1:type");
+    Case("a recursive $ref walks a tree", "{\"$ref\":\"#/definitions/node\",\"definitions\":{\"node\":{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"type\":\"integer\"},\"kids\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/definitions/node\"}}}}}}", "{\"v\":1,\"kids\":[{\"v\":2,\"kids\":[{\"v\":\"x\"}]}]}", "/kids/0/kids/0/v:type");
+    Case("$ref to the root", "{\"type\":\"object\",\"properties\":{\"next\":{\"$ref\":\"#\"}},\"required\":[\"id\"]}", "{\"id\":1,\"next\":{\"id\":2,\"next\":{}}}", "/next/next/id:required");
+    Case("an unresolvable $ref", "{\"$ref\":\"#/definitions/nope\"}", "1", ":$ref");
+    Case("a remote $ref is not resolved", "{\"$ref\":\"http://example.com/s.json\"}", "1", ":$ref");
+    Case("a $ref loop stops", "{\"$ref\":\"#\"}", "1", ":schema");
+  }
+
+  function : TestPointers() ~ Nil {
+    "-- JSON pointer escaping"->PrintLine();
+    Case("a slash in a name becomes ~1", "{\"properties\":{\"a/b\":{\"type\":\"integer\"}}}", "{\"a/b\":\"x\"}", "/a~1b:type");
+    Case("a tilde in a name becomes ~0", "{\"properties\":{\"a~b\":{\"type\":\"integer\"}}}", "{\"a~b\":\"x\"}", "/a~0b:type");
+    Case("a required name is escaped too", "{\"required\":[\"x/y\"]}", "{}", "/x~1y:required");
+    Case("an empty name", "{\"properties\":{\"\":{\"type\":\"integer\"}}}", "{\"\":\"x\"}", "/:type");
+    Case("a space in a name stays", "{\"properties\":{\"first name\":{\"type\":\"integer\"}}}", "{\"first name\":\"x\"}", "/first name:type");
+    Check("Join escapes", JsonSchema->Join("/a", "b/c~d")->Equals("/a/b~1c~0d"));
+  }
+
+  function : TestMessages() ~ Nil {
+    "-- messages"->PrintLine();
+    person := "{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\",\"minimum\":0}}}";
+    Message("type", "{\"type\":\"integer\"}", "\"x\"", "(root): expected integer, got string");
+    Message("type list", "{\"type\":[\"string\",\"null\"]}", "5", "(root): expected string or null, got number");
+    Message("required", person, "{\"name\":\"A\"}", "/age: the required property 'age' is missing");
+    Message("nested type", person, "{\"name\":7,\"age\":1}", "/name: expected string, got number");
+    Message("minimum", person, "{\"name\":\"A\",\"age\":-3}", "/age: -3 is below the minimum 0");
+    Message("enum", "{\"enum\":[\"a\",\"b\"]}", "\"z\"", "(root): \"z\" is not one of: \"a\", \"b\"");
+    Message("const", "{\"const\":5}", "6", "(root): 6 is not the required value 5");
+    Message("minLength", "{\"minLength\":3}", "\"ab\"", "(root): is 2 characters, shorter than the minimum 3");
+    Message("pattern", "{\"pattern\":\"^a\"}", "\"b\"", "(root): \"b\" does not match the pattern '^a'");
+    Message("additionalProperties", "{\"additionalProperties\":false}", "{\"q\":1}", "/q: the property 'q' is not allowed");
+    Message("two lines", person, "{\"age\":-1}", "/name: the required property 'name' is missing\n/age: -1 is below the minimum 0");
+    Message("oneOf with two matches", "{\"oneOf\":[{\"type\":\"number\"},{\"type\":\"integer\"}]}", "1", "(root): matches 2 of the 2 shapes, but exactly one is allowed");
+    Message("anyOf names the closest shape", "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"object\",\"required\":[\"id\"]}]}", "{}", "(root): matches none of the 2 allowed shapes: /id: the required property 'id' is missing");
+  }
+
+  function : TestApi() ~ Nil {
+    "-- API"->PrintLine();
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"id\"],\"properties\":{\"id\":{\"type\":\"integer\"}}}");
+    validator := JsonSchema->New(schema);
+    Check("IsValid true", validator->IsValid(JsonParser->TextToElement("{\"id\":1}")));
+    Check("IsValid false", <>validator->IsValid(JsonParser->TextToElement("{\"id\":\"x\"}")));
+    Check("the validator is reusable and errors do not accumulate", validator->Validate(JsonParser->TextToElement("{\"id\":\"x\"}"))->Size() = 1 & validator->Validate(JsonParser->TextToElement("{\"id\":\"x\"}"))->Size() = 1);
+
+    errors := validator->Validate(JsonParser->TextToElement("{}"));
+    Check("error accessors", errors->Size() = 1 & errors->Get(0)->GetPath()->Equals("/id") & errors->Get(0)->GetKeyword()->Equals("required") & errors->Get(0)->GetMessage()->StartsWith("the required property"));
+    Check("ToString of an error", errors->Get(0)->ToString()->StartsWith("/id: "));
+
+    Check("a Nil value is an error, not a crash", validator->Validate(Nil)->Size() = 1);
+    Check("a Nil schema accepts anything", JsonSchema->Check(Nil, JsonParser->TextToElement("1"))->Size() = 0);
+
+    capped := JsonSchema->New(JsonParser->TextToElement("{\"items\":{\"type\":\"string\"}}"))->SetMaxErrors(3);
+    Check("SetMaxErrors caps the list", capped->Validate(JsonParser->TextToElement("[1,2,3,4,5,6]"))->Size() = 3);
+    Check("Same compares numbers by value", JsonSchema->Same(JsonParser->TextToElement("1"), JsonParser->TextToElement("1.0")) & <>JsonSchema->Same(JsonParser->TextToElement("1"), JsonParser->TextToElement("\"1\"")));
+  }
+}

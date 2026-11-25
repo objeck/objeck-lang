@@ -2257,12 +2257,14 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     }
 
     size_t* dest_array;
+    // One spare element after the data, as NEW_BYTE_ARY / NEW_CHAR_ARY and ConvertUnicodeToBytes allocate: a
+    // deserialized Byte[] or Char[] that something later reads as a C string must end in a zero.
     if(type == BYTE_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + 1 + ((dest_array_dim + 2) * sizeof(size_t)),
                                                 instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + 1 + ((dest_array_dim + 2) * sizeof(size_t)),
                                                 instructions::CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
@@ -3337,6 +3339,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case UNCOMPRESS_ZLIB_TRY:
     return TryUncompressZlibBytes(program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_TCP_SET_DEADLINE:
+    return SockTcpSetDeadline(program, inst, op_stack, stack_pos, frame);
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 
@@ -3475,7 +3480,17 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   if(!array) {
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
-  const std::wstring out = BytesToUnicode((char*)(array + 3));
+  // Decode exactly the array's own length. A Byte[] is not NUL-terminated (only strings built by the
+  // runtime are), so handing the bare pointer to a converter that reads until a zero byte reads past the
+  // end of an exact-length array into whatever follows it: a String built from 8 bytes came back 9, 10,
+  // 33 or 73 characters long, varying from run to run (found by rag_index_test on Apple Silicon and
+  // Windows ARM64, where the bytes after the array were not zero).
+  // Within that length a zero byte still ends the string, as it always did (a padded read buffer).
+  const char* bytes = (const char*)(array + 3);
+  const size_t byte_count = array[0];
+  const void* first_zero = memchr(bytes, 0, byte_count);
+  const size_t text_length = first_zero ? (size_t)((const char*)first_zero - bytes) : byte_count;
+  const std::wstring out = BytesToUnicode(std::string(bytes, text_length));
 
   // create character array
   const long char_array_size = (long)out.size();
@@ -4075,14 +4090,17 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     std::wstring wbuffer;
+    // end of input: nothing was read and there was no line ending, so a blank
+    // line (an empty buffer ended by a newline) is told apart from a closed stdin
+    bool at_eof = false;
 #ifdef _WIN32
     if(Runtime::StackInterpreter::IsBinaryStdio()) {
       std::string buffer;
-      std::getline(std::cin, buffer);
+      at_eof = !std::getline(std::cin, buffer);
       wbuffer = BytesToUnicode(buffer);
     }
     else {
-      std::getline(std::wcin, wbuffer);
+      at_eof = !std::getline(std::wcin, wbuffer);
     }
 #else
     // Bytes, as the array reads (fread) are. Reading lines through std::wcin
@@ -4102,6 +4120,7 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     while((c = getc_unlocked(stdin)) != EOF && c != '\n') {
       buffer += (char)c;
     }
+    at_eof = (c == EOF && buffer.empty());
     wbuffer = BytesToUnicode(buffer);
 #endif
     MemoryManager::EndBlocking();
@@ -4118,6 +4137,10 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     wcsncpy(dest, wbuffer.c_str(), count);
     dest[count] = L'\0';
 #endif
+    PushInt(at_eof ? 0 : 1, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;
@@ -4883,6 +4906,18 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     return false;
   }
 
+  // Thread-fault isolation (OBJECK_THREAD_FAULTS=isolate): the text of the error
+  // that ended the thread this thread last joined ("" when it ended normally), and
+  // of the most recent thread to end that way. The counts are in the table below.
+  if(key == L"runtime.thread.join.fault") {
+    out = Runtime::StackInterpreter::JoinedThreadFault();
+    return true;
+  }
+  if(key == L"runtime.threads.fault.last") {
+    out = Runtime::StackInterpreter::LastThreadFault();
+    return true;
+  }
+
   // Table-driven dispatch: one row per key, each a non-capturing lambda (a plain
   // function pointer). std::wstring can't be switch()ed, and this keeps the
   // val=…/to_wstring boilerplate in one place and adding a metric to one row.
@@ -4961,6 +4996,10 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.threads.running",  []() -> size_t { const long a = MemoryManager::GetMutatorCount(),
                                                                p = MemoryManager::GetParkedCount();
                                                     return (size_t)(a > p ? a - p : 0); } },
+    // threads that ended in an uncaught error under thread-fault isolation, and
+    // whether that mode is on (1) or an uncaught error ends the process (0)
+    { L"runtime.threads.faulted",  []() -> size_t { return Runtime::StackInterpreter::ThreadFaultCount(); } },
+    { L"runtime.threads.isolation",[]() -> size_t { return Runtime::StackInterpreter::ThreadFaultIsolation() ? 1 : 0; } },
     { L"runtime.alloc.since_gc",   []() -> size_t { return MemoryManager::GetAllocSinceGc(); } },
     { L"runtime.cpu.count",        []() -> size_t { return (size_t)UsableCpuCount(); } },
     { L"runtime.cpu.time",         []() -> size_t { return GetProcessCpuTimeMs(); } },
@@ -5141,6 +5180,24 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
       return true;
     }
 
+    // Thread-fault isolation, from the program: Runtime->SetProperty(
+    // "runtime.threads.isolation", "isolate") makes every thread started from now on
+    // end alone on an uncaught error; "exit" restores the default (the process ends).
+    // The same switch as OBJECK_THREAD_FAULTS and --thread-faults.
+    if(!wcscmp(key, L"runtime.threads.isolation")) {
+      if(!wcscmp(value, L"isolate") || !wcscmp(value, L"1")) {
+        Runtime::StackInterpreter::SetThreadFaultIsolation(true);
+      }
+      else if(!wcscmp(value, L"exit") || !wcscmp(value, L"0")) {
+        Runtime::StackInterpreter::SetThreadFaultIsolation(false);
+      }
+      else {
+        return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER,
+                         std::wstring(L"runtime.threads.isolation: expected 'isolate' or 'exit', got '") + value + L"'");
+      }
+      return true;
+    }
+
     program->SetProperty(key, value);
   }
 
@@ -5307,6 +5364,24 @@ static inline void RecordSocketError(int error)
   socket_last_error = { error, false };
 }
 
+//
+// A TCPSocket's own limits on a read, kept in the object: instance[4] is its deadline
+// (an instant on the SocketNowMs clock, 0 for none) and instance[5] the longest wait
+// for the peer (SetRecvTimeout: above 0 that many milliseconds, below 0 none, 0 the
+// default every connected socket starts with). Read before a thread parks for a read,
+// into locals: the object can move while the thread is parked.
+//
+struct TcpReadLimits {
+  long long deadline_ms;
+  int read_ms;
+
+  explicit TcpReadLimits(const size_t* instance) {
+    deadline_ms = (long long)instance[4];
+    const long configured = (long)instance[5];
+    read_ms = configured > 0 ? (int)configured : (configured < 0 ? 0 : TCP_DEFAULT_RECV_TIMEOUT_MS);
+  }
+};
+
 // a new TLS or DTLS operation on this thread: nothing has failed yet
 static inline void ClearTlsError()
 {
@@ -5326,6 +5401,13 @@ static inline void ClearDtlsError()
 static std::wstring SocketErrorText(int error)
 {
 #ifdef _WIN32
+  // Windows words a timeout as a connection attempt that "failed because the connected
+  // party did not properly respond", which says nothing a program can test for; POSIX's
+  // "Connection timed out" does. The documented text for a timeout is "timed out".
+  if(error == WSAETIMEDOUT) {
+    return L"timed out";
+  }
+
   char error_msg[SMALL_BUFFER_MAX] = {0};
   FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, (DWORD)error, 0, error_msg, SMALL_BUFFER_MAX, 0);
   // FormatMessage ends its text with CR LF
@@ -5362,8 +5444,12 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
-    // instance[3] holds connect timeout in ms (0 = blocking)
+    // instance[3] holds connect timeout in ms (0 = blocking); instance[4] the
+    // deadline the constructor asked for, in ms from now (0 = none), which becomes
+    // the instant it falls on, in the SocketNowMs clock, as the connect starts
     const long timeout_ms = (long)instance[3];
+    const long deadline_budget_ms = (long)instance[4];
+    const long long deadline_ms = deadline_budget_ms > 0 ? SocketNowMs() + deadline_budget_ms : 0;
     // connect() can block for a long time; park for the duration. The instance
     // ref is re-rooted on the op_stack so GC promotion fixup relocates it, then
     // re-read after the wait (a raw pointer held across a park can go stale).
@@ -5374,9 +5460,10 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     // failed address's closesocket() had reset it (Nil on Windows) and the park
     // and anything else since had had their turn.
     SocketError error;
-    const SOCKET sock = IPSocket::Open(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms), error);
+    const SOCKET sock = IPSocket::Open(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms), error, deadline_ms);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
+    instance[4] = (size_t)deadline_ms;
     socket_last_error = error;
 #ifdef _DEBUG
     std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << "'; instance="
@@ -5633,6 +5720,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
   if(array && instance && (long)instance[0] > -1) {
     char buffer[MID_BUFFER_MAX] = {0};
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     int status;
 
     if((long)sock > -1) {
@@ -5649,7 +5737,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       do {
-        value = IPSocket::ReadByte(sock, status, read_error);
+        value = IPSocket::ReadByte(sock, status, read_error, limits.deadline_ms, limits.read_ms);
         if(status < 0 && error == 0) {
           error = read_error;
         }
@@ -5665,7 +5753,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
       // assume LF
       if(value == '\r') {
-        IPSocket::ReadByte(sock, status, read_error);
+        IPSocket::ReadByte(sock, status, read_error, limits.deadline_ms, limits.read_ms);
         if(status < 0 && error == 0) {
           error = read_error;
         }
@@ -5713,13 +5801,20 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     // promotion fixup relocates it, then re-read after the wait.
     SecureSocketCtx* old_sctx = (SecureSocketCtx*)instance[0];
     SecureSocketCtx* sctx = nullptr;
+    // instance[7] holds the connect timeout in ms (0 = none), instance[8] the deadline in ms
+    // from now (0 = none) and instance[9] the read timeout in ms (0 = the default): the
+    // connect and the handshake answer to them
+    const int connect_ms = (int)(long)instance[7];
+    const long deadline_budget_ms = (long)instance[8];
+    const int read_ms = (int)(long)instance[9];
+    const long long deadline_ms = deadline_budget_ms > 0 ? SocketNowMs() + deadline_budget_ms : 0;
     // GetLastError() reports this connect, not an earlier failure
     ClearTlsError();
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
     IPSecureSocket::Close(old_sctx);
-    const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx);
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, connect_ms, deadline_ms, read_ms);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
     // The old context is freed whatever happens next. A failed open used to
@@ -6461,6 +6556,8 @@ bool TrapProcessor::SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, s
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
+    // remembered for a read that has a deadline (TcpReadLimits)
+    instance[5] = (size_t)(long)(ms > 0 ? ms : -1);
     PushInt(SocketOptionResult(IPSocket::SetRecvTimeout((SOCKET)instance[0], ms)), op_stack, stack_pos);
   }
   else {
@@ -6489,6 +6586,32 @@ bool TrapProcessor::SockTcpSetConnTimeout(StackProgram* program, size_t* inst, s
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     instance[3] = (size_t)ms;
+  }
+  return true;
+}
+
+//
+// TCPSocket->SetDeadline(ms) and TCPSecureSocket->SetDeadline(ms): from now, reads on the
+// socket fail once ms milliseconds have passed, however a peer paces its bytes; 0 clears
+// it. A plain socket keeps the instant in the object (TcpReadLimits), a TLS socket in its
+// context, where TlsBioRecv reads it.
+//
+bool TrapProcessor::SockTcpSetDeadline(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const long ms = (long)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    const long long deadline_ms = ms > 0 ? SocketNowMs() + ms : 0;
+    StackClass* cls = MemoryManager::GetClass(instance);
+    if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocket") {
+      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+      if(sctx && instance[3]) {
+        sctx->deadline_ms = deadline_ms;
+      }
+    }
+    else {
+      instance[4] = (size_t)deadline_ms;
+    }
   }
   return true;
 }
@@ -7079,6 +7202,47 @@ static bool PendingAlert(SOCKET sock)
   }
 #endif
   return head[0] == 21;
+}
+
+//
+// TLS client record I/O (see common.h). The context is the SecureSocketCtx.
+//
+int TlsBioSend(void* ctx, const unsigned char* buf, size_t len)
+{
+  SecureSocketCtx* sctx = (SecureSocketCtx*)ctx;
+  return mbedtls_net_send(&sctx->net, buf, len);
+}
+
+int TlsBioRecv(void* ctx, unsigned char* buf, size_t len)
+{
+  SecureSocketCtx* sctx = (SecureSocketCtx*)ctx;
+
+  // With a deadline, wait for the peer here, for no longer than what is left of the
+  // deadline and the read timeout, before reading. The wait is cut to what is left
+  // each time, so a peer that sends a few bytes at a time cannot keep a read or a
+  // handshake going past the deadline: SO_RCVTIMEO alone restarts with every byte.
+  if(sctx->deadline_ms > 0) {
+    int reason = 0;
+    if(!IPSocket::WaitReadable((SOCKET)sctx->net.fd, sctx->deadline_ms, sctx->read_ms, reason)) {
+      return MBEDTLS_ERR_SSL_TIMEOUT;
+    }
+  }
+
+  const int ret = mbedtls_net_recv(&sctx->net, buf, len);
+  if(ret == MBEDTLS_ERR_NET_RECV_FAILED) {
+    // a read that SO_RCVTIMEO ended is a timeout, not "reading from the socket failed"
+#ifdef _WIN32
+    const int error = WSAGetLastError();
+    if(error == WSAETIMEDOUT || error == WSAEWOULDBLOCK) {
+      return MBEDTLS_ERR_SSL_TIMEOUT;
+    }
+#else
+    if(errno == EAGAIN || errno == EWOULDBLOCK || errno == ETIMEDOUT) {
+      return MBEDTLS_ERR_SSL_TIMEOUT;
+    }
+#endif
+  }
+  return ret;
 }
 
 //
@@ -8018,6 +8182,19 @@ bool TrapProcessor::TrapProcessor::CRC32Bytes(StackProgram* program, size_t* ins
   return true;
 }
 
+// File (System.IO.File) instance layout: [0] handle, [1] name, [2] error. The error
+// is the first errno seen since the file was opened, kept so that a program can ask
+// File->IsOK() / GetLastError(): stdio buffers writes, so a full disk or a closed
+// pipe usually surfaces at a flush or close, long after the write that lost data.
+static const size_t FILE_ERROR_SLOT = 2;
+
+static void SetFileError(size_t* instance, int error)
+{
+  if(instance && instance[FILE_ERROR_SLOT] == 0) {
+    instance[FILE_ERROR_SLOT] = (size_t)(error ? error : EIO);
+  }
+}
+
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -8026,6 +8203,9 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "rb");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
@@ -8053,6 +8233,9 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "ab");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
@@ -8071,6 +8254,9 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "wb");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
@@ -8089,6 +8275,9 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
+    if(!file) {
+      SetFileError(instance, errno);
+    }
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
@@ -8109,7 +8298,14 @@ bool TrapProcessor::FileClose(StackProgram* program, size_t* inst, size_t* &op_s
     std::wcout << L"# file close: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = 0;
-    fclose(file);
+    // fclose writes out what is buffered: a failure here is the usual way a lost
+    // write is discovered. ferror catches a failed earlier write whose own result
+    // was a short count that the program ignored.
+    const int failed_earlier = ferror(file);
+    const int rc = fclose(file);
+    if(rc != 0 || failed_earlier) {
+      SetFileError(instance, errno);
+    }
   }
 
   return true;
@@ -8126,7 +8322,16 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
     // flush only: clearing instance[0] here (copied from Close) made the file
     // read as closed after a Flush -- later writes were dropped, Close did
     // nothing, and the FILE* leaked, keeping the file locked on Windows (#1180)
-    fflush(file);
+    if(fflush(file) != 0) {
+      SetFileError(instance, errno);
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(ferror(file) ? 0 : 1, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;
@@ -8426,6 +8631,15 @@ void ThreadMutexCreate(size_t* instance)
   instance[1] = (size_t)mutex;
 }
 
+// The locks this thread holds, in the order it took them. Kept so a thread that
+// ends in a fault (thread-fault isolation) can release them: a lock owned by a
+// thread that is gone would otherwise block every other thread that wants it.
+static std::vector<NativeThreadMutex*>& HeldThreadMutexes()
+{
+  static thread_local std::vector<NativeThreadMutex*> held;
+  return held;
+}
+
 void ThreadMutexLock(size_t* instance)
 {
   NativeThreadMutex* mutex = (NativeThreadMutex*)instance[1];
@@ -8445,6 +8659,23 @@ void ThreadMutexLock(size_t* instance)
     MemoryManager::EndBlocking();
   }
 #endif
+  HeldThreadMutexes().push_back(mutex);
+}
+
+size_t ThreadMutexReleaseAll()
+{
+  std::vector<NativeThreadMutex*>& held = HeldThreadMutexes();
+  const size_t count = held.size();
+  while(!held.empty()) {
+    NativeThreadMutex* mutex = held.back();
+    held.pop_back();
+#ifdef _WIN32
+    LeaveCriticalSection(mutex);
+#else
+    pthread_mutex_unlock(mutex);
+#endif
+  }
+  return count;
 }
 
 void ThreadMutexUnlock(size_t* instance)
@@ -8452,6 +8683,13 @@ void ThreadMutexUnlock(size_t* instance)
   NativeThreadMutex* mutex = (NativeThreadMutex*)instance[1];
   if(!mutex) {
     return;
+  }
+  std::vector<NativeThreadMutex*>& held = HeldThreadMutexes();
+  for(size_t i = held.size(); i > 0; --i) {
+    if(held[i - 1] == mutex) {
+      held.erase(held.begin() + (long)(i - 1));
+      break;
+    }
   }
 #ifdef _WIN32
   LeaveCriticalSection(mutex);
@@ -8904,12 +9142,14 @@ bool TrapProcessor::CondSignal(StackProgram* program, size_t* inst, size_t*& op_
 bool TrapProcessor::FileOutString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     FILE* file = (FILE*)instance[0];
     const wchar_t* data = (wchar_t*)(array + 3);
     if(file) {
-      fputs(UnicodeToBytes(data).c_str(), file);
+      if(fputs(UnicodeToBytes(data).c_str(), file) == EOF) {
+        SetFileError(instance, errno);
+      }
     }
   }
 
@@ -9300,11 +9540,12 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     int status;
     int error;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
     MemoryManager::BeginBlocking();
-    const char value = IPSocket::ReadByte(sock, status, error);
+    const char value = IPSocket::ReadByte(sock, status, error, limits.deadline_ms, limits.read_ms);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
     PushInt(value, op_stack, stack_pos);
@@ -9325,6 +9566,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     // blocking read; park for the duration. recv() lands in a temp C buffer (a
     // parked thread's GC array can be moved by promotion mid-read), and the
     // array ref is re-rooted on the op_stack so fixup relocates it.
@@ -9332,7 +9574,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
     int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const int read = IPSocket::ReadBytes(temp, (int)num, sock, error);
+    const int read = IPSocket::ReadBytes(temp, (int)num, sock, error, limits.deadline_ms, limits.read_ms);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
@@ -9358,6 +9600,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     // allocate temporary buffer
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
@@ -9366,7 +9609,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock, error);
+    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock, error, limits.deadline_ms, limits.read_ms);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
@@ -11729,11 +11972,16 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::FileOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const int value = (int)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
-    if(fputc(value, file) != value) {
+    const int result = fputc(value, file);
+    if(result == EOF) {
+      SetFileError(instance, errno);
+    }
+
+    if(result != value) {
       PushInt(0, op_stack, stack_pos);
     }
     else {
@@ -11752,12 +12000,16 @@ bool TrapProcessor::FileOutByteAry(StackProgram* program, size_t* inst, size_t* 
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
+    const size_t written = fwrite(buffer + offset, 1, num, file);
+    if(written != (size_t)num) {
+      SetFileError(instance, errno);
+    }
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -11771,7 +12023,7 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
-  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
@@ -11780,7 +12032,11 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(fwrite(buffer_out.c_str(), 1, buffer_out.size(), file), op_stack, stack_pos);
+    const size_t written = fwrite(buffer_out.c_str(), 1, buffer_out.size(), file);
+    if(written != buffer_out.size()) {
+      SetFileError(instance, errno);
+    }
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);

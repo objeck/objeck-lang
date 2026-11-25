@@ -1,0 +1,285 @@
+# EXTRA_LIBS: telemetry,gen_collect,json
+#~
+System.Telemetry profiles: the recorder and its handles, aggregation by model, device and batch,
+Predict hits and misses (and what the miss says), JSON save/load (lossless), CSV save/load
+(summary only), merging, the phase tag rule, memory capture and thread-safe recording.
+
+Latencies are fed in as numbers so the expected quantiles are hand-computed; only the probe
+tests use the clock, and they check lower bounds only (a sleep never returns early), never an
+upper bound, so a loaded machine cannot fail them.
+~#
+use System.Telemetry;
+use Collection;
+use System.IO.Filesystem;
+use System.Concurrency;
+
+class TelemetryProfileTest {
+	@failures : static : Int;
+	@calls : static : Int;
+
+	function : Work() ~ Nil {
+		@calls += 1;
+		Thread->Sleep(3);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@calls := 0;
+
+		# --- a store filled with known numbers ---
+		store := ProfileStore->New();
+		# resnet on cuda, batch 8: 10, 11 ... 29 (20 samples): p50 is rank 10 = 19, p95 is rank 19 = 28
+		for(i := 10; i < 30; i += 1;) {
+			store->Record("resnet34", "cuda", 8, "", i->As(Float));
+		};
+		# batch 1: 1 ... 5 ms; batch 32: 100 ... 119
+		for(i := 1; i <= 5; i += 1;) {
+			store->Record("resnet34", "cuda", 1, "", i->As(Float));
+		};
+		for(i := 100; i < 120; i += 1;) {
+			store->Record("resnet34", "cuda", 32, "", i->As(Float));
+		};
+		# cpu is slower
+		for(i := 0; i < 10; i += 1;) {
+			store->Record("resnet34", "cpu", 8, "", 50.0 + i->As(Float));
+		};
+		store->Record("tiny", "cpu", 1, "", 0.25);
+		Check("five cells", store->Size() = 5);
+
+		p := store->Predict("resnet34", "cuda", 8);
+		Check("hit: returns a prediction", p <> Nil);
+		if(p <> Nil) {
+			Check("hit: count 20", p->GetCount() = 20);
+			Check("hit: p50 = 19 exactly (small series, nearest rank 10)", p->GetP50() = 19.0 & p->IsExact());
+			Check("hit: p95 = 28 exactly (rank 19)", p->GetP95() = 28.0);
+			Near("hit: mean 19.5", p->GetMean(), 19.5, 1.0e-12);
+			Check("hit: min 10, max 29", p->GetMin() = 10.0 & p->GetMax() = 29.0);
+			Check("hit: no memory captured for numbers fed in", p->GetHostMemory() <> p->GetHostMemory());
+			Check("hit: no energy", p->GetJoulesPerRun() <> p->GetJoulesPerRun());
+			Check("hit: names the cell", p->GetModel()->Equals("resnet34") & p->GetDevice()->Equals("cuda") & p->GetBatch() = 8);
+		};
+		Check("another device is another cell", store->Predict("resnet34", "cpu", 8)->GetP50() = 54.0);
+		Check("batch 32 hit", store->Predict("resnet34", "cuda", 32)->GetP95() = 118.0);
+		Check("a successful call clears the error", store->GetError()->Size() = 0);
+
+		# misses: Nil, and the reason tells you what exists
+		m1 := store->Predict("nope", "cuda", 8);
+		Check("miss on the model: Nil", m1 = Nil);
+		Check("miss on the model: says no profile for the model", store->GetError()->Has("no profile for model 'nope'"));
+		m2 := store->Predict("resnet34", "tpu", 8);
+		Check("miss on the device: Nil", m2 = Nil);
+		Check("miss on the device: lists the devices", store->GetError()->Has("cpu") & store->GetError()->Has("cuda") & store->GetError()->Has("'tpu'"));
+		m3 := store->Predict("resnet34", "cuda", 16);
+		Check("miss on the batch: Nil, never interpolated", m3 = Nil);
+		Check("miss on the batch: lists the observed batches", store->GetError()->Has("batch 16") & store->GetError()->Has("1, 8, 32"));
+		Check("a miss is not remembered by the next hit", store->Predict("tiny", "cpu", 1) <> Nil & store->GetError()->Size() = 0);
+		Check("batch 0 is never recorded", store->Record("x", "y", 0, "", 1.0) = false & store->Predict("x", "y", 0) = Nil);
+
+		# warm-up cells predict nothing until they have a sample
+		wstore := ProfileStore->New(2);
+		wstore->Record("m", "d", 1, "", 9.0);
+		wstore->Record("m", "d", 1, "", 9.0);
+		Check("only warm-up samples: Nil with a reason", wstore->Predict("m", "d", 1) = Nil & wstore->GetError()->Has("warm-up"));
+		wstore->Record("m", "d", 1, "", 4.0);
+		Check("after warm-up the third sample is the profile", wstore->Predict("m", "d", 1)->GetP50() = 4.0 & wstore->Predict("m", "d", 1)->GetCount() = 1);
+
+		# tags: a separate series each; Predict takes the untagged one, or the only tagged one
+		tags := ProfileStore->New();
+		tags->Record("m", "d", 1, "infer", 5.0);
+		Check("one tagged series is found without naming the tag", tags->Predict("m", "d", 1)->GetP50() = 5.0);
+		tags->Record("m", "d", 1, "pre", 1.0);
+		Check("two tagged series and no untagged one is ambiguous: Nil", tags->Predict("m", "d", 1) = Nil & tags->GetError()->Has("PredictTag"));
+		Check("PredictTag picks one", tags->PredictTag("m", "d", 1, "pre")->GetP50() = 1.0 & tags->PredictTag("m", "d", 1, "infer")->GetP50() = 5.0);
+		tags->Record("m", "d", 1, "", 7.0);
+		Check("an untagged series wins", tags->Predict("m", "d", 1)->GetP50() = 7.0);
+		Check("PredictTag miss", tags->PredictTag("m", "d", 1, "zz") = Nil & tags->GetError()->Has("zz"));
+
+		# --- JSON: lossless ---
+		path := File->GetTempName();
+		json_path := "{$path}.json";
+		Check("save JSON", store->Save(json_path));
+		loaded := ProfileStore->Load(json_path);
+		Check("load JSON", loaded <> Nil);
+		if(loaded <> Nil) {
+			Check("loaded: same cells", loaded->Size() = store->Size());
+			lp := loaded->Predict("resnet34", "cuda", 8);
+			Check("loaded: same prediction", lp <> Nil & lp->GetP50() = 19.0 & lp->GetP95() = 28.0 & lp->GetCount() = 20 & lp->IsExact());
+			Near("loaded: same mean", lp->GetMean(), 19.5, 1.0e-12);
+			Check("loaded: a miss still misses", loaded->Predict("resnet34", "cuda", 16) = Nil);
+			Check("loaded: JSON of the loaded profile equals the original's", loaded->ToJsonString()->Equals(store->ToJsonString()));
+		};
+		File->Delete(json_path);
+		Check("loading a missing file: Nil with a reason", ProfileStore->Load("/nonexistent-dir/none.json") = Nil);
+		bad := ProfileStore->New();
+		Check("text that is not JSON is refused", bad->ParseJson("not json") = false & bad->GetError()->Size() > 0);
+		Check("JSON that is not a profile is refused", bad->ParseJson("{\"format\":\"other\"}") = false & bad->GetError()->Has("not a telemetry profile"));
+		Check("a refused load changes nothing", bad->Size() = 0);
+		Check("an empty text is refused", bad->ParseJson("") = false);
+
+		# a big series (sketch) survives the file round trip with the same quantiles
+		big := ProfileStore->New();
+		for(i := 0; i < 5000; i += 1;) {
+			big->Record("m", "gpu", 4, "", 2.0 + (i % 211)->As(Float) * 0.37);
+		};
+		bigp := big->Predict("m", "gpu", 4);
+		Check("a big series uses the sketch", bigp->IsExact() = false & bigp->GetRelativeError() = 0.01);
+		big2 := ProfileStore->FromJsonString(big->ToJsonString());
+		Check("big series reads back", big2 <> Nil);
+		if(big2 <> Nil) {
+			bp2 := big2->Predict("m", "gpu", 4);
+			Check("big series: same p50, p95, p99", bp2->GetP50() = bigp->GetP50() & bp2->GetP95() = bigp->GetP95() & bp2->GetP99() = bigp->GetP99());
+		};
+
+		# --- merge ---
+		part1 := ProfileStore->New();
+		part2 := ProfileStore->New();
+		everything := ProfileStore->New();
+		for(i := 1; i <= 60; i += 1;) {
+			x := i->As(Float) * 1.5;
+			everything->Record("m", "d", 2, "", x);
+			if(i % 2 = 0) {
+				part1->Record("m", "d", 2, "", x);
+			}
+			else {
+				part2->Record("m", "d", 2, "", x);
+			};
+		};
+		part2->Record("only-in-2", "d", 1, "", 3.0);
+		Check("merge", part1->Merge(part2));
+		mp := part1->Predict("m", "d", 2);
+		ep := everything->Predict("m", "d", 2);
+		Check("merged: count adds up", mp->GetCount() = 60);
+		Check("merged: same quantiles as the union", mp->GetP50() = ep->GetP50() & mp->GetP95() = ep->GetP95() & mp->GetMin() = ep->GetMin() & mp->GetMax() = ep->GetMax());
+		Near("merged: same mean", mp->GetMean(), ep->GetMean(), 1.0e-12);
+		Check("merged: the new cell arrived", part1->Predict("only-in-2", "d", 1)->GetP50() = 3.0);
+		Check("merge of Nil is refused", part1->Merge(Nil) = false);
+
+		# --- CSV: a summary ---
+		csv_path := "{$path}.csv";
+		Check("save CSV", store->SaveCsv(csv_path));
+		from_csv := ProfileStore->LoadCsv(csv_path);
+		Check("load CSV", from_csv <> Nil);
+		if(from_csv <> Nil) {
+			Check("csv: same cells", from_csv->Size() = store->Size());
+			cp := from_csv->Predict("resnet34", "cuda", 8);
+			Check("csv: p50, p95 and count survive", cp <> Nil & cp->GetCount() = 20 & cp->GetP50() = 19.0 & cp->GetP95() = 28.0);
+			Near("csv: mean survives", cp->GetMean(), 19.5, 1.0e-12);
+			Check("csv: min and max survive", cp->GetMin() = 10.0 & cp->GetMax() = 29.0);
+			Check("csv: a summary says so (no relative error)", cp->GetRelativeError() <> cp->GetRelativeError());
+			Check("csv: a batch that was not profiled still misses", from_csv->Predict("resnet34", "cuda", 16) = Nil);
+			merged := ProfileStore->New();
+			merged->Record("resnet34", "cuda", 8, "", 12.0);
+			Check("merging a summary cell works", merged->Merge(from_csv));
+			mq := merged->Predict("resnet34", "cuda", 8);
+			Check("merged with a summary: count adds up", mq <> Nil & mq->GetCount() = 21);
+			Check("merged with a summary: quantiles are given up (NaN), not invented", mq->GetP50() <> mq->GetP50());
+			Near("merged with a summary: the mean is still exact", mq->GetMean(), (19.5 * 20.0 + 12.0) / 21.0, 1.0e-9);
+		};
+		File->Delete(csv_path);
+		csv_text := store->ToCsv();
+		csv_lines := csv_text->Split("\n");
+		rows := 0;
+		for(i := 1; i < csv_lines->Size(); i += 1;) {
+			if(csv_lines[i]->Trim()->Size() > 0) {
+				rows += 1;
+			};
+		};
+		Check("CSV has a header and one row per cell (rows {$rows})", csv_lines[0]->StartsWith("model,device,batch,tag,count") & rows = 5);
+		quoted := ProfileStore->New();
+		quoted->Record("name, with \"quotes\"", "dev", 1, "t", 2.5);
+		qback := ProfileStore->New();
+		Check("a name with a comma and quotes survives CSV", qback->ParseCsv(quoted->ToCsv()) & qback->Predict("name, with \"quotes\"", "dev", 1) <> Nil);
+		Check("CSV with the wrong header is refused", qback->ParseCsv("a,b\n1,2\n") = false & qback->GetError()->Has("header"));
+
+		# --- the recorder and its handles ---
+		rec := TimingRecorder->New();
+		probe := rec->Start("net", "cpu", 4, "");
+		Thread->Sleep(5);
+		ms := probe->Stop();
+		Check("a 5 ms sleep measures at least 4.5 ms (a sleep never returns early)", ms >= 4.5);
+		Check("the probe is done and remembers its interval", probe->IsDone() & probe->GetElapsed() = ms);
+		Check("a second Stop returns the same interval and records nothing more", probe->Stop() = ms & rec->GetStore()->Predict("net", "cpu", 4)->GetCount() = 1);
+		cancelled := rec->Start("net", "cpu", 4, "");
+		cancelled->Cancel();
+		cancelled->Stop();
+		Check("a cancelled probe records nothing", rec->GetStore()->Predict("net", "cpu", 4)->GetCount() = 1);
+		Check("batch 0 records nothing", rec->Start("net", "cpu", 0, "")->Stop() >= 0.0 & rec->GetStore()->Size() = 1);
+		np := rec->GetStore()->Predict("net", "cpu", 4);
+		Check("memory was captured at Stop", np->GetHostMemory() = np->GetHostMemory() & np->GetHostMemory() > 1000000.0);
+		off := TimingRecorder->New();
+		off->SetCaptureMemory(false);
+		off->Start("net", "cpu", 1, "")->Stop();
+		Check("memory capture can be switched off", off->GetStore()->Predict("net", "cpu", 1)->GetHostMemory() <> off->GetStore()->Predict("net", "cpu", 1)->GetHostMemory());
+
+		# the wrapper times a function reference
+		timed := rec->Time("net", "cpu", 2, "w", TelemetryProfileTest->Work() ~ Nil);
+		Check("Time ran the function once and measured it", @calls = 1 & timed >= 2.5);
+		Check("and recorded it under the tag", rec->GetStore()->PredictTag("net", "cpu", 2, "w")->GetCount() = 1);
+
+		# the static facade uses a default recorder
+		Telemetry->Reset();
+		Telemetry->Start("fm", "fd", "t")->Stop();
+		Telemetry->Start("fm", "fd", 8, "t")->Stop();
+		Telemetry->Time("fm", "fd", 8, "t", TelemetryProfileTest->Work() ~ Nil);
+		Check("static Start defaults to batch 1", Telemetry->Default()->GetStore()->PredictTag("fm", "fd", 1, "t")->GetCount() = 1);
+		Check("static Start and Time with a batch", Telemetry->Default()->GetStore()->PredictTag("fm", "fd", 8, "t")->GetCount() = 2);
+		Check("static Predict", Telemetry->Predict("fm", "fd", 1)->GetCount() = 1);
+		Telemetry->Reset();
+		Check("Reset empties the default recorder", Telemetry->Default()->GetStore()->Size() = 0);
+		Check("the clock is described", Telemetry->ClockDescription()->Has("monotonic"));
+
+		# several threads recording into one recorder lose nothing
+		shared := TimingRecorder->New();
+		threads := RecordThread->New[4];
+		for(i := 0; i < 4; i += 1;) {
+			threads[i] := RecordThread->New(shared, i);
+			threads[i]->Execute(Nil);
+		};
+		for(i := 0; i < 4; i += 1;) {
+			threads[i]->Join();
+		};
+		total := 0;
+		list := shared->GetStore()->GetEntries();
+		for(i := 0; i < list->Size(); i += 1;) {
+			total += list->Get(i)->GetStats()->GetCount();
+		};
+		Check("4 threads x 250 recordings across 2 cells: nothing lost", total = 1000 & list->Size() = 2);
+
+		if(@failures > 0) {
+			"telemetry_profile: {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"telemetry_profile: ok"->PrintLine();
+	}
+
+	function : Near(name : String, got : Float, want : Float, tol : Float) ~ Nil {
+		Check("{$name} (got {$got}, want {$want})", got = got & Float->Abs(got - want) <= tol);
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+}
+
+class RecordThread from Thread {
+	@rec : TimingRecorder;
+	@id : Int;
+
+	New(rec : TimingRecorder, id : Int) {
+		Parent();
+		@rec := rec;
+		@id := id;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		for(i := 0; i < 250; i += 1;) {
+			@rec->Record("shared", "cpu", 1 + (@id % 2), "", 1.0 + (i % 7)->As(Float));
+		};
+	}
+}

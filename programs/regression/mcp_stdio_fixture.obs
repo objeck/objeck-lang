@@ -1,0 +1,156 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+The server (and a client) that mcp_stdio_test.py drives over standard input and
+output. Run by the regression suite with no arguments it only checks that the
+server answers an initialize request in process and ends, so it never waits on
+standard input:
+  --stdio             serve the stdio transport until standard input ends
+  --client <command>  a client that starts <command> once per request (the
+                      runtime has no process with pipes) and uses the tools,
+                      resources and prompts of the server it runs
+~#
+use API.MCP, Data.JSON, Collection;
+
+class McpStdioFixture {
+	@saw_cancel : static : Bool;
+
+	function : Add(call : McpCall) ~ McpToolResult {
+		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+		return McpToolResult->Text("{$sum}");
+	}
+
+	function : Fails(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Error("the disk is full");
+	}
+
+	function : Raises(call : McpCall) ~ McpToolResult {
+		nothing : String;
+		size := nothing->Size();
+		return McpToolResult->Text("{$size}");
+	}
+
+	# the text back, and its length in characters
+	function : Echo(call : McpCall) ~ McpToolResult {
+		text := call->GetString("text");
+		size := text->Size();
+		result := McpToolResult->Text(text);
+		result->AddText("{$size}");
+		return result;
+	}
+
+	# n characters, for a reply as large as a request
+	function : Repeat(call : McpCall) ~ McpToolResult {
+		count := call->GetInt("count", 0);
+		text := String->New();
+		for(i := 0; i < count; i += 1;) {
+			text->Append('x');
+		};
+		return McpToolResult->Text(text);
+	}
+
+	function : Slow(call : McpCall) ~ McpToolResult {
+		call->ReportProgress(1.0, 3.0, "one");
+		call->ReportProgress(2.0, 3.0, "two");
+		waited := 0;
+		while(<>call->IsCancelled() & waited < 15000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		return McpToolResult->Text("finished");
+	}
+
+	function : ReadNotes(uri : String) ~ McpContents {
+		if(uri->Equals("notes://missing")) {
+			return Nil;
+		};
+		return McpContents->OfText(uri, "text/plain", "note for {$uri}");
+	}
+
+	function : Greet(call : McpCall) ~ McpPromptResult {
+		name := call->GetString("name");
+		result := McpPromptResult->New("A greeting");
+		result->AddMessage("user", "Say hello to {$name}");
+		return result;
+	}
+
+	function : Build() ~ McpService {
+		server := McpService->New("stdio-fixture", "1.0.0");
+		server->SetInstructions("a fixture");
+		server->AddTool("add", "Add two integers", "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}", Func2Ref->New(McpStdioFixture->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("fails", "Fails", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpStdioFixture->Fails(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("raises", "Raises", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpStdioFixture->Raises(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("echo", "Echo a text and count its characters", "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}", Func2Ref->New(McpStdioFixture->Echo(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("repeat", "Return count characters", "{\"type\":\"object\",\"properties\":{\"count\":{\"type\":\"integer\"}},\"required\":[\"count\"]}", Func2Ref->New(McpStdioFixture->Repeat(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("slow", "Works until cancelled", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpStdioFixture->Slow(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "hello readme"));
+		server->AddResource(McpResource->New("notes://{name}", "note", "A note", "text/plain", Func2Ref->New(McpStdioFixture->ReadNotes(String) ~ McpContents)<String, McpContents>));
+		prompt := McpPrompt->New("greet", "Greet someone", Func2Ref->New(McpStdioFixture->Greet(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>);
+		prompt->AddArgument("name", "who to greet", true);
+		server->AddPrompt(prompt);
+		return server;
+	}
+
+	function : Check(ok : Bool, what : String) ~ Bool {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+		};
+		return ok;
+	}
+
+	function : RunClient(command : String) ~ Bool {
+		ok := true;
+		client := McpClient->Command(command);
+		ok := Check(client->Initialize("fixture-client", "1.0"), "initialize over a command transport") & ok;
+		if(<>ok) {
+			return false;
+		};
+
+		ok := Check(client->GetServerName()->Equals("stdio-fixture"), "server name") & ok;
+		tools := client->ListTools();
+		ok := Check(tools <> Nil & tools->Size() = 6, "tools/list") & ok;
+		result := client->CallTool("add", "{\"a\":40,\"b\":2}");
+		ok := Check(result <> Nil & result->GetText()->Equals("42"), "tools/call") & ok;
+		result := client->CallTool("fails", "{}");
+		ok := Check(result <> Nil & result->IsError(), "a failed tool is an isError result") & ok;
+		result := client->CallTool("raises", "{}");
+		ok := Check(result <> Nil & result->IsError(), "a tool that raises is an isError result") & ok;
+		ok := Check(client->CallTool("nope", "{}") = Nil & client->GetErrorCode() = -32602, "an unknown tool is -32602") & ok;
+		contents := client->ReadResource("notes://readme");
+		ok := Check(contents <> Nil & contents->Get(0)->GetText()->Equals("hello readme"), "resources/read") & ok;
+		ok := Check(client->ReadResource("notes://missing") = Nil & client->GetErrorCode() = -32002, "a missing resource") & ok;
+		args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		args->Insert("name", "Ada");
+		prompt := client->GetPrompt("greet", args);
+		ok := Check(prompt <> Nil & prompt->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("Say hello to Ada"), "prompts/get") & ok;
+		ok := Check(client->Ping(), "ping") & ok;
+		return ok;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		server := Build();
+
+		if(args->Size() > 0 & args[0]->Equals("--stdio")) {
+			server->ServeStdio();
+			return;
+		};
+
+		if(args->Size() > 1 & args[0]->Equals("--client")) {
+			if(RunClient(args[1])) {
+				"PASS: client"->PrintLine();
+			}
+			else {
+				Runtime->Exit(1);
+			};
+			return;
+		};
+
+		reply := server->Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"1\"}}}", Nil);
+		if(reply <> Nil & reply->Has("stdio-fixture")) {
+			"PASS: the fixture server answers initialize"->PrintLine();
+		}
+		else {
+			"FAIL: the fixture server did not answer initialize"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

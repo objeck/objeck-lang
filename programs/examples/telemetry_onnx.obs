@@ -1,0 +1,152 @@
+#~
+Profile an ONNX model per device and batch size through the API.Onnx Session on master,
+with the telemetry library wrapped around the Run call.
+
+The first input of the model is filled with a fixed pattern (a profile of speed, not of
+accuracy); a dimension the model leaves dynamic is 1, except the first, which is the batch.
+Every Run is timed by a TimingProbe (a call that returns Nil is cancelled, so a failed run
+does not enter the latency), the first runs of each cell are discarded as warm-up, and the
+profile is saved as JSON so a later run, or another machine, can merge it and Predict from it.
+For a GPU provider, if nvidia-smi answers, GPU power is sampled once a second and the energy per
+run is estimated from it (an estimate of the board's power over the call, not of the call: see
+docs/ai_sections/telemetry.md). With ep=cpu the GPU is not sampled, as its power says nothing
+about a CPU run.
+
+Build and run (the model path is the only required argument):
+  obc -src telemetry_onnx.obs -lib onnx,models,opencv,cipher,json,gen_collect,telemetry
+  obr telemetry_onnx.obe model.onnx [ep=cpu] [batches=1,8,32] [runs=50] [warmup=5] [out=profile.json]
+
+ep is the ONNX Runtime execution provider ("cpu", "cuda", ...), also the device name in the
+profile. out names the profile file: if it exists, the new numbers are merged into it.
+~#
+use API.Onnx;
+use API.Models;
+use System.Telemetry;
+use System.IO.Filesystem;
+use Collection;
+
+class TelemetryOnnx {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 1) {
+			"usage: obr telemetry_onnx.obe model.onnx [ep=cpu] [batches=1,8,32] [runs=50] [warmup=5] [out=profile.json]"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		model_path := args[0];
+		ep := "cpu";
+		batches := "1,8,32";
+		runs := 50;
+		warmup := 5;
+		out := "";
+		for(i := 1; i < args->Size(); i += 1;) {
+			kv := args[i]->Split('=');
+			if(kv->Size() = 2) {
+				if(kv[0]->Equals("ep")) { ep := kv[1]; }
+				else if(kv[0]->Equals("batches")) { batches := kv[1]; }
+				else if(kv[0]->Equals("runs")) { runs := kv[1]->ToInt(); }
+				else if(kv[0]->Equals("warmup")) { warmup := kv[1]->ToInt(); }
+				else if(kv[0]->Equals("out")) { out := kv[1]; };
+			};
+		};
+
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+		session := Session->New(model_path, config);
+		if(session->IsOpen() = false) {
+			"cannot open {$model_path} with ep={$ep}"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		info := session->GetModelInfo();
+		spec := info->GetInputs()->Get(0);
+		model_name := model_path;
+		slash := model_path->FindLast('/');
+		if(slash < 0) {
+			slash := model_path->FindLast('\\');
+		};
+		if(slash >= 0) {
+			model_name := model_path->SubString(slash + 1, model_path->Size() - slash - 1);
+		};
+		"model {$model_name}, input {$spec->ToString()}, ep {$ep}"->PrintLine();
+
+		# power from nvidia-smi once a second, when there is a GPU
+		gpu := GpuSampler->New();
+		estimator := EnergyEstimator->New();
+		looper := SamplerLoop->New(gpu, 1000);
+		looper->SetEnergy(estimator, "gpu_power_w");
+		recorder := TimingRecorder->New();
+		recorder->SetWarmup(warmup);
+		if(ep->Equals("cpu") = false & looper->Start()) {
+			recorder->AttachSampler(looper);
+			"GPU sampler on (nvidia-smi, once a second)"->PrintLine();
+		}
+		else {
+			"no GPU sampler (ep=cpu, or no nvidia-smi here): host memory and latency only"->PrintLine();
+		};
+
+		sizes := batches->Split(',');
+		for(b := 0; b < sizes->Size(); b += 1;) {
+			batch := sizes[b]->Trim()->ToInt();
+			if(batch < 1) {
+				continue;
+			};
+			shape := spec->GetShape();
+			dims := Int->New[shape->Size()];
+			elements := 1;
+			for(d := 0; d < dims->Size(); d += 1;) {
+				dims[d] := shape[d];
+				if(d = 0) {
+					dims[d] := batch;
+				}
+				else if(dims[d] < 1) {
+					dims[d] := 1;
+				};
+				elements *= dims[d];
+			};
+			data := Float->New[elements];
+			for(e := 0; e < elements; e += 1;) {
+				data[e] := (e % 255)->As(Float) / 255.0;
+			};
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(Tensor->New(spec->GetName(), dims, data));
+
+			for(r := 0; r < warmup + runs; r += 1;) {
+				probe := recorder->Start(model_name, ep, batch, "");
+				outputs := session->Run(inputs);
+				if(outputs = Nil) {
+					probe->Cancel();
+					"run failed at batch {$batch}"->ErrorLine();
+					break;
+				};
+				probe->Stop();
+			};
+		};
+		looper->Stop();
+		session->Close();
+
+		"\nbatch      n     p50ms     p95ms     p99ms    host MB   GPU MB   J/run"->PrintLine();
+		entries := recorder->GetStore()->GetEntries();
+		for(i := 0; i < entries->Size(); i += 1;) {
+			e := entries->Get(i);
+			st := e->GetStats();
+			"{$e->GetBatch()}  {$st->GetCount()}  {$st->GetP50()}  {$st->GetP95()}  {$st->GetP99()}  {$e->GetHostMemMax() / 1048576.0}  {$e->GetGpuMemMax()}  {$e->GetJoulesPerRun()}"->PrintLine();
+		};
+
+		if(out->Size() > 0) {
+			merged := ProfileStore->New();
+			if(File->Exists(out)) {
+				merged := ProfileStore->Load(out);
+				if(merged = Nil) {
+					"{$out} is not a telemetry profile, not overwriting it"->ErrorLine();
+					Runtime->Exit(1);
+				};
+			};
+			merged->Merge(recorder->GetStore());
+			if(merged->Save(out)) {
+				"saved {$out} ({$merged->Size()} cells)"->PrintLine();
+			}
+			else {
+				"{$merged->GetError()}"->ErrorLine();
+			};
+		};
+	}
+}

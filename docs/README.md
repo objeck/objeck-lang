@@ -41,6 +41,7 @@ Start with the one-page map, then follow the part you care about. Every page bel
 | [opengl.md](opengl.md) | `Game.OpenGL` |
 | [performance.md](performance.md) | Benchmarks and where the time goes |
 | [third_party_dependencies.md](third_party_dependencies.md) | Where each platform gets mbedTLS, nghttp2, SDL2, OpenCV, ONNX Runtime, and how to read the version a build used |
+| [hpc_alderaan.md](hpc_alderaan.md) | Objeck on a Slurm cluster with Singularity and no root (CU Denver Alderaan): portable build, images, the `objeck-slurm` job-array helper, scaling benchmarks, and what is unverified |
 | [windows_loopback_sockets.md](windows_loopback_sockets.md) | Windows discards data if you write then immediately close on loopback, and what to do instead |
 | [macos_http2_http3.md](macos_http2_http3.md) | Building and testing HTTP/2 and HTTP/3 on macOS |
 
@@ -73,6 +74,7 @@ Directory READMEs: [compiler](../core/compiler/README.md), [VM](../core/vm/READM
 | [release_integrity.md](release_integrity.md) | What a release verifies today, and the signed manifest that would let `obu` detect a substituted `SHA256SUMS` |
 | [UPDATER_DESIGN.md](UPDATER_DESIGN.md) | `obu check`, `update`, `rollback` (**built**; the page's status block records the Windows swap) |
 | [DEB_PACKAGE_DESIGN.md](DEB_PACKAGE_DESIGN.md) | The `.deb` packages (**built**, v2026.10.1) |
+| [DESIGN_OBL_FROM_SOURCE.md](DESIGN_OBL_FROM_SOURCE.md) | Build the standard libraries in CI instead of committing `core/lib/*.obl`: consumers, the Windows `lang.obl` gap, a prototype (**proposed**) |
 | [ARCHITECTURE_ASSESSMENT_2026_11.md](ARCHITECTURE_ASSESSMENT_2026_11.md) | A static review of every component with ranked findings (**snapshot**, master `5faaca629f`). Since then fixed: the dead parser copy (1.1), the missing ABI version (2.3), the `exit(1)` calls in the loader and the compiler back end (2.2; one remains, in `Library::LoadFile` in `linker.cpp`, for a library built before typed `Int[]` arrays: its siblings throw `CompilerFatal`), the commented-out nightly cron (5.1), and part of 2.1 (`Loader::Verify`). The roadmap table at the end lists the rest |
 | [LIBRARY_BACKLOG_2026_11.md](LIBRARY_BACKLOG_2026_11.md) | Library defects found by the Nil-safety sweep and not yet fixed (**working**) |
 | [ROSETTA_HARDENING.md](ROSETTA_HARDENING.md) | Working the Rosetta Code backlog as a hardening vehicle: how to claim a task, what to skip, defects it found (**working**) |
@@ -138,7 +140,7 @@ Several things in this directory are **build inputs or shipped artifacts**, not 
 | `readme.html`, `readme.txt` | The release notes, rendered for shipping. `deploy_windows.cmd` copies `readme.html` into the install tree, where `style/` sits beside it and it displays properly. The source of truth is [CHANGELOG.md](../CHANGELOG.md) |
 | `web/` | The **published site**. This is what GitHub Pages builds: see `.github/workflows/jekyll-gh-pages.yml`, which sets `source: ./docs/web`. Nothing else in this directory is published |
 | `style/`, `images/`, `syntax/` | Assets for the above, and editor syntax definitions |
-| `api.zip` | Pre-built API docs, unpacked into the install tree by the ARM64 deploy, which cannot run the doc generator while cross-compiling |
+| `api.zip` | Generated API docs (gitignored; the release build makes it, `tools/cicd/gen_api_docs.sh`), unpacked into the install tree by every deploy except Windows x64, which runs `code_doc` itself |
 | `eula.rtf` | Licence text for the installer |
 
 If you want the rendered documentation rather than the sources, use the published site rather than this directory.

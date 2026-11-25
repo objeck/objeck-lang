@@ -1,0 +1,427 @@
+#~
+An MCP server for Claude Desktop, Claude Code or any other MCP client (-lib mcp).
+
+It offers three tools:
+  calculate       evaluate an arithmetic expression: + - * / % ^, parentheses,
+                  pi, e, and sqrt abs floor ceil round sin cos tan ln log exp
+  read_file       read a text file under the sandbox directory
+  list_directory  list a directory under the sandbox directory
+a resource template (sandbox://{path}, the same files), and a prompt
+(review_file) that asks the model to review one of them.
+
+Build:   obc -src mcp_server_demo.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest mcp_server_demo.obe
+Run:     obr mcp_server_demo.obe <sandbox-dir>            (stdio, for a client to start)
+         obr mcp_server_demo.obe <sandbox-dir> --http 8080  (streamable HTTP on 127.0.0.1)
+
+Nothing else may be written to standard output while the stdio server runs: it is
+the protocol channel. Log to standard error (ErrorLine).
+
+A path is refused when it is absolute, names a drive, or has a ".." part, so the
+tools cannot leave the sandbox by name. A symbolic link inside the sandbox that
+points outside it is followed: keep links out of the directory you share.
+
+Claude Desktop (claude_desktop_config.json) and Claude Code (.mcp.json):
+  {
+    "mcpServers": {
+      "objeck-demo": {
+        "command": "/opt/objeck/bin/obr",
+        "args": ["/opt/objeck/examples/mcp_server_demo.obe", "/home/me/shared"]
+      }
+    }
+  }
+Claude Code can also add it with:
+  claude mcp add objeck-demo -- /opt/objeck/bin/obr /opt/objeck/examples/mcp_server_demo.obe /home/me/shared
+~#
+use API.MCP, Data.JSON, System.IO.Filesystem, Collection;
+
+# A recursive-descent evaluator: expr = term {(+|-) term}; term = power {(*|/|%) power};
+# power = unary [^ power]; unary = [-] primary; primary = number | name | name(expr) | (expr)
+class Calculator {
+	@text : String;
+	@pos : Int;
+	@error : String;
+
+	New(text : String) {
+		@text := text;
+		@pos := 0;
+	}
+
+	function : Evaluate(text : String, result : FloatRef) ~ String {
+		return Calculator->New(text)->Run(result);
+	}
+
+	method : Run(result : FloatRef) ~ String {
+		value := ParseExpression();
+		SkipSpace();
+		if(@error = Nil & @pos < @text->Size()) {
+			c := @text->Get(@pos);
+			Fail("unexpected '{$c}' at position {$@pos}");
+		};
+		result->Set(value);
+		return @error;
+	}
+
+	method : Fail(message : String) ~ Nil {
+		if(@error = Nil) {
+			@error := message;
+		};
+	}
+
+	method : SkipSpace() ~ Nil {
+		while(@pos < @text->Size() & (@text->Get(@pos) = ' ' | @text->Get(@pos) = '\t')) {
+			@pos += 1;
+		};
+	}
+
+	method : Peek() ~ Char {
+		SkipSpace();
+		if(@pos >= @text->Size()) {
+			return '\0';
+		};
+		return @text->Get(@pos);
+	}
+
+	method : ParseExpression() ~ Float {
+		left := ParseTerm();
+		while(@error = Nil) {
+			op := Peek();
+			if(op = '+') {
+				@pos += 1;
+				left += ParseTerm();
+			}
+			else if(op = '-') {
+				@pos += 1;
+				left -= ParseTerm();
+			}
+			else {
+				break;
+			};
+		};
+		return left;
+	}
+
+	method : ParseTerm() ~ Float {
+		left := ParsePower();
+		while(@error = Nil) {
+			op := Peek();
+			if(op = '*') {
+				@pos += 1;
+				left *= ParsePower();
+			}
+			else if(op = '/') {
+				@pos += 1;
+				right := ParsePower();
+				if(right = 0.0) {
+					Fail("division by zero");
+				}
+				else {
+					left /= right;
+				};
+			}
+			else if(op = '%') {
+				@pos += 1;
+				right := ParsePower();
+				if(right = 0.0) {
+					Fail("division by zero");
+				}
+				else {
+					left := Float->Mod(left, right);
+				};
+			}
+			else {
+				break;
+			};
+		};
+		return left;
+	}
+
+	method : ParsePower() ~ Float {
+		base := ParseUnary();
+		if(@error = Nil & Peek() = '^') {
+			@pos += 1;
+			exponent := ParsePower();
+			return Power(base, exponent);
+		};
+		return base;
+	}
+
+	method : Power(base : Float, exponent : Float) ~ Float {
+		whole := Float->ToInt(exponent);
+		if(whole->As(Float) <> exponent & base < 0.0) {
+			Fail("a fractional power of a negative number");
+			return 0.0;
+		};
+
+		if(base = 0.0 & exponent < 0.0) {
+			Fail("division by zero");
+			return 0.0;
+		};
+		return Float->Pow(base, exponent);
+	}
+
+	method : ParseUnary() ~ Float {
+		op := Peek();
+		if(op = '-') {
+			@pos += 1;
+			return -ParseUnary();
+		}
+		else if(op = '+') {
+			@pos += 1;
+			return ParseUnary();
+		};
+		return ParsePrimary();
+	}
+
+	method : ParsePrimary() ~ Float {
+		c := Peek();
+		if(c = '(') {
+			@pos += 1;
+			value := ParseExpression();
+			if(Peek() <> ')') {
+				Fail("missing ')' at position {$@pos}");
+			}
+			else {
+				@pos += 1;
+			};
+			return value;
+		};
+
+		if(c >= '0' & c <= '9' | c = '.') {
+			start := @pos;
+			while(@pos < @text->Size() & (@text->Get(@pos) >= '0' & @text->Get(@pos) <= '9' | @text->Get(@pos) = '.')) {
+				@pos += 1;
+			};
+			return @text->SubString(start, @pos - start)->ToFloat();
+		};
+
+		if(c >= 'a' & c <= 'z') {
+			start := @pos;
+			while(@pos < @text->Size() & @text->Get(@pos) >= 'a' & @text->Get(@pos) <= 'z') {
+				@pos += 1;
+			};
+			name := @text->SubString(start, @pos - start);
+
+			if(name->Equals("pi")) {
+				return Float->Pi();
+			};
+			if(name->Equals("e")) {
+				return Float->E();
+			};
+
+			if(Peek() <> '(') {
+				Fail("unknown name '{$name}'");
+				return 0.0;
+			};
+			@pos += 1;
+			arg := ParseExpression();
+			if(Peek() <> ')') {
+				Fail("missing ')' after {$name}(");
+				return 0.0;
+			};
+			@pos += 1;
+			return Apply(name, arg);
+		};
+
+		if(c = '\0') {
+			Fail("the expression ends too soon");
+		}
+		else {
+			Fail("unexpected '{$c}' at position {$@pos}");
+		};
+		return 0.0;
+	}
+
+	method : Apply(name : String, arg : Float) ~ Float {
+		if(name->Equals("sqrt")) {
+			if(arg < 0.0) {
+				Fail("sqrt of a negative number");
+				return 0.0;
+			};
+			return Float->Sqrt(arg);
+		}
+		else if(name->Equals("abs")) {
+			return Float->Abs(arg);
+		}
+		else if(name->Equals("floor")) {
+			return Float->Floor(arg);
+		}
+		else if(name->Equals("ceil")) {
+			return Float->Ceil(arg);
+		}
+		else if(name->Equals("round")) {
+			return Float->Round(arg);
+		}
+		else if(name->Equals("sin")) {
+			return Float->Sin(arg);
+		}
+		else if(name->Equals("cos")) {
+			return Float->Cos(arg);
+		}
+		else if(name->Equals("tan")) {
+			return Float->Tan(arg);
+		}
+		else if(name->Equals("exp")) {
+			return Float->Exp(arg);
+		}
+		else if(name->Equals("ln") | name->Equals("log")) {
+			if(arg <= 0.0) {
+				Fail("the logarithm of a number that is not positive");
+				return 0.0;
+			};
+			return Float->Log(arg);
+		};
+
+		Fail("unknown function '{$name}'");
+		return 0.0;
+	}
+}
+
+class McpDemo {
+	@root : static : String;
+
+	function : Main(args : String[]) ~ Nil {
+		@root := ".";
+		http_port := -1;
+		for(i := 0; i < args->Size(); i += 1;) {
+			if(args[i]->Equals("--http") & i + 1 < args->Size()) {
+				http_port := args[i + 1]->ToInt();
+				i += 1;
+			}
+			else {
+				@root := args[i];
+			};
+		};
+
+		server := McpService->New("objeck-demo", "1.0.0");
+		server->SetTitle("Objeck demo tools");
+		server->SetInstructions("Evaluate arithmetic with calculate; browse the shared directory with list_directory and read_file. Paths are relative to the shared directory.");
+
+		server->AddTool("calculate", "Evaluate an arithmetic expression such as (2 + 3) * sqrt(16) ^ 2. Supports + - * / % ^, parentheses, pi, e and the functions sqrt abs floor ceil round sin cos tan ln log exp.",
+			"{\"type\":\"object\",\"properties\":{\"expression\":{\"type\":\"string\",\"description\":\"the expression\"}},\"required\":[\"expression\"]}",
+			Func2Ref->New(McpDemo->Calculate(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		server->AddTool("read_file", "Read a text file from the shared directory (at most 1 MiB).",
+			"{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"file path relative to the shared directory\"}},\"required\":[\"path\"]}",
+			Func2Ref->New(McpDemo->ReadFile(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		server->AddTool("list_directory", "List a directory of the shared directory; directories end with a slash.",
+			"{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"directory relative to the shared directory; empty for the top\"}}}",
+			Func2Ref->New(McpDemo->ListDirectory(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		server->AddResource(McpResource->New("sandbox://{path}", "Shared file", "A file of the shared directory", "text/plain",
+			Func2Ref->New(McpDemo->ReadSandbox(String) ~ McpContents)<String, McpContents>));
+
+		prompt := McpPrompt->New("review_file", "Ask for a review of one file of the shared directory",
+			Func2Ref->New(McpDemo->ReviewPrompt(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>);
+		prompt->AddArgument("path", "file to review", true);
+		prompt->AddArgument("focus", "what to look at, such as bugs or style", false);
+		server->AddPrompt(prompt);
+
+		if(http_port >= 0) {
+			"serving MCP over HTTP on 127.0.0.1, sandbox {$@root}"->ErrorLine();
+			server->ServeHttp(http_port);
+		}
+		else {
+			"serving MCP over stdio, sandbox {$@root}"->ErrorLine();
+			server->ServeStdio();
+		};
+	}
+
+	function : Calculate(call : McpCall) ~ McpToolResult {
+		expression := call->GetString("expression");
+		value := FloatRef->New(0.0);
+		problem := Calculator->Evaluate(expression, value);
+		if(problem <> Nil) {
+			return McpToolResult->Error("cannot evaluate '{$expression}': {$problem}");
+		};
+
+		result := value->Get();
+		if(result = Float->Floor(result) & Float->Abs(result) < 1000000000000.0) {
+			whole := result->As(Int);
+			return McpToolResult->Text("{$whole}");
+		};
+		return McpToolResult->Text("{$result}");
+	}
+
+	# the path joined to the sandbox, Nil when it would leave it
+	function : Resolve(path : String) ~ String {
+		if(path = Nil | path->Size() = 0) {
+			return @root;
+		};
+
+		if(path->StartsWith("/") | path->StartsWith("\\") | path->Has(':') | path->Has('\0')) {
+			return Nil;
+		};
+
+		parts := path->ReplaceAll("\\", "/")->Split("/");
+		each(part in parts) {
+			if(part->Equals("..")) {
+				return Nil;
+			};
+		};
+		return "{$@root}/{$path}";
+	}
+
+	function : ReadFile(call : McpCall) ~ McpToolResult {
+		path := call->GetString("path");
+		full := Resolve(path);
+		if(full = Nil) {
+			return McpToolResult->Error("'{$path}' is outside the shared directory");
+		};
+
+		if(<>File->Exists(full) | Directory->Exists(full)) {
+			return McpToolResult->Error("no such file: {$path}");
+		};
+
+		if(File->Size(full) > 1048576) {
+			return McpToolResult->Error("{$path} is larger than 1 MiB");
+		};
+		return McpToolResult->Text(FileReader->ReadFile(full));
+	}
+
+	function : ListDirectory(call : McpCall) ~ McpToolResult {
+		path := call->GetString("path");
+		full := Resolve(path);
+		if(full = Nil) {
+			return McpToolResult->Error("'{$path}' is outside the shared directory");
+		};
+
+		if(<>Directory->Exists(full)) {
+			return McpToolResult->Error("no such directory: {$path}");
+		};
+
+		names := Directory->List(full);
+		text := "";
+		each(name in names) {
+			if(<>name->Equals(".") & <>name->Equals("..")) {
+				text += name;
+				if(Directory->Exists("{$full}/{$name}")) {
+					text += "/";
+				};
+				text += "\n";
+			};
+		};
+		return McpToolResult->Text(text);
+	}
+
+	function : ReadSandbox(uri : String) ~ McpContents {
+		path := uri->SubString("sandbox://"->Size(), uri->Size() - "sandbox://"->Size());
+		full := Resolve(path);
+		if(full = Nil | <>File->Exists(full) | Directory->Exists(full) | File->Size(full) > 1048576) {
+			return Nil;
+		};
+		return McpContents->OfText(uri, "text/plain", FileReader->ReadFile(full));
+	}
+
+	function : ReviewPrompt(call : McpCall) ~ McpPromptResult {
+		path := call->GetString("path");
+		focus := call->GetString("focus");
+		if(focus = Nil) {
+			focus := "bugs and unclear code";
+		};
+
+		result := McpPromptResult->New("Review a file");
+		result->AddMessage("user", "Read the file {$path} with the read_file tool, then review it for {$focus}. Quote the lines you mean.");
+		return result;
+	}
+}

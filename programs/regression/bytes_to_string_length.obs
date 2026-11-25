@@ -1,0 +1,76 @@
+#~
+String->New(Byte[]) must decode exactly the bytes of the array.
+
+A Byte[] is not NUL-terminated. The converter used to hand the bare pointer to a routine that reads
+until a zero byte, and the deserializer allocated its Byte[] with no spare element after the data, so a
+string made from an exact-length array picked up whatever followed it in memory: 8 bytes ("doc0.txt")
+came back as 9, 10, 33 or 73 characters, differing from run to run. On x64 the bytes after an array are
+usually zero, so only ARM64 (Apple Silicon, Windows ARM64) showed it, as the first byte of the next heap
+block's header ("doc0.txt8").
+
+The same shape is run here as in rag_index_test: strings are serialized, read back with ReadByteArray
+and turned into Strings, many times over, with the allocations that surround it in between. A zero byte
+INSIDE the array still ends the string (a padded read buffer), as it always did.
+~#
+class BytesToStringLength {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(<>ok) {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    names := ["doc0.txt", "doc1.txt", "a", "abcdefgh", "abcdefghi", "0123456789abcdef", "exactly-sixteen!", "xyz"];
+    for(round := 0; round < 400; round += 1;) {
+      serializer := System.IO.Serializer->New();
+      for(i := 0; i < names->Size(); i += 1;) {
+        serializer->Write(names[i]->ToByteArray());
+        serializer->Write(i * 7);
+        serializer->Write(Float->New[8]);
+      };
+      body := serializer->Serialize();
+
+      deserializer := System.IO.Deserializer->New(body);
+      for(i := 0; i < names->Size(); i += 1;) {
+        bytes := deserializer->ReadByteArray();
+        offset := deserializer->ReadInt();
+        vector := deserializer->ReadFloatArray();
+        back := String->New(bytes);
+        if(back = Nil | <>back->Equals(names[i]) | offset <> i * 7 | vector->Size() <> 8) {
+          shown := "<nil>";
+          if(back <> Nil) {
+            shown := back;
+          };
+          "  [FAIL] round {$round}: '{$names[i]}' came back as '{$shown}' ({$shown->Size()} characters)"->PrintLine();
+          @failures += 1;
+          if(@failures > 5) {
+            "FAIL: {$@failures} check(s) failed"->PrintLine();
+            Runtime->Exit(1);
+          };
+        };
+      };
+    };
+
+    # a zero byte inside the array ends the string (a padded buffer), as before
+    padded := Byte->New[8];
+    padded[0] := 'a'->As(Byte); padded[1] := 'b'->As(Byte); padded[2] := 'c'->As(Byte);
+    text := String->New(padded);
+    Check("a zero byte inside the array ends the string", text <> Nil & text->Equals("abc"));
+
+    # an all-zero array is the empty string
+    zeros := Byte->New[4];
+    empty := String->New(zeros);
+    Check("an all-zero array decodes to the empty string", empty <> Nil & empty->Size() = 0);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

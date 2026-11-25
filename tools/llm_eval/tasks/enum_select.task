@@ -1,0 +1,44 @@
+id: enum_select
+category: classes
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with an enum Color that has the values RED, GREEN and BLUE and a function Describe(c : Color) ~ String that uses a select statement to return "warm" for RED, "natural" for GREEN and "cool" for BLUE. Print `RED warm`, `GREEN natural` and `BLUE cool` on three lines.
+--- expected
+RED warm
+GREEN natural
+BLUE cool
+--- reference
+enum Color {
+	RED,
+	GREEN,
+	BLUE
+}
+
+class EnumSelect {
+	function : Describe(c : Color) ~ String {
+		select(c) {
+			label Color->RED: {
+				return "warm";
+			}
+
+			label Color->GREEN: {
+				return "natural";
+			}
+
+			label Color->BLUE: {
+				return "cool";
+			}
+		};
+
+		return "unknown";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"RED {$Describe(Color->RED)}"->PrintLine();
+		"GREEN {$Describe(Color->GREEN)}"->PrintLine();
+		"BLUE {$Describe(Color->BLUE)}"->PrintLine();
+	}
+}

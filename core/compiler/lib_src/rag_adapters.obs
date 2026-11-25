@@ -1,0 +1,635 @@
+#~~
+# Objeck retrieval-augmented generation kit: adapters over the embedding and chat libraries
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use System.ML.Rag;
+use API.Google.Gemini;
+
+#~
+Experimental: API may change.
+
+Adapters that plug the existing model libraries into the RAG kit (library rag): embedders over BERT sentence models (System.NLP.Onnx), CLIP image models (System.ML.Clip), Ollama, OpenAI and Gemini, and generators over Ollama, OpenAI, Anthropic and Gemini. Each implements RagEmbedder or RagGenerator, so a RagPipeline takes any of them, and mixing is fine: embed locally with BERT and generate with Claude.
+
+An adapter holds no state beyond its settings. A failed call returns Nil and GetError() carries the library's own reason (the same text the library's EndPoint->GetLastError() gives), so nothing here ends the program. Keys: an adapter takes a key, or Nil to use the library's own lookup (OPENAI_API_KEY, ANTHROPIC_API_KEY, the Gemini key file); the host of a local server is set with the library's own EndPoint->SetHost or SetBaseUrl before the call.
+
+An embedder must give a text the same vector every time, and the index and the questions must use the same embedder and model: vectors from different models are not comparable even when their lengths match.
+
+Compile with -lib rag_adapters,rag,ml_vector,gen_collect plus the libraries of the adapters used, and always the ones this library links: net,net_server,json,cipher,misc,openai,gemini,ollama,anthropic,models,opencv,onnx,nlp,nlp_onnx,ml_verify,ml_clip.
+~#
+bundle System.ML.Rag {
+	#~
+	Embeds text with a BERT-family ONNX model (System.NLP.Onnx.BertEmbedder). The model stays open and owned by the caller: close it with its own Close(). Not thread-safe.
+
+```
+bert := BertEmbedder->Load("model.onnx", "vocab.txt", 128);
+embedder := RagBertEmbedder->New(bert);
+pipeline := RagPipeline->New(embedder, RagStubGenerator->New());
+```
+	~#
+	class RagBertEmbedder implements RagEmbedder {
+		@bert : System.NLP.Onnx.BertEmbedder;
+		@error : String;
+
+		#~
+		Wraps an opened embedder.
+		@param bert the embedder; test its IsOpen() first
+		~#
+		New(bert : System.NLP.Onnx.BertEmbedder) {
+			@bert := bert;
+			@error := "";
+		}
+
+		#~
+		Length of the vectors, or 0 when the model has not said yet.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			size := @bert->GetEmbeddingSize(@bert->GetLayers());
+			if(size < 0) {
+				return 0;
+			};
+
+			return size;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Embeds texts with the embedder's pooling.
+		@param texts one or more texts
+		@return one row per text; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			@error := "";
+			if(<>@bert->IsOpen()) {
+				@error := "the BERT model is not open: {$@bert->GetError()}";
+				return Nil;
+			};
+
+			vectors := @bert->Embed(texts);
+			if(vectors = Nil) {
+				@error := "BERT embed failed: {$@bert->GetError()}";
+			};
+
+			return vectors;
+		}
+	}
+
+	#~
+	Embeds images with a CLIP image tower (System.ML.Clip.ClipEncoder). The "text" it is given is the path of an image file, so an index built with it holds pictures, and a search is by example: embed a query image the same way and ask for its nearest neighbours. (The text tower is not part of the CLIP support, so a written query cannot be matched with pictures.) Vectors are scaled to length 1.
+	~#
+	class RagClipImageEmbedder implements RagEmbedder {
+		@clip : System.ML.Clip.ClipEncoder;
+		@error : String;
+
+		#~
+		Wraps an opened encoder.
+		@param clip the encoder; test its IsOpen() first
+		~#
+		New(clip : System.ML.Clip.ClipEncoder) {
+			@clip := clip;
+			@error := "";
+		}
+
+		#~
+		Length of the vectors, or 0 when the model has not said yet.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			size := @clip->GetDimension();
+			if(size < 0) {
+				return 0;
+			};
+
+			return size;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Embeds image files.
+		@param texts image file paths
+		@return one row per path; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			@error := "";
+			vectors := @clip->EmbedBatch(texts, true);
+			if(vectors = Nil) {
+				@error := "CLIP embed failed: {$@clip->GetError()}";
+			};
+
+			return vectors;
+		}
+	}
+
+	#~
+	Embeds text with an Ollama embedding model over /api/embed, a batch to a request. The server is the one API.Ollama.EndPoint->SetHost names (http://localhost:11434 by default). Pull the model first, for example `ollama pull nomic-embed-text`.
+
+```
+embedder := RagOllamaEmbedder->New("nomic-embed-text");
+pipeline := RagPipeline->New(embedder, RagOllamaGenerator->New("llama3.2"));
+```
+	~#
+	class RagOllamaEmbedder implements RagEmbedder {
+		@model : String;
+		@dim : Int;
+		@error : String;
+
+		#~
+		Creates an embedder.
+		@param model the embedding model name
+		~#
+		New(model : String) {
+			@model := model;
+			@dim := 0;
+			@error := "";
+		}
+
+		#~
+		Length of the vectors: 0 until the first Embed.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dim;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Embeds texts.
+		@param texts one or more texts
+		@return one row per text; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			@error := "";
+			vectors := API.Ollama.Model->Embed(@model, texts);
+			if(vectors = Nil) {
+				@error := Reason(API.Ollama.EndPoint->GetLastError());
+				return Nil;
+			};
+
+			dims := vectors->Size();
+			@dim := dims[1];
+			return vectors;
+		}
+
+		function : Reason(reason : String) ~ String {
+			if(reason = Nil) {
+				return "the Ollama call failed";
+			};
+
+			return reason;
+		}
+	}
+
+	#~
+	Embeds text with an OpenAI embedding model, one request per text.
+
+```
+embedder := RagOpenAIEmbedder->New("text-embedding-3-small", Nil);
+```
+	~#
+	class RagOpenAIEmbedder implements RagEmbedder {
+		@model : String;
+		@key : String;
+		@dim : Int;
+		@error : String;
+
+		#~
+		Creates an embedder.
+		@param model the embedding model name
+		@param key the API key, or Nil for API.OpenAI.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			@key := key;
+			@dim := 0;
+			@error := "";
+		}
+
+		#~
+		Length of the vectors: 0 until the first Embed.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dim;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Embeds texts.
+		@param texts one or more texts
+		@return one row per text; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			@error := "";
+			if(texts = Nil | texts->Size() = 0) {
+				@error := "no texts to embed";
+				return Nil;
+			};
+
+			token := @key;
+			if(token = Nil) {
+				token := API.OpenAI.EndPoint->GetApiKey();
+			};
+
+			out : Float[,];
+			each(i : texts) {
+				vector := API.OpenAI.Embedding->Create(texts[i], @model, token);
+				if(vector = Nil) {
+					reason := API.OpenAI.EndPoint->GetLastError();
+					if(reason = Nil) {
+						reason := "the OpenAI call failed";
+					};
+					@error := reason;
+					return Nil;
+				};
+
+				if(i = 0) {
+					out := Float->New[texts->Size(), vector->Size()];
+				}
+				else if(vector->Size() <> out->Size()[1]) {
+					@error := "the model returned vectors of different lengths";
+					return Nil;
+				};
+
+				each(j : vector) {
+					out[i, j] := vector[j];
+				};
+			};
+
+			@dim := out->Size()[1];
+			return out;
+		}
+	}
+
+	#~
+	Embeds text with a Gemini embedding model, a batch to a request (API.Google.Gemini.Model->BatchEmbedContent).
+
+```
+embedder := RagGeminiEmbedder->New("models/text-embedding-004", Nil);
+```
+	~#
+	class RagGeminiEmbedder implements RagEmbedder {
+		@model : String;
+		@key : String;
+		@dim : Int;
+		@error : String;
+
+		#~
+		Creates an embedder.
+		@param model the model name, with its "models/" prefix
+		@param key the API key, or Nil for API.Google.Gemini.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			@key := key;
+			@dim := 0;
+			@error := "";
+		}
+
+		#~
+		Length of the vectors: 0 until the first Embed.
+		@return dimension
+		~#
+		method : public : GetDimension() ~ Int {
+			return @dim;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Embeds texts.
+		@param texts one or more texts
+		@return one row per text; Nil on failure (see GetError)
+		~#
+		method : public : Embed(texts : String[]) ~ Float[,] {
+			@error := "";
+			if(texts = Nil | texts->Size() = 0) {
+				@error := "no texts to embed";
+				return Nil;
+			};
+
+			token := @key;
+			if(token = Nil) {
+				token := API.Google.Gemini.EndPoint->GetApiKey();
+			};
+
+			list := Vector->New()<String>;
+			each(i : texts) {
+				list->AddBack(texts[i]);
+			};
+
+			values := API.Google.Gemini.Model->BatchEmbedContent(@model, list, token);
+			if(values = Nil | values->Size() <> texts->Size()) {
+				reason := API.Google.Gemini.EndPoint->GetLastError();
+				if(reason = Nil) {
+					reason := "the Gemini call failed";
+				};
+				@error := reason;
+				return Nil;
+			};
+
+			first := values->Get(0)->Get();
+			if(first = Nil | first->Size() < 1) {
+				@error := "the Gemini call returned an empty vector";
+				return Nil;
+			};
+
+			out := Float->New[texts->Size(), first->Size()];
+			each(i : values) {
+				vector := values->Get(i)->Get();
+				if(vector = Nil | vector->Size() <> first->Size()) {
+					@error := "the model returned vectors of different lengths";
+					return Nil;
+				};
+
+				each(j : vector) {
+					out[i, j] := vector[j];
+				};
+			};
+
+			@dim := first->Size();
+			return out;
+		}
+	}
+
+	#~
+	Generates with an Ollama model over /api/generate. The prompt is sent as one prompt, with no chat history. Replies are not streamed.
+
+```
+generator := RagOllamaGenerator->New("llama3.2");
+```
+	~#
+	class RagOllamaGenerator implements RagGenerator {
+		@model : String;
+		@options : API.Ollama.Options;
+		@error : String;
+
+		#~
+		Creates a generator.
+		@param model the model name
+		~#
+		New(model : String) {
+			@model := model;
+			@error := "";
+		}
+
+		#~
+		Sets request options such as the temperature. A grounded answer usually wants a low one.
+		@param options the options, or Nil for the model's defaults
+		~#
+		method : public : SetOptions(options : API.Ollama.Options) ~ Nil {
+			@options := options;
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Generates the reply.
+		@param prompt the whole prompt
+		@return the reply; Nil on failure (see GetError)
+		~#
+		method : public : Generate(prompt : String) ~ String {
+			@error := "";
+			reply : String;
+			if(@options = Nil) {
+				reply := API.Ollama.Completion->Generate(@model, prompt);
+			}
+			else {
+				reply := API.Ollama.Completion->Generate(@model, prompt, @options);
+			};
+
+			if(reply = Nil) {
+				@error := API.Ollama.EndPoint->GetLastError();
+				if(@error = Nil) {
+					@error := "the Ollama call failed";
+				};
+			};
+
+			return reply;
+		}
+	}
+
+	#~
+	Generates with an OpenAI chat model (Chat Completions): the prompt is one user message.
+
+```
+generator := RagOpenAIGenerator->New("gpt-4o-mini", Nil);
+```
+	~#
+	class RagOpenAIGenerator implements RagGenerator {
+		@model : String;
+		@key : String;
+		@error : String;
+
+		#~
+		Creates a generator.
+		@param model the model name
+		@param key the API key, or Nil for API.OpenAI.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			@key := key;
+			@error := "";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Generates the reply.
+		@param prompt the whole prompt
+		@return the reply; Nil on failure (see GetError)
+		~#
+		method : public : Generate(prompt : String) ~ String {
+			@error := "";
+			token := @key;
+			if(token = Nil) {
+				token := API.OpenAI.EndPoint->GetApiKey();
+			};
+
+			message := Pair->New("user", prompt)<String, String>;
+			done := API.OpenAI.Chat.Completion->Complete(@model, message, token);
+			if(done <> Nil) {
+				choice := done->GetFirstChoice();
+				if(choice <> Nil) {
+					return choice->GetMessage()->GetSecond();
+				};
+			};
+
+			@error := API.OpenAI.EndPoint->GetLastError();
+			if(@error = Nil) {
+				@error := "the OpenAI call returned no reply";
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	Generates with a Claude model over the Anthropic Messages API: each call is a fresh single-turn chat, the prompt being the user message.
+
+```
+generator := RagAnthropicGenerator->New("claude-sonnet-5-5", Nil);
+```
+	~#
+	class RagAnthropicGenerator implements RagGenerator {
+		@model : String;
+		@key : String;
+		@max_tokens : Int;
+		@error : String;
+
+		#~
+		Creates a generator that may reply with up to 1024 tokens.
+		@param model the model name
+		@param key the API key, or Nil for ANTHROPIC_API_KEY or anthropic_api_key.dat
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			@key := key;
+			@max_tokens := 1024;
+			@error := "";
+		}
+
+		#~
+		Sets the most tokens a reply may use.
+		@param max_tokens 1 or more
+		~#
+		method : public : SetMaxTokens(max_tokens : Int) ~ Nil {
+			if(max_tokens >= 1) {
+				@max_tokens := max_tokens;
+			};
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Generates the reply.
+		@param prompt the whole prompt
+		@return the reply; Nil on failure (see GetError)
+		~#
+		method : public : Generate(prompt : String) ~ String {
+			@error := "";
+			chat := API.Anthropic.Chat->New(@model, @key);
+			chat->SetMaxTokens(@max_tokens);
+			reply := chat->Send(prompt);
+			if(reply = Nil) {
+				@error := API.Anthropic.EndPoint->GetLastError();
+				if(@error = Nil) {
+					@error := "the Anthropic call failed";
+				};
+			};
+
+			return reply;
+		}
+	}
+
+	#~
+	Generates with a Gemini model (generateContent): the prompt is one user message and the reply is the text of the first candidate.
+
+```
+generator := RagGeminiGenerator->New("gemini-2.5-flash", Nil);
+```
+	~#
+	class RagGeminiGenerator implements RagGenerator {
+		@model : String;
+		@key : String;
+		@error : String;
+
+		#~
+		Creates a generator.
+		@param model the model name
+		@param key the API key, or Nil for API.Google.Gemini.EndPoint->GetApiKey()
+		~#
+		New(model : String, key : String) {
+			@model := model;
+			@key := key;
+			@error := "";
+		}
+
+		#~
+		Why the last call failed.
+		@return the reason, or "" when there is none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Generates the reply.
+		@param prompt the whole prompt
+		@return the reply; Nil on failure (see GetError)
+		~#
+		method : public : Generate(prompt : String) ~ String {
+			@error := "";
+			token := @key;
+			if(token = Nil) {
+				token := API.Google.Gemini.EndPoint->GetApiKey();
+			};
+
+			content := API.Google.Gemini.Content->New("user")->AddPart(API.Google.Gemini.TextPart->New(prompt));
+			candidates := API.Google.Gemini.Model->GenerateContent(@model, content, token);
+			if(candidates <> Nil & candidates->Size() > 0) {
+				return candidates->Get(0)->GetAllText();
+			};
+
+			@error := API.Google.Gemini.EndPoint->GetLastError();
+			if(@error = Nil) {
+				@error := "the Gemini call returned no candidate";
+			};
+
+			return Nil;
+		}
+	}
+}

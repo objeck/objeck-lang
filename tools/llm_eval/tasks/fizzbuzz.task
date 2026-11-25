@@ -1,0 +1,43 @@
+id: fizzbuzz
+category: basics
+difficulty: 2
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that prints the numbers from 1 to 15, one per line. For multiples of 3 print Fizz instead of the number, for multiples of 5 print Buzz, and for multiples of both print FizzBuzz.
+--- expected
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz
+--- reference
+class FizzBuzz {
+	function : Main(args : String[]) ~ Nil {
+		for(i := 1; i <= 15; i += 1;) {
+			if(i % 15 = 0) {
+				"FizzBuzz"->PrintLine();
+			}
+			else if(i % 3 = 0) {
+				"Fizz"->PrintLine();
+			}
+			else if(i % 5 = 0) {
+				"Buzz"->PrintLine();
+			}
+			else {
+				i->PrintLine();
+			};
+		};
+	}
+}

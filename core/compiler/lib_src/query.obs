@@ -7661,7 +7661,8 @@ each(i : view->Count()) {
 				buffer->Append('"');
 				buffer->Append(Data.JSON.JsonElement->Encode(@names[j]));
 				buffer->Append("\":");
-				value : Compare;
+				# set on every pass: a name with no column is null, not the previous column's value
+				value : Compare := Nil;
 				if(@columns[j] > -1) {
 					value := @table->GetColumn(@columns[j])->Get(row);
 				};
@@ -8363,7 +8364,8 @@ results := statement->Execute();
 						out->PutInt(0);
 						strings := column->GetStringArray();
 						for(i := start; i < start + count; i += 1;) {
-							text : String;
+							# set on every row: a null cell writes a null text, not the row before's
+							text : String := Nil;
 							if(<>column->IsNull(i)) {
 								text := strings[i];
 							};
@@ -8375,7 +8377,7 @@ results := statement->Execute();
 				label ColumnType->OBJECT: {
 					objects := column->GetObjectArray();
 					for(i := start; i < start + count; i += 1;) {
-						value : Compare;
+						value : Compare := Nil;
 						if(<>column->IsNull(i)) {
 							value := objects[i];
 						};
@@ -8678,7 +8680,7 @@ results := statement->Execute();
 			each(g : @counts) {
 				count := @counts->Get(g)->Get();
 				group_nulls := @nulls->Get(g)->Get();
-				group_gmt : Int[];
+				group_gmt : Int[] := Nil;
 				if(g < @gmt->Size()) {
 					group_gmt := @gmt->Get(g)->Get();
 				};
@@ -17459,7 +17461,7 @@ if(file->IsOpen()) {
 						};
 						i += 1;
 						
-						date : Date;
+						date : Date := Nil;
 						select(string->Size()) {
 							label 8: {
 								date := DateUtility->Parse(string, "MM/dd/yy", false);
@@ -20097,7 +20099,7 @@ runs := source->Read();
 					};
 				};
 
-				next_url : String;
+				next_url : String := Nil;
 				if(@next_path <> Nil) {
 					link := Navigate(root, @next_path);
 					if(link <> Nil & link->GetType() = Data.JSON.JsonElement->JsonType->STRING) {

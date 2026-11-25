@@ -1,0 +1,2168 @@
+#~~
+# Objeck machine learning library: time series (container, transforms, diagnostics)
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+Experimental: API may change.
+
+System.ML.TimeSeries: forecasting for one numeric series, in pure Objeck. This file has the container (TimeSeries), the transforms (differencing and its inverse, Box-Cox, rolling mean and standard deviation, classical seasonal decomposition, lag matrices), autocorrelation (Acf), the stationarity test (Stationarity) and the numerical helpers (TsMath). The models (baselines, exponential smoothing, ARIMA, automatic selection) are in ml_timeseries_models.obs and the accuracy metrics and rolling-origin cross-validation in ml_timeseries_eval.obs; all three files are one library. Needs only gen_collect: compile with -lib ml_timeseries,gen_collect.
+
+Conventions follow System.ML: an estimator has Fit, Forecast (the predict step) and GetError; no call ends the program on bad input (Fit returns false and GetError says why, the static helpers return Nil or NaN). Everything is deterministic: there is no hidden random number generator, the optimizer is a fixed-start Nelder-Mead, and the simulation helper (Simulate) takes its seed.
+~#
+bundle System.ML.TimeSeries {
+	#~
+	Numerical helpers shared by the library: special functions, linear solves and least squares. All static.
+	~#
+	class TsMath {
+		#~
+		True for NaN, +Infinity and -Infinity.
+		@param v the number
+		@return true when the number is not finite
+		~#
+		function : IsBad(v : Float) ~ Bool {
+			return v <> v | v = Float->Inf() | v = Float->NegInf();
+		}
+
+		function : IMin(a : Int, b : Int) ~ Int {
+			if(a < b) {
+				return a;
+			};
+			return b;
+		}
+
+		function : Min2(a : Float, b : Float) ~ Float {
+			if(a < b) {
+				return a;
+			};
+			return b;
+		}
+
+		function : Max2(a : Float, b : Float) ~ Float {
+			if(a > b) {
+				return a;
+			};
+			return b;
+		}
+
+		function : IMax(a : Int, b : Int) ~ Int {
+			if(a > b) {
+				return a;
+			};
+			return b;
+		}
+
+		#~
+		The index of the first non-finite value.
+		@param x values
+		@return the index, or -1 when every value is finite
+		~#
+		function : FirstBad(x : Float[]) ~ Int {
+			each(i : x) {
+				if(IsBad(x[i])) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
+		#~
+		Arithmetic mean.
+		@param x values (at least one)
+		@return the mean, NaN for an empty or Nil array
+		~#
+		function : Mean(x : Float[]) ~ Float {
+			if(x = Nil | x->Size() = 0) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : x) {
+				s += x[i];
+			};
+
+			return s / x->Size()->As(Float);
+		}
+
+		#~
+		Variance with a divisor of n - ddof.
+		@param x values
+		@param ddof delta degrees of freedom (0 population, 1 sample)
+		@return the variance, NaN when n - ddof < 1
+		~#
+		function : Variance(x : Float[], ddof : Int) ~ Float {
+			if(x = Nil | x->Size() - ddof < 1) {
+				return Float->NaN();
+			};
+
+			m := Mean(x);
+			s := 0.0;
+			each(i : x) {
+				d := x[i] - m;
+				s += d * d;
+			};
+
+			return s / (x->Size() - ddof)->As(Float);
+		}
+
+		#~
+		Natural log of the gamma function (Lanczos, g = 7), accurate to about 1e-14 for positive arguments.
+		@param x positive number
+		@return ln Gamma(x)
+		~#
+		function : LogGamma(x : Float) ~ Float {
+			if(x < 0.5) {
+				# reflection
+				sn := (Float->Pi() * x)->Sin()->Abs();
+				head := (Float->Pi() / sn)->Log();
+				tail := LogGamma(1.0 - x);
+				return head - tail;
+			};
+
+			c := Float->New[9];
+			c[0] := 0.99999999999980993;
+			c[1] := 676.5203681218851;
+			c[2] := -1259.1392167224028;
+			c[3] := 771.32342877765313;
+			c[4] := -176.61502916214059;
+			c[5] := 12.507343278686905;
+			c[6] := -0.13857109526572012;
+			c[7] := 9.9843695780195716e-6;
+			c[8] := 1.5056327351493116e-7;
+
+			z := x - 1.0;
+			a := c[0];
+			t := z + 7.5;
+			for(i := 1; i < 9; i += 1;) {
+				a += c[i] / (z + i->As(Float));
+			};
+
+			return 0.5 * (2.0 * Float->Pi())->Log() + (z + 0.5) * t->Log() - t + a->Log();
+		}
+
+		#~
+		Regularized lower incomplete gamma function P(a, x).
+		@param a shape (> 0)
+		@param x argument (>= 0)
+		@return P(a, x) in 0 to 1
+		~#
+		function : GammaP(a : Float, x : Float) ~ Float {
+			if(x <= 0.0) {
+				return 0.0;
+			};
+
+			lg := LogGamma(a);
+			if(x < a + 1.0) {
+				# series
+				ap := a;
+				del := 1.0 / a;
+				sum := del;
+				for(n := 0; n < 1000; n += 1;) {
+					ap += 1.0;
+					del *= x / ap;
+					sum += del;
+					if(del->Abs() < sum->Abs() * 1.0e-16) {
+						break;
+					};
+				};
+
+				return sum * (0.0 - x + a * x->Log() - lg)->Exp();
+			};
+
+			# continued fraction for Q, then P = 1 - Q
+			tiny := 1.0e-300;
+			b := x + 1.0 - a;
+			c := 1.0 / tiny;
+			d := 1.0 / b;
+			h := d;
+			for(i := 1; i < 1000; i += 1;) {
+				an := 0.0 - i->As(Float) * (i->As(Float) - a);
+				b += 2.0;
+				d := an * d + b;
+				if(d->Abs() < tiny) {
+					d := tiny;
+				};
+				c := b + an / c;
+				if(c->Abs() < tiny) {
+					c := tiny;
+				};
+				d := 1.0 / d;
+				del := d * c;
+				h *= del;
+				if((del - 1.0)->Abs() < 1.0e-16) {
+					break;
+				};
+			};
+
+			return 1.0 - (0.0 - x + a * x->Log() - lg)->Exp() * h;
+		}
+
+		#~
+		Chi-square cumulative distribution function.
+		@param x argument
+		@param k degrees of freedom (> 0)
+		@return P(X <= x)
+		~#
+		function : ChiSquareCdf(x : Float, k : Float) ~ Float {
+			if(x <= 0.0 | k <= 0.0) {
+				return 0.0;
+			};
+
+			return GammaP(k / 2.0, x / 2.0);
+		}
+
+		#~
+		Standard normal cumulative distribution function.
+		@param z argument
+		@return P(Z <= z)
+		~#
+		function : NormalCdf(z : Float) ~ Float {
+			if(z = 0.0) {
+				return 0.5;
+			};
+
+			p := GammaP(0.5, z * z / 2.0);
+			if(z > 0.0) {
+				return 0.5 * (1.0 + p);
+			};
+
+			return 0.5 * (1.0 - p);
+		}
+
+		#~
+		Standard normal quantile (inverse CDF), by bisection on NormalCdf, accurate to about 1e-15.
+		@param p probability, strictly between 0 and 1
+		@return z with P(Z <= z) = p, NaN outside (0, 1)
+		~#
+		function : NormalQuantile(p : Float) ~ Float {
+			if(p <> p | p <= 0.0 | p >= 1.0) {
+				return Float->NaN();
+			};
+
+			if(p = 0.5) {
+				return 0.0;
+			};
+
+			lo := -40.0;
+			hi := 40.0;
+			for(i := 0; i < 200; i += 1;) {
+				mid := 0.5 * (lo + hi);
+				if(NormalCdf(mid) < p) {
+					lo := mid;
+				}
+				else {
+					hi := mid;
+				};
+			};
+
+			return 0.5 * (lo + hi);
+		}
+
+		#~
+		The two-sided normal multiplier for a central interval, for example 1.96 for level 0.95.
+		@param level coverage, strictly between 0 and 1
+		@return the multiplier, NaN for a bad level
+		~#
+		function : IntervalZ(level : Float) ~ Float {
+			return NormalQuantile(0.5 + level / 2.0);
+		}
+
+		#~
+		Solves A x = b by Gaussian elimination with partial pivoting. A and b are not changed.
+		@param a square matrix
+		@param b right-hand side
+		@return x, or Nil when the matrix is singular
+		~#
+		function : Solve(a : Float[,], b : Float[]) ~ Float[] {
+			n := b->Size();
+			m := Float->New[n, n + 1];
+			each(i : n) {
+				each(j : n) {
+					m[i, j] := a[i, j];
+				};
+				m[i, n] := b[i];
+			};
+
+			if(<>Eliminate(m, n)) {
+				return Nil;
+			};
+
+			x := Float->New[n];
+			each(i : n) {
+				x[i] := m[i, n] / m[i, i];
+			};
+
+			return x;
+		}
+
+		#~
+		The inverse of a square matrix by Gauss-Jordan elimination.
+		@param a square matrix
+		@return the inverse, or Nil when the matrix is singular
+		~#
+		function : Invert(a : Float[,]) ~ Float[,] {
+			n := a->Size()[0];
+			m := Float->New[n, 2 * n];
+			each(i : n) {
+				each(j : n) {
+					m[i, j] := a[i, j];
+				};
+				m[i, n + i] := 1.0;
+			};
+
+			if(<>Eliminate(m, n)) {
+				return Nil;
+			};
+
+			inv := Float->New[n, n];
+			each(i : n) {
+				each(j : n) {
+					inv[i, j] := m[i, n + j] / m[i, i];
+				};
+			};
+
+			return inv;
+		}
+
+		# Gauss-Jordan on an n x (n + extra) augmented matrix, leaving a diagonal left block. False when singular.
+		function : Eliminate(m : Float[,], n : Int) ~ Bool {
+			cols := m->Size()[1];
+			scale := 0.0;
+			each(i : n) {
+				each(j : n) {
+					if(m[i, j]->Abs() > scale) {
+						scale := m[i, j]->Abs();
+					};
+				};
+			};
+
+			if(scale = 0.0) {
+				return false;
+			};
+
+			each(c : n) {
+				piv := c;
+				best := m[c, c]->Abs();
+				for(r := c + 1; r < n; r += 1;) {
+					if(m[r, c]->Abs() > best) {
+						best := m[r, c]->Abs();
+						piv := r;
+					};
+				};
+
+				if(best <= scale * 1.0e-13) {
+					return false;
+				};
+
+				if(piv <> c) {
+					each(j : cols) {
+						tmp := m[c, j];
+						m[c, j] := m[piv, j];
+						m[piv, j] := tmp;
+					};
+				};
+
+				each(r : n) {
+					if(r <> c) {
+						f := m[r, c] / m[c, c];
+						if(f <> 0.0) {
+							each(j : cols) {
+								m[r, j] := m[r, j] - f * m[c, j];
+							};
+						};
+					};
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Ordinary least squares y = X b by the normal equations. Used for small designs (autoregressions, the ADF regression).
+		@param x design matrix (rows x columns)
+		@param y response
+		@return the fit, whose IsValid() is false when the design is rank deficient or has too few rows
+		~#
+		function : Ols(x : Float[,], y : Float[]) ~ OlsFit {
+			dims := x->Size();
+			n := dims[0];
+			k := dims[1];
+			if(n <= k | y->Size() <> n | k < 1) {
+				return OlsFit->New("too few rows for the number of columns");
+			};
+
+			xtx := Float->New[k, k];
+			xty := Float->New[k];
+			each(r : n) {
+				each(i : k) {
+					xr := x[r, i];
+					xty[i] += xr * y[r];
+					each(j : k) {
+						xtx[i, j] += xr * x[r, j];
+					};
+				};
+			};
+
+			inv := Invert(xtx);
+			if(inv = Nil) {
+				return OlsFit->New("singular design matrix");
+			};
+
+			beta := Float->New[k];
+			each(i : k) {
+				each(j : k) {
+					beta[i] += inv[i, j] * xty[j];
+				};
+			};
+
+			sse := 0.0;
+			each(r : n) {
+				fit := 0.0;
+				each(i : k) {
+					fit += x[r, i] * beta[i];
+				};
+				d := y[r] - fit;
+				sse += d * d;
+			};
+
+			return OlsFit->New(beta, inv, sse, n);
+		}
+	}
+
+	#~
+	The result of TsMath->Ols.
+	~#
+	class OlsFit {
+		@error : String;
+		@beta : Float[];
+		@inv : Float[,];
+		@sse : Float;
+		@n : Int;
+
+		New(error : String) {
+			@error := error;
+			@sse := Float->NaN();
+		}
+
+		New(beta : Float[], inv : Float[,], sse : Float, n : Int) {
+			@error := "";
+			@beta := beta;
+			@inv := inv;
+			@sse := sse;
+			@n := n;
+		}
+
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		@return the coefficients
+		~#
+		method : public : GetCoef() ~ Float[] {
+			return @beta;
+		}
+
+		#~
+		@return the residual sum of squares
+		~#
+		method : public : GetSse() ~ Float {
+			return @sse;
+		}
+
+		#~
+		@return the residual variance, SSE / (rows - columns)
+		~#
+		method : public : GetSigma2() ~ Float {
+			return @sse / (@n - @beta->Size())->As(Float);
+		}
+
+		#~
+		The standard error of coefficient i: sqrt(sigma2 * (X'X)^-1[i, i]).
+		@param i coefficient index
+		@return the standard error
+		~#
+		method : public : GetStdErr(i : Int) ~ Float {
+			return (GetSigma2() * @inv[i, i])->Sqrt();
+		}
+	}
+
+	#~
+	A series of observations: values, optional timestamps and the seasonal period.
+
+	Values are Floats; a missing value is NaN. Timestamps are Ints (epoch seconds, days, or any counter) and give the series a regular step when they are evenly spaced. The seasonal period (12 for monthly data with a yearly cycle, 7 for daily data with a weekly one) is a hint the models use when you do not pass one: 1 means none.
+
+	Missing values. The models refuse a series with a NaN (Fit returns false and GetError names the position). Impute returns a series with the gaps handled by a TimeSeries->Missing policy: LINEAR interpolates inside the series and holds the nearest value at either end, FORWARD carries the last value (a leading gap takes the first value), MEAN and ZERO fill with the mean of the observed values or 0, DROP removes the observations (timestamps go with them, so the series is then irregular) and ERROR returns Nil.
+	~#
+	class TimeSeries {
+		#~
+		How Impute treats a missing (NaN) value.
+		~#
+		enum Missing {
+			ERROR,
+			DROP,
+			LINEAR,
+			FORWARD,
+			MEAN,
+			ZERO
+		}
+
+		@values : Float[];
+		@times : Int[];
+		@period : Int;
+
+		#~
+		A series without timestamps. The values are copied.
+		@param values the observations, oldest first
+		~#
+		New(values : Float[]) {
+			@values := Float->Copy(values);
+			@period := 1;
+		}
+
+		#~
+		A series with one timestamp per value (strictly increasing). Both arrays are copied.
+		@param values the observations, oldest first
+		@param times one timestamp per observation
+		~#
+		New(values : Float[], times : Int[]) {
+			@values := Float->Copy(values);
+			@times := Int->Copy(times);
+			@period := 1;
+		}
+
+		#~
+		The number of observations.
+		~#
+		method : public : Size() ~ Int {
+			return @values->Size();
+		}
+
+		#~
+		A copy of the values.
+		~#
+		method : public : GetValues() ~ Float[] {
+			return Float->Copy(@values);
+		}
+
+		#~
+		One value.
+		@param i index
+		~#
+		method : public : Get(i : Int) ~ Float {
+			return @values[i];
+		}
+
+		#~
+		A copy of the timestamps, or Nil when the series has none.
+		~#
+		method : public : GetTimestamps() ~ Int[] {
+			if(@times = Nil) {
+				return Nil;
+			};
+
+			return Int->Copy(@times);
+		}
+
+		#~
+		Sets the seasonal period hint.
+		@param period observations per cycle (1 = no seasonality)
+		@return this series
+		~#
+		method : public : SetPeriod(period : Int) ~ TimeSeries {
+			if(period >= 1) {
+				@period := period;
+			};
+
+			return @self;
+		}
+
+		#~
+		The seasonal period hint (1 when none).
+		~#
+		method : public : GetPeriod() ~ Int {
+			return @period;
+		}
+
+		#~
+		The number of NaN values.
+		~#
+		method : public : CountMissing() ~ Int {
+			c := 0;
+			each(i : @values) {
+				if(@values[i] <> @values[i]) {
+					c += 1;
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		True when any value is NaN.
+		~#
+		method : public : HasMissing() ~ Bool {
+			return CountMissing() > 0;
+		}
+
+		#~
+		Whether the series can be handed to a model: at least one value and every one finite.
+		@return "" when usable, otherwise the reason
+		~#
+		method : public : Check() ~ String {
+			if(@values->Size() = 0) {
+				return "the series is empty";
+			};
+
+			bad := TsMath->FirstBad(@values);
+			if(bad >= 0) {
+				if(@values[bad] <> @values[bad]) {
+					return "missing value (NaN) at index {$bad}; call Impute first";
+				};
+				return "non-finite value at index {$bad}";
+			};
+
+			if(@times <> Nil) {
+				if(@times->Size() <> @values->Size()) {
+					return "timestamps and values differ in length";
+				};
+				for(i := 1; i < @times->Size(); i += 1;) {
+					if(@times[i] <= @times[i - 1]) {
+						return "timestamps are not strictly increasing at index {$i}";
+					};
+				};
+			};
+
+			return "";
+		}
+
+		#~
+		True when the timestamps are evenly spaced (a series without timestamps is regular by definition).
+		~#
+		method : public : IsRegular() ~ Bool {
+			if(@times = Nil | @times->Size() < 3) {
+				return true;
+			};
+
+			step := @times[1] - @times[0];
+			for(i := 2; i < @times->Size(); i += 1;) {
+				if(@times[i] - @times[i - 1] <> step) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		The timestamp step of a regular series.
+		@return the step, 1 without timestamps, 0 when the series is irregular or has fewer than two points
+		~#
+		method : public : GetStep() ~ Int {
+			if(@times = Nil) {
+				return 1;
+			};
+
+			if(@times->Size() < 2 | <>IsRegular()) {
+				return 0;
+			};
+
+			return @times[1] - @times[0];
+		}
+
+		#~
+		The timestamps of the h observations after the end, continuing the step.
+		@param h how many
+		@return the timestamps (1, 2, ... without timestamps), or Nil for an irregular series
+		~#
+		method : public : FutureTimestamps(h : Int) ~ Int[] {
+			step := GetStep();
+			if(step = 0 | h < 0) {
+				return Nil;
+			};
+
+			last := @values->Size();
+			if(@times <> Nil) {
+				last := @times[@times->Size() - 1];
+			};
+
+			out := Int->New[h];
+			each(i : h) {
+				out[i] := last + step * (i + 1);
+			};
+
+			return out;
+		}
+
+		#~
+		A sub-series: observations from start (inclusive) to stop (exclusive).
+		@param start first index
+		@param stop one past the last index
+		@return the slice (same period), or Nil for a bad range
+		~#
+		method : public : Slice(start : Int, stop : Int) ~ TimeSeries {
+			if(start < 0 | stop > @values->Size() | start > stop) {
+				return Nil;
+			};
+
+			v := Float->New[stop - start];
+			each(i : v) {
+				v[i] := @values[start + i];
+			};
+
+			s : TimeSeries;
+			if(@times = Nil) {
+				s := TimeSeries->New(v);
+			}
+			else {
+				t := Int->New[stop - start];
+				each(i : t) {
+					t[i] := @times[start + i];
+				};
+				s := TimeSeries->New(v, t);
+			};
+			s->SetPeriod(@period);
+
+			return s;
+		}
+
+		#~
+		A series with the missing values handled.
+		@param policy the TimeSeries->Missing policy
+		@return the new series, or Nil for ERROR when a value is missing (and for an all-missing series, which has nothing to fill from)
+		~#
+		method : public : Impute(policy : TimeSeries->Missing) ~ TimeSeries {
+			n := @values->Size();
+			observed := n - CountMissing();
+			if(observed = n) {
+				return Slice(0, n);
+			};
+
+			if(policy = TimeSeries->Missing->ERROR | observed = 0) {
+				return Nil;
+			};
+
+			if(policy = TimeSeries->Missing->DROP) {
+				v := Float->New[observed];
+				t : Int[];
+				if(@times <> Nil) {
+					t := Int->New[observed];
+				};
+
+				k := 0;
+				each(i : n) {
+					if(@values[i] = @values[i]) {
+						v[k] := @values[i];
+						if(t <> Nil) {
+							t[k] := @times[i];
+						};
+						k += 1;
+					};
+				};
+
+				s : TimeSeries;
+				if(t = Nil) {
+					s := TimeSeries->New(v);
+				}
+				else {
+					s := TimeSeries->New(v, t);
+				};
+				s->SetPeriod(@period);
+
+				return s;
+			};
+
+			v := Float->Copy(@values);
+			mean := 0.0;
+			if(policy = TimeSeries->Missing->MEAN) {
+				sum := 0.0;
+				each(i : n) {
+					if(@values[i] = @values[i]) {
+						sum += @values[i];
+					};
+				};
+				mean := sum / observed->As(Float);
+			};
+
+			if(policy = TimeSeries->Missing->ZERO) {
+				each(i : n) {
+					if(v[i] <> v[i]) {
+						v[i] := 0.0;
+					};
+				};
+			}
+			else if(policy = TimeSeries->Missing->MEAN) {
+				each(i : n) {
+					if(v[i] <> v[i]) {
+						v[i] := mean;
+					};
+				};
+			}
+			else {
+				# FORWARD and LINEAR: find the first and last observed values for the ends
+				first := 0;
+				while(@values[first] <> @values[first]) {
+					first += 1;
+				};
+
+				i := 0;
+				while(i < n) {
+					if(v[i] <> v[i]) {
+						j := i;
+						while(j < n & @values[j] <> @values[j]) {
+							j += 1;
+						};
+
+						# the gap is [i, j); left value at i - 1 (or the first observed), right at j (or none)
+						left : Float;
+						if(i = 0) {
+							left := @values[first];
+						}
+						else {
+							left := v[i - 1];
+						};
+
+						gap := j - i;
+						each(g : gap) {
+							idx := i + g;
+							if(policy = TimeSeries->Missing->LINEAR & i > 0 & j < n) {
+								frac := (g + 1)->As(Float) / (j - i + 1)->As(Float);
+								v[idx] := left + (@values[j] - left) * frac;
+							}
+							else if(policy = TimeSeries->Missing->LINEAR & i = 0 & j < n) {
+								v[idx] := @values[j];
+							}
+							else {
+								v[idx] := left;
+							};
+						};
+
+						i := j;
+					}
+					else {
+						i += 1;
+					};
+				};
+			};
+
+			s : TimeSeries;
+			if(@times = Nil) {
+				s := TimeSeries->New(v);
+			}
+			else {
+				s := TimeSeries->New(v, @times);
+			};
+			s->SetPeriod(@period);
+
+			return s;
+		}
+	}
+
+	#~
+	Common seasonal periods.
+	~#
+	class Frequency {
+		function : Quarterly() ~ Int {
+			return 4;
+		}
+
+		function : Monthly() ~ Int {
+			return 12;
+		}
+
+		function : Weekly() ~ Int {
+			return 52;
+		}
+
+		#~
+		Daily data with a weekly cycle.
+		~#
+		function : Daily() ~ Int {
+			return 7;
+		}
+
+		#~
+		Hourly data with a daily cycle.
+		~#
+		function : Hourly() ~ Int {
+			return 24;
+		}
+	}
+
+	#~
+	A small deterministic pseudo-random source (xorshift64 with the 13, 7, 17 triple, and Box-Muller normals). The same seed gives the same uniform numbers on every platform, which is what the tests and Simulate need: it uses only shifts, xor and masks, so there is no integer overflow to differ between compilers (the normals add one log, sqrt, sin and cos each, so they agree with another platform's libm to the last digit or two). It is not meant for cryptography.
+	~#
+	class Rng {
+		@state : Int;
+		@spare : Float;
+		@has_spare : Bool;
+
+		#~
+		@param seed an integer in 0 to 2^31 - 1
+		~#
+		New(seed : Int) {
+			@state := seed * 2654435761 + 88172645463325252;
+			@has_spare := false;
+			@spare := 0.0;
+			each(i : 20) {
+				NextBits();
+			};
+		}
+
+		method : NextBits() ~ Int {
+			x := @state;
+			x := x xor (x << 13);
+			x := x xor ((x >> 7) and 144115188075855871);
+			x := x xor (x << 17);
+			@state := x;
+
+			return x;
+		}
+
+		#~
+		The next uniform number in [0, 1), with 53 bits of resolution.
+		~#
+		method : public : NextFloat() ~ Float {
+			bits := (NextBits() >> 11) and 9007199254740991;
+			return bits->As(Float) / 9007199254740992.0;
+		}
+
+		#~
+		The next standard normal number (Box-Muller).
+		~#
+		method : public : NextGaussian() ~ Float {
+			if(@has_spare) {
+				@has_spare := false;
+				return @spare;
+			};
+
+			u := NextFloat();
+			while(u <= 1.0e-300) {
+				u := NextFloat();
+			};
+			v := NextFloat();
+
+			r := (-2.0 * u->Log())->Sqrt();
+			ang := 2.0 * Float->Pi() * v;
+			@spare := r * ang->Sin();
+			@has_spare := true;
+
+			return r * ang->Cos();
+		}
+	}
+
+	#~
+	Transformations of a numeric array. Every function returns a new array and returns Nil (or an array of NaN where stated) instead of ending the program.
+	~#
+	class SeriesTransform {
+		#~
+		Lag-l differences, applied order times: y[t] = x[t] - x[t - lag]. Each pass shortens the series by lag.
+		@param x values
+		@param lag lag of the difference (1 for the first difference, the period for a seasonal difference)
+		@param order how many passes (0 returns a copy)
+		@return the differenced values, or Nil when lag < 1, order < 0 or the series is too short (it must keep at least one value)
+		~#
+		function : Diff(x : Float[], lag : Int, order : Int) ~ Float[] {
+			if(x = Nil | lag < 1 | order < 0 | x->Size() - lag * order < 1) {
+				return Nil;
+			};
+
+			cur := Float->Copy(x);
+			each(p : order) {
+				n := cur->Size() - lag;
+				nxt := Float->New[n];
+				each(i : n) {
+					nxt[i] := cur[i + lag] - cur[i];
+				};
+				cur := nxt;
+			};
+
+			return cur;
+		}
+
+		#~
+		The inverse of Diff. The differences alone do not determine the series: the first lag * order original values supply the initial conditions.
+		@param d the differenced values, as Diff(original, lag, order) returned
+		@param original at least the first lag * order values of the original series (extra values are ignored)
+		@param lag lag of the difference
+		@param order how many passes were applied
+		@return the series restored to the original scale (length lag * order + d's length), or Nil on bad arguments
+		~#
+		function : Undiff(d : Float[], original : Float[], lag : Int, order : Int) ~ Float[] {
+			if(d = Nil | original = Nil | lag < 1 | order < 0 | original->Size() < lag * order) {
+				return Nil;
+			};
+
+			# heads[p] = the first lag values of the series after p passes
+			cur := Float->Copy(d);
+			for(p := order - 1; p >= 0; p -= 1;) {
+				level := Diff(original, lag, p);
+				n := cur->Size() + lag;
+				nxt := Float->New[n];
+				each(i : lag) {
+					nxt[i] := level[i];
+				};
+				for(i := lag; i < n; i += 1;) {
+					nxt[i] := cur[i - lag] + nxt[i - lag];
+				};
+				cur := nxt;
+			};
+
+			return cur;
+		}
+
+		#~
+		Integrates forecasts: continues a series whose differences were forecast. Given the last lag * order values of the original series and the forecast differences, returns the forecasts on the original scale (same length as the differences).
+		@param diffs forecast differences (of Diff(original, lag, order))
+		@param tail the original series (its last lag * order values are used)
+		@param lag lag of the difference
+		@param order how many passes
+		@return the h forecasts on the original scale, or Nil on bad arguments
+		~#
+		function : Integrate(diffs : Float[], tail : Float[], lag : Int, order : Int) ~ Float[] {
+			if(diffs = Nil | tail = Nil | lag < 1 | order < 0 | tail->Size() < lag * order) {
+				return Nil;
+			};
+
+			h := diffs->Size();
+
+			# series after p passes, only the last lag values of each level are needed, but computing the levels in full is simple
+			levels := Float->New[order + 1, lag];
+			for(p := 0; p <= order; p += 1;) {
+				lv := Diff(tail, lag, p);
+				each(i : lag) {
+					levels[p, i] := lv[lv->Size() - lag + i];
+				};
+			};
+
+			cur := Float->Copy(diffs);
+			for(p := order - 1; p >= 0; p -= 1;) {
+				out := Float->New[h];
+				each(i : h) {
+					prev : Float;
+					if(i < lag) {
+						prev := levels[p, i];
+					}
+					else {
+						prev := out[i - lag];
+					};
+					out[i] := prev + cur[i];
+				};
+				cur := out;
+			};
+
+			return cur;
+		}
+
+		#~
+		A copy of an array without its NaN values (the leading NaNs of GetResiduals and GetFitted, or gaps), for functions such as Acf->Compute that need finite input.
+		@param x values
+		@return the finite-or-infinite values in order (NaN removed), or Nil for Nil
+		~#
+		function : DropNaN(x : Float[]) ~ Float[] {
+			if(x = Nil) {
+				return Nil;
+			};
+
+			keep := 0;
+			each(i : x) {
+				if(x[i] = x[i]) {
+					keep += 1;
+				};
+			};
+
+			out := Float->New[keep];
+			k := 0;
+			each(i : x) {
+				if(x[i] = x[i]) {
+					out[k] := x[i];
+					k += 1;
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Natural log of every value.
+		@param x values
+		@return the logs, or Nil when a value is <= 0 or not finite
+		~#
+		function : Log(x : Float[]) ~ Float[] {
+			if(x = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[x->Size()];
+			each(i : x) {
+				if(TsMath->IsBad(x[i]) | x[i] <= 0.0) {
+					return Nil;
+				};
+				out[i] := x[i]->Log();
+			};
+
+			return out;
+		}
+
+		#~
+		The Box-Cox transform: (x^lambda - 1) / lambda, or log(x) when lambda is 0.
+		@param x positive values
+		@param lambda the power
+		@return the transformed values, or Nil when a value is <= 0 or not finite
+		~#
+		function : BoxCox(x : Float[], lambda : Float) ~ Float[] {
+			if(x = Nil) {
+				return Nil;
+			};
+
+			if(lambda = 0.0) {
+				return Log(x);
+			};
+
+			out := Float->New[x->Size()];
+			each(i : x) {
+				if(TsMath->IsBad(x[i]) | x[i] <= 0.0) {
+					return Nil;
+				};
+				out[i] := (Float->Pow(x[i], lambda) - 1.0) / lambda;
+			};
+
+			return out;
+		}
+
+		#~
+		The inverse of BoxCox.
+		@param y transformed values
+		@param lambda the power used by BoxCox
+		@return the values on the original scale, or Nil when lambda * y + 1 <= 0 for some value (outside the transform's range)
+		~#
+		function : InvBoxCox(y : Float[], lambda : Float) ~ Float[] {
+			if(y = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[y->Size()];
+			each(i : y) {
+				if(lambda = 0.0) {
+					out[i] := y[i]->Exp();
+				}
+				else {
+					base := lambda * y[i] + 1.0;
+					if(base <= 0.0) {
+						return Nil;
+					};
+					out[i] := Float->Pow(base, 1.0 / lambda);
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The maximum-likelihood Box-Cox power, found by a grid search over [-1, 2] in steps of 0.01 (the profile log-likelihood is -n/2 log(variance of the transformed series) + (lambda - 1) * sum log x). The grid keeps it deterministic; it agrees with a continuous optimizer to within the step.
+		@param x positive values (at least 3)
+		@return lambda, or NaN when a value is <= 0 or the series is too short or constant
+		~#
+		function : BoxCoxLambda(x : Float[]) ~ Float {
+			if(x = Nil | x->Size() < 3) {
+				return Float->NaN();
+			};
+
+			n := x->Size();
+			slog := 0.0;
+			constant := true;
+			each(i : n) {
+				if(TsMath->IsBad(x[i]) | x[i] <= 0.0) {
+					return Float->NaN();
+				};
+				if(x[i] <> x[0]) {
+					constant := false;
+				};
+				slog += x[i]->Log();
+			};
+
+			if(constant) {
+				return Float->NaN();
+			};
+
+			best := Float->NaN();
+			best_ll := Float->NegInf();
+			for(k := 0; k <= 300; k += 1;) {
+				lam := -1.0 + k->As(Float) * 0.01;
+				if(k = 100) {
+					lam := 0.0;
+				};
+				y := BoxCox(x, lam);
+				v := TsMath->Variance(y, 0);
+				if(v > 0.0) {
+					ll := -0.5 * n->As(Float) * v->Log() + (lam - 1.0) * slog;
+					if(ll > best_ll) {
+						best_ll := ll;
+						best := lam;
+					};
+				};
+			};
+
+			return best;
+		}
+
+		#~
+		A trailing rolling mean: out[i] is the mean of x[i - window + 1 .. i]; the first window - 1 entries are NaN. A NaN inside a window gives NaN.
+		@param x values
+		@param window window length (>= 1)
+		@return the rolling means (same length as x), or Nil for a bad window
+		~#
+		function : RollingMean(x : Float[], window : Int) ~ Float[] {
+			if(x = Nil | window < 1) {
+				return Nil;
+			};
+
+			out := Float->New[x->Size()];
+			each(i : x) {
+				if(i < window - 1) {
+					out[i] := Float->NaN();
+				}
+				else {
+					s := 0.0;
+					each(k : window) {
+						s += x[i - k];
+					};
+					out[i] := s / window->As(Float);
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		A trailing rolling sample standard deviation (divisor window - 1, as pandas does); the first window - 1 entries are NaN.
+		@param x values
+		@param window window length (>= 2)
+		@return the rolling standard deviations, or Nil for a bad window
+		~#
+		function : RollingStd(x : Float[], window : Int) ~ Float[] {
+			if(x = Nil | window < 2) {
+				return Nil;
+			};
+
+			out := Float->New[x->Size()];
+			each(i : x) {
+				if(i < window - 1) {
+					out[i] := Float->NaN();
+				}
+				else {
+					w := Float->New[window];
+					each(k : window) {
+						w[k] := x[i - window + 1 + k];
+					};
+					out[i] := TsMath->Variance(w, 1)->Sqrt();
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The lag matrix for an autoregression: row r holds x[r + nlags - 1], ..., x[r] (column j is lag j + 1) and LagTarget gives the value to predict, x[r + nlags].
+		@param x values
+		@param nlags number of lags (>= 1, less than the length)
+		@return a (length - nlags) x nlags matrix, or Nil for bad arguments
+		~#
+		function : LagMatrix(x : Float[], nlags : Int) ~ Float[,] {
+			if(x = Nil | nlags < 1 | nlags >= x->Size()) {
+				return Nil;
+			};
+
+			rows := x->Size() - nlags;
+			out := Float->New[rows, nlags];
+			each(r : rows) {
+				each(j : nlags) {
+					out[r, j] := x[r + nlags - 1 - j];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		The target column that goes with LagMatrix.
+		@param x values
+		@param nlags number of lags
+		@return x[nlags ..], or Nil for bad arguments
+		~#
+		function : LagTarget(x : Float[], nlags : Int) ~ Float[] {
+			if(x = Nil | nlags < 1 | nlags >= x->Size()) {
+				return Nil;
+			};
+
+			rows := x->Size() - nlags;
+			out := Float->New[rows];
+			each(r : rows) {
+				out[r] := x[r + nlags];
+			};
+
+			return out;
+		}
+
+		#~
+		Classical seasonal decomposition (the method of R's decompose and statsmodels' seasonal_decompose).
+
+		The trend is a centered moving average of one period (for an even period the two end points get half weight), so it is NaN for the first and last period / 2 observations. The detrended series is x - trend (additive) or x / trend (multiplicative); the seasonal figure is its mean at each position in the cycle (index mod period, ignoring NaN), then centered to mean 0 (additive) or mean 1 (multiplicative); the remainder is x - trend - seasonal or x / (trend * seasonal).
+		@param x values
+		@param period observations per cycle (>= 2)
+		@param multiplicative true for the multiplicative model (needs every value > 0)
+		@return the decomposition; its IsValid() is false (and GetError() says why) for fewer than two full periods, a non-finite value, or a non-positive value in a multiplicative model
+		~#
+		function : Decompose(x : Float[], period : Int, multiplicative : Bool) ~ Decomposition {
+			if(x = Nil | period < 2) {
+				return Decomposition->New("the period must be at least 2");
+			};
+
+			n := x->Size();
+			if(n < 2 * period) {
+				return Decomposition->New("need at least two full periods ({$period} each) but the series has {$n} values");
+			};
+
+			bad := TsMath->FirstBad(x);
+			if(bad >= 0) {
+				return Decomposition->New("non-finite value at index {$bad}");
+			};
+
+			if(multiplicative) {
+				each(i : n) {
+					if(x[i] <= 0.0) {
+						return Decomposition->New("a multiplicative decomposition needs every value > 0 (index {$i})");
+					};
+				};
+			};
+
+			trend := Float->New[n];
+			each(i : n) {
+				trend[i] := Float->NaN();
+			};
+
+			half := period / 2;
+			if(period % 2 = 1) {
+				for(i := half; i < n - half; i += 1;) {
+					s := 0.0;
+					for(k := i - half; k <= i + half; k += 1;) {
+						s += x[k];
+					};
+					trend[i] := s / period->As(Float);
+				};
+			}
+			else {
+				for(i := half; i < n - half; i += 1;) {
+					s := 0.5 * x[i - half] + 0.5 * x[i + half];
+					for(k := i - half + 1; k < i + half; k += 1;) {
+						s += x[k];
+					};
+					trend[i] := s / period->As(Float);
+				};
+			};
+
+			sums := Float->New[period];
+			counts := Int->New[period];
+			each(i : n) {
+				if(trend[i] = trend[i]) {
+					d : Float;
+					if(multiplicative) {
+						d := x[i] / trend[i];
+					}
+					else {
+						d := x[i] - trend[i];
+					};
+					sums[i % period] += d;
+					counts[i % period] += 1;
+				};
+			};
+
+			figure := Float->New[period];
+			total := 0.0;
+			each(j : period) {
+				figure[j] := sums[j] / counts[j]->As(Float);
+				total += figure[j];
+			};
+
+			avg := total / period->As(Float);
+			each(j : period) {
+				if(multiplicative) {
+					figure[j] := figure[j] / avg;
+				}
+				else {
+					figure[j] := figure[j] - avg;
+				};
+			};
+
+			seasonal := Float->New[n];
+			remainder := Float->New[n];
+			each(i : n) {
+				seasonal[i] := figure[i % period];
+				if(multiplicative) {
+					remainder[i] := x[i] / (trend[i] * seasonal[i]);
+				}
+				else {
+					remainder[i] := x[i] - trend[i] - seasonal[i];
+				};
+			};
+
+			return Decomposition->New(trend, seasonal, remainder, figure, multiplicative);
+		}
+	}
+
+	#~
+	The result of SeriesTransform->Decompose.
+	~#
+	class Decomposition {
+		@error : String;
+		@trend : Float[];
+		@seasonal : Float[];
+		@remainder : Float[];
+		@figure : Float[];
+		@multiplicative : Bool;
+
+		New(error : String) {
+			@error := error;
+		}
+
+		New(trend : Float[], seasonal : Float[], remainder : Float[], figure : Float[], multiplicative : Bool) {
+			@error := "";
+			@trend := trend;
+			@seasonal := seasonal;
+			@remainder := remainder;
+			@figure := figure;
+			@multiplicative := multiplicative;
+		}
+
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : IsMultiplicative() ~ Bool {
+			return @multiplicative;
+		}
+
+		#~
+		@return the trend (NaN at both ends), or Nil when invalid
+		~#
+		method : public : GetTrend() ~ Float[] {
+			return @trend;
+		}
+
+		#~
+		@return the seasonal component for every observation, or Nil when invalid
+		~#
+		method : public : GetSeasonal() ~ Float[] {
+			return @seasonal;
+		}
+
+		#~
+		@return the remainder (NaN where the trend is), or Nil when invalid
+		~#
+		method : public : GetRemainder() ~ Float[] {
+			return @remainder;
+		}
+
+		#~
+		@return one cycle of the seasonal component (period values), or Nil when invalid
+		~#
+		method : public : GetFigure() ~ Float[] {
+			return @figure;
+		}
+
+		#~
+		The strength of seasonality, 1 - Var(remainder) / Var(seasonal + remainder) (additive; the multiplicative remainder is taken as its log), clipped to 0 to 1 (Wang, Smith and Hyndman 2006). Above about 0.64 a seasonal difference is usually worth taking.
+		@return the strength, NaN when invalid or undefined
+		~#
+		method : public : SeasonalStrength() ~ Float {
+			if(<>IsValid()) {
+				return Float->NaN();
+			};
+
+			r := Float->New[@remainder->Size()];
+			sr := Float->New[@remainder->Size()];
+			k := 0;
+			each(i : @remainder) {
+				if(@remainder[i] = @remainder[i]) {
+					if(@multiplicative) {
+						r[k] := @remainder[i]->Log();
+						sr[k] := r[k] + @seasonal[i]->Log();
+					}
+					else {
+						r[k] := @remainder[i];
+						sr[k] := r[k] + @seasonal[i];
+					};
+					k += 1;
+				};
+			};
+
+			rr := Float->New[k];
+			ss := Float->New[k];
+			each(i : k) {
+				rr[i] := r[i];
+				ss[i] := sr[i];
+			};
+
+			vs := TsMath->Variance(ss, 0);
+			if(vs <> vs | vs <= 0.0) {
+				return Float->NaN();
+			};
+
+			f := 1.0 - TsMath->Variance(rr, 0) / vs;
+			if(f < 0.0) {
+				return 0.0;
+			};
+			if(f > 1.0) {
+				return 1.0;
+			};
+
+			return f;
+		}
+	}
+
+	#~
+	Autocorrelation and the Ljung-Box portmanteau test.
+	~#
+	class Acf {
+		#~
+		The sample autocorrelation at lags 0 to nlags: r[k] = sum (x[t] - mean)(x[t+k] - mean) / sum (x[t] - mean)^2 (the biased estimator, as statsmodels' acf with adjusted=False). r[0] is 1.
+		@param x values
+		@param nlags the highest lag (less than the length)
+		@return nlags + 1 values, or Nil for bad arguments or a constant series
+		~#
+		function : Compute(x : Float[], nlags : Int) ~ Float[] {
+			if(x = Nil | nlags < 0 | nlags >= x->Size() | TsMath->FirstBad(x) >= 0) {
+				return Nil;
+			};
+
+			n := x->Size();
+			m := TsMath->Mean(x);
+			c0 := 0.0;
+			each(t : n) {
+				c0 += (x[t] - m) * (x[t] - m);
+			};
+
+			if(c0 <= 0.0) {
+				return Nil;
+			};
+
+			out := Float->New[nlags + 1];
+			for(k := 0; k <= nlags; k += 1;) {
+				s := 0.0;
+				for(t := 0; t < n - k; t += 1;) {
+					s += (x[t] - m) * (x[t + k] - m);
+				};
+				out[k] := s / c0;
+			};
+
+			return out;
+		}
+
+		#~
+		The sample autocovariance at lags 0 to nlags (divisor n).
+		@param x values
+		@param nlags the highest lag
+		@return nlags + 1 values, or Nil for bad arguments
+		~#
+		function : Autocovariance(x : Float[], nlags : Int) ~ Float[] {
+			if(x = Nil | nlags < 0 | nlags >= x->Size() | TsMath->FirstBad(x) >= 0) {
+				return Nil;
+			};
+
+			n := x->Size();
+			m := TsMath->Mean(x);
+			out := Float->New[nlags + 1];
+			for(k := 0; k <= nlags; k += 1;) {
+				s := 0.0;
+				for(t := 0; t < n - k; t += 1;) {
+					s += (x[t] - m) * (x[t + k] - m);
+				};
+				out[k] := s / n->As(Float);
+			};
+
+			return out;
+		}
+
+		#~
+		The partial autocorrelation at lags 0 to nlags by the Durbin-Levinson recursion on the sample autocorrelations (Yule-Walker, as statsmodels' pacf with method "ywm"). p[0] is 1.
+		@param x values
+		@param nlags the highest lag (less than the length)
+		@return nlags + 1 values, or Nil for bad arguments or a constant series
+		~#
+		function : Partial(x : Float[], nlags : Int) ~ Float[] {
+			r := Compute(x, nlags);
+			if(r = Nil) {
+				return Nil;
+			};
+
+			return FromAcf(r);
+		}
+
+		#~
+		Durbin-Levinson: partial autocorrelations from autocorrelations.
+		@param r autocorrelations at lags 0 to K (r[0] = 1)
+		@return partial autocorrelations at lags 0 to K
+		~#
+		function : FromAcf(r : Float[]) ~ Float[] {
+			kmax := r->Size() - 1;
+			pacf := Float->New[kmax + 1];
+			pacf[0] := 1.0;
+			if(kmax = 0) {
+				return pacf;
+			};
+
+			phi := Float->New[kmax + 1];
+			prev := Float->New[kmax + 1];
+			phi[1] := r[1];
+			pacf[1] := r[1];
+			var := 1.0 - r[1] * r[1];
+			for(k := 2; k <= kmax; k += 1;) {
+				kp1 := kmax + 1;
+				each(j : kp1) {
+					prev[j] := phi[j];
+				};
+
+				num := r[k];
+				for(j := 1; j < k; j += 1;) {
+					num -= prev[j] * r[k - j];
+				};
+
+				pk := 0.0;
+				if(var > 0.0) {
+					pk := num / var;
+				};
+
+				phi[k] := pk;
+				for(j := 1; j < k; j += 1;) {
+					phi[j] := prev[j] - pk * prev[k - j];
+				};
+
+				pacf[k] := pk;
+				var *= 1.0 - pk * pk;
+			};
+
+			return pacf;
+		}
+
+		#~
+		The approximate 95% half-width of the autocorrelation of white noise, 1.96 / sqrt(n); bars beyond it are significant.
+		@param n the number of observations
+		~#
+		function : Bound(n : Int) ~ Float {
+			return 1.96 / n->As(Float)->Sqrt();
+		}
+
+		#~
+		The Ljung-Box portmanteau test that the autocorrelations up to a lag are all zero (use it on model residuals).
+		@param x values (typically residuals)
+		@param lags the number of lags tested
+		@param fitted the number of fitted ARMA parameters to subtract from the degrees of freedom (0 for a raw series)
+		@return [Q, p-value], or Nil for bad arguments (lags must exceed fitted)
+		~#
+		function : LjungBox(x : Float[], lags : Int, fitted : Int) ~ Float[] {
+			if(x = Nil | lags < 1 | lags >= x->Size() | lags <= fitted) {
+				return Nil;
+			};
+
+			r := Compute(x, lags);
+			if(r = Nil) {
+				return Nil;
+			};
+
+			n := x->Size()->As(Float);
+			q := 0.0;
+			for(k := 1; k <= lags; k += 1;) {
+				q += r[k] * r[k] / (n - k->As(Float));
+			};
+			q *= n * (n + 2.0);
+
+			out := Float->New[2];
+			out[0] := q;
+			out[1] := 1.0 - TsMath->ChiSquareCdf(q, (lags - fitted)->As(Float));
+
+			return out;
+		}
+	}
+
+	#~
+	The result of Stationarity->Adf.
+	~#
+	class AdfResult {
+		@error : String;
+		@stat : Float;
+		@lags : Int;
+		@nobs : Int;
+		@reg : String;
+		@cv1 : Float;
+		@cv5 : Float;
+		@cv10 : Float;
+
+		New(error : String) {
+			@error := error;
+			@stat := Float->NaN();
+		}
+
+		New(stat : Float, lags : Int, nobs : Int, reg : String, cv1 : Float, cv5 : Float, cv10 : Float) {
+			@error := "";
+			@stat := stat;
+			@lags := lags;
+			@nobs := nobs;
+			@reg := reg;
+			@cv1 := cv1;
+			@cv5 := cv5;
+			@cv10 := cv10;
+		}
+
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The test statistic: the t ratio of the coefficient on the lagged level. More negative is stronger evidence against a unit root.
+		~#
+		method : public : GetStatistic() ~ Float {
+			return @stat;
+		}
+
+		#~
+		@return the number of lagged differences in the regression
+		~#
+		method : public : GetLags() ~ Int {
+			return @lags;
+		}
+
+		#~
+		@return the number of observations the regression used
+		~#
+		method : public : GetObservations() ~ Int {
+			return @nobs;
+		}
+
+		#~
+		@return the deterministic terms: "n" (none), "c" (constant) or "ct" (constant and trend)
+		~#
+		method : public : GetRegression() ~ String {
+			return @reg;
+		}
+
+		#~
+		The MacKinnon critical value for a test size.
+		@param size 0.01, 0.05 or 0.10
+		@return the critical value, NaN for another size
+		~#
+		method : public : GetCritical(size : Float) ~ Float {
+			if(size = 0.01) {
+				return @cv1;
+			};
+			if(size = 0.05) {
+				return @cv5;
+			};
+			if(size = 0.10) {
+				return @cv10;
+			};
+
+			return Float->NaN();
+		}
+
+		#~
+		Whether the unit-root null is rejected, so the series looks stationary.
+		@param size 0.01, 0.05 or 0.10
+		@return true when the statistic is below the critical value
+		~#
+		method : public : IsStationary(size : Float) ~ Bool {
+			cv := GetCritical(size);
+			return IsValid() & cv = cv & @stat < cv;
+		}
+	}
+
+	#~
+	Stationarity checks.
+
+	The augmented Dickey-Fuller test regresses the first difference on the lagged level, the deterministic terms and k lagged differences, and takes the t ratio of the lagged level as the statistic. Its null is a unit root (non-stationary), so a statistic BELOW the critical value rejects it. The critical values are MacKinnon's response surface (the 2010 update for "c" and "ct", the 1996 values for "n"): cv(N) = b0 + b1/N + b2/N^2 + b3/N^3 with N the number of observations in the regression; the coefficients are those statsmodels' mackinnoncrit uses, and for N = infinity they are b0: 1%, 5%, 10% = -3.430, -2.862, -2.567 ("c"), -3.959, -3.410, -3.127 ("ct"), -2.566, -1.941, -1.617 ("n"). There is no p-value. The lag count is yours, or with lags = -1 it is chosen as statsmodels' adfuller(autolag="AIC") does: the regressions with 0 to maxlag lagged differences are fitted on the same rows, the one with the smallest AIC (n ln(SSE / n) + 2 k) wins, and the test is rerun on all the rows that many lags allow; maxlag is ceil(12 (n / 100)^(1/4)), at most n / 2 - (deterministic terms) - 1 (the Schwert rule).
+	~#
+	class Stationarity {
+		#~
+		The largest lag count the automatic choice considers: the Schwert rule ceil(12 (n / 100)^(1/4)), at most n / 2 - ntrend - 1 so the regression keeps enough rows (statsmodels' adfuller does the same).
+		@param n series length
+		@param ntrend the number of deterministic terms (0 for "n", 1 for "c", 2 for "ct")
+		@return the maximum lag count (never negative)
+		~#
+		function : DefaultLags(n : Int, ntrend : Int) ~ Int {
+			k := (12.0 * Float->Pow(n->As(Float) / 100.0, 0.25))->Ceil()->As(Int);
+			cap := n / 2 - ntrend - 1;
+			if(k > cap) {
+				k := cap;
+			};
+			if(k < 0) {
+				k := 0;
+			};
+
+			return k;
+		}
+
+		#~
+		The augmented Dickey-Fuller test.
+		@param x values (at least 8 plus the lags)
+		@param lags number of lagged differences (>= 0); pass -1 to choose it by AIC (see the class description)
+		@param regression "n", "c" or "ct"
+		@return the result; IsValid() is false for a bad regression name, a non-finite value or too short a series
+		~#
+		function : Adf(x : Float[], lags : Int, regression : String) ~ AdfResult {
+			if(x = Nil | TsMath->FirstBad(x) >= 0) {
+				return AdfResult->New("the series is empty or has a non-finite value");
+			};
+
+			det := 0;
+			if(regression->Equals("c")) {
+				det := 1;
+			}
+			else if(regression->Equals("ct")) {
+				det := 2;
+			}
+			else if(<>regression->Equals("n")) {
+				return AdfResult->New("regression must be \"n\", \"c\" or \"ct\"");
+			};
+
+			n := x->Size();
+			k := lags;
+			if(k < 0) {
+				k := AutoLag(x, det);
+				if(k < 0) {
+					return AdfResult->New("the series is too short for the test");
+				};
+			};
+
+			nobs := n - 1 - k;
+			cols := 1 + k + det;
+			if(nobs < cols + 3) {
+				return AdfResult->New("the series is too short for {$k} lags");
+			};
+
+			n1 := n - 1;
+			dx := Float->New[n1];
+			each(i : n1) {
+				dx[i] := x[i + 1] - x[i];
+			};
+
+			design := Float->New[nobs, cols];
+			resp := Float->New[nobs];
+			each(r : nobs) {
+				t := r + k;
+				resp[r] := dx[t];
+				design[r, 0] := x[t];
+				each(j : k) {
+					design[r, 1 + j] := dx[t - 1 - j];
+				};
+				if(det >= 1) {
+					design[r, 1 + k] := 1.0;
+				};
+				if(det = 2) {
+					design[r, 2 + k] := (r + 1)->As(Float);
+				};
+			};
+
+			fit := TsMath->Ols(design, resp);
+			if(<>fit->IsValid()) {
+				return AdfResult->New("regression failed: {$fit->GetError()}");
+			};
+
+			se := fit->GetStdErr(0);
+			if(se <= 0.0 | se <> se) {
+				return AdfResult->New("the regression is degenerate (constant series?)");
+			};
+
+			stat := fit->GetCoef()[0] / se;
+			cv := Critical(regression, nobs);
+
+			return AdfResult->New(stat, k, nobs, regression, cv[0], cv[1], cv[2]);
+		}
+
+		# the lag count with the smallest AIC when every candidate is fitted on the rows the largest one allows; -1 when too short
+		function : AutoLag(x : Float[], det : Int) ~ Int {
+			n := x->Size();
+			maxlag := DefaultLags(n, det);
+			n1 := n - 1;
+			dx := Float->New[n1];
+			each(i : n1) {
+				dx[i] := x[i + 1] - x[i];
+			};
+
+			nobs := n - 1 - maxlag;
+			if(nobs < det + 4) {
+				return -1;
+			};
+
+			best_k := -1;
+			best_aic := Float->Inf();
+			for(k := 0; k <= maxlag; k += 1;) {
+				cols := 1 + k + det;
+				if(nobs > cols + 2) {
+					design := Float->New[nobs, cols];
+					resp := Float->New[nobs];
+					each(r : nobs) {
+						t := r + maxlag;
+						resp[r] := dx[t];
+						design[r, 0] := x[t];
+						each(j : k) {
+							design[r, 1 + j] := dx[t - 1 - j];
+						};
+						if(det >= 1) {
+							design[r, 1 + k] := 1.0;
+						};
+						if(det = 2) {
+							design[r, 2 + k] := (r + 1)->As(Float);
+						};
+					};
+
+					fit := TsMath->Ols(design, resp);
+					if(fit->IsValid() & fit->GetSse() > 0.0) {
+						aic := nobs->As(Float) * (fit->GetSse() / nobs->As(Float))->Log() + 2.0 * cols->As(Float);
+						if(aic < best_aic) {
+							best_aic := aic;
+							best_k := k;
+						};
+					};
+				};
+			};
+
+			return best_k;
+		}
+
+		#~
+		MacKinnon critical values at 1%, 5% and 10%.
+		@param regression "n", "c" or "ct"
+		@param nobs observations in the regression
+		@return [cv 1%, cv 5%, cv 10%]
+		~#
+		function : Critical(regression : String, nobs : Int) ~ Float[] {
+			b := Float->New[3, 4];
+			if(regression->Equals("c")) {
+				b[0, 0] := -3.43035; b[0, 1] := -6.5393; b[0, 2] := -16.786; b[0, 3] := -79.433;
+				b[1, 0] := -2.86154; b[1, 1] := -2.8903; b[1, 2] := -4.234; b[1, 3] := -40.04;
+				b[2, 0] := -2.56677; b[2, 1] := -1.5384; b[2, 2] := -2.809; b[2, 3] := 0.0;
+			}
+			else if(regression->Equals("ct")) {
+				b[0, 0] := -3.95877; b[0, 1] := -9.0531; b[0, 2] := -28.428; b[0, 3] := -134.155;
+				b[1, 0] := -3.41049; b[1, 1] := -4.3904; b[1, 2] := -9.036; b[1, 3] := -45.374;
+				b[2, 0] := -3.12705; b[2, 1] := -2.5856; b[2, 2] := -3.925; b[2, 3] := -22.38;
+			}
+			else {
+				b[0, 0] := -2.56574; b[0, 1] := -2.2358; b[0, 2] := -3.627; b[0, 3] := 0.0;
+				b[1, 0] := -1.941; b[1, 1] := -0.2686; b[1, 2] := -3.365; b[1, 3] := 31.223;
+				b[2, 0] := -1.61682; b[2, 1] := 0.2656; b[2, 2] := -2.714; b[2, 3] := 25.364;
+			};
+
+			inv := 1.0 / nobs->As(Float);
+			out := Float->New[3];
+			each(i : 3) {
+				out[i] := b[i, 0] + inv * (b[i, 1] + inv * (b[i, 2] + inv * b[i, 3]));
+			};
+
+			return out;
+		}
+
+		#~
+		How many ordinary differences make the series stationary, by repeated ADF tests (constant, 5% level, default lags): the first d in 0 to maxd whose differenced series rejects the unit root.
+		@param x values
+		@param maxd the most differences to try (>= 0)
+		@return d, or maxd when none passes; -1 when the test cannot run on the series
+		~#
+		function : SuggestDiff(x : Float[], maxd : Int) ~ Int {
+			cur := x;
+			for(d := 0; d <= maxd; d += 1;) {
+				r := Adf(cur, -1, "c");
+				if(<>r->IsValid()) {
+					# a constant differenced series (for example a perfect trend) is stationary for our purposes
+					if(d > 0 & IsConstant(cur)) {
+						return d;
+					}
+					return -1;
+				};
+
+				if(r->IsStationary(0.05)) {
+					return d;
+				};
+
+				if(d < maxd) {
+					cur := SeriesTransform->Diff(cur, 1, 1);
+					if(cur = Nil) {
+						return -1;
+					};
+				};
+			};
+
+			return maxd;
+		}
+
+		function : IsConstant(x : Float[]) ~ Bool {
+			if(x = Nil | x->Size() = 0) {
+				return false;
+			};
+
+			each(i : x) {
+				if(x[i] <> x[0]) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Whether a seasonal difference looks worthwhile: the seasonal strength of the classical decomposition exceeds 0.64.
+		@param x values
+		@param period observations per cycle
+		@return 1 when a seasonal difference is suggested, 0 when not, -1 when the series is too short for the period
+		~#
+		function : SuggestSeasonalDiff(x : Float[], period : Int) ~ Int {
+			if(period < 2) {
+				return 0;
+			};
+
+			dec := SeriesTransform->Decompose(x, period, false);
+			if(<>dec->IsValid()) {
+				return -1;
+			};
+
+			f := dec->SeasonalStrength();
+			if(f = f & f > 0.64) {
+				return 1;
+			};
+
+			return 0;
+		}
+	}
+
+	#~
+	Series generators for tests and examples. Deterministic: the same seed gives the same series.
+	~#
+	class Simulate {
+		#~
+		An ARMA process: x[t] = c + sum phi[i] x[t-i] + e[t] + sum theta[j] e[t-j], e ~ Normal(0, sigma^2), after a burn-in of 200 draws that is discarded.
+		@param phi autoregressive coefficients (may be Nil)
+		@param theta moving-average coefficients (may be Nil)
+		@param c constant
+		@param sigma innovation standard deviation
+		@param n length
+		@param seed seed of the Rng
+		@return n values
+		~#
+		function : Arma(phi : Float[], theta : Float[], c : Float, sigma : Float, n : Int, seed : Int) ~ Float[] {
+			p := 0;
+			if(phi <> Nil) {
+				p := phi->Size();
+			};
+			q := 0;
+			if(theta <> Nil) {
+				q := theta->Size();
+			};
+
+			burn := 200;
+			total := n + burn;
+			rng := Rng->New(seed);
+			x := Float->New[total];
+			e := Float->New[total];
+			each(t : total) {
+				e[t] := sigma * rng->NextGaussian();
+				v := c + e[t];
+				for(i := 1; i <= p; i += 1;) {
+					if(t - i >= 0) {
+						v += phi[i - 1] * x[t - i];
+					};
+				};
+				for(j := 1; j <= q; j += 1;) {
+					if(t - j >= 0) {
+						v += theta[j - 1] * e[t - j];
+					};
+				};
+				x[t] := v;
+			};
+
+			out := Float->New[n];
+			each(t : n) {
+				out[t] := x[burn + t];
+			};
+
+			return out;
+		}
+
+		#~
+		A series with a linear trend, one sine seasonal cycle and Gaussian noise: y[t] = level + slope t + amp sin(2 pi t / period) + sigma z[t], z standard normal draws of Rng(seed) in order.
+		@param n length
+		@param level the intercept
+		@param slope the trend per step
+		@param amp the seasonal amplitude
+		@param period observations per cycle
+		@param sigma noise standard deviation
+		@param seed seed of the Rng
+		@return n values
+		~#
+		function : TrendSeasonal(n : Int, level : Float, slope : Float, amp : Float, period : Int, sigma : Float, seed : Int) ~ Float[] {
+			rng := Rng->New(seed);
+			out := Float->New[n];
+			each(t : n) {
+				tf := t->As(Float);
+				out[t] := level + slope * tf + amp * (2.0 * Float->Pi() * tf / period->As(Float))->Sin() + sigma * rng->NextGaussian();
+			};
+
+			return out;
+		}
+
+		#~
+		A series with a multiplicative seasonal cycle: y[t] = (level + slope t) (1 + amp sin(2 pi t / period)) (1 + sigma z[t]), z the standard normal draws of Rng(seed) in order.
+		@param n length
+		@param level the intercept of the trend
+		@param slope the trend per step
+		@param amp the relative seasonal amplitude (below 1 keeps the series positive)
+		@param period observations per cycle
+		@param sigma relative noise standard deviation
+		@param seed seed of the Rng
+		@return n values
+		~#
+		function : MultSeasonal(n : Int, level : Float, slope : Float, amp : Float, period : Int, sigma : Float, seed : Int) ~ Float[] {
+			rng := Rng->New(seed);
+			out := Float->New[n];
+			each(t : n) {
+				tf := t->As(Float);
+				out[t] := (level + slope * tf) * (1.0 + amp * (2.0 * Float->Pi() * tf / period->As(Float))->Sin()) * (1.0 + sigma * rng->NextGaussian());
+			};
+
+			return out;
+		}
+
+		#~
+		A random walk with drift: y[t] = y[t-1] + drift + sigma z[t] with y[-1] = 0, z the standard normal draws of Rng(seed) in order.
+		@param n length
+		@param drift the mean step
+		@param sigma step standard deviation
+		@param seed seed of the Rng
+		@return n values
+		~#
+		function : RandomWalk(n : Int, drift : Float, sigma : Float, seed : Int) ~ Float[] {
+			rng := Rng->New(seed);
+			out := Float->New[n];
+			cur := 0.0;
+			each(t : n) {
+				cur += drift + sigma * rng->NextGaussian();
+				out[t] := cur;
+			};
+
+			return out;
+		}
+	}
+}

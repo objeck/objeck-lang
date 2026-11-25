@@ -1,0 +1,222 @@
+# EXTRA_LIBS: rag,ml_vector
+#~
+The RAG kit's chunker (System.ML.Rag.RagChunker): windows by size with overlap, whole
+paragraphs and whole sentences packed to a size, and the edges of each: an empty text, a text
+shorter than a chunk, exact multiples of the size, overlap, a window of only whitespace, CRLF
+line ends, a decimal point that is not a sentence end, an over-long paragraph, bad
+parameters, and accented and non-Latin characters (counted as characters, not bytes). The
+expected chunks are worked out by hand in the comments.
+~#
+use System.ML.Rag;
+use Collection;
+
+class RagChunkingTest {
+	@failures : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# true when the chunks are exactly the (offset, text) pairs given
+	function : Is(chunks : Vector<RagChunk>, offsets : Int[], texts : String[]) ~ Bool {
+		if(chunks->Size() <> texts->Size()) {
+			"    got {$chunks->Size()} chunks, expected {$texts->Size()}"->PrintLine();
+			each(i : chunks) {
+				"    {$chunks->Get(i)->GetOffset()}: [{$chunks->Get(i)->GetText()}]"->PrintLine();
+			};
+			return false;
+		};
+
+		each(i : chunks) {
+			chunk := chunks->Get(i);
+			if(chunk->GetOffset() <> offsets[i] | <>chunk->GetText()->Equals(texts[i])) {
+				"    chunk {$i}: got {$chunk->GetOffset()}: [{$chunk->GetText()}], expected {$offsets[i]}: [{$texts[i]}]"->PrintLine();
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		TestSize();
+		TestUnicode();
+		TestInvariants();
+		TestParagraphs();
+		TestSentences();
+		TestInvalid();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+	}
+
+	function : TestSize() ~ Nil {
+		"-- by size"->PrintLine();
+		c := RagChunker->New(5, 0);
+		Check("an empty text gives no chunks", c->Split("d", "")->Size() = 0);
+		Check("a Nil text gives no chunks", c->Split("d", Nil)->Size() = 0);
+		Check("a whitespace-only text gives no chunks", c->Split("d", "   \n\t  ")->Size() = 0);
+		Check("a text shorter than a chunk is one chunk", Is(c->Split("d", "abc"), [0], ["abc"]));
+		Check("a text of exactly one chunk is one chunk", Is(c->Split("d", "abcde"), [0], ["abcde"]));
+		Check("one past one chunk is two", Is(c->Split("d", "abcdef"), [0, 5], ["abcde", "f"]));
+		# 10 characters, size 5, no overlap: 0-5 and 5-10, and no empty third chunk
+		Check("an exact multiple has no empty tail", Is(c->Split("d", "0123456789"), [0, 5], ["01234", "56789"]));
+		Check("three whole chunks", Is(c->Split("d", "012345678901234"), [0, 5, 10], ["01234", "56789", "01234"]));
+
+		# size 5, overlap 2, stride 3: 0-5, 3-8, 6-10 (the last window stops at the end)
+		o := RagChunker->New(5, 2);
+		Check("overlap 2 over 10 characters", Is(o->Split("d", "0123456789"), [0, 3, 6], ["01234", "34567", "6789"]));
+		# 8 characters: 0-5 and 3-8; the window that reaches the end is the last
+		Check("a window that ends exactly at the end is the last", Is(o->Split("d", "01234567"), [0, 3], ["01234", "34567"]));
+		Check("overlap does not duplicate a short text", Is(o->Split("d", "abc"), [0], ["abc"]));
+		# size 5, overlap 1, stride 4: 0-5, 4-9, 8-10
+		o1 := RagChunker->New(5, 1);
+		Check("overlap 1 over 10 characters", Is(o1->Split("d", "0123456789"), [0, 4, 8], ["01234", "45678", "89"]));
+		# size 1 and overlap 0: one chunk per character
+		one := RagChunker->New(1, 0);
+		Check("size 1 is a chunk per character", Is(one->Split("d", "abc"), [0, 1, 2], ["a", "b", "c"]));
+
+		chunks := c->Split("notes.txt", "0123456789");
+		Check("ids are source#n", chunks->Get(0)->GetId()->Equals("notes.txt#0") & chunks->Get(1)->GetId()->Equals("notes.txt#1"));
+		Check("the source is kept", chunks->Get(1)->GetSource()->Equals("notes.txt"));
+		Check("the length is the text length", chunks->Get(1)->GetLength() = 5);
+		# a window that is only whitespace is dropped; the offsets of the others are unchanged
+		blank := c->Split("d", "abcde     fghij");
+		Check("a whitespace-only window is dropped", Is(blank, [0, 10], ["abcde", "fghij"]));
+		Check("SplitBySize ignores the mode", Is(RagChunker->New(5, 0, RagSplit->SENTENCE)->SplitBySize("d", "abcdef"), [0, 5], ["abcde", "f"]));
+	}
+
+	function : TestUnicode() ~ Nil {
+		"-- accented and non-Latin text"->PrintLine();
+		# 16 characters (not 20 bytes): h e-acute l l o, space, w o-umlaut r l d, space, snowman, space, o k
+		text := "h" + 233->As(Char) + "llo w" + 246->As(Char) + "rld " + 9731->As(Char) + " ok";
+		Check("the text is 16 characters", text->Size() = 16);
+		c := RagChunker->New(5, 0);
+		chunks := c->Split("u", text);
+		Check("four chunks of characters", chunks->Size() = 4);
+		Check("the first holds the accented letter whole", chunks->Get(0)->GetText()->Equals("h" + 233->As(Char) + "llo"));
+		Check("the second starts at 5", chunks->Get(1)->GetOffset() = 5 & chunks->Get(1)->GetText()->Equals(" w" + 246->As(Char) + "rl"));
+		Check("the third holds the snowman", chunks->Get(2)->GetText()->Equals("d " + 9731->As(Char) + " o"));
+		Check("the last is the one character left", chunks->Get(3)->GetOffset() = 15 & chunks->Get(3)->GetLength() = 1);
+
+		# CJK: 6 characters, size 4, overlap 1: stride 3, 0-4 then 3-6
+		cjk := "";
+		cjk += 26085->As(Char);
+		cjk += 26412->As(Char);
+		cjk += 35486->As(Char);
+		cjk += 12391->As(Char);
+		cjk += 12377->As(Char);
+		cjk += 12290->As(Char);
+		cjk_chunker := RagChunker->New(4, 1);
+		pieces := cjk_chunker->Split("cjk", cjk);
+		Check("CJK text is cut by character", pieces->Size() = 2 & pieces->Get(0)->GetLength() = 4 & pieces->Get(1)->GetOffset() = 3 & pieces->Get(1)->GetLength() = 3);
+	}
+
+	# for a spread of sizes and overlaps: every chunk is the text at its offset, chunks start
+	# where the previous one's stride says, and the last one reaches the end
+	function : TestInvariants() ~ Nil {
+		"-- invariants over many sizes"->PrintLine();
+		text := "";
+		each(i : 137) {
+			text += (97 + i % 26)->As(Char);
+		};
+
+		ok := true;
+		sizes := [1, 2, 3, 7, 10, 50, 136, 137, 138, 500];
+		each(s : sizes) {
+			size := sizes[s];
+			overlaps := [0, 1, size / 2, size - 1];
+			each(v : overlaps) {
+				overlap := overlaps[v];
+				if(overlap >= 0 & overlap < size) {
+					chunks := RagChunker->New(size, overlap)->Split("t", text);
+					stride := size - overlap;
+					each(i : chunks) {
+						chunk := chunks->Get(i);
+						if(<>chunk->GetText()->Equals(text->SubString(chunk->GetOffset(), chunk->GetLength())) | chunk->GetOffset() <> i * stride | chunk->GetLength() > size) {
+							ok := false;
+						};
+					};
+
+					last := chunks->Get(chunks->Size() - 1);
+					if(last->GetOffset() + last->GetLength() <> text->Size()) {
+						ok := false;
+					};
+					# the chunk before the last does not already reach the end
+					if(chunks->Size() > 1) {
+						before := chunks->Get(chunks->Size() - 2);
+						if(before->GetOffset() + before->GetLength() >= text->Size()) {
+							ok := false;
+						};
+					};
+				};
+			};
+		};
+		Check("offsets follow the stride, text matches the source, the last chunk reaches the end", ok);
+	}
+
+	function : TestParagraphs() ~ Nil {
+		"-- by paragraph"->PrintLine();
+		p := RagChunker->New(10, 0, RagSplit->PARAGRAPH);
+		# AAAA is 0-4, BBBB is 6-10, CCCC is 12-16
+		text := "AAAA\n\nBBBB\n\nCCCC";
+		Check("two paragraphs fit one chunk of 10 and the third starts the next", Is(p->Split("d", text), [0, 12], ["AAAA\n\nBBBB", "CCCC"]));
+		Check("at size 9 each paragraph is its own chunk", Is(RagChunker->New(9, 0, RagSplit->PARAGRAPH)->Split("d", text), [0, 6, 12], ["AAAA", "BBBB", "CCCC"]));
+		Check("one big chunk when everything fits", RagChunker->New(100, 0, RagSplit->PARAGRAPH)->Split("d", text)->Size() = 1);
+		Check("an empty text gives none", p->Split("d", "")->Size() = 0);
+		Check("blank lines only give none", p->Split("d", "\n\n  \n\n")->Size() = 0);
+		Check("a text without a blank line is one paragraph", Is(p->Split("d", "one\ntwo"), [0], ["one\ntwo"]));
+		Check("leading and trailing white space is not in a chunk", Is(p->Split("d", "\n\n  AB  \n\n"), [4], ["AB"]));
+
+		# CRLF line ends: the blank line is "\r\n"
+		crlf := RagChunker->New(4, 0, RagSplit->PARAGRAPH)->Split("d", "AA\r\n\r\nBB");
+		Check("CRLF paragraphs split", Is(crlf, [0, 6], ["AA", "BB"]));
+
+		# one paragraph of 25 characters is longer than size 10: cut into windows with overlap 2
+		long := RagChunker->New(10, 2, RagSplit->PARAGRAPH)->Split("d", "aaaaaaaaaaaaaaaaaaaaaaaaa");
+		Check("an over-long paragraph is cut by size", Is(long, [0, 8, 16], ["aaaaaaaaaa", "aaaaaaaaaa", "aaaaaaaaa"]));
+		# a long paragraph between short ones: the short ones before and after are kept apart from it
+		mixed := RagChunker->New(10, 0, RagSplit->PARAGRAPH)->Split("d", "ab\n\nxxxxxxxxxxxxxxx\n\ncd");
+		Check("a long paragraph flushes the short ones around it", Is(mixed, [0, 4, 14, 21], ["ab", "xxxxxxxxxx", "xxxxx", "cd"]));
+	}
+
+	function : TestSentences() ~ Nil {
+		"-- by sentence"->PrintLine();
+		s := RagChunker->New(12, 0, RagSplit->SENTENCE);
+		# One. is 0-4, Two! 5-9, Three? 10-16, Four. 17-22
+		Check("sentences are packed whole", Is(s->Split("d", "One. Two! Three? Four."), [0, 10], ["One. Two!", "Three? Four."]));
+		# 3.14 is not a sentence end: the dot is not followed by a space
+		dec := RagChunker->New(11, 0, RagSplit->SENTENCE)->Split("d", "3.14 is pi. ok");
+		Check("a decimal point does not end a sentence", Is(dec, [0, 12], ["3.14 is pi.", "ok"]));
+		Check("text without a terminator is one sentence", Is(s->Split("d", "no end here"), [0], ["no end here"]));
+		Check("a terminator at the very end counts", Is(s->Split("d", "Hi."), [0], ["Hi."]));
+		quoted := RagChunker->New(20, 0, RagSplit->SENTENCE)->Split("d", "He said \"go.\" Then left.");
+		Check("a closing quote stays with its sentence", Is(quoted, [0, 14], ["He said \"go.\"", "Then left."]));
+		Check("an over-long sentence is cut by size", Is(RagChunker->New(4, 0, RagSplit->SENTENCE)->Split("d", "abcdefghij."), [0, 4, 8], ["abcd", "efgh", "ij."]));
+		Check("SplitSentences ignores the mode", Is(RagChunker->New(12, 0)->SplitSentences("d", "One. Two! Three? Four."), [0, 10], ["One. Two!", "Three? Four."]));
+	}
+
+	function : TestInvalid() ~ Nil {
+		"-- bad parameters"->PrintLine();
+		zero := RagChunker->New(0, 0);
+		Check("size 0 is not valid", <>zero->IsValid() & zero->GetError()->Find("size") > -1);
+		Check("an invalid chunker gives no chunks", zero->Split("d", "text")->Size() = 0);
+		same := RagChunker->New(5, 5);
+		Check("overlap equal to size is not valid", <>same->IsValid() & same->GetError()->Find("overlap") > -1);
+		Check("negative overlap is not valid", <>RagChunker->New(5, -1)->IsValid());
+		Check("overlap size - 1 is valid", RagChunker->New(5, 4)->IsValid() & RagChunker->New(5, 4)->GetError()->Size() = 0);
+		Check("the settings are readable", RagChunker->New(7, 2, RagSplit->SENTENCE)->GetSize() = 7 & RagChunker->New(7, 2, RagSplit->SENTENCE)->GetOverlap() = 2 & RagChunker->New(7, 2, RagSplit->SENTENCE)->GetMode() = RagSplit->SENTENCE);
+		Check("an invalid chunker gives none in every mode", RagChunker->New(0, 0, RagSplit->PARAGRAPH)->Split("d", "a")->Size() = 0 & RagChunker->New(0, 0, RagSplit->SENTENCE)->Split("d", "a")->Size() = 0);
+	}
+}
