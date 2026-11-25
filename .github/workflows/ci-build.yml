@@ -1044,6 +1044,24 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
 
+    # llm_eval is a research harness (tools/llm_eval), not a shipped library: its tests
+    # compile the source together with each test instead of linking an .obl.
+    - name: Run llm_eval harness tests (POSIX)
+      if: runner.os != 'Windows'
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
+        python3 tools/llm_eval/run_tests.py "$BIN"
+
+    - name: Run llm_eval harness tests (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        set BIN=core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=core\release\deploy\bin
+        python tools\llm_eval\run_tests.py "%BIN%"
+
     # GC root coverage (advisory): 30 generated programs that keep references live in loops,
     # pending expression temporaries, inlined callees, ?-> regions, fields and threads, run
     # interpreted, default-JIT, compile-everything and under a 64k nursery with the roots audit
@@ -1930,7 +1948,6 @@ jobs:
           ../../../compiler/lib_src/ml_boost.obs \
           ../../../compiler/lib_src/ml_vector.obs \
           ../../../compiler/lib_src/ml_report.obs \
-          ../../../compiler/lib_src/llm_eval.obs \
           ../../../compiler/lib_src/ml_verify.obs \
           ../../../compiler/lib_src/ml_timeseries.obs \
           ../../../compiler/lib_src/ml_timeseries_models.obs \
@@ -1954,7 +1971,6 @@ jobs:
           ../../../compiler/lib_src/ollama.obs \
           ../../../compiler/lib_src/anthropic.obs \
           ../../../compiler/lib_src/llm_util.obs \
-          ../../../compiler/lib_src/llm_util_clients.obs \
           ../../../compiler/lib_src/agent.obs \
           ../../../compiler/lib_src/actor_agents.obs \
           ../../../compiler/lib_src/mcp.obs \

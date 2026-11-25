@@ -1,0 +1,119 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured's .otab file: a Date column whose row groups mix GMT and local dates. Each group's
+block carries its own GMT bits (a block of a Date column always does), and the reader pairs them
+with the group they describe. Here group 0 is all GMT, group 1 all local, group 2 has no live row
+(every cell empty), group 3 alternates, and a group Appended later is all GMT; every cell, and
+its GMT flag, must come back the same by Load, FromBytes, a partial Read and after the Append.
+~#
+use Query.Structured, System.IO.Filesystem, System.Time, Collection;
+
+class QueryOtabGmtGroups {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# which kind of date a row holds: 0 empty, 1 GMT, 2 local
+	function : Kind(row : Int) ~ Int {
+		group := row / Column->GroupRows();
+		if(group = 0) {
+			return 1;
+		}
+		else if(group = 1) {
+			return 2;
+		}
+		else if(group = 2) {
+			return 0;
+		};
+
+		return row % 2 = 0 ? 1 : 2;
+	}
+
+	# every row's date, its GMT flag and its hour, row by row
+	function : Same(what : String, a : Table, b : Table, rows : Int) ~ Bool {
+		if(a = Nil | b = Nil) {
+			"  {$what}: a table is missing"->PrintLine();
+			return false;
+		};
+
+		bad := 0;
+		each(k : rows) {
+			x := a->Get(k)->Get("seen");
+			y := b->Get(k)->Get("seen");
+			if(x = Nil | y = Nil) {
+				if(x <> Nil | y <> Nil) {
+					bad += 1;
+				};
+			}
+			else {
+				dx := x->As(Date);
+				dy := y->As(Date);
+				if(dx->IsGmt() <> dy->IsGmt() | dx->GetHours() <> dy->GetHours() | dx->GetDay() <> dy->GetDay()) {
+					bad += 1;
+				};
+			};
+		};
+
+		if(bad > 0) {
+			"  {$what}: {$bad} cells differ"->PrintLine();
+		};
+		return bad = 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		path := "query_otab_gmt_groups_tmp.otab";
+		File->Delete(path);
+
+		group := Column->GroupRows();
+		rows := group * 4;
+		table := Table->New("gmt", ["id", "seen"], [ColumnType->INT, ColumnType->DATE], true);
+		each(i : rows) {
+			row := table->Insert();
+			row->Set("id", IntRef->New(i));
+			kind := Kind(i);
+			if(kind <> 0) {
+				row->Set("seen", Date->New(1 + i % 28, 1 + i % 12, 2020, i % 24, 0, 0, kind = 1));
+			};
+		};
+
+		Check("group 0 holds GMT dates", table->Get(0)->Get("seen")->As(Date)->IsGmt());
+		Check("group 1 holds local dates", <>table->Get(group)->Get("seen")->As(Date)->IsGmt());
+		Check("group 2 holds no dates", table->Get(group * 2)->Get("seen") = Nil);
+
+		Check("Save", table->Save(path));
+		file := OtabFile->New(path);
+		Check("four row groups in the file", file->IsOpen() & file->GetGroupCount() = 4);
+		Check("Load matches", Same("Load", table, Table->Load(path), rows));
+		Check("FromBytes matches", Same("FromBytes", table, Table->FromBytes(table->ToBytes(Compression->FAST)), rows));
+		Check("a partial read matches", Same("partial", table, OtabFile->New(path)->Read(["seen"]), rows));
+
+		# a group added after the others, all GMT
+		more := Table->New("gmt", ["id", "seen"], [ColumnType->INT, ColumnType->DATE], true);
+		each(i : 10) {
+			row := more->Insert();
+			row->Set("id", IntRef->New(i));
+			row->Set("seen", Date->New(5, 6, 2021, 7, 0, 0, true));
+		};
+		Check("Append", more->Append(path));
+		loaded := Table->Load(path);
+		Check("Append adds a row group", OtabFile->New(path)->GetGroupCount() = 5);
+		Check("the earlier groups are unchanged", Same("append", table, loaded, rows));
+		Check("the appended group is GMT", loaded->Get(rows)->Get("seen")->As(Date)->IsGmt());
+
+		File->Delete(path);
+
+		if(@failures = 0) {
+			"PASS: otab GMT bits by row group"->PrintLine();
+		}
+		else {
+			"FAIL: otab GMT bits by row group ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
