@@ -3339,6 +3339,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case UNCOMPRESS_ZLIB_TRY:
     return TryUncompressZlibBytes(program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_TCP_SET_DEADLINE:
+    return SockTcpSetDeadline(program, inst, op_stack, stack_pos, frame);
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 
@@ -5361,6 +5364,24 @@ static inline void RecordSocketError(int error)
   socket_last_error = { error, false };
 }
 
+//
+// A TCPSocket's own limits on a read, kept in the object: instance[4] is its deadline
+// (an instant on the SocketNowMs clock, 0 for none) and instance[5] the longest wait
+// for the peer (SetRecvTimeout: above 0 that many milliseconds, below 0 none, 0 the
+// default every connected socket starts with). Read before a thread parks for a read,
+// into locals: the object can move while the thread is parked.
+//
+struct TcpReadLimits {
+  long long deadline_ms;
+  int read_ms;
+
+  explicit TcpReadLimits(const size_t* instance) {
+    deadline_ms = (long long)instance[4];
+    const long configured = (long)instance[5];
+    read_ms = configured > 0 ? (int)configured : (configured < 0 ? 0 : TCP_DEFAULT_RECV_TIMEOUT_MS);
+  }
+};
+
 // a new TLS or DTLS operation on this thread: nothing has failed yet
 static inline void ClearTlsError()
 {
@@ -5380,6 +5401,13 @@ static inline void ClearDtlsError()
 static std::wstring SocketErrorText(int error)
 {
 #ifdef _WIN32
+  // Windows words a timeout as a connection attempt that "failed because the connected
+  // party did not properly respond", which says nothing a program can test for; POSIX's
+  // "Connection timed out" does. The documented text for a timeout is "timed out".
+  if(error == WSAETIMEDOUT) {
+    return L"timed out";
+  }
+
   char error_msg[SMALL_BUFFER_MAX] = {0};
   FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, (DWORD)error, 0, error_msg, SMALL_BUFFER_MAX, 0);
   // FormatMessage ends its text with CR LF
@@ -5416,8 +5444,12 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
-    // instance[3] holds connect timeout in ms (0 = blocking)
+    // instance[3] holds connect timeout in ms (0 = blocking); instance[4] the
+    // deadline the constructor asked for, in ms from now (0 = none), which becomes
+    // the instant it falls on, in the SocketNowMs clock, as the connect starts
     const long timeout_ms = (long)instance[3];
+    const long deadline_budget_ms = (long)instance[4];
+    const long long deadline_ms = deadline_budget_ms > 0 ? SocketNowMs() + deadline_budget_ms : 0;
     // connect() can block for a long time; park for the duration. The instance
     // ref is re-rooted on the op_stack so GC promotion fixup relocates it, then
     // re-read after the wait (a raw pointer held across a park can go stale).
@@ -5428,9 +5460,10 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     // failed address's closesocket() had reset it (Nil on Windows) and the park
     // and anything else since had had their turn.
     SocketError error;
-    const SOCKET sock = IPSocket::Open(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms), error);
+    const SOCKET sock = IPSocket::Open(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms), error, deadline_ms);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
+    instance[4] = (size_t)deadline_ms;
     socket_last_error = error;
 #ifdef _DEBUG
     std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << "'; instance="
@@ -5687,6 +5720,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
   if(array && instance && (long)instance[0] > -1) {
     char buffer[MID_BUFFER_MAX] = {0};
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     int status;
 
     if((long)sock > -1) {
@@ -5703,7 +5737,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       do {
-        value = IPSocket::ReadByte(sock, status, read_error);
+        value = IPSocket::ReadByte(sock, status, read_error, limits.deadline_ms, limits.read_ms);
         if(status < 0 && error == 0) {
           error = read_error;
         }
@@ -5719,7 +5753,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
       // assume LF
       if(value == '\r') {
-        IPSocket::ReadByte(sock, status, read_error);
+        IPSocket::ReadByte(sock, status, read_error, limits.deadline_ms, limits.read_ms);
         if(status < 0 && error == 0) {
           error = read_error;
         }
@@ -5767,13 +5801,20 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     // promotion fixup relocates it, then re-read after the wait.
     SecureSocketCtx* old_sctx = (SecureSocketCtx*)instance[0];
     SecureSocketCtx* sctx = nullptr;
+    // instance[7] holds the connect timeout in ms (0 = none), instance[8] the deadline in ms
+    // from now (0 = none) and instance[9] the read timeout in ms (0 = the default): the
+    // connect and the handshake answer to them
+    const int connect_ms = (int)(long)instance[7];
+    const long deadline_budget_ms = (long)instance[8];
+    const int read_ms = (int)(long)instance[9];
+    const long long deadline_ms = deadline_budget_ms > 0 ? SocketNowMs() + deadline_budget_ms : 0;
     // GetLastError() reports this connect, not an earlier failure
     ClearTlsError();
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
     IPSecureSocket::Close(old_sctx);
-    const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx);
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, connect_ms, deadline_ms, read_ms);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
     // The old context is freed whatever happens next. A failed open used to
@@ -6515,6 +6556,8 @@ bool TrapProcessor::SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, s
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
+    // remembered for a read that has a deadline (TcpReadLimits)
+    instance[5] = (size_t)(long)(ms > 0 ? ms : -1);
     PushInt(SocketOptionResult(IPSocket::SetRecvTimeout((SOCKET)instance[0], ms)), op_stack, stack_pos);
   }
   else {
@@ -6543,6 +6586,32 @@ bool TrapProcessor::SockTcpSetConnTimeout(StackProgram* program, size_t* inst, s
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     instance[3] = (size_t)ms;
+  }
+  return true;
+}
+
+//
+// TCPSocket->SetDeadline(ms) and TCPSecureSocket->SetDeadline(ms): from now, reads on the
+// socket fail once ms milliseconds have passed, however a peer paces its bytes; 0 clears
+// it. A plain socket keeps the instant in the object (TcpReadLimits), a TLS socket in its
+// context, where TlsBioRecv reads it.
+//
+bool TrapProcessor::SockTcpSetDeadline(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const long ms = (long)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    const long long deadline_ms = ms > 0 ? SocketNowMs() + ms : 0;
+    StackClass* cls = MemoryManager::GetClass(instance);
+    if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocket") {
+      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+      if(sctx && instance[3]) {
+        sctx->deadline_ms = deadline_ms;
+      }
+    }
+    else {
+      instance[4] = (size_t)deadline_ms;
+    }
   }
   return true;
 }
@@ -7133,6 +7202,47 @@ static bool PendingAlert(SOCKET sock)
   }
 #endif
   return head[0] == 21;
+}
+
+//
+// TLS client record I/O (see common.h). The context is the SecureSocketCtx.
+//
+int TlsBioSend(void* ctx, const unsigned char* buf, size_t len)
+{
+  SecureSocketCtx* sctx = (SecureSocketCtx*)ctx;
+  return mbedtls_net_send(&sctx->net, buf, len);
+}
+
+int TlsBioRecv(void* ctx, unsigned char* buf, size_t len)
+{
+  SecureSocketCtx* sctx = (SecureSocketCtx*)ctx;
+
+  // With a deadline, wait for the peer here, for no longer than what is left of the
+  // deadline and the read timeout, before reading. The wait is cut to what is left
+  // each time, so a peer that sends a few bytes at a time cannot keep a read or a
+  // handshake going past the deadline: SO_RCVTIMEO alone restarts with every byte.
+  if(sctx->deadline_ms > 0) {
+    int reason = 0;
+    if(!IPSocket::WaitReadable((SOCKET)sctx->net.fd, sctx->deadline_ms, sctx->read_ms, reason)) {
+      return MBEDTLS_ERR_SSL_TIMEOUT;
+    }
+  }
+
+  const int ret = mbedtls_net_recv(&sctx->net, buf, len);
+  if(ret == MBEDTLS_ERR_NET_RECV_FAILED) {
+    // a read that SO_RCVTIMEO ended is a timeout, not "reading from the socket failed"
+#ifdef _WIN32
+    const int error = WSAGetLastError();
+    if(error == WSAETIMEDOUT || error == WSAEWOULDBLOCK) {
+      return MBEDTLS_ERR_SSL_TIMEOUT;
+    }
+#else
+    if(errno == EAGAIN || errno == EWOULDBLOCK || errno == ETIMEDOUT) {
+      return MBEDTLS_ERR_SSL_TIMEOUT;
+    }
+#endif
+  }
+  return ret;
 }
 
 //
@@ -9430,11 +9540,12 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     int status;
     int error;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
     MemoryManager::BeginBlocking();
-    const char value = IPSocket::ReadByte(sock, status, error);
+    const char value = IPSocket::ReadByte(sock, status, error, limits.deadline_ms, limits.read_ms);
     MemoryManager::EndBlocking();
     RecordSocketError(error);
     PushInt(value, op_stack, stack_pos);
@@ -9455,6 +9566,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     // blocking read; park for the duration. recv() lands in a temp C buffer (a
     // parked thread's GC array can be moved by promotion mid-read), and the
     // array ref is re-rooted on the op_stack so fixup relocates it.
@@ -9462,7 +9574,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
     int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    const int read = IPSocket::ReadBytes(temp, (int)num, sock, error);
+    const int read = IPSocket::ReadBytes(temp, (int)num, sock, error, limits.deadline_ms, limits.read_ms);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
@@ -9488,6 +9600,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = (SOCKET)instance[0];
+    const TcpReadLimits limits(instance);
     // allocate temporary buffer
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
@@ -9496,7 +9609,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     int error;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock, error);
+    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock, error, limits.deadline_ms, limits.read_ms);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);

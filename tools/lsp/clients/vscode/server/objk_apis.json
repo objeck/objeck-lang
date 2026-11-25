@@ -15763,7 +15763,7 @@
 					"descriptions": ["**Returns rather the socket is open**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Connects and completes a TLS handshake. The server's certificate is always verified: its chain must lead to a trusted certificate, and it must name the address connected to (a DNS name, or an IP address in an iPAddress subjectAltName). A certificate that fails is refused: IsOpen() is false and GetLastError() says why. To trust a server whose certificate no public authority signed, such as a self-signed one, pass that certificate as pem. Verification is relaxed only for the whole process, by setting OBJECK_TLS_INSECURE_SKIP_VERIFY=1 for testing, and then only an untrusted issuer is accepted.**\n\n```New(address:System.String, port:Int, pem:String)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String"]
+					"descriptions": ["**Connects and completes a TLS handshake. The server's certificate is always verified: its chain must lead to a trusted certificate, and it must name the address connected to (a DNS name, or an IP address in an iPAddress subjectAltName). A certificate that fails is refused: IsOpen() is false and GetLastError() says why. To trust a server whose certificate no public authority signed, such as a self-signed one, pass that certificate as pem. Verification is relaxed only for the whole process, by setting OBJECK_TLS_INSECURE_SKIP_VERIFY=1 for testing, and then only an untrusted issuer is accepted.**\n\n```New(address:System.String, port:Int, pem:String)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String", "**Connects and completes a TLS handshake as New(address, port, pem) does, within limits. connect_timeout bounds the TCP connect, and the handshake, each: a peer that accepts and then says nothing fails the connect with \"timed out\" after that long. read_timeout is how long a read waits for the peer, the handshake's included (the default is 300 seconds), and starts again with every byte. deadline bounds the connect, the handshake and every read afterwards, from the start of the connect, however slowly the peer sends its bytes. A connect that fails leaves IsOpen() false and GetLastError() saying why.**\n\n```New(address:System.String, port:Int, pem:String, connect_timeout:Int, read_timeout:Int, deadline:Int)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String\n\nconnect_timeout: Int\n\nread_timeout: Int\n\ndeadline: Int"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -15776,6 +15776,9 @@
 				},
 				"Select": {
 					"descriptions": ["**Checks if read/write data is available**\n\n```method : public : Select(is_write:Bool) ~ Int```\n\n\n\nis_write: Bool\n\nreturn: Int"]
+				},
+				"SetDeadline": {
+					"descriptions": ["**Sets the socket's deadline: from now, reads on it fail once ms milliseconds have passed, however slowly the peer sends its bytes. Unlike a receive timeout, which starts again with every byte received, it does not reset. A read that reaches it fails, and GetLastError() says \"timed out\". Setting a new deadline replaces the old, and 0 clears it. Only reads are held to it: set a send timeout (SetSendTimeout) for writes.**\n\n```method : public : SetDeadline(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil"]
 				},
 				"SetKeepAlive": {
 					"descriptions": ["**Sets the TCP keep-alive option**\n\n```method : public : SetKeepAlive(enable:Bool) ~ Bool```\n\n\n\nenable: Bool\n\nreturn: Bool"]
@@ -15869,7 +15872,7 @@
 					"descriptions": ["**Returns rather the socket is open**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Connects to an address, trying each one the name resolves to (IPv6 and IPv4) until one connects. If none does, IsOpen() is false and GetLastError() says why.**\n\n```New(address:System.String, port:Int)```\n\n\n\naddress: System.String\n\nport: Int", "**Connects as New(address, port) does, giving each address tried at most connect_timeout milliseconds. If none connects, IsOpen() is false and GetLastError() says why (\"timed out\" when the time ran out).**\n\n```New(address:System.String, port:Int, connect_timeout:Int)```\n\n\n\naddress: System.String\n\nport: Int\n\nconnect_timeout: Int"]
+					"descriptions": ["**Connects to an address, trying each one the name resolves to (IPv6 and IPv4) until one connects. If none does, IsOpen() is false and GetLastError() says why.**\n\n```New(address:System.String, port:Int)```\n\n\n\naddress: System.String\n\nport: Int", "**Connects as New(address, port) does, giving each address tried at most connect_timeout milliseconds. If none connects, IsOpen() is false and GetLastError() says why (\"timed out\" when the time ran out).**\n\n```New(address:System.String, port:Int, connect_timeout:Int)```\n\n\n\naddress: System.String\n\nport: Int\n\nconnect_timeout: Int", "**Connects as New(address, port, connect_timeout) does, and gives the socket a deadline: reads on it fail once deadline milliseconds have passed from the start of the connect, however slowly the peer sends its bytes (a receive timeout alone starts again with every byte). The connect itself is cut short by it too, and so is the wait for any further address to try. If the connect fails, IsOpen() is false and GetLastError() says why (\"timed out\" when the time ran out).**\n\n```New(address:System.String, port:Int, connect_timeout:Int, deadline:Int)```\n\n\n\naddress: System.String\n\nport: Int\n\nconnect_timeout: Int\n\ndeadline: Int"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -15888,6 +15891,9 @@
 				},
 				"SetConnectTimeout": {
 					"descriptions": ["**Sets the connect timeout for the next connection attempt. Must be called before New() or before reconnecting.**\n\n```method : public : SetConnectTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil"]
+				},
+				"SetDeadline": {
+					"descriptions": ["**Sets the socket's deadline: from now, reads on it fail once ms milliseconds have passed, however slowly the peer sends its bytes. Unlike a receive timeout, which starts again with every byte received, it does not reset. A read that reaches it returns what it has, and GetLastError() says \"timed out\". Setting a new deadline replaces the old, and 0 clears it. Only reads are held to it: set a send timeout (SetSendTimeout) for writes.**\n\n```method : public : SetDeadline(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil"]
 				},
 				"SetKeepAlive": {
 					"descriptions": ["**Sets the TCP keep-alive option**\n\n```method : public : SetKeepAlive(enable:Bool) ~ Bool```\n\n\n\nenable: Bool\n\nreturn: Bool"]
@@ -23414,14 +23420,29 @@
 				"Get": {
 					"descriptions": ["**Performs a HTTP GET**\n\n```method : public : Get(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nclient := Web.HTTP.HttpClient->New();\nresponse := client->Get(Web.HTTP.Url->New(\"https://httpbin.org/get\"));\nif(response <> Nil & response->GetStatusCode() = 200) {\n  response->ToString()->PrintLine();\n};\n```", "**Performs a HTTP GET**\n\n```method : public : Get(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response\n\n```\nclient := Web.HTTP.HttpClient->New();\nresponse := client->Get(Web.HTTP.Url->New(\"https://api.example.com/data\"), \"application/json\");\nif(response <> Nil) {\n  response->ToString()->PrintLine();\n};\n```"]
 				},
+				"GetConnectTimeout": {
+					"descriptions": ["**Gets the connect timeout**\n\n```method : public : GetConnectTimeout() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetCookie": {
 					"descriptions": ["**Get a cookie**\n\n```method : public : GetCookie(name:String) ~ Cookie```\n\n\n\nname: String\n\nreturn: Cookie"]
 				},
 				"GetCookies": {
 					"descriptions": ["**Gets the cookies**\n\n```method : public : GetCookies() ~ Vector&lt;Cookie&gt;```\n\n\n\nreturn: Vector&lt;Cookie&gt;\n\n```\nclient := Web.HTTP.HttpClient->New(true);\nclient->Get(Web.HTTP.Url->New(\"https://httpbin.org/cookies/set/session/abc\"));\ncookies := client->GetCookies();\neach(c in cookies) {\n  c->GetName()->PrintLine();\n};\n```"]
 				},
+				"GetDeadline": {
+					"descriptions": ["**Gets the deadline**\n\n```method : public : GetDeadline() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetDownloadSize": {
 					"descriptions": ["**Bytes the last GetToFile wrote.**\n\n```method : public : GetDownloadSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last request ended on a time limit**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorCode": {
+					"descriptions": ["**Which time limit the last request ended on**\n\n```method : public : GetErrorCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetReadTimeout": {
+					"descriptions": ["**Gets the read timeout**\n\n```method : public : GetReadTimeout() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetRequestHeaders": {
 					"descriptions": ["**Gets the HTTP request headers**\n\n```method : public : GetRequestHeaders() ~ Hash&lt;String,String&gt;```\n\n\n\nreturn: Hash&lt;String,String&gt;"]
@@ -23451,7 +23472,7 @@
 					"descriptions": ["**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, data:Byte[], headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickGet": {
-					"descriptions": ["**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"https://httpbin.org/get\"));\nif(response <> Nil) {\n  response->ToString()->PrintLine();\n};\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response\n\n```\nhdrs := Collection.Map->New()<String, String>;\nhdrs->Insert(\"Accept\", \"application/json\");\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"https://api.example.com\"), hdrs);\nresponse->ToString()->PrintLine();\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+					"descriptions": ["**Performs a HTTP GET that ends within a deadline**\n\n```function : QuickGet(url:Web.HTTP.Url, deadline_ms:Int) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndeadline_ms: Int\n\nreturn: Web.HTTP.Response\n\n```\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"http://example.com/\"), 5000);\nif(response->GetCode() = 0) {\n  response->GetError()->PrintLine();\n};\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"https://httpbin.org/get\"));\nif(response <> Nil) {\n  response->ToString()->PrintLine();\n};\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response\n\n```\nhdrs := Collection.Map->New()<String, String>;\nhdrs->Insert(\"Accept\", \"application/json\");\nresponse := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New(\"https://api.example.com\"), hdrs);\nresponse->ToString()->PrintLine();\n```", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickGetToFile": {
 					"descriptions": ["**Downloads a resource to a file without holding it in memory. See GetToFile.**\n\n```function : QuickGetToFile(url:Web.HTTP.Url, path:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\nreturn: Web.HTTP.Response"]
@@ -23460,7 +23481,7 @@
 					"descriptions": ["**Performs a HTTP PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs a HTTP PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickPost": {
-					"descriptions": ["**Performs a HTTP POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response\n\n```\nbody := \"{\\\"event\\\":\\\"click\\\"}\"->ToByteArray();\nresponse := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New(\"https://httpbin.org/post\"), body);\nresponse->GetStatusCode()->PrintLine();\n```", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response\n\n```\nbody := \"{\\\"x\\\":1}\"->ToByteArray();\nresponse := Web.HTTP.HttpClient->QuickPost(\n  Web.HTTP.Url->New(\"https://api.example.com/events\"),\n  body,\n  \"application/json\");\nresponse->GetStatusCode()->PrintLine();\n```", "**Performs a HTTP POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+					"descriptions": ["**Performs a HTTP POST that ends within a deadline**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, deadline_ms:Int) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\ndeadline_ms: Int\n\nreturn: Web.HTTP.Response", "**Performs a HTTP POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response\n\n```\nbody := \"{\\\"event\\\":\\\"click\\\"}\"->ToByteArray();\nresponse := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New(\"https://httpbin.org/post\"), body);\nresponse->GetStatusCode()->PrintLine();\n```", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response\n\n```\nbody := \"{\\\"x\\\":1}\"->ToByteArray();\nresponse := Web.HTTP.HttpClient->QuickPost(\n  Web.HTTP.Url->New(\"https://api.example.com/events\"),\n  body,\n  \"application/json\");\nresponse->GetStatusCode()->PrintLine();\n```", "**Performs a HTTP POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickPut": {
 					"descriptions": ["**Performs a HTTP POST**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS POST**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP POST**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
@@ -23468,11 +23489,20 @@
 				"RemoveHeader": {
 					"descriptions": ["**Removes a HTTP request header**\n\n```method : public : RemoveHeader(name:String) ~ Nil```\n\n\n\nname: String\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->AddHeader(\"X-Debug\", \"1\");\n# remove before production call\nclient->RemoveHeader(\"X-Debug\");\n```"]
 				},
+				"SetConnectTimeout": {
+					"descriptions": ["**Sets the connect timeout: the longest the TCP connect to a server may take, per address tried. A connect that does not finish fails the request, with response code 0 and GetErrorCode() CONNECT_TIMEOUT. The default is none, the operating system's own.**\n\n```method : public : SetConnectTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->SetConnectTimeout(2000);\nresponse := client->Get(Web.HTTP.Url->New(\"http://192.0.2.1/\"));\nif(response->GetCode() = 0) {\n  client->GetError()->PrintLine();  # connect timed out after 2000 ms\n};\n```"]
+				},
 				"SetCookie": {
 					"descriptions": ["**Sets a cookie**\n\n```method : public : SetCookie(cookie:Cookie) ~ Nil```\n\n\n\ncookie: Cookie\n\nreturn: Nil"]
 				},
+				"SetDeadline": {
+					"descriptions": ["**Sets the deadline for a whole request: the longest it may take from the call to its last byte, covering the connect, the send, every read, every redirect followed and every retry (a retry's delay is cut short by it). Unlike the read timeout it does not start again with each byte, so a server that dribbles its reply is cut off when the deadline is reached. A request that reaches it fails with response code 0 and GetErrorCode() DEADLINE_EXCEEDED, and its connection is closed. The default is none.**\n\n```method : public : SetDeadline(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->SetDeadline(10000);\nresponse := client->Get(Web.HTTP.Url->New(\"http://example.com/data\"));\nif(response->GetCode() = 0) {\n  client->GetError()->PrintLine();  # deadline of 10000 ms exceeded\n};\n```"]
+				},
 				"SetMaxRedirects": {
 					"descriptions": ["**Sets the maximum number of redirects to follow (default 10)**\n\n```method : public : SetMaxRedirects(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->SetMaxRedirects(3);\n```"]
+				},
+				"SetReadTimeout": {
+					"descriptions": ["**Sets the read timeout: the longest a read waits for the server to send. It starts again with every byte received, so it does not bound the request: a server that sends a byte at a time can keep a request going far past it (see SetDeadline). A read that times out fails the request, with response code 0 and GetErrorCode() READ_TIMEOUT. The default is DEFAULT_READ_MS, 30 seconds.**\n\n```method : public : SetReadTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->SetReadTimeout(5000);\nresponse := client->Get(Web.HTTP.Url->New(\"http://example.com/slow\"));\n```"]
 				},
 				"SetRetry": {
 					"descriptions": ["**Sets retry behavior for transient errors (429, 503)**\n\n```method : public : SetRetry(max_retries:Int, delay_ms:Int) ~ Nil```\n\n\n\nmax_retries: Int\n\ndelay_ms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpClient->New();\nclient->SetRetry(3, 500);  # retry up to 3 times, 500ms between attempts\nresponse := client->Get(Web.HTTP.Url->New(\"https://api.example.com/items\"));\n```"]
@@ -23494,17 +23524,32 @@
 				"Get": {
 					"descriptions": ["**Performs a HTTPS GET**\n\n```method : public : Get(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET**\n\n```method : public : Get(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET**\n\n```method : public : Get(url:Web.HTTP.Url, content_type:String, ) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\npem: String\n\nreturn: Web.HTTP.Response"]
 				},
+				"GetConnectTimeout": {
+					"descriptions": ["**Gets the connect timeout**\n\n```method : public : GetConnectTimeout() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetCookie": {
 					"descriptions": ["**Get a cookie**\n\n```method : public : GetCookie(name:String) ~ Cookie```\n\n\n\nname: String\n\nreturn: Cookie"]
 				},
 				"GetCookies": {
 					"descriptions": ["**Gets the cookies**\n\n```method : public : GetCookies() ~ Vector&lt;Cookie&gt;```\n\n\n\nreturn: Vector&lt;Cookie&gt;"]
 				},
+				"GetDeadline": {
+					"descriptions": ["**Gets the deadline**\n\n```method : public : GetDeadline() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetDownloadSize": {
 					"descriptions": ["**Bytes the last GetToFile wrote.**\n\n```method : public : GetDownloadSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetError": {
+					"descriptions": ["**Why the last request ended on a time limit**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorCode": {
+					"descriptions": ["**Which time limit the last request ended on**\n\n```method : public : GetErrorCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetIssuer": {
 					"descriptions": ["**Gets the socket's X.509 certificate issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->Get(Web.HTTP.Url->New(\"https://example.com/\"));\nclient->GetIssuer()->PrintLine();   # e.g. \"Let's Encrypt Authority X3\"\n```"]
+				},
+				"GetReadTimeout": {
+					"descriptions": ["**Gets the read timeout**\n\n```method : public : GetReadTimeout() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetRequestHeaders": {
 					"descriptions": ["**Gets the HTTPS request headers**\n\n```method : public : GetRequestHeaders() ~ Hash&lt;String,String&gt;```\n\n\n\nreturn: Hash&lt;String,String&gt;"]
@@ -23537,7 +23582,7 @@
 					"descriptions": ["**Performs a HTTPS DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://api.example.com/items/42\");\nresponse := Web.HTTP.HttpsClient->QuickDelete(url);\nresponse->GetCode()->PrintLine();  # 204\n```", "**Performs a HTTPS DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS DELETE and returns results as a String**\n\n```function : QuickDelete(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;, pem:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\npem: String\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickGet": {
-					"descriptions": ["**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://httpbin.org/get\");\nresponse := Web.HTTP.HttpsClient->QuickGet(url);\nif(response <> Nil) {\n  response->GetCode()->PrintLine();            # 200\n  String->New(response->GetContent())->PrintLine();  # JSON body\n};\n```", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;, pem:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\npem: String\n\nreturn: Web.HTTP.Response"]
+					"descriptions": ["**Performs a HTTPS GET that ends within a deadline**\n\n```function : QuickGet(url:Web.HTTP.Url, deadline_ms:Int) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndeadline_ms: Int\n\nreturn: Web.HTTP.Response\n\n```\nresponse := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New(\"https://example.com/\"), 5000);\nif(response->GetCode() = 0) {\n  response->GetError()->PrintLine();\n};\n```", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://httpbin.org/get\");\nresponse := Web.HTTP.HttpsClient->QuickGet(url);\nif(response <> Nil) {\n  response->GetCode()->PrintLine();            # 200\n  String->New(response->GetContent())->PrintLine();  # JSON body\n};\n```", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS GET and returns results as a String**\n\n```function : QuickGet(url:Web.HTTP.Url, content_type:String, headers:Map&lt;String,String&gt;, pem:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\npem: String\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickGetToFile": {
 					"descriptions": ["**Downloads a resource to a file without holding it in memory. See GetToFile.**\n\n```function : QuickGetToFile(url:Web.HTTP.Url, path:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\npath: String\n\nreturn: Web.HTTP.Response"]
@@ -23546,7 +23591,7 @@
 					"descriptions": ["**Performs a HTTPS PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://api.example.com/items/1\");\nbody := \"{\\\"status\\\":\\\"active\\\"}\"->ToByteArray();\nresponse := Web.HTTP.HttpsClient->QuickPatch(url, body, \"application/json\");\nresponse->GetCode()->PrintLine();  # 200\n```", "**Performs a HTTPS PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS PATCH**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickPost": {
-					"descriptions": ["**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://httpbin.org/post\");\nbody := \"field=value\"->ToByteArray();\nresponse := Web.HTTP.HttpsClient->QuickPost(url, body);\nresponse->GetCode()->PrintLine();  # 200\n```", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+					"descriptions": ["**Performs a HTTPS POST that ends within a deadline**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, deadline_ms:Int) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\ndeadline_ms: Int\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response\n\n```\nurl := Web.HTTP.Url->New(\"https://httpbin.org/post\");\nbody := \"field=value\"->ToByteArray();\nresponse := Web.HTTP.HttpsClient->QuickPost(url, body);\nresponse->GetCode()->PrintLine();  # 200\n```", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS POST**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				},
 				"QuickPut": {
 					"descriptions": ["**Performs a HTTP POST**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs a HTTPS POST**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs a HTTP POST**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
@@ -23554,17 +23599,79 @@
 				"RemoveHeader": {
 					"descriptions": ["**Removes a HTTPS request header**\n\n```method : public : RemoveHeader(name:String) ~ Nil```\n\n\n\nname: String\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->RemoveHeader(\"Cache-Control\");  # strip default cache header\nresponse := client->Get(Web.HTTP.Url->New(\"https://api.example.com/data\"));\nresponse->GetCode()->PrintLine();\n```"]
 				},
+				"SetConnectTimeout": {
+					"descriptions": ["**Sets the connect timeout: the longest the TCP connect to a server, and then the TLS handshake, may each take. One that does not finish fails the request, with response code 0 and GetErrorCode() CONNECT_TIMEOUT. The default is none, the operating system's own for the connect and the read timeout for the handshake.**\n\n```method : public : SetConnectTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->SetConnectTimeout(2000);\nresponse := client->Get(Web.HTTP.Url->New(\"https://192.0.2.1/\"));\nif(response->GetCode() = 0) {\n  client->GetError()->PrintLine();  # connect timed out after 2000 ms\n};\n```"]
+				},
 				"SetCookie": {
 					"descriptions": ["**Sets a cookie**\n\n```method : public : SetCookie(cookie:Cookie) ~ Nil```\n\n\n\ncookie: Cookie\n\nreturn: Nil"]
 				},
+				"SetDeadline": {
+					"descriptions": ["**Sets the deadline for a whole request: the longest it may take from the call to its last byte, covering the connect, the TLS handshake, the send, every read, every redirect followed and every retry (a retry's delay is cut short by it). Unlike the read timeout it does not start again with each byte, so a server that dribbles its reply is cut off when the deadline is reached. A request that reaches it fails with response code 0 and GetErrorCode() DEADLINE_EXCEEDED, and its connection is closed. For StreamPost it bounds the stream. The default is none.**\n\n```method : public : SetDeadline(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->SetDeadline(30000);\nresponse := client->Get(Web.HTTP.Url->New(\"https://api.example.com/data\"));\nif(response->GetCode() = 0) {\n  client->GetError()->PrintLine();  # deadline of 30000 ms exceeded\n};\n```"]
+				},
 				"SetMaxRedirects": {
 					"descriptions": ["**Sets the maximum number of redirects to follow (default 10)**\n\n```method : public : SetMaxRedirects(max:Int) ~ Nil```\n\n\n\nmax: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->SetMaxRedirects(5);\nresponse := client->Get(Web.HTTP.Url->New(\"https://httpbin.org/redirect/3\"));\nresponse->GetCode()->PrintLine();  # 200\n```"]
+				},
+				"SetReadTimeout": {
+					"descriptions": ["**Sets the read timeout: the longest a read waits for the server to send. It starts again with every byte received, so it does not bound the request: a server that sends a byte at a time can keep a request going far past it (see SetDeadline). A read that times out fails the request, with response code 0 and GetErrorCode() READ_TIMEOUT. The default is DEFAULT_READ_MS, 300 seconds.**\n\n```method : public : SetReadTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->SetReadTimeout(5000);\nresponse := client->Get(Web.HTTP.Url->New(\"https://example.com/slow\"));\n```"]
 				},
 				"SetRetry": {
 					"descriptions": ["**Sets retry behavior for transient errors (429, 503)**\n\n```method : public : SetRetry(max_retries:Int, delay_ms:Int) ~ Nil```\n\n\n\nmax_retries: Int\n\ndelay_ms: Int\n\nreturn: Nil\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->SetRetry(5, 500);  # retry up to 5 times, starting at 500ms\nresponse := client->Get(Web.HTTP.Url->New(\"https://api.example.com/data\"));\nresponse->GetCode()->PrintLine();\n```"]
 				},
 				"StreamPost": {
 					"descriptions": ["**Performs an HTTPS POST and returns an SSE stream for reading events. Used for streaming responses from LLM APIs.**\n\n```method : public : StreamPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ SSEStream```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: SSEStream\n\n```\nclient := Web.HTTP.HttpsClient->New();\nclient->AddHeader(\"Authorization\", \"Bearer mykey\");\nurl := Web.HTTP.Url->New(\"https://api.openai.com/v1/chat/completions\");\nbody := \"{\\\"model\\\":\\\"gpt-4o\\\",\\\"stream\\\":true,\\\"messages\\\":[]}\"->ToByteArray();\nstream := client->StreamPost(url, body, \"application/json\");\nif(stream <> Nil) {\n  while(stream->HasNext()) {\n    stream->Next()->GetData()->PrintLine();\n  };\n  stream->Close();\n};\n```", "**Performs an HTTPS POST and returns an SSE stream for reading events.**\n\n```method : public : StreamPost(url:Web.HTTP.Url, data:Byte[], content_type:String, pem:String) ~ SSEStream```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\npem: String\n\nreturn: SSEStream"]
+				}
+			}
+		},
+		"Web.HTTP.RequestLimits": {
+			"description": "The time limits of an HTTP client's requests, shared by HttpClient and HttpsClient, which hold one and expose it through SetConnectTimeout, SetReadTimeout and SetDeadline. Three limits, each in milliseconds and each off at 0:\n\n- connect timeout: the TCP connect and, for HTTPS, the TLS handshake, each\n- read timeout: how long a read waits for the peer. It starts again with every byte received, so a peer that dribbles bytes keeps a read alive for as long as it likes\n- deadline: the whole call, from the start of the request to its last byte, covering the connect, the TLS handshake, the send, every read, every redirect it follows and every retry. It does not start again: a peer that sends a byte at a time is cut off when it is reached. Every wait for the peer is cut to what is left of it, so it holds even inside one blocked read\n\nA request that ends on a limit fails with response code 0 and the reason in Response->GetError() and the client's GetError(), with an error code from Error to tell the three apart. With no limit set a request behaves as it always has.\n\nThe name lookup is not bounded by any of them: the system's resolver cannot be asked to stop. Writes are held to the deadline through the socket's send timeout, which bounds each write, not the transfer as a whole.",
+			"functions": {
+				"Apply": {
+					"descriptions": ["**Holds a connected socket to the limits: its read timeout, its deadline and a send timeout of what is left of the deadline. A socket taken from the pool of kept connections is set to the defaults when no limit is, so the last request's do not stay on it.**\n\n```method : public : Apply(socket:TCPSocket) ~ Nil```\n\n\n\nsocket: TCPSocket\n\nreturn: Nil", "**Holds a connected TLS socket to the limits, as Apply does a plain one's. Without a read timeout it keeps the socket's own, which for TLS is longer than for a plain one.**\n\n```method : public : Apply(socket:TCPSecureSocket) ~ Nil```\n\n\n\nsocket: TCPSecureSocket\n\nreturn: Nil"]
+				},
+				"Connect": {
+					"descriptions": ["**Connects, within the connect timeout and what is left of the deadline**\n\n```method : public : Connect(address:String, port:Int) ~ TCPSocket```\n\n\n\naddress: String\n\nport: Int\n\nreturn: TCPSocket"]
+				},
+				"DeadlineExceeded": {
+					"descriptions": ["**The response of a request that found the deadline already reached**\n\n```method : public : DeadlineExceeded() ~ Response```\n\n\n\nreturn: Response"]
+				},
+				"Failed": {
+					"descriptions": ["**The response of a request that ended on a limit: code 0, and the reason**\n\n```method : public : Failed() ~ Response```\n\n\n\nreturn: Response"]
+				},
+				"GetConnectTimeout": {
+					"descriptions": ["**Gets the connect timeout**\n\n```method : public : GetConnectTimeout() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDeadline": {
+					"descriptions": ["**Gets the deadline**\n\n```method : public : GetDeadline() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last request ended on a limit**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorCode": {
+					"descriptions": ["**Gets the kind of limit the last request ended on**\n\n```method : public : GetErrorCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetReadTimeout": {
+					"descriptions": ["**Gets the read timeout**\n\n```method : public : GetReadTimeout() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(default_read_ms:Int)```\n\n\n\ndefault_read_ms: Int"]
+				},
+				"SecureConnect": {
+					"descriptions": ["**Connects and completes the TLS handshake, within the connect timeout and what is left of the deadline**\n\n```method : public : SecureConnect(address:String, port:Int, pem:String) ~ TCPSecureSocket```\n\n\n\naddress: String\n\nport: Int\n\npem: String\n\nreturn: TCPSecureSocket"]
+				},
+				"SetConnectTimeout": {
+					"descriptions": ["**Sets the connect timeout**\n\n```method : public : SetConnectTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil"]
+				},
+				"SetDeadline": {
+					"descriptions": ["**Sets the deadline for a whole request**\n\n```method : public : SetDeadline(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil"]
+				},
+				"SetReadTimeout": {
+					"descriptions": ["**Sets the read timeout**\n\n```method : public : SetReadTimeout(ms:Int) ~ Nil```\n\n\n\nms: Int\n\nreturn: Nil"]
+				},
+				"Sleep": {
+					"descriptions": ["**Sleeps before a retry, no longer than the deadline allows**\n\n```method : public : Sleep(ms:Int) ~ Bool```\n\n\n\nms: Int\n\nreturn: Bool"]
+				},
+				"Timeout": {
+					"descriptions": ["**Whether a socket's last error is a limit having been reached, recording which**\n\n```method : public : Timeout(error:String, connecting:Bool) ~ Bool```\n\n\n\nerror: String\n\nconnecting: Bool\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -23577,8 +23684,17 @@
 				"GetContent": {
 					"descriptions": ["**Gets response content**\n\n```method : public : GetContent() ~ Byte[]```\n\n\n\nreturn: Byte[]\n\n```\nresponse := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New(\"https://httpbin.org/get\"));\nif(response <> Nil) {\n  bytes := response->GetContent();\n  String->New(bytes)->PrintLine();  # raw response body\n};\n```"]
 				},
+				"GetError": {
+					"descriptions": ["**Why the request ended, when it ended on a time limit (see RequestLimits)**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetErrorCode": {
+					"descriptions": ["**Which time limit the request ended on**\n\n```method : public : GetErrorCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetType": {
 					"descriptions": ["**Gets content type**\n\n```method : public : GetType() ~ String```\n\n\n\nreturn: String\n\n```\nurl := Web.HTTP.Url->New(\"https://httpbin.org/get\");\nresponse := Web.HTTP.HttpsClient->QuickGet(url);\nif(response <> Nil) {\n  response->GetType()->PrintLine();     # application/json\n  response->GetCode()->PrintLine();     # 200\n};\n```"]
+				},
+				"New": {
+					"descriptions": ["**A request that did not complete**\n\n```New(code:Int, error_code:Int, error:String)```\n\n\n\ncode: Int\n\nerror_code: Int\n\nerror: String"]
 				},
 				"ToString": {
 					"descriptions": ["**Get the string representation**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nresponse := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New(\"https://httpbin.org/get\"));\nif(response <> Nil) {\n  response->ToString()->PrintLine();  # code=200, type=application/json, content_length=...\n};\n```"]
@@ -28814,6 +28930,12 @@
 				"file": ""
 			}
 		],
+		"RequestLimits": [
+			{
+				"bundle": "Web.HTTP",
+				"file": ""
+			}
+		],
 		"SSEEvent": [
 			{
 				"bundle": "Web.HTTP",
@@ -31136,6 +31258,16 @@
 				{ "name": "PATCH", "value": "4", "description": "PATCH" }
 			]
 		},
+		"Web.HTTP.HttpClient#Timeout": {
+			"name": "Timeout",
+			"bundle": "Web.HTTP",
+			"class": "Web.HTTP.HttpClient",
+			"kind": "consts",
+			"description": "Defaults of the time limits",
+			"items": [
+				{ "name": "DEFAULT_READ_MS", "value": "30000", "description": "The read timeout a plain HTTP connection starts with, in milliseconds: how long a read waits for the peer before it fails. It starts again with every byte received. SetReadTimeout changes it, and SetDeadline bounds the request as a whole." }
+			]
+		},
 		"Web.HTTP.HttpsClient#Task": {
 			"name": "Task",
 			"bundle": "Web.HTTP",
@@ -31148,6 +31280,29 @@
 				{ "name": "POST", "value": "2", "description": "POST" },
 				{ "name": "PUT", "value": "3", "description": "PUT" },
 				{ "name": "PATCH", "value": "4", "description": "PATCH" }
+			]
+		},
+		"Web.HTTP.HttpsClient#Timeout": {
+			"name": "Timeout",
+			"bundle": "Web.HTTP",
+			"class": "Web.HTTP.HttpsClient",
+			"kind": "consts",
+			"description": "Defaults of the time limits",
+			"items": [
+				{ "name": "DEFAULT_READ_MS", "value": "300000", "description": "The read timeout an HTTPS connection starts with, in milliseconds: how long a read waits for the peer before it fails. It starts again with every byte received. It is longer than a plain HTTP connection's, as a model API can be silent for minutes while it reasons. SetReadTimeout changes it, and SetDeadline bounds the request as a whole. OBJECK_TLS_RECV_TIMEOUT (milliseconds) changes it for every HTTPS client in a process." }
+			]
+		},
+		"Web.HTTP.RequestLimits#Error": {
+			"name": "Error",
+			"bundle": "Web.HTTP",
+			"class": "Web.HTTP.RequestLimits",
+			"kind": "consts",
+			"description": "Why a request ended on a limit, for GetErrorCode",
+			"items": [
+				{ "name": "NONE", "value": "0", "description": "" },
+				{ "name": "CONNECT_TIMEOUT", "value": "1", "description": "" },
+				{ "name": "READ_TIMEOUT", "value": "2", "description": "" },
+				{ "name": "DEADLINE_EXCEEDED", "value": "3", "description": "" }
 			]
 		},
 		"Web.HTTP.Server.Response#Compression": {

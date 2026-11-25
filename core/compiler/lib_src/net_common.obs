@@ -1413,17 +1413,347 @@ bundle Web.HTTP {
 	}
 
 	#~
+	The time limits of an HTTP client's requests, shared by HttpClient and HttpsClient, which
+	hold one and expose it through SetConnectTimeout, SetReadTimeout and SetDeadline. Three
+	limits, each in milliseconds and each off at 0:
+
+	- connect timeout: the TCP connect and, for HTTPS, the TLS handshake, each
+	- read timeout: how long a read waits for the peer. It starts again with every byte
+	  received, so a peer that dribbles bytes keeps a read alive for as long as it likes
+	- deadline: the whole call, from the start of the request to its last byte, covering the
+	  connect, the TLS handshake, the send, every read, every redirect it follows and every
+	  retry. It does not start again: a peer that sends a byte at a time is cut off when it
+	  is reached. Every wait for the peer is cut to what is left of it, so it holds even
+	  inside one blocked read
+
+	A request that ends on a limit fails with response code 0 and the reason in
+	Response->GetError() and the client's GetError(), with an error code from Error to tell
+	the three apart. With no limit set a request behaves as it always has.
+
+	The name lookup is not bounded by any of them: the system's resolver cannot be asked to
+	stop. Writes are held to the deadline through the socket's send timeout, which bounds
+	each write, not the transfer as a whole.
+	~#
+	class RequestLimits {
+		#~
+		Why a request ended on a limit, for GetErrorCode
+		~#
+		consts Error {
+			NONE := 0,
+			CONNECT_TIMEOUT := 1,
+			READ_TIMEOUT := 2,
+			DEADLINE_EXCEEDED := 3
+		}
+
+		@default_read_ms : Int;
+		@connect_ms : Int;
+		@read_ms : Int;
+		@deadline_ms : Int;
+		@clock : System.Time.Timer;
+		@spent : Float;
+		@error_code : Int;
+		@error : String;
+
+		#~
+		Constructor
+		@param default_read_ms the read timeout the sockets of this client start with, which a read timeout of 0 leaves in force
+		~#
+		New(default_read_ms : Int) {
+			@default_read_ms := default_read_ms;
+			@clock := System.Time.Timer->New(true);
+			@spent := 0.0;
+		}
+
+		#~
+		Sets the connect timeout
+		@param ms milliseconds, 0 for none
+		~#
+		method : public : SetConnectTimeout(ms : Int) ~ Nil {
+			@connect_ms := ms > 0 ? ms : 0;
+		}
+
+		#~
+		Gets the connect timeout
+		@return milliseconds, 0 for none
+		~#
+		method : public : GetConnectTimeout() ~ Int {
+			return @connect_ms;
+		}
+
+		#~
+		Sets the read timeout
+		@param ms milliseconds, 0 for the default
+		~#
+		method : public : SetReadTimeout(ms : Int) ~ Nil {
+			@read_ms := ms > 0 ? ms : 0;
+		}
+
+		#~
+		Gets the read timeout
+		@return milliseconds, the default when none was set
+		~#
+		method : public : GetReadTimeout() ~ Int {
+			return @read_ms > 0 ? @read_ms : @default_read_ms;
+		}
+
+		#~
+		Sets the deadline for a whole request
+		@param ms milliseconds, 0 for none
+		~#
+		method : public : SetDeadline(ms : Int) ~ Nil {
+			@deadline_ms := ms > 0 ? ms : 0;
+		}
+
+		#~
+		Gets the deadline
+		@return milliseconds, 0 for none
+		~#
+		method : public : GetDeadline() ~ Int {
+			return @deadline_ms;
+		}
+
+		#~
+		Gets the reason the last request ended on a limit
+		@return a message, Nil when it did not
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the kind of limit the last request ended on
+		@return an Error code, NONE when it did not
+		~#
+		method : public : GetErrorCode() ~ Int {
+			return @error_code;
+		}
+
+		# whether any limit is set: with none, a request is left as it always was
+		method : public : Active() ~ Bool {
+			return @connect_ms > 0 | @read_ms > 0 | @deadline_ms > 0;
+		}
+
+		# a new request: the clock starts, and the last one's error is forgotten
+		method : public : Begin() ~ Nil {
+			@spent := 0.0;
+			@clock->Start();
+			@error_code := 0;
+			@error := Nil;
+		}
+
+		# milliseconds left of the deadline, -1 when there is none. The clock is read and
+		# started again, so what has passed is kept in @spent
+		method : public : Remaining() ~ Int {
+			if(@deadline_ms <= 0) {
+				return -1;
+			};
+
+			@spent += @clock->GetElapsedTime();
+			@clock->Start();
+			return @deadline_ms - (@spent * 1000.0)->ToInt();
+		}
+
+		# whether the deadline has been reached
+		method : public : Expired() ~ Bool {
+			return @deadline_ms > 0 & Remaining() <= 0;
+		}
+
+		# milliseconds left of the deadline, at least 1, for a socket to be given
+		method : Budget() ~ Int {
+			left := Remaining();
+			return left < 1 ? 1 : left;
+		}
+
+		#~
+		Connects, within the connect timeout and what is left of the deadline
+		@param address host
+		@param port port
+		@return the socket, which is not open when the connect failed
+		~#
+		method : public : Connect(address : String, port : Int) ~ TCPSocket {
+			if(@connect_ms <= 0 & @deadline_ms <= 0) {
+				return TCPSocket->New(address, port);
+			};
+
+			budget := 0;
+			if(@deadline_ms > 0) {
+				budget := Budget();
+			};
+			return TCPSocket->New(address, port, @connect_ms, budget);
+		}
+
+		#~
+		Connects and completes the TLS handshake, within the connect timeout and what is left of the deadline
+		@param address host
+		@param port port
+		@param pem PEM file of trusted certificates, Nil for the system's
+		@return the socket, which is not open when the connect or the handshake failed
+		~#
+		method : public : SecureConnect(address : String, port : Int, pem : String) ~ TCPSecureSocket {
+			if(@connect_ms <= 0 & @deadline_ms <= 0) {
+				return TCPSecureSocket->New(address, port, pem);
+			};
+
+			budget := 0;
+			if(@deadline_ms > 0) {
+				budget := Budget();
+			};
+			return TCPSecureSocket->New(address, port, pem, @connect_ms, @read_ms, budget);
+		}
+
+		#~
+		Holds a connected socket to the limits: its read timeout, its deadline and a send
+		timeout of what is left of the deadline. A socket taken from the pool of kept
+		connections is set to the defaults when no limit is, so the last request's do not
+		stay on it.
+		@param socket the socket
+		~#
+		method : public : Apply(socket : TCPSocket) ~ Nil {
+			socket->SetRecvTimeout(GetReadTimeout());
+			if(@deadline_ms > 0) {
+				left := Budget();
+				socket->SetDeadline(left);
+				socket->SetSendTimeout(left);
+			}
+			else {
+				socket->SetDeadline(0);
+				socket->SetSendTimeout(0);
+			};
+		}
+
+		#~
+		Holds a connected TLS socket to the limits, as Apply does a plain one's. Without a
+		read timeout it keeps the socket's own, which for TLS is longer than for a plain one.
+		@param socket the socket
+		~#
+		method : public : Apply(socket : TCPSecureSocket) ~ Nil {
+			if(@read_ms > 0) {
+				socket->SetRecvTimeout(@read_ms);
+			};
+			if(@deadline_ms > 0) {
+				left := Budget();
+				socket->SetDeadline(left);
+				socket->SetSendTimeout(left);
+			};
+		}
+
+		#~
+		Sleeps before a retry, no longer than the deadline allows
+		@param ms milliseconds to sleep
+		@return false when the deadline had already been reached and no sleep was taken
+		~#
+		method : public : Sleep(ms : Int) ~ Bool {
+			if(@deadline_ms > 0) {
+				left := Remaining();
+				if(left <= 0) {
+					return false;
+				};
+				if(ms > left) {
+					ms := left;
+				};
+			};
+
+			System.Concurrency.Thread->Sleep(ms);
+			return true;
+		}
+
+		#~
+		Whether a socket's last error is a limit having been reached, recording which
+		@param error the socket's GetLastError()
+		@param connecting true when the error is from the connect, false from an exchange
+		@return true when the request ended on a limit
+		~#
+		method : public : Timeout(error : String, connecting : Bool) ~ Bool {
+			if(error = Nil | <>Active()) {
+				return false;
+			};
+
+			if(<>error->ToLower()->Has("timed out")) {
+				return false;
+			};
+
+			# a deadline that is up, give or take the granularity of the system's timers, is
+			# the deadline: a wait cut to what was left of it ends when it is reached
+			if(@deadline_ms > 0 & Remaining() <= 50) {
+				@error_code := RequestLimits->Error->DEADLINE_EXCEEDED->As(Int);
+				@error := "deadline of {$@deadline_ms} ms exceeded";
+			}
+			else if(connecting) {
+				@error_code := RequestLimits->Error->CONNECT_TIMEOUT->As(Int);
+				@error := "connect timed out after {$@connect_ms} ms";
+			}
+			else {
+				read_ms := GetReadTimeout();
+				@error_code := RequestLimits->Error->READ_TIMEOUT->As(Int);
+				@error := "read timed out after {$read_ms} ms";
+			};
+
+			return true;
+		}
+
+		#~
+		The response of a request that ended on a limit: code 0, and the reason
+		@return the response
+		~#
+		method : public : Failed() ~ Response {
+			return Response->New(0, @error_code, @error);
+		}
+
+		#~
+		The response of a request that found the deadline already reached
+		@return the response
+		~#
+		method : public : DeadlineExceeded() ~ Response {
+			@error_code := RequestLimits->Error->DEADLINE_EXCEEDED->As(Int);
+			@error := "deadline of {$@deadline_ms} ms exceeded";
+			return Failed();
+		}
+	}
+
+	#~
 	HTTP response for methods such as GET, POST and PUT
 	~#
 	class Response {
 		@content : Byte[];
 		@code : Int;
 		@type : String;
+		@error_code : Int;
+		@error : String;
 
 		New(code : Int) {
 			@content := Nil;
 			@code := code;
 			@type := Nil;
+		}
+
+		#~
+		A request that did not complete
+		@param code response code, 0 when no response arrived
+		@param error_code the RequestLimits->Error that ended it
+		@param error the reason
+		~#
+		New(code : Int, error_code : Int, error : String) {
+			@content := Nil;
+			@code := code;
+			@type := Nil;
+			@error_code := error_code;
+			@error := error;
+		}
+
+		#~
+		Why the request ended, when it ended on a time limit (see RequestLimits)
+		@return the reason, Nil when the request did not end on one
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Which time limit the request ended on
+		@return a RequestLimits->Error code, 0 when it did not end on one
+		~#
+		method : public : GetErrorCode() ~ Int {
+			return @error_code;
 		}
 
 		New(content : Byte[], code : Int, type : String) {
