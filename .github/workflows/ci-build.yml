@@ -1996,6 +1996,7 @@ jobs:
           ../../../compiler/lib_src/agent.obs \
           ../../../compiler/lib_src/actor_agents.obs \
           ../../../compiler/lib_src/mcp.obs \
+          ../../../compiler/lib_src/mcp_agent.obs \
           ../../../compiler/lib_src/rag.obs \
           ../../../compiler/lib_src/rag_adapters.obs \
           ../../../compiler/lib_src/json_rpc.obs \

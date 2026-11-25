@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     blocked_libs: set[str] = {
         "net_h2", "net_quic", "net_server", "web_server", "odbc", "query_odbc",
         "query_server", "query_vision", "sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame",
-        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic", "mcp", "agent", "actor_agents", "rag_adapters",
+        "json_rpc", "json_stream", "rss", "gemini", "ollama", "openai", "anthropic", "mcp", "mcp_agent", "agent", "actor_agents", "rag_adapters",
         "inference", "models", "onnx", "opencv", "nlp_onnx", "ai_hub", "ml_cnn", "ml_clip", "telemetry",
     }
 

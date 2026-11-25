@@ -2,7 +2,7 @@
 	"version": "2026.11.4",
 	"class-details": {
 		"API.Agent.Agent": {
-			"description": "The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back, until the model answers without a tool call, the step limit is reached or the backend fails. The conversation is kept, so Run can be called again to carry on; Reset starts over.\n\nEvery call goes through the same gates, in order: the tool must exist (unknown otherwise), the registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema (invalid), a dangerous tool, or any tool when SetApproveAll is on, must be approved (refused), and the handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes an error result the model can read and the loop carries on.",
+			"description": "The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back, until the model answers without a tool call, the step limit is reached or the backend fails. The conversation is kept, so Run can be called again to carry on; Reset starts over.\n\nEvery call goes through the same gates, in order: the tool must exist (unknown otherwise), the registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema (invalid), a dangerous tool, a tool whose destructive hint is true, any tool when SetApproveAll is on, and any tool not known to be read-only when SetApproveUnlessReadOnly is on, must be approved (refused), and the handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes an error result the model can read and the loop carries on.",
 			"functions": {
 				"GetBudget": {
 					"descriptions": ["**Gets the budget**\n\n```method : public : GetBudget() ~ AgentBudget```\n\n\n\nreturn: AgentBudget"]
@@ -24,6 +24,9 @@
 				},
 				"SetApproveAll": {
 					"descriptions": ["**Asks the approver about every call, not only those to dangerous tools. Calls are refused while there is no approver.**\n\n```method : public : SetApproveAll(approve_all:Bool) ~ Agent```\n\n\n\napprove_all: Bool\n\nreturn: Agent"]
+				},
+				"SetApproveUnlessReadOnly": {
+					"descriptions": ["**Asks the approver about every call to a tool that is not known to be read-only: a tool with no read-only hint, or one whose hint is false, needs approval. A tool marked read-only runs without being asked. The safe default for tools from a server you do not control, since a missing hint says nothing**\n\n```method : public : SetApproveUnlessReadOnly(on:Bool) ~ Agent```\n\n\n\non: Bool\n\nreturn: Agent"]
 				},
 				"SetApprover": {
 					"descriptions": ["**Sets who approves dangerous tools. A dangerous tool is refused while there is none.**\n\n```method : public : SetApprover(approver:AgentApprover) ~ Agent```\n\n\n\napprover: AgentApprover\n\nreturn: Agent"]
@@ -439,14 +442,29 @@
 				"IsDangerous": {
 					"descriptions": ["**Says whether the tool needs approval**\n\n```method : public : IsDangerous() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
+				"IsDestructive": {
+					"descriptions": ["**Says whether the tool states that it may destroy data**\n\n```method : public : IsDestructive() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsReadOnly": {
+					"descriptions": ["**Says whether the tool is known to be read-only**\n\n```method : public : IsReadOnly() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"NeedsApproval": {
+					"descriptions": ["**Says whether every call needs the approver: the tool is dangerous or its destructive hint is true**\n\n```method : public : NeedsApproval() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Constructor for a handler that takes the run's cancellation token**\n\n```New(name:String, description:String, schema:JsonElement, handler:AgentCancelableHandler)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: AgentCancelableHandler", "**Constructor for a handler object**\n\n```New(name:String, description:String, schema:JsonElement, handler:AgentToolHandler)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: AgentToolHandler", "**Constructor for a function that returns text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,String&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,String&gt;", "**Constructor for a function that returns JSON; the result is sent to the model as JSON text**\n\n```New(name:String, description:String, schema:JsonElement, func:Func2Ref&lt;JsonElement,JsonElement&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nfunc: Func2Ref&lt;JsonElement,JsonElement&gt;"]
 				},
 				"SetDangerous": {
 					"descriptions": ["**Marks the tool as dangerous: every call needs the agent's approver to say yes, and with no approver the call is refused**\n\n```method : public : SetDangerous(dangerous:Bool) ~ AgentTool```\n\n\n\ndangerous: Bool\n\nreturn: AgentTool"]
 				},
+				"SetDestructiveHint": {
+					"descriptions": ["**Records the effect hint destructiveHint (the MCP annotation of the same name): the tool may destroy or overwrite something. A tool whose destructive hint is true needs approval, like a dangerous one. An absent hint changes nothing**\n\n```method : public : SetDestructiveHint(destructive:Bool) ~ AgentTool```\n\n\n\ndestructive: Bool\n\nreturn: AgentTool"]
+				},
 				"SetMode": {
 					"descriptions": ["**Sets how the loop runs this tool, overriding the agent's default (see Mode)**\n\n```method : public : SetMode(mode:AgentTool-&gt;Mode) ~ AgentTool```\n\n\n\nmode: AgentTool-&gt;Mode\n\nreturn: AgentTool"]
+				},
+				"SetReadOnlyHint": {
+					"descriptions": ["**Records the effect hint readOnlyHint (the MCP annotation of the same name): the tool does not change anything. A read-only tool is not asked about when the agent is set to SetApproveUnlessReadOnly**\n\n```method : public : SetReadOnlyHint(read_only:Bool) ~ AgentTool```\n\n\n\nread_only: Bool\n\nreturn: AgentTool"]
 				},
 				"SetTimeout": {
 					"descriptions": ["**Sets the longest the tool may take, in milliseconds. In IN_THREAD mode a running handler cannot be interrupted: a call that takes longer is reported to the model as a timeout and its result is discarded. In BOUNDED_THREAD mode the loop stops waiting at the limit.**\n\n```method : public : SetTimeout(timeout_ms:Int) ~ AgentTool```\n\n\n\ntimeout_ms: Int\n\nreturn: AgentTool"]
@@ -2319,8 +2337,14 @@
 				"AllowOrigin": {
 					"descriptions": ["**Allows an Origin the HTTP transport would refuse. Without a call, only requests with no Origin header or a loopback one (localhost, 127.0.0.1, [::1]) are answered, which stops a web page from reaching a server on the local machine through the browser**\n\n```method : public : AllowOrigin(origin:String) ~ Nil```\n\n\n\norigin: String\n\nreturn: Nil"]
 				},
+				"EnableStats": {
+					"descriptions": ["**Turns on per-tool counters: calls, failures, rejected arguments, cancellations and the time spent in the handler. Off by default, and while it is off a call pays one Bool test**\n\n```method : public : EnableStats(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
 				"GetBoundPort": {
 					"descriptions": ["**Gets the port the HTTP transport is bound to**\n\n```method : public : GetBoundPort() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStats": {
+					"descriptions": ["**Gets the counters as JSON: {\"tools\": {\"name\": {\"calls\", \"errors\", \"invalid\", \"cancelled\", \"total_ms\", \"max_ms\"}}}. Empty until EnableStats(true) and a call**\n\n```method : public : GetStats() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
 				},
 				"Handle": {
 					"descriptions": ["**Answers one message. Parse errors, invalid requests, unknown methods and bad parameters are answered with the JSON-RPC error; a notification, and a request that was cancelled, are answered with Nil**\n\n```method : public : Handle(text:String, sink:McpSink) ~ String```\n\n\n\ntext: String\n\nsink: McpSink\n\nreturn: String"]
@@ -2376,6 +2400,29 @@
 
 			}
 		},
+		"API.MCP.McpStubGenerator": {
+			"description": "Writes Objeck source for a typed client of an MCP server: one class, one method per tool, parameters typed from the tool's inputSchema (integer to Int, number to Float, string to String, boolean to Bool, an array of those to Int[], Float[], String[] or Bool[], anything else to JsonElement). A parameter that is not required makes a second overload that leaves the optional parameters out. The text of the result is returned as a String, or Nil with the reason in GetError() when the tool failed (isError) or the call could not be made; a tool that declares an outputSchema also gets a method ending in Json that returns its structuredContent as a JsonElement. The output depends only on the tool list, so it can be compared to a checked-in copy. The mcp_stubs tool (tools/mcp/mcp_stubs.obs) is a command line around Generate.",
+			"functions": {
+				"AddAll": {
+					"descriptions": ["**Registers every tool of a server on an agent's registry**\n\n```function : AddAll(registry:ToolRegistry, client:McpClient) ~ Int```\n\n\n\nregistry: ToolRegistry\n\nclient: McpClient\n\nreturn: Int"]
+				},
+				"FromClient": {
+					"descriptions": ["**Makes agent tools from the tools of a server. Each call goes to the server over the client**\n\n```function : FromClient(client:McpClient) ~ Vector&lt;AgentTool&gt;```\n\n\n\nclient: McpClient\n\nreturn: Vector&lt;AgentTool&gt;"]
+				},
+				"FromSpec": {
+					"descriptions": ["**Makes an agent tool from a declared function. The tool's name, description, schema and effect hints are the spec's**\n\n```function : FromSpec(spec:McpToolSpec, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ AgentTool```\n\n\n\nspec: McpToolSpec\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: AgentTool"]
+				},
+				"FromTool": {
+					"descriptions": ["**Makes an agent tool from a tool that has a handler in this process**\n\n```function : FromTool(tool:McpTool) ~ AgentTool```\n\n\n\ntool: McpTool\n\nreturn: AgentTool"]
+				},
+				"Generate": {
+					"descriptions": ["**Generates the client class of a server**\n\n```function : Generate(server_name:String, server_version:String, tools:Vector&lt;McpTool&gt;, class_name:String) ~ String```\n\n\n\nserver_name: String\n\nserver_version: String\n\ntools: Vector&lt;McpTool&gt;\n\nclass_name: String\n\nreturn: String"]
+				},
+				"ObjeckType": {
+					"descriptions": ["**Maps an input schema property to the Objeck type of the stub's parameter: Int, Float, Bool, String, Int[], Float[], Bool[], String[] or JsonElement**\n\n```function : ObjeckType(prop:JsonElement) ~ String```\n\n\n\nprop: JsonElement\n\nreturn: String"]
+				}
+			}
+		},
 		"API.MCP.McpTool": {
 			"description": "A tool: a name, a description, the JSON Schema of its input and the function that runs it. The function takes a McpCall and returns a McpToolResult; one that raises an error is reported as a failed result",
 			"functions": {
@@ -2385,17 +2432,59 @@
 				"GetDescription": {
 					"descriptions": ["**Gets the description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetDestructiveHint": {
+					"descriptions": ["**Gets the destructiveHint; false when it is not stated (check HasDestructiveHint)**\n\n```method : public : GetDestructiveHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"GetIdempotentHint": {
+					"descriptions": ["**Gets the idempotentHint; false when it is not stated**\n\n```method : public : GetIdempotentHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"GetInputSchema": {
 					"descriptions": ["**Gets the input schema**\n\n```method : public : GetInputSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
 				},
 				"GetName": {
 					"descriptions": ["**Gets the tool name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetOpenWorldHint": {
+					"descriptions": ["**Gets the openWorldHint; false when it is not stated**\n\n```method : public : GetOpenWorldHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"GetOutputSchema": {
+					"descriptions": ["**Gets the declared shape of the structured result**\n\n```method : public : GetOutputSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetReadOnlyHint": {
+					"descriptions": ["**Gets the readOnlyHint; false when it is not stated (check HasReadOnlyHint)**\n\n```method : public : GetReadOnlyHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"GetTitle": {
 					"descriptions": ["**Gets the title**\n\n```method : public : GetTitle() ~ String```\n\n\n\nreturn: String"]
 				},
+				"HasDestructiveHint": {
+					"descriptions": ["**Says whether the tool's destructiveHint is stated**\n\n```method : public : HasDestructiveHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"HasIdempotentHint": {
+					"descriptions": ["**Says whether the tool's idempotentHint is stated**\n\n```method : public : HasIdempotentHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"HasOpenWorldHint": {
+					"descriptions": ["**Says whether the tool's openWorldHint is stated**\n\n```method : public : HasOpenWorldHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"HasReadOnlyHint": {
+					"descriptions": ["**Says whether the tool's readOnlyHint is stated**\n\n```method : public : HasReadOnlyHint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, schema:JsonElement, handler:Func2Ref&lt;McpCall,McpToolResult&gt;)```\n\n\n\nname: String\n\ndescription: String\n\nschema: JsonElement\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;"]
+				},
+				"SetDestructiveHint": {
+					"descriptions": ["**Sets the destructiveHint annotation: the tool may destroy or overwrite something (only meaningful when it is not read-only)**\n\n```method : public : SetDestructiveHint(destructive:Bool) ~ Nil```\n\n\n\ndestructive: Bool\n\nreturn: Nil"]
+				},
+				"SetIdempotentHint": {
+					"descriptions": ["**Sets the idempotentHint annotation: calling again with the same arguments has no further effect**\n\n```method : public : SetIdempotentHint(idempotent:Bool) ~ Nil```\n\n\n\nidempotent: Bool\n\nreturn: Nil"]
+				},
+				"SetOpenWorldHint": {
+					"descriptions": ["**Sets the openWorldHint annotation: the tool reaches outside this server (the web, other systems)**\n\n```method : public : SetOpenWorldHint(open_world:Bool) ~ Nil```\n\n\n\nopen_world: Bool\n\nreturn: Nil"]
+				},
+				"SetOutputSchema": {
+					"descriptions": ["**Declares the shape of the structuredContent the tool returns, an object schema. tools/list carries it as outputSchema, and a client (or the stub generator) can type the result**\n\n```method : public : SetOutputSchema(schema:JsonElement) ~ Nil```\n\n\n\nschema: JsonElement\n\nreturn: Nil"]
+				},
+				"SetReadOnlyHint": {
+					"descriptions": ["**Sets the readOnlyHint annotation: the tool does not change its environment**\n\n```method : public : SetReadOnlyHint(read_only:Bool) ~ Nil```\n\n\n\nread_only: Bool\n\nreturn: Nil"]
 				},
 				"SetTitle": {
 					"descriptions": ["**Sets a human-readable title**\n\n```method : public : SetTitle(title:String) ~ Nil```\n\n\n\ntitle: String\n\nreturn: Nil"]
@@ -2475,6 +2564,59 @@
 				},
 				"ToJson": {
 					"descriptions": ["**Converts the result to the JSON of a tools/call result**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.MCP.McpToolSpec": {
+			"description": "Declares a tool from the types of the function that implements it, and derives the JSON Schema. This is the library form of \"a function is a tool\": the names and types are written once, here, and the schema, the annotations and the registration follow from them. Parameter types are written as Objeck types and mapped by SchemaFor:\n\n| Objeck type | JSON Schema | | Int | {\"type\":\"integer\"} | | Float | {\"type\":\"number\"} | | Bool | {\"type\":\"boolean\"} | | String | {\"type\":\"string\"} | | Char | {\"type\":\"string\",\"minLength\":1,\"maxLength\":1} | | Byte | {\"type\":\"integer\",\"minimum\":0,\"maximum\":255} | | T[] , T[,] , Vector of T | {\"type\":\"array\",\"items\":T}, nested once per dimension | | Map of String to T | {\"type\":\"object\",\"additionalProperties\":T} | | enum(a,b,c) | {\"type\":\"string\",\"enum\":[\"a\",\"b\",\"c\"]} | | Json, JsonElement | {} (any JSON value) | | any other class or record | {\"type\":\"object\"}, which does not say what is inside; Known() is false |",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a required parameter**\n\n```method : public : Add(name:String, type:String, description:String) ~ McpToolSpec```\n\n\n\nname: String\n\ntype: String\n\ndescription: String\n\nreturn: McpToolSpec"]
+				},
+				"AddOptional": {
+					"descriptions": ["**Adds an optional parameter**\n\n```method : public : AddOptional(name:String, type:String, description:String) ~ McpToolSpec```\n\n\n\nname: String\n\ntype: String\n\ndescription: String\n\nreturn: McpToolSpec"]
+				},
+				"AddTo": {
+					"descriptions": ["**Builds the tool and registers it on a server**\n\n```method : public : AddTo(service:McpService, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ Nil```\n\n\n\nservice: McpService\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: Nil"]
+				},
+				"Destructive": {
+					"descriptions": ["**Marks the tool destructive (destructiveHint true, readOnlyHint false): an agent asks for approval before it runs**\n\n```method : public : Destructive() ~ McpToolSpec```\n\n\n\nreturn: McpToolSpec"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the tool name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSchema": {
+					"descriptions": ["**Gets the derived input schema: {\"type\":\"object\",\"properties\":{...}} and \"required\" when any parameter is**\n\n```method : public : GetSchema() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"Idempotent": {
+					"descriptions": ["**Marks the tool idempotent (idempotentHint true)**\n\n```method : public : Idempotent() ~ McpToolSpec```\n\n\n\nreturn: McpToolSpec"]
+				},
+				"Known": {
+					"descriptions": ["**Says whether a type maps to a schema that describes it. A class or record is mapped to a bare object, which does not say what is inside it**\n\n```function : Known(type:String) ~ Bool```\n\n\n\ntype: String\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, description:String)```\n\n\n\nname: String\n\ndescription: String"]
+				},
+				"OpenWorld": {
+					"descriptions": ["**Marks the tool as reaching outside this server (openWorldHint true)**\n\n```method : public : OpenWorld() ~ McpToolSpec```\n\n\n\nreturn: McpToolSpec"]
+				},
+				"ReadOnly": {
+					"descriptions": ["**Marks the tool read-only (readOnlyHint true)**\n\n```method : public : ReadOnly() ~ McpToolSpec```\n\n\n\nreturn: McpToolSpec"]
+				},
+				"Returns": {
+					"descriptions": ["**Declares the structured result, an object schema**\n\n```method : public : Returns(schema:String) ~ McpToolSpec```\n\n\n\nschema: String\n\nreturn: McpToolSpec"]
+				},
+				"Same": {
+					"descriptions": ["**Compares two JSON values structurally: objects by name (the order of names does not matter), arrays by position**\n\n```function : Same(a:JsonElement, b:JsonElement) ~ Bool```\n\n\n\na: JsonElement\n\nb: JsonElement\n\nreturn: Bool"]
+				},
+				"SchemaFor": {
+					"descriptions": ["**Maps an Objeck type, written as text, to its JSON Schema (see the table of the class)**\n\n```function : SchemaFor(type:String) ~ JsonElement```\n\n\n\ntype: String\n\nreturn: JsonElement"]
+				},
+				"Title": {
+					"descriptions": ["**Sets a human-readable title**\n\n```method : public : Title(title:String) ~ McpToolSpec```\n\n\n\ntitle: String\n\nreturn: McpToolSpec"]
+				},
+				"ToTool": {
+					"descriptions": ["**Builds the tool, with its annotations**\n\n```method : public : ToTool(handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ McpTool```\n\n\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: McpTool"]
 				}
 			}
 		},
@@ -26182,6 +26324,12 @@
 				"file": ""
 			}
 		],
+		"McpStubGenerator": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
 		"McpTool": [
 			{
 				"bundle": "API.MCP",
@@ -26195,6 +26343,12 @@
 			}
 		],
 		"McpToolResult": [
+			{
+				"bundle": "API.MCP",
+				"file": ""
+			}
+		],
+		"McpToolSpec": [
 			{
 				"bundle": "API.MCP",
 				"file": ""
