@@ -1,0 +1,3288 @@
+#~~
+Objeck telemetry library: per-model, per-device inference timing, streaming statistics,
+resource samplers, an energy estimator, profiles and a contention helper
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+use Data.JSON;
+use System.Concurrency;
+use System.IO.Filesystem;
+
+#~
+Measurement base for resource-aware inference: time a call with a monotonic clock, keep bounded-memory latency statistics per (model, device, batch), sample host, collector and GPU resources, estimate energy from sampled power, save the result as a profile and predict from it. Pure Objeck over the runtime's own monitors. Compile with -lib telemetry,gen_collect,json.
+
+All latencies are in milliseconds, as Float. The clock is the runtime's System.Time.Timer, which reads a monotonic (steady) clock with nanosecond ticks; the Timer API hands the interval back as seconds in a Float, so one measurement costs one object allocation and two VM calls (see Telemetry->MeasureOverhead) and has no wall-clock jump. Nothing here ends the program on bad input: a call that cannot do its work returns Nil, NaN or false and the object's GetError() says why. Design and verification notes: docs/ai_sections/telemetry.md.
+~#
+bundle System.Telemetry {
+	#~
+	A log-bucketed latency histogram (the DDSketch construction, the same idea as an HDR histogram with a fixed relative error): memory is a fixed array of counters whatever the sample count, and a quantile estimate is within the stated relative error of the true value at that rank.
+
+	A value x is counted in bucket ceil(log(x / MIN) / log(gamma)) with gamma = (1 + a) / (1 - a) for the relative error a, and a bucket is reported by its geometric centre 2 * upper / (gamma + 1), which is within a of every value in the bucket. Values are in milliseconds: the range covered with the stated error is 1.0e-6 ms (1 ns) up to 1.0e7 ms (under 3 hours). A value below 1 ns is counted in the lowest bucket (an absolute error under 1 ns) and one above the range in the highest, and both are counted in GetClamped(). The default error of 1 percent takes about 1,500 counters (12 KB); 0.5 percent takes about 3,000.
+
+	Quantile(q) returns the estimate of the order statistic of nearest rank ceil(q * n), clamped into the exact minimum and maximum the sketch also keeps, so Quantile(0) and Quantile(1) are exact.
+	~#
+	class LatencySketch {
+		@alpha : Float;
+		@gamma : Float;
+		@log_gamma : Float;
+		@counts : Int[];
+		@total : Int;
+		@min : Float;
+		@max : Float;
+		@clamped : Int;
+
+		#~
+		Smallest value with the stated relative error, in milliseconds (1 ns)
+		@return the smallest value
+		~#
+		function : MinValue() ~ Float {
+			return 0.000001;
+		}
+
+		#~
+		Largest value with the stated relative error, in milliseconds
+		@return the largest value
+		~#
+		function : MaxValue() ~ Float {
+			return 10000000.0;
+		}
+
+		#~
+		Constructor with the default relative error of 1 percent
+		~#
+		New() {
+			Init(0.01);
+		}
+
+		#~
+		Constructor
+		@param rel_error relative error of a quantile estimate, in (0.0001, 0.5); a value outside that range is replaced by the default 0.01
+		~#
+		New(rel_error : Float) {
+			Init(rel_error);
+		}
+
+		method : Init(rel_error : Float) ~ Nil {
+			a := rel_error;
+			if(a <> a | a < 0.0001 | a > 0.5) {
+				a := 0.01;
+			};
+			@alpha := a;
+			@gamma := (1.0 + a) / (1.0 - a);
+			@log_gamma := Float->Log(@gamma);
+			n := Float->Ceil(Float->Log(MaxValue() / MinValue()) / @log_gamma)->As(Int) + 1;
+			@counts := Int->New[n];
+			@total := 0;
+			@min := Float->Inf();
+			@max := 0.0;
+			@clamped := 0;
+		}
+
+		#~
+		The relative error this sketch was built with
+		@return relative error
+		~#
+		method : public : GetRelativeError() ~ Float {
+			return @alpha;
+		}
+
+		#~
+		Number of counters, the memory bound
+		@return number of buckets
+		~#
+		method : public : GetBucketCount() ~ Int {
+			return @counts->Size();
+		}
+
+		#~
+		Number of values added
+		@return count
+		~#
+		method : public : GetCount() ~ Int {
+			return @total;
+		}
+
+		#~
+		Number of added values that fell outside the range with the stated error
+		@return number of clamped values
+		~#
+		method : public : GetClamped() ~ Int {
+			return @clamped;
+		}
+
+		#~
+		Smallest value added, exact
+		@return minimum, or NaN if empty
+		~#
+		method : public : GetMin() ~ Float {
+			if(@total = 0) {
+				return Float->NaN();
+			};
+			return @min;
+		}
+
+		#~
+		Largest value added, exact
+		@return maximum, or NaN if empty
+		~#
+		method : public : GetMax() ~ Float {
+			if(@total = 0) {
+				return Float->NaN();
+			};
+			return @max;
+		}
+
+		method : Index(x : Float) ~ Int {
+			if(x <= MinValue()) {
+				return 0;
+			};
+			i := Float->Ceil(Float->Log(x / MinValue()) / @log_gamma);
+			last := @counts->Size() - 1;
+			if(i >= last->As(Float)) {
+				return last;
+			};
+			return i->As(Int);
+		}
+
+		method : Center(i : Int) ~ Float {
+			if(i <= 0) {
+				return MinValue();
+			};
+			upper := MinValue() * Float->Pow(@gamma, i);
+			return 2.0 * upper / (@gamma + 1.0);
+		}
+
+		#~
+		Adds a value
+		@param x value in milliseconds
+		@return false, and nothing is added, if x is NaN, infinite or negative
+		~#
+		method : public : Add(x : Float) ~ Bool {
+			if(x <> x | x < 0.0 | x > 1.0e300) {
+				return false;
+			};
+			if(x < MinValue() | x > MaxValue()) {
+				@clamped += 1;
+			};
+			@counts[Index(x)] += 1;
+			@total += 1;
+			if(x < @min) {
+				@min := x;
+			};
+			if(x > @max) {
+				@max := x;
+			};
+			return true;
+		}
+
+		#~
+		Estimate of a quantile
+		@param q quantile in [0, 1], 0.5 is the median
+		@return estimate within the relative error of the order statistic of nearest rank ceil(q * n), or NaN if empty or q is not a number
+		~#
+		method : public : Quantile(q : Float) ~ Float {
+			if(@total = 0 | q <> q) {
+				return Float->NaN();
+			};
+			rank := Telemetry->NearestRank(q, @total);
+			if(rank <= 1) {
+				return @min;
+			};
+			if(rank >= @total) {
+				return @max;
+			};
+			cum := 0;
+			n := @counts->Size();
+			for(i := 0; i < n; i += 1;) {
+				cum += @counts[i];
+				if(cum >= rank) {
+					est := Center(i);
+					if(est < @min) {
+						est := @min;
+					};
+					if(est > @max) {
+						est := @max;
+					};
+					return est;
+				};
+			};
+			return @max;
+		}
+
+		#~
+		Adds the counts of another sketch
+		@param peer sketch built with the same relative error
+		@return false if the relative errors differ, and nothing is merged
+		~#
+		method : public : Merge(peer : LatencySketch) ~ Bool {
+			if(peer = Nil | Float->Abs(peer->GetRelativeError() - @alpha) > 1.0e-12) {
+				return false;
+			};
+			if(peer->GetCount() = 0) {
+				return true;
+			};
+			n := @counts->Size();
+			for(i := 0; i < n; i += 1;) {
+				@counts[i] += peer->CountAt(i);
+			};
+			@total += peer->GetCount();
+			@clamped += peer->GetClamped();
+			if(peer->GetMin() < @min) {
+				@min := peer->GetMin();
+			};
+			if(peer->GetMax() > @max) {
+				@max := peer->GetMax();
+			};
+			return true;
+		}
+
+		method : public : CountAt(i : Int) ~ Int {
+			return @counts[i];
+		}
+
+		#~
+		The sketch as JSON: the relative error, the exact extremes and the non-empty buckets as [index, count] pairs
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			root := JsonElement->New(JsonElement->JsonType->OBJECT);
+			root->Insert("alpha", @alpha);
+			root->Insert("total", @total);
+			root->Insert("clamped", @clamped);
+			if(@total > 0) {
+				root->Insert("min", @min);
+				root->Insert("max", @max);
+			};
+			buckets := JsonElement->New(JsonElement->JsonType->ARRAY);
+			n := @counts->Size();
+			for(i := 0; i < n; i += 1;) {
+				if(@counts[i] > 0) {
+					pair := JsonElement->New(JsonElement->JsonType->ARRAY);
+					pair->Add(i);
+					pair->Add(@counts[i]);
+					buckets->Add(pair);
+				};
+			};
+			root->Insert("buckets", buckets);
+			return root;
+		}
+
+		#~
+		Rebuilds a sketch from the JSON ToJson wrote
+		@param root JSON object
+		@return the sketch, or Nil if the JSON is not a sketch
+		~#
+		function : FromJson(root : JsonElement) ~ LatencySketch {
+			if(root = Nil | root->Has("alpha") = false | root->Has("buckets") = false | root->Has("total") = false) {
+				return Nil;
+			};
+			sketch := LatencySketch->New(root->Get("alpha")->GetFloat());
+			if(Float->Abs(sketch->GetRelativeError() - root->Get("alpha")->GetFloat()) > 1.0e-12) {
+				return Nil;
+			};
+			buckets := root->Get("buckets");
+			total := 0;
+			n := sketch->GetBucketCount();
+			for(i := 0; i < buckets->Size(); i += 1;) {
+				pair := buckets->Get(i);
+				if(pair = Nil | pair->Size() <> 2) {
+					return Nil;
+				};
+				idx := pair->Get(0)->GetInt();
+				cnt := pair->Get(1)->GetInt();
+				if(idx < 0 | idx >= n | cnt < 0) {
+					return Nil;
+				};
+				sketch->SetCount(idx, cnt);
+				total += cnt;
+			};
+			if(total <> root->Get("total")->GetInt()) {
+				return Nil;
+			};
+			mn := Float->Inf();
+			mx := 0.0;
+			if(total > 0) {
+				if(root->Has("min") = false | root->Has("max") = false) {
+					return Nil;
+				};
+				mn := root->Get("min")->GetFloat();
+				mx := root->Get("max")->GetFloat();
+			};
+			cl := 0;
+			if(root->Has("clamped")) {
+				cl := root->Get("clamped")->GetInt();
+			};
+			sketch->Restore(total, mn, mx, cl);
+			return sketch;
+		}
+
+		method : public : SetCount(i : Int, c : Int) ~ Nil {
+			@counts[i] := c;
+		}
+
+		method : public : Restore(total : Int, mn : Float, mx : Float, cl : Int) ~ Nil {
+			@total := total;
+			@min := mn;
+			@max := mx;
+			@clamped := cl;
+		}
+	}
+
+	#~
+	A ring buffer of the last N raw samples, the newest overwriting the oldest. Memory is fixed at the capacity.
+	~#
+	class SampleRing {
+		@buf : Float[];
+		@cap : Int;
+		@next : Int;
+		@size : Int;
+		@total : Int;
+
+		#~
+		Constructor
+		@param capacity number of samples kept, at least 1
+		~#
+		New(capacity : Int) {
+			c := capacity;
+			if(c < 1) {
+				c := 1;
+			};
+			@cap := c;
+			@buf := Float->New[c];
+			@next := 0;
+			@size := 0;
+			@total := 0;
+		}
+
+		#~
+		Adds a sample, dropping the oldest when full
+		@param x sample
+		~#
+		method : public : Add(x : Float) ~ Nil {
+			@buf[@next] := x;
+			@next += 1;
+			if(@next = @cap) {
+				@next := 0;
+			};
+			if(@size < @cap) {
+				@size += 1;
+			};
+			@total += 1;
+		}
+
+		#~
+		Number of samples held
+		@return number held, at most the capacity
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Capacity
+		@return the most samples held
+		~#
+		method : public : Capacity() ~ Int {
+			return @cap;
+		}
+
+		#~
+		Number of samples ever added, including the ones overwritten
+		@return total added
+		~#
+		method : public : TotalAdded() ~ Int {
+			return @total;
+		}
+
+		#~
+		A sample by age
+		@param i 0 is the oldest sample still held, Size() - 1 the newest
+		@return the sample, or NaN if i is out of range
+		~#
+		method : public : Get(i : Int) ~ Float {
+			if(i < 0 | i >= @size) {
+				return Float->NaN();
+			};
+			start := 0;
+			if(@size = @cap) {
+				start := @next;
+			};
+			return @buf[(start + i) % @cap];
+		}
+
+		#~
+		The samples held, oldest first
+		@return a new array
+		~#
+		method : public : ToArray() ~ Float[] {
+			out := Float->New[@size];
+			for(i := 0; i < @size; i += 1;) {
+				out[i] := Get(i);
+			};
+			return out;
+		}
+
+		#~
+		Forgets every sample
+		~#
+		method : public : Clear() ~ Nil {
+			@next := 0;
+			@size := 0;
+			@total := 0;
+		}
+	}
+
+	#~
+	Streaming statistics of one latency series, in milliseconds, in bounded memory: the count, minimum, maximum, mean and standard deviation (Welford's update, so a long series does not lose precision), quantiles from a LatencySketch, the exact quantiles while the series is still small, and a SampleRing of the last raw samples.
+
+	A series with warm-up N discards its first N samples (counted by GetDiscarded, never part of any statistic), the usual way to keep cold-start cost, JIT and cache fill out of the numbers. A series whose count is within the exact limit (512 by default) keeps every sample and answers quantiles exactly, by nearest rank; past the limit it answers from the sketch, within GetRelativeError(). The standard deviation is the sample one (divisor n - 1).
+	~#
+	class SeriesStats {
+		@warmup : Int;
+		@seen : Int;
+		@discarded : Int;
+		@rejected : Int;
+		@n : Int;
+		@mean : Float;
+		@m2 : Float;
+		@min : Float;
+		@max : Float;
+		@sketch : LatencySketch;
+		@exact : Float[];
+		@exact_limit : Int;
+		@exact_valid : Bool;
+		@ring : SampleRing;
+		@summary : Float[];
+
+		#~
+		Constructor with no warm-up, the default 1 percent error, a ring of 256 samples and an exact limit of 512
+		~#
+		New() {
+			Init(0, 0.01, 256, 512);
+		}
+
+		#~
+		Constructor
+		@param warmup number of leading samples to discard
+		~#
+		New(warmup : Int) {
+			Init(warmup, 0.01, 256, 512);
+		}
+
+		#~
+		Constructor
+		@param warmup number of leading samples to discard
+		@param rel_error relative error of the sketch
+		@param ring_size number of raw samples kept
+		@param exact_limit largest count answered exactly, 0 to always use the sketch
+		~#
+		New(warmup : Int, rel_error : Float, ring_size : Int, exact_limit : Int) {
+			Init(warmup, rel_error, ring_size, exact_limit);
+		}
+
+		method : Init(warmup : Int, rel_error : Float, ring_size : Int, exact_limit : Int) ~ Nil {
+			@warmup := warmup;
+			if(@warmup < 0) {
+				@warmup := 0;
+			};
+			@seen := 0;
+			@discarded := 0;
+			@rejected := 0;
+			@n := 0;
+			@mean := 0.0;
+			@m2 := 0.0;
+			@min := Float->Inf();
+			@max := 0.0;
+			@sketch := LatencySketch->New(rel_error);
+			@exact_limit := exact_limit;
+			if(@exact_limit < 0) {
+				@exact_limit := 0;
+			};
+			@exact := Float->New[@exact_limit];
+			@exact_valid := true;
+			@ring := SampleRing->New(ring_size);
+			@summary := Nil;
+		}
+
+		#~
+		A series rebuilt from summary numbers alone, as a CSV profile carries them. It answers count, minimum, maximum, mean, standard deviation and the four stored quantiles, and nothing else; it cannot merge quantiles.
+		@param count number of samples
+		@param mn minimum
+		@param mx maximum
+		@param mean mean
+		@param stddev sample standard deviation
+		@param p50 median
+		@param p95 95th percentile
+		@param p99 99th percentile
+		@param p999 99.9th percentile
+		@return the series
+		~#
+		function : FromSummary(count : Int, mn : Float, mx : Float, mean : Float, stddev : Float, p50 : Float, p95 : Float, p99 : Float, p999 : Float) ~ SeriesStats {
+			s := SeriesStats->New(0, 0.01, 1, 0);
+			s->SetSummary(count, mn, mx, mean, stddev, [p50, p95, p99, p999]);
+			return s;
+		}
+
+		method : public : SetSummary(count : Int, mn : Float, mx : Float, mean : Float, stddev : Float, q : Float[]) ~ Nil {
+			@n := count;
+			@seen := count;
+			@min := mn;
+			@max := mx;
+			@mean := mean;
+			sd := stddev;
+			if(sd <> sd) {
+				sd := 0.0;
+			};
+			if(count > 1) {
+				@m2 := sd * sd * (count - 1)->As(Float);
+			};
+			@exact_valid := false;
+			@summary := q;
+		}
+
+		#~
+		Adds a sample, or discards it while the warm-up lasts
+		@param x latency in milliseconds
+		@return true if the sample entered the statistics; false if it was discarded as warm-up, or rejected because it is NaN, infinite or negative (counted by GetRejected)
+		~#
+		method : public : Add(x : Float) ~ Bool {
+			if(@summary <> Nil) {
+				@rejected += 1;
+				return false;
+			};
+			if(x <> x | x < 0.0 | x > 1.0e300) {
+				@rejected += 1;
+				return false;
+			};
+			@seen += 1;
+			if(@seen <= @warmup) {
+				@discarded += 1;
+				return false;
+			};
+			@n += 1;
+			delta := x - @mean;
+			@mean += delta / @n->As(Float);
+			@m2 += delta * (x - @mean);
+			if(x < @min) {
+				@min := x;
+			};
+			if(x > @max) {
+				@max := x;
+			};
+			@sketch->Add(x);
+			if(@n <= @exact_limit) {
+				@exact[@n - 1] := x;
+			}
+			else {
+				@exact_valid := false;
+			};
+			@ring->Add(x);
+			return true;
+		}
+
+		#~
+		Number of samples in the statistics, warm-up excluded
+		@return count
+		~#
+		method : public : GetCount() ~ Int {
+			return @n;
+		}
+
+		#~
+		Number of samples discarded as warm-up
+		@return discarded count
+		~#
+		method : public : GetDiscarded() ~ Int {
+			return @discarded;
+		}
+
+		#~
+		Number of samples rejected as NaN, infinite or negative
+		@return rejected count
+		~#
+		method : public : GetRejected() ~ Int {
+			return @rejected;
+		}
+
+		#~
+		Warm-up setting
+		@return number of leading samples discarded
+		~#
+		method : public : GetWarmup() ~ Int {
+			return @warmup;
+		}
+
+		#~
+		Smallest sample
+		@return minimum, or NaN if empty
+		~#
+		method : public : GetMin() ~ Float {
+			if(@n = 0) {
+				return Float->NaN();
+			};
+			return @min;
+		}
+
+		#~
+		Largest sample
+		@return maximum, or NaN if empty
+		~#
+		method : public : GetMax() ~ Float {
+			if(@n = 0) {
+				return Float->NaN();
+			};
+			return @max;
+		}
+
+		#~
+		Mean
+		@return mean, or NaN if empty
+		~#
+		method : public : GetMean() ~ Float {
+			if(@n = 0) {
+				return Float->NaN();
+			};
+			return @mean;
+		}
+
+		#~
+		Sum of squared deviations from the mean, the second moment merging needs
+		@return the sum, 0 for fewer than two samples
+		~#
+		method : public : GetM2() ~ Float {
+			return @m2;
+		}
+
+		#~
+		Sample variance, divisor n - 1
+		@return variance, or NaN for fewer than two samples
+		~#
+		method : public : GetVariance() ~ Float {
+			if(@n < 2) {
+				return Float->NaN();
+			};
+			v := @m2 / (@n - 1)->As(Float);
+			if(v < 0.0) {
+				return 0.0;
+			};
+			return v;
+		}
+
+		#~
+		Sample standard deviation, divisor n - 1
+		@return standard deviation, or NaN for fewer than two samples
+		~#
+		method : public : GetStdDev() ~ Float {
+			v := GetVariance();
+			if(v <> v) {
+				return v;
+			};
+			return Float->Sqrt(v);
+		}
+
+		#~
+		Whether quantiles are exact: every sample is held and the series was not merged past the exact limit
+		@return true if Quantile is the exact nearest-rank value
+		~#
+		method : public : IsExact() ~ Bool {
+			return @summary = Nil & @exact_valid;
+		}
+
+		#~
+		Relative error of a quantile answer
+		@return 0 when exact, otherwise the sketch's relative error; NaN for a series loaded from summary numbers
+		~#
+		method : public : GetRelativeError() ~ Float {
+			if(@summary <> Nil) {
+				return Float->NaN();
+			};
+			if(@exact_valid) {
+				return 0.0;
+			};
+			return @sketch->GetRelativeError();
+		}
+
+		#~
+		Quantile by nearest rank: the sample at rank ceil(q * n) in sorted order
+		@param q quantile in [0, 1]
+		@return the exact value while the series is exact, else the sketch estimate; NaN if empty, if q is not a number, or for a series loaded from summary numbers that stored no such quantile
+		~#
+		method : public : Quantile(q : Float) ~ Float {
+			if(@n = 0 | q <> q) {
+				return Float->NaN();
+			};
+			if(@summary <> Nil) {
+				return SummaryQuantile(q);
+			};
+			if(@exact_valid) {
+				sorted := Float->New[@n];
+				Float->Copy(sorted, 0, @exact, 0, @n);
+				ArraySort->Sort(sorted);
+				rank := Telemetry->NearestRank(q, @n);
+				return sorted[rank - 1];
+			};
+			return @sketch->Quantile(q);
+		}
+
+		method : SummaryQuantile(q : Float) ~ Float {
+			if(q <= 0.0) {
+				return @min;
+			};
+			if(q >= 1.0) {
+				return @max;
+			};
+			if(Float->Abs(q - 0.5) < 1.0e-9) {
+				return @summary[0];
+			};
+			if(Float->Abs(q - 0.95) < 1.0e-9) {
+				return @summary[1];
+			};
+			if(Float->Abs(q - 0.99) < 1.0e-9) {
+				return @summary[2];
+			};
+			if(Float->Abs(q - 0.999) < 1.0e-9) {
+				return @summary[3];
+			};
+			return Float->NaN();
+		}
+
+		#~
+		Median
+		@return the 50th percentile
+		~#
+		method : public : GetP50() ~ Float {
+			return Quantile(0.5);
+		}
+
+		#~
+		95th percentile
+		@return the 95th percentile
+		~#
+		method : public : GetP95() ~ Float {
+			return Quantile(0.95);
+		}
+
+		#~
+		99th percentile
+		@return the 99th percentile
+		~#
+		method : public : GetP99() ~ Float {
+			return Quantile(0.99);
+		}
+
+		#~
+		99.9th percentile
+		@return the 99.9th percentile; with fewer than 1,000 samples this is the maximum
+		~#
+		method : public : GetP999() ~ Float {
+			return Quantile(0.999);
+		}
+
+		#~
+		The ring of the last raw samples
+		@return the ring, empty for a series loaded from summary numbers
+		~#
+		method : public : GetRing() ~ SampleRing {
+			return @ring;
+		}
+
+		#~
+		Whether the series holds only summary numbers, as a profile loaded from CSV does
+		@return true if so
+		~#
+		method : public : IsSummaryOnly() ~ Bool {
+			return @summary <> Nil;
+		}
+
+		method : public : GetSketch() ~ LatencySketch {
+			return @sketch;
+		}
+
+		#~
+		Folds another series in, as if its samples had been added here
+		@param peer series; warm-up is not reapplied to it
+		@return false if the relative errors differ, and nothing is merged
+		~#
+		method : public : Merge(peer : SeriesStats) ~ Bool {
+			if(peer = Nil) {
+				return false;
+			};
+			if(peer->GetCount() = 0) {
+				@discarded += peer->GetDiscarded();
+				@rejected += peer->GetRejected();
+				return true;
+			};
+			if(@summary = Nil & peer->IsSummaryOnly() = false & Float->Abs(peer->GetSketch()->GetRelativeError() - @sketch->GetRelativeError()) > 1.0e-12) {
+				return false;
+			};
+			if(@n = 0 & @summary = Nil & peer->IsSummaryOnly() = false) {
+				# nothing here yet: take the other's exact buffer too
+				for(i := 0; i < peer->GetCount() & i < @exact_limit; i += 1;) {
+					@exact[i] := peer->ExactAt(i);
+				};
+				@exact_valid := peer->IsExact() & peer->GetCount() <= @exact_limit;
+			}
+			else if(@summary = Nil & peer->IsSummaryOnly() = false & @exact_valid & peer->IsExact() & @n + peer->GetCount() <= @exact_limit) {
+				for(i := 0; i < peer->GetCount(); i += 1;) {
+					@exact[@n + i] := peer->ExactAt(i);
+				};
+			}
+			else {
+				@exact_valid := false;
+			};
+
+			total := @n + peer->GetCount();
+			delta := peer->GetMean() - @mean;
+			if(@n = 0) {
+				@mean := peer->GetMean();
+				@m2 := peer->GetM2();
+			}
+			else {
+				@mean += delta * peer->GetCount()->As(Float) / total->As(Float);
+				@m2 += peer->GetM2() + delta * delta * @n->As(Float) * peer->GetCount()->As(Float) / total->As(Float);
+			};
+			if(peer->GetMin() < @min) {
+				@min := peer->GetMin();
+			};
+			if(peer->GetMax() > @max) {
+				@max := peer->GetMax();
+			};
+
+			if(@summary = Nil & peer->IsSummaryOnly() = false) {
+				@sketch->Merge(peer->GetSketch());
+				ring := peer->GetRing();
+				for(i := 0; i < ring->Size(); i += 1;) {
+					@ring->Add(ring->Get(i));
+				};
+			}
+			else {
+				# a series with no sketch cannot answer quantiles over the union
+				@summary := [Float->NaN(), Float->NaN(), Float->NaN(), Float->NaN()];
+				@exact_valid := false;
+			};
+			@n := total;
+			@seen += peer->GetCount() + peer->GetDiscarded();
+			@discarded += peer->GetDiscarded();
+			@rejected += peer->GetRejected();
+			return true;
+		}
+
+		method : public : ExactAt(i : Int) ~ Float {
+			return @exact[i];
+		}
+
+		#~
+		The series as JSON: the moments, the exact samples while the series is exact, and the sketch
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			root := JsonElement->New(JsonElement->JsonType->OBJECT);
+			root->Insert("count", @n);
+			root->Insert("discarded", @discarded);
+			root->Insert("rejected", @rejected);
+			root->Insert("warmup", @warmup);
+			if(@n > 0) {
+				root->Insert("min", @min);
+				root->Insert("max", @max);
+				root->Insert("mean", @mean);
+				root->Insert("m2", @m2);
+			};
+			if(@summary <> Nil) {
+				q := JsonElement->New(JsonElement->JsonType->ARRAY);
+				for(i := 0; i < 4; i += 1;) {
+					if(@summary[i] = @summary[i]) {
+						q->Add(@summary[i]);
+					}
+					else {
+						q->Add(JsonElement->New(JsonElement->JsonType->NULL));
+					};
+				};
+				root->Insert("summary", q);
+				return root;
+			};
+			if(@exact_valid & @n > 0) {
+				ex := JsonElement->New(JsonElement->JsonType->ARRAY);
+				for(i := 0; i < @n; i += 1;) {
+					ex->Add(@exact[i]);
+				};
+				root->Insert("exact", ex);
+			};
+			root->Insert("sketch", @sketch->ToJson());
+			return root;
+		}
+
+		#~
+		Rebuilds a series from the JSON ToJson wrote
+		@param root JSON object
+		@param exact_limit exact limit of the rebuilt series
+		@return the series, or Nil if the JSON is not a series
+		~#
+		function : FromJson(root : JsonElement, exact_limit : Int) ~ SeriesStats {
+			if(root = Nil | root->Has("count") = false) {
+				return Nil;
+			};
+			n := root->Get("count")->GetInt();
+			s : SeriesStats;
+			if(n < 0) {
+				return Nil;
+			};
+			if(root->Has("summary")) {
+				q := root->Get("summary");
+				if(q->Size() <> 4 | n < 1) {
+					return Nil;
+				};
+				vals := Float->New[4];
+				for(i := 0; i < 4; i += 1;) {
+					if(q->Get(i)->GetType() = JsonElement->JsonType->NULL) {
+						vals[i] := Float->NaN();
+					}
+					else {
+						vals[i] := q->Get(i)->GetFloat();
+					};
+				};
+				s := SeriesStats->New(0, 0.01, 1, 0);
+				sd := 0.0;
+				if(n > 1) {
+					sd := Float->Sqrt(root->Get("m2")->GetFloat() / (n - 1)->As(Float));
+				};
+				s->SetSummary(n, root->Get("min")->GetFloat(), root->Get("max")->GetFloat(), root->Get("mean")->GetFloat(), sd, vals);
+				s->SetM2(root->Get("m2")->GetFloat());
+			}
+			else {
+				if(root->Has("sketch") = false) {
+					return Nil;
+				};
+				sketch := LatencySketch->FromJson(root->Get("sketch"));
+				if(sketch = Nil | sketch->GetCount() <> n) {
+					return Nil;
+				};
+				warm := 0;
+				if(root->Has("warmup")) {
+					warm := root->Get("warmup")->GetInt();
+				};
+				s := SeriesStats->New(warm, sketch->GetRelativeError(), 256, exact_limit);
+				if(n > 0) {
+					if(root->Has("mean") = false | root->Has("m2") = false) {
+						return Nil;
+					};
+					s->Restore(n, root->Get("mean")->GetFloat(), root->Get("m2")->GetFloat(), sketch);
+				};
+				if(root->Has("exact") & n <= exact_limit) {
+					ex := root->Get("exact");
+					if(ex->Size() <> n) {
+						return Nil;
+					};
+					for(i := 0; i < n; i += 1;) {
+						s->SetExact(i, ex->Get(i)->GetFloat());
+					};
+					s->SetExactValid(true);
+				}
+				else if(n > 0) {
+					s->SetExactValid(false);
+				};
+			};
+			if(root->Has("discarded")) {
+				s->SetCounters(root->Get("discarded")->GetInt(), root->Get("rejected")->GetInt());
+			};
+			return s;
+		}
+
+		method : public : SetM2(m2 : Float) ~ Nil {
+			@m2 := m2;
+		}
+
+		method : public : SetExact(i : Int, x : Float) ~ Nil {
+			@exact[i] := x;
+		}
+
+		method : public : SetExactValid(v : Bool) ~ Nil {
+			@exact_valid := v;
+		}
+
+		method : public : SetCounters(discarded : Int, rejected : Int) ~ Nil {
+			@discarded := discarded;
+			@rejected := rejected;
+			@seen := @n + discarded;
+		}
+
+		method : public : Restore(n : Int, mean : Float, m2 : Float, sketch : LatencySketch) ~ Nil {
+			@n := n;
+			@seen := n;
+			@mean := mean;
+			@m2 := m2;
+			@min := sketch->GetMin();
+			@max := sketch->GetMax();
+			@sketch := sketch;
+		}
+	}
+
+	#~
+	Static helpers and the process-wide default recorder.
+	~#
+	class Telemetry {
+		@default_recorder : static : TimingRecorder;
+
+		#~
+		The clock behind every measurement, for the record
+		@return a description of the clock
+		~#
+		function : ClockDescription() ~ String {
+			return "System.Time.Timer: steady (monotonic) clock, nanosecond ticks, interval returned as seconds in a Float";
+		}
+
+		#~
+		Nearest rank of a quantile: ceil(q * n), clamped into [1, n]
+		@param q quantile in [0, 1]
+		@param n sample count
+		@return rank, 1 based
+		~#
+		function : NearestRank(q : Float, n : Int) ~ Int {
+			if(n < 1) {
+				return 0;
+			};
+			r := Float->Ceil(q * n->As(Float) - 0.000000001)->As(Int);
+			if(r < 1) {
+				r := 1;
+			};
+			if(r > n) {
+				r := n;
+			};
+			return r;
+		}
+
+		#~
+		Milliseconds since the runtime started, from the monotonic clock behind the runtime.uptime_ms property; the time base of sampler readings. One-millisecond resolution.
+		@return milliseconds, or -1 if the runtime does not report it
+		~#
+		function : NowMs() ~ Int {
+			text := Runtime->GetProperty("runtime.uptime_ms");
+			if(text = Nil | text->Size() = 0) {
+				return -1;
+			};
+			return text->ToInt();
+		}
+
+		#~
+		Whether a string is a plain decimal number such as 12, -3.5 or 1.2e-5
+		@param s text
+		@return true if it parses completely as a number
+		~#
+		function : IsNumber(s : String) ~ Bool {
+			if(s = Nil | s->Size() = 0) {
+				return false;
+			};
+			digits := 0;
+			for(i := 0; i < s->Size(); i += 1;) {
+				c := s->Get(i);
+				if(c >= '0' & c <= '9') {
+					digits += 1;
+				}
+				else if(c = '.' | c = 'e' | c = 'E') {
+				}
+				else if((c = '-' | c = '+') & (i = 0 | s->Get(i - 1) = 'e' | s->Get(i - 1) = 'E')) {
+				}
+				else {
+					return false;
+				};
+			};
+			return digits > 0;
+		}
+
+		#~
+		Reads a runtime.* property as a number
+		@param key property name
+		@return the value, or NaN if the runtime does not report it
+		~#
+		function : ReadProperty(key : String) ~ Float {
+			text := Runtime->GetProperty(key);
+			if(text = Nil | IsNumber(text) = false) {
+				return Float->NaN();
+			};
+			return text->ToFloat();
+		}
+
+		#~
+		The process-wide recorder behind the static Start and Time calls, created on first use
+		@return the default recorder
+		~#
+		function : Default() ~ TimingRecorder {
+			if(@default_recorder = Nil) {
+				@default_recorder := TimingRecorder->New();
+			};
+			return @default_recorder;
+		}
+
+		#~
+		Replaces the default recorder with an empty one
+		~#
+		function : Reset() ~ Nil {
+			@default_recorder := TimingRecorder->New();
+		}
+
+		#~
+		Starts timing one call on the default recorder, batch 1
+		@param model model name
+		@param device device name such as cpu or cuda
+		@param tag label of the measurement phase, "" for none; a separate series per tag
+		@return the handle; call Stop on it when the call returns
+		~#
+		function : Start(model : String, device : String, tag : String) ~ TimingProbe {
+			return Default()->Start(model, device, 1, tag);
+		}
+
+		#~
+		Starts timing one call on the default recorder
+		@param model model name
+		@param device device name such as cpu or cuda
+		@param batch batch size of the call
+		@param tag label of the measurement phase, "" for none
+		@return the handle; call Stop on it when the call returns
+		~#
+		function : Start(model : String, device : String, batch : Int, tag : String) ~ TimingProbe {
+			return Default()->Start(model, device, batch, tag);
+		}
+
+		#~
+		Times a function reference on the default recorder
+		@param model model name
+		@param device device name
+		@param batch batch size of the call
+		@param tag phase label
+		@param work function to call once
+		@return the elapsed milliseconds
+		~#
+		function : Time(model : String, device : String, batch : Int, tag : String, work : () ~ Nil) ~ Float {
+			return Default()->Time(model, device, batch, tag, work);
+		}
+
+		#~
+		Prediction from the default recorder's profile
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@return the observed latency and memory, or Nil if nothing was observed (Default()->GetStore()->GetError() says why)
+		~#
+		function : Predict(model : String, device : String, batch : Int) ~ LatencyPrediction {
+			return Default()->GetStore()->Predict(model, device, batch);
+		}
+
+		#~
+		Cost of the measurement itself: the milliseconds between Start and Stop of a probe wrapped around nothing
+		@param iterations number of empty measurements
+		@return a series of the empty-probe intervals, or Nil if iterations is below 1
+		~#
+		function : MeasureOverhead(iterations : Int) ~ SeriesStats {
+			if(iterations < 1) {
+				return Nil;
+			};
+			stats := SeriesStats->New(0, 0.01, 16, 512);
+			for(i := 0; i < iterations; i += 1;) {
+				t := System.Time.Timer->New(true);
+				t->End();
+				stats->Add(t->GetElapsedTime() * 1000.0);
+			};
+			return stats;
+		}
+
+		#~
+		Formats a Float as the shortest text that reads back as the same value
+		@param v value
+		@return text, "" for NaN
+		~#
+		function : Fmt(v : Float) ~ String {
+			if(v <> v) {
+				return "";
+			};
+			return v->ToShortString();
+		}
+
+		#~
+		Replaces the series key separator in a name
+		@param s name
+		@return the name with | replaced by /
+		~#
+		function : KeyPart(s : String) ~ String {
+			if(s = Nil) {
+				return "";
+			};
+			return s->ReplaceAll("|", "/");
+		}
+	}
+
+	#~
+	What a profile says about one (model, device, batch) cell: the observed latency distribution, memory and, when an energy source was attached, joules per run. Everything is observed, nothing is interpolated.
+	~#
+	class LatencyPrediction {
+		@model : String;
+		@device : String;
+		@batch : Int;
+		@tag : String;
+		@count : Int;
+		@p50 : Float;
+		@p95 : Float;
+		@p99 : Float;
+		@mean : Float;
+		@min : Float;
+		@max : Float;
+		@host_mem : Float;
+		@gpu_mem : Float;
+		@joules : Float;
+		@exact : Bool;
+		@rel_error : Float;
+
+		New(entry : ProfileEntry) {
+			s := entry->GetStats();
+			@model := entry->GetModel();
+			@device := entry->GetDevice();
+			@batch := entry->GetBatch();
+			@tag := entry->GetTag();
+			@count := s->GetCount();
+			@p50 := s->GetP50();
+			@p95 := s->GetP95();
+			@p99 := s->GetP99();
+			@mean := s->GetMean();
+			@min := s->GetMin();
+			@max := s->GetMax();
+			@host_mem := entry->GetHostMemMax();
+			@gpu_mem := entry->GetGpuMemMax();
+			@joules := entry->GetJoulesPerRun();
+			@exact := s->IsExact();
+			@rel_error := s->GetRelativeError();
+		}
+
+		#~
+		Model name
+		@return model
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		Device name
+		@return device
+		~#
+		method : public : GetDevice() ~ String {
+			return @device;
+		}
+
+		#~
+		Batch size
+		@return batch
+		~#
+		method : public : GetBatch() ~ Int {
+			return @batch;
+		}
+
+		#~
+		Phase tag of the series the numbers come from
+		@return tag
+		~#
+		method : public : GetTag() ~ String {
+			return @tag;
+		}
+
+		#~
+		Number of observed runs, warm-up excluded
+		@return count
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		Observed median latency
+		@return milliseconds
+		~#
+		method : public : GetP50() ~ Float {
+			return @p50;
+		}
+
+		#~
+		Observed 95th percentile latency
+		@return milliseconds
+		~#
+		method : public : GetP95() ~ Float {
+			return @p95;
+		}
+
+		#~
+		Observed 99th percentile latency
+		@return milliseconds, NaN for a profile loaded from CSV that did not store it
+		~#
+		method : public : GetP99() ~ Float {
+			return @p99;
+		}
+
+		#~
+		Observed mean latency
+		@return milliseconds
+		~#
+		method : public : GetMean() ~ Float {
+			return @mean;
+		}
+
+		#~
+		Observed minimum latency
+		@return milliseconds
+		~#
+		method : public : GetMin() ~ Float {
+			return @min;
+		}
+
+		#~
+		Observed maximum latency
+		@return milliseconds
+		~#
+		method : public : GetMax() ~ Float {
+			return @max;
+		}
+
+		#~
+		Largest process resident memory seen when a run of this cell finished
+		@return bytes, NaN if never captured
+		~#
+		method : public : GetHostMemory() ~ Float {
+			return @host_mem;
+		}
+
+		#~
+		Largest GPU memory reading taken when a run finished
+		@return megabytes, NaN if no GPU sampler was attached
+		~#
+		method : public : GetGpuMemory() ~ Float {
+			return @gpu_mem;
+		}
+
+		#~
+		Estimated energy per run, an estimate from sampled power
+		@return joules, NaN if no power source was attached
+		~#
+		method : public : GetJoulesPerRun() ~ Float {
+			return @joules;
+		}
+
+		#~
+		Whether the quantiles are exact (a small series) rather than sketch estimates
+		@return true if exact
+		~#
+		method : public : IsExact() ~ Bool {
+			return @exact;
+		}
+
+		#~
+		Relative error of the quantiles, 0 when exact
+		@return relative error, NaN for a summary-only profile
+		~#
+		method : public : GetRelativeError() ~ Float {
+			return @rel_error;
+		}
+
+		method : public : ToString() ~ String {
+			return "{$@model} on {$@device} batch {$@batch}: n={$@count} p50={$@p50}ms p95={$@p95}ms";
+		}
+	}
+
+	#~
+	One cell of a profile: the series of a (model, device, batch, tag) with the resources seen alongside it. Memory and energy are optional and NaN when not captured.
+	~#
+	class ProfileEntry {
+		@model : String;
+		@device : String;
+		@batch : Int;
+		@tag : String;
+		@stats : SeriesStats;
+		@host_mem : Float;
+		@gpu_mem : Float;
+		@energy : Float;
+		@energy_runs : Int;
+
+		#~
+		Constructor
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@param stats the series
+		~#
+		New(model : String, device : String, batch : Int, tag : String, stats : SeriesStats) {
+			@model := model;
+			@device := device;
+			@batch := batch;
+			@tag := tag;
+			@stats := stats;
+			@host_mem := Float->NaN();
+			@gpu_mem := Float->NaN();
+			@energy := 0.0;
+			@energy_runs := 0;
+		}
+
+		#~
+		Key of a cell, ordered by model, device, then batch numerically
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@return the key
+		~#
+		function : Key(model : String, device : String, batch : Int, tag : String) ~ String {
+			digits := batch->ToString();
+			pad := String->New();
+			for(i := digits->Size(); i < 12; i += 1;) {
+				pad->Append('0');
+			};
+			pad->Append(digits);
+			return "{$Telemetry->KeyPart(model)}|{$Telemetry->KeyPart(device)}|{$pad}|{$Telemetry->KeyPart(tag)}";
+		}
+
+		method : public : GetKey() ~ String {
+			return Key(@model, @device, @batch, @tag);
+		}
+
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		method : public : GetDevice() ~ String {
+			return @device;
+		}
+
+		method : public : GetBatch() ~ Int {
+			return @batch;
+		}
+
+		method : public : GetTag() ~ String {
+			return @tag;
+		}
+
+		method : public : GetStats() ~ SeriesStats {
+			return @stats;
+		}
+
+		#~
+		Notes a process resident-memory reading, keeping the largest
+		@param bytes resident bytes
+		~#
+		method : public : RecordHostMemory(bytes : Float) ~ Nil {
+			if(bytes = bytes & (@host_mem <> @host_mem | bytes > @host_mem)) {
+				@host_mem := bytes;
+			};
+		}
+
+		#~
+		Notes a GPU memory reading, keeping the largest
+		@param mb megabytes in use
+		~#
+		method : public : RecordGpuMemory(mb : Float) ~ Nil {
+			if(mb = mb & (@gpu_mem <> @gpu_mem | mb > @gpu_mem)) {
+				@gpu_mem := mb;
+			};
+		}
+
+		#~
+		Adds the estimated energy of one run
+		@param joules energy of the run
+		~#
+		method : public : AddEnergy(joules : Float) ~ Nil {
+			if(joules = joules & joules >= 0.0) {
+				@energy += joules;
+				@energy_runs += 1;
+			};
+		}
+
+		method : public : GetHostMemMax() ~ Float {
+			return @host_mem;
+		}
+
+		method : public : GetGpuMemMax() ~ Float {
+			return @gpu_mem;
+		}
+
+		method : public : GetEnergyTotal() ~ Float {
+			return @energy;
+		}
+
+		method : public : GetEnergyRuns() ~ Int {
+			return @energy_runs;
+		}
+
+		#~
+		Mean estimated energy per run over the runs that had a power reading
+		@return joules, NaN if none had
+		~#
+		method : public : GetJoulesPerRun() ~ Float {
+			if(@energy_runs = 0) {
+				return Float->NaN();
+			};
+			return @energy / @energy_runs->As(Float);
+		}
+
+		#~
+		Folds another entry of the same cell in
+		@param peer entry
+		@return false if the series cannot merge
+		~#
+		method : public : Merge(peer : ProfileEntry) ~ Bool {
+			if(@stats->Merge(peer->GetStats()) = false) {
+				return false;
+			};
+			RecordHostMemory(peer->GetHostMemMax());
+			RecordGpuMemory(peer->GetGpuMemMax());
+			@energy += peer->GetEnergyTotal();
+			@energy_runs += peer->GetEnergyRuns();
+			return true;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			root := JsonElement->New(JsonElement->JsonType->OBJECT);
+			root->Insert("model", @model);
+			root->Insert("device", @device);
+			root->Insert("batch", @batch);
+			root->Insert("tag", @tag);
+			root->Insert("series", @stats->ToJson());
+			if(@host_mem = @host_mem) {
+				root->Insert("host_mem_max_bytes", @host_mem);
+			};
+			if(@gpu_mem = @gpu_mem) {
+				root->Insert("gpu_mem_max_mb", @gpu_mem);
+			};
+			if(@energy_runs > 0) {
+				root->Insert("energy_joules", @energy);
+				root->Insert("energy_runs", @energy_runs);
+			};
+			return root;
+		}
+
+		function : FromJson(root : JsonElement, exact_limit : Int) ~ ProfileEntry {
+			if(root = Nil | root->Has("model") = false | root->Has("device") = false | root->Has("batch") = false | root->Has("series") = false) {
+				return Nil;
+			};
+			stats := SeriesStats->FromJson(root->Get("series"), exact_limit);
+			if(stats = Nil) {
+				return Nil;
+			};
+			tag := "";
+			if(root->Has("tag")) {
+				tag := root->Get("tag")->GetString();
+			};
+			entry := ProfileEntry->New(root->Get("model")->GetString(), root->Get("device")->GetString(), root->Get("batch")->GetInt(), tag, stats);
+			if(root->Has("host_mem_max_bytes")) {
+				entry->RecordHostMemory(root->Get("host_mem_max_bytes")->GetFloat());
+			};
+			if(root->Has("gpu_mem_max_mb")) {
+				entry->RecordGpuMemory(root->Get("gpu_mem_max_mb")->GetFloat());
+			};
+			if(root->Has("energy_runs")) {
+				entry->SetEnergy(root->Get("energy_joules")->GetFloat(), root->Get("energy_runs")->GetInt());
+			};
+			return entry;
+		}
+
+		method : public : SetEnergy(total : Float, runs : Int) ~ Nil {
+			@energy := total;
+			@energy_runs := runs;
+		}
+	}
+
+	#~
+	Profiles: statistics aggregated by model, device and batch (and phase tag), with Predict, JSON and CSV files and merging.
+
+	JSON is the lossless format: the series moments, the exact samples of a small series and the whole sketch, so a loaded profile answers the same quantiles and two profiles merge into the profile of the union. CSV is a lossy summary (count, extremes, mean, standard deviation, p50, p95, p99, p99.9, memory, energy) meant for spreadsheets and for carrying a profile between machines that only need Predict; a profile loaded from CSV is summary-only, and merging a summary-only cell with another cell loses its quantiles (they become NaN) because quantiles of a union cannot be computed from quantiles. Save to JSON when you will merge.
+	~#
+	class ProfileStore {
+		@entries : Map<String, ProfileEntry>;
+		@warmup : Int;
+		@rel_error : Float;
+		@ring_size : Int;
+		@exact_limit : Int;
+		@error : String;
+
+		#~
+		Constructor, no warm-up
+		~#
+		New() {
+			Init(0);
+		}
+
+		#~
+		Constructor
+		@param warmup leading samples of each new series to discard
+		~#
+		New(warmup : Int) {
+			Init(warmup);
+		}
+
+		method : Init(warmup : Int) ~ Nil {
+			@entries := Map->New()<String, ProfileEntry>;
+			@warmup := warmup;
+			@rel_error := 0.01;
+			@ring_size := 256;
+			@exact_limit := 512;
+			@error := "";
+		}
+
+		#~
+		Sets the warm-up for series created from now on
+		@param warmup number of leading samples to discard
+		~#
+		method : public : SetWarmup(warmup : Int) ~ Nil {
+			@warmup := warmup;
+		}
+
+		method : public : GetWarmup() ~ Int {
+			return @warmup;
+		}
+
+		#~
+		The reason the last Predict, Load or Save did not work
+		@return the reason, "" if the last call worked
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Number of cells
+		@return number of (model, device, batch, tag) cells
+		~#
+		method : public : Size() ~ Int {
+			return @entries->Size();
+		}
+
+		#~
+		The cell of a key, created empty if absent
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@return the cell
+		~#
+		method : public : Entry(model : String, device : String, batch : Int, tag : String) ~ ProfileEntry {
+			key := ProfileEntry->Key(model, device, batch, tag);
+			e := @entries->Find(key);
+			if(e = Nil) {
+				e := ProfileEntry->New(model, device, batch, tag, SeriesStats->New(@warmup, @rel_error, @ring_size, @exact_limit));
+				@entries->Insert(key, e);
+			};
+			return e;
+		}
+
+		#~
+		The cell of a key
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@return the cell, or Nil if nothing was recorded for it
+		~#
+		method : public : Find(model : String, device : String, batch : Int, tag : String) ~ ProfileEntry {
+			return @entries->Find(ProfileEntry->Key(model, device, batch, tag));
+		}
+
+		#~
+		Records one latency
+		@param model model name
+		@param device device name
+		@param batch batch size, at least 1
+		@param tag phase label
+		@param ms latency in milliseconds
+		@return true if the sample entered the statistics (false for warm-up, a bad value or a bad batch)
+		~#
+		method : public : Record(model : String, device : String, batch : Int, tag : String, ms : Float) ~ Bool {
+			if(batch < 1 | model = Nil | device = Nil) {
+				return false;
+			};
+			t := tag;
+			if(t = Nil) {
+				t := "";
+			};
+			return Entry(model, device, batch, t)->GetStats()->Add(ms);
+		}
+
+		#~
+		Every cell, ordered by model, device, then batch
+		@return the cells
+		~#
+		method : public : GetEntries() ~ Vector<ProfileEntry> {
+			return @entries->GetValues();
+		}
+
+		#~
+		Folds another profile in cell by cell
+		@param peer profile
+		@return false if any cell could not merge (the others are merged); GetError says which
+		~#
+		method : public : Merge(peer : ProfileStore) ~ Bool {
+			if(peer = Nil) {
+				@error := "merge: no profile";
+				return false;
+			};
+			ok := true;
+			@error := "";
+			list := peer->GetEntries();
+			for(i := 0; i < list->Size(); i += 1;) {
+				o := list->Get(i);
+				mine := Entry(o->GetModel(), o->GetDevice(), o->GetBatch(), o->GetTag());
+				if(mine->Merge(o) = false) {
+					ok := false;
+					@error := "merge: cannot merge the series of {$o->GetModel()} on {$o->GetDevice()} batch {$o->GetBatch()} (different sketch accuracy)";
+				};
+			};
+			return ok;
+		}
+
+		#~
+		Observed latency and memory of a cell. The cell is the one with an empty tag; if there is none and exactly one tag exists for the model, device and batch, that one.
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@return the observation, or Nil with GetError() saying what is missing; a batch that was never run is a miss, never interpolated
+		~#
+		method : public : Predict(model : String, device : String, batch : Int) ~ LatencyPrediction {
+			@error := "";
+			found := Vector->New()<ProfileEntry>;
+			devices := "";
+			batches := "";
+			seen_model := false;
+			seen_device := false;
+			list := GetEntries();
+			for(i := 0; i < list->Size(); i += 1;) {
+				e := list->Get(i);
+				if(e->GetModel()->Equals(model)) {
+					seen_model := true;
+					if(devices->Find(" {$e->GetDevice()},") < 0) {
+						devices += " {$e->GetDevice()},";
+					};
+					if(e->GetDevice()->Equals(device)) {
+						seen_device := true;
+						if(batches->Find(" {$e->GetBatch()},") < 0) {
+							batches += " {$e->GetBatch()},";
+						};
+						if(e->GetBatch() = batch) {
+							found->AddBack(e);
+						};
+					};
+				};
+			};
+
+			if(found->Size() = 0) {
+				dev_list := StripComma(devices);
+				batch_list := StripComma(batches);
+				if(seen_model = false) {
+					@error := "no profile for model '{$model}'";
+				}
+				else if(seen_device = false) {
+					@error := "model '{$model}' has no profile on device '{$device}' (devices:{$dev_list})";
+				}
+				else {
+					@error := "model '{$model}' on '{$device}' has no profile at batch {$batch} (observed batches:{$batch_list})";
+				};
+				return Nil;
+			};
+
+			chosen : ProfileEntry;
+			for(i := 0; i < found->Size(); i += 1;) {
+				if(found->Get(i)->GetTag()->Size() = 0) {
+					chosen := found->Get(i);
+				};
+			};
+			if(chosen = Nil) {
+				if(found->Size() > 1) {
+					@error := "model '{$model}' on '{$device}' at batch {$batch} has {$found->Size()} tagged series and none without a tag: ask with PredictTag";
+					return Nil;
+				};
+				chosen := found->Get(0);
+			};
+			return Describe(chosen);
+		}
+
+		#~
+		Observed latency and memory of a cell with a given phase tag
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@return the observation, or Nil with GetError() saying what is missing
+		~#
+		method : public : PredictTag(model : String, device : String, batch : Int, tag : String) ~ LatencyPrediction {
+			@error := "";
+			e := Find(model, device, batch, tag);
+			if(e = Nil) {
+				@error := "no profile for model '{$model}' on '{$device}' at batch {$batch} with tag '{$tag}'";
+				return Nil;
+			};
+			return Describe(e);
+		}
+
+		method : Describe(e : ProfileEntry) ~ LatencyPrediction {
+			if(e->GetStats()->GetCount() = 0) {
+				@error := "model '{$e->GetModel()}' on '{$e->GetDevice()}' at batch {$e->GetBatch()} has only warm-up samples so far";
+				return Nil;
+			};
+			return LatencyPrediction->New(e);
+		}
+
+		function : StripComma(s : String) ~ String {
+			if(s->Size() > 0) {
+				return s->SubString(0, s->Size() - 1);
+			};
+			return s;
+		}
+
+		#~
+		The profile as JSON, lossless
+		@return JSON object
+		~#
+		method : public : ToJson() ~ JsonElement {
+			root := JsonElement->New(JsonElement->JsonType->OBJECT);
+			root->Insert("format", "objeck-telemetry-profile");
+			root->Insert("version", 1);
+			arr := JsonElement->New(JsonElement->JsonType->ARRAY);
+			list := GetEntries();
+			for(i := 0; i < list->Size(); i += 1;) {
+				arr->Add(list->Get(i)->ToJson());
+			};
+			root->Insert("entries", arr);
+			return root;
+		}
+
+		#~
+		The profile as a JSON string
+		@return text
+		~#
+		method : public : ToJsonString() ~ String {
+			return ToJson()->ToString();
+		}
+
+		#~
+		Rebuilds a profile from JSON text
+		@param text JSON written by ToJsonString
+		@return the profile, or Nil if the text is not a profile; the message is in the GetError of the Load result of the same name, see LoadJson
+		~#
+		function : FromJsonString(text : String) ~ ProfileStore {
+			store := ProfileStore->New();
+			if(store->ParseJson(text)) {
+				return store;
+			};
+			return Nil;
+		}
+
+		#~
+		Replaces the contents of this profile with the profile in JSON text
+		@param text JSON written by ToJsonString
+		@return true if loaded, else false with GetError() saying why; the profile is unchanged on failure
+		~#
+		method : public : ParseJson(text : String) ~ Bool {
+			@error := "";
+			if(text = Nil | text->Size() = 0) {
+				@error := "empty profile text";
+				return false;
+			};
+			parser := JsonParser->New(text);
+			if(parser->Parse() = false) {
+				@error := "not JSON: {$parser->GetError()}";
+				return false;
+			};
+			root := parser->GetRoot();
+			if(root = Nil | root->Has("format") = false | root->Get("format")->GetString()->Equals("objeck-telemetry-profile") = false) {
+				@error := "not a telemetry profile (missing format objeck-telemetry-profile)";
+				return false;
+			};
+			if(root->Has("version") = false | root->Get("version")->GetInt() <> 1) {
+				@error := "unsupported profile version";
+				return false;
+			};
+			if(root->Has("entries") = false) {
+				@error := "profile has no entries array";
+				return false;
+			};
+			fresh := Map->New()<String, ProfileEntry>;
+			arr := root->Get("entries");
+			for(i := 0; i < arr->Size(); i += 1;) {
+				e := ProfileEntry->FromJson(arr->Get(i), @exact_limit);
+				if(e = Nil) {
+					@error := "entry {$i} is not a valid profile entry";
+					return false;
+				};
+				fresh->Insert(e->GetKey(), e);
+			};
+			@entries := fresh;
+			return true;
+		}
+
+		#~
+		Writes the profile to a JSON file
+		@param path file name
+		@return true if written, else false with GetError() saying why
+		~#
+		method : public : Save(path : String) ~ Bool {
+			@error := "";
+			if(FileWriter->WriteFile(path, ToJsonString()) = false) {
+				@error := "cannot write {$path}";
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Reads a profile from a JSON file
+		@param path file name
+		@return the profile, or Nil if the file is missing or not a profile
+		~#
+		function : Load(path : String) ~ ProfileStore {
+			store := ProfileStore->New();
+			if(store->LoadInto(path)) {
+				return store;
+			};
+			return Nil;
+		}
+
+		#~
+		Replaces this profile with the one in a JSON file
+		@param path file name
+		@return true if loaded, else false with GetError() saying why
+		~#
+		method : public : LoadInto(path : String) ~ Bool {
+			@error := "";
+			if(File->Exists(path) = false) {
+				@error := "no such file: {$path}";
+				return false;
+			};
+			return ParseJson(FileReader->ReadFile(path));
+		}
+
+		function : CsvHeader() ~ String {
+			return "model,device,batch,tag,count,discarded,min_ms,max_ms,mean_ms,stddev_ms,p50_ms,p95_ms,p99_ms,p999_ms,host_mem_max_bytes,gpu_mem_max_mb,energy_joules,energy_runs";
+		}
+
+		function : CsvCell(s : String) ~ String {
+			if(s->Find(',') >= 0 | s->Find('"') >= 0 | s->Find('\n') >= 0 | s->Find('\r') >= 0) {
+				escaped := s->ReplaceAll("\"", "\"\"");
+				return "\"{$escaped}\"";
+			};
+			return s;
+		}
+
+		#~
+		The profile as CSV, one row per cell; empty cell for a value that was not captured
+		@return text with a header row
+		~#
+		method : public : ToCsv() ~ String {
+			out := String->New();
+			out->Append(CsvHeader());
+			out->Append('\n');
+			list := GetEntries();
+			for(i := 0; i < list->Size(); i += 1;) {
+				e := list->Get(i);
+				s := e->GetStats();
+				out->Append("{$CsvCell(e->GetModel())},{$CsvCell(e->GetDevice())},{$e->GetBatch()},{$CsvCell(e->GetTag())},{$s->GetCount()},{$s->GetDiscarded()}");
+				out->Append(",{$Telemetry->Fmt(s->GetMin())},{$Telemetry->Fmt(s->GetMax())},{$Telemetry->Fmt(s->GetMean())},{$Telemetry->Fmt(s->GetStdDev())}");
+				out->Append(",{$Telemetry->Fmt(s->GetP50())},{$Telemetry->Fmt(s->GetP95())},{$Telemetry->Fmt(s->GetP99())},{$Telemetry->Fmt(s->GetP999())}");
+				out->Append(",{$Telemetry->Fmt(e->GetHostMemMax())},{$Telemetry->Fmt(e->GetGpuMemMax())}");
+				if(e->GetEnergyRuns() > 0) {
+					out->Append(",{$Telemetry->Fmt(e->GetEnergyTotal())},{$e->GetEnergyRuns()}");
+				}
+				else {
+					out->Append(",,");
+				};
+				out->Append('\n');
+			};
+			return out;
+		}
+
+		#~
+		Splits one CSV line into cells, honouring double quotes
+		@param line the line
+		@return the cells
+		~#
+		function : SplitCsv(line : String) ~ String[] {
+			cells := Vector->New()<String>;
+			cur := String->New();
+			quoted := false;
+			i := 0;
+			while(i < line->Size()) {
+				c := line->Get(i);
+				if(quoted) {
+					if(c = '"') {
+						if(i + 1 < line->Size() & line->Get(i + 1) = '"') {
+							cur->Append('"');
+							i += 1;
+						}
+						else {
+							quoted := false;
+						};
+					}
+					else {
+						cur->Append(c);
+					};
+				}
+				else if(c = '"') {
+					quoted := true;
+				}
+				else if(c = ',') {
+					cells->AddBack(cur);
+					cur := String->New();
+				}
+				else if(c <> '\r') {
+					cur->Append(c);
+				};
+				i += 1;
+			};
+			cells->AddBack(cur);
+			return cells->ToArray();
+		}
+
+		function : CellFloat(s : String) ~ Float {
+			if(Telemetry->IsNumber(s)) {
+				return s->ToFloat();
+			};
+			return Float->NaN();
+		}
+
+		#~
+		Replaces this profile with the summary rows of CSV text
+		@param text CSV written by ToCsv
+		@return true if loaded, else false with GetError() saying why; the profile is unchanged on failure
+		~#
+		method : public : ParseCsv(text : String) ~ Bool {
+			@error := "";
+			if(text = Nil | text->Size() = 0) {
+				@error := "empty CSV text";
+				return false;
+			};
+			lines := text->Split("\n");
+			if(lines->Size() < 1 | lines[0]->Trim()->Equals(CsvHeader()) = false) {
+				@error := "CSV header is not a telemetry profile header";
+				return false;
+			};
+			fresh := Map->New()<String, ProfileEntry>;
+			for(i := 1; i < lines->Size(); i += 1;) {
+				line := lines[i];
+				if(line->Trim()->Size() = 0) {
+					continue;
+				};
+				c := SplitCsv(line);
+				if(c->Size() <> 18) {
+					@error := "CSV line {$i} has {$c->Size()} cells, expected 18";
+					return false;
+				};
+				if(Telemetry->IsNumber(c[2]) = false | Telemetry->IsNumber(c[4]) = false | c[2]->ToInt() < 1 | c[4]->ToInt() < 1) {
+					@error := "CSV line {$i} has a bad batch or count";
+					return false;
+				};
+				stats := SeriesStats->FromSummary(c[4]->ToInt(), CellFloat(c[6]), CellFloat(c[7]), CellFloat(c[8]), CellFloat(c[9]), CellFloat(c[10]), CellFloat(c[11]), CellFloat(c[12]), CellFloat(c[13]));
+				if(Telemetry->IsNumber(c[5])) {
+					stats->SetCounters(c[5]->ToInt(), 0);
+				};
+				e := ProfileEntry->New(c[0], c[1], c[2]->ToInt(), c[3], stats);
+				e->RecordHostMemory(CellFloat(c[14]));
+				e->RecordGpuMemory(CellFloat(c[15]));
+				if(Telemetry->IsNumber(c[16]) & Telemetry->IsNumber(c[17])) {
+					e->SetEnergy(c[16]->ToFloat(), c[17]->ToInt());
+				};
+				fresh->Insert(e->GetKey(), e);
+			};
+			@entries := fresh;
+			return true;
+		}
+
+		#~
+		Writes the profile to a CSV file
+		@param path file name
+		@return true if written, else false with GetError() saying why
+		~#
+		method : public : SaveCsv(path : String) ~ Bool {
+			@error := "";
+			if(FileWriter->WriteFile(path, ToCsv()) = false) {
+				@error := "cannot write {$path}";
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Reads a profile from a CSV file
+		@param path file name
+		@return the summary-only profile, or Nil if the file is missing or not a profile
+		~#
+		function : LoadCsv(path : String) ~ ProfileStore {
+			store := ProfileStore->New();
+			if(File->Exists(path) = false) {
+				return Nil;
+			};
+			if(store->ParseCsv(FileReader->ReadFile(path))) {
+				return store;
+			};
+			return Nil;
+		}
+	}
+
+	#~
+	A handle on one timed call, from Telemetry->Start or TimingRecorder->Start. Stop it when the call returns; a handle never stopped records nothing, and Cancel drops it (use it for a call that failed, so errors do not pollute the latency).
+	~#
+	class TimingProbe {
+		@recorder : TimingRecorder;
+		@model : String;
+		@device : String;
+		@batch : Int;
+		@tag : String;
+		@timer : System.Time.Timer;
+		@done : Bool;
+		@elapsed : Float;
+		@start_ms : Int;
+
+		New(recorder : TimingRecorder, model : String, device : String, batch : Int, tag : String) {
+			@recorder := recorder;
+			@model := model;
+			@device := device;
+			@batch := batch;
+			@tag := tag;
+			@done := false;
+			@elapsed := Float->NaN();
+			@start_ms := -1;
+			if(recorder->UsesClock()) {
+				@start_ms := Telemetry->NowMs();
+			};
+			@timer := System.Time.Timer->New();
+			@timer->Start();
+		}
+
+		#~
+		Stops the clock and records the interval
+		@return the elapsed milliseconds; a second call returns the same value and records nothing more
+		~#
+		method : public : Stop() ~ Float {
+			if(@done) {
+				return @elapsed;
+			};
+			@timer->End();
+			@done := true;
+			@elapsed := @timer->GetElapsedTime() * 1000.0;
+			@recorder->Finish(@model, @device, @batch, @tag, @elapsed, @start_ms);
+			return @elapsed;
+		}
+
+		#~
+		Drops the measurement without recording it
+		~#
+		method : public : Cancel() ~ Nil {
+			@done := true;
+		}
+
+		#~
+		Whether Stop or Cancel was called
+		@return true if the handle is finished
+		~#
+		method : public : IsDone() ~ Bool {
+			return @done;
+		}
+
+		#~
+		The interval of a stopped probe
+		@return milliseconds, NaN until Stop
+		~#
+		method : public : GetElapsed() ~ Float {
+			return @elapsed;
+		}
+	}
+
+	#~
+	Collects timings into a ProfileStore, safe to share between threads. Each Stop records the latency; when memory capture is on (the default) it also reads the process resident memory right after the clock stopped, and when a SamplerLoop is attached it adds the latest GPU memory reading and the energy estimated over the call.
+	~#
+	class TimingRecorder {
+		@store : ProfileStore;
+		@lock : ThreadMutex;
+		@capture_memory : Bool;
+		@loop : SamplerLoop;
+
+		#~
+		Constructor with an empty profile
+		~#
+		New() {
+			Init(ProfileStore->New());
+		}
+
+		#~
+		Constructor
+		@param store profile to add to
+		~#
+		New(store : ProfileStore) {
+			Init(store);
+		}
+
+		method : Init(store : ProfileStore) ~ Nil {
+			@store := store;
+			@lock := ThreadMutex->New("telemetry-recorder");
+			@capture_memory := true;
+			@loop := Nil;
+		}
+
+		#~
+		The profile being filled. Read it after the measuring threads are done, or from one thread.
+		@return the profile
+		~#
+		method : public : GetStore() ~ ProfileStore {
+			return @store;
+		}
+
+		#~
+		Turns resident-memory capture on or off
+		@param on true to read the process memory at every Stop
+		~#
+		method : public : SetCaptureMemory(on : Bool) ~ Nil {
+			@capture_memory := on;
+		}
+
+		#~
+		Sets the warm-up for series created from now on
+		@param warmup number of leading samples to discard
+		~#
+		method : public : SetWarmup(warmup : Int) ~ Nil {
+			critical(@lock) {
+				@store->SetWarmup(warmup);
+			};
+		}
+
+		#~
+		Attaches a running sampler loop whose latest GPU memory reading and power trace are attributed to each call
+		@param sampler_loop the loop, started by its owner
+		~#
+		method : public : AttachSampler(sampler_loop : SamplerLoop) ~ Nil {
+			@loop := sampler_loop;
+		}
+
+		method : public : UsesClock() ~ Bool {
+			return @loop <> Nil;
+		}
+
+		#~
+		Starts timing one call
+		@param model model name
+		@param device device name
+		@param batch batch size, at least 1
+		@param tag phase label, "" for none
+		@return the handle
+		~#
+		method : public : Start(model : String, device : String, batch : Int, tag : String) ~ TimingProbe {
+			return TimingProbe->New(@self, model, device, batch, tag);
+		}
+
+		#~
+		Times a function reference
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@param work function to call once
+		@return the elapsed milliseconds
+		~#
+		method : public : Time(model : String, device : String, batch : Int, tag : String, work : () ~ Nil) ~ Float {
+			probe := Start(model, device, batch, tag);
+			work();
+			return probe->Stop();
+		}
+
+		#~
+		Records an interval measured elsewhere
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		@param ms latency in milliseconds
+		@return true if it entered the statistics
+		~#
+		method : public : Record(model : String, device : String, batch : Int, tag : String, ms : Float) ~ Bool {
+			ok := false;
+			critical(@lock) {
+				ok := @store->Record(model, device, batch, tag, ms);
+			};
+			return ok;
+		}
+
+		method : public : Finish(model : String, device : String, batch : Int, tag : String, ms : Float, start_ms : Int) ~ Nil {
+			rss := Float->NaN();
+			if(@capture_memory) {
+				rss := Telemetry->ReadProperty("runtime.memory.used");
+			};
+			gpu_mem := Float->NaN();
+			joules := Float->NaN();
+			if(@loop <> Nil & start_ms >= 0) {
+				stop_ms := Telemetry->NowMs();
+				last := @loop->GetLast();
+				if(last <> Nil) {
+					gpu_mem := last->Get("gpu_mem_used_mb");
+				};
+				est := @loop->GetEnergy();
+				if(est <> Nil) {
+					joules := est->JoulesBetween(start_ms->As(Float) / 1000.0, stop_ms->As(Float) / 1000.0);
+				};
+			};
+			if(model = Nil | device = Nil | batch < 1) {
+				return;
+			};
+			t := tag;
+			if(t = Nil) {
+				t := "";
+			};
+			critical(@lock) {
+				if(@store->Record(model, device, batch, t, ms)) {
+					entry := @store->Entry(model, device, batch, t);
+					entry->RecordHostMemory(rss);
+					entry->RecordGpuMemory(gpu_mem);
+					entry->AddEnergy(joules);
+				};
+			};
+		}
+	}
+
+	#~
+	One reading of a ResourceSampler: when it was taken (milliseconds on the Telemetry->NowMs clock) and named values; a value that could not be read is NaN.
+	~#
+	class ResourceReading {
+		@names : String[];
+		@values : Float[];
+		@time_ms : Int;
+
+		New(names : String[], values : Float[], time_ms : Int) {
+			@names := names;
+			@values := values;
+			@time_ms := time_ms;
+		}
+
+		#~
+		When the reading was taken
+		@return milliseconds on the Telemetry->NowMs clock
+		~#
+		method : public : GetTimeMs() ~ Int {
+			return @time_ms;
+		}
+
+		#~
+		Number of values
+		@return count
+		~#
+		method : public : Size() ~ Int {
+			return @names->Size();
+		}
+
+		method : public : GetName(i : Int) ~ String {
+			return @names[i];
+		}
+
+		method : public : GetValue(i : Int) ~ Float {
+			return @values[i];
+		}
+
+		#~
+		A value by name
+		@param name value name
+		@return the value, or NaN if the name is unknown or the value could not be read
+		~#
+		method : public : Get(name : String) ~ Float {
+			for(i := 0; i < @names->Size(); i += 1;) {
+				if(@names[i]->Equals(name)) {
+					return @values[i];
+				};
+			};
+			return Float->NaN();
+		}
+
+		method : public : ToString() ~ String {
+			out := String->New();
+			for(i := 0; i < @names->Size(); i += 1;) {
+				if(i > 0) {
+					out->Append(' ');
+				};
+				out->Append("{$@names[i]}={$@values[i]}");
+			};
+			return out;
+		}
+	}
+
+	#~
+	A source of resource readings. Implementations: RuntimeSampler (the runtime's own monitors), GpuSampler (nvidia-smi), PowermetricsSampler (interface only).
+	~#
+	interface ResourceSampler {
+		#~
+		Name of the source
+		@return name
+		~#
+		method : virtual : public : GetName() ~ String;
+
+		#~
+		Whether the source can be read here. Cheap after the first call.
+		@return true if Sample can return a reading
+		~#
+		method : virtual : public : IsAvailable() ~ Bool;
+
+		#~
+		Takes a reading
+		@return the reading, or Nil if the source is not available
+		~#
+		method : virtual : public : Sample() ~ ResourceReading;
+	}
+
+	#~
+	Host process and collector readings from the runtime's own monitors (the runtime.* properties of Runtime->GetProperty): resident and peak memory, heap bytes, process CPU time and CPU percent since the previous reading, thread counts and the collector's counts and pause times.
+
+	Collector pause times are what the runtime exposes: the last, the maximum and the average pause in microseconds and the minor and major counts; gc_pause_total_us is derived (average times count) and so is rounded to the average's microsecond. There is no pause histogram in the program-visible set; the OBJECK_GC_STATS exit summary has percentiles but goes to stderr at exit. cpu_percent is process CPU time over wall time, so 100 means one core and a multi-threaded process can exceed it; it is NaN on the first reading.
+	~#
+	class RuntimeSampler implements ResourceSampler {
+		@last_cpu_ms : Float;
+		@last_time_ms : Int;
+
+		New() {
+			@last_cpu_ms := Float->NaN();
+			@last_time_ms := -1;
+		}
+
+		#~
+		Names of the values, in order
+		@return the names
+		~#
+		function : Names() ~ String[] {
+			return ["rss_bytes", "rss_peak_bytes", "heap_allocated_bytes", "cpu_time_ms", "cpu_percent", "cpu_count", "threads_active", "threads_parked", "gc_minor_count", "gc_major_count", "gc_pause_last_us", "gc_pause_max_us", "gc_pause_avg_us", "gc_pause_total_us", "gc_old_gen_bytes"];
+		}
+
+		method : public : GetName() ~ String {
+			return "runtime";
+		}
+
+		method : public : IsAvailable() ~ Bool {
+			rss := Telemetry->ReadProperty("runtime.memory.used");
+			return rss = rss & rss > 0.0;
+		}
+
+		method : public : Sample() ~ ResourceReading {
+			if(IsAvailable() = false) {
+				return Nil;
+			};
+			now := Telemetry->NowMs();
+			cpu := Telemetry->ReadProperty("runtime.cpu.time");
+			pct := Float->NaN();
+			if(@last_time_ms >= 0 & now > @last_time_ms & @last_cpu_ms = @last_cpu_ms & cpu = cpu) {
+				pct := (cpu - @last_cpu_ms) / (now - @last_time_ms)->As(Float) * 100.0;
+			};
+			@last_cpu_ms := cpu;
+			@last_time_ms := now;
+			minor := Telemetry->ReadProperty("runtime.gc.minor");
+			major := Telemetry->ReadProperty("runtime.gc.major");
+			avg := Telemetry->ReadProperty("runtime.gc.pause.avg_us");
+			total := Float->NaN();
+			if(minor = minor & major = major & avg = avg) {
+				total := avg * (minor + major);
+			};
+			values := [Telemetry->ReadProperty("runtime.memory.used"), Telemetry->ReadProperty("runtime.memory.peak"), Telemetry->ReadProperty("runtime.memory.allocated"), cpu, pct, Telemetry->ReadProperty("runtime.cpu.count"), Telemetry->ReadProperty("runtime.threads.active"), Telemetry->ReadProperty("runtime.threads.parked"), minor, major, Telemetry->ReadProperty("runtime.gc.pause.last_us"), Telemetry->ReadProperty("runtime.gc.pause.max_us"), avg, total, Telemetry->ReadProperty("runtime.gc.old.bytes")];
+			return ResourceReading->New(Names(), values, now);
+		}
+	}
+
+	#~
+	GPU readings from nvidia-smi: utilization in percent, memory used in MB, power draw in watts and temperature in degrees Celsius (the values gpu_util_percent, gpu_mem_used_mb, gpu_power_w, gpu_temp_c). The command is the same on Windows and Linux:
+
+	nvidia-smi --query-gpu=utilization.gpu,memory.used,power.draw,temperature.gpu --format=csv,noheader,nounits
+
+	No GPU, no driver or a failing command is not an error: IsAvailable() turns false after the first failed attempt, Sample returns Nil without starting another process, and GetError() holds the reason. Reset() allows another attempt. A field the board does not report ("[N/A]") reads as NaN. With several GPUs, the index chooses the line (0 is the first). Each Sample starts a process, which takes tens of milliseconds, so sample from a SamplerLoop at an interval of a second or so and not once per inference.
+	~#
+	class GpuSampler implements ResourceSampler {
+		@index : Int;
+		@command : String;
+		@state : Int;
+		@error : String;
+
+		New() {
+			Init(0, Command());
+		}
+
+		#~
+		Constructor
+		@param index which GPU, the zero-based line of the output
+		~#
+		New(index : Int) {
+			Init(index, Command());
+		}
+
+		method : Init(index : Int, command : String) ~ Nil {
+			@index := index;
+			@command := command;
+			@state := 0;
+			@error := "";
+		}
+
+		#~
+		A sampler that runs another command instead of nvidia-smi, for tests and for wrappers; the command must print the same four-field CSV
+		@param command command line
+		@return the sampler
+		~#
+		function : WithCommand(command : String) ~ GpuSampler {
+			return GpuSampler->New(0, command);
+		}
+
+		New(index : Int, command : String) {
+			Init(index, command);
+		}
+
+		#~
+		The query nvidia-smi is given
+		@return the command line
+		~#
+		function : Command() ~ String {
+			return "nvidia-smi --query-gpu=utilization.gpu,memory.used,power.draw,temperature.gpu --format=csv,noheader,nounits";
+		}
+
+		#~
+		Names of the values, in order
+		@return the names
+		~#
+		function : Names() ~ String[] {
+			return ["gpu_util_percent", "gpu_mem_used_mb", "gpu_power_w", "gpu_temp_c"];
+		}
+
+		#~
+		Parses one line of the CSV: four comma-separated fields
+		@param line the line
+		@return the four values (utilization, memory, power, temperature) with NaN for a field that is not a number such as [N/A], or Nil if the line does not have four fields or any field is neither a number nor a not-available marker
+		~#
+		function : ParseLine(line : String) ~ Float[] {
+			if(line = Nil) {
+				return Nil;
+			};
+			cells := line->Split(',');
+			if(cells->Size() <> 4) {
+				return Nil;
+			};
+			out := Float->New[4];
+			for(i := 0; i < 4; i += 1;) {
+				c := cells[i]->Trim();
+				if(Telemetry->IsNumber(c)) {
+					out[i] := c->ToFloat();
+				}
+				else if(c->StartsWith('[') | c->Equals("N/A") | c->Equals("Not Supported")) {
+					out[i] := Float->NaN();
+				}
+				else {
+					return Nil;
+				};
+			};
+			return out;
+		}
+
+		#~
+		Parses the whole output of the command: the lines that parse are the GPUs, in order; other lines (a driver warning) are skipped
+		@param text command output
+		@param index which GPU
+		@param time_ms timestamp for the reading
+		@return the reading, or Nil if there are fewer than index + 1 parsable lines
+		~#
+		function : Parse(text : String, index : Int, time_ms : Int) ~ ResourceReading {
+			if(text = Nil | index < 0) {
+				return Nil;
+			};
+			lines := text->Split("\n");
+			seen := 0;
+			for(i := 0; i < lines->Size(); i += 1;) {
+				v := ParseLine(lines[i]);
+				if(v <> Nil) {
+					if(seen = index) {
+						return ResourceReading->New(Names(), v, time_ms);
+					};
+					seen += 1;
+				};
+			};
+			return Nil;
+		}
+
+		method : public : GetName() ~ String {
+			return "gpu";
+		}
+
+		#~
+		Why the last attempt failed
+		@return the reason, "" if none failed
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Allows another attempt after a failure
+		~#
+		method : public : Reset() ~ Nil {
+			@state := 0;
+			@error := "";
+		}
+
+		#~
+		Whether nvidia-smi answers here; the first call runs it once
+		@return true if a GPU reading was obtained
+		~#
+		method : public : IsAvailable() ~ Bool {
+			if(@state = 0) {
+				reading := Sample();
+				return reading <> Nil;
+			};
+			return @state > 0;
+		}
+
+		method : public : Sample() ~ ResourceReading {
+			if(@state < 0) {
+				return Nil;
+			};
+			out := Runtime->CommandOutput(@command);
+			if(out = Nil) {
+				@state := -1;
+				@error := "could not start {$@command}";
+				return Nil;
+			};
+			if(out->GetStatus() <> 0) {
+				@state := -1;
+				@error := "{$@command} exited with status {$out->GetStatus()}";
+				return Nil;
+			};
+			text := String->New();
+			lines := out->GetOutput();
+			for(i := 0; i < lines->Size(); i += 1;) {
+				text->Append(lines[i]);
+				text->Append('\n');
+			};
+			reading := Parse(text, @index, Telemetry->NowMs());
+			if(reading = Nil) {
+				@state := -1;
+				@error := "no GPU line {$@index} in the output of {$@command}";
+				return Nil;
+			};
+			@state := 1;
+			return reading;
+		}
+	}
+
+	#~
+	Apple Silicon power through powermetrics: the interface only. powermetrics needs root (sudo powermetrics --samplers cpu_power,gpu_power -i 1000), and a library that silently asks for root is not acceptable, so this class reports itself as unavailable on every platform and Sample returns Nil. A program that runs as root can implement ResourceSampler itself, parse the "CPU Power", "GPU Power" and "ANE Power" lines in milliwatts and feed an EnergyEstimator; none of that is tested here, no Apple hardware was used.
+	~#
+	class PowermetricsSampler implements ResourceSampler {
+		New() {
+		}
+
+		method : public : GetName() ~ String {
+			return "powermetrics";
+		}
+
+		method : public : IsAvailable() ~ Bool {
+			return false;
+		}
+
+		method : public : Sample() ~ ResourceReading {
+			return Nil;
+		}
+	}
+
+	#~
+	Estimates energy by integrating sampled power over time with the trapezoid rule. It is an estimate and says so: the power it is fed is itself a sensor reading (nvidia-smi power.draw is the board power, averaged by the driver over a window of about a second on many boards), the samples are discrete, and the interval between samples is assumed to be linear. For a workload much shorter than the sampling interval the estimate has no resolution at all, and per-call energy from a one-second sampler is a share of the average power over the call, not a measurement of the call.
+
+	Samples must arrive in time order (equal time is allowed); AddSample returns false for one that does not, or for a negative or non-number power. Gaps longer than the maximum gap (set with SetMaxGap, none by default) are not integrated and are counted in GetSkippedSeconds. The last N samples are kept for JoulesBetween (4096 by default); the total is exact over all samples.
+	~#
+	class EnergyEstimator {
+		@t : Float[];
+		@w : Float[];
+		@cap : Int;
+		@next : Int;
+		@size : Int;
+		@count : Int;
+		@total : Float;
+		@span : Float;
+		@skipped : Float;
+		@max_gap : Float;
+		@peak : Float;
+		@last_t : Float;
+		@last_w : Float;
+
+		New() {
+			Init(4096);
+		}
+
+		#~
+		Constructor
+		@param retained number of recent samples kept for JoulesBetween
+		~#
+		New(retained : Int) {
+			Init(retained);
+		}
+
+		method : Init(retained : Int) ~ Nil {
+			@cap := retained;
+			if(@cap < 2) {
+				@cap := 2;
+			};
+			@t := Float->New[@cap];
+			@w := Float->New[@cap];
+			@next := 0;
+			@size := 0;
+			@count := 0;
+			@total := 0.0;
+			@span := 0.0;
+			@skipped := 0.0;
+			@max_gap := Float->Inf();
+			@peak := 0.0;
+			@last_t := 0.0;
+			@last_w := 0.0;
+		}
+
+		#~
+		Sets the longest interval between two samples that is integrated
+		@param seconds longest gap in seconds; a longer one adds nothing to the energy and is counted as skipped
+		~#
+		method : public : SetMaxGap(seconds : Float) ~ Nil {
+			@max_gap := seconds;
+		}
+
+		#~
+		Adds a power sample
+		@param seconds time in seconds on any monotonic base, not before the previous sample
+		@param watts power in watts
+		@return false if the sample was refused
+		~#
+		method : public : AddSample(seconds : Float, watts : Float) ~ Bool {
+			if(seconds <> seconds | watts <> watts | watts < 0.0 | watts > 1.0e300) {
+				return false;
+			};
+			if(@count > 0) {
+				if(seconds < @last_t) {
+					return false;
+				};
+				dt := seconds - @last_t;
+				if(dt > @max_gap) {
+					@skipped += dt;
+				}
+				else {
+					@total += (@last_w + watts) * 0.5 * dt;
+					@span += dt;
+				};
+			};
+			@t[@next] := seconds;
+			@w[@next] := watts;
+			@next += 1;
+			if(@next = @cap) {
+				@next := 0;
+			};
+			if(@size < @cap) {
+				@size += 1;
+			};
+			@count += 1;
+			if(watts > @peak) {
+				@peak := watts;
+			};
+			@last_t := seconds;
+			@last_w := watts;
+			return true;
+		}
+
+		#~
+		Estimated energy over every integrated interval
+		@return joules
+		~#
+		method : public : GetJoules() ~ Float {
+			return @total;
+		}
+
+		#~
+		Number of samples accepted
+		@return count
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		Seconds that were integrated
+		@return seconds
+		~#
+		method : public : GetIntegratedSeconds() ~ Float {
+			return @span;
+		}
+
+		#~
+		Seconds in gaps longer than the maximum gap, not integrated
+		@return seconds
+		~#
+		method : public : GetSkippedSeconds() ~ Float {
+			return @skipped;
+		}
+
+		#~
+		Time-weighted mean power over the integrated seconds
+		@return watts, NaN if nothing was integrated
+		~#
+		method : public : GetMeanWatts() ~ Float {
+			if(@span <= 0.0) {
+				return Float->NaN();
+			};
+			return @total / @span;
+		}
+
+		#~
+		Largest power sample
+		@return watts, NaN if none
+		~#
+		method : public : GetPeakWatts() ~ Float {
+			if(@count = 0) {
+				return Float->NaN();
+			};
+			return @peak;
+		}
+
+		method : At(i : Int) ~ Float {
+			start := 0;
+			if(@size = @cap) {
+				start := @next;
+			};
+			return @t[(start + i) % @cap];
+		}
+
+		method : WattsAt(i : Int) ~ Float {
+			start := 0;
+			if(@size = @cap) {
+				start := @next;
+			};
+			return @w[(start + i) % @cap];
+		}
+
+		#~
+		Power at a time, linearly interpolated between the retained samples; after the last sample the last reading is held (the power is assumed unchanged until the next sample)
+		@param seconds time
+		@return watts, NaN before the first retained sample
+		~#
+		method : public : PowerAt(seconds : Float) ~ Float {
+			if(@size < 1 | seconds <> seconds | seconds < At(0)) {
+				return Float->NaN();
+			};
+			for(i := 1; i < @size; i += 1;) {
+				t1 := At(i);
+				if(seconds <= t1) {
+					t0 := At(i - 1);
+					if(t1 = t0) {
+						return WattsAt(i);
+					};
+					f := (seconds - t0) / (t1 - t0);
+					return WattsAt(i - 1) + f * (WattsAt(i) - WattsAt(i - 1));
+				};
+			};
+			return WattsAt(@size - 1);
+		}
+
+		#~
+		Estimated energy between two times, from the retained samples with the end points interpolated. Past the last sample the last reading is held, which is what lets a call that has just returned be priced before the next sample arrives.
+		@param t_from start time in seconds
+		@param t_to end time in seconds
+		@return joules, or NaN if the start is before the first retained sample, there is no sample, or the interval crosses a gap (or a held tail) longer than the maximum gap
+		~#
+		method : public : JoulesBetween(t_from : Float, t_to : Float) ~ Float {
+			if(@size < 1 | t_from <> t_from | t_to <> t_to | t_to < t_from) {
+				return Float->NaN();
+			};
+			if(t_from < At(0)) {
+				return Float->NaN();
+			};
+			if(t_to = t_from) {
+				return 0.0;
+			};
+			joules := 0.0;
+			cur_t := t_from;
+			cur_w := PowerAt(t_from);
+			for(i := 1; i < @size; i += 1;) {
+				t1 := At(i);
+				if(t1 <= t_from) {
+					continue;
+				};
+				if(cur_t >= t_to) {
+					break;
+				};
+				if(t1 - At(i - 1) > @max_gap) {
+					return Float->NaN();
+				};
+				seg_end := t1;
+				seg_w := WattsAt(i);
+				if(seg_end > t_to) {
+					seg_end := t_to;
+					seg_w := PowerAt(t_to);
+				};
+				joules += (cur_w + seg_w) * 0.5 * (seg_end - cur_t);
+				cur_t := seg_end;
+				cur_w := seg_w;
+			};
+			if(cur_t < t_to) {
+				tail := t_to - cur_t;
+				if(tail > @max_gap) {
+					return Float->NaN();
+				};
+				joules += cur_w * tail;
+			};
+			return joules;
+		}
+	}
+
+	#~
+	Samples a ResourceSampler on a background thread every N milliseconds and keeps the last readings (1024 by default). An attached EnergyEstimator is fed from a named reading value, in watts, with the reading's time. Start once, Stop when done; Stop waits for the thread.
+	~#
+	class SamplerLoop from Thread {
+		@sampler : ResourceSampler;
+		@interval : Int;
+		@keep : Int;
+		@readings : Vector<ResourceReading>;
+		@estimator : EnergyEstimator;
+		@power_field : String;
+		@running : Bool;
+		@started : Bool;
+		@total : Int;
+		@mutex : ThreadMutex;
+
+		#~
+		Constructor
+		@param sampler the source
+		@param interval_ms milliseconds between readings, at least 1
+		~#
+		New(sampler : ResourceSampler, interval_ms : Int) {
+			Parent("telemetry-sampler");
+			@sampler := sampler;
+			@interval := interval_ms;
+			if(@interval < 1) {
+				@interval := 1;
+			};
+			@keep := 1024;
+			@readings := Vector->New()<ResourceReading>;
+			@estimator := Nil;
+			@power_field := "";
+			@running := false;
+			@started := false;
+			@total := 0;
+			@mutex := ThreadMutex->New("telemetry-sampler-loop");
+		}
+
+		#~
+		Feeds an estimator from a reading value
+		@param estimator the estimator
+		@param field name of the value that is power in watts, such as gpu_power_w
+		~#
+		method : public : SetEnergy(estimator : EnergyEstimator, field : String) ~ Nil {
+			@estimator := estimator;
+			@power_field := field;
+		}
+
+		method : public : GetEnergy() ~ EnergyEstimator {
+			return @estimator;
+		}
+
+		#~
+		Takes one reading now, on the calling thread; Start does this on its own thread at every interval
+		@return the reading, or Nil if the source gave none
+		~#
+		method : public : SampleOnce() ~ ResourceReading {
+			r := @sampler->Sample();
+			if(r = Nil) {
+				return Nil;
+			};
+			critical(@mutex) {
+				@readings->AddBack(r);
+				if(@readings->Size() > @keep) {
+					@readings->Remove(0);
+				};
+				@total += 1;
+				if(@estimator <> Nil) {
+					w := r->Get(@power_field);
+					if(w = w) {
+						@estimator->AddSample(r->GetTimeMs()->As(Float) / 1000.0, w);
+					};
+				};
+			};
+			return r;
+		}
+
+		#~
+		Starts the background thread; does nothing if the source is not available
+		@return true if the thread was started
+		~#
+		method : public : Start() ~ Bool {
+			if(@started | @sampler->IsAvailable() = false) {
+				return false;
+			};
+			@started := true;
+			@running := true;
+			Execute(Nil);
+			return true;
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			go := true;
+			while(go) {
+				SampleOnce();
+				Thread->Sleep(@interval);
+				critical(@mutex) {
+					go := @running;
+				};
+			};
+		}
+
+		#~
+		Stops the thread and waits for it
+		~#
+		method : public : Stop() ~ Nil {
+			if(@started = false) {
+				return;
+			};
+			critical(@mutex) {
+				@running := false;
+			};
+			Join();
+			@started := false;
+		}
+
+		#~
+		The latest reading
+		@return the reading, Nil if none yet
+		~#
+		method : public : GetLast() ~ ResourceReading {
+			r : ResourceReading;
+			critical(@mutex) {
+				if(@readings->Size() > 0) {
+					r := @readings->Get(@readings->Size() - 1);
+				};
+			};
+			return r;
+		}
+
+		#~
+		Number of readings taken, including the ones no longer kept
+		@return count
+		~#
+		method : public : GetCount() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @total;
+			};
+			return n;
+		}
+
+		#~
+		The largest value of a name over the kept readings
+		@param name value name
+		@return the maximum, NaN if there is none
+		~#
+		method : public : MaxOf(name : String) ~ Float {
+			best := Float->NaN();
+			critical(@mutex) {
+				for(i := 0; i < @readings->Size(); i += 1;) {
+					v := @readings->Get(i)->Get(name);
+					if(v = v & (best <> best | v > best)) {
+						best := v;
+					};
+				};
+			};
+			return best;
+		}
+	}
+
+	#~
+	What a ContentionRunner measured: a latency series per worker, the series of all calls together, the wall time and the throughput.
+	~#
+	class ContentionReport {
+		@workers : SeriesStats[];
+		@combined : SeriesStats;
+		@wall_seconds : Float;
+
+		New(workers : SeriesStats[], combined : SeriesStats, wall_seconds : Float) {
+			@workers := workers;
+			@combined := combined;
+			@wall_seconds := wall_seconds;
+		}
+
+		#~
+		Number of workers
+		@return count
+		~#
+		method : public : GetWorkerCount() ~ Int {
+			return @workers->Size();
+		}
+
+		#~
+		Latency series of one worker
+		@param i worker number, from 0
+		@return the series, Nil if out of range
+		~#
+		method : public : GetWorker(i : Int) ~ SeriesStats {
+			if(i < 0 | i >= @workers->Size()) {
+				return Nil;
+			};
+			return @workers[i];
+		}
+
+		#~
+		Latency series of every call of every worker
+		@return the series
+		~#
+		method : public : GetCombined() ~ SeriesStats {
+			return @combined;
+		}
+
+		#~
+		Wall-clock seconds from the first call starting to the last worker finishing
+		@return seconds
+		~#
+		method : public : GetWallSeconds() ~ Float {
+			return @wall_seconds;
+		}
+
+		#~
+		Calls per second over all workers
+		@return throughput, counting the warm-up calls too
+		~#
+		method : public : GetThroughput() ~ Float {
+			if(@wall_seconds <= 0.0) {
+				return Float->NaN();
+			};
+			calls := 0;
+			for(i := 0; i < @workers->Size(); i += 1;) {
+				calls += @workers[i]->GetCount() + @workers[i]->GetDiscarded();
+			};
+			return calls->As(Float) / @wall_seconds;
+		}
+
+		#~
+		Ratio of the slowest worker's median to the fastest worker's median: 1 means the workers saw the same latency, larger means contention was unfair
+		@return the ratio, NaN if a worker has no samples
+		~#
+		method : public : GetMedianSpread() ~ Float {
+			lo := Float->Inf();
+			hi := 0.0;
+			for(i := 0; i < @workers->Size(); i += 1;) {
+				m := @workers[i]->GetP50();
+				if(m <> m) {
+					return Float->NaN();
+				};
+				if(m < lo) {
+					lo := m;
+				};
+				if(m > hi) {
+					hi := m;
+				};
+			};
+			if(lo <= 0.0) {
+				return Float->NaN();
+			};
+			return hi / lo;
+		}
+	}
+
+	class : private : ContentionWorker from Thread {
+		@id : Int;
+		@calls : Int;
+		@work : (Int, Int) ~ Nil;
+		@stats : SeriesStats;
+		@state : ContentionRunner;
+
+		New(id : Int, calls : Int, work : (Int, Int) ~ Nil, stats : SeriesStats, state : ContentionRunner) {
+			Parent();
+			@id := id;
+			@calls := calls;
+			@work := work;
+			@stats := stats;
+			@state := state;
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			@state->Arrive();
+			for(i := 0; i < @calls; i += 1;) {
+				t := System.Time.Timer->New();
+				t->Start();
+				@work(@id, i);
+				t->End();
+				@stats->Add(t->GetElapsedTime() * 1000.0);
+			};
+		}
+	}
+
+	#~
+	Runs K threads that each call a function reference N times and times every call, to see how latency changes when workers compete for the same resource (a shared session, a device, the collector). The function takes the worker number (0 to K - 1) and the call number (0 to N - 1) and must not raise.
+
+	The workers wait for each other before the first call so they start together to within a poll of a millisecond; each records into its own series, so no lock sits in the timed path, and the series are merged after every worker has joined. Warm-up applies per worker. A single worker (K = 1) is the uncontended baseline to compare against.
+	~#
+	class ContentionRunner {
+		@workers : Int;
+		@calls : Int;
+		@work : (Int, Int) ~ Nil;
+		@warmup : Int;
+		@ready : Int;
+		@mutex : ThreadMutex;
+
+		#~
+		Constructor
+		@param workers number of concurrent workers, at least 1
+		@param calls calls per worker, at least 1
+		@param work function called as work(worker, call)
+		~#
+		New(workers : Int, calls : Int, work : (Int, Int) ~ Nil) {
+			@workers := workers;
+			if(@workers < 1) {
+				@workers := 1;
+			};
+			@calls := calls;
+			if(@calls < 1) {
+				@calls := 1;
+			};
+			@work := work;
+			@warmup := 0;
+			@ready := 0;
+			@mutex := ThreadMutex->New("telemetry-contention");
+		}
+
+		#~
+		Calls each worker makes before it starts recording
+		@param warmup number of leading calls per worker to discard
+		~#
+		method : public : SetWarmup(warmup : Int) ~ Nil {
+			@warmup := warmup;
+		}
+
+		method : public : Arrive() ~ Nil {
+			critical(@mutex) {
+				@ready += 1;
+			};
+			go := false;
+			while(go = false) {
+				critical(@mutex) {
+					go := @ready >= @workers;
+				};
+				if(go = false) {
+					Thread->Sleep(1);
+				};
+			};
+		}
+
+		#~
+		Runs the workers to completion
+		@return the report
+		~#
+		method : public : Run() ~ ContentionReport {
+			@ready := 0;
+			series := SeriesStats->New[@workers];
+			threads := ContentionWorker->New[@workers];
+			for(i := 0; i < @workers; i += 1;) {
+				series[i] := SeriesStats->New(@warmup);
+				threads[i] := ContentionWorker->New(i, @calls, @work, series[i], @self);
+			};
+			wall := System.Time.Timer->New();
+			wall->Start();
+			for(i := 0; i < @workers; i += 1;) {
+				threads[i]->Execute(Nil);
+			};
+			for(i := 0; i < @workers; i += 1;) {
+				threads[i]->Join();
+			};
+			wall->End();
+			combined := SeriesStats->New(0);
+			for(i := 0; i < @workers; i += 1;) {
+				combined->Merge(series[i]);
+			};
+			return ContentionReport->New(series, combined, wall->GetElapsedTime());
+		}
+	}
+}

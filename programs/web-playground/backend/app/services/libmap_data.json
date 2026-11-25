@@ -374,6 +374,12 @@
     "System.Stats": ["Correlation", "CorrelationResult", "Design", "Dist", "OLS", "OLSResult", "Stats", "StatsFormat", "TTest", "TTestResult"]
    }
   },
+  "telemetry": {
+   "deps": ["gen_collect", "json"],
+   "bundles": {
+    "System.Telemetry": ["ContentionReport", "ContentionRunner", "EnergyEstimator", "GpuSampler", "LatencyPrediction", "LatencySketch", "PowermetricsSampler", "ProfileEntry", "ProfileStore", "ResourceReading", "ResourceSampler", "RuntimeSampler", "SampleRing", "SamplerLoop", "SeriesStats", "Telemetry", "TimingProbe", "TimingRecorder"]
+   }
+  },
   "web_server": {
    "deps": ["gen_collect", "net", "net_server", "json", "cipher"],
    "bundles": {

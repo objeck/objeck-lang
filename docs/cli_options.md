@@ -85,6 +85,7 @@ eight libraries that group lists.
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `ml_clip`, `ml_verify`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks with image loading and history tables |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL2, the 2D game and 3D OpenGL frameworks |
+| `@telemetry` | `telemetry`, `json`, `gen_collect` | `System.Telemetry` timing, latency sketches, samplers, profiles and the contention helper |
 
 Groups and explicit names mix in any order, for either `--target`: `-lib @ai,json` and
 `-lib json,@ai` are the same. Listing a library twice is harmless.

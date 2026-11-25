@@ -78,6 +78,7 @@ for _libs, _reason in (
     (("odbc", "query_odbc"), "it needs a database driver and network access"),
     (("sdl2", "sdl_game", "sdl_gl", "plot_sdl", "lame"), "it needs a display or audio device"),
     (("json_stream",), "it streams from files"),
+    (("telemetry",), "it starts the nvidia-smi program and reads the host's resource counters"),
 ):
     for _l in _libs:
         _BLOCK_REASONS[_l] = _reason

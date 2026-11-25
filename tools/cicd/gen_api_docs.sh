@@ -101,6 +101,7 @@ set -o pipefail
   "$SRC/plot.obs" \
   "$SRC/plot_sdl.obs" \
   "$SRC/stats.obs" \
+  "$SRC/telemetry.obs" \
   "$SRC/ai_search.obs" \
   "$SRC/ai_game.obs" \
   "$SRC/ai_optimize.obs" \

@@ -23071,6 +23071,583 @@
 				}
 			}
 		},
+		"System.Telemetry.ContentionReport": {
+			"description": "What a ContentionRunner measured: a latency series per worker, the series of all calls together, the wall time and the throughput.",
+			"functions": {
+				"GetCombined": {
+					"descriptions": ["**Latency series of every call of every worker**\n\n```method : public : GetCombined() ~ SeriesStats```\n\n\n\nreturn: SeriesStats"]
+				},
+				"GetMedianSpread": {
+					"descriptions": ["**Ratio of the slowest worker's median to the fastest worker's median: 1 means the workers saw the same latency, larger means contention was unfair**\n\n```method : public : GetMedianSpread() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetThroughput": {
+					"descriptions": ["**Calls per second over all workers**\n\n```method : public : GetThroughput() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWallSeconds": {
+					"descriptions": ["**Wall-clock seconds from the first call starting to the last worker finishing**\n\n```method : public : GetWallSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWorker": {
+					"descriptions": ["**Latency series of one worker**\n\n```method : public : GetWorker(i:Int) ~ SeriesStats```\n\n\n\ni: Int\n\nreturn: SeriesStats"]
+				},
+				"GetWorkerCount": {
+					"descriptions": ["**Number of workers**\n\n```method : public : GetWorkerCount() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.Telemetry.ContentionRunner": {
+			"description": "Runs K threads that each call a function reference N times and times every call, to see how latency changes when workers compete for the same resource (a shared session, a device, the collector). The function takes the worker number (0 to K - 1) and the call number (0 to N - 1) and must not raise.\n\nThe workers wait for each other before the first call so they start together to within a poll of a millisecond; each records into its own series, so no lock sits in the timed path, and the series are merged after every worker has joined. Warm-up applies per worker. A single worker (K = 1) is the uncontended baseline to compare against.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(workers:Int, calls:Int, work:(Int,Int)~Nil)```\n\n\n\nworkers: Int\n\ncalls: Int\n\nwork: (Int,Int)~Nil"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the workers to completion**\n\n```method : public : Run() ~ ContentionReport```\n\n\n\nreturn: ContentionReport"]
+				},
+				"SetWarmup": {
+					"descriptions": ["**Calls each worker makes before it starts recording**\n\n```method : public : SetWarmup(warmup:Int) ~ Nil```\n\n\n\nwarmup: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Telemetry.EnergyEstimator": {
+			"description": "Estimates energy by integrating sampled power over time with the trapezoid rule. It is an estimate and says so: the power it is fed is itself a sensor reading (nvidia-smi power.draw is the board power, averaged by the driver over a window of about a second on many boards), the samples are discrete, and the interval between samples is assumed to be linear. For a workload much shorter than the sampling interval the estimate has no resolution at all, and per-call energy from a one-second sampler is a share of the average power over the call, not a measurement of the call.\n\nSamples must arrive in time order (equal time is allowed); AddSample returns false for one that does not, or for a negative or non-number power. Gaps longer than the maximum gap (set with SetMaxGap, none by default) are not integrated and are counted in GetSkippedSeconds. The last N samples are kept for JoulesBetween (4096 by default); the total is exact over all samples.",
+			"functions": {
+				"AddSample": {
+					"descriptions": ["**Adds a power sample**\n\n```method : public : AddSample(seconds:Float, watts:Float) ~ Bool```\n\n\n\nseconds: Float\n\nwatts: Float\n\nreturn: Bool"]
+				},
+				"GetCount": {
+					"descriptions": ["**Number of samples accepted**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetIntegratedSeconds": {
+					"descriptions": ["**Seconds that were integrated**\n\n```method : public : GetIntegratedSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetJoules": {
+					"descriptions": ["**Estimated energy over every integrated interval**\n\n```method : public : GetJoules() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMeanWatts": {
+					"descriptions": ["**Time-weighted mean power over the integrated seconds**\n\n```method : public : GetMeanWatts() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetPeakWatts": {
+					"descriptions": ["**Largest power sample**\n\n```method : public : GetPeakWatts() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSkippedSeconds": {
+					"descriptions": ["**Seconds in gaps longer than the maximum gap, not integrated**\n\n```method : public : GetSkippedSeconds() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"JoulesBetween": {
+					"descriptions": ["**Estimated energy between two times, from the retained samples with the end points interpolated. Past the last sample the last reading is held, which is what lets a call that has just returned be priced before the next sample arrives.**\n\n```method : public : JoulesBetween(t_from:Float, t_to:Float) ~ Float```\n\n\n\nt_from: Float\n\nt_to: Float\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(retained:Int)```\n\n\n\nretained: Int"]
+				},
+				"PowerAt": {
+					"descriptions": ["**Power at a time, linearly interpolated between the retained samples; after the last sample the last reading is held (the power is assumed unchanged until the next sample)**\n\n```method : public : PowerAt(seconds:Float) ~ Float```\n\n\n\nseconds: Float\n\nreturn: Float"]
+				},
+				"SetMaxGap": {
+					"descriptions": ["**Sets the longest interval between two samples that is integrated**\n\n```method : public : SetMaxGap(seconds:Float) ~ Nil```\n\n\n\nseconds: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Telemetry.GpuSampler": {
+			"description": "GPU readings from nvidia-smi: utilization in percent, memory used in MB, power draw in watts and temperature in degrees Celsius (the values gpu_util_percent, gpu_mem_used_mb, gpu_power_w, gpu_temp_c). The command is the same on Windows and Linux:\n\nnvidia-smi --query-gpu=utilization.gpu,memory.used,power.draw,temperature.gpu --format=csv,noheader,nounits\n\nNo GPU, no driver or a failing command is not an error: IsAvailable() turns false after the first failed attempt, Sample returns Nil without starting another process, and GetError() holds the reason. Reset() allows another attempt. A field the board does not report (\"[N/A]\") reads as NaN. With several GPUs, the index chooses the line (0 is the first). Each Sample starts a process, which takes tens of milliseconds, so sample from a SamplerLoop at an interval of a second or so and not once per inference.",
+			"functions": {
+				"Command": {
+					"descriptions": ["**The query nvidia-smi is given**\n\n```function : Command() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetError": {
+					"descriptions": ["**Why the last attempt failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsAvailable": {
+					"descriptions": ["**Whether nvidia-smi answers here; the first call runs it once**\n\n```method : public : IsAvailable() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Names": {
+					"descriptions": ["**Names of the values, in order**\n\n```function : Names() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(index:Int)```\n\n\n\nindex: Int"]
+				},
+				"Parse": {
+					"descriptions": ["**Parses the whole output of the command: the lines that parse are the GPUs, in order; other lines (a driver warning) are skipped**\n\n```function : Parse(text:String, index:Int, time_ms:Int) ~ ResourceReading```\n\n\n\ntext: String\n\nindex: Int\n\ntime_ms: Int\n\nreturn: ResourceReading"]
+				},
+				"ParseLine": {
+					"descriptions": ["**Parses one line of the CSV: four comma-separated fields**\n\n```function : ParseLine(line:String) ~ Float[]```\n\n\n\nline: String\n\nreturn: Float[]"]
+				},
+				"Reset": {
+					"descriptions": ["**Allows another attempt after a failure**\n\n```method : public : Reset() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"WithCommand": {
+					"descriptions": ["**A sampler that runs another command instead of nvidia-smi, for tests and for wrappers; the command must print the same four-field CSV**\n\n```function : WithCommand(command:String) ~ GpuSampler```\n\n\n\ncommand: String\n\nreturn: GpuSampler"]
+				}
+			}
+		},
+		"System.Telemetry.LatencyPrediction": {
+			"description": "What a profile says about one (model, device, batch) cell: the observed latency distribution, memory and, when an energy source was attached, joules per run. Everything is observed, nothing is interpolated.",
+			"functions": {
+				"GetBatch": {
+					"descriptions": ["**Batch size**\n\n```method : public : GetBatch() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCount": {
+					"descriptions": ["**Number of observed runs, warm-up excluded**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDevice": {
+					"descriptions": ["**Device name**\n\n```method : public : GetDevice() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetGpuMemory": {
+					"descriptions": ["**Largest GPU memory reading taken when a run finished**\n\n```method : public : GetGpuMemory() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetHostMemory": {
+					"descriptions": ["**Largest process resident memory seen when a run of this cell finished**\n\n```method : public : GetHostMemory() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetJoulesPerRun": {
+					"descriptions": ["**Estimated energy per run, an estimate from sampled power**\n\n```method : public : GetJoulesPerRun() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMax": {
+					"descriptions": ["**Observed maximum latency**\n\n```method : public : GetMax() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean": {
+					"descriptions": ["**Observed mean latency**\n\n```method : public : GetMean() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMin": {
+					"descriptions": ["**Observed minimum latency**\n\n```method : public : GetMin() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetModel": {
+					"descriptions": ["**Model name**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetP50": {
+					"descriptions": ["**Observed median latency**\n\n```method : public : GetP50() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetP95": {
+					"descriptions": ["**Observed 95th percentile latency**\n\n```method : public : GetP95() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetP99": {
+					"descriptions": ["**Observed 99th percentile latency**\n\n```method : public : GetP99() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRelativeError": {
+					"descriptions": ["**Relative error of the quantiles, 0 when exact**\n\n```method : public : GetRelativeError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTag": {
+					"descriptions": ["**Phase tag of the series the numbers come from**\n\n```method : public : GetTag() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsExact": {
+					"descriptions": ["**Whether the quantiles are exact (a small series) rather than sketch estimates**\n\n```method : public : IsExact() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.Telemetry.LatencySketch": {
+			"description": "A log-bucketed latency histogram (the DDSketch construction, the same idea as an HDR histogram with a fixed relative error): memory is a fixed array of counters whatever the sample count, and a quantile estimate is within the stated relative error of the true value at that rank.\n\nA value x is counted in bucket ceil(log(x / MIN) / log(gamma)) with gamma = (1 + a) / (1 - a) for the relative error a, and a bucket is reported by its geometric centre 2 * upper / (gamma + 1), which is within a of every value in the bucket. Values are in milliseconds: the range covered with the stated error is 1.0e-6 ms (1 ns) up to 1.0e7 ms (under 3 hours). A value below 1 ns is counted in the lowest bucket (an absolute error under 1 ns) and one above the range in the highest, and both are counted in GetClamped(). The default error of 1 percent takes about 1,500 counters (12 KB); 0.5 percent takes about 3,000.\n\nQuantile(q) returns the estimate of the order statistic of nearest rank ceil(q * n), clamped into the exact minimum and maximum the sketch also keeps, so Quantile(0) and Quantile(1) are exact.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a value**\n\n```method : public : Add(x:Float) ~ Bool```\n\n\n\nx: Float\n\nreturn: Bool"]
+				},
+				"FromJson": {
+					"descriptions": ["**Rebuilds a sketch from the JSON ToJson wrote**\n\n```function : FromJson(root:JsonElement) ~ LatencySketch```\n\n\n\nroot: JsonElement\n\nreturn: LatencySketch"]
+				},
+				"GetBucketCount": {
+					"descriptions": ["**Number of counters, the memory bound**\n\n```method : public : GetBucketCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetClamped": {
+					"descriptions": ["**Number of added values that fell outside the range with the stated error**\n\n```method : public : GetClamped() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCount": {
+					"descriptions": ["**Number of values added**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMax": {
+					"descriptions": ["**Largest value added, exact**\n\n```method : public : GetMax() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMin": {
+					"descriptions": ["**Smallest value added, exact**\n\n```method : public : GetMin() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRelativeError": {
+					"descriptions": ["**The relative error this sketch was built with**\n\n```method : public : GetRelativeError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"MaxValue": {
+					"descriptions": ["**Largest value with the stated relative error, in milliseconds**\n\n```function : MaxValue() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Merge": {
+					"descriptions": ["**Adds the counts of another sketch**\n\n```method : public : Merge(peer:LatencySketch) ~ Bool```\n\n\n\npeer: LatencySketch\n\nreturn: Bool"]
+				},
+				"MinValue": {
+					"descriptions": ["**Smallest value with the stated relative error, in milliseconds (1 ns)**\n\n```function : MinValue() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with the default relative error of 1 percent**\n\n```New()```\n\n", "**Constructor**\n\n```New(rel_error:Float)```\n\n\n\nrel_error: Float"]
+				},
+				"Quantile": {
+					"descriptions": ["**Estimate of a quantile**\n\n```method : public : Quantile(q:Float) ~ Float```\n\n\n\nq: Float\n\nreturn: Float"]
+				},
+				"ToJson": {
+					"descriptions": ["**The sketch as JSON: the relative error, the exact extremes and the non-empty buckets as [index, count] pairs**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"System.Telemetry.PowermetricsSampler": {
+			"description": "Apple Silicon power through powermetrics: the interface only. powermetrics needs root (sudo powermetrics --samplers cpu_power,gpu_power -i 1000), and a library that silently asks for root is not acceptable, so this class reports itself as unavailable on every platform and Sample returns Nil. A program that runs as root can implement ResourceSampler itself, parse the \"CPU Power\", \"GPU Power\" and \"ANE Power\" lines in milliwatts and feed an EnergyEstimator; none of that is tested here, no Apple hardware was used.",
+			"functions": {
+
+			}
+		},
+		"System.Telemetry.ProfileEntry": {
+			"description": "One cell of a profile: the series of a (model, device, batch, tag) with the resources seen alongside it. Memory and energy are optional and NaN when not captured.",
+			"functions": {
+				"AddEnergy": {
+					"descriptions": ["**Adds the estimated energy of one run**\n\n```method : public : AddEnergy(joules:Float) ~ Nil```\n\n\n\njoules: Float\n\nreturn: Nil"]
+				},
+				"GetJoulesPerRun": {
+					"descriptions": ["**Mean estimated energy per run over the runs that had a power reading**\n\n```method : public : GetJoulesPerRun() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Key": {
+					"descriptions": ["**Key of a cell, ordered by model, device, then batch numerically**\n\n```function : Key(model:String, device:String, batch:Int, tag:String) ~ String```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: String"]
+				},
+				"Merge": {
+					"descriptions": ["**Folds another entry of the same cell in**\n\n```method : public : Merge(peer:ProfileEntry) ~ Bool```\n\n\n\npeer: ProfileEntry\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(model:String, device:String, batch:Int, tag:String, stats:SeriesStats)```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nstats: SeriesStats"]
+				},
+				"RecordGpuMemory": {
+					"descriptions": ["**Notes a GPU memory reading, keeping the largest**\n\n```method : public : RecordGpuMemory(mb:Float) ~ Nil```\n\n\n\nmb: Float\n\nreturn: Nil"]
+				},
+				"RecordHostMemory": {
+					"descriptions": ["**Notes a process resident-memory reading, keeping the largest**\n\n```method : public : RecordHostMemory(bytes:Float) ~ Nil```\n\n\n\nbytes: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Telemetry.ProfileStore": {
+			"description": "Profiles: statistics aggregated by model, device and batch (and phase tag), with Predict, JSON and CSV files and merging.\n\nJSON is the lossless format: the series moments, the exact samples of a small series and the whole sketch, so a loaded profile answers the same quantiles and two profiles merge into the profile of the union. CSV is a lossy summary (count, extremes, mean, standard deviation, p50, p95, p99, p99.9, memory, energy) meant for spreadsheets and for carrying a profile between machines that only need Predict; a profile loaded from CSV is summary-only, and merging a summary-only cell with another cell loses its quantiles (they become NaN) because quantiles of a union cannot be computed from quantiles. Save to JSON when you will merge.",
+			"functions": {
+				"Entry": {
+					"descriptions": ["**The cell of a key, created empty if absent**\n\n```method : public : Entry(model:String, device:String, batch:Int, tag:String) ~ ProfileEntry```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: ProfileEntry"]
+				},
+				"Find": {
+					"descriptions": ["**The cell of a key**\n\n```method : public : Find(model:String, device:String, batch:Int, tag:String) ~ ProfileEntry```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: ProfileEntry"]
+				},
+				"FromJsonString": {
+					"descriptions": ["**Rebuilds a profile from JSON text**\n\n```function : FromJsonString(text:String) ~ ProfileStore```\n\n\n\ntext: String\n\nreturn: ProfileStore"]
+				},
+				"GetEntries": {
+					"descriptions": ["**Every cell, ordered by model, device, then batch**\n\n```method : public : GetEntries() ~ Vector&lt;ProfileEntry&gt;```\n\n\n\nreturn: Vector&lt;ProfileEntry&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**The reason the last Predict, Load or Save did not work**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a profile from a JSON file**\n\n```function : Load(path:String) ~ ProfileStore```\n\n\n\npath: String\n\nreturn: ProfileStore"]
+				},
+				"LoadCsv": {
+					"descriptions": ["**Reads a profile from a CSV file**\n\n```function : LoadCsv(path:String) ~ ProfileStore```\n\n\n\npath: String\n\nreturn: ProfileStore"]
+				},
+				"LoadInto": {
+					"descriptions": ["**Replaces this profile with the one in a JSON file**\n\n```method : public : LoadInto(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"Merge": {
+					"descriptions": ["**Folds another profile in cell by cell**\n\n```method : public : Merge(peer:ProfileStore) ~ Bool```\n\n\n\npeer: ProfileStore\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor, no warm-up**\n\n```New()```\n\n", "**Constructor**\n\n```New(warmup:Int)```\n\n\n\nwarmup: Int"]
+				},
+				"ParseCsv": {
+					"descriptions": ["**Replaces this profile with the summary rows of CSV text**\n\n```method : public : ParseCsv(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"ParseJson": {
+					"descriptions": ["**Replaces the contents of this profile with the profile in JSON text**\n\n```method : public : ParseJson(text:String) ~ Bool```\n\n\n\ntext: String\n\nreturn: Bool"]
+				},
+				"Predict": {
+					"descriptions": ["**Observed latency and memory of a cell. The cell is the one with an empty tag; if there is none and exactly one tag exists for the model, device and batch, that one.**\n\n```method : public : Predict(model:String, device:String, batch:Int) ~ LatencyPrediction```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\nreturn: LatencyPrediction"]
+				},
+				"PredictTag": {
+					"descriptions": ["**Observed latency and memory of a cell with a given phase tag**\n\n```method : public : PredictTag(model:String, device:String, batch:Int, tag:String) ~ LatencyPrediction```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: LatencyPrediction"]
+				},
+				"Record": {
+					"descriptions": ["**Records one latency**\n\n```method : public : Record(model:String, device:String, batch:Int, tag:String, ms:Float) ~ Bool```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nms: Float\n\nreturn: Bool"]
+				},
+				"Save": {
+					"descriptions": ["**Writes the profile to a JSON file**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SaveCsv": {
+					"descriptions": ["**Writes the profile to a CSV file**\n\n```method : public : SaveCsv(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool"]
+				},
+				"SetWarmup": {
+					"descriptions": ["**Sets the warm-up for series created from now on**\n\n```method : public : SetWarmup(warmup:Int) ~ Nil```\n\n\n\nwarmup: Int\n\nreturn: Nil"]
+				},
+				"Size": {
+					"descriptions": ["**Number of cells**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"SplitCsv": {
+					"descriptions": ["**Splits one CSV line into cells, honouring double quotes**\n\n```function : SplitCsv(line:String) ~ String[]```\n\n\n\nline: String\n\nreturn: String[]"]
+				},
+				"ToCsv": {
+					"descriptions": ["**The profile as CSV, one row per cell; empty cell for a value that was not captured**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToJson": {
+					"descriptions": ["**The profile as JSON, lossless**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"ToJsonString": {
+					"descriptions": ["**The profile as a JSON string**\n\n```method : public : ToJsonString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.Telemetry.ResourceReading": {
+			"description": "One reading of a ResourceSampler: when it was taken (milliseconds on the Telemetry->NowMs clock) and named values; a value that could not be read is NaN.",
+			"functions": {
+				"Get": {
+					"descriptions": ["**A value by name**\n\n```method : public : Get(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
+				},
+				"GetTimeMs": {
+					"descriptions": ["**When the reading was taken**\n\n```method : public : GetTimeMs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Size": {
+					"descriptions": ["**Number of values**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.Telemetry.ResourceSampler": {
+			"description": "A source of resource readings. Implementations: RuntimeSampler (the runtime's own monitors), GpuSampler (nvidia-smi), PowermetricsSampler (interface only).",
+			"functions": {
+				"GetName": {
+					"descriptions": ["**Name of the source**\n\n```method : public : virutal : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsAvailable": {
+					"descriptions": ["**Whether the source can be read here. Cheap after the first call.**\n\n```method : public : virutal : IsAvailable() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Sample": {
+					"descriptions": ["**Takes a reading**\n\n```method : public : virutal : Sample() ~ ResourceReading```\n\n\n\nreturn: ResourceReading"]
+				}
+			}
+		},
+		"System.Telemetry.RuntimeSampler": {
+			"description": "Host process and collector readings from the runtime's own monitors (the runtime.* properties of Runtime->GetProperty): resident and peak memory, heap bytes, process CPU time and CPU percent since the previous reading, thread counts and the collector's counts and pause times.\n\nCollector pause times are what the runtime exposes: the last, the maximum and the average pause in microseconds and the minor and major counts; gc_pause_total_us is derived (average times count) and so is rounded to the average's microsecond. There is no pause histogram in the program-visible set; the OBJECK_GC_STATS exit summary has percentiles but goes to stderr at exit. cpu_percent is process CPU time over wall time, so 100 means one core and a multi-threaded process can exceed it; it is NaN on the first reading.",
+			"functions": {
+				"Names": {
+					"descriptions": ["**Names of the values, in order**\n\n```function : Names() ~ String[]```\n\n\n\nreturn: String[]"]
+				}
+			}
+		},
+		"System.Telemetry.SampleRing": {
+			"description": "A ring buffer of the last N raw samples, the newest overwriting the oldest. Memory is fixed at the capacity.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a sample, dropping the oldest when full**\n\n```method : public : Add(x:Float) ~ Nil```\n\n\n\nx: Float\n\nreturn: Nil"]
+				},
+				"Capacity": {
+					"descriptions": ["**Capacity**\n\n```method : public : Capacity() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Clear": {
+					"descriptions": ["**Forgets every sample**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Get": {
+					"descriptions": ["**A sample by age**\n\n```method : public : Get(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int"]
+				},
+				"Size": {
+					"descriptions": ["**Number of samples held**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToArray": {
+					"descriptions": ["**The samples held, oldest first**\n\n```method : public : ToArray() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"TotalAdded": {
+					"descriptions": ["**Number of samples ever added, including the ones overwritten**\n\n```method : public : TotalAdded() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.Telemetry.SamplerLoop": {
+			"description": "Samples a ResourceSampler on a background thread every N milliseconds and keeps the last readings (1024 by default). An attached EnergyEstimator is fed from a named reading value, in watts, with the reading's time. Start once, Stop when done; Stop waits for the thread.",
+			"functions": {
+				"GetCount": {
+					"descriptions": ["**Number of readings taken, including the ones no longer kept**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLast": {
+					"descriptions": ["**The latest reading**\n\n```method : public : GetLast() ~ ResourceReading```\n\n\n\nreturn: ResourceReading"]
+				},
+				"MaxOf": {
+					"descriptions": ["**The largest value of a name over the kept readings**\n\n```method : public : MaxOf(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(sampler:ResourceSampler, interval_ms:Int)```\n\n\n\nsampler: ResourceSampler\n\ninterval_ms: Int"]
+				},
+				"SampleOnce": {
+					"descriptions": ["**Takes one reading now, on the calling thread; Start does this on its own thread at every interval**\n\n```method : public : SampleOnce() ~ ResourceReading```\n\n\n\nreturn: ResourceReading"]
+				},
+				"SetEnergy": {
+					"descriptions": ["**Feeds an estimator from a reading value**\n\n```method : public : SetEnergy(estimator:EnergyEstimator, field:String) ~ Nil```\n\n\n\nestimator: EnergyEstimator\n\nfield: String\n\nreturn: Nil"]
+				},
+				"Start": {
+					"descriptions": ["**Starts the background thread; does nothing if the source is not available**\n\n```method : public : Start() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Stop": {
+					"descriptions": ["**Stops the thread and waits for it**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.Telemetry.SeriesStats": {
+			"description": "Streaming statistics of one latency series, in milliseconds, in bounded memory: the count, minimum, maximum, mean and standard deviation (Welford's update, so a long series does not lose precision), quantiles from a LatencySketch, the exact quantiles while the series is still small, and a SampleRing of the last raw samples.\n\nA series with warm-up N discards its first N samples (counted by GetDiscarded, never part of any statistic), the usual way to keep cold-start cost, JIT and cache fill out of the numbers. A series whose count is within the exact limit (512 by default) keeps every sample and answers quantiles exactly, by nearest rank; past the limit it answers from the sketch, within GetRelativeError(). The standard deviation is the sample one (divisor n - 1).",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a sample, or discards it while the warm-up lasts**\n\n```method : public : Add(x:Float) ~ Bool```\n\n\n\nx: Float\n\nreturn: Bool"]
+				},
+				"FromJson": {
+					"descriptions": ["**Rebuilds a series from the JSON ToJson wrote**\n\n```function : FromJson(root:JsonElement, exact_limit:Int) ~ SeriesStats```\n\n\n\nroot: JsonElement\n\nexact_limit: Int\n\nreturn: SeriesStats"]
+				},
+				"FromSummary": {
+					"descriptions": ["**A series rebuilt from summary numbers alone, as a CSV profile carries them. It answers count, minimum, maximum, mean, standard deviation and the four stored quantiles, and nothing else; it cannot merge quantiles.**\n\n```function : FromSummary(count:Int, mn:Float, mx:Float, mean:Float, stddev:Float, p50:Float, p95:Float, p99:Float, p999:Float) ~ SeriesStats```\n\n\n\ncount: Int\n\nmn: Float\n\nmx: Float\n\nmean: Float\n\nstddev: Float\n\np50: Float\n\np95: Float\n\np99: Float\n\np999: Float\n\nreturn: SeriesStats"]
+				},
+				"GetCount": {
+					"descriptions": ["**Number of samples in the statistics, warm-up excluded**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDiscarded": {
+					"descriptions": ["**Number of samples discarded as warm-up**\n\n```method : public : GetDiscarded() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetM2": {
+					"descriptions": ["**Sum of squared deviations from the mean, the second moment merging needs**\n\n```method : public : GetM2() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMax": {
+					"descriptions": ["**Largest sample**\n\n```method : public : GetMax() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMean": {
+					"descriptions": ["**Mean**\n\n```method : public : GetMean() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMin": {
+					"descriptions": ["**Smallest sample**\n\n```method : public : GetMin() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetP50": {
+					"descriptions": ["**Median**\n\n```method : public : GetP50() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetP95": {
+					"descriptions": ["**95th percentile**\n\n```method : public : GetP95() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetP99": {
+					"descriptions": ["**99th percentile**\n\n```method : public : GetP99() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetP999": {
+					"descriptions": ["**99.9th percentile**\n\n```method : public : GetP999() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRejected": {
+					"descriptions": ["**Number of samples rejected as NaN, infinite or negative**\n\n```method : public : GetRejected() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRelativeError": {
+					"descriptions": ["**Relative error of a quantile answer**\n\n```method : public : GetRelativeError() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRing": {
+					"descriptions": ["**The ring of the last raw samples**\n\n```method : public : GetRing() ~ SampleRing```\n\n\n\nreturn: SampleRing"]
+				},
+				"GetStdDev": {
+					"descriptions": ["**Sample standard deviation, divisor n - 1**\n\n```method : public : GetStdDev() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetVariance": {
+					"descriptions": ["**Sample variance, divisor n - 1**\n\n```method : public : GetVariance() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWarmup": {
+					"descriptions": ["**Warm-up setting**\n\n```method : public : GetWarmup() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsExact": {
+					"descriptions": ["**Whether quantiles are exact: every sample is held and the series was not merged past the exact limit**\n\n```method : public : IsExact() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsSummaryOnly": {
+					"descriptions": ["**Whether the series holds only summary numbers, as a profile loaded from CSV does**\n\n```method : public : IsSummaryOnly() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Merge": {
+					"descriptions": ["**Folds another series in, as if its samples had been added here**\n\n```method : public : Merge(peer:SeriesStats) ~ Bool```\n\n\n\npeer: SeriesStats\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with no warm-up, the default 1 percent error, a ring of 256 samples and an exact limit of 512**\n\n```New()```\n\n", "**Constructor**\n\n```New(warmup:Int)```\n\n\n\nwarmup: Int", "**Constructor**\n\n```New(warmup:Int, rel_error:Float, ring_size:Int, exact_limit:Int)```\n\n\n\nwarmup: Int\n\nrel_error: Float\n\nring_size: Int\n\nexact_limit: Int"]
+				},
+				"Quantile": {
+					"descriptions": ["**Quantile by nearest rank: the sample at rank ceil(q * n) in sorted order**\n\n```method : public : Quantile(q:Float) ~ Float```\n\n\n\nq: Float\n\nreturn: Float"]
+				},
+				"ToJson": {
+					"descriptions": ["**The series as JSON: the moments, the exact samples while the series is exact, and the sketch**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"System.Telemetry.Telemetry": {
+			"description": "Static helpers and the process-wide default recorder.",
+			"functions": {
+				"ClockDescription": {
+					"descriptions": ["**The clock behind every measurement, for the record**\n\n```function : ClockDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Default": {
+					"descriptions": ["**The process-wide recorder behind the static Start and Time calls, created on first use**\n\n```function : Default() ~ TimingRecorder```\n\n\n\nreturn: TimingRecorder"]
+				},
+				"Fmt": {
+					"descriptions": ["**Formats a Float as the shortest text that reads back as the same value**\n\n```function : Fmt(v:Float) ~ String```\n\n\n\nv: Float\n\nreturn: String"]
+				},
+				"IsNumber": {
+					"descriptions": ["**Whether a string is a plain decimal number such as 12, -3.5 or 1.2e-5**\n\n```function : IsNumber(s:String) ~ Bool```\n\n\n\ns: String\n\nreturn: Bool"]
+				},
+				"KeyPart": {
+					"descriptions": ["**Replaces the series key separator in a name**\n\n```function : KeyPart(s:String) ~ String```\n\n\n\ns: String\n\nreturn: String"]
+				},
+				"MeasureOverhead": {
+					"descriptions": ["**Cost of the measurement itself: the milliseconds between Start and Stop of a probe wrapped around nothing**\n\n```function : MeasureOverhead(iterations:Int) ~ SeriesStats```\n\n\n\niterations: Int\n\nreturn: SeriesStats"]
+				},
+				"NearestRank": {
+					"descriptions": ["**Nearest rank of a quantile: ceil(q * n), clamped into [1, n]**\n\n```function : NearestRank(q:Float, n:Int) ~ Int```\n\n\n\nq: Float\n\nn: Int\n\nreturn: Int"]
+				},
+				"NowMs": {
+					"descriptions": ["**Milliseconds since the runtime started, from the monotonic clock behind the runtime.uptime_ms property; the time base of sampler readings. One-millisecond resolution.**\n\n```function : NowMs() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Prediction from the default recorder's profile**\n\n```function : Predict(model:String, device:String, batch:Int) ~ LatencyPrediction```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\nreturn: LatencyPrediction"]
+				},
+				"ReadProperty": {
+					"descriptions": ["**Reads a runtime.* property as a number**\n\n```function : ReadProperty(key:String) ~ Float```\n\n\n\nkey: String\n\nreturn: Float"]
+				},
+				"Reset": {
+					"descriptions": ["**Replaces the default recorder with an empty one**\n\n```function : Reset() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Start": {
+					"descriptions": ["**Starts timing one call on the default recorder, batch 1**\n\n```function : Start(model:String, device:String, tag:String) ~ TimingProbe```\n\n\n\nmodel: String\n\ndevice: String\n\ntag: String\n\nreturn: TimingProbe", "**Starts timing one call on the default recorder**\n\n```function : Start(model:String, device:String, batch:Int, tag:String) ~ TimingProbe```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: TimingProbe"]
+				},
+				"Time": {
+					"descriptions": ["**Times a function reference on the default recorder**\n\n```function : Time(model:String, device:String, batch:Int, tag:String, work:()~Nil) ~ Float```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nwork: ()~Nil\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Telemetry.TimingProbe": {
+			"description": "A handle on one timed call, from Telemetry->Start or TimingRecorder->Start. Stop it when the call returns; a handle never stopped records nothing, and Cancel drops it (use it for a call that failed, so errors do not pollute the latency).",
+			"functions": {
+				"Cancel": {
+					"descriptions": ["**Drops the measurement without recording it**\n\n```method : public : Cancel() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetElapsed": {
+					"descriptions": ["**The interval of a stopped probe**\n\n```method : public : GetElapsed() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsDone": {
+					"descriptions": ["**Whether Stop or Cancel was called**\n\n```method : public : IsDone() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Stop": {
+					"descriptions": ["**Stops the clock and records the interval**\n\n```method : public : Stop() ~ Float```\n\n\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.Telemetry.TimingRecorder": {
+			"description": "Collects timings into a ProfileStore, safe to share between threads. Each Stop records the latency; when memory capture is on (the default) it also reads the process resident memory right after the clock stopped, and when a SamplerLoop is attached it adds the latest GPU memory reading and the energy estimated over the call.",
+			"functions": {
+				"AttachSampler": {
+					"descriptions": ["**Attaches a running sampler loop whose latest GPU memory reading and power trace are attributed to each call**\n\n```method : public : AttachSampler(sampler_loop:SamplerLoop) ~ Nil```\n\n\n\nsampler_loop: SamplerLoop\n\nreturn: Nil"]
+				},
+				"GetStore": {
+					"descriptions": ["**The profile being filled. Read it after the measuring threads are done, or from one thread.**\n\n```method : public : GetStore() ~ ProfileStore```\n\n\n\nreturn: ProfileStore"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with an empty profile**\n\n```New()```\n\n", "**Constructor**\n\n```New(store:ProfileStore)```\n\n\n\nstore: ProfileStore"]
+				},
+				"Record": {
+					"descriptions": ["**Records an interval measured elsewhere**\n\n```method : public : Record(model:String, device:String, batch:Int, tag:String, ms:Float) ~ Bool```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nms: Float\n\nreturn: Bool"]
+				},
+				"SetCaptureMemory": {
+					"descriptions": ["**Turns resident-memory capture on or off**\n\n```method : public : SetCaptureMemory(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
+				"SetWarmup": {
+					"descriptions": ["**Sets the warm-up for series created from now on**\n\n```method : public : SetWarmup(warmup:Int) ~ Nil```\n\n\n\nwarmup: Int\n\nreturn: Nil"]
+				},
+				"Start": {
+					"descriptions": ["**Starts timing one call**\n\n```method : public : Start(model:String, device:String, batch:Int, tag:String) ~ TimingProbe```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: TimingProbe"]
+				},
+				"Time": {
+					"descriptions": ["**Times a function reference**\n\n```method : public : Time(model:String, device:String, batch:Int, tag:String, work:()~Nil) ~ Float```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nwork: ()~Nil\n\nreturn: Float"]
+				}
+			}
+		},
 		"System.Time.Alarm": {
 			"description": "Provides a system timer",
 			"functions": {
@@ -28855,6 +29432,114 @@
 		"TTestResult": [
 			{
 				"bundle": "System.Stats",
+				"file": ""
+			}
+		],
+		"ContentionReport": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"ContentionRunner": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"EnergyEstimator": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"GpuSampler": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"LatencyPrediction": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"LatencySketch": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"PowermetricsSampler": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"ProfileEntry": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"ProfileStore": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"ResourceReading": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"ResourceSampler": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"RuntimeSampler": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"SampleRing": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"SamplerLoop": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"SeriesStats": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"Telemetry": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"TimingProbe": [
+			{
+				"bundle": "System.Telemetry",
+				"file": ""
+			}
+		],
+		"TimingRecorder": [
+			{
+				"bundle": "System.Telemetry",
 				"file": ""
 			}
 		],

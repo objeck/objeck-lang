@@ -46,6 +46,8 @@ $OBC -src lib_src/ml_cnn.obs -lib gen_collect,csv,json,cipher,ml,ml_lab,opencv -
 $OBC -src lib_src/plot.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/plot.obl
 # Statistics: t-tests, correlation, OLS summary. Needs only gen_collect, so it is built apart from ml.obl
 $OBC -src lib_src/stats.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/stats.obl
+# Telemetry: per-model, per-device inference timing, latency sketches, resource samplers, energy estimate, profiles. Pure Objeck over the runtime monitors; needs gen_collect and json
+$OBC -src lib_src/telemetry.obs -lib gen_collect,json -tar lib -opt s3 -dest ../lib/telemetry.obl
 # ml_report needs ml_lab, stats and plot, so it is built AFTER them (it used to come first, and a version bump failed: the committed stats/plot were still the previous toolchain version)
 # Replicate statistics and the HTML/Markdown report builder. Needs ml_lab (ResultTable), stats and plot
 $OBC -src lib_src/ml_report.obs -lib gen_collect,csv,json,ml,ml_lab,stats,plot -tar lib -opt s3 -dest ../lib/ml_report.obl
