@@ -8,6 +8,10 @@ All notable changes to Objeck will be documented in this file.
 
 - **Eight AI-engineering examples ship with every release** (`programs/deploy/mcp_32.obs` to `forecast_39.obs`, copied into `examples/` and listed by `welcome.obs`): an MCP server and a client calling its tools over the in-process transport (`mcp_32`), a tool-using agent loop on a scripted model with a trace (`agent_33`), stopping an agent with a budget, a cancel token and a hung tool in `BOUNDED_THREAD` mode (`agent_control_34`), a supervisor that restarts a failing actor (`actors_35`), retrieval-augmented answers with citations from the hash embedder (`rag_36`), JSON out of a model with a prompt template, schema validation, retry and repair (`structured_37`), timing a computation with `System.Telemetry` (`telemetry_38`) and a Holt-Winters forecast against the seasonal-naive benchmark (`forecast_39`). Each runs offline with no key, no model download and no network, and prints the same output on every run; the README and `welcome.obs` give each one's `-lib` list.
 
+### Fixed
+
+- **`telemetry_contention` no longer fails on a loaded runner**: the one-lock check compared the mean call time of two separate timed runs, which workers started far apart can defeat; the lock holder now waits until all four workers have queued, and the check asserts lower bounds that follow from mutual exclusion alone (test only).
+
 ## [v2026.11.3] - 2026-11-22
 
 ### Performance
