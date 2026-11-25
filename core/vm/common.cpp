@@ -296,10 +296,22 @@ static bool StartSignalDispatch()
   if(pipe(signal_wake_pipe) != 0) {
     return false;
   }
+  // close-on-exec is best effort: a pipe end inherited across exec is harmless, so a failure here is tolerated
+  // (Coverity CID 1689664). The write end MUST be non-blocking: the signal handler writes to it, and a blocking
+  // write there could hang the process, so a failure to set that flag fails the dispatcher like pipe() does.
   for(int i = 0; i < 2; ++i) {
-    fcntl(signal_wake_pipe[i], F_SETFD, fcntl(signal_wake_pipe[i], F_GETFD) | FD_CLOEXEC);
+    const int fd_flags = fcntl(signal_wake_pipe[i], F_GETFD);
+    if(fd_flags != -1) {
+      (void)fcntl(signal_wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
+    }
   }
-  fcntl(signal_wake_pipe[1], F_SETFL, fcntl(signal_wake_pipe[1], F_GETFL) | O_NONBLOCK);
+  const int status_flags = fcntl(signal_wake_pipe[1], F_GETFL);
+  if(status_flags == -1 || fcntl(signal_wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
+    close(signal_wake_pipe[0]);
+    close(signal_wake_pipe[1]);
+    signal_wake_pipe[0] = signal_wake_pipe[1] = -1;
+    return false;
+  }
 #endif
   try {
     std::thread(SignalDispatchLoop).detach();

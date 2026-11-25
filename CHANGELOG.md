@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Coverity batch 3**: the signal dispatcher fails cleanly, as it does when `pipe()` fails, if the write end of its wake-up pipe cannot be made non-blocking (the signal handler writes to it), instead of ignoring the `fcntl` result; `Cfg::Verify` reports a reachable block with no dominators instead of wrapping an unsigned subtraction; the CUDA library table of the `matrix` library starts with null entry points; and a handful of copies in the debugger, the DAP adapter, the CFG loop finder and the ONNX library became moves. The Coverity notes on `Pool` (`cnn.h`) document its two-mutex protocol, and the CUDA handles that are kept loaded on purpose are marked as such.
+
 ## [v2026.11.3] - 2026-11-22
 
 ### Performance

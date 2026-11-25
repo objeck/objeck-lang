@@ -88,9 +88,11 @@ static CudaRuntime& cuda_runtime() {
       if(!runtime.SetDevice || !runtime.MemcpyAsync || !runtime.StreamCreateWithFlags ||
          !runtime.StreamSynchronize || !runtime.GetErrorString) {
          runtime.error = "the CUDA runtime library is missing an expected entry point";
+         // coverity[leaked_storage] kept loaded on purpose, like the success path below
          return;
       }
       runtime.ok = true;
+      // coverity[leaked_storage] the CUDA runtime stays loaded for the process lifetime; the entry points above point into it
    });
    return runtime;
 }
