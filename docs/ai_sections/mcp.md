@@ -1,0 +1,341 @@
+## Model Context Protocol (MCP)
+
+`API.MCP` is a pure-Objeck implementation of the [Model Context Protocol](https://modelcontextprotocol.io): a **server** that offers tools, resources and prompts to an MCP client such as Claude Desktop or Claude Code, a **client** that uses another program's tools, and a **bridge** that hands a connected server's tools to the Anthropic, OpenAI and Gemini clients above. Compile with `-lib mcp`, and name the libraries it links as well:
+
+```
+obc -src server.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest server.obe
+```
+
+**Protocol revision: 2025-11-25.** A client that asks for 2025-06-18, 2025-03-26 or 2024-11-05 is answered with that revision; any other is answered with 2025-11-25, as the lifecycle section of the specification requires. This is the last revision with the `initialize` / `notifications/initialized` handshake. The newest revision on the specification site when this was written, 2026-07-28, is stateless: it drops the handshake for per-request `_meta` fields and `server/discover`. It is **not** implemented. The messages below follow the 2025-11-25 schema.
+
+What is supported, and what is not:
+
+| | |
+|---|---|
+| Transports | stdio (newline-delimited JSON-RPC 2.0) and streamable HTTP; the client also reaches a server in the same process and a server program started once per request |
+| Server methods | `initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`, `resources/list`, `resources/templates/list`, `resources/read`, `prompts/list`, `prompts/get`, `notifications/cancelled`, and `notifications/progress` (sent) |
+| Not implemented | `logging/setLevel`, `completion/complete`, `resources/subscribe`, `notifications/*/list_changed`, pagination (`nextCursor`), sampling, roots, elicitation, tasks, OAuth for HTTP, resumable SSE streams, JSON-RPC batches (refused as an invalid request, as 2025-06-18 and later require) |
+
+An MCP server is not the same thing as the `Web.HTTP.Server.MCP` handler in `net_server`, which is unchanged and serves HTTP only. `Data.JSON.RPC` was not reused: it runs one request per TCP connection and has neither stdio nor notifications.
+
+### A server over stdio
+
+A tool is a name, a description, the JSON Schema of its input and a function that takes a `McpCall` and returns a `McpToolResult`. `ServeStdio()` reads one JSON-RPC message per line from standard input and writes one reply per line to standard output until the input ends.
+
+```ruby
+use API.MCP;
+
+class Greeter {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("greeter", "1.0.0");
+    server->AddTool("greet", "Greet a person by name",
+      "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}",
+      Func2Ref->New(Greeter->Greet(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+    server->ServeStdio();
+  }
+
+  function : Greet(call : McpCall) ~ McpToolResult {
+    name := call->GetString("name");
+    return McpToolResult->Text("Hello, {$name}!");
+  }
+}
+```
+
+Fed an `initialize` request, the `initialized` notification and a `tools/call`, it answers (the output is exactly what the program printed; the reply to the notification is nothing):
+
+```
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"greeter","version":"1.0.0"}}}
+{"id":2,"jsonrpc":"2.0","result":{"content":[{"text":"Hello, Ada!","type":"text"}],"isError":false}}
+```
+
+Nothing but protocol may reach standard output while the server runs. Log with `ErrorLine()`, which goes to standard error. A message is read a byte at a time, so it can be as long as the limit (4 MiB; `McpStdio->SetLimit` changes it); a longer line is read to its end and answered with a parse error, so the next message is intact. Replies are plain ASCII (non-ASCII text is written as `\u` escapes), so the console encoding cannot change them.
+
+On Windows the VM's console mode hands standard input over as UTF-16 unless it runs with `OBJECK_STDIO=binary`. The reader tells the two apart from the first two bytes and decodes either, so neither needs to be set.
+
+### Tools, resources and prompts
+
+```ruby
+server->AddTool(tool);                                  # McpTool: name, description, schema, handler
+server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "fixed text"));
+server->AddResource(McpResource->New("notes://{name}", "note", "A note by name", "text/plain", handler));
+prompt := McpPrompt->New("review", "Review a file", handler);
+prompt->AddArgument("path", "the file", true);
+server->AddPrompt(prompt);
+```
+
+* A resource whose URI holds a `{` is a template: `resources/templates/list` lists it and `resources/read` matches a URI by the text before the first `{`. A handler takes the URI and returns a `McpContents` (`OfText` or `OfBlob`), or `Nil` for "not there", which is the error `-32002`.
+* A prompt handler takes a `McpCall`, whose arguments are the strings the client gave, and returns a `McpPromptResult`; a missing required argument is refused before the handler runs.
+* `McpCall` has `GetString`, `GetInt`, `GetFloat`, `GetBool` and `Has` for the arguments, `GetArguments()` for the JSON object, `IsCancelled()` and `ReportProgress(progress, total, message)`.
+* `McpToolResult` has `Text`, `Error`, `Json` (a structured result that is also written out as text), and `AddText` and `AddImage` for several content items.
+
+### Failures, errors, cancellation and progress
+
+A tool that fails is **not** a protocol error. A handler that returns `McpToolResult->Error("...")`, raises (a `Nil` dereference, an index error, `Runtime->Raise`) or returns `Nil` produces a normal reply whose `isError` is true and whose content says what went wrong, so the model can read it and try again. Arguments that miss the input schema's `required` names or its `type`s (string, number, integer, boolean, object, array, null) are reported the same way. Only the JSON-RPC errors below are protocol errors:
+
+| Code | When |
+|---|---|
+| -32700 | the text is not JSON (a bare word, truncated JSON, text after the value); the id is `null` |
+| -32600 | JSON that is not a request: not an object, a batch, `jsonrpc` is not `"2.0"`, `method` is not a string, `id` is not a string or number |
+| -32601 | a method the server does not have |
+| -32602 | `params` that are not an object, a missing or non-string `name` or `uri`, an unknown tool or prompt, a missing required prompt argument, `initialize` without a revision, capabilities or client info |
+| -32002 | `resources/read` of a resource that is not there (`data.uri` names it) |
+
+A notification is never answered, whatever it is, and neither is a response from the peer.
+
+`tools/call` runs on a thread of its own, so the server keeps reading while a tool works. `notifications/cancelled` for that request id sets `IsCancelled()`, and a cancelled request is **not answered**, as the cancellation section of the specification says. A tool that takes time polls it:
+
+```ruby
+function : Slow(call : McpCall) ~ McpToolResult {
+  call->ReportProgress(1.0, 10.0, "started");   # notifications/progress, when the request carried a progressToken
+  while(<>call->IsCancelled()) {
+    System.Concurrency.Thread->Sleep(10);
+  };
+  return McpToolResult->Text("stopped");
+}
+```
+
+At the end of standard input the server waits for the calls in progress, writes their replies and returns.
+
+### The streamable HTTP transport
+
+```ruby
+server->ServeHttp(8080);          # 127.0.0.1:8080, blocks; 0 takes a free port, GetBoundPort() says which
+server->ServeHttp("", 8080);      # every interface, only when you mean it
+```
+
+One endpoint answers every path. `POST` carries one JSON-RPC message and is answered with `application/json`, or `202` with no body when the message needs no answer. `GET` is `405`: the server starts no stream of its own. `DELETE` ends a session. At `initialize` the server hands out an `Mcp-Session-Id`, which later requests must carry (`400` without it, `404` for an unknown one; `SetSessions(false)` turns sessions off), a `MCP-Protocol-Version` header that names a revision it does not speak is `400`, and a request with an `Origin` header is refused with `403` unless the origin is `localhost`, `127.0.0.1` or `[::1]` (`AllowOrigin("https://app.example.com")` adds one), so a web page cannot reach the server through the visitor's browser. A malformed body is `400` with the JSON-RPC error.
+
+Limits of this transport: replies are JSON, never an event stream, so progress notifications are dropped (cancellation works, as it is a separate POST); there is no authorization, so keep the loopback address unless something in front of it authenticates; sessions live in memory and never expire; only one HTTP server runs in a process.
+
+### Pointing Claude Desktop and Claude Code at a server
+
+`programs/examples/mcp_server_demo.obs` is a server with three tools, a resource template and a prompt: `calculate` (an arithmetic expression: `+ - * / % ^`, parentheses, `pi`, `e`, `sqrt abs floor ceil round sin cos tan ln log exp`), `read_file` and `list_directory`, both inside a directory given on the command line. A path that is absolute, names a drive or has a `..` part is refused; a symbolic link inside the directory that points outside it is followed, so keep links out of what you share.
+
+```
+obc -src mcp_server_demo.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest mcp_server_demo.obe
+```
+
+Claude Desktop reads `claude_desktop_config.json` (`~/Library/Application Support/Claude/` on macOS, `%APPDATA%\Claude\` on Windows); Claude Code reads `.mcp.json` in the project, or `~/.claude.json`. The entry is the same:
+
+```json
+{
+  "mcpServers": {
+    "objeck-demo": {
+      "command": "/opt/objeck/bin/obr",
+      "args": ["/opt/objeck/examples/mcp_server_demo.obe", "/home/me/shared"],
+      "env": { "OBJECK_LIB_PATH": "/opt/objeck/lib" }
+    }
+  }
+}
+```
+
+On Windows write the paths with doubled backslashes (`"C:\\Program Files\\Objeck\\bin\\obr.exe"`). Claude Code can also add it from a shell, and can connect to the HTTP form (`obr mcp_server_demo.obe <dir> --http 8080`):
+
+```
+claude mcp add objeck-demo -- /opt/objeck/bin/obr /opt/objeck/examples/mcp_server_demo.obe /home/me/shared
+claude mcp add --transport http objeck-demo http://127.0.0.1:8080/mcp
+```
+
+**Verified with Claude Code, not with Claude Desktop.** On 2026-11-24 Claude Code connected to the demo server over stdio on Windows x64, negotiated revision 2025-11-25, listed the tools and called `calculate`. The Claude Desktop configuration shape comes from its documentation and was not run; the server is also tested against a scripted client that speaks the specification's messages (below).
+
+### A client
+
+`McpClient` initializes a connection, lists and calls tools, reads resources and gets prompts. A request that fails returns `Nil` (or `false`) and `GetError()` and `GetErrorCode()` say why; a tool that ran and failed is a `McpToolResult` whose `IsError()` is true.
+
+```ruby
+use API.MCP, Collection, Data.JSON;
+
+class Tour {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("tour", "1.0.0");
+    server->AddTool("add", "Add two integers",
+      "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}",
+      Func2Ref->New(Tour->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+    server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "Hello from a resource"));
+
+    # a client of a server in the same process
+    client := McpClient->InProcess(server);
+    if(client->Initialize("tour-client", "1.0")) {
+      "server: {$client->GetServerName()} {$client->GetServerVersion()}, revision {$client->GetProtocolVersion()}"->PrintLine();
+
+      tools := client->ListTools();
+      each(tool in tools) {
+        "tool: {$tool->GetName()} - {$tool->GetDescription()}"->PrintLine();
+      };
+
+      result := client->CallTool("add", "{\"a\":2,\"b\":3}");
+      "add(2, 3) = {$result->GetText()}"->PrintLine();
+
+      # a request the server refuses is Nil with a reason; a tool that failed is a result
+      missing := client->CallTool("add", "{\"a\":2}");
+      if(missing->IsError()) {
+        "add(2) failed: {$missing->GetText()}"->PrintLine();
+      };
+      if(client->CallTool("nope", "{}") = Nil) {
+        "nope: {$client->GetError()} (code {$client->GetErrorCode()})"->PrintLine();
+      };
+
+      contents := client->ReadResource("notes://readme");
+      "resource: {$contents->Get(0)->GetText()}"->PrintLine();
+    };
+  }
+
+  function : Add(call : McpCall) ~ McpToolResult {
+    sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+    return McpToolResult->Text("{$sum}");
+  }
+}
+```
+
+```
+server: tour 1.0.0, revision 2025-11-25
+tool: add - Add two integers
+add(2, 3) = 5
+add(2) failed: Invalid arguments for add: missing required argument 'b'
+nope: Unknown tool: nope (code -32602)
+resource: Hello from a resource
+```
+
+A client reaches a server through a transport:
+
+| Constructor | Reaches |
+|---|---|
+| `McpClient->Http(url)` | a server over streamable HTTP; sends `Accept`, `MCP-Protocol-Version` and `Mcp-Session-Id`, reads a JSON reply or a server-sent event stream, and ends the session on `Close()` |
+| `McpClient->InProcess(service)` | a `McpService` in the same process (tests, embedding); the server's notifications are kept by `McpLoopback->GetNotifications()` |
+| `McpClient->Command(command)` | a server program started by the shell **once per request**: the handshake and the request go in on standard input, the reply is read from standard output |
+| `McpClient->New(transport)` | any subclass of `McpTransport` |
+
+The runtime has no process with pipes (`Runtime->Command` and `CommandOutput` run to the end), so the `Command` transport cannot keep a conversation open. It suits servers whose tools do not depend on earlier requests, and it cannot carry progress or cancellation; for a long-lived session use HTTP. `Initialize` checks that the revision the server chose is one this library speaks, and `Cancel(request_id, reason)` sends `notifications/cancelled` for a request another thread is waiting on.
+
+### Giving a server's tools to Claude, OpenAI and Gemini
+
+`McpToolBridge` lists a connected server's tools and turns them into what each AI client takes:
+
+```ruby
+use API.MCP, Collection, Data.JSON;
+
+class HttpTour {
+  @server : static : McpService;
+  function : Server() ~ McpService { return @server; }
+
+  function : Main(args : String[]) ~ Nil {
+    @server := McpService->New("http-tour", "1.0.0");
+    @server->AddTool("add", "Add two integers",
+      "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}",
+      Func2Ref->New(HttpTour->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+    # serve HTTP on 127.0.0.1, on a port the system chooses
+    thread := System.Concurrency.Thread->New() {
+      New() { Parent() }
+      method : public : Run(arg : System.Base) ~ Nil {
+        HttpTour->Server()->ServeHttp(0);
+      }
+    };
+    thread->Execute(Nil);
+    while(@server->GetBoundPort() = 0) {
+      System.Concurrency.Thread->Sleep(10);
+    };
+    url := "http://127.0.0.1:{$@server->GetBoundPort()}/mcp";
+
+    client := McpClient->Http(url);
+    client->Initialize("http-client", "1.0");
+
+    # the server's tools as the AI clients take them
+    bridge := McpToolBridge->New(client);
+    "Anthropic: {$bridge->ToAnthropicJson()->ToString()}"->PrintLine();
+    "OpenAI:    {$bridge->ToOpenAiJson()->ToString()}"->PrintLine();
+    answer := bridge->Run("add", JsonParser->TextToElement("{\"a\":40,\"b\":2}"));
+    "a model asked for add(40, 2): {$answer}"->PrintLine();
+
+    client->Close();
+    Web.HTTP.Server.WebServer->Stop();
+  }
+
+  function : Add(call : McpCall) ~ McpToolResult {
+    sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+    return McpToolResult->Text("{$sum}");
+  }
+}
+```
+
+```
+Anthropic: [{"description":"Add two integers","input_schema":{"properties":{"a":{"type":"integer"},"b":{"type":"integer"}},"required":["a","b"],"type":"object"},"name":"add"}]
+OpenAI:    [{"function":{"description":"Add two integers","name":"add","parameters":{"properties":{"a":{"type":"integer"},"b":{"type":"integer"}},"required":["a","b"],"type":"object"}},"type":"function"}]
+a model asked for add(40, 2): 42
+```
+
+* **Claude.** `API.Anthropic.Tool->New(name, description, schema)` takes the three parts straight from a `McpTool`, and `bridge->Run(name, input)` runs the call the model made and returns the text to give back with `AddToolResult` (`"error: ..."` for a tool that failed, so pass `text->StartsWith("error: ")` as the error flag):
+
+  ```ruby
+  use API.MCP, API.Anthropic, Collection, Data.JSON;
+
+  # compile with -lib anthropic,gen_collect,json,net,net_server,cipher,misc,mcp
+  client := McpClient->Http("http://127.0.0.1:8080/mcp");
+  client->Initialize("agent", "1.0");
+  bridge := McpToolBridge->New(client);
+
+  tools := Vector->New()<Tool>;
+  each(tool in bridge->GetTools()) {
+    tools->AddBack(Tool->New(tool->GetName(), tool->GetDescription(), tool->GetInputSchema()));
+  };
+
+  chat := Chat->New("claude-sonnet-5-5", Nil);
+  reply := chat->SendReply("What is (2 + 3) * 4? Use the calculator.", tools);
+  while(reply <> Nil & reply->HasToolUses()) {
+    uses := reply->GetToolUses();
+    each(i : uses) {
+      call := uses->Get(i);
+      text := bridge->Run(call->GetName(), call->GetInput());
+      chat->AddToolResult(call->GetId(), text, text->StartsWith("error: "));
+    };
+    reply := chat->SendReply(Nil, tools);
+  };
+  reply->GetText()->PrintLine();
+  ```
+
+* **Gemini.** `GetFunctions()` returns the map of tool name to a `FunctionType` and the function that calls the tool, which is what `Model->GenerateContent(model, content, funcs, key)` takes. Add `use Data.JSON.Scheme;` for the `FunctionType` name:
+
+  ```ruby
+  use API.MCP, API.Google.Gemini, Collection, Data.JSON, Data.JSON.Scheme;
+
+  # compile with -lib gemini,gen_collect,json,net,net_server,cipher,misc,mcp
+  bridge := McpToolBridge->New(client);
+  funcs := bridge->GetFunctions();
+  content := Content->New("user")->AddPart(TextPart->New("What is (2 + 3) * 4? Use the calculator."));
+  candidates := Model->GenerateContent("models/gemini-2.0-flash", content, funcs, EndPoint->GetApiKey());
+  ```
+
+* **OpenAI.** `ToOpenAiJson()` is the `tools` array of function definitions, `ToFunctionType(tool)` builds the `FunctionType` the OpenAI classes take, and `Run` answers a call the model asked for. For Chat Completions, `Completion->CompleteWithTools(model, messages, bridge->ToOpenAiJson(), max_tokens, token)` sends the tools array and `Choice->GetToolCalls()` returns the calls to pass to `Run` (the loop is in [AI.md](../AI.md#openai)). The functions in `GetFunctions()` are the `Func2Ref<JsonElement, JsonElement>` the OpenAI conversation's `AddFunction` wraps (pass `pair->GetSecond()->Get()`).
+
+A function from `GetFunctions()` returns `{"result": text}`, or `{"error": text}` when the tool failed or the call could not be made. `ToFunctionType` maps `string`, `number`, `integer`, `boolean` and `object` properties and an `array` property to its item type as an array; a property with another or no `type` becomes a string.
+
+On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live. The repository's tests never call the live APIs; these runs were manual.
+
+### API
+
+| Class | Use |
+|---|---|
+| `McpService` | the server: `AddTool`, `AddResource`, `AddPrompt`, `SetInstructions`, `SetTitle`, `ServeStdio`, `ServeHttp`, `GetBoundPort`, `SetSessions`, `AllowOrigin`, and `Handle(text, sink)` to answer one message for any other transport |
+| `McpTool`, `McpResource`, `McpPrompt` | what a server offers (and, without a handler, what a client reads back from a list) |
+| `McpCall` | what a handler receives: the arguments, `IsCancelled`, `ReportProgress` |
+| `McpToolResult`, `McpContents`, `McpPromptResult` | what a handler returns |
+| `McpClient` | `Initialize`, `Ping`, `ListTools`, `CallTool`, `Cancel`, `ListResources`, `ListResourceTemplates`, `ReadResource`, `ListPrompts`, `GetPrompt`, `Close`, `GetError`, `GetErrorCode` |
+| `McpToolBridge` | `GetTools`, `ToAnthropicJson`, `ToOpenAiJson`, `ToFunctionType`, `GetFunctions`, `Run` |
+| `McpTransport`, `McpLoopback`, `McpHttpTransport`, `McpCommandTransport` | how a client reaches a server |
+| `McpSink`, `McpCollector`, `McpStdoutSink`, `McpStdio` | where a server's own messages go, and how standard input is read |
+| `McpProtocol` | `Version()`, `IsSupported(version)` and the error codes |
+
+### Limits and caveats
+
+* The JSON parser is lenient: it reads a bare word as a string and ignores what follows the first value. The server checks that a message that opens with `{` or `[` ends with the matching closer and that a root string is quoted, which catches the common damage (truncation, trailing text), but a malformed message inside well-placed braces can be accepted.
+* Tool input is validated for `required` names and the `type` of each property only; `enum`, `minimum`, patterns, nested objects and `$ref` are not checked.
+* Each `tools/call` takes a thread, with no cap.
+* Standard input is read a byte at a time (a megabyte takes roughly half a second on Linux), which is what makes a line of any length work: the VM's line read keeps 8,192 characters.
+* A server over stdio ends when its input does; there is no `shutdown`, as the specification has none.
+* Tested without Claude Desktop, Claude Code or the network: see Tests.
+
+### Tests
+
+* `mcp_core_test` (regression suite): every method; version negotiation; the JSON-RPC errors; a tool that fails, raises, returns nothing, or gets bad arguments; resources, templates and prompts; cancellation and progress; a message of a megabyte; the bridge; and the same client over the HTTP transport on `127.0.0.1` port 0, including the session, `Origin`, protocol-version and method checks.
+* `mcp_stdio_test.py` (its own CI step; `python mcp_stdio_test.py <bin_dir>`): a scripted Python client drives a server process over stdio: the handshake, every method, malformed JSON, an unknown method, bad parameters, a failing and a raising tool, blank lines, CRLF and non-ASCII text, progress and a request cancelled in flight (no reply), megabyte messages in both directions and a line over the limit, that standard output holds nothing but JSON, the end of input, and the Objeck client against the same server. It also passes on Windows.
+* Both fail when the code is broken: a server that answers a cancelled request, or uses the wrong code for an unknown method, fails both.

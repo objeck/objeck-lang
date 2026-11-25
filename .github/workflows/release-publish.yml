@@ -112,9 +112,16 @@ jobs:
   # Download and Rename Artifacts
   # ============================================
 
+  # Every core/lib/*.obl from source; the Windows build below deploys them.
+  libs:
+    name: Libraries
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_publish == 'true'
+    uses: ./.github/workflows/libs.yml
+
   prepare:
     name: Prepare Release Assets
-    needs: check-trigger
+    needs: [check-trigger, libs]
     if: needs.check-trigger.outputs.should_publish == 'true'
     # windows-2025-vs2026 (VS2026); projects select $(DefaultPlatformToolset),
     # which resolves to v145 here and v143 on a VS2022 developer box.
@@ -126,6 +133,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       - name: Set version
         id: version
@@ -868,7 +881,7 @@ jobs:
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           echo "ℹ️  objeck.org API docs deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
-          echo "   Deploy by hand from this run's api-docs artifact (or master's docs/api.zip):"
+          echo "   Deploy by hand from this run's api-docs artifact (gh run download <build run> -n api-docs):"
           echo "     bash core/release/deploy_website.sh --source api/ --key <key>"
 
       - name: Missing objeck.org credentials
@@ -880,8 +893,8 @@ jobs:
           echo "  OBJECK_ORG_SSH_KEY  - private key authorized on objeck.org"
           echo "  OBJECK_ORG_USER     - the ssh user"
           echo ""
-          echo "The docs that should have shipped are in this run's api-docs artifact,"
-          echo "and on master at docs/api.zip. To deploy by hand:"
+          echo "The docs that should have shipped are in the api-docs artifact of the release build"
+          echo "run (docs/api.zip is no longer committed). To deploy by hand:"
           echo "  bash core/release/deploy_website.sh --source docs/api.zip --key <your key>"
           echo "  (there are no versioned /api/v<VERSION>/ directories - 'latest' is the only served path)"
           echo ""

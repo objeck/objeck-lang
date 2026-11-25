@@ -1,0 +1,61 @@
+use System.LLM.Eval, API.Anthropic;
+
+#~
+Adapter for the Anthropic Messages API (Claude). The key comes from ANTHROPIC_API_KEY or anthropic_api_key.dat (see API.Anthropic EndPoint->GetApiKey); it is never read here, printed or stored.
+Flags: --model NAME (required), --temperature T (default: the API's)
+~#
+class AnthropicAdapter implements ModelAdapter {
+	@model : String;
+	@temperature : Float;
+
+	New(model : String, temperature : Float) {
+		@model := model;
+		@temperature := temperature;
+	}
+
+	method : public : GetName() ~ String {
+		return @model;
+	}
+
+	method : public : Complete(request : ModelRequest) ~ ModelReply {
+		chat := Chat->New(@model, Nil);
+		chat->SetSystem(request->GetSystem());
+		chat->SetMaxTokens(request->GetMaxTokens());
+		if(@temperature >= 0.0) {
+			chat->SetTemperature(@temperature);
+		};
+
+		reply := chat->SendReply(request->GetUser(), Nil);
+		if(reply = Nil) {
+			error := EndPoint->GetLastError();
+			if(error = Nil) {
+				error := "the request failed";
+			};
+
+			return ModelReply->Failure(EvalText->Clip(error, 300));
+		};
+
+		return ModelReply->New(reply->GetText(), reply->GetInputTokens(), reply->GetOutputTokens());
+	}
+}
+
+class Provider {
+	function : Usage() ~ String {
+		return "provider anthropic: --model NAME [--temperature T]; the key is read from ANTHROPIC_API_KEY or anthropic_api_key.dat";
+	}
+
+	function : Create(args : String[]) ~ ModelAdapter {
+		model := EvalArgs->Value(args, "--model", Nil);
+		if(model = Nil) {
+			return Nil;
+		};
+
+		temperature := -1.0;
+		text := EvalArgs->Value(args, "--temperature", Nil);
+		if(text <> Nil) {
+			temperature := text->ToFloat();
+		};
+
+		return AnthropicAdapter->New(model, temperature);
+	}
+}

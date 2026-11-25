@@ -1,0 +1,257 @@
+# EXTRA_LIBS: llm_util,regex
+#~
+API.LlmUtil JSON extraction from chatty model replies and the lenient repair. The
+repair table shows what each damaged input becomes (or ERR when it is not repaired
+into valid JSON); the extractor tests cover fenced blocks, prose around JSON,
+braces inside strings, replies cut off, and the repair switch. No network, no key.
+~#
+
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class LlmUtilExtractTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    if(a = Nil | b = Nil) {
+      return a = Nil & b = Nil;
+    };
+    return a->Equals(b);
+  }
+
+  # repair, parse strictly, print compactly; ERR when the result is not JSON
+  function : Fixed(input : String) ~ String {
+    fixed := JsonRepair->Repair(input);
+    if(<>JsonStrict->New()->Validate(fixed)) {
+      return "ERR";
+    };
+    elem := JsonParser->TextToElement(fixed);
+    if(elem = Nil) {
+      return "ERR";
+    };
+    return elem->ToString();
+  }
+
+  function : Repair(name : String, input : String, expected : String) ~ Nil {
+    got := Fixed(input);
+    if(got->Equals(expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: got {$got}, wanted {$expected}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Extract(name : String, reply : String, repair : Bool, expected : String) ~ Nil {
+    extractor := JsonExtractor->New()->SetRepair(repair);
+    elem := extractor->Parse(reply);
+    got := "none";
+    if(elem <> Nil) {
+      got := elem->ToString();
+    };
+    if(got->Equals(expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: got {$got}, wanted {$expected} (error {$extractor->GetError()})"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    TestRepairTable();
+    TestRepairLimits();
+    TestExtraction();
+    TestRepairSwitch();
+    TestCandidates();
+    TestStrict();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestRepairTable() ~ Nil {
+    "-- repair table"->PrintLine();
+    Repair("a trailing comma in an object", "{\"a\":1,}", "{\"a\":1}");
+    Repair("a trailing comma in an array", "[1,2,]", "[1,2]");
+    Repair("a trailing comma with a line break", "[1,2,\n]", "[1,2]");
+    Repair("single quotes", "{'a':'b'}", "{\"a\":\"b\"}");
+    Repair("a double quote inside single quotes", "{'a':'say \"x\"'}", "{\"a\":\"say \\\"x\\\"\"}");
+    Repair("an escaped single quote", "{'a':'it\\'s'}", "{\"a\":\"it's\"}");
+    Repair("unquoted keys", "{a:1,b_2:\"x\"}", "{\"a\":1,\"b_2\":\"x\"}");
+    Repair("unquoted keys and single-quoted values", "{name: 'Ada', age: 36}", "{\"age\":36,\"name\":\"Ada\"}");
+    Repair("a truncated array", "{\"a\":[1,2", "{\"a\":[1,2]}");
+    Repair("a truncated string", "{\"a\":\"hel", "{\"a\":\"hel\"}");
+    Repair("a truncated value after the colon", "{\"a\":", "{\"a\":null}");
+    Repair("a truncated key", "{\"a\"", "{\"a\":null}");
+    Repair("a truncated after a comma", "{\"a\":1,", "{\"a\":1}");
+    Repair("a truncated second key", "{\"a\":1,\"b", "{\"a\":1,\"b\":null}");
+    Repair("deeply truncated", "{\"a\":{\"b\":[{\"c\":1},{\"c\":", "{\"a\":{\"b\":[{\"c\":1},{\"c\":null}]}}");
+    Repair("a truncated number", "[1,2.", "[1,2]");
+    Repair("a lone minus at the end", "[1,-", "[1]");
+    Repair("a truncated exponent", "[1,2e", "[1,2]");
+    Repair("Python literals", "{\"a\":True,\"b\":None,\"c\":False}", "{\"a\":true,\"b\":null,\"c\":false}");
+    Repair("JavaScript literals", "[undefined, NaN, true]", "[null,null,true]");
+    Repair("a raw line break inside a string", "{\"a\":\"x\ny\"}", "{\"a\":\"x\\ny\"}");
+    Repair("a raw tab inside a string", "{\"a\":\"x\ty\"}", "{\"a\":\"x\\ty\"}");
+    Repair("a line comment", "{\"a\":1, // note\n \"b\":2}", "{\"a\":1,\"b\":2}");
+    Repair("a block comment", "{\"a\":1 /* c */, \"b\":2}", "{\"a\":1,\"b\":2}");
+    Repair("text after the value is dropped", "{\"a\":1} and more {\"b\":2}", "{\"a\":1}");
+    Repair("a mismatched closer", "{\"a\":[1,2}", "{\"a\":[1,2]}");
+    Repair("a bare word value is quoted", "{\"a\":yes}", "{\"a\":\"yes\"}");
+    Repair("valid input is left alone", "{\"a\":[1,2,{\"b\":null}],\"c\":\"d\"}", "{\"a\":[1,2,{\"b\":null}],\"c\":\"d\"}");
+    Repair("braces and commas inside strings are not structure", "{\"a\":\"x, } y\",}", "{\"a\":\"x, } y\"}");
+    Repair("an escaped quote inside a string", "{\"a\":\"say \\\"hi\\\"\",}", "{\"a\":\"say \\\"hi\\\"\"}");
+    Repair("an empty object that is cut off", "{", "{}");
+    Repair("an empty array that is cut off", "[", "[]");
+    Repair("nested trailing commas", "{\"a\":[1,{\"b\":2,},],}", "{\"a\":[1,{\"b\":2}]}");
+    Repair("negative and exponent numbers", "[-1.5e3, 2E-2,]", "[-1.5e3,2E-2]");
+    Repair("a nested array of strings with single quotes", "{'tags':['a','b',]}", "{\"tags\":[\"a\",\"b\"]}");
+    Repair("an unterminated string inside an array", "[\"a\", \"b", "[\"a\",\"b\"]");
+  }
+
+  function : TestRepairLimits() ~ Nil {
+    "-- what the repair does not guess"->PrintLine();
+    Repair("a missing value stays an error", "{\"a\":,\"b\":1}", "ERR");
+    Repair("a missing colon stays an error", "{\"a\" 1}", "ERR");
+    Repair("two values with no comma stay an error", "[1 2]", "ERR");
+    Check("Nil in, Nil out", JsonRepair->Repair(Nil) = Nil);
+    Check("empty in, empty out", JsonRepair->Repair("")->Size() = 0);
+    Check("nesting deeper than the limit does not crash", JsonRepair->Repair("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[")->Size() > 0);
+  }
+
+  function : TestExtraction() ~ Nil {
+    "-- extraction"->PrintLine();
+    Extract("bare JSON", "{\"a\":1}", false, "{\"a\":1}");
+    Extract("bare JSON with whitespace", "\n  {\"a\": 1}  \n", false, "{\"a\":1}");
+    Extract("a json fence", "Here you go:\n```json\n{\"a\":1}\n```\nHope it helps.", false, "{\"a\":1}");
+    Extract("a plain fence", "```\n{\"a\":2}\n```", false, "{\"a\":2}");
+    Extract("a fence with a Windows line break", "```json\r\n{\"a\":3}\r\n```", false, "{\"a\":3}");
+    Extract("a fence for another language is skipped", "```python\nprint(1)\n```\nand ```json\n{\"a\":4}\n```", false, "{\"a\":4}");
+    Extract("chatty prose around an object", "Sure! The answer is {\"a\":5} as requested. Anything else?", false, "{\"a\":5}");
+    Extract("chatty prose around an array", "Result: [1, 2, 3] done", false, "[1,2,3]");
+    Extract("braces in prose before the JSON", "Use {x} like this: {\"a\":6}", false, "{\"a\":6}");
+    Extract("a brace inside a string value", "Here: {\"t\":\"a } b\"} done", false, "{\"t\":\"a } b\"}");
+    Extract("an escaped quote inside a string value", "{\"t\":\"say \\\"}\\\"\"} tail", false, "{\"t\":\"say \\\"}\\\"\"}");
+    Extract("the first block is bad, the second is good", "```json\n{bad}\n```\n```json\n{\"a\":7}\n```", false, "{\"a\":7}");
+    Extract("nested objects", "x {\"a\":{\"b\":{\"c\":[1,{\"d\":2}]}}} y", false, "{\"a\":{\"b\":{\"c\":[1,{\"d\":2}]}}}");
+    Extract("a scalar reply", "42", false, "42");
+    Extract("a string reply", "\"hello\"", false, "\"hello\"");
+    Extract("no JSON at all", "I am sorry, I cannot help with that.", false, "none");
+    Extract("an empty reply", "", false, "none");
+    Extract("Nil reply", Nil, false, "none");
+
+    extractor := JsonExtractor->New();
+    extractor->Parse("I am sorry, I cannot help with that.");
+    Check("the error says there is no JSON", Same(extractor->GetError(), "the reply holds no JSON object or array"));
+    extractor->Parse("");
+    Check("the error says the reply is empty", Same(extractor->GetError(), "the reply is empty"));
+    extractor->Parse("here {\"a\": } there");
+    Check("the error says the JSON does not parse", extractor->GetError() <> Nil & extractor->GetError()->Size() > 0);
+    extractor->Parse("{\"a\":1}");
+    Check("the error clears on success", extractor->GetError() = Nil);
+  }
+
+  function : TestRepairSwitch() ~ Nil {
+    "-- the repair switch"->PrintLine();
+    Extract("repair off: a trailing comma is not accepted", "{\"a\":1,}", false, "none");
+    Extract("repair on: a trailing comma is accepted", "{\"a\":1,}", true, "{\"a\":1}");
+    Extract("repair off: a cut-off reply is not accepted", "```json\n{\"a\":[1,2", false, "none");
+    Extract("repair on: a cut-off reply is closed", "```json\n{\"a\":[1,2", true, "{\"a\":[1,2]}");
+    Extract("repair on: single quotes inside chatty prose", "Here: {'a': 'b'} ok", true, "{\"a\":\"b\"}");
+    Extract("repair on: valid JSON is returned as is", "{\"a\":1}", true, "{\"a\":1}");
+    Extract("repair on: the strict parse still comes first", "[1] and {\"a\":1,}", true, "[1]");
+
+    extractor := JsonExtractor->New()->SetRepair(true);
+    values := extractor->ParseAll("[1] and {\"a\":1,}");
+    Check("both the strict and the repaired value are returned", values->Size() = 2);
+    Check("the strict one is not marked repaired", <>extractor->IsRepaired(0));
+    Check("the repaired one is marked", extractor->IsRepaired(1) & values->Get(1)->Get("a")->GetInt() = 1);
+
+    off := JsonExtractor->New();
+    Check("repair is off by default", off->ParseAll("{\"a\":1,}")->Size() = 0);
+    Check("a bare word is not a repair candidate", JsonExtractor->New()->SetRepair(true)->Parse("hello") = Nil);
+  }
+
+  function : Strict(name : String, text : String, valid : Bool) ~ Nil {
+    checker := JsonStrict->New();
+    got := checker->Validate(text);
+    consistent := valid = (checker->GetError() = Nil);
+    if(got = valid & consistent) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: valid={$got}, error {$checker->GetError()}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : TestStrict() ~ Nil {
+    "-- the strict checker (the repair table's yardstick)"->PrintLine();
+    Strict("empty object", "{}", true);
+    Strict("empty array", " [ ] ", true);
+    Strict("nested", "{\"a\":[1,2,{\"b\":null}],\"c\":true,\"d\":false}", true);
+    Strict("numbers", "[0,-1,1.5,-0.5e+3,2E-2,10]", true);
+    Strict("string escapes", "\"a\\n\\t\\\"\\/\\u00e9\"", true);
+    Strict("a bare scalar", "42", true);
+    Strict("surrounding white space", "\n\t {\"a\" : 1 } \r\n", true);
+    Strict("a trailing comma in an object", "{\"a\":1,}", false);
+    Strict("a trailing comma in an array", "[1,]", false);
+    Strict("a leading comma", "[,1]", false);
+    Strict("single quotes", "{'a':1}", false);
+    Strict("an unquoted key", "{a:1}", false);
+    Strict("a missing comma", "[1 2]", false);
+    Strict("a missing colon", "{\"a\" 1}", false);
+    Strict("a leading zero", "[01]", false);
+    Strict("a bare decimal point", "[1.]", false);
+    Strict("a plus sign", "[+1]", false);
+    Strict("an unknown escape", "\"a\\q\"", false);
+    Strict("a bad unicode escape", "\"\\u12G4\"", false);
+    Strict("a raw newline in a string", "\"a\nb\"", false);
+    Strict("an unterminated string", "\"abc", false);
+    Strict("an unterminated object", "{\"a\":1", false);
+    Strict("an unterminated array", "[1,2", false);
+    Strict("a bare word", "hello", false);
+    Strict("True is not true", "[True]", false);
+    Strict("trailing text", "{} x", false);
+    Strict("two values", "1 2", false);
+    Strict("empty text", "   ", false);
+    Strict("Python None", "[None]", false);
+    Strict("a comment", "[1 /* c */]", false);
+    deep := String->New();
+    for(i := 0; i < 300; i += 1;) {
+      deep->Append('[');
+    };
+    Strict("nesting past the limit is refused, not a crash", deep->ToString(), false);
+    checker := JsonStrict->New();
+    checker->Validate("[1,]");
+    Check("the offset is in the message", checker->GetError()->Contains("at offset 3"));
+  }
+
+  function : TestCandidates() ~ Nil {
+    "-- candidates"->PrintLine();
+    extractor := JsonExtractor->New();
+    found := extractor->Candidates("text {\"x\":1} more\n```json\n{\"a\":1}\n```\ntail [2]");
+    Check("fenced blocks come first, then spans", found->Size() >= 3 & found->Get(0)->Equals("{\"a\":1}") & found->Get(1)->Equals("{\"x\":1}"));
+    Check("no duplicates", found->Size() = 4 | found->Size() = 3);
+    Check("an empty reply has no candidates", extractor->Candidates("")->Size() = 0 & extractor->Candidates(Nil)->Size() = 0);
+    Check("a reply with no brackets still offers itself", extractor->Candidates("42")->Size() = 1);
+    cut := extractor->Candidates("lead {\"a\":[1,2");
+    Check("an unbalanced span runs to the end", cut->Size() >= 1 & cut->Get(0)->Equals("{\"a\":[1,2"));
+  }
+}

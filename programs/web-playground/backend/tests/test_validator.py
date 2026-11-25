@@ -33,8 +33,8 @@ def test_old_share_links_still_validate():
         assert ok, (old, err)
 
 
-@pytest.mark.parametrize("lib", ["net_server", "odbc", "sdl2", "opencv", "openai", "gemini", "ollama", "anthropic",
-                                 "onnx", "lame", "json_rpc", "rss", "web_server", "query_odbc", "plot_sdl"])
+@pytest.mark.parametrize("lib", ["net_server", "odbc", "sdl2", "opencv", "openai", "gemini", "ollama", "anthropic", "rag_adapters", "agent", "actor_agents",
+                                 "onnx", "lame", "json_rpc", "rss", "web_server", "query_odbc", "plot_sdl", "telemetry"])
 def test_blocked_libraries_are_refused_with_a_reason(lib):
     ok, err, libs = validate_libs([lib])
     assert not ok and libs == []

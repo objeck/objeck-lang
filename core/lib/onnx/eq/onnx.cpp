@@ -11,6 +11,13 @@ namespace fs = std::filesystem;
 #include <thread>
 #include <memory>
 
+// IO binding: tensors that stay in provider memory between runs
+#include "device_tensor.h"
+#include "float16_entries.h"
+
+// Session options, the CUDA and TensorRT option sets
+#include "session_options.h"
+
 //
 // Execution provider selection. Every provider this library can request, as the
 // short name a program passes in "ep" and as ONNX Runtime spells it in
@@ -25,6 +32,7 @@ struct EpName {
 static const EpName EP_NAMES[] = {
    { "cpu", "CPUExecutionProvider" },
    { "cuda", "CUDAExecutionProvider" },
+   { "tensorrt", "TensorrtExecutionProvider" },
    { "dml", "DmlExecutionProvider" },
    { "qnn", "QNNExecutionProvider" },
    { "vitisai", "VitisAIExecutionProvider" },
@@ -66,6 +74,9 @@ static std::string normalize_ep(std::string value) {
    }
    if(value == "vitis") {
       return "vitisai";
+   }
+   if(value == "trt") {
+      return "tensorrt";
    }
    return value;
 }
@@ -290,6 +301,15 @@ extern "C" {
             }
          }
 
+         // Session-level keys (intra_op_threads, graph_optimization, session_config.*, ...) are
+         // options of the session, not of a provider: take them out now so they are neither
+         // forwarded to a provider that would refuse them nor counted as a CPU option.
+         SessionTuning tuning_options;
+         if(!extract_session_options(provider_options, tuning_options)) {
+            APITools_SetIntValue(context, 0, 0);
+            return;
+         }
+
          // Pick the execution provider. The ONNX_EP_* define this library was
          // compiled with is only the DEFAULT, used when the caller does not name
          // one; "ep" selects at session creation, so one libobjk_onnx can serve
@@ -353,27 +373,18 @@ extern "C" {
             session_options.AppendExecutionProvider("DML", provider_options);
          }
          else if(ep == "cuda") {
-            // The GENERIC string form does not accept "CUDA": ORT only recognises
-            // OPENVINO/SNPE/XNNPACK/QNN/WEBNN/AZURE there, so
-            // AppendExecutionProvider("CUDA", ...) always throws, and its message does
-            // not even mention CUDA. CUDA needs its own entry point; the V2 one takes
-            // string options (device_id, gpu_mem_limit, cudnn_conv_algo_search, ...).
-            // Unlike the legacy struct, whose zeroed defaults are not ORT's.
-            if(provider_options.find("device_id") == provider_options.end()) {
-               provider_options["device_id"] = "0";
+            // The GENERIC string form does not accept "CUDA" (see append_cuda): CUDA needs
+            // its own entry point, which takes string options and refuses an unknown one.
+            append_cuda(session_options, provider_options);
+         }
+         else if(ep == "tensorrt") {
+            // TensorRT first, then CUDA for what TensorRT cannot take (see append_tensorrt)
+            bool used_cuda_fallback = false;
+            std::string cache_note;
+            append_tensorrt(session_options, provider_options, ep_is_available("cuda"), used_cuda_fallback, cache_note);
+            if(!cache_note.empty()) {
+               std::wcerr << L">>> ONNX: " << BytesToUnicode(cache_note) << L". <<<" << std::endl;
             }
-            const OrtApi& ort_api = Ort::GetApi();
-            OrtCUDAProviderOptionsV2* raw_cuda_options = nullptr;
-            Ort::ThrowOnError(ort_api.CreateCUDAProviderOptions(&raw_cuda_options));
-            std::unique_ptr<OrtCUDAProviderOptionsV2, decltype(ort_api.ReleaseCUDAProviderOptions)>
-               cuda_options(raw_cuda_options, ort_api.ReleaseCUDAProviderOptions);
-            std::vector<const char*> cuda_keys, cuda_values;
-            for(const auto& option : provider_options) {
-               cuda_keys.push_back(option.first.c_str());
-               cuda_values.push_back(option.second.c_str());
-            }
-            Ort::ThrowOnError(ort_api.UpdateCUDAProviderOptions(cuda_options.get(), cuda_keys.data(), cuda_values.data(), cuda_keys.size()));
-            session_options.AppendExecutionProvider_CUDA_V2(*cuda_options);
          }
          else if(ep == "qnn") {
             if(provider_options.find("backend_type") == provider_options.end()) {
@@ -409,6 +420,9 @@ extern "C" {
             session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
             session_options.DisableMemPattern();
          }
+         else if(tuning == "tensorrt") {
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+         }
          else if(tuning == "qnn" || tuning == "vitisai") {
             session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          }
@@ -417,6 +431,21 @@ extern "C" {
             session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
             session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          }
+
+         // A CUDA graph records one stream of kernels; the parallel executor this library
+         // defaults the CUDA provider to launches on several, and the recording fails
+         // (the first run fails with a CUDA error from cuda_call.cc, measured on ORT 1.24.2).
+         // So a session that asks for a graph runs sequentially unless it says otherwise below.
+         if(tuning == "cuda") {
+            const auto graph_option = provider_options.find("enable_cuda_graph");
+            int graph_flag = 0;
+            if(graph_option != provider_options.end() && parse_flag(graph_option->second, graph_flag) && graph_flag) {
+               session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+            }
+         }
+
+         // What the program asked for wins over the defaults chosen above
+         apply_session_options(session_options, tuning_options);
 
          Ort::Env* ort_env = get_env();
 
@@ -468,6 +497,15 @@ extern "C" {
          const Ort::Session* session = new Ort::Session(*ort_env, model_path.c_str(), session_options);
 #endif
 
+         // Remember what this session runs on: device tensors and IO bindings need the
+         // provider and device, and keep the session alive until they are gone.
+         int device_id = 0;
+         const auto device_option = provider_options.find("device_id");
+         if(device_option != provider_options.end()) {
+            device_id = atoi(device_option->second.c_str());
+         }
+         registry_add(session, ep, device_id);
+
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
@@ -508,6 +546,107 @@ extern "C" {
 #endif
    void onnx_run(VMContext& context) {
       generic_run(context);
+   }
+
+   // Device tensors and IO binding (device_tensor.h): tensors that stay in the
+   // execution provider's memory between runs.
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_new(VMContext& context) {
+      device_new(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_free(VMContext& context) {
+      device_free(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_upload(VMContext& context) {
+      device_upload(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_download(VMContext& context) {
+      device_download(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_meta(VMContext& context) {
+      device_meta(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_new(VMContext& context) {
+      bound_new(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_free(VMContext& context) {
+      bound_free(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_bind(VMContext& context) {
+      bound_bind(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_clear(VMContext& context) {
+      bound_clear(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_run(VMContext& context) {
+      bound_run(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_bound_output(VMContext& context) {
+      bound_output(context);
+   }
+
+   // Raw element patterns, and float16 / bfloat16 conversion (float16_entries.h)
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_upload_bits(VMContext& context) {
+      device_upload_bits(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_device_download_bits(VMContext& context) {
+      device_download_bits(context);
+   }
+
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_convert_float16(VMContext& context) {
+      convert_float16(context);
    }
 
    // YOLO inference

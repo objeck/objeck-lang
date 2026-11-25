@@ -1,0 +1,460 @@
+#~~
+# Objeck machine learning library: forecast accuracy metrics and rolling-origin cross-validation
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+Experimental: API may change.
+
+Accuracy metrics for point forecasts, interval coverage and rolling-origin (walk-forward) cross-validation. Part of the ml_timeseries library; see ml_timeseries.obs.
+~#
+bundle System.ML.TimeSeries {
+	#~
+	Point-forecast accuracy metrics. Every function takes the actual values and the forecasts (same length, at least one) and returns NaN for bad input or when the metric is undefined; none ends the program.
+	~#
+	class ForecastMetrics {
+		function : Valid(a : Float[], f : Float[]) ~ Bool {
+			if(a = Nil | f = Nil | a->Size() = 0 | a->Size() <> f->Size()) {
+				return false;
+			};
+
+			return TsMath->FirstBad(a) < 0 & TsMath->FirstBad(f) < 0;
+		}
+
+		#~
+		Mean error (bias): the mean of actual - forecast.
+		~#
+		function : Me(actual : Float[], forecast : Float[]) ~ Float {
+			if(<>Valid(actual, forecast)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : actual) {
+				s += actual[i] - forecast[i];
+			};
+
+			return s / actual->Size()->As(Float);
+		}
+
+		#~
+		Mean absolute error.
+		~#
+		function : Mae(actual : Float[], forecast : Float[]) ~ Float {
+			if(<>Valid(actual, forecast)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : actual) {
+				s += (actual[i] - forecast[i])->Abs();
+			};
+
+			return s / actual->Size()->As(Float);
+		}
+
+		#~
+		Root mean squared error.
+		~#
+		function : Rmse(actual : Float[], forecast : Float[]) ~ Float {
+			if(<>Valid(actual, forecast)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : actual) {
+				d := actual[i] - forecast[i];
+				s += d * d;
+			};
+
+			return (s / actual->Size()->As(Float))->Sqrt();
+		}
+
+		#~
+		Mean absolute percentage error, in percent: 100 mean(|actual - forecast| / |actual|).
+		@return the MAPE, or NaN when any actual value is 0 (the metric is undefined there; use SMape or Mase)
+		~#
+		function : Mape(actual : Float[], forecast : Float[]) ~ Float {
+			if(<>Valid(actual, forecast)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : actual) {
+				if(actual[i] = 0.0) {
+					return Float->NaN();
+				};
+				s += (actual[i] - forecast[i])->Abs() / actual[i]->Abs();
+			};
+
+			return 100.0 * s / actual->Size()->As(Float);
+		}
+
+		#~
+		Symmetric MAPE, in percent: 100 mean(2 |actual - forecast| / (|actual| + |forecast|)), so it lies in 0 to 200. A term whose actual and forecast are both 0 counts as 0.
+		~#
+		function : Smape(actual : Float[], forecast : Float[]) ~ Float {
+			if(<>Valid(actual, forecast)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : actual) {
+				den := actual[i]->Abs() + forecast[i]->Abs();
+				if(den > 0.0) {
+					s += 2.0 * (actual[i] - forecast[i])->Abs() / den;
+				};
+			};
+
+			return 100.0 * s / actual->Size()->As(Float);
+		}
+
+		#~
+		Mean absolute scaled error (Hyndman and Koehler 2006): the MAE of the forecasts divided by the in-sample MAE of the seasonal naive forecast on the training series, mean |train[t] - train[t - m]|. Below 1 is better than the (seasonal) naive method.
+		@param actual the observed values
+		@param forecast the forecasts
+		@param train the training series (more than m values)
+		@param m the seasonal lag (1 for the plain naive scale)
+		@return the MASE, or NaN for bad input or a training series with a zero naive error (a constant series)
+		~#
+		function : Mase(actual : Float[], forecast : Float[], train : Float[], m : Int) ~ Float {
+			if(<>Valid(actual, forecast) | train = Nil | m < 1 | train->Size() <= m | TsMath->FirstBad(train) >= 0) {
+				return Float->NaN();
+			};
+
+			scale := 0.0;
+			for(t := m; t < train->Size(); t += 1;) {
+				scale += (train[t] - train[t - m])->Abs();
+			};
+			scale /= (train->Size() - m)->As(Float);
+
+			if(scale <= 0.0) {
+				return Float->NaN();
+			};
+
+			return Mae(actual, forecast) / scale;
+		}
+
+		#~
+		The fraction of actual values inside their prediction interval (lower <= actual <= upper): the empirical coverage to compare with the nominal level.
+		@return the fraction in 0 to 1, NaN for bad input
+		~#
+		function : Coverage(actual : Float[], lower : Float[], upper : Float[]) ~ Float {
+			if(<>Valid(actual, lower) | <>Valid(actual, upper)) {
+				return Float->NaN();
+			};
+
+			inside := 0;
+			each(i : actual) {
+				if(actual[i] >= lower[i] & actual[i] <= upper[i]) {
+					inside += 1;
+				};
+			};
+
+			return inside->As(Float) / actual->Size()->As(Float);
+		}
+
+		#~
+		The mean width of the prediction intervals.
+		@return the mean of upper - lower, NaN for bad input
+		~#
+		function : MeanWidth(lower : Float[], upper : Float[]) ~ Float {
+			if(<>Valid(lower, upper)) {
+				return Float->NaN();
+			};
+
+			s := 0.0;
+			each(i : lower) {
+				s += upper[i] - lower[i];
+			};
+
+			return s / lower->Size()->As(Float);
+		}
+	}
+
+	#~
+	The result of Evaluation->RollingOrigin.
+	~#
+	class CvResult {
+		@error : String;
+		@folds : Int;
+		@skipped : Int;
+		@horizon : Int;
+		@errors : Float[,];
+		@abs_by_h : Float[];
+		@rmse_by_h : Float[];
+		@mae : Float;
+		@rmse : Float;
+		@mape : Float;
+		@smape : Float;
+		@mase : Float;
+		@coverage : Float;
+		@width : Float;
+		@level : Float;
+
+		New(error : String) {
+			@error := error;
+		}
+
+		New(folds : Int, skipped : Int, horizon : Int, errors : Float[,], mape : Float, smape : Float, mase : Float, coverage : Float, width : Float, level : Float) {
+			@error := "";
+			@folds := folds;
+			@skipped := skipped;
+			@horizon := horizon;
+			@errors := errors;
+			@mape := mape;
+			@smape := smape;
+			@mase := mase;
+			@coverage := coverage;
+			@width := width;
+			@level := level;
+
+			@abs_by_h := Float->New[horizon];
+			@rmse_by_h := Float->New[horizon];
+			tot_a := 0.0;
+			tot_s := 0.0;
+			each(k : horizon) {
+				sa := 0.0;
+				ss := 0.0;
+				each(f : folds) {
+					v := errors[f, k];
+					sa += v->Abs();
+					ss += v * v;
+				};
+				@abs_by_h[k] := sa / folds->As(Float);
+				@rmse_by_h[k] := (ss / folds->As(Float))->Sqrt();
+				tot_a += sa;
+				tot_s += ss;
+			};
+
+			cnt := (folds * horizon)->As(Float);
+			@mae := tot_a / cnt;
+			@rmse := (tot_s / cnt)->Sqrt();
+		}
+
+		method : public : IsValid() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		@return the number of origins evaluated
+		~#
+		method : public : GetFolds() ~ Int {
+			return @folds;
+		}
+
+		#~
+		@return the number of origins skipped because the model could not be fitted
+		~#
+		method : public : GetSkipped() ~ Int {
+			return @skipped;
+		}
+
+		#~
+		@return the forecast horizon
+		~#
+		method : public : GetHorizon() ~ Int {
+			return @horizon;
+		}
+
+		#~
+		The forecast errors, actual - forecast: one row per origin, one column per step ahead.
+		~#
+		method : public : GetErrors() ~ Float[,] {
+			return @errors;
+		}
+
+		#~
+		@return the MAE over every fold and step
+		~#
+		method : public : GetMae() ~ Float {
+			return @mae;
+		}
+
+		#~
+		@return the RMSE over every fold and step
+		~#
+		method : public : GetRmse() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		@return the MAE at each step ahead (index 0 = one step)
+		~#
+		method : public : GetMaeByHorizon() ~ Float[] {
+			return @abs_by_h;
+		}
+
+		#~
+		@return the RMSE at each step ahead
+		~#
+		method : public : GetRmseByHorizon() ~ Float[] {
+			return @rmse_by_h;
+		}
+
+		#~
+		@return the MAPE in percent over every fold and step (NaN when an actual value is 0)
+		~#
+		method : public : GetMape() ~ Float {
+			return @mape;
+		}
+
+		#~
+		@return the sMAPE in percent
+		~#
+		method : public : GetSmape() ~ Float {
+			return @smape;
+		}
+
+		#~
+		@return the mean over the folds of the MASE, each scaled by that fold's training series
+		~#
+		method : public : GetMase() ~ Float {
+			return @mase;
+		}
+
+		#~
+		@return the fraction of actual values inside their prediction interval, over every fold and step
+		~#
+		method : public : GetCoverage() ~ Float {
+			return @coverage;
+		}
+
+		#~
+		@return the mean interval width
+		~#
+		method : public : GetMeanWidth() ~ Float {
+			return @width;
+		}
+
+		#~
+		@return the nominal level the intervals were requested at
+		~#
+		method : public : GetLevel() ~ Float {
+			return @level;
+		}
+	}
+
+	#~
+	Rolling-origin (walk-forward, "time series cross-validation") evaluation: the model is fitted on the first `initial` observations and asked for `horizon` forecasts, which are scored against the next `horizon` observations; the origin then moves forward by `step` and the model is fitted again on the longer series, until fewer than `horizon` observations remain after the origin. Training data always precede the test data, and the model is refitted at every origin through Forecaster->Copy.
+	~#
+	class Evaluation {
+		#~
+		@param model any Forecaster; each fold fits a Copy of it, so it is not changed
+		@param y the whole series (no missing values)
+		@param initial the size of the first training set
+		@param horizon steps ahead to forecast at every origin (>= 1)
+		@param step how far the origin moves between folds (>= 1)
+		@param level interval level for the coverage check, strictly between 0 and 1
+		@param period seasonal lag for the MASE scale (1 = plain naive)
+		@return the result; IsValid() is false for a bad argument or when no fold could be fitted
+		~#
+		function : RollingOrigin(model : Forecaster, y : TimeSeries, initial : Int, horizon : Int, step : Int, level : Float, period : Int) ~ CvResult {
+			if(model = Nil | y = Nil) {
+				return CvResult->New("model and series are required");
+			};
+
+			if(initial < 2 | horizon < 1 | step < 1 | period < 1) {
+				return CvResult->New("initial must be at least 2; horizon, step and period at least 1");
+			};
+
+			bad := y->Check();
+			if(bad->Size() > 0) {
+				return CvResult->New(bad);
+			};
+
+			n := y->Size();
+			if(initial + horizon > n) {
+				return CvResult->New("the series is too short: initial + horizon exceeds its length");
+			};
+
+			if(level <> level | level <= 0.0 | level >= 1.0) {
+				return CvResult->New("the interval level must be strictly between 0 and 1");
+			};
+
+			vals := y->GetValues();
+			origins := (n - horizon - initial) / step + 1;
+			errs := Float->New[origins, horizon];
+			all_a := Float->New[origins * horizon];
+			all_f := Float->New[origins * horizon];
+			all_lo := Float->New[origins * horizon];
+			all_hi := Float->New[origins * horizon];
+			mase_sum := 0.0;
+			mase_n := 0;
+			done := 0;
+			skipped := 0;
+
+			each(o : origins) {
+				cut := initial + o * step;
+				train := y->Slice(0, cut);
+				m := model->Copy();
+				if(m->Fit(train)) {
+					fc := m->Forecast(horizon, level);
+					if(fc->IsValid()) {
+						mean := fc->GetMean();
+						lo := fc->GetLower();
+						hi := fc->GetUpper();
+						act := Float->New[horizon];
+						each(k : horizon) {
+							act[k] := vals[cut + k];
+							errs[done, k] := act[k] - mean[k];
+							all_a[done * horizon + k] := act[k];
+							all_f[done * horizon + k] := mean[k];
+							all_lo[done * horizon + k] := lo[k];
+							all_hi[done * horizon + k] := hi[k];
+						};
+
+						ms := ForecastMetrics->Mase(act, mean, train->GetValues(), period);
+						if(ms = ms) {
+							mase_sum += ms;
+							mase_n += 1;
+						};
+
+						done += 1;
+					}
+					else {
+						skipped += 1;
+					};
+				}
+				else {
+					skipped += 1;
+				};
+			};
+
+			if(done = 0) {
+				return CvResult->New("the model could not be fitted at any origin");
+			};
+
+			total := done * horizon;
+			e2 := Float->New[done, horizon];
+			a := Float->New[total];
+			f := Float->New[total];
+			lo := Float->New[total];
+			hi := Float->New[total];
+			each(i : done) {
+				each(k : horizon) {
+					e2[i, k] := errs[i, k];
+				};
+			};
+			each(i : total) {
+				a[i] := all_a[i];
+				f[i] := all_f[i];
+				lo[i] := all_lo[i];
+				hi[i] := all_hi[i];
+			};
+
+			mase := Float->NaN();
+			if(mase_n > 0) {
+				mase := mase_sum / mase_n->As(Float);
+			};
+
+			return CvResult->New(done, skipped, horizon, e2, ForecastMetrics->Mape(a, f), ForecastMetrics->Smape(a, f), mase, ForecastMetrics->Coverage(a, lo, hi), ForecastMetrics->MeanWidth(lo, hi), level);
+		}
+	}
+}

@@ -1,0 +1,24 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A function variable declared without a value inside a loop is unassigned (a Nil dereference when called) on
+every iteration, not only the first. It kept the previous iteration's function reference, so the call on the
+second iteration quietly ran the first iteration's function instead of failing like bad_unassigned_function_value.
+~#
+
+class BadLoopUnassignedFunctionValue {
+	function : Twice(x : Int) ~ Int {
+		return x * 2;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		for(i := 0; i < 2; i += 1;) {
+			f : (Int) ~ Int;
+			if(i = 0) {
+				f := Twice(Int) ~ Int;
+			}
+			else {
+				f(3)->PrintLine();
+			};
+		};
+	}
+}

@@ -124,32 +124,12 @@ cd core/release && cmd.exe //c "deploy_windows.cmd x64"
 
 This rebuilds the entire MSVC solution (compiler, VM, debugger, REPL, launcher), all native libraries (crypto, lame, diags, ODBC, ONNX, OpenCV), generates API docs, and creates the deploy directory.
 
-> **CRITICAL — `docs/api.zip` must be generated AFTER the `.obl` libraries are at the
-> new version.** `deploy_windows.cmd` regenerates `docs/api.zip` by running `code_doc`
-> against the `.obl` already in `deploy-x64/lib` — it does **NOT** rebuild the `.obl`
-> itself. If those libs are still the *previous* version (e.g. the bump is split — Windows
-> binaries bumped here but the `.obl` rebuilt later/on Linux per steps 5–6, or on another
-> machine), `code_doc` hits *"compiled with a different version of the tool chain"*,
-> writes **zero HTML**, and produces a **broken `docs/api.zip` containing only the 3 style
-> files**. A broken api.zip is silent locally but **fails the release** — the cloud
-> `release-build.yml` *"Generate API Docs"* step unzips the committed `docs/api.zip` as the
-> doc base (it relies on it; the Linux path does not copy fresh `code_doc` output into
-> `docs/api`), so 0 HTML → *"API docs incomplete: only 0 HTML files (expected 50+)"* →
-> cascading `Verify required binaries` failures on every non-windows-x64 target. This
-> broke v2026.6.4. **So: if the `.obl` are rebuilt separately/after, REGENERATE `docs/api.zip`
-> once the new `.obl` are in `deploy-x64/lib`** (re-run `deploy_windows.cmd`, or run the
-> `code_doc` doc-gen + **`rm -f api.zip` first**, then `7z a -tzip api.zip api/*`, from `deploy-x64/doc`).
-> **DELETE THE ARCHIVE BEFORE BUILDING IT.** `7z a` and `zip -r` both UPDATE an existing archive
-> in place, and `docs/api.zip` is tracked, so one is always present. If the generated tree is
-> empty or partial, the old entries survive and every structural check still passes against them.
-> This is not hypothetical: CI did exactly this for three releases -- its log reads `updating:
-> api/ (stored 0%)` followed by `✅ API documentation packaged: 439 HTML files`, where those 439
-> were the STALE entries already inside the zip. v2026.8.0's docs shipped inside v2026.8.1 and
-> v2026.8.2 that way. Fixed in release-build.yml 2026-08-19; the same trap applies locally.
-> Build the zip with
-> `7z`/`zip` (forward-slash paths), **not** PowerShell `Compress-Archive` (writes backslash
-> entries that Linux `unzip` mangles). **Always verify before committing** (see step 8):
-> `unzip -l docs/api.zip | grep -c '\.html$'` must be ≥ 50.
+> **`docs/api.zip` is not committed and a bump does not produce one.** `deploy_windows.cmd x64`
+> still writes a local `docs/api.zip` (via `code_doc64.cmd`, against the `.obl` in `deploy-x64/lib`,
+> which must already be at the new version or `code_doc` writes zero pages), but it is gitignored.
+> The release build generates the one that ships (`tools/cicd/gen_api_docs.sh`, gated on page
+> count and version stamp) and hands it to every build job as the `api-docs` artifact.
+> Local POSIX deploys without it simply have no `doc/api`.
 
 > **`deploy_windows.cmd` DELETES `deploy-x64` before it checks for a VS environment.**
 > The `rmdir /s /q %TARGET%` runs near the top, ahead of the `VCINSTALLDIR` guard, so
@@ -193,6 +173,15 @@ all twelve projects clean, regression 190/190, DAP 20/20, LSP 45/45.
 
 ### 5. Full Linux build via `update_version.sh`
 
+> **Are the libraries still committed?** `git ls-files 'core/lib/*.obl'` decides how much of steps 5-6 you owe.
+> While it lists files, everything below applies: rebuild them and COMMIT them (CI's `libs` job
+> rebuilds them from source and fails on any byte that differs, so a stale one is red on the bump PR).
+> Once it prints nothing (docs/DESIGN_OBL_FROM_SOURCE.md, stage 4) the `.obl` are build products:
+> the `libs` job makes the ones every CI and release job uses, you never `git add core/lib/*.obl`,
+> and these steps are only for testing locally (Windows has its own: `core\compiler\build_libs_windows.cmd`,
+> which builds `lang.obl` with the `Release-Sys` configuration of `compiler.vcxproj` and the rest with the
+> Windows `obc`). The list of libraries is `core/compiler/build_libs.sh`; keep nothing else in step with it.
+
 Run on Linux or WSL. This rebuilds sys_obc, lang.obl, obc, and all standard
 libraries (including `web_server.obl` — added 2026.6.1; keep the lib list here in
 sync with `update_version.sh` / `update_version_arm.sh`). Note it does **not**
@@ -206,6 +195,8 @@ wsl -d Ubuntu -- bash -c 'cd "$REPO"/core/compiler && bash update_version.sh'   
 If WSL is not available, note that the user needs to run `update_version.sh` on Linux/macOS.
 
 ### 6. Copy rebuilt libraries to deploy directory
+
+(Only meaningful for a local deploy tree; whether the `.obl` are committed or not is decided in step 5.)
 
 After the Linux build, the `.obl` files in `core/lib/` are the authoritative rebuilt copies:
 ```bash
@@ -233,24 +224,6 @@ The `core_opencv` test may fail on WSL (missing native .so) — that's expected.
 - Read `core/shared/version.h` and confirm `VER_NUM` and `VERSION_STRING` match
 - Check regression test results: all should pass (except opencv on WSL)
 - Check `update_version.ps1` variables match the new version
-- **Verify `docs/api.zip` is complete** (a broken one silently fails the release — see step 4):
-  `unzip -l docs/api.zip | grep -c '\.html$'` must be **≥ 50** (a healthy build is ~435).
-  If it's ~0–3, the api.zip was generated against stale `.obl`; rebuild it after the new
-  `.obl` are in `deploy-x64/lib` and re-verify. Also confirm forward-slash paths
-  (`unzip -l docs/api.zip | head` shows `api/...`, not `api\...`).
-- **Verify the api.zip's VERSION STAMP, not just its shape.** Every generated page prints
-  the version it was built for in its footer, and the two checks above pass happily on a
-  well-formed zip built against the *wrong* one. The committed api.zip stamped
-  **v2026.8.0** while serving as the docs for v2026.8.1 and v2026.8.2 — 439 HTML files
-  with `api/` paths throughout, so nothing ever went red:
-  ```bash
-  # Pick the page by LISTING the zip. Naming a file that is not in it (there is no
-  # api/api.system.html) makes unzip -p print nothing and the check pass on any version.
-  PAGE=$(unzip -l docs/api.zip | awk '/\.html$/{print $4; exit}')
-  unzip -p docs/api.zip "$PAGE" | grep -o 'class="version">v[0-9.]*' | head -1
-  ```
-  must report the new version, and an EMPTY result is a failure, not a pass. If it
-  disagrees, regenerate against the new `.obl` before committing.
 
 ### 9. Report
 

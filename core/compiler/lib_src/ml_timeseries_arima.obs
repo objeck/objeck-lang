@@ -1,0 +1,1320 @@
+#~~
+# Objeck machine learning library: ARIMA and automatic model selection
+# Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection;
+
+#~
+Experimental: API may change.
+
+ARIMA(p, d, q) with optional seasonal differencing, and the automatic selectors AutoArima and AutoEts. Part of the ml_timeseries library; see ml_timeseries.obs.
+~#
+bundle System.ML.TimeSeries {
+	#~
+	ARIMA(p, d, q): an autoregressive moving-average model of order (p, q) for the series after d ordinary differences and D seasonal differences (lag = the period).
+
+	With w the differenced series and mu its mean (a constant mean is included by default only when nothing is differenced, because a differenced series has no level to speak of; SetIncludeMean overrides), the model is
+	(w[t] - mu) = sum phi[i] (w[t-i] - mu) + e[t] + sum theta[j] e[t-j].
+
+	Estimation is conditional least squares (CSS): the errors e[t] are computed recursively from the data, taking e[t] = 0 for the first max(p, start) observations, and the sum of their squares is minimized. A pure autoregression (q = 0) is linear in the coefficients, so it is solved exactly by ordinary least squares on the lagged values with an intercept (mu = c / (1 - sum phi)), which is what statsmodels' AutoReg computes. When q > 0 the start is the Hannan-Rissanen estimate (a long autoregression gives estimates of the errors, then a regression of w on its own lags and the lagged error estimates gives phi, theta and the intercept) and a Levenberg-Marquardt iteration with a central-difference Jacobian polishes it to the CSS minimum. There is no random start and no hidden state: the same series gives the same coefficients on every platform.
+
+	The residual variance is SSE / N with N = (length after differencing) - start; the Gaussian log-likelihood is -N/2 (ln(2 pi sigma^2) + 1), and k = p + q + 1 (the mean, if any) + 1 (the variance) feeds AIC = -2 logLik + 2k, AICc = AIC + 2k(k+1)/(N-k-1) and BIC = -2 logLik + k ln N. These are CONDITIONAL likelihoods: compare models with the same d, D and start only (AutoArima does, fixing the start at the largest p it tries).
+
+	Forecasts are made on the differenced series with future errors set to 0 and then integrated back (SeriesTransform->Integrate). The forecast error variance is sigma^2 (psi[0]^2 + ... + psi[h-1]^2), where psi are the moving-average weights of the full operator theta(B) / (phi(B) (1-B)^d (1-B^m)^D), so intervals widen with the differencing, as they should. Coefficient uncertainty is not included (the usual approximation).
+
+	No check forces the fitted model to be stationary or invertible; IsStationary and IsInvertible report it (a pure autoregression fitted by least squares can come out slightly non-stationary on a series that is not).
+	~#
+	class ArimaModel implements Forecaster {
+		@p : Int;
+		@d : Int;
+		@q : Int;
+		@sdiff : Int;
+		@period : Int;
+		@mean_flag : Int;
+		@css_start : Int;
+		@use_mean : Bool;
+		@y : Float[];
+		@w : Float[];
+		@e : Float[];
+		@phi : Float[];
+		@theta : Float[];
+		@mu : Float;
+		@start : Int;
+		@sse : Float;
+		@nres : Int;
+		@sigma2 : Float;
+		@loglik : Float;
+		@fitted : Float[];
+		@resid : Float[];
+		@ok : Bool;
+		@error : String;
+		@iters : Int;
+
+		#~
+		ARIMA(p, d, q) with no seasonal differencing.
+		@param p autoregressive order (>= 0)
+		@param d number of ordinary differences (>= 0)
+		@param q moving-average order (>= 0)
+		~#
+		New(p : Int, d : Int, q : Int) {
+			@p := p;
+			@d := d;
+			@q := q;
+			@sdiff := 0;
+			@period := 1;
+			@mean_flag := -1;
+			@css_start := -1;
+			@error := "";
+		}
+
+		#~
+		ARIMA(p, d, q) with seasonal differencing.
+		@param p autoregressive order
+		@param d ordinary differences
+		@param q moving-average order
+		@param sdiff seasonal differences D (>= 0)
+		@param period the seasonal period (>= 2 when sdiff > 0)
+		~#
+		New(p : Int, d : Int, q : Int, sdiff : Int, period : Int) {
+			@p := p;
+			@d := d;
+			@q := q;
+			@sdiff := sdiff;
+			@period := period;
+			@mean_flag := -1;
+			@css_start := -1;
+			@error := "";
+		}
+
+		#~
+		Forces the constant mean on or off (the default is on only when d = 0 and D = 0).
+		@param include true to estimate a mean (a drift when the series is differenced)
+		@return this model
+		~#
+		method : public : SetIncludeMean(include : Bool) ~ ArimaModel {
+			if(include) {
+				@mean_flag := 1;
+			}
+			else {
+				@mean_flag := 0;
+			};
+
+			return @self;
+		}
+
+		#~
+		Sets the first observation of the differenced series that enters the sum of squares (at least p). Models fitted with the same start have comparable information criteria.
+		@param start index into the differenced series
+		@return this model
+		~#
+		method : public : SetCssStart(start : Int) ~ ArimaModel {
+			@css_start := start;
+			return @self;
+		}
+
+		method : public : Fit(y : TimeSeries) ~ Bool {
+			@ok := false;
+			if(@p < 0 | @d < 0 | @q < 0 | @sdiff < 0 | @p > 20 | @q > 20 | @d > 3 | @sdiff > 2) {
+				@error := "orders out of range (p, q in 0 to 20, d in 0 to 3, D in 0 to 2)";
+				return false;
+			};
+
+			if(@sdiff > 0 & @period < 2) {
+				@error := "seasonal differencing needs a period of at least 2";
+				return false;
+			};
+
+			lost := @d + @sdiff * @period;
+			@start := TsMath->IMax(@p, @css_start);
+			min_n := lost + @start + @p + @q + 6;
+			@error := ModelKit->CheckSeries(y, min_n);
+			if(@error->Size() > 0) {
+				return false;
+			};
+
+			@y := y->GetValues();
+			z := @y;
+			if(@sdiff > 0) {
+				z := SeriesTransform->Diff(z, @period, @sdiff);
+			};
+			@w := SeriesTransform->Diff(z, 1, @d);
+			nw := @w->Size();
+			@use_mean := @mean_flag = 1 | (@mean_flag = -1 & @d = 0 & @sdiff = 0);
+
+			@phi := Float->New[@p];
+			@theta := Float->New[@q];
+			@mu := 0.0;
+			@iters := 0;
+
+			if(@p = 0 & @q = 0) {
+				if(@use_mean) {
+					@mu := TsMath->Mean(@w);
+				};
+			}
+			else if(@q = 0) {
+				if(<>FitAr(nw)) {
+					return false;
+				};
+			}
+			else {
+				if(<>FitArma(nw)) {
+					return false;
+				};
+			};
+
+			@e := Float->New[nw];
+			@sse := Css(@phi, @theta, @mu, @e);
+			@nres := nw - @start;
+			if(@sse <> @sse | @sse >= 1.0e299) {
+				@error := "the residuals diverged";
+				return false;
+			};
+
+			if(@nres < 1 | @sse <= 0.0) {
+				@error := "the model fits the series exactly; the residual variance is zero";
+				return false;
+			};
+
+			@sigma2 := @sse / @nres->As(Float);
+			@loglik := ModelKit->GaussianLogLik(@sse, @nres);
+
+			@fitted := ModelKit->Nans(@y->Size());
+			@resid := ModelKit->Nans(@y->Size());
+			shift := lost;
+			for(t := @start; t < nw; t += 1;) {
+				@resid[t + shift] := @e[t];
+				@fitted[t + shift] := @y[t + shift] - @e[t];
+			};
+
+			@ok := true;
+			@error := "";
+
+			return true;
+		}
+
+		# exact least squares for an autoregression, with an intercept when the mean is estimated
+		method : FitAr(nw : Int) ~ Bool {
+			rows := nw - @start;
+			cols := @p;
+			if(@use_mean) {
+				cols += 1;
+			};
+
+			if(rows <= cols + 1) {
+				@error := "the series is too short for an AR({$@p})";
+				return false;
+			};
+
+			x := Float->New[rows, cols];
+			resp := Float->New[rows];
+			each(r : rows) {
+				t := r + @start;
+				resp[r] := @w[t];
+				each(i : @p) {
+					x[r, i] := @w[t - 1 - i];
+				};
+				if(@use_mean) {
+					x[r, @p] := 1.0;
+				};
+			};
+
+			fit := TsMath->Ols(x, resp);
+			if(<>fit->IsValid()) {
+				@error := "least squares failed: {$fit->GetError()}";
+				return false;
+			};
+
+			c := fit->GetCoef();
+			sum := 0.0;
+			each(i : @p) {
+				@phi[i] := c[i];
+				sum += c[i];
+			};
+
+			if(@use_mean) {
+				if((1.0 - sum)->Abs() < 1.0e-8) {
+					@error := "the autoregression has a unit root, so the mean is not defined";
+					return false;
+				};
+				@mu := c[@p] / (1.0 - sum);
+			};
+
+			return true;
+		}
+
+		# Hannan-Rissanen start, then Levenberg-Marquardt on the conditional sum of squares
+		method : FitArma(nw : Int) ~ Bool {
+			k := @p + @q;
+			if(@use_mean) {
+				k += 1;
+			};
+
+			x := Float->New[k];
+
+			# stage 1: a long autoregression for estimates of the errors
+			long_p := TsMath->IMin(TsMath->IMax(@p + @q + 4, 10), (nw - 2) / 3);
+			ehat := Float->New[nw];
+			hr_ok := false;
+			if(long_p >= @p + @q) {
+				rows := nw - long_p;
+				cols := long_p + 1;
+				xl := Float->New[rows, cols];
+				yl := Float->New[rows];
+				each(r : rows) {
+					t := r + long_p;
+					yl[r] := @w[t];
+					each(i : long_p) {
+						xl[r, i] := @w[t - 1 - i];
+					};
+					xl[r, long_p] := 1.0;
+				};
+
+				fl := TsMath->Ols(xl, yl);
+				if(fl->IsValid()) {
+					cl := fl->GetCoef();
+					for(t := long_p; t < nw; t += 1;) {
+						pred := cl[long_p];
+						each(i : long_p) {
+							pred += cl[i] * @w[t - 1 - i];
+						};
+						ehat[t] := @w[t] - pred;
+					};
+
+					# stage 2: regress w on its lags and the lagged error estimates
+					t0 := TsMath->IMax(@p, long_p + @q);
+					rows2 := nw - t0;
+					cols2 := @p + @q + 1;
+					if(rows2 > cols2 + 1) {
+						x2 := Float->New[rows2, cols2];
+						y2 := Float->New[rows2];
+						each(r : rows2) {
+							t := r + t0;
+							y2[r] := @w[t];
+							each(i : @p) {
+								x2[r, i] := @w[t - 1 - i];
+							};
+							each(j : @q) {
+								x2[r, @p + j] := ehat[t - 1 - j];
+							};
+							x2[r, @p + @q] := 1.0;
+						};
+
+						f2 := TsMath->Ols(x2, y2);
+						if(f2->IsValid()) {
+							c2 := f2->GetCoef();
+							sum := 0.0;
+							each(i : @p) {
+								x[i] := c2[i];
+								sum += c2[i];
+							};
+							each(j : @q) {
+								x[@p + j] := c2[@p + j];
+							};
+							if(@use_mean) {
+								if((1.0 - sum)->Abs() > 1.0e-6) {
+									x[@p + @q] := c2[@p + @q] / (1.0 - sum);
+								}
+								else {
+									x[@p + @q] := TsMath->Mean(@w);
+								};
+							};
+							hr_ok := true;
+						};
+					};
+				};
+			};
+
+			if(<>hr_ok) {
+				# fall back to a zero start with the sample mean
+				if(@use_mean) {
+					x[@p + @q] := TsMath->Mean(@w);
+				};
+			};
+
+			# keep the start inside the stationary / invertible region so the recursion cannot blow up
+			Unpack(x);
+			if(<>ArimaModel->StableAr(@phi)) {
+				each(i : @p) {
+					x[i] := 0.0;
+				};
+			};
+			if(<>ArimaModel->StableMa(@theta)) {
+				each(j : @q) {
+					x[@p + j] := 0.0;
+				};
+			};
+
+			@iters := Lm(x, nw);
+			Unpack(x);
+
+			return true;
+		}
+
+		# copies a parameter vector into phi, theta and mu
+		method : Unpack(x : Float[]) ~ Nil {
+			each(i : @p) {
+				@phi[i] := x[i];
+			};
+			each(j : @q) {
+				@theta[j] := x[@p + j];
+			};
+			if(@use_mean) {
+				@mu := x[@p + @q];
+			};
+		}
+
+		# sum of squared residuals at a parameter vector
+		method : SseAt(x : Float[], nw : Int) ~ Float {
+			ph := Float->New[@p];
+			th := Float->New[@q];
+			m := 0.0;
+			each(i : @p) {
+				ph[i] := x[i];
+			};
+			each(j : @q) {
+				th[j] := x[@p + j];
+			};
+			if(@use_mean) {
+				m := x[@p + @q];
+			};
+
+			return Css(ph, th, m, Float->New[nw]);
+		}
+
+		# Levenberg-Marquardt on the CSS residuals; x is updated in place; returns the iteration count
+		method : Lm(x : Float[], nw : Int) ~ Int {
+			k := x->Size();
+			rows := nw - @start;
+			sse := SseAt(x, nw);
+			lambda := 0.001;
+			iter := 0;
+			while(iter < 200) {
+				iter += 1;
+
+				# residual vector and central-difference Jacobian
+				e0 := Float->New[nw];
+				ph := Float->New[@p];
+				th := Float->New[@q];
+				each(i : @p) {
+					ph[i] := x[i];
+				};
+				each(j : @q) {
+					th[j] := x[@p + j];
+				};
+				mm := 0.0;
+				if(@use_mean) {
+					mm := x[@p + @q];
+				};
+				Css(ph, th, mm, e0);
+
+				jac := Float->New[rows, k];
+				each(c : k) {
+					h := 1.0e-6 * TsMath->Max2(1.0, x[c]->Abs());
+					xp := Float->Copy(x);
+					xm := Float->Copy(x);
+					xp[c] := x[c] + h;
+					xm[c] := x[c] - h;
+					ep := Float->New[nw];
+					em := Float->New[nw];
+					CssAt(xp, ep);
+					CssAt(xm, em);
+					each(r : rows) {
+						jac[r, c] := (ep[r + @start] - em[r + @start]) / (2.0 * h);
+					};
+				};
+
+				a := Float->New[k, k];
+				g := Float->New[k];
+				each(r : rows) {
+					er := e0[r + @start];
+					each(i : k) {
+						g[i] += jac[r, i] * er;
+						each(j : k) {
+							a[i, j] += jac[r, i] * jac[r, j];
+						};
+					};
+				};
+
+				improved := false;
+				tries := 0;
+				while(tries < 30 & <>improved) {
+					tries += 1;
+					damp := Float->New[k, k];
+					each(i : k) {
+						each(j : k) {
+							damp[i, j] := a[i, j];
+						};
+						damp[i, i] := a[i, i] * (1.0 + lambda) + 1.0e-12;
+					};
+
+					rhs := Float->New[k];
+					each(i : k) {
+						rhs[i] := 0.0 - g[i];
+					};
+
+					delta := TsMath->Solve(damp, rhs);
+					if(delta <> Nil) {
+						xn := Float->New[k];
+						each(i : k) {
+							xn[i] := x[i] + delta[i];
+						};
+
+						sn := SseAt(xn, nw);
+						if(sn = sn & sn < sse) {
+							rel := (sse - sn) / (sse + 1.0e-300);
+							each(i : k) {
+								x[i] := xn[i];
+							};
+							sse := sn;
+							lambda := lambda / 10.0;
+							improved := true;
+							if(rel < 1.0e-13) {
+								return iter;
+							};
+						};
+					};
+
+					if(<>improved) {
+						lambda := lambda * 10.0;
+						if(lambda > 1.0e12) {
+							return iter;
+						};
+					};
+				};
+
+				if(<>improved) {
+					return iter;
+				};
+			};
+
+			return iter;
+		}
+
+		method : CssAt(x : Float[], e : Float[]) ~ Float {
+			ph := Float->New[@p];
+			th := Float->New[@q];
+			m := 0.0;
+			each(i : @p) {
+				ph[i] := x[i];
+			};
+			each(j : @q) {
+				th[j] := x[@p + j];
+			};
+			if(@use_mean) {
+				m := x[@p + @q];
+			};
+
+			return Css(ph, th, m, e);
+		}
+
+		# conditional sum of squares: fills e with the errors (0 before the start) and returns their sum of squares
+		method : Css(phi : Float[], theta : Float[], mu : Float, e : Float[]) ~ Float {
+			nw := @w->Size();
+			sse := 0.0;
+			each(t : nw) {
+				if(t < @start) {
+					e[t] := 0.0;
+				}
+				else {
+					v := @w[t] - mu;
+					each(i : @p) {
+						v -= phi[i] * (@w[t - 1 - i] - mu);
+					};
+					each(j : @q) {
+						if(t - 1 - j >= 0) {
+							v -= theta[j] * e[t - 1 - j];
+						};
+					};
+
+					if(v <> v | v->Abs() > 1.0e150) {
+						return 1.0e300;
+					};
+
+					e[t] := v;
+					sse += v * v;
+				};
+			};
+
+			return sse;
+		}
+
+		# stability of the polynomial 1 - sum c[i] z^i (all roots outside the unit circle), by the step-down recursion
+		function : StableAr(c : Float[]) ~ Bool {
+			n := c->Size();
+			if(n = 0) {
+				return true;
+			};
+
+			a := Float->Copy(c);
+			for(k := n; k >= 1; k -= 1;) {
+				r := a[k - 1];
+				if(r->Abs() >= 1.0) {
+					return false;
+				};
+
+				if(k > 1) {
+					km1 := k - 1;
+					nxt := Float->New[km1];
+					each(i : km1) {
+						nxt[i] := (a[i] + r * a[k - 2 - i]) / (1.0 - r * r);
+					};
+					a := nxt;
+				};
+			};
+
+			return true;
+		}
+
+		# invertibility of 1 + sum theta[j] z^j
+		function : StableMa(theta : Float[]) ~ Bool {
+			neg := Float->New[theta->Size()];
+			each(j : theta) {
+				neg[j] := 0.0 - theta[j];
+			};
+
+			return StableAr(neg);
+		}
+
+		# the coefficients of phi(B) (1-B)^d (1-B^m)^D as 1 - sum a[i] B^i, returned as a[1..]
+		method : ExpandedAr() ~ Float[] {
+			poly := Float->New[@p + 1];
+			poly[0] := 1.0;
+			each(i : @p) {
+				poly[i + 1] := 0.0 - @phi[i];
+			};
+
+			nd := @d;
+			each(r : nd) {
+				poly := Mul(poly, 1, 1.0);
+			};
+
+			ns := @sdiff;
+			each(r : ns) {
+				poly := Mul(poly, @period, 1.0);
+			};
+
+			a := Float->New[poly->Size() - 1];
+			each(i : a) {
+				a[i] := 0.0 - poly[i + 1];
+			};
+
+			return a;
+		}
+
+		# multiplies a polynomial by (1 - c B^lag)
+		method : Mul(poly : Float[], lag : Int, c : Float) ~ Float[] {
+			out := Float->New[poly->Size() + lag];
+			each(i : poly) {
+				out[i] += poly[i];
+				out[i + lag] -= c * poly[i];
+			};
+
+			return out;
+		}
+
+		method : public : Forecast(h : Int, level : Float) ~ ForecastResult {
+			if(<>@ok) {
+				@error := "not fitted";
+				return ForecastResult->New(@error);
+			};
+
+			err := ModelKit->CheckRequest(h, level);
+			if(err->Size() > 0) {
+				@error := err;
+				return ForecastResult->New(err);
+			};
+
+			nw := @w->Size();
+			wext := Float->New[nw + h];
+			eext := Float->New[nw + h];
+			each(t : nw) {
+				wext[t] := @w[t];
+				eext[t] := @e[t];
+			};
+
+			for(t := nw; t < nw + h; t += 1;) {
+				v := @mu;
+				each(i : @p) {
+					v += @phi[i] * (wext[t - 1 - i] - @mu);
+				};
+				each(j : @q) {
+					v += @theta[j] * eext[t - 1 - j];
+				};
+				wext[t] := v;
+			};
+
+			wf := Float->New[h];
+			each(i : h) {
+				wf[i] := wext[nw + i];
+			};
+
+			z := @y;
+			if(@sdiff > 0) {
+				z := SeriesTransform->Diff(@y, @period, @sdiff);
+			};
+
+			fz := wf;
+			if(@d > 0) {
+				fz := SeriesTransform->Integrate(wf, z, 1, @d);
+			};
+
+			mean := fz;
+			if(@sdiff > 0) {
+				mean := SeriesTransform->Integrate(fz, @y, @period, @sdiff);
+			};
+
+			# psi weights of theta(B) / (phi(B) (1-B)^d (1-B^m)^D)
+			a := ExpandedAr();
+			psi := Float->New[h];
+			psi[0] := 1.0;
+			for(j := 1; j < h; j += 1;) {
+				v := 0.0;
+				if(j <= @q) {
+					v := @theta[j - 1];
+				};
+				for(i := 1; i <= TsMath->IMin(j, a->Size()); i += 1;) {
+					v += a[i - 1] * psi[j - i];
+				};
+				psi[j] := v;
+			};
+
+			sd := Float->New[h];
+			acc := 0.0;
+			each(i : h) {
+				acc += psi[i] * psi[i];
+				sd[i] := (@sigma2 * acc)->Sqrt();
+			};
+
+			@error := "";
+			return ForecastResult->New(mean, sd, level);
+		}
+
+		method : public : GetFitted() ~ Float[] {
+			return @fitted;
+		}
+
+		method : public : GetResiduals() ~ Float[] {
+			return @resid;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : IsFitted() ~ Bool {
+			return @ok;
+		}
+
+		method : public : Copy() ~ Forecaster {
+			c := ArimaModel->New(@p, @d, @q, @sdiff, @period);
+			if(@mean_flag = 1) {
+				c->SetIncludeMean(true);
+			}
+			else if(@mean_flag = 0) {
+				c->SetIncludeMean(false);
+			};
+			c->SetCssStart(@css_start);
+
+			return c;
+		}
+
+		method : public : GetName() ~ String {
+			if(@sdiff > 0) {
+				return "ARIMA({$@p},{$@d},{$@q})D{$@sdiff}[{$@period}]";
+			};
+
+			return "ARIMA({$@p},{$@d},{$@q})";
+		}
+
+		#~
+		@return the autoregressive coefficients phi[1..p] (Nil before Fit)
+		~#
+		method : public : GetAr() ~ Float[] {
+			return @phi;
+		}
+
+		#~
+		@return the moving-average coefficients theta[1..q] (Nil before Fit)
+		~#
+		method : public : GetMa() ~ Float[] {
+			return @theta;
+		}
+
+		#~
+		@return the mean of the differenced series (0 when no mean is estimated)
+		~#
+		method : public : GetMean() ~ Float {
+			return @mu;
+		}
+
+		#~
+		@return the intercept c = mu (1 - sum phi) of w[t] = c + sum phi w[t-i] + ...
+		~#
+		method : public : GetIntercept() ~ Float {
+			s := 0.0;
+			each(i : @p) {
+				s += @phi[i];
+			};
+
+			return @mu * (1.0 - s);
+		}
+
+		#~
+		@return the conditional sum of squares (NaN before Fit)
+		~#
+		method : public : GetSse() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @sse;
+		}
+
+		#~
+		@return the residual variance SSE / N (NaN before Fit)
+		~#
+		method : public : GetSigma2() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @sigma2;
+		}
+
+		#~
+		@return the number of residuals N that entered the sum of squares
+		~#
+		method : public : GetObservations() ~ Int {
+			return @nres;
+		}
+
+		#~
+		@return the number of parameters k counted by the information criteria
+		~#
+		method : public : GetNumParams() ~ Int {
+			k := @p + @q + 1;
+			if(@use_mean) {
+				k += 1;
+			};
+
+			return k;
+		}
+
+		method : public : GetLogLik() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return @loglik;
+		}
+
+		method : public : GetAic() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return ModelKit->Aic(@loglik, GetNumParams());
+		}
+
+		method : public : GetAicc() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return ModelKit->Aicc(@loglik, GetNumParams(), @nres);
+		}
+
+		method : public : GetBic() ~ Float {
+			if(<>@ok) {
+				return Float->NaN();
+			};
+
+			return ModelKit->Bic(@loglik, GetNumParams(), @nres);
+		}
+
+		#~
+		@return true when the autoregressive part is stationary
+		~#
+		method : public : IsStationary() ~ Bool {
+			return @ok & ArimaModel->StableAr(@phi);
+		}
+
+		#~
+		@return true when the moving-average part is invertible
+		~#
+		method : public : IsInvertible() ~ Bool {
+			return @ok & ArimaModel->StableMa(@theta);
+		}
+
+		#~
+		@return the Levenberg-Marquardt iterations used (0 for a pure autoregression)
+		~#
+		method : public : GetIterations() ~ Int {
+			return @iters;
+		}
+	}
+
+	#~
+	Which information criterion a selector minimizes.
+	~#
+	class SelectionCriterion {
+		enum Kind {
+			AIC,
+			AICC,
+			BIC
+		}
+	}
+
+	#~
+	Automatic ARIMA selection over a small grid.
+
+	1. D: when a period of at least 2 is given and seasonal differencing is allowed, the seasonal strength of the classical decomposition decides (above 0.64: one seasonal difference).
+	2. d: repeated ADF tests (5%, constant, Schwert lags) on the seasonally differenced series pick the number of ordinary differences, up to maxD.
+	3. p in 0 to maxP and q in 0 to maxQ: every ArimaModel is fitted with the same CSS start (maxP), so the criteria are comparable; a candidate whose fitted autoregressive part is not stationary or whose moving-average part is not invertible is dropped (as auto.arima does: conditional least squares can reach such solutions by exploiting the start-up values, and they forecast badly); the one with the smallest criterion (AICc by default) wins. A constant mean is included when the total number of differences (d + D) is 0 or 1 (a drift, or a seasonal drift, as auto.arima allows); with two or more it would be a polynomial trend and is left out.
+	The winner is refitted state and forecasts through the Forecaster interface; GetCandidates lists what was tried.
+	~#
+	class AutoArima implements Forecaster {
+		@max_p : Int;
+		@max_q : Int;
+		@max_d : Int;
+		@period : Int;
+		@allow_seasonal : Bool;
+		@crit : SelectionCriterion->Kind;
+		@best : ArimaModel;
+		@best_ic : Float;
+		@names : Vector<String>;
+		@ics : Vector<FloatRef>;
+		@error : String;
+
+		#~
+		Defaults: p, q up to 3, d up to 2, AICc, no seasonal differencing.
+		~#
+		New() {
+			@max_p := 3;
+			@max_q := 3;
+			@max_d := 2;
+			@period := 1;
+			@allow_seasonal := false;
+			@crit := SelectionCriterion->Kind->AICC;
+			@error := "";
+		}
+
+		#~
+		@param max_p largest autoregressive order tried
+		@param max_q largest moving-average order tried
+		@param max_d most ordinary differences considered
+		@param period seasonal period (1 = none); with a period of at least 2 a seasonal difference is considered
+		@param criterion what to minimize
+		~#
+		New(max_p : Int, max_q : Int, max_d : Int, period : Int, criterion : SelectionCriterion->Kind) {
+			@max_p := max_p;
+			@max_q := max_q;
+			@max_d := max_d;
+			@period := period;
+			@allow_seasonal := period >= 2;
+			@crit := criterion;
+			@error := "";
+		}
+
+		method : public : Fit(y : TimeSeries) ~ Bool {
+			@best := Nil;
+			@names := Vector->New()<String>;
+			@ics := Vector->New()<FloatRef>;
+			@best_ic := Float->Inf();
+
+			@error := ModelKit->CheckSeries(y, 20);
+			if(@error->Size() > 0) {
+				return false;
+			};
+
+			vals := y->GetValues();
+			sdiff := 0;
+			z := vals;
+			if(@allow_seasonal) {
+				if(Stationarity->SuggestSeasonalDiff(vals, @period) = 1) {
+					sdiff := 1;
+					z := SeriesTransform->Diff(vals, @period, 1);
+				};
+			};
+
+			d := Stationarity->SuggestDiff(z, @max_d);
+			if(d < 0) {
+				d := 0;
+			};
+
+			per := 1;
+			if(sdiff > 0) {
+				per := @period;
+			};
+
+			for(p := 0; p <= @max_p; p += 1;) {
+				for(q := 0; q <= @max_q; q += 1;) {
+					m := ArimaModel->New(p, d, q, sdiff, per);
+					m->SetCssStart(@max_p);
+					m->SetIncludeMean(d + sdiff <= 1);
+					if(m->Fit(y) & m->IsStationary() & m->IsInvertible()) {
+						ic := Float->Inf();
+						if(@crit = SelectionCriterion->Kind->AIC) {
+							ic := m->GetAic();
+						}
+						else if(@crit = SelectionCriterion->Kind->BIC) {
+							ic := m->GetBic();
+						}
+						else {
+							ic := m->GetAicc();
+						};
+
+						@names->AddBack(m->GetName());
+						@ics->AddBack(FloatRef->New(ic));
+						if(ic = ic & ic < @best_ic) {
+							@best_ic := ic;
+							@best := m;
+						};
+					};
+				};
+			};
+
+			if(@best = Nil) {
+				@error := "no ARIMA model in the grid could be fitted";
+				return false;
+			};
+
+			@error := "";
+			return true;
+		}
+
+		method : public : Forecast(h : Int, level : Float) ~ ForecastResult {
+			if(@best = Nil) {
+				@error := "not fitted";
+				return ForecastResult->New(@error);
+			};
+
+			r := @best->Forecast(h, level);
+			@error := @best->GetError();
+
+			return r;
+		}
+
+		method : public : GetFitted() ~ Float[] {
+			if(@best = Nil) {
+				return Nil;
+			};
+
+			return @best->GetFitted();
+		}
+
+		method : public : GetResiduals() ~ Float[] {
+			if(@best = Nil) {
+				return Nil;
+			};
+
+			return @best->GetResiduals();
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : IsFitted() ~ Bool {
+			return @best <> Nil;
+		}
+
+		method : public : Copy() ~ Forecaster {
+			return AutoArima->New(@max_p, @max_q, @max_d, @period, @crit);
+		}
+
+		method : public : GetName() ~ String {
+			if(@best = Nil) {
+				return "AutoArima";
+			};
+
+			return "Auto{$@best->GetName()}";
+		}
+
+		#~
+		@return the selected model (Nil before a successful Fit)
+		~#
+		method : public : GetBest() ~ ArimaModel {
+			return @best;
+		}
+
+		#~
+		@return the criterion value of the selected model
+		~#
+		method : public : GetBestCriterion() ~ Float {
+			return @best_ic;
+		}
+
+		#~
+		The names of the models tried, in order (the same order as GetCandidateCriteria).
+		@return the names, Nil before Fit
+		~#
+		method : public : GetCandidateNames() ~ String[] {
+			if(@names = Nil) {
+				return Nil;
+			};
+
+			out := String->New[@names->Size()];
+			each(i : out) {
+				out[i] := @names->Get(i);
+			};
+
+			return out;
+		}
+
+		#~
+		The criterion value of every model tried, in order.
+		@return the values, Nil before Fit
+		~#
+		method : public : GetCandidateCriteria() ~ Float[] {
+			if(@ics = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[@ics->Size()];
+			each(i : out) {
+				out[i] := @ics->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		#~
+		The models tried, in order, with their criterion values.
+		@return one line per model: name, a space and the value
+		~#
+		method : public : GetCandidates() ~ String[] {
+			if(@names = Nil) {
+				return Nil;
+			};
+
+			out := String->New[@names->Size()];
+			each(i : out) {
+				nm := @names->Get(i);
+				v := @ics->Get(i)->Get();
+				out[i] := "{$nm} {$v}";
+			};
+
+			return out;
+		}
+	}
+
+	#~
+	Automatic exponential smoothing: fits simple smoothing, Holt, damped Holt and, when a period of at least 2 is given and the series covers two periods, the additive (and, for a positive series, multiplicative) Holt-Winters variants with and without a trend, and keeps the one with the smallest AICc (AIC or BIC on request). The candidates are fitted to the same series, so their criteria are comparable (same n and the same Gaussian likelihood).
+	~#
+	class AutoEts implements Forecaster {
+		@period : Int;
+		@crit : SelectionCriterion->Kind;
+		@best : ExponentialSmoothing;
+		@best_ic : Float;
+		@names : Vector<String>;
+		@ics : Vector<FloatRef>;
+		@error : String;
+
+		#~
+		No seasonal candidates, AICc.
+		~#
+		New() {
+			@period := 1;
+			@crit := SelectionCriterion->Kind->AICC;
+			@error := "";
+		}
+
+		#~
+		@param period seasonal period (1 = none)
+		@param criterion what to minimize
+		~#
+		New(period : Int, criterion : SelectionCriterion->Kind) {
+			@period := period;
+			@crit := criterion;
+			@error := "";
+		}
+
+		method : public : Fit(y : TimeSeries) ~ Bool {
+			@best := Nil;
+			@names := Vector->New()<String>;
+			@ics := Vector->New()<FloatRef>;
+			@best_ic := Float->Inf();
+
+			@error := ModelKit->CheckSeries(y, 4);
+			if(@error->Size() > 0) {
+				return false;
+			};
+
+			cands := Vector->New()<ExponentialSmoothing>;
+			none := ExponentialSmoothing->Season->NONE;
+			cands->AddBack(ExponentialSmoothing->New(false, false, none, 1));
+			cands->AddBack(ExponentialSmoothing->New(true, false, none, 1));
+			cands->AddBack(ExponentialSmoothing->New(true, true, none, 1));
+
+			if(@period >= 2 & y->Size() >= 2 * @period) {
+				add := ExponentialSmoothing->Season->ADDITIVE;
+				mul := ExponentialSmoothing->Season->MULTIPLICATIVE;
+				cands->AddBack(ExponentialSmoothing->New(false, false, add, @period));
+				cands->AddBack(ExponentialSmoothing->New(true, false, add, @period));
+				cands->AddBack(ExponentialSmoothing->New(true, true, add, @period));
+
+				positive := true;
+				vals := y->GetValues();
+				each(i : vals) {
+					if(vals[i] <= 0.0) {
+						positive := false;
+					};
+				};
+
+				if(positive) {
+					cands->AddBack(ExponentialSmoothing->New(false, false, mul, @period));
+					cands->AddBack(ExponentialSmoothing->New(true, false, mul, @period));
+					cands->AddBack(ExponentialSmoothing->New(true, true, mul, @period));
+				};
+			};
+
+			each(i : cands) {
+				m := cands->Get(i);
+				if(m->Fit(y)) {
+					ic := Float->Inf();
+					if(@crit = SelectionCriterion->Kind->AIC) {
+						ic := m->GetAic();
+					}
+					else if(@crit = SelectionCriterion->Kind->BIC) {
+						ic := m->GetBic();
+					}
+					else {
+						ic := m->GetAicc();
+					};
+
+					@names->AddBack(m->GetName());
+					@ics->AddBack(FloatRef->New(ic));
+					if(ic = ic & ic < @best_ic) {
+						@best_ic := ic;
+						@best := m;
+					};
+				};
+			};
+
+			if(@best = Nil) {
+				@error := "no exponential smoothing model could be fitted";
+				return false;
+			};
+
+			@error := "";
+			return true;
+		}
+
+		method : public : Forecast(h : Int, level : Float) ~ ForecastResult {
+			if(@best = Nil) {
+				@error := "not fitted";
+				return ForecastResult->New(@error);
+			};
+
+			r := @best->Forecast(h, level);
+			@error := @best->GetError();
+
+			return r;
+		}
+
+		method : public : GetFitted() ~ Float[] {
+			if(@best = Nil) {
+				return Nil;
+			};
+
+			return @best->GetFitted();
+		}
+
+		method : public : GetResiduals() ~ Float[] {
+			if(@best = Nil) {
+				return Nil;
+			};
+
+			return @best->GetResiduals();
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : IsFitted() ~ Bool {
+			return @best <> Nil;
+		}
+
+		method : public : Copy() ~ Forecaster {
+			return AutoEts->New(@period, @crit);
+		}
+
+		method : public : GetName() ~ String {
+			if(@best = Nil) {
+				return "AutoEts";
+			};
+
+			return "Auto{$@best->GetName()}";
+		}
+
+		#~
+		@return the selected model (Nil before a successful Fit)
+		~#
+		method : public : GetBest() ~ ExponentialSmoothing {
+			return @best;
+		}
+
+		#~
+		@return the criterion value of the selected model
+		~#
+		method : public : GetBestCriterion() ~ Float {
+			return @best_ic;
+		}
+
+		#~
+		The names of the models tried, in order (the same order as GetCandidateCriteria).
+		@return the names, Nil before Fit
+		~#
+		method : public : GetCandidateNames() ~ String[] {
+			if(@names = Nil) {
+				return Nil;
+			};
+
+			out := String->New[@names->Size()];
+			each(i : out) {
+				out[i] := @names->Get(i);
+			};
+
+			return out;
+		}
+
+		#~
+		The criterion value of every model tried, in order.
+		@return the values, Nil before Fit
+		~#
+		method : public : GetCandidateCriteria() ~ Float[] {
+			if(@ics = Nil) {
+				return Nil;
+			};
+
+			out := Float->New[@ics->Size()];
+			each(i : out) {
+				out[i] := @ics->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		#~
+		The models tried, in order, with their criterion values.
+		@return one line per model: name, a space and the value
+		~#
+		method : public : GetCandidates() ~ String[] {
+			if(@names = Nil) {
+				return Nil;
+			};
+
+			out := String->New[@names->Size()];
+			each(i : out) {
+				nm := @names->Get(i);
+				v := @ics->Get(i)->Get();
+				out[i] := "{$nm} {$v}";
+			};
+
+			return out;
+		}
+	}
+}

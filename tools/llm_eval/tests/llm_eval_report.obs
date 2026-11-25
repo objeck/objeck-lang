@@ -1,0 +1,122 @@
+# Run by tools/llm_eval/run_tests.py, which compiles this file together with ../llm_eval.obs
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+Report generation on known results: the Markdown report of one model and of two models with their comparison (the tables, the numbers in them and the verdict), the JSON results file, and the files EvalReport->Save writes. The one-model report is also compared with a fixed text, so a change to the layout is a deliberate edit of this test. No compiler and no model is involved. Exits 1 on a failure.
+~#
+class LlmEvalReport {
+	@fails : static : Int;
+
+	function : Expect(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	function : Add(results : ModelResults, task : String, category : String, index : Int, outcome : String, error_category : String, error_line : String) ~ Nil {
+		attempt := Attempt->New(task, category, index);
+		if(outcome->Equals("compile_error")) {
+			attempt->SetCompileError(error_category, error_line);
+		}
+		else {
+			attempt->SetOutcome(outcome);
+		};
+		attempt->SetUsage(100, 10, 2.0);
+		results->Add(attempt);
+	}
+
+	# two tasks of two attempts: t1 (basics) 2 pass; t2 (quirks) pass then a compile error; one failed call on t3
+	function : Small(name : String, second : String) ~ ModelResults {
+		results := ModelResults->New(name, 2);
+		Add(results, "t1", "basics", 0, "pass", Nil, Nil);
+		Add(results, "t1", "basics", 1, "pass", Nil, Nil);
+		Add(results, "t2", "quirks", 0, "pass", Nil, Nil);
+		if(second->Equals("pass")) {
+			Add(results, "t2", "quirks", 1, "pass", Nil, Nil);
+		}
+		else {
+			Add(results, "t2", "quirks", 1, "compile_error", "undefined_class", "Undefined class or interface: '_'");
+		};
+
+		failed := Attempt->New("t3", "basics", 0);
+		failed->SetModelError("HTTP 500");
+		results->Add(failed);
+		return results;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+
+		one := Vector->New()<ModelResults>;
+		one->AddBack(Small("alpha", "error"));
+		ks := [1, 2];
+		report := EvalReport->Markdown(one, ks, Nil, "Demo");
+
+		expected := "# Demo\n\n## Summary\n\n| Model | Tasks | Attempts per task | Compile rate | pass@1 | pass@2 | API errors | Mean latency (s) | Tokens in / out |\n|---|---|---|---|---|---|---|---|---|\n| alpha | 3 | 2 | 75.0% | 75.0% | 100.0% | 1 | 2.00 | 400 / 40 |\n";
+		Expect(report->StartsWith(expected), "the summary table is as fixed:\n{$report}");
+
+		Expect(report->Contains("## Pass@1 by task category\n\n| Category | alpha |\n|---|---|\n| basics | 100.0% |\n| quirks | 50.0% |\n"), "the category table");
+		Expect(report->Contains("## Compile errors\n\n**alpha**\n\n| Category | Count | Example |\n|---|---|---|\n| undefined_class | 1 | Undefined class or interface: '_' |\n"), "the compile error table");
+		Expect(report->Contains("## Outcomes\n\n| Model | Outcomes |\n|---|---|\n| alpha | pass 3, compile_error 1, model_error 1 |\n"), "the outcomes table");
+		Expect(report->Contains("## Per task\n\nCorrect attempts out of counted attempts.\n\n| Task | alpha |\n|---|---|\n| t1 | 2/2 |\n| t2 | 1/2 |\n| t3 | 0/0 |\n"), "the per-task table");
+		Expect(<>report->Contains("## Comparison"), "no comparison for one model");
+
+		# two models and their comparison
+		two := Vector->New()<ModelResults>;
+		a := Small("alpha", "error");
+		b := Small("beta | v2", "pass");
+		two->AddBack(a);
+		two->AddBack(b);
+		comparison := ModelComparison->Of(a, b, 500, 7);
+		full := EvalReport->Markdown(two, [1], comparison, "Two models");
+		Expect(full->StartsWith("# Two models\n"), "the title");
+		Expect(full->Contains("| alpha |") & full->Contains("| beta \\| v2 |"), "a pipe in a model name is escaped");
+		Expect(full->Contains("| Task | alpha | beta \\| v2 |"), "a column per model");
+		Expect(full->Contains("| t2 | 1/2 | 2/2 |"), "t2: alpha 1 of 2, beta 2 of 2");
+		Expect(full->Contains("## Comparison\n\n"), "a comparison section");
+		Expect(full->Contains(comparison->GetVerdict()), "the verdict is in the report: {$comparison->GetVerdict()}");
+		Expect(full->Contains("| alpha (A) | 75.0% |") & full->Contains("| beta \\| v2 (B) | 100.0% |"), "the pass rates of A and B");
+		Expect(full->Contains("4 attempt pairs on 2 tasks"), "the pairs");
+
+		# an empty run does not break the report
+		nothing := Vector->New()<ModelResults>;
+		nothing->AddBack(ModelResults->New("idle", 1));
+		empty := EvalReport->Markdown(nothing, [1], Nil, "Empty");
+		Expect(empty->Contains("| idle | 0 | 1 | n/a | n/a |"), "n/a for a model with no attempts: {$empty}");
+		Expect(empty->Contains("No compile errors."), "no errors said so");
+
+		# the JSON of the run
+		json := EvalReport->Json(two, comparison);
+		Expect(json->Get("schema")->GetString()->Equals("llm_eval_report/1"), "schema");
+		Expect(json->Get("models")->Size() = 2, "two models");
+		Expect(json->Get("models")->Get(0)->Get("model")->GetString()->Equals("alpha"), "the model name");
+		Expect(json->Get("models")->Get(0)->Get("attempts")->Size() = 5, "all attempts are in the file");
+		Expect(Float->Abs(json->Get("models")->Get(1)->Get("pass_at_1")->GetFloat() - 1.0) < 0.0001, "pass@1 of beta is 1");
+		Expect(json->Get("comparison")->Get("verdict")->GetString()->Equals(comparison->GetVerdict()), "the verdict in the file");
+
+		# the files
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_report_{$Runtime->GetProcessId()}";
+		sandbox := Sandbox->New(work);
+		prefix := sandbox->Path("run");
+		Expect(EvalReport->Save(prefix, two, [1, 2], comparison, "Saved"), "both files written");
+		text := FileReader->ReadFile("{$prefix}.md");
+		Expect(text <> Nil & text->StartsWith("# Saved"), "the Markdown file");
+		parser := Data.JSON.JsonParser->New(FileReader->ReadFile("{$prefix}.json"));
+		Expect(parser->Parse(), "the JSON file parses");
+		if(parser->Parse()) {
+			Expect(parser->GetRoot()->Get("models")->Size() = 2, "the JSON file has both models");
+		};
+
+		File->Delete("{$prefix}.md");
+		File->Delete("{$prefix}.json");
+		sandbox->Close();
+
+		if(@fails > 0) {
+			"{$@fails} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"llm_eval report: all checks passed"->PrintLine();
+	}
+}

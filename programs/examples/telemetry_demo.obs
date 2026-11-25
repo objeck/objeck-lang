@@ -1,0 +1,114 @@
+#~
+Telemetry demo: measure a CPU workload offline, with no model file, GPU or network.
+
+Two implementations of the same job (the sum of squares of a vector) stand in for two
+devices, "plain" and "unrolled"; the vector length stands in for the batch size. Each
+cell is timed 200 times after 10 warm-up runs, the profile is saved and read back, and
+Predict answers from it. The last part runs the workload on 1, 2 and 4 threads to see
+the contention.
+
+Build and run:
+  obc -src telemetry_demo.obs -lib telemetry,gen_collect,json
+  obr telemetry_demo.obe
+
+All times are milliseconds from a monotonic clock. See docs/ai_sections/telemetry.md.
+~#
+use System.Telemetry;
+use System.IO.Filesystem;
+
+class TelemetryDemo {
+	@data : static : Float[];
+
+	# device "plain": one accumulator
+	function : SumPlain(n : Int) ~ Float {
+		sum := 0.0;
+		for(i := 0; i < n; i += 1;) {
+			x := @data[i];
+			sum += x * x;
+		};
+		return sum;
+	}
+
+	# device "unrolled": four accumulators
+	function : SumUnrolled(n : Int) ~ Float {
+		a := 0.0;
+		b := 0.0;
+		c := 0.0;
+		d := 0.0;
+		for(i := 0; i + 3 < n; i += 4;) {
+			a += @data[i] * @data[i];
+			b += @data[i + 1] * @data[i + 1];
+			c += @data[i + 2] * @data[i + 2];
+			d += @data[i + 3] * @data[i + 3];
+		};
+		return a + b + c + d;
+	}
+
+	function : Shared(worker : Int, call : Int) ~ Nil {
+		SumPlain(20000);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@data := Float->New[65536];
+		for(i := 0; i < @data->Size(); i += 1;) {
+			@data[i] := (i % 97)->As(Float) * 0.01;
+		};
+
+		"Clock: {$Telemetry->ClockDescription()}"->PrintLine();
+		cost := Telemetry->MeasureOverhead(10000);
+		"An empty measurement costs p50 {$cost->GetP50() * 1000000.0} ns, p99 {$cost->GetP99() * 1000000.0} ns"->PrintLine();
+
+		# 1. measure: 10 warm-up runs discarded, then 200 timed runs per cell
+		rec := TimingRecorder->New();
+		rec->SetWarmup(10);
+		sizes := [1024, 8192, 65536];
+		for(s := 0; s < sizes->Size(); s += 1;) {
+			n := sizes[s];
+			for(r := 0; r < 210; r += 1;) {
+				probe := rec->Start("sumsq", "plain", n, "");
+				SumPlain(n);
+				probe->Stop();
+
+				probe := rec->Start("sumsq", "unrolled", n, "");
+				SumUnrolled(n);
+				probe->Stop();
+			};
+		};
+
+		"\nmodel   device    batch      n     p50ms     p95ms     p99ms    mean ms  stddev ms  rel.err"->PrintLine();
+		entries := rec->GetStore()->GetEntries();
+		for(i := 0; i < entries->Size(); i += 1;) {
+			e := entries->Get(i);
+			st := e->GetStats();
+			"{$e->GetModel()}  {$e->GetDevice()}  {$e->GetBatch()}  {$st->GetCount()}  {$st->GetP50()}  {$st->GetP95()}  {$st->GetP99()}  {$st->GetMean()}  {$st->GetStdDev()}  {$st->GetRelativeError()}"->PrintLine();
+		};
+
+		# 2. save, load, predict
+		path := File->GetTempName();
+		json_path := "{$path}.json";
+		rec->GetStore()->Save(json_path);
+		loaded := ProfileStore->Load(json_path);
+		File->Delete(json_path);
+		hit := loaded->Predict("sumsq", "unrolled", 8192);
+		"\nPredict(sumsq, unrolled, 8192): p50 {$hit->GetP50()} ms, p95 {$hit->GetP95()} ms, host memory {$hit->GetHostMemory()} bytes"->PrintLine();
+		miss := loaded->Predict("sumsq", "unrolled", 4096);
+		if(miss = Nil) {
+			"Predict(sumsq, unrolled, 4096): Nil, {$loaded->GetError()}"->PrintLine();
+		};
+
+		# 3. the runtime's own view: memory, threads and the collector
+		sampler := RuntimeSampler->New();
+		"\nRuntime: {$sampler->Sample()->ToString()}"->PrintLine();
+
+		# 4. contention: the same work on 1, 2 and 4 threads
+		"\nworkers   calls/s   p50 ms    p99 ms   spread"->PrintLine();
+		workers := [1, 2, 4];
+		for(w := 0; w < workers->Size(); w += 1;) {
+			runner := ContentionRunner->New(workers[w], 200, TelemetryDemo->Shared(Int, Int) ~ Nil);
+			runner->SetWarmup(10);
+			report := runner->Run();
+			all := report->GetCombined();
+			"{$workers[w]}  {$report->GetThroughput()}  {$all->GetP50()}  {$all->GetP99()}  {$report->GetMedianSpread()}"->PrintLine();
+		};
+	}
+}

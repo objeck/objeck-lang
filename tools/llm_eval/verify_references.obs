@@ -1,0 +1,46 @@
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+#~
+Checks the task suite itself: every task's reference solution is compiled and run with the real compiler and must print the task's expected output. No model and no network is involved (ReferenceModel answers with the reference).
+
+Compile: obc -src llm_eval.obs,verify_references.obs -lib ml,csv,json,gen_collect -dest verify_references.obe
+Run:     obr verify_references.obe [tasks-dir] [id,id,...]
+~#
+class VerifyReferences {
+	function : Main(args : String[]) ~ Nil {
+		dir := "tasks";
+		if(args->Size() > 0) {
+			dir := args[0];
+		};
+
+		tasks := TaskSuite->Load(dir);
+		if(tasks = Nil) {
+			"FAIL: {$TaskSuite->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		if(args->Size() > 1) {
+			tasks := TaskSuite->Select(tasks, args[1], Nil);
+		};
+
+		work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_refs_{$Runtime->GetProcessId()}";
+		runner := EvalRunner->New(ReferenceModel->New(tasks), tasks, 1, Sandbox->New(work));
+		runner->SetProgress(true);
+		results := runner->Run();
+
+		failed := 0;
+		attempts := results->GetAttempts();
+		each(i : attempts) {
+			attempt := attempts->Get(i);
+			if(<>attempt->IsCorrect()) {
+				failed += 1;
+				"FAIL: {$attempt->GetTaskId()}: {$attempt->GetOutcome()} {$attempt->GetErrorLine()}"->PrintLine();
+			};
+		};
+
+		"{$tasks->Size() - failed} of {$tasks->Size()} reference solutions pass"->PrintLine();
+		if(failed > 0) {
+			Runtime->Exit(1);
+		};
+	}
+}

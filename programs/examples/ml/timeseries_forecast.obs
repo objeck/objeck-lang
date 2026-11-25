@@ -1,0 +1,76 @@
+#~
+Forecasting a monthly series with System.ML.TimeSeries: look at it, fit four models, compare them by
+walk-forward cross-validation, forecast with prediction intervals.
+
+  compile: obc -src timeseries_forecast.obs -lib ml_timeseries,gen_collect
+  run:     obr timeseries_forecast.obe
+
+The series is generated (a trend, a yearly cycle and noise, from a fixed seed), so the run needs no data
+file and prints the same numbers every time.
+~#
+use System.ML.TimeSeries;
+
+class TimeseriesForecast {
+	function : Main(args : String[]) ~ Nil {
+		# six years of monthly data: level 100, +1.5 a month, a +/-12 yearly swing, noise sd 2
+		values := Simulate->TrendSeasonal(72, 100.0, 1.5, 12.0, 12, 2.0, 2026);
+		series := TimeSeries->New(values);
+		series->SetPeriod(Frequency->Monthly());
+		"{$series->Size()} months, period {$series->GetPeriod()}, missing: {$series->CountMissing()}"->PrintLine();
+
+		# 1. look: how seasonal is it, and does it need differencing?
+		dec := SeriesTransform->Decompose(values, 12, false);
+		"seasonal strength {$dec->SeasonalStrength()}"->PrintLine();
+		adf := Stationarity->Adf(values, 2, "c");
+		"ADF statistic {$adf->GetStatistic()} against the 5% value {$adf->GetCritical(0.05)}: stationary = {$adf->IsStationary(0.05)}"->PrintLine();
+		"suggested differences: {$Stationarity->SuggestDiff(values, 2)} ordinary, {$Stationarity->SuggestSeasonalDiff(values, 12)} seasonal"->PrintLine();
+
+		# 2. four models, each a Forecaster
+		sarima := ArimaModel->New(1, 0, 0, 1, 12);
+		sarima->SetIncludeMean(true);
+		names := ["seasonal naive", "Holt-Winters", "seasonal ARIMA", "AutoEts"];
+		models := [BaselineForecaster->New(BaselineForecaster->Kind->SEASONAL_NAIVE, 12)->As(Forecaster),
+			ExponentialSmoothing->HoltWinters(12, false)->As(Forecaster),
+			sarima->As(Forecaster),
+			AutoEts->New(12, SelectionCriterion->Kind->AICC)->As(Forecaster)];
+
+		# 3. walk-forward: fit on 36 months, forecast 12, move on 12, refit
+		"model            RMSE   MAE    MASE   90% coverage"->PrintLine();
+		each(i : models) {
+			cv := Evaluation->RollingOrigin(models[i], series, 36, 12, 6, 0.9, 12);
+			"{$names[i]}  rmse {$cv->GetRmse()}  mae {$cv->GetMae()}  mase {$cv->GetMase()}  coverage {$cv->GetCoverage()} ({$cv->GetFolds()} folds)"->PrintLine();
+		};
+
+		# 4. forecast the next 6 months with the Holt-Winters model fitted to everything
+		hw := ExponentialSmoothing->HoltWinters(12, false);
+		if(<>hw->Fit(series)) {
+			"fit failed: {$hw->GetError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"alpha {$hw->GetAlpha()} beta {$hw->GetBeta()} gamma {$hw->GetGamma()}  AICc {$hw->GetAicc()}"->PrintLine();
+		fc := hw->Forecast(6, 0.95);
+		mean := fc->GetMean();
+		lower := fc->GetLower();
+		upper := fc->GetUpper();
+		each(i : 6) {
+			month := i + 1;
+			"+{$month}: {$mean[i]}  [{$lower[i]}, {$upper[i]}]"->PrintLine();
+		};
+
+		# 5. are the Holt-Winters residuals white? (Ljung-Box over 12 lags, 3 smoothing parameters fitted)
+		lb := Acf->LjungBox(SeriesTransform->DropNaN(hw->GetResiduals()), 12, 3);
+		if(lb <> Nil) {
+			"Ljung-Box p-value of the Holt-Winters residuals {$lb[1]} (above 0.05: nothing left to model)"->PrintLine();
+		};
+
+		# 6. let the library choose an ARIMA: it differences seasonally (D = 1), then tries p, q in 0..2
+		auto := AutoArima->New(2, 2, 2, 12, SelectionCriterion->Kind->AICC);
+		if(auto->Fit(series)) {
+			best := auto->GetBest();
+			"AutoArima chose {$best->GetName()}, AICc {$auto->GetBestCriterion()}, from {$auto->GetCandidates()->Size()} candidates"->PrintLine();
+			af := auto->Forecast(3, 0.9);
+			am := af->GetMean();
+			"its next three months: {$am[0]}, {$am[1]}, {$am[2]}"->PrintLine();
+		};
+	}
+}

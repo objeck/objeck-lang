@@ -1,0 +1,31 @@
+id: fibonacci
+category: recursion
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a recursive function Fib(n : Int) ~ Int (Fib(0) = 0, Fib(1) = 1) and print Fib(0) through Fib(10) on one line separated by single spaces.
+--- expected
+0 1 1 2 3 5 8 13 21 34 55
+--- reference
+class Fibonacci {
+	function : Fib(n : Int) ~ Int {
+		if(n < 2) {
+			return n;
+		};
+
+		return Fib(n - 1) + Fib(n - 2);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		line := "";
+		for(i := 0; i <= 10; i += 1;) {
+			if(i > 0) {
+				line->Append(" ");
+			};
+			line->Append(Fib(i));
+		};
+		line->PrintLine();
+	}
+}
