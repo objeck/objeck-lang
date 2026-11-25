@@ -36,7 +36,7 @@
    <section class="hero" aria-labelledby="hero-title">
     <div class="wrap">
      <div>
-      <h1 id="hero-title"><span>Object-oriented.</span> <span>Functional.</span></h1>
+      <h1 id="hero-title"><span>Object-oriented.</span> <span>Functional.</span> <span>Fast.</span></h1>
       <p class="lead">Everything you need ships in the box.</p>
       <div class="btn-row">
        <a class="btn btn-primary" href="https://playground.objeck.org">Try it in the playground</a>
@@ -89,21 +89,23 @@ collector: 9
     </div>
    </section>
 
-   <section class="band soft" aria-labelledby="perf-title">
+   <section class="band soft" id="fast" aria-labelledby="perf-title">
     <div class="wrap">
-     <h2 id="perf-title">Seconds, lower is better</h2>
+     <h2 id="perf-title">Fast, measured</h2>
      <div class="table-wrap" tabindex="0" role="region" aria-label="Benchmark results">
      <table>
-      <caption class="fine">Median of 3. v2026.11.3, 2026-11-22, Ryzen 9 7950X3D, Docker. <a href="doc_performance.html">Method and limits</a>.</caption>
+      <caption class="fine">Seconds, lower is better. Median of 3. Objeck v2026.11.3, 2026-11-22, Ryzen 9 7950X3D, Docker. <a href="doc_performance.html">All six benchmarks, method and limits</a>.</caption>
       <thead><tr><th scope="col">Benchmark</th><th scope="col">Objeck</th><th scope="col">CPython 3.12</th><th scope="col">LuaJIT 2.1</th><th scope="col">Java 21</th></tr></thead>
       <tbody>
        <tr><th scope="row">nbody, 50M</th><td>8.15</td><td>144.46</td><td>4.29</td><td>2.29</td></tr>
        <tr><th scope="row">spectralnorm, 5500</th><td>2.91</td><td>126.57</td><td>1.12</td><td>1.18</td></tr>
        <tr><th scope="row">fannkuchredux, 12</th><td>33.24</td><td>422.92</td><td>116.46</td><td>20.50</td></tr>
+       <tr><th scope="row">mandelbrot, 4000</th><td>1.90 (0.98 on 3 threads)</td><td>33.20</td><td>0.73</td><td>0.70</td></tr>
        <tr><th scope="row">binarytrees, 17</th><td>2.03</td><td>3.55</td><td>3.53</td><td>0.24</td></tr>
       </tbody>
      </table>
      </div>
+     <p class="fine">Ahead of CPython on all six benchmarks (1.7x to 43.5x). Ahead of LuaJIT on fannkuchredux and binarytrees, level on fasta, behind on nbody, spectralnorm and mandelbrot. Behind Java on all six. A compiled call costs 5.5 ns, a <code>virtual</code> call 6.0 ns (v2026.9.1, AMD64). Five of the six Objeck programs mark hot methods <code>native</code>; the peers have no equivalent.</p>
     </div>
    </section>
 
