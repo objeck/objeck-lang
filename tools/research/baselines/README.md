@@ -1,8 +1,10 @@
 # Cross-runtime baselines: collector stalls beside a blocking inference call
 
 Question (thesis note, hypothesis H1): Objeck PR #1768 parks the calling thread around a blocking
-`Session->Run`, and the longest wait of an allocating thread beside a ResNet-34 batch-32 inference falls
-from 176.7 ms to 19.9 ms. Is that an Objeck property, or what any managed runtime does? This directory
+`Session->Run`, and its description reports the longest wait of an allocating thread beside a ResNet-34
+batch-32 inference falling from 176.7 ms to 19.9 ms (that figure was not reproduced here: this paced workload
+gives 19.6 ms unparked and 5.6 ms parked). Is the effect an Objeck property, or what any managed runtime
+does? This directory
 holds the harness that runs the **same workload** on six hosts and the results. Results and their
 reading are in [RESULTS.md](RESULTS.md); raw numbers are in [results/](results/).
 

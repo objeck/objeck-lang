@@ -101,8 +101,9 @@ The CPU result worth keeping is the max: unparked Objeck waits **344 ms** for on
 
 ## 4. What it shows
 
-**Does Objeck's parking beat Java, .NET, Go and Python on the allocator stall?** No, it brings Objeck level
-with them, and with one exception it does not beat them. With the call parked, Objeck's worst stall on CUDA is
+**Does Objeck's parking beat Java, .NET, Go and Python on the allocator stall?** No. It removes a stall that
+Objeck had and the others did not, which brings Objeck level with .NET's concurrent workstation collector, not
+ahead of it; ZGC, Go, Python and the C++ control are lower. With the call parked, Objeck's worst stall on CUDA is
 5.6 ms: below G1 (81 ms), Parallel (48 ms), non-concurrent .NET (30-33 ms) and Server-concurrent .NET (10.5 ms);
 level with workstation-concurrent .NET (5.4 ms); above ZGC (2.1 ms), Go (1.0 ms), Python (1.3 ms) and the C++
 control (1.3 ms). On the CPU provider Objeck parked (40 ms) is in the same range as the other managed hosts (24 to
@@ -113,9 +114,9 @@ statement for 5 ms against 1-10 ms.
 **Is the effect specific to Objeck or generic?** Generic. The effect of parking inside Objeck is real and large
 where the inference call is long: worst stall 19.6 to 5.6 ms on CUDA (3.5x, ranges overlap: unparked 4.3-54 ms),
 Objeck's own max collection pause 157 to 5.7 ms (27x), and on the CPU provider 344 to 40 ms (8.6x, ranges do
-not overlap). That is the same direction as PR #1768 (176.7 to 19.9 ms, 8.9x) but smaller on CUDA, because this
-workload allocates at a fixed pace instead of as fast as possible (the PR's allocator thread collected
-garbage-heavy rounds back to back). But every other managed host in this table was already doing the
+not overlap). That is the same direction as PR #1768 reported (176.7 to 19.9 ms, 8.9x), but that size was not
+reproduced: it is smaller here on CUDA. A likely reason, not tested, is that this workload allocates at a fixed
+pace instead of as fast as possible (the PR's allocator thread collected garbage-heavy rounds back to back). But every other managed host in this table was already doing the
 equivalent without being asked: the JVM treats a thread in JNI as at a safepoint, .NET switches a thread in P/Invoke to
 preemptive mode, and Go counts a goroutine in cgo as not running. None of them lets a 7 ms (or 400 ms)
 inference hold up a collection, which is why none of them shows an inference-length stall (their large maxima
