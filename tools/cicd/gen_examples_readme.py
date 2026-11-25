@@ -84,7 +84,11 @@ def build():
     out.append(
         "\n## Notes\n"
         "\n- Read them in order: 0-13 teach the language, 14-21 work with data, 22-24\n"
-        "  are networking, 25-30 are AI and machine learning, and 31 is a game.\n"
+        "  are networking, 25-30 are AI and machine learning, 31 is a game, and 32-39 are\n"
+        "  AI engineering (MCP tools, agents, actors, retrieval, structured output,\n"
+        "  telemetry, forecasting).\n"
+        "- 32-39 run offline and print the same thing every time: a scripted model stands\n"
+        "  in for a real one, so they need no key. Swap in a real backend to use one.\n"
         "- Each program's header gives its compile and run lines and what it prints.\n"
         "- `obc` does not pull in a library's own dependencies, so some `-lib` lists name\n"
         "  libraries the program never uses directly: `ml` needs `csv`, and `query` needs\n"

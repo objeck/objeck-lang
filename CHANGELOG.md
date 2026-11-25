@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.11.4] - Unreleased
+
+### Added
+
+- **Eight AI-engineering examples ship with every release** (`programs/deploy/mcp_32.obs` to `forecast_39.obs`, copied into `examples/` and listed by `welcome.obs`): an MCP server and a client calling its tools over the in-process transport (`mcp_32`), a tool-using agent loop on a scripted model with a trace (`agent_33`), stopping an agent with a budget, a cancel token and a hung tool in `BOUNDED_THREAD` mode (`agent_control_34`), a supervisor that restarts a failing actor (`actors_35`), retrieval-augmented answers with citations from the hash embedder (`rag_36`), JSON out of a model with a prompt template, schema validation, retry and repair (`structured_37`), timing a computation with `System.Telemetry` (`telemetry_38`) and a Holt-Winters forecast against the seasonal-naive benchmark (`forecast_39`). Each runs offline with no key, no model download and no network, and prints the same output on every run; the README and `welcome.obs` give each one's `-lib` list.
+
 ## [v2026.11.3] - 2026-11-22
 
 ### Performance
