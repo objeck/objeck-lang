@@ -84,6 +84,8 @@ Each library typically consists of:
 ### Utilities
 - **regex.obs** - Regular expression support
 - **concurrent.obs** - Structured concurrency (`TaskScope`, `Task`) and a runtime `Monitor` (`System.Concurrency`)
+- **actor.obs** - Actors with supervision (`System.Actor`): `Mailbox` (bounded, two overflow policies), `Actor`, monitors and links, `Call` with a timeout, `Supervisor` (one-for-one, one-for-all, rest-for-one, restart intensity); needs `gen_collect,concurrent`
+- **actor_agents.obs** - `API.Agent` agents as supervised actors (`AgentActorFactory`, `AgentBuilder`); needs `gen_collect,concurrent,actor,agent,net,json,cipher,misc`
 - **math.obs** - Exact arithmetic: `BigInt`, `Rational`, `Complex` (`System.Math`)
 - **misc.obs** - Miscellaneous utilities
 - **lang.obs** - Core language runtime support

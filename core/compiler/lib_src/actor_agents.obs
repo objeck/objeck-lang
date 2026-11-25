@@ -1,0 +1,117 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection, API.Agent, System.Actor;
+
+#~
+Runs an API.Agent agent as an actor, so a supervised team of agents is a list of ChildSpec. It is a
+separate library from actor because it links agent.obl (and so the HTTPS stack); the actor library
+itself links nothing heavy. It uses only the public API of API.Agent. Compile with
+-lib gen_collect,concurrent,actor,actor_agents,agent,net,json,cipher,misc.
+~#
+bundle System.Actor {
+  #~
+  Builds a fresh Agent. A supervisor restarts a failed agent actor by building a new one, so the
+  restarted agent starts a new conversation with fresh state.
+  ~#
+  interface AgentBuilder {
+    #~
+    Builds the agent: its backend, tools and limits
+    @return a new agent
+    ~#
+    method : virtual : public : Build() ~ Agent;
+  }
+
+  #~
+  The behavior of an agent actor. Each mail is one String prompt, run to completion with
+  Agent->Run; the conversation carries over from one prompt to the next until the actor is
+  restarted. For a CALL the AgentResult is the answer; for data mail it goes to the sending actor
+  as the payload of a data mail (Actor->Send(payload, sender, timeout)). With fail_on_error, a run
+  that does not complete (a model error, the step limit) fails the actor, so its supervisor
+  restarts it with a fresh agent; without it the failed AgentResult is delivered like any other.
+  An agent run cannot be interrupted: Stop waits for the run in progress, and Kill cannot stop it.
+  ~#
+  class AgentActorBehavior implements ActorBehavior, ActorLifecycle {
+    @builder : AgentBuilder;
+    @fail_on_error : Bool;
+    @agent : Agent;
+
+    #~
+    Creates the behavior
+    @param builder makes the agent, again after every restart
+    @param fail_on_error true to fail the actor when a run does not complete
+    ~#
+    New(builder : AgentBuilder, fail_on_error : Bool) {
+      @builder := builder;
+      @fail_on_error := fail_on_error;
+    }
+
+    method : public : Init(me : Actor) ~ Nil {
+      @agent := @builder->Build();
+      if(@agent = Nil) {
+        Runtime->Raise(Error->New("the agent builder made no agent"));
+      };
+    }
+
+    method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
+    }
+
+    method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+      kind := mail->GetKind();
+      if(kind <> Mail->Kind->DATA & kind <> Mail->Kind->CALL) {
+        return true;
+      };
+
+      payload := mail->GetPayload();
+      if(payload = Nil | payload->TypeOf(String) = false) {
+        mail->Fail("an agent actor takes a String prompt");
+        return true;
+      };
+
+      result := @agent->Run(payload->As(String));
+
+      if(kind = Mail->Kind->CALL) {
+        mail->Answer(result);
+      }
+      else if(mail->GetSender() <> Nil) {
+        mail->GetSender()->Send(result, me, -1);
+      };
+
+      if(@fail_on_error & result->IsCompleted() = false) {
+        error := result->GetError();
+        if(error = Nil) {
+          error := result->GetStatus();
+        };
+        Runtime->Raise(Error->New("the agent run did not complete: {$error}"));
+      };
+      return true;
+    }
+  }
+
+  #~
+  Makes agent actors for a Supervisor: a new AgentActorBehavior, with a new Agent from the
+  builder, at every start and restart.
+  ```
+spec := ChildSpec->New("researcher", AgentActorFactory->New(MyBuilder->New(), true), ChildSpec->Restart->TRANSIENT, 5000);
+  ```
+  ~#
+  class AgentActorFactory implements BehaviorFactory {
+    @builder : AgentBuilder;
+    @fail_on_error : Bool;
+
+    #~
+    Creates the factory
+    @param builder makes the agent
+    @param fail_on_error true to fail the actor when a run does not complete
+    ~#
+    New(builder : AgentBuilder, fail_on_error : Bool) {
+      @builder := builder;
+      @fail_on_error := fail_on_error;
+    }
+
+    method : public : Create() ~ ActorBehavior {
+      return AgentActorBehavior->New(@builder, @fail_on_error);
+    }
+  }
+}
