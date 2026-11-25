@@ -258,6 +258,8 @@ A graph is a 3x win at batch 1 on the CUDA provider (launch-bound), and nothing 
 
 ### TensorRT
 
+> **Experimental:** API may change. This covers the TensorRT provider and its engine and timing cache options.
+
 `ep=tensorrt` compiles the model, or the parts of it TensorRT supports, into an engine for this GPU. It needs the NVIDIA driver, CUDA 12, cuDNN 9 and **TensorRT 10** libraries beside a GPU ONNX Runtime that carries the TensorRT provider (`OnnxRuntime->HasProvider("tensorrt")`). A runtime without it **refuses** the session with the usual message and never runs the model on another provider; one that has the provider but cannot load TensorRT says so from ONNX Runtime's own error. `ep=trt` is accepted as a short spelling.
 
 ```objeck

@@ -7511,6 +7511,43 @@ void IntermediateEmitter::EmitDeclaration(Declaration* declaration)
   Statement* statement = declaration->GetAssignment();
   if(statement) {
     EmitStatement(statement);
+    return;
+  }
+
+  // A local declared without an initializer lives in a fixed frame slot that
+  // the VM zeroes once, when the method is entered. Inside a loop the
+  // declaration runs again every iteration, so without a store here the local
+  // kept the previous iteration's value: 'x : Int; if(c) { x := 5; };' read 5
+  // on the later iterations that skipped the assignment. The slot is also a GC
+  // root, so a stale object stayed reachable. Reset it to 0 / 0.0 / Nil each
+  // time the declaration executes. Outside a loop it executes once, right
+  // after the zeroed entry, so nothing is emitted there.
+  SymbolEntry* entry = declaration->GetEntry();
+  if(break_labels.empty() || !entry || !entry->IsLocal() || entry->IsSelf()) {
+    return;
+  }
+
+  frontend::Type* type = entry->GetType();
+  if(!type) {
+    return;
+  }
+
+  Statement* stmt = static_cast<Statement*>(declaration);
+  IntermediateFactory* factory = IntermediateFactory::Instance();
+  const long line = declaration->GetLineNumber();
+  if(type->GetDimension() == 0 && type->GetType() == frontend::FLOAT_TYPE) {
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, STOR_FLOAT_VAR, entry->GetId(), LOCL));
+  }
+  else if(type->GetDimension() == 0 && type->GetType() == frontend::FUNC_TYPE) {
+    // a function reference is two words: the method id and the instance
+    imm_block->AddInstruction(factory->MakeIntLitInstruction(stmt, line, 0));
+    imm_block->AddInstruction(factory->MakeIntLitInstruction(stmt, line, 0));
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, STOR_FUNC_VAR, entry->GetId(), LOCL));
+  }
+  else {
+    imm_block->AddInstruction(factory->MakeIntLitInstruction(stmt, line, 0));
+    imm_block->AddInstruction(factory->MakeInstruction(stmt, line, STOR_INT_VAR, entry->GetId(), LOCL));
   }
 }
 

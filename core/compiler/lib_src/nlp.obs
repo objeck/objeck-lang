@@ -2671,7 +2671,8 @@ result->ToString()->PrintLine();
 			sentiments := Float->New[n];
 			each(i : n) {
 				word := lowered[i];
-				found : FloatRef;
+				# set on every pass: a booster or empty word has no valence of its own
+				found : FloatRef := Nil;
 				if(<>@boosters->Has(word) & <>word->IsEmpty()) {
 					found := Lookup(word);
 				};
