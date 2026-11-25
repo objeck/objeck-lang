@@ -6,7 +6,7 @@ ONNX inference workers, measures detection, recovery, containment, hangs, leaks 
 runs the same scenarios against a minimal Python equivalent. Results and their reading are in
 [RESULTS.md](RESULTS.md); raw per-repetition rows are in [results.csv](results.csv).
 
-Nothing here edits a library. No model or binary is committed: the ONNX model is the tiny BERT classifier
+Nothing here edits a library. The results predate #1779, #1782, #1783 and #1785 (end-of-input and I/O error reporting, HTTP deadlines, `--thread-faults=isolate`, agent run control); see the status note at the top of RESULTS.md. No model or binary is committed: the ONNX model is the tiny BERT classifier
 already tracked at `programs/regression/data/bert/classifier/bert_one_label/model.onnx`.
 
 ## Files

@@ -6,6 +6,16 @@ under `Close` is a real, measurable strength. Process-level containment and hang
 Python baseline, and the agent loop is library code that owns nothing the runtime can interrupt. Details,
 numbers and caveats follow; the raw rows are in `results.csv` (2119 runs), the generated tables in `summary.md`.
 
+> **Status after this was measured (2026-11-25).** The numbers below were taken on the branch commit named under
+> Environment, before the following reached master; none of them has been re-measured here, so every table still
+> describes the earlier behaviour. Master now has: `Console->ReadLine` returns `Nil` at the end of input and file
+> classes record I/O errors (#1779, findings 1 and 2); `HttpClient` and `HttpsClient` connect, read and whole-request
+> deadlines (#1782, finding 6 and the `hold` and slow-loris rows); thread-fault isolation behind
+> `--thread-faults=isolate` (#1783, finding 4 and the `thread_fault` row: the default is still `exit`, so a program
+> that does not opt in behaves as measured); and `API.Agent` cancellation and budgets (#1785, finding 7). Allocation
+> failure (finding 5) is unchanged. Whether these fixes remove the gaps measured here is a question for a re-run of
+> the harness, which has not been done.
+
 Environment: WSL2 Ubuntu 24.04 (kernel 6.6.87.2), AMD Ryzen 9 7950X3D, RTX 4090, Objeck 2026.11.3 built from this
 branch (`obc`, `obr`, `libobjk_onnx` linked to ONNX Runtime 1.24.2 CUDA), Python 3.12.3 with `onnxruntime` 1.32.0
 (CPU) and numpy 2.5.5. Model: the tracked tiny BERT classifier. Seeds 1000 + repetition. Commit: the branch head.
@@ -143,7 +153,7 @@ marshalling is cheaper; this is the plain/bound mix at batch 2 and says nothing 
 179 calls/s at 4 threads. Peak RSS columns are only meaningful for runs over about 0.5 s (the sampler runs every
 10 ms but sub-second runs are sampled a handful of times).
 
-## Findings for the maintainer (none fixed: each changes semantics or an API, so none is a small safe change)
+## Findings for the maintainer (none fixed on this branch; see the status note at the top for what master has since changed)
 
 Minimal repros are in `repros/`, each verified on this branch.
 
