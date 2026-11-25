@@ -1,0 +1,352 @@
+# EXTRA_LIBS: ml_boost,ml,gen_collect,csv
+#~
+System.ML.Boost model files and strings.
+
+Store/Load (a file) and Export/Import (hex text) must give back a model that predicts
+bit for bit what the original did: a regressor with each loss, a binary classifier, a
+multiclass classifier, a model fitted on data with missing values, a model cut back by
+early stopping, and a histogram-built one. Importances, stage counts, class labels and the
+loss history survive too. Corrupt input must give Nil, never a crash: a missing file,
+garbage bytes, a regressor file read as a classifier (and the reverse), a file truncated at
+every tenth of its length, and a body whose tree indices point backwards.
+~#
+use System.ML;
+use System.ML.Boost;
+
+class MlBoostPersist {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		dir := Runtime->GetTempDir();
+
+		X := Float->New[700, 6];
+		y := Float->New[700];
+		MakeRegression(X, y);
+		trx := Rows(X, 0, 500);
+		try_ := Part(y, 0, 500);
+		tex := Rows(X, 500, 200);
+
+		bx := Float->New[700, 6];
+		by := Int->New[700];
+		MakeBinary(bx, by);
+		btrx := Rows(bx, 0, 500);
+		btry := IntPart(by, 0, 500);
+		btex := Rows(bx, 500, 200);
+
+		mx := Float->New[700, 5];
+		my := Int->New[700];
+		MakeMulticlass(mx, my);
+		mtrx := Rows(mx, 0, 500);
+		mtry := IntPart(my, 0, 500);
+		mtex := Rows(mx, 500, 200);
+		# labels that are not 0..K-1
+		each(i : mtry->Size()) {
+			mtry[i] := mtry[i] * 10 - 5;
+		};
+
+		# ---- regressors
+		losses := [BoostLoss->SQUARED, BoostLoss->ABSOLUTE, BoostLoss->HUBER];
+		each(l : losses) {
+			m := GradientBoostingRegressor->New(losses[l], 30, 0.2, 3, 4);
+			m->SetLambda(0.5);
+			m->SetSubsample(0.8);
+			m->Fit(trx, try_);
+			path := dir + "/ml_boost_reg_{$l}.bmod";
+			ok := Report("loss {$l}: Store", m->Store(path)) & ok;
+			back := GradientBoostingRegressor->Load(path);
+			ok := Report("loss {$l}: Load gives a fitted model", back <> Nil & back->IsFitted()) & ok;
+			if(back <> Nil) {
+				ok := Report("loss {$l}: predictions are identical", Same(m->Predict(tex), back->Predict(tex))) & ok;
+				ok := Report("loss {$l}: stage count, loss history and importances survive", back->GetNumStages() = m->GetNumStages() & Same(m->GetTrainLoss(), back->GetTrainLoss()) & Same(m->GetFeatureImportances(), back->GetFeatureImportances()) & back->GetLeafCount() = m->GetLeafCount()) & ok;
+				ok := Report("loss {$l}: staged predictions are identical", SameMatrix(m->StagedPredict(tex), back->StagedPredict(tex))) & ok;
+			};
+
+			text := m->Export();
+			imp := GradientBoostingRegressor->Import(text);
+			ok := Report("loss {$l}: Export/Import ({$text->Size()} hex digits) gives identical predictions", imp <> Nil & Same(m->Predict(tex), imp->Predict(tex))) & ok;
+		};
+
+		# ---- early stopping, histogram, missing values
+		es := GradientBoostingRegressor->New(300, 0.3, 3, 2);
+		es->SetEarlyStopping(5, 0.2);
+		es->Fit(trx, try_);
+		ep := dir + "/ml_boost_early.bmod";
+		es->Store(ep);
+		eb := GradientBoostingRegressor->Load(ep);
+		ok := Report("an early-stopped model keeps its cut ({$es->GetNumStages()} stages) and its best stage", eb <> Nil & eb->GetNumStages() = es->GetNumStages() & eb->GetBestIteration() = es->GetBestIteration() & Same(es->Predict(tex), eb->Predict(tex))) & ok;
+		ok := Report("the validation loss history survives", Same(es->GetValidationLoss(), eb->GetValidationLoss())) & ok;
+
+		hm := GradientBoostingRegressor->New(30, 0.2, 3, 2);
+		hm->SetHistogram(64);
+		holes := Float->New[500, 6];
+		rm := System.ML.Random->New(3);
+		each(i : 500) {
+			each(j : 6) {
+				holes[i, j] := trx[i, j];
+				if(rm->NextReal() < 0.2) {
+					holes[i, j] := Float->NaN();
+				};
+			};
+		};
+
+		hm->Fit(holes, try_);
+		tm := Float->New[200, 6];
+		each(i : 200) {
+			each(j : 6) {
+				tm[i, j] := tex[i, j];
+				if(rm->NextReal() < 0.2) {
+					tm[i, j] := Float->NaN();
+				};
+			};
+		};
+
+		hb := GradientBoostingRegressor->Import(hm->Export());
+		ok := Report("a histogram model fitted with missing values round-trips, NaN routing included", hb <> Nil & Same(hm->Predict(tm), hb->Predict(tm))) & ok;
+
+		# ---- classifiers
+		bc := GradientBoostingClassifier->New(30, 0.2, 3, 4);
+		bc->SetSubsample(0.7);
+		bc->Fit(btrx, btry);
+		bp := dir + "/ml_boost_binary.bmod";
+		ok := Report("binary: Store", bc->Store(bp)) & ok;
+		bb := GradientBoostingClassifier->Load(bp);
+		ok := Report("binary: Load", bb <> Nil & bb->IsFitted()) & ok;
+		ok := Report("binary: probabilities identical", SameMatrix(bc->PredictProba(btex), bb->PredictProba(btex))) & ok;
+		ok := Report("binary: classes identical", SameInts(bc->Predict(btex), bb->Predict(btex)) & SameInts(bc->GetClasses(), bb->GetClasses())) & ok;
+		bi := GradientBoostingClassifier->Import(bc->Export());
+		ok := Report("binary: Export/Import identical", bi <> Nil & SameMatrix(bc->PredictProba(btex), bi->PredictProba(btex))) & ok;
+
+		mc := GradientBoostingClassifier->New(25, 0.2, 3, 4);
+		mc->Fit(mtrx, mtry);
+		mp := dir + "/ml_boost_multi.bmod";
+		ok := Report("multiclass: Store", mc->Store(mp)) & ok;
+		mb := GradientBoostingClassifier->Load(mp);
+		ok := Report("multiclass: Load", mb <> Nil & mb->IsFitted()) & ok;
+		ok := Report("multiclass: probabilities identical", SameMatrix(mc->PredictProba(mtex), mb->PredictProba(mtex))) & ok;
+		ok := Report("multiclass: the labels -5, 5, 15 come back", SameInts(mc->GetClasses(), mb->GetClasses()) & mb->GetClasses()[2] = 15 & SameInts(mc->Predict(mtex), mb->Predict(mtex))) & ok;
+		ok := Report("multiclass: staged predictions identical", SameIntMatrix(mc->StagedPredict(mtex), mb->StagedPredict(mtex))) & ok;
+		mi := GradientBoostingClassifier->Import(mc->Export());
+		ok := Report("multiclass: Export/Import identical", mi <> Nil & SameMatrix(mc->PredictProba(mtex), mi->PredictProba(mtex))) & ok;
+
+		# ---- refusals
+		ok := Report("a missing file is Nil", GradientBoostingRegressor->Load(dir + "/ml_boost_no_such_file.bmod") = Nil & GradientBoostingClassifier->Load(dir + "/ml_boost_no_such_file.bmod") = Nil) & ok;
+		ok := Report("a regressor file is not a classifier", GradientBoostingClassifier->Load(dir + "/ml_boost_reg_0.bmod") = Nil) & ok;
+		ok := Report("a classifier file is not a regressor", GradientBoostingRegressor->Load(bp) = Nil & GradientBoostingRegressor->Load(mp) = Nil) & ok;
+		ok := Report("an unfitted model has nothing to store or export", GradientBoostingRegressor->New()->Store(dir + "/ml_boost_unfitted.bmod") = false & GradientBoostingClassifier->New()->Export() = Nil) & ok;
+		ok := Report("an unwritable path is false", mc->Store(dir + "/no_such_dir_xyz/a/b.bmod") = false & mc->GetError()->Size() > 0) & ok;
+		ok := Report("text that is not hex is Nil", GradientBoostingRegressor->Import("hello") = Nil & GradientBoostingRegressor->Import("zz") = Nil & GradientBoostingRegressor->Import("") = Nil & GradientBoostingRegressor->Import(Nil) = Nil) & ok;
+
+		garbage := Byte->New[400];
+		each(i : 400) {
+			garbage[i] := ((i * 37 + 11) % 256)->As(Byte);
+		};
+
+		gp := dir + "/ml_boost_garbage.bmod";
+		System.IO.Filesystem.FileWriter->WriteFile(gp, garbage);
+		ok := Report("garbage bytes are Nil", GradientBoostingRegressor->Load(gp) = Nil & GradientBoostingClassifier->Load(gp) = Nil) & ok;
+
+		# a file cut at every tenth of its length
+		good := System.IO.Filesystem.FileReader->ReadBinaryFile(bp);
+		cut_ok := true;
+		each(t : 10) {
+			keep := good->Size() * t / 10;
+			part := Byte->New[keep];
+			each(i : keep) {
+				part[i] := good[i];
+			};
+
+			cp := dir + "/ml_boost_cut.bmod";
+			System.IO.Filesystem.FileWriter->WriteFile(cp, part);
+			if(GradientBoostingClassifier->Load(cp) <> Nil) {
+				cut_ok := false;
+				"    a file cut to {$keep} of {$good->Size()} bytes loaded"->PrintLine();
+			};
+		};
+
+		ok := Report("a file cut at 0%, 10%, ... 90% of its length is Nil", cut_ok) & ok;
+
+		# a model whose first tree points back at the root would loop for ever: flip the bytes of an exported file
+		# one at a time over the header and the start of the first tree; every outcome must be Nil or a working model
+		sane := true;
+		scan := 400;
+		if(good->Size() < scan) {
+			scan := good->Size();
+		};
+
+		each(i : scan) {
+			bad := Byte->New[good->Size()];
+			each(k : good->Size()) {
+				bad[k] := good[k];
+			};
+
+			bad[i] := (bad[i]->As(Int) + 97)->As(Byte);
+			bp2 := dir + "/ml_boost_flip.bmod";
+			System.IO.Filesystem.FileWriter->WriteFile(bp2, bad);
+			got := GradientBoostingClassifier->Load(bp2);
+			if(got <> Nil) {
+				pr := got->PredictProba(btex);
+				if(pr = Nil) {
+					sane := false;
+					"    flipped byte {$i}: loaded but cannot predict"->PrintLine();
+				};
+			};
+		};
+
+		ok := Report("flipping any one of the first {$scan} bytes gives Nil or a model that predicts (no crash, no endless loop)", sane) & ok;
+
+		if(ok = false) {
+			Runtime->Exit(1);
+		};
+
+		"ml_boost_persist: ok"->PrintLine();
+	}
+
+	function : SameInts(a : Int[], b : Int[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : SameIntMatrix(a : Int[,], b : Int[,]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size()[0] <> b->Size()[0] | a->Size()[1] <> b->Size()[1]) {
+			return false;
+		};
+
+		each(i : a->Size()[0]) {
+			each(j : a->Size()[1]) {
+				if(a[i, j] <> b[i, j]) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : SameMatrix(a : Float[,], b : Float[,]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size()[0] <> b->Size()[0] | a->Size()[1] <> b->Size()[1]) {
+			return false;
+		};
+
+		each(i : a->Size()[0]) {
+			each(j : a->Size()[1]) {
+				if(a[i, j] <> b[i, j]) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Rows(X : Float[,], start : Int, count : Int) ~ Float[,] {
+		cols := X->Size()[1];
+		result := Float->New[count, cols];
+		each(i : count) {
+			each(j : cols) {
+				result[i, j] := X[start + i, j];
+			};
+		};
+
+		return result;
+	}
+
+	function : Part(y : Float[], start : Int, count : Int) ~ Float[] {
+		result := Float->New[count];
+		each(i : count) {
+			result[i] := y[start + i];
+		};
+
+		return result;
+	}
+
+	function : IntPart(y : Int[], start : Int, count : Int) ~ Int[] {
+		result := Int->New[count];
+		each(i : count) {
+			result[i] := y[start + i];
+		};
+
+		return result;
+	}
+
+	function : MakeRegression(X : Float[,], y : Float[]) ~ Nil {
+		r := System.ML.Random->New(11);
+		each(i : 700) {
+			each(j : 6) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			noise := r->NextReal() - 0.5;
+			y[i] := (3.0 * X[i, 0])->Sin() + X[i, 1] * X[i, 1] + 0.5 * X[i, 2] * X[i, 3] + 0.3 * X[i, 4] + 0.2 * noise;
+		};
+	}
+
+	function : MakeBinary(X : Float[,], y : Int[]) ~ Nil {
+		r := System.ML.Random->New(12);
+		each(i : 700) {
+			each(j : 6) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			noise := r->NextReal() - 0.5;
+			z := 1.5 * X[i, 0] + 2.0 * X[i, 1] * X[i, 2] - X[i, 3] + 1.2 * noise;
+			if(z > 0.0) {
+				y[i] := 1;
+			};
+		};
+	}
+
+	function : MakeMulticlass(X : Float[,], y : Int[]) ~ Nil {
+		r := System.ML.Random->New(13);
+		each(i : 700) {
+			each(j : 5) {
+				X[i, j] := 2.0 * r->NextReal() - 1.0;
+			};
+
+			s := [X[i, 0] + X[i, 1], X[i, 2] - X[i, 0], X[i, 3] + X[i, 4] * X[i, 1]];
+			best := -1.0e300;
+			bk := 0;
+			each(k : 3) {
+				v := s[k] + 0.6 * (r->NextReal() - 0.5);
+				if(v > best) {
+					best := v;
+					bk := k;
+				};
+			};
+
+			y[i] := bk;
+		};
+	}
+
+	function : Report(name : String, passed : Bool) ~ Bool {
+		if(passed) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+		};
+
+		return passed;
+	}
+}

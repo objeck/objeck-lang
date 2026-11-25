@@ -1,0 +1,70 @@
+name: Libraries (reusable)
+
+# Builds every core/lib/*.obl from source, once per workflow run, and hands the result to
+# the caller's other jobs as the `libs` artifact (see docs/DESIGN_OBL_FROM_SOURCE.md).
+#
+# Callers:   libs:
+#              uses: ./.github/workflows/libs.yml
+#            and on every job that reads core/lib/*.obl:
+#              needs: libs
+#              - uses: actions/download-artifact ... name: libs, path: core/lib/
+#
+# The job deletes the committed set first, so nothing in the build can quietly reach for a
+# checked-in .obl, then builds with update_version.sh (sys_obc -> lang.obl -> obc ->
+# build_libs.sh, the library list lives ONLY there) and, while the .obl are still tracked,
+# fails on any byte that differs from the committed copy.
+#
+# .obl are bytecode: one Linux x64 build serves Windows, macOS and ARM64 consumers alike.
+
+on:
+  workflow_call:
+    inputs:
+      version_metadata:
+        description: 'Download the version-metadata artifact (release-build) over core/shared/version.h first'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  libs:
+    name: Build libraries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # release-build stamps version.h from the tag; the libraries must carry that version.
+      - name: Download version metadata
+        if: inputs.version_metadata
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: version-metadata
+          path: core/
+
+      # obc and sys_obc need only a C++ compiler and zlib: the libraries are compiled, not run.
+      - name: Install build dependencies
+        run: |
+          sudo bash tools/cicd/apt_harden.sh
+          sudo apt-get update
+          sudo apt-get install -y build-essential zlib1g-dev
+
+      - name: Build every library from source
+        run: bash tools/cicd/obl_from_source.sh build --in-place
+
+      # Gate while the set is still committed: the build must reproduce it exactly.
+      - name: Rebuilt libraries equal the committed set
+        run: bash tools/cicd/obl_from_source.sh compare
+
+      - name: Rebuilt libraries carry the toolchain version
+        run: python3 tools/cicd/check_obl_versions.py
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: libs
+          path: core/lib/*.obl
+          if-no-files-found: error
+          retention-days: 7

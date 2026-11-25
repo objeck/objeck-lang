@@ -84,9 +84,14 @@ jobs:
           echo "expected=$(echo "$M" | jq -r '[.[].platform] | join(" ")')" >> "$GITHUB_OUTPUT"
           echo "Verifying v${{ inputs.version }} on: $(echo "$M" | jq -r '[.[].platform] | join(", ")')"
 
+  # Every core/lib/*.obl from source; the gate's deploy builds copy them.
+  libs:
+    name: Libraries
+    uses: ./.github/workflows/libs.yml
+
   verify:
     name: Verify ${{ matrix.platform }}
-    needs: plan
+    needs: [plan, libs]
     runs-on: ${{ matrix.os }}
     # The gate builds the deploy tree AND runs every test phase, so it is
     # roughly a ci-build leg plus a test pass. windows-arm64 is the long pole.
@@ -99,6 +104,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download libraries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: libs
+          path: core/lib/
 
       - name: Setup dependencies
         uses: ./.github/actions/setup-objeck-deps

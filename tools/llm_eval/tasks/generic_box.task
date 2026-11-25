@@ -1,0 +1,37 @@
+id: generic_box
+category: generics
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that defines your own generic class Box<T> with a constructor taking a T, a Get() ~ T method and a Set(value : T) method. In Main create a Box of String holding "hello" and a Box of IntRef holding 41, set the IntRef box to 42, and print the string box value on the first line and the integer box value on the second.
+--- expected
+hello
+42
+--- reference
+class Box<T> {
+	@value : T;
+
+	New(value : T) {
+		@value := value;
+	}
+
+	method : public : Get() ~ T {
+		return @value;
+	}
+
+	method : public : Set(value : T) ~ Nil {
+		@value := value;
+	}
+}
+
+class BoxTest {
+	function : Main(args : String[]) ~ Nil {
+		text := Box->New("hello")<String>;
+		number := Box->New(41)<IntRef>;
+		number->Set(42);
+		text->Get()->PrintLine();
+		number->Get()->Get()->PrintLine();
+	}
+}

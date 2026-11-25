@@ -1,0 +1,239 @@
+# EXTRA_LIBS: rag_adapters,rag,ml_vector,net,net_server,web_server,json,cipher,misc,openai,gemini,ollama,anthropic,models,opencv,onnx,nlp,nlp_onnx,ml_verify,ml_clip
+#~
+The RAG kit's Ollama adapters (RagOllamaEmbedder, RagOllamaGenerator) against a fake Ollama
+server on loopback: no model, no key, no network beyond 127.0.0.1.
+
+The server answers POST /api/embed with the vectors RagHashEmbedder computes for the inputs
+and POST /api/generate with what RagStubGenerator makes of the prompt, so what the adapters
+return can be compared with the same classes run locally. It answers an {"error": ...} body
+with a 404 for the model name "missing", to check that the reason reaches GetError(). A whole
+RagPipeline is then run through the two adapters and must answer exactly as the local pipeline.
+~#
+use System.ML.Rag;
+use Data.JSON;
+use Collection;
+use Web.HTTP.Server;
+
+class FakeOllama from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(404, "not found");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		body := request->GetContent();
+		json : JsonElement;
+		if(body <> Nil) {
+			json := JsonParser->TextToElement(body);
+		};
+
+		if(json = Nil | <>json->Has("model")) {
+			response->SetCodeContent(400, "{\"error\":\"bad request\"}");
+			return false;
+		};
+
+		if(json->Get("model")->GetString()->Equals("missing")) {
+			response->SetCodeContent(404, "{\"error\":\"model 'missing' not found\"}");
+			return false;
+		};
+
+		path := request->GetPath();
+		if(path->Equals("/api/embed")) {
+			inputs := json->Get("input");
+			texts := Vector->New()<String>;
+			if(inputs->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : inputs->Size()) {
+					texts->AddBack(inputs->Get(i)->GetString());
+				};
+			}
+			else {
+				texts->AddBack(inputs->GetString());
+			};
+
+			list := String->New[texts->Size()];
+			each(i : texts) {
+				list[i] := texts->Get(i);
+			};
+
+			embedder := RagHashEmbedder->New(64);
+			vectors := embedder->Embed(list);
+			out := "{\"model\":\"fake\",\"embeddings\":[";
+			each(i : list) {
+				if(i > 0) {
+					out += ",";
+				};
+				out += "[";
+				each(j : 64) {
+					if(j > 0) {
+						out += ",";
+					};
+					out += vectors[i, j]->ToString();
+				};
+				out += "]";
+			};
+			out += "]}";
+			response->SetCodeContent(200, out);
+			return false;
+		}
+		else if(path->Equals("/api/generate")) {
+			prompt := json->Get("prompt")->GetString();
+			reply := RagStubGenerator->New()->Generate(prompt);
+			doc := JsonElement->New(JsonElement->JsonType->OBJECT);
+			doc->Insert("model", "fake");
+			doc->Insert("response", reply);
+			doc->Insert("done", true);
+			response->SetCodeContent(200, doc->ToString());
+			return false;
+		};
+
+		response->SetCodeContent(404, "{\"error\":\"unknown path\"}");
+		return false;
+	}
+}
+
+class RagAdaptersOllamaTest {
+	@failures : static : Int;
+	@port : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(FakeOllama->New()->GetClass(), 0, false);
+			}
+		};
+		server->Execute(Nil);
+
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			"  [FAIL] the fake server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		API.Ollama.EndPoint->SetHost("http://127.0.0.1:{$@port}");
+
+		TestEmbedder();
+		TestGenerator();
+		TestPipeline();
+		TestDown();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+		# the server thread blocks in accept; end the process
+		Runtime->Exit(0);
+	}
+
+	function : TestEmbedder() ~ Nil {
+		"-- the embedder"->PrintLine();
+		adapter := RagOllamaEmbedder->New("fake-embed");
+		Check("the dimension is unknown before the first call", adapter->GetDimension() = 0);
+
+		texts := ["red apples", "green pears and apples"];
+		vectors := adapter->Embed(texts);
+		Check("a batch comes back", vectors <> Nil);
+		if(vectors <> Nil) {
+			dims := vectors->Size();
+			Check("one row per text, as many columns as the server's vectors", dims[0] = 2 & dims[1] = 64);
+			local := RagHashEmbedder->New(64)->Embed(texts);
+			same := true;
+			each(i : 2) {
+				each(j : 64) {
+					if(vectors[i, j] <> local[i, j]) {
+						same := false;
+					};
+				};
+			};
+			Check("the rows are the vectors the server computed", same);
+		};
+		Check("the dimension is known after it", adapter->GetDimension() = 64);
+		Check("no error is left behind", adapter->GetError()->Size() = 0);
+
+		missing := RagOllamaEmbedder->New("missing");
+		Check("an error body gives Nil", missing->Embed(["x"]) = Nil);
+		Check("with the server's reason", missing->GetError()->Find("not found") > -1);
+	}
+
+	function : TestGenerator() ~ Nil {
+		"-- the generator"->PrintLine();
+		adapter := RagOllamaGenerator->New("fake-gen");
+		prompt := "Sources:\n[1] Objeck is a language. It is compiled.\n\nQuestion: what is compiled?\nAnswer:";
+		reply := adapter->Generate(prompt);
+		expected := RagStubGenerator->New()->Generate(prompt);
+		Check("the reply is the server's response", reply <> Nil & reply->Equals(expected) & reply->Equals("It is compiled. [1]"));
+		Check("no error is left behind", adapter->GetError()->Size() = 0);
+
+		options := API.Ollama.Options->New();
+		options->SetTemperature(0.0);
+		adapter->SetOptions(options);
+		Check("with options the call still works", adapter->Generate(prompt) <> Nil);
+
+		missing := RagOllamaGenerator->New("missing");
+		Check("an error body gives Nil", missing->Generate(prompt) = Nil);
+		Check("with the server's reason", missing->GetError()->Find("not found") > -1);
+	}
+
+	function : Docs(pipeline : RagPipeline) ~ Nil {
+		pipeline->AddText("vm.txt", "The virtual machine runs bytecode with a just-in-time compiler.\n\nIts garbage collector is generational and collects short-lived objects cheaply.");
+		pipeline->AddText("net.txt", "The net library speaks HTTP and TLS. A server answers requests on a port.\n\nSockets can be opened for TCP and UDP traffic.");
+	}
+
+	function : TestPipeline() ~ Nil {
+		"-- a pipeline through both adapters"->PrintLine();
+		remote := RagPipeline->New(RagOllamaEmbedder->New("fake-embed"), RagOllamaGenerator->New("fake-gen"));
+		remote->SetChunker(RagChunker->New(100, 10, RagSplit->PARAGRAPH));
+		remote->SetTopK(2);
+		local := RagPipeline->New(RagHashEmbedder->New(64), RagStubGenerator->New());
+		local->SetChunker(RagChunker->New(100, 10, RagSplit->PARAGRAPH));
+		local->SetTopK(2);
+
+		Check("the documents are added through the server", remote->AddText("vm.txt", "The virtual machine runs bytecode with a just-in-time compiler.\n\nIts garbage collector is generational and collects short-lived objects cheaply.") = 2);
+		Docs(local);
+		remote->AddText("net.txt", "The net library speaks HTTP and TLS. A server answers requests on a port.\n\nSockets can be opened for TCP and UDP traffic.");
+
+		questions := ["What does the garbage collector collect?", "Which protocols does the net library speak?"];
+		each(i : questions) {
+			a := remote->Answer(questions[i]);
+			b := local->Answer(questions[i]);
+			Check("the remote pipeline answers like the local one: {$questions[i]}", a <> Nil & b <> Nil & a->GetText()->Equals(b->GetText()) & a->GetPrompt()->Equals(b->GetPrompt()));
+		};
+
+		answer := remote->Answer("What does the garbage collector collect?");
+		Check("the answer is grounded and cited", answer <> Nil & answer->GetText()->Find("short-lived objects") > -1 & answer->GetCitations()->Size() = 1);
+	}
+
+	function : TestDown() ~ Nil {
+		"-- a server that is not there"->PrintLine();
+		API.Ollama.EndPoint->SetHost("http://127.0.0.1:1");
+		adapter := RagOllamaEmbedder->New("fake-embed");
+		Check("a refused connection gives Nil, not a crash", adapter->Embed(["x"]) = Nil);
+		Check("with a reason", adapter->GetError()->Size() > 0);
+		generator := RagOllamaGenerator->New("fake-gen");
+		Check("the generator too", generator->Generate("hi") = Nil & generator->GetError()->Size() > 0);
+
+		pipeline := RagPipeline->New(adapter, generator);
+		Check("a pipeline reports the embedder's failure", pipeline->AddText("d", "some text") = -1 & pipeline->GetError()->Find("embedder") > -1);
+		API.Ollama.EndPoint->SetHost("http://127.0.0.1:{$@port}");
+	}
+}

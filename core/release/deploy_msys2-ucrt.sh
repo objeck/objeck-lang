@@ -60,6 +60,8 @@ cp make/Makefile.msys2-ucrt.amd64 Makefile
 make clean >/dev/null 2>&1 || true
 make -j3 OBJECK_LIB_PATH=///".///" || ui_fail
 cp obc ../release/deploy-msys2-ucrt/bin
+# every standard library must exist (core/lib/*.obl are build products; names are read from build_libs.sh)
+sh ../release/require_obl.sh ../lib || exit 1
 cp ../lib/*.obl ../release/deploy-msys2-ucrt/lib
 cp ../lib/*.ini ../release/deploy-msys2-ucrt/lib
 cp ../vm/misc/*.pem ../release/deploy-msys2-ucrt/lib
