@@ -1,0 +1,116 @@
+#~
+The HPC scaling kernel (tools/hpc/alderaan/bench/workloads/scale_kernel.obs):
+the checksum it prints must not depend on the thread count, and must equal an
+independent reference computed here and by Python.
+
+Strong- and weak-scaling numbers are only comparable if every core count did
+the same work. The harness checks the checksum of each run; this test pins the
+property itself, including the 64-bit Int arithmetic the generator relies on
+(the products reach 2^62), so a VM or JIT change that broke it fails here
+instead of silently skewing a cluster benchmark.
+
+The test is a copy of the kernel's worker, kept small. Expected value
+(units=24, steps=3000) was computed with Python 3:
+
+    sum((lambda u: <3000 LCG steps from u+12345> % 1000003)(u) for u in range(24))
+~#
+use System.Concurrency;
+
+class HpcScaleKernel {
+	function : Main(args : String[]) ~ Nil {
+		units := 24;
+		steps := 3000;
+		expected := 11510861;
+
+		pass := true;
+
+		reference := Reference(units, steps);
+		if(reference <> expected) {
+			"  FAIL: single-threaded reference {$reference}, expected {$expected}"->PrintLine();
+			pass := false;
+		};
+
+		for(threads := 1; threads <= 6; threads += 1;) {
+			sums := Int->New[threads];
+			workers := KernelWorker->New[threads];
+			each(i : workers) {
+				workers[i] := KernelWorker->New(i, threads, units, steps, sums);
+			};
+			each(i : workers) {
+				workers[i]->Execute(Nil);
+			};
+			each(i : workers) {
+				workers[i]->Join();
+			};
+			total := 0;
+			each(i : sums) {
+				total += sums[i];
+			};
+			if(total <> expected) {
+				"  FAIL: {$threads} threads gave {$total}, expected {$expected}"->PrintLine();
+				pass := false;
+			};
+		};
+
+		# the sample objeck-slurm task: same generator, 1000 steps, seed 1, acc = sum of x % 97
+		x := 1;
+		acc := 0;
+		for(i := 0; i < 1000; i += 1;) {
+			x := (x * 1103515245 + 12345) % 2147483648;
+			acc += x % 97;
+		};
+		if(acc <> 49030) {
+			"  FAIL: sweep task accumulator {$acc}, expected 49030"->PrintLine();
+			pass := false;
+		};
+
+		if(pass) {
+			"PASS: hpc scale kernel checksum is independent of the thread count"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Reference(units : Int, steps : Int) ~ Int {
+		sum := 0;
+		for(u := 0; u < units; u += 1;) {
+			x := u + 12345;
+			for(s := 0; s < steps; s += 1;) {
+				x := (x * 1103515245 + 12345) % 2147483648;
+			};
+			sum += x % 1000003;
+		};
+
+		return sum;
+	}
+}
+
+class KernelWorker from Thread {
+	@index : Int;
+	@threads : Int;
+	@units : Int;
+	@steps : Int;
+	@sums : Int[];
+
+	New(index : Int, threads : Int, units : Int, steps : Int, sums : Int[]) {
+		Parent(index->ToString());
+		@index := index;
+		@threads := threads;
+		@units := units;
+		@steps := steps;
+		@sums := sums;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		sum := 0;
+		for(u := @index; u < @units; u += @threads;) {
+			x := u + 12345;
+			for(s := 0; s < @steps; s += 1;) {
+				x := (x * 1103515245 + 12345) % 2147483648;
+			};
+			sum += x % 1000003;
+		};
+		@sums[@index] := sum;
+	}
+}

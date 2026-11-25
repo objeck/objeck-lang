@@ -1,0 +1,36 @@
+#~
+A sample objeck-slurm task: a deterministic computation whose size comes from
+the sweep parameters.
+
+Usage: obr sweep_task.obe <n> <seed>
+
+It also reads OBJECK_SWEEP_<NAME> variables, which objeck-slurm exports for
+every parameter, so a program can take its parameters from the environment
+instead of argv. Prints a RESULT line that objeck-slurm turns into CSV columns.
+~#
+class SweepTask {
+	function : Main(args : String[]) ~ Nil {
+		n := 1000;
+		seed := 1;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			seed := args[1]->ToInt();
+		};
+
+		x := seed;
+		acc := 0;
+		for(i := 0; i < n; i += 1;) {
+			x := (x * 1103515245 + 12345) % 2147483648;
+			acc += x % 97;
+		};
+
+		env_n := Runtime->GetEnvironmentVariable("OBJECK_SWEEP_N");
+		if(env_n = Nil) {
+			env_n := "";
+		};
+		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
+		"RESULT acc={$acc} env_n={$env_n} cpus={$cpus}"->PrintLine();
+	}
+}

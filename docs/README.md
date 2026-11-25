@@ -41,6 +41,7 @@ Start with the one-page map, then follow the part you care about. Every page bel
 | [opengl.md](opengl.md) | `Game.OpenGL` |
 | [performance.md](performance.md) | Benchmarks and where the time goes |
 | [third_party_dependencies.md](third_party_dependencies.md) | Where each platform gets mbedTLS, nghttp2, SDL2, OpenCV, ONNX Runtime, and how to read the version a build used |
+| [hpc_alderaan.md](hpc_alderaan.md) | Objeck on a Slurm cluster with Singularity and no root (CU Denver Alderaan): portable build, images, the `objeck-slurm` job-array helper, scaling benchmarks, and what is unverified |
 | [windows_loopback_sockets.md](windows_loopback_sockets.md) | Windows discards data if you write then immediately close on loopback, and what to do instead |
 | [macos_http2_http3.md](macos_http2_http3.md) | Building and testing HTTP/2 and HTTP/3 on macOS |
 

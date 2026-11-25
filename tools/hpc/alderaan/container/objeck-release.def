@@ -1,0 +1,71 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+# Objeck, full flavor: the official Linux release tarball (all native libraries,
+# including ONNX Runtime and OpenCV) on an Ubuntu 24.04 userland. The release
+# binaries need glibc 2.38, which the cluster's CentOS 8 host (glibc 2.28) does
+# not have -- but a container runs on the host KERNEL with its OWN glibc, so
+# inside the image they run fine. Larger (about 1.2 GB), because the runtime
+# packages include OpenCV, SDL2 and ODBC.
+#
+# Build (needs --fakeroot or root; apt needs network):
+#
+#   cd tools/hpc/alderaan/container
+#   cp /path/to/objeck-linux-x64_<version>.tgz objeck-release.tgz
+#   apptainer build --fakeroot objeck-release.sif objeck-release.def
+#
+# The package list below is the "apt runtime" list of core/release/runtime_deps.json;
+# tools/cicd/check_docs_deps.py keeps that file honest against the binaries.
+
+%files
+    objeck-release.tgz /opt/objeck-release.tgz
+
+%post
+    set -e
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        ca-certificates tar gzip \
+        libmbedtls14t64 libmbedx509-1t64 libmbedcrypto7t64 zlib1g libreadline8t64 \
+        libodbc2 libmp3lame0 libgl1 libsdl2-2.0-0 libsdl2-image-2.0-0 \
+        libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0 \
+        libopencv-core406t64 libopencv-imgproc406t64 libopencv-imgcodecs406t64 \
+        libopencv-calib3d406t64 libopencv-dnn406t64 libopencv-highgui406t64 \
+        libopencv-videoio406t64
+    rm -rf /var/lib/apt/lists/*
+    tar xzf /opt/objeck-release.tgz -C /opt
+    rm -f /opt/objeck-release.tgz
+    export OBJECK_LIB_PATH=/opt/objeck-lang/lib
+    /opt/objeck-lang/bin/obc -version
+
+%environment
+    export OBJECK_HOME=/opt/objeck-lang
+    export OBJECK_LIB_PATH=/opt/objeck-lang/lib
+    export PATH=/opt/objeck-lang/bin:$PATH
+
+%runscript
+    exec obr "$@"
+
+%test
+    set -e
+    export OBJECK_LIB_PATH=/opt/objeck-lang/lib
+    cat > /tmp/hello.obs <<'EOS'
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "hello from the container"->PrintLine();
+  }
+}
+EOS
+    /opt/objeck-lang/bin/obc -src /tmp/hello.obs -dest /tmp/hello.obe
+    /opt/objeck-lang/bin/obr /tmp/hello.obe | grep -q "hello from the container"
+    test -e /opt/objeck-lang/lib/native/libobjk_onnx.so
+
+%labels
+    Description Objeck runtime for the CU Denver Alderaan cluster (release flavor)
+    Source https://github.com/objeck/objeck-lang
+
+%help
+    Full Objeck, including ONNX CPU inference. Example:
+      singularity exec objeck-release.sif obr program.obe
+    GPU nodes: add --nv. The release ships a CPU-only ONNX Runtime; GPU inference
+    needs a CUDA build of the runtime (see docs/ONNX_CUDA_PLAN.md).

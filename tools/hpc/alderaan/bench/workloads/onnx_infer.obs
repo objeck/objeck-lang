@@ -1,0 +1,70 @@
+#~
+CPU ONNX inference throughput: one process, one session, a fixed number of
+embedding calls. The scaling harness runs 1..N of these side by side (one
+session per core) and, separately, one of them under a growing cpuset (intra-op
+threads follow runtime.cpu.count).
+
+Usage: obr onnx_infer.obe <model.onnx> <vocab.txt> [iterations] [batch] [max_len]
+
+Needs: -lib models,opencv,onnx,nlp,nlp_onnx,json and libobjk_onnx in lib/native
+(the container image has it; the portable tarball does not).
+
+Output (one line):
+
+  RESULT iterations=<n> batch=<n> infer_ms=<n> per_sec=<n> checksum=<float> cpus=<n>
+~#
+use API.Onnx;
+use API.Models;
+use System.NLP;
+use System.NLP.Onnx;
+
+class OnnxInfer {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 2) {
+			"usage: onnx_infer <model.onnx> <vocab.txt> [iterations] [batch] [max_len]"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		iterations := 200;
+		batch := 8;
+		max_len := 16;
+		if(args->Size() > 2) {
+			iterations := args[2]->ToInt();
+		};
+		if(args->Size() > 3) {
+			batch := args[3]->ToInt();
+		};
+		if(args->Size() > 4) {
+			max_len := args[4]->ToInt();
+		};
+
+		embedder := BertEmbedder->New(args[0], args[1], max_len);
+		if(<>embedder->IsOpen()) {
+			"onnx_infer: cannot open {$args[0]}"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		texts := String->New[batch];
+		each(i : texts) {
+			texts[i] := "the quick brown fox number {$i} jumps over the lazy dog";
+		};
+
+		# warm-up, so session creation and first-run allocation are not timed
+		embedder->Embed(texts);
+
+		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
+		started := Runtime->GetProperty("runtime.uptime_ms")->ToInt();
+		sum := 0.0;
+		for(n := 0; n < iterations; n += 1;) {
+			rows := embedder->Embed(texts);
+			sum += rows[0,0];
+		};
+		elapsed := Runtime->GetProperty("runtime.uptime_ms")->ToInt() - started;
+		if(elapsed < 1) {
+			elapsed := 1;
+		};
+		per_sec := (iterations * batch * 1000) / elapsed;
+
+		"RESULT iterations={$iterations} batch={$batch} infer_ms={$elapsed} per_sec={$per_sec} checksum={$sum} cpus={$cpus}"->PrintLine();
+	}
+}
