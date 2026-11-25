@@ -1929,6 +1929,68 @@ void JitAmd64::EmitPinExitStubs() {
   }
 }
 
+// A bounds guard's cold stub. The guard's jl/jge used to jump straight to the
+// shared -2/-3 handlers, which know nothing about the access, so a compiled
+// fault said "Index out of bounds" where the interpreter says "Index out of
+// bounds: 5,2". Each guard now jumps here instead: the index and element count
+// are still in the two registers the compare used; they go to
+// StackInterpreter::JitBoundsFault, which records them for the status's reader
+// and returns -2 (negative index) or -3, and the stub leaves through the
+// bridge-status handler, which takes the status from RAX.
+//
+// Nothing here is on the path of an access that stays in bounds: the guard's
+// two compares and two branches are the bytes they always were, with only the
+// branch displacements pointing somewhere else. The stub is emitted after the
+// epilogue, so the method body does not move either.
+//
+// The frame is abandoned, so every register is free except RBX: the helper is
+// a C++ call, RSP may not be 16-aligned here (an access inside a call's
+// argument pushes), so RSP is saved in RBX -- callee-saved, and restored by
+// the epilogue's pops like every register this method saved -- and aligned
+// for the call, then put back so the teardown's pops find their slots. The
+// helper touches no managed memory and never polls a safepoint, so there is no
+// collection to park for or relocate across.
+void JitAmd64::EmitBoundsStubs() {
+#ifdef _WIN64
+  const Register arg1 = RCX;
+  const Register arg2 = RDX;
+#else
+  const Register arg1 = RDI;
+  const Register arg2 = RSI;
+#endif
+  for(const BoundsSite& site : bounds_sites) {
+    const long stub_index = code_index;
+    int32_t rel = (int32_t)(stub_index - (site.less_pos + 4));
+    memcpy(&code[(size_t)site.less_pos], &rel, 4);
+    rel = (int32_t)(stub_index - (site.greater_pos + 4));
+    memcpy(&code[(size_t)site.greater_pos], &rel, 4);
+
+    // index -> arg1, size -> arg2 through the stack: either may already sit in
+    // the other's argument register
+    push_reg(site.index_reg);
+    push_reg(site.size_reg);
+    pop_reg(arg2);
+    pop_reg(arg1);
+
+    move_reg_reg(RSP, RBX);
+    and_imm_reg(-16, RSP);
+#ifdef _WIN64
+    sub_imm_reg(32, RSP);   // shadow space (RSP stays 16-aligned)
+    move_imm_reg((size_t)Runtime::StackInterpreter::JitBoundsFault, R10);
+    call_reg(R10);
+#else
+    move_imm_reg((size_t)Runtime::StackInterpreter::JitBoundsFault, R11);
+    call_reg(R11);
+#endif
+    move_reg_reg(RBX, RSP);
+
+    // RAX = the status; the bridge-status handler leaves it alone
+    AddMachineCode(0xe9);
+    bridge_status_offsets.push_back(code_index);
+    AddImm(0);
+  }
+}
+
 void JitAmd64::EmitJitSafePoint() {
   // Fast path: cmp byte [r12], 0 ; je skip
   // R12 caches &stw_active (loaded once in the prologue), so the common no-GC
@@ -8723,6 +8785,9 @@ bool JitAmd64::Compile(StackMethod* cm)
     // F3: a jump that leaves a pinned loop goes through a stub that stores the
     // pinned locals first; the stubs sit after the method body
     EmitPinExitStubs();
+    // the bounds guards' cold stubs; they end in the bridge-status handler, so
+    // they come before the handler jumps are patched below
+    EmitBoundsStubs();
     // show content
     std::unordered_map<long, StackInstr*>::iterator iter;
     for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
@@ -8763,18 +8828,6 @@ bool JitAmd64::Compile(StackMethod* cm)
     for(size_t i = 0; i < nil_deref_offsets.size(); ++i) {
       const long index = nil_deref_offsets[i];
       long offset = nil_deref_handler_index - (index + 4);
-      memcpy(&code[(size_t)index], &offset, 4);
-    }
-
-    for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
-      const long index = bounds_less_offsets[i];
-      long offset = bounds_less_handler_index - (index + 4);
-      memcpy(&code[(size_t)index], &offset, 4);
-    }
-
-    for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
-      const long index = bounds_greater_offsets[i];
-      long offset = bounds_greater_handler_index - (index + 4);
       memcpy(&code[(size_t)index], &offset, 4);
     }
 
