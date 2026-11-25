@@ -999,7 +999,7 @@ resource: Hello from a resource</pre>
   }
 }
 </code></pre>
-    <p><strong>This was not tried against Claude Desktop or Claude Code.</strong> The configuration shape comes from their documentation; the server is tested against a scripted client that speaks the specification's messages.</p>
+    <p><strong>Verified with Claude Code, not with Claude Desktop.</strong> On 2026-11-24 Claude Code 2.1.323 connected to <code>mcp_server_demo.obs</code> over stdio on Windows x64, negotiated revision 2025-11-25, listed the tools, called <code>calculate</code> for <code>17 + 25</code> and got <code>42</code>. A tool error (<code>1/0</code>) and a call missing a required argument both came back as error results with a clear message, and the server stayed up. Not tried: Claude Desktop, the HTTP transport, resources and prompts calls from a real client, Linux and macOS. The server is also tested against a scripted client that speaks the specification's messages.</p>
     <h4 id="giving-a-servers-tools-to-claude-openai-and-gemini">Giving a server's tools to Claude, OpenAI and Gemini</h4>
     <p><code>McpToolBridge-&gt;New(client)</code> lists a connected server's tools and converts them: <code>ToAnthropicJson()</code> and <code>ToOpenAiJson()</code> are the <code>tools</code> arrays those APIs take, <code>GetFunctions()</code> is the map <code>API.Google.Gemini.Model-&gt;GenerateContent</code> takes, and <code>Run(name, input)</code> runs the call a model asked for and returns the text to give back (<code>"error: ..."</code> for a tool that failed). With Claude:</p>
 <pre class="line-numbers"><code class="language-cpp">use API.MCP, API.Anthropic, Collection, Data.JSON;

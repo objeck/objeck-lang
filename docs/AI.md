@@ -1267,7 +1267,7 @@ A client reaches a server through a transport: `McpClient->Http(url)` (streamabl
 }
 ```
 
-**This was not tried against Claude Desktop or Claude Code.** The configuration shape comes from their documentation; the server is tested against a scripted client that speaks the specification's messages.
+**Verified with Claude Code, not with Claude Desktop.** On 2026-11-24 Claude Code 2.1.323 connected to `mcp_server_demo.obs` over stdio on Windows x64, negotiated revision 2025-11-25, listed the tools, called `calculate` for `17 + 25` and got `42`. A tool error (`1/0`) and a call missing a required argument both came back as error results with a clear message, and the server stayed up. Not tried: Claude Desktop, the HTTP transport, resources and prompts calls from a real client, Linux and macOS. The server is also tested against a scripted client that speaks the specification's messages.
 
 ### Giving a server's tools to Claude, OpenAI and Gemini
 
