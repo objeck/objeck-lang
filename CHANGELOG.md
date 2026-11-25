@@ -98,6 +98,7 @@ All notable changes to Objeck will be documented in this file.
 ### Documentation
 
 - **`docs/performance.md` has a Library workloads section**: regex, vector search, nearest-neighbor, edit-distance, string and JSON timings, with what was not measured. The data and text guide lists the RegEx behaviours above, and `docs/AI.md` documents `SetThreads` and the bounded edit distance.
+- **`docs/AI.md` covers the libraries that were missing from it**: `API.Agent`, `API.MCP` (server, client and the bridge to the Anthropic, OpenAI and Gemini clients), `System.ML.Rag`, `System.ML.Boost`, `System.ML.TimeSeries` and the `API.Onnx` GPU additions (IO binding, half precision, shared sessions, TensorRT), each with a program that was compiled and its stated limits; `ml_boost`, `ml_timeseries`, `rag_adapters` and the TensorRT options are marked experimental.
 
 ### Tests
 

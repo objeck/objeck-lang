@@ -31,8 +31,17 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Phi-3 / Phi-3 Vision](#phi-3--phi-3-vision)
   - [Image Classification (ResNet)](#image-classification-resnet)
   - [Any Model (generic run)](#any-model-generic-run)
+  - [GPU inference: IO binding, half precision, shared sessions](#gpu-inference-io-binding-half-precision-shared-sessions)
+    - [TensorRT and the engine cache](#tensorrt-and-the-engine-cache)
 - [Remote Inference Servers](#remote-inference-servers)
   - [One interface over both](#one-interface-over-both)
+- [Agents (API.Agent)](#agents-apiagent)
+- [Model Context Protocol (API.MCP)](#model-context-protocol-apimcp)
+- [Retrieval-augmented generation (System.ML.Rag)](#retrieval-augmented-generation-systemmlrag)
+- [Actors and supervision (System.Actor)](#actors-and-supervision-systemactor)
+- [Inference telemetry (System.Telemetry)](#inference-telemetry-systemtelemetry)
+- [LLM utilities (API.LlmUtil)](#llm-utilities-apillmutil)
+- [LLM evaluation (System.LLM.Eval)](#llm-evaluation-systemllmeval)
 - [Computer Vision (OpenCV)](#computer-vision-opencv)
 - [Natural Language Processing](#natural-language-processing)
   - [BERT tokens and sentence embeddings](#bert-tokens-and-sentence-embeddings)
@@ -49,6 +58,8 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Replicates and reports (System.ML.Report)](#replicates-and-reports-systemmlreport)
   - [Face verification: FAR, FRR, EER and CLIP embeddings (System.ML.Verification, System.ML.Clip)](#face-verification-far-frr-eer-and-clip-embeddings-systemmlverification-systemmlclip)
   - [Convolutional networks (System.ML.Cnn)](#convolutional-networks-systemmlcnn)
+  - [Gradient boosting (System.ML.Boost)](#gradient-boosting-systemmlboost)
+  - [Time series forecasting (System.ML.TimeSeries)](#time-series-forecasting-systemmltimeseries)
   - [Statistics (System.Stats)](#statistics-systemstats)
   - [Plotting (System.Plot)](#plotting-systemplot)
     - [In a window, or as a PNG (System.Plot.SDL)](#in-a-window-or-as-a-png-systemplotsdl)
@@ -157,6 +168,92 @@ choice->GetMessage()->GetSecond()->PrintLine();
 ```
 
 This round trip is tested against a local server (`openai_tool_calls_test`); it was not run against the live API.
+
+The loop above needs an `McpToolBridge`. This one is self-contained: it declares one function tool by hand, runs it in Objeck, and bounds the loop. `Completion->BuildToolRequest(...)` returns the request body without a network call, so `Main` prints it before any request; with an argument it runs the loop against the API (it reads the key with `EndPoint->GetApiKey()`).
+
+**Compile:** `obc -src tool_loop.obs -lib net,net_server,json,cipher,misc,openai`
+
+```ruby
+use API.OpenAI, API.OpenAI.Chat;
+use Data.JSON;
+
+class WeatherTools {
+  # one function tool: {"type":"function","function":{name, description, parameters}}
+  function : Tools() ~ JsonElement {
+    parameters := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    spec := JsonElement->New(JsonElement->JsonType->OBJECT);
+    spec->Insert("name", "get_weather");
+    spec->Insert("description", "Get the current weather for a city");
+    spec->Insert("parameters", parameters);
+    tool := JsonElement->New(JsonElement->JsonType->OBJECT);
+    tool->Insert("type", "function");
+    tool->Insert("function", spec);
+    tools := JsonElement->New(JsonElement->JsonType->ARRAY);
+    tools->Add(tool);
+    return tools;
+  }
+
+  function : Run(call : ToolCall) ~ String {
+    arguments := call->GetArgumentsJson();     # Nil when the model wrote invalid JSON
+    if(arguments = Nil | call->GetName()->Equals("get_weather") = false) {
+      return "error: bad call";
+    };
+    city := arguments->Get("city")->GetString();
+    return "18C and sunny in {$city}";
+  }
+
+  function : Ask(question : String, token : String) ~ String {
+    messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+    user := JsonElement->New(JsonElement->JsonType->OBJECT);
+    user->Insert("role", "user");
+    user->Insert("content", question);
+    messages->Add(user);
+
+    tools := Tools();
+    model := Models->GPT_4O_MINI();
+    for(step := 0; step < 5; step += 1;) {           # bound the loop
+      completion := Completion->CompleteWithTools(model, messages, tools, 512, token);
+      if(completion = Nil) {
+        return "error: {$Completion->GetLastError()}";
+      };
+
+      choice := completion->GetChoices()->Get(0);
+      calls := choice->GetToolCalls();
+      if(calls->Size() = 0) {
+        return choice->GetMessage()->GetSecond();    # a plain answer: done
+      };
+
+      messages->Add(choice->GetMessageJson());       # the assistant message, as received
+      each(call in calls) {
+        messages->Add(Completion->ToolResultMessage(call->GetId(), Run(call)));
+      };
+    };
+    return "error: the model kept asking for tools";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # no network: the request body the first call would send
+    first := JsonElement->New(JsonElement->JsonType->ARRAY);
+    user := JsonElement->New(JsonElement->JsonType->OBJECT);
+    user->Insert("role", "user");
+    user->Insert("content", "What is the weather in Paris?");
+    first->Add(user);
+    Completion->BuildToolRequest(Models->GPT_4O_MINI(), first, Tools(), 512)->ToString()->PrintLine();
+
+    if(args->Size() > 0) {
+      Ask("What is the weather in Paris?", EndPoint->GetApiKey())->PrintLine();
+    };
+  }
+}
+```
+
+Running it without an argument prints (verified):
+
+```
+{"max_completion_tokens":512,"messages":[{"content":"What is the weather in Paris?","role":"user"}],"model":"gpt-4o-mini","tools":[{"function":{"description":"Get the current weather for a city","name":"get_weather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}},"type":"function"}]}
+```
+
+The program compiled with the current toolchain. The loop itself (`Ask`) was **not run** against the live API; the same round trip is tested against a local server by `openai_tool_calls_test`. A reply with no `tool_calls` gives an empty vector from `GetToolCalls()`, and a malformed reply is `Nil` with `Completion->GetLastError()`, not a crash.
 
 ---
 
@@ -840,6 +937,112 @@ than `YoloSession`, and it works for models no per-family class exists for.
 `programs/frameworks/opencv_onnx/ab_phi3.obs` drives Phi-3 through it with 67
 inputs, which is what the shape is for.
 
+### GPU inference: IO binding, half precision, shared sessions
+
+A `Session` chooses its execution provider with the `ep` config key (`cpu`, `cuda`, `tensorrt`, `dml`, `qnn`, `vitisai`, `coreml`). The ONNX Runtime beside `libobjk_onnx` must carry the provider ([Choosing the provider](../core/lib/onnx/README.md#choosing-the-provider)); a session asks the runtime and **refuses** an absent one, so nothing is silently moved to the CPU. CUDA 12, cuDNN 9 and the NVIDIA driver are yours to supply; no Objeck release ships them. `OnnxRuntime->HasProvider("cuda")` asks what is available. A session option, or a provider option ONNX Runtime does not know, is refused with a reason rather than ignored.
+
+```ruby
+config := Map->New()<String, String>;
+config->Insert("ep", "cuda");
+config->Insert("device_id", "0");                       # provider options go straight through
+config->Insert("cudnn_conv_algo_search", "HEURISTIC");
+session := Session->New("resnet34.onnx", config);
+```
+
+**IO binding: tensors that stay on the device.** A plain `Session->Run` converts and copies every input to the device and every output back on every call. A `DeviceTensor` is a tensor in the provider's memory, allocated once, filled with `Upload` and read with `Download` only when the program wants the numbers; a `BoundSession` points the model's inputs and outputs, by name, at device tensors, and `Run()` reads and writes them in place:
+
+```ruby
+use API.Onnx, Collection;
+
+class Bound {
+  function : Main(args : String[]) ~ Nil {
+    config := Map->New()<String, String>;
+    config->Insert("ep", "cuda");
+    session := Session->New("resnet34.onnx", config);
+    if(<>session->IsOpen()) {
+      "no session, the reason was printed above"->PrintLine();
+      return;
+    };
+
+    # the model's input is FP32[-1,3,224,224]: the batch is yours to choose
+    input := DeviceTensor->ForInput(session, "data", [8, 3, 224, 224]);
+    scores := DeviceTensor->ForOutput(session, "resnetv23_dense0_fwd", [8, 1000]);
+
+    bound := BoundSession->New(session);
+    bound->BindInput("data", input);
+    bound->BindOutput("resnetv23_dense0_fwd", scores);
+
+    frame := Float->New[8 * 3 * 224 * 224];
+    host := Float->New[8 * 1000];
+    for(i := 0; i < 10; i += 1;) {
+      input->Upload(frame);             # skip this when the input is already resident
+      bound->Run();
+      scores->Download(host);           # skip this when the output stays on the device
+    };
+
+    bound->Close();
+    input->Close();
+    scores->Close();
+    session->Close();
+  }
+}
+```
+
+The program needs a ResNet-34 model and a CUDA runtime, so it was compiled here but not run. `ForInput` and `ForOutput` take the element type from the model (`DeviceTensor->New(session, "FP16", shape)` names it); an output whose shape you do not know is bound with `BindOutputToDevice(name)` and fetched with `GetOutput(name)`. On `ep=cpu` a device tensor is ordinary host memory, so the same program runs without a GPU.
+
+What the tests assert: a bound `Run` gives exactly the answer `Session->Run` gives on the same provider and input (`onnx_iobinding` on the CPU provider everywhere, `onnx_iobinding_gpu` where a GPU session opens; without one it prints `SKIP:`). Against the CPU, a GPU result is within float tolerance, not bit-identical: the CUDA provider convolves in TF32 on recent cards, and the provider option `use_tf32=0` turns that off.
+
+Device memory is the provider's, not the garbage collector's: `Close()` every `DeviceTensor` and `BoundSession`. A session closed while tensors still use it is released after the last of them.
+
+**Half precision, bfloat16 and 8-bit models.** You never have to say what type a model wants: `Session->Run` reads the model's declaration and converts, rounding an FP16 or BF16 input from the `Float` you gave (to nearest, ties to even, overflow to infinity) and widening outputs back to `Float`. Integer inputs truncate toward zero and **saturate** at the type's range, so a 300 sent to an INT8 input is 127. For the bit patterns themselves there are `Half`, `BFloat16` and `Quantization`:
+
+```ruby
+use API.Onnx;
+
+class Bits {
+  function : Main(args : String[]) ~ Nil {
+    Half->ToBits(1.0)->PrintLine();                  # 15360 (0x3C00)
+    Half->Round(0.1)->PrintLine();                   # 0.0999756, the nearest binary16
+    Half->FromBits(31743)->PrintLine();              # 65504, the largest finite half
+    BFloat16->ToBits(3.0)->PrintLine();              # 16448 (0x4040)
+    packed := Half->Pack([1.0, 0.5]);                # Float[] -> Int[] of 16-bit patterns
+    Half->Unpack(packed)->Size()->PrintLine();       # 2
+    # a model with an INT8 input: scale and zero point are the ones it was quantized with
+    q := Quantization->ToInt8([300.0, -3.0], 0.0078125, 0);   # Float[] of whole numbers, saturated
+    q->Size()->PrintLine();                          # 2
+  }
+}
+```
+
+`DeviceTensor->UploadBits(Int[])` and `DownloadBits(Int[])` move raw element patterns, so a half-precision model can be fed without a per-element conversion. `Quantization` also has `ToUInt8` and `Dequantize`. `onnx_float16` needs no GPU or model file: it checks known patterns, the round trip of all 65,536 half and bfloat16 patterns, every rounding midpoint between neighbouring finite values, and a tiny generated model with FP16, BF16, INT8 and UINT8 inputs and outputs. An FP16 or INT8 model is made offline from an FP32 one with Python (`programs/tests/onnx_gpu/make_models.py`); INT8 needs calibration on representative data before its accuracy means anything.
+
+**One session, many threads.** `Session->Run` from several Objeck threads on the same `Session` is supported on every provider. `Session->Run`, `BoundSession->Run` and the device copies hand the calling thread to the collector for the length of the native work, so a long inference does not hold up garbage collection for other threads. Give each thread its own `BoundSession` and `DeviceTensor`s over the shared `Session`: a `BoundSession` belongs to one thread at a time. `onnx_concurrency` (CPU provider) and `onnx_concurrency_gpu` (`SKIP:` without a GPU) run four threads on one shared session beside a thread that allocates garbage without pause, and check every answer against the single-threaded one. The per-family sessions (`YoloSession`, `ResNetSession`, `Phi3Session`, ...) are not changed by this and still run their inference without handing over the thread.
+
+**CUDA graphs.** `enable_cuda_graph=1` (for `ep=cuda`; `cuda_graph=1` for `ep=tensorrt`) records the kernels of a run and replays them with one launch. It needs fixed shapes, every node on the GPU and tensors that stay at the same addresses, which is what a bound `DeviceTensor` is: refill it with `Upload`, never replace it. A session that asks for a graph runs the CUDA provider sequentially.
+
+#### TensorRT and the engine cache
+
+**Experimental: API may change.** `ep=tensorrt` (`trt`) compiles the model, or the parts of it TensorRT supports, into an engine for this GPU. It needs the NVIDIA driver, CUDA 12, cuDNN 9 and TensorRT 10 beside a GPU ONNX Runtime that carries the TensorRT provider; a runtime without it refuses the session.
+
+```ruby
+config := Map->New()<String, String>;
+config->Insert("ep", "tensorrt");
+config->Insert("fp16", "1");                  # half precision kernels where TensorRT can
+config->Insert("cuda_graph", "1");
+session := Session->New("resnet34.onnx", config);
+```
+
+| Key | Meaning |
+|---|---|
+| `fp16=1`, `int8=1` | half precision, or INT8 (the model must be QDQ-quantized); both off by default |
+| `engine_cache=0\|1` | engine cache, **on by default** |
+| `engine_cache_path=` | where engines go; default a per-user directory (`~/.cache/objeck-onnx/tensorrt_cache` on Linux, `%LOCALAPPDATA%\objeck-onnx\tensorrt_cache` on Windows), one subdirectory per precision setting |
+| `timing_cache`, `workspace_mb`, `opt_level` | the matching TensorRT builder options |
+| `cuda_fallback=0\|1` | append the CUDA provider for nodes TensorRT cannot take, **on by default** (`cuda.<option>` configures it) |
+| `trt_*` | any other TensorRT provider option, unchanged |
+
+TensorRT builds an engine the first time it sees a model, a precision and an input shape, which is slow; the cache keeps it for the next run. An engine is tied to the model, the GPU, the TensorRT version and these settings, so delete the cache directory after upgrading TensorRT or ONNX Runtime. Not checked: INT8 with a calibration table instead of a QDQ model, DLA, dynamic-shape profiles (each new batch size builds a new engine), and the Windows TensorRT libraries (the Windows build of `libobjk_onnx` was only checked to compile). Timings for these settings are in [`programs/tests/onnx_gpu`](../programs/tests/onnx_gpu/README.md), with the scripts to reproduce them on your own hardware.
+
 ---
 
 ## Remote Inference Servers
@@ -940,6 +1143,826 @@ What the interface deliberately leaves out is anything only one backend has --
 `GetModelInfo` on ONNX, `Metadata` and `DescribeRequest` on HTTP. Reach them
 through `GetSession()` or `GetClient()`; an interface that carried the union of
 two backends would describe neither.
+
+---
+
+## Agents (API.Agent)
+
+`API.Agent` is a provider-neutral tool-use loop. You give a chat model Objeck functions as tools; the library sends the conversation, runs the tool calls the model asks for, sends the results back, and repeats until the model answers in plain text. The same program runs against Anthropic, OpenAI, Gemini or a local Ollama by changing one line, and against a scripted fake model with no key and no network. Compile with `-lib agent,net,json,cipher,misc`.
+
+The library talks to the providers itself, so it does not need the `anthropic`, `openai`, `gemini` or `ollama` libraries. Its classes have distinctive names (`AgentTool`, `AgentReply`, ...) because the compiler resolves another library's `Vector<Tool>` by its short name.
+
+A tool is a name, a description the model reads, a JSON Schema for its arguments and a handler: a function `(JsonElement) ~ String` wrapped in a `Func2Ref`, or an object that implements `AgentToolHandler`. `ScriptedBackend` replays a list of replies, so a tool can be tried without a model:
+
+```ruby
+use API.Agent;
+use Collection;
+use Data.JSON;
+
+class Weather {
+  function : Get(arguments : JsonElement) ~ String {
+    city := arguments->Get("city")->GetString();
+    return "18C and sunny in {$city}";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("get_weather", "Get the weather for a city", schema, Func2Ref->New(Weather->Get(JsonElement) ~ String)<JsonElement, String>));
+
+    # a scripted model: it asks for the tool, then answers
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("call_1", "get_weather", "{\"city\":\"Paris\"}"));
+    script->AddBack(AgentReply->Say("It is 18C and sunny in Paris."));
+
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    result := agent->Run("What is the weather in Paris?");
+    result->GetText()->PrintLine();
+    result->ToString()->PrintLine();
+  }
+}
+```
+
+```
+It is 18C and sunny in Paris.
+[1] call get_weather {"city":"Paris"} -> ok: 18C and sunny in Paris
+[2] model: It is 18C and sunny in Paris.
+result: completed
+answer: It is 18C and sunny in Paris.
+```
+
+To use a real model, swap the backend. Each looks for its key in the argument, then an environment variable, then a key file in the working directory:
+
+| Backend | Constructor | Key |
+|---|---|---|
+| `AnthropicBackend` | `New(model, key)` | `ANTHROPIC_API_KEY`, `anthropic_api_key.dat` |
+| `OpenAIBackend` | `New(model, key)` | `OPENAI_API_KEY`, `openai_api_key.dat` (Chat Completions; `SetBaseUrl` points it at a compatible server) |
+| `GeminiBackend` | `New(model, key)` | `GOOGLE_API_KEY` or `GEMINI_API_KEY`, `gemini_api_key.dat` |
+| `OllamaBackend` | `New(model)` | none; `http://localhost:11434`, `SetHost` to change; the model must support tools |
+| `ScriptedBackend` | `New(script)` | none |
+
+```ruby
+use API.Agent;
+
+class Live {
+  function : Main(args : String[]) ~ Nil {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+    registry->Add(AgentTools->CurrentTime());
+
+    # pick one; each looks for its key in the environment or a key file
+    backend : ChatBackend;
+    backend := AnthropicBackend->New("claude-sonnet-5-5", Nil);
+    # backend := OpenAIBackend->New("gpt-5", Nil);
+    # backend := GeminiBackend->New("gemini-2.5-flash", Nil);
+    # backend := OllamaBackend->New("llama3.2");
+
+    agent := Agent->New(backend, registry);
+    agent->SetSystem("Use the tools for any arithmetic or date question.");
+    result := agent->Run("What is 17 * 23, and what is today's date in UTC?");
+    if(result->IsCompleted()) {
+      result->GetText()->PrintLine();
+    }
+    else {
+      "run failed ({$(result->GetStatus())}): {$(result->GetError())}"->ErrorLine();
+    };
+  }
+}
+```
+
+**What the loop does with a call.** Whatever fails becomes an error result the model can read, and the loop carries on. A call is answered `unknown` (no such tool), `denied` (the registry's `Allow` or `Deny` list excludes it), `invalid` (the arguments broke the tool's schema; the handler did not run), `refused` (a dangerous tool, or `SetApproveAll(true)`, and the `AgentApprover` said no or there is none), `error` (the handler raised, returned `Nil` or faulted), `timeout`, `skipped` (the step limit was reached) or `ok`. `Run` returns an `AgentResult` with `GetText()`, `GetStatus()` (`completed`, `max_steps` or `error`), `GetSteps()`, `ToString()` and `ToJson()`; the conversation is kept, so a second `Run` carries on and `Reset()` forgets it.
+
+**Safety.**
+
+- Offer the least: `ToolRegistry->Allow(name)` restricts the model to the listed tools, and `Deny(name)` always wins.
+- `AgentTool->SetDangerous(true)` sends every call through the `AgentApprover`; with no approver the call is refused.
+- Arguments are checked against the tool's schema before the handler runs. Write schemas with `required`, `enum`, bounds and `"additionalProperties": false`; a path or command line still needs checking inside the handler.
+- Model output and tool output are untrusted. Do not give one agent both a tool that reads untrusted content and a tool that can send or delete without approval.
+- API keys are masked in error messages and in `AgentResult->ToString()` and `ToJson()` (`Redactor->Scrub(text)` does the same for anything else you log).
+- `AgentTools` has three ready-made, non-dangerous tools: `Calculator()`, `CurrentTime()` and `ReadFile(directory)`. The file reader is lexical: it refuses `..` and absolute paths but does not detect a symbolic link that points outside the directory.
+
+**Limits.**
+
+- `SetMaxSteps(n)` (default 10) bounds the model calls in one `Run`; a model still asking for tools on the last step gets `skipped` answers and the result is `max_steps`.
+- Timeouts are not interruptions: `SetToolTimeout(ms)` reports a slow handler as `timeout` and discards its result, but a handler that never returns still hangs the run.
+- Tool calls run one after another, even when the model asks for several at once.
+- The schema checker covers `type`, `properties`, `required`, `additionalProperties`, `enum`, `const`, the numeric, string and array bounds, `items`, `anyOf` and `oneOf`; `pattern`, `format` and `$ref` are not checked.
+- No token streaming: an `AgentObserver` sees each step as it happens, and the model's text arrives whole.
+- Tested without the live services. `agent_loop_test`, `agent_backend_test` and `agent_http_test` use a scripted model, recorded provider response bodies and a local HTTPS server; nothing in the tests calls api.anthropic.com, api.openai.com, Google or a real Ollama.
+
+`programs/examples/agent_demo.obs` takes a provider, a model and a question and runs against the scripted model when it gets none.
+
+---
+
+## Model Context Protocol (API.MCP)
+
+`API.MCP` is a pure-Objeck implementation of the [Model Context Protocol](https://modelcontextprotocol.io). A **server** offers tools, resources and prompts that an MCP client (Claude Desktop, Claude Code, or this library's own client) can discover with the `tools/list`, `resources/list` and `prompts/list` requests and then call; a **client** does the same against another program; and a **bridge** hands a connected server's tools to the Anthropic, OpenAI and Gemini clients. Compile with `-lib mcp` plus the libraries it links:
+
+```
+obc -src server.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest server.obe
+```
+
+The protocol revision is **2025-11-25** (a client asking for 2025-06-18, 2025-03-26 or 2024-11-05 is answered with that revision). The newer stateless 2026-07-28 revision is not implemented.
+
+| | |
+|---|---|
+| Transports | stdio (newline-delimited JSON-RPC 2.0) and streamable HTTP; the client also reaches a server in the same process, or a server program started once per request |
+| Server methods | `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`, `resources/templates/list`, `resources/read`, `prompts/list`, `prompts/get`, cancellation, and progress notifications (sent) |
+| Not implemented | `logging/setLevel`, `completion/complete`, `resources/subscribe`, `list_changed` notifications, pagination, sampling, roots, elicitation, tasks, OAuth for HTTP, resumable streams, JSON-RPC batches |
+
+### A server over stdio
+
+A tool is a name, a description, the JSON Schema of its input and a function that takes a `McpCall` and returns a `McpToolResult`. `ServeStdio()` reads one message per line from standard input and writes one reply per line to standard output until the input ends:
+
+```ruby
+use API.MCP;
+
+class Greeter {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("greeter", "1.0.0");
+    server->AddTool("greet", "Greet a person by name",
+      "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}",
+      Func2Ref->New(Greeter->Greet(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+    server->ServeStdio();
+  }
+
+  function : Greet(call : McpCall) ~ McpToolResult {
+    name := call->GetString("name");
+    return McpToolResult->Text("Hello, {$name}!");
+  }
+}
+```
+
+Fed an `initialize` request, the `initialized` notification, a `tools/list` and a `tools/call`, it printed (the notification gets no reply):
+
+```
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"greeter","version":"1.0.0"}}}
+{"id":2,"jsonrpc":"2.0","result":{"tools":[{"description":"Greet a person by name","inputSchema":{"properties":{"name":{"type":"string"}},"required":["name"],"type":"object"},"name":"greet"}]}}
+{"id":3,"jsonrpc":"2.0","result":{"content":[{"text":"Hello, Ada!","type":"text"}],"isError":false}}
+```
+
+Nothing but protocol may reach standard output while the server runs; log with `ErrorLine()`. Resources and prompts are added the same way (`AddResource`, `AddPrompt`); a resource URI containing `{` is a template. A handler can poll `call->IsCancelled()` and send `call->ReportProgress(progress, total, message)`.
+
+A tool that fails is not a protocol error: a handler that returns `McpToolResult->Error("...")`, raises, returns `Nil` or gets arguments that miss the schema's `required` names or `type`s produces a normal reply with `isError` true, so the model can read it and retry. Protocol errors (`-32700` parse, `-32600` invalid request, `-32601` unknown method, `-32602` bad parameters, `-32002` resource not found) are for malformed requests.
+
+### A client
+
+`McpClient` initializes a connection, lists and calls tools, reads resources and gets prompts. A refused request returns `Nil` (or `false`) and `GetError()` and `GetErrorCode()` say why; a tool that ran and failed is a result whose `IsError()` is true:
+
+```ruby
+use API.MCP, Collection, Data.JSON;
+
+class Tour {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("tour", "1.0.0");
+    server->AddTool("add", "Add two integers",
+      "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}",
+      Func2Ref->New(Tour->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+    server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "Hello from a resource"));
+
+    # a client of a server in the same process
+    client := McpClient->InProcess(server);
+    if(client->Initialize("tour-client", "1.0")) {
+      "server: {$client->GetServerName()} {$client->GetServerVersion()}, revision {$client->GetProtocolVersion()}"->PrintLine();
+
+      tools := client->ListTools();
+      each(tool in tools) {
+        "tool: {$tool->GetName()} - {$tool->GetDescription()}"->PrintLine();
+      };
+
+      result := client->CallTool("add", "{\"a\":2,\"b\":3}");
+      "add(2, 3) = {$result->GetText()}"->PrintLine();
+
+      # a tool that ran and failed is a result; a request the server refuses is Nil with a reason
+      missing := client->CallTool("add", "{\"a\":2}");
+      if(missing->IsError()) {
+        "add(2) failed: {$missing->GetText()}"->PrintLine();
+      };
+      if(client->CallTool("nope", "{}") = Nil) {
+        "nope: {$client->GetError()} (code {$client->GetErrorCode()})"->PrintLine();
+      };
+
+      contents := client->ReadResource("notes://readme");
+      "resource: {$contents->Get(0)->GetText()}"->PrintLine();
+    };
+  }
+
+  function : Add(call : McpCall) ~ McpToolResult {
+    sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+    return McpToolResult->Text("{$sum}");
+  }
+}
+```
+
+```
+server: tour 1.0.0, revision 2025-11-25
+tool: add - Add two integers
+add(2, 3) = 5
+add(2) failed: Invalid arguments for add: missing required argument 'b'
+nope: Unknown tool: nope (code -32602)
+resource: Hello from a resource
+```
+
+A client reaches a server through a transport: `McpClient->Http(url)` (streamable HTTP), `McpClient->InProcess(service)`, `McpClient->Command(command)` (a server program started by the shell **once per request**, so only for servers whose tools do not depend on earlier requests; the runtime has no process with pipes) or `McpClient->New(transport)` for your own `McpTransport`.
+
+### Serving over HTTP
+
+`server->ServeHttp(8080)` listens on `127.0.0.1` (port 0 takes a free port, `GetBoundPort()` says which; `ServeHttp("", 8080)` listens on every interface). The server issues an `Mcp-Session-Id`, refuses a browser `Origin` that is not loopback unless you add it with `AllowOrigin`, and answers every `POST` with JSON. Limits: there is no authorization, so keep the loopback address unless something in front of it authenticates; replies are never an event stream, so progress notifications are dropped (cancellation works); sessions live in memory and never expire; only one HTTP server runs in a process.
+
+### Using a server from Claude Desktop and Claude Code
+
+`programs/examples/mcp_server_demo.obs` is a server with a calculator and two read-only file tools restricted to one directory. Claude Desktop reads `claude_desktop_config.json`; Claude Code reads `.mcp.json` in the project or `~/.claude.json`. The entry has the same shape in both:
+
+```json
+{
+  "mcpServers": {
+    "objeck-demo": {
+      "command": "/opt/objeck/bin/obr",
+      "args": ["/opt/objeck/examples/mcp_server_demo.obe", "/home/me/shared"],
+      "env": { "OBJECK_LIB_PATH": "/opt/objeck/lib" }
+    }
+  }
+}
+```
+
+**Verified with Claude Code, not with Claude Desktop.** On 2026-11-24 Claude Code 2.1.323 connected to `mcp_server_demo.obs` over stdio on Windows x64, negotiated revision 2025-11-25, listed the tools, called `calculate` for `17 + 25` and got `42`. A tool error (`1/0`) and a call missing a required argument both came back as error results with a clear message, and the server stayed up. Not tried: Claude Desktop, the HTTP transport, resources and prompts calls from a real client, Linux and macOS. The server is also tested against a scripted client that speaks the specification's messages.
+
+### Giving a server's tools to Claude, OpenAI and Gemini
+
+`McpToolBridge->New(client)` lists a connected server's tools and converts them: `ToAnthropicJson()` and `ToOpenAiJson()` are the `tools` arrays those APIs take, `GetFunctions()` is the map `API.Google.Gemini.Model->GenerateContent` takes, and `Run(name, input)` runs the call a model asked for and returns the text to give back (`"error: ..."` for a tool that failed). With Claude:
+
+```ruby
+use API.MCP, API.Anthropic, Collection, Data.JSON;
+
+# compile with -lib anthropic,gen_collect,json,net,net_server,cipher,misc,mcp
+class AskWithTools {
+  function : Main(args : String[]) ~ Nil {
+    client := McpClient->Http("http://127.0.0.1:8080/mcp");
+    client->Initialize("agent", "1.0");
+    bridge := McpToolBridge->New(client);
+
+    tools := Vector->New()<Tool>;
+    each(tool in bridge->GetTools()) {
+      tools->AddBack(Tool->New(tool->GetName(), tool->GetDescription(), tool->GetInputSchema()));
+    };
+
+    chat := Chat->New("claude-sonnet-5-5", Nil);
+    reply := chat->SendReply("What is (2 + 3) * 4? Use the calculator.", tools);
+    while(reply <> Nil & reply->HasToolUses()) {
+      uses := reply->GetToolUses();
+      each(i : uses) {
+        call := uses->Get(i);
+        text := bridge->Run(call->GetName(), call->GetInput());
+        chat->AddToolResult(call->GetId(), text, text->StartsWith("error: "));
+      };
+      reply := chat->SendReply(Nil, tools);
+    };
+    reply->GetText()->PrintLine();
+  }
+}
+```
+
+The bridge is tested against a local server (`mcp_core_test`). On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live.
+
+### Limits
+
+- The JSON parser is lenient: a malformed message inside well-placed braces can be accepted.
+- Tool input is validated for `required` names and each property's `type` only; `enum`, `minimum`, patterns, nested objects and `$ref` are not checked.
+- Each `tools/call` takes a thread of its own, with no cap.
+- Standard input is read a byte at a time, which makes a line of any length work and is slow for very large messages.
+- A stdio server ends when its input does; there is no `shutdown`.
+
+Tests: `mcp_core_test` in the regression suite (every method, version negotiation, the error codes, failing tools, cancellation, the bridge, and the client over HTTP on loopback) and `mcp_stdio_test.py`, a scripted Python client that drives a server process over stdio.
+
+---
+
+## Retrieval-augmented generation (System.ML.Rag)
+
+RAG answers from your documents instead of from what a model was trained on: split the documents into chunks, embed them, keep the vectors in an index, and for each question retrieve the closest chunks, put them in the prompt as numbered sources, and ask the model to cite them. The kit is glue over parts that already exist: `VectorIndex` (see [Local vector search](#local-vector-search-systemmlvectorsearch)), the embedders and the chat clients.
+
+| Library | Holds | `-lib` |
+|---|---|---|
+| `rag` | the chunker, the `RagEmbedder` and `RagGenerator` interfaces, an offline toy embedder and generator, `RagIndex`, the prompt builder, `RagAnswer`, `RagPipeline` | `rag,ml_vector,gen_collect` |
+| `rag_adapters` (**Experimental: API may change**) | adapters over BERT, the CLIP image tower, Ollama, OpenAI, Gemini and Anthropic | `@rag` |
+
+Nothing in either library ends the program on bad input or a failed call: it returns `Nil`, `false` or `-1`, and the object keeps the reason (`GetError()`).
+
+`RagHashEmbedder` (hashed bag of words) and `RagStubGenerator` (answers with the sentence of source [1] that shares the most words with the question, and cites it) need no key, model or network, so a whole pipeline runs anywhere:
+
+```ruby
+use System.ML.Rag;
+
+class Quickstart {
+  function : Main(args : String[]) ~ Nil {
+    pipeline := RagPipeline->New(RagHashEmbedder->New(512), RagStubGenerator->New());
+    pipeline->AddText("faq.txt", "Objeck is an object-oriented language. It compiles to bytecode.\n\nThe virtual machine has a generational garbage collector.");
+    pipeline->AddText("net.txt", "The net library speaks HTTP and TLS.");
+
+    answer := pipeline->Answer("What kind of garbage collector is there?");
+    answer->GetText()->PrintLine();
+
+    source := answer->GetCitedSources()->Get(0)->GetChunk();
+    "from {$source->GetSource()} at offset {$source->GetOffset()}"->PrintLine();
+  }
+}
+```
+
+```
+The virtual machine has a generational garbage collector. [1]
+from faq.txt at offset 0
+```
+
+The toy embedder matches shared words, not meaning, so it demonstrates the plumbing and is what the tests use. For real retrieval swap in an adapter; nothing else changes.
+
+- **Chunking.** `RagChunker->New(size, overlap, mode)` cuts text into `RagChunk` pieces with an id, source name, character offset and text. The modes (`RagSplit`) are `SIZE`, `PARAGRAPH` and `SENTENCE`.
+- **The index.** `RagIndex` is a `VectorIndex` that also remembers each chunk, so `Search` returns `RagMatch` objects (chunk, score, rank). `Store(file)` writes vectors and chunks to one file and `RagIndex->Load(file)` returns `Nil` for a missing, damaged or foreign file; `pipeline->SetIndex(index)` carries on from a loaded one.
+- **Prompt and answer.** `RagPromptBuilder` asks the model to answer only from the numbered sources and cite them as `[n]`. `RagAnswer` has `GetText()`, `GetSources()`, `GetPrompt()` and `GetCitations()`, which read the `[n]` markers out of the text. With nothing retrieved the generator is not called and the answer is the no-answer text.
+- **The pipeline.** `AddText(source, text)` (adding a source again replaces its chunks), `Retrieve(question)`, `Answer(question)`, `SetTopK`, `SetMinScore`, `SetChunker`, `SetPromptBuilder`.
+
+**Plugging in models.** An embedder is any class implementing `RagEmbedder` (`GetDimension`, `Embed(texts) ~ Float[,]`, `GetError`); a generator implements `RagGenerator` (`Generate(prompt)`, `GetError`). Questions and chunks must be embedded by the same model.
+
+**Adapters (Experimental: API may change).** `RagBertEmbedder`, `RagClipImageEmbedder` (the "text" is an image path, so a search is by example image), `RagOllamaEmbedder`, `RagOpenAIEmbedder`, `RagGeminiEmbedder`, `RagOllamaGenerator`, `RagOpenAIGenerator`, `RagAnthropicGenerator` and `RagGeminiGenerator`. Hosts and keys are the underlying clients' own. Mixing is fine: embed locally with BERT and generate with Claude. With a local Ollama server (compile with `-lib @rag`):
+
+```ruby
+use System.ML.Rag;
+
+class Local {
+  function : Main(args : String[]) ~ Nil {
+    # a local server: `ollama pull nomic-embed-text` and `ollama pull llama3.2` first
+    embedder := RagOllamaEmbedder->New("nomic-embed-text");
+    generator := RagOllamaGenerator->New("llama3.2");
+
+    pipeline := RagPipeline->New(embedder, generator);
+    if(pipeline->AddText("faq.txt", "Objeck is an object-oriented language.") < 0) {
+      "could not index: {$pipeline->GetError()}"->PrintLine();
+      return;
+    };
+
+    answer := pipeline->Answer("What is Objeck?");
+    if(answer = Nil) {
+      "could not answer: {$pipeline->GetError()}"->PrintLine();
+      return;
+    };
+    answer->GetText()->PrintLine();
+  }
+}
+```
+
+With no Ollama server this prints `could not index: embedder: empty response (HTTP 0)` and ends. The Ollama adapters are tested against a fake server on loopback (`rag_adapters_ollama_test`); the OpenAI, Gemini, Anthropic, BERT and CLIP adapters compile and are thin wrappers, but no test exercises them against a live service or model.
+
+**Limits.**
+
+- Retrieval is only as good as the embedder.
+- Citations are asked for, not enforced: a model may cite nothing, cite wrongly, or answer from what it knows, and the kit does not check that a claim is supported by its source.
+- The index is exact and in memory (`SetThreads` parallelizes the scan of a large one); it is not a hosted vector store.
+- There is no check that the embedder asking a question is the one that built a loaded index, only that the dimensions agree.
+- A `RagIndex`, `RagChunker` or `RagPipeline` is for one thread at a time.
+- Adapter requests are one prompt with no history, and replies are not streamed.
+
+`programs/examples/rag_demo.obs` runs the whole offline pipeline, including saving and reloading an index. The tests are `rag_chunking_test`, `rag_index_test`, `rag_pipeline_test` and `rag_adapters_ollama_test`; none needs a key, a model or a network.
+
+---
+
+## Actors and supervision (System.Actor)
+
+`System.Actor` is the substrate for multi-agent programs: a running agent, a tool server or a worker is an **actor**, a thread with a private **mailbox** and a user object that handles one message at a time. Actors share no state; they send each other messages. When one fails, its **supervisor** restarts it by a stated policy, and when restarts come too fast the supervisor itself fails and its own supervisor decides what happens next. This is the Erlang/OTP model on the stock `Thread`, `ThreadMutex` and `Condition`, in Objeck with no VM change. Compile with `-lib gen_collect,concurrent,actor`. Agents as actors are a separate library, `actor_agents`, so `actor` links nothing heavy.
+
+**The limit to know first.** An uncaught VM fault on any thread ends the whole process, so supervision recovers only from failures that surface as errors the actor can catch. The receive loop wraps `Init`, every `Handle` and `Terminate` in a `try`, and these become the exit reason `FAILED` instead of killing the program: a raised `Error`, divide by zero, index out of bounds, a `Nil` dereference, a bad cast, a failed `Runtime->Assert`, and unbounded recursion (the `--call-depth` limit). It cannot catch memory exhaustion, a crash in a native library or the VM, `Runtime->Exit` or a signal; those end every actor with the process. Actors isolate state and errors, not VM faults.
+
+```ruby
+use System.Actor;
+
+class Counter implements ActorBehavior {
+  @n : Int;
+
+  New() {
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->CALL) {
+      mail->Answer(IntRef->New(@n));          # answer a question
+    }
+    else {
+      @n += mail->GetPayload()->As(IntRef)->Get();
+    };
+    return true;                              # false ends the actor with the reason NORMAL
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    counter := Actor->New("counter", Counter->New())->Start();
+    counter->Send(IntRef->New(2));
+    counter->Send(IntRef->New(3));
+    answer := counter->Call(Nil, 1000);       # waits up to 1000 ms
+    answer->GetValue()->As(IntRef)->Get()->PrintLine();
+    counter->Stop();
+    counter->Join()->ToString()->PrintLine();
+
+    # a bounded mailbox that refuses when full
+    box := Mailbox->New(2, Mailbox->Policy->REJECT);
+    box->Send("a");
+    box->Send("b");
+    box->Send("c")->PrintLine();              # FULL, printed as its number
+    box->Receive(100)->As(String)->PrintLine();
+  }
+}
+```
+
+```
+5
+stopped
+1
+a
+```
+
+The behavior object's fields are the actor's state; only the actor's thread touches them, so they need no lock. A behavior that also implements `ActorLifecycle` gets `Init` (before the first message; raising fails the actor) and `Terminate`. A `Mail` has a kind: `DATA`, `CALL`, `DOWN` (a watched actor ended) or `EXIT` (a linked actor ended, delivered to an actor that traps exits).
+
+| Piece | What it does |
+|---|---|
+| `Mailbox` | thread-safe FIFO, usable alone. Unbounded, or bounded with `BLOCK` (senders wait in arrival order, up to a timeout) or `REJECT`. `Send` returns `OK`, `FULL`, `TIMED_OUT`, `CLOSED` or `INVALID`; `Receive`, `Receive(timeout)`, `TryReceive`, `Close` (queued items stay receivable) |
+| `Actor` | `Start`, `Send`, `Call`, `Stop` (graceful: the queue is drained), `Kill` (cooperative: queued mail is dropped), `Join` (an `ExitReason`: `NORMAL`, `STOPPED`, `FAILED` with the error, `KILLED`) |
+| `Call(payload, timeout)` | a question with a correlation id: `OK` with the value, `TIMED_OUT`, `DEAD` or `FAILED`. A late answer is dropped and counted; a call to an actor that ends returns at once |
+| `Monitor`, `Link` | `Monitor` puts a `DOWN` mail in a mailbox when the target ends; `Link` fails the partner with an abnormal end unless it called `SetTrapExits(true)` |
+| `Supervisor`, `ChildSpec` | restarts children from a `BehaviorFactory`, so a restart begins with clean state |
+
+**Supervisor policies.** Strategy: `ONE_FOR_ONE` (only that child restarts), `ONE_FOR_ALL` (the others stop, last started first, then all restart in order), `REST_FOR_ONE` (the children started after it, then it). Restart: `PERMANENT` (always), `TRANSIENT` (after `FAILED` or `KILLED`, not after a normal end), `TEMPORARY` (never). `Supervisor->New(name, strategy, max_restarts, period_seconds)`: more than `max_restarts` in the period fails the supervisor (the escalation: put it under a parent supervisor with `inner->AsFactory()`). Stopping a child sends `Stop`, waits its shutdown timeout, then `Kill`s it, then abandons it if it still has not ended (`GetAbandonedCount()`). `StartChild`, `TerminateChild`, `Children`, `GetChild` and `GetRestartCount` manage children while it runs; each returns after the supervisor has dealt with every child ending queued before it, which makes them a barrier in tests.
+
+A handler that divides by zero fails its actor, and the supervisor starts a fresh one:
+
+```ruby
+use System.Actor;
+
+class Flaky implements ActorBehavior {
+  @starts : static : Int;
+  @n : Int;
+
+  New() {
+    @starts += 1;
+  }
+
+  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+    if(mail->GetKind() = Mail->Kind->CALL) {
+      mail->Answer(IntRef->New(@n));
+      return true;
+    };
+    value := mail->GetPayload()->As(IntRef)->Get();
+    if(value = 0) {
+      x := 1 / value;                         # divide by zero: the actor fails, the process does not
+    };
+    @n += value;
+    return true;
+  }
+
+  function : GetStarts() ~ Int {
+    return @starts;
+  }
+}
+
+class FlakyFactory implements BehaviorFactory {
+  New() {
+  }
+
+  method : public : Create() ~ ActorBehavior {
+    return Flaky->New();
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    sup := Supervisor->New("team", SupervisorStrategy->Kind->ONE_FOR_ONE, 3, 10);   # 3 restarts per 10 s
+    sup->AddChild(ChildSpec->New("flaky", FlakyFactory->New(), ChildSpec->Restart->PERMANENT, 1000));
+    sup->Start();
+    child := sup->GetChild("flaky");
+    child->Send(IntRef->New(5));
+    child->Send(IntRef->New(0));              # fails and is restarted
+    sup->Children();                          # a barrier: returns after the restart
+    "restarts: {$sup->GetRestartCount()}"->PrintLine();
+    child := sup->GetChild("flaky");          # the old reference is dead after a restart
+    child->Send(IntRef->New(7));
+    child->Call(Nil, 1000)->GetValue()->As(IntRef)->Get()->PrintLine();
+    "starts: {$Flaky->GetStarts()}"->PrintLine();
+    sup->Stop();
+    sup->Join()->ToString()->PrintLine();
+  }
+}
+```
+
+```
+restarts: 1
+7
+starts: 2
+stopped
+```
+
+The 5 sent before the failure is gone: the new incarnation answers 7, not 12.
+
+**Agents as actors.** `actor_agents` (`-lib gen_collect,concurrent,actor,actor_agents,agent,net,json,cipher,misc`) runs an `API.Agent` agent as an actor: `AgentActorFactory->New(builder, fail_on_error)` is the child factory and an `AgentBuilder` makes a fresh `Agent` for each start, so a restart begins a new conversation. A prompt is a `String` payload; a `Call` returns the `AgentResult`. With `fail_on_error` a run that does not complete is delivered and then fails the actor, so the supervisor restarts that agent and the others are untouched. An agent run is one blocking call: `Stop` waits for it and `Kill` cannot end it, so give agents a shutdown timeout that fits a model call and set a step limit and a tool timeout on the `Agent`. The library is blocked in the hosted playground (it links the model clients); `actor` is not.
+
+**What is not guaranteed.**
+
+- A blocked or looping handler cannot be interrupted. `Stop` and `Kill` are requests; a supervisor abandons such a child after the shutdown timeout and the thread leaks until the handler returns. There is no preemption, no per-handler time limit and no hang detection.
+- Delivery is in-process, at most once and unacknowledged. A message to an actor that fails before handling it is lost (`GetDiscardedCount()`), `REJECT` loses mail by design, nothing is retried, and there is no ordering between different senders.
+- A restart loses state, and mail queued for the failed incarnation is discarded.
+- Two actors that `Call` each other (or one that calls itself) wait until the timeout.
+- Every actor is an operating-system thread with a stack; thousands of actors are thousands of threads.
+- Left out on purpose: a `DROP_OLDEST` policy, selective receive, a name registry, an `ActorSystem` convenience and a `TaskScope` tie.
+
+Tests: `actor_mailbox_test`, `actor_mailbox_stress_test` (eight producers, one consumer), `actor_core_test`, `actor_supervisor_test` and `actor_agents_test`, with scripted handlers and latches, no network and no key. The two programs above were compiled and run for this guide; the `actor_agents` library was not run here (see `actor_agents_test`). Example: `programs/examples/actor_supervision_demo.obs`; the full reference is [ai_sections/actor.md](ai_sections/actor.md).
+
+---
+
+## Inference telemetry (System.Telemetry)
+
+`System.Telemetry` is the measurement base for resource-aware inference: it times a call, keeps latency statistics per (model, device, batch, tag) in bounded memory, samples the resources around the call, estimates energy from sampled power, saves the result as a profile and answers `Predict` from it. It is pure Objeck, in its own library with no dependency on `onnx`: wrap your own session calls with it. Compile with `-lib telemetry,gen_collect,json` or `-lib @telemetry`. Every latency is in **milliseconds**, a `Float`.
+
+```ruby
+use System.Telemetry;
+
+class Work {
+  function : Spin() ~ Nil {
+    sum := 0.0;
+    for(i := 0; i < 20000; i += 1;) {
+      sum += (i * 1.5)->Sqrt();
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    for(i := 0; i < 40; i += 1;) {
+      probe := Telemetry->Start("spin", "cpu", 8, "run");   # model, device, batch, phase tag
+      Work->Spin();
+      probe->Stop();                                        # elapsed milliseconds, recorded
+    };
+
+    store := Telemetry->Default()->GetStore();
+    p := store->Predict("spin", "cpu", 8);
+    if(p = Nil) {
+      store->GetError()->PrintLine();
+    }
+    else {
+      "count {$p->GetCount()}, exact {$p->IsExact()}, p50 <= p95: {$(p->GetP50() <= p->GetP95())}"->PrintLine();
+    };
+
+    # a batch never measured is a miss with the reason, not an interpolation
+    if(store->Predict("spin", "cpu", 16) = Nil) {
+      store->GetError()->PrintLine();
+    };
+
+    s := SeriesStats->New(0);                 # 0: no warm-up discard
+    s->Add(2.0); s->Add(4.0); s->Add(4.0); s->Add(4.0); s->Add(5.0); s->Add(5.0); s->Add(7.0); s->Add(9.0);
+    "n={$s->GetCount()} p50={$s->GetP50()}"->PrintLine();
+  }
+}
+```
+
+```
+count 40, exact true, p50 <= p95: true
+model 'spin' on 'cpu' has no profile at batch 16 (observed batches: 8)
+n=8 p50=4.000000
+```
+
+**The clock.** Every duration comes from `System.Time.Timer`, the C++ `steady_clock`: monotonic, never jumping with the wall clock, with nanosecond ticks (the Windows tick is 100 ns). A latency is `GetElapsedTime() * 1000.0`. The runtime exposes no absolute nanosecond timestamp, so anything placed on a timeline (a sampler reading, the energy attributed to a call) uses `Telemetry->NowMs()`, at one millisecond resolution. An empty `Start` plus `Stop` measured 29 ns at the median on Linux (WSL2); `Telemetry->MeasureOverhead(n)` measures it on your machine. A handle that is never stopped records nothing, `Cancel()` drops a failed call, and `Telemetry->Time(model, device, batch, tag, fn)` times a function reference. The static calls share one process-wide recorder; make a `TimingRecorder->New()` to keep profiles apart (it is safe to share between threads).
+
+**Statistics.** `SeriesStats` keeps the count, minimum, maximum, mean and sample standard deviation by Welford's update (a test checks a 1e9 offset), a warm-up discard (`SeriesStats->New(n)` drops the first n samples and nothing smarter: there is no steady-state detection) and a ring of the last 256 raw samples. Quantiles are nearest rank: the sample at rank `ceil(q * n)`, so p50 of 2 4 4 4 5 5 7 9 is 4 and a value never appears that was not observed. Up to 512 samples they are exact (`IsExact()`); beyond that `LatencySketch` answers, a log-bucketed histogram (the DDSketch construction) whose estimate is within a stated relative error of the order statistic, 1 percent by default with about 12 KB, whatever the count. The regression test measured the worst error against exact sorting at 0.99 percent on a bimodal set, 0.87 on lognormal, 0.66 on uniform, 0.65 over twelve decades and 0 on a constant, and fails if any quantile exceeds the bound; merging two sketches gives the sketch of the union. There are no confidence intervals: a p99 from 200 samples is the 198th value, a p99.9 needs at least 1,000 samples, and samples from one process are not independent, so compare configurations in the same process, interleaved.
+
+**Resources.** `RuntimeSampler` reads the runtime's own `runtime.*` monitors (resident and peak memory, heap, CPU time and percent, threads, collector counts and pauses); `GpuSampler` runs `nvidia-smi` (an absent GPU is a graceful no-op: `IsAvailable()` is false and `GetError()` says why); `SamplerLoop` samples on its own thread, and once a second is enough because each GPU sample starts a process. `PowermetricsSampler` for Apple Silicon is the interface only and always unavailable: `powermetrics` needs root and no Apple hardware was used. `EnergyEstimator` integrates sampled power with the trapezoid rule, and **it is an estimate**: board power is itself a sensor reading, and the energy attributed to a call is the average board power over the call times its duration, which includes whatever else runs on the GPU. The collector exports counts and the last, maximum and average pause, but no total pause, no pause distribution and no safepoint wait; the full list of gaps is in [ai_sections/telemetry.md](ai_sections/telemetry.md).
+
+**Profiles.** `ProfileStore` aggregates by model, device, batch and tag. `Save` writes lossless JSON (moments, exact samples, the sketch), so a loaded profile gives the same quantiles and `Merge` makes the profile of the union; `SaveCsv` writes a summary for a spreadsheet, and a profile loaded from CSV works for `Predict` but merges with NaN quantiles rather than an invented number. `Predict` returns what was observed in that cell (p50, p95, p99, mean, extremes, memory, and energy per run when a power source was attached) or `Nil` with the reason; a batch is never interpolated, because latency against batch is not linear. `ContentionRunner->New(workers, calls, fn)->Run()` runs K threads and reports throughput and `GetMedianSpread()`, the slowest worker's median over the fastest; run one worker first as the baseline.
+
+**What it is not.** It is the host-side latency of a call: for an asynchronous GPU launch it measures the call, not the kernel, and it uses no CUDA events. It decides nothing; the policy that uses a profile is a later layer. Five regression programs (`telemetry_sketch`, `telemetry_stats`, `telemetry_profile`, `telemetry_sampler`, `telemetry_contention`) need no network and no GPU, and the timing tests check lower bounds only. The program above was compiled and run for this guide; the GPU sampler, `PowermetricsSampler`, the energy estimator, JSON and CSV profiles and `ContentionRunner` were not run here (the regression tests cover them). Examples: `programs/examples/telemetry_demo.obs` (offline) and `programs/examples/telemetry_onnx.obs`; reference: [ai_sections/telemetry.md](ai_sections/telemetry.md).
+
+---
+
+## LLM utilities (API.LlmUtil)
+
+Helpers for the work around a chat model, in Objeck with no network code and no key: **prompt templates** and a message builder, **token estimation** with a context window that keeps a conversation inside a budget, **JSON Schema validation** that reports every problem with a JSON pointer, and **structured calls** that ask any chat backend for JSON matching a schema and retry with the validation errors until the reply is right. Any backend works through the two-method `ChatFn` interface, which you implement over the client you use. Compile with `-lib llm_util,regex,json,gen_collect`.
+
+```ruby
+use API.LlmUtil;
+use Collection;
+
+class Example1 {
+  function : Main(args : String[]) ~ Nil {
+    template := PromptTemplate->New("Summarize for {{audience|a general reader}}.\n{{#if style}}Style: {{style:lower}}\n{{/if}}Sources:\n{{#each sources}}{{@number}}. {{this}}\n{{/each}}Text: {{text:json}}");
+    vars := PromptVars->New()
+      ->Set("text", "She said \"hello\".")
+      ->Set("style", "TERSE")
+      ->SetArray("sources", ["Wikipedia", "RFC 8259"]);
+    template->Render(vars)->PrintLine();
+
+    "---"->PrintLine();
+    broken := PromptVars->New()->Set("style", "x");
+    if(template->Render(broken) = Nil) {
+      template->GetError()->PrintLine();
+    };
+  }
+}
+```
+
+```
+Summarize for a general reader.
+Style: terse
+Sources:
+1. Wikipedia
+2. RFC 8259
+Text: She said \"hello\".
+---
+missing required variables: sources, text
+```
+
+Placeholders: `{{name}}` (required), `{{name?}}` (optional), `{{name|fallback}}` (a default), `{{name:json}}` (a filter: `json`, `upper`, `lower`, `trim`), `{{#each items}}...{{/each}}` (with `{{this}}`, `{{@index}}`, `{{@number}}`), `{{#if name}}...{{else}}...{{/if}}` and `\{{` for a literal. `Render` returns `Nil` and `GetError()` names every missing variable at once. Values are never scanned for placeholders, so text a user supplies cannot add a variable or a loop to your prompt. A bad template is a value, not a crash: `IsOk()` is false and `GetError()` says what and where. `PromptBuilder` collects a conversation (`System`, `User`, `Assistant`, each from text or a template) and gives it as `ToPairs()` for `Completion->Complete`, or as `ToJsonMessages(with_system)` for OpenAI-style APIs and Ollama.
+
+**Tokens and context.** `TokenEstimator` counts what a byte-pair tokenizer usually produces, with no tokenizer and no network call (`Estimate("Hello, world!")` is 4). Its bounds, calibrated by hand against cl100k: English prose within about 15 percent (a little high), source code and JSON within about 30 percent, CJK within about 50 percent, and a single short string can be off by two tokens. The regression test holds it to characters-per-token ranges on fixed samples and **has not been compared with a live tokenizer**, so use it for a budget with a margin (`SetScale(1.15)` suits Claude, whose tokenizer gives 10 to 20 percent more tokens; `SetMargin` and `Safe()`), and use the provider's own count where a limit is hard (`TokenCounter` is a one-method interface that both fit). `ContextWindow->New(budget, counter)->Fit(conversation)` drops the oldest turns first, keeps the system prompt and the newest turn, never starts on an assistant turn and can add an omission note to the system prompt. It drops turns; it does not summarize them.
+
+```ruby
+use API.LlmUtil;
+
+class Example2 {
+  function : Main(args : String[]) ~ Nil {
+    claude := TokenEstimator->New()->SetScale(1.15)->SetMargin(0.1);
+    estimate := claude->Estimate("The quick brown fox jumps over the lazy dog.");   # 12
+    claude->Safe(estimate)->PrintLine();                    # 14, with the 10 percent margin
+
+    conversation := PromptBuilder->New()->System("You are a careful assistant.");
+    for(i := 0; i < 20; i += 1;) {
+      if(i % 2 = 0) {
+        conversation->User("question {$i} about the topic");
+      }
+      else {
+        conversation->Assistant("answer {$i} about the topic");
+      };
+    };
+
+    window := ContextWindow->New(120, TokenEstimator->New())->SetOmissionNote("[earlier messages omitted]");
+    fitted := window->Fit(conversation);
+    "kept {$fitted->Size()} of {$conversation->Size()} turns, dropped {$window->GetDropped()}, {$window->GetTokens()} tokens"->PrintLine();
+  }
+}
+```
+
+```
+14
+kept 10 of 20 turns, dropped 10, 119 tokens
+```
+
+**JSON Schema.** `JsonSchema->Check(schema, value)` (or a reusable `JsonSchema->New(schema)` with `Validate` and `IsValid`) returns every problem as a `SchemaError` with a JSON pointer, the keyword that objected and a message:
+
+```ruby
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class Example3 {
+  function : Main(args : String[]) ~ Nil {
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\",\"tags\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"age\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":150},\"email\":{\"type\":\"string\",\"pattern\":\"^[^@ ]+@[^@ ]+$\"},\"tags\":{\"type\":\"array\",\"items\":{\"enum\":[\"a\",\"b\",\"c\"]}}},\"additionalProperties\":false}");
+    value := JsonParser->TextToElement("{\"name\":\"\",\"age\":200,\"email\":\"nobody\",\"tags\":[\"a\",\"z\"],\"extra\":1}");
+
+    errors := JsonSchema->Check(schema, value);
+    each(i : errors) {
+      error := errors->Get(i);
+      "  {$error->ToString()}   [{$error->GetKeyword()}]"->PrintLine();
+    };
+  }
+}
+```
+
+```
+  /age: 200 is above the maximum 150   [maximum]
+  /email: "nobody" does not match the pattern '^[^@ ]+@[^@ ]+$'   [pattern]
+  /name: is 0 characters, shorter than the minimum 1   [minLength]
+  /tags/1: "z" is not one of: "a", "b", "c"   [enum]
+  /extra: the property 'extra' is not allowed   [additionalProperties]
+```
+
+Supported: `type`, `enum`, `const`, `allOf`, `anyOf`, `oneOf`, `not`, local `$ref` (recursive ones included, stopped at depth 64), `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, the exclusive bounds, `multipleOf`, `properties`, `required`, `additionalProperties`, `minProperties`, `maxProperties`, `items`, `minItems`, `maxItems` and `uniqueItems`. Ignored without a message: `format`, `patternProperties`, `dependencies`, `if`/`then`/`else` and every unknown keyword, so a schema that relies on them validates more loosely than a full implementation would. A malformed schema is reported as a `schema` error, not a crash.
+
+**Structured calls.** `StructuredCall->New(chat, schema)` adds the schema to the system prompt, finds the JSON in the reply (a fenced block, a sentence around it or the whole text), validates it and, on a failure, sends the model its own reply with the exact errors, up to `SetMaxRetries(n)` times (default 2). `SetRepair(true)` turns on a lenient `JsonRepair`, off by default and used only after the strict parse failed: trailing commas, single quotes, unquoted keys, a reply cut off, raw line breaks in strings, `True`, `None` and `NaN`, comments and text after the value. It does not guess further (a missing value, colon or comma stays an error), and a repaired value is still validated. This program runs with no key; its `ChatFn` plays a model that answers wrongly first and then in a fence:
+
+```ruby
+use API.LlmUtil;
+use Data.JSON;
+use Collection;
+
+class ScriptedModel implements ChatFn {
+  @replies : Vector<String>;
+  @asked : Int;
+
+  New() {
+    @replies := Vector->New()<String>;
+    @replies->AddBack("{'name': 'Ada Lovelace', 'age': '36',}");
+    @replies->AddBack("Sure, here it is:\n```json\n{\"name\": \"Ada Lovelace\", \"age\": 36}\n```");
+  }
+
+  method : public : Complete(turns : Vector<PromptTurn>) ~ String {
+    number := @asked + 1;
+    "request {$number}: {$turns->Size()} turns, last turn:"->PrintLine();
+    turns->Last()->GetText()->PrintLine();
+    reply := @replies->Get(@asked);
+    @asked += 1;
+    return reply;
+  }
+
+  method : public : GetError() ~ String {
+    return Nil;
+  }
+}
+
+class Example4 {
+  function : Main(args : String[]) ~ Nil {
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\"}}}");
+
+    call := StructuredCall->New(ScriptedModel->New(), schema)->SetMaxRetries(2)->SetRepair(true);
+    outcome := call->Ask("Extract the person: Ada Lovelace is 36.");
+    "---"->PrintLine();
+    if(outcome->IsOk()) {
+      "ok after {$outcome->GetAttempts()} attempts: {$outcome->GetValue()->ToString()}"->PrintLine();
+    }
+    else {
+      outcome->GetError()->PrintLine();
+    };
+  }
+}
+```
+
+```
+request 1: 2 turns, last turn:
+Extract the person: Ada Lovelace is 36.
+request 2: 4 turns, last turn:
+Your reply did not match the schema. Problems:
+- /age: expected integer, got string
+Reply again with only the corrected JSON value.
+---
+ok after 2 attempts: {"age":36,"name":"Ada Lovelace"}
+```
+
+The first reply was repaired and parsed, then failed validation (`age` is a string), and the model was shown the exact error. A transport failure (`Complete` returned `Nil`) is the backend's error and is not retried. The outcome has `IsOk`, `GetValue`, `GetErrors`, `GetError`, `GetAttempts`, `GetReplies` and `WasRepaired`; `Ask` also takes a whole `PromptBuilder`, or a template and values.
+
+**Caveats.** A `PromptTemplate` and a `JsonSchema` keep their last error, so give each thread its own. `minLength` and the estimator count characters, not UTF-8 bytes. The library avoids the class names `Tool`, `ToolCall`, `Message`, `Reply`, `Response` and `Chat` on purpose, because another library's generic argument resolves by its short name. It ships no provider adapters: implement `ChatFn` over the client you use (or use `API.Agent`). Tests, none using the network or a key: `llm_util_template_test`, `llm_util_tokens_test`, `llm_util_schema_test` (about 170 schema cases), `llm_util_extract_test` and `llm_util_structured_test`. The four programs above were compiled and run for this guide; the token-count bounds are design targets, not a measurement against a live tokenizer. Reference: [ai_sections/llm_util.md](ai_sections/llm_util.md).
+
+---
+
+## LLM evaluation (System.LLM.Eval)
+
+`System.LLM.Eval` measures how well a language model writes programs, and in general evaluates any model on tasks whose answer can be checked. It sends each task of a suite to the model N times, takes the code block out of the answer, compiles it with the real compiler (`obc`), runs it under a timeout and compares what it printed with the expected output. Each attempt records whether it compiled, ran and was correct, the first compiler error (normalized into a category), and tokens and latency when the client exposes them. The results become a compile rate, pass@k, the most common error categories and, for two models, a paired-bootstrap comparison with a plain verdict.
+
+It is a research harness, not a shipped library: the source is `tools/llm_eval/llm_eval.obs`, and you compile it with your program, `obc -src yourprogram.obs,tools/llm_eval/llm_eval.obs -lib ml,csv,json,gen_collect`. It needs no network and no key; the provider adapters (OpenAI, Anthropic, Gemini, Ollama, or any command line) are one file each in `tools/llm_eval`, because the four clients cannot be linked into one program. `obc` must be on the path or beside the running VM. A `ScriptedModel` answers from a script, so the whole path runs without a key (the second answer below does not compile):
+
+```ruby
+use System.LLM.Eval, System.IO.Filesystem, Collection;
+
+class Demo {
+    function : Main(args : String[]) ~ Nil {
+        tasks := Vector->New()<EvalTask>;
+        tasks->AddBack(EvalTask->New("answer", "demo", 1, "", "exact", 10.0, "Print 42.", Nil, Nil, "42", Nil));
+
+        model := ScriptedModel->New("scripted");
+        model->Add("answer", "```objeck\nclass A {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"42\"->PrintLine();\n\t}\n}\n```");
+        model->Add("answer", "```objeck\nclass B {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tmissing->PrintLine();\n\t}\n}\n```");
+
+        work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_demo";
+        sandbox := Sandbox->New(work);
+        results := EvalRunner->New(model, tasks, 2, sandbox)->Run();
+        "compile rate {$EvalText->Percent(results->GetCompileRate())}"->PrintLine();
+        "pass@1 {$EvalText->Percent(results->GetPassAtK(1))}, pass@2 {$EvalText->Percent(results->GetPassAtK(2))}"->PrintLine();
+
+        errors := results->GetErrorCategories();
+        each(i : errors) {
+            "{$errors->Get(i)->GetLabel()}: {$errors->Get(i)->GetCount()} ({$errors->Get(i)->GetExample()})"->PrintLine();
+        };
+
+        sandbox->Close();
+    }
+}
+```
+
+```
+compile rate 50.0%
+pass@1 50.0%, pass@2 100.0%
+undefined_variable: 1 (Undefined variable: '_')
+```
+
+**The task suite.** `tools/llm_eval/tasks` holds 40 tasks graded 1 to 5 across basics, collections, classes, generics, lambdas, exceptions, file I/O, JSON, recursion and the quirks models trip on in Objeck (the `~` before a return type, `Nil`, `:=` against `=`, `Int[]` arrays, `use`). A `.task` file is `key: value` header lines (`id`, `category`, `difficulty`, `libs`, `checker`, `timeout`) and sections introduced by `--- ` (`prompt`, `starter`, `input`, `expected`, `reference`). The checkers: `exact` (line by line, ignoring line-end style and trailing blanks), `lines` (the same lines in any order), `numeric` (tokens, numbers within 1e-6) and `contains`. Every reference solution is compiled and run by the tests `llm_eval_references_a` and `llm_eval_references_b` (run with `python3 tools/llm_eval/run_tests.py <deploy bin dir>`), so a task that fails for every model is not a broken task.
+
+**Against a real model.** `tools/llm_eval/eval.obs` is the ready-to-run program; add one adapter file and the provider's libraries. The key is read by the provider's client (an environment variable or a `*_api_key.dat` file), never taken from the command line, never printed and never stored in the results.
+
+```
+obc -src tools/llm_eval/llm_eval.obs,tools/llm_eval/eval.obs,tools/llm_eval/adapter_anthropic.obs -lib ml,csv,json,gen_collect,net,cipher,misc,anthropic -dest eval_anthropic.obe
+obr eval_anthropic.obe --tasks tools/llm_eval/tasks --model claude-sonnet-5-5 --n 5 --k 1,5 --out claude
+```
+
+The run costs `tasks x n` model calls and prints the count first. Flags include `--n` (attempts per task; pass@k needs n of at least k, and attempts differ only with a temperature above 0), `--k`, `--ids`, `--categories`, `--out PREFIX` (writes `PREFIX.md`, `PREFIX.json` and `PREFIX_results.json`), `--baseline FILE`, `--system-file`, `--max-tokens`, `--keep-files` and `--list`. `adapter_command.obs` evaluates any tool with a command line: the prompt goes to its standard input and its output is the answer. To compare two runs, `compare.obs` reads two `_results.json` files, and `ModelComparison->Of(a, b, reps, seed)` pairs attempt j of a task for model A with attempt j for model B and gives `Metrics->PairedBootstrapDifference` those pairs. A positive difference means B is better, and the verdict is one of `<model> is better than <model>: +33.3 points of pass rate, 95% interval [21.7, 46.7] excludes 0.` (either way round) or `No significant difference: ... includes 0.` The pairs are attempts, not tasks, so with several attempts per task the interval is a little narrower than a resampling of whole tasks would give.
+
+**Reading the report.** `EvalReport->Markdown` writes a summary row per model (compile rate, pass@k, failed API calls, mean latency, tokens in and out, `n/a` when the client does not say), pass@1 by category, the compile-error categories (`undefined_class`, `undefined_variable`, `undefined_method`, `type_mismatch`, `generics`, `missing_return`, `scope`, `syntax`, `array`, `string_interpolation` and others, with quoted names replaced by `'_'` so messages that differ only in a name group together), the outcomes (`pass`, `wrong_output`, `runtime_error`, `timeout`, `compile_error`, `no_code`, `model_error`), a per-task table and, for two models, the verdict. pass@k is the unbiased estimator of Chen et al. (2021), `1 - C(n-c, k) / C(n, k)` averaged over tasks (`PassAtK->Estimate(10, 3, 5)` is 0.916667); a task with fewer than k counted attempts is left out, and attempts whose model call failed are left out of every rate.
+
+**Limits.**
+
+- A program runs through a small watchdog script (a shell script on Linux and macOS, PowerShell on Windows) that kills it past its time and caps what it prints, but **it is not otherwise sandboxed**: it runs with your permissions and can read and write files and use the network. Evaluate untrusted models in a container or a throwaway account.
+- Attempts run one after another, and a task is judged by standard output only. An answer without a fenced code block is `no_code`; with several blocks the longest one that defines `Main` is used.
+- Only the Anthropic and Ollama clients report token counts.
+- Each compile is a real `obc` run, about 0.1 to 0.5 s.
+- The provider adapters are compiled but not exercised against the live services by the regression suite. The library, the checkers, the watchdog, `CommandModel` and the report are.
+
+The program above was compiled with the current toolchain and run for this guide, with the output shown. The live adapters, `eval.obs`, `compare.obs` and the 40-task suite were not run here. Reference: [ai_sections/llm_eval.md](ai_sections/llm_eval.md).
 
 ---
 
@@ -1860,6 +2883,154 @@ The GPU is as close to PyTorch as the CPU engine is. The test allows 2e-5 per la
 
 *Not verified.* The whole path through Objeck (tests, speed, parity) was run on Windows x64 with an RTX 4090 (compute capability 8.9, driver 621.24, CUDA 13.1) only. On Linux (Ubuntu 24.04 under WSL2, g++ 13, CUDA 13.1, the same GPU) `build_cuda.sh` builds the library and a standalone C++ program that loads it with `dlopen` trains the baseline through it next to the CPU engine, agreeing to 1.2e-4 over 20 Adam steps on random labels; `libobjk_ml`'s own loader compiles there but was not run, and macOS has no CUDA. No other GPU generation, no multi-GPU machine and no older toolkit were tried; TF32 was measured on one batch only.
 
+### Gradient boosting (System.ML.Boost)
+
+**Experimental: API may change.** `System.ML.Boost` adds gradient boosted trees: `GradientBoostingRegressor` (squared, absolute and Huber loss) and `GradientBoostingClassifier` (binary logistic and multiclass softmax). It is pure Objeck in its own library; compile with `-lib ml_boost,ml,gen_collect,csv` (`@ai` includes it). The trees are XGBoost's second-order trees, grown level by level; the classifier implements `ScoreModel`, so a binary model drops into `CrossValidation`.
+
+```ruby
+use System.ML;
+use System.ML.Boost;
+
+class BoostDemo {
+  # y = a^2 + 0.5 b on seeded random rows
+  function : Fill(rand : System.ML.Random, X : Float[,], y : Float[]) ~ Nil {
+    each(i : y) {
+      X[i, 0] := 2.0 * rand->NextReal() - 1.0;
+      X[i, 1] := 2.0 * rand->NextReal() - 1.0;
+      y[i] := X[i, 0] * X[i, 0] + 0.5 * X[i, 1];
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    rand := System.ML.Random->New(7);
+    train_x := Float->New[300, 2];
+    train_y := Float->New[300];
+    test_x := Float->New[100, 2];
+    test_y := Float->New[100];
+    Fill(rand, train_x, train_y);
+    Fill(rand, test_x, test_y);
+
+    model := GradientBoostingRegressor->New(100, 0.1, 3, 42);   # stages, learning rate, max depth, seed
+    model->SetSubsample(0.8);
+    if(<>model->Fit(train_x, train_y)) {
+      "fit refused: {$model->GetError()}"->PrintLine();
+      return;
+    };
+    "stages {$model->GetNumStages()}, test mean squared error {$model->Score(test_x, test_y)}"->PrintLine();
+    importance := model->GetFeatureImportances();
+    each(j : importance) {
+      "feature {$j}: importance {$importance[j]}"->PrintLine();
+    };
+  }
+}
+```
+
+```
+stages 100, test mean squared error 0.001871
+feature 0: importance 0.470712
+feature 1: importance 0.529288
+```
+
+- **Classification.** `GradientBoostingClassifier->New(60, 0.1, 3, 42)`; `Fit(X, labels)` takes `Int` labels (two classes use the logistic loss, more use softmax), `PredictProba(X)` returns one row per sample, `Predict(X)` the labels, `Score(X, labels)` the accuracy and `LogLoss(X, labels)`. Use `SetLambda(1.0)` for classifiers, as XGBoost does by default.
+- **Loss.** `GradientBoostingRegressor->New(BoostLoss->HUBER, 100, 0.1, 3, 42)`; `SQUARED` is the default, `ABSOLUTE` and `HUBER` are the robust options.
+- **Early stopping and staged predictions.** `SetEarlyStopping(patience, held_out_share)` or `Fit(X, y, Xv, yv)` with a validation set; `StagedPredict(X)` returns the prediction after every stage.
+- **Other settings.** `SetMinSamplesLeaf`, `SetSubsample`, `SetColumnSample`, `SetLambda`, `SetMinSplitGain`, `SetMinChildWeight` and `SetHistogram(bins)` (approximate splits on a histogram). A setter returns `false` and sets `GetError()` for a value it refuses; `Fit` returns `false` rather than ending the program. A `NaN` feature is a missing value; a `NaN` target is refused.
+- **Model files.** `Store(file)` and `GradientBoostingClassifier->Load(file)` (or `Export` and `Import` for a string); `Load` returns `Nil` for a missing, damaged or wrong-kind file.
+
+Limits: trees grow level by level to `max_depth` (1 to 30), there are no categorical features or monotone constraints, training is single threaded, and a loaded model predicts but cannot be refitted. The tests compare against numbers from scikit-learn and XGBoost generated by `programs/regression/ml_boost_ref/boost_ref.py` (`ml_boost_accuracy`); the classifier at `lambda` 0 agrees only loosely, because tiny arithmetic differences move a tree choice. A longer program is [`programs/examples/ml/gradient_boosting.obs`](../programs/examples/ml/gradient_boosting.obs).
+
+### Time series forecasting (System.ML.TimeSeries)
+
+**Experimental: API may change.** `System.ML.TimeSeries` forecasts one numeric series with a prediction interval around every forecast: benchmark forecasters, exponential smoothing (simple, Holt, damped Holt, Holt-Winters), ARIMA with optional seasonal differencing, automatic selection, and rolling-origin evaluation. It also has what a forecasting workflow needs around the models: a container with a missing-value policy, transforms and a classical decomposition, autocorrelation, and an augmented Dickey-Fuller test. It is pure Objeck in one library, `ml_timeseries`, which needs only `gen_collect` (`-lib ml_timeseries,gen_collect`, or `@ai`).
+
+A model is fitted with `Fit` and used with `Forecast`. Nothing ends the program on bad input: `Fit` returns `false` and `GetError()` says why (a missing value, a series that is too short), and helpers return `Nil` or `NaN`. Results are deterministic.
+
+```ruby
+use System.ML.TimeSeries;
+
+class Forecasting {
+  function : Main(args : String[]) ~ Nil {
+    # n, level, slope, amplitude, period, noise sd, seed
+    y := TimeSeries->New(Simulate->TrendSeasonal(120, 20.0, 0.3, 5.0, 12, 0.5, 15));
+    hw := ExponentialSmoothing->HoltWinters(12, false);
+    if(<>hw->Fit(y)) {
+      hw->GetError()->PrintLine();
+      return;
+    };
+
+    f := hw->Forecast(6, 0.9);        # 6 steps ahead, 90% interval
+    m := f->GetMean();
+    lo := f->GetLower();
+    hi := f->GetUpper();
+    each(i : 6) {
+      "+{$i + 1}: {$m[i]}  [{$lo[i]}, {$hi[i]}]"->PrintLine();
+    };
+
+    # walk-forward check: fit on 60 values, forecast 6, move the origin 6, refit
+    cv := Evaluation->RollingOrigin(hw, y, 60, 6, 6, 0.9, 12);
+    "{$cv->GetFolds()} folds: MAE {$cv->GetMae()}  RMSE {$cv->GetRmse()}  MASE {$cv->GetMase()}"->PrintLine();
+  }
+}
+```
+
+```
++1: 56.339340  [55.452744, 57.225937]
++2: 58.839322  [57.950277, 59.728366]
++3: 60.825144  [59.933409, 61.716878]
++4: 61.889253  [60.994577, 62.783929]
++5: 61.525722  [60.627842, 62.423601]
++6: 59.881050  [58.979696, 60.782403]
+10 folds: MAE 0.417388  RMSE 0.542908  MASE 0.114954
+```
+
+Look at the data, then let the library choose:
+
+```ruby
+use System.ML.TimeSeries;
+
+class Choosing {
+  function : Main(args : String[]) ~ Nil {
+    values := Simulate->TrendSeasonal(72, 100.0, 1.5, 12.0, 12, 2.0, 2026);
+    adf := Stationarity->Adf(values, -1, "c");     # -1: choose the lag count by AIC
+    "ADF {$adf->GetStatistic()}, 5% value {$adf->GetCritical(0.05)}, stationary {$adf->IsStationary(0.05)}"->PrintLine();
+
+    y := TimeSeries->New(Simulate->RandomWalk(200, 0.3, 1.0, 17));
+    auto := AutoArima->New(2, 2, 2, 1, SelectionCriterion->Kind->AICC);   # max p, max q, max d, period (1 = none), criterion
+    if(auto->Fit(y)) {
+      "{$auto->GetName()}, criterion {$auto->GetBestCriterion()}"->PrintLine();
+      f := auto->Forecast(3, 0.95);
+      m := f->GetMean();
+      each(i : m) {
+        "+{$i + 1}: {$m[i]}"->PrintLine();
+      };
+    };
+  }
+}
+```
+
+```
+ADF 0.591916, 5% value -2.911939, stationary false
+AutoARIMA(1,1,1), criterion 539.577740
++1: 62.054499
++2: 62.344310
++3: 62.653396
+```
+
+- **Container.** `TimeSeries->New(values)` or `New(values, times)`, `SetPeriod(Frequency->Monthly())`, `Check()`, and `Impute(TimeSeries->Missing->LINEAR)` (also `FORWARD`, `MEAN`, `ZERO`, `DROP`). The models refuse a series with a `NaN`; fill it first.
+- **Models** (all implement `Forecaster`): `BaselineForecaster` (naive, seasonal naive, drift, mean, moving average), `ExponentialSmoothing` (`Simple()`, `Holt(damped)`, `HoltWinters(period, multiplicative)`), `ArimaModel->New(p, d, q)` or `New(p, d, q, D, period)`, and the selectors `AutoArima` and `AutoEts`.
+- **Tools.** `SeriesTransform` (`Diff`, `BoxCox`, `Decompose`, rolling statistics, lag matrices), `Acf` (`Compute`, `Partial`, `LjungBox`), `Stationarity` (`Adf`, `SuggestDiff`), `ForecastMetrics` (`Mae`, `Rmse`, `Mape`, `Smape`, `Mase`, `Coverage`) and `Evaluation->RollingOrigin`, which copies the model per fold and never changes the one you pass.
+- **Accuracy.** The regression tests (`ml_timeseries_transform`, `_smoothing`, `_arima`, `_eval`, `_edges`) compare the library against numbers computed by statsmodels, scipy and numpy (`programs/regression/ml_timeseries_ref/gen_reference.py`). The ACF, ADF, decomposition and fixed-parameter smoothing recursions agree to rounding; ARIMA agrees with a conditional-least-squares reference, and with statsmodels' maximum-likelihood fit only to about 0.03 on the coefficients.
+
+Limits:
+
+- **One series, evenly spaced.** There are no exogenous regressors and no multivariate models; timestamps are kept but the models treat observations as equally spaced.
+- **Exponential smoothing** is the additive-error family: no multiplicative trend, no multiplicative-error models. The initial states come from a fixed rule, so the fit is not the exact state-space maximum likelihood, and the multiplicative-season interval is an approximation.
+- **ARIMA** is conditional least squares, not exact maximum likelihood. The seasonal part is differencing only (no seasonal AR or MA terms, so the common "airline" model is not available); check residuals with `Acf->LjungBox`. Intervals do not include coefficient uncertainty.
+- **Stationarity.** `Adf` gives a statistic and critical values but no p-value, and there is no KPSS test. `SuggestDiff` is a heuristic for a first guess.
+- Results are deterministic on a platform; across platforms compare with a tolerance, not for equality.
+
+A whole workflow (decompose, test, compare four models by walk-forward evaluation, forecast, let `AutoArima` choose) is [`programs/examples/ml/timeseries_forecast.obs`](../programs/examples/ml/timeseries_forecast.obs).
+
 ### Statistics (System.Stats)
 
 Classical statistics for the analysis that comes before (or instead of) a model: descriptive statistics, t-tests with confidence intervals and effect sizes, Pearson correlation with a p-value, and an ordinary least squares fit with the full `statsmodels`-style summary. It is `stats.obl` (`-lib stats,gen_collect` or `-lib @ai`) and needs nothing from `System.ML`. No call ends the program on bad input: a `Float` function returns NaN, and a result object comes back with `IsValid()` false and `GetError()` saying why (Nil, a single value, zero variance, mismatched lengths, NaN or infinity, a confidence level outside (0, 1), a rank-deficient design).
@@ -2105,7 +3276,8 @@ obc -src program.obs -lib @ai -dest program.obe
 | `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
 | `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
-| `@ai` | `ai`, `ml`, `ml_lab`, `ml_vector`, `ml_verify`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json` | local System.ML / System.ML.Lab / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
+| `@ai` | `ai`, `ml`, `ml_lab`, `ml_boost`, `ml_vector`, `ml_report`, `ml_verify`, `ml_timeseries`, `stats`, `plot`, `nlp`, `nlp_topics`, `csv`, `json`, and others listed in `configobjk.ini` | local System.ML / System.ML.Lab / System.ML.Boost / System.ML.TimeSeries / System.Stats / System.Plot / System.AI / System.NLP / System.NLP.Topics work |
+| `@rag` | `rag`, `rag_adapters`, `ml_vector`, the OpenAI, Gemini, Ollama and Anthropic clients, BERT, CLIP and their dependencies | `System.ML.Rag` with every adapter |
 | `@plot` | `plot`, `plot_sdl`, `sdl2` | charts in a window or as PNG (SVG alone needs only `plot`) |
 | `@vision` | `opencv`, `onnx`, `nlp_onnx`, `ml_clip`, `ml_verify`, `models`, `nlp`, `json`, `cipher` | OpenCV and ONNX inference, BERT text embeddings, CLIP image embeddings and face verification |
 | `@cnn` | `ml_cnn`, `ml`, `ml_lab`, `opencv`, `csv`, `json`, `cipher` | `System.ML.Cnn` convolutional networks, image loading and history tables |
@@ -2164,6 +3336,10 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Image embeddings (CLIP) and LFW pair scoring | `ClipEncoder`, `ClipPreprocessor`, `FacePairs` | `ml_clip` + `onnx`, `opencv`, `models`, `ml_verify` | A CLIP image ONNX model |
 | FAR, FRR, EER, ROC and DET points for a verifier | `Verification`, `VerificationResult`, `Similarity` | `ml_verify` | None |
 | Hugging Face Hub downloads | `HubClient` | `ai_hub` + `net`, `json`, `cipher` | Network (cache works offline) |
+| Actors, mailboxes and supervisors | `Actor`, `Mailbox`, `Supervisor` | `actor` + `gen_collect`, `concurrent` | None |
+| Inference latency, resources and profiles | `Telemetry`, `SeriesStats`, `ProfileStore` | `telemetry` + `gen_collect`, `json` | None |
+| Prompt templates, token budgets, JSON Schema, structured calls | `PromptTemplate`, `ContextWindow`, `JsonSchema`, `StructuredCall` | `llm_util` + `regex`, `json`, `gen_collect` | None |
+| Evaluate a model on checkable tasks | `EvalRunner`, `ModelResults`, `ModelComparison` | compile `tools/llm_eval/llm_eval.obs` with `ml`, `csv`, `json`, `gen_collect` | Provider key for a live model |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
 | Kernel SVMs | `KernelSVM` (linear, RBF, poly, sigmoid), `OneClassSVM` | `ml` | None |
@@ -2174,6 +3350,12 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Decomposition | `PCA` | `ml` | None |
 | Neural network | `NeuralNetwork` | `ml` | None |
 | Classifier head over embeddings | `EmbeddingClassifier` | `ml` | None |
+| Tool-use loop over any chat model | `Agent`, `ToolRegistry`, `AgentTool` | `agent` + `net`, `json`, `cipher`, `misc` | The provider's, or None for Ollama and the scripted backend |
+| MCP server, client and tool bridge | `McpService`, `McpClient`, `McpToolBridge` | `mcp` + `gen_collect`, `json`, `net`, `net_server`, `cipher`, `misc` | None |
+| Retrieval-augmented generation | `RagPipeline`, `RagIndex`, `RagChunker` | `rag` + `ml_vector` | None (offline); the adapters use their provider's |
+| Gradient boosted trees (experimental) | `GradientBoostingRegressor`, `GradientBoostingClassifier` | `ml_boost` + `ml` | None |
+| Time series forecasting (experimental) | `TimeSeries`, `ExponentialSmoothing`, `ArimaModel`, `AutoArima` | `ml_timeseries` | None |
+| Tensors on the GPU, half precision | `DeviceTensor`, `BoundSession`, `Half`, `BFloat16` | `onnx` | None |
 | Graph search | `Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst` | `ai` | None |
 | Game playing | `Minimax`, `MonteCarloTreeSearch` | `ai` | None |
 | Metaheuristics | `GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing` | `ai` | None |
