@@ -13,6 +13,8 @@ OBC=${1:?usage: build_libs.sh <path-to-obc>}
 
 $OBC -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 $OBC -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/concurrent.obl
+# Actors with supervision (mailboxes, links, monitors, supervisors). Needs gen_collect and concurrent (threads, mutexes)
+$OBC -src lib_src/actor.obs -lib gen_collect,concurrent -tar lib -opt s3 -dest ../lib/actor.obl
 $OBC -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 $OBC -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 # Exact arithmetic. Depends on nothing but lang.
@@ -82,6 +84,8 @@ $OBC -src lib_src/llm_util.obs -lib gen_collect,json,regex -tar lib -opt s3 -des
 # Adapters from llm_util's ChatFn and TokenCounter to the Anthropic, OpenAI, Gemini and Ollama clients. A library of its own so llm_util links no client
 $OBC -src lib_src/llm_util_clients.obs -lib gen_collect,json,regex,llm_util,net,net_server,cipher,misc,anthropic,openai,gemini,ollama -tar lib -opt s3 -dest ../lib/llm_util_clients.obl
 $OBC -src lib_src/agent.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/agent.obl
+# API.Agent agents as supervised actors; kept apart from actor so actor itself links nothing heavy
+$OBC -src lib_src/actor_agents.obs -lib gen_collect,concurrent,actor,agent,net,json,cipher,misc -tar lib -opt s3 -dest ../lib/actor_agents.obl
 # Model Context Protocol server (stdio and streamable HTTP) and client, and the bridge that hands a server's tools to the AI clients. After net_server, whose HTTP handler it extends
 $OBC -src lib_src/mcp.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest ../lib/mcp.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
