@@ -112,6 +112,11 @@ class TicTacToe {
 
 	method : PlayerMove() ~ Status {
 		move := System.IO.Console->ReadLine();
+		# end of input counts as quitting
+		if(move = Nil) {
+			return Status->QUIT;
+		};
+
 		if(move->Size() = 0) {
 			return Status->INVALID_MOVE;
 		};

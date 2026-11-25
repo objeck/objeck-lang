@@ -1,0 +1,131 @@
+#~
+A CHAIN of method calls attached to a parenthesised calculation, used as an
+operand of another calculation, dropped every call after the first.
+
+    (p * x)->Sin()->Abs()->Log() * -1.0 + c
+
+compiled as if it read `(p * x)->Sin() * -1.0 + c`: Abs() and Log() vanished
+and the expression silently returned a wrong number, at every -opt level, in the
+interpreter and under the JIT alike. The same expression as a whole statement
+(`a := (p * x)->Sin()->Abs()->Log();`) was right, which is what hid it.
+
+EmitCalculation emitted a nested calculated operand by hand and, for an attached
+call, emitted only the FIRST link (`GetMethodCall()`); EmitExpression walks the
+whole chain. A Float library function written as
+`(pi / sn)->Log() - LogGamma(1.0 - x)` is the shape that tripped over it.
+Operands now go through EmitExpression.
+~#
+
+class CalculatedOperandCallChain {
+	@failed : static : Int;
+
+	function : Near(name : String, got : Float, want : Float) ~ Nil {
+		d := got - want;
+		if(d < 0.0) { d := 0.0 - d; };
+		if(d > 0.000001) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Is(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : G(x : Float) ~ Float {
+		return x * 2.0;
+	}
+
+	# the reported shape: a chained Float call, minus a recursive call
+	function : Rec(x : Float) ~ Float {
+		if(x < 0.5) {
+			return (x + 0.0)->Abs()->Log() - Rec(1.0 - x);
+		};
+		return x * 2.0;
+	}
+
+	function : RecParen(x : Float) ~ Float {
+		if(x < 0.5) {
+			return (Float->Pi() / (Float->Pi() * x)->Sin()->Abs())->Log() - RecParen(1.0 - x);
+		};
+		return x * 2.0;
+	}
+
+	function : RecSplit(x : Float) ~ Float {
+		if(x < 0.5) {
+			sn := (Float->Pi() * x)->Sin()->Abs();
+			head := (Float->Pi() / sn)->Log();
+			tail := RecSplit(1.0 - x);
+			return head - tail;
+		};
+		return x * 2.0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := 0.3;
+		p := Float->Pi();
+		s := (p * x)->Sin()->Abs();
+		ls := s->Log();
+
+		# the chain on the left operand, in each operator position
+		Near("left *", (p * x)->Sin()->Abs()->Log() * 2.0, ls * 2.0);
+		Near("left * -1", (p * x)->Sin()->Abs()->Log() * -1.0, 0.0 - ls);
+		Near("left +", (p * x)->Sin()->Abs()->Log() + 1.0, ls + 1.0);
+		Near("left -", (p * x)->Sin()->Abs()->Log() - 1.0, ls - 1.0);
+		Near("left /", (p * x)->Sin()->Abs()->Log() / 2.0, ls / 2.0);
+		Near("left + Pi()->Log()", (p * x)->Sin()->Abs()->Log() * -1.0 + Float->Pi()->Log(), 0.0 - ls + Float->Pi()->Log());
+
+		# ... on the right operand
+		Near("right *", 2.0 * (p * x)->Sin()->Abs()->Log(), 2.0 * ls);
+		Near("right -", 1.0 - (p * x)->Sin()->Abs()->Log(), 1.0 - ls);
+
+		# two calls, three calls, a chain on both operands
+		Near("two calls", (p * x)->Sin()->Log() * 2.0, ls * 2.0);
+		Near("three calls", (p * x)->Sin()->Abs()->Log() * 2.0, ls * 2.0);
+		Near("both sides", (p * x)->Sin()->Abs()->Log() - (p * x)->Sin()->Abs()->Sqrt(), ls - s->Sqrt());
+
+		# a call with arguments in the chain
+		Near("args", (x + 1.0)->Abs()->Pow(2.0)->Abs() + 1.0, 1.69 + 1.0);
+
+		# a chained call minus a non-recursive call
+		Near("minus call", (x * 1.0)->Abs()->Log() - G(1.0 - x), x->Log() - 1.4);
+		Near("call minus", G(1.0 - x) - (x * 1.0)->Abs()->Log(), 1.4 - x->Log());
+
+		# Int receivers, where the dropped call changes the value
+		Is("int chain", (2 - 5)->Abs()->Pow(2)->Max(100) + 1, 101);
+		Is("int chain right", 1 + (2 - 5)->Abs()->Pow(2)->Max(100), 101);
+		if((2 - 5)->Abs()->Pow(2)->Max(100) = 100) {
+			Near("cmp int", 0.0, 0.0);
+		}
+		else {
+			"FAIL: comparison of a chained Int operand"->PrintLine();
+			@failed += 1;
+		};
+
+		# a comparison operand
+		if((p * x)->Sin()->Abs()->Log() < -0.2 & (p * x)->Sin()->Abs()->Log() > -0.22) {
+			Near("cmp", 0.0, 0.0);
+		}
+		else {
+			"FAIL: comparison of a chained operand"->PrintLine();
+			@failed += 1;
+		};
+
+		# the reported function, recursive, against its split-statement form
+		for(i := 1; i < 50; i += 1;) {
+			v := i->As(Float) * 0.01;
+			Near("Rec {$v}", Rec(v), v->Log() - (1.0 - v) * 2.0);
+			Near("RecParen {$v}", RecParen(v), RecSplit(v));
+		};
+
+		if(@failed > 0) {
+			"{$@failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"all passed"->PrintLine();
+	}
+}

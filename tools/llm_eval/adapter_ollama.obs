@@ -1,0 +1,64 @@
+use System.LLM.Eval, API.Ollama;
+
+#~
+Adapter for a local Ollama server (default http://localhost:11434). No key. Token counts come from the server's own counters.
+Flags: --model NAME (required, for example llama3.2), --temperature T
+~#
+class OllamaAdapter implements ModelAdapter {
+	@model : String;
+	@temperature : Float;
+
+	New(model : String, temperature : Float) {
+		@model := model;
+		@temperature := temperature;
+	}
+
+	method : public : GetName() ~ String {
+		return @model;
+	}
+
+	method : public : Complete(request : ModelRequest) ~ ModelReply {
+		options := Options->New();
+		options->SetNumPredict(request->GetMaxTokens());
+		if(request->GetSystem() <> Nil & request->GetSystem()->Size() > 0) {
+			options->SetSystem(request->GetSystem());
+		};
+
+		if(@temperature >= 0.0) {
+			options->SetTemperature(@temperature);
+		};
+
+		reply := Completion->GenerateReply(@model, request->GetUser(), options);
+		if(reply = Nil) {
+			error := Completion->GetLastError();
+			if(error = Nil) {
+				error := "the request failed";
+			};
+
+			return ModelReply->Failure(EvalText->Clip(error, 300));
+		};
+
+		return ModelReply->New(reply->GetText(), reply->GetPromptEvalCount(), reply->GetEvalCount());
+	}
+}
+
+class Provider {
+	function : Usage() ~ String {
+		return "provider ollama: --model NAME [--temperature T]; needs a running Ollama server";
+	}
+
+	function : Create(args : String[]) ~ ModelAdapter {
+		model := EvalArgs->Value(args, "--model", Nil);
+		if(model = Nil) {
+			return Nil;
+		};
+
+		temperature := -1.0;
+		text := EvalArgs->Value(args, "--temperature", Nil);
+		if(text <> Nil) {
+			temperature := text->ToFloat();
+		};
+
+		return OllamaAdapter->New(model, temperature);
+	}
+}

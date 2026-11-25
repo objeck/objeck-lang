@@ -1,0 +1,42 @@
+id: generic_pair_swap
+category: generics
+difficulty: 5
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that defines a generic class Duo<A, B> holding two values, with GetFirst() ~ A, GetSecond() ~ B and Swap() ~ Duo<B, A> that returns a new Duo with the values exchanged. Create a Duo<String, IntRef> with "one" and 1, swap it, and print the first value of the swapped duo on one line (it is the integer) and the second value on the next line (it is the string).
+--- expected
+1
+one
+--- reference
+class Duo<A, B> {
+	@first : A;
+	@second : B;
+
+	New(first : A, second : B) {
+		@first := first;
+		@second := second;
+	}
+
+	method : public : GetFirst() ~ A {
+		return @first;
+	}
+
+	method : public : GetSecond() ~ B {
+		return @second;
+	}
+
+	method : public : Swap() ~ Duo<B, A> {
+		return Duo->New(@second, @first)<B, A>;
+	}
+}
+
+class DuoTest {
+	function : Main(args : String[]) ~ Nil {
+		duo := Duo->New("one", 1)<String, IntRef>;
+		swapped := duo->Swap();
+		swapped->GetFirst()->Get()->PrintLine();
+		swapped->GetSecond()->PrintLine();
+	}
+}

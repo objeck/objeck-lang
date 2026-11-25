@@ -1,0 +1,32 @@
+id: tilde_return
+category: quirks
+difficulty: 3
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with three static functions in one class, each declared with Objeck's return-type syntax (a tilde before the return type): Add(a : Int, b : Int) ~ Int, Greet(name : String) ~ String returning "Hello, " followed by the name, and IsEven(n : Int) ~ Bool. Main prints Add(3, 4), Greet("Ada") and IsEven(10) on three lines.
+--- expected
+7
+Hello, Ada
+true
+--- reference
+class TildeReturn {
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : Greet(name : String) ~ String {
+		return "Hello, {$name}";
+	}
+
+	function : IsEven(n : Int) ~ Bool {
+		return n % 2 = 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Add(3, 4)->PrintLine();
+		Greet("Ada")->PrintLine();
+		IsEven(10)->PrintLine();
+	}
+}

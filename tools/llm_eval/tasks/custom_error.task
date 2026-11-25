@@ -1,0 +1,33 @@
+id: custom_error
+category: exceptions
+difficulty: 5
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program that defines an error class ValidationError from the runtime's Error class, raises it with Runtime->Raise from a function Validate(age : Int) when age is negative (the message is "negative age"), and catches it in Main with `try` and `on(e : ValidationError)`, printing `error: ` followed by the message the error carries. Call Validate(-3) and print the result line `error: negative age`.
+--- expected
+error: negative age
+--- reference
+class ValidationError from Error {
+	New(message : String) {
+		Parent(message);
+	}
+}
+
+class CustomError {
+	function : Validate(age : Int) ~ Nil {
+		if(age < 0) {
+			Runtime->Raise(ValidationError->New("negative age"));
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		try {
+			Validate(-3);
+		}
+		on(e : ValidationError) {
+			"error: {$e->GetMessage()}"->PrintLine();
+		};
+	}
+}

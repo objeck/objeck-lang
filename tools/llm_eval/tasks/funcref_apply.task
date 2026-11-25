@@ -1,0 +1,30 @@
+id: funcref_apply
+category: lambdas
+difficulty: 4
+libs:
+checker: exact
+timeout: 10
+--- prompt
+Write an Objeck program with a function Apply(f : (Int) ~ Int, x : Int) ~ Int that calls the function reference f on x and returns the result, plus two named functions Double(x : Int) ~ Int and Inc(x : Int) ~ Int. Print Apply with Double on 7 and then Apply with Inc on 7, one result per line, passing the named functions as function references.
+--- expected
+14
+8
+--- reference
+class FuncRefApply {
+	function : Apply(f : (Int) ~ Int, x : Int) ~ Int {
+		return f(x);
+	}
+
+	function : Double(x : Int) ~ Int {
+		return x * 2;
+	}
+
+	function : Inc(x : Int) ~ Int {
+		return x + 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Apply(Double(Int) ~ Int, 7)->PrintLine();
+		Apply(Inc(Int) ~ Int, 7)->PrintLine();
+	}
+}

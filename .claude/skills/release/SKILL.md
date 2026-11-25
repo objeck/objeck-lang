@@ -176,6 +176,8 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 git push origin master
 ```
 
+`core/lib/*.obl` belong in that `git add` only while they are tracked (`git ls-files 'core/lib/*.obl'` lists them): the `libs` job (`.github/workflows/libs.yml`) rebuilds them in every CI and release run and fails when a tracked one differs from the source build. After the libraries stop being committed there is nothing to add and the bump needs no library rebuild.
+
 Then wait for `ci-build.yml` to complete on the bump commit before proceeding to the pre-flight gates (poll `gh run list` until `completed/success`).
 
 If the version was **not** incremented (tag didn't exist, user pre-bumped), skip `bump-version` entirely — just use version.h as-is.
