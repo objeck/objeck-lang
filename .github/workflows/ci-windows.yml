@@ -505,7 +505,7 @@ jobs:
     name: Regression shard ${{ matrix.shard }} of 6
     needs: build
     runs-on: ${{ inputs.platform == 'windows-arm64' && 'windows-11-arm' || 'windows-2025-vs2026' }}
-    timeout-minutes: 45
+    timeout-minutes: ${{ matrix.shard == 2 && 3 || 45 }}
     strategy:
       fail-fast: false
       matrix:
@@ -587,6 +587,11 @@ jobs:
     # in the first pass. The frame-layout bug of #761 crashed mcp_debug_test only in this mode.
     # AMD64 and ARM64 are separate backends and Windows and POSIX take different branches inside
     # each, so both platforms run both passes.
+    - name: Hang (scratch)
+      if: matrix.shard == 2
+      shell: cmd
+      run: ping -n 600 127.0.0.1 > nul
+
     - name: Run regression tests, default JIT threshold
       working-directory: ./programs/regression
       shell: cmd
