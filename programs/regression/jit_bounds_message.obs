@@ -152,6 +152,7 @@ class Test {
 		}
 		else {
 			"bounds messages FAILED: {$@fails}"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }
