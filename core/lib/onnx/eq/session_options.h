@@ -27,6 +27,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <utility>
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
@@ -405,7 +406,7 @@ static void append_tensorrt(Ort::SessionOptions& session_options, const std::uno
             cache_note = "no per-user cache directory could be created, so the TensorRT engine cache is off (pass engine_cache_path)";
          }
          else {
-            trt["trt_engine_cache_path"] = dir;
+            trt["trt_engine_cache_path"] = std::move(dir);
          }
       }
       if(trt["trt_engine_cache_enable"] == "1") {
@@ -433,7 +434,7 @@ static void append_tensorrt(Ort::SessionOptions& session_options, const std::uno
 
    used_cuda_fallback = false;
    if(want_fallback && cuda_available) {
-      append_cuda(session_options, cuda);
+      append_cuda(session_options, std::move(cuda));
       used_cuda_fallback = true;
    }
 }

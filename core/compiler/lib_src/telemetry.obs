@@ -237,6 +237,11 @@ bundle System.Telemetry {
 			return true;
 		}
 
+		#~
+		Count in one bucket
+		@param i bucket index
+		@return number of values in that bucket
+		~#
 		method : public : CountAt(i : Int) ~ Int {
 			return @counts[i];
 		}
@@ -317,10 +322,22 @@ bundle System.Telemetry {
 			return sketch;
 		}
 
+		#~
+		Sets the count of one bucket; used when a sketch is read back from JSON
+		@param i bucket index
+		@param c number of values in that bucket
+		~#
 		method : public : SetCount(i : Int, c : Int) ~ Nil {
 			@counts[i] := c;
 		}
 
+		#~
+		Sets the totals of a sketch read back from JSON (SetCount sets the buckets)
+		@param total number of values
+		@param mn exact minimum
+		@param mx exact maximum
+		@param cl number of clamped values
+		~#
 		method : public : Restore(total : Int, mn : Float, mx : Float, cl : Int) ~ Nil {
 			@total := total;
 			@min := mn;
@@ -524,6 +541,15 @@ bundle System.Telemetry {
 			return s;
 		}
 
+		#~
+		Makes this a summary-only series from numbers read elsewhere, such as a profile loaded from CSV: no samples are kept
+		@param count number of samples
+		@param mn minimum
+		@param mx maximum
+		@param mean mean
+		@param stddev sample standard deviation
+		@param q the quantiles, in the order p50, p95, p99, p999
+		~#
 		method : public : SetSummary(count : Int, mn : Float, mx : Float, mean : Float, stddev : Float, q : Float[]) ~ Nil {
 			@n := count;
 			@seen := count;
@@ -795,6 +821,10 @@ bundle System.Telemetry {
 			return @summary <> Nil;
 		}
 
+		#~
+		The sketch behind the quantiles
+		@return the sketch
+		~#
 		method : public : GetSketch() ~ LatencySketch {
 			return @sketch;
 		}
@@ -868,6 +898,11 @@ bundle System.Telemetry {
 			return true;
 		}
 
+		#~
+		One of the exact samples kept while the series is small
+		@param i index, from 0 up to the count
+		@return the latency in milliseconds
+		~#
 		method : public : ExactAt(i : Int) ~ Float {
 			return @exact[i];
 		}
@@ -988,24 +1023,49 @@ bundle System.Telemetry {
 			return s;
 		}
 
+		#~
+		Sets the sum of squared deviations (Welford's M2); used when a series is read back from JSON
+		@param m2 the sum
+		~#
 		method : public : SetM2(m2 : Float) ~ Nil {
 			@m2 := m2;
 		}
 
+		#~
+		Sets one exact sample; used when a series is read back from JSON
+		@param i index
+		@param x latency in milliseconds
+		~#
 		method : public : SetExact(i : Int, x : Float) ~ Nil {
 			@exact[i] := x;
 		}
 
+		#~
+		Marks whether the exact samples are complete; used when a series is read back from JSON
+		@param v true if every sample is held
+		~#
 		method : public : SetExactValid(v : Bool) ~ Nil {
 			@exact_valid := v;
 		}
 
+		#~
+		Sets the counts of warm-up samples and rejected values; used when a series is read back from JSON
+		@param discarded samples dropped as warm-up
+		@param rejected values refused as NaN, infinite or negative
+		~#
 		method : public : SetCounters(discarded : Int, rejected : Int) ~ Nil {
 			@discarded := discarded;
 			@rejected := rejected;
 			@seen := @n + discarded;
 		}
 
+		#~
+		Sets the statistics of a series read back from JSON
+		@param n number of samples
+		@param mean mean
+		@param m2 sum of squared deviations (Welford's M2)
+		@param sketch the quantile sketch, which also gives the minimum and maximum
+		~#
 		method : public : Restore(n : Int, mean : Float, m2 : Float, sketch : LatencySketch) ~ Nil {
 			@n := n;
 			@seen := n;
@@ -1379,6 +1439,10 @@ bundle System.Telemetry {
 			return @rel_error;
 		}
 
+		#~
+		A one-line summary: model, device, batch, count and the median and 95th percentile in milliseconds
+		@return the text
+		~#
 		method : public : ToString() ~ String {
 			return "{$@model} on {$@device} batch {$@batch}: n={$@count} p50={$@p50}ms p95={$@p95}ms";
 		}
@@ -1436,26 +1500,46 @@ bundle System.Telemetry {
 			return "{$Telemetry->KeyPart(model)}|{$Telemetry->KeyPart(device)}|{$pad}|{$Telemetry->KeyPart(tag)}";
 		}
 
+		#~
+		The sort key of this cell, as Key builds it
+		@return the key
+		~#
 		method : public : GetKey() ~ String {
 			return Key(@model, @device, @batch, @tag);
 		}
 
+		#~
+		@return model name
+		~#
 		method : public : GetModel() ~ String {
 			return @model;
 		}
 
+		#~
+		@return device name
+		~#
 		method : public : GetDevice() ~ String {
 			return @device;
 		}
 
+		#~
+		@return batch size
+		~#
 		method : public : GetBatch() ~ Int {
 			return @batch;
 		}
 
+		#~
+		@return phase label, "" for none
+		~#
 		method : public : GetTag() ~ String {
 			return @tag;
 		}
 
+		#~
+		The latency series of this cell
+		@return the series
+		~#
 		method : public : GetStats() ~ SeriesStats {
 			return @stats;
 		}
@@ -1491,18 +1575,30 @@ bundle System.Telemetry {
 			};
 		}
 
+		#~
+		@return the largest host memory seen, in bytes, NaN if none was captured
+		~#
 		method : public : GetHostMemMax() ~ Float {
 			return @host_mem;
 		}
 
+		#~
+		@return the largest GPU memory seen, in megabytes, NaN if none was captured
+		~#
 		method : public : GetGpuMemMax() ~ Float {
 			return @gpu_mem;
 		}
 
+		#~
+		@return the energy of the calls that reported it, in joules
+		~#
 		method : public : GetEnergyTotal() ~ Float {
 			return @energy;
 		}
 
+		#~
+		@return number of calls whose energy is in GetEnergyTotal
+		~#
 		method : public : GetEnergyRuns() ~ Int {
 			return @energy_runs;
 		}
@@ -1534,6 +1630,10 @@ bundle System.Telemetry {
 			return true;
 		}
 
+		#~
+		The cell as a JSON object; memory and energy appear only when captured
+		@return JSON object
+		~#
 		method : public : ToJson() ~ JsonElement {
 			root := JsonElement->New(JsonElement->JsonType->OBJECT);
 			root->Insert("model", @model);
@@ -1579,6 +1679,11 @@ bundle System.Telemetry {
 			return entry;
 		}
 
+		#~
+		Sets the energy figures; used when an entry is read back from JSON
+		@param total joules
+		@param runs number of calls it covers
+		~#
 		method : public : SetEnergy(total : Float, runs : Int) ~ Nil {
 			@energy := total;
 			@energy_runs := runs;
@@ -1630,6 +1735,9 @@ bundle System.Telemetry {
 			@warmup := warmup;
 		}
 
+		#~
+		@return the warm-up applied to new series
+		~#
 		method : public : GetWarmup() ~ Int {
 			return @warmup;
 		}
@@ -2252,6 +2360,10 @@ bundle System.Telemetry {
 			@loop := sampler_loop;
 		}
 
+		#~
+		Whether a sampler loop is attached, so each call also reads GPU memory and energy
+		@return true if so
+		~#
 		method : public : UsesClock() ~ Bool {
 			return @loop <> Nil;
 		}
@@ -2300,6 +2412,15 @@ bundle System.Telemetry {
 			return ok;
 		}
 
+		#~
+		Stores one finished call, with the host memory, GPU memory and energy seen while it ran when those are captured. Does nothing for a Nil model or device or a batch below 1
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label, Nil for none
+		@param ms latency in milliseconds
+		@param start_ms start of the call on the Telemetry->NowMs clock, -1 if unknown
+		~#
 		method : public : Finish(model : String, device : String, batch : Int, tag : String, ms : Float, start_ms : Int) ~ Nil {
 			rss := Float->NaN();
 			if(@capture_memory) {
@@ -2366,10 +2487,18 @@ bundle System.Telemetry {
 			return @names->Size();
 		}
 
+		#~
+		@param i index, from 0 up to Size
+		@return the name of that value
+		~#
 		method : public : GetName(i : Int) ~ String {
 			return @names[i];
 		}
 
+		#~
+		@param i index, from 0 up to Size
+		@return that value, NaN if it could not be read
+		~#
 		method : public : GetValue(i : Int) ~ Float {
 			return @values[i];
 		}
@@ -2388,6 +2517,10 @@ bundle System.Telemetry {
 			return Float->NaN();
 		}
 
+		#~
+		The readings as name=value text
+		@return the text
+		~#
 		method : public : ToString() ~ String {
 			out := String->New();
 			for(i := 0; i < @names->Size(); i += 1;) {
@@ -2968,6 +3101,10 @@ bundle System.Telemetry {
 			@power_field := field;
 		}
 
+		#~
+		The estimator being fed
+		@return the estimator, Nil if none
+		~#
 		method : public : GetEnergy() ~ EnergyEstimator {
 			return @estimator;
 		}
@@ -3242,6 +3379,9 @@ bundle System.Telemetry {
 			@warmup := warmup;
 		}
 
+		#~
+		Called by each worker before its first call: waits until every worker has arrived, so they start together
+		~#
 		method : public : Arrive() ~ Nil {
 			critical(@mutex) {
 				@ready += 1;
