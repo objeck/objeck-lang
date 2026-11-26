@@ -1,0 +1,135 @@
+#~
+# compile: obc -src mcp_resources_43.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+# run:     obr mcp_resources_43.obe
+#
+# MCP servers offer three kinds of things, and a doc comment makes each from a plain function:
+#
+#   @tool       a call the model makes (an action or a computation)
+#   @resource   data the client or model can read by URI; a URI template such as
+#               weather://{city} is read into the function's parameters
+#   @prompt     a named, parameterised message the user picks (a slash command in a client)
+#
+# The compiler writes the registration (Docs->McpTools(server)) and the code that reads the
+# arguments, as it does for a tool: the description is the comment's text, the types come from
+# the declaration, @param describes a parameter, a default makes a prompt argument optional and
+# @mime sets a resource's media type. The server and the client run in one program here.
+#
+# output:
+#   resources: notes://readme (text/markdown)
+#   templates: weather://{city}/forecast/{days} (text/plain)
+#   prompts:   code_review(language, focus?)
+#   tools:     word_count
+#   read notes://readme               -> # Notes: write them down.
+#   read weather://Denver/forecast/3  -> 3 days in Denver: sunny
+#   prompt code_review(Objeck)        -> Review the Objeck code for bugs.
+#   prompt code_review(C, style)      -> Review the C code for style.
+#   tool word_count(a b  c)           -> 3
+~#
+use API.MCP, Data.JSON, Collection;
+
+class Docs {
+	#~
+	The notes of this project.
+	@resource notes://readme
+	@mime text/markdown
+	~#
+	function : Readme() ~ String {
+		return "# Notes: write them down.";
+	}
+
+	#~
+	A forecast for a city.
+	@resource weather://{city}/forecast/{days}
+	~#
+	function : Forecast(city : String, days : Int) ~ String {
+		return "{$days} days in {$city}: sunny";
+	}
+
+	#~
+	Review some code.
+	@prompt
+	@param language the language of the code
+	@param focus what to look for
+	~#
+	function : CodeReview(language : String, focus : String := "bugs") ~ String {
+		return "Review the {$language} code for {$focus}.";
+	}
+
+	#~
+	Count the words in a text.
+	@tool
+	@readonly
+	@param text the text
+	~#
+	function : WordCount(text : String) ~ Int {
+		count := 0;
+		in_word := false;
+		for(i := 0; i < text->Size(); i += 1;) {
+			if(text->Get(i) = ' ') {
+				in_word := false;
+			}
+			else if(<>in_word) {
+				in_word := true;
+				count += 1;
+			};
+		};
+		return count;
+	}
+}
+
+class McpResourcesDemo {
+	function : Main(args : String[]) ~ Nil {
+		server := McpService->New("docs", "1.0");
+		Docs->McpTools(server);
+
+		client := McpClient->InProcess(server);
+		client->Initialize("demo", "1.0");
+
+		each(r in client->ListResources()) {
+			"resources: {$r->GetUri()} ({$r->GetMimeType()})"->PrintLine();
+		};
+		each(r in client->ListResourceTemplates()) {
+			"templates: {$r->GetUri()} ({$r->GetMimeType()})"->PrintLine();
+		};
+		each(p in client->ListPrompts()) {
+			names := String->New();
+			arguments := p->GetArguments();
+			for(i := 0; i < arguments->Size(); i += 1;) {
+				if(i > 0) {
+					names->Append(", ");
+				};
+				argument := arguments->Get(i)->Get("name")->GetString();
+				names->Append(argument);
+				optional := true;
+				each(required in p->GetRequired()) {
+					if(required->Equals(argument)) {
+						optional := false;
+					};
+				};
+				if(optional) {
+					names->Append("?");
+				};
+			};
+			"prompts:   {$p->GetName()}({$names})"->PrintLine();
+		};
+		each(t in client->ListTools()) {
+			"tools:     {$t->GetName()}"->PrintLine();
+		};
+
+		readme := client->ReadResource("notes://readme")->Get(0)->GetText();
+		"read notes://readme               -> {$readme}"->PrintLine();
+		forecast := client->ReadResource("weather://Denver/forecast/3")->Get(0)->GetText();
+		"read weather://Denver/forecast/3  -> {$forecast}"->PrintLine();
+
+		review := client->GetPrompt("code_review", JsonParser->TextToElement("{\"language\":\"Objeck\"}"));
+		text := review->GetMessages()->Get(0)->Get("content")->Get("text")->GetString();
+		"prompt code_review(Objeck)        -> {$text}"->PrintLine();
+		review := client->GetPrompt("code_review", JsonParser->TextToElement("{\"language\":\"C\",\"focus\":\"style\"}"));
+		text := review->GetMessages()->Get(0)->Get("content")->Get("text")->GetString();
+		"prompt code_review(C, style)      -> {$text}"->PrintLine();
+
+		counted := client->CallTool("word_count", JsonParser->TextToElement("{\"text\":\"a b  c\"}"));
+		count := counted->GetText();
+		"tool word_count(a b  c)           -> {$count}"->PrintLine();
+	}
+}

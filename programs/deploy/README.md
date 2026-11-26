@@ -58,6 +58,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`mcp_declare_40.obs`](mcp_declare_40.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: a function marked @tool is a tool; schema, hints and arguments are written for you |
 | [`mcp_stub_41.obs`](mcp_stub_41.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: call a server through a generated typed client |
 | [`mcp_agent_42.obs`](mcp_agent_42.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` | MCP: tools as agent tools, with approval by effect |
+| [`mcp_resources_43.obs`](mcp_resources_43.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: @resource and @prompt functions next to a @tool, read through a client |
 
 ## Building all of them
 
