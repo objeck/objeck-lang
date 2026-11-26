@@ -1,4 +1,4 @@
-# EXTRA_LIBS: ollama,net,misc
+# EXTRA_LIBS: ollama,net,json,cipher,misc
 use API.Ollama, Collection;
 
 class ApiOllamaTest {
@@ -35,6 +35,15 @@ class ApiOllamaTest {
 		};
 
 		# --- Online tests (skip if Ollama not running) ---
+		# OLLAMA_HOST (e.g. http://myserver:11434) selects a non-default server
+		host := System.Runtime->GetEnvironmentVariable("OLLAMA_HOST");
+		if(host <> Nil & host->Size() > 0) {
+			if(<>host->StartsWith("http")) {
+				host := "http://{$host}";
+			};
+			EndPoint->SetHost(host);
+		};
+
 		models := Model->List();
 		if(models = Nil) {
 			"SKIP: Ollama not running"->PrintLine();
@@ -43,9 +52,41 @@ class ApiOllamaTest {
 			# Model list
 			"  Ollama models found: {$models->Size()}"->PrintLine();
 
-			# Simple generation (use first available model)
-			if(models->Size() > 0) {
-				model_name := models->Get(0)->GetPulled()->GetName();
+			# every listing entry, old or new server, is a listing entry with a name
+			each(i : models) {
+				pulled := models->Get(i)->GetPulled();
+				if(pulled = Nil | pulled->GetName() = Nil) {
+					"  FAIL: model list entry {$i} is not a listing entry"->PrintLine();
+					pass := false;
+				};
+			};
+
+			# Simple generation (use the first model that can complete text)
+			model_name : String;
+			each(i : models) {
+				pulled := models->Get(i)->GetPulled();
+				if(model_name = Nil & pulled <> Nil & pulled->GetName() <> Nil) {
+					caps := pulled->GetCapabilities();
+					if(caps->Size() = 0 | HasCap(caps, "completion")) {
+						model_name := pulled->GetName();
+					};
+				};
+			};
+
+			if(model_name = Nil) {
+				"SKIP: no completion model on the Ollama server"->PrintLine();
+			}
+			else {
+				# Show returns the model information record
+				shown := Model->Show(model_name);
+				if(shown = Nil | shown->GetInfo() = Nil) {
+					"  FAIL: Show did not return a model information record"->PrintLine();
+					pass := false;
+				}
+				else {
+					"  Show OK"->PrintLine();
+				};
+
 				response := Completion->Generate(model_name, "Say hello in one word");
 				if(response = Nil | response->IsEmpty()) {
 					"  FAIL: Generate returned empty"->PrintLine();
@@ -77,5 +118,14 @@ class ApiOllamaTest {
 			"FAIL: Ollama API tests"->PrintLine();
 			Runtime->Exit(1);
 		};
+	}
+
+	function : HasCap(caps : Vector<String>, name : String) ~ Bool {
+		each(i : caps) {
+			if(caps->Get(i)->Equals(name)) {
+				return true;
+			};
+		};
+		return false;
 	}
 }
