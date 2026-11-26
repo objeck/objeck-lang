@@ -12641,9 +12641,11 @@ bundle System.IO.Net {
 		behaviour, not something a socket option can turn off -- seven candidate fixes
 		were measured and none worked (`docs/windows_loopback_sockets.md`).
 
-		This reads and discards anything still arriving until the peer closes, which is
-		the point of the call, and then closes. Use it wherever a server writes a
-		response and is finished with the connection:
+		This first ends its own sending, so the peer reads what was written and then
+		the end of the stream: a peer that reads until the connection ends is not
+		kept waiting. It then reads and discards anything still arriving until the
+		peer closes, and closes. Use it wherever a server writes a response and is
+		finished with the connection:
 
 		Bounded on both sides, so it cannot park a thread: it gives up after
 		`timeout_ms` of silence, and after 16 reads of a peer that keeps sending
@@ -12662,6 +12664,12 @@ bundle System.IO.Net {
 		~#
 		method : public : CloseGracefully(timeout_ms : Int := 1000) ~ Nil {
 			if(IsOpen()) {
+				# This side has written all it will: say so before waiting for the
+				# peer. A peer that reads until the connection ends (an HTTP/1.0
+				# client, or any reader of a response that is not framed) is waiting
+				# for exactly this, and without it each side waited on the other
+				# until timeout_ms ran out, on every such connection.
+				ShutdownSend();
 				SetRecvTimeout(timeout_ms);
 
 				# ReadBuffer returns 0 once the peer closes and -1 when the receive
@@ -12676,6 +12684,11 @@ bundle System.IO.Net {
 			};
 
 			Close();
+		}
+
+		# ends this side's sending (FIN) and leaves the socket open for reading
+		method : private : ShutdownSend() ~ Nil {
+			SOCK_TCP_SHUTDOWN_SEND;
 		}
 
 		#~
@@ -13123,7 +13136,9 @@ bundle System.IO.Net {
 		zero bytes rather than a short read. The remedy is to not be the side that
 		closes first (`docs/windows_loopback_sockets.md`).
 
-		Reads and discards anything still arriving until the peer closes, then closes.
+		Ends its own sending first (a TLS close_notify, then the transport's), so a
+		peer that reads until the connection ends is not kept waiting; then reads and
+		discards anything still arriving until the peer closes, then closes.
 		Bounded on both sides so it cannot park a thread: `timeout_ms` of silence, or
 		16 reads of a peer that keeps sending instead of hanging up.
 
@@ -13131,6 +13146,9 @@ bundle System.IO.Net {
 		~#
 		method : public : CloseGracefully(timeout_ms : Int := 1000) ~ Nil {
 			if(IsOpen()) {
+				# as TCPSocket->CloseGracefully: tell the peer nothing more follows
+				# before waiting for it to close
+				ShutdownSend();
 				SetRecvTimeout(timeout_ms);
 
 				drain := Byte->New[4096];
@@ -13141,6 +13159,11 @@ bundle System.IO.Net {
 			};
 
 			Close();
+		}
+
+		# ends this side's sending (close_notify, then FIN) and leaves the socket open for reading
+		method : private : ShutdownSend() ~ Nil {
+			SOCK_TCP_SHUTDOWN_SEND;
 		}
 	}
 

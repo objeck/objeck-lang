@@ -104,6 +104,15 @@ If your peer closes first, there is no teardown to race. Concretely:
   that keeps sending rather than closing. In the ordinary case it returns the
   moment the peer hangs up and costs nothing.
 
+  Before it waits it ends its own sending (`shutdown` of the write side, so a
+  FIN follows the response; a TLS socket sends its close_notify first). A peer
+  that reads until the connection ends, rather than counting a `Content-Length`,
+  is waiting for exactly that. Until v2026.11.4 the call only waited, so such a
+  peer and the server waited on each other until the timeout: one second on
+  every request an HTTP/1.0 client made of `Web.HTTP.Server`. The socket is
+  still not closed until the peer has hung up, which is what protects the
+  response (`programs/regression/socket_graceful_close_peer_eof.obs`).
+
   Measured with `programs/regression/socket_graceful_close_test.obs`, 30 transfers
   of a 16KB response per run, six runs on Windows loopback:
 

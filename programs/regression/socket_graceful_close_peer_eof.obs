@@ -1,0 +1,415 @@
+#~
+# CloseGracefully() does not keep a peer that reads to the end waiting
+#
+# CloseGracefully() waited for the peer to hang up, and only then closed. A peer
+# that reads until the connection ends -- an HTTP/1.0 client, or anything that
+# reads a response to its end rather than counting its bytes -- was waiting for
+# this side to end the connection: each side waited on the other until the
+# graceful close timed out, on every such connection. Against Web.HTTP.Server
+# that was a full second for every request answered "Connection: close" and
+# read to the end, with the server's thread held for that second too.
+#
+# It now ends its own sending first (FIN; a TLS close_notify before it), so the
+# peer reads the response and then the end of the stream, hangs up, and the
+# graceful close returns at once. The wait for the peer to close first, which
+# is what protects the response on Windows loopback (#669), is unchanged.
+#
+# Timing: the raw and TLS servers close with a five second wait, the web server
+# with its own one second. Before the change every exchange took the whole
+# wait; an exchange counts as prompt here well under it, and most must be
+# prompt, so one slow exchange on a busy machine does not fail the test.
+# EXTRA_LIBS: net,net_server
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+# writes one 16 KB response per connection and closes gracefully, waiting up to five seconds
+class EofResponder from Thread {
+	@server : TCPSocketServer;
+	@port : Int;
+	@slow_closes : Int;
+
+	New() {
+		Parent("eof-responder");
+		@server := TCPSocketServer->New("127.0.0.1", 0);
+		if(@server->Listen(16)) {
+			@port := @server->GetPort();
+		};
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : GetSlowCloses() ~ Int { return @slow_closes; }
+
+	method : public : Run(param : Base) ~ Nil {
+		body := Byte->New[16384];
+		each(i : body) {
+			body[i] := (i % 251)->As(Byte);
+		};
+
+		running := true;
+		while(running) {
+			client := @server->Accept();
+			if(client = Nil) {
+				running := false;
+			}
+			else {
+				line := client->ReadLine();
+				if(line <> Nil & line->StartsWith("bye")) {
+					running := false;
+					client->Close();
+				}
+				else {
+					client->WriteBuffer(0, body->Size(), body);
+					timer := System.Time.Timer->New(true);
+					client->CloseGracefully(5000);
+					timer->End();
+					if(timer->GetElapsedTime() > 2.5) {
+						@slow_closes += 1;
+					};
+				};
+			};
+		};
+		@server->Close();
+	}
+}
+
+# the same over TLS
+class TlsEofResponder from Thread {
+	@server : TCPSecureSocketServer;
+	@port : Int;
+
+	New(cert : String, key : String) {
+		Parent("tls-eof-responder");
+		@server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		if(@server->Listen()) {
+			@port := @server->GetPort();
+		};
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+
+	method : public : Run(param : Base) ~ Nil {
+		body := Byte->New[16384];
+		each(i : body) {
+			body[i] := (i % 251)->As(Byte);
+		};
+
+		running := true;
+		while(running) {
+			client := @server->Accept();
+			if(client = Nil) {
+				running := false;
+			}
+			else {
+				line := client->ReadLine();
+				if(line = Nil | line->StartsWith("bye")) {
+					running := false;
+					client->Close();
+				}
+				else {
+					client->WriteBuffer(0, body->Size(), body);
+					client->CloseGracefully(5000);
+				};
+			};
+		};
+		@server->Close();
+	}
+}
+
+class EofHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "hello, reader to the end\n"->ToByteArray());
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+class SocketGracefulClosePeerEof {
+	@failed : static : Int;
+	@serve_returned : static : Bool;
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		"stage: tcp"->ErrorLine();
+		CheckTcp();
+		"stage: http"->ErrorLine();
+		CheckHttp();
+		"stage: tls"->ErrorLine();
+		CheckTls();
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} graceful close check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: CloseGracefully() ends its sending before it waits for the peer"->PrintLine();
+	}
+
+	# reads a plain socket to its end: bytes read, or -1 if the end was an error rather than a close
+	function : ReadToEnd(socket : TCPSocket, expected : Int) ~ Int {
+		buffer := Byte->New[4096];
+		total := 0;
+		done := false;
+		while(<>done) {
+			# no more than is still expected, then one byte past it for the end itself
+			want := expected - total;
+			if(want > buffer->Size()) {
+				want := buffer->Size();
+			};
+			if(want < 1) {
+				want := 1;
+			};
+			read := socket->ReadBuffer(0, want, buffer);
+			if(read > 0) {
+				total += read;
+			}
+			else {
+				done := true;
+				if(read < 0) {
+					total := -1;
+				};
+			};
+		};
+		return total;
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := EofResponder->New();
+		Check("tcp: the server listens", server->GetPort() > 0);
+		if(server->GetPort() = 0) {
+			return;
+		};
+		server->Execute(Nil);
+
+		rounds := 6;
+		whole := 0;
+		prompt := 0;
+		slowest := 0;
+		each(i : rounds) {
+			socket := TCPSocket->New("127.0.0.1", server->GetPort());
+			if(socket->IsOpen()) {
+				# longer than the server's wait, so a read the server leaves hanging
+				# ends as a clean close after five seconds, and is counted as slow
+				socket->SetRecvTimeout(15000);
+				timer := System.Time.Timer->New(true);
+				socket->WriteString("get\r\n");
+				if(ReadToEnd(socket, 16384) = 16384) {
+					whole += 1;
+				};
+				timer->End();
+				socket->Close();
+				ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+				if(ms < 2500) {
+					prompt += 1;
+				};
+				if(ms > slowest) {
+					slowest := ms;
+				};
+			};
+		};
+		"tcp: {$whole} of {$rounds} whole, {$prompt} prompt, the slowest exchange took {$slowest} ms"->ErrorLine();
+
+		closer := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(closer->IsOpen()) {
+			closer->WriteString("bye\r\n");
+			closer->Close();
+			server->Join();
+		};
+
+		Check("tcp: every response arrives whole, and then the end of the stream", whole = rounds);
+		Check("tcp: a reader to the end is not kept for the graceful close's wait", prompt >= rounds - 1);
+		Check("tcp: the graceful close itself returns once the peer hangs up", server->GetSlowCloses() <= 1);
+	}
+
+	function : CheckHttp() ~ Nil {
+		@serve_returned := false;
+		server_thread := Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : Base) ~ Nil {
+				WebServer->Serve(EofHandler->New()->GetClass(), "127.0.0.1", 0);
+				SocketGracefulClosePeerEof->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := WebServer->GetBoundPort();
+		Check("http: the web server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+
+		# an HTTP/1.0 request, and an HTTP/1.1 one that asks for the connection to be
+		# closed: each reader takes the response's end from the connection's
+		requests := String->New[2];
+		requests[0] := "GET / HTTP/1.0\r\n\r\n";
+		requests[1] := "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+		rounds := 3;
+		each(r : requests) {
+			answered := 0;
+			prompt := 0;
+			slowest := 0;
+			each(i : rounds) {
+				socket := TCPSocket->New("127.0.0.1", port);
+				if(socket->IsOpen()) {
+					socket->SetRecvTimeout(15000);
+					timer := System.Time.Timer->New(true);
+					socket->WriteString(requests[r]);
+					status := socket->ReadLine();
+					rest := ReadToEnd(socket, 1048576);
+					timer->End();
+					socket->Close();
+					if(status <> Nil & status->StartsWith("HTTP/1.1 200") & rest > 0) {
+						answered += 1;
+					};
+					ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+					# the web server's graceful close waits one second
+					if(ms < 700) {
+						prompt += 1;
+					};
+					if(ms > slowest) {
+						slowest := ms;
+					};
+				};
+			};
+			kind := "HTTP/1.0";
+			if(r = 1) {
+				kind := "Connection: close";
+			};
+			"http: {$kind}: {$answered} of {$rounds} answered, {$prompt} prompt, the slowest request took {$slowest} ms"->ErrorLine();
+			Check("http: {$kind}: every request is answered, then the connection ends", answered = rounds);
+			Check("http: {$kind}: a client that reads to the end is not kept a second", prompt >= rounds - 1);
+		};
+
+		WebServer->Stop();
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	function : CheckTls() ~ Nil {
+		cert := "graceful-eof-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "graceful-eof-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("tls: openssl creates the certificate -- is openssl on PATH?", false);
+			return;
+		};
+
+		rounds := 4;
+		server := TlsEofResponder->New(cert, key);
+		Check("tls: the server listens", server->GetPort() > 0);
+		if(server->GetPort() > 0) {
+			server->Execute(Nil);
+
+			whole := 0;
+			prompt := 0;
+			slowest := 0;
+			buffer := Byte->New[4096];
+			each(i : rounds) {
+				socket := TCPSecureSocket->New("127.0.0.1", server->GetPort(), cert);
+				if(socket->IsOpen()) {
+					timer := System.Time.Timer->New(true);
+					socket->WriteString("get\r\n");
+					total := 0;
+					done := false;
+					while(<>done) {
+						want := 16384 - total;
+						if(want > buffer->Size()) {
+							want := buffer->Size();
+						};
+						if(want < 1) {
+							want := 1;
+						};
+						read := socket->ReadBuffer(0, want, buffer);
+						if(read > 0) {
+							total += read;
+						}
+						else {
+							done := true;
+						};
+					};
+					timer->End();
+					socket->Close();
+					if(total = 16384) {
+						whole += 1;
+					};
+					ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+					if(ms < 2500) {
+						prompt += 1;
+					};
+					if(ms > slowest) {
+						slowest := ms;
+					};
+				}
+				else {
+					"  tls: connect: '{$(TCPSecureSocket->GetLastError())}'"->PrintLine();
+				};
+			};
+			"tls: {$whole} of {$rounds} whole, {$prompt} prompt, the slowest exchange took {$slowest} ms"->ErrorLine();
+
+			# the server thread is joined only if it was told to stop: an Accept nobody
+			# connects to would wait for good
+			closer := TCPSecureSocket->New("127.0.0.1", server->GetPort(), cert);
+			if(closer->IsOpen()) {
+				closer->WriteString("bye\r\n");
+				closer->Close();
+				server->Join();
+			};
+
+			Check("tls: every response arrives whole, and then the end of the session", whole = rounds);
+			Check("tls: a reader to the end is not kept for the graceful close's wait", prompt >= rounds - 1);
+		};
+
+		File->Delete(cert);
+		File->Delete(key);
+	}
+}

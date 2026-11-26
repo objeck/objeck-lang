@@ -460,6 +460,7 @@ void Scanner::LoadKeywords()
   ident_map[L"GC_TEST_ADDRESS"] = GC_TEST_ADDRESS;
   ident_map[L"UNCOMPRESS_ZLIB_TRY"] = UNCOMPRESS_ZLIB_TRY;
   ident_map[L"SOCK_TCP_SET_DEADLINE"] = SOCK_TCP_SET_DEADLINE;
+  ident_map[L"SOCK_TCP_SHUTDOWN_SEND"] = SOCK_TCP_SHUTDOWN_SEND;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;
