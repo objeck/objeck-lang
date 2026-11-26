@@ -250,50 +250,87 @@ vars->SetArray("skills", ["math", "engines"]);
 			@else_body := Vector->New()<TemplateNode>;
 		}
 
+		#~
+		@return the kind: 0 literal text, 1 variable, 2 each, 3 if
+		~#
 		method : public : GetKind() ~ Int {
 			return @kind;
 		}
 
+		#~
+		@return the literal text, or the variable or list name
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 
+		#~
+		@return the filter of a variable ({{name:upper}}), json, upper, lower or trim; Nil for none
+		~#
 		method : public : GetFilter() ~ String {
 			return @filter;
 		}
 
+		#~
+		@param filter the filter name, Nil for none
+		~#
 		method : public : SetFilter(filter : String) ~ Nil {
 			@filter := filter;
 		}
 
+		#~
+		@return the text of {{name|fallback}}; Nil for none
+		~#
 		method : public : GetFallback() ~ String {
 			return @fallback;
 		}
 
+		#~
+		@param fallback the text used when the variable is not set, Nil for none
+		~#
 		method : public : SetFallback(fallback : String) ~ Nil {
 			@fallback := fallback;
 		}
 
+		#~
+		@return true for {{name?}}, a variable that renders as nothing when it is not set
+		~#
 		method : public : IsOptional() ~ Bool {
 			return @optional;
 		}
 
+		#~
+		@param optional true for a variable that renders as nothing when it is not set
+		~#
 		method : public : SetOptional(optional : Bool) ~ Nil {
 			@optional := optional;
 		}
 
+		#~
+		Whether an {{#if}} block has reached its {{else}} part
+		@return true after the else
+		~#
 		method : public : InElse() ~ Bool {
 			return @in_else;
 		}
 
+		#~
+		@param in_else true once the {{else}} part of an {{#if}} block starts
+		~#
 		method : public : SetInElse(in_else : Bool) ~ Nil {
 			@in_else := in_else;
 		}
 
+		#~
+		@return the nodes of an {{#each}} body or the then part of an {{#if}}
+		~#
 		method : public : GetBody() ~ Vector<TemplateNode> {
 			return @body;
 		}
 
+		#~
+		@return the nodes of the else part of an {{#if}}
+		~#
 		method : public : GetElse() ~ Vector<TemplateNode> {
 			return @else_body;
 		}
@@ -2856,7 +2893,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 	}
 
 	#~
-	What StructuredCall::Ask returns: the valid value, or why there is none.
+	What StructuredCall->Ask returns: the valid value, or why there is none.
 	~#
 	class StructuredOutcome {
 		@value : JsonElement;
@@ -2872,26 +2909,45 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 			@attempts := 0;
 		}
 
+		#~
+		@param value the valid value found
+		~#
 		method : public : SetValue(value : JsonElement) ~ Nil {
 			@value := value;
 		}
 
+		#~
+		@param errors the schema errors of the last reply
+		~#
 		method : public : SetErrors(errors : Vector<SchemaError>) ~ Nil {
 			@errors := errors;
 		}
 
+		#~
+		@param error why there is no value
+		~#
 		method : public : SetError(error : String) ~ Nil {
 			@error := error;
 		}
 
+		#~
+		@param attempts how many times the backend was asked
+		~#
 		method : public : SetAttempts(attempts : Int) ~ Nil {
 			@attempts := attempts;
 		}
 
+		#~
+		@param repaired true if the value came from a repaired candidate
+		~#
 		method : public : SetRepaired(repaired : Bool) ~ Nil {
 			@repaired := repaired;
 		}
 
+		#~
+		Records one reply of the backend
+		@param reply the reply text
+		~#
 		method : public : AddReply(reply : String) ~ Nil {
 			@replies->AddBack(reply);
 		}

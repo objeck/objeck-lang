@@ -16,6 +16,13 @@ failing handler into an error result the model can read, enforces a step limit, 
 list and an optional approval callback, and returns the whole transcript as an AgentResult. The
 backends speak to the providers directly over HTTPS (or HTTP for a local Ollama), so this library does
 not need the provider client libraries. Compile with -lib agent,net,json,cipher,misc.
+
+A run can be controlled from outside: AgentCancel is a token any thread may cancel (the loop checks it before
+every step and between tool calls and passes it to handlers that take one), AgentBudget caps a run's steps,
+wall-clock time, model calls, tool calls, tokens and cost, and AgentTool->Mode picks whether a handler runs on
+the loop's own thread (IN_THREAD) or on a worker the loop can stop waiting for (BOUNDED_THREAD). A trace sink
+(AgentTraceSink; AgentTraceBuffer keeps the events) receives an event when the run starts and ends and for each
+model call, tool call, budget check and halt, with secrets scrubbed. AgentResult's stop reason says why a run ended.
 ~#
 bundle API.Agent {
 	#~
@@ -2649,7 +2656,7 @@ result->GetText()->PrintLine();
 		}
 
 		# waits for a worker: done, timeout (over limit), cancelled or deadline. A worker still running when
-		# the wait ends is abandoned 
+		# the wait ends is abandoned: a thread cannot be killed, so it keeps running and its late result is dropped
 		method : Await(slot : AgentSlot, limit : Int) ~ String {
 			start := @clock->Ms();
 			how := "";
