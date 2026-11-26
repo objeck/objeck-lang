@@ -1047,6 +1047,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_chain.py "$BIN"
 
+    # A constructor call may leave out its type arguments ('Pair->New(a, b)',
+    # 'v : Vector<Foo> := Vector->New();'). For a library class the constructors'
+    # parameter types and the type parameters' bounds are read back from the .obl,
+    # and a second library may have a class of the same short name; this builds two.
+    - name: type arguments are inferred for a library generic class (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_generic_inference.py "$BIN"
+
     # `Vector[]<T>` as a parameter built fine inside a library and resolved for
     # callers inside it, but a program that linked the library was told the method
     # did not exist: the signature came back out of the .obl with its array

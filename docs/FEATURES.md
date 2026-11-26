@@ -282,6 +282,84 @@ map->Insert(408, "Sunnyvale");
 map->ToString()->PrintLine();
 ```
 
+#### Type-argument inference
+A constructor call may leave its type arguments out when the compiler can read them.
+It looks in two places, in this order:
+
+1. **The declared type the object is stored into or returned as**, when that is the
+   class being constructed: a declared local, a field, an element of an array, or the
+   method's return type.
+2. **The constructor's arguments**, when the constructors that take that many arguments
+   agree on what each type parameter is. A primitive argument is held by its class, as
+   it is when the type argument is written (`7` for an `IntRef`).
+
+```ruby
+class Scores {
+  @names : Vector<String>;
+  @by_name : Map<String, IntRef>;
+
+  New() {
+    @names := Vector->New();                  # Vector<String>, from the field
+    @by_name := Map->New();                   # Map<String, IntRef>
+  }
+
+  method : public : Best() ~ Pair<String, IntRef> {
+    best := Pair->New("", -1);                # Pair<String, IntRef>, from the arguments
+    each(name in @names) {
+      score := @by_name->Find(name);
+      if(score > best->GetSecond()) {
+        best := Pair->New(name, score);
+      };
+    };
+    return best;
+  }
+
+  method : public : Above(limit : Int) ~ Vector<String> {
+    above : Vector<String> := Vector->New();  # from the declared local
+    ...
+    return above;
+  }
+}
+```
+
+Before, each of those calls repeated a type the line already stated:
+
+```ruby
+@names := Vector->New()<String>;
+@by_name := Map->New()<String, IntRef>;
+best := Pair->New("", IntRef->New(-1))<String, IntRef>;
+above := Vector->New()<String>;
+```
+
+Both versions are in `programs/regression/generic_inference_before_after.obs`, which
+runs them side by side and prints:
+
+```
+best and count above 80: sol 96 2
+PASS: type-argument inference before and after
+```
+
+The compiler only fills in what would have been written, so every check that follows is
+the one an explicit call gets: overload resolution, the type parameter's bounds and the
+match between the object and where it is stored. Written type arguments mean what they
+always did (`Cell->New("text")<Base>` is a `Cell<Base>`), and a declared target is used
+before the arguments (`wide : Pair<String, Base> := Pair->New("key", "value");`).
+
+A call is refused, never guessed, when:
+
+| call | reported as |
+|---|---|
+| `items := Vector->New();` (no declared type, no arguments) | `Generic type mismatch for class 'Collection.Vector': expected 1 type parameter(s), got 0` |
+| `anything : Base := Vector->New();` (the target is another class) | the same |
+| `Both->New("a", 7)` with `New(first : T, second : T)` | `Cannot infer the type arguments of 'Both': type parameter 'T' is both 'System.String' and 'System.IntRef'` |
+| `Slot->New(Nil)` | `Cannot infer the type arguments of 'Slot': no argument gives type parameter 'T' a class` |
+| `Tagged->New(words)` with `New(value : T)` and `New(values : Vector<T>)` | `Cannot infer the type arguments of 'Tagged': its constructors make type parameter 'T' both 'Collection.Vector<System.String>' and 'System.String'` |
+
+Each message ends `Write them: Class->New(..)<..>`. No common parent class is looked for,
+and one constructor is not preferred over another. A constructor call passed as an
+argument (`Take(Vector->New())`) is not inferred from the parameter; write the type
+arguments or use a declared local.
+
 #### Type-parameter bounds
 A type parameter can require an interface bound (`T : Bound`); a concrete argument
 must implement it. Multiple bounds combine with `&`, and a bound may be generic

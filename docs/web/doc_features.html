@@ -225,6 +225,63 @@ map<span class="t-op">-&gt;</span>Insert(<span class="t-num">510</span>, <span c
 map<span class="t-op">-&gt;</span>Insert(<span class="t-num">408</span>, <span class="t-str">"Sunnyvale"</span>);
 map<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
+    <h4 id="type-argument-inference">Type-argument inference</h4>
+    <p>A constructor call may leave its type arguments out when the compiler can read them. It looks in two places, in this order:</p>
+    <ol>
+     <li><strong>The declared type the object is stored into or returned as</strong>, when that is the class being constructed: a declared local, a field, an element of an array, or the method's return type.</li>
+     <li><strong>The constructor's arguments</strong>, when the constructors that take that many arguments agree on what each type parameter is. A primitive argument is held by its class, as it is when the type argument is written (<code>7</code> for an <code>IntRef</code>).</li>
+    </ol>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Scores</span> {
+  @names : Vector&lt;<span class="t-type">String</span>&gt;;
+  @by_name : Map&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+
+  <span class="t-kw">New</span>() {
+    @names <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();                  <span class="t-com"># Vector&lt;String&gt;, from the field</span>
+    @by_name <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();                   <span class="t-com"># Map&lt;String, IntRef&gt;</span>
+  }
+
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Best</span>() <span class="t-op">~</span> Pair&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt; {
+    best <span class="t-op">:=</span> <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">""</span>, -<span class="t-num">1</span>);                <span class="t-com"># Pair&lt;String, IntRef&gt;, from the arguments</span>
+    <span class="t-kw">each</span>(name <span class="t-kw">in</span> @names) {
+      score <span class="t-op">:=</span> @by_name<span class="t-op">-&gt;</span>Find(name);
+      <span class="t-kw">if</span>(score &gt; best<span class="t-op">-&gt;</span>GetSecond()) {
+        best <span class="t-op">:=</span> <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(name, score);
+      };
+    };
+    <span class="t-kw">return</span> best;
+  }
+
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Above</span>(limit : <span class="t-type">Int</span>) <span class="t-op">~</span> Vector&lt;<span class="t-type">String</span>&gt; {
+    above : Vector&lt;<span class="t-type">String</span>&gt; <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();  <span class="t-com"># from the declared local</span>
+    ...
+    <span class="t-kw">return</span> above;
+  }
+}
+</code></pre>
+    <p>Before, each of those calls repeated a type the line already stated:</p>
+<pre class="line-numbers"><code class="language-objeck">@names <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+@by_name <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+best <span class="t-op">:=</span> <span class="t-cls">Pair</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">""</span>, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(-<span class="t-num">1</span>))&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+above <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+</code></pre>
+    <p>Both versions are in <code>programs/regression/generic_inference_before_after.obs</code>, which runs them side by side and prints:</p>
+<pre class="plain">best and count above 80: sol 96 2
+PASS: type-argument inference before and after</pre>
+    <p>The compiler only fills in what would have been written, so every check that follows is the one an explicit call gets: overload resolution, the type parameter's bounds and the match between the object and where it is stored. Written type arguments mean what they always did (<code>Cell-&gt;New("text")&lt;Base&gt;</code> is a <code>Cell&lt;Base&gt;</code>), and a declared target is used before the arguments (<code>wide : Pair&lt;String, Base&gt; := Pair-&gt;New("key", "value");</code>).</p>
+    <p>A call is refused, never guessed, when:</p>
+    <table class="ref-table">
+     <thead>
+      <tr><th>call</th><th>reported as</th></tr>
+     </thead>
+     <tbody>
+      <tr><td data-label="call"><code>items := Vector-&gt;New();</code> (no declared type, no arguments)</td><td data-label="reported as"><code>Generic type mismatch for class 'Collection.Vector': expected 1 type parameter(s), got 0</code></td></tr>
+      <tr><td data-label="call"><code>anything : Base := Vector-&gt;New();</code> (the target is another class)</td><td data-label="reported as">the same</td></tr>
+      <tr><td data-label="call"><code>Both-&gt;New("a", 7)</code> with <code>New(first : T, second : T)</code></td><td data-label="reported as"><code>Cannot infer the type arguments of 'Both': type parameter 'T' is both 'System.String' and 'System.IntRef'</code></td></tr>
+      <tr><td data-label="call"><code>Slot-&gt;New(Nil)</code></td><td data-label="reported as"><code>Cannot infer the type arguments of 'Slot': no argument gives type parameter 'T' a class</code></td></tr>
+      <tr><td data-label="call"><code>Tagged-&gt;New(words)</code> with <code>New(value : T)</code> and <code>New(values : Vector&lt;T&gt;)</code></td><td data-label="reported as"><code>Cannot infer the type arguments of 'Tagged': its constructors make type parameter 'T' both 'Collection.Vector&lt;System.String&gt;' and 'System.String'</code></td></tr>
+     </tbody>
+    </table>
+    <p>Each message ends <code>Write them: Class-&gt;New(..)&lt;..&gt;</code>. No common parent class is looked for, and one constructor is not preferred over another. A constructor call passed as an argument (<code>Take(Vector-&gt;New())</code>) is not inferred from the parameter; write the type arguments or use a declared local.</p>
     <h4 id="type-parameter-bounds">Type-parameter bounds</h4>
     <p>A type parameter can require an interface bound (<code>T : Bound</code>); a concrete argument must implement it. Multiple bounds combine with <code>&amp;</code>, and a bound may be generic (F-bounded, e.g. self-comparable):</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># single bound</span>
