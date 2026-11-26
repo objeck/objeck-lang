@@ -1,0 +1,31 @@
+# EXPECT_COMPILE_ERROR: (28,13): Cannot infer the type arguments of 'Tagged': its constructors make type parameter 'T' both 'Collection.Vector<System.String>' and 'System.String'
+#~
+Two constructors take one argument, and a Vector<String> fits both: as the
+value (a Tagged<Vector<String>>) and as the values (a Tagged<String>). Neither
+is preferred; the call is refused until the type argument is written.
+~#
+use Collection;
+
+class Tagged<T> {
+	@count : Int;
+
+	New(value : T) {
+		@count := 1;
+	}
+
+	New(values : Vector<T>) {
+		@count := values->Size();
+	}
+
+	method : public : Count() ~ Int {
+		return @count;
+	}
+}
+
+class BadGenericInferAmbiguous {
+	function : Main(args : String[]) ~ Nil {
+		words := Vector->New()<String>;
+		tagged := Tagged->New(words);
+		tagged->Count()->PrintLine();
+	}
+}

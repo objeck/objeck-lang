@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: (12,3): Generic type mismatch for class 'Collection.Vector' between generic types: 'System.String' and 'System.IntRef'
+#~
+Written type arguments are never replaced by the target's: a Vector<IntRef>
+stored into a Vector<String> is the mismatch it always was.
+~#
+use Collection;
+
+class BadGenericInferMismatch {
+	function : Main(args : String[]) ~ Nil {
+		words : Vector<String>;
+		words := Vector->New();
+		words := Vector->New()<IntRef>;
+		words->Size()->PrintLine();
+	}
+}
