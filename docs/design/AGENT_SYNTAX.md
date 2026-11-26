@@ -1,8 +1,8 @@
 # Agent syntax: typed results, prompt literals, agent declarations, scoped limits
 
-Release scope (2026-11-26, final): typed results (section 1, `class Name : json`, PR #1841) and scoped limits (section 4, `AgentScope`, merged in #1837) are IN v2026.11.4; `prompt` literals (section 2) and `agent` declarations (section 3) stay DEFERRED until after the release. The as-built design of section 1 is in the notes of PR #1841.
+Release scope (2026-11-26, final): typed results (section 1, `class Name : json`, PR #1841) and scoped limits (section 4, `AgentScope`, merged in #1837) are IN v2026.11.4; `prompt` literals (section 2) and `agent` declarations (section 3) stay DEFERRED until after the release.
 
-Status, decisions of 2026-11-26: (1) typed results use the opt-in `class : json` modifier, no call-site type arguments, built on the MCP derivation once #1819-#1822 are in master; (4) scoped limits are a LIBRARY call, `AgentScope` (implemented, section 4); `prompt` literals (2) and `agent` declarations (3) are DEFERRED until after v2026.11.4. Part of v2026.11.4 per the maintainer. Composes with the MCP
+Decisions of 2026-11-26: (1) typed results use the opt-in `class Name : json` modifier, no call-site type arguments (implemented, section 1); (4) scoped limits are a LIBRARY call, `AgentScope` (implemented, section 4); `prompt` literals (2) and `agent` declarations (3) are DEFERRED until after v2026.11.4. Part of v2026.11.4 per the maintainer. Composes with the MCP
 stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md` on those branches) and does not redo `@tool`.
 Rule for all four: pure source-to-source lowering to existing constructs (no VM, JIT or opcode change), and
 a program that does not use a feature compiles to a byte-identical `.obe`.
@@ -23,33 +23,29 @@ a program that does not use a feature compiles to a byte-identical `.obe`.
 * Keywords are listed in `scanner.cpp` 108-157; new words must be contextual (see below) or they break
   programs that use them as identifiers (`agent`, `prompt`, `budget` are plausible variable names).
 
-## 1. Typed structured results
+## 1. Typed structured results (IMPLEMENTED, v2026.11.4)
 
-Requested: `w := agent->Ask(prompt)<Weather>;`. Not sound as written (see below). Recommended form:
+As built: `class Weather : json { ... }` or `class Weather : json(note, tags) { ... }` (the names are the optional
+fields). The modifier follows the class name, so no lookahead is needed and every program that parsed before parses
+the same. After the class body the parser writes, as source text parsed by the same parser (the way `@tool` does):
 
-```
-class : json Weather { city : String; temp_c : Float; tags : Vector<String>; note : String := Nil; }
-w := Ask->Typed(backend, prompt)<Weather>;
-```
+* `Weather->JsonSchema() ~ JsonElement`, from the fields;
+* `weather->JsonFill(json)` (a method, because a function cannot assign another object's fields);
+* `Weather->FromJson(json) ~ Weather`: validates with `API.LlmUtil.JsonSchema->Check`, raises an `Error` naming the
+  field, then `New()` and `JsonFill`;
+* `Weather->Ask(agent, prompt) ~ Weather` when the file has `use API.AgentJson;`: `API.AgentJson.AgentAsk->Value`
+  (StructuredCall over the agent's backend, repair on, two retries, `Error` on failure) then `FromJson`.
 
-Soundness problems found:
-1. `)<Weather>` collides with the existing `<...>` suffix (class type args) and with the unimplemented
-   explicit method type args. A parser special case for an `Ask`-named call breaks as soon as the sugar
-   chain adds explicit method type args. Until the call-site type-argument syntax is decided by the owner of
-   that chain, lower to `StructuredCall` fed by the generated `Weather->Schema()` and `Weather->FromJson()`
-   through a library helper. Needs a decision, not forced here.
-2. The compiler must ADD members (`Schema()`, `FromJson(JsonElement)`) to the class. That is only possible
-   for a class in the program being compiled, never one already in an `.obl`. So derivation is opt-in at the
-   declaration (`class : json`, a contextual modifier beside `private`/`virtual`) and the members are
-   synthesized for those classes only. Other classes are untouched (byte identity).
-3. Mapping (same table as MCP 3(c)): Int integer, Float number, Bool boolean, String string, `Vector<T>`
-   array, nested `json` class object (cycles are a compile error), enum string enum (needs name to value
-   adapter), optional = has a default (absent from `required`). Maps, function types, native handles and
-   non-`json` classes: compile error naming the field and line.
-4. FromJson must reject a wrong-typed value, not default it (JsonSchema validates first; FromJson re-checks
-   cheaply and raises an `Error`).
-5. Oracle: for at least 10 sample classes, `Weather->Schema()` equals the hand-written schema by
-   `JsonSchema->Same`. The MCP stage-2 derivation and this one must share one routine in `context.cpp`.
+The derivation is the one `@tool` parameters use (`McpAnalyze`, one new kind `MK_JSONCLS`, and the record-field walk
+factored into `McpAnalyzeFields`), so a json class is also a valid `@tool` parameter and the schemas cannot drift.
+Decisions: no call-site type argument (`)<Weather>` collides with class type arguments); the helpers are named
+`JsonRead_n` so a class that is both json and a tool host has no clash; a json class nested in another must be
+declared above it (the parser has not read a later class yet; the error says so); an optional field is
+`anyOf [T, null]` because models write null for what they do not know; the class needs a `New()` with no parameters
+(or none declared); `Ask` goes straight to the backend, so an `AgentScope` does not count it (a limitation).
+A class without `: json` is not touched (byte-identical `.obe`, checked over the regression and deploy corpus).
+
+Superseded notes of the first draft: the `class : json Name` position and the `Ask`-as-`)<T>` form.
 
 ## 2. `prompt` literals (DEFERRED until after v2026.11.4)
 
