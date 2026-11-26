@@ -151,6 +151,27 @@ PATCH always open a connection of their own. With reuse, the same nightly run
 peaks at about 60 `TIME_WAIT` entries instead of the whole range
 (`programs/regression/http_client_reuse.obs` checks the reuse and the single retry).
 
+## Is it this machine?
+
+A loopback test that fails on one Windows machine and passes on the others is usually the
+machine. Two signatures: a response lost outright (above), and a connect that is never
+answered, which gives up after about 21 seconds (three SYNs) and fails whatever request it
+was for. `tools/cicd/loopback_connect_probe.ps1` settles it without Objeck: a .NET listener
+and .NET clients in one process make a few thousand loopback connects, and the script
+reports every connect that was not answered within a second, what became of it, whether an
+immediate retry on a new socket worked, and which non-Microsoft kernel drivers are running.
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\cicd\loopback_connect_probe.ps1
+```
+
+`stalled=0` for both listeners says the loopback is sound, and the failure is the test's or
+the library's to explain. Stalls say it is the machine: nothing of Objeck's was running.
+On the development machine whose loopback a filter driver sits on, `query_url_cache_processes`
+failed 2 to 4 runs in 10 with the filter active (2026-11-01, one query in 1,440 waiting out a
+21 second connect; the HTTP client did not yet reuse connections), and passed 80 runs in 80
+with the filter's application paused (2026-11-26).
+
 ## Reproducing it
 
 ```
