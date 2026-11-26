@@ -1,0 +1,81 @@
+#~
+# compile: obc -src telemetry_38.obs -lib telemetry,gen_collect,json
+# run:     obr telemetry_38.obe
+#
+# Before you can make a model fast you have to measure it, and a single timing
+# means little: latency varies from call to call, so what you report is a
+# distribution -- the median (p50) and the tail (p95, p99). System.Telemetry
+# times a call on a monotonic clock, keeps streaming statistics per series in
+# bounded memory, and can save the result as a profile and predict from it.
+#
+# Part 1 feeds SeriesStats a fixed list of numbers, so its answers can be
+# checked by hand. Part 2 times a real computation 100 times with a
+# TimingRecorder, one series per (model, device, batch). The times themselves
+# differ from run to run and machine to machine, so the program prints what
+# does not: how many samples were kept and whether the statistics are in order.
+#
+# output:
+#   -- statistics of 2 4 4 4 5 5 7 9 (milliseconds)
+#   count 8, mean 5.000000, min 2.000000, max 9.000000, p50 4.000000, p95 9.000000
+#   -- timing a computation 100 times (the first 10 are warm-up)
+#   series: sumsq/plain/batch 4096, samples kept: 90
+#   p50 <= p95 <= p99 <= max: true
+#   a profile saved and loaded answers Predict: true
+#   a batch never measured: no prediction
+~#
+
+use System.Telemetry;
+use System.IO.Filesystem;
+
+class TelemetryTour {
+	function : Main(args : String[]) ~ Nil {
+		# part 1: the statistics of numbers we chose
+		"-- statistics of 2 4 4 4 5 5 7 9 (milliseconds)"->PrintLine();
+		stats := SeriesStats->New(0);
+		values := [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+		each(i : values) {
+			stats->Add(values[i]);
+		};
+		"count {$(stats->GetCount())}, mean {$(stats->GetMean())}, min {$(stats->GetMin())}, max {$(stats->GetMax())}, p50 {$(stats->GetP50())}, p95 {$(stats->GetP95())}"->PrintLine();
+
+		# part 2: time a real computation. Start() returns a probe, Stop() records it.
+		"-- timing a computation 100 times (the first 10 are warm-up)"->PrintLine();
+		recorder := TimingRecorder->New();
+		recorder->SetWarmup(10);
+		data := Float->New[4096];
+		each(i : data) {
+			data[i] := i->As(Float) * 0.01;
+		};
+
+		each(run : 100) {
+			probe := recorder->Start("sumsq", "plain", 4096, "");
+			SumSquares(data);
+			probe->Stop();
+		};
+
+		entry := recorder->GetStore()->GetEntries()->Get(0);
+		s := entry->GetStats();
+		"series: {$(entry->GetModel())}/{$(entry->GetDevice())}/batch {$(entry->GetBatch())}, samples kept: {$(s->GetCount())}"->PrintLine();
+		ordered := s->GetMin() <= s->GetP50() & s->GetP50() <= s->GetP95() & s->GetP95() <= s->GetP99() & s->GetP99() <= s->GetMax();
+		"p50 <= p95 <= p99 <= max: {$ordered}"->PrintLine();
+
+		# a profile can be saved, loaded and asked what a call is expected to cost
+		path := "{$(File->GetTempName())}.json";
+		recorder->GetStore()->Save(path);
+		loaded := ProfileStore->Load(path);
+		File->Delete(path);
+		hit := loaded->Predict("sumsq", "plain", 4096);
+		"a profile saved and loaded answers Predict: {$(hit <> Nil)}"->PrintLine();
+		if(loaded->Predict("sumsq", "plain", 999) = Nil) {
+			"a batch never measured: no prediction"->PrintLine();
+		};
+	}
+
+	function : SumSquares(data : Float[]) ~ Float {
+		sum := 0.0;
+		each(i : data) {
+			sum += data[i] * data[i];
+		};
+		return sum;
+	}
+}
