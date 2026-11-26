@@ -1,0 +1,26 @@
+use API.MCP, Data.JSON;
+
+class Tools {
+  #~
+  Greet a person.
+  @tool
+  @readonly
+  @param name who to greet
+  ~#
+  function : Greet(name : String) ~ String {
+    return "Hello, {$name}";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("greeter", "1.0.0");
+    Tools->McpTools(server);
+
+    client := McpClient->InProcess(server);
+    client->Initialize("demo", "1.0");
+    each(tool in client->ListTools()) {
+      "{$tool->GetName()}: {$tool->GetDescription()}"->PrintLine();
+      tool->GetInputSchema()->ToString()->PrintLine();
+    };
+    client->CallTool("greet", "{\"name\":\"Ada\"}")->GetText()->PrintLine();
+  }
+}

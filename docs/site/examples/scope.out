@@ -1,0 +1,5 @@
+$ obc -src scope.obs -lib agent,json,net,cipher,misc
+$ obr scope.obe
+question 1: completed
+question 2: budget_steps
+question 3: budget_steps

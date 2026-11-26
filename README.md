@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-<strong>Object-oriented • JIT-compiled • AI-native • Robust APIs
+<strong>An agentic language and runtime</strong><br/>
+Tools, agents, MCP and local models are built in. Object-oriented, functional and fast.
 </p>
 
 <hr/>
@@ -25,11 +26,57 @@
   <a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a>
 </p>
 
+## An agentic language and runtime
+
+A function is a tool, a program is an MCP server, and an agent is a loop with limits. A doc comment with `@tool` is the whole declaration; the schema comes from the types.
+
+<!-- agent-hero:start -->
+```objeck
+use API.MCP, Data.JSON;
+
+class Tools {
+  #~
+  Greet a person.
+  @tool
+  @readonly
+  @param name who to greet
+  ~#
+  function : Greet(name : String) ~ String {
+    return "Hello, {$name}";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("greeter", "1.0.0");
+    Tools->McpTools(server);
+
+    client := McpClient->InProcess(server);
+    client->Initialize("demo", "1.0");
+    each(tool in client->ListTools()) {
+      "{$tool->GetName()}: {$tool->GetDescription()}"->PrintLine();
+      tool->GetInputSchema()->ToString()->PrintLine();
+    };
+    client->CallTool("greet", "{\"name\":\"Ada\"}")->GetText()->PrintLine();
+  }
+}
+```
+
+```text
+$ obc -src tool.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr tool.obe
+greet: Greet a person.
+{"properties":{"name":{"description":"who to greet","type":"string"}},"required":["name"],"type":"object"}
+Hello, Ada
+```
+<!-- agent-hero:end -->
+
+Serve it to Claude Code, Claude Desktop or any MCP client with `obr --mcp tool.obe`. Then call servers through typed clients, run agents with budgets, cancel and approval, bound a block of code with `AgentScope`, and use local models through Ollama with no key. Every program on the [Agents page](https://www.objeck.org/agents.html) was compiled and run; the output is what it printed.
+
 ## Why Objeck?
 
-**Built for modern development:**
+**Built for agents, and for modern development:**
+- 🤖 **Agents built in**: `@tool`/`@resource`/`@prompt` declarations, `obr --mcp` servers, typed MCP clients, budgets, cancel and approval, `AgentScope`, actors with supervision, telemetry
+- 🏠 **Local or hosted models**: Ollama (no key), Anthropic, OpenAI, Gemini, ONNX, OpenCV — no third-party packages
 - 🚀 **JIT-compiled** for performance (ARM64/AMD64)
-- 🤖 **AI-native**: OpenAI, Anthropic, Gemini, Ollama, ONNX, OpenCV — no third-party packages
 - 🌐 **Network-complete**: HTTP/1.1 · HTTP/2 · HTTP/3/QUIC · WebSocket · DTLS — all standard library
 - 💻 **Developer-friendly**: REPL shell, LSP plugins for VSCode/Sublime/Kate, DAP debugger
 - 🌍 **Cross-platform**: Linux, macOS, Windows (x64 + ARM64, including 64-bit Raspberry Pi)

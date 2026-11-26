@@ -1895,6 +1895,11 @@ jobs:
           cp core/lib/*.ini "$DEPLOY/lib"/ 2>/dev/null || true
           "$DEPLOY/bin/obc" -version | head -1 || true
 
+      # The samples on objeck.org (docs/site/examples) are compiled and run with the toolchain just built,
+      # and the MCP session the Agents page shows is played against `obr --mcp`.
+      - name: Site code samples compile, run and print what the pages show
+        run: python3 tools/cicd/check_site_examples.py --toolchain core/release/deploy-x64
+
       - name: Build native diagnostics library
         run: |
           # The language server reaches its analyzer through
