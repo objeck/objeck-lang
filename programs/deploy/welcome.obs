@@ -27,7 +27,7 @@ class Welcome {
 			"nlp_28.obs", "llm_29.obs", "ai_search_30.obs", "game_31.obs",
 			"mcp_32.obs", "agent_33.obs", "agent_control_34.obs", "actors_35.obs",
 			"rag_36.obs", "structured_37.obs", "telemetry_38.obs", "forecast_39.obs",
-			"mcp_declare_40.obs", "mcp_stub_41.obs", "mcp_agent_42.obs", "mcp_resources_43.obs", "mcp_serve_44.obs"];
+			"mcp_declare_40.obs", "mcp_stub_41.obs", "mcp_agent_42.obs", "mcp_resources_43.obs", "mcp_serve_44.obs", "agent_scope_45.obs"];
 
 		libs := [
 			"",
@@ -74,7 +74,8 @@ class Welcome {
 			"gen_collect,json,net,net_server,cipher,misc,mcp",
 			"gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent",
 			"gen_collect,json,net,net_server,cipher,misc,mcp",
-			"gen_collect,json,net,net_server,cipher,misc,mcp"];
+			"gen_collect,json,net,net_server,cipher,misc,mcp",
+			"agent,json,net,cipher,misc"];
 
 		about := [
 			"a class, a function, Main, and one line of output",
@@ -121,7 +122,8 @@ class Welcome {
 			"MCP: call a server through a generated typed client",
 			"MCP: tools as agent tools, with approval by effect",
 			"MCP: @resource and @prompt functions next to a @tool, read through a client",
-			"MCP: obr --mcp and --mcp-http serve the tagged functions with no server code"];
+			"MCP: obr --mcp and --mcp-http serve the tagged functions with no server code",
+			"AgentScope: one set of step, token and tool limits for every agent run in a block"];
 
 		""->PrintLine();
 		"Objeck example programs"->PrintLine();
@@ -165,6 +167,7 @@ class Welcome {
 		"  25-30 AI and machine learning, 31 is a game, and 32-39 are AI engineering:"->PrintLine();
 		"  MCP tools, agents, actors, retrieval, structured output, telemetry, forecasts."->PrintLine();
 		"  40-44 are MCP again: @tool, @resource and @prompt functions, a typed client, approval by effect."->PrintLine();
+		"  45 is AgentScope: shared limits for every agent run in a block."->PrintLine();
 		"  32-42 run offline: a scripted model stands in for a real one, so no key is needed."->PrintLine();
 		"  game_31 opens a window, so it needs a display (not SSH or a container)."->PrintLine();
 		"  odbc_21 needs a configured data source, llm_29 needs an API key, and"->PrintLine();

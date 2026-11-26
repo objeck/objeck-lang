@@ -1,0 +1,403 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+AgentScope (API.Agent): limits for every agent run inside a block, against a scripted fake model (no key,
+no network). Totals across runs (steps, tokens, tool calls), a run that is not started when nothing is left,
+the agent's own budget still applying, nesting (inner can only tighten), cancellation, cleanup on a normal
+exit, an early return and an exception, the trace, threads (no inheritance, Child() charges the parent),
+entering a scope twice, and reuse.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+class CountHandler implements AgentToolHandler {
+  @count : static : Int;
+
+  New() {
+  }
+
+  function : Reset() ~ Nil {
+    @count := 0;
+  }
+
+  function : GetCount() ~ Int {
+    return @count;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    @count += 1;
+    return "ok";
+  }
+}
+
+class ChildWorker from Thread {
+  @scope : AgentScope;
+  @agent : Agent;
+  @shared : static : Agent;
+  @worker_result : static : AgentResult;
+  @saw_scope : static : Bool;
+
+  New(scope : AgentScope, agent : Agent) {
+    Parent("scope_worker");
+    @scope := scope;
+    @agent := agent;
+    @shared := agent;
+  }
+
+  function : Body() ~ Nil {
+    @worker_result := @shared->Run("worker");
+  }
+
+  function : GetWorkerResult() ~ AgentResult {
+    return @worker_result;
+  }
+
+  function : GetSawScope() ~ Bool {
+    return @saw_scope;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    @saw_scope := AgentScope->Current() <> Nil;
+    if(@scope <> Nil) {
+      AgentScope->Run(@scope, ChildWorker->Body() ~ Nil);
+    };
+  }
+}
+
+class AgentScopeTest {
+  @failures : static : Int;
+  @agent : static : Agent;
+  @agent2 : static : Agent;
+  @results : static : Vector<AgentResult>;
+  @inner : static : AgentScope;
+  @backend : static : ScriptedBackend;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  function : Registry() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("count", "a test tool", Json("{\"type\":\"object\",\"properties\":{}}"), CountHandler->New()));
+    return registry;
+  }
+
+  function : Counted(reply : AgentReply, input : Int, output : Int) ~ AgentReply {
+    return AgentReply->New(reply->GetText(), reply->GetToolCalls(), reply->GetStopReason(), input, output);
+  }
+
+  # n runs' worth of "one tool call, then an answer": 2 steps, 1 tool call and 30 tokens each
+  function : Script(runs : Int) ~ Vector<AgentReply> {
+    script := Vector->New()<AgentReply>;
+    for(i := 0; i < runs; i += 1;) {
+      script->AddBack(Counted(AgentReply->Ask("c{$i}", "count", "{}"), 10, 10));
+      script->AddBack(Counted(AgentReply->Say("done {$i}"), 5, 5));
+    };
+    return script;
+  }
+
+  function : NewAgent(runs : Int) ~ Agent {
+    @backend := ScriptedBackend->New(Script(runs));
+    return Agent->New(@backend, Registry());
+  }
+
+  function : Two() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+    @results->AddBack(@agent->Run("two"));
+  }
+
+  function : Three() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+    @results->AddBack(@agent->Run("two"));
+    @results->AddBack(@agent->Run("three"));
+  }
+
+  function : One() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+  }
+
+  function : Boom() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+    Runtime->Raise(Error->New("boom"));
+  }
+
+  function : EarlyReturn() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+    if(@results->Size() > 0) {
+      return;
+    };
+    @results->AddBack(@agent->Run("never"));
+  }
+
+  function : Nested() ~ Nil {
+    AgentScope->Run(@inner, One() ~ Nil);
+    @results->AddBack(@agent->Run("after the inner scope"));
+  }
+
+  function : NestedCancel() ~ Nil {
+    AgentScope->Current()->Cancel("outer stop");
+    AgentScope->Run(@inner, One() ~ Nil);
+  }
+
+  function : CancelThenRun() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+    AgentScope->Current()->Cancel("stop now");
+    @results->AddBack(@agent->Run("two"));
+  }
+
+  function : Reenter() ~ Nil {
+    AgentScope->Run(AgentScope->Current(), One() ~ Nil);
+  }
+
+  function : TestNoScope() ~ Nil {
+    "no scope:"->PrintLine();
+    @agent := NewAgent(1);
+    @results := Vector->New()<AgentResult>;
+    One();
+    Check("a run outside any scope behaves as before", @results->Get(0)->IsCompleted() & @results->Get(0)->GetSteps()->Size() = 2);
+    Check("Current is Nil outside a scope", AgentScope->Current() = Nil);
+    Check("the agent keeps no budget and no token", @agent->GetBudget() = Nil & @agent->GetCancel() = Nil);
+  }
+
+  function : TestTotals() ~ Nil {
+    "totals:"->PrintLine();
+    CountHandler->Reset();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetMaxSteps(3);
+    AgentScope->Run(scope, Two() ~ Nil);
+    Check("steps: the first run completes in its two steps", @results->Get(0)->IsCompleted() & @results->Get(0)->GetSteps()->Size() = 2);
+    Check("steps: the second run gets one step and stops at budget_steps", Same(@results->Get(1)->GetStopReason(), "budget_steps") & @results->Get(1)->GetSteps()->Size() = 1);
+    Check("steps: the scope counted 3 steps in 2 runs", scope->GetStepsUsed() = 3 & scope->GetRuns() = 2);
+    Check("steps: the first stop reason is kept", Same(scope->GetHalt(), "budget_steps"));
+    Check("steps: the agent's budget and token are put back", @agent->GetBudget() = Nil & @agent->GetCancel() = Nil);
+    Check("steps: Current is Nil after the block", AgentScope->Current() = Nil);
+
+    # a run with nothing left is not started
+    CountHandler->Reset();
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    scope2 := AgentScope->New()->SetMaxSteps(2);
+    AgentScope->Run(scope2, Three() ~ Nil);
+    Check("not started: the second run never asks the model", @backend->GetAskedCount() = 2 & @results->Get(1)->GetSteps()->Size() = 0);
+    Check("not started: a halted result with the reason", Same(@results->Get(1)->GetStopReason(), "budget_steps") & <>@results->Get(1)->IsCompleted());
+    Check("not started: the third run is also refused", Same(@results->Get(2)->GetStopReason(), "budget_steps"));
+
+    # tokens: 30 per run
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    scope3 := AgentScope->New()->SetMaxTokens(45);
+    AgentScope->Run(scope3, Three() ~ Nil);
+    Check("tokens: run one completes (30)", @results->Get(0)->IsCompleted() & scope3->GetTokensUsed() >= 30);
+    Check("tokens: run two stops at budget_tokens", Same(@results->Get(1)->GetStopReason(), "budget_tokens"));
+    Check("tokens: run three is not started", Same(@results->Get(2)->GetStopReason(), "budget_tokens") & @results->Get(2)->GetSteps()->Size() = 0);
+
+    # tool calls
+    CountHandler->Reset();
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    scope4 := AgentScope->New()->SetMaxToolCalls(1);
+    AgentScope->Run(scope4, Three() ~ Nil);
+    Check("tool calls: one run, one tool call", @results->Get(0)->IsCompleted() & CountHandler->GetCount() = 1);
+    Check("tool calls: the next run is not started", Same(@results->Get(1)->GetStopReason(), "budget_tool_calls") & CountHandler->GetCount() = 1);
+
+    # wall clock: a limit already used
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @backend->SetDelayMs(60);
+    scope5 := AgentScope->New()->SetMaxWallMs(25);
+    AgentScope->Run(scope5, Two() ~ Nil);
+    Check("wall: the first run ends at the deadline", Same(@results->Get(0)->GetStopReason(), "deadline"));
+    Check("wall: the spent limit refuses the next run", Same(@results->Get(1)->GetStopReason(), "deadline") & @results->Get(1)->GetSteps()->Size() = 0);
+
+    # no limit set: everything completes
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    AgentScope->Run(AgentScope->New(), Two() ~ Nil);
+    Check("no limits: a scope changes nothing", @results->Get(0)->IsCompleted() & @results->Get(1)->IsCompleted());
+  }
+
+  function : TestOwnBudget() ~ Nil {
+    "own budget:"->PrintLine();
+    @agent := NewAgent(1);
+    own := AgentBudget->New()->SetMaxSteps(1);
+    @agent->SetBudget(own);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetMaxSteps(10);
+    AgentScope->Run(scope, One() ~ Nil);
+    Check("the agent's tighter budget still wins", Same(@results->Get(0)->GetStopReason(), "budget_steps") & @results->Get(0)->GetSteps()->Size() = 1);
+    Check("the agent's own budget object is put back", @agent->GetBudget() = own & own->GetMaxSteps() = 1);
+  }
+
+  function : TestNesting() ~ Nil {
+    "nesting:"->PrintLine();
+    # inner looser than outer: the outer limit still holds, and the inner run is charged to the outer
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    outer := AgentScope->New()->SetMaxSteps(2);
+    @inner := AgentScope->New()->SetMaxSteps(100);
+    AgentScope->Run(outer, Nested() ~ Nil);
+    Check("inner run completes inside the outer limit", @results->Get(0)->IsCompleted() & @inner->GetStepsUsed() = 2);
+    Check("the outer scope was charged for the inner run", outer->GetStepsUsed() = 2);
+    Check("a looser inner scope does not loosen the outer", Same(@results->Get(1)->GetStopReason(), "budget_steps") & @results->Get(1)->GetSteps()->Size() = 0);
+
+    # inner tighter than outer: the inner limit wins, the outer is charged what ran
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    outer2 := AgentScope->New()->SetMaxSteps(100);
+    @inner := AgentScope->New()->SetMaxSteps(1);
+    AgentScope->Run(outer2, Nested() ~ Nil);
+    Check("a tighter inner scope wins", Same(@results->Get(0)->GetStopReason(), "budget_steps") & @results->Get(0)->GetSteps()->Size() = 1);
+    Check("the outer scope continues afterwards", outer2->GetStepsUsed() >= 1 & AgentScope->Current() = Nil);
+
+    # cancelling the outer scope stops a run in the inner one
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    outer3 := AgentScope->New();
+    @inner := AgentScope->New();
+    AgentScope->Run(outer3, NestedCancel() ~ Nil);
+    Check("the inner token is a child of the outer", Same(@results->Get(0)->GetStopReason(), "cancelled"));
+  }
+
+  function : TestException() ~ Nil {
+    "exceptions and early return:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetMaxSteps(10);
+    raised := false;
+    try {
+      AgentScope->Run(scope, Boom() ~ Nil);
+    }
+    on(e : Error) {
+      raised := Same(e->GetMessage(), "boom");
+    };
+    Check("an exception goes on to the caller", raised);
+    Check("the run before the exception was charged", scope->GetStepsUsed() = 2);
+    Check("the scope was left", AgentScope->Current() = Nil);
+    Check("the agent state was put back", @agent->GetBudget() = Nil & @agent->GetCancel() = Nil);
+
+    AgentScope->Run(scope, EarlyReturn() ~ Nil);
+    Check("an early return leaves the scope", AgentScope->Current() = Nil);
+    Check("the scope can be entered again after an exception", scope->GetRuns() = 1);
+  }
+
+  function : TestCancel() ~ Nil {
+    "cancel:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New();
+    AgentScope->Run(scope, CancelThenRun() ~ Nil);
+    Check("a cancel before the second run stops it", @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "cancelled"));
+    Check("the cancelled run asked the model nothing", @backend->GetAskedCount() = 2);
+
+    # the agent's own token is still honoured under a scope
+    @agent := NewAgent(2);
+    own := AgentCancel->New();
+    own->Cancel("own");
+    @agent->SetCancel(own);
+    @results := Vector->New()<AgentResult>;
+    AgentScope->Run(AgentScope->New(), One() ~ Nil);
+    Check("the agent's own token still cancels", Same(@results->Get(0)->GetStopReason(), "cancelled"));
+    Check("the agent's own token is put back", @agent->GetCancel() = own);
+  }
+
+  function : TestTrace() ~ Nil {
+    "trace:"->PrintLine();
+    @agent := NewAgent(2);
+    mine := AgentTraceBuffer->New();
+    @agent->SetTrace(mine);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetTrace(true);
+    AgentScope->Run(scope, Two() ~ Nil);
+    Check("the scope trace holds both runs", scope->GetTrace() <> Nil & scope->GetTrace()->Count("run_start") = 2 & scope->GetTrace()->Count("run_end") = 2);
+    Check("the agent's own sink got the events too", mine->Count("run_start") = 2);
+    Check("the agent's own sink is put back", @agent->GetTrace() = mine);
+
+    @agent := NewAgent(1);
+    @results := Vector->New()<AgentResult>;
+    printing := AgentScope->New()->SetTrace(true)->SetPrintTrace(true);
+    AgentScope->Run(printing, One() ~ Nil);
+  }
+
+  function : TestThreads() ~ Nil {
+    "threads:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetMaxSteps(10);
+    AgentScope->Run(scope, SpawnPlain() ~ Nil);
+    Check("a new thread does not inherit the scope", <>ChildWorker->GetSawScope());
+
+    @agent := NewAgent(2);
+    parent := AgentScope->New()->SetMaxSteps(10);
+    @child := parent->Child();
+    AgentScope->Run(parent, SpawnChild() ~ Nil);
+    Check("a worker under Child() runs its agent", ChildWorker->GetWorkerResult() <> Nil & ChildWorker->GetWorkerResult()->IsCompleted());
+    Check("the child counted the run", @child->GetStepsUsed() = 2);
+    Check("the parent was charged for the child's run", parent->GetStepsUsed() = 2);
+  }
+
+  function : SpawnPlain() ~ Nil {
+    worker := ChildWorker->New(Nil, @agent);
+    worker->Execute(Nil);
+    worker->Join();
+  }
+
+  @child : static : AgentScope;
+
+  function : SpawnChild() ~ Nil {
+    worker := ChildWorker->New(@child, @agent);
+    worker->Execute(Nil);
+    worker->Join();
+  }
+
+  function : TestReenter() ~ Nil {
+    "entering twice:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New();
+    raised := false;
+    try {
+      AgentScope->Run(scope, Reenter() ~ Nil);
+    }
+    on(e : Error) {
+      raised := true;
+    };
+    Check("entering an active scope raises", raised);
+    Check("the scope is usable afterwards", AgentScope->Current() = Nil);
+    AgentScope->Run(scope, One() ~ Nil);
+    Check("and a rerun starts from zero", scope->GetRuns() = 1 & scope->GetStepsUsed() = 2);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestNoScope();
+    TestTotals();
+    TestOwnBudget();
+    TestNesting();
+    TestException();
+    TestCancel();
+    TestTrace();
+    TestThreads();
+    TestReenter();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
