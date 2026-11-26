@@ -535,7 +535,7 @@ namespace backend {
         }
       }
 
-      loops.push_back(loop);
+      loops.push_back(std::move(loop));
     }
 
     // innermost first, then the nesting
@@ -958,7 +958,11 @@ namespace backend {
           continue;
         }
         // the immediate dominator is the strict dominator with the most dominators of its own
-        const size_t want = dom_size(b) - 1;
+        const size_t dom_count = dom_size(b);
+        if(dom_count == 0) {   // a reachable block always dominates itself; 0 would wrap below (Coverity CID 1689661)
+          return bad("block " + std::to_string(b) + " is reachable but has no dominators");
+        }
+        const size_t want = dom_count - 1;
         const int idom = blocks[b].idom;
         if(idom < 0 || !dominated_by(b, static_cast<size_t>(idom)) || dom_size(static_cast<size_t>(idom)) != want) {
           return bad("block " + std::to_string(b) + " has the wrong immediate dominator " + std::to_string(idom));

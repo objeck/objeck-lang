@@ -105,6 +105,21 @@ static inline uint64_t Mix64(uint64_t x) {
 // A small persistent thread pool. For(n, f) runs f(i, tid) for i in [0, n), the
 // calling thread taking part as tid 0, and returns when every call is done.
 //
+// Locking protocol (the "coverity[missing_lock]" notes below refer to it):
+//  - call_mutex_ serialises the callers of For, SetThreads and Shutdown, so at most one of them
+//    changes the pool at a time. job_, total_, finished_ and generation_ are only WRITTEN by For
+//    while it holds call_mutex_ and, in addition, mutex_; threads_ and workers_ only by
+//    SetThreads / Shutdown under call_mutex_, when no worker is alive.
+//  - mutex_ is the handshake with the workers: stop_ and generation_ are read by a worker under
+//    it, and job_/total_ are published under it before the generation_ bump that wakes the
+//    workers, so a worker sees them when it observes the new generation.
+//  - A worker reads job_, total_ and threads_ without a lock in Work(). That is ordered: it
+//    happens after it saw the new generation_ under mutex_, and the next writer (the next For)
+//    starts only after For has seen every worker's finished_++ under mutex_.
+//  - stop_ is cleared by Stop() only after every worker is joined.
+// Coverity does not follow this two-mutex protocol (nor that a condition_variable predicate runs
+// with the lock held), hence the notes. Do not change the protocol to silence it.
+//
 class Pool {
   std::vector<std::thread> workers_;
   std::mutex mutex_;
@@ -127,6 +142,7 @@ class Pool {
     const long threads = threads_;
     const long lo = total_ * tid / threads, hi = total_ * (tid + 1) / threads;
     for(long i = lo; i < hi; ++i) {
+      // coverity[missing_lock] job_ was published under mutex_ before the generation_ bump this thread woke on
       (*job_)(i, tid);
     }
   }
@@ -137,6 +153,7 @@ class Pool {
     for(;;) {
       {
         std::unique_lock<std::mutex> lock(mutex_);
+        // coverity[missing_lock] the predicate runs inside wait() with `lock` (mutex_) held
         work_cv_.wait(lock, [&] { return stop_ || generation_ != seen; });
         if(stop_) {
           return;
@@ -162,6 +179,7 @@ class Pool {
       workers_[i].join();
     }
     workers_.clear();
+    // coverity[missing_lock] every worker is joined above, so nothing else can read stop_
     stop_ = false;
   }
 
@@ -201,6 +219,7 @@ class Pool {
     Stop();
     threads_ = count;
     for(int t = 1; t < count; ++t) {
+      // coverity[missing_lock] generation_ is only written by For, which call_mutex_ (held here) excludes
       workers_.push_back(std::thread(&Pool::Loop, this, t, generation_));
     }
   }
