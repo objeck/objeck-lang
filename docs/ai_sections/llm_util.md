@@ -289,6 +289,15 @@ Compile with `-lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_j
 
 Field types: `Int` (`integer`), `Float` (`number`), `Bool`, `String`, `Char` (one-character string), `Byte` (0 to 255), `JsonElement` (any value), an enum (a string of the item names), another `json` class (an object), `Vector<T>`, `T[]` and `Map<String, T>` of those. The fields are required unless named in `json(a, b)`; an optional field is `anyOf` its type and `null`, and is left unset when it is missing or null. A field type that cannot be derived, a parent class, a generic class, a constructor that needs parameters and no `New()`, a name in `json(...)` that is not a field, or a nested class that is not a `json` class declared above this one is a compile error with the line. The same derivation is what a `json` class gets as an `@tool` parameter.
 
+Compiled and run (`programs/deploy/json_class_46.obs`, a scripted model whose first answer is wrong, so the retry shows):
+
+```
+schema required: city,temp_c,sky,tags
+Paris: 18.500000 C, rain=true, tags=2, note=(none)
+model calls: 2
+bad value: Weather: /temp_c: expected number, got string
+```
+
 The derived schemas equal hand-written ones (`json_class_oracle_test`, twelve classes), and `json_class_test` and `json_class_diag_test.py` run on a scripted model with no key.
 
 ### API summary

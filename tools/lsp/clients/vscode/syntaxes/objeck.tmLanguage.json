@@ -12,6 +12,9 @@
 			"include": "#storage-modifiers"
 		},
 		{
+			"include": "#json-class"
+		},
+		{
 			"include": "#entities"
 		},
 		{
@@ -60,6 +63,19 @@
 					"begin": "\\#",
 					"end": "\\n",
 					"name": "comment.line.objeck"
+				}]
+		},
+		"json-class": {
+			"patterns": [
+				{
+					"comment": "class Name : json -- the compiler writes the schema and the reader (docs/design/AGENT_SYNTAX.md)",
+					"match": "\\b(class)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*(json)\\b",
+					"captures": {
+						"1": { "name": "storage.type.class.objeck" },
+						"2": { "name": "entity.name.class.objeck" },
+						"3": { "name": "punctuation.separator.objeck" },
+						"4": { "name": "storage.modifier.json.objeck" }
+					}
 				}]
 		},
 		"entities": {
