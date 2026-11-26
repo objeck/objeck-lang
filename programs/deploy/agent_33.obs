@@ -1,0 +1,78 @@
+#~
+# compile: obc -src agent_33.obs -lib agent,json,net,cipher,misc
+# run:     obr agent_33.obe
+#
+# An agent is a loop: send the question and a list of tools to a model; if the
+# model replies "call this tool", run it, send the result back, and repeat
+# until the model answers in plain text. API.Agent runs that loop for you.
+#
+# A tool is an Objeck function plus a name, a description and a JSON Schema for
+# its arguments -- the model reads those to decide when to call it. Here the
+# model is a ScriptedBackend: a fixed list of replies standing in for a real
+# one, so the run needs no key and no network and prints the same thing every
+# time. To use a real model, swap in AnthropicBackend, OpenAIBackend,
+# GeminiBackend or OllamaBackend; nothing else changes.
+#
+# The trace (AgentTraceBuffer) records every step of the run, which is how you
+# see what an agent did and why it stopped.
+#
+# output:
+#   answer: 17 * 23 is 391, and Paris is 18C and sunny.
+#   stop reason: completed
+#   model calls: 2, tool calls: 2
+#   transcript:
+#     calculator({"expression":"17 * 23"}) -> 391
+#     get_weather({"city":"Paris"}) -> 18C and sunny
+#   trace events: run_start,budget_check,model_start,model_end,tool_start,tool_end,tool_start,tool_end,budget_check,model_start,model_end,run_end
+~#
+
+use API.Agent;
+use Data.JSON;
+use Collection;
+
+class AgentTour {
+	function : Main(args : String[]) ~ Nil {
+		# the tools the model may use: the built-in calculator and one of our own
+		registry := ToolRegistry->New();
+		registry->Add(AgentTools->Calculator());
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+		registry->Add(AgentTool->New("get_weather", "Get the weather for a city", schema,
+			Func2Ref->New(AgentTour->Weather(JsonElement) ~ String)<JsonElement, String>));
+
+		# the script: first the model asks for two tools at once, then it answers
+		calls := Vector->New()<AgentToolCall>;
+		calls->AddBack(AgentToolCall->New("call_1", "calculator", JsonParser->TextToElement("{\"expression\":\"17 * 23\"}")));
+		calls->AddBack(AgentToolCall->New("call_2", "get_weather", JsonParser->TextToElement("{\"city\":\"Paris\"}")));
+		script := Vector->New()<AgentReply>;
+		script->AddBack(AgentReply->AskAll(calls));
+		script->AddBack(AgentReply->Say("17 * 23 is 391, and Paris is 18C and sunny."));
+
+		agent := Agent->New(ScriptedBackend->New(script), registry);
+		agent->SetBudget(AgentBudget->New()->SetMaxSteps(5)->SetMaxToolCalls(10));
+		trace := AgentTraceBuffer->New();
+		agent->SetTrace(trace);
+
+		result := agent->Run("What is 17 * 23, and what is the weather in Paris?");
+		"answer: {$(result->GetText())}"->PrintLine();
+		"stop reason: {$(result->GetStopReason())}"->PrintLine();
+		"model calls: {$(result->GetModelCalls())}, tool calls: {$(result->GetToolCallCount())}"->PrintLine();
+
+		"transcript:"->PrintLine();
+		each(step in result->GetSteps()) {
+			each(tool_result in step->GetResults()) {
+				"  {$(tool_result->GetToolName())}({$(tool_result->GetArguments())}) -> {$(tool_result->GetContent())}"->PrintLine();
+			};
+		};
+
+		kinds := trace->Kinds();
+		"trace events: {$kinds}"->PrintLine();
+	}
+
+	function : Weather(arguments : JsonElement) ~ String {
+		city := arguments->Get("city")->GetString();
+		if(city->Equals("Paris")) {
+			return "18C and sunny";
+		};
+		return "no data";
+	}
+}

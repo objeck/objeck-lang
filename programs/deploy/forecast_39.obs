@@ -1,0 +1,101 @@
+#~
+# compile: obc -src forecast_39.obs -lib ml_timeseries,gen_collect
+# run:     obr forecast_39.obe
+#
+# Forecasting predicts the next values of one series: monthly sales, daily
+# traffic, a sensor reading. System.ML.TimeSeries has the usual models, all
+# pure Objeck and deterministic (there is no random start).
+#
+# The data is 96 months of a made-up series that climbs steadily and repeats a
+# 12-month cycle, with a little noise (Simulate->TrendSeasonal with a fixed
+# seed, so the numbers are the same every run). The first 84 months are the
+# training set; the last 12 are held back and never seen by a model, because a
+# forecast is only as good as its accuracy on data it did not train on.
+#
+# Two models compete. Seasonal naive is the benchmark every other model should
+# beat: it predicts that each month will repeat the same month last year.
+# Holt-Winters keeps a level, a trend and a seasonal pattern and updates them
+# as it reads the series. MAE is the mean absolute error, the typical size of a
+# miss in the series' own units. Each forecast also carries a prediction
+# interval, here 90%: a range the true value should fall in nine times in ten.
+#
+# output:
+#   96 months: 84 to train on, 12 held back
+#
+#   seasonal naive:  MAE 3.51
+#   Holt-Winters:    MAE 0.46
+#
+#   Holt-Winters forecast, first 3 held-back months
+#     month 85: 46.1  (90% range 45.3 to 47.0)  actual 45.4
+#     month 86: 48.4  (90% range 47.6 to 49.2)  actual 48.1
+#     month 87: 50.1  (90% range 49.3 to 51.0)  actual 50.2
+#   the true value fell inside the 90% range in 11 of 12 months
+~#
+
+use System.ML.TimeSeries;
+
+class Forecasting {
+	function : Main(args : String[]) ~ Nil {
+		# 96 months: level 20, climbing 0.3 a month, a 12-month cycle of amplitude 5
+		all := Simulate->TrendSeasonal(96, 20.0, 0.3, 5.0, 12, 0.5, 15);
+		train_size := 84;
+		horizon := 12;
+		"{$(all->Size())} months: {$train_size} to train on, {$horizon} held back"->PrintLine();
+		""->PrintLine();
+
+		train := Float->New[train_size];
+		actual := Float->New[horizon];
+		each(i : all) {
+			if(i < train_size) {
+				train[i] := all[i];
+			}
+			else {
+				actual[i - train_size] := all[i];
+			};
+		};
+		series := TimeSeries->New(train);
+
+		# the benchmark: the same month last year
+		naive := BaselineForecaster->New(BaselineForecaster->Kind->SEASONAL_NAIVE, 12);
+		if(<>naive->Fit(series)) {
+			naive->GetError()->PrintLine();
+			return;
+		};
+		naive_mean := naive->Forecast(horizon, 0.9)->GetMean();
+
+		# Holt-Winters with an additive season of 12
+		model := ExponentialSmoothing->HoltWinters(12, false);
+		if(<>model->Fit(series)) {
+			model->GetError()->PrintLine();
+			return;
+		};
+		forecast := model->Forecast(horizon, 0.9);
+		mean := forecast->GetMean();
+		lower := forecast->GetLower();
+		upper := forecast->GetUpper();
+
+		naive_mae := ForecastMetrics->Mae(actual, naive_mean);
+		model_mae := ForecastMetrics->Mae(actual, mean);
+		"seasonal naive:  MAE {$naive_mae:.2}"->PrintLine();
+		"Holt-Winters:    MAE {$model_mae:.2}"->PrintLine();
+		""->PrintLine();
+
+		"Holt-Winters forecast, first 3 held-back months"->PrintLine();
+		each(i : 3) {
+			month := train_size + i + 1;
+			m := mean[i];
+			lo := lower[i];
+			hi := upper[i];
+			a := actual[i];
+			"  month {$month}: {$m:.1}  (90% range {$lo:.1} to {$hi:.1})  actual {$a:.1}"->PrintLine();
+		};
+
+		inside := 0;
+		each(i : horizon) {
+			if(actual[i] >= lower[i] & actual[i] <= upper[i]) {
+				inside += 1;
+			};
+		};
+		"the true value fell inside the 90% range in {$inside} of {$horizon} months"->PrintLine();
+	}
+}
