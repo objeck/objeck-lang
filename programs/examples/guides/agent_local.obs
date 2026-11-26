@@ -1,0 +1,58 @@
+#~
+# compile: obc -src agent_local.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
+# run:     obr agent_local.obe                     (model qwen3:8b)
+#          obr agent_local.obe llama3.1:8b         (any Ollama model that supports tools)
+#
+# Requires a local Ollama server (https://ollama.com) with a tool-capable model pulled:
+#   ollama pull qwen3:8b
+# No API key and no data leaves the machine. The agent talks to http://localhost:11434;
+# OllamaBackend->SetHost("http://host:11434") points it at another machine.
+#
+# An @tool function becomes an agent tool, and the agent's loop is the same one
+# the scripted examples use: only the backend differs.
+~#
+use API.MCP, API.Agent, Collection;
+
+class LocalAgent {
+	#~
+	Add two integers.
+	@tool
+	@readonly
+	@param a the first number
+	@param b the second number
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		model := "qwen3:8b";
+		if(args->Size() > 0) {
+			model := args[0];
+		};
+
+		server := McpService->New("local", "1.0.0");
+		LocalAgent->McpTools(server);
+		client := McpClient->InProcess(server);
+		client->Initialize("local-client", "1.0");
+		registry := ToolRegistry->New();
+		McpAgentTools->AddAll(registry, client);
+
+		agent := Agent->New(OllamaBackend->New(model), registry);
+		agent->SetBudget(AgentBudget->New()->SetMaxSteps(6)->SetMaxWallMs(120000));
+		result := agent->Run("What is 17 plus 25? Use the add tool.");
+
+		if(result->IsCompleted()) {
+			"answer: {$(result->GetText())}"->PrintLine();
+		}
+		else {
+			"run ended ({$(result->GetStopReason())}): {$(result->GetError())}"->PrintLine();
+		};
+		each(step in result->GetSteps()) {
+			each(r in step->GetResults()) {
+				"tool: {$(r->GetToolName())}({$(r->GetArguments())}) -> {$(r->GetContent())}"->PrintLine();
+			};
+		};
+		"stop reason: {$(result->GetStopReason())}, model calls: {$(result->GetModelCalls())}"->PrintLine();
+	}
+}
