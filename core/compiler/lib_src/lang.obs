@@ -8712,16 +8712,16 @@ Runtime->Raise(ParseError->New("row 12: expected a number"));
 
 	#~
 	The check behind the 'assert' statement: <pre>assert a = b : "label";</pre> compiles to a test
-	that calls <pre>System.Test->Fail(...)</pre> when it does not hold, so a test program fails
+	that calls <pre>System.AssertCheck->Fail(...)</pre> when it does not hold, so a test program fails
 	by itself and says where and why. A failure prints one line that starts with
 	<pre>FAIL:</pre> (file:line, the source text of the assertion, the label and, for a
 	comparison, both operand values) and then exits with code 1, the code the
-	regression runner reads as a failed test. <pre>Test->KeepGoing(true)</pre> counts the
-	failures instead of stopping at the first, and <pre>Test->Finish()</pre> exits with
+	regression runner reads as a failed test. <pre>AssertCheck->KeepGoing(true)</pre> counts the
+	failures instead of stopping at the first, and <pre>AssertCheck->Finish()</pre> exits with
 	code 1 if there were any.
-	@class Test
+	@class AssertCheck
 	~#
-	class Test {
+	class AssertCheck {
 		@failures : static : Int;
 		@keep_going : static : Bool;
 
@@ -9510,7 +9510,7 @@ bundle System.Concurrency {
 	Abstracts native system thread execution 
 	
 	```
-class Test {
+class AssertCheck {
   function : Main(args : String[]) ~ Nil {
     x := Counter->New("x,128");
     y := Counter->New("y,32");

@@ -12,7 +12,7 @@ program cannot show that; this compiles the failing shapes in assert_statement/ 
   fail_compare     a comparison with a label: both operands, exit 1, nothing runs after it
   fail_call        an operand that is a call is evaluated once (the call prints once)
   fail_bool        a bare Bool expression: no operand line
-  fail_keep_going  Test->KeepGoing(true): every failure is reported, Test->Finish() exits 1
+  fail_keep_going  AssertCheck->KeepGoing(true): every failure is reported, AssertCheck->Finish() exits 1
 
 Each runs with the default JIT and with OBJECK_JIT_THRESHOLD=1, and with obc at -opt s0 and s3.
 The programs that must be rejected (bad_assert_*.obs) are in the regression suite proper.

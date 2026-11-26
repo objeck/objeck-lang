@@ -7457,7 +7457,7 @@ std::wstring Parser::AssertSourceText(int start_line, int start_pos, int end_lin
  *
  *   [#l := L; #r := R;]            when E is 'L op R' (a comparison)
  *   if((E) = false) {
- *     System.Test->Fail("file:line", "source of E", label, "" + #l, "" + #r);
+ *     System.AssertCheck->Fail("file:line", "source of E", label, "" + #l, "" + #r);
  *   };
  *
  * so the operands are evaluated once, and nothing but the test runs when the
@@ -7559,7 +7559,7 @@ Statement* Parser::ParseAssert(int depth)
     }
   }
 
-  // System.Test->Fail(where, source, label, left, right)
+  // System.AssertCheck->Fail(where, source, label, left, right)
   const std::wstring where = file_name + L":" + std::to_wstring(line_num);
   ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
   arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, where, true));
@@ -7568,7 +7568,7 @@ Statement* Parser::ParseAssert(int depth)
   arguments->AddExpression(left_text);
   arguments->AddExpression(right_text);
   MethodCall* fail_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, end_line, end_pos,
-                                                                  L"System.Test", L"Fail", arguments);
+                                                                  L"System.AssertCheck", L"Fail", arguments);
   // the block is a scope of its own, as an 'if' body is, so the analyzer's scopes stay in step
   symbol_table->CurrentParseScope()->NewParseScope();
   StatementList* fail_statements = TreeFactory::Instance()->MakeStatementList();

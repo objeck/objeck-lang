@@ -62,7 +62,7 @@ becomes
 ```
 #assert_0 := L;                   // only for an operand that is not read-only
 if((#assert_0 op R) = false) {
-  System.Test->Fail("file:line", "L op R", "label", "" + #assert_0, "" + R);
+  System.AssertCheck->Fail("file:line", "L op R", "label", "" + #assert_0, "" + R);
 };
 ```
 
@@ -81,14 +81,14 @@ if((#assert_0 op R) = false) {
   the token that ends it (`Scanner::GetSourceLine`); an expression over several lines is joined
   with single spaces.
 
-## The library side: `System.Test` (lang.obs)
+## The library side: `System.AssertCheck` (lang.obs)
 
 | Member | Meaning |
 |---|---|
-| `Test->Fail(where, source, note, left, right)` | called by the lowered code: counts the failure, prints the `FAIL:` line and the operand line, then `Runtime->Exit(1)` unless `KeepGoing(true)` |
-| `Test->KeepGoing(Bool)` | count failures instead of stopping at the first |
-| `Test->Failures()` | the failure count |
-| `Test->Finish()` | exit with code 1 (and one `FAIL: n assertion(s) failed` line) if any assertion failed |
+| `AssertCheck->Fail(where, source, note, left, right)` | called by the lowered code: counts the failure, prints the `FAIL:` line and the operand line, then `Runtime->Exit(1)` unless `KeepGoing(true)` |
+| `AssertCheck->KeepGoing(Bool)` | count failures instead of stopping at the first |
+| `AssertCheck->Failures()` | the failure count |
+| `AssertCheck->Finish()` | exit with code 1 (and one `FAIL: n assertion(s) failed` line) if any assertion failed |
 
 Fail-fast is the default because a failed check usually invalidates what follows and because a test
 that forgets `Finish()` must still exit non-zero.
