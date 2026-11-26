@@ -945,12 +945,26 @@ bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var)
     return false;
   }
 
-  while(tmp) {
-    SymbolEntry* entry = tmp->GetEntry(e->GetName());
-    if(entry) {
+  // A name is declared once in a block; a block may declare a name that an
+  // enclosing block already has, and its own variable then hides the outer one
+  // until the block ends. The parser used to refuse that for every name it
+  // knew of, but a type-inferred local ('n := 3') is declared only in
+  // analysis, so 'n : String' in an inner block was accepted after an inferred
+  // outer 'n' and refused after a typed one. A variable that analysis adds
+  // (is_var) is one no enclosing scope resolved, so every scope is still checked.
+  if(!is_var) {
+    if(tmp->GetEntry(e->GetName())) {
       return false;
     }
-    tmp = tmp->GetParent();
+  }
+  else {
+    while(tmp) {
+      SymbolEntry* entry = tmp->GetEntry(e->GetName());
+      if(entry) {
+        return false;
+      }
+      tmp = tmp->GetParent();
+    }
   }
 
   // add new entry
