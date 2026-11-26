@@ -2238,6 +2238,133 @@ Expression* ContextAnalyzer::WrapBareLambdaInFuncRef(Expression* expression, Typ
 }
 
 /****************************
+ * Method reference without ceremony: `Class->Function` (no argument list, no
+ * `~ R`) where a function value is wanted becomes
+ * `FuncNRef->New(Class->Function(T1, ...) ~ R)<T1, ..., R>`, the signature read
+ * from the function itself. The rewrite is the long form the programmer would
+ * have written, so everything after it is the existing, tested path.
+ * `expected` is the target type when the context has one (assignment, return)
+ * and null for a call argument; with a target it must be a FuncRef class.
+ * Anything that is not clearly a reference to one static function of a class
+ * is returned unchanged.
+ ****************************/
+Expression* ContextAnalyzer::WrapMethodReferenceInFuncRef(Expression* expression, Type* expected, const int depth)
+{
+  if(!expression || expression->GetExpressionType() != METHOD_CALL_EXPR) {
+    return expression;
+  }
+
+  MethodCall* ref = static_cast<MethodCall*>(expression);
+  if(ref->GetCallType() != ENUM_CALL || ref->GetCallingParameters() || ref->IsFunctionDefinition() ||
+     ref->GetMethodCall() || ref->GetVariable() || ref->GetCastType() || ref->GetTypeOf() ||
+     ref->GetMethodName().empty() || ref->GetVariableName().empty()) {
+    return expression;
+  }
+
+  if(expected && !(expected->GetType() == CLASS_TYPE && expected->GetDimension() == 0 &&
+     (expected->GetName() == L"System.FuncRef" || expected->GetName() == L"FuncRef" ||
+      expected->GetName() == L"System.Func2Ref" || expected->GetName() == L"Func2Ref" ||
+      expected->GetName() == L"System.Func3Ref" || expected->GetName() == L"Func3Ref" ||
+      expected->GetName() == L"System.Func4Ref" || expected->GetName() == L"Func4Ref"))) {
+    return expression;
+  }
+
+  // the left side must name a class (a variable of that name is a field or local access)
+  Class* klass = nullptr;
+  LibraryClass* lib_klass = nullptr;
+  if(!GetProgramOrLibraryClass(ref->GetVariableName(), klass, lib_klass)) {
+    return expression;
+  }
+
+  // the candidate functions: those named so, in the class itself
+  std::vector<Type*> param_types;
+  Type* rtrn_type = nullptr;
+  size_t named = 0;
+  bool all_static = true;
+  if(klass) {
+    const std::vector<Method*> methods = klass->GetUnqualifiedMethods(ref->GetMethodName());
+    named = methods.size();
+    for(Method* method : methods) {
+      all_static = all_static && method->IsStatic();
+    }
+    if(named == 1 && all_static && !methods[0]->IsVirtual() && !methods[0]->IsLambda()) {
+      for(Declaration* dclr : methods[0]->GetDeclarations()->GetDeclarations()) {
+        param_types.push_back(dclr->GetEntry() ? dclr->GetEntry()->GetType() : nullptr);
+      }
+      rtrn_type = methods[0]->GetReturn();
+    }
+  }
+  else if(lib_klass) {
+    const std::vector<LibraryMethod*> methods = lib_klass->GetUnqualifiedMethods(ref->GetMethodName());
+    named = methods.size();
+    for(LibraryMethod* method : methods) {
+      all_static = all_static && method->IsStatic();
+    }
+    if(named == 1 && all_static && !methods[0]->IsVirtual()) {
+      param_types = methods[0]->GetDeclarationTypes();
+      rtrn_type = methods[0]->GetReturn();
+    }
+  }
+
+  // not a function of that class: an enum item, a constant, ... as before
+  if(named == 0 || !all_static) {
+    return expression;
+  }
+
+  const std::wstring long_form = L"write the full reference: Func2Ref->New(" + ref->GetVariableName() + L"->" +
+    ref->GetMethodName() + L"(<types>) ~ <type>)<<types>>";
+  if(named > 1) {
+    ProcessError(expression, L"'" + ref->GetVariableName() + L"->" + ref->GetMethodName() +
+                 L"' is overloaded, so the reference is ambiguous; " + long_form);
+    return expression;
+  }
+
+  // a FuncRef takes plain class types (the long form cannot spell a generic one
+  // either): not primitives, arrays, generics or Nil, and at most 3 arguments
+  bool shaped = rtrn_type && param_types.size() <= 3 && rtrn_type->GetType() == CLASS_TYPE && rtrn_type->GetDimension() == 0 &&
+    rtrn_type->GetGenerics().empty();
+  for(size_t i = 0; shaped && i < param_types.size(); ++i) {
+    shaped = param_types[i] && param_types[i]->GetType() == CLASS_TYPE && param_types[i]->GetDimension() == 0 &&
+      param_types[i]->GetGenerics().empty();
+  }
+  if(!shaped) {
+    ProcessError(expression, L"Cannot take '" + ref->GetVariableName() + L"->" + ref->GetMethodName() +
+                 L"' as a function reference: its arguments and return must be plain classes, not Int/Float/arrays/generics (at most 3 arguments); " + long_form);
+    return expression;
+  }
+
+  const std::wstring file_name = expression->GetFileName();
+  const int line_num = expression->GetLineNumber();
+  const int line_pos = expression->GetLinePosition();
+
+  std::vector<Type*> concrete;
+  ExpressionList* func_params = TreeFactory::Instance()->MakeExpressionList();
+  for(Type* param_type : param_types) {
+    Type* copy = TypeFactory::Instance()->MakeType(param_type);
+    ResolveClassEnumType(copy);
+    Variable* name = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, copy->GetName());
+    func_params->AddExpression(name);
+    concrete.push_back(copy);
+  }
+  Type* rtrn_copy = TypeFactory::Instance()->MakeType(rtrn_type);
+  ResolveClassEnumType(rtrn_copy);
+  concrete.push_back(rtrn_copy);
+
+  MethodCall* func_def = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                           line_num, line_pos,
+                           ref->GetVariableName(), ref->GetMethodName(), func_params);
+  func_def->SetFunctionalReturn(TypeFactory::Instance()->MakeType(rtrn_copy));
+
+  static const wchar_t* const wrappers[] = { L"FuncRef", L"Func2Ref", L"Func3Ref", L"Func4Ref" };
+  ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+  args->AddExpression(func_def);
+  MethodCall* wrap = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                                                             NEW_INST_CALL, wrappers[param_types.size()], args);
+  wrap->SetConcreteTypes(concrete);
+  return wrap;
+}
+
+/****************************
  * Analyzes a lambda function
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
@@ -8388,6 +8515,9 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   if(expression) {
     // auto-wrap a bare lambda when the return type is FuncRef<R>
     Expression* wrapped = WrapBareLambdaInFuncRef(expression, mthd_type, depth);
+    if(wrapped == expression) {
+      wrapped = WrapMethodReferenceInFuncRef(expression, mthd_type, depth);
+    }
     if(wrapped != expression) {
       rtrn->SetExpression(wrapped);
       expression = wrapped;
@@ -8599,6 +8729,9 @@ void ContextAnalyzer::AnalyzeAssignmentBody(Assignment* assignment, StatementTyp
     // auto-wrap a bare lambda when the assignment target is FuncRef<R>
     if(variable && variable->GetEvalType()) {
       Expression* wrapped = WrapBareLambdaInFuncRef(expression, variable->GetEvalType(), depth);
+      if(wrapped == expression) {
+        wrapped = WrapMethodReferenceInFuncRef(expression, variable->GetEvalType(), depth);
+      }
       if(wrapped != expression) {
         assignment->SetExpression(wrapped);
         expression = wrapped;
@@ -10945,6 +11078,13 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int d
   
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      Expression* wrapped = WrapMethodReferenceInFuncRef(expression, nullptr, depth);
+      if(wrapped != expression) {
+        parameters->SetExpression(wrapped, i);
+        expression = wrapped;
+      }
+    }
     AnalyzeExpression(expression, depth);    
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       parameters->SetExpression(expression->GetPreviousExpression(), i);

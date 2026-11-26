@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Undefined or incompatible enum type
+# EXPECT_ERROR_COUNT: 1
+#~
+Only functions can be referenced, not instance methods.
+~#
+class BadMethodRefInstance {
+	function : Main(args : String[]) ~ Nil {
+		f : Func2Ref<IntRef, IntRef> := BadMethodRefInstance->Dbl;
+	}
+
+	method : Dbl(x : IntRef) ~ IntRef { return x; }
+}

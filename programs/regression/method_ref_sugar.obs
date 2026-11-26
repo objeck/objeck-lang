@@ -1,0 +1,76 @@
+#~
+Method references without ceremony: `Class->Function` where a FuncRef is
+expected. The signature is read from the function, so
+`Func2Ref->New(T->Dbl(IntRef) ~ IntRef)<IntRef, IntRef>` is just `T->Dbl`.
+Covers a call argument, a declaration, an assignment, a return, 0/1/2/3 arguments,
+a library function, and that enum items and constants keep their meaning.
+~#
+use Collection;
+
+enum Color { Red, Green }
+
+class MethodRefSugar {
+	@total : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# declaration target
+		f : Func2Ref<IntRef, IntRef> := MethodRefSugar->Dbl;
+		if(f->Get()(IntRef->New(4))->Get() <> 8) { "FAIL decl"->PrintLine(); pass := false; };
+
+		# assignment to an existing variable
+		g : Func2Ref<IntRef, IntRef>;
+		g := MethodRefSugar->Dbl;
+		if(g->Get()(IntRef->New(5))->Get() <> 10) { "FAIL assign"->PrintLine(); pass := false; };
+
+		# call argument (no target type is known: the function's own signature is used)
+		if(Apply(MethodRefSugar->Dbl, 6) <> 12) { "FAIL arg"->PrintLine(); pass := false; };
+
+		# return
+		r := Pick();
+		if(r->Get()(IntRef->New(7))->Get() <> 14) { "FAIL return"->PrintLine(); pass := false; };
+
+		# zero, two and three arguments
+		z : FuncRef<IntRef> := MethodRefSugar->Seven;
+		if(z->Get()()->Get() <> 7) { "FAIL zero"->PrintLine(); pass := false; };
+		a : Func3Ref<IntRef, IntRef, IntRef> := MethodRefSugar->Add;
+		if(a->Get()(IntRef->New(2), IntRef->New(3))->Get() <> 5) { "FAIL two"->PrintLine(); pass := false; };
+		b : Func4Ref<IntRef, IntRef, IntRef, IntRef> := MethodRefSugar->Add3;
+		if(b->Get()(IntRef->New(1), IntRef->New(2), IntRef->New(3))->Get() <> 6) { "FAIL three"->PrintLine(); pass := false; };
+
+		# the long form is still accepted and means the same
+		l := Func2Ref->New(MethodRefSugar->Dbl(IntRef) ~ IntRef)<IntRef, IntRef>;
+		if(l->Get()(IntRef->New(9))->Get() <> 18) { "FAIL long form"->PrintLine(); pass := false; };
+
+		# an enum item is not a function reference
+		c := Color->Green;
+		if(c <> Color->Green) { "FAIL enum"->PrintLine(); pass := false; };
+
+		# a reference passed into a collection of function values
+		fs := Vector->New()<Func2Ref<IntRef, IntRef>>;
+		fs->AddBack(MethodRefSugar->Dbl);
+		if(fs->Get(0)->Get()(IntRef->New(3))->Get() <> 6) { "FAIL collection"->PrintLine(); pass := false; };
+
+		if(pass) {
+			"PASS: method reference sugar"->PrintLine();
+		}
+		else {
+			"FAIL: method reference sugar"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Apply(f : Func2Ref<IntRef, IntRef>, n : Int) ~ Int {
+		return f->Get()(IntRef->New(n))->Get();
+	}
+
+	function : Pick() ~ Func2Ref<IntRef, IntRef> {
+		return MethodRefSugar->Dbl;
+	}
+
+	function : Dbl(x : IntRef) ~ IntRef { return IntRef->New(x->Get() * 2); }
+	function : Seven() ~ IntRef { return IntRef->New(7); }
+	function : Add(x : IntRef, y : IntRef) ~ IntRef { return IntRef->New(x->Get() + y->Get()); }
+	function : Add3(x : IntRef, y : IntRef, z : IntRef) ~ IntRef { return IntRef->New(x->Get() + y->Get() + z->Get()); }
+}

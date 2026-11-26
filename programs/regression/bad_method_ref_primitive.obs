@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: its arguments and return must be plain classes
+# EXPECT_ERROR_COUNT: 2
+#~
+A FuncRef holds class types, so a function over Int cannot be referenced without
+its signature (line 9); the error says what to write instead.
+~#
+class BadMethodRefPrimitive {
+	function : Main(args : String[]) ~ Nil {
+		f : Func2Ref<IntRef, IntRef> := BadMethodRefPrimitive->Dbl;
+	}
+
+	function : Dbl(x : Int) ~ Int { return x * 2; }
+}

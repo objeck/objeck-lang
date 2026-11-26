@@ -422,6 +422,28 @@ function : Mk(n : Int) ~ FuncRef<IntRef> {
 The verbose form with an explicit annotation is still supported and equivalent:
 `FuncRef->New(\() ~ IntRef : () => x)<IntRef>`.
 
+#### Method references without ceremony
+
+Where a function value is wanted, a static function can be named by itself:
+`Class->Function`. The compiler reads the signature from the function and builds
+the `FuncRef`, `Func2Ref`, `Func3Ref` or `Func4Ref` the long form would have built;
+the compiled program is byte-for-byte the same.
+
+```ruby
+# before
+registry->Add(AgentTool->New("get_weather", "Get the weather", schema,
+  Func2Ref->New(AgentTour->Weather(JsonElement) ~ String)<JsonElement, String>));
+# after
+registry->Add(AgentTool->New("get_weather", "Get the weather", schema, AgentTour->Weather));
+```
+
+It works as a declaration or assignment target, a `return`, a call argument and a
+collection element. Rules: the name must be a single, non-virtual static function
+(an overloaded name is an error that asks for the full form); the arguments and the
+return must be plain classes (a function over `Int`, an array or a generic class
+needs the full form, as the long form itself does); at most three arguments. An enum
+item or a constant named the same way keeps its meaning. Test: `method_ref_sugar`.
+
 #### Lambdas with parameters
 
 The shorthand is zero-parameter only. A lambda that takes arguments uses the

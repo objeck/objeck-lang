@@ -320,6 +320,15 @@ funcs <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class=
 }
 </code></pre>
     <p>The verbose form with an explicit annotation is still supported and equivalent: <code>FuncRef-&gt;New(\() ~ IntRef : () =&gt; x)&lt;IntRef&gt;</code>.</p>
+    <h4 id="method-references-without-ceremony">Method references without ceremony</h4>
+    <p>Where a function value is wanted, a static function can be named by itself: <code>Class-&gt;Function</code>. The compiler reads the signature from the function and builds the <code>FuncRef</code>, <code>Func2Ref</code>, <code>Func3Ref</code> or <code>Func4Ref</code> the long form would have built; the compiled program is byte-for-byte the same.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+registry<span class="t-op">-&gt;</span>Add(<span class="t-cls">AgentTool</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"get_weather"</span>, <span class="t-str">"Get the weather"</span>, schema,
+  <span class="t-type">Func2Ref</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">AgentTour</span><span class="t-op">-&gt;</span>Weather(JsonElement) <span class="t-op">~</span> <span class="t-type">String</span>)&lt;JsonElement, <span class="t-type">String</span>&gt;));
+<span class="t-com"># after</span>
+registry<span class="t-op">-&gt;</span>Add(<span class="t-cls">AgentTool</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"get_weather"</span>, <span class="t-str">"Get the weather"</span>, schema, <span class="t-cls">AgentTour</span><span class="t-op">-&gt;</span>Weather));
+</code></pre>
+    <p>It works as a declaration or assignment target, a <code>return</code>, a call argument and a collection element. Rules: the name must be a single, non-virtual static function (an overloaded name is an error that asks for the full form); the arguments and the return must be plain classes (a function over <code>Int</code>, an array or a generic class needs the full form, as the long form itself does); at most three arguments. An enum item or a constant named the same way keeps its meaning. Test: <code>method_ref_sugar</code>.</p>
     <h4 id="lambdas-with-parameters">Lambdas with parameters</h4>
     <p>The shorthand is zero-parameter only. A lambda that takes arguments uses the annotated form — parameter <strong>types</strong>, the return type, then parameter <strong>names</strong> — and targets a function type:</p>
 <pre class="line-numbers"><code class="language-objeck">f : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> <span class="t-op">:=</span> \(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> : (x) <span class="t-op">=&gt;</span> x + <span class="t-num">1</span>;
