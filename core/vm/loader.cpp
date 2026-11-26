@@ -105,9 +105,9 @@ void Loader::LoadImage()
 
   int i;
 
-  // obr --mcp / --mcp-http (vm_options.h set OBJECK_MCP): the transport goes in front of the program's
-  // arguments, for the McpMain the compiler wrote (or the program did) to read. Without the flag the
-  // variable is absent and nothing here runs beyond this one lookup.
+  // obr --mcp / --mcp-http (ApplyVmOptions gave this process's request to SetMcpLaunch): the transport
+  // goes in front of the program's arguments, for the McpMain the compiler wrote (or the program did)
+  // to read. Without the flag there is no request and nothing here runs beyond this one lookup.
   const bool mcp_launch = ReadMcpLaunch();
 
   //
@@ -572,23 +572,31 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
   return dclrs;
 }
 
-// The OBJECK_MCP launch request, "stdio" or "http <host> <port>": adds its words to the program's
-// arguments, first. True when there was one.
+// What 'obr --mcp' / '--mcp-http' asked of THIS process: "stdio" or "http <host> <port>", empty when
+// neither flag was given. ApplyVmOptions sets it (vm_options.h) and the loader reads it once.
+//
+// It used to travel in the environment variable OBJECK_MCP, which every process the program starts
+// inherits: an 'obr helper.obe' run by a served program (Runtime->Command, CommandOutput) read the
+// parent's request, put "stdio" in front of its own arguments and looked for a McpMain instead of
+// running its Main. A request is one invocation's, so it stays in the process that parsed the flag;
+// the variable is no longer written or read.
+static std::wstring& McpLaunchRequest()
+{
+  static std::wstring request;
+  return request;
+}
+
+namespace Runtime {
+  void SetMcpLaunch(const std::wstring& request)
+  {
+    McpLaunchRequest() = request;
+  }
+}
+
+// The launch request (above): adds its words to the program's arguments, first. True when there was one.
 bool Loader::ReadMcpLaunch()
 {
-  std::wstring request;
-#ifdef _WIN32
-  wchar_t buffer[512];
-  size_t length = 0;
-  if(_wgetenv_s(&length, buffer, 512, L"OBJECK_MCP") == 0 && length > 1) {
-    request = buffer;
-  }
-#else
-  const char* value = getenv("OBJECK_MCP");
-  if(value && *value) {
-    request = BytesToUnicode(value);
-  }
-#endif
+  const std::wstring& request = McpLaunchRequest();
   if(request.empty()) {
     return false;
   }
@@ -607,17 +615,52 @@ bool Loader::ReadMcpLaunch()
   return true;
 }
 
+// True when 'entry' is the name the compiler gives the entry it writes for 'class_name':
+// "McpMain_" and the class's full name with every character that is not a letter or a digit
+// written as '_' (Parser::GenerateMcpTools). A character outside ASCII may stand as itself or as
+// '_': which of the two the compiler wrote depended on its locale.
+static bool IsGeneratedMcpEntryName(const std::wstring& entry, const std::wstring& class_name)
+{
+  const std::wstring prefix = L"McpMain_";
+  if(entry.size() != prefix.size() + class_name.size() || entry.compare(0, prefix.size(), prefix) != 0) {
+    return false;
+  }
+  for(size_t i = 0; i < class_name.size(); ++i) {
+    const wchar_t have = entry[prefix.size() + i];
+    const wchar_t want = class_name[i];
+    const bool ascii_alnum = (want >= L'0' && want <= L'9') || (want >= L'A' && want <= L'Z') || (want >= L'a' && want <= L'z');
+    if(have != want && (ascii_alnum || have != L'_')) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Starts the program at its McpMain(args : String[]) instead of its Main: the function the compiler writes
 // into a class that has an '@tool', '@resource' or '@prompt' function, or one the program defines itself
 // (which wins: it can register several classes). Exactly one must exist, because a second would be a
 // second server.
+//
+// An entry is taken only when it is what the initialization code can call: a method with a body (not a
+// virtual declaration) that takes the argument array and returns Nil. The name alone used to decide, so
+// a virtual 'McpMain' with no body, or one that returns a value, was started. Whether it is a function or
+// an instance method is not in a program file (a method record carries no such flag), so an instance
+// method named McpMain is still started, without an instance: its first use of one is the VM's
+// Nil-dereference error, in the interpreter and in compiled code.
+//
+// A generated entry is told from a function the program wrote by all the compiler gives it: the name
+// "McpMain_<its own class>" and the McpTools(McpService) the compiler writes beside it. The prefix
+// "McpMain_" alone used to decide, so a program's own 'McpMain_Test(args : String[])' counted as a
+// second server and the program was refused.
 void Loader::SelectMcpEntry()
 {
   StackClass** classes = program->GetClasses();
   const int count = (int)program->GetClassNumber();
   std::vector<std::pair<int, int> > own;        // a function the program wrote: McpMain
   std::vector<std::pair<int, int> > generated;  // the compiler's: McpMain_<class>
-  std::vector<std::wstring> where;
+  std::vector<std::wstring> own_where;
+  std::vector<std::wstring> generated_where;
+  std::vector<std::wstring> unusable;           // named as an entry, but not one: where and why
   const std::wstring params = L":o.System.String*,";
   for(int i = 0; i < count; ++i) {
     StackClass* cls = classes[i];
@@ -625,9 +668,21 @@ void Loader::SelectMcpEntry()
       continue;
     }
     StackMethod** methods = cls->GetMethods();
+    const std::wstring tools_name = cls->GetName() + L":McpTools:o.API.MCP.McpService,";
+    bool has_tools = false;
+    for(int j = 0; j < cls->GetMethodCount(); ++j) {
+      if(methods[j] && methods[j]->GetName() == tools_name) {
+        has_tools = true;
+        break;
+      }
+    }
     for(int j = 0; j < cls->GetMethodCount(); ++j) {
       StackMethod* method = methods[j];
-      const std::wstring& name = method ? method->GetName() : std::wstring();
+      // a hole in the method table (never from a well-formed .obe) has no name or id to offer
+      if(!method) {
+        continue;
+      }
+      const std::wstring& name = method->GetName();
       // "Class:McpMain:o.System.String*," and "Class:McpMain_Class:o.System.String*,", a function taking the argument array
       if(name.size() <= params.size() || name.compare(name.size() - params.size(), params.size(), params) != 0) {
         continue;
@@ -637,23 +692,48 @@ void Loader::SelectMcpEntry()
         continue;
       }
       const std::wstring entry = name.substr(colon + 1, name.size() - params.size() - colon - 1);
-      if(entry == L"McpMain") {
-        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
-        where.push_back(cls->GetName());
+      const bool is_own = entry == L"McpMain";
+      if(!is_own && !(has_tools && IsGeneratedMcpEntryName(entry, cls->GetName()))) {
+        continue;
       }
-      else if(entry.compare(0, 8, L"McpMain_") == 0) {
+      const wchar_t* why = nullptr;
+      if(method->IsVirtual() || method->GetInstructionCount() < 1) {
+        why = L"has no body";
+      }
+      else if(method->GetParamCount() != 1) {
+        why = L"does not take the one argument array";
+      }
+      else if(method->GetReturnName() != L"n") {
+        why = L"returns a value";
+      }
+      if(why) {
+        unusable.push_back(cls->GetName() + L" (it " + why + L")");
+      }
+      else if(is_own) {
+        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
+        own_where.push_back(cls->GetName());
+      }
+      else {
         generated.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
-        where.push_back(cls->GetName());
+        generated_where.push_back(cls->GetName());
       }
     }
   }
 
   // a McpMain the program wrote wins over the generated ones: it can register several classes
   std::vector<std::pair<int, int> >& found = own.empty() ? generated : own;
+  const std::vector<std::wstring>& where = own.empty() ? generated_where : own_where;
   if(found.empty()) {
     error << L"obr --mcp: " << filename << L" has nothing to serve." << std::endl
           << L"	Mark a function with '@tool', '@resource' or '@prompt' in its doc comment (and link -lib mcp)," << std::endl
           << L"	or write 'function : McpMain(args : String[]) ~ Nil' that registers and serves." << std::endl;
+    if(!unusable.empty()) {
+      error << L"	Not started, because it is not that function: the McpMain of";
+      for(size_t i = 0; i < unusable.size(); ++i) {
+        error << (i ? L"," : L"") << L" " << unusable[i];
+      }
+      error << std::endl;
+    }
     LoadFailed();
   }
   if(found.size() > 1) {
