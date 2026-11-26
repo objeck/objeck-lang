@@ -100,6 +100,13 @@ header, `core/vm/lib_api.h`, which is worth reading in full at least once.
 3. Your function reads and writes the argument array in place. It does not
    return a value; there is no return channel other than the array.
 4. `Unload()` runs `EXT_LIB_UNLOAD`, which calls `unload_lib` and unloads.
+5. A library still loaded when the program ends (the usual case: most wrappers
+   never call `Unload()`) has its `unload_lib` called by the VM before the process
+   exits, when the program returns from `Main` or calls `Runtime->Exit` and no
+   other VM thread is running. The library is not unmapped then. A library that
+   starts threads of its own must stop and join them in `unload_lib`: a thread
+   left running would use the library's static state, and that of everything it
+   links, while `exit()` destroys it.
 
 The library directory is `$OBJECK_LIB_PATH/native/`, falling back to
 `../lib/native/` relative to the working directory (`core/vm/interpreter.cpp`,
