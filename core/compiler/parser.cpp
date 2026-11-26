@@ -2207,6 +2207,10 @@ StatementList* Parser::ParseStatementList(int depth)
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     const size_t consumed = tokens_consumed;
     Statement* statement = ParseStatement(depth + 1);
+    if(nil_guard_bail) {
+      ProcessError(L"'?? return' guards a variable the statement assigns: 'x := E ?? return V;'");
+      nil_guard_bail = nullptr;
+    }
     TakePendingStatements(statements);
     statements->AddStatement(statement);
     TakeTrailingStatements(statements, statement);
@@ -2256,6 +2260,16 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   // 'try {' (#1247): a contextual keyword, so 'try' stays an ordinary name
   if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
     statement = ParseTry(depth + 1);
+  }
+  // 'x ?? { ...; return };': leave when x is Nil
+  else if(Match(TOKEN_IDENT) && Match(TOKEN_QUESTION_QUESTION, SECOND_INDEX) && Match(TOKEN_OPEN_BRACE, THIRD_INDEX)) {
+    const std::wstring guard_name = scanner->GetToken()->GetIdentifier();
+    IdentifierContext guard_context(guard_name, line_num, line_pos);
+    NextToken();
+    Variable* guard_target = ParseVariable(guard_context, depth + 1);
+    NextToken();
+    StatementList* guard_bail = ParseNilGuardBail(depth + 1);
+    statement = MakeNilGuard(guard_target, guard_bail);
   }
   // identifier
   else if(Match(TOKEN_IDENT)) {
@@ -5670,6 +5684,18 @@ Expression* Parser::ParseExpression(int depth)
       Debug(L"Nil coalesce", depth);
 #endif
       NextToken();
+
+      // 'E ?? return V', 'E ?? break', 'E ?? continue', 'E ?? { ...; return }': a statement
+      // leaves when E is Nil. The expression stays E; the assignment that owns it adds
+      // 'if(x = Nil) { ... }' after itself.
+      if(Match(TOKEN_RETURN_ID) || Match(TOKEN_BREAK_ID) || Match(TOKEN_CONTINUE_ID) || Match(TOKEN_OPEN_BRACE)) {
+        if(nil_guard_bail) {
+          ProcessError(L"Only one '?? return' (or '?? { }') is allowed in a statement");
+        }
+        nil_guard_bail = ParseNilGuardBail(depth + 1);
+        break;
+      }
+
       Expression* default_expression = ParseLogic(depth + 1);
 
       ExpressionList* otherwise_args = TreeFactory::Instance()->MakeExpressionList();
@@ -7131,6 +7157,87 @@ If* Parser::ParseIf(int depth)
 }
 
 /****************************
+ * The statements after '??' in a guard: 'return V', 'break', 'continue' or a block
+ * that ends in one of those or Runtime->Exit(..). A block that can fall through would
+ * leave the variable Nil, which is the case the guard exists to rule out.
+ ****************************/
+StatementList* Parser::ParseNilGuardBail(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+  StatementList* bail = nullptr;
+  if(Match(TOKEN_OPEN_BRACE)) {
+    symbol_table->CurrentParseScope()->NewParseScope();
+    bail = ParseStatementList(depth + 1);
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+  }
+  else {
+    // the analyzer enters a scope for the 'if' block: one must exist here too
+    symbol_table->CurrentParseScope()->NewParseScope();
+    bail = TreeFactory::Instance()->MakeStatementList();
+    if(Match(TOKEN_RETURN_ID)) {
+      bail->AddStatement(ParseReturn(depth + 1));
+    }
+    else if(Match(TOKEN_BREAK_ID)) {
+      bail->AddStatement(TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), BREAK_STMT));
+      NextToken();
+    }
+    else {
+      bail->AddStatement(TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), CONTINUE_STMT));
+      NextToken();
+    }
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+    return bail;
+  }
+
+  const std::vector<Statement*> written = bail->GetStatements();
+  bool leaves = false;
+  if(!written.empty()) {
+    Statement* last = written.back();
+    switch(last->GetStatementType()) {
+    case RETURN_STMT:
+    case BREAK_STMT:
+    case CONTINUE_STMT:
+      leaves = true;
+      break;
+
+    case METHOD_CALL_STMT: {
+      MethodCall* call = static_cast<MethodCall*>(last);
+      leaves = call->GetVariableName() == L"Runtime" && call->GetMethodName() == L"Exit";
+    }
+      break;
+
+    default:
+      break;
+    }
+  }
+  if(!leaves) {
+    ProcessError(L"The block after '??' must end in return, break, continue or Runtime->Exit(..), or the variable can still be Nil");
+  }
+
+  return bail;
+}
+
+/****************************
+ * if(target = Nil) { bail }
+ ****************************/
+If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
+{
+  const std::wstring file_name = GetFileName();
+  const int line_num = target->GetLineNumber();
+  const int line_pos = target->GetLinePosition();
+
+  Variable* subject = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  CalculatedExpression* test = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR));
+  test->SetLeft(subject);
+  test->SetRight(TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
+  return TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), test, bail);
+}
+
+/****************************
  * Parses a 'do/while' statement
  ****************************/
 DoWhile* Parser::ParseDoWhile(int depth)
@@ -7936,6 +8043,11 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
     if(expressions.size() == 1) {
       expressions.pop();
     }
+  }
+
+  if(nil_guard_bail && assignment) {
+    trailing_statements.push_back(MakeNilGuard(assignment->GetVariable(), nil_guard_bail));
+    nil_guard_bail = nullptr;
   }
 
   return assignment;

@@ -114,6 +114,11 @@ class Parser {
   Method* current_method;
   // the method being parsed: its type parameters and their bounds, as they erase (#1242)
   std::map<std::wstring, std::wstring> method_generic_bounds;
+  // 'x := E ?? return V;' / 'x := E ?? { ...; return };': the statements that run when E is Nil,
+  // taken by the assignment that owns the expression (see ParseNilGuardBail, ParseAssignment)
+  StatementList* nil_guard_bail = nullptr;
+  StatementList* ParseNilGuardBail(int depth);
+  If* MakeNilGuard(Variable* target, StatementList* bail);
   Method* prev_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;

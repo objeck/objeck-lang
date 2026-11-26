@@ -2,6 +2,14 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+Post-v2026.11.4. Language sugar, each a separate draft and not part of any release yet.
+
+### Added
+
+- **Nil-guard and bail**: `x := E ?? return V;` (also `?? break;`, `?? continue;`) and the block forms `x := E ?? { ...; return V };` / `x ?? { ...; Runtime->Exit(1) };` leave when `E` is Nil; they are `x := E;` followed by `if(x = Nil) { ... }`. The block must end in `return`, `break`, `continue` or `Runtime->Exit`; the value form `a ?? b` is unchanged. Test: `nil_guard`, `bad_nil_guard_*`.
+
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance

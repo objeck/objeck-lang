@@ -117,6 +117,28 @@ value := "Hello World!";
 value->Size()->PrintLine();
 ```
 
+### Nil-guard and bail
+
+`x := E ?? return V;` (also `?? break;` and `?? continue;`) leaves when `E` is `Nil`, and
+otherwise binds `x` to the value. The block form `x := E ?? { ...; return V };`, and `x ?? { ...; return };`
+for a variable you already have, run a block that must end in `return`, `break`, `continue`
+or `Runtime->Exit(..)` (a block that can fall through would leave `x` Nil, so it is an error).
+It is only a spelling of `x := E;` followed by `if(x = Nil) { ... }`; the value form
+`a ?? b` is unchanged. The guard belongs to an assignment or declaration statement, not to an
+argument.
+
+```ruby
+# before
+x := Find(v, i);
+if(x = Nil) { return -1; };
+return x->Get();
+# after
+x := Find(v, i) ?? return -1;
+return x->Get();
+```
+Test: `nil_guard`, `bad_nil_guard_*`.
+
+
 ### Nil Safety
 `?->` calls a method only when the receiver is non-`Nil`, yielding `Nil` instead
 of faulting. `??` supplies a value when the left side is `Nil`.
