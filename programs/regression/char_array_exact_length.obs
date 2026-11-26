@@ -10,7 +10,8 @@
 #   characters whatever the buffer's size. The JIT's copy was bounded, so the two engines disagreed.
 # - Number->FloatToString into a zero-length buffer ended the process the same way, in the JIT as well.
 # - File->ReadBuffer(offset, num, Char[]) on POSIX cleared every element from the characters it read to the
-#   end of the array. Every reader now stores the characters and one zero after them, as Windows did.
+#   end of the array. Every reader now stores the characters and, where the slice it was given or the
+#   array's spare element has room for it, one zero after them (char_read_slice_terminator.obs).
 # - TCPSocket and UDPSocket WriteBuffer(offset, num, Char[]) ignored offset and num and sent the whole
 #   array up to its first zero.
 # - Deserializer->ReadObject checked its reads against the size of the whole Byte[] although it starts
@@ -209,7 +210,8 @@ class CharArrayExactLength {
 		writer->WriteString("abc");
 		writer->Close();
 
-		# three characters into the middle of a full array: the characters, one zero, nothing else
+		# three characters into the middle of a full array: the characters and nothing else, the slice
+		# being full (no zero on the caller's element after it: char_read_slice_terminator.obs)
 		marks := Char->New[10];
 		each(i : marks) {
 			marks[i] := 'X';
@@ -217,8 +219,8 @@ class CharArrayExactLength {
 		reader := FileReader->New(name);
 		got := reader->ReadBuffer(2, 3, marks);
 		reader->Close();
-		Check("File->ReadBuffer(2, 3, Char[10]) stores three characters and one zero (got '{$Show(marks)}')",
-			Show(marks)->Equals("XXabc.XXXX"));
+		Check("File->ReadBuffer(2, 3, Char[10]) stores three characters and nothing else (got '{$Show(marks)}')",
+			Show(marks)->Equals("XXabcXXXXX"));
 
 		# an array exactly as long as the data
 		exact := Char->New[3];

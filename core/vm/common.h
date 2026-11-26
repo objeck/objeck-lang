@@ -2635,7 +2635,9 @@ class ObjectDeserializer
  *    (an "exact-length" array, as String->ToCharArray() returns) is the spare.
  *    System.String keeps a zero after its characters whenever it shrinks.
  *  - A native that stores text into a Char[] may write one zero after the
- *    characters, at most at index [0]: StoreCharArrayText below.
+ *    characters, at most at index [0]: StoreCharArrayText below. One that was
+ *    given a slice (offset, num) writes it only inside the slice or at index
+ *    [0], never on the caller's element after a full slice: StoreCharArraySlice.
  *
  * What must NOT rest on it: anything given a length. A native that takes
  * (offset, num) or works on a Byte[] uses those numbers and [0], never a search
@@ -2677,6 +2679,31 @@ inline void StoreCharArrayText(size_t* array, size_t offset, const std::wstring&
 {
   const size_t room = array[0] - offset;
   StoreCharArrayText((wchar_t*)(array + 3) + offset, text.c_str(), text.size() < room ? text.size() : room);
+}
+
+/********************************
+ * The same for a read of (offset, num) into a one-dimensional Char[], where the
+ * caller named a slice and the elements after it are the caller's own (the
+ * caller has checked offset + num <= [0]). At most 'num' characters are stored.
+ * The zero after them is written only where it cannot land on an element the
+ * caller did not hand over: inside the slice, when fewer than 'num' characters
+ * were stored, or on the array's spare element, when the characters end at the
+ * array's last element. A slice filled to its last element that ends before the
+ * array does gets no zero: the plain StoreCharArrayText put one on the element
+ * just past the slice (a read of 3 at offset 0 of an 8-element array wrote [3]).
+ * The same elements on Windows and POSIX. Returns the characters stored.
+ ********************************/
+inline size_t StoreCharArraySlice(size_t* array, size_t offset, size_t num, const std::wstring& text)
+{
+  wchar_t* dest = (wchar_t*)(array + 3) + offset;
+  const size_t count = text.size() < num ? text.size() : num;
+  if(count > 0) {
+    wmemcpy(dest, text.c_str(), count);
+  }
+  if(count < num || offset + count == array[0]) {
+    dest[count] = L'\0';
+  }
+  return count;
 }
 
 /********************************

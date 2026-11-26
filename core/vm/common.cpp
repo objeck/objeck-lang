@@ -4084,7 +4084,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     if(read) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-      StoreCharArrayText(array, (size_t)offset, in);
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -7587,7 +7587,7 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
       }
 
       // copy
-      StoreCharArrayText(array, (size_t)offset, in);
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
     }
 
     // clean up
@@ -9469,7 +9469,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     }
 
     // copy
-    StoreCharArrayText(array, (size_t)offset, in);
+    StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
 
     // clean up
     delete[] byte_buffer;
@@ -9693,7 +9693,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-      StoreCharArrayText(array, (size_t)offset, in);
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -9883,7 +9883,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-      StoreCharArrayText(array, (size_t)offset, in);
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -11855,7 +11855,7 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-      StoreCharArrayText(array, (size_t)offset, in);
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -11995,9 +11995,10 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     }
 
     // copy
-    // The characters read and one zero after them, as every other reader stores. POSIX used to
-    // zero-fill the array from here to its end (wcsncpy's padding), wiping what the caller kept there.
-    StoreCharArrayText(array, (size_t)offset, in);
+    // The characters read, and a zero after them where the slice or the array's spare element has room
+    // for it (StoreCharArraySlice), as every other reader stores. POSIX used to zero-fill the array from
+    // here to its end (wcsncpy's padding), wiping what the caller kept there.
+    StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
 
     // clean up
     delete[] byte_buffer;
