@@ -1,6 +1,6 @@
 # Agent syntax: typed results, prompt literals, agent declarations, scoped limits
 
-Status: DESIGN ONLY (no compiler change yet). Part of v2026.11.4 per the maintainer. Composes with the MCP
+Status, decisions of 2026-11-26: (1) typed results use the opt-in `class : json` modifier, no call-site type arguments, built on the MCP derivation once #1819-#1822 are in master; (4) scoped limits are a LIBRARY call, `AgentScope` (implemented, section 4); `prompt` literals (2) and `agent` declarations (3) are DEFERRED until after v2026.11.4. Part of v2026.11.4 per the maintainer. Composes with the MCP
 stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md` on those branches) and does not redo `@tool`.
 Rule for all four: pure source-to-source lowering to existing constructs (no VM, JIT or opcode change), and
 a program that does not use a feature compiles to a byte-identical `.obe`.
@@ -49,7 +49,7 @@ Soundness problems found:
 5. Oracle: for at least 10 sample classes, `Weather->Schema()` equals the hand-written schema by
    `JsonSchema->Same`. The MCP stage-2 derivation and this one must share one routine in `context.cpp`.
 
-## 2. `prompt` literals
+## 2. `prompt` literals (DEFERRED until after v2026.11.4)
 
 ```
 p := prompt "Summarise {user_text : String} for {audience : String} in {n : Int} bullets.";
@@ -62,7 +62,7 @@ by a string literal, one-token lookahead, so `prompt := ...` still parses); the 
 `{$ }` interpolation inside; a literal brace uses the existing `\{{` escape. The guarantee is slot breakout
 only; it does NOT stop prompt injection semantically and the docs must say so.
 
-## 3. `agent` declarations
+## 3. `agent` declarations (DEFERRED until after v2026.11.4)
 
 ```
 agent Helper { backend : ScriptedBackend->New(script); instructions : "Be brief.";
@@ -74,7 +74,11 @@ derivation provides, so this depends on #1819 landing; an entry without a derive
 error. Contextual keyword `agent` at declaration position only. Risk: it shares the parser's class-member
 loop with the sugar chain (ctor promotion, accessors); conflicts are likely in `ParseClass`.
 
-## 4. Scoped limits
+## 4. Scoped limits (IMPLEMENTED as a library, no syntax)
+
+`AgentScope->Run(scope, Work() ~ Nil)` (docs/ai_sections/agent_control.md). `try { } finally { }` exists
+(parser.cpp), so the library leaves the scope on every exit path. State is keyed by `Thread->GetCurrentId`
+in a mutex-guarded registry, so no thread-local is needed. The syntax proposal below is kept for the record.
 
 ```
 budget(steps: 10, tokens: 5000, tool_calls: 20) { ... }
