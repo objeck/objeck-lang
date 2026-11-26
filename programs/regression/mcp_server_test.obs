@@ -3,7 +3,7 @@ use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Se
 
 #
 # Tracks whether ListResources was called as a side-effect of
-# resources/templates/list (was a bug: a stray call was present).
+# resources/templates/list: a stray call there once left the flag set.
 #
 class TrackingMcpHandler from McpRequestHandler {
 	@resources_side_effect : static : Bool;
