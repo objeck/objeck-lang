@@ -75,8 +75,7 @@ class War {
 								if(<>rock->IsDestroyed() & rock->GetSprite()->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
 									rock->ReduceStrength(Rock->Strength->MAX);
 									soundings := GetSoundings(i , j);
-									each(k : soundings) {
-										sounding := soundings[k];
+									each(sounding in soundings) {
 
 										if(sounding <> Nil) {
 											sounding->ReduceStrength(Int->Random(Rock->Strength->MAX * 0.25, Rock->Strength->MAX));

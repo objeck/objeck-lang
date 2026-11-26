@@ -91,8 +91,7 @@ class AoC {
 		};
 
 		children := command->GetChildren();
-		each(i : children) {
-			child := children->Get(i);
+		each(child in children) {
 			TotalDirectories(child, level);
 			
 			if(command->GetType() = Command->Type->CD) {
@@ -120,8 +119,7 @@ class AoC {
 	function : ExecuteCommands(commands : Vector<Command>) ~ Nil {
 		cur_dir : Command;
 		dir_stack := Collection.Stack->New()<Command>;
-		each(i : commands) {
-			command := commands->Get(i);
+		each(command in commands) {
 
 			select(command->GetType()) {
 				label Command->Type->CD {

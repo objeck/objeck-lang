@@ -6,8 +6,7 @@ class FindExtension {
 			"http://example.com/download.tar.gz", "CharacterModel.3DS",
 			".desktop", "document",	"document.txt_backup", "/etc/pam.d/login"];
 
-		each(i : file_names) {
-			file_name := file_names[i];
+		each(file_name in file_names) {
 			System.IO.Console->Print(file_name)->Print(" has extension: ")->PrintLine(GetExtension(file_name));
 		};
 	}

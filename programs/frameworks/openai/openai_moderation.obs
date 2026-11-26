@@ -19,8 +19,7 @@ class Test {
 				texts[1] := "I want to hurt someone really badly.";
 				texts[2] := "The weather is lovely today.";
 
-				each(i : texts) {
-					text := texts[i];
+				each(text in texts) {
 					"--- Checking: '{$text}' ---"->PrintLine();
 					CheckText(text, token);
 					""->PrintLine();
@@ -59,8 +58,7 @@ class Test {
 				category_names[9] := "violence";
 				category_names[10] := "violence/graphic";
 
-				each(i : category_names) {
-					cat := category_names[i];
+				each(cat in category_names) {
 					if(result->GetCategory(cat)) {
 						score := result->GetScore(cat);
 						"  {$cat}: score={$score}"->PrintLine();

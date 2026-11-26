@@ -88,8 +88,7 @@ class TextDemo {
   function : Stemming() ~ Nil {
     "Porter stemming"->PrintLine();
     words := ["connected", "connection", "connecting", "running", "happily", "generalization"];
-    each(i : words) {
-      word := words[i];
+    each(word in words) {
       stem := TextPreprocessor->Stem(word);
       "  {$word} -> {$stem}"->PrintLine();
     };
@@ -106,8 +105,7 @@ class TextDemo {
       "Terrible service, cold soup, and a rude waiter.",
       "We ate dinner at seven."
     ];
-    each(i : reviews) {
-      review := reviews[i];
+    each(review in reviews) {
       compound := SentimentAnalyzer->AnalyzeCompound(review);
       verdict := SentimentAnalyzer->Classify(review);
       "  {$compound:.3} {$verdict}: {$review}"->PrintLine();

@@ -62,8 +62,7 @@ bundle LSP {
 
 			results := @analysis->GetDiagnostics(was_parsed, uri, sys_path);
 			if(results <> Nil) {
-				each(i : results) {
-					result := results[i];
+				each(result in results) {
 
 					if(result->GetDescription()->Equals(uri)) {
 						diagnostic := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -187,8 +186,7 @@ bundle LSP {
 			if(references <> Nil) {
 				file_reference_map := MultiMap->New()<String, Result>;
 
-				each(i : references) {
-					reference := references[i];
+				each(reference in references) {
 					found_uri := reference->GetDescription();
 					file_reference_map->Insert(found_uri, reference);
 				};
@@ -196,8 +194,7 @@ bundle LSP {
 				doc_changes_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 				found_uris := file_reference_map->GetKeys()<String>;
-				each(i : found_uris) {
-					found_uri := found_uris->Get(i);
+				each(found_uri in found_uris) {
 
 					edits_builder := JsonBuilder->New();
 					edits_builder->PushArray();
@@ -259,8 +256,7 @@ bundle LSP {
 			if(references <> Nil) {
 				array := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				each(i : references) {
-					reference := references[i];
+				each(reference in references) {
 					
 					builder := JsonBuilder->New();
 
@@ -307,8 +303,7 @@ bundle LSP {
 			};
 
 			array := JsonElement->New(JsonElement->JsonType->ARRAY);
-			each(i : highlights) {
-				highlight := highlights[i];
+			each(highlight in highlights) {
 				builder := JsonBuilder->New();
 
 				start_line := end_line := highlight->GetStartLine();
@@ -346,8 +341,7 @@ bundle LSP {
 				response := JsonElement->New(JsonElement->JsonType->ARRAY);	
 
 				completions := root_completion->GetResults();
-				each(i : completions) {
-					completion := completions[i];
+				each(completion in completions) {
 
 					code := completion->GetCode();
 					keyword := completion->GetName();
@@ -687,8 +681,7 @@ bundle LSP {
 
 				qualified := klass->Find('.') > -1;
 				found := Vector->New()<String>;
-				each(i : keys) {
-					key := keys->Get(i);
+				each(key in keys) {
 					owner := @enum_details_json->Get(key)->Get("class")->GetString();
 					if(owner->Equals(klass) | (<>qualified & owner->EndsWith(".{$klass}"))) {
 						found->AddBack(key);
@@ -717,8 +710,7 @@ bundle LSP {
 			};
 
 			found := Vector->New()<String>;
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(@enum_details_json->Get(key)->Get("class")->GetString()->IsEmpty()) {
 					found->AddBack(key);
 				};
@@ -733,8 +725,7 @@ bundle LSP {
 		#
 		function : PickEnum(keys : Vector<String>, uses : Vector<String>) ~ JsonElement {
 			picked : String;
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				in_use := uses = Nil;
 				if(<>in_use) {
 					enum_bundle := @enum_details_json->Get(key)->Get("bundle")->GetString();
@@ -789,8 +780,7 @@ bundle LSP {
 			display_name := EnumDisplayName(enum_json);
 			response := JsonElement->New(JsonElement->JsonType->ARRAY);
 			items := enum_json->Get("items");
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				item_name := item->Get("name")->GetString();
 				if(prefix = Nil | item_name->StartsWith(prefix)) {
 					item_value := item->Get("value")->GetString();
@@ -826,8 +816,7 @@ bundle LSP {
 				enum_json := FindEnum(item_receiver, uses);
 				if(enum_json <> Nil) {
 					items := enum_json->Get("items");
-					each(i : items) {
-						item := items->Get(i);
+					each(item in items) {
 						if(item->Get("name")->GetString()->Equals(item_name)) {
 							item_value := item->Get("value")->GetString();
 							display_name := EnumDisplayName(enum_json);
@@ -989,8 +978,7 @@ bundle LSP {
 			@enum_keys := Map->New()<String, Vector<String>>;
 			if(@enum_details_json <> Nil & @enum_details_json->GetType() = JsonElement->JsonType->OBJECT) {
 				enum_names := @enum_details_json->GetNames();
-				each(i : enum_names) {
-					key := enum_names->Get(i);
+				each(key in enum_names) {
 					name_json := @enum_details_json->Get(key)->Get("name");
 					if(name_json <> Nil) {
 						short_name := name_json->GetString();
@@ -1303,8 +1291,7 @@ bundle LSP {
 				signatures_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 				children := root_signature->GetResults();
-				each(i : children) {
-					signature := children[i];
+				each(signature in children) {
 					signature_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 					signature_json->Insert("label", signature->GetName());
 					signatures_json->Add(signature_json);
@@ -1353,8 +1340,7 @@ bundle LSP {
 			};
 
 			array := JsonElement->New(JsonElement->JsonType->ARRAY);
-			each(i : matches) {
-				symbol := matches[i];
+			each(symbol in matches) {
 				symbol_uri := symbol->GetDescription();
 				if(symbol_uri <> Nil & open_uris->Has(symbol_uri)) {
 					BuildSymbolJson(symbol, symbol_uri, array);
@@ -1460,8 +1446,7 @@ bundle LSP {
 				return;
 			};
 
-			each(i : results) {
-				result := results[i];
+			each(result in results) {
 				# a lambda's synthetic class ('json_rpc_55_48#') isn't in the source
 				if(result <> Nil & result->GetName() <> Nil & result->GetName()->Find('#') < 0) {
 					children := Vector->New()<SymbolNode>;
@@ -1496,8 +1481,7 @@ bundle LSP {
 			# A method with default parameters is compiled into one overload per
 			# arity, all at the same place in the source: one symbol, as written.
 			nodes := Vector->New()<SymbolNode>;
-			each(i : source_nodes) {
-				node := source_nodes->Get(i);
+			each(node in source_nodes) {
 				if(nodes->Size() > 0 & nodes->Last()->SameDeclaration(node)) {
 					nodes->Last()->Absorb(node);
 				}
@@ -1653,8 +1637,7 @@ bundle LSP {
 			if(implementations <> Nil) {
 				array := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				each(i : implementations) {
-					impl := implementations[i];
+				each(impl in implementations) {
 
 					builder := JsonBuilder->New();
 
@@ -1830,8 +1813,7 @@ bundle LSP {
 			if(callers <> Nil) {
 				array := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				each(i : callers) {
-					caller := callers[i];
+				each(caller in callers) {
 					builder := JsonBuilder->New();
 
 					builder->PushObject();
@@ -1899,8 +1881,7 @@ bundle LSP {
 			if(callees <> Nil) {
 				array := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				each(i : callees) {
-					callee := callees[i];
+				each(callee in callees) {
 					builder := JsonBuilder->New();
 
 					builder->PushObject();
@@ -1968,8 +1949,7 @@ bundle LSP {
 			if(hints <> Nil) {
 				array := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				each(i : hints) {
-					hint := hints[i];
+				each(hint in hints) {
 					builder := JsonBuilder->New();
 
 					builder->PushObject();
@@ -2074,8 +2054,7 @@ bundle LSP {
 			@doc_bundles := Set->New()<String>;
 			names := @klass_details_json->GetNames();
 			if(names <> Nil) {
-				each(i : names) {
-					name := names->Get(i);
+				each(name in names) {
 					dot := name->FindLast('.');
 					if(dot > 0) {
 						@doc_bundles->Insert(name->SubString(dot));
@@ -2097,8 +2076,7 @@ bundle LSP {
 				prev_line := 0;
 				prev_char := 0;
 
-				each(i : tokens) {
-					token := tokens[i];
+				each(token in tokens) {
 					line := token->GetStartLine();
 					start_char := token->GetStartPosition();
 					length := token->GetEndLine();

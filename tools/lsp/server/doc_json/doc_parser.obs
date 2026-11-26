@@ -309,8 +309,7 @@ class SnippetParser {
 	~#
 	method : FindOwnerScope(index : Int) ~ ClassScope {
 		if(@class_scopes <> Nil) {
-			each(i : @class_scopes) {
-				scope := @class_scopes->Get(i);
+			each(scope in @class_scopes) {
 				if(scope->Holds(index)) {
 					return scope;
 				};

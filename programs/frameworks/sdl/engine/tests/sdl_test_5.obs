@@ -183,8 +183,7 @@ class Player {
 		@rect->AddX(@change_x);
 
 		collides := Level->Collisions(@self, @platforms);
-		each(i : collides) {
-			platform := collides->Get(i);
+		each(platform in collides) {
 			if(@change_x > 0) {
 				@rect->SetRight(platform->GetLeft());
 			}
@@ -196,8 +195,7 @@ class Player {
 				
 		# Move up/down
 		@rect->AddY(@change_y);
-		each(i : @platforms) {
-			platform := @platforms->Get(i);
+		each(platform in @platforms) {
 			if(platform->Collides(@rect)) {
 				# moving right
 				if(@change_y > 0) {
@@ -361,8 +359,7 @@ class Level {
 	}
 
 	function : Collides(player : Player, obstacles : Vector<StaticPlatform>) ~ Bool {
-		each(i : obstacles) {
-			obstacle := obstacles->Get(i);
+		each(obstacle in obstacles) {
 			if(obstacle->Collides(player->GetRect())) {
 				return true;
 			};
@@ -374,8 +371,7 @@ class Level {
 	function : Collisions(player : Player, obstacles : Vector<StaticPlatform>) ~ Vector<StaticPlatform> {
 		collides := Vector->New()<StaticPlatform>;
 
-		each(i : obstacles) {
-			obstacle := obstacles->Get(i);
+		each(obstacle in obstacles) {
 			if(obstacle->Collides(player->GetRect())) {
 				collides->AddBack(obstacle);
 			};
@@ -391,8 +387,7 @@ class Level {
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 
-		each(i : @platforms) {
-			platform := @platforms->Get(i);
+		each(platform in @platforms) {
 			platform->AddX(shift_x);
 		};
 	}

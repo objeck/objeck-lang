@@ -33,8 +33,7 @@ class RosettaRank {
 		if(parser->Parse()) {
 			# get first item
 			results := parser->FindElements("/api/query/categorymembers/cm");
-			each(i : results) {
-				element := results->Get(i);
+			each(element in results) {
 				name := element->GetAttribute("title")->GetValue();
 				offset := name->Find(':');
 				if(offset > -1) {

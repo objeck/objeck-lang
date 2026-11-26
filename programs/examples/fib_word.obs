@@ -4,8 +4,7 @@ class FibonacciWord {
 	function : native : GetEntropy(result : String) ~ Float {
 		frequencies := Map->New()<CharRef, IntRef>;
 
-		each(i : result) {
-			c := result->Get(i);
+		each(c in result) {
 
 			if(frequencies->Has(c)) {
 				count := frequencies->Find(c);

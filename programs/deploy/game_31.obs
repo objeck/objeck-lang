@@ -285,8 +285,7 @@ class GemCollector {
     };
 
     # every spider moves the same way, so one loop handles them all
-    each(i : @spiders) {
-      spider := @spiders->Get(i);
+    each(spider in @spiders) {
       spider->Move(Width(), Height());
       if(spider->Touches(@player_x, @player_y, 32, 52) & @state = State->PLAYING) {
         @die_sound->PlayChannel(-1, 0);

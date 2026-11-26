@@ -12,8 +12,7 @@ class VigenereCipher {
 		text := text->ToUpper();
 		j := 0;
 
-		each(i : text) {
-			c := text->Get(i);
+		each(c in text) {
 			if(c >= 'A' & c <= 'Z') {
 				res->Append(((c + key->Get(j) - 2 * 'A') % 26 + 'A')->As(Char));
 				j += 1;
@@ -29,8 +28,7 @@ class VigenereCipher {
 		text := text->ToUpper();
 		j := 0;
 
-		each(i : text) {
-			c := text->Get(i);
+		each(c in text) {
 			if(c >= 'A' & c <= 'Z') {
 				res->Append(((c - key->Get(j) + 26) % 26 + 'A')->As(Char));
 				j += 1;

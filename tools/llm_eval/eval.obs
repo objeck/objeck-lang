@@ -44,8 +44,7 @@ class Eval {
 		};
 
 		if(EvalArgs->Has(args, "--list")) {
-			each(i : tasks) {
-				task := tasks->Get(i);
+			each(task in tasks) {
 				"{$task->GetId()}\t{$task->GetCategory()}\tdifficulty {$task->GetDifficulty()}"->PrintLine();
 			};
 			return;

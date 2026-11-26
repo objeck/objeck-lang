@@ -12,8 +12,7 @@ class Program {
 	function : ProcessTasks(tasks : String[]) ~ MultiMap<String, String> {
 		master_tasks := MultiMap->New()<String, String>;
 
-		each(i : tasks) {
-			task := tasks[i];
+		each(task in tasks) {
 			"Processing '{$task}'..."->PrintLine();	
 			matches := ProcessTask(task);
 			langs := matches->GetKeys()<String>;
@@ -39,8 +38,7 @@ class Program {
 		lines := response->GetContent()->ToString()->Split("\n");
 
 		last_header : String;
-		each(i : lines) {
-			line := lines[i];
+		each(line in lines) {
 			
 			# get header
 			header := header_regex->FindFirst(line);

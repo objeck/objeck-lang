@@ -24,8 +24,7 @@ class LlmEvalReferencesA {
 
 		failed := 0;
 		attempts := results->GetAttempts();
-		each(i : attempts) {
-			attempt := attempts->Get(i);
+		each(attempt in attempts) {
 			if(<>attempt->IsCorrect()) {
 				failed += 1;
 				"FAIL: {$attempt->GetTaskId()}: {$attempt->GetOutcome()} {$attempt->GetErrorLine()} {$attempt->GetOutput()}"->PrintLine();

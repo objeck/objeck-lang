@@ -4,8 +4,7 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
 			sections := ParseSections(args[0])->GetKeyValues()<Pair<String, String>>;
-			each(i : sections) {
-				section := sections->Get(i);
+			each(section in sections) {
 				section->GetFirst()->PrintLine();
 				"---"->PrintLine();
 				section->GetSecond()->PrintLine();

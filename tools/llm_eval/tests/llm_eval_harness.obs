@@ -161,8 +161,7 @@ class LlmEvalHarness {
 	}
 
 	function : Find(attempts : Vector<Attempt>, id : String, index : Int) ~ Attempt {
-		each(i : attempts) {
-			attempt := attempts->Get(i);
+		each(attempt in attempts) {
 			if(attempt->GetTaskId()->Equals(id) & attempt->GetIndex() = index) {
 				return attempt;
 			};

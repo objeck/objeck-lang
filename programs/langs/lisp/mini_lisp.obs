@@ -169,8 +169,7 @@ class Evaluator {
 					
 					children := node->GetChildren()<Node>;
 					if(children <> Nil) {
-						each(i : children) {
-							child := children->Get(i);
+						each(child in children) {
 							if(child->GetType() = Node->Type->LET_FUN_DEC) {
 								name := child->GetStringValue();
 								sub_child := child->GetChildren();

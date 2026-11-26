@@ -21,8 +21,7 @@ document->PrintLine();
 			if(root <> Nil & root->GetType() = JsonElement->JsonType->OBJECT) {
 				geonames := root->Get("geonames");
 				if(geonames <> Nil & geonames->GetType() = JsonElement->JsonType->ARRAY) {
-					each(i : geonames) {
-						geoname := geonames->Get(i);
+					each(geoname in geonames) {
 						if(geoname <> Nil & geoname->GetType() = JsonElement->JsonType->OBJECT) {
 							toponymName := geoname->Get("toponymName");
 							lng := geoname->Get("lng");

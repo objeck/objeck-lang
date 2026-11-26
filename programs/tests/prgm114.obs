@@ -22,8 +22,7 @@ bundle RegEx {
 			output := Int->New[@buffer_max];
 			output_index := 0;	
 			
-			each(i : input) {
-				value := input->Get(i);
+			each(value in input) {
 				select(value) {
 					label '(': {
 						output[output_index] := TokenType->OPN;
@@ -126,8 +125,7 @@ bundle RegEx {
 				return;
 			};
 			
-			each(i : input) {
-				value := input[i];
+			each(value in input) {
 				select(value) {
 					label TokenType->PLUS: {
 						'+'->PrintLine();

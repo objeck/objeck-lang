@@ -12,8 +12,7 @@ class DeployUtil {
 				
 				count := 0;
 				"In directory: '{$dir_path}':\n---"->PrintLine();
-				each(i : dir_files) {
-					dir_filename := dir_files[i];
+				each(dir_filename in dir_files) {
 					
 					match_str := "_0.0.0.";
 					search_index := dir_filename->Find(match_str);

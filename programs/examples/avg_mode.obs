@@ -23,8 +23,7 @@ class Mode {
 		max := 0;
 		maxElems := Vector->New()<IntRef>;
 		
-		each(i : coll) {
-			value := coll->Get(i);
+		each(value in coll) {
 
 			featched := seen->Find(value);
 			if(featched <> Nil) {

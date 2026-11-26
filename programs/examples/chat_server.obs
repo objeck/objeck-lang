@@ -30,8 +30,7 @@ bundle Default {
 			critical(@clients_mutex) {
 				client_array := @clients->GetValues();
 			};
-			each(i : client_array) {
-				client := client_array->Get(i);
+			each(client in client_array) {
 				if(client <> sender) {
 					client->Send(message);
 				};

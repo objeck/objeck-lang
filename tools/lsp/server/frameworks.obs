@@ -215,8 +215,7 @@ bundle LSP {
 		method : InlineAbandoned(uri : String) ~ Int {
 			found := 0;
 			critical(@inbox_mutex) {
-				each(i : @inbox) {
-					queued := @inbox->Get(i);
+				each(queued in @inbox) {
 					queued_method := queued->GetMethod();
 					if(found = 0 & queued_method <> Nil & queued->IsNotification()) {
 						if(queued_method->Equals("$/cancelRequest")) {
@@ -559,8 +558,7 @@ bundle LSP {
 
 			members := Map->New()<String, JsonElement>;
 			names := elem->GetNames();
-			each(i : names) {
-				name := names->Get(i);
+			each(name in names) {
 				child := elem->Get(name);
 				if(is_position & name->Equals("character")) {
 					line_text := LineOf(scope_uri, line_json->GetInt(), lines);
@@ -665,8 +663,7 @@ bundle LSP {
 		# The first entry of the spec that 'params' does not satisfy, or Nil.
 		function : CheckSpec(params : JsonElement, spec : String) ~ String {
 			entries := spec->Split(",");
-			each(i : entries) {
-				entry := entries[i];
+			each(entry in entries) {
 				is_optional := entry->StartsWith("?");
 				if(is_optional) {
 					entry := entry->SubString(1, entry->Size() - 1);
@@ -1695,16 +1692,14 @@ bundle LSP {
 		# a current or retired program made from exactly these texts and libraries
 		method : ClaimProxy(texts : String[,], libs : String) ~ ProxySource {
 			current := @proxies->GetValues()<ProxySource>;
-			each(i : current) {
-				source := current->Get(i);
+			each(source in current) {
 				if(source->Matches(texts, libs)) {
 					return source;
 				};
 			};
 
 			retired := @retired->GetValues()<ProxySource>;
-			each(i : retired) {
-				source := retired->Get(i);
+			each(source in retired) {
 				if(source->Matches(texts, libs)) {
 					Unretire(source);
 					return source;
@@ -1717,8 +1712,7 @@ bundle LSP {
 		# a claimed program is current again: off every key it was retired under
 		method : Unretire(source : ProxySource) ~ Nil {
 			keys := @retired->GetKeys()<String>;
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(@retired->Find(key) = source) {
 					@retired->Remove(key);
 				};
@@ -1764,8 +1758,7 @@ bundle LSP {
 		# the last cleanly analyzed text of a document changed
 		method : public : InvalidateAlt() ~ Nil {
 			keys := @proxies->GetKeys()<String>;
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(key->StartsWith("alt|")) {
 					source := @proxies->Find(key);
 					@proxies->Remove(key);
@@ -1798,8 +1791,7 @@ bundle LSP {
 		method : RetireProxies() ~ Nil {
 			replaced := Vector->New()<ProxySource>;
 			keys := @proxies->GetKeys()<String>;
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				old := @retired->Find(key);
 				if(old <> Nil) {
 					@retired->Remove(key);
@@ -1817,8 +1809,7 @@ bundle LSP {
 		# a retired program would otherwise be kept for good.
 		method : DropKeys(keys : String[]) ~ Nil {
 			dropped := Vector->New()<ProxySource>;
-			each(i : keys) {
-				key := keys[i];
+			each(key in keys) {
 				retired_source := @retired->Find(key);
 				if(retired_source <> Nil) {
 					@retired->Remove(key);
@@ -1837,8 +1828,7 @@ bundle LSP {
 		method : ReleaseUnheld(sources : Vector<ProxySource>) ~ Nil {
 			current := @proxies->GetValues()<ProxySource>;
 			retired := @retired->GetValues()<ProxySource>;
-			each(i : sources) {
-				source := sources->Get(i);
+			each(source in sources) {
 				if(<>Holds(current, source) & <>Holds(retired, source)) {
 					source->Release();
 				};
@@ -1881,8 +1871,7 @@ bundle LSP {
 			key := LspFolder->TrimUri(uri);
 			kept := Vector->New()<LspFolder>;
 			removed : LspFolder;
-			each(i : @folders) {
-				folder := @folders->Get(i);
+			each(folder in @folders) {
 				if(folder->GetUri()->Equals(key)) {
 					removed := folder;
 				}
@@ -1908,8 +1897,7 @@ bundle LSP {
 		#
 		method : public : ReloadFolders(changed_uri : String) ~ Vector<LspFolder> {
 			reloaded := Vector->New()<LspFolder>;
-			each(i : @folders) {
-				folder := @folders->Get(i);
+			each(folder in @folders) {
 				if(changed_uri <> Nil & folder->Contains(changed_uri)) {
 					folder->Load();
 					reloaded->AddBack(folder);
@@ -1917,8 +1905,7 @@ bundle LSP {
 			};
 
 			if(reloaded->Size() = 0) {
-				each(i : @folders) {
-					folder := @folders->Get(i);
+				each(folder in @folders) {
 					folder->Load();
 					reloaded->AddBack(folder);
 				};
@@ -1936,8 +1923,7 @@ bundle LSP {
 		method : public : WillRenameFiles(files : JsonElement) ~ JsonElement {
 			changes := JsonElement->New(JsonElement->JsonType->OBJECT);
 			found := false;
-			each(i : @folders) {
-				folder := @folders->Get(i);
+			each(folder in @folders) {
 				edits := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(j : files) {
 					file := files->Get(j);
@@ -1971,8 +1957,7 @@ bundle LSP {
 		#
 		method : public : FolderFor(uri : String) ~ LspFolder {
 			found : LspFolder;
-			each(i : @folders) {
-				folder := @folders->Get(i);
+			each(folder in @folders) {
 				if(folder->Lists(uri)) {
 					if(found = Nil | folder->GetUri()->Size() > found->GetUri()->Size()) {
 						found := folder;
@@ -1991,8 +1976,7 @@ bundle LSP {
 		#
 		method : public : BuildFileFor(uri : String) ~ String {
 			found : LspFolder;
-			each(i : @folders) {
-				folder := @folders->Get(i);
+			each(folder in @folders) {
 				if(folder->Contains(uri)) {
 					if(found = Nil | folder->GetUri()->Size() > found->GetUri()->Size()) {
 						found := folder;
@@ -2040,8 +2024,7 @@ bundle LSP {
 
 			@texts := String->New[count > 0 ? count : 1, 2];
 			index := 0;
-			each(i : key_values) {
-				key_value := key_values->Get(i);
+			each(key_value in key_values) {
 				file_uri := key_value->GetFirst();
 				if(IsStandaloneMatch(uri, file_uri)) {
 					document := key_value->GetSecond();
@@ -2114,8 +2097,7 @@ bundle LSP {
 			uris := @documents->GetKeys()<String>;
 			matches := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-			each(i : @folders) {
-				folder := @folders->Get(i);
+			each(folder in @folders) {
 				if(folder->IsConfigured()) {
 					proxy := GetProxy(Nil, folder, false);
 					if(proxy->Build()) {
@@ -2753,8 +2735,7 @@ bundle LSP {
 			};
 
 			found := false;
-			each(i : references) {
-				reference := references->Get(i);
+			each(reference in references) {
 				ref_uri := reference->Get("uri");
 				ref_line := reference->FindElements("range/start/line");
 				ref_start := reference->FindElements("range/start/character");
@@ -3092,8 +3073,7 @@ bundle LSP {
 				labels->Insert(enum_items->Get(i)->Get("label")->GetString());
 			};
 
-			each(i : others) {
-				item := others->Get(i);
+			each(item in others) {
 				label_json := item->Get("label");
 				kind_json := item->Get("kind");
 				if(label_json <> Nil & kind_json <> Nil & kind_json->GetInt() <> 14 &
@@ -3246,8 +3226,7 @@ bundle LSP {
 			};
 
 			keywords := ["enum", "consts"];
-			each(i : keywords) {
-				keyword := keywords[i];
+			each(keyword in keywords) {
 				index := @text->Find(0, keyword);
 				while(index > -1) {
 					after := index + keyword->Size();
@@ -3633,8 +3612,7 @@ bundle LSP {
 
 			# the cursor is in one of them
 			at_cursor := false;
-			each(i : ranges) {
-				range := ranges->Get(i);
+			each(range in ranges) {
 				if(range->FindElements("start/line")->GetInt() = line_pos & range->FindElements("start/character")->GetInt() = start_char) {
 					at_cursor := true;
 				};
@@ -4290,8 +4268,7 @@ bundle LSP {
 			# build response for each position
 			result := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-			each(p : positions) {
-				pos := positions->Get(p);
+			each(pos in positions) {
 				pos_line := pos->FindElements("line")->GetInt();
 				pos_char := pos->FindElements("character")->GetInt();
 

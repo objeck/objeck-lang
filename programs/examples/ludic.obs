@@ -59,8 +59,7 @@ class Ludic  {
 
 	function : Show(title : String, triplets : Vector<CompareVector<IntRef> >) ~ Nil {
 		title->PrintLine();
-		each(i : triplets) {
-			triplet := triplets->Get(i);
+		each(triplet in triplets) {
 			Show("\t", triplet, 0, triplet->Size());
 		};
 	}
