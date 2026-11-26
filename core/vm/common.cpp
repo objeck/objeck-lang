@@ -4082,6 +4082,17 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
   return true;
 }
 
+// A socket read's or write's 'num' operand as the int the socket calls take. The operand is an Int, 64
+// bits, and was cut to a long or an int BEFORE it was checked against the array: on Windows, where a
+// long is 32 bits, 4294967297 arrived as 1 and passed (and a negative count could arrive positive).
+// Out-of-range values now stay out of range: a count too large is INT_MAX, which the check against the
+// array refuses for any array a socket call could fill, and a negative one is -1.
+static inline int SocketCount(size_t operand)
+{
+  const INT64_VALUE num = (INT64_VALUE)operand;
+  return num > INT_MAX ? INT_MAX : (num < 0 ? -1 : (int)num);
+}
+
 bool TrapProcessor::StdInByteAryLen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -7592,7 +7603,7 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const int num = (int)PopInt(op_stack, stack_pos);
+  const int num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -7622,7 +7633,7 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -7713,7 +7724,7 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const int num = (int)PopInt(op_stack, stack_pos);
+  const int num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9697,7 +9708,7 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9731,7 +9742,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9795,7 +9806,7 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9873,7 +9884,7 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9923,8 +9934,8 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
 bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
-  const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockTcpSslInByte)
@@ -9985,7 +9996,7 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -11862,7 +11873,7 @@ bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -11895,8 +11906,8 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
-  const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockDtlsInByte)
@@ -11957,7 +11968,7 @@ bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t*
 bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 

@@ -1,0 +1,290 @@
+#~
+# A socket read or write whose count does not fit the socket call is refused, not cut down and done
+#
+# ReadBuffer and WriteBuffer take (offset, num) as Int, 64 bits. The socket traps cut 'num' to a C long
+# or an int BEFORE checking it against the array, and the TLS and DTLS Char[] reads cut 'offset' the
+# same way. On Windows a long is 32 bits, so ReadBuffer(0, 4294967297, buffer) on a TCP or TLS socket
+# arrived as a read of 1, passed the check and read one element, and ReadBuffer(4294967297, 1, chars) on
+# a TLS socket stored at offset 1. A UDP socket's count was cut to an int on every platform. All of them
+# now fail with -1, as any range outside the array does.
+#
+# Each refused TCP and TLS call is made with data waiting, so a call wrongly let through returns at once
+# (and is seen to have taken the data) instead of waiting for some. A UDP read is made on a thread of
+# its own and given two seconds to fail: let through, it waits for a datagram.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+# writes eight 'z' to the one TCP connection it accepts, then waits to be told to close
+class TcpFiller from Thread {
+	@server : TCPSocketServer;
+	@release : Bool;
+
+	New(server : TCPSocketServer) {
+		Parent("tcp-filler");
+		@server := server;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil & client->IsOpen()) {
+			client->WriteString("zzzzzzzz");
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+# one ReadBuffer(offset, num, ...) of a UDP server, into a Char[] or (when there is none) a Byte[]
+class DatagramReader from Thread {
+	@server : UDPSocketServer;
+	@chars : Char[];
+	@bytes : Byte[];
+	@offset : Int;
+	@num : Int;
+	@read : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer, offset : Int, num : Int, chars : Char[], bytes : Byte[]) {
+		Parent("datagram-reader");
+		@server := server;
+		@offset := offset;
+		@num := num;
+		@chars := chars;
+		@bytes := bytes;
+		@read := -2;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		if(@chars <> Nil) {
+			@read := @server->ReadBuffer(@offset, @num, @chars);
+		}
+		else {
+			@read := @server->ReadBuffer(@offset, @num, @bytes);
+		};
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+}
+
+# the same over TLS
+class TlsFiller from Thread {
+	@server : TCPSecureSocketServer;
+	@release : Bool;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-filler");
+		@server := server;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->WriteString("zzzzzzzz");
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+class SocketCountRange {
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Marks() ~ Char[] {
+		marks := Char->New[8];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		return marks;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp"->ErrorLine();
+			CheckTcp();
+		};
+		if(only->Size() = 0 | only->Equals("udp")) {
+			"stage: udp"->ErrorLine();
+			CheckUdp();
+		};
+		if(only->Size() = 0 | only->Equals("tls")) {
+			"stage: tls"->ErrorLine();
+			CheckTls();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} count range check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a socket count or offset beyond 32 bits is refused"->PrintLine();
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		filler := TcpFiller->New(server);
+		filler->Execute(Nil);
+		client := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(<>client->IsOpen()) {
+			Check("the TCP client connects", false);
+			filler->Release();
+			return;
+		};
+		client->SetRecvTimeout(10000);
+
+		bytes := Byte->New[8];
+		chars := Marks();
+		Check("TCP ReadBuffer(0, 4294967297, Byte[8]) fails", client->ReadBuffer(0, 4294967297, bytes) = -1);
+		Check("TCP ReadBuffer(0, 4294967297, Char[8]) fails", client->ReadBuffer(0, 4294967297, chars) = -1);
+		Check("TCP ReadBuffer(4294967297, 1, Char[8]) fails", client->ReadBuffer(4294967297, 1, chars) = -1);
+		Check("TCP ReadBuffer(0, -4294967295, Byte[8]) fails", client->ReadBuffer(0, -4294967295, bytes) = -1);
+		Check("TCP WriteBuffer(0, 4294967297, Byte[8]) fails", client->WriteBuffer(0, 4294967297, bytes) = -1);
+		Check("nothing was stored", bytes[0] = 0 & chars[0] = 'X' & chars[1] = 'X');
+		Check("and all eight bytes are still there to read", client->ReadBuffer(0, 8, bytes) = 8 & bytes[7] = 0x7A);
+
+		filler->Release();
+		client->Close();
+		filler->Join();
+		server->Close();
+	}
+
+	# a UDP read that must fail without waiting for a datagram: the count it returned, -9 if it waited
+	function : UdpRefused(chars : Char[], bytes : Byte[]) ~ Int {
+		server := UDPSocketServer->New(0);
+		if(<>server->IsBound()) {
+			return -3;
+		};
+		client := UDPSocket->New("127.0.0.1", server->GetPort());
+		reader := DatagramReader->New(server, 0, 4294967297, chars, bytes);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 2000; waited += 20;) {
+			Thread->Sleep(20);
+		};
+		waited_for_data := <>reader->IsFinished();
+		# a read that was let through ends when a datagram arrives
+		for(tries := 0; <>reader->IsFinished() & tries < 300; tries += 1;) {
+			client->WriteString("z");
+			Thread->Sleep(50);
+		};
+		reader->Join();
+		sent := client->WriteBuffer(0, 4294967297, Byte->New[8]);
+		client->Close();
+		server->Close();
+		if(waited_for_data) {
+			return -9;
+		};
+		if(sent <> -1) {
+			return -8;
+		};
+		return reader->GetRead();
+	}
+
+	function : CheckUdp() ~ Nil {
+		got := UdpRefused(Nil, Byte->New[8]);
+		Check("UDP ReadBuffer(0, 4294967297, Byte[8]) fails without waiting, and so does the write (got {$got})", got = -1);
+		got := UdpRefused(Marks(), Nil);
+		Check("UDP ReadBuffer(0, 4294967297, Char[8]) fails without waiting (got {$got})", got = -1);
+	}
+
+	function : CheckTls() ~ Nil {
+		cert := "count-range-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "count-range-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+			return;
+		};
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("the TLS server listens", port > 0);
+		if(port > 0) {
+			filler := TlsFiller->New(server);
+			filler->Execute(Nil);
+			client := TCPSecureSocket->New("127.0.0.1", port, cert);
+			if(client->IsOpen()) {
+				bytes := Byte->New[8];
+				chars := Marks();
+				Check("TLS ReadBuffer(4294967297, 1, Char[8]) fails", client->ReadBuffer(4294967297, 1, chars) = -1);
+				Check("TLS ReadBuffer(0, 4294967297, Char[8]) fails", client->ReadBuffer(0, 4294967297, chars) = -1);
+				Check("TLS ReadBuffer(0, 4294967297, Byte[8]) fails", client->ReadBuffer(0, 4294967297, bytes) = -1);
+				Check("TLS WriteBuffer(0, 4294967297, Byte[8]) fails", client->WriteBuffer(0, 4294967297, bytes) = -1);
+				Check("nothing was stored", bytes[0] = 0 & chars[0] = 'X' & chars[1] = 'X');
+				Check("and all eight bytes are still there to read", client->ReadBuffer(0, 8, bytes) = 8 & bytes[7] = 0x7A);
+				client->Close();
+			}
+			else {
+				Check("the TLS client connects ('{$(TCPSecureSocket->GetLastError())}')", false);
+			};
+			filler->Release();
+			filler->Join();
+			server->Close();
+		};
+		File->Delete(cert);
+		File->Delete(key);
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}
