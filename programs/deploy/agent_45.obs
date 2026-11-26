@@ -1,0 +1,62 @@
+#~
+# compile: obc -src agent_45.obs -lib agent,json,net,cipher,misc
+# run:     obr agent_45.obe
+#
+# AgentScope puts one set of limits, one cancel switch and one trace around
+# every agent run inside a block of code, so a program does not have to hand a
+# budget to each agent it makes. The limits are totals for the block: the
+# second question below gets only what the first one left, and a run with
+# nothing left is not started (the model is not called at all).
+#
+# The model is a ScriptedBackend (fixed replies, no key, no network). Swap in
+# AnthropicBackend, OpenAIBackend, GeminiBackend or OllamaBackend for a real one.
+#
+# output:
+#   scope: 2 steps allowed
+#   question 1: completed (2 steps)
+#   question 2: budget_steps (0 steps)
+#   question 3: budget_steps (0 steps)
+#   agent scope: 3 runs, 2 steps, 30 tokens, 1 tool calls, halt=budget_steps, events=10
+#   outside the block: no scope (true)
+~#
+
+use API.Agent;
+use Data.JSON;
+use Collection;
+
+class Demo {
+	@agent : static : Agent;
+
+	function : Main(args : String[]) ~ Nil {
+		script := Vector->New()<AgentReply>;
+		script->AddBack(Counted(AgentReply->Ask("t1", "clock", "{}"), 10, 10));
+		script->AddBack(Counted(AgentReply->Say("It is noon."), 5, 5));
+		script->AddBack(AgentReply->Say("never asked"));
+
+		registry := ToolRegistry->New();
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
+		registry->Add(AgentTool->New("clock", "Tells the time", schema,
+			Func2Ref->New(Demo->Clock(JsonElement) ~ String)<JsonElement, String>));
+		@agent := Agent->New(ScriptedBackend->New(script), registry);
+
+		scope := AgentScope->New()->SetMaxSteps(2)->SetTrace(true)->SetPrintTrace(true);
+		"scope: 2 steps allowed"->PrintLine();
+		AgentScope->Run(scope, Questions() ~ Nil);
+		"outside the block: no scope ({$AgentScope->Current() = Nil})"->PrintLine();
+	}
+
+	function : Questions() ~ Nil {
+		for(i := 1; i <= 3; i += 1;) {
+			result := @agent->Run("question {$i}");
+			"question {$i}: {$result->GetStopReason()} ({$result->GetSteps()->Size()} steps)"->PrintLine();
+		};
+	}
+
+	function : Counted(reply : AgentReply, input : Int, output : Int) ~ AgentReply {
+		return AgentReply->New(reply->GetText(), reply->GetToolCalls(), reply->GetStopReason(), input, output);
+	}
+
+	function : Clock(args : JsonElement) ~ String {
+		return "12:00";
+	}
+}
