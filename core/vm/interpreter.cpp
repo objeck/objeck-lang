@@ -90,6 +90,8 @@ using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
 std::set<StackInterpreter*> StackInterpreter::intpr_threads;
+std::atomic<long> StackInterpreter::spawned_threads(0);
+std::atomic<bool> StackInterpreter::halting_threads(false);
 
 #ifdef _WIN32
 bool StackInterpreter::is_stdio_binary;
@@ -130,6 +132,8 @@ namespace {
 void StackInterpreter::Initialize(StackProgram* p, size_t m)
 {
   program = p;
+  // a halt sent while the last program was torn down ends with it (obd)
+  halting_threads = false;
 
   // Every VM start readies the process for sockets and pipes (SIGPIPE ignored
   // on POSIX, Winsock started on Windows), whichever host started it: obr,
@@ -2192,6 +2196,10 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   MemoryManager::AddPendingThreadRoot(&holder->self);
   MemoryManager::AddPendingThreadRoot(&holder->param);
 
+  // counted here, by the parent: the child cannot be missed by an exit that
+  // arrives before it has started (WaitForThreadsToDrain)
+  ThreadSpawned();
+
 #ifdef _WIN32
   // The native stack is sized for the maximum call depth (call_stack.h):
   // reserved, not committed. The 1 MB default held about 1,800 compiled frames.
@@ -2347,8 +2355,13 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
   StackInterpreter::ForgetThreadFault(StackInterpreter::CurrentThreadKey());
-  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                    StackInterpreter::ThreadFaultIsolation());
+  // Halted on registering: Main returned before this thread started, and the
+  // program is being torn down. It ends as a thread halted mid-run does, without
+  // entering a method it would only leave again.
+  if(!intpr->IsHalted()) {
+    ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
+                      StackInterpreter::ThreadFaultIsolation());
+  }
   MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
@@ -2378,6 +2391,9 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   MemoryManager::RemovePendingThreadRoot(&holder->param);
   delete holder;
   holder = nullptr;
+
+  // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
+  ThreadFinished();
 
   return 0;
 }
@@ -2411,8 +2427,13 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
   StackInterpreter::ForgetThreadFault(StackInterpreter::CurrentThreadKey());
-  ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                    StackInterpreter::ThreadFaultIsolation());
+  // Halted on registering: Main returned before this thread started, and the
+  // program is being torn down. It ends as a thread halted mid-run does, without
+  // entering a method it would only leave again.
+  if(!intpr->IsHalted()) {
+    ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
+                      StackInterpreter::ThreadFaultIsolation());
+  }
   MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
@@ -2442,6 +2463,9 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   MemoryManager::RemovePendingThreadRoot(&holder->param);
   delete holder;
   holder = nullptr;
+
+  // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
+  ThreadFinished();
 
   return nullptr;
 }
