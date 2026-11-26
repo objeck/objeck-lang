@@ -122,7 +122,8 @@ A virtual call that finds no method in the receiver's classes, or finds one with
 no body or with other parameter or return words than its declaration, stops with
 `>>> Invalid virtual call: ... <<<` (`StackInterpreter::ResolveVirtualTarget`,
 checked when a class's override is first looked up, not on each call). The
-collector treats a function value whose id names no class as having no captures.
+collector treats a function value whose id names no class as having no captures,
+and clearing a Nil array is the Nil runtime error it should always have been.
 
 `OBJECK_VERIFY_ONLY=1` makes `obr` load and verify a program and exit 0 without
 running it, or refuse it as above: for checking a file, and what the tests and
@@ -133,17 +134,17 @@ the fuzz tools use to measure refusals without a program's side effects.
 `tools/fuzz/adhoc/obe_campaign.py` changes compiled programs one opcode,
 operand, literal, instruction or record field at a time (and, for three in ten,
 at the byte level as `obe_mutfuzz.py` does) and runs each result with the default
-JIT, `--jit=off` and `OBJECK_JIT_THRESHOLD=1`. On 30,000 changes of 272 compiled
-regression programs, 407 crashed the VM before the rules from "a number is not
-read through" down were added (55 distinct faulting sites); CAMPAIGN_AFTER do with
-them, and none of the byte-level changes does. What the remaining ones are, and
+JIT, `--jit=off` and `OBJECK_JIT_THRESHOLD=1`. On 30,000 changes of 285 compiled regression programs, 582 crashed the VM before the rules from "a number is not
+read through" down were added (75 distinct faulting sites) and 45 with them; on 100,000 changes with the
+final rules, 145 do (43 sites), 2 of them among the 29,980 byte-level changes (11 of 8,600 before). What the remaining ones are, and
 why the loader cannot refuse them yet, is in
 [design/OBE_TYPE_VERIFIER.md](design/OBE_TYPE_VERIFIER.md).
 
 No valid program is refused: every `.obs` in the repository that compiles on its
-own, at `-opt s0` to `s3` and a quarter again with `-debug` (CORPUS_IMAGES images),
-and one program per library that names every documented class (768 of 778
-classes link whole), load under `OBJECK_VERIFY_ONLY=1`. Three programs did not
+own, at `-opt s0` to `s3` and a quarter again with `-debug` (4,908 images from 1,909
+sources), and one program per library that names every documented class (769 of
+779 classes link whole; 114 images), load under `OBJECK_VERIFY_ONLY=1`
+(`tools/fuzz/adhoc/obe_corpus_gate.py`). Three programs did not
 at first, and each was a compiler defect the stack rules exposed (CHANGELOG,
 v2026.11.4: a call with arguments on the result of `??`).
 

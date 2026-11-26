@@ -16,12 +16,12 @@ number read through as a reference, a float used as an integer, an object
 used as an array, class memory in place of an instance, a return at the wrong
 stack height, and so on (the full table is in SECURITY_MODEL.md).
 
-Measured with `tools/fuzz/adhoc/obe_campaign.py` (30,000 changed programs from
-272 compiled regression programs, each run with the default JIT, `--jit=off`
-and `OBJECK_JIT_THRESHOLD=1`): before these rules 407 of the 30,000 crashed
-the VM; with them about 45 do. Byte-level changes (bit flips, overwritten
-integers, cut and repeated chunks, truncation: 8,700 of the 30,000) crash
-none. Every remaining crash is a *structured* change -- one opcode, operand,
+Measured with `tools/fuzz/adhoc/obe_campaign.py` (changed programs made from
+285 compiled regression programs, each run with the default JIT, `--jit=off`
+and `OBJECK_JIT_THRESHOLD=1`): before these rules 582 of 30,000 crashed the
+VM, with them 45; of 100,000 with the final rules, 145. Of the byte-level changes (bit
+flips, overwritten integers, cut and repeated chunks, truncation: three in
+ten) 2 of 29,980 crashed in that run, against 11 of 8,600 before. Every remaining crash is a *structured* change -- one opcode, operand,
 literal or instruction that still parses -- of one of the kinds below.
 
 The builder knows three things about a value: what instruction made it, what

@@ -1489,9 +1489,30 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, size_t*& stack_pos)
   }
 }
 
+// A Nil array handed to one of the four clears below: the same runtime error as
+// any other use of Nil. They read the array's length with no check, so clearing a
+// Nil array ended the VM with a segmentation fault instead.
+void StackInterpreter::NilArrayCleared(size_t* &stack_pos)
+{
+  if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
+    return;
+  }
+  std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+#else
+  VmExit(1);
+#endif
+}
+
 void StackInterpreter::ZeroByteAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   char* buffer = (char*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(char));
@@ -1500,6 +1521,10 @@ void StackInterpreter::ZeroByteAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroCharAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   wchar_t* buffer = (wchar_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(wchar_t));
@@ -1508,6 +1533,10 @@ void StackInterpreter::ZeroCharAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroIntAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   size_t* buffer = (size_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(size_t));
@@ -1516,6 +1545,10 @@ void StackInterpreter::ZeroIntAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroFloatAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));

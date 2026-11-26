@@ -769,6 +769,7 @@ namespace Runtime {
     void CpyCharAry(size_t* &op_stack, size_t* &stack_pos);
     void CpyIntAry(size_t* &op_stack, size_t* &stack_pos);
     void CpyFloatAry(size_t* &op_stack, size_t* &stack_pos);
+    void NilArrayCleared(size_t* &stack_pos);
     void ZeroByteAry(size_t*& op_stack, size_t*& stack_pos);
     void ZeroCharAry(size_t*& op_stack, size_t*& stack_pos);
     void ZeroIntAry(size_t*& op_stack, size_t*& stack_pos);

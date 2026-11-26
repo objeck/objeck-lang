@@ -1,0 +1,17 @@
+#~
+run_vm_flag_tests.py section 34: clearing a Nil array is a runtime error.
+'Clear()' on an Int[], Char[], Byte[] or Float[] compiles to ZERO_*_ARY, which
+read the array's length with no Nil check: 'ints->Clear()' on an unassigned
+array ended the VM with a segmentation fault, interpreted and compiled.
+~#
+class NilArrayClear {
+	function : Main(args : String[]) ~ Nil {
+		ints : Int[];
+		full := Int->New[3];
+		full[1] := 7;
+		full->Clear();
+		"cleared {$full[1]}"->PrintLine();
+		ints->Clear();
+		"not reached"->PrintLine();
+	}
+}

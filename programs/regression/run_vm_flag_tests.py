@@ -331,7 +331,9 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     --jit=off and --jit=1. The unchanged program must run in all three, and
     with OBJECK_VERIFY_ONLY=1 must load, print nothing and exit 0. A virtual
     call whose override was renamed away stops with "Invalid virtual call"
-    instead of running the declaration's empty body.
+    instead of running the declaration's empty body. And a valid program that
+    clears a Nil array (vm_flag_fixtures/nil_array_clear.obs) gets the Nil
+    runtime error in all three modes, where it crashed the VM.
  31. A collection leaves an Int[] element alone when its value IS an object's
     address (GC roots phase 6, docs/GC_ROOTS_DESIGN.md section 10). An Int[]
     and an object array shared one heap tag, so the collector scanned every
@@ -2352,6 +2354,22 @@ def check_loader_refuses_changed(obc, obr, env, bin_dir):
                 check(f"a virtual call with no override stops with a message, not a crash (-opt {opt}, {label})",
                       rc == 1 and "Invalid virtual call" in text and "has no body" in text and expected not in out,
                       f"rc={rc} err={text[-300:]!r}")
+
+
+        # Clearing a Nil array: a runtime error with the usual message, where the four
+        # ZERO_*_ARY handlers (and the JIT's callback) read the array's length unchecked.
+        src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "nil_array_clear.obs")
+        dest = os.path.join(scratch, "nil_array_clear.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("nil_array_clear compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc == 0:
+            for label, flags in modes:
+                rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=60)
+                text = err.decode(errors="replace")
+                check(f"clearing a Nil array is a runtime error, not a crash ({label})",
+                      rc == 1 and b"cleared 0" in out and b"not reached" not in out and
+                      "Attempting to dereference a 'Nil' memory instance" in text,
+                      f"rc={rc} out={out[-100:]!r} err={text[-200:]!r}")
 
 
 def check_address_int_array(obc, obr, env, bin_dir):
