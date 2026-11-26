@@ -1,0 +1,134 @@
+#~
+Regression: words left on the operand stack by `??` chains and by statements
+with a parenthesised receiver.
+
+Three shapes, each found by checking the operand stack's height where a method
+returns (a method must leave exactly the words its return type names):
+
+1. A call with arguments on the result of `??` (Otherwise), where the chain
+   starts at a variable: `(p ?? "x")->Equals("abc")`. The call's arguments were
+   emitted twice, once before the chain and once by Otherwise's own chain loop,
+   and the first copy stayed on the stack. Inside an argument list the stray
+   word shifted the enclosing call's arguments:
+   `Use("m", (p ?? "x")->Equals("abc"))` passed "abc" where "m" was written.
+
+2. A statement whose receiver is parenthesised and whose value is discarded:
+   `("a" + t)->Size();`, `(F(k))->Abs();`, `(t ?? "x")->Size();`. The value was
+   never dropped, one word for each time the statement ran. A caller holding
+   an argument across such a call then passed the leaked word instead.
+
+3. `("q" ?? "x")`: the default, a string literal, was paired with the
+   receiver's literal and swapped under it on the Nil path.
+
+Every check goes through a call that takes its message first, so a shifted
+argument shows as the wrong message as well as the wrong value.
+~#
+
+class NilCoalesceCallArguments {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got <> Nil & got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# the message a callee was handed, when it is the one written at the call
+	function : Tag(what : String, flag : Bool) ~ String {
+		return flag ? what : "{$what}/false";
+	}
+
+	function : Next(a : Int) ~ Int {
+		return a + 1;
+	}
+
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	# each leaves nothing behind: the statements' values are discarded
+	function : Discards(t : String, k : Int) ~ Int {
+		("a" + t)->Size();
+		(Next(k))->Abs();
+		(String->New())->Size();
+		(t ?? "x")->Size();
+		(t ?? "x")->Equals("ab");
+		("a" + t)->ToUpper()->Size();
+		return 1;
+	}
+
+	method : Run() ~ Nil {
+		p := "abc";
+		n : String;
+
+		# 1. arguments of a call on the result of ??
+		Check("a call with an argument on a variable's ??", Tag("m1", (p ?? "x")->Equals("abc")), "m1");
+		Check("the default is taken for Nil", Tag("m2", (n ?? "x")->Equals("x")), "m2");
+		Check("on a guarded call's ??", Tag("m3", (p?->ToUpper() ?? "dflt")->Equals("ABC")), "m3");
+		Check("on a guarded call's ??, Nil receiver", Tag("m4", (n?->ToUpper() ?? "dflt")->Equals("dflt")), "m4");
+		Check("two arguments", (p ?? "wxyz")->SubString(1, 2), "bc");
+		Check("two arguments, the default", (n ?? "wxyz")->SubString(1, 2), "xy");
+		Check("Otherwise() written out", p->Otherwise("wxyz")->SubString(0, 2), "ab");
+		Check("a chain after the call", (p ?? "x")->SubString(0, 2)->ToUpper(), "AB");
+		taken := (p ?? "x")->Equals("abc");
+		Check("in an assignment", Tag("m5", taken), "m5");
+		if((n ?? "d")->Equals("d")) {
+			Check("in a condition", "taken", "taken");
+		}
+		else {
+			Check("in a condition", "skipped", "taken");
+		};
+
+		# 2. statements whose value is discarded: an argument held across the call
+		# must still be the first one
+		total := 0;
+		each(i : 1000) {
+			total += Add(i, Discards("ab", i));
+		};
+		CheckInt("an argument held across statements that discard a value", total, 500500);
+
+		# 3. a literal receiver with a literal default
+		CheckInt("a literal's ?? with a literal default", ("q" ?? "x")->Size() + ("ab" ?? "cd")->Size(), 3);
+		Check("as an argument", Tag(("q" ?? "x"), ("a" ?? "b")->Equals("a")), "q");
+
+		# guards: the forms that always worked
+		x : String;
+		x := x ?? "dflt";
+		Check("x := x ?? literal", x, "dflt");
+		y : String;
+		y := y ?? p->ToUpper();
+		Check("x := x ?? a call", y, "ABC");
+		Check("no arguments", (n ?? "wxyz")->ToUpper(), "WXYZ");
+		CheckInt("a value type", (n?->Size() ?? -1)->Abs(), 1);
+
+		if(@failures = 0) {
+			"All nil-coalesce call argument tests passed."->PrintLine();
+		}
+		else {
+			"{$@failures} FAILED"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NilCoalesceCallArguments->New()->Run();
+	}
+}

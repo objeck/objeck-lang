@@ -1270,7 +1270,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
     
   case SIMPLE_STMT:
-    EmitExpression(static_cast<SimpleStatement*>(statement)->GetExpression());
+    EmitSimpleStatement(static_cast<SimpleStatement*>(statement));
     break;
     
   case RETURN_STMT: {
@@ -1443,6 +1443,61 @@ static bool ChainEndsInTryResult(MethodCall* method_call)
   }
 
   return ends_in_intrinsic_result;
+}
+
+/****************************
+ * Translates an expression used as a statement: a receiver that is not a plain
+ * call or variable -- a literal, a concatenation, anything in parentheses --
+ * with a call chain, `("[" + t + "]")->Size();`. Its value is discarded.
+ *
+ * The expression emitters drop a discarded value only on some of their paths
+ * (a literal receiver's chain did; a parenthesised call's, `(F(k))->Abs();`, and
+ * a parenthesised '??', `(t ?? "x")->Size();`, did not, and left the word on the
+ * operand stack each time the statement ran). So the value is dropped here,
+ * once, and the mark that makes those paths drop it is lifted while the
+ * expression is emitted.
+ ****************************/
+void IntermediateEmitter::EmitSimpleStatement(SimpleStatement* simple)
+{
+  Expression* expression = simple->GetExpression();
+  MethodCall* tail = expression->GetMethodCall();
+  while(tail && tail->GetMethodCall()) {
+    tail = tail->GetMethodCall();
+  }
+  if(!tail) {
+    EmitExpression(expression);
+    return;
+  }
+
+  const instructions::MemoryType discarded = tail->GetRougeReturn();
+  tail->SetRougeReturn(instructions::NIL_TYPE);
+  EmitExpression(expression);
+  tail->SetRougeReturn(discarded);
+
+  // a Try() region, or an Otherwise() that ends the chain, leaves one word
+  // whatever the last guarded call returns (Nil for one that returns nothing)
+  if(ChainEndsInTryResult(expression->GetMethodCall())) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    return;
+  }
+
+  switch(discarded) {
+  case instructions::INT_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    break;
+
+  case instructions::FLOAT_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_FLOAT));
+    break;
+
+  case instructions::FUNC_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    break;
+
+  default:
+    break;
+  }
 }
 
 void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
@@ -5822,6 +5877,11 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
 
   // Nil path: evaluate default expression
   const std::vector<Expression*>& args = method_call->GetCallingParameters()->GetExpressions();
+  // The default is a whole expression of its own: a string literal in it must not
+  // pair with one the receiver left counted (EmitCharacterString swaps the second
+  // of a pair under the first). `("q" ?? "x")` got a SWAP_INT here that put the
+  // word under the receiver's into the slot instead of the default.
+  new_char_str_count = 0;
   EmitExpression(args[0]);
   EmitCast(method_call);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
@@ -7763,19 +7823,23 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
 }
 
 /****************************
- * True when a call is inside a Try() region: a Try() precedes it in its chain
- * with no Otherwise() in between. EmitTryIntrinsic emits such a call's
- * arguments INSIDE the region, after the receiver; see there.
+ * True when a Try() or an Otherwise() precedes a call in its chain. The
+ * intrinsic emits the rest of the chain itself, each call's arguments with it:
+ * EmitTryIntrinsic INSIDE its region, after the receiver, and
+ * EmitOtherwiseIntrinsic once the value the call is made on is on the stack.
+ *
+ * Only a call after a Try() was held back here, so one after an Otherwise()
+ * had its arguments emitted twice wherever a caller rewinds the chain to emit
+ * arguments first (a variable receiver): `Use("m", (p ?? "x")->Equals("abc"))`
+ * left the first "abc" on the stack under the call, and Use received it in
+ * place of "m". Found by checking the operand stack's height at each return.
  ****************************/
-static bool IsTryGuarded(MethodCall* method_call)
+static bool FollowsTryOrOtherwise(MethodCall* method_call)
 {
   Expression* prev = method_call->GetPreviousExpression();
   while(prev && prev->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* prev_call = static_cast<MethodCall*>(prev);
-    if(prev_call->IsOtherwiseIntrinsic()) {
-      return false;
-    }
-    if(prev_call->IsTryIntrinsic()) {
+    if(prev_call->IsOtherwiseIntrinsic() || prev_call->IsTryIntrinsic()) {
       return true;
     }
     prev = prev_call->GetPreviousExpression();
@@ -7792,8 +7856,8 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   if(!emitting_deferred_params && ReceiverIsFirstParameter(method_call)) {
     return;
   }
-  // a call guarded by Try() gets its arguments inside the region (EmitTryIntrinsic)
-  if(!emitting_deferred_params && IsTryGuarded(method_call)) {
+  // a call after a Try() or an Otherwise() gets its arguments from the intrinsic
+  if(!emitting_deferred_params && FollowsTryOrOtherwise(method_call)) {
     return;
   }
 

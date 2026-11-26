@@ -7829,6 +7829,15 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int 
     if(!expression->GetMethodCall()) {
       ProcessError(expression, L"Invalid statement");
     }
+    else {
+      // The statement's value is discarded, so the last call of its chain must
+      // pop what it returns. The call's own analysis marks it only at the top of
+      // an expression, and a parenthesised receiver is analysed a level down:
+      // `("a" + t)->Size();`, `(F(k))->Abs();` and `(t ?? "x")->Size();` each left
+      // their result on the operand stack, one word for every time the statement
+      // ran. Found by checking the operand stack's height at each return.
+      RogueReturn(expression->GetMethodCall());
+    }
   }
 }
 
