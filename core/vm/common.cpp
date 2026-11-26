@@ -4066,12 +4066,12 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     size_t read = fread(byte_buffer, 1, num, stdin);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* buffer = (wchar_t*)(array + 3);
+    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -7490,7 +7490,7 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
-    wchar_t* buffer = (wchar_t*)(array + 3);
+    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     // only terminate/decode when bytes were read
     if(read > -1) {
       byte_buffer[read] = '\0';
@@ -7503,7 +7503,7 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
 
       // copy
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -9381,7 +9381,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     size_t read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* out = (wchar_t*)(array + 3);
+    wchar_t* out = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     // a failed POSIX recv() comes back as (size_t)-1, which indexed far past
     // the buffer here; read nothing instead
     if(read > (size_t)num) {
@@ -9397,7 +9397,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
 
     // copy
 #ifdef _WIN32
-    wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+    wcsncpy_s(out, array[0] - offset + 1, in.c_str(), in.size());
 #else
     wcsncpy(out, in.c_str(), in.size());
 #endif
@@ -9625,12 +9625,12 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
-    wchar_t* buffer = (wchar_t*)(array + 3);
+    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -9820,12 +9820,12 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* buffer = (wchar_t*)(array + 3);
+    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -11793,12 +11793,12 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     int read = IPDtlsSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* buffer = (wchar_t*)(array + 3);
+    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -11925,7 +11925,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
   
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
-    wchar_t* out = (wchar_t*)(array + 3);
+    wchar_t* out = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
 
     // read from file
     char* byte_buffer = new char[num * 2 + 1];
@@ -11943,9 +11943,9 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
 
     // copy
 #ifdef _WIN32
-    wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+    wcsncpy_s(out, array[0] - offset + 1, in.c_str(), in.size());
 #else
-    wcsncpy(out, in.c_str(), array[2]);
+    wcsncpy(out, in.c_str(), array[2] - offset);
 #endif
 
     // clean up

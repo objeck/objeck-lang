@@ -1573,6 +1573,27 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_console_eof.py "%BIN%"
 
+    # Console->ReadBuffer into a Char[] copied to the start of the array and ignored
+    # the offset (as did the file, pipe and socket variants). The runner cannot set
+    # a test's stdin, so this feeds it in.
+    - name: Console ReadBuffer honours the offset (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_console_read_offset.py "$BIN"
+
+    - name: Console ReadBuffer honours the offset (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_console_read_offset.py "%BIN%"
+
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection
