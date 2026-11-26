@@ -60,6 +60,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`mcp_agent_42.obs`](mcp_agent_42.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` | MCP: tools as agent tools, with approval by effect |
 | [`mcp_resources_43.obs`](mcp_resources_43.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: @resource and @prompt functions next to a @tool, read through a client |
 | [`mcp_serve_44.obs`](mcp_serve_44.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: obr --mcp and --mcp-http serve the tagged functions with no server code |
+| [`agent_scope_45.obs`](agent_scope_45.obs) | `-lib agent,json,net,cipher,misc` | AgentScope: one set of step, token and tool limits for every agent run in a block |
 | [`json_class_46.obs`](json_class_46.obs) | `-lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json` | class Weather : json: a model's answer as a typed object, with the schema and the reader written for you |
 
 ## Building all of them

@@ -1423,6 +1423,7 @@ agent->SetCancel(cancel);
 		@cancelled : Bool;
 		@reason : String;
 		@parent : AgentCancel;
+		@also : AgentCancel;
 
 		#~
 		Constructor
@@ -1438,6 +1439,18 @@ agent->SetCancel(cancel);
 		New(parent : AgentCancel) {
 			@mutex := ThreadMutex->New("agent_cancel");
 			@parent := parent;
+		}
+
+		#~
+		Constructor for a token that is cancelled when either of two parents is (an agent's own token and an
+		AgentScope's)
+		@param parent the first parent token, or Nil
+		@param also the second parent token, or Nil
+		~#
+		New(parent : AgentCancel, also : AgentCancel) {
+			@mutex := ThreadMutex->New("agent_cancel");
+			@parent := parent;
+			@also := also;
 		}
 
 		#~
@@ -1471,7 +1484,10 @@ agent->SetCancel(cancel);
 			};
 
 			if(<>flag & @parent <> Nil) {
-				return @parent->IsCancelled();
+				flag := @parent->IsCancelled();
+			};
+			if(<>flag & @also <> Nil) {
+				flag := @also->IsCancelled();
 			};
 			return flag;
 		}
@@ -1487,7 +1503,10 @@ agent->SetCancel(cancel);
 			};
 
 			if(text = Nil & @parent <> Nil) {
-				return @parent->GetReason();
+				text := @parent->GetReason();
+			};
+			if(text = Nil & @also <> Nil) {
+				text := @also->GetReason();
 			};
 			return text;
 		}
@@ -1760,6 +1779,44 @@ agent->SetBudget(budget);
 		method : public : GetModelCallMs() ~ Int {
 			return @model_call_ms;
 		}
+
+		#~
+		Makes a copy whose steps, model calls, tool calls, tokens and wall-clock limits are the smaller of this
+		budget's and the given ones (0 means no limit on either side); prices and the other limits are copied.
+		Used by AgentScope; a limit can only get tighter.
+		@param steps limit to apply, 0 for none
+		@param model_calls limit to apply, 0 for none
+		@param tool_calls limit to apply, 0 for none
+		@param tokens limit to apply, 0 for none
+		@param wall_ms limit to apply, 0 for none
+		@return the new budget
+		~#
+		method : public : Tightened(steps : Int, model_calls : Int, tool_calls : Int, tokens : Int, wall_ms : Int) ~ AgentBudget {
+			copy := AgentBudget->New();
+			copy->SetMaxSteps(Tighter(@max_steps, steps));
+			copy->SetMaxModelCalls(Tighter(@max_model_calls, model_calls));
+			copy->SetMaxToolCalls(Tighter(@max_tool_calls, tool_calls));
+			copy->SetMaxTokens(Tighter(@max_tokens, tokens));
+			copy->SetMaxWallMs(Tighter(@max_wall_ms, wall_ms));
+			copy->SetMaxCost(@max_cost);
+			copy->SetModelCallMs(@model_call_ms);
+			copy->SetPrice(@price_input, @price_output);
+			return copy;
+		}
+
+		# the smaller limit, where 0 means none
+		function : Tighter(a : Int, b : Int) ~ Int {
+			if(a <= 0) {
+				return b;
+			};
+			if(b <= 0) {
+				return a;
+			};
+			if(a < b) {
+				return a;
+			};
+			return b;
+		}
 	}
 
 	#~
@@ -1942,6 +1999,550 @@ agent->SetBudget(budget);
 				i += 1;
 			};
 			return text;
+		}
+	}
+
+	#~
+	Limits for every agent run inside a block of code, with cleanup on every exit path. Make a scope, set
+	its limits, and run a function under it (a function reference, `Name() ~ Nil`); the example is at the end.
+
+	Rules:
+	* The limits are totals for the block, not per run: what a run used (steps = model replies, tokens, tool
+	  calls) is subtracted, the next run gets only what is left, and a run that finds nothing left is not
+	  started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or
+	  `deadline`. The wall-clock limit counts the time spent inside agent runs. A model reply is checked after
+	  it arrives, so a run can pass a token limit by the size of one reply.
+	* An agent's own budget still applies; the smaller limit wins. A scope never loosens anything.
+	* Nesting: a scope run inside another is limited by both (every limit in the chain is checked and charged),
+	  so an inner scope can only tighten. Its cancellation token is a child of the outer one.
+	* Cancellation: `scope->Cancel(reason)` (any thread) stops the running agent at its next checkpoint and
+	  every later run in the scope; the agent's own token is honoured as well. The stop reason is `cancelled`.
+	* Exit: the scope is left whether the body returns, returns early or raises (`finally`); an exception goes
+	  on to the caller. The trace (`SetTrace(true)`, read with `GetTrace()`) holds the events of every run,
+	  and `SetPrintTrace(true)` prints a one-line summary when the block exits.
+	* Threads and actors: the scope applies to agent runs made on the thread that called Run, and to nothing
+	  else; a new thread or actor does not inherit it. To bring a worker under the limits, hand it
+	  `scope->Child()` and have it call `AgentScope->Run(child, ...)`: the child's runs are charged to the parent
+	  too. Parallel children can together pass the parent's limit by the runs already in flight. Call
+	  `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.
+	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
+	  its counters from zero.
+
+	```
+scope := AgentScope->New()->SetMaxSteps(10)->SetMaxTokens(5000)->SetMaxToolCalls(20)->SetTrace(true);
+AgentScope->Run(scope, Work() ~ Nil);   # Work() makes agent runs; they share the limits
+scope->GetStepsUsed()->PrintLine();
+	```
+	~#
+	class AgentScope {
+		@parent : AgentScope;
+		@fixed_parent : AgentScope;
+		@max_steps : Int;
+		@max_tokens : Int;
+		@max_tool_calls : Int;
+		@max_wall_ms : Int;
+		@cancel : AgentCancel;
+		@trace_on : Bool;
+		@buffer : AgentTraceBuffer;
+		@print : Bool;
+		@active : Bool;
+		@lock : ThreadMutex;
+		@steps_used : Int;
+		@tokens_used : Int;
+		@tool_calls_used : Int;
+		@wall_used : Int;
+		@runs : Int;
+		@halt : String;
+		@slots : static : Vector<AgentScopeSlot>;
+		@registry_lock : static : ThreadMutex;
+
+		#~
+		Constructor: no limits
+		~#
+		New() {
+			@lock := ThreadMutex->New("agent_scope");
+		}
+
+		#~
+		Creates the shared registry now; call once at start up when threads may enter their first scope together
+		~#
+		function : Init() ~ Nil {
+			if(@registry_lock = Nil) {
+				@slots := Vector->New()<AgentScopeSlot>;
+				@registry_lock := ThreadMutex->New("agent_scope_registry");
+			};
+		}
+
+		#~
+		Limits the model replies of all runs in the scope
+		@param limit total, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxSteps(limit : Int) ~ AgentScope {
+			@max_steps := limit;
+			return @self;
+		}
+
+		#~
+		Limits the tokens (as the provider reports them) of all runs in the scope
+		@param limit total, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxTokens(limit : Int) ~ AgentScope {
+			@max_tokens := limit;
+			return @self;
+		}
+
+		#~
+		Limits the tool calls of all runs in the scope
+		@param limit total, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxToolCalls(limit : Int) ~ AgentScope {
+			@max_tool_calls := limit;
+			return @self;
+		}
+
+		#~
+		Limits the time spent inside agent runs in the scope
+		@param millis total milliseconds, 0 for none
+		@return self for chaining
+		~#
+		method : public : SetMaxWallMs(millis : Int) ~ AgentScope {
+			@max_wall_ms := millis;
+			return @self;
+		}
+
+		#~
+		Collects the trace events of every run in the scope
+		@param on true to collect
+		@return self for chaining
+		~#
+		method : public : SetTrace(on : Bool) ~ AgentScope {
+			@trace_on := on;
+			return @self;
+		}
+
+		#~
+		Prints a one-line summary when the block exits
+		@param on true to print
+		@return self for chaining
+		~#
+		method : public : SetPrintTrace(on : Bool) ~ AgentScope {
+			@print := on;
+			return @self;
+		}
+
+		#~
+		Makes a scope for a worker thread or actor whose runs are also charged to this one
+		@return the child scope; give it its own limits if wanted
+		~#
+		method : public : Child() ~ AgentScope {
+			child := AgentScope->New();
+			child->SetParent(@self);
+			return child;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : SetParent(parent : AgentScope) ~ Nil {
+			@fixed_parent := parent;
+		}
+
+		#~
+		Cancels the scope: the running agent stops at its next checkpoint and later runs do not start
+		@param reason short text for the stop message
+		~#
+		method : public : Cancel(reason : String) ~ Nil {
+			c := @cancel;
+			if(c <> Nil) {
+				c->Cancel(reason);
+			};
+		}
+
+		#~
+		Gets the scope's cancellation token, valid while the scope is entered
+		@return the token, or Nil
+		~#
+		method : public : GetCancel() ~ AgentCancel {
+			return @cancel;
+		}
+
+		#~
+		Gets the events of every run, when SetTrace(true) was set
+		@return the buffer, or Nil
+		~#
+		method : public : GetTrace() ~ AgentTraceBuffer {
+			return @buffer;
+		}
+
+		#~
+		Gets the model replies used so far
+		@return steps
+		~#
+		method : public : GetStepsUsed() ~ Int {
+			return @steps_used;
+		}
+
+		#~
+		Gets the tokens used so far
+		@return tokens
+		~#
+		method : public : GetTokensUsed() ~ Int {
+			return @tokens_used;
+		}
+
+		#~
+		Gets the tool calls used so far
+		@return tool calls
+		~#
+		method : public : GetToolCallsUsed() ~ Int {
+			return @tool_calls_used;
+		}
+
+		#~
+		Gets the runs made so far
+		@return runs
+		~#
+		method : public : GetRuns() ~ Int {
+			return @runs;
+		}
+
+		#~
+		Gets why the first run that did not complete stopped
+		@return a stop reason such as budget_tokens or cancelled, or Nil when every run completed
+		~#
+		method : public : GetHalt() ~ String {
+			return @halt;
+		}
+
+		#~
+		Runs a function under a scope. The scope is left on every exit path.
+		@param scope the limits
+		@param body the function, which makes agent runs
+		~#
+		function : Run(scope : AgentScope, body : () ~ Nil) ~ Nil {
+			scope->Enter();
+			try {
+				body();
+			}
+			finally {
+				scope->Leave();
+			};
+		}
+
+		#~
+		Gets the scope the calling thread is inside
+		@return the innermost scope, or Nil
+		~#
+		function : Current() ~ AgentScope {
+			if(@registry_lock = Nil) {
+				return Nil;
+			};
+
+			found : AgentScope;
+			id := System.Concurrency.Thread->GetCurrentId();
+			critical(@registry_lock) {
+				i := 0;
+				while(found = Nil & i < @slots->Size()) {
+					if(@slots->Get(i)->GetId() = id) {
+						found := @slots->Get(i)->GetScope();
+					};
+					i += 1;
+				};
+			};
+			return found;
+		}
+
+		method : Enter() ~ Nil {
+			Init();
+			id := System.Concurrency.Thread->GetCurrentId();
+			failed := false;
+			critical(@lock) {
+				if(@active) {
+					failed := true;
+				}
+				else {
+					@active := true;
+					@steps_used := 0;
+					@tokens_used := 0;
+					@tool_calls_used := 0;
+					@wall_used := 0;
+					@runs := 0;
+					@halt := Nil;
+				};
+			};
+			if(failed) {
+				Runtime->Raise(Error->New("an AgentScope can not be entered by two threads at once; use Child()"));
+			};
+
+			critical(@registry_lock) {
+				outer : AgentScope;
+				slot : AgentScopeSlot;
+				i := 0;
+				while(slot = Nil & i < @slots->Size()) {
+					if(@slots->Get(i)->GetId() = id) {
+						slot := @slots->Get(i);
+					};
+					i += 1;
+				};
+
+				if(slot <> Nil) {
+					outer := slot->GetScope();
+					slot->SetScope(@self);
+				}
+				else {
+					@slots->AddBack(AgentScopeSlot->New(id, @self));
+				};
+
+				if(@fixed_parent <> Nil) {
+					@parent := @fixed_parent;
+				}
+				else {
+					@parent := outer;
+				};
+			};
+
+			parent_cancel : AgentCancel;
+			if(@parent <> Nil) {
+				parent_cancel := @parent->GetCancel();
+			};
+			@cancel := AgentCancel->New(parent_cancel);
+			if(@trace_on) {
+				@buffer := AgentTraceBuffer->New();
+			};
+		}
+
+		method : Leave() ~ Nil {
+			id := System.Concurrency.Thread->GetCurrentId();
+			critical(@registry_lock) {
+				i := 0;
+				while(i < @slots->Size()) {
+					if(@slots->Get(i)->GetId() = id) {
+						if(@parent <> Nil & @fixed_parent = Nil) {
+							@slots->Get(i)->SetScope(@parent);
+						}
+						else {
+							@slots->Remove(i);
+						};
+						i := @slots->Size();
+					};
+					i += 1;
+				};
+			};
+
+			if(@print) {
+				summary := "agent scope: {$@runs} runs, {$@steps_used} steps, {$@tokens_used} tokens, {$@tool_calls_used} tool calls";
+				if(@halt <> Nil) {
+					summary += ", halt={$@halt}";
+				};
+				if(@buffer <> Nil) {
+					events := @buffer->GetEvents()->Size();
+					summary += ", events={$events}";
+				};
+				summary->PrintLine();
+			};
+
+			@parent := Nil;
+			critical(@lock) {
+				@active := false;
+			};
+		}
+
+		# the room left for one limit in this scope: -1 for no limit, else not below 0
+		function : Left(limit : Int, used : Int) ~ Int {
+			if(limit <= 0) {
+				return -1;
+			};
+			left := limit - used;
+			if(left < 0) {
+				return 0;
+			};
+			return left;
+		}
+
+		# the smaller room of two, where -1 is none
+		function : Smaller(a : Int, b : Int) ~ Int {
+			if(a < 0) {
+				return b;
+			};
+			if(b < 0) {
+				return a;
+			};
+			if(a < b) {
+				return a;
+			};
+			return b;
+		}
+
+		function : Floor(left : Int) ~ Int {
+			if(left < 0) {
+				return 0;
+			};
+			return left;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : RunAgent(agent : Agent, prompt : String) ~ AgentResult {
+			steps := -1;
+			tokens := -1;
+			tools := -1;
+			wall := -1;
+			sink_list := Vector->New()<AgentTraceSink>;
+			own := agent->GetTrace();
+			if(own <> Nil) {
+				sink_list->AddBack(own);
+			};
+
+			scope := @self;
+			while(scope <> Nil) {
+				steps := Smaller(steps, scope->LeftSteps());
+				tokens := Smaller(tokens, scope->LeftTokens());
+				tools := Smaller(tools, scope->LeftToolCalls());
+				wall := Smaller(wall, scope->LeftWall());
+				if(scope->GetTrace() <> Nil) {
+					sink_list->AddBack(scope->GetTrace());
+				};
+				scope := scope->GetOuter();
+			};
+
+			reason : String;
+			if(@cancel->IsCancelled()) {
+				reason := "cancelled";
+			}
+			else if(steps = 0) {
+				reason := "budget_steps";
+			}
+			else if(tokens = 0) {
+				reason := "budget_tokens";
+			}
+			else if(tools = 0) {
+				reason := "budget_tool_calls";
+			}
+			else if(wall = 0) {
+				reason := "deadline";
+			};
+
+			result : AgentResult;
+			if(reason <> Nil) {
+				result := AgentResult->New();
+				result->Halt(reason, "the run did not start: the agent scope has nothing left of this limit");
+			}
+			else {
+				base := agent->GetBudget();
+				if(base = Nil) {
+					base := AgentBudget->New();
+				};
+				effective := base->Tightened(Floor(steps), 0, Floor(tools), Floor(tokens), Floor(wall));
+
+				sink : AgentTraceSink;
+				if(sink_list->Size() = 1) {
+					sink := sink_list->Get(0);
+				}
+				else if(sink_list->Size() > 1) {
+					sink := AgentScopeTee->New(sink_list);
+				};
+				result := agent->RunScoped(effective, @cancel, sink, prompt);
+			};
+
+			scope := @self;
+			while(scope <> Nil) {
+				scope->Charge(result);
+				scope := scope->GetOuter();
+			};
+			return result;
+		}
+
+		method : LeftSteps() ~ Int {
+			left := 0;
+			critical(@lock) {
+				left := Left(@max_steps, @steps_used);
+			};
+			return left;
+		}
+
+		method : LeftTokens() ~ Int {
+			left := 0;
+			critical(@lock) {
+				left := Left(@max_tokens, @tokens_used);
+			};
+			return left;
+		}
+
+		method : LeftToolCalls() ~ Int {
+			left := 0;
+			critical(@lock) {
+				left := Left(@max_tool_calls, @tool_calls_used);
+			};
+			return left;
+		}
+
+		method : LeftWall() ~ Int {
+			left := 0;
+			critical(@lock) {
+				left := Left(@max_wall_ms, @wall_used);
+			};
+			return left;
+		}
+
+		method : GetOuter() ~ AgentScope {
+			return @parent;
+		}
+
+		method : Charge(result : AgentResult) ~ Nil {
+			critical(@lock) {
+				@runs += 1;
+				@steps_used += result->GetSteps()->Size();
+				@tokens_used += result->GetTotalTokens();
+				@tool_calls_used += result->GetToolCallCount();
+				@wall_used += result->GetElapsedMs();
+				if(@halt = Nil & <>result->GetStopReason()->Equals("completed")) {
+					@halt := result->GetStopReason();
+				};
+			};
+		}
+	}
+
+	# one thread's innermost scope
+	class : private : AgentScopeSlot {
+		@id : Int;
+		@scope : AgentScope;
+
+		New(id : Int, scope : AgentScope) {
+			@id := id;
+			@scope := scope;
+		}
+
+		method : public : GetId() ~ Int {
+			return @id;
+		}
+
+		method : public : GetScope() ~ AgentScope {
+			return @scope;
+		}
+
+		method : public : SetScope(scope : AgentScope) ~ Nil {
+			@scope := scope;
+		}
+	}
+
+	# sends each trace event to several sinks
+	class : private : AgentScopeTee implements AgentTraceSink {
+		@sinks : Vector<AgentTraceSink>;
+
+		New(sinks : Vector<AgentTraceSink>) {
+			@sinks := sinks;
+		}
+
+		method : public : OnEvent(event : AgentEvent) ~ Nil {
+			i := 0;
+			while(i < @sinks->Size()) {
+				@sinks->Get(i)->OnEvent(event);
+				i += 1;
+			};
 		}
 	}
 
@@ -2349,6 +2950,59 @@ result->GetText()->PrintLine();
 		@return the transcript; check IsCompleted() before trusting GetText()
 		~#
 		method : public : Run(prompt : String) ~ AgentResult {
+			scope := AgentScope->Current();
+			if(scope = Nil) {
+				return RunLoop(prompt);
+			};
+			return scope->RunAgent(@self, prompt);
+		}
+
+		#~
+		Runs one prompt with scope limits applied for that run only: the budget and a cancellation token linked to
+		the agent's own, and a trace sink in front of the agent's own; all three are put back when the run ends,
+		whether it returns or raises. Called by AgentScope; use Run.
+		@hidden
+		@param budget the effective budget, or Nil to keep the agent's
+		@param scope_cancel the scope's token, or Nil
+		@param sink the trace sink to use, or Nil to keep the agent's
+		@param prompt what the user asks
+		@return the transcript
+		~#
+		method : public : RunScoped(budget : AgentBudget, scope_cancel : AgentCancel, sink : AgentTraceSink, prompt : String) ~ AgentResult {
+			saved_budget := @budget;
+			saved_cancel := @cancel;
+			saved_trace := @trace;
+			result : AgentResult;
+			try {
+				if(budget <> Nil) {
+					@budget := budget;
+				};
+				if(scope_cancel <> Nil) {
+					@cancel := AgentCancel->New(saved_cancel, scope_cancel);
+				};
+				if(sink <> Nil) {
+					@trace := sink;
+				};
+				result := RunLoop(prompt);
+			}
+			finally {
+				@budget := saved_budget;
+				@cancel := saved_cancel;
+				@trace := saved_trace;
+			};
+			return result;
+		}
+
+		#~
+		Gets the trace sink set with SetTrace
+		@hidden
+		@return the sink, or Nil
+		~#
+		method : public : GetTrace() ~ AgentTraceSink {
+			return @trace;
+		}
+
+		method : RunLoop(prompt : String) ~ AgentResult {
 			result := AgentResult->New();
 			@conversation->AddUser(prompt);
 

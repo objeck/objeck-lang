@@ -133,6 +133,24 @@ if(<>result->IsCompleted()) {
 };
 ```
 
+### Scoped limits (`AgentScope`)
+
+`AgentScope` applies limits to every agent run inside a block of code, so a program does not have to thread a budget and a token through each agent it creates.
+
+```ruby
+scope := AgentScope->New()->SetMaxSteps(10)->SetMaxTokens(5000)->SetMaxToolCalls(20)->SetTrace(true);
+AgentScope->Run(scope, Work() ~ Nil);      # Work() runs agents; they share the limits
+"{$scope->GetStepsUsed()} steps, halt: {$scope->GetHalt()}"->PrintLine();
+```
+
+- **Totals, not per run.** What a run used (steps = model replies, tokens, tool calls, time inside runs) is subtracted; the next run gets what is left. A run that finds nothing left is not started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or `deadline`, and the model is not called.
+- **An agent's own budget still applies**, and the smaller limit wins. A scope never loosens a limit.
+- **Nesting.** A scope run inside another is limited by both; every scope in the chain is checked and charged, so an inner scope can only tighten. Its cancel token is a child of the outer one.
+- **Cancel.** `scope->Cancel("reason")` from any thread stops the running agent at its next checkpoint and every later run in the scope (`cancelled`). The agent's own token is honoured too.
+- **Exit.** The scope is left (and the agent's budget, token and trace restored) on a normal return, an early return and an exception, which goes on to the caller; the cleanup is a `finally` inside the library. `SetTrace(true)` collects every run's events in `scope->GetTrace()`; `SetPrintTrace(true)` prints a one-line summary on exit.
+- **Threads and actors.** The scope applies on the thread that entered it and nowhere else: a new thread or actor does not inherit it. Give a worker `scope->Child()` and have it call `AgentScope->Run(child, ...)`; the child's runs are charged to the parent as well, and parallel children can together pass the parent's limit by the runs already in flight. Call `AgentScope->Init()` once at start up if several threads may enter their first scope at the same instant. A scope cannot be entered by two threads at once (`Child()` is for that).
+- A model reply is checked after it arrives, so a run can pass the token limit by the size of one reply. The body is a function reference (`Name() ~ Nil`); share state with it through static fields.
+
 The behavior is tested in `programs/regression/agent_control_test.obs` on a scripted model, with no key and no network: cancellation before the first step, between steps and calls, and during a slow model call; each budget and its stop reason; a hung tool in `BOUNDED_THREAD` with a bounded wait and an abandoned worker that finishes later without touching the transcript; the trace events and key redaction; and retries.
 
 What is not covered: the provider backends' own deadline (pending the HTTP total-deadline setter, see above), and a fault that kills a thread outside any `try`, which still ends the whole process. There is no process-isolated tool mode yet (`AgentTool->Mode` is only `IN_THREAD` or `BOUNDED_THREAD`), so a program that must survive such a fault can run with `--thread-faults=isolate`, or put the tool behind its own process.
