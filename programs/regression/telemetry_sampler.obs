@@ -141,11 +141,11 @@ class TelemetrySamplerTest {
 		if(got <> Nil) {
 			Check("this host has a GPU: utilization is a percentage", got->Get("gpu_util_percent") >= 0.0 & got->Get("gpu_util_percent") <= 100.0);
 			Check("this host has a GPU: memory is positive", got->Get("gpu_mem_used_mb") > 0.0);
-			"  info: nvidia-smi answered here: {$got->ToString()}"->PrintLine();
+			"  info: nvidia-smi answered here: {$got->ToString()}"->ErrorLine();
 		}
 		else {
 			Check("no GPU here: unavailable and a reason", real->IsAvailable() = false & real->GetError()->Size() > 0);
-			"  info: no nvidia-smi here, the sampler stayed out of the way"->PrintLine();
+			"  info: no nvidia-smi here, the sampler stayed out of the way"->ErrorLine();
 		};
 
 		# powermetrics: the interface exists and says no
@@ -184,7 +184,8 @@ class TelemetrySamplerTest {
 		Check("the second reading has a CPU percent", pct = pct & pct >= 0.0);
 		Check("readings are stamped in order", second->GetTimeMs() >= first->GetTimeMs());
 		Check("the work was done", sum > 0 & keep->Size() > 0);
-		"  info: runtime sampler second reading: {$second->ToString()}"->PrintLine();
+		# run-dependent numbers (memory, CPU time) go to stderr: the differential runner compares stdout only
+		"  info: runtime sampler second reading: {$second->ToString()}"->ErrorLine();
 	}
 
 	function : Energy() ~ Nil {
@@ -314,7 +315,15 @@ class TelemetrySamplerTest {
 		p := rec->GetStore()->Predict("net", "cuda", 1);
 		Check("the call was recorded", p <> Nil & p->GetCount() = 1);
 		j := p->GetJoulesPerRun();
-		Check("energy per run: 100 W for the call's ~20 ms, between 1 J and the call's milliseconds plus rounding (got {$j} J for {$ms} ms)", j = j & j >= 1.0 & j <= 100.0 * (ms + 3.0) / 1000.0);
+		# The measured joules and milliseconds are run-dependent: stderr, not the check's name.
+		# The energy interval is read from the clock after the timer stops (Finish reads the host
+		# memory first), so on a loaded machine it can run past the timed milliseconds by a
+		# scheduling delay, not a fixed 3 ms: master CI run 45789463714 (macOS, every method
+		# compiled) got 17.1 J for 167.96 ms, 4 ms over a 3 ms allowance. The bound is twice the
+		# call plus 100 ms of slack, still far below an integral over the wrong span or in the
+		# wrong units, which is what this check guards against.
+		"  info: energy per run {$j} J for {$ms} ms"->ErrorLine();
+		Check("energy per run: 100 W for the call's ~20 ms, between 1 J and about the call's milliseconds", j = j & j >= 1.0 & j <= 100.0 * (2.0 * ms + 100.0) / 1000.0);
 		Near("GPU memory from the latest reading", p->GetGpuMemory(), 1234.0, 1.0e-9);
 
 		# energy and memory fed by hand average per run

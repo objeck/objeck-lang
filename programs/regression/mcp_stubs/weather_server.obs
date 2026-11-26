@@ -1,0 +1,100 @@
+#~
+A small, fully typed MCP server for the stub generator's tests (mcp_stubs_test.py) and for the walkthrough in
+docs/ai_sections/mcp.md. Its tools are declared with McpToolSpec, so the schema of each comes from the types
+written next to its name:
+
+  forecast(city, days = 3, units = metric|imperial)   text, read-only
+  convert(values : Float[], factor : Float)           text
+  describe(name, active : Bool, tags : String[], options : any JSON)   text
+  lookup(city)                                        structured result with an outputSchema
+  erase(key)                                          destructive
+  broken()                                            always fails (isError)
+
+  obr weather_server.obe --stdio    serve the stdio transport until standard input ends
+  obr weather_server.obe            check the tools in this process and print PASS
+~#
+use API.MCP, Data.JSON, Collection;
+
+class WeatherServer {
+	function : Forecast(call : McpCall) ~ McpToolResult {
+		city := call->GetString("city");
+		days := call->GetInt("days", 3);
+		units := "metric";
+		if(call->Has("units")) {
+			units := call->GetString("units");
+		};
+		degrees := 21;
+		unit := "C";
+		if(units->Equals("imperial")) {
+			degrees := 70;
+			unit := "F";
+		};
+		return McpToolResult->Text("{$city}: {$days} days, {$degrees}{$unit}");
+	}
+
+	function : Convert(call : McpCall) ~ McpToolResult {
+		values := call->GetArguments()->Get("values");
+		factor := call->GetFloat("factor", 1.0);
+		total := 0.0;
+		for(i := 0; i < values->Size(); i += 1;) {
+			total += values->Get(i)->GetFloat() * factor;
+		};
+		return McpToolResult->Text("{$total}");
+	}
+
+	function : Describe(call : McpCall) ~ McpToolResult {
+		name := call->GetString("name");
+		active := call->GetBool("active", false);
+		tags := call->GetArguments()->Get("tags");
+		count := tags->Size();
+		has_options := call->Has("options");
+		return McpToolResult->Text("{$name} active={$active} tags={$count} options={$has_options}");
+	}
+
+	function : Lookup(call : McpCall) ~ McpToolResult {
+		value := JsonElement->New(JsonElement->JsonType->OBJECT);
+		value->Insert("city", call->GetString("city"));
+		value->Insert("population", 715522);
+		value->Insert("capital", true);
+		return McpToolResult->Json(value);
+	}
+
+	function : Erase(call : McpCall) ~ McpToolResult {
+		key := call->GetString("key");
+		return McpToolResult->Text("erased {$key}");
+	}
+
+	function : Broken(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Error("the weather service is down");
+	}
+
+	function : Build() ~ McpService {
+		server := McpService->New("weather", "1.0.0");
+		McpToolSpec->New("forecast", "Forecast for a city.")->Add("city", "String", "the city")->AddOptional("days", "Int", "how many days, 1 to 7")->AddOptional("units", "enum(metric,imperial)", "units of the temperature")->ReadOnly()->AddTo(server, Func2Ref->New(WeatherServer->Forecast(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		McpToolSpec->New("convert", "Scales a list of numbers and adds them up.")->Add("values", "Float[]", "the numbers")->Add("factor", "Float", "the multiplier")->ReadOnly()->AddTo(server, Func2Ref->New(WeatherServer->Convert(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		McpToolSpec->New("describe", "Describes a station.")->Add("name", "String", "station name")->Add("active", "Bool", "is it reporting")->Add("tags", "String[]", "labels")->AddOptional("options", "Json", "free-form options")->ReadOnly()->AddTo(server, Func2Ref->New(WeatherServer->Describe(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		McpToolSpec->New("lookup", "Looks a city up.")->Add("city", "String", "the city")->Returns("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"population\":{\"type\":\"integer\"},\"capital\":{\"type\":\"boolean\"}}}")->ReadOnly()->AddTo(server, Func2Ref->New(WeatherServer->Lookup(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		McpToolSpec->New("erase", "Erases a cached entry.")->Add("key", "String", "the entry")->Destructive()->AddTo(server, Func2Ref->New(WeatherServer->Erase(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		McpToolSpec->New("broken", "Always fails.")->AddTo(server, Func2Ref->New(WeatherServer->Broken(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		return server;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		server := Build();
+		if(args->Size() > 0 & args[0]->Equals("--stdio")) {
+			server->ServeStdio();
+			return;
+		};
+
+		client := McpClient->InProcess(server);
+		ok := client->Initialize("weather-check", "1.0");
+		tools := client->ListTools();
+		if(ok & tools->Size() = 6) {
+			"PASS: weather server, 6 tools"->PrintLine();
+		}
+		else {
+			"FAIL: weather server"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -146,6 +146,11 @@ contexts:
     - meta_scope: comment.block.objeck-obs
     - match: '~#'
       pop: true
+    # doc tags that make a function an MCP tool, resource or prompt (docs/design/MCP_FIRST_CLASS.md)
+    - match: '(?<=^|\s)@(tool|resource|prompt|mime|readonly|destructive|idempotent|openworld|title)(?=\s|$)'
+      scope: storage.type.annotation.objeck-obs
+    - match: '(?<=^|\s)@(param|return|hidden|class)(?=\s|$)'
+      scope: keyword.other.documentation.objeck-obs
       
   double_quoted_string:
     - meta_scope: string.quoted.double.objeck-obs

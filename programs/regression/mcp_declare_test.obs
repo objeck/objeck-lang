@@ -1,0 +1,379 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+Declaring MCP tools from types (McpToolSpec), the effect annotations, the per-tool counters, the schema
+checks on a call, and the stub generator, all in one process with no network:
+
+- the mapping table from Objeck types to JSON Schema (every row, nested arrays, Vector, Map, enum, a class);
+- the oracle: the schema McpToolSpec derives equals, as JSON, the schema written by hand in the repository's
+  own servers (mcp_core_test, mcp_stdio_fixture, mcp_server_demo) for every one of those tools;
+- annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint) in tools/list, read back by the
+  client, and absent when no hint was stated, so a tool without hints lists exactly as before;
+- a call through the in-process transport with typed arguments, an optional argument left out, an array and a
+  structured result;
+- the error cases: a missing required argument, a wrong type, an integer given a fraction, a value outside an
+  enum, an array item of the wrong type, an unknown tool, a failing tool;
+- the counters (calls, errors, rejected arguments, cancellations) and that they stay empty while off;
+- the generator: names, parameter types, optional overloads, the Json method of a tool with an outputSchema,
+  and a tool whose name cannot be a method (skipped, with a comment).
+The generated source is compiled and run by mcp_stubs_test.py.
+~#
+use API.MCP, Data.JSON, Collection;
+
+class McpDeclareTest {
+	@pass : static : Int;
+	@fail : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Json(text : String) ~ JsonElement {
+		return JsonParser->TextToElement(text);
+	}
+
+	# the derived schema of a declaration equals the written one
+	function : Equal(spec : McpToolSpec, written : String, what : String) ~ Nil {
+		Check(McpToolSpec->Same(spec->GetSchema(), McpDeclareTest->Json(written)), what);
+	}
+
+	# ---- handlers ----
+
+	function : Add(call : McpCall) ~ McpToolResult {
+		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+		return McpToolResult->Text("{$sum}");
+	}
+
+	function : Greet(call : McpCall) ~ McpToolResult {
+		name := call->GetString("name");
+		style := "formal";
+		if(call->Has("style")) {
+			style := call->GetString("style");
+		};
+		if(style->Equals("casual")) {
+			return McpToolResult->Text("hi {$name}");
+		};
+		return McpToolResult->Text("Good day, {$name}");
+	}
+
+	function : Total(call : McpCall) ~ McpToolResult {
+		values := call->GetArguments()->Get("values");
+		total := 0;
+		for(i := 0; i < values->Size(); i += 1;) {
+			total += values->Get(i)->GetInt();
+		};
+		return McpToolResult->Text("{$total}");
+	}
+
+	function : Report(call : McpCall) ~ McpToolResult {
+		city := call->GetString("city");
+		days := call->GetInt("days", 1);
+		value := JsonElement->New(JsonElement->JsonType->OBJECT);
+		value->Insert("city", city);
+		value->Insert("days", days);
+		return McpToolResult->Json(value);
+	}
+
+	function : Remove(call : McpCall) ~ McpToolResult {
+		path := call->GetString("path");
+		return McpToolResult->Text("removed {$path}");
+	}
+
+	function : Fails(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Error("the disk is full");
+	}
+
+	function : Handler(which : Int) ~ Func2Ref<McpCall, McpToolResult> {
+		if(which = 0) {
+			return Func2Ref->New(McpDeclareTest->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 1) {
+			return Func2Ref->New(McpDeclareTest->Greet(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 2) {
+			return Func2Ref->New(McpDeclareTest->Total(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 3) {
+			return Func2Ref->New(McpDeclareTest->Report(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		}
+		else if(which = 4) {
+			return Func2Ref->New(McpDeclareTest->Remove(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+		};
+		return Func2Ref->New(McpDeclareTest->Fails(McpCall) ~ McpToolResult)<McpCall, McpToolResult>;
+	}
+
+	function : Build() ~ McpService {
+		server := McpService->New("declare-test", "1.0.0");
+		McpToolSpec->New("add", "Add two integers")->Add("a", "Int", Nil)->Add("b", "Int", Nil)->ReadOnly()->Idempotent()->AddTo(server, Handler(0));
+		McpToolSpec->New("greet", "Greet a person")->Add("name", "String", "who to greet")->AddOptional("style", "enum(formal,casual)", "how to greet")->ReadOnly()->AddTo(server, Handler(1));
+		McpToolSpec->New("total", "Add up a list")->Add("values", "Int[]", "the numbers")->AddTo(server, Handler(2));
+		McpToolSpec->New("report", "A structured report")->Add("city", "String", Nil)->AddOptional("days", "Int", "how many days")->Returns("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"},\"days\":{\"type\":\"integer\"}}}")->ReadOnly()->OpenWorld()->AddTo(server, Handler(3));
+		McpToolSpec->New("remove_file", "Delete a file")->Add("path", "String", "the file")->Destructive()->AddTo(server, Handler(4));
+		McpToolSpec->New("fails", "A tool that fails")->AddTo(server, Handler(5));
+		return server;
+	}
+
+	# ---- the mapping table ----
+
+	function : Mapping() ~ Nil {
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Int"), Json("{\"type\":\"integer\"}")), "Int is integer");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Float"), Json("{\"type\":\"number\"}")), "Float is number");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Bool"), Json("{\"type\":\"boolean\"}")), "Bool is boolean");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("String"), Json("{\"type\":\"string\"}")), "String is string");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Char"), Json("{\"type\":\"string\",\"minLength\":1,\"maxLength\":1}")), "Char is a string of one character");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Byte"), Json("{\"type\":\"integer\",\"minimum\":0,\"maximum\":255}")), "Byte is an integer 0..255");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Int[]"), Json("{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}")), "Int[] is an array of integers");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Float[,]"), Json("{\"type\":\"array\",\"items\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}}")), "Float[,] is an array of arrays");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Vector<String>"), Json("{\"type\":\"array\",\"items\":{\"type\":\"string\"}}")), "Vector<String> is an array of strings");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Map<String,Int>"), Json("{\"type\":\"object\",\"additionalProperties\":{\"type\":\"integer\"}}")), "Map<String,Int> is an object with integer values");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("enum(red, green,blue)"), Json("{\"type\":\"string\",\"enum\":[\"red\",\"green\",\"blue\"]}")), "enum(...) is a string with its values");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("JsonElement"), Json("{}")), "JsonElement is any value");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Shape"), Json("{\"type\":\"object\"}")), "a class is a bare object");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Shape[]"), Json("{\"type\":\"array\",\"items\":{\"type\":\"object\"}}")), "an array of a class is an array of bare objects");
+
+		# the spellings reflection produces (System.Introspection) reach the same schemas
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Collection.Vector<IntRef>"), Json("{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}")), "Collection.Vector<IntRef> is an array of integers");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Collection.Map<String|FloatRef>"), Json("{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\"}}")), "Collection.Map<String|FloatRef> is an object with number values");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("System.String"), Json("{\"type\":\"string\"}")), "System.String is string");
+		Check(McpToolSpec->Same(McpToolSpec->SchemaFor("Vector<BoolRef>"), Json("{\"type\":\"array\",\"items\":{\"type\":\"boolean\"}}")), "Vector<BoolRef> is an array of booleans");
+		Check(McpToolSpec->Known("Collection.Vector<String>") & McpToolSpec->Known("Collection.Map<String|IntRef>"), "the reflection spellings are known types");
+
+		Check(McpToolSpec->Known("Int") &McpToolSpec->Known("Vector<Float>") & McpToolSpec->Known("enum(a,b)") & McpToolSpec->Known("String[,]"), "the table's rows are known types");
+		Check(<>McpToolSpec->Known("Shape") & <>McpToolSpec->Known("Shape[]") & <>McpToolSpec->Known("Map<String,Shape>") & <>McpToolSpec->Known(Nil), "a class is not a known type, nor an array or map of one");
+
+		Check(McpToolSpec->Same(Json("{\"a\":1,\"b\":[1,2]}"), Json("{\"b\":[1,2],\"a\":1}")), "Same ignores the order of names");
+		Check(<>McpToolSpec->Same(Json("{\"a\":1,\"b\":[1,2]}"), Json("{\"a\":1,\"b\":[2,1]}")), "Same respects the order of an array");
+		Check(<>McpToolSpec->Same(Json("{\"a\":1}"), Json("{\"a\":\"1\"}")), "Same tells a number from a string");
+	}
+
+	# ---- the oracle: the hand-written schemas of the repository's servers ----
+
+	function : Oracle() ~ Nil {
+		# mcp_core_test.obs and mcp_stdio_fixture.obs
+		Equal(McpToolSpec->New("add", "")->Add("a", "Int", Nil)->Add("b", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}", "oracle: add");
+		Equal(McpToolSpec->New("fails", ""), "{\"type\":\"object\",\"properties\":{}}", "oracle: a tool with no parameters");
+		Equal(McpToolSpec->New("echo", "")->Add("text", "String", Nil),
+			"{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}", "oracle: echo");
+		Equal(McpToolSpec->New("repeat", "")->Add("count", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"count\":{\"type\":\"integer\"}},\"required\":[\"count\"]}", "oracle: repeat");
+
+		# mcp_server_demo.obs
+		Equal(McpToolSpec->New("calculate", "")->Add("expression", "String", "the expression"),
+			"{\"type\":\"object\",\"properties\":{\"expression\":{\"type\":\"string\",\"description\":\"the expression\"}},\"required\":[\"expression\"]}", "oracle: calculate");
+		Equal(McpToolSpec->New("read_file", "")->Add("path", "String", "file path relative to the shared directory"),
+			"{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"file path relative to the shared directory\"}},\"required\":[\"path\"]}", "oracle: read_file");
+		Equal(McpToolSpec->New("list_directory", "")->AddOptional("path", "String", "directory relative to the shared directory; empty for the top"),
+			"{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"directory relative to the shared directory; empty for the top\"}}}", "oracle: list_directory, an optional parameter has no required list");
+
+		# mcp_canvas.obs: the schemas its Schema("x:i,y:i", "x,y") text mini-language built before the example was declared with McpToolSpec
+		Equal(McpToolSpec->New("look", ""), "{\"type\":\"object\",\"properties\":{}}", "oracle: canvas look");
+		Equal(McpToolSpec->New("set_color", "")->Add("color", "String", Nil),
+			"{\"type\":\"object\",\"properties\":{\"color\":{\"type\":\"string\"}},\"required\":[\"color\"]}", "oracle: canvas set_color");
+		Equal(McpToolSpec->New("move", "")->Add("x", "Int", Nil)->Add("y", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\"]}", "oracle: canvas move");
+		Equal(McpToolSpec->New("plot", "")->AddOptional("x", "Int", Nil)->AddOptional("y", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}", "oracle: canvas plot");
+		Equal(McpToolSpec->New("line", "")->Add("x1", "Int", Nil)->Add("y1", "Int", Nil)->Add("x2", "Int", Nil)->Add("y2", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"x1\":{\"type\":\"integer\"},\"y1\":{\"type\":\"integer\"},\"x2\":{\"type\":\"integer\"},\"y2\":{\"type\":\"integer\"}},\"required\":[\"x1\",\"y1\",\"x2\",\"y2\"]}", "oracle: canvas line");
+		Equal(McpToolSpec->New("fill_rect", "")->Add("x", "Int", Nil)->Add("y", "Int", Nil)->Add("w", "Int", Nil)->Add("h", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"},\"w\":{\"type\":\"integer\"},\"h\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\",\"w\",\"h\"]}", "oracle: canvas fill_rect");
+		Equal(McpToolSpec->New("circle", "")->Add("x", "Int", Nil)->Add("y", "Int", Nil)->Add("r", "Int", Nil)->AddOptional("filled", "Bool", Nil),
+			"{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"},\"r\":{\"type\":\"integer\"},\"filled\":{\"type\":\"boolean\"}},\"required\":[\"x\",\"y\",\"r\"]}", "oracle: canvas circle");
+		Equal(McpToolSpec->New("stamp", "")->Add("name", "String", Nil)->Add("x", "Int", Nil)->Add("y", "Int", Nil),
+			"{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"name\",\"x\",\"y\"]}", "oracle: canvas stamp");
+
+		# the README's weather example: an integer, a string, an array, an enum
+		Equal(McpToolSpec->New("forecast", "")->Add("city", "String", "the city")->AddOptional("days", "Int", "how many days")->AddOptional("units", "enum(metric,imperial)", Nil)->AddOptional("tags", "String[]", Nil),
+			"{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"the city\"},\"days\":{\"type\":\"integer\",\"description\":\"how many days\"},\"units\":{\"type\":\"string\",\"enum\":[\"metric\",\"imperial\"]},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"city\"]}", "oracle: mixed, optional and enum");
+	}
+
+	# ---- annotations ----
+
+	function : Hints(server : McpService) ~ Nil {
+		client := McpClient->InProcess(server);
+		Check(client->Initialize("declare-test", "1.0"), "the client initializes");
+		tools := client->ListTools();
+		Check(tools->Size() = 6, "six tools are listed");
+
+		add := Find(tools, "add");
+		Check(add->HasReadOnlyHint() & add->GetReadOnlyHint() & add->HasIdempotentHint() & add->GetIdempotentHint(), "add: readOnlyHint and idempotentHint reach the client");
+		Check(<>add->HasDestructiveHint() & <>add->HasOpenWorldHint(), "add: hints that were not stated are not stated at the client");
+
+		remove := Find(tools, "remove_file");
+		Check(remove->HasDestructiveHint() & remove->GetDestructiveHint() & remove->HasReadOnlyHint() & <>remove->GetReadOnlyHint(), "remove_file: destructive, and not read-only");
+
+		report := Find(tools, "report");
+		Check(report->HasOpenWorldHint() & report->GetOpenWorldHint(), "report: openWorldHint");
+		Check(report->GetOutputSchema() <> Nil & report->GetOutputSchema()->Get("properties")->Has("city"), "report: the outputSchema reaches the client");
+
+		plain := Find(tools, "fails");
+		Check(<>plain->HasReadOnlyHint() & <>plain->HasDestructiveHint() & plain->GetOutputSchema() = Nil, "a tool declared with no hints has none");
+
+		# on the wire: no annotations key at all for a tool without hints
+		listed := JsonParser->TextToElement(server->Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}", Nil));
+		tool_list := listed->Get("result")->Get("tools");
+		found := false;
+		for(i := 0; i < tool_list->Size(); i += 1;) {
+			entry := tool_list->Get(i);
+			if(entry->Get("name")->GetString()->Equals("fails")) {
+				found := true;
+				Check(<>entry->Has("annotations") & <>entry->Has("outputSchema"), "a tool without hints lists exactly as before: no annotations, no outputSchema");
+			};
+			if(entry->Get("name")->GetString()->Equals("remove_file")) {
+				notes := entry->Get("annotations");
+				Check(notes->Get("destructiveHint")->GetType() = JsonElement->JsonType->TRUE & notes->Get("readOnlyHint")->GetType() = JsonElement->JsonType->FALSE, "on the wire: destructiveHint true, readOnlyHint false");
+			};
+		};
+		Check(found, "the plain tool was listed");
+
+		# a hostile annotations value is "not stated", not a crash
+		odd := McpTool->FromJson(Json("{\"name\":\"odd\",\"inputSchema\":{},\"annotations\":{\"readOnlyHint\":\"yes\",\"destructiveHint\":7,\"idempotentHint\":null,\"openWorldHint\":true}}"));
+		Check(odd <> Nil & <>odd->HasReadOnlyHint() & <>odd->HasDestructiveHint() & <>odd->HasIdempotentHint() & odd->GetOpenWorldHint(), "non-boolean annotation values are ignored");
+		notes_odd := McpTool->FromJson(Json("{\"name\":\"odd2\",\"annotations\":\"x\",\"outputSchema\":3}"));
+		Check(notes_odd <> Nil & <>notes_odd->HasReadOnlyHint() & notes_odd->GetOutputSchema() = Nil, "an annotations value that is not an object, and an outputSchema that is not, are ignored");
+		client->Close();
+	}
+
+	function : Find(tools : Vector<McpTool>, name : String) ~ McpTool {
+		each(tool in tools) {
+			if(tool->GetName()->Equals(name)) {
+				return tool;
+			};
+		};
+		return Nil;
+	}
+
+	# ---- calls ----
+
+	function : Args(text : String) ~ JsonElement {
+		return JsonParser->TextToElement(text);
+	}
+
+	function : Calls(server : McpService) ~ Nil {
+		client := McpClient->InProcess(server);
+		client->Initialize("declare-test", "1.0");
+
+		result := client->CallTool("add", Args("{\"a\":17,\"b\":25}"));
+		Check(result <> Nil & <>result->IsError() & result->GetText()->Equals("42"), "add(17, 25) is 42");
+
+		result := client->CallTool("greet", Args("{\"name\":\"Ada\"}"));
+		Check(result->GetText()->Equals("Good day, Ada"), "an optional argument left out takes its default");
+		result := client->CallTool("greet", Args("{\"name\":\"Ada\",\"style\":\"casual\"}"));
+		Check(result->GetText()->Equals("hi Ada"), "an enum argument is passed through");
+
+		result := client->CallTool("total", Args("{\"values\":[1,2,3,4]}"));
+		Check(result->GetText()->Equals("10"), "an array argument arrives as an array");
+		result := client->CallTool("total", Args("{\"values\":[]}"));
+		Check(result->GetText()->Equals("0"), "an empty array is accepted");
+
+		result := client->CallTool("report", Args("{\"city\":\"Denver\",\"days\":3}"));
+		structured := result->GetStructured();
+		Check(structured <> Nil & structured->Get("city")->GetString()->Equals("Denver") & structured->Get("days")->GetInt() = 3, "structuredContent carries the typed result");
+
+		# the error cases: each is a result the model can read, except the unknown tool, which is a protocol error
+		result := client->CallTool("add", Args("{\"a\":1}"));
+		Check(result <> Nil & result->IsError() & result->GetText()->Has("missing required argument 'b'"), "a missing required argument names it");
+		result := client->CallTool("add", Args("{\"a\":\"one\",\"b\":2}"));
+		Check(result->IsError() & result->GetText()->Has("argument 'a' must be of type integer"), "a string for an integer is refused");
+		result := client->CallTool("add", Args("{\"a\":1.5,\"b\":2}"));
+		Check(result->IsError() & result->GetText()->Has("argument 'a' must be of type integer"), "a fraction for an integer is refused");
+		result := client->CallTool("greet", Args("{\"name\":\"Ada\",\"style\":\"rude\"}"));
+		Check(result->IsError() & result->GetText()->Has("must be one of: formal, casual"), "a value outside the enum is refused and the values are listed");
+		result := client->CallTool("total", Args("{\"values\":[1,\"two\"]}"));
+		Check(result->IsError() & result->GetText()->Has("must be an array of integer, item 1 is not"), "an array item of the wrong type is refused");
+		result := client->CallTool("total", Args("{\"values\":5}"));
+		Check(result->IsError() & result->GetText()->Has("must be of type array"), "a scalar for an array is refused");
+		result := client->CallTool("nope", Args("{}"));
+		Check(result = Nil & client->GetErrorCode() = -32602, "an unknown tool is -32602");
+		result := client->CallTool("fails", Args("{}"));
+		Check(result->IsError() & result->GetText()->Equals("the disk is full"), "a failing tool is an isError result");
+		client->Close();
+	}
+
+	# ---- the counters ----
+
+	function : Stats() ~ Nil {
+		server := Build();
+		off := server->GetStats();
+		Check(off->Get("tools")->Size() = 0, "counters are empty while off");
+		client := McpClient->InProcess(server);
+		client->Initialize("declare-test", "1.0");
+		client->CallTool("add", Args("{\"a\":1,\"b\":2}"));
+		Check(server->GetStats()->Get("tools")->Size() = 0, "a call with counters off counts nothing");
+
+		server->EnableStats(true);
+		client->CallTool("add", Args("{\"a\":1,\"b\":2}"));
+		client->CallTool("add", Args("{\"a\":3,\"b\":4}"));
+		client->CallTool("add", Args("{\"a\":\"x\"}"));
+		client->CallTool("fails", Args("{}"));
+		stats := server->GetStats()->Get("tools");
+		add := stats->Get("add");
+		Check(add->Get("calls")->GetInt() = 3 & add->Get("invalid")->GetInt() = 1 & add->Get("errors")->GetInt() = 0, "add: three calls, one rejected");
+		Check(add->Get("total_ms")->GetFloat() >= 0.0 & add->Get("max_ms")->GetFloat() >= 0.0, "add: the time is recorded");
+		fails := stats->Get("fails");
+		Check(fails->Get("calls")->GetInt() = 1 & fails->Get("errors")->GetInt() = 1, "fails: one call, one error");
+		Check(<>stats->Has("greet"), "a tool that was not called has no entry");
+		client->Close();
+	}
+
+	# ---- the generator ----
+
+	function : Generator(server : McpService) ~ Nil {
+		client := McpClient->InProcess(server);
+		client->Initialize("declare-test", "1.0");
+		tools := client->ListTools();
+		source := McpStubGenerator->Generate(client->GetServerName(), client->GetServerVersion(), tools, Nil);
+
+		Check(source->Has("class DeclareTestClient {"), "the class is named from the server");
+		Check(source->Has("method : public : Add(a : Int, b : Int) ~ String {"), "add: typed parameters");
+		Check(source->Has("method : public : Greet(name : String) ~ String {") & source->Has("method : public : Greet(name : String, style : String) ~ String {"), "greet: an overload without the optional parameter");
+		Check(source->Has("One of: formal, casual"), "an enum is documented with its values");
+		Check(source->Has("method : public : Total(values : Int[]) ~ String {"), "total: an array parameter");
+		Check(source->Has("method : public : ReportJson(city : String, days : Int) ~ JsonElement {") & source->Has("method : public : ReportJson(city : String) ~ JsonElement {"), "report: a Json method for the outputSchema, in both overloads");
+		Check(source->Has("method : public : RemoveFile(path : String) ~ String {") & source->Has("Delete a file"), "remove_file becomes RemoveFile, with its description");
+		Check(source->Has("return CallText(\"remove_file\", mcp_args);"), "the call uses the tool's own name");
+		Check(source->Has("how many days (optional)"), "an optional parameter says so");
+
+		tricky := Vector->New()<McpTool>;
+		tricky->AddBack(McpTool->New("bad name!", "x", Json("{}"), Nil));
+		tricky->AddBack(McpTool->New("new", "A tool called new", Json("{\"type\":\"object\",\"properties\":{\"from\":{\"type\":\"string\"},\"maxResults\":{\"type\":\"integer\"},\"ok\":{\"type\":\"boolean\"},\"v\":{\"type\":\"number\"},\"o\":{\"type\":\"object\"},\"f\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"from\",\"maxResults\",\"ok\",\"v\",\"o\",\"f\"]}"), Nil));
+		tricky->AddBack(McpTool->New("note", "ends the comment ~# early", Json("{\"properties\":{\"a b\":{\"type\":\"string\"}}}"), Nil));
+		tricky->AddBack(McpTool->New("get_error", "collides", Json("{}"), Nil));
+		tricky->AddBack(McpTool->New("get-error", "collides again", Json("{}"), Nil));
+		text := McpStubGenerator->Generate("my server", "2", tricky, "Tricky");
+		Check(text->Has("# skipped tool 'bad name!'"), "a tool whose name cannot be a method is skipped with a comment");
+		Check(text->Has("method : public : New_(from_ : String, max_results : Int, ok : Bool, v : Float, o : JsonElement, f : Float[]) ~ String {"), "New, a keyword and camelCase are renamed, types are mapped");
+		Check(text->Has("# skipped tool 'note': its argument 'a b'"), "an argument that cannot be a parameter skips the tool");
+		Check(text->Has("method : public : GetError_() ~ String {") & text->Has("method : public : GetError__() ~ String {"), "names that collide with the stub's own, or each other, get an underscore");
+		Check(<>text->Has("early"), "a skipped tool's description is not written");
+		Check(McpStubGenerator->MethodName("weather_forecast")->Equals("WeatherForecast") & McpStubGenerator->MethodName("getForecast")->Equals("GetForecast") & McpStubGenerator->MethodName("9lives")->Equals("Tool9lives"), "method names");
+		Check(McpStubGenerator->VarName("maxResults", Vector->New()<String>)->Equals("max_results") & McpStubGenerator->VarName("API-Key", Vector->New()<String>)->Equals("api_key"), "parameter names");
+		client->Close();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		server := Build();
+		Mapping();
+		Oracle();
+		Hints(server);
+		Calls(server);
+		Stats();
+		Generator(server);
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP declare, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP declare, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -118,7 +118,7 @@ jobs:
     name: Harden ${{ matrix.platform }}
     needs: resolve
     runs-on: ${{ matrix.os }}
-    # Above the sum of every step timeout below (345, counting both the Linux
+    # Above the sum of every step timeout below (340, counting both the Linux
     # and the macOS setup steps although a leg runs one), so a slow step hits
     # its own timeout and leaves a result file instead of the job being
     # cancelled around it. GitHub-hosted jobs stop at 360 regardless, so step
@@ -264,10 +264,17 @@ jobs:
 
       - name: Differential regression
         if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
-        timeout-minutes: 55
+        # Measured in run 45775388385 (968 tests): linux 32-35 min, macOS and
+        # Windows ARM64 41-42 min, and Windows x64 still working through its
+        # serial tests (one to three minutes each) when the old 50 min wrapper
+        # limit ended it ("step timed out after 3000s"). Slow, not hung: a test
+        # finished every few minutes right up to the kill. 85 min leaves a third
+        # over the Windows x64 estimate (about 65 min); the minutes come from
+        # the heap-verifier steps below, which took 10-20 min against 70.
+        timeout-minutes: 90
         run: |
           "$PY" "$TRIAGE" run --leg "$LEG" --step differential --out "$RESULTS" \
-            --config "differential" --timeout 3000 --parser generic \
+            --config "differential" --timeout 5100 --parser generic \
             --require programs/regression/run_differential.py \
             -- "$PY" programs/regression/run_differential.py "$TREE/bin" -j "$JOBS"
 
@@ -288,7 +295,7 @@ jobs:
 
       - name: Regression under the heap verifier (minor stress)
         if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
-        timeout-minutes: 70
+        timeout-minutes: 50
         env:
           OBJECK_NURSERY: 256k
           OBJECK_GC_VERIFY: '1'
@@ -301,7 +308,7 @@ jobs:
           # named run may carry '# VERIFY_SKIP' (linted by
           # tools/cicd/check_diff_markers.py); none does today.
           "$PY" "$TRIAGE" run --leg "$LEG" --step verify-minor --out "$RESULTS" \
-            --config "nursery=256k verify=1" --timeout 3900 --parser regression \
+            --config "nursery=256k verify=1" --timeout 2700 --parser regression \
             --cwd programs/regression \
             --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_NURSERY" \
             --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_GC_VERIFY" \
@@ -309,7 +316,7 @@ jobs:
 
       - name: Regression under the heap verifier (major stress)
         if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
-        timeout-minutes: 70
+        timeout-minutes: 50
         env:
           OBJECK_VM_ARGS: --gc-threshold=64k
           # Every collection, not a sample: measured on this suite's heaviest
@@ -329,7 +336,7 @@ jobs:
           # (598 s and 637 s at 64k) and the two TLS tests, whose peer threads
           # sit behind fixed socket timeouts. All four run in the minor step.
           "$PY" "$TRIAGE" run --leg "$LEG" --step verify-major --out "$RESULTS" \
-            --config "gc-threshold=64k verify=1" --timeout 3900 --parser regression \
+            --config "gc-threshold=64k verify=1" --timeout 2700 --parser regression \
             --cwd programs/regression \
             --require-text "programs/regression/${{ steps.prep.outputs.runner }}:OBJECK_VM_ARGS" \
             --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_GC_VERIFY" \
