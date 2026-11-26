@@ -90,7 +90,7 @@ class McpStdioFixture {
 		return server;
 	}
 
-	function : Check(ok : Bool, what : String) ~ Bool {
+	function : Check(what : String, ok : Bool) ~ Bool {
 		if(<>ok) {
 			"FAIL: {$what}"->PrintLine();
 		};
@@ -100,29 +100,29 @@ class McpStdioFixture {
 	function : RunClient(command : String) ~ Bool {
 		ok := true;
 		client := McpClient->Command(command);
-		ok := Check(client->Initialize("fixture-client", "1.0"), "initialize over a command transport") & ok;
+		ok := Check("initialize over a command transport", client->Initialize("fixture-client", "1.0")) & ok;
 		if(<>ok) {
 			return false;
 		};
 
-		ok := Check(client->GetServerName()->Equals("stdio-fixture"), "server name") & ok;
+		ok := Check("server name", client->GetServerName()->Equals("stdio-fixture")) & ok;
 		tools := client->ListTools();
-		ok := Check(tools <> Nil & tools->Size() = 6, "tools/list") & ok;
+		ok := Check("tools/list", tools <> Nil & tools->Size() = 6) & ok;
 		result := client->CallTool("add", "{\"a\":40,\"b\":2}");
-		ok := Check(result <> Nil & result->GetText()->Equals("42"), "tools/call") & ok;
+		ok := Check("tools/call", result <> Nil & result->GetText()->Equals("42")) & ok;
 		result := client->CallTool("fails", "{}");
-		ok := Check(result <> Nil & result->IsError(), "a failed tool is an isError result") & ok;
+		ok := Check("a failed tool is an isError result", result <> Nil & result->IsError()) & ok;
 		result := client->CallTool("raises", "{}");
-		ok := Check(result <> Nil & result->IsError(), "a tool that raises is an isError result") & ok;
-		ok := Check(client->CallTool("nope", "{}") = Nil & client->GetErrorCode() = -32602, "an unknown tool is -32602") & ok;
+		ok := Check("a tool that raises is an isError result", result <> Nil & result->IsError()) & ok;
+		ok := Check("an unknown tool is -32602", client->CallTool("nope", "{}") = Nil & client->GetErrorCode() = -32602) & ok;
 		contents := client->ReadResource("notes://readme");
-		ok := Check(contents <> Nil & contents->Get(0)->GetText()->Equals("hello readme"), "resources/read") & ok;
-		ok := Check(client->ReadResource("notes://missing") = Nil & client->GetErrorCode() = -32002, "a missing resource") & ok;
+		ok := Check("resources/read", contents <> Nil & contents->Get(0)->GetText()->Equals("hello readme")) & ok;
+		ok := Check("a missing resource", client->ReadResource("notes://missing") = Nil & client->GetErrorCode() = -32002) & ok;
 		args := JsonElement->New(JsonElement->JsonType->OBJECT);
 		args->Insert("name", "Ada");
 		prompt := client->GetPrompt("greet", args);
-		ok := Check(prompt <> Nil & prompt->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("Say hello to Ada"), "prompts/get") & ok;
-		ok := Check(client->Ping(), "ping") & ok;
+		ok := Check("prompts/get", prompt <> Nil & prompt->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("Say hello to Ada")) & ok;
+		ok := Check("ping", client->Ping()) & ok;
 		return ok;
 	}
 

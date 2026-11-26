@@ -235,7 +235,7 @@ run_dap_test "full_lifecycle" \
 {\"seq\":5,\"type\":\"request\",\"command\":\"threads\",\"arguments\":{}}
 {\"seq\":6,\"type\":\"request\",\"command\":\"continue\",\"arguments\":{\"threadId\":1}}
 {\"seq\":7,\"type\":\"request\",\"command\":\"disconnect\",\"arguments\":{}}" \
-    '"command":"configurationDone"|"success":true|"command":"threads"|"Main Thread"' \
+    '"command":"configurationDone"|"success":true|"command":"threads"|"threads":[{"id":' \
     5
 
 # ============================================

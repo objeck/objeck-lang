@@ -65,7 +65,7 @@ using namespace objk_cnn;
 struct CudaLib {
   bool loaded;
   void* module;
-#define OBJK_CUDA_DECLARE(ret, name, args) ret (*name) args;
+#define OBJK_CUDA_DECLARE(ret, name, args) ret (*name) args = nullptr;
   OBJK_CUDA_FUNCTIONS(OBJK_CUDA_DECLARE)
 #undef OBJK_CUDA_DECLARE
   CudaLib() : loaded(false), module(nullptr) {}
@@ -189,6 +189,7 @@ static bool CudaLoad(std::string& why) {
   if(!ok || lib.objk_cuda_abi() != OBJK_CUDA_ABI) {
     why = "the CUDA library is not the version this libobjk_ml expects; rebuild it from core/lib/matrix/cuda";
     // left loaded: unloading a half-initialised CUDA library is not worth the risk
+    // coverity[leaked_storage] the library handle is deliberately kept for the process lifetime
     return false;
   }
   lib.loaded = true;
@@ -742,7 +743,7 @@ class ModelImpl : public ModelBase {
     std::string why;
     const CudaLib* lib = CudaGet(why);
     if(!lib) {
-      error = why;
+      error = std::move(why);
       return false;
     }
     const int count = lib->objk_cuda_device_count();
@@ -1099,7 +1100,7 @@ OBJK_CNN_EXPORT void ml_cnn_cuda_text(VMContext& context) {
   const CudaLib* lib = CudaGet(why);
   if(what == 0) {
     if(!lib) {
-      text = why;
+      text = std::move(why);
     } else if(lib->objk_cuda_device_count() < 1) {
       text = lib->objk_cuda_last_error();
       if(text.empty()) {
