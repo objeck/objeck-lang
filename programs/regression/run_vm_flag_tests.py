@@ -102,7 +102,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
  11. The heap verifier. OBJECK_GC_VERIFY=1 checks the collector's invariants
     at every collection (core/vm/arch/memory_verify.cpp): the GC stress tests
     and four collection tests pass with the same output with it on, and each
-    OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark) in
+    OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark, terminator) in
     vm_gc_verify_inject.obs stops obr with the verifier's report -- a verifier
     nothing can trip would pass the first half just as well as a correct heap.
  12. Stack-trace method names read like the source. vm_trace_fn_param_format.obs
@@ -2487,7 +2487,9 @@ VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),
                      ("barrier", b">>> gc-verify: A2 violation"),
                      # the marked word still points into the nursery range: B3
-                     ("mark", b">>> gc-verify: B3 violation"))
+                     ("mark", b">>> gc-verify: B3 violation"),
+                     # a character stored in a Char[]'s spare element: B5
+                     ("terminator", b">>> gc-verify: B5 violation"))
 
 
 def extra_libs(src):

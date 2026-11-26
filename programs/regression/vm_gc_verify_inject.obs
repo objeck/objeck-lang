@@ -14,11 +14,18 @@ must abort with the verifier's report. The shapes the injections need:
             the slow path must be one holding a young reference at the next
             collection: holder->Set() is the only store to an old object in the
             loop, and the churn between stores allocates without storing
+  terminator - a Char[] in the old generation, where every array is allocated
+            (chars, there from the first GC on)
 ~#
 class GcVerifyInject {
   function : Main(args : String[]) ~ Nil {
     bad := 0;
     holder := Holder->New();
+    # a full Char[]: the element after its last is the spare zero the verifier checks
+    chars := Char->New[4];
+    each(i : chars) {
+      chars[i] := 'k';
+    };
 
     for(round := 0; round < 6; round += 1;) {
       # young Node into holder, which is old from the second round on
@@ -37,6 +44,10 @@ class GcVerifyInject {
       else if(node->Get() <> round * 11) {
         bad += 1;
       };
+    };
+
+    each(i : chars) {
+      if(chars[i] <> 'k') { bad += 1; };
     };
 
     if(bad = 0) {

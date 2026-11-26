@@ -2542,6 +2542,80 @@ class ObjectDeserializer
 };
 
 /********************************
+ * The array terminator invariant
+ *
+ * A Char[] or Byte[] is [0] element count, [1] dimensions, [2..] one extent per
+ * dimension, then the elements: at array + 3 for the one-dimensional arrays the
+ * native methods take. Every allocation asks for ONE MORE element than [0]
+ * counts (NEW_BYTE_ARY, NEW_CHAR_ARY, the deserializers, CreateStringObject, the
+ * APITools_Make*Array calls native libraries use), and MemoryManager hands out
+ * zeroed memory. A program cannot index that spare element: [0] bounds every
+ * load, store, copy and fill. So the element after the last one is always zero.
+ *
+ * What rests on it:
+ *  - A native that takes TEXT in a Char[] (a String's backing array, a path, a
+ *    host name, a command) reads it as a C string: (wchar_t*)(array + 3). The
+ *    text ends at its first zero, which for an array filled to its last element
+ *    (an "exact-length" array, as String->ToCharArray() returns) is the spare.
+ *    System.String keeps a zero after its characters whenever it shrinks.
+ *  - A native that stores text into a Char[] may write one zero after the
+ *    characters, at most at index [0]: StoreCharArrayText below.
+ *
+ * What must NOT rest on it: anything given a length. A native that takes
+ * (offset, num) or works on a Byte[] uses those numbers and [0], never a search
+ * for the zero: a Byte[] holds data, where a zero is a value like any other.
+ *
+ * Checked, not assumed: with OBJECK_GC_VERIFY set the heap verifier fails a
+ * Char[] whose block has no room for the spare element or whose spare element
+ * is not zero (invariant B5, arch/memory_verify.cpp). A Byte[] shares its heap
+ * type with closure capture blocks, so the verifier cannot tell one from the
+ * other; no native reads a Byte[] to its zero any more, which is what the
+ * check would have protected.
+ ********************************/
+
+/********************************
+ * Stores 'count' characters in a Char[] at 'dest' and ends them with a zero. The
+ * caller bounds 'count' by the elements left in the array from 'dest'; the zero
+ * then lands inside the array or on its spare element (see above).
+ *
+ * Used where wcsncpy_s / wcsncpy were: the first ends the process (MSVC's
+ * invalid-parameter handler) when the text is exactly as long as the size it is
+ * given and, in a debug CRT, fills the rest of the destination with 0xFE; the
+ * second zero-fills up to its count and writes no terminator at all when the
+ * text is that long. Windows and POSIX now store the same elements.
+ ********************************/
+inline void StoreCharArrayText(wchar_t* dest, const wchar_t* src, size_t count)
+{
+  if(count > 0) {
+    wmemcpy(dest, src, count);
+  }
+  dest[count] = L'\0';
+}
+
+/********************************
+ * The same for decoded text going into a one-dimensional Char[] from element
+ * 'offset' on (the caller has checked offset <= [0]): what does not fit in the
+ * elements that are left is dropped.
+ ********************************/
+inline void StoreCharArrayText(size_t* array, size_t offset, const std::wstring& text)
+{
+  const size_t room = array[0] - offset;
+  StoreCharArrayText((wchar_t*)(array + 3) + offset, text.c_str(), text.size() < room ? text.size() : room);
+}
+
+/********************************
+ * The text in elements [offset, offset + num) of a one-dimensional Char[] (the
+ * caller has checked the range against [0]): up to the first zero in that range
+ * and never past its end.
+ ********************************/
+inline std::wstring CharArrayRangeText(const size_t* array, size_t offset, size_t num)
+{
+  const wchar_t* start = (const wchar_t*)(array + 3) + offset;
+  const wchar_t* zero = num > 0 ? wmemchr(start, L'\0', num) : nullptr;
+  return std::wstring(start, zero ? (size_t)(zero - start) : num);
+}
+
+/********************************
  *  TrapManager class
  ********************************/
 enum TimeInterval {
