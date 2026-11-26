@@ -726,6 +726,7 @@ def main():
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
     check_signal_dispatch(obc, obr, env, bin_dir)
+    check_file_fifo_gc_park(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
@@ -2684,6 +2685,58 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
         check(f"signal dispatcher cannot start ({stage}): SetSignal fails and says why",
               rc != 0 and b"Unable to start the signal dispatcher" in err and b"PASS: signal_dispatch" not in out,
               f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+
+
+def check_file_fifo_gc_park(obc, obr, env, bin_dir):
+    # ---- a FIFO read through the file API parks -------------------------------------
+    # file_fifo_gc_park.obs opens a FIFO with FileReader and reads it with
+    # ReadBuffer(Char[]) on one thread while main allocates through many collections.
+    # The open (which looks one byte ahead) and the read waited as a running mutator, so
+    # the first collection waited for them and main never finished allocating. This
+    # script holds the FIFO's write end. In "read" mode it writes one byte at the start,
+    # so the open returns and the thread waits in the read; in "open" mode it writes
+    # nothing, so the thread waits in the open. The rest is written only once the
+    # program reports that it has allocated its fill: a program that never reports is
+    # the failure (it is then released, so it can end). With OBJECK_GC_VERIFY the heap
+    # is checked at every collection, the reader's re-rooted array included.
+    if os.name == "nt" or not hasattr(os, "mkfifo"):
+        return
+    import tempfile
+    import time
+    dest = compile_fixture(obc, "file_fifo_gc_park", env, bin_dir)
+    if not dest:
+        return
+    verify_env = dict(env)
+    verify_env["OBJECK_GC_VERIFY"] = "1"
+    for mode, label, jit, run_env in (("read", "--jit=off", "--jit=off", env), ("read", "--jit=1", "--jit=1", env),
+                                      ("read", "--jit=1, OBJECK_GC_VERIFY", "--jit=1", verify_env),
+                                      ("open", "--jit=off", "--jit=off", env), ("open", "--jit=1", "--jit=1", env)):
+        with tempfile.TemporaryDirectory() as scratch:
+            fifo = os.path.join(scratch, "fifo")
+            collected = os.path.join(scratch, "collected")
+            os.mkfifo(fifo)
+            # read-write, so this open does not wait for the program's reader (Linux and macOS allow it)
+            write_end = os.open(fifo, os.O_RDWR)
+            if mode == "read":
+                os.write(write_end, b"h")
+            proc = subprocess.Popen([obr, jit, "--nursery=256k", dest, fifo, collected, mode], env=run_env, cwd=SCRIPT_DIR,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            deadline = time.time() + 30
+            while not os.path.exists(collected) and proc.poll() is None and time.time() < deadline:
+                time.sleep(0.01)
+            ran_on = os.path.exists(collected)
+            os.write(write_end, b"ello" if mode == "read" else b"hello")
+            try:
+                out, err = proc.communicate(timeout=60)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+            os.close(write_end)
+            check(f"FIFO {mode} through the file API {label}: collections run while it waits", ran_on,
+                  f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
+            check(f"FIFO {mode} through the file API {label}: the read returns its text after them",
+                  proc.returncode == 0 and b"PASS: file_fifo_gc_park read" in out,
+                  f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):
