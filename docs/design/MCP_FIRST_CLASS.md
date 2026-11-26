@@ -246,3 +246,34 @@ library sources and does not know the tag.
 and serve (the one VM-side piece; startup only, behind the flag). Stage 4: a compiler step that runs the stub
 generator. Not done: a derived `outputSchema` from a record return type; progress and cancellation reaching an
 `AgentObserver`; reading enums and records from a library `.obl`.
+
+## 8. Stage 2b (compiler): `@resource` and `@prompt`
+
+The other two server primitives, by the same mechanism and the same gates as `@tool`. `@resource <uri-template>`
+and `@prompt [name]` are recognised by the scanner exactly as `@tool` is (a line that starts with the word, in a closed
+`#~ ~#` comment directly before a token); the parser attaches the comment to the function; `GenerateMcpTools` writes,
+into the same `McpTools(service)`, a `service->AddResource(McpResource->New(uri, name, description, mime, handler))` or
+a `McpPrompt` with its `AddArgument` calls, and one adapter function for each.
+
+| | `@resource` | `@prompt` |
+|---|---|---|
+| Wire | `resources/list` (a fixed URI), `resources/templates/list` (a URI with `{name}`), `resources/read` | `prompts/list`, `prompts/get` |
+| Parameters | exactly the URI's variables, `String`/`Int`/`Float`/`Bool`/`Char` read from the URI text by `McpUriTemplate->Match` (a library function, source only, no VM); a default is an error | the prompt's arguments, which are text on the wire: `String`/`Int`/`Float`/`Bool`/`Char` converted from the text; a default makes one optional (the library already refuses a call that lacks a required one); a `McpCall` parameter is not an argument |
+| Result | `String` (text, with `@mime`, default `text/plain`) or `McpContents` (as is); `Nil` reads nothing | `String` (one `user` message) or `McpPromptResult` (as is) |
+| Name | the function's name in snake_case | `@prompt name`, else snake_case |
+
+Decisions. *One registration function*: tools, resources and prompts all go into `McpTools(service)`, so Stage 3 looks
+for one name. *Text parameters only*: a URI is text and a prompt's arguments are `string` -> `string` in the protocol, so a
+structured parameter would be a convention the client cannot see; a function that wants one takes the text and parses
+it. *Mixed tags are an error*: one function is one of the three, and the hints (`@readonly`...) belong to tools. *No
+percent-decoding* of URI variables yet (limit). A tag word that is not followed by a blank or the end of the line is not
+a tag (`@prompts`, `@resource_x`), and `@prompt` / `@resource` in a doc comment are new tags: the byte-identity gate was
+re-run with them to see whether any existing doc comment used them (none does).
+
+Evidence. `mcp_res_prompt_tags_test` (31 checks: the library function, fixed and template resources, Char/Float/Bool/String
+variables, `McpContents` pass-through, mime, listing, required and optional prompt arguments with descriptions, defaults,
+Int/Float/Bool from text, `McpPromptResult`, a `McpCall` parameter, a missing required argument); 18 more compile-error
+cases in `mcp_tool_tags_diag_test.py` (each with its line); `programs/deploy/mcp_resources_43.obs`. Byte identity of the
+corpus with the Stage 2b compiler (both compilers given the same libraries): 5,600 compilations, 5,576 identical, the 24 that
+differ are the same 6 tagged files, 0 in files without a tag. Scanner fuzz with `@resource`/`@prompt` mutations: 1,200
+mutants, 0 crashes, hangs, or differences from the reference for untagged ones.
