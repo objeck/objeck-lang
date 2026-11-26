@@ -349,6 +349,43 @@ class Weather {
 * **Diagnostics.** A parameter or return type that cannot be sent (a function type, a class that is not a record, an array of two dimensions, a `ref` parameter), a default that is not a literal, a tag before a method, constructor, class, enum or variable, `@param` of nothing, two tools with one name, and a file that does not `use API.MCP` are compile errors that name the tool and point at the function.
 * **Limits.** Enums and records must be declared in the sources being compiled, before the class that uses them (the compiler does not read them from a library). An enum cannot be an optional parameter (its default would not be a literal) or an array element. `obr prog.obe --mcp` to serve a program with no code at all is not there yet: the program calls `Class->McpTools(server)` and `ServeStdio()` itself.
 
+### A function is a resource or a prompt: `@resource`, `@prompt`
+
+The same doc comment makes the other two MCP server primitives. `@resource <uri>` makes a function a resource (read-only data the client or model can fetch by URI); `@prompt [name]` makes it a prompt template (a named, parameterised message the user picks). `McpTools(service)` registers all three kinds, so one registration function serves tools, resources and prompts.
+
+```
+use API.MCP;
+
+class Docs {
+  #~
+  The project readme.
+  @resource notes://readme
+  @mime text/markdown
+  ~#
+  function : Readme() ~ String { return "# Readme"; }
+
+  #~
+  The forecast for a city.
+  @resource weather://{city}/forecast/{days}
+  ~#
+  function : Forecast(city : String, days : Int) ~ String { return "{$days} days in {$city}"; }
+
+  #~
+  Review some code.
+  @prompt
+  @param language the language of the code
+  @param focus what to look for
+  ~#
+  function : CodeReview(language : String, focus : String := "bugs") ~ String {
+    return "Review the {$language} code for {$focus}.";
+  }
+}
+```
+
+* **Resources.** The URI (a fixed one, or a template with `{name}` variables) comes after `@resource`; a fixed URI is listed by `resources/list`, a template by `resources/templates/list`. Every variable is a parameter of the same name (`String`, `Int`, `Float`, `Bool` or `Char`, read from the URI text; `McpUriTemplate->Match` does the matching) and every parameter is a variable; a default is an error. `@mime type` sets the media type (`text/plain` by default). A `String` result is the text of the resource, a `McpContents` is sent as it is (use it for a blob or a different URI); a `Nil` result, or a URI that does not fit the template, reads nothing. The name is the function's name in snake_case. Values are not percent-decoded.
+* **Prompts.** The arguments of a prompt are text on the wire, so a parameter is a `String`, `Int`, `Float`, `Bool` or `Char` (converted from the text), and a parameter with a default is optional; `@param` documents it. A `String` result is one user message, a `McpPromptResult` (several messages, roles) is sent as it is; a `McpCall` parameter is not an argument. `@prompt name` names it, otherwise snake_case.
+* **Diagnostics.** A function is exactly one of `@tool`, `@resource`, `@prompt`; the hints (`@readonly`...) belong to tools and `@mime` to resources; a URI variable with no parameter, a parameter that is not a variable, an unsupported parameter or return type, and two resources with one URI are compile errors with the function's position.
+
 ### Declaring a tool from its types (the library form)
 
 `@tool` (above) is the way to write a tool. `McpToolSpec` is the same thing as a library: it needs no compiler support, and it is what the compiler's output is checked against. A function's name and parameter types already say what its JSON Schema says; `McpToolSpec` writes them once, as text, and derives the schema:

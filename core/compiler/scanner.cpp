@@ -34,6 +34,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
+#include <cwchar>
 #include <random>
 #include <stdexcept>
 
@@ -1378,9 +1379,18 @@ void Scanner::NoteToolDoc(size_t start, size_t end, int line, int pos)
       // blanks keep a line start
     }
     else {
-      if(line_start && c == L'@' && i + 5 <= end && buffer[i + 1] == L't' && buffer[i + 2] == L'o' && buffer[i + 3] == L'o' && buffer[i + 4] == L'l' &&
-         (i + 5 == end || buffer[i + 5] == 32 || buffer[i + 5] == 9 || buffer[i + 5] == 13 || buffer[i + 5] == 10)) {
-        found = true;
+      if(line_start && c == L'@') {
+        // '@tool', '@resource' or '@prompt', and the word ends there
+        static const wchar_t* const words[] = { L"tool", L"resource", L"prompt" };
+        for(size_t w = 0; w < 3 && !found; ++w) {
+          const size_t len = wcslen(words[w]);
+          if(i + 1 + len <= end && wcsncmp(buffer + i + 1, words[w], len) == 0) {
+            const size_t after = i + 1 + len;
+            if(after == end || buffer[after] == 32 || buffer[after] == 9 || buffer[after] == 13 || buffer[after] == 10) {
+              found = true;
+            }
+          }
+        }
       }
       line_start = false;
     }

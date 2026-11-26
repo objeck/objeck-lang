@@ -8201,6 +8201,9 @@ namespace {
     bool destructive = false;
     bool idempotent = false;
     bool open_world = false;
+    int kind = 0;               // 0 '@tool', 1 '@resource', 2 '@prompt'
+    std::wstring uri;           // the URI template of a '@resource'
+    std::wstring mime;          // the media type of a '@resource'
     std::vector<std::pair<std::wstring, std::wstring> > params;
     std::vector<int> param_lines;
   };
@@ -8459,6 +8462,7 @@ static bool McpParseDoc(const ToolDoc& doc, const std::wstring& function_name, c
 {
   bool ok = true;
   bool saw_tool = false;
+  bool saw_kind = false;  // one of '@tool', '@resource', '@prompt' has been read
   int current = 0;       // 0 description, 1 a parameter, 2 ignored
   int line_no = 0;
   size_t pos = 0;
@@ -8481,12 +8485,47 @@ static bool McpParseDoc(const ToolDoc& doc, const std::wstring& function_name, c
       const std::wstring tag = line.substr(1, word_end - 1);
       const std::wstring rest = McpTrim(line.substr(word_end));
 
-      if(tag == L"tool") {
+      if(tag == L"resource" || tag == L"prompt") {
+        if(saw_kind) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"a function is one of '@tool', '@resource' and '@prompt'; the doc comment of '" + function_name + L"' has more than one");
+          ok = false;
+        }
+        saw_kind = true;
+        current = 2;
+        if(tag == L"resource") {
+          out.kind = 1;
+          out.uri = rest;
+          if(rest.empty()) {
+            diagnostics.Error(file_name, at_line, doc.pos, L"'@resource' needs a URI or a URI template, as in '@resource weather://{city}'");
+            ok = false;
+          }
+        }
+        else {
+          out.kind = 2;
+          if(!rest.empty()) {
+            if(!McpToolNameChars(rest)) {
+              diagnostics.Error(file_name, at_line, doc.pos, L"'@prompt " + rest + L"': a prompt name has letters, digits, '_', '-' and '.' only");
+              ok = false;
+            }
+            out.name = rest;
+          }
+        }
+      }
+      else if(tag == L"mime") {
+        current = 2;
+        out.mime = rest;
+      }
+      else if(tag == L"tool") {
         if(saw_tool) {
           diagnostics.Error(file_name, at_line, doc.pos, L"'@tool' appears twice in the doc comment of '" + function_name + L"'");
           ok = false;
         }
+        else if(saw_kind) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"a function is one of '@tool', '@resource' and '@prompt'; the doc comment of '" + function_name + L"' has more than one");
+          ok = false;
+        }
         saw_tool = true;
+        saw_kind = true;
         current = 2;
         if(!rest.empty()) {
           if(!McpToolNameChars(rest)) {
@@ -8912,17 +8951,49 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
       continue;
     }
 
+    const wchar_t* kind_word = doc.kind == 0 ? L"tool" : (doc.kind == 1 ? L"resource" : L"prompt");
+    if(doc.kind != 0 && (doc.read_only || doc.destructive || doc.idempotent || doc.open_world)) {
+      diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"'@readonly', '@destructive', '@idempotent' and '@openworld' describe a tool; '" + function_name + L"' is a " + kind_word);
+      continue;
+    }
+    if(doc.kind != 1 && !doc.mime.empty()) {
+      diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"'@mime' belongs to a '@resource'; '" + function_name + L"' is a " + kind_word);
+      continue;
+    }
+
     bool duplicate = false;
+    const std::wstring name_key = std::wstring(1, L'0' + (wchar_t)doc.kind) + (doc.kind == 1 ? doc.uri : doc.name);
     for(size_t n = 0; n < names_seen.size(); ++n) {
-      if(names_seen[n] == doc.name) {
+      if(names_seen[n] == name_key) {
         duplicate = true;
       }
     }
     if(duplicate) {
-      diagnostics.Error(file_name, fn_line, fn_pos, L"two '@tool' functions of this class are called '" + doc.name + L"'; give one a name with '@tool <name>'");
+      diagnostics.Error(file_name, fn_line, fn_pos, std::wstring(L"two '@") + kind_word + L"' functions of this class are called '" + (doc.kind == 1 ? doc.uri : doc.name) + L"'" +
+                        (doc.kind == 1 ? L"" : std::wstring(L"; give one a name with '@") + kind_word + L" <name>'"));
       continue;
     }
-    names_seen.push_back(doc.name);
+    names_seen.push_back(name_key);
+
+    // the variables of a resource's URI template
+    std::vector<std::wstring> uri_vars;
+    if(doc.kind == 1) {
+      size_t at = 0;
+      bool bad_uri = false;
+      while((at = doc.uri.find(L'{', at)) != std::wstring::npos) {
+        const size_t close = doc.uri.find(L'}', at);
+        if(close == std::wstring::npos || close == at + 1) {
+          bad_uri = true;
+          break;
+        }
+        uri_vars.push_back(doc.uri.substr(at + 1, close - at - 1));
+        at = close + 1;
+      }
+      if(bad_uri || (doc.uri.find(L'}', 0) != std::wstring::npos && uri_vars.empty())) {
+        diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"'@resource " + doc.uri + L"': a '{' needs a name and a closing '}'");
+        continue;
+      }
+    }
 
     // the parameters, in source order
     struct Param {
@@ -8962,11 +9033,50 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
           ok = false;
           break;
         }
+        if(doc.kind != 0 && !(param.ty.kind == MK_INT || param.ty.kind == MK_FLOAT || param.ty.kind == MK_BOOL || param.ty.kind == MK_CHAR || param.ty.kind == MK_STRING ||
+                              (doc.kind == 2 && param.ty.kind == MK_CALL))) {
+          diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(),
+                            L"the parameter '" + param.name + L"' of the " + kind_word + L" '" + (doc.kind == 1 ? doc.uri : doc.name) + L"': a " + kind_word +
+                            L" gets its arguments as text, so a parameter is a String, Int, Float, Bool or Char" + (doc.kind == 2 ? L" (or the McpCall)" : L""));
+          ok = false;
+          break;
+        }
+        if(doc.kind == 1) {
+          if(param.ty.kind == MK_CALL || std::find(uri_vars.begin(), uri_vars.end(), param.name) == uri_vars.end()) {
+            diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(),
+                              L"the parameter '" + param.name + L"' of the resource '" + doc.uri + L"' is not a variable of its URI; a resource reads its parameters from '{name}' in the URI");
+            ok = false;
+            break;
+          }
+          if(parameter->GetAssignment()) {
+            diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(),
+                              L"the parameter '" + param.name + L"' of the resource '" + doc.uri + L"' has a default; every variable of a URI template is required");
+            ok = false;
+            break;
+          }
+        }
         params.push_back(param);
       }
     }
     if(!ok) {
       continue;
+    }
+    if(doc.kind == 1) {
+      for(size_t v = 0; v < uri_vars.size() && ok; ++v) {
+        bool has = false;
+        for(size_t q = 0; q < params.size(); ++q) {
+          if(params[q].name == uri_vars[v]) {
+            has = true;
+          }
+        }
+        if(!has) {
+          diagnostics.Error(file_name, fn_line, fn_pos, L"the URI '" + doc.uri + L"' has the variable '{" + uri_vars[v] + L"}', but the function '" + function_name + L"' has no parameter of that name");
+          ok = false;
+        }
+      }
+      if(!ok) {
+        continue;
+      }
     }
 
     // a '@param' line names a parameter the function has
@@ -9008,7 +9118,13 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
         else if(McpIsName(rname, L"JsonElement", L"Data.JSON.JsonElement")) {
           rkind = 3;
         }
-        else if(McpIsName(rname, L"McpToolResult", L"API.MCP.McpToolResult")) {
+        else if(doc.kind == 0 && McpIsName(rname, L"McpToolResult", L"API.MCP.McpToolResult")) {
+          rkind = 4;
+        }
+        else if(doc.kind == 1 && McpIsName(rname, L"McpContents", L"API.MCP.McpContents")) {
+          rkind = 4;
+        }
+        else if(doc.kind == 2 && McpIsName(rname, L"McpPromptResult", L"API.MCP.McpPromptResult")) {
           rkind = 4;
         }
         break;
@@ -9017,8 +9133,19 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
         break;
       }
     }
+    if(doc.kind != 0 && rkind != 2 && rkind != 4) {
+      rkind = -1;
+    }
     if(rkind < 0) {
-      diagnostics.Error(file_name, fn_line, fn_pos, L"the tool '" + doc.name + L"' returns a type MCP cannot send: return String, Int, Float, Bool, JsonElement, McpToolResult or nothing");
+      if(doc.kind == 1) {
+        diagnostics.Error(file_name, fn_line, fn_pos, L"the resource '" + doc.uri + L"' returns a type MCP cannot send: return a String (its text) or a McpContents");
+      }
+      else if(doc.kind == 2) {
+        diagnostics.Error(file_name, fn_line, fn_pos, L"the prompt '" + doc.name + L"' returns a type MCP cannot send: return a String (one user message) or a McpPromptResult");
+      }
+      else {
+        diagnostics.Error(file_name, fn_line, fn_pos, L"the tool '" + doc.name + L"' returns a type MCP cannot send: return String, Int, Float, Bool, JsonElement, McpToolResult or nothing");
+      }
       continue;
     }
 
@@ -9028,8 +9155,15 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
       spec += L"->Title(\"" + McpLit(doc.title) + L"\")";
     }
 
+    // a prompt is declared by statements, one variable for each
+    const std::wstring prompt_var = L"mcp_pr" + std::to_wstring(registrations.size());
+    std::wstring prompt_args;
+
     // and the function that calls the tool
     std::wstring body = L"mcp_a := mcp_call->GetArguments(); ";
+    if(doc.kind == 1) {
+      body = L"mcp_a := API.MCP.McpUriTemplate->Match(\"" + McpLit(doc.uri) + L"\", mcp_uri); if(mcp_a = Nil) { return Nil; }; ";
+    }
     std::wstring call_args;
     for(size_t p = 0; p < params.size() && ok; ++p) {
       const std::wstring index = std::to_wstring(p);
@@ -9051,10 +9185,39 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
 
       Assignment* default_value = params[p].declaration->GetAssignment();
       const bool required = default_value == nullptr;
-      spec += L"->AddSchema(\"" + McpLit(params[p].name) + L"\", \"" + McpLit(McpSchemaText(params[p].ty)) + L"\", \"" + McpLit(description) + L"\", " +
-              (required ? L"true" : L"false") + L")";
+      if(doc.kind == 0) {
+        spec += L"->AddSchema(\"" + McpLit(params[p].name) + L"\", \"" + McpLit(McpSchemaText(params[p].ty)) + L"\", \"" + McpLit(description) + L"\", " +
+                (required ? L"true" : L"false") + L")";
+      }
+      else if(doc.kind == 2) {
+        prompt_args += prompt_var + L"->AddArgument(\"" + McpLit(params[p].name) + L"\", \"" + McpLit(description) + L"\", " + (required ? L"true" : L"false") + L"); ";
+      }
 
-      const std::wstring read = McpRead(params[p].ty, L"mcp_a->Get(\"" + McpLit(params[p].name) + L"\")", helpers);
+      std::wstring read;
+      if(doc.kind == 0) {
+        read = McpRead(params[p].ty, L"mcp_a->Get(\"" + McpLit(params[p].name) + L"\")", helpers);
+      }
+      else {
+        // text from a URI or a prompt's arguments
+        const std::wstring text = L"mcp_a->Get(\"" + McpLit(params[p].name) + L"\")->GetString()";
+        switch(params[p].ty.kind) {
+        case MK_INT:
+          read = text + L"->ToInt()";
+          break;
+        case MK_FLOAT:
+          read = text + L"->ToFloat()";
+          break;
+        case MK_BOOL:
+          read = text + L"->Equals(\"true\")";
+          break;
+        case MK_CHAR:
+          read = text + L"->Get(0)";
+          break;
+        default:
+          read = text;
+          break;
+        }
+      }
       if(required) {
         body += var + L" := " + read + L"; ";
       }
@@ -9139,11 +9302,38 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
     if(doc.open_world) {
       spec += L"->OpenWorld()";
     }
-    const std::wstring adapter_name = L"McpTool_" + function_name;
-    spec += L"->AddTo(mcp_service, Func2Ref->New(" + helpers.cls + L"->" + adapter_name + L"(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);";
+    std::wstring adapter_name = L"McpTool_" + function_name;
+    if(doc.kind == 0) {
+      spec += L"->AddTo(mcp_service, Func2Ref->New(" + helpers.cls + L"->" + adapter_name + L"(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);";
+    }
+    else if(doc.kind == 1) {
+      adapter_name = L"McpResource_" + function_name;
+      spec = L"mcp_service->AddResource(API.MCP.McpResource->New(\"" + McpLit(doc.uri) + L"\", \"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\", \"" +
+             McpLit(doc.mime.empty() ? std::wstring(L"text/plain") : doc.mime) + L"\", Func2Ref->New(" + helpers.cls + L"->" + adapter_name +
+             L"(String) ~ McpContents)<String, McpContents>));";
+    }
+    else {
+      adapter_name = L"McpPrompt_" + function_name;
+      spec = prompt_var + L" := API.MCP.McpPrompt->New(\"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\", Func2Ref->New(" + helpers.cls + L"->" + adapter_name +
+             L"(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>); " + prompt_args + L"mcp_service->AddPrompt(" + prompt_var + L");";
+    }
     registrations.push_back(spec);
 
     const std::wstring invoke = helpers.cls + L"->" + function_name + L"(" + call_args + L")";
+    if(doc.kind == 1) {
+      const std::wstring mime = McpLit(doc.mime.empty() ? std::wstring(L"text/plain") : doc.mime);
+      body += L"mcp_r := " + invoke + L"; ";
+      body += rkind == 2 ? L"if(mcp_r = Nil) { return Nil; }; return API.MCP.McpContents->OfText(mcp_uri, \"" + mime + L"\", mcp_r);" : L"return mcp_r;";
+      adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_uri : String) ~ McpContents { " + body + L" }");
+      continue;
+    }
+    if(doc.kind == 2) {
+      body += L"mcp_r := " + invoke + L"; ";
+      body += rkind == 2 ? L"if(mcp_r = Nil) { return Nil; }; mcp_m := API.MCP.McpPromptResult->New(\"" + McpLit(doc.description) + L"\"); mcp_m->AddMessage(\"user\", mcp_r); return mcp_m;"
+                         : L"return mcp_r;";
+      adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_call : McpCall) ~ McpPromptResult { " + body + L" }");
+      continue;
+    }
     switch(rkind) {
     case 0:
       body += invoke + L"; return API.MCP.McpToolResult->Text(\"done\");";

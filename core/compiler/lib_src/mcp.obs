@@ -1224,6 +1224,75 @@ bundle API.MCP {
 	}
 
 	#~
+	A resource URI template such as "weather://{city}/forecast/{days}": reads the variables out of a URI. The compiler writes calls to it for a function marked "@resource"
+	~#
+	class McpUriTemplate {
+		#~
+		Matches a URI against a template and reads the variables. A variable is not empty and runs up to the literal text that follows it in the template (its first occurrence), or to the end of the URI; the values are not percent-decoded
+		@param template URI template, with each variable written {name}
+		@param uri URI asked for
+		@return a JSON object with each variable as a string, Nil if the URI does not match
+		~#
+		function : Match(template : String, uri : String) ~ JsonElement {
+			if(template = Nil | uri = Nil) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			t := 0;
+			u := 0;
+			while(t < template->Size()) {
+				if(template->Get(t) = '{') {
+					close := template->Find(t, '}');
+					if(close < 0) {
+						return Nil;
+					};
+					name := template->SubString(t + 1, close - t - 1);
+					t := close + 1;
+
+					# the literal text up to the next variable, or to the end
+					next := template->Find(t, '{');
+					literal : String;
+					if(next < 0) {
+						literal := template->SubString(t, template->Size() - t);
+					}
+					else {
+						literal := template->SubString(t, next - t);
+					};
+
+					end : Int;
+					if(literal->Size() = 0) {
+						end := uri->Size();
+					}
+					else {
+						end := uri->Find(u, literal);
+						if(end < 0) {
+							return Nil;
+						};
+					};
+					if(end <= u) {
+						return Nil;
+					};
+					result->Insert(name, uri->SubString(u, end - u));
+					u := end;
+				}
+				else {
+					if(u >= uri->Size() | uri->Get(u) <> template->Get(t)) {
+						return Nil;
+					};
+					t += 1;
+					u += 1;
+				};
+			};
+
+			if(u <> uri->Size()) {
+				return Nil;
+			};
+			return result;
+		}
+	}
+
+	#~
 	A resource the server offers, or (with a "{" in the URI) a resource template. It is read through its handler, which takes the URI and returns a McpContents, or from a fixed text given to the constructor
 	~#
 	class McpResource {
