@@ -57,7 +57,7 @@
     <p class="page-lead">This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.</p>
 
     <div class="note"><strong>Comprehensive technical architecture with interactive diagrams</strong></div>
-    <p><img src="https://raw.githubusercontent.com/objeck/objeck-lang/master/docs/images/objeck-architecture.svg" alt="Objeck toolchain architecture" width="1600" height="1180" loading="lazy"></p>
+    <p><img src="https://raw.githubusercontent.com/objeck/objeck-lang/master/docs/images/objeck-architecture.svg" alt="Objeck toolchain architecture" width="1600" height="1376" loading="lazy"></p>
     <p><em>The whole toolchain on one page (<a href="https://github.com/objeck/objeck-lang/blob/master/docs/images/objeck-architecture.svg" target="_blank" rel="noopener">SVG</a>); the sections below go into each part. For a short written map with the invariants and the page that goes deeper on each part, see <a href="doc_architecture_map.html">ARCHITECTURE_MAP.md</a>.</em></p>
     <hr class="section-end">
     <h2 id="1-complete-system-overview">1. Complete System Overview</h2>
@@ -97,12 +97,24 @@
         INTERP --&gt; TRAPS
     end
 
-    subgraph LIBS["Libraries · 56 sources, .obl"]
+    subgraph LIBS["Libraries · 63 .obl"]
         direction TB
         CORE["lang · collections · concurrency&lt;br/&gt;regex · math · misc"]
         DOMAIN["Data · Networking · Web&lt;br/&gt;AI and ML · Media"]
         NATIVE["Native modules&lt;br/&gt;.dll · .so · .dylib&lt;br/&gt;(see the library stack below)"]
         DOMAIN --&gt; NATIVE
+    end
+
+    subgraph AGENTS["Agents and MCP"]
+        direction TB
+        MCPRUN["obr --mcp / --mcp-http&lt;br/&gt;serves @tool, @resource,&lt;br/&gt;@prompt functions"]
+        MCPSRV["API.MCP server&lt;br/&gt;McpService"]
+        MCPCLI["API.MCP client&lt;br/&gt;McpClient · McpToolBridge&lt;br/&gt;mcp_stubs --manifest / --check"]
+        AGENT["API.Agent&lt;br/&gt;ToolRegistry · budgets, cancel,&lt;br/&gt;approval hints, trace · AgentScope"]
+        MODELS["Model backends&lt;br/&gt;Claude · OpenAI · Gemini&lt;br/&gt;Ollama (local)"]
+        MCPRUN --&gt; MCPSRV
+        MCPCLI --&gt;|"tools"| AGENT
+        AGENT &lt;--&gt;|"chat"| MODELS
     end
 
     subgraph TOOLS["Command-line tools"]
@@ -133,6 +145,9 @@
     OUT --&gt; LOAD
     CORE --&gt; LINK
     DOMAIN --&gt; LINK
+    AGENTS --&gt; LINK
+    MCPRUN --&gt; INTERP
+    FRONT -.-&gt;|"@tool doc comments"| MCPSRV
     NATIVE --&gt;|"loaded at run time"| TRAPS
     OBI --&gt; FRONT
     OBI --&gt; INTERP
@@ -206,7 +221,9 @@
      <li><strong>Memory:</strong> generational, multithreaded garbage collection; C++ code that stores into an old object takes a write barrier.</li>
      <li><strong>Language server:</strong> written in Objeck (<code>tools/lsp</code>), analyzing with the compiler's own front end through <code>libobjk_diags</code>, so editor diagnostics match <code>obc</code>.</li>
      <li><strong>Tools:</strong> <code>obi</code> (REPL and full-screen editor), <code>obd</code> (debugger, also a Debug Adapter Protocol server), <code>obu</code> (updater that verifies signed manifests), <code>obb</code> (builds a native launcher for a program).</li>
-     <li><strong>Libraries:</strong> 56 library sources; native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.</li>
+     <li><strong>Agents and MCP:</strong> <code>API.Agent</code> runs a provider-neutral tool-use loop (<code>ToolRegistry</code> with allow and deny lists; run control with budgets, cancellation, approval hints and a trace; <code>AgentScope</code> limits every run in a block) over a <code>ChatBackend</code> for Claude, OpenAI, Gemini or a local Ollama model. <code>API.MCP</code> is a Model Context Protocol server (<code>McpService</code>, stdio or streamable HTTP) and client (<code>McpClient</code>, <code>McpToolBridge</code>); <code>mcp_stubs --manifest</code> and <code>--check</code> generate typed client stubs and fail the build when they drift. The scanner keeps <code>@tool</code>, <code>@resource</code> and <code>@prompt</code> doc-comment tags, the context analyzer derives the JSON Schema and writes the registration, and <code>obr --mcp prog.obe</code> (or <code>--mcp-http=&lt;port&gt;</code>) serves the functions with no server code.</li>
+     <li><strong>VM safety:</strong> a load-time stack verifier refuses a malformed <code>.obe</code>; <code>--thread-faults=isolate</code> ends only the thread that raised an uncaught error; native libraries are unloaded at exit.</li>
+     <li><strong>Libraries:</strong> 63 compiled libraries (<code>.obl</code>); native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.</li>
      <li><strong>CI and release:</strong> five platform legs on every pull request, the regression suite in three JIT modes, LSP, DAP and debugger tests, and a release gate that verifies all five platforms at one commit before tagging.</li>
     </ul>
     <hr class="section-end">
