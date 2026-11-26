@@ -1,0 +1,42 @@
+use API.MCP, API.Agent, Data.JSON, Collection, System.Concurrency;
+
+class Canceller from Thread {
+	New() {
+		Parent();
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		Thread->Sleep(60);
+		arg->As(AgentCancel)->Cancel("stop");
+	}
+}
+
+class CancelLat {
+	function : Wait(call : McpCall) ~ McpToolResult {
+		waited := 0;
+		while(<>call->IsCancelled() & waited < 5000) {
+			Thread->Sleep(1);
+			waited += 1;
+		};
+		return McpToolResult->Text("x");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		tool := McpAgentTools->FromSpec(McpToolSpec->New("wait", "w"), Func2Ref->New(CancelLat->Wait(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		n := 30;
+		lat := Float->New[n];
+		for(i := 0; i < n; i += 1;) {
+			token := AgentCancel->New();
+			timer := System.Time.Timer->New(true);
+			Canceller->New()->Execute(token);
+			tool->InvokeWith(JsonParser->TextToElement("{}"), token);
+			lat[i] := (timer->GetElapsedTime() - 0.060) * 1000.0;
+		};
+		line := String->New();
+		for(i := 0; i < n; i += 1;) {
+			v := lat[i];
+			line->Append("{$v} ");
+		};
+		line->PrintLine();
+	}
+}

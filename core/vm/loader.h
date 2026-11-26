@@ -212,6 +212,9 @@ class Loader {
 
   // loading functions
   void LoadImage();
+  // obr --mcp / --mcp-http: the transport as program arguments; the entry point (loader.cpp)
+  bool ReadMcpLaunch();
+  void SelectMcpEntry();
   void LoadClasses();
   void LoadMethods(StackClass* cls, bool is_debug);
   StackDclr** LoadDeclarations(const int num_dclrs, const bool is_debug);

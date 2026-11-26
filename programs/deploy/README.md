@@ -55,6 +55,11 @@ install): two of them read files from `data/`, which ships alongside.
 | [`structured_37.obs`](structured_37.obs) | `-lib llm_util,json,regex,gen_collect` | JSON out of a model: templates, schema checks, retry and repair |
 | [`telemetry_38.obs`](telemetry_38.obs) | `-lib telemetry,gen_collect,json` | timing a computation: p50, p95, p99 and saved profiles |
 | [`forecast_39.obs`](forecast_39.obs) | `-lib ml_timeseries,gen_collect` | forecasting a seasonal series: Holt-Winters against a benchmark |
+| [`mcp_declare_40.obs`](mcp_declare_40.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: a function marked @tool is a tool; schema, hints and arguments are written for you |
+| [`mcp_stub_41.obs`](mcp_stub_41.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: call a server through a generated typed client |
+| [`mcp_agent_42.obs`](mcp_agent_42.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` | MCP: tools as agent tools, with approval by effect |
+| [`mcp_resources_43.obs`](mcp_resources_43.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: @resource and @prompt functions next to a @tool, read through a client |
+| [`mcp_serve_44.obs`](mcp_serve_44.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: obr --mcp and --mcp-http serve the tagged functions with no server code |
 
 ## Building all of them
 

@@ -1,0 +1,486 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+Functions marked with an '@tool' line in their doc comment become MCP tools: the compiler writes the schema, the
+registration and the code that reads the typed arguments (docs/design/MCP_FIRST_CLASS.md). This test uses nothing
+but those functions and an in-process client:
+
+- the oracle: the schema the compiler derives for 15 functions equals, as JSON, the schema written by hand in the
+  repository's own servers (mcp_core_test, mcp_stdio_fixture, mcp_server_demo, mcp_canvas);
+- every row of the type mapping table (Int, Float, Bool, Byte, Char, String, JsonElement, arrays, Vector, Map,
+  an enum, a record, a record array), required and optional (a default is a literal) parameters;
+- the description from the comment, a name given with '@tool name', the snake_case name, '@param' text, the
+  '@readonly', '@destructive', '@idempotent', '@openworld' and '@title' tags;
+- calls: typed arguments reach the function, an absent optional argument takes its default, every return type
+  (Int, Float, Bool, String, nothing, JsonElement, McpToolResult), a Nil String, a function that raises;
+- a McpCall parameter is not part of the schema and gives the function the cancel flag and progress;
+- a doc comment that merely mentions the word, or '@tools', or '@tool_name', is not a tool.
+~#
+use API.MCP, Data.JSON, Collection;
+
+enum Units {
+	METRIC,
+	IMPERIAL,
+	KELVIN
+}
+
+record Point {
+	@x : Int;
+	@y : Int;
+}
+
+record Shape {
+	@name : String;
+	@origin : Point;
+	@units : Units;
+	@sides : Int[];
+}
+
+class Tools {
+	#~
+	Add two integers.
+	@tool
+	@readonly
+	@idempotent
+	@param a the first number
+	@param b the second number
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	#~
+	Evaluate an arithmetic expression.
+	It spans two lines.
+	@tool calculate
+	@readonly
+	@title Calculator
+	@param expression the expression
+	~#
+	function : Calc(expression : String) ~ String {
+		return "calc:{$expression}";
+	}
+
+	#~
+	List a directory.
+	@tool
+	@param path directory relative to the shared directory; empty for the top
+	~#
+	function : ListDirectory(path : String := "") ~ String {
+		return "dir:{$path}";
+	}
+
+	#~
+	Scale a number.
+	@tool
+	~#
+	function : Scale(value : Float, factor : Float := 2.5, flag : Bool := false, count : Int := -3) ~ String {
+		scaled := value * factor;
+		return "{$scaled} {$flag} {$count}";
+	}
+
+	#~
+	A letter and a byte.
+	@tool
+	~#
+	function : Letter(c : Char, b : Byte) ~ String {
+		return "{$c}";
+	}
+
+	#~
+	Sum an array.
+	@tool
+	~#
+	function : Total(values : Int[]) ~ Int {
+		total := 0;
+		each(i : values) {
+			total += values[i];
+		};
+		return total;
+	}
+
+	#~
+	Join words.
+	@tool
+	~#
+	function : Join(words : Vector<String>) ~ String {
+		out := String->New();
+		each(i : words) {
+			out->Append(words->Get(i));
+			out->Append('+');
+		};
+		return out;
+	}
+
+	#~
+	Sum the weights of a map.
+	@tool
+	~#
+	function : Weights(w : Map<String, IntRef>) ~ Int {
+		total := 0;
+		keys := w->GetKeys()<String>;
+		each(i : keys) {
+			total += w->Find(keys->Get(i))->Get();
+		};
+		return total;
+	}
+
+	#~
+	An enum, a record and any JSON.
+	@tool
+	~#
+	function : Describe(u : Units, p : Point, extra : JsonElement) ~ String {
+		x := p->GetX();
+		y := p->GetY();
+		has := extra <> Nil;
+		kind := 0;
+		if(u = Units->IMPERIAL) {
+			kind := 1;
+		}
+		else if(u = Units->KELVIN) {
+			kind := 2;
+		};
+		return "{$kind} ({$x},{$y}) {$has}";
+	}
+
+	#~
+	A record with a nested record, an enum and an array.
+	@tool
+	~#
+	function : Perimeter(shape : Shape) ~ Int {
+		sides := shape->GetSides();
+		total := 0;
+		each(i : sides) {
+			total += sides[i];
+		};
+		return total + shape->GetOrigin()->GetX();
+	}
+
+	#~
+	Count points.
+	@tool
+	~#
+	function : Points(points : Point[]) ~ Int {
+		return points->Size();
+	}
+
+	#~
+	Remove a file.
+	@tool
+	@destructive
+	@idempotent
+	@openworld
+	~#
+	function : RemoveFile(path : String) ~ Nil {
+		@removed := path;
+	}
+
+	#~
+	Look a city up.
+	@tool
+	~#
+	function : Lookup(city : String) ~ JsonElement {
+		value := JsonElement->New(JsonElement->JsonType->OBJECT);
+		value->Insert("city", city);
+		value->Insert("population", 715522);
+		return value;
+	}
+
+	#~
+	A function that reports through the call, with progress and a cancel flag.
+	@tool
+	~#
+	function : Slow(call : McpCall, steps : Int) ~ String {
+		call->ReportProgress(1.0, 2.0, "one");
+		return "steps:{$steps} cancelled:{$call->IsCancelled()}";
+	}
+
+	#~
+	Gives its own result.
+	@tool
+	~#
+	function : Raw(name : String) ~ McpToolResult {
+		return McpToolResult->Error("raw error for {$name}");
+	}
+
+	#~
+	Returns a Float.
+	@tool
+	~#
+	function : Half(x : Float) ~ Float {
+		return x / 2.0;
+	}
+
+	#~
+	Returns a Bool.
+	@tool
+	~#
+	function : IsBig(n : Int) ~ Bool {
+		return n > 100;
+	}
+
+	#~
+	Returns nothing useful.
+	@tool
+	~#
+	function : Nothing() ~ String {
+		return Nil;
+	}
+
+	#~
+	Raises.
+	@tool
+	~#
+	function : Explode() ~ String {
+		nothing : String;
+		size := nothing->Size();
+		return "{$size}";
+	}
+
+	#~
+	This comment mentions @tool in the middle of a line, and @tools and
+	@tool_name as words: it is documentation, not a tag.
+	~#
+	function : NotATool(a : Int) ~ Int {
+		return a;
+	}
+
+	@removed : static : String;
+
+	function : Removed() ~ String {
+		return @removed;
+	}
+}
+
+# the schemas of the repository's own servers, written by hand there
+class Oracle {
+	#~
+	Add two integers
+	@tool add
+	~#
+	function : Add(a : Int, b : Int) ~ Int { return a + b; }
+
+	#~
+	A tool that fails
+	@tool fails
+	~#
+	function : Fails() ~ String { return Nil; }
+
+	#~
+	Count the characters of a text
+	@tool echo
+	~#
+	function : Echo(text : String) ~ String { return text; }
+
+	#~
+	Return count characters
+	@tool repeat
+	~#
+	function : Repeat(count : Int) ~ String { return Nil; }
+
+	#~
+	Evaluate an expression
+	@tool calculate
+	@param expression the expression
+	~#
+	function : Calculate(expression : String) ~ String { return expression; }
+
+	#~
+	Read a text file
+	@tool read_file
+	@param path file path relative to the shared directory
+	~#
+	function : ReadFile(path : String) ~ String { return path; }
+
+	#~
+	List a directory
+	@tool list_directory
+	@param path directory relative to the shared directory; empty for the top
+	~#
+	function : ListDir(path : String := "") ~ String { return path; }
+
+	#~
+	@tool look
+	~#
+	function : Look() ~ String { return Nil; }
+
+	#~
+	@tool set_color
+	~#
+	function : SetColor(color : String) ~ String { return color; }
+
+	#~
+	@tool move
+	~#
+	function : Move(x : Int, y : Int) ~ String { return Nil; }
+
+	#~
+	@tool plot
+	~#
+	function : Plot(x : Int := 0, y : Int := 0) ~ String { return Nil; }
+
+	#~
+	@tool line
+	~#
+	function : Line(x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ String { return Nil; }
+
+	#~
+	@tool fill_rect
+	~#
+	function : FillRect(x : Int, y : Int, w : Int, h : Int) ~ String { return Nil; }
+
+	#~
+	@tool circle
+	~#
+	function : Circle(x : Int, y : Int, r : Int, filled : Bool := true) ~ String { return Nil; }
+
+	#~
+	@tool stamp
+	~#
+	function : Stamp(name : String, x : Int, y : Int) ~ String { return Nil; }
+}
+
+class McpToolTagsTest {
+	@pass : static : Int;
+	@fail : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Json(text : String) ~ JsonElement {
+		return JsonParser->TextToElement(text);
+	}
+
+	function : Find(tools : Vector<McpTool>, name : String) ~ McpTool {
+		each(tool in tools) {
+			if(tool->GetName()->Equals(name)) {
+				return tool;
+			};
+		};
+		return Nil;
+	}
+
+	function : Schema(tools : Vector<McpTool>, name : String, expected : String, what : String) ~ Nil {
+		tool := Find(tools, name);
+		Check(tool <> Nil & McpToolSpec->Same(tool->GetInputSchema(), Json(expected)), what);
+	}
+
+	function : Call(client : McpClient, name : String, args : String) ~ McpToolResult {
+		return client->CallTool(name, Json(args));
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		server := McpService->New("tags", "1.0");
+		Tools->McpTools(server);
+		client := McpClient->InProcess(server);
+		Check(client->Initialize("tags-test", "1.0"), "the client initializes");
+		tools := client->ListTools();
+		Check(tools->Size() = 19, "19 tools from Tools");
+
+		# the oracle's tools share names with some of the above (add, calculate, list_directory): their own server
+		oracle_server := McpService->New("oracle", "1.0");
+		Oracle->McpTools(oracle_server);
+		oracle_client := McpClient->InProcess(oracle_server);
+		oracle_client->Initialize("tags-test", "1.0");
+		oracle := oracle_client->ListTools();
+		Check(oracle->Size() = 15, "15 tools from Oracle");
+
+		# ---- the oracle ----
+		Schema(oracle, "add", "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}", "oracle: add (core test and stdio fixture)");
+		Schema(oracle, "fails", "{\"type\":\"object\",\"properties\":{}}", "oracle: a tool with no parameters");
+		Schema(oracle, "echo", "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}", "oracle: echo");
+		Schema(oracle, "repeat", "{\"type\":\"object\",\"properties\":{\"count\":{\"type\":\"integer\"}},\"required\":[\"count\"]}", "oracle: repeat");
+		Schema(oracle, "calculate", "{\"type\":\"object\",\"properties\":{\"expression\":{\"type\":\"string\",\"description\":\"the expression\"}},\"required\":[\"expression\"]}", "oracle: calculate (server demo)");
+		Schema(oracle, "read_file", "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"file path relative to the shared directory\"}},\"required\":[\"path\"]}", "oracle: read_file");
+		Schema(oracle, "list_directory", "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"directory relative to the shared directory; empty for the top\"}}}", "oracle: list_directory, an optional parameter has no required list");
+		Schema(oracle, "look", "{\"type\":\"object\",\"properties\":{}}", "oracle: canvas look");
+		Schema(oracle, "set_color", "{\"type\":\"object\",\"properties\":{\"color\":{\"type\":\"string\"}},\"required\":[\"color\"]}", "oracle: canvas set_color");
+		Schema(oracle, "move", "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\"]}", "oracle: canvas move");
+		Schema(oracle, "plot", "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}", "oracle: canvas plot");
+		Schema(oracle, "line", "{\"type\":\"object\",\"properties\":{\"x1\":{\"type\":\"integer\"},\"y1\":{\"type\":\"integer\"},\"x2\":{\"type\":\"integer\"},\"y2\":{\"type\":\"integer\"}},\"required\":[\"x1\",\"y1\",\"x2\",\"y2\"]}", "oracle: canvas line");
+		Schema(oracle, "fill_rect", "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"},\"w\":{\"type\":\"integer\"},\"h\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\",\"w\",\"h\"]}", "oracle: canvas fill_rect");
+		Schema(oracle, "circle", "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"},\"r\":{\"type\":\"integer\"},\"filled\":{\"type\":\"boolean\"}},\"required\":[\"x\",\"y\",\"r\"]}", "oracle: canvas circle");
+		Schema(oracle, "stamp", "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"name\",\"x\",\"y\"]}", "oracle: canvas stamp");
+
+		# ---- the mapping table ----
+		Schema(tools, "scale", "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"number\"},\"factor\":{\"type\":\"number\"},\"flag\":{\"type\":\"boolean\"},\"count\":{\"type\":\"integer\"}},\"required\":[\"value\"]}", "Float, Bool and Int, with defaults, are optional");
+		Schema(tools, "letter", "{\"type\":\"object\",\"properties\":{\"c\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1},\"b\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":255}},\"required\":[\"c\",\"b\"]}", "Char and Byte");
+		Schema(tools, "total", "{\"type\":\"object\",\"properties\":{\"values\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}},\"required\":[\"values\"]}", "Int[]");
+		Schema(tools, "join", "{\"type\":\"object\",\"properties\":{\"words\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"words\"]}", "Vector<String>");
+		Schema(tools, "weights", "{\"type\":\"object\",\"properties\":{\"w\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"integer\"}}},\"required\":[\"w\"]}", "Map<String, IntRef>");
+		Schema(tools, "describe", "{\"type\":\"object\",\"properties\":{\"u\":{\"type\":\"string\",\"enum\":[\"METRIC\",\"IMPERIAL\",\"KELVIN\"]},\"p\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\"]},\"extra\":{}},\"required\":[\"u\",\"p\",\"extra\"]}", "an enum, a record and a JsonElement");
+		Schema(tools, "perimeter", "{\"type\":\"object\",\"properties\":{\"shape\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"origin\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\"]},\"units\":{\"type\":\"string\",\"enum\":[\"METRIC\",\"IMPERIAL\",\"KELVIN\"]},\"sides\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}},\"required\":[\"name\",\"origin\",\"units\",\"sides\"]}},\"required\":[\"shape\"]}", "a record with a record, an enum and an array in it");
+		Schema(tools, "points", "{\"type\":\"object\",\"properties\":{\"points\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}},\"required\":[\"x\",\"y\"]}}},\"required\":[\"points\"]}", "Point[]");
+		Schema(tools, "slow", "{\"type\":\"object\",\"properties\":{\"steps\":{\"type\":\"integer\"}},\"required\":[\"steps\"]}", "a McpCall parameter is not in the schema");
+		Check(Find(tools, "half") <> Nil & Find(tools, "is_big") <> Nil & Find(tools, "remove_file") <> Nil, "names are snake_case");
+		Check(Find(tools, "not_a_tool") = Nil, "a comment that only mentions the word is not a tool");
+
+		# ---- description, title and hints ----
+		add := Find(tools, "add");
+		Check(add->GetDescription()->Equals("Add two integers."), "the description is the comment's text before the tags");
+		Check(add->GetReadOnlyHint() & add->GetIdempotentHint() & <>add->HasDestructiveHint() & <>add->HasOpenWorldHint(), "@readonly and @idempotent");
+		calc := Find(tools, "calculate");
+		Check(calc->GetDescription()->Equals("Evaluate an arithmetic expression. It spans two lines.") & calc->GetTitle()->Equals("Calculator"), "a description of two lines is one line; @title");
+		remove := Find(tools, "remove_file");
+		Check(remove->GetDestructiveHint() & remove->GetIdempotentHint() & remove->GetOpenWorldHint() & <>remove->GetReadOnlyHint(), "@destructive, @idempotent, @openworld");
+		Check(add->GetInputSchema()->Get("properties")->Get("a")->Get("description")->GetString()->Equals("the first number"), "@param text is the parameter's description");
+
+		# ---- calls ----
+		Check(Call(client, "add", "{\"a\":17,\"b\":25}")->GetText()->Equals("42"), "Add(17, 25) is 42, an Int result as text");
+		Check(Call(client, "calculate", "{\"expression\":\"1+2\"}")->GetText()->Equals("calc:1+2"), "a String result, a name given with @tool");
+		Check(Call(client, "list_directory", "{}")->GetText()->Equals("dir:"), "an absent optional String takes its default");
+		Check(Call(client, "list_directory", "{\"path\":\"src\"}")->GetText()->Equals("dir:src"), "a given optional String");
+		Check(Call(client, "scale", "{\"value\":4.0}")->GetText()->Equals("10.000000 false -3"), "absent Float, Bool and a negative Int take their defaults");
+		Check(Call(client, "scale", "{\"value\":4.0,\"factor\":0.5,\"flag\":true,\"count\":9}")->GetText()->Equals("2.000000 true 9"), "given Float, Bool and Int");
+		Check(Call(client, "letter", "{\"c\":\"q\",\"b\":200}")->GetText()->Equals("q"), "Char and Byte");
+		Check(Call(client, "total", "{\"values\":[1,2,3,4]}")->GetText()->Equals("10"), "Int[]");
+		Check(Call(client, "total", "{\"values\":[]}")->GetText()->Equals("0"), "an empty Int[]");
+		Check(Call(client, "join", "{\"words\":[\"a\",\"b\"]}")->GetText()->Equals("a+b+"), "Vector<String>");
+		Check(Call(client, "weights", "{\"w\":{\"x\":3,\"y\":4}}")->GetText()->Equals("7"), "Map<String, IntRef>");
+		Check(Call(client, "describe", "{\"u\":\"IMPERIAL\",\"p\":{\"x\":5,\"y\":6},\"extra\":{\"k\":1}}")->GetText()->Equals("1 (5,6) true"), "an enum by name, a record, JSON");
+		Check(Call(client, "describe", "{\"u\":\"KELVIN\",\"p\":{\"x\":1,\"y\":2},\"extra\":null}")->GetText()->StartsWith("2 (1,2)"), "the third item of an enum");
+		Check(Call(client, "perimeter", "{\"shape\":{\"name\":\"tri\",\"origin\":{\"x\":10,\"y\":0},\"units\":\"METRIC\",\"sides\":[3,4,5]}}")->GetText()->Equals("22"), "a record of a record, an enum and an array");
+		Check(Call(client, "points", "{\"points\":[{\"x\":1,\"y\":2},{\"x\":3,\"y\":4}]}")->GetText()->Equals("2"), "Point[]");
+		missing := Call(client, "points", "{\"points\":[{\"x\":1}]}");
+		Check(missing->IsError() & missing->GetText()->Has("missing field 'y' of Point"), "a record missing a field is an error that names it");
+		Check(Call(client, "remove_file", "{\"path\":\"a.txt\"}")->GetText()->Equals("done") & Tools->Removed()->Equals("a.txt"), "a function that returns nothing");
+		structured := Call(client, "lookup", "{\"city\":\"Denver\"}")->GetStructured();
+		Check(structured <> Nil & structured->Get("population")->GetInt() = 715522, "a JsonElement result is the structured result");
+		slow := Call(client, "slow", "{\"steps\":3}");
+		Check(slow->GetText()->Equals("steps:3 cancelled:false"), "a McpCall parameter reaches the function");
+		raw := Call(client, "raw", "{\"name\":\"x\"}");
+		Check(raw->IsError() & raw->GetText()->Equals("raw error for x"), "a McpToolResult is sent as it is");
+		Check(Call(client, "half", "{\"x\":5.0}")->GetText()->StartsWith("2.5"), "a Float result");
+		Check(Call(client, "is_big", "{\"n\":500}")->GetText()->Equals("true"), "a Bool result");
+		nothing := Call(client, "nothing", "{}");
+		Check(nothing->IsError() & nothing->GetText()->Has("returned no result"), "a Nil String result is an error result");
+		boom := Call(client, "explode", "{}");
+		Check(boom->IsError(), "a function that raises is an error result");
+
+		# ---- the checks the server makes from the derived schema ----
+		bad := Call(client, "add", "{\"a\":1}");
+		Check(bad->IsError() & bad->GetText()->Has("missing required argument 'b'"), "a missing required argument");
+		bad := Call(client, "add", "{\"a\":\"x\",\"b\":1}");
+		Check(bad->IsError() & bad->GetText()->Has("must be of type integer"), "a wrong type");
+		bad := Call(client, "describe", "{\"u\":\"RAIN\",\"p\":{\"x\":1,\"y\":2},\"extra\":1}");
+		Check(bad->IsError() & bad->GetText()->Has("must be one of: METRIC, IMPERIAL, KELVIN"), "a value outside an enum names the values");
+		bad := Call(client, "total", "{\"values\":[1,\"two\"]}");
+		Check(bad->IsError() & bad->GetText()->Has("item 1"), "an array item of the wrong type");
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP tool tags, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP tool tags, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

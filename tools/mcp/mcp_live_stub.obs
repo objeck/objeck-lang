@@ -1,0 +1,426 @@
+#~
+LIVE test of the typed stub behind a real model (manual; needs an API key; not part of CI).
+
+A shop server (three functions marked @tool) runs in this process. The model is given the tool
+definitions by McpToolBridge (ToAnthropicJson / ToOpenAiJson), and every tool call it makes is executed through
+ShopClient, the typed client that mcp_stubs generated from the server: the model's JSON arguments are read into
+typed values and the call is an ordinary method call, price(String), restock(String, Int, Bool),
+searchJson(String[]). The server counts each call (McpService->EnableStats), and the run reports calls, turns,
+tokens and time.
+
+  obc -src mcp_live_stub.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,anthropic,openai -dest mcp_live_stub.obe
+  obr mcp_live_stub.obe claude [model]     claude-sonnet-5-5 through API.Anthropic.Chat
+  obr mcp_live_stub.obe openai [model]     gpt-5.4-mini through Completion->CompleteWithTools
+
+The key is read by the library itself (ANTHROPIC_API_KEY / OPENAI_API_KEY, or anthropic_api_key.dat /
+openai_api_key.dat in the working directory); this program never reads or prints it. OpenAI's Completion
+exposes no token counts, so only Claude's are reported.
+~#
+use API.MCP, API.Anthropic, Data.JSON, Collection;
+
+# the server: three plain functions, each marked @tool (see mcp_declare_40)
+class Shop {
+	#~
+	The price of an item.
+	@tool
+	@readonly
+	@param item the item name
+	~#
+	function : Price(item : String) ~ String {
+		if(item->Equals("tea")) {
+			return "4.50";
+		};
+		Runtime->Raise(Error->New("no such item: {$item}"));
+		return Nil;
+	}
+
+	#~
+	Order more of an item.
+	@tool
+	@param item the item name
+	@param count how many
+	@param rush rush delivery
+	~#
+	function : Restock(item : String, count : Int, rush : Bool := false) ~ String {
+		speed := "standard";
+		if(rush) {
+			speed := "rush";
+		};
+		return "{$count} x {$item}, {$speed} delivery";
+	}
+
+	#~
+	Search the catalogue.
+	@tool
+	@readonly
+	@param terms words to look for
+	@param max_results most results to return
+	~#
+	function : Search(terms : String[], max_results : Int := 10) ~ JsonElement {
+		found := terms->Size();
+		if(found > max_results) {
+			found := max_results;
+		};
+		hit := JsonElement->New(JsonElement->JsonType->OBJECT);
+		hit->Insert("matches", found);
+		hit->Insert("exact", true);
+		return hit;
+	}
+
+	function : Build() ~ McpService {
+		server := McpService->New("shop", "1.0.0");
+		Shop->McpTools(server);
+		return server;
+	}
+}
+
+class LiveStub {
+	@calls : static : Int;
+	@turns : static : Int;
+	@in_tokens : static : Int;
+	@out_tokens : static : Int;
+
+	function : Prompt() ~ String {
+		return "Use the tools. What does tea cost? Then order 12 tea with rush delivery. Then search the catalogue for the words green and tea, at most 5 results, and tell me how many matches there were. Answer in one short paragraph.";
+	}
+
+	# a model's tool call, run through the typed client: the arguments are read into typed values first
+	function : Dispatch(shop : ShopClient, name : String, input : JsonElement) ~ String {
+		@calls += 1;
+		text : String;
+		if(name->Equals("price")) {
+			text := shop->Price(input->Get("item")->GetString());
+		}
+		else if(name->Equals("restock")) {
+			item := input->Get("item")->GetString();
+			count := input->Get("count")->GetInt();
+			if(input->Has("rush")) {
+				rush := input->Get("rush")->GetType() = JsonElement->JsonType->TRUE;
+				text := shop->Restock(item, count, rush);
+			}
+			else {
+				text := shop->Restock(item, count);
+			};
+		}
+		else if(name->Equals("search")) {
+			list := input->Get("terms");
+			terms := String->New[list->Size()];
+			for(i := 0; i < list->Size(); i += 1;) {
+				terms[i] := list->Get(i)->GetString();
+			};
+			hits := shop->SearchJson(terms);
+			if(hits <> Nil) {
+				text := hits->ToString();
+			};
+		}
+		else {
+			return "error: no such tool {$name}";
+		};
+
+		args := input->ToString();
+		if(text = Nil) {
+			reason := shop->GetError();
+			text := "error: {$reason}";
+		};
+		"    call {$@calls}: {$name}({$args}) -> {$text}"->PrintLine();
+		return text;
+	}
+
+	function : RunClaude(shop : ShopClient, bridge : McpToolBridge, model : String) ~ String {
+		if(API.Anthropic.EndPoint->GetApiKey() = Nil) {
+			return "no Anthropic key available";
+		};
+
+		tools := Vector->New()<Tool>;
+		each(t in bridge->GetTools()) {
+			tools->AddBack(Tool->New(t->GetName(), t->GetDescription(), t->GetInputSchema()));
+		};
+
+		chat := API.Anthropic.Chat->New(model, Nil);
+		chat->SetMaxTokens(1500);
+		msg := Prompt();
+		answer : String;
+		done := false;
+		while(<>done & @turns < 8) {
+			reply := chat->SendReply(msg, tools);
+			msg := Nil;
+			@turns += 1;
+			if(reply = Nil) {
+				failure := API.Anthropic.EndPoint->GetLastError();
+				return "request failed: {$failure}";
+			};
+			@in_tokens += reply->GetInputTokens();
+			@out_tokens += reply->GetOutputTokens();
+			if(reply->HasToolUses()) {
+				each(u in reply->GetToolUses()) {
+					out := Dispatch(shop, u->GetName(), u->GetInput());
+					chat->AddToolResult(u->GetId(), out, out->StartsWith("error:"));
+				};
+			}
+			else {
+				done := true;
+				answer := reply->GetText();
+			};
+		};
+		return answer;
+	}
+
+	function : RunOpenAi(shop : ShopClient, bridge : McpToolBridge, model : String) ~ String {
+		key := API.OpenAI.EndPoint->GetApiKey();
+		if(key = Nil) {
+			return "no OpenAI key available";
+		};
+
+		msgs := JsonElement->New(JsonElement->JsonType->ARRAY);
+		usr := JsonElement->New(JsonElement->JsonType->OBJECT);
+		usr->Insert("role", "user");
+		usr->Insert("content", Prompt());
+		msgs->Add(usr);
+		tools := bridge->ToOpenAiJson();
+
+		answer : String;
+		done := false;
+		while(<>done & @turns < 8) {
+			comp := API.OpenAI.Chat.Completion->CompleteWithTools(model, msgs, tools, 1500, key);
+			@turns += 1;
+			if(comp = Nil) {
+				failure := API.OpenAI.EndPoint->GetLastError();
+				return "request failed: {$failure}";
+			};
+			choice := comp->GetChoices()->Get(0);
+			msgs->Add(choice->GetMessageJson());
+			calls := choice->GetToolCalls();
+			if(calls->Size() > 0) {
+				each(c in calls) {
+					out := Dispatch(shop, c->GetName(), c->GetArgumentsJson());
+					msgs->Add(API.OpenAI.Chat.Completion->ToolResultMessage(c->GetId(), out));
+				};
+			}
+			else {
+				done := true;
+				answer := choice->GetMessage()->GetSecond();
+			};
+		};
+		return answer;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		provider := "claude";
+		model := "claude-sonnet-5-5";
+		if(args->Size() > 0) {
+			provider := args[0];
+			if(provider->Equals("openai")) {
+				model := "gpt-5.4-mini";
+			};
+		};
+		if(args->Size() > 1) {
+			model := args[1];
+		};
+
+		server := Shop->Build();
+		server->EnableStats(true);
+		client := McpClient->InProcess(server);
+		client->Initialize("live-stub", "1.0");
+		bridge := McpToolBridge->New(client);
+		shop := ShopClient->New(client);
+
+		tool_count := bridge->GetTools()->Size();
+		"provider {$provider}, model {$model}, {$tool_count} tools"->PrintLine();
+		timer := System.Time.Timer->New(true);
+		answer : String;
+		if(provider->Equals("openai")) {
+			answer := RunOpenAi(shop, bridge, model);
+		}
+		else {
+			answer := RunClaude(shop, bridge, model);
+		};
+		secs := timer->GetElapsedTime();
+
+		"answer: {$answer}"->PrintLine();
+		"calls={$@calls} turns={$@turns} input_tokens={$@in_tokens} output_tokens={$@out_tokens} seconds={$secs}"->PrintLine();
+		counters := server->GetStats()->ToString();
+		"server counters: {$counters}"->PrintLine();
+		client->Close();
+	}
+}
+
+# ---- generated by mcp_stubs: change the server and generate again, not this class ----
+
+#~
+Typed client of the MCP server 'shop'. Every method calls one tool and returns the text of its result,
+or Nil with the reason in GetError().
+~#
+class ShopClient {
+	@client : McpClient;
+	@error : String;
+
+	#~
+	Constructor
+	@param client a client that has been initialized
+	~#
+	New(client : McpClient) {
+		@client := client;
+	}
+
+	#~
+	Why the last call returned Nil
+	@return the reason, Nil after a call that worked
+	~#
+	method : public : GetError() ~ String {
+		return @error;
+	}
+
+	method : CallText(tool : String, mcp_args : JsonElement) ~ String {
+		@error := Nil;
+		result := @client->CallTool(tool, mcp_args);
+		if(result = Nil) {
+			@error := @client->GetError();
+			return Nil;
+		};
+
+		if(result->IsError()) {
+			@error := result->GetText();
+			return Nil;
+		};
+
+		return result->GetText();
+	}
+
+	method : CallJson(tool : String, mcp_args : JsonElement) ~ JsonElement {
+		@error := Nil;
+		result := @client->CallTool(tool, mcp_args);
+		if(result = Nil) {
+			@error := @client->GetError();
+			return Nil;
+		};
+
+		if(result->IsError()) {
+			@error := result->GetText();
+			return Nil;
+		};
+
+		return result->GetStructured();
+	}
+
+	#~
+	The price of an item.
+	Read-only: the tool does not change anything.
+	@param item the item name
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Price(item : String) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(item <> Nil) {
+			mcp_args->Insert("item", item);
+		};
+		return CallText("price", mcp_args);
+	}
+
+	#~
+	Order more of an item.
+	@param item the item name
+	@param count how many
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Restock(item : String, count : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(item <> Nil) {
+			mcp_args->Insert("item", item);
+		};
+		mcp_args->Insert("count", count);
+		return CallText("restock", mcp_args);
+	}
+
+	#~
+	Order more of an item.
+	@param item the item name
+	@param count how many
+	@param rush rush delivery (optional)
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Restock(item : String, count : Int, rush : Bool) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(item <> Nil) {
+			mcp_args->Insert("item", item);
+		};
+		mcp_args->Insert("count", count);
+		mcp_args->Insert("rush", rush);
+		return CallText("restock", mcp_args);
+	}
+
+	#~
+	Search the catalogue.
+	Read-only: the tool does not change anything.
+	@param terms words to look for
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Search(terms : String[]) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(terms <> Nil) {
+			mcp_list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			for(mcp_i := 0; mcp_i < terms->Size(); mcp_i += 1;) {
+				mcp_list->Add(terms[mcp_i]);
+			};
+			mcp_args->Insert("terms", mcp_list);
+		};
+		return CallText("search", mcp_args);
+	}
+
+	#~
+	Search the catalogue.
+	Read-only: the tool does not change anything.
+	@param terms words to look for
+	@return the structured result, Nil on failure (see GetError)
+	~#
+	method : public : SearchJson(terms : String[]) ~ JsonElement {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(terms <> Nil) {
+			mcp_list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			for(mcp_i := 0; mcp_i < terms->Size(); mcp_i += 1;) {
+				mcp_list->Add(terms[mcp_i]);
+			};
+			mcp_args->Insert("terms", mcp_list);
+		};
+		return CallJson("search", mcp_args);
+	}
+
+	#~
+	Search the catalogue.
+	Read-only: the tool does not change anything.
+	@param terms words to look for
+	@param max_results most results to return (optional)
+	@return the text of the result, Nil on failure (see GetError)
+	~#
+	method : public : Search(terms : String[], max_results : Int) ~ String {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(terms <> Nil) {
+			mcp_list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			for(mcp_i := 0; mcp_i < terms->Size(); mcp_i += 1;) {
+				mcp_list->Add(terms[mcp_i]);
+			};
+			mcp_args->Insert("terms", mcp_list);
+		};
+		mcp_args->Insert("max_results", max_results);
+		return CallText("search", mcp_args);
+	}
+
+	#~
+	Search the catalogue.
+	Read-only: the tool does not change anything.
+	@param terms words to look for
+	@param max_results most results to return (optional)
+	@return the structured result, Nil on failure (see GetError)
+	~#
+	method : public : SearchJson(terms : String[], max_results : Int) ~ JsonElement {
+		mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+		if(terms <> Nil) {
+			mcp_list := JsonElement->New(JsonElement->JsonType->ARRAY);
+			for(mcp_i := 0; mcp_i < terms->Size(); mcp_i += 1;) {
+				mcp_list->Add(terms[mcp_i]);
+			};
+			mcp_args->Insert("terms", mcp_list);
+		};
+		mcp_args->Insert("max_results", max_results);
+		return CallJson("search", mcp_args);
+	}
+}

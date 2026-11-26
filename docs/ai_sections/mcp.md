@@ -311,6 +311,162 @@ A function from `GetFunctions()` returns `{"result": text}`, or `{"error": text}
 
 On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected to the demo server over HTTP, passed the bridge's tools to the model, the model called `calculate` with `17 + 25`, `bridge->Run` returned `42`, and the model answered `42` in two turns. Claude: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-fable-5-2` through `Chat->SendReply` (the same 1,404 input and 55 output tokens each time); the MCP `inputSchema` went into `Tool->New` unchanged. OpenAI: `gpt-4.1-mini`, `gpt-5.4-mini` and `gpt-5.5` through `Completion->CompleteWithTools`, `Choice->GetToolCalls`, `Choice->GetMessageJson` and `Completion->ToolResultMessage`. Two OpenAI models could not take part: `gpt-5.3-codex` is served only by the Responses API, and `gpt-5.6-sol` rejects function tools on Chat Completions unless `reasoning_effort` is `none`; this library has no Responses API client. The Gemini hand-off was not run live. The repository's tests never call the live APIs; these runs were manual.
 
+### A function is a tool: `@tool`
+
+Put a line that starts with `@tool` in a function's doc comment and the compiler writes the tool for you: the name, the description, the JSON Schema, the hints and the code that reads the arguments. The class gets a static function `McpTools(service)` that registers all of its tools.
+
+```ruby
+use API.MCP;
+
+enum Units { METRIC, IMPERIAL }
+
+class Weather {
+  #~
+  Forecast for a city.
+  @tool
+  @readonly
+  @param city the city
+  @param units units of the temperature
+  @param days how many days, 1 to 7
+  ~#
+  function : Forecast(city : String, units : Units, days : Int := 3) ~ String { ... }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("weather", "1.0");
+    Weather->McpTools(server);
+    server->ServeStdio();
+  }
+}
+```
+
+(`days` is optional because it has a default; `units` is an enum, so the model must give one of `METRIC`, `IMPERIAL`.) Compile with `-lib ...,mcp`; the file must `use API.MCP`.
+
+* **The tag.** A `#~ ... ~#` comment with a line that starts with `@tool` (after blanks), directly before a `function`, makes it a tool. `@tool name` sets the tool's name; without one it is the function's name in snake_case (`ReadFile` is `read_file`). A comment that mentions `@tool` mid-line, or `@tools`, or `@tool_name`, is documentation. Only the last comment before the function counts. The same text in a string, in a `//`, `#` or `/* */` comment is nothing.
+* **Description.** The comment's text before its first `@` line, on one line. `@title text` sets a title. `@param name text` describes a parameter (a name the function lacks is an error).
+* **Hints.** `@readonly`, `@destructive`, `@idempotent`, `@openworld` set the MCP annotations; `@readonly` with `@destructive` is an error.
+* **Parameters.** `Int`, `Float`, `Bool`, `Byte`, `Char`, `String`, `JsonElement`, an enum (a string of its item names), a record (an object with its fields, which may themselves be records, enums, arrays), a one-dimensional array, `Vector<T>` or `Map<String,T>` of those. A parameter with a default is optional; the default must be a number, `Bool`, `Char`, `String` or `Nil` literal. A parameter of type `McpCall` is not part of the schema: it gives the function the call (`IsCancelled()`, `ReportProgress`).
+* **Result.** `String`, `Int`, `Float`, `Bool`, nothing, `JsonElement` (the structured result, declared as an object) or `McpToolResult` (sent as it is). A raised error, or a `Nil` String, is an error result the model can read.
+* **Diagnostics.** A parameter or return type that cannot be sent (a function type, a class that is not a record, an array of two dimensions, a `ref` parameter), a default that is not a literal, a tag before a method, constructor, class, enum or variable, `@param` of nothing, two tools with one name, and a file that does not `use API.MCP` are compile errors that name the tool and point at the function.
+* **Limits.** Enums and records must be declared in the sources being compiled, before the class that uses them (the compiler does not read them from a library). An enum cannot be an optional parameter (its default would not be a literal) or an array element. `obr --mcp prog.obe` serves the program's tools, resources and prompts with no further code (see below).
+
+### A function is a resource or a prompt: `@resource`, `@prompt`
+
+The same doc comment makes the other two MCP server primitives. `@resource <uri>` makes a function a resource (read-only data the client or model can fetch by URI); `@prompt [name]` makes it a prompt template (a named, parameterised message the user picks). `McpTools(service)` registers all three kinds, so one registration function serves tools, resources and prompts.
+
+```
+use API.MCP;
+
+class Docs {
+  #~
+  The project readme.
+  @resource notes://readme
+  @mime text/markdown
+  ~#
+  function : Readme() ~ String { return "# Readme"; }
+
+  #~
+  The forecast for a city.
+  @resource weather://{city}/forecast/{days}
+  ~#
+  function : Forecast(city : String, days : Int) ~ String { return "{$days} days in {$city}"; }
+
+  #~
+  Review some code.
+  @prompt
+  @param language the language of the code
+  @param focus what to look for
+  ~#
+  function : CodeReview(language : String, focus : String := "bugs") ~ String {
+    return "Review the {$language} code for {$focus}.";
+  }
+}
+```
+
+* **Resources.** The URI (a fixed one, or a template with `{name}` variables) comes after `@resource`; a fixed URI is listed by `resources/list`, a template by `resources/templates/list`. Every variable is a parameter of the same name (`String`, `Int`, `Float`, `Bool` or `Char`, read from the URI text; `McpUriTemplate->Match` does the matching) and every parameter is a variable; a default is an error. `@mime type` sets the media type (`text/plain` by default). A `String` result is the text of the resource, a `McpContents` is sent as it is (use it for a blob or a different URI); a `Nil` result, or a URI that does not fit the template, reads nothing. The name is the function's name in snake_case. Values are not percent-decoded.
+* **Prompts.** The arguments of a prompt are text on the wire, so a parameter is a `String`, `Int`, `Float`, `Bool` or `Char` (converted from the text), and a parameter with a default is optional; `@param` documents it. A `String` result is one user message, a `McpPromptResult` (several messages, roles) is sent as it is; a `McpCall` parameter is not an argument. `@prompt name` names it, otherwise snake_case.
+* **Diagnostics.** A function is exactly one of `@tool`, `@resource`, `@prompt`; the hints (`@readonly`...) belong to tools and `@mime` to resources; a URI variable with no parameter, a parameter that is not a variable, an unsupported parameter or return type, and two resources with one URI are compile errors with the function's position.
+
+### Serving a program: `obr --mcp`, `obr --mcp-http`
+
+```
+obr --mcp tools.obe                       # standard input and output: Claude Desktop, Claude Code, `mcp_stubs --cmd`
+obr --mcp-http=8080 tools.obe             # streamable HTTP on 127.0.0.1:8080
+obr --mcp-http=0 --mcp-http-host=0.0.0.0 tools.obe     # any free port on every interface; the port goes to standard error
+```
+
+The flags come before the program, like every VM option. The VM does not run `Main`: it starts the program at `McpMain(args : String[])`, which the compiler writes into a class with a tagged function (`McpService->New(<class>, "1.0")`, `Class->McpTools(server)`, `McpServe->Run(server, args)`), after adding the transport (`stdio`, or `http`, the address and the port) to the front of the program's arguments. A program that wants one server for several classes writes its own `McpMain` (it wins over the generated one) that calls each `McpTools` and then `McpServe->Run(server, args)`; two classes with a generated `McpMain` and none of the program's own is an error that says so, and so is a program with nothing to serve.
+
+* **Standard output is the protocol** under `--mcp`: a tool that prints there corrupts it. Log with `ErrorLine` (standard error); the HTTP port announcement goes there too.
+* **End.** stdio ends when standard input ends (exit 0, after the running calls); HTTP stops when the process is terminated.
+* **Progress and cancellation** are the `McpCall` of the tool: `call->ReportProgress(done, total)` becomes `notifications/progress`, and a client's `notifications/cancelled` sets `call->IsCancelled()`.
+* **Nothing changes without the flags**: the loader reads one environment variable the flags set, and a run without them takes no other path (no JIT, GC or interpreter change; `run_vm_flag_tests.py` and the regression suites pass unchanged).
+
+### Declaring a tool from its types (the library form)
+
+`@tool` (above) is the way to write a tool. `McpToolSpec` is the same thing as a library: it needs no compiler support, and it is what the compiler's output is checked against. A function's name and parameter types already say what its JSON Schema says; `McpToolSpec` writes them once, as text, and derives the schema:
+
+```ruby
+McpToolSpec->New("forecast", "Forecast for a city.")
+  ->Add("city", "String", "the city")                    # required
+  ->AddOptional("days", "Int", "how many days, 1 to 7")  # optional: not in "required"
+  ->AddOptional("units", "enum(metric,imperial)", Nil)   # a string with a list of values
+  ->ReadOnly()                                           # readOnlyHint: the tool changes nothing
+  ->AddTo(server, Func2Ref->New(Weather->Forecast(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+```
+
+| Objeck type | JSON Schema |
+|---|---|
+| `Int` / `Float` / `Bool` / `String` | `integer` / `number` / `boolean` / `string` |
+| `Char` | a string of exactly one character |
+| `Byte` | an integer 0 to 255 (the server does not check the bounds) |
+| `T[]`, `T[,]`, `Vector<T>` | an array of `T`, nested once per dimension (a collection of numbers holds `IntRef` or `FloatRef`; both spellings are read) |
+| `Map<String,T>` | an object whose values are `T` |
+| `enum(a,b,c)` | a string, one of `a`, `b`, `c` (checked on every call) |
+| `Json`, `JsonElement` | any value |
+| any other class or record | a bare `{"type":"object"}`; `McpToolSpec->Known(type)` is false, because the mapping cannot see the fields |
+
+The derived schema equals, as JSON (`McpToolSpec->Same`), the hand-written schema of every tool in the repository's own servers and examples; `mcp_declare_test` re-declares fifteen of them and fails on the first difference. With `McpToolSpec` the function still reads its arguments with `McpCall`; with `@tool` the compiler writes that code. `AddSchema(name, json, description, required)` adds a parameter whose schema is given as JSON text, which is how the compiler's output states a record or an enum.
+
+* **Effects.** `ReadOnly()`, `Destructive()`, `Idempotent()` and `OpenWorld()` set the MCP `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), which `tools/list` carries and `McpClient->ListTools` reads back as `McpTool->GetReadOnlyHint()` and so on (`HasReadOnlyHint()` tells "false" from "not stated"). A tool with no hints lists exactly as before. `Returns(schema)` declares the shape of a structured result (`outputSchema`).
+* **Checks.** Besides `required` and `type`, a call is checked against a property's `enum` and an array's `items` type; the reason names the allowed values.
+* **Counters.** `server->EnableStats(true)`, then `server->GetStats()`: calls, errors, rejected arguments, cancellations and handler milliseconds per tool. Off by default; while off a call pays one Bool test.
+
+### A typed client: mcp_stubs
+
+`tools/mcp/mcp_stubs.obs` connects to a server, reads `tools/list` and writes an Objeck class with one typed method per tool:
+
+```
+obc -src mcp_stubs.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest mcp_stubs.obe
+obr mcp_stubs.obe --cmd "obr weather_server.obe --stdio" --class WeatherClient --out WeatherClient.obs
+obr mcp_stubs.obe --http http://127.0.0.1:8080/mcp --class WeatherClient
+```
+
+```ruby
+weather := WeatherClient->New(McpClient->Command("obr weather_server.obe --stdio"));
+text := weather->Forecast("Denver");                 # the optional parameters left out
+text := weather->Forecast("Denver", 5, "imperial");  # a wrong type here is a compile error
+if(text = Nil) { weather->GetError()->ErrorLine(); }; # isError, or the server could not be reached
+hits := weather->LookupJson("Denver");               # a tool with an outputSchema: its structuredContent
+```
+
+Build-time drift check: `--save-manifest m.json` keeps the server's `tools/list`; `--manifest m.json` regenerates the same client with no server; `--check WeatherClient.obs` writes nothing and exits 1, naming the methods removed (`-`), added or changed (`+`), when the checked-in client no longer matches. Run it before `obc` so a changed server is a failed build, not a failed call.
+
+`integer` becomes `Int`, `number` `Float`, `boolean` `Bool`, `string` `String` (a string enum lists its values in the doc comment), an array of those `Int[]`, `Float[]`, `Bool[]` or `String[]`, and anything else (an object, a nested array, a schema with no type) `JsonElement`. A JSON object does not keep the order its names were written in, so required parameters come first, in the order of the `required` array, then the optional ones by name. A tool whose name or an argument's name has characters a method cannot carry is skipped with a comment. The output has no timestamp, so it can be checked in and compared; `programs/regression/mcp_stubs/WeatherClient.golden` is that file for the test server.
+
+### Giving functions and servers to an agent
+
+The library `mcp_agent` (`-lib ...,mcp,agent,mcp_agent`) makes `API.Agent` tools without re-describing anything:
+
+```ruby
+registry := ToolRegistry->New();
+registry->Add(McpAgentTools->FromSpec(spec, handler));    # a declared function, run in this process
+McpAgentTools->AddAll(registry, McpClient->Http(url));    # every tool of a server, with its hints
+agent := Agent->New(backend, registry);
+agent->SetApprover(approver)->SetApproveUnlessReadOnly(true);
+```
+
+The agent reads the hints. A tool whose `destructiveHint` is true needs the approver, like one marked `SetDangerous`, and with no approver the call is refused. `SetApproveUnlessReadOnly(true)` asks about every tool not known to be read-only: the safe rule for tools from a server you do not control, because a missing hint says nothing. A tool with no hints behaves as before. The agent's cancellation token (and its deadline) reaches a function run by `FromSpec` as `McpCall->IsCancelled()`, polled every 2 ms, so a handler that checks it stops promptly; one that does not runs to its end. See `programs/deploy/mcp_declare_40.obs`, `mcp_stub_41.obs` and `mcp_agent_42.obs`, and the walkthrough `docs/MCP_WALKTHROUGH.md`.
+
 ### API
 
 | Class | Use |
@@ -321,6 +477,9 @@ On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected
 | `McpToolResult`, `McpContents`, `McpPromptResult` | what a handler returns |
 | `McpClient` | `Initialize`, `Ping`, `ListTools`, `CallTool`, `Cancel`, `ListResources`, `ListResourceTemplates`, `ReadResource`, `ListPrompts`, `GetPrompt`, `Close`, `GetError`, `GetErrorCode` |
 | `McpToolBridge` | `GetTools`, `ToAnthropicJson`, `ToOpenAiJson`, `ToFunctionType`, `GetFunctions`, `Run` |
+| `McpToolSpec` | declare a tool from its types: `Add`, `AddOptional`, `ReadOnly`, `Destructive`, `Idempotent`, `OpenWorld`, `Returns`, `GetSchema`, `ToTool`, `AddTo`; `SchemaFor`, `Known`, `Same` |
+| `McpStubGenerator` | `Generate(server, version, tools, class)`: the source of a typed client (the `mcp_stubs` tool is a command line around it) |
+| `McpAgentTools` (library `mcp_agent`) | `FromSpec`, `FromTool`, `FromClient`, `AddAll`: agent tools from a declared function or a server |
 | `McpTransport`, `McpLoopback`, `McpHttpTransport`, `McpCommandTransport` | how a client reaches a server |
 | `McpSink`, `McpCollector`, `McpStdoutSink`, `McpStdio` | where a server's own messages go, and how standard input is read |
 | `McpProtocol` | `Version()`, `IsSupported(version)` and the error codes |
@@ -328,7 +487,7 @@ On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected
 ### Limits and caveats
 
 * The JSON parser is lenient: it reads a bare word as a string and ignores what follows the first value. The server checks that a message that opens with `{` or `[` ends with the matching closer and that a root string is quoted, which catches the common damage (truncation, trailing text), but a malformed message inside well-placed braces can be accepted.
-* Tool input is validated for `required` names and the `type` of each property only; `enum`, `minimum`, patterns, nested objects and `$ref` are not checked.
+* Tool input is validated for `required` names, the `type` of each property, a property's `enum` and an array's item `type`; `minimum` and `maximum`, patterns, nested objects and `$ref` are not checked.
 * Each `tools/call` takes a thread, with no cap.
 * Standard input is read a byte at a time (a megabyte takes roughly half a second on Linux), which is what makes a line of any length work: the VM's line read keeps 8,192 characters.
 * A server over stdio ends when its input does; there is no `shutdown`, as the specification has none.
@@ -339,3 +498,9 @@ On 2026-11-25 the Claude and OpenAI hand-offs were run live. A program connected
 * `mcp_core_test` (regression suite): every method; version negotiation; the JSON-RPC errors; a tool that fails, raises, returns nothing, or gets bad arguments; resources, templates and prompts; cancellation and progress; a message of a megabyte; the bridge; and the same client over the HTTP transport on `127.0.0.1` port 0, including the session, `Origin`, protocol-version and method checks.
 * `mcp_stdio_test.py` (its own CI step; `python mcp_stdio_test.py <bin_dir>`): a scripted Python client drives a server process over stdio: the handshake, every method, malformed JSON, an unknown method, bad parameters, a failing and a raising tool, blank lines, CRLF and non-ASCII text, progress and a request cancelled in flight (no reply), megabyte messages in both directions and a line over the limit, that standard output holds nothing but JSON, the end of input, and the Objeck client against the same server. It also passes on Windows.
 * Both fail when the code is broken: a server that answers a cancelled request, or uses the wrong code for an unknown method, fails both.
+* `mcp_declare_test` (regression suite): every row of the type mapping table, the oracle (the derived schema equals the hand-written schema of fifteen tools from the repository's servers and examples), the annotations on the wire and at the client, calls with an optional argument, an array and a structured result, the error cases (missing required argument, wrong type, a fraction for an integer, a value outside an enum, a wrong array item, an unknown tool, a failing tool), the counters, and the generator's names and types.
+* `mcp_agent_test` (regression suite): a declared function and a server's tools as agent tools against a scripted model; the approval rules for destructive, read-only and unmarked tools (and that a refused call never runs its handler); failures; the cancel token reaching the handler.
+* `mcp_stubs_test.py` (its own CI step; `python mcp_stubs_test.py <bin_dir>`): compiles a typed server and the generator, generates a stub over stdio, compares it with the golden file, compiles it with a program that calls it, runs that in two modes, checks that a wrong argument type is a compile error, and the command line's errors.
+* `mcp_tool_tags_test` (regression suite): `@tool` functions and nothing else: the schema the compiler derives equals the hand-written schema of 15 tools from the repository's servers and examples, every row of the type mapping table, descriptions, names, hints, `@param` text, calls with defaults, every return type, a `McpCall` parameter, and the checks the server makes from the derived schema.
+* `mcp_tool_tags_diag_test.py` (its own CI step): each compile error of the tag (with its line), what must be left alone (the tag in a string or another comment, mid-line, `@tools`, `@tool_name`), CRLF, a megabyte of comment, non-ASCII text.
+* Not covered by tests: a live model through the typed stub (run by hand: `tools/mcp/mcp_live_stub.obs`).

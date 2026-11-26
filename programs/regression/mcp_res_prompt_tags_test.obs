@@ -1,0 +1,198 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+Functions marked with a resource line or a prompt line in their doc comment become MCP resources and prompts, the same
+way a tool line makes tools (docs/design/MCP_FIRST_CLASS.md, Stage 2b). The compiler reads the URI template's variables
+into the function's typed parameters, and a prompt's arguments (text on the wire) into String, Int, Float, Bool and Char
+parameters; a default makes a prompt argument optional. This test drives them through an in-process client:
+
+- a fixed resource, a template with String and Int variables, a template with Float, Bool and Char variables,
+  a resource that returns a McpContents, the mime type and the description from the comment;
+- resources/list shows the fixed resources, resources/templates/list the templates; a read of a URI that
+  does not fit the template returns nothing;
+- prompts: required and optional arguments with their descriptions, the default of an absent argument, an Int
+  argument converted from text, a String result (one user message), a McpPromptResult, a McpCall parameter;
+- the library function the compiler writes calls to, McpUriTemplate->Match.
+~#
+use API.MCP, Data.JSON, Collection;
+
+class Server {
+	#~
+	The project readme.
+	@resource notes://readme
+	@mime text/markdown
+	~#
+	function : Readme() ~ String {
+		return "# Readme";
+	}
+
+	#~
+	The forecast for a city.
+	@resource weather://{city}/forecast/{days}
+	~#
+	function : Forecast(city : String, days : Int) ~ String {
+		return "{$days} days in {$city}";
+	}
+
+	#~
+	A reading.
+	@resource sensor://{id}/{scale}/{on}/{grade}
+	@mime application/json
+	~#
+	function : Sensor(id : Char, scale : Float, on : Bool, grade : String) ~ String {
+		return "{$id} {$scale} {$on} {$grade}";
+	}
+
+	#~
+	Contents built by hand.
+	@resource blob://{name}
+	~#
+	function : Blob(name : String) ~ McpContents {
+		return McpContents->OfText("blob://{$name}", "text/x-custom", "custom {$name}");
+	}
+
+	#~
+	Review some code.
+	@prompt
+	@param language the language of the code
+	@param focus what to look for
+	~#
+	function : CodeReview(language : String, focus : String := "bugs") ~ String {
+		return "Review the {$language} code for {$focus}.";
+	}
+
+	#~
+	Plan a trip.
+	@prompt plan-trip
+	@param days how many days
+	@param budget the budget
+	@param family travelling with children
+	~#
+	function : Trip(days : Int, budget : Float := 100.5, family : Bool := false) ~ McpPromptResult {
+		result := McpPromptResult->New("A trip");
+		result->AddMessage("user", "{$days} days, {$budget}, {$family}");
+		result->AddMessage("assistant", "ok");
+		return result;
+	}
+
+	#~
+	Greets the one who asks.
+	@prompt
+	~#
+	function : Greet(call : McpCall) ~ String {
+		return "hello from {$call->GetName()}";
+	}
+}
+
+class McpResPromptTagsTest {
+	@pass : static : Int;
+	@fail : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : FindResource(items : Vector<McpResource>, uri : String) ~ McpResource {
+		each(item in items) {
+			if(item->GetUri()->Equals(uri)) {
+				return item;
+			};
+		};
+		return Nil;
+	}
+
+	function : FindPrompt(items : Vector<McpPrompt>, name : String) ~ McpPrompt {
+		each(item in items) {
+			if(item->GetName()->Equals(name)) {
+				return item;
+			};
+		};
+		return Nil;
+	}
+
+	function : ReadText(client : McpClient, uri : String) ~ String {
+		contents := client->ReadResource(uri);
+		if(contents = Nil | contents->Size() <> 1) {
+			return Nil;
+		};
+		return contents->Get(0)->GetText();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# the library function
+		v := McpUriTemplate->Match("weather://{city}/forecast/{days}", "weather://Denver/forecast/3");
+		Check(v <> Nil & v->Get("city")->GetString()->Equals("Denver") & v->Get("days")->GetString()->Equals("3"), "Match reads two variables");
+		Check(McpUriTemplate->Match("weather://{city}/forecast/{days}", "weather://Denver/other/3") = Nil, "Match refuses a different literal");
+		Check(McpUriTemplate->Match("weather://{city}/forecast/{days}", "weather://Denver/forecast/") = Nil, "Match refuses an empty variable");
+		Check(McpUriTemplate->Match("notes://readme", "notes://readme") <> Nil, "Match of a fixed URI");
+		Check(McpUriTemplate->Match("notes://readme", "notes://other") = Nil, "Match of a fixed URI that differs");
+		Check(McpUriTemplate->Match("a/{x}", "a/b/c")->Get("x")->GetString()->Equals("b/c"), "a trailing variable takes the rest");
+
+		server := McpService->New("tags", "1.0");
+		Server->McpTools(server);
+		client := McpClient->InProcess(server);
+		Check(client->Initialize("res-test", "1.0"), "the client initializes");
+
+		# ---- resources ----
+		fixed := client->ListResources();
+		Check(fixed <> Nil & fixed->Size() = 1, "one fixed resource");
+		readme := FindResource(fixed, "notes://readme");
+		Check(readme <> Nil & readme->GetName()->Equals("readme") & readme->GetMimeType()->Equals("text/markdown") & readme->GetDescription()->Equals("The project readme."), "fixed resource: name from the function, mime, description");
+		templates := client->ListResourceTemplates();
+		Check(templates <> Nil & templates->Size() = 3, "three templates");
+		forecast := FindResource(templates, "weather://{city}/forecast/{days}");
+		Check(forecast <> Nil & forecast->GetName()->Equals("forecast") & forecast->GetMimeType()->Equals("text/plain"), "template: default mime text/plain");
+
+		Check("# Readme"->Equals(ReadText(client, "notes://readme")), "read the fixed resource");
+		Check("3 days in Denver"->Equals(ReadText(client, "weather://Denver/forecast/3")), "read a template with a String and an Int");
+		Check("x 2.500000 true A"->Equals(ReadText(client, "sensor://x/2.5/true/A")), "read a template with Char, Float, Bool and String");
+		Check("custom abc"->Equals(ReadText(client, "blob://abc")), "a function that returns McpContents");
+		contents := client->ReadResource("blob://abc");
+		Check(contents <> Nil & contents->Size() = 1 & contents->Get(0)->GetMimeType()->Equals("text/x-custom"), "McpContents is passed through unchanged");
+		Check(ReadText(client, "weather://Denver/other/3") = Nil, "a URI that does not fit the template reads nothing");
+		sensor := client->ReadResource("sensor://x/2.5/true/A");
+		Check(sensor <> Nil & sensor->Get(0)->GetMimeType()->Equals("application/json"), "the declared mime reaches the contents");
+
+		# ---- prompts ----
+		prompts := client->ListPrompts();
+		Check(prompts <> Nil & prompts->Size() = 3, "three prompts");
+		review := FindPrompt(prompts, "code_review");
+		Check(review <> Nil & review->GetDescription()->Equals("Review some code."), "prompt: snake_case name and description");
+		Check(review <> Nil & review->GetRequired()->Size() = 1 & review->GetRequired()->Get(0)->Equals("language"), "prompt: only the argument without a default is required");
+		arguments := review->GetArguments();
+		Check(arguments->Size() = 2 & arguments->Get(0)->Get("name")->GetString()->Equals("language") & arguments->Get(0)->Get("description")->GetString()->Equals("the language of the code") &
+			arguments->Get(1)->Get("name")->GetString()->Equals("focus"), "prompt: arguments in order, with their descriptions");
+		trip := FindPrompt(prompts, "plan-trip");
+		Check(trip <> Nil & trip->GetRequired()->Size() = 1, "a named prompt, one required argument");
+		Check(FindPrompt(prompts, "greet") <> Nil & FindPrompt(prompts, "greet")->GetArguments()->Size() = 0, "a McpCall parameter is not an argument");
+
+		pargs := JsonParser->TextToElement("{\"language\":\"Objeck\"}");
+		got := client->GetPrompt("code_review", pargs);
+		Check(got <> Nil & got->GetMessages()->Size() = 1, "one message from a String result");
+		Check(got <> Nil & got->GetMessages()->Get(0)->Get("role")->GetString()->Equals("user") & got->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("Review the Objeck code for bugs."), "the default of an absent argument");
+		pargs := JsonParser->TextToElement("{\"language\":\"C\",\"focus\":\"style\"}");
+		got := client->GetPrompt("code_review", pargs);
+		Check(got <> Nil & got->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("Review the C code for style."), "a given argument");
+
+		pargs := JsonParser->TextToElement("{\"days\":\"4\"}");
+		got := client->GetPrompt("plan-trip", pargs);
+		Check(got <> Nil & got->GetMessages()->Size() = 2 & got->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("4 days, 100.500000, false"), "an Int from text, a Float and Bool default; a McpPromptResult");
+		pargs := JsonParser->TextToElement("{\"days\":\"2\",\"budget\":\"9.25\",\"family\":\"true\"}");
+		got := client->GetPrompt("plan-trip", pargs);
+		Check(got <> Nil & got->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("2 days, 9.250000, true"), "Int, Float and Bool arguments from text");
+		got := client->GetPrompt("greet", JsonParser->TextToElement("{}"));
+		Check(got <> Nil & got->GetMessages()->Get(0)->Get("content")->Get("text")->GetString()->Equals("hello from greet"), "a McpCall parameter gets the call");
+		Check(client->GetPrompt("code_review", JsonParser->TextToElement("{}")) = Nil, "a missing required argument is refused");
+
+		"PASS: MCP resource and prompt tags, {$@pass} checks"->PrintLine();
+		if(@fail > 0) {
+			"FAIL: {$@fail} of {$@pass + @fail}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
