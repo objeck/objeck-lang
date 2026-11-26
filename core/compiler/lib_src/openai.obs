@@ -280,30 +280,59 @@ bundle API.OpenAI.Responses {
 			return @tool_name;
 		}
 
+		#~
+		Get the vector store IDs of a file search tool
+		@return vector store IDs, or Nil if this is not a file search tool
+		~#
 		method : public : GetStoreIds() ~  Vector<String> {
 			return @vector_store_ids;
 		}
 
+		#~
+		Get the function name of a function tool
+		@return function name, or Nil if this is not a function tool
+		~#
 		method : public : GetFunctionName() ~ String {
 			return @func_name;
 		}
 
+		#~
+		Get the function description of a function tool
+		@return function description, or Nil if this is not a function tool
+		~#
 		method : public : GetDescription() ~ String {
 			return @func_desc;
 		}
 
+		#~
+		Get the parameter definition of a function tool
+		@return function parameters, or Nil if this is not a function tool
+		~#
 		method : public : GetParameters() ~ ParameterType {
 			return @func_params;
 		}
 
+		#~
+		Get the label of a remote MCP server tool
+		@return server label, or Nil if this is not an MCP tool
+		~#
 		method : public : GetServerLabel() ~ String {
 			return @server_label;
 		}
 
+		#~
+		Get the URL of a remote MCP server tool
+		@return server URL, or Nil if this is not an MCP tool
+		~#
 		method : public : GetServerUrl() ~ Url {
 			return @server_url;
 		}
 
+		#~
+		Builds the JSON object that describes the tool in a request: the type, plus vector_store_ids for file search,
+		name, description and parameters for a function, or server_label, server_url and require_approval ('never') for MCP.
+		@return tool JSON object
+		~#
 		method : public : ToJson() ~ JsonElement {
 			tools_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -352,6 +381,10 @@ bundle API.OpenAI.Responses {
 		@model : String;
 		@outputs : Vector<Output>;
 
+		#~
+		Constructor; reads a Responses API result: id, object, created_at, model and the output items
+		@param json_elem response JSON object
+		~#
 		New(json_elem : JsonElement) {
 			Parent();
 
@@ -685,7 +718,8 @@ resp->GetText()->PrintLine();
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				message_json->Insert("role", message->GetFirst());
 
-				# TODO: support files
+				# the content is sent as plain text; file and image input parts ('input_file', 'input_image') are not
+				# built by this overload (use the FileQuery overload for files)
 				message_json->Insert("content", message->GetSecond());
 
 				messages_json->Add(message_json);
@@ -1150,6 +1184,10 @@ resp->GetText()->PrintLine();
 		@summaries : Vector<Pair<String, String>>;
 		@contents : Vector<Content>;
 
+		#~
+		Constructor; reads one item of a response's output array. A field the item type does not carry (id, status, content) is left unset.
+		@param json_elem output item JSON object
+		~#
 		New(json_elem : JsonElement) {
 			Parent();
 
@@ -1277,8 +1315,12 @@ resp->GetText()->PrintLine();
 	class Content {
 		@type : String;
 		@text : String;
-		# TODO: @annotations : Vector<Annotation>;
+		# the response part's 'annotations' (url and file citations) are not parsed; only type, text and refusal are read
 
+		#~
+		Constructor; reads a content part: its type and its text, or its refusal for a refusal part
+		@param json_elem content part JSON object
+		~#
 		New(json_elem : JsonElement) {
 			Parent();
 
@@ -1341,6 +1383,10 @@ bundle API.OpenAI.Chat {
 		@model : String;
 		@choices : Vector<API.OpenAI.Chat.Choice>;
 
+		#~
+		Constructor; reads a chat completion result: id, object, created, model and choices
+		@param chat_json chat completion JSON object
+		~#
 		New(chat_json : JsonElement) {
 			Parent();
 
@@ -1836,6 +1882,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@name : String;
 		@arguments : String;
 
+		#~
+		Constructor; reads the call's id and the function's name and arguments. A missing value reads as an empty string.
+		@param call_json tool call JSON object
+		~#
 		New(call_json : JsonElement) {
 			@id := Text(call_json, "id");
 			@name := "";
@@ -1848,6 +1898,12 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		# a member read as text; empty if it is missing or not a string
+		#~
+		Reads a member of a JSON object as text
+		@param json JSON object
+		@param name member name
+		@return the string value, or an empty string if the member is missing or not a string
+		~#
 		function : Text(json : JsonElement, name : String) ~ String {
 			member_json := json->Get(name);
 			if(member_json <> Nil & member_json->GetType() = JsonElement->JsonType->STRING) {
@@ -1903,6 +1959,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@message_json : JsonElement;
 		@tool_calls : Vector<API.OpenAI.Chat.ToolCall>;
 
+		#~
+		Constructor; reads a chat choice: index, finish reason, the message's role and content, the tool calls and the message object itself
+		@param chat_json choice JSON object
+		~#
 		New(chat_json : JsonElement) {
 			Parent();
 			@tool_calls := Vector->New()<API.OpenAI.Chat.ToolCall>;
@@ -2041,6 +2101,12 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			return true;
 		}
 
+		#~
+		Runs the function that was registered under a name with AddFunction
+		@param name function name
+		@param params function parameters as JSON
+		@return the function's result, or Nil if no function is registered under the name
+		~#
 		method : CallFunction(name : String, params : JsonElement) ~ JsonElement {
 			func_ref := @funcs->Find(name)<Func2Ref<JsonElement, JsonElement>>;
 			if(func_ref <> Nil) {
@@ -2156,6 +2222,10 @@ bundle API.OpenAI.Tuning {
 		@error_param : String;
 		@error_message : String;
 
+		#~
+		Constructor; reads a fine-tuning job object: id, object, model, timestamps, organization, status, training file and error details
+		@param tune_json fine-tuning job JSON object
+		~#
 		New(tune_json : JsonElement) {
 			Parent();
 
@@ -2543,6 +2613,10 @@ bundle API.OpenAI.Tuning {
 		@full_valid_loss : String;
 		@full_valid_mean_token_accuracy : Float;
 
+		#~
+		Constructor; reads a fine-tuning checkpoint: id, object, creation time, job ID, step number and the full validation loss and token accuracy metrics
+		@param job_json checkpoint JSON object
+		~#
 		New(job_json : JsonElement) {
 			@id := job_json->Get("id")->GetString();
 			@object := job_json->Get("object")->GetString();
@@ -2625,6 +2699,10 @@ bundle API.OpenAI.Tuning {
 		@error_code : String;
 		@error_param : String;
 
+		#~
+		Constructor; reads a fine-tuning job event: id, object, creation time, level, message, type and the error code and parameter if present
+		@param tune_json event JSON object
+		~#
 		New(tune_json : JsonElement) {
 			@id := tune_json->Get("id")->GetString();
 			@object := tune_json->Get("object")->GetString();
@@ -3323,6 +3401,10 @@ bundle API.OpenAI {
 			DALLE_DEFAULT
 		}
 
+		#~
+		Constructor; reads an image result: the creation time and, per image, its URL or its base64 data
+		@param image_json image response JSON object
+		~#
 		New(image_json : JsonElement) {
 			Parent();
 
@@ -3744,6 +3826,11 @@ if(store <> Nil & file <> Nil) {
 		@store : VectorStore;
 		@status : String;
 
+		#~
+		Constructor; reads a vector store file object and loads the vector store it belongs to
+		@param response_json vector store file JSON object
+		@param token API token used to load the vector store
+		~#
 		New(response_json : JsonElement, token : String) {
 			Parent();
 
@@ -4011,6 +4098,10 @@ if(store <> Nil) {
 		@name : String;
 		@status : String;
 
+		#~
+		Constructor; reads a vector store object: id, object, name, creation and last active times, usage in bytes and status
+		@param response_json vector store JSON object
+		~#
 		New(response_json : JsonElement) {
 			Parent();
 
@@ -4390,6 +4481,11 @@ session->Close();
 		@filename : String;
 		@purpose : String;
 
+		#~
+		Constructor; reads a file object: id, object, size in bytes, creation time, file name and purpose. Absent members are left unset.
+		@param file_json file JSON object
+		@param token API token, not used by the parser
+		~#
 		New(file_json : JsonElement, token : String) {
 			Parent();
 
@@ -5377,6 +5473,10 @@ session->Close();
 	class Contents {
 		@contents : Vector<Pair<String, String>>;
 
+		#~
+		Constructor
+		@param contents message contents as pairs of the first and second message values
+		~#
 		New(contents : Vector<Pair<String, String>>) {
 			@contents := contents;
 		}
@@ -5752,6 +5852,10 @@ session->Close();
 			return Collection.Tuple.Triplet->New(@func_call_name, @func_call_params, @func_callback_id)<String, String, String>;
 		}
 
+		#~
+		Updates the run from a run JSON object: id, creation time, object, thread, assistant and status. For a 'requires_action' status it records the tool call ID, function name and arguments; otherwise the function name and arguments are cleared.
+		@param run_json run JSON object
+		~#
 		method: Set(run_json : JsonElement) ~ Nil {
 
 
@@ -6004,38 +6108,74 @@ session->Close();
 	OpenAI model name constants
 	~#
 	class Models {
+		#~
+		The model ID 'gpt-4o'
+		@return model ID
+		~#
 		function : native : GPT_4O() ~ String {
 			return "gpt-4o";
 		}
 
+		#~
+		The model ID 'gpt-4o-mini'
+		@return model ID
+		~#
 		function : native : GPT_4O_MINI() ~ String {
 			return "gpt-4o-mini";
 		}
 
+		#~
+		The model ID 'gpt-4.1'
+		@return model ID
+		~#
 		function : native : GPT_4_1() ~ String {
 			return "gpt-4.1";
 		}
 
+		#~
+		The model ID 'gpt-4.1-mini'
+		@return model ID
+		~#
 		function : native : GPT_4_1_MINI() ~ String {
 			return "gpt-4.1-mini";
 		}
 
+		#~
+		The model ID 'o3'
+		@return model ID
+		~#
 		function : native : O3() ~ String {
 			return "o3";
 		}
 
+		#~
+		The model ID 'o3-mini'
+		@return model ID
+		~#
 		function : native : O3_MINI() ~ String {
 			return "o3-mini";
 		}
 
+		#~
+		The model ID 'o4-mini'
+		@return model ID
+		~#
 		function : native : O4_MINI() ~ String {
 			return "o4-mini";
 		}
 
+		#~
+		The model ID 'text-embedding-3-small'
+		@return model ID
+		~#
 		function : native : TEXT_EMBEDDING_3_SMALL() ~ String {
 			return "text-embedding-3-small";
 		}
 
+		#~
+		The model ID 'text-embedding-3-large'
+		@return model ID
+		~#
 		function : native : TEXT_EMBEDDING_3_LARGE() ~ String {
 			return "text-embedding-3-large";
 		}
@@ -6132,6 +6272,12 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 		@flagged : Bool;
 		@result_json : JsonElement;
 
+		#~
+		Constructor; reads the flagged value of a moderation result
+		@param result_json moderation result JSON object
+		@param id moderation request ID
+		@param model model that produced the result
+		~#
 		New(result_json : JsonElement, id : String, model : String) {
 			@result_json := result_json;
 			@id := id;
@@ -6302,6 +6448,10 @@ if(result->IsFlagged()) {
 		@completed : Int;
 		@failed : Int;
 
+		#~
+		Constructor; reads a batch job: id, status, endpoint, input, output and error file IDs, creation and completion times and the request counts. Absent members are left unset.
+		@param job_json batch JSON object
+		~#
 		New(job_json : JsonElement) {
 			id_json := job_json->Get("id");
 			if(id_json <> Nil) { @id := id_json->GetString(); };
@@ -6357,6 +6507,10 @@ if(result->IsFlagged()) {
 			return @status <> Nil & @status->Equals("completed");
 		}
 
+		#~
+		String representation of the batch job
+		@return the id, status, endpoint and request counts
+		~#
 		method : public : ToString() ~ String {
 			return "BatchJob[id='{$@id}', status='{$@status}', endpoint='{$@endpoint}', total={$@total}, completed={$@completed}, failed={$@failed}]";
 		}
@@ -6524,13 +6678,19 @@ job = Batch->Get(job->GetId(), token);
 	}
 
 	#~
-	OpenAI endpoint
+	OpenAI endpoint. The Assistants API (assistants, threads, messages, runs, vector stores) is a beta
+	API whose requests must carry the 'OpenAI-Beta: assistants=v2' header, so those classes send it. The
+	chat-completions, responses and tool-call requests are not beta endpoints and send only Authorization.
 	~#
 	class EndPoint {
 		@base_url : static : String;
 		@last_message : static : String;
 		@api_key : static : String;
 
+		#~
+		Whether requests and responses are logged to the console. This base implementation is always off.
+		@return false
+		~#
 		function : IsDebug() ~ Bool {
 			return false;
 		}
@@ -6559,6 +6719,10 @@ job = Batch->Get(job->GetId(), token);
 			return @base_url;
 		}
 
+		#~
+		Records the message of the last failed request
+		@param last_message error message
+		~#
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
 		}

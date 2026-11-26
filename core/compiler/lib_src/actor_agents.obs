@@ -47,6 +47,10 @@ bundle System.Actor {
 			@fail_on_error := fail_on_error;
 		}
 
+		#~
+		Builds the agent. Raises an error, which fails the actor, when the builder makes none
+		@param me the actor
+		~#
 		method : public : Init(me : Actor) ~ Nil {
 			@agent := @builder->Build();
 			if(@agent = Nil) {
@@ -54,9 +58,20 @@ bundle System.Actor {
 			};
 		}
 
+		#~
+		Does nothing
+		@param me the actor
+		@param reason why the actor ended
+		~#
 		method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
 		}
 
+		#~
+		Runs a String prompt with the agent. Mail that is neither data nor a call is ignored. A payload that is not a String fails a call. The result goes back as the answer to a call, or as data mail to the sender of data mail that has one. With fail_on_error, a run that does not complete raises an error after the result is delivered
+		@param me the actor
+		@param mail the mail
+		@return true, the actor goes on
+		~#
 		method : public : Handle(me : Actor, mail : Mail) ~ Bool {
 			kind := mail->GetKind();
 			if(kind <> Mail->Kind->DATA & kind <> Mail->Kind->CALL) {
@@ -108,6 +123,10 @@ spec := ChildSpec->New("researcher", AgentActorFactory->New(MyBuilder->New(), tr
 			@fail_on_error := fail_on_error;
 		}
 
+		#~
+		Makes a behavior that builds a new agent when it starts
+		@return a new AgentActorBehavior
+		~#
 		method : public : Create() ~ ActorBehavior {
 			return AgentActorBehavior->New(@builder, @fail_on_error);
 		}

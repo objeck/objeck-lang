@@ -63,6 +63,10 @@ bundle System.Telemetry {
 			Init(rel_error);
 		}
 
+		#~
+		Sets up the sketch: the accuracy, the gamma that follows from it and an empty array of counters
+		@param rel_error relative error; a NaN or a value outside (0.0001, 0.5) is replaced by 0.01
+		~#
 		method : Init(rel_error : Float) ~ Nil {
 			a := rel_error;
 			if(a <> a | a < 0.0001 | a > 0.5) {
@@ -133,6 +137,11 @@ bundle System.Telemetry {
 			return @max;
 		}
 
+		#~
+		Finds the bucket of a value
+		@param x value in milliseconds
+		@return the bucket index, 0 for a value at or below the smallest and the last bucket for one past the range
+		~#
 		method : Index(x : Float) ~ Int {
 			if(x <= MinValue()) {
 				return 0;
@@ -145,6 +154,11 @@ bundle System.Telemetry {
 			return i->As(Int);
 		}
 
+		#~
+		Finds the value a bucket is reported as
+		@param i bucket index
+		@return the smallest value for bucket 0 or less, otherwise the geometric centre of the bucket, in milliseconds
+		~#
 		method : Center(i : Int) ~ Float {
 			if(i <= 0) {
 				return MinValue();
@@ -498,6 +512,13 @@ bundle System.Telemetry {
 			Init(warmup, rel_error, ring_size, exact_limit);
 		}
 
+		#~
+		Sets up an empty series. A negative warm-up or exact limit becomes 0.
+		@param warmup number of leading samples to discard
+		@param rel_error relative error of the sketch
+		@param ring_size number of raw samples kept
+		@param exact_limit largest count answered exactly
+		~#
 		method : Init(warmup : Int, rel_error : Float, ring_size : Int, exact_limit : Int) ~ Nil {
 			@warmup := warmup;
 			if(@warmup < 0) {
@@ -751,6 +772,11 @@ bundle System.Telemetry {
 			return @sketch->Quantile(q);
 		}
 
+		#~
+		Quantile of a series loaded from summary numbers: only 0 and 1 (the extremes) and 0.5, 0.95, 0.99 and 0.999 are known
+		@param q quantile in [0, 1]
+		@return the stored value, NaN for any other quantile
+		~#
 		method : SummaryQuantile(q : Float) ~ Float {
 			if(q <= 0.0) {
 				return @min;
@@ -1289,6 +1315,10 @@ bundle System.Telemetry {
 		@exact : Bool;
 		@rel_error : Float;
 
+		#~
+		Takes a snapshot of a cell, so the prediction does not change when the profile does
+		@param entry the profile cell to read
+		~#
 		New(entry : ProfileEntry) {
 			s := entry->GetStats();
 			@model := entry->GetModel();
@@ -1652,6 +1682,12 @@ bundle System.Telemetry {
 			return root;
 		}
 
+		#~
+		Rebuilds a cell from the JSON ToJson wrote
+		@param root JSON object
+		@param exact_limit largest series count that keeps its exact samples
+		@return the cell, or Nil if the JSON lacks the model, device, batch or series, or the series is not valid
+		~#
 		function : FromJson(root : JsonElement, exact_limit : Int) ~ ProfileEntry {
 			if(root = Nil | root->Has("model") = false | root->Has("device") = false | root->Has("batch") = false | root->Has("series") = false) {
 				return Nil;
@@ -1716,6 +1752,10 @@ bundle System.Telemetry {
 			Init(warmup);
 		}
 
+		#~
+		Sets up an empty profile with a relative error of 0.01, a ring of 256 samples and an exact limit of 512 per series
+		@param warmup leading samples of each new series to discard
+		~#
 		method : Init(warmup : Int) ~ Nil {
 			@entries := Map->New()<String, ProfileEntry>;
 			@warmup := warmup;
@@ -1919,6 +1959,11 @@ bundle System.Telemetry {
 			return Describe(e);
 		}
 
+		#~
+		Turns a cell into a prediction
+		@param e the cell
+		@return the prediction, or Nil with GetError() set when the cell holds only warm-up samples
+		~#
 		method : Describe(e : ProfileEntry) ~ LatencyPrediction {
 			if(e->GetStats()->GetCount() = 0) {
 				@error := "model '{$e->GetModel()}' on '{$e->GetDevice()}' at batch {$e->GetBatch()} has only warm-up samples so far";
@@ -1927,6 +1972,11 @@ bundle System.Telemetry {
 			return LatencyPrediction->New(e);
 		}
 
+		#~
+		Removes the last character of a list text, the trailing comma
+		@param s text, may be empty
+		@return the text without its last character, or s itself when it is empty
+		~#
 		function : StripComma(s : String) ~ String {
 			if(s->Size() > 0) {
 				return s->SubString(0, s->Size() - 1);
@@ -2056,10 +2106,19 @@ bundle System.Telemetry {
 			return ParseJson(FileReader->ReadFile(path));
 		}
 
+		#~
+		The header row of the CSV profile format
+		@return the column names, comma separated
+		~#
 		function : CsvHeader() ~ String {
 			return "model,device,batch,tag,count,discarded,min_ms,max_ms,mean_ms,stddev_ms,p50_ms,p95_ms,p99_ms,p999_ms,host_mem_max_bytes,gpu_mem_max_mb,energy_joules,energy_runs";
 		}
 
+		#~
+		Quotes a CSV cell when it holds a comma, a quote or a line break, doubling the quotes inside
+		@param s the cell text
+		@return the text ready to put in a CSV row
+		~#
 		function : CsvCell(s : String) ~ String {
 			if(s->Find(',') >= 0 | s->Find('"') >= 0 | s->Find('\n') >= 0 | s->Find('\r') >= 0) {
 				escaped := s->ReplaceAll("\"", "\"\"");
@@ -2137,6 +2196,11 @@ bundle System.Telemetry {
 			return cells->ToArray();
 		}
 
+		#~
+		Reads a CSV cell as a number
+		@param s the cell text
+		@return the value, NaN if the cell is empty or not a number
+		~#
 		function : CellFloat(s : String) ~ Float {
 			if(Telemetry->IsNumber(s)) {
 				return s->ToFloat();
@@ -2236,6 +2300,14 @@ bundle System.Telemetry {
 		@elapsed : Float;
 		@start_ms : Int;
 
+		#~
+		Starts the clock. Use Telemetry->Start or TimingRecorder->Start instead.
+		@param recorder the recorder that receives the interval at Stop
+		@param model model name
+		@param device device name
+		@param batch batch size
+		@param tag phase label
+		~#
 		New(recorder : TimingRecorder, model : String, device : String, batch : Int, tag : String) {
 			@recorder := recorder;
 			@model := model;
@@ -2315,6 +2387,10 @@ bundle System.Telemetry {
 			Init(store);
 		}
 
+		#~
+		Sets up the recorder with the profile it fills, memory capture on and no sampler attached
+		@param store profile to add to
+		~#
 		method : Init(store : ProfileStore) ~ Nil {
 			@store := store;
 			@lock := ThreadMutex->New("telemetry-recorder");
@@ -2459,6 +2535,12 @@ bundle System.Telemetry {
 		@values : Float[];
 		@time_ms : Int;
 
+		#~
+		Creates a reading
+		@param names the names of the values
+		@param values the values, in the same order as the names
+		@param time_ms when the reading was taken, on the Telemetry->NowMs clock
+		~#
 		New(names : String[], values : Float[], time_ms : Int) {
 			@names := names;
 			@values := values;
@@ -2559,6 +2641,9 @@ bundle System.Telemetry {
 		@last_cpu_ms : Float;
 		@last_time_ms : Int;
 
+		#~
+		Creates a sampler with no previous reading, so the first cpu_percent is NaN
+		~#
 		New() {
 			@last_cpu_ms := Float->NaN();
 			@last_time_ms := -1;
@@ -2572,15 +2657,27 @@ bundle System.Telemetry {
 			return ["rss_bytes", "rss_peak_bytes", "heap_allocated_bytes", "cpu_time_ms", "cpu_percent", "cpu_count", "threads_active", "threads_parked", "gc_minor_count", "gc_major_count", "gc_pause_last_us", "gc_pause_max_us", "gc_pause_avg_us", "gc_pause_total_us", "gc_old_gen_bytes"];
 		}
 
+		#~
+		Name of the source
+		@return runtime
+		~#
 		method : public : GetName() ~ String {
 			return "runtime";
 		}
 
+		#~
+		Says whether the runtime reports its memory use
+		@return true if runtime.memory.used is a positive number
+		~#
 		method : public : IsAvailable() ~ Bool {
 			rss := Telemetry->ReadProperty("runtime.memory.used");
 			return rss = rss & rss > 0.0;
 		}
 
+		#~
+		Takes a reading of the runtime monitors. cpu_percent is computed against the previous Sample call.
+		@return the reading with the values of Names, a value the runtime does not report being NaN, or Nil if the runtime reports no memory use
+		~#
 		method : public : Sample() ~ ResourceReading {
 			if(IsAvailable() = false) {
 				return Nil;
@@ -2618,6 +2715,9 @@ bundle System.Telemetry {
 		@state : Int;
 		@error : String;
 
+		#~
+		Creates a sampler for the first GPU using nvidia-smi
+		~#
 		New() {
 			Init(0, Command());
 		}
@@ -2630,6 +2730,11 @@ bundle System.Telemetry {
 			Init(index, Command());
 		}
 
+		#~
+		Sets the GPU line and the command, and clears any earlier failure
+		@param index which GPU, the zero-based line of the output
+		@param command the command line to run
+		~#
 		method : Init(index : Int, command : String) ~ Nil {
 			@index := index;
 			@command := command;
@@ -2646,6 +2751,11 @@ bundle System.Telemetry {
 			return GpuSampler->New(0, command);
 		}
 
+		#~
+		Creates a sampler that runs a given command; see WithCommand
+		@param index which GPU, the zero-based line of the output
+		@param command the command line to run, printing the same four-field CSV as nvidia-smi
+		~#
 		New(index : Int, command : String) {
 			Init(index, command);
 		}
@@ -2720,6 +2830,10 @@ bundle System.Telemetry {
 			return Nil;
 		}
 
+		#~
+		Name of the source
+		@return gpu
+		~#
 		method : public : GetName() ~ String {
 			return "gpu";
 		}
@@ -2752,6 +2866,10 @@ bundle System.Telemetry {
 			return @state > 0;
 		}
 
+		#~
+		Runs the command and parses its output. A start failure, a nonzero exit status or a missing GPU line makes the sampler unavailable until Reset, and sets GetError().
+		@return the reading, or Nil on failure or when an earlier attempt already failed
+		~#
 		method : public : Sample() ~ ResourceReading {
 			if(@state < 0) {
 				return Nil;
@@ -2788,17 +2906,32 @@ bundle System.Telemetry {
 	Apple Silicon power through powermetrics: the interface only. powermetrics needs root (sudo powermetrics --samplers cpu_power,gpu_power -i 1000), and a library that silently asks for root is not acceptable, so this class reports itself as unavailable on every platform and Sample returns Nil. A program that runs as root can implement ResourceSampler itself, parse the "CPU Power", "GPU Power" and "ANE Power" lines in milliwatts and feed an EnergyEstimator; none of that is tested here, no Apple hardware was used.
 	~#
 	class PowermetricsSampler implements ResourceSampler {
+		#~
+		Creates the sampler; it does nothing
+		~#
 		New() {
 		}
 
+		#~
+		Name of the source
+		@return powermetrics
+		~#
 		method : public : GetName() ~ String {
 			return "powermetrics";
 		}
 
+		#~
+		Says whether the source can be read
+		@return false, always
+		~#
 		method : public : IsAvailable() ~ Bool {
 			return false;
 		}
 
+		#~
+		Takes a reading
+		@return Nil, always
+		~#
 		method : public : Sample() ~ ResourceReading {
 			return Nil;
 		}
@@ -2824,6 +2957,9 @@ bundle System.Telemetry {
 		@last_t : Float;
 		@last_w : Float;
 
+		#~
+		Constructor that retains 4096 samples
+		~#
 		New() {
 			Init(4096);
 		}
@@ -2836,6 +2972,10 @@ bundle System.Telemetry {
 			Init(retained);
 		}
 
+		#~
+		Sets up an empty estimator. Fewer than 2 retained samples becomes 2.
+		@param retained number of recent samples kept
+		~#
 		method : Init(retained : Int) ~ Nil {
 			@cap := retained;
 			if(@cap < 2) {
@@ -2958,6 +3098,11 @@ bundle System.Telemetry {
 			return @peak;
 		}
 
+		#~
+		Time of a retained sample
+		@param i index by age, 0 is the oldest retained sample
+		@return the time in seconds
+		~#
 		method : At(i : Int) ~ Float {
 			start := 0;
 			if(@size = @cap) {
@@ -2966,6 +3111,11 @@ bundle System.Telemetry {
 			return @t[(start + i) % @cap];
 		}
 
+		#~
+		Power of a retained sample
+		@param i index by age, 0 is the oldest retained sample
+		@return the power in watts
+		~#
 		method : WattsAt(i : Int) ~ Float {
 			start := 0;
 			if(@size = @cap) {
@@ -3142,6 +3292,10 @@ bundle System.Telemetry {
 			return true;
 		}
 
+		#~
+		The thread body: takes a reading, sleeps for the interval, and repeats until Stop
+		@param param not used
+		~#
 		method : public : Run(param : System.Base) ~ Nil {
 			go := true;
 			while(go) {
@@ -3220,6 +3374,12 @@ bundle System.Telemetry {
 		@combined : SeriesStats;
 		@wall_seconds : Float;
 
+		#~
+		Creates a report
+		@param workers one series per worker
+		@param combined the series of all calls of all workers
+		@param wall_seconds wall-clock seconds the run took
+		~#
 		New(workers : SeriesStats[], combined : SeriesStats, wall_seconds : Float) {
 			@workers := workers;
 			@combined := combined;
@@ -3310,6 +3470,14 @@ bundle System.Telemetry {
 		@stats : SeriesStats;
 		@state : ContentionRunner;
 
+		#~
+		Creates a worker thread
+		@param id the worker number
+		@param calls how many calls to make
+		@param work the function to call, as work(id, call number)
+		@param stats the series this worker records into
+		@param state the runner whose Arrive makes the workers start together
+		~#
 		New(id : Int, calls : Int, work : (Int, Int) ~ Nil, stats : SeriesStats, state : ContentionRunner) {
 			Parent();
 			@id := id;
@@ -3319,6 +3487,10 @@ bundle System.Telemetry {
 			@state := state;
 		}
 
+		#~
+		Waits for the other workers, then calls the function and times each call into the worker series
+		@param param not used
+		~#
 		method : public : Run(param : System.Base) ~ Nil {
 			@state->Arrive();
 			for(i := 0; i < @calls; i += 1;) {

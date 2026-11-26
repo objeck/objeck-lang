@@ -15,6 +15,10 @@ bundle API.Ollama {
 		@last_error : static : String;
 		@host : static : String;
 
+		#~
+		Records the message of the last failed request
+		@param last_error error message
+		~#
 		function : SetLastError(last_error : String) ~ Nil {
 			@last_error := last_error;
 		}
@@ -166,6 +170,11 @@ bundle API.Ollama {
 	# it is: the serializer escapes it once on the way out.
 	class : private : Field {
 		# decoded string value, or Nil when absent or null
+		#~
+		Reads a JSON value as text: a string as is, any other value in its JSON form
+		@param elem JSON value
+		@return text, or Nil if the value is Nil or null
+		~#
 		function : Text(elem : JsonElement) ~ String {
 			if(elem = Nil | elem->IsNull()) {
 				return Nil;
@@ -178,6 +187,12 @@ bundle API.Ollama {
 			return elem->ToString();
 		}
 
+		#~
+		Reads a member of a JSON object as text
+		@param json JSON object
+		@param name member name
+		@return text, or Nil if the object is Nil or the member is missing or null
+		~#
 		function : Text(json : JsonElement, name : String) ~ String {
 			if(json = Nil) {
 				return Nil;
@@ -185,6 +200,12 @@ bundle API.Ollama {
 			return Text(json->Get(name));
 		}
 
+		#~
+		Reads a member of a JSON object as an integer
+		@param json JSON object
+		@param name member name
+		@return the number, or 0 if the object is Nil or the member is missing or not a number
+		~#
 		function : IntOf(json : JsonElement, name : String) ~ Int {
 			if(json = Nil) {
 				return 0;
@@ -197,6 +218,12 @@ bundle API.Ollama {
 			return elem->GetInt();
 		}
 
+		#~
+		Reads a member of a JSON object as a boolean
+		@param json JSON object
+		@param name member name
+		@return true only if the member is the JSON value true
+		~#
 		function : BoolOf(json : JsonElement, name : String) ~ Bool {
 			if(json = Nil) {
 				return false;
@@ -206,6 +233,11 @@ bundle API.Ollama {
 			return elem <> Nil & elem->GetType() = JsonElement->JsonType->TRUE;
 		}
 
+		#~
+		Reads a JSON array as a list of text values; entries that are Nil or null are skipped
+		@param elem JSON array
+		@return the values, empty if elem is Nil or not an array
+		~#
 		function : Strings(elem : JsonElement) ~ Vector<String> {
 			values := Vector->New()<String>;
 			if(elem <> Nil & elem->GetType() = JsonElement->JsonType->ARRAY) {
@@ -220,6 +252,11 @@ bundle API.Ollama {
 		}
 
 		# appends text that may be Nil
+		#~
+		Appends text to a buffer
+		@param buffer buffer to append to
+		@param value text to append, ignored if Nil
+		~#
 		function : Add(buffer : String, value : String) ~ Nil {
 			if(value <> Nil) {
 				buffer->Append(value);
@@ -244,6 +281,9 @@ options->SetFormat(schema)->SetKeepAlive("10m");
 		@values : JsonElement;
 		@fields : JsonElement;
 
+		#~
+		Constructor; starts with no options or request settings
+		~#
 		New() {
 			@values := JsonElement->New(JsonElement->JsonType->OBJECT);
 			@fields := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -566,6 +606,10 @@ tool := Tool->New("get_weather", "Get the weather for a location", params);
 		@name : String;
 		@arguments : JsonElement;
 
+		#~
+		Constructor; reads the function name and arguments of a tool call. Missing arguments become an empty JSON object.
+		@param call_json tool call JSON object
+		~#
 		New(call_json : JsonElement) {
 			func_json := call_json->Get("function");
 			if(func_json <> Nil) {
@@ -651,6 +695,10 @@ if(reply <> Nil) {
 		@eval_count : Int;
 		@eval_duration : Int;
 
+		#~
+		Constructor; reads a /api/chat or /api/generate response: model, done flag and reason, durations and counts, the role, text, thinking and tool calls. The text is empty rather than Nil when absent.
+		@param json response JSON object
+		~#
 		New(json : JsonElement) {
 			@model := Field->Text(json, "model");
 			@done := Field->BoolOf(json, "done");
@@ -1054,6 +1102,11 @@ chat->Send("What are the major landmarks?")->PrintLine();
 			Init(model, preload);
 		}
 
+		#~
+		Sets the model and an empty history; if preload is true it sends an empty chat request so the server loads the model, and a model name in the reply replaces the one given
+		@param model model name
+		@param preload true to ask the server to load the model now
+		~#
 		method : Init(model : String, preload : Bool) ~ Nil {
 			@model := model;
 			@messages := Vector->New()<JsonElement>;
@@ -1231,6 +1284,15 @@ reply->GetText()->PrintLine();
 			return SendReply(message, images, format, options, tools);
 		}
 
+		#~
+		Sends the history, plus the new user message if there is one, and stores the model's reply in the history. The message is removed from the history again if the request fails.
+		@param message user message, or Nil to send the history as it is
+		@param images image files to attach to the message, or Nil
+		@param format output format ('json') or Nil
+		@param options options and request settings, or Nil
+		@param tools tool definitions, or Nil
+		@return the reply, or Nil with the last error set
+		~#
 		method : SendReply(message : String, images : File[], format : String, options : Options, tools : Vector<Tool>) ~ Reply {
 			added := false;
 			if(message <> Nil) {
@@ -1369,6 +1431,10 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		@parameter_size : String;
 		@quantization_level : String;
 
+		#~
+		Constructor; reads the parent model, format, family, families, parameter size and quantization level
+		@param details_json model details JSON object
+		~#
 		New(details_json : JsonElement) {
 			@parent_model := Field->Text(details_json, "parent_model");
 			@format := Field->Text(details_json, "format");
@@ -1463,6 +1529,10 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		@capabilities : Vector<String>;
 		@model_info : JsonElement;
 
+		#~
+		Constructor; reads the modelfile, parameters, template, license, system prompt, capabilities and model info
+		@param model_json show-model JSON object
+		~#
 		New(model_json : JsonElement) {
 			@modelfile := Field->Text(model_json, "modelfile");
 			@parameters := Field->Text(model_json, "parameters");
@@ -1594,6 +1664,10 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		@size_vram : Int;
 		@digest : String;
 
+		#~
+		Constructor; reads the name, model, modified and expiry times, size, size in VRAM and digest of a listing entry
+		@param model_json listing entry JSON object
+		~#
 		New(model_json : JsonElement) {
 			@name := Field->Text(model_json, "name");
 			@model := Field->Text(model_json, "model");
@@ -1705,6 +1779,10 @@ if(models <> Nil) {
 		@model_pulled : ModelPulled;
 		@model_details : ModelDetails;
 
+		#~
+		Constructor; reads a model as a show-model result (details and model info) when it has modelfile, capabilities or model_info, otherwise as a listing entry, plus its details if present
+		@param model_json model JSON object
+		~#
 		New(model_json : JsonElement) {
 			Parent();
 

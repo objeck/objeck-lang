@@ -193,6 +193,11 @@ pipeline := RagPipeline->New(embedder, RagOllamaGenerator->New("llama3.2"));
 			return vectors;
 		}
 
+		#~
+		Gets the text of a failure of the last call
+		@param reason the error text the endpoint kept, may be Nil
+		@return the text, or a generic message when it is Nil
+		~#
 		function : Reason(reason : String) ~ String {
 			if(reason = Nil) {
 				return "the Ollama call failed";
