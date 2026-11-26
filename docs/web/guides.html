@@ -48,7 +48,7 @@
   <div class="layout has-side has-toc">
    <nav class="sidebar" aria-label="Learn sections">
     <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
-    <p class="nav-title">Guides</p><ul><li><a href="guides.html" aria-current="page">All guides</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html" aria-current="page">All guides</a></li><li><a href="guide_whats_new_11_4.html">What is new in v2026.11.4</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
     <p class="nav-title">AI and ML</p><ul><li><a href="agents.html">Agents</a></li><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
    </nav>
    <div class="content">
@@ -61,6 +61,7 @@
       <tr><th>Guide</th><th>Libraries</th><th>What you learn</th></tr>
      </thead>
      <tbody>
+      <tr><td data-label="Guide"><a href="guide_whats_new_11_4.html">What is new in v2026.11.4</a></td><td data-label="Libraries"><code>mcp</code>, <code>agent</code>, <code>mcp_agent</code></td><td data-label="What you learn">MCP tools from a doc comment, typed clients, agents on a local model, run control</td></tr>
       <tr><td data-label="Guide"><a href="guide_whats_new.html">What is new in v2026.10.3</a></td><td data-label="Libraries"></td><td data-label="What you learn">what to do when you upgrade, and what changed for users</td></tr>
       <tr><td data-label="Guide"><a href="guide_query.html">Query.Structured</a></td><td data-label="Libraries"><code>query</code> and friends</td><td data-label="What you learn">tables, SQL, joins, prepared statements, saving to disk</td></tr>
       <tr><td data-label="Guide"><a href="guide_http.html">HTTP client and web server</a></td><td data-label="Libraries"><code>net</code>, <code>net_server</code></td><td data-label="What you learn">a server, a client, connection reuse</td></tr>
@@ -84,6 +85,10 @@
       <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/data_bad_input.obs" target="_blank" rel="noopener"><code>data_bad_input.obs</code></a></td><td data-label="Compile with -lib"><code>json,xml,regex</code></td></tr>
       <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/collections_tour.obs" target="_blank" rel="noopener"><code>collections_tour.obs</code></a></td><td data-label="Compile with -lib">none</td></tr>
       <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/ai_tictactoe.obs" target="_blank" rel="noopener"><code>ai_tictactoe.obs</code></a></td><td data-label="Compile with -lib"><code>ai</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/mcp_tool.obs" target="_blank" rel="noopener"><code>mcp_tool.obs</code></a></td><td data-label="Compile with -lib"><code>gen_collect,json,net,net_server,cipher,misc,mcp</code></td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/agent_local.obs" target="_blank" rel="noopener"><code>agent_local.obs</code></a></td><td data-label="Compile with -lib"><code>gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent</code> (needs a local Ollama server)</td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/new_in_11_4.obs" target="_blank" rel="noopener"><code>new_in_11_4.obs</code></a></td><td data-label="Compile with -lib">none</td></tr>
+      <tr><td data-label="Program"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/guides/eof_lines.obs" target="_blank" rel="noopener"><code>eof_lines.obs</code></a></td><td data-label="Compile with -lib">none</td></tr>
      </tbody>
     </table>
     <p>The seven <code>readme_*.obs</code> programs are the short examples shown in the project <a href="https://github.com/objeck/objeck-lang/blob/master/README.md#examples" target="_blank" rel="noopener">README</a>: <code>readme_tour</code>, <code>readme_query</code>, <code>readme_json</code>, <code>readme_regex</code>, <code>readme_collections</code>, <code>readme_http</code> and <code>readme_ai</code>.</p>

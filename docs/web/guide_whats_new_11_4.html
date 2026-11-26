@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What is new in v2026.11.4 — Objeck Language</title>
+  <meta name="description" content="MCP tools from a doc comment, typed clients, agents on a local model, run control, and what else changed in v2026.11.4.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://www.objeck.org/guide_whats_new_11_4.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Objeck">
+  <meta property="og:title" content="What is new in v2026.11.4 — Objeck Language">
+  <meta property="og:description" content="MCP tools from a doc comment, typed clients, agents on a local model, run control, and what else changed in v2026.11.4.">
+  <meta property="og:url" content="https://www.objeck.org/guide_whats_new_11_4.html">
+  <meta property="og:image" content="https://www.objeck.org/style/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="agents.html">Agents</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">What is new in v2026.11.4</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new_11_4.html" aria-current="page">What is new in v2026.11.4</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="agents.html">Agents</a></li><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">What is new in v2026.11.4</h1>
+    <p class="page-lead">The headline of v2026.11.4 is AI engineering: a function becomes an MCP tool with one doc-comment line, an agent can run on a model on your own machine, and a run can be stopped by a budget or a cancel. The <a href="doc_changelog.html">CHANGELOG</a> is the complete list. Every program below is in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/examples/guides" target="_blank" rel="noopener"><code>programs/examples/guides/</code></a> or <a href="doc_deploy_examples.html"><code>programs/deploy/</code></a>, was compiled and run with a toolchain built from this source, and the output shown is what it printed.</p>
+
+    <h2 id="a-function-is-an-mcp-tool">A function is an MCP tool</h2>
+    <p>MCP (the Model Context Protocol) is how an AI model finds and calls a program's functions. Put <code>@tool</code> in the function's doc comment and the compiler writes the name, the JSON Schema and the argument checks.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP;
+
+<span class="t-kw">class</span> <span class="t-cls">Notes</span> {
+  <span class="t-com">#~
+  Count the words in a text.
+  @tool
+  @readonly
+  @param text the text to count
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">CountWords</span>(text : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">Int</span> { ... }
+}
+</code></pre>
+    <p><code>obr --mcp</code> serves the program's tools on standard input and output (<code>--mcp-http=8080</code> serves them over HTTP). Compile <code>mcp_tool.obs</code> with <code>-lib gen_collect,json,net,net_server,cipher,misc,mcp</code>, then send it one JSON message per line:</p>
+<pre class="cmd">$ obr --mcp mcp_tool.obe
+&gt; {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"count_words","arguments":{"text":"one two  three"}}}
+{"id":2,"jsonrpc":"2.0","result":{"content":[{"text":"3","type":"text"}],"isError":false}}</pre>
+    <p>(The protocol also wants an <code>initialize</code> message first; the walkthrough shows a whole session.) To give the server to Claude Code or Claude Desktop, put <code>{"mcpServers":{"notes":{"command":"obr","args":["--mcp","/full/path/mcp_tool.obe"]}}}</code> in <code>.mcp.json</code>. Under <code>--mcp</code> standard output carries the protocol, so a tool logs with <code>ErrorLine</code>.</p>
+    <h2 id="resources-and-prompts">Resources and prompts</h2>
+    <p><code>@resource &lt;uri&gt;</code> serves data (a URI template such as <code>weather://{city}/forecast/{days}</code> reads its variables into same-named parameters) and <code>@prompt</code> serves a prompt template. <code>mcp_resources_43</code> runs all three kinds in one process:</p>
+<pre class="cmd">resources: notes://readme (text/markdown)
+templates: weather://{city}/forecast/{days} (text/plain)
+prompts:   code_review(language, focus?)
+tools:     word_count
+read notes://readme               -&gt; # Notes: write them down.
+read weather://Denver/forecast/3  -&gt; 3 days in Denver: sunny
+prompt code_review(Objeck)        -&gt; Review the Objeck code for bugs.
+prompt code_review(C, style)      -&gt; Review the C code for style.
+tool word_count(a b  c)           -&gt; 3</pre>
+    <h2 id="a-typed-client-checked-at-build-time">A typed client, checked at build time</h2>
+    <p><code>mcp_stubs</code> asks a server for its tools and writes a class with one typed method per tool:</p>
+<pre class="cmd">$ obr mcp_stubs.obe --cmd "obr --mcp mcp_tool.obe" --class NotesClient --out NotesClient.obs --save-manifest notes.manifest.json
+mcp_stubs: wrote 1 tool(s) to NotesClient.obs
+$ obr mcp_stubs.obe --manifest notes.manifest.json --class NotesClient --check NotesClient.obs
+mcp_stubs: NotesClient.obs matches the server</pre>
+    <p><code>notes-&gt;CountWords("a b c")</code> is now checked by <code>obc</code>. When the server's tool changes (here a second parameter, <code>min_length</code>, was added), <code>--check</code> fails the build and names the method:</p>
+<pre class="cmd">$ obr mcp_stubs.obe --cmd "obr --mcp mcp_tool2.obe" --class NotesClient --check NotesClient.obs
+mcp_stubs: NotesClient.obs is out of date: the server's tools are not the ones it was generated from
+  + method : public : CountWords(text : String, min_length : Int) ~ String {
+  regenerate it (obr mcp_stubs.obe ... --out NotesClient.obs) and review the calls that no longer compile</pre>
+    <p>The exit code is 1. <code>mcp_stub_41</code> runs a client end to end in one process:</p>
+<pre class="cmd">price("tea")                 -&gt; 4.50
+restock("tea", 12)           -&gt; 12 x tea, standard delivery
+restock("tea", 12, true)     -&gt; 12 x tea, rush delivery
+searchJson([green, tea])     -&gt; matches=2 exact=true
+price("coffee")              -&gt; Nil, GetError() = Tool price failed: no such item: coffee</pre>
+    <h2 id="effect-hints-decide-who-approves">Effect hints decide who approves</h2>
+    <p><code>@readonly</code>, <code>@destructive</code>, <code>@idempotent</code> and <code>@openworld</code> become MCP annotations. An agent can use them: <code>Agent-&gt;SetApproveUnlessReadOnly(true)</code> asks about every tool not known to be read-only, and a destructive tool always asks. <code>mcp_agent_42</code> hands three declared tools to a scripted model (one read-only, one unmarked, one destructive) and an approver that refuses deletions:</p>
+<pre class="cmd">  [approval asked for note: yes]
+  [approval asked for delete_file: no]
+add: ok - 42
+note: ok - noted: the sum is 42
+delete_file: refused - Error: the user declined to run 'delete_file'
+model says: Added the numbers and made a note.</pre>
+    <p>The read-only <code>add</code> ran without a question; the destructive <code>delete_file</code> was refused before its function ran. The full walkthrough is the <a href="doc_mcp.html">MCP walkthrough</a>.</p>
+    <h2 id="an-agent-on-a-local-model">An agent on a local model</h2>
+    <p><code>OllamaBackend</code> runs the agent loop on a model served by <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>: no API key, and no data leaves the machine. <strong>Requires a local Ollama server</strong> (<code>ollama pull qwen3:8b</code>) listening on <code>http://localhost:11434</code>; <code>SetHost</code> points it elsewhere. <code>agent_local.obs</code> hands an <code>@tool</code> function to the model:</p>
+<pre class="line-numbers"><code class="language-objeck">agent <span class="t-op">:=</span> <span class="t-cls">Agent</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">OllamaBackend</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"qwen3:8b"</span>), registry);
+agent<span class="t-op">-&gt;</span>SetBudget(<span class="t-cls">AgentBudget</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">6</span>)<span class="t-op">-&gt;</span>SetMaxWallMs(<span class="t-num">120000</span>));
+result <span class="t-op">:=</span> agent<span class="t-op">-&gt;</span>Run(<span class="t-str">"What is 17 plus 25? Use the add tool."</span>);
+</code></pre>
+<pre class="cmd">$ obr agent_local.obe
+answer: The sum of 17 and 25 is **42**.
+tool: add({"a":17,"b":25}) -&gt; 42
+stop reason: completed, model calls: 2</pre>
+    <p>The model's wording differs from run to run; the tool call and the stop reason do not. The model must support tool calls.</p>
+    <h2 id="stop-an-agent-budgets-cancel-a-hung-tool">Stop an agent: budgets, cancel, a hung tool</h2>
+    <p>A run ends with a stop reason: <code>completed</code>, <code>cancelled</code>, <code>deadline</code> or a budget (<code>budget_steps</code>, <code>budget_model_calls</code>, <code>budget_tool_calls</code>, <code>budget_tokens</code>, <code>budget_cost</code>). A tool in <code>BOUNDED_THREAD</code> mode is abandoned at its time limit and the model still gets an answer. <code>agent_control_34</code> stops a model that asks for a tool forever:</p>
+<pre class="line-numbers"><code class="language-objeck">agent<span class="t-op">-&gt;</span>SetBudget(<span class="t-cls">AgentBudget</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxToolCalls(<span class="t-num">2</span>));
+result <span class="t-op">:=</span> agent<span class="t-op">-&gt;</span>Run(<span class="t-str">"keep working"</span>);
+</code></pre>
+<pre class="cmd">budget:  budget_tool_calls after 2 tool calls ran
+cancel:  cancelled after 1 tool calls ran
+hung:    completed, the slow tool was a timeout</pre>
+    <p><code>AgentScope</code> puts one set of limits, one cancel switch and one trace around every agent run in a block, so you do not hand a budget to each agent. The limits are totals: <code>agent_scope_45</code> gives three questions a scope of two steps, and the second and third are not started:</p>
+<pre class="line-numbers"><code class="language-objeck">scope <span class="t-op">:=</span> <span class="t-cls">AgentScope</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">2</span>)<span class="t-op">-&gt;</span>SetTrace(<span class="t-const">true</span>);
+<span class="t-cls">AgentScope</span><span class="t-op">-&gt;</span>Run(scope, Questions() <span class="t-op">~</span> <span class="t-const">Nil</span>);
+</code></pre>
+<pre class="cmd">scope: 2 steps allowed
+question 1: completed (2 steps)
+question 2: budget_steps (0 steps)
+question 3: budget_steps (0 steps)
+agent scope: 3 runs, 2 steps, 30 tokens, 1 tool calls, halt=budget_steps, events=10
+outside the block: no scope (true)</pre>
+    <p>Reference: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/agent_control.md" target="_blank" rel="noopener">Agent run control</a>.</p>
+    <h2 id="smaller-changes-you-can-see">Smaller changes you can see</h2>
+    <p><code>new_in_11_4.obs</code> shows four: an out-of-bounds index reports the same message compiled and interpreted, a local declared without a value starts empty on every pass of a loop, a file records a failed open or write, and a read into a <code>Char[]</code> lands at its offset. Compile it with no <code>-lib</code>:</p>
+<pre class="cmd">Index out of bounds: 5,2
+n=0 x=5
+n=1 x=0
+n=2 x=0
+open ok? false, errno 2
+read 4: ...abcd</pre>
+    <p><code>Console-&gt;ReadLine</code> returns <code>Nil</code> at the end of input; a blank line is still <code>""</code>. <code>eof_lines.obs</code> fed <code>a</code>, a blank line and <code>b</code> (no line ending):</p>
+<pre class="cmd">$ printf 'a\n\nb' | obr eof_lines.obe
+3 lines, 1 blank</pre>
+    <p>The other items (HTTP timeouts, thread-fault isolation, AES-256-GCM, ONNX on the GPU, gradient boosting, forecasting) are in the <a href="doc_changelog.html">CHANGELOG</a> and the <a href="doc_ai.html">AI guide</a>.</p>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#a-function-is-an-mcp-tool">A function is an MCP tool</a></li><li><a href="#resources-and-prompts">Resources and prompts</a></li><li><a href="#a-typed-client-checked-at-build-time">A typed client, checked at build time</a></li><li><a href="#effect-hints-decide-who-approves">Effect hints decide who approves</a></li><li><a href="#an-agent-on-a-local-model">An agent on a local model</a></li><li><a href="#stop-an-agent-budgets-cancel-a-hung-tool">Stop an agent: budgets, cancel, a hung tool</a></li><li><a href="#smaller-changes-you-can-see">Smaller changes you can see</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="agents.html">Agents</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>

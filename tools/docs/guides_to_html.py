@@ -45,6 +45,8 @@ RAW = "https://raw.githubusercontent.com/objeck/objeck-lang/master"
 GUIDES = {
     "docs/guides/README.md": ("guides.html", "Getting-Started Guides",
                               "Short, task-oriented Objeck guides, each built around a complete program that was compiled and run."),
+    "docs/guides/whats_new_11_4.md": ("guide_whats_new_11_4.html", "What is New in v2026.11.4",
+                                      "MCP tools from a doc comment, typed clients, agents on a local model, run control, and what else changed in v2026.11.4."),
     "docs/guides/whats_new_10_3.md": ("guide_whats_new.html", "What is New in v2026.10.3",
                                       "Upgrading to Objeck v2026.10.3: recompile your programs, HttpClient connection reuse, library Nil fixes, language server speedups."),
     "docs/guides/query.md": ("guide_query.html", "Query.Structured Guide",
@@ -75,6 +77,8 @@ DOCS = {
         'Benchmarks, methodology and cross-language comparisons.'),
     'docs/FEATURES.md': ('doc_features.html', 'Language and libraries', 'LF',
         'The language reference with examples: classes, generics, closures, errors, strings and more.'),
+    'docs/MCP_WALKTHROUGH.md': ('doc_mcp.html', 'Language and libraries', 'MC',
+        'Declare a function as an MCP tool, serve it, call it through a typed client and hand it to an agent.'),
     'docs/AI.md': ('doc_ai.html', 'Language and libraries', 'AI',
         'OpenAI, Gemini, Ollama, ONNX, OpenCV, ML and NLP, with working code.'),
     'docs/COLLECTIONS_GUIDE.md': ('doc_collections.html', 'Language and libraries', 'CO',

@@ -1,0 +1,21 @@
+#~
+# compile: obc -src eof_lines.obs
+# run:     obr eof_lines.obe < somefile      (or: printf 'a\n\nb' | obr eof_lines.obe)
+#
+# Console->ReadLine returns Nil at the end of input; a blank line is still "".
+~#
+class EofLines {
+	function : Main(args : String[]) ~ Nil {
+		lines := 0;
+		blank := 0;
+		line := System.IO.Console->ReadLine();
+		while(line <> Nil) {
+			lines += 1;
+			if(line->Size() = 0) {
+				blank += 1;
+			};
+			line := System.IO.Console->ReadLine();
+		};
+		"{$lines} lines, {$blank} blank"->PrintLine();
+	}
+}

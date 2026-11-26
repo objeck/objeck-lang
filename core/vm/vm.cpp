@@ -124,6 +124,13 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       // Leak the image instead and let process teardown reclaim it.
       loader.Abandon();
     }
+    else {
+      // The program is over and no other VM thread runs: stop the threads the
+      // native libraries started before the return from main runs exit() (see
+      // UnloadNativeLibrariesAtExit). With a VM thread still live it is skipped,
+      // as that thread may be inside one of those libraries.
+      UnloadNativeLibrariesAtExit();
+    }
 
 #ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;

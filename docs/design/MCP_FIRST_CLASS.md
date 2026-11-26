@@ -12,7 +12,7 @@ name, its doc comment and its parameter types already say what the schema says. 
 second copy, and to make the other direction (calling a server) typed:
 
 1. **Declare**: write a function, get the tool definition derived from it.
-2. **Serve**: `obr prog.obe --mcp` (stdio) or `--mcp-http <port>` serves a program's tools with no code.
+2. **Serve**: `obr --mcp prog.obe` (stdio) or `obr --mcp-http=<port> prog.obe` serves a program's tools with no code.
 3. **Consume**: generated typed stubs, so `weather->Forecast("Denver", 3)` is checked by the compiler.
 4. **Hand to an agent**: plain functions (or a server's tools) become `API.Agent` tools directly.
 5. **Effects**: read-only / destructive hints (the MCP `annotations`) drive the agent's approval rules.
@@ -140,7 +140,7 @@ capability. D4 is acceptable only as a stopgap.
   (enum values, record fields, defaults, `@param` descriptions, `@readonly`/`@destructive`/`@idempotent`
   tags) and synthesizes `McpTools(service)`. Diagnostics for non-derivable parameters. The oracle of RQ1 and
   the byte-equality test of RQ5 gate it. No VM change.
-* **Stage 3 (launcher)**: `obr prog.obe --mcp` / `--mcp-http <port>`: after load, find the synthesized
+* **Stage 3 (launcher)**: `obr --mcp prog.obe` / `obr --mcp-http=<port> prog.obe`: after load, find the synthesized
   method by name, build a `McpService`, serve. The only VM-side work, startup only, behind the flag.
 * **Stage 4 (consumption in the compiler)**: `obc -mcp-stub <server>` as a step that runs the generator.
 
@@ -191,7 +191,7 @@ rebuilt from source into a scratch copy. They are first measurements, not a stud
 | Live canvas | Claude and `gpt-5.4-mini` painted one canvas through the declared tools: Claude 33 calls, 4 turns, 15,659 input and 3,036 output tokens; GPT 24 calls, 11 turns; 57 calls, none refused. |
 
 **Not possible without the compiler** (and not faked): `McpService->ExposeObject(obj)`; deriving parameter
-names, defaults, enum values, record fields and descriptions from the function; `obr prog.obe --mcp`;
+names, defaults, enum values, record fields and descriptions from the function; `obr --mcp prog.obe`;
 a compile error for a spec that disagrees with its function.
 
 ## 7. Stage 2 (compiler): `@tool`, what was built and measured
@@ -242,7 +242,7 @@ schema; the file must `use API.MCP`; a generated name (`McpTools`, `McpTool_x`, 
 already uses is an error. The editor grammars highlight the tags; the language server's index is built from the
 library sources and does not know the tag.
 
-**What remains.** Stage 3: `obr prog.obe --mcp` and `--mcp-http <port>`, which find `McpTools` by name after load
+**What remains.** Stage 3: `obr --mcp prog.obe` and `obr --mcp-http=<port> prog.obe`, which find `McpTools` by name after load
 and serve (the one VM-side piece; startup only, behind the flag). Stage 4: a compiler step that runs the stub
 generator. Not done: a derived `outputSchema` from a record return type; progress and cancellation reaching an
 `AgentObserver`; reading enums and records from a library `.obl`.

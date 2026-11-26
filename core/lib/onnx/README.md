@@ -91,7 +91,7 @@ Measured on an RTX 4090 (YOLO11 fine-tune, 768x768, 40 MB, one 1080p photo, `ep=
 
 ### Threads
 
-`Session->Run`, a bound run and the `DeviceTensor` copies park the calling thread for the length of the native work, so a stop-the-world collection started by another Objeck thread does not wait for an inference (longest wait 176.7 ms to 19.9 ms for ResNet-34 at batch 32). A `Session` may be shared by threads; give each thread its own `BoundSession` and tensors. See `docs/ai_sections/onnx_gpu.md`.
+`Session->Run`, a bound run and the `DeviceTensor` copies park the calling thread for the length of the native work, so a stop-the-world collection started by another Objeck thread does not wait for an inference (the size of the gain depends on the workload; see `docs/ai_sections/onnx_gpu.md`). A `Session` may be shared by threads; give each thread its own `BoundSession` and tensors. See `docs/ai_sections/onnx_gpu.md`.
 
 ## Quick Start
 

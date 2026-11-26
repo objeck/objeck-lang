@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MCP walkthrough: declare, serve, consume, hand to an agent — Objeck Language</title>
+  <meta name="description" content="The Model Context Protocol (MCP) is how an AI model finds and calls a program&#x27;s functions. This walkthrough builds one small tool four ways. Every output below is from a real run on the build that wrote this page; the programs are in progra">
+  <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://www.objeck.org/doc_mcp.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Objeck">
+  <meta property="og:title" content="MCP walkthrough: declare, serve, consume, hand to an agent — Objeck Language">
+  <meta property="og:description" content="The Model Context Protocol (MCP) is how an AI model finds and calls a program&#x27;s functions. This walkthrough builds one small tool four ways. Every output below is from a real run on the build that wrote this page; the programs are in progra">
+  <meta property="og:url" content="https://www.objeck.org/doc_mcp.html">
+  <meta property="og:image" content="https://www.objeck.org/style/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="agents.html">Agents</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#language-and-libraries">Language and libraries</a></li><li aria-current="page">MCP walkthrough: declare, serve, consume, hand to an agent</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_mcp.html" aria-current="page">MCP walkthrough: declare, serve, consume, hand to an agent</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">MCP walkthrough: declare, serve, consume, hand to an agent</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/MCP_WALKTHROUGH.md" target="_blank" rel="noopener">View docs/MCP_WALKTHROUGH.md on GitHub</a></p>
+    <p class="page-lead">The Model Context Protocol (MCP) is how an AI model finds and calls a program's functions. This walkthrough builds one small tool four ways. Every output below is from a real run on the build that wrote this page; the programs are in <code>programs/deploy/</code> (<code>mcp_declare_40</code>, <code>mcp_stub_41</code>, <code>mcp_agent_42</code>, <code>mcp_resources_43</code>, <code>mcp_serve_44</code>) and compile with the libraries on their first line. The reference is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/mcp.md" target="_blank" rel="noopener">ai_sections/mcp.md</a>; the design and what is not possible yet is <a href="https://github.com/objeck/objeck-lang/blob/master/docs/design/MCP_FIRST_CLASS.md" target="_blank" rel="noopener">design/MCP_FIRST_CLASS.md</a>. A shorter tour of the whole release is <a href="guide_whats_new_11_4.html">What is new in v2026.11.4</a>.</p>
+
+    <h2 id="1-declare-a-function-is-a-tool">1. Declare: a function is a tool</h2>
+    <p>A tool is a function plus a name, a description and a JSON Schema that tells a model its arguments. You write the function and a doc comment; a line that says <code>@tool</code> in the comment is the whole declaration, and the compiler writes the rest from what is already there:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">enum</span> <span class="t-cls">Style</span> { FORMAL, CASUAL }
+
+<span class="t-kw">class</span> <span class="t-cls">Tools</span> {
+  <span class="t-com">#~
+  Greet a person.
+  @tool
+  @readonly
+  @param name who to greet
+  @param style how to greet
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Greet</span>(name : <span class="t-type">String</span>, style : Style) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">if</span>(style = <span class="t-cls">Style</span><span class="t-op">-&gt;</span>CASUAL) { <span class="t-kw">return</span> <span class="t-str">"hi {$name}"</span>; };
+    <span class="t-kw">return</span> <span class="t-str">"Good day, {$name}"</span>;
+  }
+}
+</code></pre>
+    <p>The description is the comment's text, the schema comes from the parameter types (the enum becomes a list of allowed values, a default would make a parameter optional), <code>@readonly</code> is the MCP <code>readOnlyHint</code>, and <code>Tools-&gt;McpTools(server)</code> registers every tool of the class. <code>obr mcp_declare_40.obe</code> lists what the server offers and calls it (<code>remove_file</code> is the destructive tool the third section uses):</p>
+<pre class="plain">The server lists 3 tools:
+  add (read-only): Add two integers.
+    schema: {"properties":{"a":{"description":"the first number","type":"integer"},"b":{"description":"the second number","type":"integer"}},"required":["a","b"],"type":"object"}
+  greet (read-only): Greet a person.
+    schema: {"properties":{"name":{"description":"who to greet","type":"string"},"style":{"description":"how to greet","enum":["FORMAL","CASUAL"],"type":"string"}},"required":["name","style"],"type":"object"}
+  remove_file (destructive): Delete a file.
+    schema: {"properties":{"path":{"description":"the file to delete","type":"string"}},"required":["path"],"type":"object"}
+add(17, 25)                  -&gt; 42
+greet("Ada", FORMAL)         -&gt; Good day, Ada
+greet("Ada", CASUAL)         -&gt; hi Ada
+add(1, "two")                -&gt; refused: Invalid arguments for add: argument 'b' must be of type integer
+greet("Ada", "RUDE")         -&gt; refused: Invalid arguments for greet: argument 'style' must be one of: FORMAL, CASUAL
+add(1) with no b             -&gt; refused: Invalid arguments for add: missing required argument 'b'</pre>
+    <p>Bad arguments never reach the function: the server answers with a result the model can read and correct. A function type, a class that is not a record, a wrong tag or a default that is not a literal is a compile error at the function. The library form of the same declaration, for code that cannot use the tag, is <code>McpToolSpec</code> (<code>-&gt;Add("name", "String", "who to greet")-&gt;ReadOnly()-&gt;AddTo(server, handler)</code>); the compiler's output is checked against it.</p>
+    <h2 id="2-serve">2. Serve</h2>
+    <p>A program with <code>@tool</code>, <code>@resource</code> or <code>@prompt</code> functions needs no server code: <code>obr --mcp prog.obe</code> serves them on standard input and output, which is what Claude Code and Claude Desktop launch (put <code>{"mcpServers":{"demo":{"command":"obr","args":["--mcp","mcp_declare_40.obe"]}}}</code> in <code>.mcp.json</code>), and <code>obr --mcp-http=8080 prog.obe</code> serves the same over streamable HTTP (<code>--mcp-http-host=0.0.0.0</code> to listen beyond the loopback address; <code>--mcp-http=0</code> picks a free port and prints it on standard error). The VM starts the program at the <code>McpMain</code> the compiler wrote for the class instead of at <code>Main</code>; a program that has several tagged classes writes its own <code>McpMain(args : String[])</code> that registers them all and calls <code>McpServe-&gt;Run(server, args)</code>. On standard input and output the protocol owns standard output: anything the program prints there corrupts it, so log with <code>ErrorLine</code> (standard error). The program must still have a <code>Main</code> (it is what runs without the flag). Tested by <code>mcp_launch_test.py</code> (stdio in three execution modes, hostile input, HTTP, the refusals); the same client library that tests it is what the stub generator uses. An older <code>--stdio</code> flag in <code>mcp_declare_40.obs</code> is the program's own and still works.</p>
+    <p>Resources and prompts come from the same comment: <code>@resource weather://{city}/forecast/{days}</code> serves data and <code>@prompt</code> a prompt template (<code>mcp_resources_43</code> shows all three kinds, <code>mcp_serve_44</code> is the smallest server). A start of a session by hand (<code>mcp_serve_44</code> offers one tool, <code>count_words</code>; the tool call is in <a href="guide_whats_new_11_4.html">What is new</a>):</p>
+<pre class="plain">$ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | obr --mcp mcp_serve_44.obe
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"prompts":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"Notes","version":"1.0"}}}
+{"id":2,"jsonrpc":"2.0","result":{"tools":[{"annotations":{"readOnlyHint":true},"description":"Count the words in a text.","inputSchema":{"properties":{"text":{"description":"the text to count","type":"string"}},"required":["text"],"type":"object"},"name":"count_words"}]}}</pre>
+    <h2 id="3-consume-through-a-typed-client">3. Consume through a typed client</h2>
+    <p>Calling a server with <code>CallTool("price", "{\"item\":\"tea\"}")</code> builds JSON by hand. <code>mcp_stubs</code> asks a server for its tools and writes a class with one typed method per tool:</p>
+<pre class="plain">obr mcp_stubs.obe --cmd "obr shop_server.obe --stdio" --class ShopClient --out ShopClient.obs</pre>
+<pre class="line-numbers"><code class="language-objeck">shop <span class="t-op">:=</span> <span class="t-cls">ShopClient</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(client);
+shop<span class="t-op">-&gt;</span>Price(<span class="t-str">"tea"</span>);                 <span class="t-com"># 4.50</span>
+shop<span class="t-op">-&gt;</span>Restock(<span class="t-str">"tea"</span>, <span class="t-num">12</span>, <span class="t-const">true</span>);     <span class="t-com"># 12 x tea, rush delivery   (the optional "rush" is a second overload)</span>
+shop<span class="t-op">-&gt;</span>SearchJson(terms);            <span class="t-com"># the structured result, because the tool declares an outputSchema</span>
+shop<span class="t-op">-&gt;</span>Price(<span class="t-str">"coffee"</span>);              <span class="t-com"># Nil, and shop-&gt;GetError() is "no such item: coffee"</span>
+shop<span class="t-op">-&gt;</span>Price(<span class="t-str">"tea"</span>, <span class="t-num">3</span>);              <span class="t-com"># does not compile</span>
+</code></pre>
+    <p><code>mcp_stub_41</code> runs this end to end in one process and prints those lines.</p>
+    <p><strong>Keep the client honest at build time.</strong> Save what the server said next to the generated client (<code>--save-manifest shop.manifest.json</code>) and run <code>obr mcp_stubs.obe --manifest shop.manifest.json --class ShopClient --check ShopClient.obs</code> before <code>obc</code>: it needs no server, and when the server's tools have changed it fails the build, naming each method that was removed, added or changed. Regenerate the client and every call written for the old signature is a compile error. This is a build step rather than an <code>obc</code> flag: the compiler already type-checks the calls, and does not start servers.</p>
+    <h2 id="4-hand-functions-to-an-agent-and-let-the-effect-decide-who-approves">4. Hand functions to an agent, and let the effect decide who approves</h2>
+    <p><code>McpAgentTools-&gt;AddAll(registry, client)</code> makes <code>API.Agent</code> tools from a server's tools (the server here is the <code>@tool</code> class), and the hints drive approval; <code>FromSpec(spec, handler)</code> does the same for an <code>McpToolSpec</code>. <code>mcp_agent_42</code> gives a scripted model three tools (one read-only, one unmarked, one destructive) and runs the agent with <code>SetApproveUnlessReadOnly(true)</code> and an approver that refuses deletions:</p>
+<pre class="plain">  [approval asked for note: yes]
+  [approval asked for delete_file: no]
+add: ok - 42
+note: ok - noted: the sum is 42
+delete_file: refused - Error: the user declined to run 'delete_file'</pre>
+    <p>The read-only <code>add</code> ran without a question, the unmarked <code>note</code> asked, and the destructive <code>delete_file</code> asked and was refused before its function ran.</p>
+    <h2 id="5-with-a-local-model">5. With a local model</h2>
+    <p>The agent loop of section 4 does not care which model sits behind it. <code>OllamaBackend</code> runs it on a model served by <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> on your own machine, with no key. <strong>Requires a local Ollama server</strong>; <code>programs/examples/guides/agent_local.obs</code> hands an <code>@tool</code> function to <code>qwen3:8b</code>:</p>
+<pre class="plain">$ obr agent_local.obe
+answer: The sum of 17 and 25 is **42**.
+tool: add({"a":17,"b":25}) -&gt; 42
+stop reason: completed, model calls: 2</pre>
+    <h2 id="6-with-a-hosted-model">6. With a hosted model</h2>
+    <p><code>tools/mcp/mcp_live_stub.obs</code> hands the shop server's tool definitions to a model through <code>McpToolBridge</code> and runs every call the model makes through <code>ShopClient</code>. Run it from the directory that holds your key files (the libraries read them; the program does not):</p>
+<pre class="plain">obr mcp_live_stub.obe claude           claude-sonnet-5-5
+  call 1: price({"item":"tea"}) -&gt; 4.50
+  call 2: restock({"count":12,"item":"tea","rush":true}) -&gt; 12 x tea, rush delivery
+  call 3: search({"max_results":5,"terms":["green","tea"]}) -&gt; {"exact":true,"matches":2}
+  calls=3 turns=2 input_tokens=1711 output_tokens=323
+
+obr mcp_live_stub.obe openai           gpt-5.4-mini (Completion-&gt;CompleteWithTools; it reports no token counts)
+  the same three calls, calls=3 turns=4</pre>
+    <p>The visual version is <code>programs/examples/mcp_canvas.obs</code>: two painters, Claude and an OpenAI model, paint one canvas through MCP tools that are declared with <code>McpToolSpec</code>; the scripted painters call the same server through a generated typed client (<code>obr mcp_canvas.obe --demo</code>, or <code>--stub</code> to print that client).</p>
+    <h2 id="what-this-does-not-do-yet">What this does not do yet</h2>
+    <p>Enums and records must be declared in the sources being compiled, before the class that uses them; an enum cannot be an optional parameter (a default must be a literal). A tool's result is text, a <code>JsonElement</code> (structured) or an <code>McpToolResult</code>; a record result and a derived <code>outputSchema</code> beyond "an object" are not derived. The design document has the reasons and the plan.</p>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#1-declare-a-function-is-a-tool">1. Declare: a function is a tool</a></li><li><a href="#2-serve">2. Serve</a></li><li><a href="#3-consume-through-a-typed-client">3. Consume through a typed client</a></li><li><a href="#4-hand-functions-to-an-agent-and-let-the-effect-decide-who-approves">4. Hand functions to an agent, and let the effect decide who approves</a></li><li><a href="#5-with-a-local-model">5. With a local model</a></li><li><a href="#6-with-a-hosted-model">6. With a hosted model</a></li><li><a href="#what-this-does-not-do-yet">What this does not do yet</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="agents.html">Agents</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>
