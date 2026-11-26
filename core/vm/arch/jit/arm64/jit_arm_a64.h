@@ -332,8 +332,17 @@ namespace Runtime {
     std::vector<StackInstr*> synthetic_jumps;   // the tables' default-arm jumps, owned here
     multimap<size_t, size_t> const_int_pool;
     vector<long> deref_offsets;          // -1
-    vector<long> bounds_less_offsets;    // -2
-    vector<long> bounds_greater_offsets; // -3
+    // Each array bounds guard (CheckArrayBounds): the code index of its two
+    // b.cond words and the registers holding the index and the element count at
+    // the branch. The branches go to a per-guard cold stub (EmitBoundsStubs)
+    // that reports both numbers before the method returns its -2/-3 status.
+    struct BoundsSite {
+      long less_index;
+      long greater_index;
+      Register index_reg;
+      Register size_reg;
+    };
+    vector<BoundsSite> bounds_sites;
     vector<long> div_by_zero_offsets;    // code -4
     // A bridge call that reported an error (#925). Not tied to one code: the
     // status is whatever StackCallbackBody returned, already in X0.
@@ -433,6 +442,7 @@ namespace Runtime {
     void EmitPinEntry(int region);
     void EmitPinWriteBack(int region);
     void EmitPinExitStubs();
+    void EmitBoundsStubs();
     void EmitPinSave(bool store);
 
     // GC roots phase 4 (docs/GC_ROOTS_DESIGN.md): the method's reference map
@@ -637,7 +647,7 @@ namespace Runtime {
  #ifdef _DEBUG_JIT_JIT
       std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
  #endif
-      bounds_less_offsets.push_back(code_index);
+      const long less_index = code_index;
       AddMachineCode(0x5400000B);
       // jump to exit
       // ...
@@ -647,8 +657,9 @@ namespace Runtime {
 #ifdef _DEBUG_JIT_JIT
         std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
-      bounds_greater_offsets.push_back(code_index);
+      const long greater_index = code_index;
       AddMachineCode(0x5400000A);
+      bounds_sites.push_back({ less_index, greater_index, reg, max_reg });
       
       // jump to exit
       // ...
