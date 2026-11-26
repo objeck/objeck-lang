@@ -825,6 +825,12 @@ bundle API.MCP {
 		@description : String;
 		@schema : JsonElement;
 		@handler : Func2Ref<McpCall, McpToolResult>;
+		# the four annotation hints: 0 = not stated, 1 = true, 2 = false
+		@read_only : Int;
+		@destructive : Int;
+		@idempotent : Int;
+		@open_world : Int;
+		@output_schema : JsonElement;
 
 		#~
 		Constructor
@@ -849,6 +855,126 @@ bundle API.MCP {
 		~#
 		method : public : SetTitle(title : String) ~ Nil {
 			@title := title;
+		}
+
+		#~
+		Declares the shape of the structuredContent the tool returns, an object schema. tools/list carries it as outputSchema, and a client (or the stub generator) can type the result
+		@param schema JSON Schema of the structured result
+		~#
+		method : public : SetOutputSchema(schema : JsonElement) ~ Nil {
+			@output_schema := schema;
+		}
+
+		#~
+		Gets the declared shape of the structured result
+		@return JSON Schema, Nil when the tool declares none
+		~#
+		method : public : GetOutputSchema() ~ JsonElement {
+			return @output_schema;
+		}
+
+		#~
+		Sets the readOnlyHint annotation: the tool does not change its environment
+		@param read_only true for a tool that only reads
+		~#
+		method : public : SetReadOnlyHint(read_only : Bool) ~ Nil {
+			@read_only := McpTool->Hint(read_only);
+		}
+
+		#~
+		Sets the destructiveHint annotation: the tool may destroy or overwrite something (only meaningful when it is not read-only)
+		@param destructive true for a tool that may destroy data
+		~#
+		method : public : SetDestructiveHint(destructive : Bool) ~ Nil {
+			@destructive := McpTool->Hint(destructive);
+		}
+
+		#~
+		Sets the idempotentHint annotation: calling again with the same arguments has no further effect
+		@param idempotent true for an idempotent tool
+		~#
+		method : public : SetIdempotentHint(idempotent : Bool) ~ Nil {
+			@idempotent := McpTool->Hint(idempotent);
+		}
+
+		#~
+		Sets the openWorldHint annotation: the tool reaches outside this server (the web, other systems)
+		@param open_world true for a tool that talks to an open world
+		~#
+		method : public : SetOpenWorldHint(open_world : Bool) ~ Nil {
+			@open_world := McpTool->Hint(open_world);
+		}
+
+		#~
+		Says whether the tool's readOnlyHint is stated
+		@return true when set
+		~#
+		method : public : HasReadOnlyHint() ~ Bool {
+			return @read_only <> 0;
+		}
+
+		#~
+		Gets the readOnlyHint; false when it is not stated (check HasReadOnlyHint)
+		@return the hint
+		~#
+		method : public : GetReadOnlyHint() ~ Bool {
+			return @read_only = 1;
+		}
+
+		#~
+		Says whether the tool's destructiveHint is stated
+		@return true when set
+		~#
+		method : public : HasDestructiveHint() ~ Bool {
+			return @destructive <> 0;
+		}
+
+		#~
+		Gets the destructiveHint; false when it is not stated (check HasDestructiveHint)
+		@return the hint
+		~#
+		method : public : GetDestructiveHint() ~ Bool {
+			return @destructive = 1;
+		}
+
+		#~
+		Says whether the tool's idempotentHint is stated
+		@return true when set
+		~#
+		method : public : HasIdempotentHint() ~ Bool {
+			return @idempotent <> 0;
+		}
+
+		#~
+		Gets the idempotentHint; false when it is not stated
+		@return the hint
+		~#
+		method : public : GetIdempotentHint() ~ Bool {
+			return @idempotent = 1;
+		}
+
+		#~
+		Says whether the tool's openWorldHint is stated
+		@return true when set
+		~#
+		method : public : HasOpenWorldHint() ~ Bool {
+			return @open_world <> 0;
+		}
+
+		#~
+		Gets the openWorldHint; false when it is not stated
+		@return the hint
+		~#
+		method : public : GetOpenWorldHint() ~ Bool {
+			return @open_world = 1;
+		}
+
+		# 1 for true, 2 for false
+		function : Hint(value : Bool) ~ Int {
+			if(value) {
+				return 1;
+			};
+			return 2;
 		}
 
 		#~
@@ -904,7 +1030,54 @@ bundle API.MCP {
 				json->Insert("description", @description);
 			};
 			json->Insert("inputSchema", @schema);
+			if(@output_schema <> Nil) {
+				json->Insert("outputSchema", @output_schema);
+			};
+
+			# annotations appear only when one was stated, so a tool without hints lists exactly as before
+			if(@read_only <> 0 | @destructive <> 0 | @idempotent <> 0 | @open_world <> 0) {
+				notes := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(@read_only <> 0) {
+					notes->Insert("readOnlyHint", @read_only = 1);
+				};
+				if(@destructive <> 0) {
+					notes->Insert("destructiveHint", @destructive = 1);
+				};
+				if(@idempotent <> 0) {
+					notes->Insert("idempotentHint", @idempotent = 1);
+				};
+				if(@open_world <> 0) {
+					notes->Insert("openWorldHint", @open_world = 1);
+				};
+				json->Insert("annotations", notes);
+			};
 			return json;
+		}
+
+		# copies one boolean annotation; anything but a JSON true or false is "not stated"
+		function : ReadHint(notes : JsonElement, key : String, tool : McpTool, which : Int) ~ Nil {
+			value := notes->Get(key);
+			if(value = Nil) {
+				return;
+			};
+
+			on := value->GetType() = JsonElement->JsonType->TRUE;
+			if(<>on & value->GetType() <> JsonElement->JsonType->FALSE) {
+				return;
+			};
+
+			if(which = 0) {
+				tool->SetReadOnlyHint(on);
+			}
+			else if(which = 1) {
+				tool->SetDestructiveHint(on);
+			}
+			else if(which = 2) {
+				tool->SetIdempotentHint(on);
+			}
+			else {
+				tool->SetOpenWorldHint(on);
+			};
 		}
 
 		#~
@@ -920,6 +1093,19 @@ bundle API.MCP {
 
 			tool := McpTool->New(name, McpMessage->Str(json, "description"), json->Get("inputSchema"), Nil);
 			tool->SetTitle(McpMessage->Str(json, "title"));
+
+			output := json->Get("outputSchema");
+			if(output <> Nil & output->GetType() = JsonElement->JsonType->OBJECT) {
+				tool->SetOutputSchema(output);
+			};
+
+			notes := json->Get("annotations");
+			if(notes <> Nil & notes->GetType() = JsonElement->JsonType->OBJECT) {
+				ReadHint(notes, "readOnlyHint", tool, 0);
+				ReadHint(notes, "destructiveHint", tool, 1);
+				ReadHint(notes, "idempotentHint", tool, 2);
+				ReadHint(notes, "openWorldHint", tool, 3);
+			};
 			return tool;
 		}
 	}
@@ -1034,6 +1220,135 @@ bundle API.MCP {
 				return Nil;
 			};
 			return McpContents->New(uri, McpMessage->Str(json, "mimeType"), McpMessage->Str(json, "text"), McpMessage->Str(json, "blob"));
+		}
+	}
+
+	# Tells where the HTTP transport is listening, once it is: on standard error, so that standard output stays free
+	class : private : McpPortAnnouncer from Thread {
+		@service : McpService;
+		@address : String;
+
+		New(service : McpService, address : String) {
+			Parent();
+			@service := service;
+			@address := address;
+		}
+
+		method : public : Run(arg : System.Base) ~ Nil {
+			for(waited := 0; waited < 500; waited += 1;) {
+				port := @service->GetBoundPort();
+				if(port > 0) {
+					"mcp: serving http://{$@address}:{$port}/"->ErrorLine();
+					return;
+				};
+				Thread->Sleep(10);
+			};
+		}
+	}
+
+	#~
+	Serves a McpService the way "obr --mcp" and "obr --mcp-http=<port>" ask: the VM adds the transport to the program's arguments ("stdio", or "http", the address and the port) and starts the McpMain the compiler writes for a class with an @tool, @resource or @prompt function. A program that writes its own McpMain calls this with its arguments after registering. On standard input and output the protocol owns standard output: anything else the program prints there corrupts it, so log with ErrorLine, which goes to standard error
+	~#
+	class McpServe {
+		#~
+		Serves until standard input ends (stdio) or the HTTP server is stopped
+		@param service the server, with everything registered
+		@param args the transport: Nil or an empty array or "stdio" for standard input and output, "http" followed by the address and the port (0 for any free one, announced on standard error)
+		~#
+		function : Run(service : McpService, args : String[]) ~ Nil {
+			mode := "stdio";
+			if(args <> Nil & args->Size() > 0) {
+				mode := args[0];
+			};
+
+			if(mode->Equals("stdio")) {
+				service->ServeStdio();
+			}
+			else if(mode->Equals("http")) {
+				address := "127.0.0.1";
+				port := 0;
+				if(args->Size() > 1) {
+					address := args[1];
+				};
+				if(args->Size() > 2) {
+					port := args[2]->ToInt();
+				};
+				McpPortAnnouncer->New(service, address)->Execute(Nil);
+				service->ServeHttp(address, port);
+			}
+			else {
+				"mcp: unknown transport '{$mode}', expected stdio or http"->ErrorLine();
+				Runtime->Exit(2);
+			};
+		}
+	}
+
+	#~
+	A resource URI template such as "weather://{city}/forecast/{days}": reads the variables out of a URI. The compiler writes calls to it for a function marked "@resource"
+	~#
+	class McpUriTemplate {
+		#~
+		Matches a URI against a template and reads the variables. A variable is not empty and runs up to the literal text that follows it in the template (its first occurrence), or to the end of the URI; the values are not percent-decoded
+		@param template URI template, with each variable written {name}
+		@param uri URI asked for
+		@return a JSON object with each variable as a string, Nil if the URI does not match
+		~#
+		function : Match(template : String, uri : String) ~ JsonElement {
+			if(template = Nil | uri = Nil) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			t := 0;
+			u := 0;
+			while(t < template->Size()) {
+				if(template->Get(t) = '{') {
+					close := template->Find(t, '}');
+					if(close < 0) {
+						return Nil;
+					};
+					name := template->SubString(t + 1, close - t - 1);
+					t := close + 1;
+
+					# the literal text up to the next variable, or to the end
+					next := template->Find(t, '{');
+					literal : String;
+					if(next < 0) {
+						literal := template->SubString(t, template->Size() - t);
+					}
+					else {
+						literal := template->SubString(t, next - t);
+					};
+
+					end : Int;
+					if(literal->Size() = 0) {
+						end := uri->Size();
+					}
+					else {
+						end := uri->Find(u, literal);
+						if(end < 0) {
+							return Nil;
+						};
+					};
+					if(end <= u) {
+						return Nil;
+					};
+					result->Insert(name, uri->SubString(u, end - u));
+					u := end;
+				}
+				else {
+					if(u >= uri->Size() | uri->Get(u) <> template->Get(t)) {
+						return Nil;
+					};
+					t += 1;
+					u += 1;
+				};
+			};
+
+			if(u <> uri->Size()) {
+				return Nil;
+			};
+			return result;
 		}
 	}
 
@@ -1485,6 +1800,8 @@ bundle API.MCP {
 		@use_sessions : Bool;
 		@origins : Vector<String>;
 		@http_server : Bool;
+		@stats_on : Bool;
+		@stats : Hash<String, McpToolStat>;
 
 		#~
 		Constructor
@@ -1544,6 +1861,52 @@ bundle API.MCP {
 
 			@tools->AddBack(McpTool->New(name, description, schema_json, handler));
 			return true;
+		}
+
+		#~
+		Turns on per-tool counters: calls, failures, rejected arguments, cancellations and the time spent in the handler. Off by default, and while it is off a call pays one Bool test
+		@param on true to count
+		~#
+		method : public : EnableStats(on : Bool) ~ Nil {
+			critical(@mutex) {
+				@stats_on := on;
+				if(on & @stats = Nil) {
+					@stats := Hash->New()<String, McpToolStat>;
+				};
+			};
+		}
+
+		#~
+		Gets the counters as JSON: {"tools": {"name": {"calls", "errors", "invalid", "cancelled", "total_ms", "max_ms"}}}. Empty until EnableStats(true) and a call
+		@return JSON object
+		~#
+		method : public : GetStats() ~ JsonElement {
+			tools := JsonElement->New(JsonElement->JsonType->OBJECT);
+			critical(@mutex) {
+				if(@stats <> Nil) {
+					each(name in @stats->GetKeys()<String>) {
+						tools->Insert(name, @stats->Find(name)->ToJson());
+					};
+				};
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("tools", tools);
+			return result;
+		}
+
+		method : Count(name : String, kind : Int, ms : Float) ~ Nil {
+			critical(@mutex) {
+				if(@stats = Nil) {
+					@stats := Hash->New()<String, McpToolStat>;
+				};
+				stat := @stats->Find(name);
+				if(stat = Nil) {
+					stat := McpToolStat->New();
+					@stats->Insert(name, stat);
+				};
+				stat->Add(kind, ms);
+			};
 		}
 
 		#~
@@ -1890,6 +2253,9 @@ bundle API.MCP {
 			# a bad argument is a failure the model can read and correct, not a protocol error
 			problem := McpSchema->Check(tool->GetInputSchema(), arguments);
 			if(problem <> Nil) {
+				if(@stats_on) {
+					Count(name, 2, 0.0);
+				};
 				return McpMessage->Result(id, McpToolResult->Error("Invalid arguments for {$name}: {$problem}")->ToJson());
 			};
 
@@ -1903,6 +2269,11 @@ bundle API.MCP {
 			key := id->ToString();
 			critical(@mutex) {
 				@inflight->Insert(key, call);
+			};
+
+			timer : System.Time.Timer;
+			if(@stats_on) {
+				timer := System.Time.Timer->New(true);
 			};
 
 			result : McpToolResult;
@@ -1921,11 +2292,22 @@ bundle API.MCP {
 
 			# the client gave up on the request: no reply is sent
 			if(call->IsCancelled()) {
+				if(timer <> Nil) {
+					Count(name, 3, timer->GetElapsedTime() * 1000.0);
+				};
 				return Nil;
 			};
 
 			if(result = Nil) {
 				result := McpToolResult->Error("Tool {$name} returned no result");
+			};
+
+			if(timer <> Nil) {
+				kind := 0;
+				if(result->IsError()) {
+					kind := 1;
+				};
+				Count(name, kind, timer->GetElapsedTime() * 1000.0);
 			};
 			return McpMessage->Result(id, result->ToJson());
 		}
@@ -2108,6 +2490,48 @@ bundle API.MCP {
 		}
 	}
 
+	# The counters of one tool: kind 0 = ok, 1 = handler error, 2 = arguments rejected, 3 = cancelled
+	class : private : McpToolStat {
+		@calls : Int;
+		@errors : Int;
+		@invalid : Int;
+		@cancelled : Int;
+		@total_ms : Float;
+		@max_ms : Float;
+
+		New() {
+		}
+
+		method : public : Add(kind : Int, ms : Float) ~ Nil {
+			@calls += 1;
+			if(kind = 1) {
+				@errors += 1;
+			}
+			else if(kind = 2) {
+				@invalid += 1;
+			}
+			else if(kind = 3) {
+				@cancelled += 1;
+			};
+
+			@total_ms += ms;
+			if(ms > @max_ms) {
+				@max_ms := ms;
+			};
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			json->Insert("calls", @calls);
+			json->Insert("errors", @errors);
+			json->Insert("invalid", @invalid);
+			json->Insert("cancelled", @cancelled);
+			json->Insert("total_ms", @total_ms);
+			json->Insert("max_ms", @max_ms);
+			return json;
+		}
+	}
+
 	# Checks arguments against the part of a JSON Schema that matters to a model: required names and property types
 	class : private : McpSchema {
 		# Nil when the arguments fit, else what is wrong
@@ -2138,6 +2562,60 @@ bundle API.MCP {
 					kind := McpMessage->Str(props->Get(name), "type");
 					if(kind <> Nil & <>Fits(kind, value)) {
 						return "argument '{$name}' must be of type {$kind}";
+					};
+
+					# a list of allowed values, and the type of an array's items
+					rule := Constraint(props->Get(name), value);
+					if(rule <> Nil) {
+						return "argument '{$name}' {$rule}";
+					};
+				};
+			};
+			return Nil;
+		}
+
+		# Nil when the value meets the property's "enum" and array "items" type, else what is wrong
+		function : Constraint(prop : JsonElement, value : JsonElement) ~ String {
+			# only a string can break an enum and only an array has items, so a number or a boolean costs nothing here
+			vtype := value->GetType();
+			if(vtype <> JsonElement->JsonType->STRING & vtype <> JsonElement->JsonType->ARRAY) {
+				return Nil;
+			};
+
+			if(prop = Nil | prop->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			allowed := prop->Get("enum");
+			if(allowed <> Nil & allowed->GetType() = JsonElement->JsonType->ARRAY & value->GetType() = JsonElement->JsonType->STRING) {
+				text := value->GetString();
+				found := false;
+				names := String->New();
+				for(i := 0; i < allowed->Size(); i += 1;) {
+					item := allowed->Get(i);
+					if(item->GetType() = JsonElement->JsonType->STRING) {
+						if(item->GetString()->Equals(text)) {
+							found := true;
+						};
+						if(i > 0) {
+							names->Append(", ");
+						};
+						names->Append(item->GetString());
+					};
+				};
+				if(<>found) {
+					return "must be one of: {$names}";
+				};
+			};
+
+			items := prop->Get("items");
+			if(items <> Nil & value->GetType() = JsonElement->JsonType->ARRAY) {
+				kind := McpMessage->Str(items, "type");
+				if(kind <> Nil) {
+					for(i := 0; i < value->Size(); i += 1;) {
+						if(<>Fits(kind, value->Get(i))) {
+							return "must be an array of {$kind}, item {$i} is not";
+						};
 					};
 				};
 			};
@@ -3244,6 +3722,879 @@ bundle API.MCP {
 				reply->Insert("result", result->GetText());
 			};
 			return reply;
+		}
+	}
+
+	#~
+	Declares a tool from the types of the function that implements it, and derives the JSON Schema. This is the
+	library form of "a function is a tool": the names and types are written once, here, and the schema, the
+	annotations and the registration follow from them. Parameter types are written as Objeck types and mapped by
+	SchemaFor:
+
+	| Objeck type | JSON Schema |
+	| Int | {"type":"integer"} |
+	| Float | {"type":"number"} |
+	| Bool | {"type":"boolean"} |
+	| String | {"type":"string"} |
+	| Char | {"type":"string","minLength":1,"maxLength":1} |
+	| Byte | {"type":"integer","minimum":0,"maximum":255} |
+	| T[] , T[,] , Vector of T | {"type":"array","items":T}, nested once per dimension |
+	| Map of String to T | {"type":"object","additionalProperties":T} |
+	| enum(a,b,c) | {"type":"string","enum":["a","b","c"]} |
+	| Json, JsonElement | {} (any JSON value) |
+	| any other class or record | {"type":"object"}, which does not say what is inside; Known() is false |
+
+```
+spec := McpToolSpec->New("add", "Adds two integers");
+spec->Add("a", "Int", "the first number")->Add("b", "Int", "the second number")->ReadOnly();
+spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+```
+	~#
+	class McpToolSpec {
+		@name : String;
+		@title : String;
+		@description : String;
+		@properties : JsonElement;
+		@required : JsonElement;
+		@output : JsonElement;
+		@read_only : Int;
+		@destructive : Int;
+		@idempotent : Int;
+		@open_world : Int;
+
+		#~
+		Constructor
+		@param name tool name
+		@param description what the tool does, for the model
+		~#
+		New(name : String, description : String) {
+			@name := name;
+			@description := description;
+			@properties := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@required := JsonElement->New(JsonElement->JsonType->ARRAY);
+		}
+
+		#~
+		Adds a required parameter
+		@param name parameter name
+		@param type its Objeck type (see the table of the class)
+		@param description what it means, for the model; Nil or empty for none
+		@return self for chaining
+		~#
+		method : public : Add(name : String, type : String, description : String) ~ McpToolSpec {
+			return AddParam(name, type, description, true);
+		}
+
+		#~
+		Adds an optional parameter
+		@param name parameter name
+		@param type its Objeck type
+		@param description what it means, for the model
+		@return self for chaining
+		~#
+		method : public : AddOptional(name : String, type : String, description : String) ~ McpToolSpec {
+			return AddParam(name, type, description, false);
+		}
+
+		#~
+		Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function marked with an @tool doc comment: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say
+		@param name parameter name
+		@param schema_json the schema, a JSON object as text
+		@param description what it means, for the model; Nil or empty for none
+		@param required true when the call must give it
+		@return self for chaining
+		~#
+		method : public : AddSchema(name : String, schema_json : String, description : String, required : Bool) ~ McpToolSpec {
+			schema := JsonParser->TextToElement(schema_json);
+			if(schema = Nil | schema->GetType() <> JsonElement->JsonType->OBJECT) {
+				schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+			return AddSchemaElement(name, schema, description, required);
+		}
+
+		method : AddParam(name : String, type : String, description : String, required : Bool) ~ McpToolSpec {
+			return AddSchemaElement(name, McpToolSpec->SchemaFor(type), description, required);
+		}
+
+		method : AddSchemaElement(name : String, schema : JsonElement, description : String, required : Bool) ~ McpToolSpec {
+			if(description <> Nil & description->Size() > 0) {
+				schema->Insert("description", description);
+			};
+			@properties->Insert(name, schema);
+			if(required) {
+				@required->Add(name);
+			};
+			return @self;
+		}
+
+		#~
+		Sets a human-readable title
+		@param title the title
+		@return self for chaining
+		~#
+		method : public : Title(title : String) ~ McpToolSpec {
+			@title := title;
+			return @self;
+		}
+
+		#~
+		Marks the tool read-only (readOnlyHint true)
+		@return self for chaining
+		~#
+		method : public : ReadOnly() ~ McpToolSpec {
+			@read_only := 1;
+			return @self;
+		}
+
+		#~
+		Marks the tool destructive (destructiveHint true, readOnlyHint false): an agent asks for approval before it runs
+		@return self for chaining
+		~#
+		method : public : Destructive() ~ McpToolSpec {
+			@destructive := 1;
+			@read_only := 2;
+			return @self;
+		}
+
+		#~
+		Marks the tool idempotent (idempotentHint true)
+		@return self for chaining
+		~#
+		method : public : Idempotent() ~ McpToolSpec {
+			@idempotent := 1;
+			return @self;
+		}
+
+		#~
+		Marks the tool as reaching outside this server (openWorldHint true)
+		@return self for chaining
+		~#
+		method : public : OpenWorld() ~ McpToolSpec {
+			@open_world := 1;
+			return @self;
+		}
+
+		#~
+		Declares the structured result, an object schema
+		@param schema JSON Schema as JSON text
+		@return self for chaining
+		~#
+		method : public : Returns(schema : String) ~ McpToolSpec {
+			@output := JsonParser->TextToElement(schema);
+			return @self;
+		}
+
+		#~
+		Gets the tool name
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the derived input schema: {"type":"object","properties":{...}} and "required" when any parameter is
+		@return JSON Schema
+		~#
+		method : public : GetSchema() ~ JsonElement {
+			schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+			schema->Insert("type", "object");
+			schema->Insert("properties", @properties);
+			if(@required->Size() > 0) {
+				schema->Insert("required", @required);
+			};
+			return schema;
+		}
+
+		#~
+		Builds the tool, with its annotations
+		@param handler the function that runs it
+		@return tool
+		~#
+		method : public : ToTool(handler : Func2Ref<McpCall, McpToolResult>) ~ McpTool {
+			tool := McpTool->New(@name, @description, GetSchema(), handler);
+			tool->SetTitle(@title);
+			if(@output <> Nil) {
+				tool->SetOutputSchema(@output);
+			};
+			if(@read_only <> 0) {
+				tool->SetReadOnlyHint(@read_only = 1);
+			};
+			if(@destructive <> 0) {
+				tool->SetDestructiveHint(@destructive = 1);
+			};
+			if(@idempotent <> 0) {
+				tool->SetIdempotentHint(@idempotent = 1);
+			};
+			if(@open_world <> 0) {
+				tool->SetOpenWorldHint(@open_world = 1);
+			};
+			return tool;
+		}
+
+		#~
+		Builds the tool and registers it on a server
+		@param service the server
+		@param handler the function that runs the tool
+		~#
+		method : public : AddTo(service : McpService, handler : Func2Ref<McpCall, McpToolResult>) ~ Nil {
+			service->AddTool(ToTool(handler));
+		}
+
+		#~
+		Maps an Objeck type, written as text, to its JSON Schema (see the table of the class)
+		@param type the type, such as "Int", "String[]", "Vector<Float>", "enum(red,green)"
+		@return a new schema object
+		~#
+		function : SchemaFor(type : String) ~ JsonElement {
+			schema := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(type = Nil) {
+				return schema;
+			};
+
+			type := McpToolSpec->Normalize(type);
+			if(type->StartsWith("enum(") & type->EndsWith(")")) {
+				values := JsonElement->New(JsonElement->JsonType->ARRAY);
+				names := type->SubString(5, type->Size() - 6)->Split(',');
+				each(i : names) {
+					values->Add(names[i]->Trim());
+				};
+				schema->Insert("type", "string");
+				schema->Insert("enum", values);
+				return schema;
+			};
+
+			# T[] and T[,]: one nested array per dimension
+			if(type->EndsWith("]")) {
+				open := type->FindLast('[');
+				if(open > 0) {
+					dims := type->SubString(open, type->Size() - open)->Count(',') + 1;
+					item := McpToolSpec->SchemaFor(type->SubString(0, open));
+					for(d := 0; d < dims; d += 1;) {
+						array := JsonElement->New(JsonElement->JsonType->OBJECT);
+						array->Insert("type", "array");
+						array->Insert("items", item);
+						item := array;
+					};
+					return item;
+				};
+			};
+
+			if(type->StartsWith("Vector<") & type->EndsWith(">")) {
+				schema->Insert("type", "array");
+				schema->Insert("items", McpToolSpec->SchemaFor(type->SubString(7, type->Size() - 8)));
+				return schema;
+			};
+
+			if(type->StartsWith("Map<String,") & type->EndsWith(">")) {
+				schema->Insert("type", "object");
+				schema->Insert("additionalProperties", McpToolSpec->SchemaFor(type->SubString(11, type->Size() - 12)));
+				return schema;
+			};
+
+			if(type->Equals("Int") | type->Equals("IntRef")) {
+				schema->Insert("type", "integer");
+			}
+			else if(type->Equals("Float") | type->Equals("FloatRef")) {
+				schema->Insert("type", "number");
+			}
+			else if(type->Equals("Bool") | type->Equals("BoolRef")) {
+				schema->Insert("type", "boolean");
+			}
+			else if(type->Equals("String")) {
+				schema->Insert("type", "string");
+			}
+			else if(type->Equals("Char") | type->Equals("CharRef")) {
+				schema->Insert("type", "string");
+				schema->Insert("minLength", 1);
+				schema->Insert("maxLength", 1);
+			}
+			else if(type->Equals("Byte") | type->Equals("ByteRef")) {
+				schema->Insert("type", "integer");
+				schema->Insert("minimum", 0);
+				schema->Insert("maximum", 255);
+			}
+			else if(type->Equals("Json") | type->Equals("JsonElement")) {
+				# any JSON value: no keywords
+			}
+			else {
+				schema->Insert("type", "object");
+			};
+			return schema;
+		}
+
+		#~
+		Says whether a type maps to a schema that describes it. A class or record is mapped to a bare object, which does not say what is inside it
+		@param type the type
+		@return true unless the type is a class or record the mapping cannot see into
+		~#
+		function : Known(type : String) ~ Bool {
+			if(type = Nil) {
+				return false;
+			};
+
+			type := McpToolSpec->Normalize(type);
+			if(type->StartsWith("enum(")) {
+				return true;
+			};
+
+			open := type->FindLast('[');
+			if(type->EndsWith("]") & open > 0) {
+				return McpToolSpec->Known(type->SubString(0, open));
+			};
+			if(type->StartsWith("Vector<") & type->EndsWith(">")) {
+				return McpToolSpec->Known(type->SubString(7, type->Size() - 8));
+			};
+			if(type->StartsWith("Map<String,") & type->EndsWith(">")) {
+				return McpToolSpec->Known(type->SubString(11, type->Size() - 12));
+			};
+
+			return type->Equals("Int") | type->Equals("Float") | type->Equals("Bool") | type->Equals("String") |
+				type->Equals("Char") | type->Equals("Byte") | type->Equals("Json") | type->Equals("JsonElement") |
+				type->Equals("IntRef") | type->Equals("FloatRef") | type->Equals("BoolRef") | type->Equals("CharRef") | type->Equals("ByteRef");
+		}
+
+		# The type as written in source and as reflection spells it (System.Introspection reports Collection.Map<String|IntRef>) both reach the same text: no namespace, a comma between type arguments, no spaces
+		function : Normalize(type : String) ~ String {
+			return type->Trim()->ReplaceAll("|", ",")->ReplaceAll(", ", ",")->ReplaceAll("Collection.", "")->ReplaceAll("Data.JSON.", "")->ReplaceAll("System.", "");
+		}
+
+		#~
+		Compares two JSON values structurally: objects by name (the order of names does not matter), arrays by position
+		@param a first value
+		@param b second value
+		@return true when they are the same JSON
+		~#
+		function : Same(a : JsonElement, b : JsonElement) ~ Bool {
+			if(a = Nil | b = Nil) {
+				return a = Nil & b = Nil;
+			};
+
+			if(a->GetType() <> b->GetType()) {
+				return false;
+			};
+
+			type := a->GetType();
+			if(type = JsonElement->JsonType->OBJECT) {
+				if(a->Size() <> b->Size()) {
+					return false;
+				};
+				each(name in a->GetNames()) {
+					if(<>b->Has(name) | <>McpToolSpec->Same(a->Get(name), b->Get(name))) {
+						return false;
+					};
+				};
+				return true;
+			}
+			else if(type = JsonElement->JsonType->ARRAY) {
+				if(a->Size() <> b->Size()) {
+					return false;
+				};
+				for(i := 0; i < a->Size(); i += 1;) {
+					if(<>McpToolSpec->Same(a->Get(i), b->Get(i))) {
+						return false;
+					};
+				};
+				return true;
+			}
+			else if(type = JsonElement->JsonType->STRING) {
+				return a->GetString()->Equals(b->GetString());
+			}
+			else if(type = JsonElement->JsonType->NUMBER) {
+				return a->GetFloat() = b->GetFloat();
+			};
+			return true;
+		}
+	}
+
+	#~
+	Writes Objeck source for a typed client of an MCP server: one class, one method per tool, parameters typed
+	from the tool's inputSchema (integer to Int, number to Float, string to String, boolean to Bool, an array of
+	those to Int[], Float[], String[] or Bool[], anything else to JsonElement). A parameter that is not
+	required makes a second overload that leaves the optional parameters out. The text of the result is
+	returned as a String, or Nil with the reason in GetError() when the tool failed (isError) or the call could
+	not be made; a tool that declares an outputSchema also gets a method ending in Json that returns its
+	structuredContent as a JsonElement. The output depends only on the tool list, so it can be compared to a
+	checked-in copy. The mcp_stubs tool (tools/mcp/mcp_stubs.obs) is a command line around Generate.
+	~#
+	class McpStubGenerator {
+		#~
+		Generates the client class of a server
+		@param server_name the server's name, used for the comment
+		@param server_version the server's version, used for the comment
+		@param tools the tools, as McpClient->ListTools returns them
+		@param class_name name of the class to write, Nil to derive one from the server name
+		@return Objeck source text
+		~#
+		function : Generate(server_name : String, server_version : String, tools : Vector<McpTool>, class_name : String) ~ String {
+			if(class_name = Nil | class_name->Size() = 0) {
+				class_name := McpStubGenerator->ClassName(server_name);
+			};
+
+			out := String->New();
+			out->Append("# Generated by mcp_stubs from the MCP server '");
+			out->Append(McpStubGenerator->Plain(server_name));
+			out->Append("' version ");
+			out->Append(McpStubGenerator->Plain(server_version));
+			out->Append(". Change the server and generate again, not this file.\n");
+			out->Append("# Compile with -lib gen_collect,json,net,net_server,cipher,misc,mcp\n");
+			out->Append("use API.MCP, Data.JSON;\n\n");
+			out->Append("#~\nTyped client of the MCP server '");
+			out->Append(McpStubGenerator->Plain(server_name));
+			out->Append("'. Every method calls one tool and returns the text of its result,\nor Nil with the reason in GetError().\n~#\n");
+			out->Append("class ");
+			out->Append(class_name);
+			out->Append(" {\n\t@client : McpClient;\n\t@error : String;\n\n");
+			out->Append("\t#~\n\tConstructor\n\t@param client a client that has been initialized\n\t~#\n");
+			out->Append("\tNew(client : McpClient) {\n\t\t@client := client;\n\t}\n\n");
+			out->Append("\t#~\n\tWhy the last call returned Nil\n\t@return the reason, Nil after a call that worked\n\t~#\n");
+			out->Append("\tmethod : public : GetError() ~ String {\n\t\treturn @error;\n\t}\n\n");
+			out->Append("\tmethod : CallText(tool : String, mcp_args : JsonElement) ~ String {\n");
+			out->Append("\t\t@error := Nil;\n");
+			out->Append("\t\tresult := @client->CallTool(tool, mcp_args);\n");
+			out->Append("\t\tif(result = Nil) {\n\t\t\t@error := @client->GetError();\n\t\t\treturn Nil;\n\t\t};\n\n");
+			out->Append("\t\tif(result->IsError()) {\n\t\t\t@error := result->GetText();\n\t\t\treturn Nil;\n\t\t};\n\n");
+			out->Append("\t\treturn result->GetText();\n\t}\n\n");
+			out->Append("\tmethod : CallJson(tool : String, mcp_args : JsonElement) ~ JsonElement {\n");
+			out->Append("\t\t@error := Nil;\n");
+			out->Append("\t\tresult := @client->CallTool(tool, mcp_args);\n");
+			out->Append("\t\tif(result = Nil) {\n\t\t\t@error := @client->GetError();\n\t\t\treturn Nil;\n\t\t};\n\n");
+			out->Append("\t\tif(result->IsError()) {\n\t\t\t@error := result->GetText();\n\t\t\treturn Nil;\n\t\t};\n\n");
+			out->Append("\t\treturn result->GetStructured();\n\t}\n");
+
+			used := Vector->New()<String>;
+			each(tool in tools) {
+				McpStubGenerator->EmitTool(out, tool, used);
+			};
+
+			out->Append("}\n");
+			return out;
+		}
+
+		function : EmitTool(out : String, tool : McpTool, used : Vector<String>) ~ Nil {
+			name := tool->GetName();
+			if(<>McpStubGenerator->IsSafe(name, true)) {
+				out->Append("\n\t# skipped tool '");
+				out->Append(McpStubGenerator->Plain(name));
+				out->Append("': its name has characters a method cannot carry\n");
+				return;
+			};
+
+			mname := McpStubGenerator->MethodName(name);
+			while(McpStubGenerator->Taken(used, mname)) {
+				mname := mname + "_";
+			};
+			used->AddBack(mname);
+
+			json_names := Vector->New()<String>;
+			var_names := Vector->New()<String>;
+			types := Vector->New()<String>;
+			docs := Vector->New()<String>;
+			required := Vector->New()<String>;
+
+			schema := tool->GetInputSchema();
+			props : JsonElement;
+			if(schema <> Nil) {
+				props := schema->Get("properties");
+			};
+			required_json : JsonElement;
+			if(schema <> Nil) {
+				required_json := schema->Get("required");
+			};
+
+			if(props <> Nil & props->GetType() = JsonElement->JsonType->OBJECT) {
+				# a JSON object does not keep the order its names were written in: the required list does, so the
+				# required parameters come first in that order, then the optional ones by name
+				ordered := Vector->New()<String>;
+				if(required_json <> Nil & required_json->GetType() = JsonElement->JsonType->ARRAY) {
+					for(i := 0; i < required_json->Size(); i += 1;) {
+						first := required_json->Get(i);
+						if(first->GetType() = JsonElement->JsonType->STRING & props->Has(first->GetString()) & <>McpStubGenerator->Contains(ordered, first->GetString())) {
+							ordered->AddBack(first->GetString());
+						};
+					};
+				};
+				each(rest in props->GetNames()) {
+					if(<>McpStubGenerator->Contains(ordered, rest)) {
+						ordered->AddBack(rest);
+					};
+				};
+
+				each(prop_name in ordered) {
+					if(<>McpStubGenerator->IsSafe(prop_name, false)) {
+						out->Append("\n\t# skipped tool '");
+						out->Append(McpStubGenerator->Plain(name));
+						out->Append("': its argument '");
+						out->Append(McpStubGenerator->Plain(prop_name));
+						out->Append("' has characters a parameter cannot carry\n");
+						return;
+					};
+
+					prop := props->Get(prop_name);
+					json_names->AddBack(prop_name);
+					var_names->AddBack(McpStubGenerator->VarName(prop_name, var_names));
+					types->AddBack(McpStubGenerator->ObjeckType(prop));
+					docs->AddBack(McpStubGenerator->ParamDoc(prop));
+
+					is_required := false;
+					if(required_json <> Nil & required_json->GetType() = JsonElement->JsonType->ARRAY) {
+						for(i := 0; i < required_json->Size(); i += 1;) {
+							if(required_json->Get(i)->GetString()->Equals(prop_name)) {
+								is_required := true;
+							};
+						};
+					};
+					if(is_required) {
+						required->AddBack("1");
+					}
+					else {
+						required->AddBack("0");
+					};
+				};
+			};
+
+			has_optional := false;
+			each(i : required) {
+				if(required->Get(i)->Equals("0")) {
+					has_optional := true;
+				};
+			};
+
+			structured := tool->GetOutputSchema() <> Nil;
+			if(has_optional) {
+				McpStubGenerator->EmitMethod(out, mname, tool, false, false, json_names, var_names, types, docs, required);
+				if(structured) {
+					McpStubGenerator->EmitMethod(out, mname + "Json", tool, false, true, json_names, var_names, types, docs, required);
+				};
+			};
+			McpStubGenerator->EmitMethod(out, mname, tool, true, false, json_names, var_names, types, docs, required);
+			if(structured) {
+				McpStubGenerator->EmitMethod(out, mname + "Json", tool, true, true, json_names, var_names, types, docs, required);
+			};
+		}
+
+		function : EmitMethod(out : String, mname : String, tool : McpTool, optional : Bool, structured : Bool,
+				json_names : Vector<String>, var_names : Vector<String>, types : Vector<String>, docs : Vector<String>, required : Vector<String>) ~ Nil {
+			out->Append("\n\t#~\n");
+			description := tool->GetDescription();
+			if(description <> Nil & description->Size() > 0) {
+				out->Append("\t");
+				out->Append(McpStubGenerator->DocText(description));
+				out->Append("\n");
+			}
+			else {
+				out->Append("\tCalls the tool '");
+				out->Append(McpStubGenerator->Plain(tool->GetName()));
+				out->Append("'\n");
+			};
+
+			if(tool->HasReadOnlyHint() & tool->GetReadOnlyHint()) {
+				out->Append("\tRead-only: the tool does not change anything.\n");
+			}
+			else if(tool->HasDestructiveHint() & tool->GetDestructiveHint()) {
+				out->Append("\tDestructive: the tool may destroy or overwrite data.\n");
+			};
+
+			signature := String->New();
+			each(i : var_names) {
+				if(optional | required->Get(i)->Equals("1")) {
+					out->Append("\t@param ");
+					out->Append(var_names->Get(i));
+					out->Append(" ");
+					out->Append(docs->Get(i));
+					if(required->Get(i)->Equals("0")) {
+						out->Append(" (optional)");
+					};
+					out->Append("\n");
+
+					if(signature->Size() > 0) {
+						signature->Append(", ");
+					};
+					signature->Append(var_names->Get(i));
+					signature->Append(" : ");
+					signature->Append(types->Get(i));
+				};
+			};
+
+			if(structured) {
+				out->Append("\t@return the structured result, Nil on failure (see GetError)\n\t~#\n");
+				out->Append("\tmethod : public : ");
+				out->Append(mname);
+				out->Append("(");
+				out->Append(signature);
+				out->Append(") ~ JsonElement {\n");
+			}
+			else {
+				out->Append("\t@return the text of the result, Nil on failure (see GetError)\n\t~#\n");
+				out->Append("\tmethod : public : ");
+				out->Append(mname);
+				out->Append("(");
+				out->Append(signature);
+				out->Append(") ~ String {\n");
+			};
+
+			out->Append("\t\tmcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);\n");
+			each(i : var_names) {
+				if(optional | required->Get(i)->Equals("1")) {
+					McpStubGenerator->EmitInsert(out, json_names->Get(i), var_names->Get(i), types->Get(i));
+				};
+			};
+
+			if(structured) {
+				out->Append("\t\treturn CallJson(\"");
+			}
+			else {
+				out->Append("\t\treturn CallText(\"");
+			};
+			out->Append(tool->GetName());
+			out->Append("\", mcp_args);\n\t}\n");
+		}
+
+		function : EmitInsert(out : String, json_name : String, var_name : String, type : String) ~ Nil {
+			if(type->Equals("Int") | type->Equals("Float") | type->Equals("Bool")) {
+				out->Append("\t\tmcp_args->Insert(\"");
+				out->Append(json_name);
+				out->Append("\", ");
+				out->Append(var_name);
+				out->Append(");\n");
+				return;
+			};
+
+			out->Append("\t\tif(");
+			out->Append(var_name);
+			out->Append(" <> Nil) {\n");
+			if(type->EndsWith("[]")) {
+				out->Append("\t\t\tmcp_list := JsonElement->New(JsonElement->JsonType->ARRAY);\n");
+				out->Append("\t\t\tfor(mcp_i := 0; mcp_i < ");
+				out->Append(var_name);
+				out->Append("->Size(); mcp_i += 1;) {\n\t\t\t\tmcp_list->Add(");
+				out->Append(var_name);
+				out->Append("[mcp_i]);\n\t\t\t};\n");
+				out->Append("\t\t\tmcp_args->Insert(\"");
+				out->Append(json_name);
+				out->Append("\", mcp_list);\n");
+			}
+			else {
+				out->Append("\t\t\tmcp_args->Insert(\"");
+				out->Append(json_name);
+				out->Append("\", ");
+				out->Append(var_name);
+				out->Append(");\n");
+			};
+			out->Append("\t\t};\n");
+		}
+
+		#~
+		Maps an input schema property to the Objeck type of the stub's parameter: Int, Float, Bool, String, Int[], Float[], Bool[], String[] or JsonElement
+		@param prop the property's schema
+		@return type name
+		~#
+		function : ObjeckType(prop : JsonElement) ~ String {
+			kind := McpMessage->Str(prop, "type");
+			if(kind = Nil) {
+				return "JsonElement";
+			};
+
+			if(kind->Equals("integer")) {
+				return "Int";
+			}
+			else if(kind->Equals("number")) {
+				return "Float";
+			}
+			else if(kind->Equals("boolean")) {
+				return "Bool";
+			}
+			else if(kind->Equals("string")) {
+				return "String";
+			}
+			else if(kind->Equals("array")) {
+				items := prop->Get("items");
+				if(items <> Nil) {
+					item_kind := McpMessage->Str(items, "type");
+					if(item_kind <> Nil) {
+						if(item_kind->Equals("integer")) {
+							return "Int[]";
+						}
+						else if(item_kind->Equals("number")) {
+							return "Float[]";
+						}
+						else if(item_kind->Equals("boolean")) {
+							return "Bool[]";
+						}
+						else if(item_kind->Equals("string")) {
+							return "String[]";
+						};
+					};
+				};
+			};
+			return "JsonElement";
+		}
+
+		# the description of a parameter, and the values a string may take
+		function : ParamDoc(prop : JsonElement) ~ String {
+			text := String->New();
+			description := McpMessage->Str(prop, "description");
+			if(description <> Nil) {
+				text->Append(McpStubGenerator->DocText(description));
+			};
+
+			allowed := prop->Get("enum");
+			if(allowed <> Nil & allowed->GetType() = JsonElement->JsonType->ARRAY) {
+				if(text->Size() > 0) {
+					text->Append(". ");
+				};
+				text->Append("One of: ");
+				for(i := 0; i < allowed->Size(); i += 1;) {
+					if(i > 0) {
+						text->Append(", ");
+					};
+					text->Append(allowed->Get(i)->GetValue());
+				};
+			};
+
+			if(text->Size() = 0) {
+				text->Append("the argument");
+			};
+			return text;
+		}
+
+		# one line of comment text that cannot end the comment
+		function : DocText(text : String) ~ String {
+			flat := text->ReplaceAll("~#", "~ #")->ReplaceAll("\r", " ")->ReplaceAll("\n", " ");
+			return flat->Trim();
+		}
+
+		# text for a '#' comment or a string literal that cannot break out of it
+		function : Plain(text : String) ~ String {
+			if(text = Nil) {
+				return "";
+			};
+			return text->ReplaceAll("\r", " ")->ReplaceAll("\n", " ")->ReplaceAll("\"", "'");
+		}
+
+		function : Alnum(c : Char) ~ Bool {
+			return (c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9');
+		}
+
+		# letters, digits, underscore and hyphen (and a dot for a tool name) only, so the name fits a string literal and a method name
+		function : IsSafe(name : String, is_tool : Bool) ~ Bool {
+			if(name = Nil | name->Size() = 0) {
+				return false;
+			};
+
+			each(i : name) {
+				c := name->Get(i);
+				if(<>McpStubGenerator->Alnum(c) & c <> '_' & c <> '-' & (<>is_tool | c <> '.')) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		function : Contains(list : Vector<String>, name : String) ~ Bool {
+			each(i : list) {
+				if(list->Get(i)->Equals(name)) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		function : Taken(used : Vector<String>, name : String) ~ Bool {
+			if(McpStubGenerator->Contains(used, name)) {
+				return true;
+			};
+			return name->Equals("New") | name->Equals("GetError") | name->Equals("CallText") | name->Equals("CallJson");
+		}
+
+		# server name to a class name: words joined, each starting with a capital, then "Client"
+		function : ClassName(server_name : String) ~ String {
+			base := McpStubGenerator->Pascal(server_name);
+			if(base->Size() = 0) {
+				base := "Mcp";
+			};
+			return base + "Client";
+		}
+
+		# tool name to a method name: weather_forecast and weather-forecast become WeatherForecast, getForecast becomes GetForecast
+		function : MethodName(name : String) ~ String {
+			mname := McpStubGenerator->Pascal(name);
+			if(mname->Size() = 0) {
+				mname := "Tool";
+			};
+			c := mname->Get(0);
+			if(c >= '0' & c <= '9') {
+				mname := "Tool" + mname;
+			};
+			return mname;
+		}
+
+		function : Pascal(name : String) ~ String {
+			out := String->New();
+			if(name = Nil) {
+				return out;
+			};
+
+			upper := true;
+			each(i : name) {
+				c := name->Get(i);
+				if(McpStubGenerator->Alnum(c)) {
+					if(upper & c >= 'a' & c <= 'z') {
+						out->Append(c->ToUpper());
+					}
+					else {
+						out->Append(c);
+					};
+					upper := false;
+				}
+				else {
+					upper := true;
+				};
+			};
+			return out;
+		}
+
+		# argument name to a parameter name: maxResults becomes max_results; keywords and the stub's own names get an underscore
+		function : VarName(name : String, taken : Vector<String>) ~ String {
+			out := String->New();
+			each(i : name) {
+				c := name->Get(i);
+				if(c >= 'A' & c <= 'Z') {
+					if(i > 0 & out->Size() > 0 & out->Get(out->Size() - 1) <> '_') {
+						previous := name->Get(i - 1);
+						if(previous >= 'a' & previous <= 'z' | previous >= '0' & previous <= '9') {
+							out->Append('_');
+						};
+					};
+					out->Append(c->ToLower());
+				}
+				else if(McpStubGenerator->Alnum(c)) {
+					out->Append(c);
+				}
+				else if(out->Size() > 0 & out->Get(out->Size() - 1) <> '_') {
+					out->Append('_');
+				};
+			};
+
+			result := out->ToString();
+			if(result->Size() = 0 | (result->Get(0) >= '0' & result->Get(0) <= '9')) {
+				result := "arg_" + result;
+			};
+
+			while(McpStubGenerator->Reserved(result) | McpStubGenerator->Taken(taken, result)) {
+				result := result + "_";
+			};
+			return result;
+		}
+
+		function : Reserved(name : String) ~ Bool {
+			words := "and,not,or,xor,virtual,if,else,do,while,break,continue,use,bundle,native,static,public,private,class,record,interface,alias,readonly,implements,function,mname,select,other,enum,consts,for,each,in,reverse,label,return,leaving,from,true,false,critical,mcp_args,mcp_list,mcp_i,result,tool"->Split(',');
+			each(i : words) {
+				if(words[i]->Equals(name)) {
+					return true;
+				};
+			};
+			return false;
 		}
 	}
 }

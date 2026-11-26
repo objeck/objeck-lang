@@ -33,6 +33,9 @@
 
 #include <set>      // CheckErrors dedups before the cap
 #include <vector>
+#include <algorithm>
+#include <map>
+#include <sstream>
 
 bool Parser::IsBasicType([[maybe_unused]] ScannerTokenType type)
 {
@@ -696,6 +699,11 @@ void Parser::ParseBundle(int depth)
 
   // default system uses
   std::vector<std::wstring> lib_uses;
+  current_lib_uses = &lib_uses;
+  struct ResetUses {
+    std::vector<std::wstring>*& slot;
+    ~ResetUses() { slot = nullptr; }
+  } reset_uses{current_lib_uses};
   lib_uses.push_back(L"System");
   lib_uses.push_back(L"System.IO");
   lib_uses.push_back(L"System.Introspection");
@@ -894,6 +902,9 @@ void Parser::ParseBundle(int depth)
     }
     // parse class
     else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_RECORD_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
+      if(scanner->GetToken()->GetDocId() >= 0) {
+        RejectToolDoc(L"a class, enum or other declaration");
+      }
       std::wstring bundle_name = L"";
       
       ParsedBundle* bundle = program->GetBundle(bundle_name);
@@ -1423,16 +1434,32 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(GetScopeName(SELF_ID), self_type, false, false, true);
   symbol_table->CurrentParseScope()->AddEntry(entry);
 
+  std::vector<McpCandidate> mcp_tools;
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
     if(Match(TOKEN_FUNCTION_ID)) {
+      // a doc comment with an '@tool' line directly before the function (nearly always none)
+      const int tool_doc_id = scanner->GetToken()->GetDocId();
+      const ToolDoc* tool_doc = tool_doc_id >= 0 ? scanner->GetToolDoc(tool_doc_id) : nullptr;
+      McpCandidate candidate;
+      candidate.method = nullptr;
+      if(tool_doc) {
+        candidate.doc = *tool_doc;
+      }
       Method* method = ParseMethod(true, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
+      else if(tool_doc) {
+        candidate.method = method;
+        mcp_tools.push_back(candidate);
+      }
     }
     else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
+      if(scanner->GetToken()->GetDocId() >= 0) {
+        RejectToolDoc(Match(TOKEN_NEW_ID) ? L"a constructor" : L"a method (a tool is a 'function')");
+      }
       Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
@@ -1440,6 +1467,9 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
       }
     }
     else if(Match(TOKEN_IDENT)) {
+      if(scanner->GetToken()->GetDocId() >= 0) {
+        RejectToolDoc(L"a variable");
+      }
       const std::wstring ident = scanner->GetToken()->GetIdentifier();
       line_num = GetLineNumber();
       line_pos = GetLinePosition();
@@ -1454,6 +1484,9 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
       NextToken();
     }
     else if(Match(TOKEN_ENUM_ID)) {
+      if(scanner->GetToken()->GetDocId() >= 0) {
+        RejectToolDoc(L"an enum");
+      }
       current_bundle->AddEnum(ParseEnum(depth + 1));
     }
     else if(Match(TOKEN_CONSTS_ID)) {
@@ -1475,6 +1508,11 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 
   if(klass->IsRecord()) {
     GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
+  }
+
+  // a function that did not parse (a syntax error above) has no types to derive from: the syntax error is the answer
+  if(!mcp_tools.empty() && !diagnostics.HasErrors()) {
+    GenerateMcpTools(klass, mcp_tools, depth + 1);
   }
 
   symbol_table->PreviousParseScope(current_class->GetName());
@@ -8136,4 +8174,1234 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
   expr_parser.program = nullptr;
 
   return result;
+}
+
+/****************************************************************************
+ * MCP tools.
+ *
+ * A function whose doc comment ('#~ ... ~#') has a line starting with '@tool' is an MCP tool
+ * (docs/design/MCP_FIRST_CLASS.md). At the end of its class the parser writes two kinds of ordinary
+ * static functions into the class, as source text parsed by this same parser, exactly as the code a person
+ * would write:
+ *
+ *   McpTools(mcp_service : McpService) ~ Nil        declares every tool of the class (schema, hints)
+ *   McpTool_<name>(mcp_call : McpCall) ~ McpToolResult   reads the typed arguments, calls the function
+ *   McpRead_<n>(mcp_j : Data.JSON.JsonElement) ~ <type>     reads an array, Vector, Map, enum or record argument
+ *
+ * A class with no '@tool' function gets none of this, and nothing here runs for it. The generated code needs
+ * the mcp library (-lib mcp); a program that tags a function without it gets the compiler's usual error about
+ * the missing class, reported at the tagged function.
+ ****************************************************************************/
+namespace {
+
+  struct McpDoc {
+    std::wstring description;
+    std::wstring name;
+    std::wstring title;
+    bool read_only = false;
+    bool destructive = false;
+    bool idempotent = false;
+    bool open_world = false;
+    int kind = 0;               // 0 '@tool', 1 '@resource', 2 '@prompt'
+    std::wstring uri;           // the URI template of a '@resource'
+    std::wstring mime;          // the media type of a '@resource'
+    std::vector<std::pair<std::wstring, std::wstring> > params;
+    std::vector<int> param_lines;
+  };
+
+  // the text of a string literal: the quotes are the caller's
+  std::wstring McpLit(const std::wstring& s)
+  {
+    std::wstring out;
+    for(size_t i = 0; i < s.size(); ++i) {
+      const wchar_t c = s[i];
+      if(c == L'\\') {
+        out += L"\\\\";
+      }
+      else if(c == L'"') {
+        out += L"\\\"";
+      }
+      else if(c == L'$') {
+        out += L"\\$";
+      }
+      else if(c == L'\n') {
+        out += L"\\n";
+      }
+      else if(c == L'\r' || c == L'\t') {
+        out += L' ';
+      }
+      else {
+        out += c;
+      }
+    }
+    return out;
+  }
+
+  // the text of a JSON string, quotes included
+  std::wstring McpJsonString(const std::wstring& s)
+  {
+    std::wstring out = L"\"";
+    for(size_t i = 0; i < s.size(); ++i) {
+      const wchar_t c = s[i];
+      if(c == L'\\' || c == L'"') {
+        out += L'\\';
+        out += c;
+      }
+      else if(c < 32) {
+        out += L' ';
+      }
+      else {
+        out += c;
+      }
+    }
+    return out + L"\"";
+  }
+
+  std::wstring McpTrim(const std::wstring& s)
+  {
+    size_t b = 0;
+    size_t e = s.size();
+    while(b < e && (s[b] == L' ' || s[b] == L'\t' || s[b] == L'\r' || s[b] == L'\n')) {
+      ++b;
+    }
+    while(e > b && (s[e - 1] == L' ' || s[e - 1] == L'\t' || s[e - 1] == L'\r' || s[e - 1] == L'\n')) {
+      --e;
+    }
+    return s.substr(b, e - b);
+  }
+
+  bool McpToolNameChars(const std::wstring& s)
+  {
+    if(s.empty()) {
+      return false;
+    }
+    for(size_t i = 0; i < s.size(); ++i) {
+      const wchar_t c = s[i];
+      if(!((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') || (c >= L'0' && c <= L'9') || c == L'_' || c == L'-' || c == L'.')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // ReadFile becomes read_file, GetHTTPStatus becomes get_httpstatus
+  std::wstring McpSnake(const std::wstring& s)
+  {
+    std::wstring out;
+    for(size_t i = 0; i < s.size(); ++i) {
+      const wchar_t c = s[i];
+      if(c >= L'A' && c <= L'Z') {
+        if(i > 0 && ((s[i - 1] >= L'a' && s[i - 1] <= L'z') || (s[i - 1] >= L'0' && s[i - 1] <= L'9'))) {
+          out += L'_';
+        }
+        out += (wchar_t)(c - L'A' + L'a');
+      }
+      else {
+        out += c;
+      }
+    }
+    return out;
+  }
+
+  std::wstring McpAfterColon(const std::wstring& s)
+  {
+    const size_t index = s.find_last_of(L':');
+    return index == std::wstring::npos ? s : s.substr(index + 1);
+  }
+
+  bool McpIsName(const std::wstring& name, const wchar_t* a, const wchar_t* b)
+  {
+    return name == a || name == b;
+  }
+
+  // the JSON Schema of a type, as JSON text
+  std::wstring McpSchemaText(const McpTy& t)
+  {
+    switch(t.kind) {
+    case MK_INT:
+      return L"{\"type\":\"integer\"}";
+    case MK_FLOAT:
+      return L"{\"type\":\"number\"}";
+    case MK_BOOL:
+      return L"{\"type\":\"boolean\"}";
+    case MK_BYTE:
+      return L"{\"type\":\"integer\",\"minimum\":0,\"maximum\":255}";
+    case MK_CHAR:
+      return L"{\"type\":\"string\",\"minLength\":1,\"maxLength\":1}";
+    case MK_STRING:
+      return L"{\"type\":\"string\"}";
+    case MK_JSON:
+      return L"{}";
+    case MK_ENUM: {
+      std::wstring out = L"{\"type\":\"string\",\"enum\":[";
+      for(size_t i = 0; i < t.items.size(); ++i) {
+        out += (i ? L"," : L"") + McpJsonString(t.items[i]);
+      }
+      return out + L"]}";
+    }
+    case MK_RECORD: {
+      std::wstring props;
+      std::wstring required;
+      for(size_t i = 0; i < t.items.size(); ++i) {
+        props += (i ? L"," : L"") + McpJsonString(t.items[i]) + L":" + McpSchemaText(t.kids[i]);
+        required += (i ? L"," : L"") + McpJsonString(t.items[i]);
+      }
+      return L"{\"type\":\"object\",\"properties\":{" + props + L"},\"required\":[" + required + L"]}";
+    }
+    case MK_ARRAY:
+    case MK_VECTOR:
+      return L"{\"type\":\"array\",\"items\":" + McpSchemaText(t.kids[0]) + L"}";
+    case MK_MAP:
+      return L"{\"type\":\"object\",\"additionalProperties\":" + McpSchemaText(t.kids[0]) + L"}";
+    default:
+      return L"{}";
+    }
+  }
+
+  // what the helper functions of one class are called, so one is written once per type
+  struct McpHelpers {
+    std::wstring cls;
+    std::map<std::wstring, std::wstring> names;               // type text -> function name
+    std::vector<std::pair<std::wstring, std::wstring> > code; // function name -> source text
+    int count = 0;
+  };
+
+  std::wstring McpRead(const McpTy& t, const std::wstring& j, McpHelpers& helpers);
+
+  // the source text of a function that reads one type from JSON
+  std::wstring McpHelper(const McpTy& t, McpHelpers& helpers)
+  {
+    const std::wstring key = t.text + L"|" + std::to_wstring((int)t.kind) + (t.boxed ? L"b" : L"");
+    std::map<std::wstring, std::wstring>::iterator found = helpers.names.find(key);
+    if(found != helpers.names.end()) {
+      return found->second;
+    }
+
+    const std::wstring name = L"McpRead_" + std::to_wstring(++helpers.count);
+    helpers.names[key] = name;
+
+    const std::wstring head = L"function : " + name + L"(mcp_j : Data.JSON.JsonElement) ~ " + t.text + L" { ";
+    std::wstring body;
+    switch(t.kind) {
+    case MK_ARRAY: {
+      body = L"mcp_r := " + t.kids[0].text + L"->New[mcp_j->Size()]; for(mcp_i := 0; mcp_i < mcp_j->Size(); mcp_i += 1;) { mcp_r[mcp_i] := " +
+             McpRead(t.kids[0], L"mcp_j->Get(mcp_i)", helpers) + L"; }; return mcp_r; }";
+      break;
+    }
+
+    case MK_VECTOR:
+      body = L"mcp_r := Collection.Vector->New()<" + t.kids[0].text + L">; for(mcp_i := 0; mcp_i < mcp_j->Size(); mcp_i += 1;) { mcp_r->AddBack(" +
+             McpRead(t.kids[0], L"mcp_j->Get(mcp_i)", helpers) + L"); }; return mcp_r; }";
+      break;
+
+    case MK_MAP:
+      body = L"mcp_r := Collection.Map->New()<String, " + t.kids[0].text + L">; each(mcp_k in mcp_j->GetNames()) { mcp_r->Insert(mcp_k, " +
+             McpRead(t.kids[0], L"mcp_j->Get(mcp_k)", helpers) + L"); }; return mcp_r; }";
+      break;
+
+    case MK_ENUM:
+      body = L"mcp_s := mcp_j->GetString(); ";
+      for(size_t i = 0; i < t.items.size(); ++i) {
+        body += L"if(mcp_s->Equals(\"" + McpLit(t.items[i]) + L"\")) { return " + t.name + L"->" + t.items[i] + L"; }; ";
+      }
+      body += L"return " + t.name + L"->" + t.items[0] + L"; }";
+      break;
+
+    case MK_RECORD: {
+      std::wstring args;
+      for(size_t i = 0; i < t.items.size(); ++i) {
+        body += L"if(<>mcp_j->Has(\"" + McpLit(t.items[i]) + L"\")) { Runtime->Raise(Error->New(\"missing field '" + McpLit(t.items[i]) +
+                L"' of " + McpLit(t.name) + L"\")); }; ";
+        args += (i ? L", " : L"") + McpRead(t.kids[i], L"mcp_j->Get(\"" + McpLit(t.items[i]) + L"\")", helpers);
+      }
+      body += L"return " + t.name + L"->New(" + args + L"); }";
+      break;
+    }
+
+    default:
+      body = L"return Nil; }";
+      break;
+    }
+
+    helpers.code.push_back(std::make_pair(name, head + body));
+    return name;
+  }
+
+  // an expression of type t that reads JSON expression j
+  std::wstring McpRead(const McpTy& t, const std::wstring& j, McpHelpers& helpers)
+  {
+    std::wstring value;
+    switch(t.kind) {
+    case MK_INT:
+      value = j + L"->GetInt()";
+      return t.boxed ? L"IntRef->New(" + value + L")" : value;
+    case MK_FLOAT:
+      value = j + L"->GetFloat()";
+      return t.boxed ? L"FloatRef->New(" + value + L")" : value;
+    case MK_BOOL:
+      value = L"(" + j + L"->GetType() = Data.JSON.JsonElement->JsonType->TRUE)";
+      return t.boxed ? L"BoolRef->New(" + value + L")" : value;
+    case MK_BYTE:
+      value = j + L"->GetInt()->As(Byte)";
+      return t.boxed ? L"ByteRef->New(" + value + L")" : value;
+    case MK_CHAR:
+      value = j + L"->GetString()->Get(0)";
+      return t.boxed ? L"CharRef->New(" + value + L")" : value;
+    case MK_STRING:
+      return j + L"->GetString()";
+    case MK_JSON:
+      return j;
+    default:
+      return helpers.cls + L"->" + McpHelper(t, helpers) + L"(" + j + L")";
+    }
+  }
+}
+
+// the doc comment of a tool: the description, the name, the hints and the parameters' descriptions. False,
+// with the problem reported, when a tag is malformed.
+static bool McpParseDoc(const ToolDoc& doc, const std::wstring& function_name, const std::wstring& file_name, DiagnosticSink& diagnostics, McpDoc& out)
+{
+  bool ok = true;
+  bool saw_tool = false;
+  bool saw_kind = false;  // one of '@tool', '@resource', '@prompt' has been read
+  int current = 0;       // 0 description, 1 a parameter, 2 ignored
+  int line_no = 0;
+  size_t pos = 0;
+  const std::wstring& text = doc.text;
+  while(pos <= text.size()) {
+    size_t end = text.find(L'\n', pos);
+    if(end == std::wstring::npos) {
+      end = text.size();
+    }
+    const std::wstring line = McpTrim(text.substr(pos, end - pos));
+    const int at_line = doc.line + line_no;
+    pos = end + 1;
+    ++line_no;
+
+    if(!line.empty() && line[0] == L'@') {
+      size_t word_end = 1;
+      while(word_end < line.size() && line[word_end] != L' ' && line[word_end] != L'\t') {
+        ++word_end;
+      }
+      const std::wstring tag = line.substr(1, word_end - 1);
+      const std::wstring rest = McpTrim(line.substr(word_end));
+
+      if(tag == L"resource" || tag == L"prompt") {
+        if(saw_kind) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"a function is one of '@tool', '@resource' and '@prompt'; the doc comment of '" + function_name + L"' has more than one");
+          ok = false;
+        }
+        saw_kind = true;
+        current = 2;
+        if(tag == L"resource") {
+          out.kind = 1;
+          out.uri = rest;
+          if(rest.empty()) {
+            diagnostics.Error(file_name, at_line, doc.pos, L"'@resource' needs a URI or a URI template, as in '@resource weather://{city}'");
+            ok = false;
+          }
+        }
+        else {
+          out.kind = 2;
+          if(!rest.empty()) {
+            if(!McpToolNameChars(rest)) {
+              diagnostics.Error(file_name, at_line, doc.pos, L"'@prompt " + rest + L"': a prompt name has letters, digits, '_', '-' and '.' only");
+              ok = false;
+            }
+            out.name = rest;
+          }
+        }
+      }
+      else if(tag == L"mime") {
+        current = 2;
+        out.mime = rest;
+      }
+      else if(tag == L"tool") {
+        if(saw_tool) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"'@tool' appears twice in the doc comment of '" + function_name + L"'");
+          ok = false;
+        }
+        else if(saw_kind) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"a function is one of '@tool', '@resource' and '@prompt'; the doc comment of '" + function_name + L"' has more than one");
+          ok = false;
+        }
+        saw_tool = true;
+        saw_kind = true;
+        current = 2;
+        if(!rest.empty()) {
+          if(!McpToolNameChars(rest)) {
+            diagnostics.Error(file_name, at_line, doc.pos, L"'@tool " + rest + L"': a tool name has letters, digits, '_', '-' and '.' only");
+            ok = false;
+          }
+          out.name = rest;
+        }
+      }
+      else if(tag == L"readonly" || tag == L"destructive" || tag == L"idempotent" || tag == L"openworld") {
+        current = 2;
+        if(!rest.empty()) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"'@" + tag + L"' takes no text; found '" + rest + L"'");
+          ok = false;
+        }
+        if(tag == L"readonly") {
+          out.read_only = true;
+        }
+        else if(tag == L"destructive") {
+          out.destructive = true;
+        }
+        else if(tag == L"idempotent") {
+          out.idempotent = true;
+        }
+        else {
+          out.open_world = true;
+        }
+      }
+      else if(tag == L"title") {
+        current = 2;
+        out.title = rest;
+      }
+      else if(tag == L"param") {
+        current = 1;
+        size_t name_end = 0;
+        while(name_end < rest.size() && rest[name_end] != L' ' && rest[name_end] != L'\t') {
+          ++name_end;
+        }
+        if(name_end == 0) {
+          diagnostics.Error(file_name, at_line, doc.pos, L"'@param' needs the name of a parameter");
+          ok = false;
+          current = 2;
+        }
+        else {
+          out.params.push_back(std::make_pair(rest.substr(0, name_end), McpTrim(rest.substr(name_end))));
+          out.param_lines.push_back(at_line);
+        }
+      }
+      else {
+        // @return and the rest of the documentation tags are not part of a tool
+        current = 2;
+      }
+    }
+    else if(!line.empty()) {
+      if(current == 0) {
+        out.description += (out.description.empty() ? L"" : L" ") + line;
+      }
+      else if(current == 1 && !out.params.empty()) {
+        std::wstring& desc = out.params.back().second;
+        desc += (desc.empty() ? L"" : L" ") + line;
+      }
+    }
+    else if(current == 1) {
+      // a blank line ends a parameter's description
+      current = 2;
+    }
+  }
+
+  if(out.read_only && out.destructive) {
+    diagnostics.Error(file_name, doc.line, doc.pos, L"'@readonly' and '@destructive' contradict each other in the doc comment of '" + function_name + L"'");
+    ok = false;
+  }
+
+  if(out.name.empty()) {
+    out.name = McpSnake(function_name);
+  }
+  return ok;
+}
+
+Enum* Parser::McpFindEnum(const std::wstring& name)
+{
+  if(current_bundle && !current_bundle->GetName().empty()) {
+    Enum* found = current_bundle->GetEnum(current_bundle->GetName() + L"." + name);
+    if(found) {
+      return found;
+    }
+  }
+  if(current_class) {
+    Enum* found = current_bundle->GetEnum(current_class->GetName() + L"#" + name);
+    if(found) {
+      return found;
+    }
+  }
+  if(current_bundle) {
+    Enum* found = current_bundle->GetEnum(name);
+    if(found) {
+      return found;
+    }
+  }
+
+  const size_t dot = name.find_last_of(L'.');
+  if(dot != std::wstring::npos) {
+    ParsedBundle* bundle = program->GetBundle(name.substr(0, dot));
+    if(bundle) {
+      return bundle->GetEnum(name);
+    }
+  }
+  return nullptr;
+}
+
+Class* Parser::McpFindClass(const std::wstring& name)
+{
+  if(current_bundle && !current_bundle->GetName().empty()) {
+    Class* found = current_bundle->GetClass(current_bundle->GetName() + L"." + name);
+    if(found) {
+      return found;
+    }
+  }
+  if(current_bundle) {
+    Class* found = current_bundle->GetClass(name);
+    if(found) {
+      return found;
+    }
+  }
+
+  const size_t dot = name.find_last_of(L'.');
+  if(dot != std::wstring::npos) {
+    ParsedBundle* bundle = program->GetBundle(name.substr(0, dot));
+    if(bundle) {
+      return bundle->GetClass(name);
+    }
+  }
+  return nullptr;
+}
+
+// the type as source text: Int, String, Vector<String>, Point[]
+static std::wstring McpTypeText(Type* type)
+{
+  std::wstring text;
+  switch(type->GetType()) {
+  case INT_TYPE:
+    text = L"Int";
+    break;
+  case FLOAT_TYPE:
+    text = L"Float";
+    break;
+  case BOOLEAN_TYPE:
+    text = L"Bool";
+    break;
+  case BYTE_TYPE:
+    text = L"Byte";
+    break;
+  case CHAR_TYPE:
+    text = L"Char";
+    break;
+  default:
+    text = type->GetName();
+    break;
+  }
+
+  const std::vector<Type*> generics = type->GetGenerics();
+  if(!generics.empty()) {
+    text += L"<";
+    for(size_t i = 0; i < generics.size(); ++i) {
+      text += (i ? L"," : L"") + McpTypeText(generics[i]);
+    }
+    text += L">";
+  }
+  return text;
+}
+
+// Reads what MCP needs to know of a type. False, with the reason in 'why', for a type that cannot be a tool's
+// parameter. 'in_collection' is true for the element of a Vector or Map, which holds IntRef, not Int.
+bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth)
+{
+  if(depth > 8) {
+    why = L"the type is nested too deeply";
+    return false;
+  }
+
+  out = McpTy();
+  const int dimension = type->GetDimension();
+  if(dimension > 1) {
+    why = L"an array of two or more dimensions cannot be a tool parameter; use an array of one dimension or a Vector";
+    return false;
+  }
+
+  McpTy element;
+  bool known = true;
+  switch(type->GetType()) {
+  case INT_TYPE:
+    element.kind = MK_INT;
+    break;
+  case FLOAT_TYPE:
+    element.kind = MK_FLOAT;
+    break;
+  case BOOLEAN_TYPE:
+    element.kind = MK_BOOL;
+    break;
+  case BYTE_TYPE:
+    element.kind = MK_BYTE;
+    break;
+  case CHAR_TYPE:
+    element.kind = MK_CHAR;
+    break;
+  case FUNC_TYPE:
+    why = L"a function type cannot be a tool parameter";
+    return false;
+  case CLASS_TYPE:
+    known = false;
+    break;
+  default:
+    why = L"this type cannot be a tool parameter";
+    return false;
+  }
+
+  element.text = McpTypeText(type);
+
+  if(!known) {
+    const std::wstring name = type->GetName();
+    const std::vector<Type*> generics = type->GetGenerics();
+    element.name = name;
+    if(McpIsName(name, L"String", L"System.String")) {
+      element.kind = MK_STRING;
+    }
+    else if(McpIsName(name, L"JsonElement", L"Data.JSON.JsonElement")) {
+      element.kind = MK_JSON;
+    }
+    else if(McpIsName(name, L"McpCall", L"API.MCP.McpCall")) {
+      element.kind = MK_CALL;
+    }
+    else if(in_collection && McpIsName(name, L"IntRef", L"System.IntRef")) {
+      element.kind = MK_INT;
+      element.boxed = true;
+    }
+    else if(in_collection && McpIsName(name, L"FloatRef", L"System.FloatRef")) {
+      element.kind = MK_FLOAT;
+      element.boxed = true;
+    }
+    else if(in_collection && McpIsName(name, L"BoolRef", L"System.BoolRef")) {
+      element.kind = MK_BOOL;
+      element.boxed = true;
+    }
+    else if(in_collection && McpIsName(name, L"ByteRef", L"System.ByteRef")) {
+      element.kind = MK_BYTE;
+      element.boxed = true;
+    }
+    else if(in_collection && McpIsName(name, L"CharRef", L"System.CharRef")) {
+      element.kind = MK_CHAR;
+      element.boxed = true;
+    }
+    else if(McpIsName(name, L"Vector", L"Collection.Vector")) {
+      if(generics.size() != 1) {
+        why = L"a Vector needs its element type, as in Vector<String>";
+        return false;
+      }
+      element.kind = MK_VECTOR;
+      McpTy kid;
+      if(!McpAnalyze(generics[0], kid, why, true, depth + 1)) {
+        return false;
+      }
+      element.kids.push_back(kid);
+    }
+    else if(McpIsName(name, L"Map", L"Collection.Map")) {
+      if(generics.size() != 2 || !McpIsName(generics[0]->GetName(), L"String", L"System.String")) {
+        why = L"a Map can be a tool parameter only with String keys, as in Map<String,IntRef>";
+        return false;
+      }
+      element.kind = MK_MAP;
+      McpTy kid;
+      if(!McpAnalyze(generics[1], kid, why, true, depth + 1)) {
+        return false;
+      }
+      element.kids.push_back(kid);
+    }
+    else if(Enum* eenum = McpFindEnum(name)) {
+      element.kind = MK_ENUM;
+      std::vector<EnumItem*> sorted;
+      std::map<const std::wstring, EnumItem*> items = eenum->GetItems();
+      for(std::map<const std::wstring, EnumItem*>::iterator item = items.begin(); item != items.end(); ++item) {
+        sorted.push_back(item->second);
+      }
+      std::sort(sorted.begin(), sorted.end(), [](EnumItem* a, EnumItem* b) { return a->GetId() < b->GetId(); });
+      for(size_t i = 0; i < sorted.size(); ++i) {
+        element.items.push_back(McpAfterColon(sorted[i]->GetName()));
+      }
+      if(element.items.empty()) {
+        why = L"the enum '" + name + L"' has no items";
+        return false;
+      }
+    }
+    else if(Class* record = McpFindClass(name)) {
+      if(!record->IsRecord()) {
+        why = L"the class '" + name + L"' cannot be a tool parameter: declare it as a record, or take a JsonElement";
+        return false;
+      }
+      element.kind = MK_RECORD;
+      std::vector<Statement*> statements = record->GetStatements();
+      for(size_t i = 0; i < statements.size(); ++i) {
+        if(statements[i]->GetStatementType() != DECLARATION_STMT) {
+          continue;
+        }
+        std::vector<Declaration*> group;
+        Declaration* declaration = static_cast<Declaration*>(statements[i]);
+        while(declaration) {
+          SymbolEntry* entry = declaration->GetEntry();
+          if(entry && !entry->IsStatic()) {
+            group.push_back(declaration);
+          }
+          declaration = declaration->GetChild();
+        }
+        for(size_t g = group.size(); g > 0; --g) {
+          SymbolEntry* entry = group[g - 1]->GetEntry();
+          std::wstring field = McpAfterColon(entry->GetName());
+          if(!field.empty() && field[0] == L'@') {
+            field = field.substr(1);
+          }
+          McpTy kid;
+          std::wstring kid_why;
+          if(!McpAnalyze(entry->GetType(), kid, kid_why, false, depth + 1)) {
+            why = L"the field '" + field + L"' of the record '" + name + L"': " + kid_why;
+            return false;
+          }
+          if(kid.kind == MK_CALL) {
+            why = L"the field '" + field + L"' of the record '" + name + L"' cannot be a McpCall";
+            return false;
+          }
+          element.items.push_back(field);
+          element.kids.push_back(kid);
+        }
+      }
+      if(element.items.empty()) {
+        why = L"the record '" + name + L"' has no fields";
+        return false;
+      }
+    }
+    else {
+      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those";
+      return false;
+    }
+  }
+
+  if(dimension == 1) {
+    if(element.kind == MK_CALL || element.kind == MK_ENUM) {
+      why = element.kind == MK_ENUM ? L"an array of an enum is not supported; use an array of String" : L"an array of McpCall is not a tool parameter";
+      return false;
+    }
+    out.kind = MK_ARRAY;
+    out.text = element.text + L"[]";
+    out.kids.push_back(element);
+    return true;
+  }
+
+  if(in_collection && (element.kind == MK_ENUM)) {
+    why = L"an enum cannot be the element of a Vector or Map; use String";
+    return false;
+  }
+  out = element;
+  return true;
+}
+
+// parses one generated function and adds it to the class
+void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth)
+{
+  std::wstring text(line > 1 ? line - 1 : 0, L'\n');
+  text += code;
+
+  Scanner* saved = scanner;
+  Method* previous_method = current_method;
+  scanner = new Scanner(klass->GetFileName(), alt_syntax, text);
+  NextToken();
+
+  Method* method = nullptr;
+  if(Match(TOKEN_FUNCTION_ID)) {
+    method = ParseMethod(true, false, depth + 1);
+  }
+  if(!Match(TOKEN_END_OF_STREAM)) {
+    ProcessError(L"The code written for an '@tool' function has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
+  }
+
+  delete scanner;
+  scanner = saved;
+  current_method = previous_method;
+
+  if(method && !klass->AddMethod(method)) {
+    diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which an '@tool' function needs for itself");
+  }
+}
+
+void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, int depth)
+{
+  McpHelpers helpers;
+  helpers.cls = klass->GetName();
+  const std::wstring file_name = klass->GetFileName();
+
+  // the code written below names API.MCP classes, whose generic arguments resolve by their short names: the file must use the bundle
+  if(!current_lib_uses || std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) == current_lib_uses->end()) {
+    diagnostics.Error(file_name, tools[0].method->GetLineNumber(), tools[0].method->GetLinePosition(),
+                      L"a file with an '@tool' function needs 'use API.MCP;' (and -lib mcp): the tool is registered with that library's classes");
+    return;
+  }
+
+  std::vector<std::wstring> registrations;
+  std::vector<std::wstring> adapters;
+  std::vector<std::wstring> names_seen;
+  int first_line = 0;
+
+  for(size_t t = 0; t < tools.size(); ++t) {
+    Method* method = tools[t].method;
+    const std::wstring function_name = McpAfterColon(method->GetName());
+    const int fn_line = method->GetLineNumber();
+    const int fn_pos = method->GetLinePosition();
+    if(!first_line) {
+      first_line = fn_line;
+    }
+
+    McpDoc doc;
+    if(!McpParseDoc(tools[t].doc, function_name, file_name, diagnostics, doc)) {
+      continue;
+    }
+    if(!doc.title.empty() && doc.title.size() > 200) {
+      diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"the '@title' of '" + function_name + L"' is longer than 200 characters");
+      continue;
+    }
+
+    const wchar_t* kind_word = doc.kind == 0 ? L"tool" : (doc.kind == 1 ? L"resource" : L"prompt");
+    if(doc.kind != 0 && (doc.read_only || doc.destructive || doc.idempotent || doc.open_world)) {
+      diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"'@readonly', '@destructive', '@idempotent' and '@openworld' describe a tool; '" + function_name + L"' is a " + kind_word);
+      continue;
+    }
+    if(doc.kind != 1 && !doc.mime.empty()) {
+      diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"'@mime' belongs to a '@resource'; '" + function_name + L"' is a " + kind_word);
+      continue;
+    }
+
+    bool duplicate = false;
+    const std::wstring name_key = std::wstring(1, L'0' + (wchar_t)doc.kind) + (doc.kind == 1 ? doc.uri : doc.name);
+    for(size_t n = 0; n < names_seen.size(); ++n) {
+      if(names_seen[n] == name_key) {
+        duplicate = true;
+      }
+    }
+    if(duplicate) {
+      diagnostics.Error(file_name, fn_line, fn_pos, std::wstring(L"two '@") + kind_word + L"' functions of this class are called '" + (doc.kind == 1 ? doc.uri : doc.name) + L"'" +
+                        (doc.kind == 1 ? L"" : std::wstring(L"; give one a name with '@") + kind_word + L" <name>'"));
+      continue;
+    }
+    names_seen.push_back(name_key);
+
+    // the variables of a resource's URI template
+    std::vector<std::wstring> uri_vars;
+    if(doc.kind == 1) {
+      size_t at = 0;
+      bool bad_uri = false;
+      while((at = doc.uri.find(L'{', at)) != std::wstring::npos) {
+        const size_t close = doc.uri.find(L'}', at);
+        if(close == std::wstring::npos || close == at + 1) {
+          bad_uri = true;
+          break;
+        }
+        uri_vars.push_back(doc.uri.substr(at + 1, close - at - 1));
+        at = close + 1;
+      }
+      if(bad_uri || (doc.uri.find(L'}', 0) != std::wstring::npos && uri_vars.empty())) {
+        diagnostics.Error(file_name, tools[t].doc.line, tools[t].doc.pos, L"'@resource " + doc.uri + L"': a '{' needs a name and a closing '}'");
+        continue;
+      }
+    }
+
+    // the parameters, in source order
+    struct Param {
+      std::wstring name;
+      McpTy ty;
+      Declaration* declaration;
+    };
+    std::vector<Param> params;
+    bool ok = true;
+    std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+    for(size_t d = 0; d < declarations.size() && ok; ++d) {
+      std::vector<Declaration*> group;
+      Declaration* declaration = declarations[d];
+      while(declaration) {
+        group.push_back(declaration);
+        declaration = declaration->GetChild();
+      }
+      for(size_t g = group.size(); g > 0 && ok; --g) {
+        Declaration* parameter = group[g - 1];
+        SymbolEntry* entry = parameter->GetEntry();
+        if(!entry) {
+          continue;
+        }
+
+        Param param;
+        param.name = McpAfterColon(entry->GetName());
+        param.declaration = parameter;
+        if(entry->IsReference()) {
+          diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(), L"the 'ref' parameter '" + param.name + L"' of the tool '" + doc.name + L"' cannot be filled from JSON");
+          ok = false;
+          break;
+        }
+
+        std::wstring why;
+        if(!McpAnalyze(entry->GetType(), param.ty, why, false, 0)) {
+          diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(), L"the parameter '" + param.name + L"' of the tool '" + doc.name + L"': " + why);
+          ok = false;
+          break;
+        }
+        if(doc.kind != 0 && !(param.ty.kind == MK_INT || param.ty.kind == MK_FLOAT || param.ty.kind == MK_BOOL || param.ty.kind == MK_CHAR || param.ty.kind == MK_STRING ||
+                              (doc.kind == 2 && param.ty.kind == MK_CALL))) {
+          diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(),
+                            L"the parameter '" + param.name + L"' of the " + kind_word + L" '" + (doc.kind == 1 ? doc.uri : doc.name) + L"': a " + kind_word +
+                            L" gets its arguments as text, so a parameter is a String, Int, Float, Bool or Char" + (doc.kind == 2 ? L" (or the McpCall)" : L""));
+          ok = false;
+          break;
+        }
+        if(doc.kind == 1) {
+          if(param.ty.kind == MK_CALL || std::find(uri_vars.begin(), uri_vars.end(), param.name) == uri_vars.end()) {
+            diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(),
+                              L"the parameter '" + param.name + L"' of the resource '" + doc.uri + L"' is not a variable of its URI; a resource reads its parameters from '{name}' in the URI");
+            ok = false;
+            break;
+          }
+          if(parameter->GetAssignment()) {
+            diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(),
+                              L"the parameter '" + param.name + L"' of the resource '" + doc.uri + L"' has a default; every variable of a URI template is required");
+            ok = false;
+            break;
+          }
+        }
+        params.push_back(param);
+      }
+    }
+    if(!ok) {
+      continue;
+    }
+    if(doc.kind == 1) {
+      for(size_t v = 0; v < uri_vars.size() && ok; ++v) {
+        bool has = false;
+        for(size_t q = 0; q < params.size(); ++q) {
+          if(params[q].name == uri_vars[v]) {
+            has = true;
+          }
+        }
+        if(!has) {
+          diagnostics.Error(file_name, fn_line, fn_pos, L"the URI '" + doc.uri + L"' has the variable '{" + uri_vars[v] + L"}', but the function '" + function_name + L"' has no parameter of that name");
+          ok = false;
+        }
+      }
+      if(!ok) {
+        continue;
+      }
+    }
+
+    // a '@param' line names a parameter the function has
+    for(size_t p = 0; p < doc.params.size(); ++p) {
+      bool found = false;
+      for(size_t q = 0; q < params.size(); ++q) {
+        if(params[q].name == doc.params[p].first && params[q].ty.kind != MK_CALL) {
+          found = true;
+        }
+      }
+      if(!found) {
+        diagnostics.Error(file_name, doc.param_lines[p], tools[t].doc.pos, L"'@param " + doc.params[p].first + L"': the tool '" + doc.name + L"' has no such parameter");
+        ok = false;
+      }
+    }
+    if(!ok) {
+      continue;
+    }
+
+    // the return type decides how the result is sent
+    Type* rtrn = method->GetReturn();
+    McpTy rty;
+    int rkind = -1;  // 0 nil, 1 text from a value, 2 a String, 3 a JsonElement, 4 a McpToolResult
+    if(rtrn->GetDimension() == 0) {
+      switch(rtrn->GetType()) {
+      case NIL_TYPE:
+        rkind = 0;
+        break;
+      case INT_TYPE:
+      case FLOAT_TYPE:
+      case BOOLEAN_TYPE:
+        rkind = 1;
+        break;
+      case CLASS_TYPE: {
+        const std::wstring rname = rtrn->GetName();
+        if(McpIsName(rname, L"String", L"System.String")) {
+          rkind = 2;
+        }
+        else if(McpIsName(rname, L"JsonElement", L"Data.JSON.JsonElement")) {
+          rkind = 3;
+        }
+        else if(doc.kind == 0 && McpIsName(rname, L"McpToolResult", L"API.MCP.McpToolResult")) {
+          rkind = 4;
+        }
+        else if(doc.kind == 1 && McpIsName(rname, L"McpContents", L"API.MCP.McpContents")) {
+          rkind = 4;
+        }
+        else if(doc.kind == 2 && McpIsName(rname, L"McpPromptResult", L"API.MCP.McpPromptResult")) {
+          rkind = 4;
+        }
+        break;
+      }
+      default:
+        break;
+      }
+    }
+    if(doc.kind != 0 && rkind != 2 && rkind != 4) {
+      rkind = -1;
+    }
+    if(rkind < 0) {
+      if(doc.kind == 1) {
+        diagnostics.Error(file_name, fn_line, fn_pos, L"the resource '" + doc.uri + L"' returns a type MCP cannot send: return a String (its text) or a McpContents");
+      }
+      else if(doc.kind == 2) {
+        diagnostics.Error(file_name, fn_line, fn_pos, L"the prompt '" + doc.name + L"' returns a type MCP cannot send: return a String (one user message) or a McpPromptResult");
+      }
+      else {
+        diagnostics.Error(file_name, fn_line, fn_pos, L"the tool '" + doc.name + L"' returns a type MCP cannot send: return String, Int, Float, Bool, JsonElement, McpToolResult or nothing");
+      }
+      continue;
+    }
+
+    // the declaration of the tool
+    std::wstring spec = L"API.MCP.McpToolSpec->New(\"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\")";
+    if(!doc.title.empty()) {
+      spec += L"->Title(\"" + McpLit(doc.title) + L"\")";
+    }
+
+    // a prompt is declared by statements, one variable for each
+    const std::wstring prompt_var = L"mcp_pr" + std::to_wstring(registrations.size());
+    std::wstring prompt_args;
+
+    // and the function that calls the tool
+    std::wstring body = L"mcp_a := mcp_call->GetArguments(); ";
+    if(doc.kind == 1) {
+      body = L"mcp_a := API.MCP.McpUriTemplate->Match(\"" + McpLit(doc.uri) + L"\", mcp_uri); if(mcp_a = Nil) { return Nil; }; ";
+    }
+    std::wstring call_args;
+    for(size_t p = 0; p < params.size() && ok; ++p) {
+      const std::wstring index = std::to_wstring(p);
+      const std::wstring var = L"mcp_p" + index;
+      call_args += (p ? L", " : L"");
+
+      if(params[p].ty.kind == MK_CALL) {
+        call_args += L"mcp_call";
+        continue;
+      }
+      call_args += var;
+
+      std::wstring description;
+      for(size_t q = 0; q < doc.params.size(); ++q) {
+        if(doc.params[q].first == params[p].name) {
+          description = doc.params[q].second;
+        }
+      }
+
+      Assignment* default_value = params[p].declaration->GetAssignment();
+      const bool required = default_value == nullptr;
+      if(doc.kind == 0) {
+        spec += L"->AddSchema(\"" + McpLit(params[p].name) + L"\", \"" + McpLit(McpSchemaText(params[p].ty)) + L"\", \"" + McpLit(description) + L"\", " +
+                (required ? L"true" : L"false") + L")";
+      }
+      else if(doc.kind == 2) {
+        prompt_args += prompt_var + L"->AddArgument(\"" + McpLit(params[p].name) + L"\", \"" + McpLit(description) + L"\", " + (required ? L"true" : L"false") + L"); ";
+      }
+
+      std::wstring read;
+      if(doc.kind == 0) {
+        read = McpRead(params[p].ty, L"mcp_a->Get(\"" + McpLit(params[p].name) + L"\")", helpers);
+      }
+      else {
+        // text from a URI or a prompt's arguments
+        const std::wstring text = L"mcp_a->Get(\"" + McpLit(params[p].name) + L"\")->GetString()";
+        switch(params[p].ty.kind) {
+        case MK_INT:
+          read = text + L"->ToInt()";
+          break;
+        case MK_FLOAT:
+          read = text + L"->ToFloat()";
+          break;
+        case MK_BOOL:
+          read = text + L"->Equals(\"true\")";
+          break;
+        case MK_CHAR:
+          read = text + L"->Get(0)";
+          break;
+        default:
+          read = text;
+          break;
+        }
+      }
+      if(required) {
+        body += var + L" := " + read + L"; ";
+      }
+      else {
+        // a default must be a literal, which is then the value of a parameter that the call leaves out
+        Expression* expression = default_value->GetExpression();
+        std::wstring literal;
+        if(expression) {
+          switch(expression->GetExpressionType()) {
+          case INT_LIT_EXPR:
+            literal = std::to_wstring(static_cast<IntegerLiteral*>(expression)->GetValue());
+            break;
+          case FLOAT_LIT_EXPR: {
+            std::wostringstream stream;
+            stream.precision(17);
+            stream << static_cast<FloatLiteral*>(expression)->GetValue();
+            literal = stream.str();
+            if(literal.find_first_of(L".eE") == std::wstring::npos) {
+              literal += L".0";
+            }
+            break;
+          }
+          case BOOLEAN_LIT_EXPR:
+            literal = static_cast<BooleanLiteral*>(expression)->GetValue() ? L"true" : L"false";
+            break;
+          case NIL_LIT_EXPR:
+            literal = L"Nil";
+            break;
+          case CHAR_LIT_EXPR: {
+            const wchar_t c = static_cast<CharacterLiteral*>(expression)->GetValue();
+            if(c >= 32 && c < 127 && c != L'\'' && c != L'\\') {
+              literal = std::wstring(L"'") + c + L"'";
+            }
+            break;
+          }
+          case CHAR_STR_EXPR: {
+            CharacterString* text = static_cast<CharacterString*>(expression);
+            // a string with nothing interpolated holds its text itself; one with a '{$...}' in it is not a literal
+            std::vector<CharacterStringSegment*> segments = text->GetSegments();
+            bool plain = true;
+            for(size_t k = 0; k < segments.size(); ++k) {
+              if(segments[k]->GetType() != STRING) {
+                plain = false;
+              }
+            }
+            if(plain) {
+              literal = L"\"" + McpLit(text->GetString()) + L"\"";
+            }
+            break;
+          }
+          default:
+            break;
+          }
+        }
+        if(literal.empty() || params[p].ty.kind == MK_ENUM || params[p].ty.kind == MK_RECORD) {
+          diagnostics.Error(file_name, params[p].declaration->GetLineNumber(), params[p].declaration->GetLinePosition(),
+                            L"the default of the optional parameter '" + params[p].name + L"' of the tool '" + doc.name + L"' must be a number, Bool, Char, String or Nil literal");
+          ok = false;
+          break;
+        }
+        body += var + L" : " + params[p].ty.text + L"; if(mcp_a->Has(\"" + McpLit(params[p].name) + L"\")) { " + var + L" := " + read + L"; } else { " + var +
+                L" := " + literal + L"; }; ";
+      }
+    }
+    if(!ok) {
+      continue;
+    }
+
+    if(doc.read_only) {
+      spec += L"->ReadOnly()";
+    }
+    if(doc.destructive) {
+      spec += L"->Destructive()";
+    }
+    if(doc.idempotent) {
+      spec += L"->Idempotent()";
+    }
+    if(rkind == 3) {
+      // a JsonElement result is the structured result, an object
+      spec += L"->Returns(\"{\\\"type\\\":\\\"object\\\"}\")";
+    }
+    if(doc.open_world) {
+      spec += L"->OpenWorld()";
+    }
+    std::wstring adapter_name = L"McpTool_" + function_name;
+    if(doc.kind == 0) {
+      spec += L"->AddTo(mcp_service, Func2Ref->New(" + helpers.cls + L"->" + adapter_name + L"(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);";
+    }
+    else if(doc.kind == 1) {
+      adapter_name = L"McpResource_" + function_name;
+      spec = L"mcp_service->AddResource(API.MCP.McpResource->New(\"" + McpLit(doc.uri) + L"\", \"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\", \"" +
+             McpLit(doc.mime.empty() ? std::wstring(L"text/plain") : doc.mime) + L"\", Func2Ref->New(" + helpers.cls + L"->" + adapter_name +
+             L"(String) ~ McpContents)<String, McpContents>));";
+    }
+    else {
+      adapter_name = L"McpPrompt_" + function_name;
+      spec = prompt_var + L" := API.MCP.McpPrompt->New(\"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\", Func2Ref->New(" + helpers.cls + L"->" + adapter_name +
+             L"(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>); " + prompt_args + L"mcp_service->AddPrompt(" + prompt_var + L");";
+    }
+    registrations.push_back(spec);
+
+    const std::wstring invoke = helpers.cls + L"->" + function_name + L"(" + call_args + L")";
+    if(doc.kind == 1) {
+      const std::wstring mime = McpLit(doc.mime.empty() ? std::wstring(L"text/plain") : doc.mime);
+      body += L"mcp_r := " + invoke + L"; ";
+      body += rkind == 2 ? L"if(mcp_r = Nil) { return Nil; }; return API.MCP.McpContents->OfText(mcp_uri, \"" + mime + L"\", mcp_r);" : L"return mcp_r;";
+      adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_uri : String) ~ McpContents { " + body + L" }");
+      continue;
+    }
+    if(doc.kind == 2) {
+      body += L"mcp_r := " + invoke + L"; ";
+      body += rkind == 2 ? L"if(mcp_r = Nil) { return Nil; }; mcp_m := API.MCP.McpPromptResult->New(\"" + McpLit(doc.description) + L"\"); mcp_m->AddMessage(\"user\", mcp_r); return mcp_m;"
+                         : L"return mcp_r;";
+      adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_call : McpCall) ~ McpPromptResult { " + body + L" }");
+      continue;
+    }
+    switch(rkind) {
+    case 0:
+      body += invoke + L"; return API.MCP.McpToolResult->Text(\"done\");";
+      break;
+    case 1:
+      body += L"mcp_r := " + invoke + L"; return API.MCP.McpToolResult->Text(\"{$mcp_r}\");";
+      break;
+    case 2:
+      body += L"mcp_r := " + invoke + L"; if(mcp_r = Nil) { return API.MCP.McpToolResult->Error(\"the tool returned no result\"); }; return API.MCP.McpToolResult->Text(mcp_r);";
+      break;
+    case 3:
+      body += L"mcp_r := " + invoke + L"; if(mcp_r = Nil) { return API.MCP.McpToolResult->Error(\"the tool returned no result\"); }; return API.MCP.McpToolResult->Json(mcp_r);";
+      break;
+    default:
+      body += L"return " + invoke + L";";
+      break;
+    }
+    adapters.push_back(std::to_wstring(fn_line) + L"\n" + L"function : " + adapter_name + L"(mcp_call : McpCall) ~ McpToolResult { " + body + L" }");
+  }
+
+  if(registrations.empty()) {
+    return;
+  }
+
+  // the helpers first, then each tool's function, then the one function that declares them all
+  for(size_t i = 0; i < helpers.code.size(); ++i) {
+    McpAddFunction(klass, helpers.code[i].second, first_line, depth);
+  }
+  for(size_t i = 0; i < adapters.size(); ++i) {
+    const size_t cut = adapters[i].find(L'\n');
+    McpAddFunction(klass, adapters[i].substr(cut + 1), std::stoi(adapters[i].substr(0, cut)), depth);
+  }
+
+  std::wstring all = L"function : McpTools(mcp_service : McpService) ~ Nil { ";
+  for(size_t i = 0; i < registrations.size(); ++i) {
+    all += registrations[i] + L" ";
+  }
+  all += L"}";
+  McpAddFunction(klass, all, first_line, depth);
+
+  // The entry point of 'obr --mcp' / 'obr --mcp-http': a server of this class's tools, resources and prompts.
+  // A McpMain the program wrote itself wins (it can register several classes, which a generated one cannot).
+  bool has_entry = false;
+  std::vector<Method*> existing = klass->GetMethods();
+  for(size_t i = 0; i < existing.size(); ++i) {
+    if(McpAfterColon(existing[i]->GetName()) == L"McpMain") {
+      has_entry = true;
+    }
+  }
+  if(!has_entry) {
+    // named for the class so that the VM can tell it from one the program wrote
+    std::wstring entry_class = klass->GetName();
+    for(size_t i = 0; i < entry_class.size(); ++i) {
+      if(!iswalnum(entry_class[i])) {
+        entry_class[i] = L'_';
+      }
+    }
+    McpAddFunction(klass, L"function : McpMain_" + entry_class + L"(mcp_args : String[]) ~ Nil { mcp_service := API.MCP.McpService->New(\"" + McpLit(klass->GetName()) + L"\", \"1.0\"); " +
+                          helpers.cls + L"->McpTools(mcp_service); API.MCP.McpServe->Run(mcp_service, mcp_args); }", first_line, depth);
+  }
+}
+
+// '@tool' belongs to a function: say so where it sits before anything else
+void Parser::RejectToolDoc(const wchar_t* what)
+{
+  const ToolDoc* doc = scanner->GetToolDoc(scanner->GetToken()->GetDocId());
+  if(doc) {
+    diagnostics.Error(GetFileName(), doc->line, doc->pos, std::wstring(L"'@tool' marks a function, but its doc comment is before ") + what + L"; move the comment to the function");
+  }
 }

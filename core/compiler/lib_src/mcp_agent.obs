@@ -1,0 +1,213 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection, Data.JSON, System.Concurrency, API.Agent;
+
+#~
+Hands MCP tools to an API.Agent agent. Kept apart from mcp and agent so that neither links the other.
+
+Two sources become AgentTool objects. A function declared with McpToolSpec is registered with
+FromSpec: the agent calls the same handler, with the same typed schema, that an MCP server would serve,
+and the agent's cancellation token reaches the handler as McpCall->IsCancelled(). The tools of a server
+reached through an McpClient are registered with FromClient and AddAll: the schema, the description and
+the effect hints (readOnlyHint, destructiveHint) come from tools/list, and the agent's approval rules read
+them (AgentTool->NeedsApproval, Agent->SetApproveUnlessReadOnly).
+
+Compile with -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent.
+
+```
+registry := ToolRegistry->New();
+registry->Add(McpAgentTools->FromSpec(spec, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
+McpAgentTools->AddAll(registry, McpClient->Http("http://127.0.0.1:8080/mcp"));
+```
+
+~#
+bundle API.MCP {
+	class McpAgentTools {
+		#~
+		Makes an agent tool from a declared function. The tool's name, description, schema and effect hints are the spec's
+		@param spec the declaration
+		@param handler the function that runs the tool
+		@return the agent tool
+		~#
+		function : FromSpec(spec : McpToolSpec, handler : Func2Ref<McpCall, McpToolResult>) ~ AgentTool {
+			return McpAgentTools->FromTool(spec->ToTool(handler));
+		}
+
+		#~
+		Makes an agent tool from a tool that has a handler in this process
+		@param tool the tool, with its handler
+		@return the agent tool, Nil when the tool has no handler
+		~#
+		function : FromTool(tool : McpTool) ~ AgentTool {
+			if(tool = Nil | tool->GetHandler() = Nil) {
+				return Nil;
+			};
+
+			made := AgentTool->New(tool->GetName(), tool->GetDescription(), tool->GetInputSchema(), McpAgentLocal->New(tool));
+			McpAgentTools->CopyHints(tool, made);
+			return made;
+		}
+
+		#~
+		Makes agent tools from the tools of a server. Each call goes to the server over the client
+		@param client an initialized client
+		@return the tools, Nil when the server could not list them
+		~#
+		function : FromClient(client : McpClient) ~ Vector<AgentTool> {
+			tools := client->ListTools();
+			if(tools = Nil) {
+				return Nil;
+			};
+
+			made := Vector->New()<AgentTool>;
+			each(tool in tools) {
+				agent_tool := AgentTool->New(tool->GetName(), tool->GetDescription(), tool->GetInputSchema(), McpAgentRemote->New(client, tool->GetName()));
+				McpAgentTools->CopyHints(tool, agent_tool);
+				made->AddBack(agent_tool);
+			};
+			return made;
+		}
+
+		#~
+		Registers every tool of a server on an agent's registry
+		@param registry the registry
+		@param client an initialized client
+		@return the number of tools added, -1 when the server could not list them
+		~#
+		function : AddAll(registry : ToolRegistry, client : McpClient) ~ Int {
+			tools := McpAgentTools->FromClient(client);
+			if(tools = Nil) {
+				return -1;
+			};
+
+			each(tool in tools) {
+				registry->Add(tool);
+			};
+			return tools->Size();
+		}
+
+		# the stated effect hints, and only those, so a tool with none keeps the agent's defaults
+		function : CopyHints(tool : McpTool, made : AgentTool) ~ Nil {
+			if(tool->HasReadOnlyHint()) {
+				made->SetReadOnlyHint(tool->GetReadOnlyHint());
+			};
+			if(tool->HasDestructiveHint()) {
+				made->SetDestructiveHint(tool->GetDestructiveHint());
+			};
+		}
+	}
+
+	# Runs a tool's function in this process. The agent's cancellation token is copied to the call by a watcher thread, so a handler that polls McpCall->IsCancelled() stops when the agent is cancelled or its deadline passes
+	class : private : McpAgentLocal implements AgentCancelableHandler {
+		@tool : McpTool;
+
+		New(tool : McpTool) {
+			@tool := tool;
+		}
+
+		method : public : Run(arguments : JsonElement, cancel : AgentCancel) ~ String {
+			if(cancel->IsCancelled()) {
+				Runtime->Raise(Error->New("cancelled before the tool ran"));
+			};
+
+			call := McpCall->New(@tool->GetName(), arguments, Nil, Nil, Nil);
+			watch := McpAgentWatch->New(call, cancel);
+			watcher := McpAgentWatcher->New();
+			watcher->Execute(watch);
+
+			result : McpToolResult;
+			failure : String;
+			try {
+				fn := @tool->GetHandler()->Get();
+				result := fn(call);
+			}
+			on(e : Error) {
+				failure := e->GetMessage();
+			};
+
+			watch->Stop();
+			watcher->Join();
+
+			if(failure <> Nil) {
+				Runtime->Raise(Error->New(failure));
+			};
+			return McpAgentText->Of(result);
+		}
+	}
+
+	# Runs a tool of a server reached through a client
+	class : private : McpAgentRemote implements AgentToolHandler {
+		@client : McpClient;
+		@name : String;
+
+		New(client : McpClient, name : String) {
+			@client := client;
+			@name := name;
+		}
+
+		method : public : Run(arguments : JsonElement) ~ String {
+			result := @client->CallTool(@name, arguments);
+			if(result = Nil) {
+				reason := @client->GetError();
+				Runtime->Raise(Error->New("MCP call failed: {$reason}"));
+			};
+			return McpAgentText->Of(result);
+		}
+	}
+
+	# The text of a result; a result that says it failed is raised so the agent reports the message as an error
+	class : private : McpAgentText {
+		function : Of(result : McpToolResult) ~ String {
+			if(result = Nil) {
+				Runtime->Raise(Error->New("the tool returned no result"));
+			};
+
+			text := result->GetText();
+			if(result->IsError()) {
+				if(text = Nil) {
+					text := "the tool failed";
+				};
+				Runtime->Raise(Error->New(text));
+			};
+			return text;
+		}
+	}
+
+	# Polls the agent's token and cancels the call
+	class : private : McpAgentWatch {
+		@call : McpCall;
+		@cancel : AgentCancel;
+		@done : Bool;
+
+		New(call : McpCall, cancel : AgentCancel) {
+			@call := call;
+			@cancel := cancel;
+		}
+
+		method : public : Stop() ~ Nil {
+			@done := true;
+		}
+
+		method : public : Run() ~ Nil {
+			while(<>@done) {
+				if(@cancel->IsCancelled()) {
+					@call->Cancel();
+					return;
+				};
+				Thread->Sleep(2);
+			};
+		}
+	}
+
+	class : private : McpAgentWatcher from Thread {
+		New() {
+			Parent();
+		}
+
+		method : public : Run(arg : System.Base) ~ Nil {
+			arg->As(McpAgentWatch)->Run();
+		}
+	}
+}

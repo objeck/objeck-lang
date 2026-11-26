@@ -916,6 +916,39 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 mcp_stdio_test.py "$BIN"
 
+    # The typed client generator (tools/mcp/mcp_stubs.obs): it reads a server's tools over stdio, writes
+    # Objeck source, and that source equals a golden file, compiles with a program that calls it, and runs.
+    - name: the MCP stub generator writes a client that compiles and works (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_stubs_test.py "$BIN"
+
+    # '@tool' doc comments (docs/design/MCP_FIRST_CLASS.md): what the compiler says about a tool it cannot make,
+    # and what the scanner must leave alone (tags in strings and other comments, CRLF, a megabyte comment).
+    - name: the MCP tool tag diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_tool_tags_diag_test.py "$BIN"
+
+    # 'obr --mcp' and 'obr --mcp-http' (docs/design/MCP_FIRST_CLASS.md, Stage 3): a program's tools, resources and prompts
+    # served with no server code; stdio in three execution modes, hostile input, HTTP, the refusals.
+    - name: obr --mcp serves a program's tools (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_launch_test.py "$BIN"
+
     # A build of several files reports each file's errors together, in the order the
     # files were given, rather than interleaved by line number.
     - name: obc reports a multi-file build's errors file by file (POSIX)
@@ -1464,6 +1497,7 @@ jobs:
           ../../../compiler/lib_src/agent.obs \
           ../../../compiler/lib_src/actor_agents.obs \
           ../../../compiler/lib_src/mcp.obs \
+          ../../../compiler/lib_src/mcp_agent.obs \
           ../../../compiler/lib_src/rag.obs \
           ../../../compiler/lib_src/rag_adapters.obs \
           ../../../compiler/lib_src/json_rpc.obs \

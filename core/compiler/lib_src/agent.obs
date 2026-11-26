@@ -549,6 +549,8 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		@func : Func2Ref<JsonElement, String>;
 		@json_func : Func2Ref<JsonElement, JsonElement>;
 		@dangerous : Bool;
+		@read_only : Int;
+		@destructive : Int;
 		@timeout_ms : Int;
 		@cancel_handler : AgentCancelableHandler;
 		@mode : AgentTool->Mode;
@@ -667,6 +669,60 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		~#
 		method : public : IsDangerous() ~ Bool {
 			return @dangerous;
+		}
+
+		#~
+		Records the effect hint readOnlyHint (the MCP annotation of the same name): the tool does not change anything. A read-only tool is not asked about when the agent is set to SetApproveUnlessReadOnly
+		@param read_only true for a tool that only reads
+		@return self for chaining
+		~#
+		method : public : SetReadOnlyHint(read_only : Bool) ~ AgentTool {
+			if(read_only) {
+				@read_only := 1;
+			}
+			else {
+				@read_only := 2;
+			};
+			return @self;
+		}
+
+		#~
+		Records the effect hint destructiveHint (the MCP annotation of the same name): the tool may destroy or overwrite something. A tool whose destructive hint is true needs approval, like a dangerous one. An absent hint changes nothing
+		@param destructive true for a tool that may destroy data
+		@return self for chaining
+		~#
+		method : public : SetDestructiveHint(destructive : Bool) ~ AgentTool {
+			if(destructive) {
+				@destructive := 1;
+			}
+			else {
+				@destructive := 2;
+			};
+			return @self;
+		}
+
+		#~
+		Says whether the tool is known to be read-only
+		@return true only when the read-only hint was stated and is true
+		~#
+		method : public : IsReadOnly() ~ Bool {
+			return @read_only = 1;
+		}
+
+		#~
+		Says whether the tool states that it may destroy data
+		@return true only when the destructive hint was stated and is true
+		~#
+		method : public : IsDestructive() ~ Bool {
+			return @destructive = 1;
+		}
+
+		#~
+		Says whether every call needs the approver: the tool is dangerous or its destructive hint is true
+		@return true when approval is needed whatever the agent's other settings
+		~#
+		method : public : NeedsApproval() ~ Bool {
+			return @dangerous | (@destructive = 1);
 		}
 
 		#~
@@ -2636,7 +2692,8 @@ scope->GetStepsUsed()->PrintLine();
 
 	Every call goes through the same gates, in order: the tool must exist (unknown otherwise), the
 	registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema
-	(invalid), a dangerous tool, or any tool when SetApproveAll is on, must be approved (refused), and the
+	(invalid), a dangerous tool, a tool whose destructive hint is true, any tool when SetApproveAll is on, and
+	any tool not known to be read-only when SetApproveUnlessReadOnly is on, must be approved (refused), and the
 	handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes
 	an error result the model can read and the loop carries on.
 
@@ -2657,6 +2714,7 @@ result->GetText()->PrintLine();
 		@max_result_chars : Int;
 		@approver : AgentApprover;
 		@approve_all : Bool;
+		@approve_unless_read_only : Bool;
 		@observer : AgentObserver;
 		@cancel : AgentCancel;
 		@budget : AgentBudget;
@@ -2756,6 +2814,16 @@ result->GetText()->PrintLine();
 		~#
 		method : public : SetApproveAll(approve_all : Bool) ~ Agent {
 			@approve_all := approve_all;
+			return @self;
+		}
+
+		#~
+		Asks the approver about every call to a tool that is not known to be read-only: a tool with no read-only hint, or one whose hint is false, needs approval. A tool marked read-only runs without being asked. The safe default for tools from a server you do not control, since a missing hint says nothing
+		@param on true to ask about everything but read-only tools
+		@return self for chaining
+		~#
+		method : public : SetApproveUnlessReadOnly(on : Bool) ~ Agent {
+			@approve_unless_read_only := on;
 			return @self;
 		}
 
@@ -3436,7 +3504,7 @@ result->GetText()->PrintLine();
 				return AgentToolResult->New(id, name, arguments, message, "invalid", 0);
 			};
 
-			if(tool->IsDangerous() | @approve_all) {
+			if(tool->NeedsApproval() | @approve_all | (@approve_unless_read_only & <>tool->IsReadOnly())) {
 				if(@approver = Nil) {
 					return AgentToolResult->New(id, name, arguments, "Error: the tool '{$name}' needs approval and none is available, so it was not run", "refused", 0);
 				};
