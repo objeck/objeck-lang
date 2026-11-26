@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: (14,3): Undefined function/method call: 'Twice(..)'
+# EXPECT_ERROR_COUNT: 1
+#~
+An argument is unboxed only into a primitive its value converts to. A BoolRef
+does not fit an Int parameter, so no method takes it.
+~#
+class BadBoxingBoolRefArgument {
+	function : Twice(i : Int) ~ Int {
+		return i * 2;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		flag := BoolRef->New(true);
+		Twice(flag)->PrintLine();
+	}
+}

@@ -858,19 +858,14 @@ static std::wstring NamedVariable(Expression* expr)
  ****************************/
 void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
 {
-  // more than one method takes the arguments once one is boxed or unboxed, and
-  // none of them fits better than the rest
-  if(alt_error_ambiguous && alt_error_method_names.size() > 0) {
-    message = L"Ambiguous function/method call: an argument is boxed or unboxed to fit, and more than one method fits as well"
-              L"\n\tWrite the conversion ('IntRef->New(..)' or '->Get()') to choose one of:\n";
-    for(size_t i = 0; i < alt_error_method_names.size(); ++i) {
-      message += L"\t\t" + alt_error_method_names[i] + L'\n';
-    }
+  // This call was already reported as ambiguous (ProcessAmbiguousCall). The
+  // caller is about to say no method takes its arguments, which is not so:
+  // it says the same thing again instead, and the repeat is dropped.
+  if(ambiguous_call && ambiguous_call == diag_call) {
+    message = ambiguous_call_error;
     alt_error_method_names.clear();
-    alt_error_ambiguous = false;
     return;
   }
-  alt_error_ambiguous = false;
 
   if(alt_error_method_names.size() > 0) {
     message += L"\n\tPossible alternative(s):\n";
@@ -879,6 +874,26 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
     }
     alt_error_method_names.clear();
   }
+}
+
+/****************************
+ * More than one method takes a
+ * call's arguments once one is
+ * boxed or unboxed, and none fits
+ * better than the rest
+ ****************************/
+void ContextAnalyzer::ProcessAmbiguousCall(MethodCall* method_call, const std::vector<std::wstring> &names)
+{
+  std::wstring message = L"Ambiguous function/method call: '" + method_call->GetMethodName() +
+    L"(..)' boxes or unboxes an argument to fit, and more than one method fits as well"
+    L"\n\tWrite the conversion ('IntRef->New(..)' or '->Get()') to choose one of:\n";
+  for(size_t i = 0; i < names.size(); ++i) {
+    message += L"\t\t" + names[i] + L'\n';
+  }
+
+  ambiguous_call = method_call;
+  ambiguous_call_error = message;
+  ProcessError(static_cast<Expression*>(method_call), message);
 }
 
 /****************************
@@ -6279,7 +6294,9 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
   // evaluate matches
   MethodCallSelector selector(method_call, matches);
   Method* method = selector.GetSelection();
-  alt_error_ambiguous = selector.IsAmbiguous();
+  if(selector.IsAmbiguous()) {
+    ProcessAmbiguousCall(method_call, selector.GetValidMethodNames());
+  }
   if(method) {
     std::map<Method*, std::map<std::wstring, Type*> >::iterator bound = candidate_bindings.find(method);
     if(bound != candidate_bindings.end()) {
@@ -6315,7 +6332,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       return derived_method;
     }
     else if(alt_mthds.size()) {
-      alt_error_method_names = selector.IsAmbiguous() ? selector.GetValidMethodNames() : selector.GetAlternativeMethodNames();
+      alt_error_method_names = selector.GetAlternativeMethodNames();
     }
   }
 
@@ -6768,7 +6785,9 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   // evaluate matches
   LibraryMethodCallSelector selector(method_call, matches);
   LibraryMethod* lib_method = selector.GetSelection();
-  alt_error_ambiguous = selector.IsAmbiguous();
+  if(selector.IsAmbiguous()) {
+    ProcessAmbiguousCall(method_call, selector.GetValidMethodNames());
+  }
   if(lib_method) {
     std::map<LibraryMethod*, std::map<std::wstring, Type*> >::iterator bound = candidate_bindings.find(lib_method);
     if(bound != candidate_bindings.end()) {
@@ -6805,7 +6824,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       return derived_method;
     }
     else if(alt_mthds.size()) {
-      alt_error_method_names = selector.IsAmbiguous() ? selector.GetValidMethodNames() : selector.GetAlternativeMethodNames();
+      alt_error_method_names = selector.GetAlternativeMethodNames();
     }
     else if(!generic_error.empty()) {
       ProcessError(static_cast<Expression*>(method_call), generic_error);
@@ -10687,6 +10706,12 @@ Expression* ContextAnalyzer::UnboxAs(Type* to_type, Expression* last, bool integ
     return nullptr;
   }
 
+  // the conversion is of one value: the cast it leaves on the call must not
+  // carry an array's dimension
+  Type* value_type = TypeFactory::Instance()->MakeType(to_type);
+  value_type->SetDimension(0);
+  to_type = value_type;
+
   if(integral_only && held != BYTE_TYPE && held != CHAR_TYPE && held != INT_TYPE) {
     return nullptr;
   }
@@ -10802,6 +10827,13 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
      from_type->GetType() == INT_TYPE || 
      from_type->GetType() == FLOAT_TYPE)) {
     if(IsHolderType(to_type->GetName())) {
+      // only into a holder the value converts to: an Int is not boxed as a
+      // BoolRef. The caller reports the two types; building the call reported
+      // a constructor that does not exist, 'BoolRef->New(Int)'.
+      EntryType held;
+      if(!is_enum && HolderPrimitive(to_type, held) && !PrimitiveConverts(held, from_type->GetType())) {
+        return nullptr;
+      }
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), 

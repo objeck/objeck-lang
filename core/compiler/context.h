@@ -378,8 +378,9 @@ class ContextAnalyzer {
   // diagnostics about the same name can be suppressed
   std::set<std::wstring> undefined_classes;
 std::vector<std::wstring> alt_error_method_names;
-  // the names are the methods an ambiguous boxed call fits
-  bool alt_error_ambiguous;
+  // the call last reported as ambiguous between boxed overloads, and what was said
+  MethodCall* ambiguous_call;
+  std::wstring ambiguous_call_error;
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;
   std::vector<Class*> anonymous_classes;
@@ -727,6 +728,7 @@ std::vector<std::wstring> alt_error_method_names;
   [[noreturn]] void ProcessFatalError(ParseNode* n, const std::wstring& msg);
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
+  void ProcessAmbiguousCall(MethodCall* method_call, const std::vector<std::wstring> &names);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);
   bool CheckErrorsWarnings();
 
@@ -885,7 +887,7 @@ std::vector<std::wstring> alt_error_method_names;
     current_class = nullptr;
     current_method = nullptr;
     resolve_site = nullptr;
-    alt_error_ambiguous = false;
+    ambiguous_call = nullptr;
     skip_use_check = 0;
     in_use_check = false;
     // initialize linker

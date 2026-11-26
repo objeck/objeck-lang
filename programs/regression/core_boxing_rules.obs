@@ -1,0 +1,469 @@
+# EXTRA_LIBS: gen_collect
+#~
+Boxing and unboxing at the boundary between a primitive and its holder class
+(Int/IntRef, Float/FloatRef, Bool/BoolRef, Char/CharRef, Byte/ByteRef).
+
+The rules this pins down:
+
+  1. BOXING. A primitive where a holder is wanted is 'Holder->New(value)',
+     and is allowed exactly when the primitive could be assigned to the
+     holder's own primitive: Byte, Char, Int and Float convert among
+     themselves, a Bool is only a Bool.
+  2. UNBOXING. A holder where a primitive is wanted is 'holder->Get()'
+     followed by the same conversion: an IntRef for a Float is the Int made a
+     Float, a FloatRef for an Int is the Float truncated, a BoolRef is never
+     a number. It applies to an assignment, a 'return', an argument (of a
+     method, a function and a function value), an operand of a calculation,
+     an array index, a 'select' and a condition.
+  3. THE VALUE UNBOXED is the one the expression ends in: for a call chain
+     'a->B()->Get(0)' it is what Get(0) returned.
+  4. OVERLOADS. A parameter is matched best by an argument of its type, then
+     by one that converts to it, then by one that is boxed or unboxed to it
+     (Int and IntRef), then by one that is converted and boxed or unboxed
+     (Int and FloatRef). The method chosen fits every argument at least as
+     well as each other method; the order the methods are declared in does
+     not matter. When no method is best the call is refused
+     (bad_boxing_ambiguous_overload.obs).
+  5. A holder that is Nil has no value: unboxing it is the run-time error
+     'Nil' dereference, as calling 'Get()' on it is.
+
+Before v2026.11.4 an unboxed FloatRef was stored as an Int bit for bit, a
+BoolRef passed for an Int, 'Float := FloatRef' was refused, a holder at the
+end of a call chain lost the chain (a crash at run time), a holder argument
+was not unboxed, 'IntRef + FloatRef' ran the compiler out of stack, and two
+overloads that both fit after boxing went to whichever was declared first.
+
+Each check adds to 'bad'; the test exits 1 when one fails.
+~#
+use Collection;
+
+class Readings {
+	@ints : Vector<IntRef>;
+	@floats : Vector<FloatRef>;
+	@flags : Vector<BoolRef>;
+
+	New() {
+		@ints := Vector->New()<IntRef>;
+		@ints->AddBack(5);
+		@ints->AddBack(6);
+		@floats := Vector->New()<FloatRef>;
+		@floats->AddBack(2.5);
+		@flags := Vector->New()<BoolRef>;
+		@flags->AddBack(true);
+		@flags->AddBack(false);
+	}
+
+	method : public : Ints() ~ Vector<IntRef> { return @ints; }
+	method : public : Floats() ~ Vector<FloatRef> { return @floats; }
+	method : public : Flags() ~ Vector<BoolRef> { return @flags; }
+	method : public : Me() ~ Readings { return @self; }
+
+	# a holder at the end of a chain, returned as a primitive
+	method : public : FirstInt() ~ Int { return @ints->Get(0); }
+	method : public : SecondInt() ~ Int { return Me()->Ints()->Get(1); }
+	method : public : FirstFloatAsInt() ~ Int { return Me()->Floats()->Get(0); }
+	method : public : FirstIntAsFloat() ~ Float { return Me()->Ints()->Get(0); }
+	method : public : FirstFlag() ~ Bool { return Me()->Flags()->Get(0); }
+}
+
+class CoreBoxingRules {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		bad += Boxing();
+		bad += UnboxingAssignments();
+		bad += UnboxingReturns();
+		bad += UnboxingArguments();
+		bad += Chains();
+		bad += Calculations();
+		bad += Conditions();
+		bad += SelectAndIndex();
+		bad += Overloads();
+		bad += LibraryOverloads();
+		bad += FunctionValues();
+		bad += Identity();
+
+		if(bad = 0) {
+			"PASS: boxing and unboxing rules"->PrintLine();
+		}
+		else {
+			"FAIL: boxing and unboxing rules ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  failed: {$what}"->ErrorLine();
+		return 1;
+	}
+
+	# --- 1. boxing ---
+
+	function : TakeInt(r : IntRef) ~ Int { return r->Get(); }
+	function : TakeFloat(r : FloatRef) ~ Float { return r->Get(); }
+	function : TakeBool(r : BoolRef) ~ Bool { return r->Get(); }
+	function : TakeChar(r : CharRef) ~ Char { return r->Get(); }
+	function : TakeByte(r : ByteRef) ~ Byte { return r->Get(); }
+	function : GiveInt() ~ IntRef { return 9; }
+	function : GiveFloat() ~ FloatRef { return 1.25; }
+
+	function : Boxing() ~ Int {
+		bad := 0;
+
+		i : IntRef := 7;
+		f : FloatRef := 2.5;
+		b : BoolRef := true;
+		c : CharRef := 'c';
+		y : ByteRef := 9->As(Byte);
+		bad += Check(i->Get() = 7 & f->Get() = 2.5 & b->Get() & c->Get() = 'c' & y->Get() = 9, "boxing: assignment, each kind");
+
+		bad += Check(TakeInt(3) = 3 & TakeFloat(0.5) = 0.5 & TakeBool(true) & TakeChar('q') = 'q' & TakeByte(4->As(Byte)) = 4,
+			"boxing: argument, each kind");
+		bad += Check(GiveInt()->Get() = 9 & GiveFloat()->Get() = 1.25, "boxing: return");
+
+		# converted, then boxed: as the primitive assignment converts
+		fi : IntRef := 2.75;
+		bad += Check(fi->Get() = 2, "boxing: a Float for an IntRef is truncated");
+		ifl : FloatRef := 3;
+		bad += Check(ifl->Get() = 3.0, "boxing: an Int for a FloatRef");
+		bad += Check(TakeFloat(4) = 4.0 & TakeInt(6.9) = 6, "boxing: converted arguments");
+
+		# collections
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(1);
+		ints->AddBack(2);
+		ints->Set(20, 1);
+		counts := Map->New()<String, IntRef>;
+		counts->Insert("a", 11);
+		bad += Check(ints->Get(1)->Get() = 20 & counts->Find("a")->Get() = 11, "boxing: Vector<IntRef> and Map<String, IntRef>");
+
+		return bad;
+	}
+
+	# --- 2. unboxing ---
+
+	function : UnboxingAssignments() ~ Int {
+		bad := 0;
+		ir := IntRef->New(7);
+		fr := FloatRef->New(2.75);
+		br := BoolRef->New(true);
+		cr := CharRef->New('c');
+		yr := ByteRef->New(9->As(Byte));
+
+		# the holder's own primitive
+		i : Int := ir;
+		f : Float := fr;
+		b : Bool := br;
+		c : Char := cr;
+		y : Byte := yr;
+		bad += Check(i = 7 & f = 2.75 & b & c = 'c' & y = 9, "unboxing: assignment, each kind");
+
+		# converted, as the primitives convert
+		i2 : Int := fr;
+		bad += Check(i2 = 2, "unboxing: Int := FloatRef truncates (it was the Float's bits)");
+		f2 : Float := ir;
+		bad += Check(f2 = 7.0, "unboxing: Float := IntRef");
+		i3 : Int := cr;
+		bad += Check(i3 = 99, "unboxing: Int := CharRef");
+		f3 : Float := yr;
+		bad += Check(f3 = 9.0, "unboxing: Float := ByteRef");
+		y2 : Byte := fr;
+		bad += Check(y2 = 2, "unboxing: Byte := FloatRef truncates");
+
+		# an element of an array of primitives, and of holders
+		ints := Int->New[2];
+		ints[0] := ir;
+		floats := Float->New[2];
+		floats[1] := ir;
+		bad += Check(ints[0] = 7 & floats[1] = 7.0, "unboxing: into an array element");
+
+		refs := IntRef->New[2];
+		refs[0] := 3;
+		refs[1] := 4;
+		w : Int := refs[1];
+		bad += Check(w = 4 & refs[0] + refs[1] = 7, "unboxing: from an element of IntRef[]");
+
+		# compound assignment
+		n := 10;
+		n += ir;
+		n -= refs[0];
+		bad += Check(n = 14, "unboxing: += and -= with a holder");
+		ir += 2;
+		bad += Check(ir->Get() = 9, "boxing: += on a holder");
+
+		return bad;
+	}
+
+	function : IntFrom(r : IntRef) ~ Int { return r; }
+	function : IntFromFloat(r : FloatRef) ~ Int { return r; }
+	function : FloatFrom(r : IntRef) ~ Float { return r; }
+	function : BoolFrom(r : BoolRef) ~ Bool { return r; }
+	function : IntFromCall() ~ Int { return GiveInt(); }
+	function : FloatFromIntCall() ~ Float { return GiveInt(); }
+
+	function : UnboxingReturns() ~ Int {
+		bad := 0;
+		bad += Check(IntFrom(IntRef->New(4)) = 4, "unboxing: return a holder variable");
+		bad += Check(IntFromFloat(FloatRef->New(4.9)) = 4, "unboxing: return a FloatRef as an Int");
+		bad += Check(FloatFrom(IntRef->New(4)) = 4.0, "unboxing: return an IntRef as a Float");
+		bad += Check(BoolFrom(BoolRef->New(true)), "unboxing: return a BoolRef");
+		bad += Check(IntFromCall() = 9 & FloatFromIntCall() = 9.0, "unboxing: return a call's holder");
+		return bad;
+	}
+
+	function : Twice(i : Int) ~ Int { return i * 2; }
+	function : Half(f : Float) ~ Float { return f / 2.0; }
+	function : Not(b : Bool) ~ Bool { return <>b; }
+	function : Sum(a : Int, b : Float, c : Int) ~ Float { return a + b + c; }
+
+	function : UnboxingArguments() ~ Int {
+		bad := 0;
+		ir := IntRef->New(8);
+		fr := FloatRef->New(3.0);
+		br := BoolRef->New(false);
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(5);
+
+		bad += Check(Twice(ir) = 16, "unboxing: a holder variable argument");
+		bad += Check(Twice(ints->Get(0)) = 10, "unboxing: a call's holder as an argument");
+		bad += Check(Half(fr) = 1.5 & Half(ir) = 4.0, "unboxing: a FloatRef and an IntRef for a Float");
+		bad += Check(Twice(fr) = 6, "unboxing: a FloatRef for an Int");
+		bad += Check(Not(br), "unboxing: a BoolRef for a Bool");
+		bad += Check(Sum(ir, ints->Get(0), 1) = 14.0, "unboxing: several arguments, one converted");
+		return bad;
+	}
+
+	# --- 3. the value at the end of a chain ---
+
+	function : Chains() ~ Int {
+		bad := 0;
+		r := Readings->New();
+
+		x : Int := r->Ints()->Get(0);
+		y : Int := r->Me()->Me()->Ints()->Get(1);
+		bad += Check(x = 5 & y = 6, "chains: assigned (the chain was lost, a crash at run time)");
+
+		bad += Check(r->FirstInt() = 5 & r->SecondInt() = 6, "chains: returned");
+		bad += Check(r->FirstFloatAsInt() = 2 & r->FirstIntAsFloat() = 5.0 & r->FirstFlag(), "chains: returned and converted");
+
+		z := r->Me()->Ints()->Get(1) + r->Ints()->Get(0);
+		bad += Check(z = 11, "chains: both operands of a calculation");
+
+		bad += Check(Twice(r->Me()->Ints()->Get(1)) = 12, "chains: as an argument");
+
+		slots := Int->New[8];
+		slots[r->Me()->Ints()->Get(0)] := 1;
+		bad += Check(slots[5] = 1, "chains: as an index");
+		return bad;
+	}
+
+	# --- calculations ---
+
+	function : Calculations() ~ Int {
+		bad := 0;
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(3);
+		ints->AddBack(4);
+		floats := Vector->New()<FloatRef>;
+		floats->AddBack(2.5);
+		chars := Vector->New()<CharRef>;
+		chars->AddBack('a');
+		chars->AddBack('b');
+		i := IntRef->New(4);
+		f := FloatRef->New(2.5);
+
+		bad += Check(ints->Get(0) + 1 = 4 & 1 + ints->Get(0) = 4, "calc: a holder and an Int");
+		bad += Check(ints->Get(0) + ints->Get(1) = 7, "calc: two IntRefs");
+		bad += Check(ints->Get(0) < ints->Get(1) & ints->Get(1) >= ints->Get(0), "calc: IntRefs compared by value");
+
+		# mixed kinds: the Int is made a Float, whichever side it is on
+		bad += Check(ints->Get(1) * 2.5 = 10.0, "calc: IntRef * Float (it was the Int's bits)");
+		bad += Check(2.5 * ints->Get(1) = 10.0, "calc: Float * IntRef");
+		bad += Check(floats->Get(0) * 4 = 10.0, "calc: FloatRef * Int");
+		bad += Check(floats->Get(0) * ints->Get(1) = 10.0, "calc: FloatRef * IntRef (the compiler ran out of stack)");
+		bad += Check(ints->Get(1) * floats->Get(0) = 10.0, "calc: IntRef * FloatRef");
+		bad += Check(f * i = 10.0 & i * f = 10.0 & i * 2.5 = 10.0 & 2.5 * i = 10.0, "calc: holder variables, mixed kinds");
+		bad += Check(ints->Get(0) + floats->Get(0) = 5.5, "calc: IntRef + FloatRef");
+
+		bad += Check(chars->Get(0) <> chars->Get(1) & chars->Get(0) = chars->Get(0), "calc: CharRefs compared");
+		bad += Check(ints->Get(1) % 3 = 1, "calc: IntRef % Int");
+
+		text := "n=" + ints->Get(0);
+		bad += Check(text->Equals("n=3"), "calc: a holder joined to a String");
+		return bad;
+	}
+
+	# --- conditions ---
+
+	function : Conditions() ~ Int {
+		bad := 0;
+		flags := Vector->New()<BoolRef>;
+		flags->AddBack(true);
+		flags->AddBack(false);
+		on : BoolRef := true;
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(3);
+
+		hits := 0;
+		if(flags->Get(0)) { hits += 1; };
+		if(on) { hits += 1; };
+		if(<>flags->Get(1)) { hits += 1; };
+		if(flags->Get(0) & <>flags->Get(1)) { hits += 1; };
+		if(flags->Get(1) | on) { hits += 1; };
+		if(ints->Get(0) = 3 & flags->Get(0)) { hits += 1; };
+		bad += Check(hits = 6, "conditions: if, with not, and, or");
+
+		both := flags->Get(0) & flags->Get(1);
+		either := flags->Get(0) | flags->Get(1);
+		bad += Check(<>both & either, "conditions: BoolRef & BoolRef is a Bool (it was an Int)");
+
+		choice := flags->Get(0) ? 1 : 2;
+		bad += Check(choice = 1, "conditions: a ternary");
+
+		loops := 0;
+		while(on) {
+			loops += 1;
+			on := false;
+		};
+		do {
+			loops += 1;
+		}
+		while(flags->Get(1));
+		for(k := 0; flags->Get(1); k += 1;) {
+			loops += 100;
+		};
+		bad += Check(loops = 2, "conditions: while, do/while and for");
+		return bad;
+	}
+
+	function : SelectAndIndex() ~ Int {
+		bad := 0;
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(3);
+		r : IntRef := 2;
+
+		picked := 0;
+		select(r) {
+			label 2: {
+				picked := 20;
+			}
+			other: {
+				picked := -1;
+			}
+		};
+		select(ints->Get(0)) {
+			label 3: {
+				picked += 3;
+			}
+		};
+		bad += Check(picked = 23, "select: on a holder variable and a call's holder");
+
+		slots := Int->New[5];
+		slots[r] := 9;
+		slots[ints->Get(0)] := 8;
+		bad += Check(slots[2] = 9 & slots[3] = 8, "index: a holder variable and a call's holder");
+		return bad;
+	}
+
+	# --- 4. overloads ---
+
+	# declared holder first, on purpose: the order must not matter
+	function : Kind(v : IntRef) ~ String { return "IntRef"; }
+	function : Kind(v : Int) ~ String { return "Int"; }
+
+	function : Wide(v : IntRef) ~ String { return "IntRef"; }
+	function : Wide(v : Float) ~ String { return "Float"; }
+
+	function : Held(v : FloatRef) ~ String { return "FloatRef"; }
+	function : Held(v : IntRef) ~ String { return "IntRef"; }
+
+	function : Flag(v : BoolRef) ~ String { return "BoolRef"; }
+	function : Flag(v : Int) ~ String { return "Int"; }
+
+	function : Plain(v : Float) ~ String { return "Float"; }
+	function : Plain(v : IntRef) ~ String { return "IntRef"; }
+	function : Plain(v : String) ~ String { return "String"; }
+
+	function : Two(a : Int, b : IntRef) ~ String { return "Int,IntRef"; }
+	function : Two(a : Int, b : FloatRef) ~ String { return "Int,FloatRef"; }
+
+	function : Overloads() ~ Int {
+		bad := 0;
+		ir := IntRef->New(1);
+		fr := FloatRef->New(1.5);
+
+		bad += Check(Kind(3)->Equals("Int") & Kind(ir)->Equals("IntRef"), "overloads: the argument's own type, whatever the order");
+		bad += Check(Wide(3.5)->Equals("Float"), "overloads: a Float is not truncated into an IntRef when a Float is taken");
+		bad += Check(Wide(3)->Equals("Float"), "overloads: an Int converts before it is boxed");
+		bad += Check(Wide(ir)->Equals("IntRef"), "overloads: a holder is its own class first");
+		bad += Check(Held(3)->Equals("IntRef") & Held(3.5)->Equals("FloatRef"), "overloads: the primitive's own holder");
+		bad += Check(Held(ir)->Equals("IntRef") & Held(fr)->Equals("FloatRef"), "overloads: holders by class");
+		bad += Check(Flag(3)->Equals("Int") & Flag(true)->Equals("BoolRef"), "overloads: an Int is not offered to a BoolRef");
+		bad += Check(Plain(ir)->Equals("IntRef") & Plain(fr)->Equals("Float") & Plain("s")->Equals("String"), "overloads: a FloatRef unboxed for a Float");
+		bad += Check(Two(1, 2)->Equals("Int,IntRef") & Two(1, 2.5)->Equals("Int,FloatRef"), "overloads: the second argument decides");
+
+		# a large Int is boxed as itself, not by way of a Float (a method tried
+		# first must not leave its conversion on the argument)
+		big := 9007199254740993;
+		bad += Check(BigHeld(big) = 9007199254740993, "overloads: an Int boxed for the IntRef overload keeps every bit");
+		return bad;
+	}
+
+	function : BigHeld(v : FloatRef) ~ Int { return -1; }
+	function : BigHeld(v : IntRef) ~ Int { return v->Get(); }
+
+	function : LibraryOverloads() ~ Int {
+		bad := 0;
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(1);
+		r : IntRef := 7;
+		f : FloatRef := 0.5;
+
+		# String->Append has an overload for each primitive
+		text := String->New();
+		text->Append(ints->Get(0));
+		text->Append(r);
+		text->Append(CharRef->New('x'));
+		bad += Check(text->Equals("17x"), "library overloads: String->Append(Int) and (Char) for holders, was '" + text + "'");
+
+		bad += Check(7->Max(r) = 7 & Int->Max(r, ints->Get(0)) = 7, "library overloads: Int->Max with holders");
+		bad += Check(Float->Max(f, 0.25) = 0.5, "library overloads: Float->Max with a FloatRef");
+		return bad;
+	}
+
+	function : FunctionValues() ~ Int {
+		bad := 0;
+		twice := Twice(Int) ~ Int;
+		r : IntRef := 4;
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(3);
+		bad += Check(twice(r) = 8 & twice(ints->Get(0)) = 6, "function values: a holder for an Int parameter");
+
+		take := TakeInt(IntRef) ~ Int;
+		bad += Check(take(5) = 5, "function values: an Int for an IntRef parameter");
+		return bad;
+	}
+
+	# a holder is still an object where an object is wanted
+	function : Identity() ~ Int {
+		bad := 0;
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(3);
+		nothing : IntRef := Nil;
+		bad += Check(nothing = Nil & ints->Get(0) <> Nil, "identity: compared with Nil, not unboxed");
+
+		same : IntRef := ints->Get(0);
+		bad += Check(same = ints->Get(0), "identity: a holder stored as a holder is the same object");
+
+		each(value in ints) {
+			bad += Check(value + 1 = 4, "identity: a loop variable is the holder");
+		};
+
+		base : Base := ints->Get(0);
+		bad += Check(base->As(IntRef)->Get() = 3, "identity: a holder stored as a Base");
+		return bad;
+	}
+}
