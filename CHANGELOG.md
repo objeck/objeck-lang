@@ -2,16 +2,6 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [Unreleased]
-
-### Added
-
-- **`assert E : "label";` statement for tests** (`docs/design/ASSERT_STATEMENT.md`): a check that, when it fails, prints `FAIL: file:line: assert <source of E> : label` (and, for a comparison, `left = ..., right = ...` with both operand values) and exits with code 1, the convention the regression runners read. A call used as an operand is evaluated once. `System.AssertCheck->KeepGoing(true)` counts failures instead of stopping at the first and `System.AssertCheck->Finish()` exits 1 if there were any. `assert` is a contextual word: `assert := 1`, `assert : Bool`, `assert->F()`, `assert(x);` and `Runtime->Assert(..)` mean what they always did; a parenthesised expression is an assertion when a binary operator or the label's `:` follows the `)`. Syntax sugar over an `if`, so code generated for programs that do not use it is unchanged. A `String` `=` still compares references: assert `s->Equals("x")` for text.
-
-### Fixed
-
-- **A string literal in a condition no longer corrupts the first string literal of the branch that follows**: `if(s = "hi") { "x"->PrintLine(); }` (and `while`, `for` and `?:` conditions, and `if(s <> "a") { v := "x" + s; }`) carried the emitter's count of waiting literals across the jump and gave the body's first literal a `SWAP_INT` over a one-word stack, so the load-time verifier refused the method with "the operand stack runs out" (reproduced on v2026.11.1 and master). Test `core_string_literal_after_branch.obs`.
-
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance
@@ -78,6 +68,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Added
 
+- **`assert E : "label";` statement for tests** (`docs/design/ASSERT_STATEMENT.md`): a check that, when it fails, prints `FAIL: file:line: assert <source of E> : label` (and, for a comparison, `left = ..., right = ...` with both operand values) and exits with code 1, the convention the regression runners read. A call used as an operand is evaluated once. `System.AssertCheck->KeepGoing(true)` counts failures instead of stopping at the first and `System.AssertCheck->Finish()` exits 1 if there were any. `assert` is a contextual word: `assert := 1`, `assert : Bool`, `assert->F()`, `assert(x);` and `Runtime->Assert(..)` mean what they always did; a parenthesised expression is an assertion when a binary operator or the label's `:` follows the `)`. Syntax sugar over an `if`, so code generated for programs that do not use it is unchanged. A `String` `=` still compares references: assert `s->Equals("x")` for text.
 - **`mcp_stubs --save-manifest`, `--manifest`, `--check`**: keep a server's `tools/list` as a file, generate the typed client from it with no server, and fail the build, naming the removed, added and changed methods, when the checked-in client no longer matches the server. Tests in `mcp_stubs_test.py`.
 - **`obr --mcp` and `obr --mcp-http=<port>`**: serve a program's `@tool`, `@resource` and `@prompt` functions on standard input and output or over streamable HTTP (`--mcp-http-host=<address>`), with no server code. The VM starts the program at the `McpMain` the compiler writes (or the program's own, which can register several classes and calls `McpServe->Run`) instead of `Main`. New: `McpServe->Run`, and the flags in `obr --help`. A program with nothing to serve, or with two generated servers, is refused with a message that says what to do. Without the flags nothing changes. Tests: `mcp_launch_test.py`.
 - **Resources and prompts from functions: `@resource`, `@prompt`**: the same doc comment makes the other two MCP server primitives. `@resource <uri>` (a fixed URI or a template such as `weather://{city}/forecast/{days}`, whose variables are read into the same-named `String`/`Int`/`Float`/`Bool`/`Char` parameters; `@mime` sets the media type; the result is a `String` or a `McpContents`) and `@prompt [name]` (arguments are `String`/`Int`/`Float`/`Bool`/`Char` read from the text, a default makes one optional; the result is a `String`, one user message, or a `McpPromptResult`). `Class->McpTools(server)` registers tools, resources and prompts. New library function `McpUriTemplate->Match`. A function is exactly one of the three; the hints belong to tools. Compile errors for a variable with no parameter, a parameter that is not a variable, bad types, and mixed or repeated tags. Programs without these tags compile to the same bytes. Tests: `mcp_res_prompt_tags_test`, the diagnostics in `mcp_tool_tags_diag_test.py`; example `programs/deploy/mcp_resources_43.obs`.
