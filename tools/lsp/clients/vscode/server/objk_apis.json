@@ -130,6 +130,9 @@
 				},
 				"SetPrices": {
 					"descriptions": ["**Takes the price of one model from a table**\n\n```method : public : SetPrices(prices:AgentPrices, model:String) ~ AgentBudget```\n\n\n\nprices: AgentPrices\n\nmodel: String\n\nreturn: AgentBudget"]
+				},
+				"Tightened": {
+					"descriptions": ["**Makes a copy whose steps, model calls, tool calls, tokens and wall-clock limits are the smaller of this budget's and the given ones (0 means no limit on either side); prices and the other limits are copied. Used by AgentScope; a limit can only get tighter.**\n\n```method : public : Tightened(steps:Int, model_calls:Int, tool_calls:Int, tokens:Int, wall_ms:Int) ~ AgentBudget```\n\n\n\nsteps: Int\n\nmodel_calls: Int\n\ntool_calls: Int\n\ntokens: Int\n\nwall_ms: Int\n\nreturn: AgentBudget"]
 				}
 			}
 		},
@@ -146,7 +149,7 @@
 					"descriptions": ["**Says whether the token or a parent was cancelled**\n\n```method : public : IsCancelled() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New()```\n\n", "**Constructor for a token that is cancelled when its parent is**\n\n```New(parent:AgentCancel)```\n\n\n\nparent: AgentCancel"]
+					"descriptions": ["**Constructor**\n\n```New()```\n\n", "**Constructor for a token that is cancelled when its parent is**\n\n```New(parent:AgentCancel)```\n\n\n\nparent: AgentCancel", "**Constructor for a token that is cancelled when either of two parents is (an agent's own token and an AgentScope's)**\n\n```New(parent:AgentCancel, also:AgentCancel)```\n\n\n\nparent: AgentCancel\n\nalso: AgentCancel"]
 				}
 			}
 		},
@@ -392,6 +395,68 @@
 			"functions": {
 				"Check": {
 					"descriptions": ["**Checks a value against a schema**\n\n```function : Check(schema:JsonElement, value:JsonElement) ~ String```\n\n\n\nschema: JsonElement\n\nvalue: JsonElement\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentScope": {
+			"description": "Limits for every agent run inside a block of code, with cleanup on every exit path. Make a scope, set its limits, and run a function under it (a function reference, `Name() ~ Nil`); the example is at the end.\n\nRules:\n* The limits are totals for the block, not per run: what a run used (steps = model replies, tokens, tool calls) is subtracted, the next run gets only what is left, and a run that finds nothing left is not started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or `deadline`. The wall-clock limit counts the time spent inside agent runs. A model reply is checked after it arrives, so a run can pass a token limit by the size of one reply.\n* An agent's own budget still applies; the smaller limit wins. A scope never loosens anything.\n* Nesting: a scope run inside another is limited by both (every limit in the chain is checked and charged), so an inner scope can only tighten. Its cancellation token is a child of the outer one.\n* Cancellation: `scope->Cancel(reason)` (any thread) stops the running agent at its next checkpoint and every later run in the scope; the agent's own token is honoured as well. The stop reason is `cancelled`.\n* Exit: the scope is left whether the body returns, returns early or raises (`finally`); an exception goes on to the caller. The trace (`SetTrace(true)`, read with `GetTrace()`) holds the events of every run, and `SetPrintTrace(true)` prints a one-line summary when the block exits.\n* Threads and actors: the scope applies to agent runs made on the thread that called Run, and to nothing else; a new thread or actor does not inherit it. To bring a worker under the limits, hand it `scope->Child()` and have it call `AgentScope->Run(child, ...)`: the child's runs are charged to the parent too. Parallel children can together pass the parent's limit by the runs already in flight. Call `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.\n* A scope may not be entered by two threads at once (use Child); running it again afterwards starts its counters from zero.",
+			"functions": {
+				"Cancel": {
+					"descriptions": ["**Cancels the scope: the running agent stops at its next checkpoint and later runs do not start**\n\n```method : public : Cancel(reason:String) ~ Nil```\n\n\n\nreason: String\n\nreturn: Nil"]
+				},
+				"Child": {
+					"descriptions": ["**Makes a scope for a worker thread or actor whose runs are also charged to this one**\n\n```method : public : Child() ~ AgentScope```\n\n\n\nreturn: AgentScope"]
+				},
+				"Current": {
+					"descriptions": ["**Gets the scope the calling thread is inside**\n\n```function : Current() ~ AgentScope```\n\n\n\nreturn: AgentScope"]
+				},
+				"GetCancel": {
+					"descriptions": ["**Gets the scope's cancellation token, valid while the scope is entered**\n\n```method : public : GetCancel() ~ AgentCancel```\n\n\n\nreturn: AgentCancel"]
+				},
+				"GetHalt": {
+					"descriptions": ["**Gets why the first run that did not complete stopped**\n\n```method : public : GetHalt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRuns": {
+					"descriptions": ["**Gets the runs made so far**\n\n```method : public : GetRuns() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStepsUsed": {
+					"descriptions": ["**Gets the model replies used so far**\n\n```method : public : GetStepsUsed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTokensUsed": {
+					"descriptions": ["**Gets the tokens used so far**\n\n```method : public : GetTokensUsed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetToolCallsUsed": {
+					"descriptions": ["**Gets the tool calls used so far**\n\n```method : public : GetToolCallsUsed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTrace": {
+					"descriptions": ["**Gets the events of every run, when SetTrace(true) was set**\n\n```method : public : GetTrace() ~ AgentTraceBuffer```\n\n\n\nreturn: AgentTraceBuffer"]
+				},
+				"Init": {
+					"descriptions": ["**Creates the shared registry now; call once at start up when threads may enter their first scope together**\n\n```function : Init() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: no limits**\n\n```New()```\n\n"]
+				},
+				"Run": {
+					"descriptions": ["**Runs a function under a scope. The scope is left on every exit path.**\n\n```function : Run(scope:AgentScope, body:()~Nil) ~ Nil```\n\n\n\nscope: AgentScope\n\nbody: ()~Nil\n\nreturn: Nil"]
+				},
+				"SetMaxSteps": {
+					"descriptions": ["**Limits the model replies of all runs in the scope**\n\n```method : public : SetMaxSteps(limit:Int) ~ AgentScope```\n\n\n\nlimit: Int\n\nreturn: AgentScope"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Limits the tokens (as the provider reports them) of all runs in the scope**\n\n```method : public : SetMaxTokens(limit:Int) ~ AgentScope```\n\n\n\nlimit: Int\n\nreturn: AgentScope"]
+				},
+				"SetMaxToolCalls": {
+					"descriptions": ["**Limits the tool calls of all runs in the scope**\n\n```method : public : SetMaxToolCalls(limit:Int) ~ AgentScope```\n\n\n\nlimit: Int\n\nreturn: AgentScope"]
+				},
+				"SetMaxWallMs": {
+					"descriptions": ["**Limits the time spent inside agent runs in the scope**\n\n```method : public : SetMaxWallMs(millis:Int) ~ AgentScope```\n\n\n\nmillis: Int\n\nreturn: AgentScope"]
+				},
+				"SetPrintTrace": {
+					"descriptions": ["**Prints a one-line summary when the block exits**\n\n```method : public : SetPrintTrace(on:Bool) ~ AgentScope```\n\n\n\non: Bool\n\nreturn: AgentScope"]
+				},
+				"SetTrace": {
+					"descriptions": ["**Collects the trace events of every run in the scope**\n\n```method : public : SetTrace(on:Bool) ~ AgentScope```\n\n\n\non: Bool\n\nreturn: AgentScope"]
 				}
 			}
 		},
@@ -1950,8 +2015,11 @@
 			}
 		},
 		"API.LlmUtil.StructuredOutcome": {
-			"description": "What StructuredCall::Ask returns: the valid value, or why there is none.",
+			"description": "What StructuredCall->Ask returns: the valid value, or why there is none.",
 			"functions": {
+				"AddReply": {
+					"descriptions": ["**Records one reply of the backend**\n\n```method : public : AddReply(reply:String) ~ Nil```\n\n\n\nreply: String\n\nreturn: Nil"]
+				},
 				"GetAttempts": {
 					"descriptions": ["**Gets how many times the backend was asked**\n\n```method : public : GetAttempts() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -1970,6 +2038,21 @@
 				"IsOk": {
 					"descriptions": ["**Tells whether a value matching the schema was obtained**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
+				"SetAttempts": {
+					"descriptions": ["****\n\n```method : public : SetAttempts(attempts:Int) ~ Nil```\n\n\n\nattempts: Int\n\nreturn: Nil"]
+				},
+				"SetError": {
+					"descriptions": ["****\n\n```method : public : SetError(error:String) ~ Nil```\n\n\n\nerror: String\n\nreturn: Nil"]
+				},
+				"SetErrors": {
+					"descriptions": ["****\n\n```method : public : SetErrors(errors:Vector&lt;SchemaError&gt;) ~ Nil```\n\n\n\nerrors: Vector&lt;SchemaError&gt;\n\nreturn: Nil"]
+				},
+				"SetRepaired": {
+					"descriptions": ["****\n\n```method : public : SetRepaired(repaired:Bool) ~ Nil```\n\n\n\nrepaired: Bool\n\nreturn: Nil"]
+				},
+				"SetValue": {
+					"descriptions": ["****\n\n```method : public : SetValue(value:JsonElement) ~ Nil```\n\n\n\nvalue: JsonElement\n\nreturn: Nil"]
+				},
 				"WasRepaired": {
 					"descriptions": ["**Tells whether the value came from a repaired reply (JSON repair is off unless asked for)**\n\n```method : public : WasRepaired() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
@@ -1978,7 +2061,42 @@
 		"API.LlmUtil.TemplateNode": {
 			"description": "One parsed piece of a template: literal text, a variable, an {{#each}} loop or an {{#if}} block.",
 			"functions": {
-
+				"GetBody": {
+					"descriptions": ["****\n\n```method : public : GetBody() ~ Vector&lt;TemplateNode&gt;```\n\n\n\nreturn: Vector&lt;TemplateNode&gt;"]
+				},
+				"GetElse": {
+					"descriptions": ["****\n\n```method : public : GetElse() ~ Vector&lt;TemplateNode&gt;```\n\n\n\nreturn: Vector&lt;TemplateNode&gt;"]
+				},
+				"GetFallback": {
+					"descriptions": ["****\n\n```method : public : GetFallback() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFilter": {
+					"descriptions": ["****\n\n```method : public : GetFilter() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetKind": {
+					"descriptions": ["****\n\n```method : public : GetKind() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetText": {
+					"descriptions": ["****\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"InElse": {
+					"descriptions": ["**Whether an {{#if}} block has reached its {{else}} part**\n\n```method : public : InElse() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOptional": {
+					"descriptions": ["****\n\n```method : public : IsOptional() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"SetFallback": {
+					"descriptions": ["****\n\n```method : public : SetFallback(fallback:String) ~ Nil```\n\n\n\nfallback: String\n\nreturn: Nil"]
+				},
+				"SetFilter": {
+					"descriptions": ["****\n\n```method : public : SetFilter(filter:String) ~ Nil```\n\n\n\nfilter: String\n\nreturn: Nil"]
+				},
+				"SetInElse": {
+					"descriptions": ["****\n\n```method : public : SetInElse(in_else:Bool) ~ Nil```\n\n\n\nin_else: Bool\n\nreturn: Nil"]
+				},
+				"SetOptional": {
+					"descriptions": ["****\n\n```method : public : SetOptional(optional:Bool) ~ Nil```\n\n\n\noptional: Bool\n\nreturn: Nil"]
+				}
 			}
 		},
 		"API.LlmUtil.TokenCounter": {
@@ -2322,6 +2440,14 @@
 				}
 			}
 		},
+		"API.MCP.McpServe": {
+			"description": "Serves a McpService the way \"obr --mcp\" and \"obr --mcp-http=<port>\" ask: the VM adds the transport to the program's arguments (\"stdio\", or \"http\", the address and the port) and starts the McpMain the compiler writes for a class with an",
+			"functions": {
+				"Run": {
+					"descriptions": ["**Serves until standard input ends (stdio) or the HTTP server is stopped**\n\n```function : Run(service:McpService, args:String[]) ~ Nil```\n\n\n\nservice: McpService\n\nargs: String[]\n\nreturn: Nil"]
+				}
+			}
+		},
 		"API.MCP.McpService": {
 			"description": "An MCP server. Register tools, resources and prompts, then serve: ServeStdio() answers on standard input and output until it ends, ServeHttp(port) listens for the streamable HTTP transport, and Handle(message, sink) answers one message for any other transport. A tool call runs on a thread of its own, so the server hears a cancellation while it works",
 			"functions": {
@@ -2637,6 +2763,14 @@
 				},
 				"SetProtocolVersion": {
 					"descriptions": ["**Tells the transport the revision negotiated at initialize**\n\n```method : public : virutal : SetProtocolVersion(version:String) ~ Nil```\n\n\n\nversion: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.MCP.McpUriTemplate": {
+			"description": "A resource URI template such as \"weather://{city}/forecast/{days}\": reads the variables out of a URI. The compiler writes calls to it for a function marked \"",
+			"functions": {
+				"Match": {
+					"descriptions": ["**Matches a URI against a template and reads the variables. A variable is not empty and runs up to the literal text that follows it in the template (its first occurrence), or to the end of the URI; the values are not percent-decoded**\n\n```function : Match(template:String, uri:String) ~ JsonElement```\n\n\n\ntemplate: String\n\nuri: String\n\nreturn: JsonElement"]
 				}
 			}
 		},
@@ -4281,8 +4415,11 @@
 				"Complete": {
 					"descriptions": ["**Model response for the given query**\n\n```function : Complete(model:String, message:Pair&lt;String,String&gt;, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\ntoken: String\n\nreturn: Completion\n\n```\ntoken := \"sk-...\";\r\nmsg := Pair->New(\"user\", \"What is the speed of light?\")<String, String>;\r\nresult := Completion->Complete(\"gpt-4o-mini\", msg, token);\r\nchoice := result->GetFirstChoice();\r\nchoice->GetMessage()->GetSecond()->PrintLine();\n```", "**Model response for the given query**\n\n```function : Complete(model:String, message:Pair&lt;String,String&gt;, max_tokens:Int, temperature:Float, top_p:Float, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\ntoken: String\n\nreturn: Completion", "**Model response for the given query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: Completion", "**Model response for the given query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: Completion", "**Model response for the given image and query**\n\n```function : Complete(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\ntoken: String\n\nreturn: Completion", "**Model response for the given image and query**\n\n```function : Complete(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, max_tokens:Int, temperature:Float, top_p:Float, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\ntoken: String\n\nreturn: Completion", "**Model response for the given image and query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Completion", "**Model response for the given images and query**\n\n```function : Complete(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Completion"]
 				},
+				"CompleteImages": {
+					"descriptions": ["**The image implementation behind the Complete overloads that take images. It has its own name because a call written as Complete(model, <images>, ...) resolves to the text implementation, whose signature is the same once Pair's type arguments are set aside.**\n\n```function : CompleteImages(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Completion```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Completion"]
+				},
 				"CompleteWithTools": {
-					"descriptions": ["**Model response for a conversation with tools. If the first choice has tool calls (Choice->GetToolCalls), run them, append Choice->GetMessageJson() and one ToolResultMessage per call to the messages, and call again.**\n\n```function : CompleteWithTools(model:String, messages:JsonElement, tools:JsonElement, max_tokens:Int, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessages: JsonElement\n\ntools: JsonElement\n\nmax_tokens: Int\n\ntoken: String\n\nreturn: Completion"]
+					"descriptions": ["**Model response for a conversation with tools. If the first choice has tool calls (Choice->GetToolCalls), run them, append Choice->GetMessageJson() and one ToolResultMessage per call to the messages, and call again. Like Complete, it prints the request and the response when IsDebug() is on. It sends only the Authorization header (no OpenAI-Beta header, which is a leftover of the Assistants API that chat completions do not need).**\n\n```function : CompleteWithTools(model:String, messages:JsonElement, tools:JsonElement, max_tokens:Int, token:String) ~ Completion```\n\n\n\nmodel: String\n\nmessages: JsonElement\n\ntools: JsonElement\n\nmax_tokens: Int\n\ntoken: String\n\nreturn: Completion"]
 				},
 				"GetChoices": {
 					"descriptions": ["**List of chat completion choices**\n\n```method : public : GetChoices() ~ Vector&lt;API.OpenAI.Chat.Choice&gt;```\n\n\n\nreturn: Vector&lt;API.OpenAI.Chat.Choice&gt;\n\n```\nchoices := result->GetChoices();\r\neach(choice in choices) {\r\n  choice->GetMessage()->GetSecond()->PrintLine();\r\n};\n```"]
@@ -14848,6 +14985,9 @@
 		"System.Actor.Actor": {
 			"description": "A thread with a mailbox and a behavior. Create it, Start it, Send it mail; it handles one mail at a time, in arrival order. It ends when the handler returns false (NORMAL), when Stop empties the queue (STOPPED), when Kill is called (KILLED), or when something fails (FAILED). Join waits for the end and returns the reason. Stop is graceful and Kill is cooperative: neither can interrupt a handler that is blocked or looping.",
 			"functions": {
+				"AddLink": {
+					"descriptions": ["**The other side of Link: records the link, or delivers the exit notice at once if this actor has ended. Internal: call Link, not this.**\n\n```method : public : AddLink(peer:Actor) ~ Nil```\n\n\n\npeer: Actor\n\nreturn: Nil"]
+				},
 				"AwaitStarted": {
 					"descriptions": ["**Waits until the actor's Init hook has finished, so the actor is ready for mail (a Supervisor does this before it starts the next child, which makes the start order real)**\n\n```method : public : AwaitStarted(timeout:Int) ~ Bool```\n\n\n\ntimeout: Int\n\nreturn: Bool"]
 				},
@@ -14890,6 +15030,9 @@
 				"Link": {
 					"descriptions": ["**Links this actor and another: when either ends abnormally (FAILED or KILLED) the other is told, and fails with it unless it traps exits (SetTrapExits), in which case it gets an EXIT mail. An orderly end (NORMAL or STOPPED) is not passed on. If one of them has ended already, the other is told now.**\n\n```method : public : Link(peer:Actor) ~ Nil```\n\n\n\npeer: Actor\n\nreturn: Nil"]
 				},
+				"LinkedExit": {
+					"descriptions": ["**A linked actor ended. An abnormal end puts an EXIT notice in this actor's mailbox. Internal.**\n\n```method : public : LinkedExit(source:Actor, reason:ExitReason) ~ Nil```\n\n\n\nsource: Actor\n\nreason: ExitReason\n\nreturn: Nil"]
+				},
 				"Loop": {
 					"descriptions": ["**The actor's receive loop, which runs on its thread. Called by Start; do not call it.**\n\n```method : public : Loop() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
@@ -14898,6 +15041,9 @@
 				},
 				"New": {
 					"descriptions": ["**Creates an actor with an unbounded mailbox; Start runs it**\n\n```New(name:String, behavior:ActorBehavior)```\n\n\n\nname: String\n\nbehavior: ActorBehavior", "**Creates an actor with a mailbox of your choosing, to bound its queue**\n\n```New(name:String, behavior:ActorBehavior, mailbox:Mailbox)```\n\n\n\nname: String\n\nbehavior: ActorBehavior\n\nmailbox: Mailbox"]
+				},
+				"NoteLateAnswer": {
+					"descriptions": ["**Counts an answer that arrived after its caller had given up (GetLateAnswers). Internal: a call's slot reports it.**\n\n```method : public : NoteLateAnswer() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Send": {
 					"descriptions": ["**Sends a data mail, waiting without limit if a BLOCK mailbox is full**\n\n```method : public : Send(payload:System.Base) ~ Mailbox-&gt;Status```\n\n\n\npayload: System.Base\n\nreturn: Mailbox-&gt;Status", "**Sends a data mail**\n\n```method : public : Send(payload:System.Base, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\npayload: System.Base\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status", "**Sends a data mail that says who it is from**\n\n```method : public : Send(payload:System.Base, sender:Actor, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\npayload: System.Base\n\nsender: Actor\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status"]
@@ -15155,6 +15301,9 @@
 				},
 				"Send": {
 					"descriptions": ["**Queues an item, waiting without limit while a BLOCK mailbox is full**\n\n```method : public : Send(item:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\nreturn: Mailbox-&gt;Status", "**Queues an item**\n\n```method : public : Send(item:System.Base, timeout:Int) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\ntimeout: Int\n\nreturn: Mailbox-&gt;Status"]
+				},
+				"SendUrgent": {
+					"descriptions": ["**Queues an item past the capacity and the policy. Internal: the actor uses it for DOWN and EXIT notices, which a full bounded mailbox must not lose (and which must not block the exiting actor). Fails only when the mailbox is closed.**\n\n```method : public : SendUrgent(item:System.Base) ~ Mailbox-&gt;Status```\n\n\n\nitem: System.Base\n\nreturn: Mailbox-&gt;Status"]
 				},
 				"Size": {
 					"descriptions": ["**Number of items queued now**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -23500,6 +23649,9 @@
 		"System.Telemetry.ContentionRunner": {
 			"description": "Runs K threads that each call a function reference N times and times every call, to see how latency changes when workers compete for the same resource (a shared session, a device, the collector). The function takes the worker number (0 to K - 1) and the call number (0 to N - 1) and must not raise.\n\nThe workers wait for each other before the first call so they start together to within a poll of a millisecond; each records into its own series, so no lock sits in the timed path, and the series are merged after every worker has joined. Warm-up applies per worker. A single worker (K = 1) is the uncontended baseline to compare against.",
 			"functions": {
+				"Arrive": {
+					"descriptions": ["**Called by each worker before its first call: waits until every worker has arrived, so they start together**\n\n```method : public : Arrive() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(workers:Int, calls:Int, work:(Int,Int)~Nil)```\n\n\n\nworkers: Int\n\ncalls: Int\n\nwork: (Int,Int)~Nil"]
 				},
@@ -23631,6 +23783,9 @@
 				},
 				"IsExact": {
 					"descriptions": ["**Whether the quantiles are exact (a small series) rather than sketch estimates**\n\n```method : public : IsExact() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"ToString": {
+					"descriptions": ["**A one-line summary: model, device, batch, count and the median and 95th percentile in milliseconds**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
@@ -23639,6 +23794,9 @@
 			"functions": {
 				"Add": {
 					"descriptions": ["**Adds a value**\n\n```method : public : Add(x:Float) ~ Bool```\n\n\n\nx: Float\n\nreturn: Bool"]
+				},
+				"CountAt": {
+					"descriptions": ["**Count in one bucket**\n\n```method : public : CountAt(i:Int) ~ Int```\n\n\n\ni: Int\n\nreturn: Int"]
 				},
 				"FromJson": {
 					"descriptions": ["**Rebuilds a sketch from the JSON ToJson wrote**\n\n```function : FromJson(root:JsonElement) ~ LatencySketch```\n\n\n\nroot: JsonElement\n\nreturn: LatencySketch"]
@@ -23676,6 +23834,12 @@
 				"Quantile": {
 					"descriptions": ["**Estimate of a quantile**\n\n```method : public : Quantile(q:Float) ~ Float```\n\n\n\nq: Float\n\nreturn: Float"]
 				},
+				"Restore": {
+					"descriptions": ["**Sets the totals of a sketch read back from JSON (SetCount sets the buckets)**\n\n```method : public : Restore(total:Int, mn:Float, mx:Float, cl:Int) ~ Nil```\n\n\n\ntotal: Int\n\nmn: Float\n\nmx: Float\n\ncl: Int\n\nreturn: Nil"]
+				},
+				"SetCount": {
+					"descriptions": ["**Sets the count of one bucket; used when a sketch is read back from JSON**\n\n```method : public : SetCount(i:Int, c:Int) ~ Nil```\n\n\n\ni: Int\n\nc: Int\n\nreturn: Nil"]
+				},
 				"ToJson": {
 					"descriptions": ["**The sketch as JSON: the relative error, the exact extremes and the non-empty buckets as [index, count] pairs**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
 				}
@@ -23693,8 +23857,38 @@
 				"AddEnergy": {
 					"descriptions": ["**Adds the estimated energy of one run**\n\n```method : public : AddEnergy(joules:Float) ~ Nil```\n\n\n\njoules: Float\n\nreturn: Nil"]
 				},
+				"GetBatch": {
+					"descriptions": ["****\n\n```method : public : GetBatch() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDevice": {
+					"descriptions": ["****\n\n```method : public : GetDevice() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEnergyRuns": {
+					"descriptions": ["****\n\n```method : public : GetEnergyRuns() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetEnergyTotal": {
+					"descriptions": ["****\n\n```method : public : GetEnergyTotal() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetGpuMemMax": {
+					"descriptions": ["****\n\n```method : public : GetGpuMemMax() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetHostMemMax": {
+					"descriptions": ["****\n\n```method : public : GetHostMemMax() ~ Float```\n\n\n\nreturn: Float"]
+				},
 				"GetJoulesPerRun": {
 					"descriptions": ["**Mean estimated energy per run over the runs that had a power reading**\n\n```method : public : GetJoulesPerRun() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetKey": {
+					"descriptions": ["**The sort key of this cell, as Key builds it**\n\n```method : public : GetKey() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetModel": {
+					"descriptions": ["****\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetStats": {
+					"descriptions": ["**The latency series of this cell**\n\n```method : public : GetStats() ~ SeriesStats```\n\n\n\nreturn: SeriesStats"]
+				},
+				"GetTag": {
+					"descriptions": ["****\n\n```method : public : GetTag() ~ String```\n\n\n\nreturn: String"]
 				},
 				"Key": {
 					"descriptions": ["**Key of a cell, ordered by model, device, then batch numerically**\n\n```function : Key(model:String, device:String, batch:Int, tag:String) ~ String```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nreturn: String"]
@@ -23710,6 +23904,12 @@
 				},
 				"RecordHostMemory": {
 					"descriptions": ["**Notes a process resident-memory reading, keeping the largest**\n\n```method : public : RecordHostMemory(bytes:Float) ~ Nil```\n\n\n\nbytes: Float\n\nreturn: Nil"]
+				},
+				"SetEnergy": {
+					"descriptions": ["**Sets the energy figures; used when an entry is read back from JSON**\n\n```method : public : SetEnergy(total:Float, runs:Int) ~ Nil```\n\n\n\ntotal: Float\n\nruns: Int\n\nreturn: Nil"]
+				},
+				"ToJson": {
+					"descriptions": ["**The cell as a JSON object; memory and energy appear only when captured**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
 				}
 			}
 		},
@@ -23730,6 +23930,9 @@
 				},
 				"GetError": {
 					"descriptions": ["**The reason the last Predict, Load or Save did not work**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWarmup": {
+					"descriptions": ["****\n\n```method : public : GetWarmup() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"Load": {
 					"descriptions": ["**Reads a profile from a JSON file**\n\n```function : Load(path:String) ~ ProfileStore```\n\n\n\npath: String\n\nreturn: ProfileStore"]
@@ -23793,11 +23996,20 @@
 				"Get": {
 					"descriptions": ["**A value by name**\n\n```method : public : Get(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
 				},
+				"GetName": {
+					"descriptions": ["****\n\n```method : public : GetName(i:Int) ~ String```\n\n\n\ni: Int\n\nreturn: String"]
+				},
 				"GetTimeMs": {
 					"descriptions": ["**When the reading was taken**\n\n```method : public : GetTimeMs() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetValue": {
+					"descriptions": ["****\n\n```method : public : GetValue(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
+				},
 				"Size": {
 					"descriptions": ["**Number of values**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToString": {
+					"descriptions": ["**The readings as name=value text**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
@@ -23858,6 +24070,9 @@
 				"GetCount": {
 					"descriptions": ["**Number of readings taken, including the ones no longer kept**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetEnergy": {
+					"descriptions": ["**The estimator being fed**\n\n```method : public : GetEnergy() ~ EnergyEstimator```\n\n\n\nreturn: EnergyEstimator"]
+				},
 				"GetLast": {
 					"descriptions": ["**The latest reading**\n\n```method : public : GetLast() ~ ResourceReading```\n\n\n\nreturn: ResourceReading"]
 				},
@@ -23886,6 +24101,9 @@
 			"functions": {
 				"Add": {
 					"descriptions": ["**Adds a sample, or discards it while the warm-up lasts**\n\n```method : public : Add(x:Float) ~ Bool```\n\n\n\nx: Float\n\nreturn: Bool"]
+				},
+				"ExactAt": {
+					"descriptions": ["**One of the exact samples kept while the series is small**\n\n```method : public : ExactAt(i:Int) ~ Float```\n\n\n\ni: Int\n\nreturn: Float"]
 				},
 				"FromJson": {
 					"descriptions": ["**Rebuilds a series from the JSON ToJson wrote**\n\n```function : FromJson(root:JsonElement, exact_limit:Int) ~ SeriesStats```\n\n\n\nroot: JsonElement\n\nexact_limit: Int\n\nreturn: SeriesStats"]
@@ -23932,6 +24150,9 @@
 				"GetRing": {
 					"descriptions": ["**The ring of the last raw samples**\n\n```method : public : GetRing() ~ SampleRing```\n\n\n\nreturn: SampleRing"]
 				},
+				"GetSketch": {
+					"descriptions": ["**The sketch behind the quantiles**\n\n```method : public : GetSketch() ~ LatencySketch```\n\n\n\nreturn: LatencySketch"]
+				},
 				"GetStdDev": {
 					"descriptions": ["**Sample standard deviation, divisor n - 1**\n\n```method : public : GetStdDev() ~ Float```\n\n\n\nreturn: Float"]
 				},
@@ -23955,6 +24176,24 @@
 				},
 				"Quantile": {
 					"descriptions": ["**Quantile by nearest rank: the sample at rank ceil(q * n) in sorted order**\n\n```method : public : Quantile(q:Float) ~ Float```\n\n\n\nq: Float\n\nreturn: Float"]
+				},
+				"Restore": {
+					"descriptions": ["**Sets the statistics of a series read back from JSON**\n\n```method : public : Restore(n:Int, mean:Float, m2:Float, sketch:LatencySketch) ~ Nil```\n\n\n\nn: Int\n\nmean: Float\n\nm2: Float\n\nsketch: LatencySketch\n\nreturn: Nil"]
+				},
+				"SetCounters": {
+					"descriptions": ["**Sets the counts of warm-up samples and rejected values; used when a series is read back from JSON**\n\n```method : public : SetCounters(discarded:Int, rejected:Int) ~ Nil```\n\n\n\ndiscarded: Int\n\nrejected: Int\n\nreturn: Nil"]
+				},
+				"SetExact": {
+					"descriptions": ["**Sets one exact sample; used when a series is read back from JSON**\n\n```method : public : SetExact(i:Int, x:Float) ~ Nil```\n\n\n\ni: Int\n\nx: Float\n\nreturn: Nil"]
+				},
+				"SetExactValid": {
+					"descriptions": ["**Marks whether the exact samples are complete; used when a series is read back from JSON**\n\n```method : public : SetExactValid(v:Bool) ~ Nil```\n\n\n\nv: Bool\n\nreturn: Nil"]
+				},
+				"SetM2": {
+					"descriptions": ["**Sets the sum of squared deviations (Welford's M2); used when a series is read back from JSON**\n\n```method : public : SetM2(m2:Float) ~ Nil```\n\n\n\nm2: Float\n\nreturn: Nil"]
+				},
+				"SetSummary": {
+					"descriptions": ["**Makes this a summary-only series from numbers read elsewhere, such as a profile loaded from CSV: no samples are kept**\n\n```method : public : SetSummary(count:Int, mn:Float, mx:Float, mean:Float, stddev:Float, q:Float[]) ~ Nil```\n\n\n\ncount: Int\n\nmn: Float\n\nmx: Float\n\nmean: Float\n\nstddev: Float\n\nq: Float[]\n\nreturn: Nil"]
 				},
 				"ToJson": {
 					"descriptions": ["**The series as JSON: the moments, the exact samples while the series is exact, and the sketch**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
@@ -24028,6 +24267,9 @@
 				"AttachSampler": {
 					"descriptions": ["**Attaches a running sampler loop whose latest GPU memory reading and power trace are attributed to each call**\n\n```method : public : AttachSampler(sampler_loop:SamplerLoop) ~ Nil```\n\n\n\nsampler_loop: SamplerLoop\n\nreturn: Nil"]
 				},
+				"Finish": {
+					"descriptions": ["**Stores one finished call, with the host memory, GPU memory and energy seen while it ran when those are captured. Does nothing for a Nil model or device or a batch below 1**\n\n```method : public : Finish(model:String, device:String, batch:Int, tag:String, ms:Float, start_ms:Int) ~ Nil```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nms: Float\n\nstart_ms: Int\n\nreturn: Nil"]
+				},
 				"GetStore": {
 					"descriptions": ["**The profile being filled. Read it after the measuring threads are done, or from one thread.**\n\n```method : public : GetStore() ~ ProfileStore```\n\n\n\nreturn: ProfileStore"]
 				},
@@ -24048,6 +24290,9 @@
 				},
 				"Time": {
 					"descriptions": ["**Times a function reference**\n\n```method : public : Time(model:String, device:String, batch:Int, tag:String, work:()~Nil) ~ Float```\n\n\n\nmodel: String\n\ndevice: String\n\nbatch: Int\n\ntag: String\n\nwork: ()~Nil\n\nreturn: Float"]
+				},
+				"UsesClock": {
+					"descriptions": ["**Whether a sampler loop is attached, so each call also reads GPU memory and energy**\n\n```method : public : UsesClock() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -25693,4589 +25938,4607 @@
 		"Agent": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentApprover": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentBudget": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentCancel": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentCancelableHandler": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentConversation": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentDeadlineAware": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentEntry": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentEvent": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentObserver": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentPrices": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentReply": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentResult": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentSchema": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
+			}
+		],
+		"AgentScope": [
+			{
+				"bundle": "API.Agent",
+				"file": "agent.obl"
 			}
 		],
 		"AgentStep": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentTool": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentToolCall": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentToolHandler": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentToolResult": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentTools": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentTraceBuffer": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AgentTraceSink": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"AnthropicBackend": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"ChatBackend": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"GeminiBackend": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"OllamaBackend": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"OpenAIBackend": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"Redactor": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"ScriptedBackend": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"ToolRegistry": [
 			{
 				"bundle": "API.Agent",
-				"file": ""
+				"file": "agent.obl"
 			}
 		],
 		"Chat": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			},
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			},
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			}
 		],
 		"EndPoint": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			},
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			},
 			{
 				"bundle": "API.Models",
-				"file": ""
+				"file": "models.obl"
 			},
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			},
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Reply": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			},
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			}
 		],
 		"ReplyStream": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			}
 		],
 		"StreamAssembler": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			}
 		],
 		"Tool": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			},
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			},
 			{
 				"bundle": "API.OpenAI.Responses",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"ToolUse": [
 			{
 				"bundle": "API.Anthropic",
-				"file": ""
+				"file": "anthropic.obl"
 			}
 		],
 		"AudioPart": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"BinaryPart": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"CachedContent": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"CachedContentItem": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Candidate": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Content": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			},
 			{
 				"bundle": "API.OpenAI.Responses",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"EmbeddingValues": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"FileManager": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"GeminiFile": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"GenerationConfig": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Model": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			},
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			}
 		],
 		"OAuthEndPoint": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Part": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"TextPart": [
 			{
 				"bundle": "API.Google.Gemini",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Chunk": [
 			{
 				"bundle": "API.Google.Gemini.Corpus",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Corpus": [
 			{
 				"bundle": "API.Google.Gemini.Corpus",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Document": [
 			{
 				"bundle": "API.Google.Gemini.Corpus",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Dataset": [
 			{
 				"bundle": "API.Google.Gemini.Tuning",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Hyperparameters": [
 			{
 				"bundle": "API.Google.Gemini.Tuning",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"TunedModel": [
 			{
 				"bundle": "API.Google.Gemini.Tuning",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Tuner": [
 			{
 				"bundle": "API.Google.Gemini.Tuning",
-				"file": ""
+				"file": "gemini.obl"
 			},
 			{
 				"bundle": "API.OpenAI.Tuning",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"TuningExample": [
 			{
 				"bundle": "API.Google.Gemini.Tuning",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"TuningTask": [
 			{
 				"bundle": "API.Google.Gemini.Tuning",
-				"file": ""
+				"file": "gemini.obl"
 			}
 		],
 		"Client": [
 			{
 				"bundle": "API.Inference",
-				"file": ""
+				"file": "inference.obl"
 			},
 			{
 				"bundle": "Data.JSON.RPC",
-				"file": ""
+				"file": "json_rpc.obl"
 			}
 		],
 		"HttpEngine": [
 			{
 				"bundle": "API.Inference",
-				"file": ""
+				"file": "inference.obl"
 			}
 		],
 		"ModelMetadata": [
 			{
 				"bundle": "API.Inference",
-				"file": ""
+				"file": "inference.obl"
 			}
 		],
 		"Wire": [
 			{
 				"bundle": "API.Inference",
-				"file": ""
+				"file": "inference.obl"
 			}
 		],
 		"ChatFn": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"ContextWindow": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"JsonExtractor": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"JsonRepair": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"JsonSchema": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"JsonStrict": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"LlmChars": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"PromptBuilder": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"PromptTemplate": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"PromptTurn": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"PromptVars": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"SchemaError": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"StructuredCall": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"StructuredOutcome": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"TemplateNode": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"TokenCounter": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"TokenEstimator": [
 			{
 				"bundle": "API.LlmUtil",
-				"file": ""
+				"file": "llm_util.obl"
 			}
 		],
 		"McpCall": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpClient": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpCollector": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpCommandTransport": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpContents": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpHttpHandler": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpHttpTransport": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpLoopback": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpPrompt": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpPromptResult": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpProtocol": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpResource": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
+			}
+		],
+		"McpServe": [
+			{
+				"bundle": "API.MCP",
+				"file": "mcp.obl"
 			}
 		],
 		"McpService": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpSink": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpStdio": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpStdoutSink": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpStubGenerator": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpTool": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpToolBridge": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpToolResult": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpToolSpec": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
 			}
 		],
 		"McpTransport": [
 			{
 				"bundle": "API.MCP",
-				"file": ""
+				"file": "mcp.obl"
+			}
+		],
+		"McpUriTemplate": [
+			{
+				"bundle": "API.MCP",
+				"file": "mcp.obl"
 			}
 		],
 		"Engine": [
 			{
 				"bundle": "API.Models",
-				"file": ""
+				"file": "models.obl"
 			}
 		],
 		"Tensor": [
 			{
 				"bundle": "API.Models",
-				"file": ""
+				"file": "models.obl"
 			}
 		],
 		"TensorSpec": [
 			{
 				"bundle": "API.Models",
-				"file": ""
+				"file": "models.obl"
 			}
 		],
 		"Completion": [
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			},
 			{
 				"bundle": "API.OpenAI.Chat",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"ModelDetails": [
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			}
 		],
 		"ModelInfo": [
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			},
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"ModelPulled": [
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			}
 		],
 		"Options": [
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			}
 		],
 		"ToolCall": [
 			{
 				"bundle": "API.Ollama",
-				"file": ""
+				"file": "ollama.obl"
 			},
 			{
 				"bundle": "API.OpenAI.Chat",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"BFloat16": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"BoundSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"DeepLabClassification": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"DeepLabResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"DeepLabSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"DeviceTensor": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"FaceDetection": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"FaceDetectionResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"FaceRecognitionResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"FaceResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"FaceSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Half": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"OnnxEngine": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"OnnxRuntime": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"OpenPoseClassification": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"OpenPoseResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"OpenPoseSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Phi3Result": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Phi3Session": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Phi3Tokenizer": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Phi3VisionSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Quantization": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"ResNetResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"ResNetSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"RunResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Session": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"YoloClassification": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"YoloResult": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"YoloSession": [
 			{
 				"bundle": "API.Onnx",
-				"file": ""
+				"file": "onnx.obl"
 			}
 		],
 		"Assistant": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Batch": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"BatchJob": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Contents": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Embedding": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"File": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			},
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FileQuery": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Image": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			},
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			},
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"ImageQuery": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Message": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Models": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Moderation": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"ModerationResult": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Realtime": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Run": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Thread": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			},
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"VectorStore": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"VectorStoreFile": [
 			{
 				"bundle": "API.OpenAI",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Speech": [
 			{
 				"bundle": "API.OpenAI.Audio",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Transcription": [
 			{
 				"bundle": "API.OpenAI.Audio",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Choice": [
 			{
 				"bundle": "API.OpenAI.Chat",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Conversation": [
 			{
 				"bundle": "API.OpenAI.Chat",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Output": [
 			{
 				"bundle": "API.OpenAI.Responses",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Response": [
 			{
 				"bundle": "API.OpenAI.Responses",
-				"file": ""
+				"file": "openai.obl"
 			},
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			},
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			},
 			{
 				"bundle": "Web.Server",
-				"file": ""
+				"file": "web_server.obl"
 			}
 		],
 		"Checkpoint": [
 			{
 				"bundle": "API.OpenAI.Tuning",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"Job": [
 			{
 				"bundle": "API.OpenAI.Tuning",
-				"file": ""
+				"file": "openai.obl"
 			}
 		],
 		"ImageBatch": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			}
 		],
 		"Point": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			},
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Rect": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			},
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Scalar": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			}
 		],
 		"Size": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			}
 		],
 		"VideoCapture": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			}
 		],
 		"VideoWriter": [
 			{
 				"bundle": "API.OpenCV",
-				"file": ""
+				"file": "opencv.obl"
 			}
 		],
 		"Decrypt": [
 			{
 				"bundle": "Cipher",
-				"file": ""
+				"file": "cipher.obl"
 			}
 		],
 		"Encrypt": [
 			{
 				"bundle": "Cipher",
-				"file": ""
+				"file": "cipher.obl"
 			}
 		],
 		"Hash": [
 			{
 				"bundle": "Cipher",
-				"file": ""
+				"file": "cipher.obl"
 			},
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"BackwardIterator": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"BiMap": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"BitSet": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"BloomFilter": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Cache": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"CompareBackwardIterator": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"CompareForwardIterator": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"CompareList": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"CompareVector": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Deque": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"FenwickTree": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"FloatVector": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"ForwardIterator": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"HashSet": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Heap": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"IntMap": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"IntSet": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"IntVector": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"List": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Map": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"MultiHash": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"MultiMap": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"MultiSet": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"OrderedHash": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Pair": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			},
 			{
 				"bundle": "Collection.Tuple",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"PriorityMap": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Queue": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Set": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"SetHash": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Stack": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Trie": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"UnionFind": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Vector": [
 			{
 				"bundle": "Collection",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Quartet": [
 			{
 				"bundle": "Collection.Tuple",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Quintet": [
 			{
 				"bundle": "Collection.Tuple",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"Triplet": [
 			{
 				"bundle": "Collection.Tuple",
-				"file": ""
+				"file": "gen_collect.obl"
 			}
 		],
 		"CsvColumn": [
 			{
 				"bundle": "Data.CSV",
-				"file": ""
+				"file": "csv.obl"
 			}
 		],
 		"CsvRow": [
 			{
 				"bundle": "Data.CSV",
-				"file": ""
+				"file": "csv.obl"
 			}
 		],
 		"CsvTable": [
 			{
 				"bundle": "Data.CSV",
-				"file": ""
+				"file": "csv.obl"
 			}
 		],
 		"JsonBuilder": [
 			{
 				"bundle": "Data.JSON",
-				"file": ""
+				"file": "json.obl"
 			}
 		],
 		"JsonElement": [
 			{
 				"bundle": "Data.JSON",
-				"file": ""
+				"file": "json.obl"
 			}
 		],
 		"JsonParser": [
 			{
 				"bundle": "Data.JSON",
-				"file": ""
+				"file": "json.obl"
 			}
 		],
 		"Server": [
 			{
 				"bundle": "Data.JSON.RPC",
-				"file": ""
+				"file": "json_rpc.obl"
 			}
 		],
 		"FunctionType": [
 			{
 				"bundle": "Data.JSON.Scheme",
-				"file": ""
+				"file": "json.obl"
 			}
 		],
 		"ParameterType": [
 			{
 				"bundle": "Data.JSON.Scheme",
-				"file": ""
+				"file": "json.obl"
 			}
 		],
 		"StreamParser": [
 			{
 				"bundle": "Data.JSON.Stream",
-				"file": ""
+				"file": "json_stream.obl"
 			}
 		],
 		"XmlAttribute": [
 			{
 				"bundle": "Data.XML",
-				"file": ""
+				"file": "xml.obl"
 			}
 		],
 		"XmlBuilder": [
 			{
 				"bundle": "Data.XML",
-				"file": ""
+				"file": "xml.obl"
 			}
 		],
 		"XmlElement": [
 			{
 				"bundle": "Data.XML",
-				"file": ""
+				"file": "xml.obl"
 			}
 		],
 		"XmlParser": [
 			{
 				"bundle": "Data.XML",
-				"file": ""
+				"file": "xml.obl"
 			}
 		],
 		"ColumnInfo": [
 			{
 				"bundle": "Database.ODBC",
-				"file": ""
+				"file": "odbc.obl"
 			}
 		],
 		"Connection": [
 			{
 				"bundle": "Database.ODBC",
-				"file": ""
+				"file": "odbc.obl"
 			}
 		],
 		"Date": [
 			{
 				"bundle": "Database.ODBC",
-				"file": ""
+				"file": "odbc.obl"
 			},
 			{
 				"bundle": "System.Time",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"ParameterStatement": [
 			{
 				"bundle": "Database.ODBC",
-				"file": ""
+				"file": "odbc.obl"
 			}
 		],
 		"ResultSet": [
 			{
 				"bundle": "Database.ODBC",
-				"file": ""
+				"file": "odbc.obl"
 			}
 		],
 		"Timestamp": [
 			{
 				"bundle": "Database.ODBC",
-				"file": ""
+				"file": "odbc.obl"
 			}
 		],
 		"AnimatedImageSprite": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"GameFramework": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"ImageSprite": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"Position": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"Rectangle": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"Shape": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"Sprite": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"TextSprite": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"TitledImageSprite": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"Vector2": [
 			{
 				"bundle": "Game.Framework",
-				"file": ""
+				"file": "sdl_game.obl"
 			}
 		],
 		"Box": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Camera": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Freeable": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Frustum": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"GL": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"GLWindow": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"IntHolder": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Light": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"LightRig": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Material": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Matrix4": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Mesh": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Overlay": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Particles": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"PointShadow": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Prop": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"PropBatch": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Quaternion": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"RayHit": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"RenderTarget": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Scene": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Shader": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"ShaderSource": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"ShadowMap": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Skybox": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Texture2D": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Track": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Transform": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"Vector3": [
 			{
 				"bundle": "Game.OpenGL",
-				"file": ""
+				"file": "sdl_gl.obl"
 			}
 		],
 		"AudioDevice": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"CPU": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Clipboard": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Color": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"ControllerAxisEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"ControllerButtonEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"ControllerDeviceEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Core": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Cursor": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Display": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"DisplayMode": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"DropEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Event": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Filesystem": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Font": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"GLContext": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"GameController": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"GameControllerButtonBind": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Hints": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"JoyAxisEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"JoyButtonEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"JoyHatEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Joystick": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Keyboard": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"KeyboardEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Keysym": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"MixChunk": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"MixMusic": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Mixer": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"MouseButtonEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"MouseMotionEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"MouseWheelEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"PixelData": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"PixelFormat": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Platform": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Power": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Renderer": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"RendererInfo": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Surface": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"TextEditingEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"TextInputEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Texture": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Timer": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			},
 			{
 				"bundle": "System.Time",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"TouchFingerEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"UserEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Window": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"WindowEvent": [
 			{
 				"bundle": "Game.SDL2",
-				"file": ""
+				"file": "sdl2.obl"
 			}
 		],
 		"Lame": [
 			{
 				"bundle": "Game.SDL2.Aux",
-				"file": ""
+				"file": "lame.obl"
 			}
 		],
 		"RegEx": [
 			{
 				"bundle": "Query.RegEx",
-				"file": ""
+				"file": "regex.obl"
 			}
 		],
 		"Result": [
 			{
 				"bundle": "Query.RegEx",
-				"file": ""
+				"file": "regex.obl"
 			},
 			{
 				"bundle": "System.Diagnostics",
-				"file": ""
+				"file": "diags.obl"
 			}
 		],
 		"ArchiveSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Catalog": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Col": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Column": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"CsvSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"FilesystemSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Finder": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"HttpJsonSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"JsonLinesSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"JsonSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"ObjectSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"OtabFile": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Predicate": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"RemoteSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Row": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"ScanHint": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Source": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Statement": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"Table": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"TableSpec": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"TableStore": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"TextSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"View": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"XlsxSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"XmlSource": [
 			{
 				"bundle": "Query.Structured",
-				"file": ""
+				"file": "query.obl"
 			}
 		],
 		"MlColumns": [
 			{
 				"bundle": "Query.Structured.ML",
-				"file": ""
+				"file": "query_ml.obl"
 			}
 		],
 		"MlResultSource": [
 			{
 				"bundle": "Query.Structured.ML",
-				"file": ""
+				"file": "query_ml.obl"
 			}
 		],
 		"OdbcSource": [
 			{
 				"bundle": "Query.Structured.Odbc",
-				"file": ""
+				"file": "query_odbc.obl"
 			}
 		],
 		"TableServer": [
 			{
 				"bundle": "Query.Structured.Server",
-				"file": ""
+				"file": "query_server.obl"
 			}
 		],
 		"Detection": [
 			{
 				"bundle": "Query.Structured.Vision",
-				"file": ""
+				"file": "query_vision.obl"
 			}
 		],
 		"Detector": [
 			{
 				"bundle": "Query.Structured.Vision",
-				"file": ""
+				"file": "query_vision.obl"
 			}
 		],
 		"ImageHeader": [
 			{
 				"bundle": "Query.Structured.Vision",
-				"file": ""
+				"file": "query_vision.obl"
 			}
 		],
 		"VisionSource": [
 			{
 				"bundle": "Query.Structured.Vision",
-				"file": ""
+				"file": "query_vision.obl"
 			}
 		],
 		"YoloDetector": [
 			{
 				"bundle": "Query.Structured.Vision",
-				"file": ""
+				"file": "query_vision.obl"
 			}
 		],
 		"ArraySort": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Base": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"BaseArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"BasicCompare": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Bool": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"BoolArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"BoolRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Byte": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"ByteArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"ByteBuffer": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"ByteRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CastError": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Char": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CharArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CharRange": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CharRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Clone": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CommandOutput": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Compare": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CompareArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"DivideByZeroError": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Error": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Float": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FloatArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FloatRange": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FloatRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Func2Ref": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Func3Ref": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Func4Ref": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FuncRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"IndexError": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Int": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"IntArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"IntRange": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"IntRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"NilError": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Number": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Primitive": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Range": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Runtime": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"RuntimeError": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"String": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"StringArrayRef": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Stringify": [
 			{
 				"bundle": "System",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"AStar": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"BreadthFirst": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"DepthFirst": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"Dijkstra": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"EnergyFunction": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"Environment": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"FitnessFunction": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"GameState": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"GeneticAlgorithm": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"Graph": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"HillClimbing": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"MarkovDecisionProcess": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"Minimax": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"MonteCarloTreeSearch": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"QLearning": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"Sarsa": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"SearchResult": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"SimulatedAnnealing": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"StepResult": [
 			{
 				"bundle": "System.AI",
-				"file": ""
+				"file": "ai_search.obl"
 			}
 		],
 		"HubClient": [
 			{
 				"bundle": "System.AI.Hub",
-				"file": ""
+				"file": "ai_hub.obl"
 			}
 		],
 		"DllProxy": [
 			{
 				"bundle": "System.API",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Actor": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"ActorBehavior": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"ActorClock": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"ActorLifecycle": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"AgentActorBehavior": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"AgentActorFactory": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"AgentBuilder": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"BehaviorFactory": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"CallResult": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"ChildInfo": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"ChildSpec": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"ExitReason": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"Mail": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"Mailbox": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"Supervisor": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"SupervisorBehavior": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"SupervisorFactory": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"SupervisorStrategy": [
 			{
 				"bundle": "System.Actor",
-				"file": ""
+				"file": "actor.obl"
 			}
 		],
 		"Barrier": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Condition": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CountDownLatch": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Monitor": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Semaphore": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Task": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"TaskScope": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"ThreadMutex": [
 			{
 				"bundle": "System.Concurrency",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Analysis": [
 			{
 				"bundle": "System.Diagnostics",
-				"file": ""
+				"file": "diags.obl"
 			}
 		],
 		"Analyzer": [
 			{
 				"bundle": "System.Diagnostics",
-				"file": ""
+				"file": "diags.obl"
 			}
 		],
 		"Console": [
 			{
 				"bundle": "System.IO",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Deserializer": [
 			{
 				"bundle": "System.IO",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"InputStream": [
 			{
 				"bundle": "System.IO",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"OutputStream": [
 			{
 				"bundle": "System.IO",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Pipe": [
 			{
 				"bundle": "System.IO",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Serializer": [
 			{
 				"bundle": "System.IO",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Directory": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FileReader": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FileReaderWriter": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"FileWriter": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"HardLink": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Logger": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"SymbolicLink": [
 			{
 				"bundle": "System.IO.Filesystem",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"DTLSSocket": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"DTLSSocketServer": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Http2Session": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Http3Session": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"TCPSecureSocket": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"TCPSecureSocketServer": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"TCPSocket": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"TCPSocketServer": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"UDPSocket": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"UDPSocketServer": [
 			{
 				"bundle": "System.IO.Net",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"OAuthClient": [
 			{
 				"bundle": "System.IO.Net.OAuth",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"OAuthToken": [
 			{
 				"bundle": "System.IO.Net.OAuth",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"Class": [
 			{
 				"bundle": "System.Introspection",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"DataType": [
 			{
 				"bundle": "System.Introspection",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"Method": [
 			{
 				"bundle": "System.Introspection",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"AdaBoost": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"AucMetric": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"AutoencoderDetector": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"AveragePrecisionMetric": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"BayesEntry": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"BayesGroup": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"BoolMatrixRef": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"ConfusionMatrix": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"CrossValidation": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"DBSCAN": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"DbscanDetector": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"DecisionTree": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"DecisionTreeClassifier": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"DenseNetwork": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"ElasticNet": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"EllipticEnvelope": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"EmbeddingClassifier": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"FeatureScaler": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"FloatMatrixRef": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"FoldSplit": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"GaussianMixture": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"GaussianNaiveBayes": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"GradientBoostedClassifier": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"GradientBoostedTrees": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"GroupRecall": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"IsolationForest": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KDTree": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KMeans": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KMeansGroup": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KMeansGrouping": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KNearestNeighbors": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KNeighbor": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"KernelSVM": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"LassoRegression": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"LinearRegression": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"LinearResult": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"LinearSolver": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"LocalOutlierFactor": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"LogisticRegression": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"Matrix2D": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"MatrixReader": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"Metrics": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"NaiveBayes": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"NeuralNetwork": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"OneClassSVM": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"OneClassSvmDetector": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"OutlierDetector": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"PCA": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"Perceptron": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"Random": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"RandomForest": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"RandomForestClassifier": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"RecallAtFprMetric": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"RegressionTree": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"RegressionTreeNode": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"RidgeRegression": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"SVM": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"ScoreMetric": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"ScoreModel": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"SensitivitySweep": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"SweepResult": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"TableEncoder": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"ThresholdResult": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"TreeNode": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"ZScoreDetector": [
 			{
 				"bundle": "System.ML",
-				"file": ""
+				"file": "ml_core.obl"
 			}
 		],
 		"BoostModel": [
 			{
 				"bundle": "System.ML.Boost",
-				"file": ""
+				"file": "ml_boost.obl"
 			}
 		],
 		"BoostTree": [
 			{
 				"bundle": "System.ML.Boost",
-				"file": ""
+				"file": "ml_boost.obl"
 			}
 		],
 		"GradientBoostingClassifier": [
 			{
 				"bundle": "System.ML.Boost",
-				"file": ""
+				"file": "ml_boost.obl"
 			}
 		],
 		"GradientBoostingRegressor": [
 			{
 				"bundle": "System.ML.Boost",
-				"file": ""
+				"file": "ml_boost.obl"
 			}
 		],
 		"ClipEncoder": [
 			{
 				"bundle": "System.ML.Clip",
-				"file": ""
+				"file": "ml_clip.obl"
 			}
 		],
 		"ClipPreprocessor": [
 			{
 				"bundle": "System.ML.Clip",
-				"file": ""
+				"file": "ml_clip.obl"
 			}
 		],
 		"FacePairs": [
 			{
 				"bundle": "System.ML.Clip",
-				"file": ""
+				"file": "ml_clip.obl"
 			}
 		],
 		"Augmentation": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"CnnEvaluation": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"CnnModel": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"CnnRuntime": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"CnnTrainer": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"ImageDataset": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"ImageSubset": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"PendingImages": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"TrainingHistory": [
 			{
 				"bundle": "System.ML.Cnn",
-				"file": ""
+				"file": "ml_cnn.obl"
 			}
 		],
 		"Chart": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"ChartSeries": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"DataSplit": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Experiment": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"IndexSplit": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"LabError": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Labels": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Partition": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Resample": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"ResultTable": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Sample": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Stopwatch": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"Trial": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"TrialResult": [
 			{
 				"bundle": "System.ML.Lab",
-				"file": ""
+				"file": "ml_lab.obl"
 			}
 		],
 		"RagAnswer": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagAnthropicGenerator": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagBertEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagChunk": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagChunker": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagClipImageEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagGeminiEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagGeminiGenerator": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagGenerator": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagHashEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagIndex": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagMatch": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagOllamaEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagOllamaGenerator": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagOpenAIEmbedder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagOpenAIGenerator": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagPipeline": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagPromptBuilder": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"RagStubGenerator": [
 			{
 				"bundle": "System.ML.Rag",
-				"file": ""
+				"file": "rag.obl"
 			}
 		],
 		"ReplicateCell": [
 			{
 				"bundle": "System.ML.Report",
-				"file": ""
+				"file": "ml_report.obl"
 			}
 		],
 		"Replicates": [
 			{
 				"bundle": "System.ML.Report",
-				"file": ""
+				"file": "ml_report.obl"
 			}
 		],
 		"Report": [
 			{
 				"bundle": "System.ML.Report",
-				"file": ""
+				"file": "ml_report.obl"
 			}
 		],
 		"ReportBlock": [
 			{
 				"bundle": "System.ML.Report",
-				"file": ""
+				"file": "ml_report.obl"
 			}
 		],
 		"ReportText": [
 			{
 				"bundle": "System.ML.Report",
-				"file": ""
+				"file": "ml_report.obl"
 			}
 		],
 		"ResultTables": [
 			{
 				"bundle": "System.ML.Report",
-				"file": ""
+				"file": "ml_report.obl"
 			}
 		],
 		"Acf": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"AdfResult": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"ArimaModel": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"AutoArima": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"AutoEts": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"BaselineForecaster": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"CvResult": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Decomposition": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Evaluation": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"ExponentialSmoothing": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"ForecastMetrics": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"ForecastResult": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Forecaster": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Frequency": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"ModelKit": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"NelderMead": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Objective": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"OlsFit": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Rng": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"SelectionCriterion": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"SeriesTransform": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Simulate": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"Stationarity": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"TimeSeries": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"TsMath": [
 			{
 				"bundle": "System.ML.TimeSeries",
-				"file": ""
+				"file": "ml_timeseries.obl"
 			}
 		],
 		"VectorHit": [
 			{
 				"bundle": "System.ML.VectorSearch",
-				"file": ""
+				"file": "ml_vector.obl"
 			}
 		],
 		"VectorIndex": [
 			{
 				"bundle": "System.ML.VectorSearch",
-				"file": ""
+				"file": "ml_vector.obl"
 			}
 		],
 		"Similarity": [
 			{
 				"bundle": "System.ML.Verification",
-				"file": ""
+				"file": "ml_verify.obl"
 			}
 		],
 		"Verification": [
 			{
 				"bundle": "System.ML.Verification",
-				"file": ""
+				"file": "ml_verify.obl"
 			}
 		],
 		"VerificationResult": [
 			{
 				"bundle": "System.ML.Verification",
-				"file": ""
+				"file": "ml_verify.obl"
 			}
 		],
 		"BigInt": [
 			{
 				"bundle": "System.Math",
-				"file": ""
+				"file": "math.obl"
 			}
 		],
 		"Complex": [
 			{
 				"bundle": "System.Math",
-				"file": ""
+				"file": "math.obl"
 			}
 		],
 		"Rational": [
 			{
 				"bundle": "System.Math",
-				"file": ""
+				"file": "math.obl"
 			}
 		],
 		"ApiSequenceTokenizer": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"BpeTokenizer": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"SentimentAnalyzer": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"SentimentResult": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"SpellChecker": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"SubwordTokenizer": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"TF_IDF": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"TextFeatures": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"TextPreprocessor": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"TextSimilarity": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"TokenEncoding": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"Tokenizer": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"WordPieceTokenizer": [
 			{
 				"bundle": "System.NLP",
-				"file": ""
+				"file": "nlp.obl"
 			}
 		],
 		"BertEmbedder": [
 			{
 				"bundle": "System.NLP.Onnx",
-				"file": ""
+				"file": "nlp_onnx.obl"
 			}
 		],
 		"Prediction": [
 			{
 				"bundle": "System.NLP.Onnx",
-				"file": ""
+				"file": "nlp_onnx.obl"
 			}
 		],
 		"TextClassifier": [
 			{
 				"bundle": "System.NLP.Onnx",
-				"file": ""
+				"file": "nlp_onnx.obl"
 			}
 		],
 		"BsonReader": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"FilterReport": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"Lda": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TokenDictionary": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicCorpus": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicMath": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicMetrics": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicPlots": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicStopwords": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicTerms": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"TopicTokenizer": [
 			{
 				"bundle": "System.NLP.Topics",
-				"file": ""
+				"file": "nlp_topics_text.obl"
 			}
 		],
 		"Artist": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"Axes": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"Figure": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotAxis": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotError": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotMath": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotNote": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotPrimitive": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotScene": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"SvgWriter": [
 			{
 				"bundle": "System.Plot",
-				"file": ""
+				"file": "plot.obl"
 			}
 		],
 		"PlotPng": [
 			{
 				"bundle": "System.Plot.SDL",
-				"file": ""
+				"file": "plot_sdl.obl"
 			}
 		],
 		"PlotView": [
 			{
 				"bundle": "System.Plot.SDL",
-				"file": ""
+				"file": "plot_sdl.obl"
 			}
 		],
 		"PlotWindow": [
 			{
 				"bundle": "System.Plot.SDL",
-				"file": ""
+				"file": "plot_sdl.obl"
 			}
 		],
 		"SdlCanvas": [
 			{
 				"bundle": "System.Plot.SDL",
-				"file": ""
+				"file": "plot_sdl.obl"
 			}
 		],
 		"Correlation": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"CorrelationResult": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"Design": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"Dist": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"OLS": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"OLSResult": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"Stats": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"StatsFormat": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"TTest": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"TTestResult": [
 			{
 				"bundle": "System.Stats",
-				"file": ""
+				"file": "stats.obl"
 			}
 		],
 		"ContentionReport": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"ContentionRunner": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"EnergyEstimator": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"GpuSampler": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"LatencyPrediction": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"LatencySketch": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"PowermetricsSampler": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"ProfileEntry": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"ProfileStore": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"ResourceReading": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"ResourceSampler": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"RuntimeSampler": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"SampleRing": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"SamplerLoop": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"SeriesStats": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"Telemetry": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"TimingProbe": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"TimingRecorder": [
 			{
 				"bundle": "System.Telemetry",
-				"file": ""
+				"file": "telemetry.obl"
 			}
 		],
 		"Alarm": [
 			{
 				"bundle": "System.Time",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"DateUtility": [
 			{
 				"bundle": "System.Time",
-				"file": ""
+				"file": "lang.obl"
 			}
 		],
 		"CodeFormatter": [
 			{
 				"bundle": "System.Utility",
-				"file": ""
+				"file": "misc.obl"
 			}
 		],
 		"Parser": [
 			{
 				"bundle": "System.Utility",
-				"file": ""
+				"file": "misc.obl"
 			}
 		],
 		"Spinner": [
 			{
 				"bundle": "System.Utility",
-				"file": ""
+				"file": "misc.obl"
 			}
 		],
 		"Cookie": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"Downloader": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"HeaderCheck": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"Http2Client": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"Http3Client": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"HttpClient": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"HttpsClient": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"RequestLimits": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"SSEEvent": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"SSEStream": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"SecureWebSocket": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"Url": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"WebDownloader": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"WebSocket": [
 			{
 				"bundle": "Web.HTTP",
-				"file": ""
+				"file": "net_common.obl"
 			}
 		],
 		"HttpRequestHandler": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"HttpsRequestHandler": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"MultipartContent": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"MultipartDecoder": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"MultipartEncoder": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"Request": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			},
 			{
 				"bundle": "Web.Server",
-				"file": ""
+				"file": "web_server.obl"
 			}
 		],
 		"RequestPageHandler": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"StaticFiles": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"WebServer": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"WebServerConfig": [
 			{
 				"bundle": "Web.HTTP.Server",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"McpRequestHandler": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"McpServer": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"PromptArgument": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"PromptItem": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"PromptMessage": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"ResourceContent": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"ResourceItem": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"ResourceTemplate": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"ToolContent": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"ToolItem": [
 			{
 				"bundle": "Web.HTTP.Server.MCP",
-				"file": ""
+				"file": "net_server.obl"
 			}
 		],
 		"RSSChannel": [
 			{
 				"bundle": "Web.RSS",
-				"file": ""
+				"file": "rss.obl"
 			}
 		],
 		"RSSPost": [
 			{
 				"bundle": "Web.RSS",
-				"file": ""
+				"file": "rss.obl"
 			}
 		],
 		"RSSReader": [
 			{
 				"bundle": "Web.RSS",
-				"file": ""
+				"file": "rss.obl"
 			}
 		],
 		"ContentType": [
 			{
 				"bundle": "Web.Server",
-				"file": ""
+				"file": "web_server.obl"
 			}
 		],
 		"Handler": [
 			{
 				"bundle": "Web.Server",
-				"file": ""
+				"file": "web_server.obl"
 			}
 		]
 	},
