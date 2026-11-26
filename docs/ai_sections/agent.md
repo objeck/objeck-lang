@@ -252,6 +252,101 @@ arguments.by: expected integer, got string
 
 The observer's `OnReply` and `OnToolResult` run as each step happens, so a program can show progress while a long run is going. This streams steps, not the model's tokens.
 
+### Declaring an agent
+
+An agent declaration states the model, the instructions, the tools and the limits in one place. It stands where a class does:
+
+```ruby
+use API.MCP, API.Agent, Collection;
+
+class Calendar {
+  #~
+  The weekday of a date.
+  @tool
+  @readonly
+  @param date a date as YYYY-MM-DD
+  ~#
+  function : Weekday(date : String) ~ String {
+    return "{$date} is a Friday";
+  }
+
+  #~
+  Book a meeting.
+  @tool
+  @param date a date as YYYY-MM-DD
+  @param title what the meeting is called
+  ~#
+  function : Book(date : String, title : String) ~ String {
+    return "booked '{$title}' on {$date}";
+  }
+}
+
+agent Scheduler(script : Vector<AgentReply>, owner : String) {
+  backend : ScriptedBackend->New(script);
+  instructions : "You keep the calendar of {$owner}. Answer in one sentence.";
+  tools : Calendar, AgentTools->Calculator();
+  budget { steps : 6; tokens : 4000; }
+  trace : AgentTraceBuffer->New();
+}
+
+class Example {
+  function : Main(args : String[]) ~ Nil {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("1", "weekday", "{\"date\":\"2026-11-27\"}"));
+    script->AddBack(AgentReply->Ask("2", "book", "{\"date\":\"2026-11-27\",\"title\":\"Review\"}"));
+    script->AddBack(AgentReply->Say("Booked the review for Friday."));
+
+    scheduler := Scheduler->Build(script, "Ada");
+    result := scheduler->Run("Book a review on 2026-11-27 if it is a weekday.");
+    each(step in result->GetSteps()) {
+      each(r in step->GetResults()) {
+        "{$r->GetToolName()}: {$r->GetContent()}"->PrintLine();
+      };
+    };
+    result->GetText()->PrintLine();
+    "{$result->GetStopReason()}, {$result->GetSteps()->Size()} of {$scheduler->GetBudget()->GetMaxSteps()} steps"->PrintLine();
+    scheduler->GetConversation()->GetSystem()->PrintLine();
+  }
+}
+```
+
+```
+weekday: 2026-11-27 is a Friday
+book: booked 'Review' on 2026-11-27
+Booked the review for Friday.
+completed, 3 of 6 steps
+You keep the calendar of Ada. Answer in one sentence.
+```
+
+Compile with `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` (without `mcp,net_server,mcp_agent` when no class is named in `tools` and `mcp` is not used). The model here is a `ScriptedBackend`; for a real one change one line, for example `backend : AnthropicBackend->New("claude-sonnet-5-5", Nil);`.
+
+`agent Scheduler(...) { ... }` declares a class `Scheduler` with one function, `Build`, which takes the declaration's parameters and returns a new `Agent` each time it is called. The parameter list may be left out (`agent Plain { backend : ...; }` gives `Plain->Build()`). Nothing is evaluated until `Build` is called; the settings are then evaluated in the order they are written, once per call.
+
+| Setting | Value | Does |
+|---|---|---|
+| `backend : value;` | a `ChatBackend`; required | the model the agent talks to |
+| `instructions : value;` | a `String` | the system prompt (`SetSystem`); a prompt literal's `ToString()` fits here |
+| `tools : entry, entry, ...;` | a class name, or an `AgentTool` | a class gives every `@tool` function of it, with the schema the compiler derives (see [MCP](mcp.md)); a value is added as it is |
+| `mcp : value, ...;` | an initialized `McpClient` | every tool of that server |
+| `allow : name, ...;` `deny : name, ...;` | tool names (`String`) | `ToolRegistry->Allow` and `Deny`: with `allow`, only the listed tools are offered; `deny` always wins |
+| `budget { steps : n; tokens : n; tool_calls : n; model_calls : n; wall_ms : n; model_call_ms : n; cost : x; }` | `Int` each, `cost` a `Float` | an `AgentBudget` with those limits |
+| `trace : value;` | an `AgentTraceSink` | where the run's events go; read it back with `GetTrace()` |
+
+- **Every value is an ordinary expression** and may use the parameters. It is checked by the compiler where you wrote it: `tools : Calendar, script;` in the program above is reported at `script`, and a misspelled limit at the limit:
+
+  ```
+  guide.obs:(28,21): Invalid cast between classes: 'API.Agent.AgentTool' and 'Collection.Vector'
+  guide.obs:(29,23): Unknown limit 'turns' in the budget of the agent 'Scheduler': a budget has steps, tokens, tool_calls, model_calls, wall_ms, model_call_ms and cost
+  ```
+
+- **Also refused when the program is compiled:** an unknown setting, a setting written twice, a declaration with no `backend`, an empty list, a class in `tools` that has no `@tool` function, and `Calendar->Book` in `tools` (a tool entry is a whole class; name the class and pick with `allow` or `deny`).
+- **How an entry of `tools` is read.** A name that is not one of the declaration's parameters is a class; anything else is an expression that must be an `AgentTool`. The tools are offered to the model in the order written, a class's functions in the order of the class.
+- **What `Build` returns is a plain `Agent`**, so everything in this guide applies to it: `SetApprover`, `SetCancel`, `SetObserver`, a second `Run` that carries the conversation on, and [`AgentScope`](agent_control.md), which limits a declared agent like any other (the smaller limit wins).
+- **At run time** `Build` raises an error when a tool or an MCP client is `Nil`, or when a server's tools cannot be listed.
+- **`agent` is still a name.** It is a keyword only at the start of a declaration; `backend`, `budget`, `tools`, `steps` and the other words are compared inside the declaration only. Variables, parameters, methods and classes with those names compile as before.
+
+Tests: `agent_decl_test` (what a declared agent offers, runs, denies and is stopped by, the order of evaluation, an MCP server's tools, a prompt literal and a lambda in a setting, a scope around a declared agent), the `bad_agent_*` compile-error tests and `agent_decl_diag_test.py` (each error with its line and column, in LF and CRLF files, bundles, several files). The program above was compiled and run for this guide, as were the two errors shown. Example: `programs/deploy/agent_decl_48.obs`; design: `docs/design/AGENT_SYNTAX.md`.
+
 ### Safety notes
 
 - **Offer the least.** `ToolRegistry->Allow(name)` restricts the model to the listed tools (once the list has a name, only listed tools are offered or run); `Deny(name)` always wins over `Allow`. A tool the lists exclude is not shown to the model, and a call to it anyway is answered `denied` and the handler never runs.

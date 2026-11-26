@@ -1,0 +1,36 @@
+# EXTRA_LIBS: mcp,agent,mcp_agent,net,net_server,cipher,misc
+# EXPECT_COMPILE_ERROR: (13,18): The class 'Plain', named in 'tools' of the agent 'Helper', has no '@tool' function
+# EXPECT_ERROR_COUNT: 1
+#~
+A class named in the tools of an agent declaration must have a function marked as a tool. The
+class is declared after the agent here: the check waits until the file has been read
+(docs/design/AGENT_SYNTAX.md).
+~#
+use API.MCP, API.Agent;
+
+agent Helper {
+	backend : ScriptedBackend->New(Nil);
+	tools : Tagged, Plain;
+}
+
+class Tagged {
+	#~
+	Add two integers.
+	@tool
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+}
+
+class Plain {
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+}
+
+class BadAgentToolClass {
+	function : Main(args : String[]) ~ Nil {
+		Helper->Build()->Run("hello")->GetText()->PrintLine();
+	}
+}

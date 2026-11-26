@@ -24,11 +24,17 @@ At run time (the program compiles; it must stop with the message and a non-zero 
 
 Left alone or supported (each source must compile and, run, print what it should):
   an agent in a named bundle, reached by its full name and through 'use'; an agent on the first line of a file;
-  a CRLF file; an agent whose tools class is in another file; an agent that needs no MCP library; 'agent' as a
-  class, a variable at the start of a statement, a function, a method and a parameter; 'Build' as the name of
-  another function; a program with no declaration compiles without the agent library.
+  a CRLF file; an agent whose tools class is in another file; an agent that needs no MCP library; 'agent' as the
+  name of a class with a function called Build; 'agent' as a variable at the start of a statement, a function, a
+  method, a parameter and an instance variable; a program with no declaration compiles without the agent library.
+
+Damaged programs (syntax_mutants.py): 300 random mutants of agent_decl_test.obs, from a fixed seed, are compiled;
+the compiler may accept or refuse each one, and must not crash or hang on any.
 """
 import os, subprocess, sys, tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import syntax_mutants  # noqa: E402
 
 EXE = ".exe" if os.name == "nt" else ""
 LIBS = "gen_collect,json,mcp,agent,mcp_agent,net,net_server,cipher,misc"
@@ -281,6 +287,17 @@ def main():
         check("a program with no declaration needs no agent library", code == 0, out)
         code, out, obe = compile_files("nolib", {"main.obs": "agent A { backend : Nil; }\nclass T {\n\tfunction : Main(args : String[]) ~ Nil {}\n}\n"}, libs="gen_collect")
         check("a declaration without the agent library is an error that names its classes", code != 0 and not os.path.exists(obe) and "API.Agent." in out, out)
+
+        # a mistake that ends the reading of a setting early does not flood the rest of the file with errors
+        code, out, obe = compile_files("few", {"main.obs": HEAD + "agent A(script : Vector<AgentReply>) {\n" + OKB + "\tbudget : 8;\n\tinstructions : \"a\";\n}\n"})
+        errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+        check("a budget without braces is one error", len(errors) == 1, out)
+
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_decl_test.obs"), encoding="utf-8") as f:
+            source = f.read()
+        accepted, refused, findings = syntax_mutants.smoke(bin_dir, [source], LIBS + ",llm_util,regex", work, 300, 20261126)
+        check("300 damaged programs: the compiler answers every one (%d accepted, %d refused)" % (accepted, refused),
+              not findings and accepted + refused == 300, findings)
 
     if failures:
         print("FAIL: %d check(s) failed" % len(failures))

@@ -10070,7 +10070,21 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     if(is_budget) {
       if(!Match(TOKEN_OPEN_BRACE)) {
         fail(GetLineNumber(), GetLinePosition(), L"Expected '{' after 'budget': the limits are written 'budget { steps : 8; tokens : 5000; }'");
-        return nullptr;
+        // on to the next setting
+        int nesting = 0;
+        while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+          if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+            ++nesting;
+          }
+          else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
+            --nesting;
+          }
+          NextToken();
+        }
+        if(Match(TOKEN_SEMI_COLON)) {
+          NextToken();
+        }
+        continue;
       }
       NextToken();
       std::vector<std::wstring> limits_seen;
@@ -10220,7 +10234,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   NextToken();
 
   if(std::find(seen.begin(), seen.end(), std::wstring(L"backend")) == seen.end()) {
-    fail(name_line, name_pos, L"The agent '" + name + L"' has no backend: say which model it talks to, as in 'backend : AnthropicBackend->New(\"claude-sonnet-5-5\", Nil);'");
+    fail(name_line, name_pos, L"The agent '" + name + L"' has no backend: say which model it talks to, as in 'backend : AnthropicBackend->New(model, Nil);'");
   }
   if(!ok) {
     return nullptr;

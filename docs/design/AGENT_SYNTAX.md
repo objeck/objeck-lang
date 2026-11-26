@@ -1,6 +1,6 @@
 # Agent syntax: typed results, prompt literals, agent declarations, scoped limits
 
-Release scope (2026-11-26, after the maintainer asked for everything that was designed to be built): typed results (section 1, `class Name : json`, PR #1841), scoped limits (section 4, `AgentScope`, merged in #1837) and `prompt` literals (section 2) are implemented and in v2026.11.4; `agent` declarations (section 3) are designed here and implemented in the pull request that follows the one for prompt literals.
+Release scope (2026-11-26, after the maintainer asked for everything that was designed to be built): typed results (section 1, `class Name : json`, PR #1841), scoped limits (section 4, `AgentScope`, merged in #1837) and `prompt` literals (section 2) are implemented and in v2026.11.4; `agent` declarations (section 3) are implemented and in v2026.11.4 as well.
 
 Decisions: (1) typed results use the opt-in `class Name : json` modifier, no call-site type arguments; (2) a hole of a `prompt` literal binds a variable in scope and is checked at compile time, and a reusable template is a function; (3) an `agent` declaration is a class with one `Build` function that returns an `Agent`; (4) scoped limits are a LIBRARY call, `AgentScope`. All compose with the MCP stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md`) and do not redo `@tool`.
 Rule for all four: pure source-to-source lowering to existing constructs (no VM, JIT or opcode change), and
@@ -134,7 +134,7 @@ literal was a syntax error in every position before, so no program changes meani
 **Not done, on purpose:** hole expressions (`{user->GetName()}`): a hole is one name so that what reaches the
 model is visible at the hole; format specifiers; a hole for a list (use `{$...}` or build a `String`).
 
-## 3. `agent` declarations (designed; implemented in the pull request after prompt literals)
+## 3. `agent` declarations (IMPLEMENTED, v2026.11.4)
 
 ```
 agent Helper(script : Vector<AgentReply>, remote : McpClient) {
@@ -275,4 +275,9 @@ conflict files: `scanner.cpp` (keyword tables), `parser.cpp` (class member loop,
 Where sections 2 and 3 touch the compiler, for whoever merges other grammar work: no keyword is added to the
 scanner's tables. `prompt` literals are `Parser::ParsePromptLiteral` at the end of `parser.cpp`, one test
 (`IsPromptLiteral`) in `ParseSimpleExpression` and one in `ParseStatement`, `ContextAnalyzer::AnalyzePromptHole`
-with one test in `AnalyzeExpressionMethodCall`, and one integer in `MethodCall` (`tree.h`).
+with one test in `AnalyzeExpressionMethodCall`, and one integer in `MethodCall` (`tree.h`). `agent`
+declarations are `Parser::ParseAgent`, `ParseAgentSplice`, `ParseAgentName` and `CheckAgentToolClasses` at the end
+of `parser.cpp`, one test (`IsAgentDeclaration`) at each of the two places `ParseBundle` reads a class, one test
+(`IsAgentSplice`, a null pointer except while a declaration is parsed) in `ParseSimpleExpression`,
+`ParseStatement` and `ParseDecelerationList`, and two scanner functions (`GetSourceBefore`, `StartAt`) that no
+other code calls. The analyzer, the emitter, the VM and the libraries are untouched by section 3.

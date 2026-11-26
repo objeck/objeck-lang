@@ -45,6 +45,13 @@ class Highlight(unittest.TestCase):
         self.assertNotIn(("kw", "prompt"), classes('prompt := "a name"; prompt->PrintLine();'))
         self.assertNotIn("prompt", h.KEYWORDS)
 
+    def test_agent_is_a_keyword_only_at_a_declaration(self):
+        got = classes('agent Helper(script : Vector<AgentReply>) {\n  backend : ScriptedBackend->New(script);\n}\n')
+        self.assertIn(("kw", "agent"), got)
+        self.assertIn(("cls", "Helper"), got)
+        self.assertNotIn(("kw", "agent"), classes('    agent := 3;\n    agent->Run("x");\n    x := agent Foo {\n'))
+        self.assertNotIn("agent", h.KEYWORDS)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)

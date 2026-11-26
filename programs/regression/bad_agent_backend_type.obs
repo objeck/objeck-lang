@@ -1,0 +1,21 @@
+# EXTRA_LIBS: agent,net,cipher,misc
+# EXPECT_COMPILE_ERROR: (13,3): Invalid cast with classes: API.Agent.ChatBackend and Int
+# EXPECT_ERROR_COUNT: 1
+#~
+A value of an agent declaration is checked where it is written: a backend that is not a
+ChatBackend is a compile error at the value, here on the line after its setting name
+(docs/design/AGENT_SYNTAX.md).
+~#
+use API.Agent;
+
+agent Helper(retries : Int) {
+	backend :
+		retries * 2;
+	instructions : "Answer in one sentence.";
+}
+
+class BadAgentBackendType {
+	function : Main(args : String[]) ~ Nil {
+		Helper->Build(3)->Run("hello")->GetText()->PrintLine();
+	}
+}

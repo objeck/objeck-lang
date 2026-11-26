@@ -949,6 +949,18 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 prompt_literal_diag_test.py "$BIN"
 
+    # 'agent Name { ... }' (docs/design/AGENT_SYNTAX.md): each declaration the compiler must refuse, with the line
+    # and column it reports (also inside the user's own expressions), in LF and CRLF files; bundles, several
+    # files, and 'agent' left alone wherever it is an ordinary name. Scripted model: no key, no network.
+    - name: the agent declaration diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 agent_decl_diag_test.py "$BIN"
+
     # 'obr --mcp' and 'obr --mcp-http' (docs/design/MCP_FIRST_CLASS.md, Stage 3): a program's tools, resources and prompts
     # served with no server code; stdio in three execution modes, hostile input, HTTP, the refusals.
     - name: obr --mcp serves a program's tools (POSIX)
