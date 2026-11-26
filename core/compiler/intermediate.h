@@ -101,6 +101,7 @@ class IntermediateEmitter {
   void EmitFor(For* for_stmt);
   void EmitCriticalSection(CriticalSection* critical_stmt);
   void EmitTry(Try* try_stmt);
+  void EmitUsing(Using* using_stmt);
   void EmitIndices(ExpressionList* indices);
   void EmitExpressions(ExpressionList* parameters);
   void EmitExpression(Expression* expression);

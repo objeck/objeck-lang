@@ -2257,6 +2257,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
     statement = ParseTry(depth + 1);
   }
+  // 'using(w := E) {': a contextual keyword; a '(' ... ')' closed by '{' cannot be a call
+  else if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_PAREN, 1) && scanner->GetToken()->GetIdentifier() == L"using" &&
+          scanner->PeekAfterParens(2) == TOKEN_OPEN_BRACE) {
+    statement = ParseUsing(depth + 1);
+  }
   // identifier
   else if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
@@ -7296,6 +7301,69 @@ Try* Parser::ParseTry(int depth)
 
   return TreeFactory::Instance()->MakeTry(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), body, handlers, finally_stmts,
                                          error_entry, raise_entry);
+}
+
+/****************************
+ * Parses 'using(w := E) { ... }'. 'using' is contextual, as 'try' is: the
+ * keyword only where the parenthesis that follows is closed by a '{', which a
+ * call never is. The resource's name lives in a scope of its own around the
+ * body, so two blocks in a method may both name theirs 'f'.
+ ****************************/
+Using* Parser::ParseUsing(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Using", depth);
+#endif
+
+  NextToken();
+  NextToken();
+
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  const std::wstring name = scanner->GetToken()->GetIdentifier();
+  NextToken();
+
+  if(!Match(TOKEN_ASSIGN)) {
+    ProcessError(L"Expected ':=' after the resource name in 'using'", TOKEN_ASSIGN);
+  }
+  NextToken();
+  Expression* initial = ParseExpression(depth + 1);
+
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+
+  // scope of the resource: its declaration, the body, the close
+  symbol_table->CurrentParseScope()->NewParseScope();
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(name),
+                                                                TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + name + L"'");
+  }
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name);
+  Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, initial);
+  Statement* resource = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, assignment);
+
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* body = ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  // w->Close()
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* close = TreeFactory::Instance()->MakeStatementList();
+  close->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, line_num, line_pos,
+                                                              name, L"Close", TreeFactory::Instance()->MakeExpressionList()));
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  return TreeFactory::Instance()->MakeUsing(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), resource, body, close);
 }
 
 CriticalSection* Parser::ParseCritical(int depth)

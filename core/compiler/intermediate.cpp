@@ -1352,6 +1352,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   case TRY_STMT:
     EmitTry(static_cast<Try*>(statement));
     break;
+
+  case USING_STMT:
+    EmitUsing(static_cast<Using*>(statement));
+    break;
     
   case SYSTEM_STMT:
     EmitSystemDirective(static_cast<SystemStatement*>(statement));
@@ -4467,12 +4471,52 @@ void IntermediateEmitter::EmitCriticalUnlocks(size_t keep_depth, Statement* stat
         try_stmt->SetEmitPhase(phase);
       }
     }
+    else if(active->GetStatementType() == USING_STMT) {
+      // a jump out of a 'using' body closes the resource first; a returned
+      // value is on the stack, which the call to Close() leaves alone
+      const int saved_char_str_count = new_char_str_count;
+      new_char_str_count = 0;
+      std::vector<Statement*> close_stmts = static_cast<Using*>(active)->GetClose()->GetStatements();
+      for(size_t j = 0; j < close_stmts.size(); ++j) {
+        EmitStatement(close_stmts[j]);
+      }
+      new_char_str_count = saved_char_str_count;
+    }
     else {
       CriticalSection* critical_stmt = static_cast<CriticalSection*>(active);
       EmitVariable(critical_stmt->GetVariable());
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, CRITICAL_END));
     }
   }
+}
+
+/****************************
+ * Translates 'using(w := E) { body }': w := E, the body, then w->Close(). The
+ * close is also emitted by EmitCriticalUnlocks before each return, break and
+ * continue that leaves the body, innermost resource first. It is a plain call
+ * (no label), so it is safe with a returned value on the operand stack and
+ * the method stays JIT-compilable. An error that unwinds past the body does
+ * not close the resource.
+ ****************************/
+void IntermediateEmitter::EmitUsing(Using* using_stmt)
+{
+  cur_line_num = using_stmt->GetLineNumber();
+
+  EmitStatement(using_stmt->GetResource());
+
+  active_criticals.push_back(using_stmt);
+  std::vector<Statement*> body = using_stmt->GetBody()->GetStatements();
+  for(size_t i = 0; i < body.size(); ++i) {
+    EmitStatement(body[i]);
+  }
+  active_criticals.pop_back();
+
+  cur_line_num = using_stmt->GetLineNumber();
+  std::vector<Statement*> close_stmts = using_stmt->GetClose()->GetStatements();
+  for(size_t i = 0; i < close_stmts.size(); ++i) {
+    EmitStatement(close_stmts[i]);
+  }
+  new_char_str_count = 0;
 }
 
 /****************************

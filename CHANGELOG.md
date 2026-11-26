@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`using(w := E) { ... }` closes a resource on every way out of a block** (`docs/design/USING_BLOCK.md`): `w->Close()` runs when the body ends and before each `return` (after the returned value is computed), `break` and `continue` that leaves it, innermost resource first. The close is looked up by name, so every library class with a `Close()` (files, sockets, the ONNX, ODBC and query handles) and any class of yours works, with no interface to implement. It is compiled inline, not as `try`/`finally`, so a method that uses it is still compiled by the JIT; an error that unwinds past the block does not close the resource (use `try { } finally { }` when that matters). `using` is a contextual word: `using := 1`, `using->F()` and `using(x);` (a call to a method named `using`) are unchanged.
+
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance

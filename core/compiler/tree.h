@@ -107,7 +107,8 @@ namespace frontend {
     CRITICAL_STMT,
     SYSTEM_STMT,
     EMPTY_STMT,
-    TRY_STMT
+    TRY_STMT,
+    USING_STMT
   };
 
   /****************************
@@ -1955,6 +1956,48 @@ namespace frontend {
 
     StatementType GetStatementType() {
       return TRY_STMT;
+    }
+  };
+
+  /****************************
+   * 'using(w := E) { ... }': 'w := E', the body, then 'w->Close()' on
+   * every way out of the body (docs/design/USING_BLOCK.md). The close
+   * is emitted inline at the end of the body and before each 'return',
+   * 'break' and 'continue' that leaves it, not through a try region, so
+   * a method that uses it is still compiled by the JIT.
+   ****************************/
+  class Using : public Statement {
+    Statement* resource;
+    StatementList* body;
+    StatementList* close;
+
+  public:
+    Using(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+          Statement* r, StatementList* b, StatementList* c) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+      resource = r;
+      body = b;
+      close = c;
+    }
+
+    ~Using() {
+    }
+
+    // the declaration 'w := E'
+    Statement* GetResource() {
+      return resource;
+    }
+
+    StatementList* GetBody() {
+      return body;
+    }
+
+    // 'w->Close()'
+    StatementList* GetClose() {
+      return close;
+    }
+
+    StatementType GetStatementType() {
+      return USING_STMT;
     }
   };
 
@@ -4044,6 +4087,13 @@ namespace frontend {
     Try* MakeTry(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                  StatementList* body, const std::vector<TryHandler*> &handlers, StatementList* finally_stmts, SymbolEntry* error_entry, SymbolEntry* raise_entry) {
       Try* tmp = new Try(file_name, line_num, line_pos, end_line_num, end_line_pos, body, handlers, finally_stmts, error_entry, raise_entry);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
+    Using* MakeUsing(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+                     Statement* resource, StatementList* body, StatementList* close) {
+      Using* tmp = new Using(file_name, line_num, line_pos, end_line_num, end_line_pos, resource, body, close);
       statements.push_back(tmp);
       return tmp;
     }

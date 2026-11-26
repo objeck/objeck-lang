@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: bad_using_equals.obs:(9,11): Expected ':=' after the resource name in 'using'
+class Res {
+	New() {}
+	method : public : Close() ~ Nil {}
+}
+
+class BadUsingEquals {
+	function : Main(args : String[]) ~ Nil {
+		using(r = Res->New()) {
+			"inside"->PrintLine();
+		};
+	}
+}
