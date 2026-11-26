@@ -108,7 +108,17 @@ std::wstring Parser::ParseBundleName()
         }
       }
       else if(Match(TOKEN_IDENT)) {
-        ProcessError(L"Expected '.'", TOKEN_SEMI_COLON);
+        // 'if(value is Type name)': the value's name ends before 'is', and the
+        // type's before the name (see ParseTypeTest)
+        if(in_type_test_type || (in_if_condition > 0 && scanner->GetToken()->GetIdentifier() == L"is")) {
+          break;
+        }
+        if(scanner->GetToken()->GetIdentifier() == L"is") {
+          ProcessError(L"'is' tests a type only as the whole condition of an 'if': 'if(value is Type name) { ... }'", TOKEN_SEMI_COLON);
+        }
+        else {
+          ProcessError(L"Expected '.'", TOKEN_SEMI_COLON);
+        }
         NextToken();
       }
     }
@@ -7126,14 +7136,35 @@ If* Parser::ParseIf(int depth)
   }
   NextToken();
 
+  ++in_if_condition;
   Expression* expression = ParseExpression(depth + 1);
+  --in_if_condition;
+
+  // 'if(value is Type name)': 'is' is a keyword only here, after the tested
+  // value, where a name cannot follow an expression. It stays an ordinary name.
+  SymbolEntry* bind_entry = nullptr;
+  Assignment* bind_assign = nullptr;
+  if(expression && Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"is") {
+    expression = ParseTypeTest(expression, bind_entry, bind_assign, depth + 1);
+  }
+
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
+  // the name belongs to the block: declared in its scope, by its first statement
+  if(bind_entry && !symbol_table->CurrentParseScope()->AddEntry(bind_entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + bind_assign->GetVariable()->GetName() + L"'");
+    bind_entry = nullptr;
+  }
   StatementList* if_statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
+  if(bind_entry) {
+    if_statements->PrependStatement(TreeFactory::Instance()->MakeDeclaration(file_name, bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
+                                                                             bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
+                                                                             bind_entry, bind_assign));
+  }
 
   If* if_stmt;
   if(Match(TOKEN_ELSE_ID) && Match(TOKEN_IF_ID, SECOND_INDEX)) {
@@ -7153,6 +7184,100 @@ If* Parser::ParseIf(int depth)
   }
 
   return if_stmt;
+}
+
+/****************************
+ * Parses the rest of 'if(value is Type name)', from 'is'. It is
+ * 'if(value <> Nil & value->TypeOf(Type)) { name := value->As(Type); ... }':
+ * the test is returned, and the declaration that the block starts with is
+ * handed back for ParseIf to place. A value that is more than a variable is
+ * evaluated once, where the test is, into a hidden local that the test and the
+ * cast read. Nil is of no type: the test is false, where a bare TypeOf on Nil
+ * is a runtime error.
+ ****************************/
+Expression* Parser::ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = subject->GetLineNumber();
+  const int line_pos = subject->GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Type test", depth);
+#endif
+
+  // 'is'
+  NextToken();
+
+  const int type_line_num = GetLineNumber();
+  const int type_line_pos = GetLinePosition();
+  in_type_test_type = true;
+  Type* type = ParseType(depth + 1);
+  in_type_test_type = false;
+  if(!type || type->GetType() != CLASS_TYPE || type->GetDimension() > 0) {
+    ProcessError(L"Expected a class name after 'is': 'if(value is Type name)'");
+    return subject;
+  }
+
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(L"Expected a name for the value after its type: 'if(value is Type name)'");
+    return subject;
+  }
+  const std::wstring bind_ident = scanner->GetToken()->GetIdentifier();
+  const int bind_line_num = GetLineNumber();
+  const int bind_line_pos = GetLinePosition();
+  NextToken();
+
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(L"'value is Type name' is the whole condition of an 'if'; test anything further inside its block");
+    return subject;
+  }
+
+  // A variable is read as often as needed. Anything else is evaluated once into
+  // a hidden local: the test becomes a sequence that declares the local and then
+  // tests it, so the local has its type before the test that reads it is analyzed.
+  std::wstring source_ident;
+  SymbolEntry* source_entry = nullptr;
+  if(subject->GetExpressionType() == VAR_EXPR && !subject->GetMethodCall() && !subject->GetCastType() && !subject->GetTypeOf() &&
+     !static_cast<Variable*>(subject)->GetIndices() && !static_cast<Variable*>(subject)->GetPreStatement() &&
+     !static_cast<Variable*>(subject)->GetPostStatement()) {
+    source_ident = static_cast<Variable*>(subject)->GetName();
+  }
+  else {
+    source_entry = AddHiddenLocal(L"is", source_ident, line_num, line_pos);
+    if(!source_entry) {
+      return subject;
+    }
+  }
+
+  // value <> Nil & value->TypeOf(Type); the node of an '&' holds its first operand on the right (see ParseLogic)
+  CalculatedExpression* not_nil = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR);
+  not_nil->SetLeft(source_entry ? TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, source_ident) : subject);
+  not_nil->SetRight(TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
+  Variable* tested = TreeFactory::Instance()->MakeVariable(file_name, type_line_num, type_line_pos, source_ident);
+  tested->SetTypeOf(type);
+  CalculatedExpression* both = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, AND_EXPR);
+  both->SetLeft(tested);
+  both->SetRight(not_nil);
+
+  Expression* test = both;
+  if(source_entry) {
+    Variable* source_target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, source_ident);
+    Assignment* source_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), source_target, subject);
+    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos, both);
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), source_entry, source_assign));
+    test = sequence;
+  }
+
+  // name := value->As(Type)
+  Variable* source = TreeFactory::Instance()->MakeVariable(file_name, type_line_num, type_line_pos, source_ident);
+  source->SetCastType(type, false);
+  Variable* bind_target = TreeFactory::Instance()->MakeVariable(file_name, bind_line_num, bind_line_pos, bind_ident);
+  bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, bind_line_num, bind_line_pos, bind_line_num, bind_line_pos, bind_target, source);
+  bind_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, bind_line_num, bind_line_pos, GetScopeName(bind_ident),
+                                                        TypeFactory::Instance()->MakeType(type), false, current_method != nullptr);
+
+  return test;
 }
 
 /****************************

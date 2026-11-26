@@ -115,6 +115,27 @@ triangle <span class="t-op">:=</span> [[<span class="t-num">1</span>], [<span cl
 <span class="t-kw">function</span> : <span class="t-fn">Sum</span>(rows : <span class="t-type">Int</span>[][]) <span class="t-op">~</span> <span class="t-type">Int</span> { ... }
 </code></pre>
     <p>See <a href="doc_jagged_arrays.html">JAGGED_ARRAYS_DESIGN.md</a>.</p>
+    <h3 id="the-binding-type-test">The binding type test</h3>
+    <p><code>if(value is Type name) { ... }</code> runs the block when the value is a <code>Type</code> (or a subclass, or a class that implements it), with <code>name</code> bound to the value as that type:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+<span class="t-kw">if</span>(part<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(TextPart)) {
+  text_part <span class="t-op">:=</span> part<span class="t-op">-&gt;</span><span class="t-kw">As</span>(TextPart);
+  json<span class="t-op">-&gt;</span>Insert(<span class="t-str">"text"</span>, text_part<span class="t-op">-&gt;</span>GetText());
+}
+<span class="t-kw">else</span> <span class="t-kw">if</span>(part<span class="t-op">-&gt;</span><span class="t-kw">TypeOf</span>(ImagePart)) {
+  image_part <span class="t-op">:=</span> part<span class="t-op">-&gt;</span><span class="t-kw">As</span>(ImagePart);
+  json<span class="t-op">-&gt;</span>Insert(<span class="t-str">"pixels"</span>, image_part<span class="t-op">-&gt;</span>Pixels());
+};
+
+<span class="t-com"># after</span>
+<span class="t-kw">if</span>(part <span class="t-kw">is</span> TextPart p) {
+  json<span class="t-op">-&gt;</span>Insert(<span class="t-str">"text"</span>, p<span class="t-op">-&gt;</span>GetText());
+}
+<span class="t-kw">else</span> <span class="t-kw">if</span>(part <span class="t-kw">is</span> ImagePart p) {
+  json<span class="t-op">-&gt;</span>Insert(<span class="t-str">"pixels"</span>, p<span class="t-op">-&gt;</span>Pixels());
+};
+</code></pre>
+    <p>The name belongs to the block (each branch can reuse it; it is not visible in <code>else</code> or after the <code>if</code>) and is declared as <code>name : Type</code> is. The test is the whole condition of the <code>if</code>. A value that is more than a variable (<code>items-&gt;Get(i) is TextPart t</code>) is evaluated once. Nil is of no type: the test is false, where a bare <code>Nil-&gt;TypeOf(T)</code> is a runtime error. It compiles to <code>if(value &lt;&gt; Nil &amp; value-&gt;TypeOf(Type)) { name := value-&gt;As(Type); ... }</code>. <code>is</code> is a keyword only in this position. Tests: <code>type_test_binding</code>, <code>bad_type_test_*</code>.</p>
     <h3 id="type-inference">Type Inference</h3>
 <pre class="line-numbers"><code class="language-objeck">value <span class="t-op">:=</span> <span class="t-str">"Hello World!"</span>;
 value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
@@ -389,7 +410,7 @@ true       use        virtual    while      xor</pre>
       <tr><td data-label="word"><code>reverse</code></td><td data-label="reserved for"><code>each(... reverse ...)</code></td><td data-label="commonly wanted as">a sort direction</td></tr>
      </tbody>
     </table>
-    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code> and <code>out</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
+    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>is</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
     <hr class="section-end">
     <div class="raw"><a name="integers"></a>
     ## Integer Arithmetic</div>

@@ -40,6 +40,11 @@ class Highlight(unittest.TestCase):
         self.assertIn('<span class="t-num">1</span>', out)
         self.assertIn('<span class="t-const">null</span>', out)
 
+    def test_contextual_keyword_is(self):
+        # 'is' is a keyword between a value and 'Type name)' and a name everywhere else
+        got = classes("if(part is TextPart text) {\n  is := 3;\n  is += 1;\n};\n")
+        self.assertEqual(got.count(("kw", "is")), 1)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)

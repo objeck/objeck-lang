@@ -29,6 +29,8 @@ syn match objeckFloat '\<\.\d\+\([eE][+-]\?\d\+\)\?\>'
 " Control flow keywords
 syn keyword objeckControl if else do while for each reverse select other
 syn keyword objeckControl break continue return label in critical
+" contextual: 'if(value is Type name) { ... }'
+syn match objeckControl "\<is\>\ze\s\+[A-Za-z_][A-Za-z0-9_.]*\s\+[A-Za-z_][A-Za-z0-9_]*\s*)"
 
 " Declaration keywords
 syn keyword objeckDecl class interface enum consts bundle alias

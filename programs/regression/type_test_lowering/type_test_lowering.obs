@@ -1,0 +1,145 @@
+#~
+Fixture for check_type_test_lowering.py. Each function 'ValueN' uses the binding
+type test, `if(value is Type name) { ... }`; 'HandN' is the same code written
+out by hand: `if(value <> Nil & value->TypeOf(Type)) { name := value->As(Type); ... }`.
+The check compiles this file with -asm and requires the two listings of every
+pair to be the same instruction for instruction.
+~#
+use Collection;
+
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part {
+	@text : String;
+
+	New(text : String) {
+		Parent();
+		@text := text;
+	}
+
+	method : public : GetText() ~ String {
+		return @text;
+	}
+}
+
+class ImagePart from Part {
+	@pixels : Int;
+
+	New(pixels : Int) {
+		Parent();
+		@pixels := pixels;
+	}
+
+	method : public : Pixels() ~ Int {
+		return @pixels;
+	}
+}
+
+class TypeTestLowering {
+	# one test on a variable
+	function : Value1(part : Part) ~ Int {
+		if(part is TextPart text) {
+			return text->GetText()->Size();
+		};
+
+		return -1;
+	}
+
+	function : Hand1(part : Part) ~ Int {
+		if(part <> Nil & part->TypeOf(TextPart)) {
+			text : TextPart := part->As(TextPart);
+			return text->GetText()->Size();
+		};
+
+		return -1;
+	}
+
+	# an else-if chain with an else
+	function : Value2(part : Part) ~ Int {
+		size := 0;
+		if(part is TextPart text) {
+			size := text->GetText()->Size();
+		}
+		else if(part is ImagePart image) {
+			size := image->Pixels();
+		}
+		else {
+			size := -1;
+		};
+
+		return size;
+	}
+
+	function : Hand2(part : Part) ~ Int {
+		size := 0;
+		if(part <> Nil & part->TypeOf(TextPart)) {
+			text : TextPart := part->As(TextPart);
+			size := text->GetText()->Size();
+		}
+		else if(part <> Nil & part->TypeOf(ImagePart)) {
+			image : ImagePart := part->As(ImagePart);
+			size := image->Pixels();
+		}
+		else {
+			size := -1;
+		};
+
+		return size;
+	}
+
+	# in a loop, with the value read from a collection first
+	function : Value3(parts : Vector<Part>) ~ Int {
+		total := 0;
+		each(i : parts->Size()) {
+			part := parts->Get(i);
+			if(part is ImagePart image) {
+				total += image->Pixels();
+			};
+		};
+
+		return total;
+	}
+
+	function : Hand3(parts : Vector<Part>) ~ Int {
+		total := 0;
+		each(i : parts->Size()) {
+			part := parts->Get(i);
+			if(part <> Nil & part->TypeOf(ImagePart)) {
+				image : ImagePart := part->As(ImagePart);
+				total += image->Pixels();
+			};
+		};
+
+		return total;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		parts := Vector->New()<Part>;
+		parts->AddBack(TextPart->New("four"));
+		parts->AddBack(ImagePart->New(12));
+		parts->AddBack(Part->New());
+		parts->AddBack(Nil);
+
+		ok := Value3(parts) = Hand3(parts) & Value3(parts) = 12;
+		each(i : parts->Size()) {
+			part := parts->Get(i);
+			if(Value1(part) <> Hand1(part) | Value2(part) <> Hand2(part)) {
+				ok := false;
+			};
+		};
+		if(Value1(parts->Get(0)) <> 4 | Value2(parts->Get(1)) <> 12 | Value2(parts->Get(2)) <> -1 | Value2(Nil) <> -1) {
+			ok := false;
+		};
+
+		if(ok) {
+			"PASS: type test lowering"->PrintLine();
+		}
+		else {
+			"FAIL: type test lowering"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

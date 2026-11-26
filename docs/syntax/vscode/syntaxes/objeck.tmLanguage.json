@@ -96,6 +96,11 @@
 		"keywords": {
 			"patterns": [
 				{
+					"comment": "contextual: 'if(value is Type name) { ... }'",
+					"match": "\\bis(?=\\s+[A-Za-z_][\\w.]*\\s+[A-Za-z_]\\w*\\s*\\))",
+					"name": "keyword.control.objeck"
+				},
+				{
 					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|for|each|reverse|label|return|critical|from|implements|virtual)\\b",
 					"name": "keyword.control.objeck"
 				},
