@@ -289,6 +289,10 @@ namespace Runtime {
       stack->frames_reserved = RoundToPage(depth * sizeof(StackFrame*));
       stack->frames = (StackFrame**)Reserve(stack->frames_reserved);
       if(!stack->frames || !stack->CommitFrames(FRAMES_INITIAL)) {
+        // failure path only: give back the reservation and the object
+        // Destroy would otherwise be skipped by the throw
+        Release(stack->frames, stack->frames_reserved);
+        delete stack;
         throw std::bad_alloc();
       }
       return stack;

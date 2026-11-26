@@ -1,0 +1,158 @@
+#~
+An out-of-bounds array index reports the same text from the interpreter and
+from compiled code: "Index out of bounds: <index>,<size>". Compiled code used
+to report a bare "Index out of bounds" because its guard stub carried only a
+status code. Each shape is run enough times that its callee is compiled under
+the default threshold; the same file is also run with --jit=off and
+OBJECK_JIT_THRESHOLD=1 and must print the same lines.
+
+Covers reads and writes on Int, Float, Byte, Char and object arrays, a
+2-D array (the index and size are the flattened ones, as in the interpreter),
+and a negative index.
+~#
+class Target {
+	New() {
+	}
+
+	method : public : GetInt(a : Int[], i : Int) ~ Int {
+		return a[i];
+	}
+
+	method : public : SetInt(a : Int[], i : Int) ~ Int {
+		a[i] := 1;
+		return 0;
+	}
+
+	method : public : GetFloat(a : Float[], i : Int) ~ Float {
+		return a[i];
+	}
+
+	method : public : SetFloat(a : Float[], i : Int) ~ Int {
+		a[i] := 1.5;
+		return 0;
+	}
+
+	method : public : GetByte(a : Byte[], i : Int) ~ Int {
+		return a[i];
+	}
+
+	method : public : SetByte(a : Byte[], i : Int) ~ Int {
+		a[i] := 7;
+		return 0;
+	}
+
+	method : public : GetChar(a : Char[], i : Int) ~ Int {
+		return a[i];
+	}
+
+	method : public : SetChar(a : Char[], i : Int) ~ Int {
+		a[i] := 'x';
+		return 0;
+	}
+
+	method : public : GetObj(a : String[], i : Int) ~ String {
+		return a[i];
+	}
+
+	method : public : SetObj(a : String[], i : Int) ~ Int {
+		a[i] := "x";
+		return 0;
+	}
+
+	method : public : GetTwo(a : Int[,], i : Int, j : Int) ~ Int {
+		return a[i, j];
+	}
+
+	method : public : SetTwo(a : Int[,], i : Int, j : Int) ~ Int {
+		a[i, j] := 1;
+		return 0;
+	}
+}
+
+class Test {
+	@fails : static : Int;
+
+	function : Check(what : String, expected : String) ~ Nil {
+		got := Runtime->GetError();
+		if(got = Nil | <>got->Equals(expected)) {
+			@fails += 1;
+			if(@fails < 10) {
+				got_text := got;
+				if(got = Nil) {
+					got_text := "<no error>";
+				};
+				"FAIL {$what}: expected '{$expected}' got '{$got_text}'"->PrintLine();
+			};
+		};
+		Runtime->ClearError();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := Target->New();
+		ints := Int->New[2];
+		floats := Float->New[3];
+		bytes := Byte->New[4];
+		chars := Char->New[5];
+		objs := String->New[6];
+		two := Int->New[3, 4];
+
+		for(n := 0; n < 600; n += 1;) {
+			r := t?->GetInt(ints, 5);
+			Check("int read over", "Index out of bounds: 5,2");
+			r := t?->GetInt(ints, 2);
+			Check("int read at size", "Index out of bounds: 2,2");
+			r := t?->GetInt(ints, -1);
+			Check("int read under", "Index out of bounds: -1,2");
+			r := t?->SetInt(ints, 5);
+			Check("int write over", "Index out of bounds: 5,2");
+			r := t?->SetInt(ints, -3);
+			Check("int write under", "Index out of bounds: -3,2");
+
+			f := t?->GetFloat(floats, 7);
+			if(f > 100.0) {
+				@fails += 1;
+			};
+			Check("float read", "Index out of bounds: 7,3");
+			r := t?->SetFloat(floats, 3);
+			Check("float write", "Index out of bounds: 3,3");
+
+			r := t?->GetByte(bytes, 9);
+			Check("byte read", "Index out of bounds: 9,4");
+			r := t?->SetByte(bytes, -2);
+			Check("byte write", "Index out of bounds: -2,4");
+
+			r := t?->GetChar(chars, 11);
+			Check("char read", "Index out of bounds: 11,5");
+			r := t?->SetChar(chars, 5);
+			Check("char write", "Index out of bounds: 5,5");
+
+			s := t?->GetObj(objs, 8);
+			if(s <> Nil) {
+				@fails += 1;
+			};
+			Check("obj read", "Index out of bounds: 8,6");
+			r := t?->SetObj(objs, 6);
+			Check("obj write", "Index out of bounds: 6,6");
+
+			r := t?->GetTwo(two, 1, 9);
+			Check("2-D read", "Index out of bounds: 28,12");
+			r := t?->SetTwo(two, 0, 7);
+			Check("2-D write", "Index out of bounds: 21,12");
+
+			# in bounds: no error, the value comes back
+			ints[1] := 42;
+			v := t?->GetInt(ints, 1);
+			if(v <> 42 | Runtime->HasError()) {
+				@fails += 1;
+			};
+		};
+
+		if(@fails = 0) {
+			"bounds messages ok"->PrintLine();
+		}
+		else {
+			"bounds messages FAILED: {$@fails}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

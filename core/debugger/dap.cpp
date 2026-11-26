@@ -807,7 +807,7 @@ void DapAdapter::HandleLaunch(int request_seq, const json& args)
 
   // Loading the debugger is the 'build' of a launch; tell a client that shows
   // progress. The program itself starts at configurationDone (startup progress).
-  std::string program_name = program;
+  std::string program_name = std::move(program);  // `program` is not used again
   const size_t program_sep = program_name.find_last_of("/\\");
   if(program_sep != std::string::npos) {
     program_name = program_name.substr(program_sep + 1);

@@ -106,7 +106,8 @@ class Loader {
 
   inline long ReadInt() {
     EnsureBytes(sizeof(int32_t));
-    int32_t value = *((int32_t*)buffer);
+    int32_t value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
@@ -127,14 +128,16 @@ class Loader {
 
   inline INT64_VALUE ReadInt64() {
     EnsureBytes(sizeof(INT64_VALUE));
-    INT64_VALUE value = *((INT64_VALUE*)buffer);
+    INT64_VALUE value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
 
   inline unsigned long ReadUnsigned() {
     EnsureBytes(sizeof(uint32_t));
-    uint32_t value = *((uint32_t*)buffer);
+    uint32_t value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
@@ -191,7 +194,8 @@ class Loader {
 
   inline FLOAT_VALUE ReadDouble() {
     EnsureBytes(sizeof(FLOAT_VALUE));
-    FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
+    FLOAT_VALUE value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }

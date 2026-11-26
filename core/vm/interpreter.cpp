@@ -238,11 +238,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
           break;
 
         case -2:
-          std::wcerr << L">>> Index under bounds in native JIT code <<<" << std::endl;
-          break;
-
         case -3:
-          std::wcerr << L">>> Index over bounds in native JIT code <<<" << std::endl;
+          // the interpreter's text, with the index and size the guard stub recorded
+          std::wcerr << L">>> " << TakeBoundsMessage() << L" <<<" << std::endl;
           break;
 
         case -4:
@@ -2907,11 +2905,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
       break;
 
     case -2:
-      std::wcerr << L">>> Index under bounds in native JIT code <<<" << std::endl;
-      break;
-
     case -3:
-      std::wcerr << L">>> Index over bounds in native JIT code <<<" << std::endl;
+      std::wcerr << L">>> " << TakeBoundsMessage() << L" <<<" << std::endl;
       break;
 
     case -4:
