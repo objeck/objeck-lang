@@ -5,6 +5,8 @@ Run control for API.Agent, against a scripted fake model (no key, no network): t
 each budget (steps, model calls, tool calls, tokens, cost, wall-clock deadline) and its stop reason, the
 tool modes (IN_THREAD, BOUNDED_THREAD with an abandoned worker), the trace events, retries, and the safety of a worker that
 finishes after the run moved on. Waits are generous so a loaded CI machine does not fail them.
+Also: a final answer that arrives after a cancel or the deadline, a cancel while an approver is deciding,
+an observer or approver that raises, and workers that are joined.
 ~#
 use API.Agent;
 use Data.JSON;
@@ -157,6 +159,93 @@ class TraceObserver implements AgentObserver, AgentTraceSink {
   method : public : OnEvent(event : AgentEvent) ~ Nil {
     @kinds->Append(event->GetKind());
     @kinds->Append(' ');
+  }
+}
+
+# takes its time and cannot be interrupted: no deadline, no token
+class DeafBackend implements ChatBackend {
+  @millis : Int;
+  @reply : AgentReply;
+
+  New(millis : Int, reply : AgentReply) {
+    @millis := millis;
+    @reply := reply;
+  }
+
+  method : public : GetName() ~ String {
+    return "deaf";
+  }
+
+  method : public : GetLastError() ~ String {
+    return Nil;
+  }
+
+  method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+    Thread->Sleep(@millis);
+    return @reply;
+  }
+}
+
+# says yes, after a cancel arrived (or time passed) while it was deciding
+class SlowYes implements AgentApprover {
+  @token : AgentCancel;
+  @millis : Int;
+  @asked : Int;
+
+  New(token : AgentCancel, millis : Int) {
+    @token := token;
+    @millis := millis;
+  }
+
+  method : public : GetAsked() ~ Int {
+    return @asked;
+  }
+
+  method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+    @asked += 1;
+    if(@millis > 0) {
+      Thread->Sleep(@millis);
+    };
+
+    if(@token <> Nil) {
+      @token->Cancel("stopped while the approver was deciding");
+    };
+    return true;
+  }
+}
+
+class RaisingApprover implements AgentApprover {
+  New() {
+  }
+
+  method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+    Runtime->Raise(Error->New("the approver raised"));
+    return false;
+  }
+}
+
+# raises out of the first reply it hears, or out of the first tool result
+class RaisingObserver implements AgentObserver {
+  @on_reply : Bool;
+  @armed : Bool;
+
+  New(on_reply : Bool) {
+    @on_reply := on_reply;
+    @armed := true;
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+    if(@on_reply & @armed) {
+      @armed := false;
+      Runtime->Raise(Error->New("the observer raised"));
+    };
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+    if(<>@on_reply & @armed) {
+      @armed := false;
+      Runtime->Raise(Error->New("the observer raised"));
+    };
   }
 }
 
@@ -681,6 +770,204 @@ class AgentControlTest {
     Check("a cancel cuts a retry wait short", Same(result4->GetStopReason(), "cancelled") & Millis(timer) < 3000 & flaky4->GetAsked() = 1);
   }
 
+  # ---- a reply that arrives after the cancel or the deadline
+
+  function : TestLateReply() ~ Nil {
+    "-- a reply that arrives after the cancel or the deadline"->PrintLine();
+    # a backend that cannot be interrupted, called on the loop's thread: its final answer is kept
+    token := AgentCancel->New();
+    agent := Agent->New(DeafBackend->New(400, AgentReply->Say("a late answer")), Nil);
+    agent->SetCancel(token);
+    canceller := Canceller->New(token, 50);
+    canceller->Execute(Nil);
+    result := agent->Run("go");
+    canceller->Join();
+    Check("cancel: a final answer already paid for is kept", token->IsCancelled() & result->IsCompleted() & Same(result->GetText(), "a late answer"));
+
+    agent2 := Agent->New(DeafBackend->New(400, AgentReply->Say("a late answer")), Nil);
+    agent2->SetBudget(AgentBudget->New()->SetMaxWallMs(50));
+    result2 := agent2->Run("go");
+    Check("deadline: a final answer already paid for is kept", result2->IsCompleted() & Same(result2->GetText(), "a late answer") & result2->GetElapsedMs() >= 300);
+
+    # a late reply that asks for tools is not acted on
+    FastHandler->Reset();
+    token3 := AgentCancel->New();
+    agent3 := Agent->New(DeafBackend->New(400, Ask("late", "fast")), Registry(Tool("fast", FastHandler->New())));
+    agent3->SetCancel(token3);
+    canceller3 := Canceller->New(token3, 50);
+    canceller3->Execute(Nil);
+    result3 := agent3->Run("go");
+    canceller3->Join();
+    Check("cancel: a late reply's tools do not run", Same(result3->GetStopReason(), "cancelled") & FastHandler->GetCount() = 0 & Same(result3->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "skipped"));
+
+    agent4 := Agent->New(DeafBackend->New(400, Ask("late", "fast")), Registry(Tool("fast", FastHandler->New())));
+    agent4->SetBudget(AgentBudget->New()->SetMaxWallMs(50));
+    result4 := agent4->Run("go");
+    Check("deadline: a late reply's tools do not run", Same(result4->GetStopReason(), "deadline") & FastHandler->GetCount() = 0);
+
+    # the strict behavior is the bounded model call: the late answer is dropped
+    token5 := AgentCancel->New();
+    agent5 := Agent->New(DeafBackend->New(700, AgentReply->Say("a late answer")), Nil);
+    agent5->SetCancel(token5);
+    agent5->SetBoundedModelCalls(true);
+    canceller5 := Canceller->New(token5, 50);
+    canceller5->Execute(Nil);
+    result5 := agent5->Run("go");
+    canceller5->Join();
+    Check("cancel: a bounded model call drops the late answer", Same(result5->GetStopReason(), "cancelled") & Same(result5->GetText(), ""));
+    Thread->Sleep(900);
+  }
+
+  # ---- a cancel while the approver is deciding
+
+  function : TestCancelDuringApproval() ~ Nil {
+    "-- cancel and deadline while an approver is deciding"->PrintLine();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("a", "fast", Json("{}")));
+    calls->AddBack(AgentToolCall->New("b", "fast", Json("{}")));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->AskAll(calls));
+    script->AddBack(AgentReply->Say("never"));
+    backend := ScriptedBackend->New(script);
+    FastHandler->Reset();
+    agent := Agent->New(backend, Registry(Tool("fast", FastHandler->New())));
+    token := AgentCancel->New();
+    approver := SlowYes->New(token, 0);
+    agent->SetCancel(token);
+    agent->SetApproveAll(true);
+    agent->SetApprover(approver);
+    buffer := AgentTraceBuffer->New();
+    agent->SetTrace(buffer);
+    result := agent->Run("go");
+    results := result->GetSteps()->Get(0)->GetResults();
+    Check("cancel: the approved tool does not start", FastHandler->GetCount() = 0 & Same(result->GetStopReason(), "cancelled"));
+    Check("cancel: the call is answered as skipped, and so is the next", results->Size() = 2 & Same(results->Get(0)->GetStatus(), "skipped") & Same(results->Get(1)->GetStatus(), "skipped") & Has(results->Get(0)->GetContent(), "cancelled"));
+    Check("cancel: the approver was asked once, the model once", approver->GetAsked() = 1 & backend->GetAskedCount() = 1);
+    Check("cancel: the conversation stays valid", agent->GetConversation()->Size() = 4);
+    Check("cancel: no tool was started in the trace", buffer->Count("tool_start") = 0 & Same(buffer->First("run_end")->Get("tool_calls"), "0"));
+
+    # the deadline passes while the approver is deciding
+    FastHandler->Reset();
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(Ask("d1", "fast"));
+    script2->AddBack(AgentReply->Say("never"));
+    agent2 := Agent->New(ScriptedBackend->New(script2), Registry(Tool("fast", FastHandler->New())));
+    agent2->SetBudget(AgentBudget->New()->SetMaxWallMs(100));
+    agent2->SetApproveAll(true);
+    agent2->SetApprover(SlowYes->New(Nil, 400));
+    result2 := agent2->Run("go");
+    Check("deadline: the approved tool does not start", FastHandler->GetCount() = 0 & Same(result2->GetStopReason(), "deadline") & Same(result2->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "skipped"));
+
+    # a call skipped this way is not a tool call for the budget
+    FastHandler->Reset();
+    agent3 := Agent->New(ScriptedBackend->New(Script3()), Registry(Tool("fast", FastHandler->New())));
+    agent3->SetApproveAll(true);
+    agent3->SetApprover(SlowYes->New(Nil, 0));
+    agent3->SetBudget(AgentBudget->New()->SetMaxToolCalls(2));
+    result3 := agent3->Run("go");
+    Check("an approver that says yes in time changes nothing", Same(result3->GetStopReason(), "budget_tool_calls") & FastHandler->GetCount() = 2);
+  }
+
+  # ---- an observer or an approver that raises
+
+  function : TestRaisingCallbacks() ~ Nil {
+    "-- an observer or approver that raises"->PrintLine();
+    backend := ScriptedBackend->New(Script3());
+    FastHandler->Reset();
+    agent := Agent->New(backend, Registry(Tool("fast", FastHandler->New())));
+    agent->SetObserver(RaisingObserver->New(true));
+    message : String;
+    try {
+      agent->Run("go");
+    }
+    on(e : Error) {
+      message := e->GetMessage();
+    };
+    entries := agent->GetConversation()->GetEntries();
+    Check("OnReply: the error reaches the caller", Same(message, "the observer raised") & FastHandler->GetCount() = 0);
+    Check("OnReply: the call of the reply has an answer", entries->Size() = 3 & Same(entries->Get(2)->GetRole(), "tool") & entries->Get(2)->IsError() & Same(entries->Get(2)->GetCallId(), "c1"));
+    again := agent->Run("go on");
+    Check("OnReply: the agent runs again on a valid conversation", again->IsCompleted() & backend->GetAskedCount() = 4);
+
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("a", "fast", Json("{}")));
+    calls->AddBack(AgentToolCall->New("b", "fast", Json("{}")));
+    calls->AddBack(AgentToolCall->New("c", "fast", Json("{}")));
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(AgentReply->AskAll(calls));
+    script2->AddBack(AgentReply->Say("carried on"));
+    FastHandler->Reset();
+    agent2 := Agent->New(ScriptedBackend->New(script2), Registry(Tool("fast", FastHandler->New())));
+    agent2->SetObserver(RaisingObserver->New(false));
+    message2 : String;
+    try {
+      agent2->Run("go");
+    }
+    on(e : Error) {
+      message2 := e->GetMessage();
+    };
+    entries2 := agent2->GetConversation()->GetEntries();
+    Check("OnToolResult: the error reaches the caller after one call", Same(message2, "the observer raised") & FastHandler->GetCount() = 1);
+    Check("OnToolResult: the call that ran keeps its result, the others are answered", entries2->Size() = 5 & <>entries2->Get(2)->IsError() & entries2->Get(3)->IsError() & entries2->Get(4)->IsError() & Same(entries2->Get(4)->GetCallId(), "c"));
+    again2 := agent2->Run("go on");
+    Check("OnToolResult: the agent runs again", again2->IsCompleted() & Same(again2->GetText(), "carried on"));
+
+    script3 := Vector->New()<AgentReply>;
+    script3->AddBack(Ask("p1", "fast"));
+    script3->AddBack(AgentReply->Say("carried on"));
+    FastHandler->Reset();
+    agent3 := Agent->New(ScriptedBackend->New(script3), Registry(Tool("fast", FastHandler->New())));
+    agent3->SetApproveAll(true);
+    agent3->SetApprover(RaisingApprover->New());
+    message3 : String;
+    try {
+      agent3->Run("go");
+    }
+    on(e : Error) {
+      message3 := e->GetMessage();
+    };
+    Check("approver: the error reaches the caller and the call has an answer", Same(message3, "the approver raised") & FastHandler->GetCount() = 0 & agent3->GetConversation()->Size() = 3);
+  }
+
+  # ---- workers are joined
+
+  function : TestWorkersJoined() ~ Nil {
+    "-- workers are joined"->PrintLine();
+    # many bounded calls: each worker is joined as its result is taken (a thread that is never joined
+    # keeps its stack and its handle); nothing here can see the join, only that it does no harm
+    script := Vector->New()<AgentReply>;
+    for(i := 0; i < 40; i += 1;) {
+      calls := Vector->New()<AgentToolCall>;
+      for(j := 0; j < 10; j += 1;) {
+        calls->AddBack(AgentToolCall->New("w{$i}_{$j}", "fast", Json("{}")));
+      };
+      script->AddBack(AgentReply->AskAll(calls));
+    };
+    script->AddBack(AgentReply->Say("all joined"));
+    FastHandler->Reset();
+    agent := Agent->New(ScriptedBackend->New(script), Registry(Tool("fast", FastHandler->New())));
+    agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    agent->SetBoundedModelCalls(true);
+    agent->SetMaxSteps(50);
+    result := agent->Run("go");
+    Check("400 bounded tool calls and 41 bounded model calls complete", result->IsCompleted() & FastHandler->GetCount() = 400 & result->GetModelCalls() = 41 & Same(result->GetText(), "all joined"));
+
+    # an abandoned worker that finishes later is joined by the agent's next run
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(Ask("l1", "late"));
+    script2->AddBack(AgentReply->Say("moved on"));
+    script2->AddBack(Ask("f1", "fast"));
+    script2->AddBack(AgentReply->Say("and again"));
+    registry := ToolRegistry->New();
+    registry->Add(Tool("late", SleepHandler->New(500, "late"))->SetTimeout(100)->SetMode(AgentTool->Mode->BOUNDED_THREAD));
+    registry->Add(Tool("fast", FastHandler->New())->SetMode(AgentTool->Mode->BOUNDED_THREAD));
+    agent2 := Agent->New(ScriptedBackend->New(script2), registry);
+    first := agent2->Run("go");
+    Thread->Sleep(900);
+    second := agent2->Run("go on");
+    Check("a run after an abandoned worker finished completes", first->IsCompleted() & second->IsCompleted() & Same(second->GetText(), "and again") & Same(second->GetSteps()->Get(0)->GetResults()->Get(0)->GetContent(), "fast"));
+  }
+
   function : Main(args : String[]) ~ Nil {
     @failures := 0;
     TestToken();
@@ -693,6 +980,10 @@ class AgentControlTest {
     TestAbandonedWorker();
     TestTrace();
     TestRetries();
+    TestLateReply();
+    TestCancelDuringApproval();
+    TestRaisingCallbacks();
+    TestWorkersJoined();
     Thread->Sleep(1700);
 
     if(@failures > 0) {
