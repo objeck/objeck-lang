@@ -1,0 +1,226 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+Tagged functions whose types and defaults the compiler has to write back as source, and whose types are declared
+after the class that takes them (docs/design/MCP_FIRST_CLASS.md). Each case failed to compile, or passed the wrong
+value, before the fix it guards:
+
+- an enum declared in a class, taken by a tagged function of another class as 'Palette->Color': the compiler holds
+  the name as 'Palette#Color', and written back that way the '#' started a comment in the generated function
+  ("Expected '{', found end of file"); also as a field of a record;
+- a String default with escapes: the literal was escaped a second time, so the tool call got a backslash and an 'n'
+  where the function called directly gets a newline; a default with a '$' got a backslash before it;
+- a record and an enum declared BELOW the class whose tagged function takes them: the tools were derived when the
+  class closed, before the later declarations had been read ("the type 'Point' cannot be a tool parameter").
+
+The oracle for a default is the function itself, called with no argument.
+~#
+use API.MCP, Data.JSON, Collection;
+
+bundle Scope {
+	class Palette {
+		enum Color {
+			RED,
+			GREEN,
+			BLUE
+		}
+
+		function : Name(color : Palette->Color) ~ String {
+			if(color = Palette->Color->GREEN) {
+				return "green";
+			};
+			if(color = Palette->Color->BLUE) {
+				return "blue";
+			};
+			return "red";
+		}
+	}
+
+	class Tools {
+		#~
+		Name a color.
+		@tool
+		@param color the color
+		~#
+		function : Paint(color : Palette->Color) ~ String {
+			return Palette->Name(color);
+		}
+
+		#~
+		Describe a brush.
+		@tool
+		~#
+		function : Stroke(brush : Brush) ~ String {
+			name := Palette->Name(brush->GetColor());
+			width := brush->GetWidth();
+			return "{$name}/{$width}";
+		}
+
+		#~
+		Sum a point, in a mode.
+		@tool
+		~#
+		function : Sum(p : Point, mode : Mode) ~ Int {
+			if(mode = Mode->DOUBLE) {
+				return (p->GetX() + p->GetY()) * 2;
+			};
+			return p->GetX() + p->GetY();
+		}
+
+		#~
+		Count points.
+		@tool
+		~#
+		function : Count(points : Point[]) ~ Int {
+			return points->Size();
+		}
+
+		#~
+		@tool
+		~#
+		function : Newline(text : String := "a\nb") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Quote(text : String := "say \"hi\"") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Backslash(text : String := "c:\\dir\\file") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Dollar(text : String := "cost $5 {x}") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Tab(text : String := "a\tb\rc") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Unicode(text : String := "\u00e9t\u00e9") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Raw(text : String := $"a\nb") ~ String {
+			return text;
+		}
+
+		#~
+		@tool
+		~#
+		function : Several(a : String := "x\ty", n : Int := 7, b : String := "p\"q", c : Char := 'z') ~ String {
+			return "{$a}|{$n}|{$b}|{$c}";
+		}
+
+		@pass : static : Int;
+		@fail : static : Int;
+
+		function : Check(ok : Bool, what : String) ~ Nil {
+			if(ok) {
+				@pass += 1;
+			}
+			else {
+				@fail += 1;
+				"  FAIL: {$what}"->PrintLine();
+			};
+		}
+
+		function : Find(tools : Vector<McpTool>, name : String) ~ McpTool {
+			each(tool in tools) {
+				if(tool->GetName()->Equals(name)) {
+					return tool;
+				};
+			};
+			return Nil;
+		}
+
+		function : Call(client : McpClient, name : String, args : String) ~ String {
+			result := client->CallTool(name, JsonParser->TextToElement(args));
+			if(result = Nil | result->IsError()) {
+				return "<error>";
+			};
+			return result->GetText();
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			server := McpService->New("scope-test", "1.0");
+			Tools->McpTools(server);
+			client := McpClient->InProcess(server);
+			Check(client->Initialize("scope-test", "1.0"), "the client initializes");
+			tools := client->ListTools();
+			Check(tools->Size() = 12, "12 tools");
+
+			# ---- an enum declared in another class ----
+			paint := Find(tools, "paint");
+			Check(paint <> Nil & McpToolSpec->Same(paint->GetInputSchema(), JsonParser->TextToElement(
+				"{\"type\":\"object\",\"properties\":{\"color\":{\"type\":\"string\",\"enum\":[\"RED\",\"GREEN\",\"BLUE\"],\"description\":\"the color\"}},\"required\":[\"color\"]}")),
+				"the schema of a 'Palette->Color' parameter lists the enum's items");
+			Check(Call(client, "paint", "{\"color\":\"RED\"}")->Equals("red"), "the first item of an enum declared in another class");
+			Check(Call(client, "paint", "{\"color\":\"GREEN\"}")->Equals("green"), "the second item");
+			Check(Call(client, "paint", "{\"color\":\"BLUE\"}")->Equals("blue"), "the third item");
+			Check(Call(client, "stroke", "{\"brush\":{\"color\":\"GREEN\",\"width\":3}}")->Equals("green/3"), "a record with a field of that enum");
+
+			# ---- a record and an enum declared below this class ----
+			Check(Call(client, "sum", "{\"p\":{\"x\":3,\"y\":4},\"mode\":\"PLAIN\"}")->Equals("7"), "a record and an enum declared below the class");
+			Check(Call(client, "sum", "{\"p\":{\"x\":3,\"y\":4},\"mode\":\"DOUBLE\"}")->Equals("14"), "the second item of that enum");
+			Check(Call(client, "count", "{\"points\":[{\"x\":1,\"y\":2},{\"x\":3,\"y\":4}]}")->Equals("2"), "an array of a record declared below the class");
+
+			# ---- String defaults: the tool called with no argument gets what the function called with none gets ----
+			Check(Tools->Newline()->Size() = 3 & Tools->Newline()->Get(1) = '\n', "the oracle: \"a\\nb\" is three characters");
+			Check(Call(client, "newline", "{}")->Equals(Tools->Newline()), "a default with a newline escape");
+			Check(Call(client, "quote", "{}")->Equals(Tools->Quote()), "a default with escaped quotes");
+			Check(Call(client, "backslash", "{}")->Equals(Tools->Backslash()), "a default with escaped backslashes");
+			Check(Call(client, "dollar", "{}")->Equals(Tools->Dollar()), "a default with a '$' and braces");
+			Check(Call(client, "tab", "{}")->Equals(Tools->Tab()), "a default with tab and carriage return escapes");
+			Check(Call(client, "unicode", "{}")->Equals(Tools->Unicode()), "a default with unicode escapes");
+			Check(Tools->Raw()->Size() = 4, "the oracle: a '$' literal keeps its backslash");
+			Check(Call(client, "raw", "{}")->Equals(Tools->Raw()), "a default that is a '$' literal");
+			Check(Call(client, "several", "{}")->Equals(Tools->Several()), "several defaults in one function");
+			Check(Call(client, "several", "{\"n\":9}")->Equals(Tools->Several("x\ty", 9)), "one given, the rest defaulted");
+			Check(Call(client, "newline", "{\"text\":\"given\"}")->Equals("given"), "a given argument is not the default");
+
+			pass := @pass;
+			fail := @fail;
+			if(fail = 0) {
+				"PASS: MCP tool tag scopes and defaults, {$pass} checks"->PrintLine();
+			}
+			else {
+				"FAIL: MCP tool tag scopes and defaults, {$fail} of {$pass + fail} checks failed"->PrintLine();
+				Runtime->Exit(1);
+			};
+		}
+	}
+
+	record Brush {
+		@color : Palette->Color;
+		@width : Int;
+	}
+
+	record Point {
+		@x : Int;
+		@y : Int;
+	}
+
+	enum Mode {
+		PLAIN,
+		DOUBLE
+	}
+}

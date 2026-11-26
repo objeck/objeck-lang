@@ -103,6 +103,14 @@ struct McpCandidate {
   ToolDoc doc;
 };
 
+// a class with tagged functions, waiting for every file to be read
+struct McpPending {
+  Class* klass;
+  ParsedBundle* bundle;
+  std::vector<McpCandidate> tools;
+  bool uses_mcp;   // its file has 'use API.MCP'
+};
+
 
 class Parser {
   bool alt_syntax;
@@ -112,6 +120,9 @@ class Parser {
   // the 'use' names of the file being parsed, while ParseBundle reads it (null otherwise)
   std::vector<std::wstring>* current_lib_uses = nullptr;
   Method* current_method;
+  // classes with '@tool' functions, derived when every file has been read; and the files that did not parse
+  std::vector<McpPending> mcp_pending;
+  std::set<std::wstring> mcp_broken_files;
   // the method being parsed: its type parameters and their bounds, as they erase (#1242)
   std::map<std::wstring, std::wstring> method_generic_bounds;
   Method* prev_method;
@@ -300,7 +311,8 @@ class Parser {
   Class* ParseClass(const std::wstring& bundle_id, int depth);
   void GenerateRecordMethods(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
-  void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, int depth);
+  void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
+  void GeneratePendingMcpTools();
   void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth);
   bool McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth);
   Enum* McpFindEnum(const std::wstring& name);
