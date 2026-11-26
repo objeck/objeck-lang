@@ -1,0 +1,84 @@
+#~
+# compile: obc -src mcp_32.obs -lib mcp,json,net,net_server,cipher,misc,gen_collect
+# run:     obr mcp_32.obe
+#
+# MCP, the Model Context Protocol, is how an AI assistant such as Claude
+# discovers and calls tools that live in another program. A server offers
+# named tools, each with a JSON Schema for its arguments; a client lists them
+# and calls them.
+#
+# This program is both ends in one process. McpService is the server and holds
+# two tools; McpClient->InProcess connects a client to it with no socket, so
+# nothing leaves the program and the output never changes. To serve the same
+# tools to a real client, call ServeStdio() or ServeHttp(port) on the server
+# instead (the source tree's programs/examples/mcp_server_demo.obs does).
+#
+# A request the server refuses (an unknown tool) comes back as Nil with a
+# reason; a tool that ran and failed comes back as a result whose IsError() is
+# true, so a model can read the message and try again.
+#
+# output:
+#   server: tour 1.0.0, protocol 2025-11-25
+#   tool: add - Add two integers
+#   tool: shout - Upper-case some text
+#   add(2, 3) = 5
+#   add(2) failed: Invalid arguments for add: missing required argument 'b'
+#   shout("objeck") = OBJECK
+#   no such tool: Unknown tool: nope (code -32602)
+~#
+
+use API.MCP;
+use Collection;
+
+class McpTour {
+	function : Main(args : String[]) ~ Nil {
+		# the server: a name, a version, and two tools
+		server := McpService->New("tour", "1.0.0");
+		server->AddTool("add", "Add two integers",
+			"{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}",
+			Func2Ref->New(McpTour->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("shout", "Upper-case some text",
+			"{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}",
+			Func2Ref->New(McpTour->Shout(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		# the client: shake hands, then list and call
+		client := McpClient->InProcess(server);
+		if(<>client->Initialize("tour-client", "1.0")) {
+			"could not connect: {$client->GetError()}"->PrintLine();
+			return;
+		};
+		"server: {$client->GetServerName()} {$client->GetServerVersion()}, protocol {$client->GetProtocolVersion()}"->PrintLine();
+
+		tools := client->ListTools();
+		each(tool in tools) {
+			"tool: {$tool->GetName()} - {$tool->GetDescription()}"->PrintLine();
+		};
+
+		result := client->CallTool("add", "{\"a\":2,\"b\":3}");
+		"add(2, 3) = {$result->GetText()}"->PrintLine();
+
+		# a tool that ran and failed: a result with IsError()
+		bad := client->CallTool("add", "{\"a\":2}");
+		if(bad->IsError()) {
+			"add(2) failed: {$bad->GetText()}"->PrintLine();
+		};
+
+		result := client->CallTool("shout", "{\"text\":\"objeck\"}");
+		"shout(\"objeck\") = {$result->GetText()}"->PrintLine();
+
+		# a request the server refused: Nil, with a reason and a JSON-RPC code
+		if(client->CallTool("nope", "{}") = Nil) {
+			"no such tool: {$client->GetError()} (code {$client->GetErrorCode()})"->PrintLine();
+		};
+		client->Close();
+	}
+
+	function : Add(call : McpCall) ~ McpToolResult {
+		sum := call->GetInt("a", 0) + call->GetInt("b", 0);
+		return McpToolResult->Text("{$sum}");
+	}
+
+	function : Shout(call : McpCall) ~ McpToolResult {
+		return McpToolResult->Text(call->GetString("text")->ToUpper());
+	}
+}
