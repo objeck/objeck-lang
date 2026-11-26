@@ -1,0 +1,27 @@
+#~
+# compile: obc -src sugar_classes.obs
+# run:     obr sugar_classes.obe
+#
+# Less boilerplate in a class: accessors written by a modifier, and constructor
+# parameters that fill the fields they are named for.
+~#
+class Usage {
+	@input_tokens : get : Int;
+	@model : get set : String;
+	@is_error : get set : Bool;
+
+	New(@input_tokens : Int, @model : String, @is_error : Bool := false) {}
+
+	function : Main(args : String[]) ~ Nil {
+		u := Usage->New(120, "small");
+		"{$(u->GetModel())}: {$(u->GetInputTokens())} tokens, error={$(u->IsError())}"->PrintLine();
+
+		u->SetModel("large");
+		u->SetError(true);
+		"{$(u->GetModel())}: error={$(u->IsError())}"->PrintLine();
+
+		# named arguments reach the promoted parameters
+		v := Usage->New(is_error: true, model: "tiny", input_tokens: 3);
+		"{$(v->GetModel())}: {$(v->GetInputTokens())} tokens, error={$(v->IsError())}"->PrintLine();
+	}
+}
