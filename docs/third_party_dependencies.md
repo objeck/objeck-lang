@@ -24,6 +24,22 @@ the three build workflows.
 | zlib | vendored (`core/lib/zlib`, see `windows_vcpkg_msbuild` for why the vcpkg one must not shadow it) | vendored | vendored | compression traps |
 | VC runtime | `vcruntime140*.dll`, `msvcp140*.dll`, `concrt140.dll` copied from the toolset (`deploy_windows.cmd`) | — | — | every Windows binary |
 
+## mbedTLS and threads
+
+mbedTLS protects the state its connections share (the PSA key store that TLS 1.3 uses, a
+server's private key and random generator) only when it is built with
+`MBEDTLS_THREADING_C`. The Debian and Ubuntu packages and the macOS build
+(`core/lib/openssl/macos/mbedtls_config.h`) are; vcpkg's default `mbedtls` port, which the
+Windows builds link, is not (its `pthreads` feature turns it on, at the price of shipping
+pthreads4w). Objeck runs TLS connections on many threads, so the VM checks the macro it
+was compiled against: without it, every call into mbedTLS is made holding one
+process-wide lock (`TlsLibraryLock` in `core/vm/common.h`), let go while a call waits on
+the network. That is correct with either kind of library, and on Windows it means the
+cryptography of concurrent TLS connections runs one at a time. Linking a Windows mbedTLS
+built with threading (`MBEDTLS_THREADING_ALT` over SRW locks needs no extra DLL) would
+lift that with no change to the VM beyond registering the lock functions;
+`programs/regression/tls_concurrent_connections.obs` is the test either way.
+
 ## Checking what a build actually used
 
 - **Windows**: in the CI log's "Install Windows dependencies" step, `vcpkg install` names each port with its version (`mbedtls:x64-windows@<version>`). OpenCV x64's version is `$opencvVersion` in the workflows (and the `4120` in its DLL name); ONNX Runtime x64's is the NuGet version in `core/lib/onnx/vs/packages.config`. The vendored DLLs, SDL2 and the ARM64 QNN ONNX Runtime (1.23.0), carry theirs in their file-version resources (`(Get-Item SDL2.dll).VersionInfo`).

@@ -1066,6 +1066,9 @@ REM copy docs (skip for ARM64 cross-compilation - can't run ARM64 binaries on x6
 if [%1] == [x64] (
 	call "%~dp0code_doc64.cmd" %1 deploy
 	@if errorlevel 1 call "%~dp0ui.cmd" :ui_warn "API docs step exited with an error - the deploy continues, as it always has"
+	REM code_doc64.cmd cd's into the tree and leaves it there when it stops early, which turned a doc-comment
+	REM error into "missing license text" from the verify step below: always come back.
+	cd /d "%~dp0"
 	rmdir /s /q %1
 ) else (
 	REM docs\api.zip is not committed: release-build.yml downloads it from the api-docs

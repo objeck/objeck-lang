@@ -108,7 +108,15 @@ class ServerListenError {
 		Check("restart: the server listens", server->Listen(4));
 
 		client := TCPSocket->New("127.0.0.1", port);
-		connection := server->Accept();
+		# Accept only once a client is in: without one it would wait forever, and
+		# the test would end as a timeout rather than say the connect failed
+		connection : TCPSocket;
+		if(client->IsOpen()) {
+			connection := server->Accept();
+		}
+		else {
+			"  restart: the connect failed: '{$(TCPSocket->GetLastError())}'"->ErrorLine();
+		};
 		Check("restart: a client connects", client->IsOpen() & connection <> Nil);
 		if(connection <> Nil) {
 			connection->WriteString("bye");
