@@ -1510,7 +1510,8 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
     GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
   }
 
-  if(!mcp_tools.empty()) {
+  // a function that did not parse (a syntax error above) has no types to derive from: the syntax error is the answer
+  if(!mcp_tools.empty() && !diagnostics.HasErrors()) {
     GenerateMcpTools(klass, mcp_tools, depth + 1);
   }
 

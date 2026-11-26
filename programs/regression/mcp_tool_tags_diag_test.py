@@ -72,6 +72,9 @@ BAD = [
      ["already has a function named 'McpTools'"], 6),
     ("an unsupported class in a record field", "class Thing {\n\tNew() {}\n}\nrecord Box {\n\t@t : Thing;\n}\nclass T {\n#~\n@tool\n~#\nfunction : F(b : Box) ~ Int { return 1; }\n}\n",
      ["field 't' of the record 'Box'"], 11),
+    # found by the scanner fuzzer: the function does not parse, so there are no types to derive from; the syntax error is the answer (this crashed obc)
+    ("a tagged function that does not parse", "use API.MCP;\nclass T {\n#~\n@tool\n~#\nfunction : F(p\n#~ @tool ~#\nath : String) ~ String {\n  return \"x\";\n}\n}\n",
+     ["Expected ':'"], 8),
 ]
 
 OK = [
