@@ -3439,6 +3439,45 @@ void JitArm64::EmitJitSafePoint() {
   code[(size_t)cbz_index] |= ((uint32_t)(imm19 & 0x7FFFF)) << 5;
 }
 
+// A bounds guard's cold stub; the twin of JitAmd64::EmitBoundsStubs, which
+// has the reasoning. The guard's two b.cond used to branch to the shared
+// -2/-3 handlers in the epilogue, which know nothing about the access, so a
+// compiled fault said "Index out of bounds" where the interpreter says "Index
+// out of bounds: 5,2". Each now branches here: the index and element count are
+// still in the two registers the compare used; they go to
+// StackInterpreter::JitBoundsFault, which records them and returns -2
+// (negative index) or -3, and the stub branches to the teardown with the
+// status in X0, as a bridge call's status does (epilog_index + 10, see Epilog).
+// Nothing on the in-bounds path changes: the compare and the two b.cond words
+// are the ones they were, only their targets differ, and the stub sits after
+// the epilogue.
+//
+// SP is fixed for the method body on ARM64 and 16-byte aligned, as at the
+// safepoint call, so the call needs no alignment fix; the frame is abandoned,
+// so every register is free. Written following the AMD64 stub; NOT built or
+// run on ARM64 by the author.
+void JitArm64::EmitBoundsStubs() {
+  for(const BoundsSite& site : bounds_sites) {
+    const long stub_index = code_index;
+    PatchBranch(site.less_index, stub_index);
+    PatchBranch(site.greater_index, stub_index);
+
+    // index -> X0, size -> X1 through X9/X10: either may already sit in the
+    // other's argument register
+    move_reg_reg(site.index_reg, X9);
+    move_reg_reg(site.size_reg, X10);
+    move_reg_reg(X9, X0);
+    move_reg_reg(X10, X1);
+    move_imm_reg((size_t)Runtime::StackInterpreter::JitBoundsFault, X10);
+    call_reg(X10);
+
+    // X0 = the status; to the teardown, which leaves it alone
+    const long branch_index = code_index;
+    AddMachineCode(B_INSTR);
+    PatchBranch(branch_index, epilog_index + 10);
+  }
+}
+
 void JitArm64::ProcessReturn(long params) {
   // A params count above the modeled working stack means the instruction's
   // operand over-counts (the TRAP *_ARY_LEN emissions stamped 5 for 4 pushed
@@ -7122,6 +7161,9 @@ bool JitArm64::Compile(StackMethod* cm)
     // pinned locals first; the stubs sit after the method body
     EmitPinExitStubs();
 
+    // the bounds guards' cold stubs (after the epilogue, so epilog_index is set)
+    EmitBoundsStubs();
+
     // phase 2: a method that never took D8-D15 need not save and restore
     // them. The save block and every restore block (one per RTRN) become a
     // branch over their own eight words; nothing jumps into either.
@@ -7215,18 +7257,6 @@ bool JitArm64::Compile(StackMethod* cm)
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const long index = deref_offsets[i];
       const long offset = epilog_index - index + 1;
-      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
-    }
-    
-    for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
-      const long index = bounds_less_offsets[i];
-      const long offset = epilog_index - index + 3;
-      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
-    }
-
-    for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
-      const long index = bounds_greater_offsets[i];
-      const long offset = epilog_index - index + 5;
       code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     

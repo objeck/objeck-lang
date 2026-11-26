@@ -439,7 +439,7 @@ void Runtime::Debugger::GetStepInTargets(std::vector<StepInTargetInfo>& targets)
     info.label = PrintMethod(callee);
     info.line = cur_line_num;
     step_in_calls.push_back(call);
-    targets.push_back(info);
+    targets.push_back(std::move(info));
   }
 }
 
@@ -496,7 +496,7 @@ void Runtime::Debugger::GetGotoTargets(const std::wstring& file_name, int line, 
       site.ip = i;
       site.line = line;
       site.label = PrintMethod(method) + L", line " + std::to_wstring(line);
-      goto_sites.push_back(site);
+      goto_sites.push_back(std::move(site));
     }
   };
 
@@ -517,7 +517,7 @@ void Runtime::Debugger::GetGotoTargets(const std::wstring& file_name, int line, 
     info.id = (int)i;
     info.label = goto_sites[i].label;
     info.line = goto_sites[i].line;
-    targets.push_back(info);
+    targets.push_back(std::move(info));
   }
 }
 

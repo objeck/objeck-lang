@@ -875,21 +875,24 @@ class Library {
 
   inline int32_t ReadInt() {
     Need(sizeof(int32_t));
-    int32_t value = *reinterpret_cast<int32_t*>(buffer);
+    int32_t value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
 
   inline int64_t ReadInt64() {
     Need(sizeof(int64_t));
-    int64_t value = *reinterpret_cast<int64_t*>(buffer);
+    int64_t value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
 
   inline uint32_t ReadUnsigned() {
     Need(sizeof(uint32_t));
-    uint32_t value = *reinterpret_cast<uint32_t*>(buffer);
+    uint32_t value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
@@ -951,7 +954,8 @@ class Library {
 
   double ReadDouble() {
     Need(sizeof(FLOAT_VALUE));
-    FLOAT_VALUE value = *reinterpret_cast<FLOAT_VALUE*>(buffer);
+    FLOAT_VALUE value;
+    memcpy(&value, buffer, sizeof(value));
     buffer += sizeof(value);
     return value;
   }
