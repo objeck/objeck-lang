@@ -123,17 +123,20 @@ class CodeFormatter {
 					label Token->Type->CLASS_ID {
 						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("class");
+						@skip_space := false;
 					}
 
 					label Token->Type->FUNCTION_ID {
 						VerticalSpace(@prev_token, tab_space, @ident_space);
 
 						AppendBuffer("function");
+						@skip_space := false;
 					}
 
 					label Token->Type->METHOD_ID {
 						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("method");
+						@skip_space := false;
 					}
 
 					label Token->Type->PUBLIC_ID {
@@ -184,7 +187,9 @@ class CodeFormatter {
 					}
 
 					label Token->Type->ALIAS_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("alias");
+						@skip_space := false;
 					}
 
 					label Token->Type->LEAVING_ID {
@@ -380,11 +385,15 @@ class CodeFormatter {
 					}
 
 					label Token->Type->BUNDLE_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("bundle");
+						@skip_space := false;
 					}
 
 					label Token->Type->INTERFACE_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("interface");
+						@skip_space := false;
 					}
 
 					label Token->Type->IMPLEMENTS_ID {
@@ -392,12 +401,16 @@ class CodeFormatter {
 					}
 
 					label Token->Type->ENUM_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("enum");
+						@skip_space := false;
 					}
 
 					label Token->Type->CONSTS_ID {
 						in_consts := true;
+						VerticalSpace(@prev_token, tab_space, @ident_space);
 						AppendBuffer("consts");
+						@skip_space := false;
 					}
 
 					label Token->Type->REVERSE_ID {
@@ -754,6 +767,10 @@ class CodeFormatter {
 		return indent;
 	}
 
+	# A declaration that follows a '}' starts on a line of its own, after a blank
+	# one. @skip_space is set for the caller, which clears it once the keyword is
+	# written: left set, it dropped the space AFTER the keyword, and a second class
+	# in a file came back as 'classB', which does not compile.
 	method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
 		if(@prev_token->GetType() = Token->Type->CCBRACE) {
 			AppendBuffer("\n\n");
