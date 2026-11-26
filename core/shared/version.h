@@ -51,5 +51,5 @@
 #define MAGIC_NUM_EXE 0xffbf
 #define MAGIC_NUM_LIB 0xffba
 
-#define VER_NUM 2026113
-#define VERSION_STRING L"2026.11.3"
+#define VER_NUM 2026114
+#define VERSION_STRING L"2026.11.4"
