@@ -8,12 +8,8 @@ class CpuProbe {
 		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
 		slurm_cpus := Runtime->GetEnvironmentVariable("SLURM_CPUS_PER_TASK");
 		override := Runtime->GetEnvironmentVariable("OBJECK_CPU_COUNT");
-		if(slurm_cpus = Nil) {
-			slurm_cpus := "";
-		};
-		if(override = Nil) {
-			override := "";
-		};
+		slurm_cpus := slurm_cpus ?? "";
+		override := override ?? "";
 		"RESULT usable_cpus={$cpus} slurm_cpus_per_task={$slurm_cpus} objeck_cpu_count={$override}"->PrintLine();
 	}
 }

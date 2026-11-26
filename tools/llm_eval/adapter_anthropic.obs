@@ -28,9 +28,7 @@ class AnthropicAdapter implements ModelAdapter {
 		reply := chat->SendReply(request->GetUser(), Nil);
 		if(reply = Nil) {
 			error := EndPoint->GetLastError();
-			if(error = Nil) {
-				error := "the request failed";
-			};
+			error := error ?? "the request failed";
 
 			return ModelReply->Failure(EvalText->Clip(error, 300));
 		};

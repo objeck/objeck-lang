@@ -227,9 +227,7 @@ class Cookie {
 	@return true if added, false otherwise
 	~#
 	method : public : AddAttrib(name : String, value : String) ~ Bool {
-		if(@attribs = Nil) {
-			@attribs := Map->New()<String, String>;
-		};
+		@attribs := @attribs ?? Map->New()<String, String>;
 
 		if(@attribs->Has(name)) {
 			return false;
@@ -370,9 +368,7 @@ class Cookie {
 			@value := value;
 		}
 		else {
-			if(@attribs = Nil) {
-				@attribs := Map->New()<String, String>;
-			};
+			@attribs := @attribs ?? Map->New()<String, String>;
 			@attribs->Insert(name, value);
 		};
 

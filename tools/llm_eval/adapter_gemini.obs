@@ -39,9 +39,7 @@ class GeminiAdapter implements ModelAdapter {
 		candidates := Model->GenerateContent(name, content, Nil, Nil, Nil, config, system, @key);
 		if(candidates = Nil | candidates->IsEmpty()) {
 			error := EndPoint->GetLastError();
-			if(error = Nil) {
-				error := "the request returned no candidate";
-			};
+			error := error ?? "the request returned no candidate";
 
 			return ModelReply->Failure(EvalText->Clip(error, 300));
 		};

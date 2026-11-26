@@ -27,9 +27,7 @@ class SweepTask {
 		};
 
 		env_n := Runtime->GetEnvironmentVariable("OBJECK_SWEEP_N");
-		if(env_n = Nil) {
-			env_n := "";
-		};
+		env_n := env_n ?? "";
 		cpus := Runtime->GetProperty("runtime.cpu.count")->ToInt();
 		"RESULT acc={$acc} env_n={$env_n} cpus={$cpus}"->PrintLine();
 	}

@@ -31,9 +31,7 @@ class OllamaAdapter implements ModelAdapter {
 		reply := Completion->GenerateReply(@model, request->GetUser(), options);
 		if(reply = Nil) {
 			error := Completion->GetLastError();
-			if(error = Nil) {
-				error := "the request failed";
-			};
+			error := error ?? "the request failed";
 
 			return ModelReply->Failure(EvalText->Clip(error, 300));
 		};

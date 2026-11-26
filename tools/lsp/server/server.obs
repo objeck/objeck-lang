@@ -714,9 +714,7 @@ bundle LSP {
 				if(document <> Nil) {
 					organize := document->OrganizeImports();
 					if(organize <> Nil) {
-						if(response = Nil) {
-							response := JsonElement->New(JsonElement->JsonType->ARRAY);
-						};
+						response := response ?? JsonElement->New(JsonElement->JsonType->ARRAY);
 						response->Add(organize);
 					};
 				};
@@ -1305,9 +1303,7 @@ bundle LSP {
 		method : NotifyDidChangeWorkspace(params : JsonElement) ~ Nil {
 			changed := false;
 			added := FindJson(params, "event/added");
-			if(added = Nil) {
-				added := JsonElement->New(JsonElement->JsonType->ARRAY);
-			};
+			added := added ?? JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(i : added) {
 				folder := added->Get(i);
 				
@@ -1327,9 +1323,7 @@ bundle LSP {
 			};
 
 			removed := FindJson(params, "event/removed");
-			if(removed = Nil) {
-				removed := JsonElement->New(JsonElement->JsonType->ARRAY);
-			};
+			removed := removed ?? JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(i : removed) {
 				folder := removed->Get(i);
 				

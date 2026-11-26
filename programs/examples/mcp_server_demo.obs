@@ -62,9 +62,7 @@ class Calculator {
 	}
 
 	method : Fail(message : String) ~ Nil {
-		if(@error = Nil) {
-			@error := message;
-		};
+		@error := @error ?? message;
 	}
 
 	method : SkipSpace() ~ Nil {
@@ -416,9 +414,7 @@ class McpDemo {
 	function : ReviewPrompt(call : McpCall) ~ McpPromptResult {
 		path := call->GetString("path");
 		focus := call->GetString("focus");
-		if(focus = Nil) {
-			focus := "bugs and unclear code";
-		};
+		focus := focus ?? "bugs and unclear code";
 
 		result := McpPromptResult->New("Review a file");
 		result->AddMessage("user", "Read the file {$path} with the read_file tool, then review it for {$focus}. Quote the lines you mean.");

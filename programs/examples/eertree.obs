@@ -105,7 +105,7 @@ class Node {
 
 	New(length : Int, edges : Map<CharRef, IntRef>, suffix : Int) {
 		@length := length;
-		@edges := edges <> Nil ? edges : Map->New()<CharRef, IntRef>;
+		@edges := edges ?? Map->New()<CharRef, IntRef>;
 		@suffix := suffix;
 	}
 

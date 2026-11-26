@@ -66,9 +66,7 @@ class Eval {
 		"{$tasks->Size()} tasks x {$per_task} attempts = {$tasks->Size() * per_task} calls to {$model->GetName()}"->PrintLine();
 
 		work := EvalArgs->Value(args, "--workdir", Nil);
-		if(work = Nil) {
-			work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_{$Runtime->GetProcessId()}";
-		};
+		work := work ?? "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_{$Runtime->GetProcessId()}";
 
 		sandbox := Sandbox->New(work);
 		sandbox->SetKeepFiles(EvalArgs->Has(args, "--keep-files"));
@@ -89,9 +87,7 @@ class Eval {
 		results := runner->Run();
 
 		prefix := EvalArgs->Value(args, "--out", Nil);
-		if(prefix = Nil) {
-			prefix := "llm_eval_{$EvalText->SafeName(model->GetName())}";
-		};
+		prefix := prefix ?? "llm_eval_{$EvalText->SafeName(model->GetName())}";
 
 		all := Vector->New()<ModelResults>;
 		comparison : ModelComparison;

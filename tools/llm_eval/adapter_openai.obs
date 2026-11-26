@@ -29,9 +29,7 @@ class OpenAIAdapter implements ModelAdapter {
 		response := Response->Respond(@model, messages, request->GetMaxTokens(), @temperature, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, Nil, @key);
 		if(response = Nil) {
 			error := API.OpenAI.EndPoint->GetLastError();
-			if(error = Nil) {
-				error := "the request failed";
-			};
+			error := error ?? "the request failed";
 
 			return ModelReply->Failure(EvalText->Clip(error, 300));
 		};

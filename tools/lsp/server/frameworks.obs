@@ -608,9 +608,7 @@ bundle LSP {
 					text := System.IO.Filesystem.FileReader->ReadFile(LspFolder->LocalPath(uri));
 				};
 
-				if(text = Nil) {
-					text := "";
-				};
+				text := text ?? "";
 				text_lines := TextLines->New(text->Split('\n'));
 				lines->Insert(uri, text_lines);
 			};
@@ -1343,9 +1341,7 @@ bundle LSP {
 				return false;
 			};
 
-			if(@pipe_bytes = Nil) {
-				@pipe_bytes := Byte->New[16384];
-			};
+			@pipe_bytes := @pipe_bytes ?? Byte->New[16384];
 
 			# compact, then grow if needed
 			if(@pipe_start > 0) {
@@ -1689,9 +1685,7 @@ bundle LSP {
 					source := ClaimProxy(texts, libs);
 				};
 
-				if(source = Nil) {
-					source := ProxySource->New(AstProxy->New(texts, @is_debug), texts, libs);
-				};
+				source := source ?? ProxySource->New(AstProxy->New(texts, @is_debug), texts, libs);
 				@proxies->Insert(key, source);
 			};
 
@@ -2637,9 +2631,7 @@ bundle LSP {
 			if(result <> Nil) {
 				items := result->Get("diagnostics");
 			};
-			if(items = Nil) {
-				items := JsonElement->New(JsonElement->JsonType->ARRAY);
-			};
+			items := items ?? JsonElement->New(JsonElement->JsonType->ARRAY);
 
 			text := items->ToString();
 			if(@report_text = Nil | <>@report_text->Equals(text)) {

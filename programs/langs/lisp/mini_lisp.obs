@@ -1299,9 +1299,7 @@ class Node {
 	}
 
 	method : public : AddChild(node : Node) ~ Nil {
-		if(@children = Nil) {
-			@children := Vector->New()<Node>;
-		};
+		@children := @children ?? Vector->New()<Node>;
 
 		@children->AddBack(node);
 	}

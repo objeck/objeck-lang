@@ -210,9 +210,7 @@ class Inference from Thread {
 			timer->Start();
 			outputs := @session->Run(inputs);
 			timer->End();
-			if(@first = Nil) {
-				@first := outputs->Get(0)->GetFloats();
-			};
+			@first := @first ?? outputs->Get(0)->GetFloats();
 			phase := @shared->Phase();
 			if(phase = 1 & @runs < @times->Size()) {
 				@times[@runs] := timer->GetElapsedTime() * 1000.0;

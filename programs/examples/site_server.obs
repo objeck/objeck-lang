@@ -73,9 +73,7 @@ class SiteHandler from HttpRequestHandler {
 
 	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 		path := request->GetPath();
-		if(path = Nil) {
-			path := "/";
-		};
+		path := path ?? "/";
 
 		# files with a space or other escaped character in their names
 		path := Url->Decode(path);

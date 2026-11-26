@@ -16,9 +16,7 @@ class Provider {
 		};
 
 		work := EvalArgs->Value(args, "--workdir", Nil);
-		if(work = Nil) {
-			work := "{$Runtime->GetTempDir()}{$System.IO.Filesystem.Directory->GetSlash()}llm_eval_command_{$Runtime->GetProcessId()}";
-		};
+		work := work ?? "{$Runtime->GetTempDir()}{$System.IO.Filesystem.Directory->GetSlash()}llm_eval_command_{$Runtime->GetProcessId()}";
 
 		model := CommandModel->New(EvalArgs->Value(args, "--name", "command"), command, Sandbox->New(work));
 		model->SetTimeout(EvalArgs->Value(args, "--call-timeout", "300")->ToFloat());

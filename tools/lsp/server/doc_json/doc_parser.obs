@@ -921,9 +921,7 @@ class BundleSnippet from Snippet {
 	}
 
 	method: public : GetScopedEnums() ~ Map<String, EnumConstSnippet> {
-		if(@scoped_enums = Nil) {
-			@scoped_enums := Map->New()<String, EnumConstSnippet>;
-		};
+		@scoped_enums := @scoped_enums ?? Map->New()<String, EnumConstSnippet>;
 		return @scoped_enums;
 	}
 
@@ -1245,9 +1243,7 @@ class ClassSnippet from Snippet {
 	}
 	
 	method : public : GetShortName() ~ String {
-		if(@short_name = Nil) {
-			@short_name := GetShortName(@name);
-		};
+		@short_name := @short_name ?? GetShortName(@name);
 
 		return @short_name;
 	}

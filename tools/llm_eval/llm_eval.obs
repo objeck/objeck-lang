@@ -800,9 +800,7 @@ bundle System.LLM.Eval {
 			@seq += 1;
 			id := @seq;
 			input := stdin_path;
-			if(input = Nil) {
-				input := @empty;
-			};
+			input := input ?? @empty;
 
 			out := Path("out_{$id}.txt");
 			marker := Path("mark_{$id}.txt");

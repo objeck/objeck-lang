@@ -18,9 +18,7 @@ class Greeter from HttpRequestHandler {
 
   method : ProcessGet(request : Request, response : Response) ~ Bool {
     name := request->GetParam("name");
-    if(name = Nil) {
-      name := "world";
-    };
+    name := name ?? "world";
     response->SetCodeTypeContent(200, "text/plain", "Hello, {$name}!");
     return false;
   }
