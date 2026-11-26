@@ -6421,6 +6421,13 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
+      // The receive timeout a plain accepted socket starts with (IPSocket::Accept),
+      // 30 seconds. An accepted TLS connection had none, and its handshake runs in
+      // its first read: a peer that connected and said nothing held that read, and
+      // the thread making it, for as long as it stayed connected. Best effort, as
+      // there; TCPSecureSocket->SetRecvTimeout changes it (0 for none).
+      IPSecureSocket::SetRecvTimeout(client, TCP_DEFAULT_RECV_TIMEOUT_MS);
+
       // Get peer address info
       int sock_fd = client->net.fd;
 
