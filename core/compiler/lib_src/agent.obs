@@ -1948,13 +1948,7 @@ agent->SetBudget(budget);
 
 	#~
 	Limits for every agent run inside a block of code, with cleanup on every exit path. Make a scope, set
-	its limits, and run a function under it (a function reference, `Name() ~ Nil`):
-
-	```
-scope := AgentScope->New()->SetMaxSteps(10)->SetMaxTokens(5000)->SetMaxToolCalls(20)->SetTrace(true);
-AgentScope->Run(scope, Work() ~ Nil);   # Work() makes agent runs; they share the limits
-scope->GetStepsUsed()->PrintLine();
-	```
+	its limits, and run a function under it (a function reference, `Name() ~ Nil`); the example is at the end.
 
 	Rules:
 	* The limits are totals for the block, not per run: what a run used (steps = model replies, tokens, tool
@@ -1977,6 +1971,12 @@ scope->GetStepsUsed()->PrintLine();
 	  `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
 	  its counters from zero.
+
+	```
+scope := AgentScope->New()->SetMaxSteps(10)->SetMaxTokens(5000)->SetMaxToolCalls(20)->SetTrace(true);
+AgentScope->Run(scope, Work() ~ Nil);   # Work() makes agent runs; they share the limits
+scope->GetStepsUsed()->PrintLine();
+	```
 	~#
 	class AgentScope {
 		@parent : AgentScope;

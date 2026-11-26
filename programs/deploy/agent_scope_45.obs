@@ -1,6 +1,6 @@
 #~
-# compile: obc -src agent_45.obs -lib agent,json,net,cipher,misc
-# run:     obr agent_45.obe
+# compile: obc -src agent_scope_45.obs -lib agent,json,net,cipher,misc
+# run:     obr agent_scope_45.obe
 #
 # AgentScope puts one set of limits, one cancel switch and one trace around
 # every agent run inside a block of code, so a program does not have to hand a

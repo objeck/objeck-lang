@@ -55,6 +55,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`structured_37.obs`](structured_37.obs) | `-lib llm_util,json,regex,gen_collect` | JSON out of a model: templates, schema checks, retry and repair |
 | [`telemetry_38.obs`](telemetry_38.obs) | `-lib telemetry,gen_collect,json` | timing a computation: p50, p95, p99 and saved profiles |
 | [`forecast_39.obs`](forecast_39.obs) | `-lib ml_timeseries,gen_collect` | forecasting a seasonal series: Holt-Winters against a benchmark |
+| [`agent_scope_45.obs`](agent_scope_45.obs) | `-lib agent,json,net,cipher,misc` | AgentScope: one set of step, token and tool limits for every agent run in a block |
 
 ## Building all of them
 
