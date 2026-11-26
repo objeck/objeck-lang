@@ -84,6 +84,12 @@ shop->Price("tea", 3);              # does not compile
 
 `mcp_stub_41` runs this end to end in one process and prints those lines.
 
+**Keep the client honest at build time.** Save what the server said next to the generated client
+(`--save-manifest shop.manifest.json`) and run `obr mcp_stubs.obe --manifest shop.manifest.json --class ShopClient --check ShopClient.obs`
+before `obc`: it needs no server, and when the server's tools have changed it fails the build, naming each method
+that was removed, added or changed. Regenerate the client and every call written for the old signature is a compile
+error. This is a build step rather than an `obc` flag: the compiler already type-checks the calls, and does not start servers.
+
 ## 4. Hand functions to an agent, and let the effect decide who approves
 
 `McpAgentTools->AddAll(registry, client)` makes `API.Agent` tools from a server's tools (the server here is the

@@ -449,6 +449,8 @@ if(text = Nil) { weather->GetError()->ErrorLine(); }; # isError, or the server c
 hits := weather->LookupJson("Denver");               # a tool with an outputSchema: its structuredContent
 ```
 
+Build-time drift check: `--save-manifest m.json` keeps the server's `tools/list`; `--manifest m.json` regenerates the same client with no server; `--check WeatherClient.obs` writes nothing and exits 1, naming the methods removed (`-`), added or changed (`+`), when the checked-in client no longer matches. Run it before `obc` so a changed server is a failed build, not a failed call.
+
 `integer` becomes `Int`, `number` `Float`, `boolean` `Bool`, `string` `String` (a string enum lists its values in the doc comment), an array of those `Int[]`, `Float[]`, `Bool[]` or `String[]`, and anything else (an object, a nested array, a schema with no type) `JsonElement`. A JSON object does not keep the order its names were written in, so required parameters come first, in the order of the `required` array, then the optional ones by name. A tool whose name or an argument's name has characters a method cannot carry is skipped with a comment. The output has no timestamp, so it can be checked in and compared; `programs/regression/mcp_stubs/WeatherClient.golden` is that file for the test server.
 
 ### Giving functions and servers to an agent

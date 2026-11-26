@@ -12,11 +12,19 @@ so the same code is what the regression tests check against a golden file.
   --http <url>        a server at a streamable HTTP endpoint, for example http://127.0.0.1:8080/mcp
   --class <Name>      the class to write (default: the server's name, then "Client")
   --out <file>        write the source to a file (default: standard output)
+  --save-manifest <f> also write what the server said (its name, version and tools/list) to a JSON file
+  --manifest <file>   read such a file instead of connecting to a server (the build needs no server)
+  --check <file>      write nothing: compare the client the server (or the manifest) describes with <file> and
+                      exit 1, naming the methods that were added, removed or changed, when they differ
+
+A build that must not drift from its server runs `--check WeatherClient.obs` before it compiles the program that
+uses WeatherClient: a changed tool is then a failed build with a message, not a failed call in production, and the
+program's own calls are type-checked by obc against the checked-in client.
 
 Build:  obc -src mcp_stubs.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest mcp_stubs.obe
 Run:    obr mcp_stubs.obe --cmd "obr server.obe --stdio" --class Weather --out weather_client.obs
 ~#
-use API.MCP, Collection, System.IO.Filesystem;
+use API.MCP, Collection, Data.JSON, System.IO.Filesystem;
 
 class McpStubs {
 	function : Usage() ~ Nil {
@@ -24,11 +32,53 @@ class McpStubs {
 		"  obr mcp_stubs.obe (--cmd \"<command>\" | --http <url>) [--class <Name>] [--out <file>]"->PrintLine();
 	}
 
+	# the signature lines of a client: one 'method : public : Name(...)' for each tool
+	function : Signatures(source : String) ~ Vector<String> {
+		found := Vector->New()<String>;
+		lines := source->Split("\n");
+		each(line in lines) {
+			if(line->StartsWith("\tmethod : public : ")) {
+				found->AddBack(line->Trim());
+			};
+		};
+		return found;
+	}
+
+	function : Has(list : Vector<String>, text : String) ~ Bool {
+		each(item in list) {
+			if(item->Equals(text)) {
+				return true;
+			};
+		};
+		return false;
+	}
+
+	# says what changed between the checked-in client and the one the server describes now
+	function : Drift(existing : String, current : String, path : String) ~ Nil {
+		"mcp_stubs: {$path} is out of date: the server's tools are not the ones it was generated from"->ErrorLine();
+		before := McpStubs->Signatures(existing);
+		after := McpStubs->Signatures(current);
+		each(sig in before) {
+			if(<>McpStubs->Has(after, sig)) {
+				"  - {$sig}"->ErrorLine();
+			};
+		};
+		each(sig in after) {
+			if(<>McpStubs->Has(before, sig)) {
+				"  + {$sig}"->ErrorLine();
+			};
+		};
+		"  regenerate it (obr mcp_stubs.obe ... --out {$path}) and review the calls that no longer compile"->ErrorLine();
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		command : String;
 		url : String;
 		class_name : String;
 		out_path : String;
+		manifest_path : String;
+		save_path : String;
+		check_path : String;
 
 		i := 0;
 		while(i < args->Size()) {
@@ -52,6 +102,15 @@ class McpStubs {
 			else if(flag->Equals("--out")) {
 				out_path := value;
 			}
+			else if(flag->Equals("--manifest")) {
+				manifest_path := value;
+			}
+			else if(flag->Equals("--save-manifest")) {
+				save_path := value;
+			}
+			else if(flag->Equals("--check")) {
+				check_path := value;
+			}
 			else {
 				"mcp_stubs: unknown option {$flag}"->ErrorLine();
 				McpStubs->Usage();
@@ -60,35 +119,121 @@ class McpStubs {
 			i += 2;
 		};
 
-		if((command = Nil & url = Nil) | (command <> Nil & url <> Nil)) {
-			"mcp_stubs: give one of --cmd and --http"->ErrorLine();
+		sources := 0;
+		if(command <> Nil) {
+			sources += 1;
+		};
+		if(url <> Nil) {
+			sources += 1;
+		};
+		if(manifest_path <> Nil) {
+			sources += 1;
+		};
+		if(sources <> 1) {
+			"mcp_stubs: give one of --cmd, --http and --manifest"->ErrorLine();
 			McpStubs->Usage();
 			Runtime->Exit(2);
 		};
+		if(check_path <> Nil & out_path <> Nil) {
+			"mcp_stubs: --check writes nothing; give it without --out"->ErrorLine();
+			Runtime->Exit(2);
+		};
 
-		client : McpClient;
-		if(command <> Nil) {
-			client := McpClient->Command(command);
+		server_name : String;
+		server_version : String;
+		tools : Vector<McpTool>;
+		if(manifest_path <> Nil) {
+			text := FileReader->ReadFile(manifest_path);
+			if(text = Nil) {
+				"mcp_stubs: cannot read the manifest {$manifest_path}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			manifest := JsonParser->TextToElement(text);
+			if(manifest = Nil | <>manifest->Has("tools") | manifest->Get("tools")->GetType() <> JsonElement->JsonType->ARRAY) {
+				"mcp_stubs: {$manifest_path} is not a manifest (an object with a tools array)"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			if(manifest->Has("server")) {
+				info := manifest->Get("server");
+				if(info->Has("name")) {
+					server_name := info->Get("name")->GetString();
+				};
+				if(info->Has("version")) {
+					server_version := info->Get("version")->GetString();
+				};
+			};
+			tools := Vector->New()<McpTool>;
+			list := manifest->Get("tools");
+			for(t := 0; t < list->Size(); t += 1;) {
+				tool := McpTool->FromJson(list->Get(t));
+				if(tool = Nil) {
+					"mcp_stubs: entry {$t} of the manifest is not a tool"->ErrorLine();
+					Runtime->Exit(1);
+				};
+				tools->AddBack(tool);
+			};
 		}
 		else {
-			client := McpClient->Http(url);
+			client : McpClient;
+			if(command <> Nil) {
+				client := McpClient->Command(command);
+			}
+			else {
+				client := McpClient->Http(url);
+			};
+
+			if(<>client->Initialize("mcp_stubs", "1.0")) {
+				reason := client->GetError();
+				"mcp_stubs: could not reach the server: {$reason}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			tools := client->ListTools();
+			if(tools = Nil) {
+				reason := client->GetError();
+				"mcp_stubs: tools/list failed: {$reason}"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			server_name := client->GetServerName();
+			server_version := client->GetServerVersion();
+			client->Close();
+
+			if(save_path <> Nil) {
+				saved := JsonElement->New(JsonElement->JsonType->OBJECT);
+				info := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(server_name <> Nil) {
+					info->Insert("name", server_name);
+				};
+				if(server_version <> Nil) {
+					info->Insert("version", server_version);
+				};
+				saved->Insert("server", info);
+				listed := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(tool in tools) {
+					listed->Add(tool->ToJson());
+				};
+				saved->Insert("tools", listed);
+				writer := FileWriter->New(save_path);
+				writer->WriteString(saved->ToString());
+				writer->Close();
+			};
 		};
 
-		if(<>client->Initialize("mcp_stubs", "1.0")) {
-			reason := client->GetError();
-			"mcp_stubs: could not reach the server: {$reason}"->ErrorLine();
+		source := McpStubGenerator->Generate(server_name, server_version, tools, class_name);
+
+		if(check_path <> Nil) {
+			existing := FileReader->ReadFile(check_path);
+			if(existing = Nil) {
+				"mcp_stubs: cannot read {$check_path}; generate it first"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			if(existing->Equals(source)) {
+				"mcp_stubs: {$check_path} matches the server"->PrintLine();
+				Runtime->Exit(0);
+			};
+			McpStubs->Drift(existing, source, check_path);
 			Runtime->Exit(1);
 		};
-
-		tools := client->ListTools();
-		if(tools = Nil) {
-			reason := client->GetError();
-			"mcp_stubs: tools/list failed: {$reason}"->ErrorLine();
-			Runtime->Exit(1);
-		};
-
-		source := McpStubGenerator->Generate(client->GetServerName(), client->GetServerVersion(), tools, class_name);
-		client->Close();
 
 		if(out_path <> Nil) {
 			writer := FileWriter->New(out_path);

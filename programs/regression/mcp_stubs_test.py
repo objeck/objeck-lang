@@ -112,9 +112,47 @@ def main():
         code, out = run([obc, "-src", wrong + "," + stub, "-lib", LIBS, "-dest", os.path.join(work, "wrong.obe")], env, work)
         check("a wrong argument type is a compile error", code != 0 and "Forecast" in out, out)
 
+        # Stage 4: the build needs no server. --save-manifest keeps what the server said; --manifest regenerates the
+        # same client from it; --check fails the build, naming the methods, when the server's tools have moved on.
+        manifest = os.path.join(work, "weather.manifest.json")
+        code, out = run([obr, tool, "--cmd", command, "--class", "WeatherClient", "--out", os.path.join(work, "x.obs"), "--save-manifest", manifest], env, work)
+        check("--save-manifest writes what the server said", code == 0 and os.path.isfile(manifest), out)
+        offline = os.path.join(work, "offline.obs")
+        code, out = run([obr, tool, "--manifest", manifest, "--class", "WeatherClient", "--out", offline], env, work)
+        check("--manifest regenerates the same client with no server", code == 0 and read(offline) == read(stub), out)
+        code, out = run([obr, tool, "--manifest", manifest, "--class", "WeatherClient", "--check", stub], env, work)
+        check("--check passes when the client is current", code == 0 and "matches the server" in out, out)
+        code, out = run([obr, tool, "--cmd", command, "--class", "WeatherClient", "--check", stub], env, work)
+        check("--check against the live server passes too", code == 0 and "matches the server" in out, out)
+
+        import json
+        changed = json.load(open(manifest, encoding="utf-8"))
+        for t in changed["tools"]:
+            if t["name"] == "forecast":
+                t["inputSchema"]["properties"]["days"] = {"type": "string"}
+        changed["tools"] = [t for t in changed["tools"] if t["name"] != "convert"]
+        changed["tools"].append({"name": "alerts", "description": "Weather alerts", "inputSchema": {"type": "object", "properties": {"region": {"type": "string"}}, "required": ["region"]}})
+        drifted = os.path.join(work, "drifted.manifest.json")
+        json.dump(changed, open(drifted, "w", encoding="utf-8"))
+        code, out = run([obr, tool, "--manifest", drifted, "--class", "WeatherClient", "--check", stub], env, work)
+        check("--check fails the build when the server's tools changed", code == 1 and "out of date" in out, out)
+        check("it names a method that was removed", "- method : public : Convert(" in out, out)
+        check("it names a method that was added", "+ method : public : Alerts(region : String) ~ String {" in out, out)
+        check("it names a method whose parameter type changed", "- method : public : Forecast(city : String, days : Int, units : String)" in out and "+ method : public : Forecast(city : String, days : String, units : String)" in out, out)
+        check("it says how to regenerate", "regenerate it" in out, out)
+        code, out = run([obr, tool, "--manifest", os.path.join(work, "missing.json"), "--check", stub], env, work)
+        check("a missing manifest is an error", code == 1 and "cannot read the manifest" in out, out)
+        code, out = run([obr, tool, "--manifest", manifest, "--check", os.path.join(work, "not_generated.obs")], env, work)
+        check("--check of a file that does not exist says to generate it", code == 1 and "generate it first" in out, out)
+        # and the stale client really is a compile error where it matters: the program was written for days : Int
+        stale = os.path.join(work, "WeatherClientNew.obs")
+        run([obr, tool, "--manifest", drifted, "--class", "WeatherClient", "--out", stale], env, work)
+        code, out = run([obc, "-src", os.path.join(data, "use_stub.obs") + "," + stale, "-lib", LIBS, "-dest", os.path.join(work, "stale.obe")], env, work)
+        check("a program written for the old schema no longer compiles against the new client", code != 0 and "Forecast" in out, out)
+
         # the command line
         code, out = run([obr, tool], env, work)
-        check("no source is a usage error", code == 2 and "give one of --cmd and --http" in out, out)
+        check("no source is a usage error", code == 2 and "give one of --cmd, --http and --manifest" in out, out)
         code, out = run([obr, tool, "--cmd", "x", "--http", "http://127.0.0.1:1/mcp"], env, work)
         check("both sources is a usage error", code == 2, out)
         code, out = run([obr, tool, "--wat", "1"], env, work)
