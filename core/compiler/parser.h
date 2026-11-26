@@ -114,6 +114,9 @@ class Parser {
   Method* current_method;
   // the method being parsed: its type parameters and their bounds, as they erase (#1242)
   std::map<std::wstring, std::wstring> method_generic_bounds;
+  // constructor parameters written '@name' that fill the field of that name (field promotion)
+  std::vector<std::wstring> promoted_fields;
+  bool ClassDeclaresField(const std::wstring& name);
   Method* prev_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;

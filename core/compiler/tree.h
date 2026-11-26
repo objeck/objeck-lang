@@ -488,6 +488,10 @@ namespace frontend {
       statements.insert(statements.begin(), s);
     }
 
+    void InsertStatement(Statement* s, size_t index) {
+      statements.insert(statements.begin() + index, s);
+    }
+
     void AddStatement(Statement* s) {
       statements.push_back(s);
     }

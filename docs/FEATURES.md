@@ -47,6 +47,33 @@ interface Color {
 }
 ```
 
+### Constructor Field Promotion
+
+In a constructor, a parameter written `@name` where the class has **already declared**
+the field `@name` fills that field: the parameter is `name` (and the argument's name
+for a named call), and the body starts with `@name := name` (after a leading
+`Parent(..)`). Defaults and named arguments work as for any parameter. A `@name`
+parameter with no field of that name is unchanged (the older style in
+`programs/tests/prgm10.obs`). Before this, `New(@a : Int) {}` made a parameter that
+shadowed the field, and the field stayed 0.
+
+```ruby
+# before
+class Point {
+  @x : Int;
+  @y : Int;
+  New(x : Int, y : Int) { @x := x; @y := y; }
+}
+# after
+class Point {
+  @x : Int;
+  @y : Int;
+  New(@x : Int, @y : Int) {}
+}
+```
+Test: `ctor_field_promotion`.
+
+
 ### Default and Named Arguments
 Trailing parameters can have default values. An argument can be passed by name,
 `name: value`, after any positional ones. Named arguments may come in any order,

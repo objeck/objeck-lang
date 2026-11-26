@@ -1,0 +1,75 @@
+#~
+Constructor field promotion: in a constructor, a parameter written `@name` where the
+class has already declared the field `@name` fills that field. The parameter is
+`name` (also the name for a named call), and the body starts with `@name := name`
+(after a leading Parent(..) call). Defaults and named arguments work as for any
+parameter. A parameter `@name` with no field of that name (the older style in
+programs/tests/prgm10.obs) is unchanged. Before this the parameter shadowed the
+field, which stayed 0.
+~#
+class Animal {
+	@id : Int;
+	New(@id : Int) {}
+	method : public : GetId() ~ Int { return @id; }
+}
+
+class Point from Animal {
+	@x : Int;
+	@y : Int;
+	@label : String;
+	@sum : Int;
+
+	New(id : Int, @x : Int, @y : Int, @label : String := "pt") {
+		Parent(id);
+		# the body may use the parameter (x) or the field (@x): same value here
+		@sum := x + @y;
+	}
+
+	New(copy : Point) {
+		Parent(copy->GetId());
+		@x := copy->GetX();
+		@y := copy->GetY();
+		@label := "copy";
+		@sum := copy->GetSum();
+	}
+
+	method : public : GetX() ~ Int { return @x; }
+	method : public : GetY() ~ Int { return @y; }
+	method : public : GetSum() ~ Int { return @sum; }
+	method : public : GetLabel() ~ String { return @label; }
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		p := Point->New(7, 1, 2);
+		if(p->GetId() <> 7 | p->GetX() <> 1 | p->GetY() <> 2) { "FAIL fields"->PrintLine(); pass := false; };
+		if(p->GetLabel()->Size() <> 2) { "FAIL default"->PrintLine(); pass := false; };
+		if(p->GetSum() <> 3) { "FAIL body sees them"->PrintLine(); pass := false; };
+
+		q := Point->New(8, 3, 4, "named");
+		if(q->GetLabel()->Size() <> 5) { "FAIL positional label"->PrintLine(); pass := false; };
+
+		r := Point->New(y: 9, x: 8, id: 1);
+		if(r->GetX() <> 8 | r->GetY() <> 9 | r->GetId() <> 1) { "FAIL named"->PrintLine(); pass := false; };
+
+		c := Point->New(q);
+		if(c->GetX() <> 3 | c->GetSum() <> 7) { "FAIL other constructor"->PrintLine(); pass := false; };
+
+		l := Legacy->New(5);
+		if(l->Get() <> 5) { "FAIL legacy style"->PrintLine(); pass := false; };
+
+		if(pass) {
+			"PASS: constructor field promotion"->PrintLine();
+		}
+		else {
+			"FAIL: constructor field promotion"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+class Legacy {
+	value1 : Int;
+	New(@value1 : Int) { value1 := @value1; }
+	method : public : Get() ~ Int { return value1; }
+}

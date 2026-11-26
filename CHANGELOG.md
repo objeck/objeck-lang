@@ -2,6 +2,14 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+Post-v2026.11.4. Language sugar, each a separate draft and not part of any release yet.
+
+### Added
+
+- **Constructor field promotion**: `New(@x : Int, @y : Int) {}` fills the already-declared fields `@x` and `@y` (the parameters are `x` and `y`, so named calls and defaults work: `Point->New(y: 9, x: 8)`). Before, a `@x` parameter shadowed the field, which stayed 0; a `@name` parameter with no such field is unchanged, so `programs/tests/prgm10.obs` and `prgm18.obs` compile to the same bytes. Test: `ctor_field_promotion`, `bad_ctor_promotion_type`.
+
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance
