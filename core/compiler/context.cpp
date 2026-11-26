@@ -7453,8 +7453,18 @@ void ContextAnalyzer::AnalyzeFunctionValueCall(MethodCall* method_call, SymbolEn
     if(boxed_param) {
       boxed_resolved_params->AddExpression(boxed_param);
     }
-    else if((boxed_param = UnboxingExpression(func_param, calling_param, false, depth + 1))) {
-      boxed_resolved_params->AddExpression(boxed_param);
+    else {
+      // a holder for a primitive parameter is its value, as in a call by name
+      Expression* last = calling_param;
+      while(last->GetMethodCall()) {
+        last = last->GetMethodCall();
+      }
+      bool unboxed = false;
+      Expression* replaced = UnboxAs(func_param, last, false, unboxed, depth + 1);
+      if(unboxed) {
+        boxed_param = replaced ? replaced : calling_param;
+        boxed_resolved_params->AddExpression(boxed_param);
+      }
     }
     // add default
     if(!boxed_param) {
@@ -9731,7 +9741,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Bool");
+        // 'flags->Get(i) & done' and '<>flags->Get(i)': a BoolRef is its value
+        if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Bool");
+        }
         break;
       }
       break;
@@ -10649,8 +10662,10 @@ int ContextAnalyzer::BoxingRank(Type* method_type, Expression* expr_param, const
  ****************************/
 Expression* ContextAnalyzer::UnboxAs(Type* to_type, Expression* last, bool integral_only, bool &unboxed, const int depth)
 {
+  // 'to_type' may carry an array's dimension: an element's type does
+  // ('a[i] := refs->Get(i)'), and the caller has found the value a scalar
   unboxed = false;
-  if(!to_type || !last || last->GetMethodCall() || to_type->GetDimension() > 0) {
+  if(!to_type || !last || last->GetMethodCall()) {
     return nullptr;
   }
 
