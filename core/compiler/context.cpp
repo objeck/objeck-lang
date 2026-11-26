@@ -9296,6 +9296,21 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   Expression* left_expr = expression->GetLeft();
   Expression* right_expr = expression->GetRight();
 
+  // A conversion (an Int made a Float for 'n * 2.5') belongs to the value, and
+  // the value of an operand that is a call chain is what its LAST call returns.
+  // The emitter converts after the call that carries the cast, by that call's
+  // return type; on the first call of 'a->B()->Count() * 2.5' it was set on a
+  // call that returns an object, nothing was converted and the Int's bits were
+  // multiplied as a Float.
+  Expression* left_value = left_expr;
+  while(left_value && left_value->GetMethodCall()) {
+    left_value = left_value->GetMethodCall();
+  }
+  Expression* right_value = right_expr;
+  while(right_value && right_value->GetMethodCall()) {
+    right_value = right_value->GetMethodCall();
+  }
+
   Type* left = GetExpressionType(left_expr, depth + 1);
   Type* right = GetExpressionType(right_expr, depth + 1);
 
@@ -9447,13 +9462,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9493,13 +9508,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9539,13 +9554,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9585,13 +9600,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:
-        right_expr->SetCastType(left, true);
+        right_value->SetCastType(left, true);
         expression->SetEvalType(left, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9630,7 +9645,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case BYTE_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9641,7 +9656,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CHAR_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9652,7 +9667,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case INT_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9662,7 +9677,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case FLOAT_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9757,7 +9772,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
