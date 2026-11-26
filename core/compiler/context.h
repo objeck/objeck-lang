@@ -83,15 +83,75 @@ class LibraryMethodCallSelection {
   }
 };
 
+/****************************
+ * Picks among the methods that take a call's arguments when one of them
+ * boxes or unboxes an argument. A parameter is matched 0 by an argument of
+ * its type, 1 by one that converts to it (an Int for a Float, a class for
+ * its parent), 2 by one boxed or unboxed to it (an Int for an IntRef, an
+ * IntRef for an Int) and 3 by one converted and boxed or unboxed (an Int for
+ * a FloatRef). The method chosen fits every argument at least as well as
+ * each other method and one argument better.
+ *
+ * Returns its index, -1 when no method boxes or unboxes (the caller's own
+ * rule applies) and -2 when no method is the best.
+ ****************************/
+template<typename S> int SelectBoxedMatch(const std::vector<S*> &valid)
+{
+  bool boxes = false;
+  for(size_t i = 0; !boxes && i < valid.size(); ++i) {
+    const std::vector<int> ranks = valid[i]->GetParameterMatches();
+    for(size_t k = 0; k < ranks.size(); ++k) {
+      if(ranks[k] > 1) {
+        boxes = true;
+      }
+    }
+  }
+
+  if(!boxes) {
+    return -1;
+  }
+
+  for(size_t i = 0; i < valid.size(); ++i) {
+    const std::vector<int> ranks = valid[i]->GetParameterMatches();
+    bool best = true;
+    for(size_t j = 0; best && j < valid.size(); ++j) {
+      if(i == j) {
+        continue;
+      }
+      const std::vector<int> other_ranks = valid[j]->GetParameterMatches();
+      bool better = false;
+      for(size_t k = 0; best && k < ranks.size() && k < other_ranks.size(); ++k) {
+        if(ranks[k] > other_ranks[k]) {
+          best = false;
+        }
+        else if(ranks[k] < other_ranks[k]) {
+          better = true;
+        }
+      }
+      if(!better) {
+        best = false;
+      }
+    }
+
+    if(best) {
+      return (int)i;
+    }
+  }
+
+  return -2;
+}
+
 class LibraryMethodCallSelector {
   MethodCall* method_call;
   std::vector<LibraryMethodCallSelection*> matches;
   std::vector<LibraryMethodCallSelection*> valid_matches;
+  bool is_ambiguous;
 
- public: 
+ public:
   LibraryMethodCallSelector(MethodCall* c, std::vector<LibraryMethodCallSelection*> &m) {
     method_call = c;
     matches = m;
+    is_ambiguous = false;
 
     // weed out invalid matches     
     for(size_t i = 0; i < matches.size(); ++i) {
@@ -109,6 +169,20 @@ class LibraryMethodCallSelector {
       delete tmp;
       tmp = nullptr;
     }
+  }
+
+  // two methods fit a boxed or unboxed argument as well as each other
+  bool IsAmbiguous() {
+    return is_ambiguous;
+  }
+
+  std::vector<std::wstring> GetValidMethodNames() {
+    std::vector<std::wstring> names;
+    for(size_t i = 0; i < valid_matches.size(); ++i) {
+      names.push_back(valid_matches[i]->GetLibraryMethod()->GetUserName());
+    }
+
+    return names;
   }
 
   std::vector<LibraryMethod*> GetAlternativeMethods() {
@@ -182,11 +256,13 @@ class MethodCallSelector {
   MethodCall* method_call;
   std::vector<MethodCallSelection*> matches;
   std::vector<MethodCallSelection*> valid_matches;
+  bool is_ambiguous;
 
- public: 
+ public:
   MethodCallSelector(MethodCall* c, std::vector<MethodCallSelection*> &m) {
     method_call = c;
     matches = m;
+    is_ambiguous = false;
 
     // weed out invalid matches
     for(size_t i = 0; i < matches.size(); ++i) {
@@ -204,6 +280,20 @@ class MethodCallSelector {
       delete tmp;
       tmp = nullptr;
     }
+  }
+
+  // two methods fit a boxed or unboxed argument as well as each other
+  bool IsAmbiguous() {
+    return is_ambiguous;
+  }
+
+  std::vector<std::wstring> GetValidMethodNames() {
+    std::vector<std::wstring> names;
+    for(size_t i = 0; i < valid_matches.size(); ++i) {
+      names.push_back(valid_matches[i]->GetMethod()->GetUserName());
+    }
+
+    return names;
   }
 
   std::vector<Method*> GetAlternativeMethods() {
@@ -288,6 +378,8 @@ class ContextAnalyzer {
   // diagnostics about the same name can be suppressed
   std::set<std::wstring> undefined_classes;
 std::vector<std::wstring> alt_error_method_names;
+  // the names are the methods an ambiguous boxed call fits
+  bool alt_error_ambiguous;
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;
   std::vector<Class*> anonymous_classes;
@@ -723,6 +815,24 @@ std::vector<std::wstring> alt_error_method_names;
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
   bool UnboxingCalculation(Type* type, Expression* expression, CalculatedExpression* calc_expression, bool set_left, const int depth);
+  // a holder (IntRef, FloatRef, BoolRef, CharRef, ByteRef) where a primitive is wanted, and the reverse
+  bool HolderPrimitive(Type* type, EntryType &primitive);
+  bool PrimitiveConverts(EntryType to, EntryType from);
+  int BoxingRank(Type* method_type, Expression* expr_param, const int depth);
+  Expression* UnboxAs(Type* to_type, Expression* last, bool integral_only, bool &unboxed, const int depth);
+  Expression* UnboxCondition(Expression* expression, const int depth);
+  void UnboxedArgument(MethodCall* method_call, const size_t index, Expression* argument, Type* parameter, Expression* unboxed);
+  // an argument's types before a method is tried against it
+  struct ArgumentTypes {
+    Expression* expression;
+    Type* base_type;
+    Type* eval_type;
+    Type* cast_type;
+    Class* to_class;
+    LibraryClass* to_lib_class;
+  };
+  std::vector<ArgumentTypes> SaveArgumentTypes(const std::vector<Expression*> &arguments);
+  void RestoreArgumentTypes(const std::vector<ArgumentTypes> &saved);
   MethodCall* BoxUnboxingReturn(Type* to_type, Expression* from_expr, const int depth);
   void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
@@ -775,6 +885,7 @@ std::vector<std::wstring> alt_error_method_names;
     current_class = nullptr;
     current_method = nullptr;
     resolve_site = nullptr;
+    alt_error_ambiguous = false;
     skip_use_check = 0;
     in_use_check = false;
     // initialize linker

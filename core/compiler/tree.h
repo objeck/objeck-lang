@@ -644,6 +644,20 @@ namespace frontend {
       return cast_type;
     }
 
+    // the types as they are, to put back after a trial analysis: a method
+    // that is tried against this argument and not chosen
+    void GetTypeState(Type* &base, Type* &eval, Type* &cast) {
+      base = base_type;
+      eval = eval_type;
+      cast = cast_type;
+    }
+
+    void SetTypeState(Type* base, Type* eval, Type* cast) {
+      base_type = base;
+      eval_type = eval;
+      cast_type = cast;
+    }
+
     void SetTypeOf(Type* c) {
       type_of = TypeFactory::Instance()->MakeType(c);
     }
@@ -1584,6 +1598,11 @@ namespace frontend {
       return expression;
     }
 
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      expression = e;
+    }
+
     StatementList* GetIfStatements() {
       return if_statements;
     }
@@ -2025,6 +2044,11 @@ namespace frontend {
       return cond_expr;
     }
 
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      cond_expr = e;
+    }
+
     StatementList* GetUpdateStatements() {
       return update_stmts;
     }
@@ -2068,6 +2092,11 @@ namespace frontend {
       return expression;
     }
 
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      expression = e;
+    }
+
     StatementList* GetStatements() {
       return statements;
     }
@@ -2096,6 +2125,11 @@ namespace frontend {
 
     Expression* GetExpression() {
       return expression;
+    }
+
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      expression = e;
     }
 
     StatementList* GetStatements() {
