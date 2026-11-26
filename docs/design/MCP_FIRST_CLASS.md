@@ -302,3 +302,18 @@ Consuming a server was already typed at Stage 1 (`mcp_stubs` writes a client cla
 * `--check <file>` writes nothing: it compares the client the server (or the manifest) describes with the checked-in one and, when they differ, exits 1 naming each method that was removed, added or changed (`- method : public : Forecast(city : String, days : Int, ...)` and `+ method : public : Forecast(city : String, days : String, ...)`) and how to regenerate. A schema change is a failed build with that message; after regenerating, every call written for the old signature is a compile error (tested).
 
 Evidence: `mcp_stubs_test.py` (21 checks at Stage 1, 33 now): manifest round trip, `--check` pass/fail against the live server and the manifest, removed, added and retyped methods named, missing manifest and missing client are errors, a stale program no longer compiles against the regenerated client. **Not done** (honest): stubs for resources and prompts (`ReadX`, `GetPromptX`) and a derived `outputSchema` type; the generator still emits `JsonElement` for a tool's structured result.
+
+## 11. Stage 5 (integration and measurement): what exists, and what does not
+
+**Built: the harness that reproduces the numbers** (`tools/mcp/rq/`, usage in each script's docstring; nothing here is part of a build).
+
+| Script | Reproduces |
+|---|---|
+| `corpus_identity.py <repo> <reference_bin> <new_bin> <work>` | RQ5 byte equality: every `.obs` of the regression, deploy, examples and tools sources compiled with two compilers at `-opt s0` and `s3`, own and wide library lists; bytes, text and exit code compared; exit 1 if a file without a tag differs |
+| `compile_time.py <repo> <reference_bin> <new_bin>` | RQ5 compile time: a random sample of programs, alternating runs, medians |
+| `scanner_fuzz.py <repo> <reference_bin> <new_bin> <work> [seed] [mutants]` | the scanner gate: mutants of real sources, tagged and untagged, no crash, no hang, no difference from the reference for untagged ones |
+| `cancel_latency.obs` | RQ6: `AgentCancel->Cancel` to handler return, 30 runs per start, printed in milliseconds |
+| RQ1 | `mcp_tool_tags_test` and `mcp_declare_test` (the oracle: 15 hand-written schemas against the derived ones) |
+| RQ3, RQ4 | `McpService->EnableStats`, `mcp_live_stub.obs` and `mcp_canvas.obs` print calls, turns, tokens and handler time; section 6 and 7 hold the numbers |
+
+**Not built** (so that the claim of "all stages" cannot be read off this list): the live map of MCP traffic (the SDL2 showcase with Claude and OpenAI agents on several Objeck servers); an eval harness for RQ2 (wrong-call rates for derived against hand-written descriptions over a task set, with `llm_eval`); stubs for resources and prompts; `outputSchema` from a record result; percent-decoding of resource URI variables; language-server hover for a tagged function (the language server indexes library documentation, not user code, so the editor grammars highlight the tags and nothing more); the playground libmap and generated web API pages for the new classes (`McpServe`, `McpUriTemplate`) beyond what the generators already produce.
