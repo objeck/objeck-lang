@@ -130,6 +130,9 @@
 				},
 				"SetPrices": {
 					"descriptions": ["**Takes the price of one model from a table**\n\n```method : public : SetPrices(prices:AgentPrices, model:String) ~ AgentBudget```\n\n\n\nprices: AgentPrices\n\nmodel: String\n\nreturn: AgentBudget"]
+				},
+				"Tightened": {
+					"descriptions": ["**Makes a copy whose steps, model calls, tool calls, tokens and wall-clock limits are the smaller of this budget's and the given ones (0 means no limit on either side); prices and the other limits are copied. Used by AgentScope; a limit can only get tighter.**\n\n```method : public : Tightened(steps:Int, model_calls:Int, tool_calls:Int, tokens:Int, wall_ms:Int) ~ AgentBudget```\n\n\n\nsteps: Int\n\nmodel_calls: Int\n\ntool_calls: Int\n\ntokens: Int\n\nwall_ms: Int\n\nreturn: AgentBudget"]
 				}
 			}
 		},
@@ -146,7 +149,7 @@
 					"descriptions": ["**Says whether the token or a parent was cancelled**\n\n```method : public : IsCancelled() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New()```\n\n", "**Constructor for a token that is cancelled when its parent is**\n\n```New(parent:AgentCancel)```\n\n\n\nparent: AgentCancel"]
+					"descriptions": ["**Constructor**\n\n```New()```\n\n", "**Constructor for a token that is cancelled when its parent is**\n\n```New(parent:AgentCancel)```\n\n\n\nparent: AgentCancel", "**Constructor for a token that is cancelled when either of two parents is (an agent's own token and an AgentScope's)**\n\n```New(parent:AgentCancel, also:AgentCancel)```\n\n\n\nparent: AgentCancel\n\nalso: AgentCancel"]
 				}
 			}
 		},
@@ -392,6 +395,68 @@
 			"functions": {
 				"Check": {
 					"descriptions": ["**Checks a value against a schema**\n\n```function : Check(schema:JsonElement, value:JsonElement) ~ String```\n\n\n\nschema: JsonElement\n\nvalue: JsonElement\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Agent.AgentScope": {
+			"description": "Limits for every agent run inside a block of code, with cleanup on every exit path. Make a scope, set its limits, and run a function under it (a function reference, `Name() ~ Nil`); the example is at the end.\n\nRules:\n* The limits are totals for the block, not per run: what a run used (steps = model replies, tokens, tool calls) is subtracted, the next run gets only what is left, and a run that finds nothing left is not started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or `deadline`. The wall-clock limit counts the time spent inside agent runs. A model reply is checked after it arrives, so a run can pass a token limit by the size of one reply.\n* An agent's own budget still applies; the smaller limit wins. A scope never loosens anything.\n* Nesting: a scope run inside another is limited by both (every limit in the chain is checked and charged), so an inner scope can only tighten. Its cancellation token is a child of the outer one.\n* Cancellation: `scope->Cancel(reason)` (any thread) stops the running agent at its next checkpoint and every later run in the scope; the agent's own token is honoured as well. The stop reason is `cancelled`.\n* Exit: the scope is left whether the body returns, returns early or raises (`finally`); an exception goes on to the caller. The trace (`SetTrace(true)`, read with `GetTrace()`) holds the events of every run, and `SetPrintTrace(true)` prints a one-line summary when the block exits.\n* Threads and actors: the scope applies to agent runs made on the thread that called Run, and to nothing else; a new thread or actor does not inherit it. To bring a worker under the limits, hand it `scope->Child()` and have it call `AgentScope->Run(child, ...)`: the child's runs are charged to the parent too. Parallel children can together pass the parent's limit by the runs already in flight. Call `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.\n* A scope may not be entered by two threads at once (use Child); running it again afterwards starts its counters from zero.",
+			"functions": {
+				"Cancel": {
+					"descriptions": ["**Cancels the scope: the running agent stops at its next checkpoint and later runs do not start**\n\n```method : public : Cancel(reason:String) ~ Nil```\n\n\n\nreason: String\n\nreturn: Nil"]
+				},
+				"Child": {
+					"descriptions": ["**Makes a scope for a worker thread or actor whose runs are also charged to this one**\n\n```method : public : Child() ~ AgentScope```\n\n\n\nreturn: AgentScope"]
+				},
+				"Current": {
+					"descriptions": ["**Gets the scope the calling thread is inside**\n\n```function : Current() ~ AgentScope```\n\n\n\nreturn: AgentScope"]
+				},
+				"GetCancel": {
+					"descriptions": ["**Gets the scope's cancellation token, valid while the scope is entered**\n\n```method : public : GetCancel() ~ AgentCancel```\n\n\n\nreturn: AgentCancel"]
+				},
+				"GetHalt": {
+					"descriptions": ["**Gets why the first run that did not complete stopped**\n\n```method : public : GetHalt() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRuns": {
+					"descriptions": ["**Gets the runs made so far**\n\n```method : public : GetRuns() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStepsUsed": {
+					"descriptions": ["**Gets the model replies used so far**\n\n```method : public : GetStepsUsed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTokensUsed": {
+					"descriptions": ["**Gets the tokens used so far**\n\n```method : public : GetTokensUsed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetToolCallsUsed": {
+					"descriptions": ["**Gets the tool calls used so far**\n\n```method : public : GetToolCallsUsed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTrace": {
+					"descriptions": ["**Gets the events of every run, when SetTrace(true) was set**\n\n```method : public : GetTrace() ~ AgentTraceBuffer```\n\n\n\nreturn: AgentTraceBuffer"]
+				},
+				"Init": {
+					"descriptions": ["**Creates the shared registry now; call once at start up when threads may enter their first scope together**\n\n```function : Init() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: no limits**\n\n```New()```\n\n"]
+				},
+				"Run": {
+					"descriptions": ["**Runs a function under a scope. The scope is left on every exit path.**\n\n```function : Run(scope:AgentScope, body:()~Nil) ~ Nil```\n\n\n\nscope: AgentScope\n\nbody: ()~Nil\n\nreturn: Nil"]
+				},
+				"SetMaxSteps": {
+					"descriptions": ["**Limits the model replies of all runs in the scope**\n\n```method : public : SetMaxSteps(limit:Int) ~ AgentScope```\n\n\n\nlimit: Int\n\nreturn: AgentScope"]
+				},
+				"SetMaxTokens": {
+					"descriptions": ["**Limits the tokens (as the provider reports them) of all runs in the scope**\n\n```method : public : SetMaxTokens(limit:Int) ~ AgentScope```\n\n\n\nlimit: Int\n\nreturn: AgentScope"]
+				},
+				"SetMaxToolCalls": {
+					"descriptions": ["**Limits the tool calls of all runs in the scope**\n\n```method : public : SetMaxToolCalls(limit:Int) ~ AgentScope```\n\n\n\nlimit: Int\n\nreturn: AgentScope"]
+				},
+				"SetMaxWallMs": {
+					"descriptions": ["**Limits the time spent inside agent runs in the scope**\n\n```method : public : SetMaxWallMs(millis:Int) ~ AgentScope```\n\n\n\nmillis: Int\n\nreturn: AgentScope"]
+				},
+				"SetPrintTrace": {
+					"descriptions": ["**Prints a one-line summary when the block exits**\n\n```method : public : SetPrintTrace(on:Bool) ~ AgentScope```\n\n\n\non: Bool\n\nreturn: AgentScope"]
+				},
+				"SetTrace": {
+					"descriptions": ["**Collects the trace events of every run in the scope**\n\n```method : public : SetTrace(on:Bool) ~ AgentScope```\n\n\n\non: Bool\n\nreturn: AgentScope"]
 				}
 			}
 		},
@@ -2643,7 +2708,7 @@
 					"descriptions": ["**Adds an optional parameter**\n\n```method : public : AddOptional(name:String, type:String, description:String) ~ McpToolSpec```\n\n\n\nname: String\n\ntype: String\n\ndescription: String\n\nreturn: McpToolSpec"]
 				},
 				"AddSchema": {
-					"descriptions": ["**Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function whose doc comment carries the tool tag: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say**\n\n```method : public : AddSchema(name:String, schema_json:String, description:String, required:Bool) ~ McpToolSpec```\n\n\n\nname: String\n\nschema_json: String\n\ndescription: String\n\nrequired: Bool\n\nreturn: McpToolSpec"]
+					"descriptions": ["**Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function carrying a tool doc tag: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say**\n\n```method : public : AddSchema(name:String, schema_json:String, description:String, required:Bool) ~ McpToolSpec```\n\n\n\nname: String\n\nschema_json: String\n\ndescription: String\n\nrequired: Bool\n\nreturn: McpToolSpec"]
 				},
 				"AddTo": {
 					"descriptions": ["**Builds the tool and registers it on a server**\n\n```method : public : AddTo(service:McpService, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ Nil```\n\n\n\nservice: McpService\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: Nil"]
@@ -25957,6 +26022,12 @@
 			}
 		],
 		"AgentSchema": [
+			{
+				"bundle": "API.Agent",
+				"file": "agent.obl"
+			}
+		],
+		"AgentScope": [
 			{
 				"bundle": "API.Agent",
 				"file": "agent.obl"

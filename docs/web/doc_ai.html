@@ -974,6 +974,7 @@ answer: It is 18C and sunny in Paris.</pre>
       <tr><td data-label="You want">a deadline, or a cap on steps, model calls, tool calls, tokens or cost</td><td data-label="You use"><code>AgentBudget</code>, <code>agent-&gt;SetBudget(budget)</code></td></tr>
       <tr><td data-label="You want">a hung tool or model call to stop costing the run</td><td data-label="You use"><code>AgentTool-&gt;Mode-&gt;BOUNDED_THREAD</code>, <code>agent-&gt;SetBoundedModelCalls(true)</code></td></tr>
       <tr><td data-label="You want">to see each step</td><td data-label="You use"><code>agent-&gt;SetTrace(sink)</code>, <code>AgentTraceBuffer</code></td></tr>
+      <tr><td data-label="You want">one set of limits, a cancel and a trace for every run inside a block of code</td><td data-label="You use"><code>AgentScope-&gt;Run(scope, Work() ~ Nil)</code></td></tr>
      </tbody>
     </table>
     <ul>

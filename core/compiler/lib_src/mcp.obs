@@ -3797,7 +3797,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 		}
 
 		#~
-		Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function whose doc comment carries the tool tag: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say
+		Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function carrying a tool doc tag: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say
 		@param name parameter name
 		@param schema_json the schema, a JSON object as text
 		@param description what it means, for the model; Nil or empty for none
