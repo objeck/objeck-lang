@@ -7085,9 +7085,13 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   if(dot_pos != std::wstring::npos) {
     file_base = file_base.substr(0, dot_pos);
   }
-  // the class a 'spawn' makes has a name of its own: its text is generated, so
-  // its position could be that of a class the programmer wrote on the same line
-  const std::wstring cls_name = method_call->GetVariableName() + (spawn_class ? L".#Spawn." : L".#Anonymous.") +
+  // The class a 'spawn' makes has a name of its own: its text is generated, so
+  // its position could be that of a class the programmer wrote on the same
+  // line. It is named for the class it is written in as well, so a library
+  // and a program with a 'spawn' at one position of two files of one name do
+  // not make the same class.
+  const std::wstring cls_name = method_call->GetVariableName() +
+    (spawn_class ? L".#Spawn." + (current_class ? current_class->GetName() + L'.' : L"") : L".#Anonymous.") +
     file_base + L'_' + std::to_wstring(line_num) + L'_' + std::to_wstring(line_pos) + L'#';
 
   std::vector<std::wstring> interface_names;
