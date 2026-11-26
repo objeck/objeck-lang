@@ -86,9 +86,15 @@ bundle Fixture.Bad {
 
 
 def run_code_doc(bin_dir, work, sources):
+    # absolute: code_doc runs with a different cwd below, which broke a relative bin dir
+    bin_dir = os.path.abspath(bin_dir)
     obc = os.path.join(bin_dir, "obc")
     obr = os.path.join(bin_dir, "obr")
-    deploy = os.path.dirname(os.path.abspath(bin_dir))
+    for tool in (obc, obr):
+        if not (os.path.exists(tool) or os.path.exists(tool + ".exe")):
+            print("FAIL: %s not found; pass the deploy tree's bin directory" % tool)
+            sys.exit(2)
+    deploy = os.path.dirname(bin_dir)
     lib = os.path.join(deploy, "lib")
     tools = os.path.join(ROOT, "core", "lib", "code_doc")
     obe = os.path.join(work, "code_doc.obe")
