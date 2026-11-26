@@ -2,9 +2,10 @@
 
 The Model Context Protocol (MCP) is how an AI model finds and calls a program's functions. This walkthrough
 builds one small tool four ways. Every output below is from a real run on the build that wrote this page;
-the programs are in `programs/deploy/` (`mcp_declare_40`, `mcp_stub_41`, `mcp_agent_42`) and compile with the
+the programs are in `programs/deploy/` (`mcp_declare_40`, `mcp_stub_41`, `mcp_agent_42`, `mcp_resources_43`, `mcp_serve_44`) and compile with the
 libraries on their first line. The reference is [ai_sections/mcp.md](ai_sections/mcp.md); the design and what
-is not possible yet is [design/MCP_FIRST_CLASS.md](design/MCP_FIRST_CLASS.md).
+is not possible yet is [design/MCP_FIRST_CLASS.md](design/MCP_FIRST_CLASS.md). A shorter tour of the whole release is
+[What is new in v2026.11.4](guides/whats_new_11_4.md).
 
 ## 1. Declare: a function is a tool
 
@@ -33,12 +34,20 @@ class Tools {
 The description is the comment's text, the schema comes from the parameter types (the enum becomes a list of
 allowed values, a default would make a parameter optional), `@readonly` is the MCP `readOnlyHint`, and
 `Tools->McpTools(server)` registers every tool of the class. `obr mcp_declare_40.obe` lists what the server
-offers and calls it:
+offers and calls it (`remove_file` is the destructive tool the third section uses):
 
 ```
-greet (read-only): Greet a person.
-  schema: {"properties":{"name":{"description":"who to greet","type":"string"},"style":{"description":"how to greet","enum":["FORMAL","CASUAL"],"type":"string"}},"required":["name","style"],"type":"object"}
+The server lists 3 tools:
+  add (read-only): Add two integers.
+    schema: {"properties":{"a":{"description":"the first number","type":"integer"},"b":{"description":"the second number","type":"integer"}},"required":["a","b"],"type":"object"}
+  greet (read-only): Greet a person.
+    schema: {"properties":{"name":{"description":"who to greet","type":"string"},"style":{"description":"how to greet","enum":["FORMAL","CASUAL"],"type":"string"}},"required":["name","style"],"type":"object"}
+  remove_file (destructive): Delete a file.
+    schema: {"properties":{"path":{"description":"the file to delete","type":"string"}},"required":["path"],"type":"object"}
+add(17, 25)                  -> 42
 greet("Ada", FORMAL)         -> Good day, Ada
+greet("Ada", CASUAL)         -> hi Ada
+add(1, "two")                -> refused: Invalid arguments for add: argument 'b' must be of type integer
 greet("Ada", "RUDE")         -> refused: Invalid arguments for greet: argument 'style' must be one of: FORMAL, CASUAL
 add(1) with no b             -> refused: Invalid arguments for add: missing required argument 'b'
 ```
@@ -63,6 +72,16 @@ program prints there corrupts it, so log with `ErrorLine` (standard error). The 
 `Main` (it is what runs without the flag). Tested by `mcp_launch_test.py` (stdio in three execution modes,
 hostile input, HTTP, the refusals); the same client library that tests it is what the stub generator uses.
 An older `--stdio` flag in `mcp_declare_40.obs` is the program's own and still works.
+
+Resources and prompts come from the same comment: `@resource weather://{city}/forecast/{days}` serves data and
+`@prompt` a prompt template (`mcp_resources_43` shows all three kinds, `mcp_serve_44` is the smallest server).
+A start of a session by hand (`mcp_serve_44` offers one tool, `count_words`; the tool call is in [What is new](guides/whats_new_11_4.md)):
+
+```
+$ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | obr --mcp mcp_serve_44.obe
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"prompts":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"Notes","version":"1.0"}}}
+{"id":2,"jsonrpc":"2.0","result":{"tools":[{"annotations":{"readOnlyHint":true},"description":"Count the words in a text.","inputSchema":{"properties":{"text":{"description":"the text to count","type":"string"}},"required":["text"],"type":"object"},"name":"count_words"}]}}
+```
 
 ## 3. Consume through a typed client
 
@@ -107,7 +126,20 @@ delete_file: refused - Error: the user declined to run 'delete_file'
 The read-only `add` ran without a question, the unmarked `note` asked, and the destructive `delete_file`
 asked and was refused before its function ran.
 
-## 5. With a real model
+## 5. With a local model
+
+The agent loop of section 4 does not care which model sits behind it. `OllamaBackend` runs it on a model served
+by [Ollama](https://ollama.com) on your own machine, with no key. **Requires a local Ollama server**;
+`programs/examples/guides/agent_local.obs` hands an `@tool` function to `qwen3:8b`:
+
+```
+$ obr agent_local.obe
+answer: The sum of 17 and 25 is **42**.
+tool: add({"a":17,"b":25}) -> 42
+stop reason: completed, model calls: 2
+```
+
+## 6. With a hosted model
 
 `tools/mcp/mcp_live_stub.obs` hands the shop server's tool definitions to a model through `McpToolBridge` and
 runs every call the model makes through `ShopClient`. Run it from the directory that holds your key files (the
@@ -130,7 +162,7 @@ a generated typed client (`obr mcp_canvas.obe --demo`, or `--stub` to print that
 
 ## What this does not do yet
 
-The compile-time typed client (a build step that fails when a server's schema changes) and the visual traffic showcase are the next stages. Enums and records must be declared in the
+Enums and records must be declared in the
 sources being compiled, before the class that uses them; an enum cannot be an optional parameter (a default must
 be a literal). A tool's result is text, a `JsonElement` (structured) or an `McpToolResult`; a record result and a
 derived `outputSchema` beyond "an object" are not derived. The design document has the reasons and the plan.

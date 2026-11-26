@@ -1366,6 +1366,51 @@ cancel: cancelled after 231 ms
 
 Compiled and run with the current toolchain; the elapsed time varies. `agent_control_test` in the regression suite covers each budget and stop reason, the cancel cases, a hung tool with an abandoned worker, the trace and its key redaction, and retries, all on a scripted model. The provider backends' own total deadline is not covered.
 
+### Local models with Ollama
+
+`OllamaBackend` runs the same loop on a model served by [Ollama](https://ollama.com): no API key, and no data
+leaves the machine. **Requires a local Ollama server** with a model that supports tool calls
+(`ollama pull qwen3:8b`); it listens on `http://localhost:11434`, and `SetHost("http://host:11434")` points the
+backend at another machine. This program hands an `@tool` function to the model through `McpAgentTools`
+(`programs/examples/guides/agent_local.obs`, compiled with `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent`):
+
+```ruby
+use API.MCP, API.Agent, Collection;
+
+class LocalAgent {
+  #~
+  Add two integers.
+  @tool
+  @readonly
+  ~#
+  function : Add(a : Int, b : Int) ~ Int {
+    return a + b;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("local", "1.0.0");
+    LocalAgent->McpTools(server);
+    client := McpClient->InProcess(server);
+    client->Initialize("local-client", "1.0");
+    registry := ToolRegistry->New();
+    McpAgentTools->AddAll(registry, client);
+
+    agent := Agent->New(OllamaBackend->New("qwen3:8b"), registry);
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(6)->SetMaxWallMs(120000));
+    result := agent->Run("What is 17 plus 25? Use the add tool.");
+    "answer: {$(result->GetText())}"->PrintLine();
+  }
+}
+```
+
+```
+answer: The sum of 17 and 25 is **42**.
+```
+
+The answer's wording varies from run to run; the call `add({"a":17,"b":25})` does not. Set a budget: a small local
+model can loop, and the wall-clock limit is what ends it. Without a server the run fails with the HTTP error in
+`result->GetError()`.
+
 ---
 
 ## Model Context Protocol (API.MCP)
