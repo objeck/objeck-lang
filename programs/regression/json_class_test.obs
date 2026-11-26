@@ -1,0 +1,347 @@
+# EXTRA_LIBS: gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json
+#~
+'class Name : json' (docs/design/AGENT_SYNTAX.md): the compiler writes JsonSchema, JsonFill, FromJson and Ask
+from a class's fields. Against a scripted model, so no key and no network: a reply that is valid, one with a
+trailing comma (repaired), a wrong one first and a right one second (retry), no valid reply at all, a backend
+that fails; FromJson on missing, mistyped and null fields; optional fields; nested classes; Vector, Map and
+array fields; an enum; the agent's system prompt; two classes in one file; a class with an @tool-style name
+clash is a compile error (json_class_diag_test.py).
+~#
+use API.Agent, API.LlmUtil, API.AgentJson, Data.JSON, Collection;
+
+enum Sky { CLEAR, CLOUDY, RAIN }
+
+class Place : json {
+  @name : String;
+  @lat : Float;
+
+  New() {
+  }
+
+  method : public : GetName() ~ String {
+    return @name;
+  }
+
+  method : public : GetLat() ~ Float {
+    return @lat;
+  }
+}
+
+class Weather : json(note, tags) {
+  @city : String;
+  @temp_c : Float;
+  @humid : Int;
+  @windy : Bool;
+  @sky : Sky;
+  @tags : Vector<String>;
+  @where : Place;
+  @note : String;
+  @scores : Int[];
+  @extra : Map<String, IntRef>;
+  @raw : JsonElement;
+
+  New() {
+  }
+
+  method : public : GetCity() ~ String {
+    return @city;
+  }
+
+  method : public : GetTemp() ~ Float {
+    return @temp_c;
+  }
+
+  method : public : GetHumid() ~ Int {
+    return @humid;
+  }
+
+  method : public : GetWindy() ~ Bool {
+    return @windy;
+  }
+
+  method : public : GetSky() ~ Sky {
+    return @sky;
+  }
+
+  method : public : GetTags() ~ Vector<String> {
+    return @tags;
+  }
+
+  method : public : GetWhere() ~ Place {
+    return @where;
+  }
+
+  method : public : GetNote() ~ String {
+    return @note;
+  }
+
+  method : public : GetScores() ~ Int[] {
+    return @scores;
+  }
+
+  method : public : GetExtra() ~ Map<String, IntRef> {
+    return @extra;
+  }
+
+  method : public : GetRaw() ~ JsonElement {
+    return @raw;
+  }
+}
+
+class Duo : json {
+  @a : Int;
+  @b : Int;
+
+  New() {
+  }
+
+  method : public : Sum() ~ Int {
+    return @a + @b;
+  }
+}
+
+class Team : json {
+  @name : String;
+  @members : Vector<Place>;
+
+  New() {
+  }
+
+  method : public : GetMembers() ~ Vector<Place> {
+    return @members;
+  }
+}
+
+class JsonClassTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  function : Full() ~ String {
+    return "{\"city\":\"Paris\",\"temp_c\":18.5,\"humid\":60,\"windy\":true,\"sky\":\"RAIN\",\"where\":{\"name\":\"fr\",\"lat\":48.8},\"scores\":[1,2,3],\"extra\":{\"k\":7},\"raw\":{\"any\":[1,\"x\"]}}";
+  }
+
+  # the error message of a FromJson that raises, or Nil when it does not
+  function : Failure(text : String) ~ String {
+    message : String;
+    try {
+      Weather->FromJson(Json(text));
+    }
+    on(e : Error) {
+      message := e->GetMessage();
+    };
+    return message;
+  }
+
+  function : Scripted(replies : Vector<String>, system : String) ~ Agent {
+    script := Vector->New()<AgentReply>;
+    for(i := 0; i < replies->Size(); i += 1;) {
+      script->AddBack(AgentReply->Say(replies->Get(i)));
+    };
+    agent := Agent->New(ScriptedBackend->New(script), Nil);
+    if(system <> Nil) {
+      agent->SetSystem(system);
+    };
+    return agent;
+  }
+
+  function : TestFromJson() ~ Nil {
+    "FromJson:"->PrintLine();
+    w := Weather->FromJson(Json(Full()));
+    Check("strings, numbers and bools", Same(w->GetCity(), "Paris") & w->GetTemp() = 18.5 & w->GetHumid() = 60 & w->GetWindy());
+    Check("an enum is read by name", w->GetSky() = Sky->RAIN);
+    Check("a nested json class", Same(w->GetWhere()->GetName(), "fr") & w->GetWhere()->GetLat() = 48.8);
+    Check("an Int array", w->GetScores()->Size() = 3 & w->GetScores()[2] = 3);
+    Check("a Map<String, IntRef>", w->GetExtra()->Size() = 1 & w->GetExtra()->Find("k")->Get() = 7);
+    Check("a JsonElement field keeps any value", w->GetRaw()->Has("any"));
+    Check("an optional field left out is Nil / empty", w->GetNote() = Nil & w->GetTags() = Nil);
+
+    with_optional := Weather->FromJson(Json("{\"city\":\"Rome\",\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[],\"extra\":{},\"raw\":null,\"note\":\"sunny\",\"tags\":[\"a\",\"b\"]}"));
+    Check("optional fields present are read", Same(with_optional->GetNote(), "sunny") & with_optional->GetTags()->Size() = 2);
+    Check("an empty array", with_optional->GetScores()->Size() = 0);
+
+    nulled := Weather->FromJson(Json("{\"city\":\"Rome\",\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[],\"extra\":{},\"raw\":null,\"note\":null}"));
+    Check("an optional field that is null is left Nil", nulled->GetNote() = Nil);
+
+    extra_field := Weather->FromJson(Json("{\"city\":\"Rome\",\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[],\"extra\":{},\"raw\":null,\"unknown\":5}"));
+    Check("a field the class does not have is ignored", Same(extra_field->GetCity(), "Rome"));
+
+    team := Team->FromJson(Json("{\"name\":\"t\",\"members\":[{\"name\":\"a\",\"lat\":1.5},{\"name\":\"b\",\"lat\":2.5}]}"));
+    Check("a Vector of a json class", team->GetMembers()->Size() = 2 & Same(team->GetMembers()->Get(1)->GetName(), "b") & team->GetMembers()->Get(1)->GetLat() = 2.5);
+    Check("an empty Vector of a json class", Team->FromJson(Json("{\"name\":\"t\",\"members\":[]}"))->GetMembers()->Size() = 0);
+    Check("an Int sum through two fields", Duo->FromJson(Json("{\"a\":40,\"b\":2}"))->Sum() = 42);
+  }
+
+  function : TestRejects() ~ Nil {
+    "FromJson rejects:"->PrintLine();
+    e1 := Failure("{\"temp_c\":1.0}");
+    Check("a missing required field names it", Has(e1, "Weather") & Has(e1, "city"));
+    e2 := Failure("{\"city\":5,\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[],\"extra\":{},\"raw\":null}");
+    Check("a wrong type names the field", Has(e2, "city"));
+    e3 := Failure("{\"city\":\"x\",\"temp_c\":1.0,\"humid\":1.5,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[],\"extra\":{},\"raw\":null}");
+    Check("a fraction for an Int is refused", Has(e3, "humid"));
+    e4 := Failure("{\"city\":\"x\",\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"HAIL\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[],\"extra\":{},\"raw\":null}");
+    Check("an enum value that does not exist is refused", Has(e4, "sky"));
+    e5 := Failure("{\"city\":\"x\",\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\"},\"scores\":[],\"extra\":{},\"raw\":null}");
+    Check("a missing field of a nested class is refused", Has(e5, "lat"));
+    e6 := Failure("{\"city\":\"x\",\"temp_c\":1.0,\"humid\":1,\"windy\":false,\"sky\":\"CLEAR\",\"where\":{\"name\":\"it\",\"lat\":1.0},\"scores\":[1,\"two\"],\"extra\":{},\"raw\":null}");
+    Check("a wrong element type in an array is refused", Has(e6, "scores"));
+    Check("a JSON array where an object is expected", Failure("[1,2]") <> Nil);
+    Check("a string where an object is expected", Failure("\"text\"") <> Nil);
+
+    raised := false;
+    try {
+      Weather->FromJson(Nil);
+    }
+    on(e : Error) {
+      raised := Has(e->GetMessage(), "no JSON value");
+    };
+    Check("Nil is refused", raised);
+  }
+
+  function : TestSchemaShape() ~ Nil {
+    "JsonSchema:"->PrintLine();
+    schema := Weather->JsonSchema();
+    required := schema->Get("required");
+    Check("required lists the non-optional fields only", required->Size() = 9);
+    Check("an optional field is a property", schema->Get("properties")->Has("note") & schema->Get("properties")->Has("tags"));
+    names := String->New();
+    for(i := 0; i < required->Size(); i += 1;) {
+      names->Append(required->Get(i)->GetString());
+      names->Append(',');
+    };
+    Check("required keeps the field order", Same(names->ToString(), "city,temp_c,humid,windy,sky,where,scores,extra,raw,"));
+    Check("a nested class is an object schema", Same(schema->Get("properties")->Get("where")->Get("type")->GetString(), "object"));
+    Check("each call gives an equal schema", JsonSchema->Same(Weather->JsonSchema(), Weather->JsonSchema()));
+  }
+
+  function : TestAsk() ~ Nil {
+    "Ask:"->PrintLine();
+    replies := Vector->New()<String>;
+    replies->AddBack(Full());
+    agent := Scripted(replies, Nil);
+    w := Weather->Ask(agent, "Weather in Paris?");
+    Check("a valid reply becomes the object", Same(w->GetCity(), "Paris") & w->GetSky() = Sky->RAIN);
+
+    fenced := Vector->New()<String>;
+    fenced->AddBack("```json\n" + Full() + "\n```");
+    f := Weather->Ask(Scripted(fenced, Nil), "x");
+    Check("a reply in a code fence is read", Same(f->GetCity(), "Paris"));
+
+    trailing := Vector->New()<String>;
+    trailing->AddBack("{\"a\":1,\"b\":2,}");
+    Check("a trailing comma is repaired", Duo->Ask(Scripted(trailing, Nil), "x")->Sum() = 3);
+
+    wrong_then_right := Vector->New()<String>;
+    wrong_then_right->AddBack("{\"a\":\"one\",\"b\":2}");
+    wrong_then_right->AddBack("{\"a\":1,\"b\":2}");
+    retry := Scripted(wrong_then_right, Nil);
+    Check("a wrong reply is sent back and the second one is used", Duo->Ask(retry, "x")->Sum() = 3);
+
+    never := Vector->New()<String>;
+    never->AddBack("not json");
+    never->AddBack("{\"a\":1}");
+    never->AddBack("{\"b\":2}");
+    message : String;
+    try {
+      Duo->Ask(Scripted(never, Nil), "x");
+    }
+    on(e : Error) {
+      message := e->GetMessage();
+    };
+    Check("no valid reply raises with the attempts", Has(message, "AgentAsk") & Has(message, "3 attempt"));
+
+    failing := Agent->New(FailingBackend->New(), Nil);
+    message2 : String;
+    try {
+      Duo->Ask(failing, "x");
+    }
+    on(e : Error) {
+      message2 := e->GetMessage();
+    };
+    Check("a backend error is in the message", Has(message2, "backend is down"));
+
+    sys := Vector->New()<String>;
+    sys->AddBack("{\"a\":5,\"b\":6}");
+    recording := RecordingBackend->New("{\"a\":5,\"b\":6}");
+    Check("the agent's system prompt reaches the model", Duo->Ask(Agent->New(recording, Nil)->SetSystem("You are terse."), "x")->Sum() = 11 & Has(recording->GetSystem(), "You are terse.") & Has(recording->GetSystem(), "JSON Schema"));
+    Check("the schema is in the system prompt", Has(recording->GetSystem(), "\"a\""));
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestFromJson();
+    TestRejects();
+    TestSchemaShape();
+    TestAsk();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
+
+class FailingBackend implements ChatBackend {
+  New() {
+  }
+
+  method : public : GetName() ~ String {
+    return "failing";
+  }
+
+  method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+    return Nil;
+  }
+
+  method : public : GetLastError() ~ String {
+    return "the backend is down";
+  }
+}
+
+class RecordingBackend implements ChatBackend {
+  @reply : String;
+  @system : String;
+
+  New(reply : String) {
+    @reply := reply;
+  }
+
+  method : public : GetSystem() ~ String {
+    return @system;
+  }
+
+  method : public : GetName() ~ String {
+    return "recording";
+  }
+
+  method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+    @system := conversation->GetSystem();
+    return AgentReply->Say(@reply);
+  }
+
+  method : public : GetLastError() ~ String {
+    return Nil;
+  }
+}

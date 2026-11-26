@@ -115,6 +115,7 @@ set -o pipefail
   "$SRC/actor_agents.obs" \
   "$SRC/mcp.obs" \
   "$SRC/mcp_agent.obs" \
+  "$SRC/agent_json.obs" \
   "$SRC/rag.obs" \
   "$SRC/rag_adapters.obs" \
   "$SRC/json_rpc.obs" \

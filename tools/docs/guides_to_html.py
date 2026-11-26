@@ -528,6 +528,7 @@ LIBS = {
     "agent": (3, "A provider-neutral tool-use loop: an agent that calls the functions you give it."),
     "actor_agents": (3, "Run an agent as a supervised actor."),
     "mcp": (3, "Model Context Protocol server and client."),
+    "agent_json": (3, "Typed answers from an agent's model: the run-time half of `class Name : json`."),
     "mcp_agent": (3, "Declared MCP tools and servers as agent tools, with approval by effect."),
     "models": (3, "Backend-neutral inference types shared by the model libraries."),
     "inference": (3, "A client for HTTP model-inference servers."),

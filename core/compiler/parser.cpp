@@ -1360,6 +1360,42 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
   // generic ids
   std::vector<Class*> generic_classes = ParseGenericClasses(bundle_name, depth);
 
+  // 'class Name : json' or 'class Name : json(optional_field, ...)': the compiler writes the JSON Schema and the reader
+  bool is_json = false;
+  std::vector<std::wstring> json_optional;
+  if(Match(TOKEN_COLON)) {
+    NextToken();
+    if(Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"json") {
+      is_json = true;
+      NextToken();
+      if(Match(TOKEN_OPEN_PAREN)) {
+        NextToken();
+        while(Match(TOKEN_IDENT)) {
+          json_optional.push_back(scanner->GetToken()->GetIdentifier());
+          NextToken();
+          if(Match(TOKEN_COMMA)) {
+            NextToken();
+          }
+          else {
+            break;
+          }
+        }
+        if(!Match(TOKEN_CLOSED_PAREN)) {
+          ProcessError(L"Expected ')' after the optional fields of 'json(...)'", TOKEN_CLOSED_PAREN);
+        }
+        else {
+          NextToken();
+        }
+      }
+      if(is_record) {
+        ProcessError(L"'json' belongs to a class; a record has its own constructor and is already readable from JSON");
+      }
+    }
+    else {
+      ProcessError(L"Expected 'json' after the class name, as in 'class Weather : json'");
+    }
+  }
+
   // from id
   std::wstring parent_cls_name;
   if(Match(TOKEN_FROM_ID)) {
@@ -1419,6 +1455,9 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
                                                     interface_names, generic_classes, is_public, false);
   klass->SetRecord(is_record);
   klass->SetReadonlyRecord(is_readonly_record);
+  if(is_json) {
+    klass->SetJson(true, json_optional);
+  }
   current_class = klass;
 
   // add '@self' entry
@@ -1508,6 +1547,10 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 
   if(klass->IsRecord()) {
     GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
+  }
+
+  if(is_json && !diagnostics.HasErrors()) {
+    GenerateJsonClass(klass, class_line_num, depth + 1);
   }
 
   // a function that did not parse (a syntax error above) has no types to derive from: the syntax error is the answer
@@ -8348,6 +8391,20 @@ namespace {
       }
       return L"{\"type\":\"object\",\"properties\":{" + props + L"},\"required\":[" + required + L"]}";
     }
+    case MK_JSONCLS: {
+      std::wstring props;
+      std::wstring required;
+      for(size_t i = 0; i < t.items.size(); ++i) {
+        const bool optional = i < t.optional.size() && t.optional[i];
+        // an optional field may be left out or be null (a model often writes null for what it does not know)
+        props += (i ? L"," : L"") + McpJsonString(t.items[i]) + L":" +
+                 (optional ? L"{\"anyOf\":[" + McpSchemaText(t.kids[i]) + L",{\"type\":\"null\"}]}" : McpSchemaText(t.kids[i]));
+        if(!optional) {
+          required += (required.empty() ? L"" : L",") + McpJsonString(t.items[i]);
+        }
+      }
+      return L"{\"type\":\"object\",\"properties\":{" + props + L"},\"required\":[" + required + L"]}";
+    }
     case MK_ARRAY:
     case MK_VECTOR:
       return L"{\"type\":\"array\",\"items\":" + McpSchemaText(t.kids[0]) + L"}";
@@ -8361,6 +8418,7 @@ namespace {
   // what the helper functions of one class are called, so one is written once per type
   struct McpHelpers {
     std::wstring cls;
+    std::wstring prefix = L"McpRead_";                        // 'class : json' writes JsonRead_, so a class with both has no clash
     std::map<std::wstring, std::wstring> names;               // type text -> function name
     std::vector<std::pair<std::wstring, std::wstring> > code; // function name -> source text
     int count = 0;
@@ -8377,7 +8435,7 @@ namespace {
       return found->second;
     }
 
-    const std::wstring name = L"McpRead_" + std::to_wstring(++helpers.count);
+    const std::wstring name = helpers.prefix + std::to_wstring(++helpers.count);
     helpers.names[key] = name;
 
     const std::wstring head = L"function : " + name + L"(mcp_j : Data.JSON.JsonElement) ~ " + t.text + L" { ";
@@ -8451,6 +8509,8 @@ namespace {
       return j + L"->GetString()";
     case MK_JSON:
       return j;
+    case MK_JSONCLS:
+      return t.name + L"->FromJson(" + j + L")";
     default:
       return helpers.cls + L"->" + McpHelper(t, helpers) + L"(" + j + L")";
     }
@@ -8698,6 +8758,60 @@ static std::wstring McpTypeText(Type* type)
   return text;
 }
 
+// The fields of a record or of a 'class : json' class: their names, types and (json) which are optional.
+bool Parser::McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth)
+{
+  const std::wstring name = record->GetName();
+  std::vector<Statement*> statements = record->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(statements[i]->GetStatementType() != DECLARATION_STMT) {
+      continue;
+    }
+    std::vector<Declaration*> group;
+    Declaration* declaration = static_cast<Declaration*>(statements[i]);
+    while(declaration) {
+      SymbolEntry* entry = declaration->GetEntry();
+      if(entry && !entry->IsStatic()) {
+        group.push_back(declaration);
+      }
+      declaration = declaration->GetChild();
+    }
+    for(size_t g = group.size(); g > 0; --g) {
+      SymbolEntry* entry = group[g - 1]->GetEntry();
+      std::wstring field = McpAfterColon(entry->GetName());
+      if(!field.empty() && field[0] == L'@') {
+        field = field.substr(1);
+      }
+      McpTy kid;
+      std::wstring kid_why;
+      if(!McpAnalyze(entry->GetType(), kid, kid_why, false, depth + 1)) {
+        if(record->IsJson()) {
+          for(size_t at = kid_why.find(L"tool parameter"); at != std::wstring::npos; at = kid_why.find(L"tool parameter", at)) {
+            kid_why.replace(at, 14, L"JSON field");
+          }
+        }
+        why = L"the field '" + field + L"' of the " + (record->IsJson() ? L"class '" : L"record '") + name + L"': " + kid_why;
+        return false;
+      }
+      if(kid.kind == MK_CALL) {
+        why = L"the field '" + field + L"' of the " + (record->IsJson() ? L"class '" : L"record '") + name + L"' cannot be a McpCall";
+        return false;
+      }
+      element.items.push_back(field);
+      element.kids.push_back(kid);
+      if(record->IsJson()) {
+        const std::vector<std::wstring>& optional = record->GetJsonOptional();
+        element.optional.push_back(std::find(optional.begin(), optional.end(), field) != optional.end());
+      }
+    }
+  }
+  if(element.items.empty()) {
+    why = L"the " + std::wstring(record->IsJson() ? L"class '" : L"record '") + name + L"' has no fields";
+    return false;
+  }
+  return true;
+}
+
 // Reads what MCP needs to know of a type. False, with the reason in 'why', for a type that cannot be a tool's
 // parameter. 'in_collection' is true for the element of a Vector or Map, which holds IntRef, not Int.
 bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth)
@@ -8819,52 +8933,17 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       }
     }
     else if(Class* record = McpFindClass(name)) {
-      if(!record->IsRecord()) {
-        why = L"the class '" + name + L"' cannot be a tool parameter: declare it as a record, or take a JsonElement";
+      if(!record->IsRecord() && !record->IsJson()) {
+        why = L"the class '" + name + L"' cannot be a tool parameter: declare it as a record or as 'class " + name + L" : json', or take a JsonElement";
         return false;
       }
-      element.kind = MK_RECORD;
-      std::vector<Statement*> statements = record->GetStatements();
-      for(size_t i = 0; i < statements.size(); ++i) {
-        if(statements[i]->GetStatementType() != DECLARATION_STMT) {
-          continue;
-        }
-        std::vector<Declaration*> group;
-        Declaration* declaration = static_cast<Declaration*>(statements[i]);
-        while(declaration) {
-          SymbolEntry* entry = declaration->GetEntry();
-          if(entry && !entry->IsStatic()) {
-            group.push_back(declaration);
-          }
-          declaration = declaration->GetChild();
-        }
-        for(size_t g = group.size(); g > 0; --g) {
-          SymbolEntry* entry = group[g - 1]->GetEntry();
-          std::wstring field = McpAfterColon(entry->GetName());
-          if(!field.empty() && field[0] == L'@') {
-            field = field.substr(1);
-          }
-          McpTy kid;
-          std::wstring kid_why;
-          if(!McpAnalyze(entry->GetType(), kid, kid_why, false, depth + 1)) {
-            why = L"the field '" + field + L"' of the record '" + name + L"': " + kid_why;
-            return false;
-          }
-          if(kid.kind == MK_CALL) {
-            why = L"the field '" + field + L"' of the record '" + name + L"' cannot be a McpCall";
-            return false;
-          }
-          element.items.push_back(field);
-          element.kids.push_back(kid);
-        }
-      }
-      if(element.items.empty()) {
-        why = L"the record '" + name + L"' has no fields";
+      element.kind = record->IsJson() ? MK_JSONCLS : MK_RECORD;
+      if(!McpAnalyzeFields(record, element, why, depth)) {
         return false;
       }
     }
     else {
-      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those";
+      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those (a class must be a record, or 'class X : json' declared above the class that uses it)";
       return false;
     }
   }
@@ -8889,7 +8968,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
 }
 
 // parses one generated function and adds it to the class
-void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth)
+void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by)
 {
   std::wstring text(line > 1 ? line - 1 : 0, L'\n');
   text += code;
@@ -8899,12 +8978,16 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   scanner = new Scanner(klass->GetFileName(), alt_syntax, text);
   NextToken();
 
+  const std::wstring owner = needed_by ? needed_by : L"an '@tool' function";
   Method* method = nullptr;
   if(Match(TOKEN_FUNCTION_ID)) {
     method = ParseMethod(true, false, depth + 1);
   }
+  else if(needed_by && Match(TOKEN_METHOD_ID)) {
+    method = ParseMethod(false, false, depth + 1);
+  }
   if(!Match(TOKEN_END_OF_STREAM)) {
-    ProcessError(L"The code written for an '@tool' function has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
+    ProcessError(L"The code written for " + owner + L" has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
   }
 
   delete scanner;
@@ -8912,7 +8995,7 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   current_method = previous_method;
 
   if(method && !klass->AddMethod(method)) {
-    diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which an '@tool' function needs for itself");
+    diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which " + owner + L" needs for itself");
   }
 }
 
@@ -9394,6 +9477,113 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
     }
     McpAddFunction(klass, L"function : McpMain_" + entry_class + L"(mcp_args : String[]) ~ Nil { mcp_service := API.MCP.McpService->New(\"" + McpLit(klass->GetName()) + L"\", \"1.0\"); " +
                           helpers.cls + L"->McpTools(mcp_service); API.MCP.McpServe->Run(mcp_service, mcp_args); }", first_line, depth);
+  }
+}
+
+/****************************************************************************
+ * 'class Name : json'.
+ *
+ * Writes into the class, as source text parsed by this same parser, from the class's own fields (the same
+ * derivation an '@tool' parameter gets; docs/design/AGENT_SYNTAX.md):
+ *
+ *   JsonSchema() ~ JsonElement          the JSON Schema of the class (fields; 'json(a, b)' marks a and b optional)
+ *   JsonFill(mcp_j)                     sets every field from a JSON object
+ *   FromJson(mcp_j) ~ Name              checks the value against the schema, then makes and fills an object
+ *   Ask(agent, prompt) ~ Name           asks the agent's model for a value of the class (needs 'use API.AgentJson;')
+ *
+ * A class without ': json' gets none of this, and nothing here runs for it.
+ ****************************************************************************/
+void Parser::GenerateJsonClass(Class* klass, int line, int depth)
+{
+  const std::wstring file_name = klass->GetFileName();
+  const std::wstring cls = klass->GetName();
+  const std::wstring qcls = McpLit(cls);
+
+  if(!current_lib_uses || std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.LlmUtil")) == current_lib_uses->end()) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class needs 'use API.LlmUtil;' (and -lib llm_util,json): FromJson checks the value against the schema with that library");
+    return;
+  }
+  if(!klass->GetParentName().empty()) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class cannot extend another class: its schema is made from its own fields");
+    return;
+  }
+  if(!klass->GetGenericClasses().empty()) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class cannot be generic: its schema is made from its own field types");
+    return;
+  }
+
+  // FromJson makes the object with New()
+  bool has_new = false;
+  const bool has_default_new = klass->HasDefaultNew();
+  std::vector<Method*> methods = klass->GetMethods();
+  for(size_t i = 0; i < methods.size(); ++i) {
+    if(McpAfterColon(methods[i]->GetName()) == L"New") {
+      has_new = true;
+    }
+  }
+  // the names the compiler writes: a function of the class with one of them (any parameters) would be a second overload, not a replacement
+  for(size_t i = 0; i < methods.size(); ++i) {
+    const std::wstring existing = McpAfterColon(methods[i]->GetName());
+    if(existing == L"JsonSchema" || existing == L"JsonFill" || existing == L"FromJson" ||
+       (existing == L"Ask" && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.AgentJson")) != current_lib_uses->end())) {
+      diagnostics.Error(file_name, line, 1, L"The class already has a function named '" + existing + L"', which a 'json' class needs for itself");
+      return;
+    }
+  }
+  if(has_new && !has_default_new) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class needs a constructor with no parameters: FromJson makes the object with '" + cls + L"->New()' and sets the fields");
+    return;
+  }
+
+  McpTy ty;
+  ty.kind = MK_JSONCLS;
+  ty.name = cls;
+  ty.text = cls;
+  std::wstring why;
+  if(!McpAnalyzeFields(klass, ty, why, 0)) {
+    diagnostics.Error(file_name, line, 1, why);
+    return;
+  }
+  const std::vector<std::wstring>& optional = klass->GetJsonOptional();
+  for(size_t o = 0; o < optional.size(); ++o) {
+    if(std::find(ty.items.begin(), ty.items.end(), optional[o]) == ty.items.end()) {
+      diagnostics.Error(file_name, line, 1, L"'json(" + optional[o] + L")': the class '" + cls + L"' has no field of that name");
+      return;
+    }
+  }
+
+  McpHelpers helpers;
+  helpers.cls = cls;
+  helpers.prefix = L"JsonRead_";
+
+  std::wstring fill = L"method : public : JsonFill(mcp_j : Data.JSON.JsonElement) ~ Nil { ";
+  for(size_t i = 0; i < ty.items.size(); ++i) {
+    const std::wstring name = McpLit(ty.items[i]);
+    const std::wstring read = McpRead(ty.kids[i], L"mcp_j->Get(\"" + name + L"\")", helpers);
+    if(i < ty.optional.size() && ty.optional[i]) {
+      fill += L"if(mcp_j->Has(\"" + name + L"\") & mcp_j->Get(\"" + name + L"\")->GetType() <> Data.JSON.JsonElement->JsonType->NULL) { @" + ty.items[i] + L" := " + read + L"; }; ";
+    }
+    else {
+      fill += L"if(<>mcp_j->Has(\"" + name + L"\")) { Runtime->Raise(Error->New(\"missing field '" + name + L"' of " + qcls + L"\")); }; @" + ty.items[i] + L" := " + read + L"; ";
+    }
+  }
+  fill += L"}";
+
+  const wchar_t* owner = L"a 'json' class";
+  for(size_t i = 0; i < helpers.code.size(); ++i) {
+    McpAddFunction(klass, helpers.code[i].second, line, depth, owner);
+  }
+  McpAddFunction(klass, L"function : JsonSchema() ~ Data.JSON.JsonElement { return Data.JSON.JsonParser->TextToElement(\"" + McpLit(McpSchemaText(ty)) + L"\"); }", line, depth, owner);
+  McpAddFunction(klass, fill, line, depth, owner);
+  McpAddFunction(klass, L"function : FromJson(mcp_j : Data.JSON.JsonElement) ~ " + cls + L" { " +
+                        L"if(mcp_j = Nil) { Runtime->Raise(Error->New(\"" + qcls + L": there is no JSON value\")); }; " +
+                        L"mcp_e := API.LlmUtil.JsonSchema->Check(" + cls + L"->JsonSchema(), mcp_j); " +
+                        L"if(mcp_e->Size() > 0) { Runtime->Raise(Error->New(\"" + qcls + L": \" + API.LlmUtil.JsonSchema->Describe(mcp_e))); }; " +
+                        L"mcp_o := " + cls + L"->New(); mcp_o->JsonFill(mcp_j); return mcp_o; }", line, depth, owner);
+
+  if(std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.AgentJson")) != current_lib_uses->end()) {
+    McpAddFunction(klass, L"function : Ask(mcp_agent : API.Agent.Agent, mcp_prompt : String) ~ " + cls + L" { return " + cls +
+                          L"->FromJson(API.AgentJson.AgentAsk->Value(mcp_agent, mcp_prompt, " + cls + L"->JsonSchema())); }", line, depth, owner);
   }
 }
 

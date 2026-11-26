@@ -3455,6 +3455,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Actors, mailboxes and supervisors | `Actor`, `Mailbox`, `Supervisor` | `actor` + `gen_collect`, `concurrent` | None |
 | Inference latency, resources and profiles | `Telemetry`, `SeriesStats`, `ProfileStore` | `telemetry` + `gen_collect`, `json` | None |
 | Prompt templates, token budgets, JSON Schema, structured calls | `PromptTemplate`, `ContextWindow`, `JsonSchema`, `StructuredCall` | `llm_util` + `regex`, `json`, `gen_collect` | None |
+| A model's answer as a typed object (`class Weather : json`, `Weather->Ask(agent, prompt)`) | `AgentAsk`, the compiler-written `JsonSchema`/`FromJson`/`Ask` | `agent_json` + `llm_util`, `agent`, `json`, `net`, `cipher`, `misc`, `gen_collect`, `regex` | Per the backend |
 | Evaluate a model on checkable tasks | `EvalRunner`, `ModelResults`, `ModelComparison` | compile `tools/llm_eval/llm_eval.obs` with `ml`, `csv`, `json`, `gen_collect` | Provider key for a live model |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
