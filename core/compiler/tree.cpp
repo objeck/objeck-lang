@@ -110,6 +110,14 @@ bool CharacterString::AddSegment(const std::wstring& orig)
           skip = 0;
           break;
 
+        // '\$' is a dollar sign: it is how '{$' is written as text, since '{\$name}'
+        // is not read as an interpolation. The scanner accepted the escape and this
+        // switch did not know it, so the backslash stayed in the string.
+        case L'$':
+          escaped_str += L'$';
+          skip = 0;
+          break;
+
         case L'n':
           escaped_str += L'\n';
           skip = 0;
