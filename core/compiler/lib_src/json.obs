@@ -1250,7 +1250,13 @@ obj->ToString()->PrintLine();
 		@param value Json string value
 		~#
 		New(type : JsonElement->JsonType, value : String) {
-			if(type = JsonElement->JsonType->STRING | type = JsonElement->JsonType->NUMBER) {
+			# a Nil value is JSON's null: as a STRING or NUMBER with no text it was
+			# written as nothing at all ({"name":}), which no parser reads back
+			if(value = Nil & (type = JsonElement->JsonType->STRING | type = JsonElement->JsonType->NUMBER)) {
+				@type := JsonElement->JsonType->NULL;
+				@value := "";
+			}
+			else if(type = JsonElement->JsonType->STRING | type = JsonElement->JsonType->NUMBER) {
 				@type := type;	
 				@value := value;				
 			}
@@ -1264,8 +1270,15 @@ obj->ToString()->PrintLine();
 		@param value Json string value
 		~#
 		New(value : String) {
-			@type := JsonElement->JsonType->STRING;	
-			@value := value;
+			# a Nil String is JSON's null (see the constructor above)
+			if(value = Nil) {
+				@type := JsonElement->JsonType->NULL;
+				@value := "";
+			}
+			else {
+				@type := JsonElement->JsonType->STRING;
+				@value := value;
+			};
 		}
 		
 		#~
@@ -2039,12 +2052,20 @@ obj->ToString()->PrintLine();
 						output->Append('"');
 						output->Append(JsonElement->Encode(@value));
 						output->Append('"');
+					}
+					else {
+						# never nothing: a value with no text is null
+						output->Append("null");
 					};
 				}
 
 				label JsonElement->JsonType->NUMBER: {
 					if(@value <> Nil) {
 						output->Append(@value);
+					}
+					else {
+						# never nothing: a value with no text is null
+						output->Append("null");
 					};
 				}
 				
