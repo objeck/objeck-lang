@@ -18,7 +18,7 @@ exposes no token counts, so only Claude's are reported.
 ~#
 use API.MCP, API.Anthropic, Data.JSON, Collection;
 
-# the server: three tools declared from their types (see mcp_declare_32)
+# the server: three tools declared from their types (see mcp_declare_40)
 class Shop {
 	function : Price(call : McpCall) ~ McpToolResult {
 		item := call->GetString("item");

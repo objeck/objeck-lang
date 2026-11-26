@@ -1,7 +1,7 @@
 #~
-# compile: obc -src mcp_declare_32.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
-# run:     obr mcp_declare_32.obe
-#          obr mcp_declare_32.obe --stdio      (serve the same tools to Claude Code or Claude Desktop)
+# compile: obc -src mcp_declare_40.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+# run:     obr mcp_declare_40.obe
+#          obr mcp_declare_40.obe --stdio      (serve the same tools to Claude Code or Claude Desktop)
 #
 # Declare a tool, serve it, call it. MCP (the Model Context Protocol) is how an
 # AI model finds and calls a program's functions. Each tool needs a JSON

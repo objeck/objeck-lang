@@ -1,6 +1,6 @@
 #~
-# compile: obc -src mcp_agent_34.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
-# run:     obr mcp_agent_34.obe
+# compile: obc -src mcp_agent_42.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
+# run:     obr mcp_agent_42.obe
 #
 # Hand plain functions to an agent, and let the effect of each decide whether
 # the agent may run it. An agent (API.Agent) is a loop: it sends a task to a

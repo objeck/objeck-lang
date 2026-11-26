@@ -1,6 +1,6 @@
 #~
-# compile: obc -src mcp_stub_33.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
-# run:     obr mcp_stub_33.obe
+# compile: obc -src mcp_stub_41.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+# run:     obr mcp_stub_41.obe
 #
 # Call an MCP server through a typed client. A program that calls a server
 # with CallTool("price", "{\"item\":\"tea\"}") builds JSON by hand: a wrong
@@ -30,7 +30,7 @@
 ~#
 use API.MCP, Data.JSON, Collection;
 
-# the server: three tools declared from their types (see mcp_declare_32)
+# the server: three tools declared from their types (see mcp_declare_40)
 class Shop {
 	function : Price(call : McpCall) ~ McpToolResult {
 		item := call->GetString("item");

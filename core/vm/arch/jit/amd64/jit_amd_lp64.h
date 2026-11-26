@@ -283,8 +283,17 @@ namespace Runtime {
     std::vector<RegisterHolder*> aval_xregs;
     std::unordered_map<long, StackInstr*> jump_table; // jump addresses
     std::vector<long> nil_deref_offsets;      // code -1
-    std::vector<long> bounds_less_offsets;    // code -2
-    std::vector<long> bounds_greater_offsets; // code -3
+    // Each array bounds guard (CheckArrayBounds): the two rel32 fields of its
+    // jl/jge and the registers holding the index and the element count at the
+    // jump. The jumps go to a per-guard cold stub (EmitBoundsStubs) that reports
+    // both numbers before the method returns its -2/-3 status.
+    struct BoundsSite {
+      long less_pos;
+      long greater_pos;
+      Register index_reg;
+      Register size_reg;
+    };
+    std::vector<BoundsSite> bounds_sites;
     std::vector<long> div_by_zero_offsets;    // code -4
     // A bridge call that reported an error (#925). Not tied to one code: the
     // status is whatever StackCallbackBody returned, already in RAX.
@@ -427,6 +436,7 @@ namespace Runtime {
     void EmitPinFloatWriteBack(int region);   // SysV: pinned floats to their slots before a call
     void EmitPinFloatReload(int region);      // SysV: and back into XMM6-XMM9 after it
     void EmitPinExitStubs();
+    void EmitBoundsStubs();
 
     // local variable register cache: keeps registers live after store
     // to avoid redundant reloads. Evicted on demand when pool is empty.
@@ -848,7 +858,7 @@ namespace Runtime {
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8c);
-      bounds_less_offsets.push_back(code_index);
+      const long less_pos = code_index;
       AddImm(0);
       // jump to exit
 
@@ -860,9 +870,10 @@ namespace Runtime {
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8d);
-      bounds_greater_offsets.push_back(code_index);
+      const long greater_pos = code_index;
       AddImm(0);
       // jump to exit
+      bounds_sites.push_back({ less_pos, greater_pos, reg, max_reg });
     }
 
     // A register holder owned by this compiler; all_regs deletes it

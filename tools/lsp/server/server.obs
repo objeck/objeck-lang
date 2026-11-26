@@ -161,7 +161,7 @@ bundle LSP {
 
 		# Kept in step with core/shared/version.h by a gating test (run_lsp_tests.py).
 		function : ServerVersion() ~ String {
-			return "2026.11.3";
+			return "2026.11.4";
 		}
 
 		#

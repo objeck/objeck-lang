@@ -42,7 +42,7 @@
        <a class="btn btn-primary" href="https://playground.objeck.org">Try it in the playground</a>
        <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/releases/latest">Download</a>
       </div>
-      <p class="hero-meta"><a href="readme.html">v<!-- version:start -->2026.11.3<!-- version:end --></a> &middot; Windows, macOS, Linux &middot; x64, ARM64 &middot; <a href="start.html">Install guide</a></p>
+      <p class="hero-meta"><a href="readme.html">v<!-- version:start -->2026.11.4<!-- version:end --></a> &middot; Windows, macOS, Linux &middot; x64, ARM64 &middot; <a href="start.html">Install guide</a></p>
      </div>
      <div>
       <!-- example:lambdas:start -->
@@ -114,11 +114,11 @@ collector: 9
      <h2 id="release-title">Latest release</h2>
      <!-- release:start -->
      <div class="release">
-      <div><p class="tag">v2026.11.3</p><p class="date">Released 22 November 2026</p></div>
+      <div><p class="tag">v2026.11.4</p><p class="date">Released 25 November 2026</p></div>
       <ul>
-       <li><b>Performance:</b> RegEx uses a lazily built DFA</li>
+       <li><b>Performance:</b> The Linux x64 JIT keeps Float loop locals in registers</li>
        <li><b>Security:</b> The OpenAI, Gemini and Anthropic clients no longer hand out an API key while TLS certificate checking is off</li>
-       <li><b>Changed:</b> Console-&gt;ReadLine returns Nil at the end of input</li>
+       <li><b>Changed:</b> MCP input checks cover enum and array items</li>
       </ul>
       <a class="btn btn-secondary" href="readme.html">Release notes</a>
      </div>

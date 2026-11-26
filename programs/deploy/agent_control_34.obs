@@ -1,0 +1,124 @@
+#~
+# compile: obc -src agent_control_34.obs -lib agent,json,net,cipher,misc
+# run:     obr agent_control_34.obe
+#
+# An agent that calls tools in a loop needs a way to be stopped. Three kinds of
+# stop, each shown here against a scripted model so nothing needs a key:
+#
+#   1. a BUDGET: AgentBudget caps steps, model calls, tool calls, tokens, cost
+#      or wall-clock time; the first limit reached ends the run.
+#   2. a CANCEL: AgentCancel is a token any thread can trip; the loop checks it
+#      between steps and between tool calls.
+#   3. a HUNG TOOL: a tool in BOUNDED_THREAD mode runs on a worker thread, and
+#      the loop stops waiting for it at its time limit and moves on.
+#
+# Every run says why it ended in one word, GetStopReason(): completed,
+# cancelled, deadline, budget_steps, budget_tool_calls, budget_tokens, ...
+# The model below never stops asking for the tool, so only the control ends it.
+#
+# output:
+#   budget:  budget_tool_calls after 2 tool calls ran
+#   cancel:  cancelled after 1 tool calls ran
+#   hung:    completed, the slow tool was a timeout
+~#
+
+use API.Agent;
+use Data.JSON;
+use System.Concurrency;
+use Collection;
+
+# a tool that answers at once
+class Quick implements AgentToolHandler {
+	New() {
+	}
+
+	method : public : Run(arguments : JsonElement) ~ String {
+		return "done";
+	}
+}
+
+# a tool that takes far longer than the loop is willing to wait
+class Slow implements AgentToolHandler {
+	New() {
+	}
+
+	method : public : Run(arguments : JsonElement) ~ String {
+		Thread->Sleep(1000);
+		return "too late";
+	}
+}
+
+# trips the cancel token after the first tool result
+class StopAfterFirst implements AgentObserver {
+	@token : AgentCancel;
+
+	New(token : AgentCancel) {
+		@token := token;
+	}
+
+	method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+	}
+
+	method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+		@token->Cancel("enough");
+	}
+}
+
+class AgentControl {
+	function : Main(args : String[]) ~ Nil {
+		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
+
+		# 1. a budget: the model asks for the tool forever; two tool calls are allowed
+		agent := Agent->New(Endless(), Registry(AgentTool->New("work", "Do some work", schema, Quick->New())));
+		agent->SetBudget(AgentBudget->New()->SetMaxToolCalls(2));
+		result := agent->Run("keep working");
+		"budget:  {$(result->GetStopReason())} after {$(Ran(result))} tool calls ran"->PrintLine();
+
+		# 2. a cancel: an observer trips the token once the first tool has answered
+		token := AgentCancel->New();
+		agent := Agent->New(Endless(), Registry(AgentTool->New("work", "Do some work", schema, Quick->New())));
+		agent->SetCancel(token);
+		agent->SetObserver(StopAfterFirst->New(token));
+		result := agent->Run("keep working");
+		"cancel:  {$(result->GetStopReason())} after {$(Ran(result))} tool calls ran"->PrintLine();
+
+		# 3. a hung tool: the worker is abandoned at 100 ms, and the model still gets an answer
+		script := Vector->New()<AgentReply>;
+		script->AddBack(AgentReply->Ask("c1", "slow", "{}"));
+		script->AddBack(AgentReply->Say("the tool did not answer, so I will go on without it"));
+		slow := AgentTool->New("slow", "A tool that hangs", schema, Slow->New());
+		slow->SetMode(AgentTool->Mode->BOUNDED_THREAD)->SetTimeout(100);
+		agent := Agent->New(ScriptedBackend->New(script), Registry(slow));
+		result := agent->Run("use the slow tool");
+		status := result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus();
+		"hung:    {$(result->GetStopReason())}, the slow tool was a {$status}"->PrintLine();
+	}
+
+	# how many tool calls actually ran (the one over a budget is "skipped")
+	function : Ran(result : AgentResult) ~ Int {
+		count := 0;
+		each(step in result->GetSteps()) {
+			each(r in step->GetResults()) {
+				if(r->GetStatus()->Equals("ok")) {
+					count += 1;
+				};
+			};
+		};
+		return count;
+	}
+
+	# a model that asks for the "work" tool on every turn, eight times
+	function : Endless() ~ ScriptedBackend {
+		script := Vector->New()<AgentReply>;
+		each(i : 8) {
+			script->AddBack(AgentReply->Ask("c{$i}", "work", "{}"));
+		};
+		return ScriptedBackend->New(script);
+	}
+
+	function : Registry(tool : AgentTool) ~ ToolRegistry {
+		registry := ToolRegistry->New();
+		registry->Add(tool);
+		return registry;
+	}
+}

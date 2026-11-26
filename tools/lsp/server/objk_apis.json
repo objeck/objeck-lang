@@ -1,5 +1,5 @@
 {
-	"version": "2026.11.3",
+	"version": "2026.11.4",
 	"class-details": {
 		"API.Agent.Agent": {
 			"description": "The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back, until the model answers without a tool call, the step limit is reached or the backend fails. The conversation is kept, so Run can be called again to carry on; Reset starts over.\n\nEvery call goes through the same gates, in order: the tool must exist (unknown otherwise), the registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema (invalid), a dangerous tool, a tool whose destructive hint is true, any tool when SetApproveAll is on, and any tool not known to be read-only when SetApproveUnlessReadOnly is on, must be approved (refused), and the handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes an error result the model can read and the loop carries on.",

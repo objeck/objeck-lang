@@ -34,6 +34,7 @@ Run:    obr mcp_canvas.obe --demo
                                                    writes out_mid.png and out.png)
 
 Options: --claude MODEL  --openai MODEL  --turns N  --prompt-a TEXT  --prompt-b TEXT
+         --verbose (print each tools/call to stdout as the window drains it)
          --shot-after N (calls before the mid screenshot, default 18)  --seconds N (cap, default 240)
 ESC or closing the window quits.
 ~#
@@ -648,7 +649,7 @@ class CanvasTools {
 }
 
 #~ a painter: an in-process MCP client plus whatever drives it (a script, Claude or an OpenAI model) ~#
-class Agent {
+class Painter {
 	@pid : Int;
 	@kind : String;
 	@model : String;
@@ -946,6 +947,7 @@ class Fx {
 	method : public : GetRgb() ~ Int { return @rgb; }
 }
 
+#~ a cached text texture and its size in pixels ~#
 class TexEntry {
 	@texture : Texture;
 	@w : Int;
@@ -980,14 +982,14 @@ class Gfx {
 	@fcy : Float[];
 	@accent : Int[];
 	@now : Float;
-	@agents : Agent[];
+	@painters : Painter[];
 	@total_calls : Int;
 
-	New(r : Renderer, width : Int, height : Int, agents : Agent[]) {
+	New(r : Renderer, width : Int, height : Int, painters : Painter[]) {
 		@r := r;
 		@width := width;
 		@height := height;
-		@agents := agents;
+		@painters := painters;
 		@tile := 18;
 		@ox := 24;
 		@oy := 84;
@@ -1357,7 +1359,7 @@ class Gfx {
 
 	method : DrawCards() ~ Nil {
 		for(p := 0; p < 2; p += 1;) {
-			a := @agents[p];
+			a := @painters[p];
 			x := CardX(p);
 			y := 528;
 			rgb := @accent[p];
@@ -1438,6 +1440,7 @@ class Gfx {
 	}
 }
 
+#~ the pass and fail counts of --selftest ~#
 class Gate {
 	@pass : static : Int;
 	@fail : static : Int;
@@ -1456,6 +1459,7 @@ class Gate {
 	function : Fail() ~ Int { return @fail; }
 }
 
+#~ the program: reads the options, builds the painters and runs --selftest, the window or the screenshot render ~#
 class McpCanvas {
 	function : Main(args : String[]) ~ Nil {
 		demo := false;
@@ -1500,24 +1504,24 @@ class McpCanvas {
 		};
 
 		Board->Init();
-		agents := Agent->New[2];
+		painters := Painter->New[2];
 		if(demo) {
 			Board->SetName(0, "Painter A");
 			Board->SetName(1, "Painter B");
-			agents[0] := Agent->New(0, "script", "scripted", "Scripted: a sunset over the sea with its reflection, clouds and stars.", max_turns);
-			agents[1] := Agent->New(1, "script", "scripted", "Scripted: a boat, birds and a palm island; it paints over the sunset's reflection.", max_turns);
+			painters[0] := Painter->New(0, "script", "scripted", "Scripted: a sunset over the sea with its reflection, clouds and stars.", max_turns);
+			painters[1] := Painter->New(1, "script", "scripted", "Scripted: a boat, birds and a palm island; it paints over the sunset's reflection.", max_turns);
 		}
 		else {
 			Board->SetName(0, "Claude");
 			Board->SetName(1, "GPT");
-			agents[0] := Agent->New(0, "claude", claude_model, prompt_a, max_turns);
-			agents[1] := Agent->New(1, "openai", openai_model, prompt_b, max_turns);
+			painters[0] := Painter->New(0, "claude", claude_model, prompt_a, max_turns);
+			painters[1] := Painter->New(1, "openai", openai_model, prompt_b, max_turns);
 		};
 
-		Show(agents, shot, shot_after, seconds, verbose);
+		Show(painters, shot, shot_after, seconds, verbose);
 	}
 
-	function : Show(agents : Agent[], shot : String, shot_after : Int, seconds : Int, verbose : Bool) ~ Nil {
+	function : Show(painters : Painter[], shot : String, shot_after : Int, seconds : Int, verbose : Bool) ~ Nil {
 		width := 1200;
 		height := 630;
 		headless := shot <> Nil;
@@ -1553,11 +1557,11 @@ class McpCanvas {
 			return;
 		};
 
-		gfx := Gfx->New(renderer, width, height, agents);
+		gfx := Gfx->New(renderer, width, height, painters);
 		threads := System.Concurrency.Thread->New[2];
 		for(p := 0; p < 2; p += 1;) {
 			threads[p] := PainterThread->New();
-			threads[p]->Execute(agents[p]);
+			threads[p]->Execute(painters[p]);
 		};
 
 		event := Event->New();
@@ -1604,8 +1608,8 @@ class McpCanvas {
 			};
 
 			alive := false;
-			each(p : agents) {
-				if(<>agents[p]->IsDone()) {
+			each(p : painters) {
+				if(<>painters[p]->IsDone()) {
 					alive := true;
 				};
 			};
@@ -1636,13 +1640,13 @@ class McpCanvas {
 
 		Board->SetQuit();
 		for(p := 0; p < 2; p += 1;) {
-			if(agents[p]->IsDone()) {
+			if(painters[p]->IsDone()) {
 				threads[p]->Join();
 			};
 		};
 
-		each(p : agents) {
-			a := agents[p];
+		each(p : painters) {
+			a := painters[p];
 			name := Board->GetName(p);
 			calls := Board->GetCalls(p);
 			turns := a->GetTurn();
@@ -1772,13 +1776,14 @@ class McpCanvas {
 	}
 }
 
+#~ runs one painter's Work on its own thread; the thread's argument is the Painter ~#
 class PainterThread from System.Concurrency.Thread {
 	New() {
 		Parent();
 	}
 
 	method : public : Run(arg : System.Base) ~ Nil {
-		arg->As(Agent)->Work();
+		arg->As(Painter)->Work();
 	}
 }
 
