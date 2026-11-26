@@ -1812,7 +1812,7 @@ static bool HasUnclosedInterpolation(const std::wstring& str)
 /****************************
  * Parses lambda expression
  ****************************/
-Lambda* Parser::ParseLambda(int depth) {
+Lambda* Parser::ParseLambda(int depth, Type* block_type) {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -1828,9 +1828,16 @@ Lambda* Parser::ParseLambda(int depth) {
   symbol_table->NewParseScope();
 
   // parse derived, alias, or types
-  Type* type = nullptr;
+  Type* type = block_type;
   std::wstring alias_name;
-  if(Match(TOKEN_OPEN_PAREN)) {
+  // a block that is given its type (a 'spawn' body): no signature, no
+  // parameters and no '=>', only the '{ ... }' that follows
+  if(block_type) {
+    if(!Match(TOKEN_OPEN_BRACE)) {
+      ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+    }
+  }
+  else if(Match(TOKEN_OPEN_PAREN)) {
     // Disambiguate the explicit-type form `\(<sig>) ~ R : (<params>) => body`
     // from the bare form `\(<params>) => body` (type inferred from context).
     // Both start with `(...)`; in the typed form the matching `)` is followed
@@ -1869,7 +1876,7 @@ Lambda* Parser::ParseLambda(int depth) {
   }
 
   int end_pos = 0;
-  ExpressionList* parameter_list = ParseExpressionList(end_pos, depth + 1);
+  ExpressionList* parameter_list = block_type ? TreeFactory::Instance()->MakeExpressionList() : ParseExpressionList(end_pos, depth + 1);
 
   std::vector<Expression*> parameters = parameter_list->GetExpressions();
   DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
@@ -1892,10 +1899,12 @@ Lambda* Parser::ParseLambda(int depth) {
   method->SetDeclarations(declaration_list);
 
   // return type
-  if(!Match(TOKEN_LAMBDA)) {
-    ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
+  if(!block_type) {
+    if(!Match(TOKEN_LAMBDA)) {
+      ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
+    }
+    NextToken();
   }
-  NextToken();
 
   // parse body
   StatementList* statements;
@@ -2256,6 +2265,10 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   // 'try {' (#1247): a contextual keyword, so 'try' stays an ordinary name
   if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
     statement = ParseTry(depth + 1);
+  }
+  // 'spawn {': a contextual keyword, so 'spawn' stays an ordinary name
+  else if(IsSpawn()) {
+    statement = ParseSpawn(depth + 1);
   }
   // identifier
   else if(Match(TOKEN_IDENT)) {
@@ -6063,7 +6076,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
   Expression* expression = nullptr;
 
-  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
+  // 'spawn { ... }' is the started thread
+  if(IsSpawn()) {
+    expression = ParseSpawn(depth + 1);
+  }
+  else if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;
@@ -6934,6 +6951,109 @@ MethodCall* Parser::ParseCurriedCalls(MethodCall* method_call, int depth)
 }
 
 /****************************
+ * 'spawn' is a word of the language only in front of a '{'
+ ****************************/
+bool Parser::IsSpawn()
+{
+  return Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"spawn";
+}
+
+/****************************
+ * Parses 'spawn { ... }': the block runs on a new thread and the expression
+ * is that thread, already started. It is written out as constructs the
+ * language already has, so there is nothing new behind the parser:
+ *
+ *   System.Concurrency.Thread->New() {
+ *     @body : () ~ Nil;
+ *     New() { Parent("spawn:<file>:<line>"); }
+ *     method : public : SpawnStart(body : () ~ Nil) ~ System.Concurrency.Thread {
+ *       @body := body; Execute(Nil); return @self;
+ *     }
+ *     method : public : Run(param : System.Base) ~ Nil { body := @body; body(); }
+ *   }->SpawnStart(\() ~ Nil : () => { ... })
+ *
+ * The block is the lambda, so it holds the values of the locals it names as
+ * they were when the thread was started, exactly as a lambda does. The class
+ * is parsed from text; the block is parsed from the program.
+ ****************************/
+MethodCall* Parser::ParseSpawn(int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const std::wstring file_name = GetFileName();
+
+#ifdef _DEBUG
+  Debug(L"Spawn", depth);
+#endif
+
+  // 'spawn'
+  NextToken();
+
+  if(!current_class || !current_method) {
+    ProcessError(L"'spawn' must be used in a method or function", TOKEN_SEMI_COLON);
+    return nullptr;
+  }
+
+  // the class of a 'spawn' is an anonymous class, and those do not nest
+  if(prev_method) {
+    ProcessError(L"'spawn' cannot be used in a method of an anonymous class", TOKEN_SEMI_COLON);
+    return nullptr;
+  }
+
+  // the block
+  std::vector<Type*> no_params;
+  Type* body_type = TypeFactory::Instance()->MakeType(no_params, TypeFactory::Instance()->MakeType(NIL_TYPE));
+  Lambda* body = ParseLambda(depth + 1, body_type);
+  const int end_line_num = GetLineNumber();
+  const int end_line_pos = GetLinePosition();
+
+  // the thread's name tells where it was started
+  std::wstring file_base = file_name;
+  const size_t slash_pos = file_base.find_last_of(L"/\\");
+  if(slash_pos != std::wstring::npos) {
+    file_base = file_base.substr(slash_pos + 1);
+  }
+  std::wstring thread_name = L"spawn:";
+  for(const wchar_t c : file_base) {
+    const bool plain = (c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') || (c >= L'0' && c <= L'9') || c == L'.' || c == L'-';
+    thread_name += plain ? c : L'_';
+  }
+  thread_name += L':' + std::to_wstring(line_num);
+
+  // the class, placed at the position of 'spawn'
+  std::wstring text(line_num > 1 ? line_num - 1 : 0, L'\n');
+  text += std::wstring(line_pos > 1 ? line_pos - 1 : 0, L' ');
+  text += L"System.Concurrency.Thread->New() { @body : () ~ Nil; New() { Parent(\"" + thread_name + L"\"); } "
+          L"method : public : SpawnStart(body : () ~ Nil) ~ System.Concurrency.Thread { @body := body; Execute(Nil); return @self; } "
+          L"method : public : Run(param : System.Base) ~ Nil { body := @body; body(); } }";
+
+  Scanner* saved = scanner;
+  scanner = new Scanner(file_name, alt_syntax, text);
+  NextToken();
+  spawn_class = true;
+  Expression* thread = ParseSimpleExpression(depth + 1);
+  spawn_class = false;
+  const bool whole = Match(TOKEN_END_OF_STREAM);
+  delete scanner;
+  scanner = saved;
+
+  if(!thread || !whole || thread->GetExpressionType() != METHOD_CALL_EXPR) {
+    diagnostics.Error(file_name, line_num, line_pos, L"Unable to build the thread for 'spawn'");
+    return nullptr;
+  }
+
+  ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+  arguments->AddExpression(body);
+  MethodCall* start = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, -1, -1, end_line_num, end_line_pos,
+                                                              current_class->GetName(), L"SpawnStart", arguments);
+  MethodCall* thread_call = static_cast<MethodCall*>(thread);
+  thread_call->SetMethodCall(start);
+
+  return thread_call;
+}
+
+/****************************
  * Parses an anonymous class
  ****************************/
 void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
@@ -6964,7 +7084,9 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   if(dot_pos != std::wstring::npos) {
     file_base = file_base.substr(0, dot_pos);
   }
-  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." +
+  // the class a 'spawn' makes has a name of its own: its text is generated, so
+  // its position could be that of a class the programmer wrote on the same line
+  const std::wstring cls_name = method_call->GetVariableName() + (spawn_class ? L".#Spawn." : L".#Anonymous.") +
     file_base + L'_' + std::to_wstring(line_num) + L'_' + std::to_wstring(line_pos) + L'#';
 
   std::vector<std::wstring> interface_names;
