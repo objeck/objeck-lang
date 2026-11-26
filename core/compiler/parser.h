@@ -346,6 +346,11 @@ class Parser {
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   Try* ParseTry(int depth);
+  // 'assert E : "label";' (contextual): desugars to a check that calls System.Test->Fail
+  Expression* ClonePureOperand(Expression* expression, const std::wstring& file_name, int line_num, int line_pos);
+  bool IsAssertStatement();
+  std::wstring AssertSourceText(int start_line, int start_pos, int end_line, int end_pos);
+  Statement* ParseAssert(int depth);
   For* ParseEach(bool reverse, int depth);
   Expression* HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
                                   const int line_num, const int line_pos, int depth);

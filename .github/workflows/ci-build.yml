@@ -998,6 +998,18 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_select_label_order.py "$BIN"
 
+    # `assert E : "label";` must fail a test by itself: print the FAIL line with both operands and
+    # exit 1 (the regression runners read the exit code alone). The passing shapes and the programs
+    # that must be rejected are in the regression suite; this runs the failing ones.
+    - name: assert statement fails a program with its FAIL line and exit code 1 (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_assert_statement.py "$BIN"
+
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
     - name: obc and obr find their libraries from another working directory (POSIX)

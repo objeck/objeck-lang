@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR: bad_assert_label_type.obs:(5,3): Undefined function/method call: 'Fail(..)'
+class BadAssertLabelType {
+	function : Main(args : String[]) ~ Nil {
+		x := 1;
+		assert x = 1 : 42;
+	}
+}

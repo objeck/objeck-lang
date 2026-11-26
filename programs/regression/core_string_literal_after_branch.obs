@@ -1,0 +1,74 @@
+#~
+A string literal in a condition ('s = "hi"') is consumed by the comparison, so the
+first literal of the branch's body must not be paired with it. The emitter carried
+its count of waiting literals across the jump and gave that first literal a
+SWAP_INT over a one-word stack: the load-time verifier refused the method
+("the operand stack runs out") before the program ran.
+
+Which arm is taken is not the point (a String '=' compares references); every shape
+below must load and run, and print one of its own literals.
+~#
+class StringLiteralAfterBranch {
+	function : Pick(s : String) ~ String {
+		r : String;
+		if(s = "hi") {
+			r := "then";
+		}
+		else {
+			r := "else";
+		};
+		return r;
+	}
+
+	function : Chain(s : String) ~ String {
+		if(s <> "a") {
+			return "first";
+		}
+		else if(s = "b") {
+			return "second";
+		};
+		return "last";
+	}
+
+	function : Loop(s : String) ~ Int {
+		n := 0;
+		while(n < 3 & s <> "stop") {
+			text := "round " + n->ToString();
+			if(text->Size() > 0) {
+				n += 1;
+			};
+		};
+		return n;
+	}
+
+	function : Ternary(s : String) ~ String {
+		return s = "x" ? "yes" : "no";
+	}
+
+	function : Concat(s : String) ~ String {
+		if(s <> "hi") {
+			return "x" + s + "y";
+		};
+		return "same";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		p := Pick("yo");
+		if(p->Equals("then") = false & p->Equals("else") = false) { ok := false; "FAIL: Pick"->PrintLine(); };
+		c := Chain("q");
+		if(c->Equals("first") = false & c->Equals("second") = false & c->Equals("last") = false) { ok := false; "FAIL: Chain"->PrintLine(); };
+		if(Loop("go") <> 3) { ok := false; "FAIL: Loop"->PrintLine(); };
+		t := Ternary("x");
+		if(t->Equals("yes") = false & t->Equals("no") = false) { ok := false; "FAIL: Ternary"->PrintLine(); };
+		k := Concat("yo");
+		if(k->Equals("xyoy") = false & k->Equals("same") = false) { ok := false; "FAIL: Concat"->PrintLine(); };
+
+		if(ok) {
+			"PASS: string literal after a branch"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

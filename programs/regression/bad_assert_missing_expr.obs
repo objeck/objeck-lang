@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR: bad_assert_missing_expr.obs:(5,14): Expected expression, found ':'
+class BadAssertMissingExpr {
+	function : Main(args : String[]) ~ Nil {
+		x := 1;
+		assert x = : "no right operand";
+	}
+}

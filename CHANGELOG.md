@@ -2,6 +2,16 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`assert E : "label";` statement for tests** (`docs/design/ASSERT_STATEMENT.md`): a check that, when it fails, prints `FAIL: file:line: assert <source of E> : label` (and, for a comparison, `left = ..., right = ...` with both operand values) and exits with code 1, the convention the regression runners read. A call used as an operand is evaluated once. `System.Test->KeepGoing(true)` counts failures instead of stopping at the first and `System.Test->Finish()` exits 1 if there were any. `assert` is a contextual word: `assert := 1`, `assert : Bool`, `assert->F()`, `assert(x);` and `Runtime->Assert(..)` mean what they always did; a parenthesised expression is an assertion when a binary operator or the label's `:` follows the `)`. Syntax sugar over an `if`, so code generated for programs that do not use it is unchanged. A `String` `=` still compares references: assert `s->Equals("x")` for text.
+
+### Fixed
+
+- **A string literal in a condition no longer corrupts the first string literal of the branch that follows**: `if(s = "hi") { "x"->PrintLine(); }` (and `while`, `for` and `?:` conditions, and `if(s <> "a") { v := "x" + s; }`) carried the emitter's count of waiting literals across the jump and gave the body's first literal a `SWAP_INT` over a one-word stack, so the load-time verifier refused the method with "the operand stack runs out" (reproduced on v2026.11.1 and master). Test `core_string_literal_after_branch.obs`.
+
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance

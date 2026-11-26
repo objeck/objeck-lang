@@ -1,0 +1,6 @@
+# EXPECT_COMPILE_ERROR: bad_assert_undefined.obs:(4,10): Undefined variable: 'nowhere'
+class BadAssertUndefined {
+	function : Main(args : String[]) ~ Nil {
+		assert nowhere = 1 : "undefined";
+	}
+}

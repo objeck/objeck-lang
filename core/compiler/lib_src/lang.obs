@@ -8709,6 +8709,89 @@ Runtime->Raise(ParseError->New("row 12: expected a number"));
 			return buffer;
 		}
 	}
+
+	#~
+	The check behind the 'assert' statement: <pre>assert a = b : "label";</pre> compiles to a test
+	that calls <pre>System.Test->Fail(...)</pre> when it does not hold, so a test program fails
+	by itself and says where and why. A failure prints one line that starts with
+	<pre>FAIL:</pre> (file:line, the source text of the assertion, the label and, for a
+	comparison, both operand values) and then exits with code 1, the code the
+	regression runner reads as a failed test. <pre>Test->KeepGoing(true)</pre> counts the
+	failures instead of stopping at the first, and <pre>Test->Finish()</pre> exits with
+	code 1 if there were any.
+	@class Test
+	~#
+	class Test {
+		@failures : static : Int;
+		@keep_going : static : Bool;
+
+		#~
+		Reports a failed assertion; called by the code 'assert' compiles to.
+		@param where file and line of the assertion
+		@param source source text of the asserted expression
+		@param note message of the assertion, or Nil
+		@param left value of the left operand of a comparison, or Nil
+		@param right value of the right operand of a comparison, or Nil
+		~#
+		function : Fail(where : String, source : String, note : String, left : String, right : String) ~ Nil {
+			@failures += 1;
+
+			message := "FAIL: {$where}: assert {$source}";
+			if(note <> Nil) {
+				message->Append(" : ");
+				message->Append(note);
+			};
+			message->PrintLine();
+
+			if(left <> Nil | right <> Nil) {
+				detail := "      left = ";
+				if(left <> Nil) {
+					detail->Append(left);
+				}
+				else {
+					detail->Append("Nil");
+				};
+				detail->Append(", right = ");
+				if(right <> Nil) {
+					detail->Append(right);
+				}
+				else {
+					detail->Append("Nil");
+				};
+				detail->PrintLine();
+			};
+
+			if(<>@keep_going) {
+				Runtime->Exit(1);
+			};
+		}
+
+		#~
+		Counts failed assertions instead of exiting at the first one
+		@param keep true to keep going after a failure
+		~#
+		function : KeepGoing(keep : Bool) ~ Nil {
+			@keep_going := keep;
+		}
+
+		#~
+		The number of assertions that have failed
+		@return failure count
+		~#
+		function : Failures() ~ Int {
+			return @failures;
+		}
+
+		#~
+		Exits with code 1 if any assertion failed (for use after KeepGoing)
+		~#
+		function : Finish() ~ Nil {
+			if(@failures > 0) {
+				"FAIL: {$@failures} assertion(s) failed"->PrintLine();
+				Runtime->Exit(1);
+			};
+		}
+	}
 }
 
 #~

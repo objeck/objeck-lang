@@ -1,0 +1,12 @@
+class FailKeepGoing {
+	function : Main(args : String[]) ~ Nil {
+		System.Test->KeepGoing(true);
+		assert 1 = 2 : "first";
+		"between"->PrintLine();
+		assert 3 > 4 : "second";
+		assert 5 = 5 : "holds";
+		"before finish"->PrintLine();
+		System.Test->Finish();
+		"NOT REACHED"->PrintLine();
+	}
+}

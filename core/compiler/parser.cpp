@@ -2257,6 +2257,10 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
     statement = ParseTry(depth + 1);
   }
+  // 'assert E : "label";': a contextual keyword too, taken only where a name could not follow
+  else if(Match(TOKEN_IDENT) && IsAssertStatement()) {
+    statement = ParseAssert(depth + 1);
+  }
   // identifier
   else if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
@@ -7296,6 +7300,285 @@ Try* Parser::ParseTry(int depth)
 
   return TreeFactory::Instance()->MakeTry(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), body, handlers, finally_stmts,
                                          error_entry, raise_entry);
+}
+
+/****************************
+ * A copy of an assertion operand that is only read -- a variable, a literal,
+ * arithmetic over them -- so the failure message can show its value without a
+ * hidden local to hold it (a method has 768 bytes of locals). Null for anything
+ * else: a call, an indexed read, '++x', a cast, an interpolated string.
+ ****************************/
+Expression* Parser::ClonePureOperand(Expression* expression, const std::wstring& file_name, int line_num, int line_pos)
+{
+  if(!expression || expression->GetMethodCall() || expression->GetCastType() || expression->GetTypeOf()) {
+    return nullptr;
+  }
+
+  TreeFactory* factory = TreeFactory::Instance();
+  switch(expression->GetExpressionType()) {
+  case INT_LIT_EXPR:
+    return factory->MakeIntegerLiteral(file_name, line_num, line_pos, static_cast<IntegerLiteral*>(expression)->GetValue());
+
+  case FLOAT_LIT_EXPR:
+    return factory->MakeFloatLiteral(file_name, line_num, line_pos, static_cast<FloatLiteral*>(expression)->GetValue());
+
+  case CHAR_LIT_EXPR:
+    return factory->MakeCharacterLiteral(file_name, line_num, line_pos, static_cast<CharacterLiteral*>(expression)->GetValue());
+
+  case BOOLEAN_LIT_EXPR:
+    return factory->MakeBooleanLiteral(file_name, line_num, line_pos, static_cast<BooleanLiteral*>(expression)->GetValue());
+
+  case CHAR_STR_EXPR: {
+    const std::wstring text = static_cast<CharacterString*>(expression)->GetString();
+    return text.find(L'{') == std::wstring::npos ? factory->MakeCharacterString(file_name, line_num, line_pos, text, true) : nullptr;
+  }
+
+  case VAR_EXPR: {
+    Variable* variable = static_cast<Variable*>(expression);
+    if(variable->GetIndices() || !variable->GetChainedIndices().empty() || variable->GetPreStatement() || variable->GetPostStatement()) {
+      return nullptr;
+    }
+    return factory->MakeVariable(file_name, line_num, line_pos, variable->GetName());
+  }
+
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EQL_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EXPR:
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR: {
+    CalculatedExpression* calculated = static_cast<CalculatedExpression*>(expression);
+    Expression* left = ClonePureOperand(calculated->GetLeft(), file_name, line_num, line_pos);
+    Expression* right = left ? ClonePureOperand(calculated->GetRight(), file_name, line_num, line_pos) : nullptr;
+    return right ? factory->MakeCalculatedExpression(file_name, line_num, line_pos, calculated->GetExpressionType(), left, right) : nullptr;
+  }
+
+  default:
+    return nullptr;
+  }
+}
+
+/****************************
+ * 'assert' is a contextual word, as 'try' is: an identifier named 'assert' is
+ * the keyword only where what follows could not continue a statement that
+ * starts with a name -- an expression's first token. 'assert := x', 'assert : Bool',
+ * 'assert->Foo()', 'assert[0] := 1' and 'assert(x);' are what they always were.
+ * 'assert (a) = b' and 'assert (a) : "label"' are assertions: after the closing
+ * parenthesis comes a binary operator or the label's ':', which a call statement
+ * cannot have.
+ ****************************/
+bool Parser::IsAssertStatement()
+{
+  if(scanner->GetToken()->GetIdentifier() != L"assert") {
+    return false;
+  }
+
+  switch(GetToken(1)) {
+  case TOKEN_IDENT:
+  case TOKEN_INT_LIT:
+  case TOKEN_FLOAT_LIT:
+  case TOKEN_CHAR_LIT:
+  case TOKEN_CHAR_STRING_LIT:
+  case TOKEN_TRUE_ID:
+  case TOKEN_FALSE_ID:
+  case TOKEN_NIL_ID:
+  case TOKEN_NOT:
+  case TOKEN_NOT_ID:
+    return true;
+
+  case TOKEN_OPEN_PAREN:
+    switch(scanner->PeekAfterParens(2)) {
+    case TOKEN_COLON:
+    case TOKEN_LES:
+    case TOKEN_GTR:
+    case TOKEN_LEQL:
+    case TOKEN_GEQL:
+    case TOKEN_EQL:
+    case TOKEN_NEQL:
+    case TOKEN_AND:
+    case TOKEN_OR:
+    case TOKEN_ADD:
+    case TOKEN_SUB:
+    case TOKEN_MUL:
+    case TOKEN_DIV:
+    case TOKEN_MOD:
+      return true;
+
+    default:
+      return false;
+    }
+
+  default:
+    return false;
+  }
+}
+
+/****************************
+ * The source text of an assertion's expression, from the column of its first
+ * token to the column where it ended (both 1-based); an expression over several
+ * lines is joined with single spaces.
+ ****************************/
+std::wstring Parser::AssertSourceText(int start_line, int start_pos, int end_line, int end_pos)
+{
+  if(!scanner->HasSource() || start_line < 1 || end_line < start_line || start_pos < 1 || end_pos < 1) {
+    return L"";
+  }
+
+  std::wstring text;
+  for(int line = start_line; line <= end_line; ++line) {
+    std::wstring part = scanner->GetSourceLine(line);
+    if(line == end_line) {
+      part = part.substr(0, std::min<size_t>(part.size(), (size_t)(end_pos - 1)));
+    }
+    if(line == start_line) {
+      part = part.size() >= (size_t)(start_pos - 1) ? part.substr(start_pos - 1) : L"";
+    }
+
+    const size_t first = part.find_first_not_of(L" \t\r");
+    const size_t last = part.find_last_not_of(L" \t\r");
+    part = first == std::wstring::npos ? L"" : part.substr(first, last - first + 1);
+    if(!part.empty()) {
+      text += text.empty() ? part : L" " + part;
+    }
+  }
+
+  return text;
+}
+
+/****************************
+ * 'assert E : "label";' becomes
+ *
+ *   [#l := L; #r := R;]            when E is 'L op R' (a comparison)
+ *   if((E) = false) {
+ *     System.Test->Fail("file:line", "source of E", label, "" + #l, "" + #r);
+ *   };
+ *
+ * so the operands are evaluated once, and nothing but the test runs when the
+ * assertion holds. The label is any String expression, and is optional.
+ ****************************/
+Statement* Parser::ParseAssert(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Assert", depth);
+#endif
+
+  NextToken();
+  const int expr_line = GetLineNumber();
+  const int expr_pos = GetLinePosition();
+  Expression* expression = ParseExpression(depth + 1);
+  if(!expression) {
+    return TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition());
+  }
+  const std::wstring source = AssertSourceText(expr_line, expr_pos, GetLineNumber(), GetLinePosition());
+
+  // the label, which is the message of the failure
+  Expression* label = nullptr;
+  if(Match(TOKEN_COLON)) {
+    NextToken();
+    label = ParseExpression(depth + 1);
+  }
+  if(!label) {
+    label = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  }
+  const int end_line = GetLineNumber();
+  const int end_pos = GetLinePosition();
+
+  // a comparison shows both operands
+  Expression* left_text = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  Expression* right_text = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  Expression* condition = expression;
+
+  if(expression->GetExpressionType() != METHOD_CALL_EXPR && !expression->GetMethodCall() && !expression->GetCastType()) {
+    switch(expression->GetExpressionType()) {
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR: {
+      CalculatedExpression* comparison = static_cast<CalculatedExpression*>(expression);
+      Expression* operands[2] = { comparison->GetLeft(), comparison->GetRight() };
+      Expression* texts[2] = { nullptr, nullptr };
+      Expression* held[2] = { operands[0], operands[1] };
+
+      for(int i = 0; i < 2; ++i) {
+        // a 'Nil' operand has no type to hold in a local, and nothing to show
+        if(!operands[i] || operands[i]->GetExpressionType() == NIL_LIT_EXPR) {
+          continue;
+        }
+
+        // read-only operands are shown from a copy; anything else is held in a local
+        Expression* copy = ClonePureOperand(operands[i], file_name, line_num, line_pos);
+        if(copy) {
+          texts[i] = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, ADD_EXPR,
+                                                                      TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, L"", true), copy);
+          continue;
+        }
+
+        const std::wstring tmp_ident = L"#assert_" + std::to_wstring(hidden_local_id++);
+        SymbolEntry* tmp_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(tmp_ident),
+                                                                          TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+        symbol_table->CurrentParseScope()->AddEntry(tmp_entry);
+
+        Variable* tmp_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+        Assignment* tmp_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, end_line, end_pos, tmp_var, operands[i]);
+        pending_statements.push_back(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, end_line, end_pos, tmp_entry, tmp_assign));
+
+        held[i] = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+        texts[i] = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, ADD_EXPR,
+                                                                    TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, L"", true),
+                                                                    TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident));
+      }
+
+      if(held[0] != operands[0] || held[1] != operands[1]) {
+        condition = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, comparison->GetExpressionType(), held[0], held[1]);
+      }
+      if(texts[0]) {
+        left_text = texts[0];
+      }
+      if(texts[1]) {
+        right_text = texts[1];
+      }
+    }
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  // System.Test->Fail(where, source, label, left, right)
+  const std::wstring where = file_name + L":" + std::to_wstring(line_num);
+  ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+  arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, where, true));
+  arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, source, true));
+  arguments->AddExpression(label);
+  arguments->AddExpression(left_text);
+  arguments->AddExpression(right_text);
+  MethodCall* fail_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, end_line, end_pos,
+                                                                  L"System.Test", L"Fail", arguments);
+  // the block is a scope of its own, as an 'if' body is, so the analyzer's scopes stay in step
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* fail_statements = TreeFactory::Instance()->MakeStatementList();
+  fail_statements->AddStatement(fail_call);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  // '(condition) = false'
+  Expression* failed = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR, condition,
+                                                                        TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, line_pos, false));
+  return TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, end_line, end_pos, failed, fail_statements);
 }
 
 CriticalSection* Parser::ParseCritical(int depth)
