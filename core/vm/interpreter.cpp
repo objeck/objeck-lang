@@ -3419,6 +3419,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   VMContext context{};
   InitVMContext(context, nullptr, nullptr, nullptr);
   (*ext_load)(context);
+  NativeLibraryLoaded((void*)dll_handle);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
@@ -3459,6 +3460,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   VMContext context{};
   InitVMContext(context, nullptr, nullptr, nullptr);
   (*ext_load)(context);
+  NativeLibraryLoaded(dll_handle);
 #endif
 }
 
@@ -3473,7 +3475,9 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
-    // call unload function  
+    // the program releases it here, so the exit path must not
+    NativeLibraryUnloaded((void*)dll_handle);
+    // call unload function
     ext_unload_def ext_unload = (ext_unload_def)GetProcAddress(dll_handle, "unload_lib");
     if(!ext_unload) {
       std::wcerr << L">>> Runtime error calling function: unload_lib <<<" << std::endl;
@@ -3494,6 +3498,8 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
 #else
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
+    // the program releases it here, so the exit path must not
+    NativeLibraryUnloaded(dll_handle);
     // call unload function
     ext_unload_def ext_unload = (ext_unload_def)dlsym(dll_handle, "unload_lib");
     char* error;
