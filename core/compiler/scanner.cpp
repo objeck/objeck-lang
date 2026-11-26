@@ -1413,7 +1413,7 @@ void Scanner::NoteToolDoc(size_t start, size_t end, int line, int pos)
   doc.text.assign(buffer + start, end - start);
   doc.line = line;
   doc.pos = pos;
-  tool_docs.push_back(doc);
+  tool_docs.push_back(std::move(doc));
   pending_doc = (int)tool_docs.size() - 1;
 }
 

@@ -1453,7 +1453,7 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
       }
       else if(tool_doc) {
         candidate.method = method;
-        mcp_tools.push_back(candidate);
+        mcp_tools.push_back(std::move(candidate));
       }
     }
     else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
@@ -8434,19 +8434,34 @@ namespace {
     switch(t.kind) {
     case MK_INT:
       value = j + L"->GetInt()";
-      return t.boxed ? L"IntRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"IntRef->New(" + value + L")";
+      }
+      return value;
     case MK_FLOAT:
       value = j + L"->GetFloat()";
-      return t.boxed ? L"FloatRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"FloatRef->New(" + value + L")";
+      }
+      return value;
     case MK_BOOL:
       value = L"(" + j + L"->GetType() = Data.JSON.JsonElement->JsonType->TRUE)";
-      return t.boxed ? L"BoolRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"BoolRef->New(" + value + L")";
+      }
+      return value;
     case MK_BYTE:
       value = j + L"->GetInt()->As(Byte)";
-      return t.boxed ? L"ByteRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"ByteRef->New(" + value + L")";
+      }
+      return value;
     case MK_CHAR:
       value = j + L"->GetString()->Get(0)";
-      return t.boxed ? L"CharRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"CharRef->New(" + value + L")";
+      }
+      return value;
     case MK_STRING:
       return j + L"->GetString()";
     case MK_JSON:
@@ -8788,7 +8803,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       if(!McpAnalyze(generics[0], kid, why, true, depth + 1)) {
         return false;
       }
-      element.kids.push_back(kid);
+      element.kids.push_back(std::move(kid));
     }
     else if(McpIsName(name, L"Map", L"Collection.Map")) {
       if(generics.size() != 2 || !McpIsName(generics[0]->GetName(), L"String", L"System.String")) {
@@ -8800,7 +8815,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       if(!McpAnalyze(generics[1], kid, why, true, depth + 1)) {
         return false;
       }
-      element.kids.push_back(kid);
+      element.kids.push_back(std::move(kid));
     }
     else if(Enum* eenum = McpFindEnum(name)) {
       element.kind = MK_ENUM;
@@ -8854,8 +8869,8 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
             why = L"the field '" + field + L"' of the record '" + name + L"' cannot be a McpCall";
             return false;
           }
-          element.items.push_back(field);
-          element.kids.push_back(kid);
+          element.items.push_back(std::move(field));
+          element.kids.push_back(std::move(kid));
         }
       }
       if(element.items.empty()) {
@@ -8876,7 +8891,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
     }
     out.kind = MK_ARRAY;
     out.text = element.text + L"[]";
-    out.kids.push_back(element);
+    out.kids.push_back(std::move(element));
     return true;
   }
 
@@ -8884,7 +8899,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
     why = L"an enum cannot be the element of a Vector or Map; use String";
     return false;
   }
-  out = element;
+  out = std::move(element);
   return true;
 }
 
@@ -8896,7 +8911,7 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
 
   Scanner* saved = scanner;
   Method* previous_method = current_method;
-  scanner = new Scanner(klass->GetFileName(), alt_syntax, text);
+  scanner = new Scanner(klass->GetFileName(), alt_syntax, std::move(text));
   NextToken();
 
   Method* method = nullptr;
@@ -9056,7 +9071,7 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
             break;
           }
         }
-        params.push_back(param);
+        params.push_back(std::move(param));
       }
     }
     if(!ok) {
@@ -9318,7 +9333,7 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
       spec = prompt_var + L" := API.MCP.McpPrompt->New(\"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\", Func2Ref->New(" + helpers.cls + L"->" + adapter_name +
              L"(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>); " + prompt_args + L"mcp_service->AddPrompt(" + prompt_var + L");";
     }
-    registrations.push_back(spec);
+    registrations.push_back(std::move(spec));
 
     const std::wstring invoke = helpers.cls + L"->" + function_name + L"(" + call_args + L")";
     if(doc.kind == 1) {
