@@ -2,11 +2,11 @@ use System.LLM.Eval;
 
 #~
 Adapter for any command line: the prompt is the command's standard input and its standard output is the answer (llm_eval's CommandModel). It evaluates a local runner, a wrapper script around any service, or a canned-answer script, with no client library and no key.
-Flags: --command "LINE" (required, quoted as your shell needs it), --name NAME (the name in the report), --call-timeout SECONDS (default 300)
+Flags: --command "LINE" (required, quoted as your shell needs it), --name NAME (the name in the report), --call-timeout SECONDS (default 300), --workdir DIR (the work directory the command runs in; default a new temp directory)
 ~#
 class Provider {
 	function : Usage() ~ String {
-		return "provider command: --command \"LINE\" [--name NAME] [--call-timeout SECONDS]; the prompt is fed to the command's standard input";
+		return "provider command: --command \"LINE\" [--name NAME] [--call-timeout SECONDS] [--workdir DIR]; the prompt is fed to the command's standard input";
 	}
 
 	function : Create(args : String[]) ~ ModelAdapter {

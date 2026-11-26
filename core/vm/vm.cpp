@@ -314,7 +314,12 @@ void InitUtf8Console()
   // define (Makefile.amd64.obd), and obd is 64-bit only; without it the
   // debugger fell to the 32-bit branch below, whose en_US.utf8 is not on every system
 #if defined(_X64) || defined(_ARM64) || defined(_DEBUGGER)
-  char* locale = setlocale(LC_ALL, "");
+  // setlocale returns a pointer into libc's internal buffer that the next
+  // setlocale call (including the one inside ConsoleLocale) may overwrite, so
+  // the name is copied before it is used again.
+  const char* current = setlocale(LC_ALL, "");
+  std::string locale_name(current ? current : "");
+  bool have_locale = current != nullptr;
   // Bytecode string literals are UTF-8. If the ambient locale is not UTF-8
   // (e.g. LANG unset -> "C"), they can neither be decoded (BytesToUnicode ->
   // mbstowcs, at load) nor printed (wcout), so obr aborts with
@@ -323,13 +328,12 @@ void InitUtf8Console()
   // separator (LC_NUMERIC unchanged for float output); "UTF-8" is the macOS
   // spelling. An ambient UTF-8 locale is left untouched.
   {
-    const std::string loc(locale ? locale : "");
-    if(loc.find("UTF-8") == std::string::npos && loc.find("utf8") == std::string::npos &&
-       loc.find("UTF8") == std::string::npos) {
-      char* utf8 = setlocale(LC_ALL, "C.UTF-8");
+    if(locale_name.find("UTF-8") == std::string::npos && locale_name.find("utf8") == std::string::npos &&
+       locale_name.find("UTF8") == std::string::npos) {
+      const char* utf8 = setlocale(LC_ALL, "C.UTF-8");
       if(!utf8) { utf8 = setlocale(LC_ALL, "en_US.UTF-8"); }
       if(!utf8) { utf8 = setlocale(LC_ALL, "UTF-8"); }  // macOS
-      if(utf8) { locale = utf8; }
+      if(utf8) { locale_name = utf8; have_locale = true; }
     }
   }
   // Built by ConsoleLocale, which never throws: libc++ on macOS refuses the
@@ -337,8 +341,8 @@ void InitUtf8Console()
   // ("C/C.UTF-8/C/C/C/C", what Python 3 hands every child when LANG is unset),
   // and std::locale's constructor threw out of here with obr exiting before
   // the program ran.
-  std::locale lollocale = ConsoleLocale(locale);
-  setlocale(LC_ALL, locale);
+  std::locale lollocale = ConsoleLocale(have_locale ? locale_name.c_str() : nullptr);
+  setlocale(LC_ALL, have_locale ? locale_name.c_str() : nullptr);
   std::wcout.imbue(lollocale);
 #else
   setlocale(LC_ALL, "en_US.utf8");
@@ -371,12 +375,18 @@ void SetEnv() {
 #endif
 #else
 #if defined(_X64)
-  char* locale = setlocale(LC_ALL, "");
+  // copy: ConsoleLocale calls setlocale again, invalidating the returned pointer
+  const char* current = setlocale(LC_ALL, "");
+  const std::string locale_name(current ? current : "");
+  const char* locale = current ? locale_name.c_str() : nullptr;
   std::locale lollocale = ConsoleLocale(locale);
   std::setlocale(LC_ALL, locale);
   std::wcout.imbue(lollocale);
 #elif defined(_ARM64)
-  char* locale = setlocale(LC_ALL, "");
+  // copy: ConsoleLocale calls setlocale again, invalidating the returned pointer
+  const char* current = setlocale(LC_ALL, "");
+  const std::string locale_name(current ? current : "");
+  const char* locale = current ? locale_name.c_str() : nullptr;
   std::locale lollocale = ConsoleLocale(locale);
   std::setlocale(LC_ALL, locale);
   std::wcout.imbue(lollocale);

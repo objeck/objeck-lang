@@ -19,6 +19,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <utility>
 
 struct SessionRecord {
    std::string ep;          // "cpu", "cuda", "tensorrt", "dml", ...
@@ -44,7 +45,7 @@ static void registry_add(const Ort::Session* session, const std::string& ep, int
    SessionRecord record;
    record.ep = ep;
    record.device_id = device_id;
-   registry_map()[session] = record;
+   registry_map()[session] = std::move(record);
 }
 
 // Copies the record; false for a session this table has never seen.

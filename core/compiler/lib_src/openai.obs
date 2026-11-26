@@ -1648,10 +1648,12 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		#~
 		Model response for a conversation with tools. If the first choice has tool calls
 		(Choice->GetToolCalls), run them, append Choice->GetMessageJson() and one
-		ToolResultMessage per call to the messages, and call again.
+		ToolResultMessage per call to the messages, and call again. Like Complete, it prints the request and the
+		response when IsDebug() is on. It sends only the Authorization header (no OpenAI-Beta header, which is a
+		leftover of the Assistants API that chat completions do not need).
 		@param model ID of the model to use
 		@param messages JSON array of message objects
-		@param tools JSON array of tool definitions, such as McpToolBridge->ToOpenAiJson()
+		@param tools JSON array of tool definitions, such as McpToolBridge->ToOpenAiJson(); Nil or empty sends none
 		@param max_tokens maximum number of completion tokens, -1 to omit
 		@param token API token
 		@return completion response, or Nil on an error (see GetLastError)
@@ -1660,11 +1662,20 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			completion_json := BuildToolRequest(model, messages, tools, max_tokens);
 
 			data := completion_json->ToString()->ToByteArray();
+			if(IsDebug()) {
+				data->ToString()->PrintLine();
+			};
+
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(NoReply(response)) {
 				return Nil;
+			};
+
+			if(IsDebug()) {
+				"--- Called: name='/chat/completions' ---"->PrintLine();
+				ResponseText(response)->PrintLine();
 			};
 
 			return ParseCompletion(ResponseText(response));
@@ -1713,16 +1724,6 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		#~
-		Model response for the given image and query
-		@param model ID of the model to use
-		@param messages list of messages comprising the conversation
-		@param max_tokens maximum number of completion tokens returned by the API
-		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
-		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param token API token
-		@return completion response
-		~#
-		#~
 		Model response for the given images and query
 		@param model ID of the model to use
 		@param messages list of messages comprising the conversation
@@ -1736,10 +1737,18 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			return CompleteImages(model, messages, max_tokens, temperature, top_p, token);
 		}
 
-		# The image implementation, named so the overloads above and below can reach
-		# it: a call written as Complete(model, <images>, ...) resolves to the text
-		# implementation, whose signature is the same once Pair's type arguments are
-		# set aside.
+		#~
+		The image implementation behind the Complete overloads that take images. It has its own name because a
+		call written as Complete(model, <images>, ...) resolves to the text implementation, whose signature is
+		the same once Pair's type arguments are set aside.
+		@param model ID of the model to use
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
 		function : CompleteImages(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);

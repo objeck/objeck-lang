@@ -21,6 +21,7 @@ registry := ToolRegistry->New();
 registry->Add(McpAgentTools->FromSpec(spec, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
 McpAgentTools->AddAll(registry, McpClient->Http("http://127.0.0.1:8080/mcp"));
 ```
+
 ~#
 bundle API.MCP {
 	class McpAgentTools {
