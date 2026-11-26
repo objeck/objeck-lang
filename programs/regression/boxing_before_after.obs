@@ -1,0 +1,130 @@
+# EXTRA_LIBS: gen_collect
+#~
+The boxing example of docs/FEATURES.md, kept compiling and running: a small
+tally written with every 'IntRef->New(..)' and '->Get()' spelled out, and
+again with the compiler doing both. The two versions must print the same
+report; the test exits 1 unless they do.
+~#
+use Collection;
+
+#
+# Before: box by hand on the way in, unbox by hand on the way out
+#
+class TallyBefore {
+	@counts : Map<String, IntRef>;
+	@recent : Vector<IntRef>;
+	@weights : Vector<FloatRef>;
+
+	New() {
+		@counts := Map->New()<String, IntRef>;
+		@recent := Vector->New()<IntRef>;
+		@weights := Vector->New()<FloatRef>;
+	}
+
+	method : public : Add(word : String, weight : Float) ~ Nil {
+		count := 1;
+		if(@counts->Has(word)) {
+			count := @counts->Find(word)->Get() + 1;
+		};
+		@counts->Insert(word, IntRef->New(count));
+		@recent->AddBack(IntRef->New(count));
+		@weights->AddBack(FloatRef->New(weight));
+	}
+
+	method : public : Count(word : String) ~ Int {
+		return @counts->Find(word)->Get();
+	}
+
+	method : public : Weighted() ~ Float {
+		total := 0.0;
+		each(i : @recent) {
+			total += @recent->Get(i)->Get()->As(Float) * @weights->Get(i)->Get();
+		};
+		return total;
+	}
+
+	method : public : Histogram(size : Int) ~ Int[] {
+		bins := Int->New[size];
+		each(i : @recent) {
+			bins[@recent->Get(i)->Get()] += 1;
+		};
+		return bins;
+	}
+}
+
+#
+# After: a primitive where a holder is wanted is boxed, a holder where a
+# primitive is wanted is its value
+#
+class TallyAfter {
+	@counts : Map<String, IntRef>;
+	@recent : Vector<IntRef>;
+	@weights : Vector<FloatRef>;
+
+	New() {
+		@counts := Map->New()<String, IntRef>;
+		@recent := Vector->New()<IntRef>;
+		@weights := Vector->New()<FloatRef>;
+	}
+
+	method : public : Add(word : String, weight : Float) ~ Nil {
+		count := 1;
+		if(@counts->Has(word)) {
+			count := @counts->Find(word) + 1;
+		};
+		@counts->Insert(word, count);
+		@recent->AddBack(count);
+		@weights->AddBack(weight);
+	}
+
+	method : public : Count(word : String) ~ Int {
+		return @counts->Find(word);
+	}
+
+	method : public : Weighted() ~ Float {
+		total := 0.0;
+		each(i : @recent) {
+			total += @recent->Get(i) * @weights->Get(i);
+		};
+		return total;
+	}
+
+	method : public : Histogram(size : Int) ~ Int[] {
+		bins := Int->New[size];
+		each(i : @recent) {
+			bins[@recent->Get(i)] += 1;
+		};
+		return bins;
+	}
+}
+
+class BoxingBeforeAfter {
+	function : Main(args : String[]) ~ Nil {
+		words := ["red", "blue", "red", "green", "red", "blue"];
+		weights := [0.5, 1.5, 2.0, 1.0, 0.25, 4.0];
+
+		before := TallyBefore->New();
+		after := TallyAfter->New();
+		each(i : words) {
+			before->Add(words[i], weights[i]);
+			after->Add(words[i], weights[i]);
+		};
+
+		before_bins := before->Histogram(4);
+		after_bins := after->Histogram(4);
+		before_report := "red " + before->Count("red")->ToString() + ", weighted " + before->Weighted()->ToString() +
+			", seen once " + before_bins[1]->ToString();
+		after_report := "red " + after->Count("red")->ToString() + ", weighted " + after->Weighted()->ToString() +
+			", seen once " + after_bins[1]->ToString();
+
+		after_report->PrintLine();
+
+		if(after_report->Equals(before_report) & after->Count("red") = 3 & after->Weighted() = 15.75 & after_bins[1] = 3) {
+			"PASS: boxing before and after"->PrintLine();
+		}
+		else {
+			"FAIL: boxing before and after: '{$before_report}' and '{$after_report}'"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

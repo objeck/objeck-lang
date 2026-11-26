@@ -339,12 +339,105 @@ An inferred lambda for a type parameter must return an object. See
 [METHOD_GENERICS_DESIGN.md](METHOD_GENERICS_DESIGN.md).
 
 ### Type Boxing
+A generic class holds objects, so a number in a collection is held by its *holder*
+class: `IntRef` for an `Int`, `FloatRef` for a `Float`, `BoolRef` for a `Bool`,
+`CharRef` for a `Char`, `ByteRef` for a `Byte`. The compiler moves a value in and out
+of its holder for you:
+
 ```ruby
 list := Collection.List->New()<IntRef>;
 list->AddBack(17);
 list->AddFront(4);
 (list->Back() + list->Front())->PrintLine();
 ```
+
+```ruby
+@counts : Map<String, IntRef>;
+@recent : Vector<IntRef>;
+@weights : Vector<FloatRef>;
+
+count := 1;
+if(@counts->Has(word)) {
+  count := @counts->Find(word) + 1;       # unboxed for the '+'
+};
+@counts->Insert(word, count);             # boxed: IntRef->New(count)
+@recent->AddBack(count);
+@weights->AddBack(weight);
+
+total := 0.0;
+each(i : @recent) {
+  total += @recent->Get(i) * @weights->Get(i);   # an IntRef and a FloatRef: Int made Float
+};
+bins[@recent->Get(i)] += 1;               # an index
+return @counts->Find(word);               # returned as an Int
+```
+
+Written out by hand, as it had to be where the compiler did not do it:
+
+```ruby
+count := @counts->Find(word)->Get() + 1;
+@counts->Insert(word, IntRef->New(count));
+@recent->AddBack(IntRef->New(count));
+@weights->AddBack(FloatRef->New(weight));
+total += @recent->Get(i)->Get()->As(Float) * @weights->Get(i)->Get();
+bins[@recent->Get(i)->Get()] += 1;
+return @counts->Find(word)->Get();
+```
+
+Both versions are in `programs/regression/boxing_before_after.obs`, which runs them
+side by side and prints:
+
+```
+red 3, weighted 15.750000, seen once 3
+PASS: boxing before and after
+```
+
+The rules:
+
+1. **Boxing.** A primitive where a holder is wanted is `Holder->New(value)`. It is
+   allowed exactly when the primitive could be assigned to the holder's own primitive:
+   `Byte`, `Char`, `Int` and `Float` convert among themselves, and a `Bool` is only a
+   `Bool`. So `r : FloatRef := 3;` holds 3.0, `r : IntRef := 2.75;` holds 2 (as
+   `i : Int := 2.75;` does), and `r : BoolRef := 1;` is an error.
+2. **Unboxing.** A holder where a primitive is wanted is `holder->Get()`, followed by
+   the same conversion: an `IntRef` for a `Float` is the `Int` made a `Float`, a
+   `FloatRef` for an `Int` is truncated, and a `BoolRef` is never a number. It applies to
+   an assignment, a `return`, an argument (of a method, a function or a function value),
+   an operand of a calculation, an array index, a `select` and a condition
+   (`if(flags->Get(i))`).
+3. **The value unboxed is the one the expression ends in**: for
+   `order->Lines()->Get(0)` it is what `Get(0)` returned.
+4. **Overloads.** A parameter is matched best by an argument of its type, then by one
+   that converts to it (`Int` for `Float`), then by one that is boxed or unboxed to it
+   (`Int` and `IntRef`), then by one that is converted and boxed or unboxed (`Int` and
+   `FloatRef`). The method that is called fits every argument at least as well as each
+   other method does; the order the methods are declared in does not matter.
+
+   ```ruby
+   function : Show(v : IntRef) ~ Nil { ... }
+   function : Show(v : Float) ~ Nil { ... }
+
+   Show(3.5);              # Show(Float): its own type
+   Show(3);                # Show(Float): an Int converts before it is boxed
+   Show(IntRef->New(3));   # Show(IntRef)
+   ```
+
+   When no method is the best the call is refused; write the conversion to choose:
+
+   ```ruby
+   function : Pick(a : IntRef, b : Int) ~ String { ... }
+   function : Pick(a : Int, b : IntRef) ~ String { ... }
+
+   Pick(1, 2);               # error: Ambiguous function/method call: 'Pick(..)' boxes or
+                             #        unboxes an argument to fit, and more than one method
+                             #        fits as well
+   Pick(IntRef->New(1), 2);  # the first
+   ```
+5. **A holder is still an object where an object is wanted.** `r : IntRef :=
+   list->Get(0);` stores the holder itself, `r = Nil` compares it with `Nil`, and
+   `each(value in ints)` gives the holders. A holder that is `Nil` has no value:
+   unboxing it is the run-time error calling `Get()` on it is
+   (`counts->Find("missing")` for a key that is not there).
 
 ### Static Import
 ```ruby

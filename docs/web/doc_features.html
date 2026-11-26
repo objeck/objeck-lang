@@ -265,11 +265,69 @@ upper <span class="t-op">:=</span> words<span class="t-op">-&gt;</span>Map(\(s) 
 </code></pre>
     <p>An inferred lambda for a type parameter must return an object. See <a href="doc_method_generics.html">METHOD_GENERICS_DESIGN.md</a>.</p>
     <h3 id="type-boxing">Type Boxing</h3>
+    <p>A generic class holds objects, so a number in a collection is held by its <em>holder</em> class: <code>IntRef</code> for an <code>Int</code>, <code>FloatRef</code> for a <code>Float</code>, <code>BoolRef</code> for a <code>Bool</code>, <code>CharRef</code> for a <code>Char</code>, <code>ByteRef</code> for a <code>Byte</code>. The compiler moves a value in and out of its holder for you:</p>
 <pre class="line-numbers"><code class="language-objeck">list <span class="t-op">:=</span> <span class="t-cls">Collection</span>.<span class="t-cls">List</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>&gt;;
 list<span class="t-op">-&gt;</span>AddBack(<span class="t-num">17</span>);
 list<span class="t-op">-&gt;</span>AddFront(<span class="t-num">4</span>);
 (list<span class="t-op">-&gt;</span>Back() + list<span class="t-op">-&gt;</span>Front())<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
+<pre class="line-numbers"><code class="language-objeck">@counts : Map&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+@recent : Vector&lt;<span class="t-type">IntRef</span>&gt;;
+@weights : Vector&lt;<span class="t-type">FloatRef</span>&gt;;
+
+count <span class="t-op">:=</span> <span class="t-num">1</span>;
+<span class="t-kw">if</span>(@counts<span class="t-op">-&gt;</span>Has(word)) {
+  count <span class="t-op">:=</span> @counts<span class="t-op">-&gt;</span>Find(word) + <span class="t-num">1</span>;       <span class="t-com"># unboxed for the '+'</span>
+};
+@counts<span class="t-op">-&gt;</span>Insert(word, count);             <span class="t-com"># boxed: IntRef-&gt;New(count)</span>
+@recent<span class="t-op">-&gt;</span>AddBack(count);
+@weights<span class="t-op">-&gt;</span>AddBack(weight);
+
+total <span class="t-op">:=</span> <span class="t-num">0.0</span>;
+<span class="t-kw">each</span>(i : @recent) {
+  total += @recent<span class="t-op">-&gt;</span>Get(i) * @weights<span class="t-op">-&gt;</span>Get(i);   <span class="t-com"># an IntRef and a FloatRef: Int made Float</span>
+};
+bins[@recent<span class="t-op">-&gt;</span>Get(i)] += <span class="t-num">1</span>;               <span class="t-com"># an index</span>
+<span class="t-kw">return</span> @counts<span class="t-op">-&gt;</span>Find(word);               <span class="t-com"># returned as an Int</span>
+</code></pre>
+    <p>Written out by hand, as it had to be where the compiler did not do it:</p>
+<pre class="line-numbers"><code class="language-objeck">count <span class="t-op">:=</span> @counts<span class="t-op">-&gt;</span>Find(word)<span class="t-op">-&gt;</span>Get() + <span class="t-num">1</span>;
+@counts<span class="t-op">-&gt;</span>Insert(word, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(count));
+@recent<span class="t-op">-&gt;</span>AddBack(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(count));
+@weights<span class="t-op">-&gt;</span>AddBack(<span class="t-type">FloatRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(weight));
+total += @recent<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>Get()<span class="t-op">-&gt;</span><span class="t-kw">As</span>(<span class="t-type">Float</span>) * @weights<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>Get();
+bins[@recent<span class="t-op">-&gt;</span>Get(i)<span class="t-op">-&gt;</span>Get()] += <span class="t-num">1</span>;
+<span class="t-kw">return</span> @counts<span class="t-op">-&gt;</span>Find(word)<span class="t-op">-&gt;</span>Get();
+</code></pre>
+    <p>Both versions are in <code>programs/regression/boxing_before_after.obs</code>, which runs them side by side and prints:</p>
+<pre class="plain">red 3, weighted 15.750000, seen once 3
+PASS: boxing before and after</pre>
+    <p>The rules:</p>
+    <ol>
+     <li><strong>Boxing.</strong> A primitive where a holder is wanted is <code>Holder-&gt;New(value)</code>. It is allowed exactly when the primitive could be assigned to the holder's own primitive: <code>Byte</code>, <code>Char</code>, <code>Int</code> and <code>Float</code> convert among themselves, and a <code>Bool</code> is only a <code>Bool</code>. So <code>r : FloatRef := 3;</code> holds 3.0, <code>r : IntRef := 2.75;</code> holds 2 (as <code>i : Int := 2.75;</code> does), and <code>r : BoolRef := 1;</code> is an error.</li>
+     <li><strong>Unboxing.</strong> A holder where a primitive is wanted is <code>holder-&gt;Get()</code>, followed by the same conversion: an <code>IntRef</code> for a <code>Float</code> is the <code>Int</code> made a <code>Float</code>, a <code>FloatRef</code> for an <code>Int</code> is truncated, and a <code>BoolRef</code> is never a number. It applies to an assignment, a <code>return</code>, an argument (of a method, a function or a function value), an operand of a calculation, an array index, a <code>select</code> and a condition (<code>if(flags-&gt;Get(i))</code>).</li>
+     <li><strong>The value unboxed is the one the expression ends in</strong>: for <code>order-&gt;Lines()-&gt;Get(0)</code> it is what <code>Get(0)</code> returned.</li>
+     <li><strong>Overloads.</strong> A parameter is matched best by an argument of its type, then by one that converts to it (<code>Int</code> for <code>Float</code>), then by one that is boxed or unboxed to it (<code>Int</code> and <code>IntRef</code>), then by one that is converted and boxed or unboxed (<code>Int</code> and <code>FloatRef</code>). The method that is called fits every argument at least as well as each other method does; the order the methods are declared in does not matter.</li>
+    </ol>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Show</span>(v : <span class="t-type">IntRef</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> { ... }
+<span class="t-kw">function</span> : <span class="t-fn">Show</span>(v : <span class="t-type">Float</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> { ... }
+
+Show(<span class="t-num">3.5</span>);              <span class="t-com"># Show(Float): its own type</span>
+Show(<span class="t-num">3</span>);                <span class="t-com"># Show(Float): an Int converts before it is boxed</span>
+Show(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">3</span>));   <span class="t-com"># Show(IntRef)</span>
+</code></pre>
+    <p>When no method is the best the call is refused; write the conversion to choose:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Pick</span>(a : <span class="t-type">IntRef</span>, b : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">String</span> { ... }
+<span class="t-kw">function</span> : <span class="t-fn">Pick</span>(a : <span class="t-type">Int</span>, b : <span class="t-type">IntRef</span>) <span class="t-op">~</span> <span class="t-type">String</span> { ... }
+
+Pick(<span class="t-num">1</span>, <span class="t-num">2</span>);               <span class="t-com"># error: Ambiguous function/method call: 'Pick(..)' boxes or</span>
+                          <span class="t-com">#        unboxes an argument to fit, and more than one method</span>
+                          <span class="t-com">#        fits as well</span>
+Pick(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">1</span>), <span class="t-num">2</span>);  <span class="t-com"># the first</span>
+</code></pre>
+    <ol start="5">
+     <li><strong>A holder is still an object where an object is wanted.</strong> <code>r : IntRef := list-&gt;Get(0);</code> stores the holder itself, <code>r = Nil</code> compares it with <code>Nil</code>, and <code>each(value in ints)</code> gives the holders. A holder that is <code>Nil</code> has no value: unboxing it is the run-time error calling <code>Get()</code> on it is (<code>counts-&gt;Find("missing")</code> for a key that is not there).</li>
+    </ol>
     <h3 id="static-import">Static Import</h3>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-kw">function</span> <span class="t-type">Int</span>;
 

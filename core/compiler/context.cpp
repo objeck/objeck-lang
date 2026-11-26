@@ -762,6 +762,15 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
     return msg + ClassSuggestion(QuotedName(msg));
   }
 
+  // This call was reported as ambiguous between boxed overloads
+  // (ProcessAmbiguousCall). The paths that go on to look for it elsewhere end
+  // by saying that no method takes its arguments, which is not so: they say
+  // the same thing again instead, and the repeat is dropped.
+  if(StartsWith(msg, L"Undefined function/method call: '") && ambiguous_call &&
+     node == static_cast<ParseNode*>(static_cast<Expression*>(ambiguous_call))) {
+    return ambiguous_call_error;
+  }
+
   if(StartsWith(msg, L"Undefined function/method call: '") && diag_call &&
      node == static_cast<ParseNode*>(static_cast<Expression*>(diag_call))) {
     std::wstring head = msg;
@@ -858,15 +867,6 @@ static std::wstring NamedVariable(Expression* expr)
  ****************************/
 void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
 {
-  // This call was already reported as ambiguous (ProcessAmbiguousCall). The
-  // caller is about to say no method takes its arguments, which is not so:
-  // it says the same thing again instead, and the repeat is dropped.
-  if(ambiguous_call && ambiguous_call == diag_call) {
-    message = ambiguous_call_error;
-    alt_error_method_names.clear();
-    return;
-  }
-
   if(alt_error_method_names.size() > 0) {
     message += L"\n\tPossible alternative(s):\n";
     for(size_t i = 0; i < alt_error_method_names.size(); ++i) {

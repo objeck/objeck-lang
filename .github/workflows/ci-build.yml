@@ -1047,6 +1047,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_chain.py "$BIN"
 
+    # A primitive is boxed and a holder unboxed to fit a parameter, and the method
+    # that fits best is called. A library's methods are matched and ranked by the
+    # analyzer's library path, from the signatures in the .obl; this builds a library
+    # whose overloads are declared holder-first and calls each of them.
+    - name: boxing and unboxing choose among a library's overloads (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_boxing_overloads.py "$BIN"
+
     # `Vector[]<T>` as a parameter built fine inside a library and resolved for
     # callers inside it, but a program that linked the library was told the method
     # did not exist: the signature came back out of the .obl with its array
