@@ -7342,6 +7342,12 @@ Using* Parser::ParseUsing(int depth)
 
   // scope of the resource: its declaration, the body, the close
   symbol_table->CurrentParseScope()->NewParseScope();
+  // the error the body raised, held while the resource closes and raised again
+  const std::wstring raise_ident = L"#using_raise_" + std::to_wstring(hidden_local_id++);
+  SymbolEntry* raise_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(raise_ident),
+                                                                      TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Error", file_name, line_num, line_pos),
+                                                                      false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(raise_entry);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(name),
                                                                 TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
   if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
@@ -7355,15 +7361,22 @@ Using* Parser::ParseUsing(int depth)
   StatementList* body = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  // w->Close()
-  symbol_table->CurrentParseScope()->NewParseScope();
+  // if(w <> Nil) { w->Close(); } -- a Nil resource has nothing to close
+  symbol_table->CurrentParseScope()->NewParseScope();   // the close list
+  symbol_table->CurrentParseScope()->NewParseScope();   // the 'if' body
+  StatementList* close_call = TreeFactory::Instance()->MakeStatementList();
+  close_call->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, line_num, line_pos,
+                                                                   name, L"Close", TreeFactory::Instance()->MakeExpressionList()));
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  Expression* not_nil = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR,
+                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name),
+                                                                         TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
   StatementList* close = TreeFactory::Instance()->MakeStatementList();
-  close->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, line_num, line_pos,
-                                                              name, L"Close", TreeFactory::Instance()->MakeExpressionList()));
+  close->AddStatement(TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, line_num, line_pos, not_nil, close_call));
   symbol_table->CurrentParseScope()->PreviousParseScope();
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeUsing(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), resource, body, close);
+  return TreeFactory::Instance()->MakeUsing(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), resource, body, close, raise_entry);
 }
 
 CriticalSection* Parser::ParseCritical(int depth)

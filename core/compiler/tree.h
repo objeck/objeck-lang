@@ -1970,13 +1970,20 @@ namespace frontend {
     Statement* resource;
     StatementList* body;
     StatementList* close;
+    SymbolEntry* raise_entry;
 
   public:
     Using(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-          Statement* r, StatementList* b, StatementList* c) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+          Statement* r, StatementList* b, StatementList* c, SymbolEntry* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       resource = r;
       body = b;
       close = c;
+      raise_entry = e;
+    }
+
+    // the hidden System.Error local that holds an error raised by the body while the resource closes
+    SymbolEntry* GetRaiseEntry() {
+      return raise_entry;
     }
 
     ~Using() {
@@ -4092,8 +4099,8 @@ namespace frontend {
     }
 
     Using* MakeUsing(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-                     Statement* resource, StatementList* body, StatementList* close) {
-      Using* tmp = new Using(file_name, line_num, line_pos, end_line_num, end_line_pos, resource, body, close);
+                     Statement* resource, StatementList* body, StatementList* close, SymbolEntry* raise_entry) {
+      Using* tmp = new Using(file_name, line_num, line_pos, end_line_num, end_line_pos, resource, body, close, raise_entry);
       statements.push_back(tmp);
       return tmp;
     }

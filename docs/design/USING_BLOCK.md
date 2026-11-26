@@ -1,6 +1,6 @@
 # The `using` block
 
-Status: implemented on `feat/using-block` (draft PR). A new statement node (`Using`), handled by
+Status: implemented on `feat/using-block`. A new statement node (`Using`), handled by
 the parser, the context analyzer and the emitter; no VM, JIT or library change.
 
 ## What it is for
@@ -76,37 +76,61 @@ statement.
 The close is compiled as the ordinary call `w->Close()`, so a `Close()` that returns a value works
 (the result is discarded), and so does one inherited from a parent class.
 
-## Why not `try`/`finally`
+## Exception safety
 
-`try { } finally { }` (#1247) already closes on every exit, including an error, but the method that
-holds it is not JIT-compiled (the body is a `TRY_START` region). A loop that opens a file per
-iteration, or a handler that runs per request, would drop from native code to the interpreter. `using`
-is emitted inline instead:
+The resource is closed when an error unwinds past the block, not only on the normal exits. The
+emitter lays the statement out like a `try`/`finally` (`EmitUsing`, modelled on `EmitTry`, #1247):
 
-* the close is a straight-line call (no label), emitted once after the body and once before each
-  `return`, `break` and `continue` that leaves it, through the same exit hook `critical` and `try`
-  use (`EmitCriticalUnlocks`);
-* a returned value is on the operand stack while the close runs. A call leaves it untouched, and the
-  absence of a label keeps the JIT's "empty working stack at a label" rule intact;
-* the method is compiled by the JIT exactly like one without `using` (checked with
-  `OBJECK_JIT_THRESHOLD=1`).
+```
+w := E; raise := Nil
+TRY_START H1; body; TRY_END; JMP NORMAL
+H1:  raise := last error
+     TRY_START H2; if(w <> Nil) { w->Close(); }; TRY_END; JMP RAISE
+H2:  (the error Close() raised is dropped)
+RAISE: raise the saved error again
+NORMAL: if(w <> Nil) { w->Close(); }
+```
 
-The price is stated plainly: **an error that unwinds past the block does not close the resource.**
-Objeck runtime errors end the program unless a `try` recovers them, so this only matters when the
-`using` is inside a method called from a `try` block that recovers an error raised in the body. If
-that matters, write `try { ... } finally { r->Close(); }` for that block. (The `AgentScope` library
-(#1837) uses a real `finally` for the same reason.)
+and `return`, `break` and `continue` inside the body leave the region (`TRY_END`) and run the same
+close, with a returned value kept on the operand stack, through `EmitCriticalUnlocks`.
+
+| Situation | Result |
+|---|---|
+| body ends, `Close()` succeeds | closed once |
+| `return`, `break`, `continue` leaving the block | closed once, return value computed first |
+| an error unwinds past the block | closed, then the same error goes on |
+| the body ended normally and `Close()` raises | that error propagates to the caller |
+| the body raised and `Close()` raises too | the body's error wins; `Close()`'s is dropped |
+| the resource is `Nil` | nothing is closed, no fault |
+
+Errors are the recoverable runtime errors a `try` can catch (index, Nil dereference, bad cast, `raise`
+of a `System.Error`); an error nothing catches still ends the program as before, and the resource is
+then closed before the process exits only if a `try` further up recovers it.
+
+### Cost: a method containing `using` is not JIT-compiled
+
+The body is a `TRY_START` region, and the JIT does not compile a method that contains one (its callees
+are compiled as usual). Measured on a Ryzen 9 7950X3D (loaded; medians of 3 runs, `obc -opt s3`):
+
+| Test | with `using` | the same code closing by hand |
+|---|---|---|
+| hot loop: 20,000,000 calls of a method that opens a trivial object, reads it and closes it | 4.2 to 4.4 s | 0.70 s (JIT) |
+| I/O loop: 20,000 file copies (open reader and writer, read a line, write it, close both) | 5.0 s | 4.55 s (+10%) |
+
+So `using` costs about 6 times on a method whose whole cost is a few instructions, and about 10% when the
+body does real I/O, which is what a resource is for. Do not use it in an inner loop of arithmetic; put
+the block around the I/O and keep the hot work in a callee, which stays compiled. (An earlier version of
+this feature closed inline, without a try region, and kept JIT-compilation but did not close on an
+error; the all-exits behaviour was chosen over that speed.)
 
 ## Limits
 
-* The resource must not be `Nil`: `Close()` on `Nil` is the usual Nil dereference, at the close. The
-  constructors of the library's closeable classes return an object even when the open failed (check
-  `IsOpen()`), so `using(f := FileReader->New(p))` is safe.
 * Assigning to the resource variable inside the block closes the new value, not the old one. Do not.
 * The type of the resource must have a method `Close()` taking no arguments; otherwise the compiler
   says so at the `using` line (after the ordinary "undefined method" error, which names the call).
 * `using` does not call a destructor: nothing happens to a resource that is never closed other than
   what the garbage collector does.
+* A `Close()` that returns a value is allowed (the result is discarded).
 
 ## Tests
 
@@ -114,5 +138,6 @@ that matters, write `try { ... } finally { r->Close(); }` for that block. (The `
   `return` (Int, String, Float and literal values), `break` and `continue`, a loop inside the body,
   nested and sequential blocks with the same name, a `return` from a loop in the body, a `leaving`
   block, real `FileWriter`/`FileReader` files, and `using` still usable as a variable and method name.
+* `programs/regression/using_block_errors.obs`: an error in the body (closed, error goes on), `Close()` raising after a normal body, both raising (the body's error wins), nested blocks, a `return`, and a `Nil` resource.
 * `bad_using_no_close.obs`, `bad_using_equals.obs`, `bad_using_scope.obs`: the compile errors, with
   line numbers.

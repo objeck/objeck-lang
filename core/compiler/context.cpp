@@ -8094,6 +8094,7 @@ void ContextAnalyzer::AnalyzeUsing(Using* using_stmt, const int depth)
 #endif
 
   current_table->NewScope();
+  ResolveClassEnumType(using_stmt->GetRaiseEntry()->GetType());
   AnalyzeStatement(using_stmt->GetResource(), depth + 1);
   AnalyzeStatements(using_stmt->GetBody(), depth + 1);
   const size_t errors_before_close = diagnostics.ErrorCount();

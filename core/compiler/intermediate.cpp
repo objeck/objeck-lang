@@ -4472,8 +4472,9 @@ void IntermediateEmitter::EmitCriticalUnlocks(size_t keep_depth, Statement* stat
       }
     }
     else if(active->GetStatementType() == USING_STMT) {
-      // a jump out of a 'using' body closes the resource first; a returned
-      // value is on the stack, which the call to Close() leaves alone
+      // a jump out of a 'using' body leaves its try region, then closes the
+      // resource; a returned value is on the stack and stays there
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRY_END));
       const int saved_char_str_count = new_char_str_count;
       new_char_str_count = 0;
       std::vector<Statement*> close_stmts = static_cast<Using*>(active)->GetClose()->GetStatements();
@@ -4491,28 +4492,84 @@ void IntermediateEmitter::EmitCriticalUnlocks(size_t keep_depth, Statement* stat
 }
 
 /****************************
- * Translates 'using(w := E) { body }': w := E, the body, then w->Close(). The
- * close is also emitted by EmitCriticalUnlocks before each return, break and
- * continue that leaves the body, innermost resource first. It is a plain call
- * (no label), so it is safe with a returned value on the operand stack and
- * the method stays JIT-compilable. An error that unwinds past the body does
- * not close the resource.
+ * Translates 'using(w := E) { body }' (docs/design/USING_BLOCK.md):
+ *
+ *   w := E; raise := Nil
+ *   TRY_START H1; body; TRY_END; JMP NORMAL
+ * H1:
+ *   raise := GetLastError()          -- the body raised
+ *   TRY_START H2; close; TRY_END; JMP RAISE
+ * H2:
+ *   GetLastError() dropped           -- the original error wins over one from Close()
+ * RAISE:
+ *   Raise(raise)
+ * NORMAL:
+ *   close                            -- an error from Close() propagates
+ *
+ * 'close' is 'if(w <> Nil) { w->Close(); }'. EmitCriticalUnlocks emits TRY_END
+ * and the same close before each return, break and continue that leaves the
+ * body, with a returned value on the operand stack.
  ****************************/
 void IntermediateEmitter::EmitUsing(Using* using_stmt)
 {
   cur_line_num = using_stmt->GetLineNumber();
+  const long raise_id = using_stmt->GetRaiseEntry()->GetId();
+  const long handler_label = ++unconditional_label;
+  const long handler_error_label = ++unconditional_label;
+  const long raise_label = ++unconditional_label;
+  const long normal_label = ++unconditional_label;
+  std::vector<Statement*> close_stmts = using_stmt->GetClose()->GetStatements();
 
   EmitStatement(using_stmt->GetResource());
 
+  // raise := Nil
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+
+  // the body's region
   active_criticals.push_back(using_stmt);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_START, handler_label, -1));
   std::vector<Statement*> body = using_stmt->GetBody()->GetStatements();
   for(size_t i = 0; i < body.size(); ++i) {
     EmitStatement(body[i]);
   }
   active_criticals.pop_back();
-
   cur_line_num = using_stmt->GetLineNumber();
-  std::vector<Statement*> close_stmts = using_stmt->GetClose()->GetStatements();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, JMP, normal_label, -1));
+
+  // the body raised: remember the error, close in a region of its own
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, handler_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, instructions::RUNTIME_GET_LAST_ERROR));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRAP_RTRN, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_START, handler_error_label, -1));
+  const int saved_char_str_count = new_char_str_count;
+  new_char_str_count = 0;
+  for(size_t i = 0; i < close_stmts.size(); ++i) {
+    EmitStatement(close_stmts[i]);
+  }
+  new_char_str_count = saved_char_str_count;
+  cur_line_num = using_stmt->GetLineNumber();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, JMP, raise_label, -1));
+
+  // Close() raised too: that error is dropped, the original goes on
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, handler_error_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, instructions::RUNTIME_GET_LAST_ERROR));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRAP_RTRN, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, POP_INT));
+
+  // Raise(raise)
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, raise_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LOAD_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, instructions::RUNTIME_RAISE));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRAP, 3L));
+
+  // the body ended normally: an error from Close() is the caller's
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, normal_label));
+  new_char_str_count = 0;
   for(size_t i = 0; i < close_stmts.size(); ++i) {
     EmitStatement(close_stmts[i]);
   }

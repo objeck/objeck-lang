@@ -2,12 +2,6 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [Unreleased]
-
-### Added
-
-- **`using(w := E) { ... }` closes a resource on every way out of a block** (`docs/design/USING_BLOCK.md`): `w->Close()` runs when the body ends and before each `return` (after the returned value is computed), `break` and `continue` that leaves it, innermost resource first. The close is looked up by name, so every library class with a `Close()` (files, sockets, the ONNX, ODBC and query handles) and any class of yours works, with no interface to implement. It is compiled inline, not as `try`/`finally`, so a method that uses it is still compiled by the JIT; an error that unwinds past the block does not close the resource (use `try { } finally { }` when that matters). `using` is a contextual word: `using := 1`, `using->F()` and `using(x);` (a call to a method named `using`) are unchanged.
-
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance
@@ -74,6 +68,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Added
 
+- **`using(w := E) { ... }` closes a resource on every way out of a block, errors included** (`docs/design/USING_BLOCK.md`): `w->Close()` runs when the body ends, before each `return` (after the returned value is computed), `break` and `continue` that leaves it, and when an error unwinds past the block (the error then goes on; if `Close()` raises after a normal body that error propagates, and if the body had already raised, the body's error wins). A `Nil` resource is not closed. `Close()` is looked up by name, so every library class with a `Close()` and any class of yours works with no interface to implement. The method that holds the block is not JIT-compiled (it contains a `try` region): about 6 times slower on a loop of nothing but tiny calls and about 10% on 20,000 file copies, measured in the design doc. `using` is a contextual word: `using := 1`, `using->F()` and `using(x);` (a call to a method named `using`) are unchanged.
 - **`mcp_stubs --save-manifest`, `--manifest`, `--check`**: keep a server's `tools/list` as a file, generate the typed client from it with no server, and fail the build, naming the removed, added and changed methods, when the checked-in client no longer matches the server. Tests in `mcp_stubs_test.py`.
 - **`obr --mcp` and `obr --mcp-http=<port>`**: serve a program's `@tool`, `@resource` and `@prompt` functions on standard input and output or over streamable HTTP (`--mcp-http-host=<address>`), with no server code. The VM starts the program at the `McpMain` the compiler writes (or the program's own, which can register several classes and calls `McpServe->Run`) instead of `Main`. New: `McpServe->Run`, and the flags in `obr --help`. A program with nothing to serve, or with two generated servers, is refused with a message that says what to do. Without the flags nothing changes. Tests: `mcp_launch_test.py`.
 - **Resources and prompts from functions: `@resource`, `@prompt`**: the same doc comment makes the other two MCP server primitives. `@resource <uri>` (a fixed URI or a template such as `weather://{city}/forecast/{days}`, whose variables are read into the same-named `String`/`Int`/`Float`/`Bool`/`Char` parameters; `@mime` sets the media type; the result is a `String` or a `McpContents`) and `@prompt [name]` (arguments are `String`/`Int`/`Float`/`Bool`/`Char` read from the text, a default makes one optional; the result is a `String`, one user message, or a `McpPromptResult`). `Class->McpTools(server)` registers tools, resources and prompts. New library function `McpUriTemplate->Match`. A function is exactly one of the three; the hints belong to tools. Compile errors for a variable with no parameter, a parameter that is not a variable, bad types, and mixed or repeated tags. Programs without these tags compile to the same bytes. Tests: `mcp_res_prompt_tags_test`, the diagnostics in `mcp_tool_tags_diag_test.py`; example `programs/deploy/mcp_resources_43.obs`.
