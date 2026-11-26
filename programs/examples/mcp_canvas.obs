@@ -122,7 +122,7 @@ class Palette {
 
 	# a color name ("sky"), its letter ("s") or #rrggbb (the nearest of the 17); -1 when unknown
 	function : Resolve(color : String) ~ Int {
-		if(color = Nil | color->Size() = 0) {
+		if(color = Nil | color->IsEmpty()) {
 			return -1;
 		};
 
@@ -1109,7 +1109,7 @@ class Gfx {
 	}
 
 	method : public : Text(text : String, x : Int, y : Int, size : Int, rgb : Int) ~ Int {
-		if(text = Nil | text->Size() = 0) {
+		if(text = Nil | text->IsEmpty()) {
 			return 0;
 		};
 		key := "{$size}|{$rgb}|{$text}";

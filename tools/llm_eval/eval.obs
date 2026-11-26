@@ -38,7 +38,7 @@ class Eval {
 		};
 
 		tasks := TaskSuite->Select(tasks, EvalArgs->Value(args, "--ids", Nil), EvalArgs->Value(args, "--categories", Nil));
-		if(tasks->Size() = 0) {
+		if(tasks->IsEmpty()) {
 			">>> no task matches --ids / --categories"->ErrorLine();
 			Runtime->Exit(1);
 		};

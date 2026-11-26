@@ -56,7 +56,7 @@ class PortReader {
   # raises a ConfigError when the text is empty. Raise leaves this method at
   # once, so the 'return' below only runs for good input.
   method : public : Read(text : String, line : Int) ~ IntRef {
-    if(text->Size() = 0) {
+    if(text->IsEmpty()) {
       Runtime->Raise(ConfigError->New("missing port", line));
     };
     return IntRef->New(text->ToInt());

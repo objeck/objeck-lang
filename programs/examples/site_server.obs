@@ -60,7 +60,7 @@ class SiteHandler from HttpRequestHandler {
 
 	# a request path is served only if it has no '..' segment, no backslash and no NUL
 	function : Safe(path : String) ~ Bool {
-		if(path = Nil | path->Size() = 0 | path->Get(0) <> '/') {
+		if(path = Nil | path->IsEmpty() | path->Get(0) <> '/') {
 			return false;
 		};
 

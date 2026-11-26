@@ -152,7 +152,7 @@ bundle System.LLM.Eval {
 		@return true when it is
 		~#
 		function : IsAbsolute(path : String) ~ Bool {
-			if(path->Size() = 0) {
+			if(path->IsEmpty()) {
 				return false;
 			};
 
@@ -245,7 +245,7 @@ bundle System.LLM.Eval {
 				};
 			};
 
-			if(values->Size() = 0) {
+			if(values->IsEmpty()) {
 				return fallback;
 			};
 
@@ -1162,7 +1162,7 @@ bundle System.LLM.Eval {
 				sections->Insert(section, body);
 			};
 
-			if(id = Nil | id->Size() = 0) {
+			if(id = Nil | id->IsEmpty()) {
 				TaskSuite->SetLastError("the task has no id: line");
 				return Nil;
 			};
@@ -1275,7 +1275,7 @@ bundle System.LLM.Eval {
 				tasks->AddBack(task);
 			};
 
-			if(tasks->Size() = 0) {
+			if(tasks->IsEmpty()) {
 				@last_error := "no *.task files in {$dir}";
 				return Nil;
 			};
@@ -2782,7 +2782,7 @@ bundle System.LLM.Eval {
 			any := false;
 			each(i : results) {
 				rows := results->Get(i)->GetErrorCategories();
-				if(rows->Size() = 0) {
+				if(rows->IsEmpty()) {
 					continue;
 				};
 

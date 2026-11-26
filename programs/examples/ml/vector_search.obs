@@ -144,7 +144,7 @@ class VectorSearchExample {
 
 			"\nQ: {$questions[qi]}"->PrintLine();
 			hits := index->Search(q, k);
-			if(hits->Size() = 0) {
+			if(hits->IsEmpty()) {
 				"   no answer ({$index->GetError()})"->PrintLine();
 			};
 			each(hit in hits) {

@@ -343,7 +343,7 @@ class McpDemo {
 
 	# the path joined to the sandbox, Nil when it would leave it
 	function : Resolve(path : String) ~ String {
-		if(path = Nil | path->Size() = 0) {
+		if(path = Nil | path->IsEmpty()) {
 			return @root;
 		};
 
