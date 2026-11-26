@@ -1,80 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GC roots: a precise root model for the interpreter and both JITs — Objeck Language</title>
-  <meta name="description" content="Written 2026-10-29 against master c816f3f9ae, before any implementation. It was prompted by two suspected JIT root bugs (jit_stale_spill_slot, jit_inline_local_root) and a run of collector fixes that each patched one consequence of the same"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="Written 2026-10-29 against master c816f3f9ae, before any implementation. It was prompted by two suspected JIT root bugs (jit_stale_spill_slot, jit_inline_local_root) and a run of collector fixes that each patched one consequence of the same">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
-    </div>
-  </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
-    <h1 class="page-title">GC roots: a precise root model for the interpreter and both JITs</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/GC_ROOTS_DESIGN.md" target="_blank">docs/GC_ROOTS_DESIGN.md on GitHub</a></div>
-    <p class="page-lead">Written 2026-10-29 against master <code>c816f3f9ae</code>, before any implementation. It was prompted by two suspected JIT root bugs (<code>jit_stale_spill_slot</code>, <code>jit_inline_local_root</code>) and a run of collector fixes that each patched one consequence of the same assumption. This was a design for review when it was written, and nothing below had landed. <strong>Phases 0 to 6 have since merged (#1511 was the last); the status blocks that follow are the record of what was built and how it differs, and the rest of the page is the design they implemented.</strong></p>
-    <div id="toc_container" class="plain">
-     <h4>Contents</h4>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
-      <li><a href="#1-summary">1. Summary</a></li>
-      <li><a href="#2-evidence-method-and-environment">2. Evidence: method and environment</a></li>
-      <li><a href="#3-what-the-two-tests-actually-show">3. What the two tests actually show</a></li>
-      <li><a href="#4-the-nine-patches-traced-to-the-assumption-each-worked-around">4. The nine patches, traced to the assumption each worked around</a></li>
-      <li><a href="#5-root-model">5. Root model</a></li>
-      <li><a href="#6-how-live-references-are-reported">6. How live references are reported</a></li>
-      <li><a href="#7-phases">7. Phases</a></li>
-      <li><a href="#8-measurement">8. Measurement</a></li>
-      <li><a href="#9-tests">9. Tests</a></li>
-      <li><a href="#10-not-established">10. Not established</a></li>
-      <li><a href="#11-how-to-check">11. How to check</a></li>
-      <li><a href="#12-known-limits-of-this-design">12. Known limits of this design</a></li>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
      </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#design-notes">Design notes</a></li><li aria-current="page">GC roots: a precise root model for the interpreter and both JITs</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html" aria-current="page">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">GC roots: a precise root model for the interpreter and both JITs</h1>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/docs/GC_ROOTS_DESIGN.md" target="_blank" rel="noopener">View docs/GC_ROOTS_DESIGN.md on GitHub</a></p>
+    <p class="page-lead">Written 2026-10-29 against master <code>c816f3f9ae</code>, before any implementation. It was prompted by two suspected JIT root bugs (<code>jit_stale_spill_slot</code>, <code>jit_inline_local_root</code>) and a run of collector fixes that each patched one consequence of the same assumption. This was a design for review when it was written, and nothing below had landed. <strong>Phases 0 to 6 have since merged (#1511 was the last); the status blocks that follow are the record of what was built and how it differs, and the rest of the page is the design they implemented.</strong></p>
 
     <p><strong>Where each phase landed (from <code>git log</code> on master):</strong></p>
     <table class="ref-table">
@@ -130,7 +104,7 @@
     </ul>
      </li>
     </ul>
-    <h3 id="1-summary">1. Summary</h3>
+    <h2 id="1-summary">1. Summary</h2>
     <p>The collector does not know which words in a frame are references. It finds roots in three ways:</p>
     <ul>
      <li>it walks the declared locals by their declared types;</li>
@@ -162,12 +136,12 @@
      <li><strong><code>jit_stale_spill_slot</code> is real, JIT-only, and has two paths.</strong> First, AMD64 entry zeroing skips <code>TMP_REG_0</code> on both ABIs. Second, spill slots are never cleared, so a frame keeps what it spilled for as long as it runs. ARM64 has only the second path.</li>
      <li><strong><code>jit_inline_local_root</code> is refuted.</strong> The AMD64 JIT inliner has been switched off since f871a89252 (2026-04-01): <code>ProcessInlineMethod</code> has no caller. ARM64 has no JIT inliner. The test never reached either. The dead inliner should be deleted (phase 5), because enabling it again would introduce exactly the defect the test describes.</li>
     </ul>
-    <h3 id="2-evidence-method-and-environment">2. Evidence: method and environment</h3>
+    <h2 id="2-evidence-method-and-environment">2. Evidence: method and environment</h2>
     <ul>
      <li><strong>Build:</strong> Windows 11, VS 2022, MSBuild of <code>core/release/objeck.sln</code> at <code>c816f3f9ae</code>, deployed to a scratch <code>deploy-x64</code>.</li>
      <li><strong>Configurations:</strong> each test was compiled at <code>-opt s0</code> and <code>-opt s3</code>, and run with <code>--jit=off</code>, <code>--jit=1</code> and the default threshold.</li>
     </ul>
-    <h4 id="21---jitoff-does-not-mean-interpreter-only">2.1 <code>--jit=off</code> does not mean "interpreter only"</h4>
+    <h3 id="21---jitoff-does-not-mean-interpreter-only">2.1 <code>--jit=off</code> does not mean "interpreter only"</h3>
     <p><code>--jit=off</code> (and <code>OBJECK_JIT_DISABLE=1</code>) only raises the auto-JIT threshold. A <code>native</code> method is still compiled. Under <code>--jit=off</code>, <code>OBJECK_JIT_REPORT=1</code> prints <code>[jit] Probe2:Leave:: compiled</code> for a <code>native</code> method, and <code>System.String:Get</code> is compiled too, because library methods are <code>native</code> as well.</p>
     <p>The usage text says "'off' runs the interpreter only". The earlier finding that <code>jit_stale_spill_slot</code> "fails with the JIT off" came from this: the test's methods are all <code>native</code>. With <code>native</code> removed:</p>
     <table class="ref-table">
@@ -184,8 +158,8 @@
      <li>The nightly differential's <code>s0/off</code> configuration (#1443's table) is not interpreter-only either.</li>
      <li><code>--jit=off</code> needs its own fix, or its help text needs to change. That is reported separately and is not part of this design.</li>
     </ul>
-    <h3 id="3-what-the-two-tests-actually-show">3. What the two tests actually show</h3>
-    <h4 id="31-stale-spill-slots-real">3.1 Stale spill slots (real)</h4>
+    <h2 id="3-what-the-two-tests-actually-show">3. What the two tests actually show</h2>
+    <h3 id="31-stale-spill-slots-real">3.1 Stale spill slots (real)</h3>
     <p><strong>Path 1: entry zeroing misses <code>TMP_REG_0</code> (AMD64, both ABIs).</strong></p>
     <p><code>JitAmd64::RegisterRoot</code> zeroes <code>((offset - 8) &gt;&gt; 3) + 10</code> words upward from the lowest local. On Win64 the locals plus the <code>RED_ZONE</code> word take <code>offset / 8</code> words, so the count stops one word short of <code>TMP_REG_0</code> (<code>RBP-32</code>). POSIX misses <code>TMP_REG_0</code> (<code>RBP-88</code>) the same way.</p>
     <p>The <code>- 8</code> dates from the six-slot layout (<code>+ 6</code>). 5555f2960b (2026-09-09) widened the slots to ten without changing it.</p>
@@ -198,7 +172,7 @@
 [gc]   window 10 @...EBC0 -&gt; 0000027E5B6D0060 size=33554457</pre>
     <p>Window word 10 on Win64 is <code>RBP-32</code>, which is <code>TMP_REG_0</code>. ARM64 zeroes all six <code>TMP_X</code> slots at entry (<code>RegisterRoot</code>), so it has path 2 only.</p>
     <p>Severity: the effect is retention, at most one object per stale slot per live frame. Nothing is freed while still in use. It becomes serious when the object is large, as with the 32 MB array here.</p>
-    <h4 id="32-inlined-callee-locals-refuted">3.2 Inlined callee locals (refuted)</h4>
+    <h3 id="32-inlined-callee-locals-refuted">3.2 Inlined callee locals (refuted)</h3>
     <p>The claim is that the AMD64 JIT pastes small callees into the caller and puts their locals below the walked region. The layout part is true of the code: <code>inline_local_offset</code> starts below the caller's locals, and the collector walks only <code>org_local_space</code>. But that code never runs:</p>
     <ul>
      <li><strong>The JIT inliner never runs.</strong> <code>ProcessInlineMethod</code> has no caller. f871a89252 replaced the call with the callback path ("disable ProcessInlineMethod for MTHD_CALL"). <code>CanInlineMethod</code> is still called, but only to size <code>extra_inline_space</code>, which is dead frame space today.</li>
@@ -208,13 +182,13 @@
      <li><strong>ARM64 has no JIT inliner.</strong></li>
     </ul>
     <p>The latent hazard is real: re-enabling <code>ProcessInlineMethod</code> would reintroduce exactly this defect. Phase 5 deletes it. Any future JIT inliner must give inlined locals declared, walked slots.</p>
-    <h4 id="33-integers-rewritten-by-fixup-new-interpreter-and-jit">3.3 Integers rewritten by fixup (new; interpreter and JIT)</h4>
+    <h3 id="33-integers-rewritten-by-fixup-new-interpreter-and-jit">3.3 Integers rewritten by fixup (new; interpreter and JIT)</h3>
     <p><code>FixupRoots</code> runs <code>FixupSlot</code> over every operand-stack word and every window word. The comment there says it "validates the forwarding target so a plain integer that merely aliases the young address range is not misread". But the check cannot tell an integer from a reference: an integer equal to a young object's start address passes it.</p>
     <p><code>GetInstanceID()</code> returns exactly such an integer (<code>LOAD_INST_UID</code> compiles to <code>LOAD_INST_MEM</code>). The reproducer:</p>
-<pre class="line-numbers"><code class="language-cpp">o := Box-&gt;New(i);
-before := o-&gt;GetInstanceID();
-# o-&gt;GetInstanceID() is pending (operand stack / spill slot) while Churn allocates
-if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
+<pre class="line-numbers"><code class="language-objeck">o <span class="t-op">:=</span> <span class="t-cls">Box</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(i);
+before <span class="t-op">:=</span> o<span class="t-op">-&gt;</span>GetInstanceID();
+<span class="t-com"># o-&gt;GetInstanceID() is pending (operand stack / spill slot) while Churn allocates</span>
+<span class="t-kw">if</span>(Same(o<span class="t-op">-&gt;</span>GetInstanceID(), Churn(i), before) = <span class="t-const">false</span>) { bad += <span class="t-num">1</span>; };
 </code></pre>
     <p>Run with <code>--nursery=64k</code>, 2,000 iterations, no <code>native</code>:</p>
     <table class="ref-table">
@@ -228,7 +202,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
     </table>
     <p>With the default 128 MB nursery it passes, because no minor collection lands in the window. The 2026-10-22 binary fails the same way, so this is not a regression of this cycle.</p>
     <p>A related but separate problem: an instance ID was an address, so it changed when the object was promoted. <strong>Resolved after this page was written:</strong> <code>GetInstanceID</code> now returns a number from a counter that never repeats, kept in a table the collector re-keys as it moves objects (<code>8c3d0e2e56</code>, PR #1472, 2026-10-30; <code>MemoryManager::GetInstanceId</code>). A consequence for reading this section: Objeck code can no longer produce an <code>Int</code> equal to an object's address, so the reproducer above has no trigger on a current build. The property is tested with a test-only hook, <code>Runtime-&gt;TestAddressOf(o)</code>, live only when <code>OBJECK_GC_TEST_HOOKS=1</code> (PR #1473; <code>gc_address_int_pending.obs</code>, section 28 of <code>programs/regression/run_vm_flag_tests.py</code>).</p>
-    <h3 id="4-the-nine-patches-traced-to-the-assumption-each-worked-around">4. The nine patches, traced to the assumption each worked around</h3>
+    <h2 id="4-the-nine-patches-traced-to-the-assumption-each-worked-around">4. The nine patches, traced to the assumption each worked around</h2>
     <table class="ref-table">
      <thead>
       <tr><th>commit</th><th>what it fixed</th><th>the root-discovery assumption that failed</th></tr>
@@ -246,8 +220,8 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
      </tbody>
     </table>
     <p>The framing is confirmed for eight of the nine. Each fix either told the collector about one more slot kind, or made the conservative guess safer. None gave the collector a precise statement of what is live. 193f076fdd(a) is a separate allocator fault.</p>
-    <h3 id="5-root-model">5. Root model</h3>
-    <h4 id="51-slot-kinds-today">5.1 Slot kinds today</h4>
+    <h2 id="5-root-model">5. Root model</h2>
+    <h3 id="51-slot-kinds-today">5.1 Slot kinds today</h3>
     <table class="ref-table">
      <thead>
       <tr><th>slot kind</th><th>interpreter</th><th>AMD64 JIT</th><th>ARM64 JIT</th><th>how found today</th></tr>
@@ -265,7 +239,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
       <tr><td data-label="slot kind">native / trap C++ locals</td><td data-label="interpreter">on the operand stack by convention</td><td data-label="AMD64 JIT">bridge into C++</td><td data-label="ARM64 JIT">same</td><td data-label="how found today">operand stack, conservative</td></tr>
      </tbody>
     </table>
-    <h4 id="52-target-rules">5.2 Target rules</h4>
+    <h3 id="52-target-rules">5.2 Target rules</h3>
     <p>A word is a root if and only if the collector is told it is a reference at the safepoint where the collection happens. No word is ever relocated on a guess.</p>
     <ol>
      <li><strong>Declared locals.</strong> Precise by declaration, as today. Both backends already lay frames out from declarations (4b67aa39ba), and entry zeroing makes a not-yet-written slot hold 0. Liveness is not required: a dead local that holds a reference is retention, not corruption, and the language makes it visible.</li>
@@ -278,10 +252,10 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
      <li><strong>Closure captures.</strong> Unchanged for roots. The capture block gets a type of its own in phase 6 (the heap side), which retires 193f076fdd's conservative dirty-block path.</li>
      <li><strong>Native and trap C++ code.</strong> The convention stays: a reference held across an allocation lives on the operand stack. The analysis types an instruction's inputs as of the instruction's start, and a trap that pushes intermediate references must declare them. Phase 2 audits the traps; the verifier runs report-only until that audit is done.</li>
     </ol>
-    <h4 id="53-conservative-scanning-afterwards">5.3 Conservative scanning afterwards</h4>
+    <h3 id="53-conservative-scanning-afterwards">5.3 Conservative scanning afterwards</h3>
     <p><strong>As designed</strong>, there is none in frame or stack root discovery. <strong>As built it is not zero</strong>: operand-stack words the maps type <code>unknown</code> or <code>conflict</code>, and the segments above the first compiled frame on a thread, are still scanned and relocated on a guess (see the phase 5 status block above), so the claim "no word is ever relocated on a guess" holds for declared locals, typed spill slots, the and/or temp and <code>Int[]</code> elements, not for every operand-stack word. The old scan survives in one place: the audit mode <code>OBJECK_GC_ROOTS=audit</code>, which runs the conservative scan beside the precise one and reports any allocated word the conservative scan would mark that the precise scan did not. That is the migration safety net. During phases 1-4 it reports, and it never changes what is marked.</p>
-    <h3 id="6-how-live-references-are-reported">6. How live references are reported</h3>
-    <h4 id="61-one-shared-analysis-refmap-built-in-corevmarchref_maph-the-heading-kept-the-original-plans-jit_common">6.1 One shared analysis: <code>RefMap</code> (built in <code>core/vm/arch/ref_map.h</code>; the heading kept the original plan's <code>jit_common</code>)</h4>
+    <h2 id="6-how-live-references-are-reported">6. How live references are reported</h2>
+    <h3 id="61-one-shared-analysis-refmap-built-in-corevmarchref_maph-the-heading-kept-the-original-plans-jit_common">6.1 One shared analysis: <code>RefMap</code> (built in <code>core/vm/arch/ref_map.h</code>; the heading kept the original plan's <code>jit_common</code>)</h3>
     <p>The bytecode does not carry reference types on the stack. <code>LOAD_INT_VAR</code> loads objects and integers alike, and <code>Int[]</code> and object arrays share <code>INT_TYPE</code>. So the first piece is an abstract interpretation over a method's bytecode that tracks, for each operand-stack depth and the and/or slot, one of {<code>int</code>, <code>ref</code>, <code>float</code>, <code>unknown</code>}:</p>
     <table class="ref-table">
      <thead>
@@ -299,9 +273,9 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
     </table>
     <p>The analysis runs once per method on first need and is cached. It has three consumers: the interpreter (read lazily at collection time), AMD64 (at compile time) and ARM64 (at compile time).</p>
     <p><code>unknown</code> is the open question. Phase 1 measures how often it occurs across the regression suite and the library before anything depends on it. Any residue gets a compiler-emitted annotation instead of a guess.</p>
-    <h4 id="62-interpreter-stack-maps-per-method-pc">6.2 Interpreter: stack maps per (method, pc)</h4>
+    <h3 id="62-interpreter-stack-maps-per-method-pc">6.2 Interpreter: stack maps per (method, pc)</h3>
     <p>The map is read only when a collection walks the frame, and indexed by the instruction in progress, <code>StackFrame::cur_ip</code> (see the status note at the top). Recording it is one store on the dispatch loop's default path, which only instructions that can collect take, and one at the safepoint poll.</p>
-    <h4 id="63-jit-three-options-compared">6.3 JIT: three options compared</h4>
+    <h3 id="63-jit-three-options-compared">6.3 JIT: three options compared</h3>
     <table class="ref-table">
      <thead>
       <tr><th></th><th>A. stack maps per safepoint</th><th>B. clear-after-reload, keep the window</th><th>C. typed spill areas (recommended)</th></tr>
@@ -318,7 +292,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
     <p>A is the most general, but a wrong map entry fails toward corruption, and it adds a table format to two hand-written backends.</p>
     <p>C gets the same safety from a smaller change, and every bug it can have fails toward retention. Recommendation: <strong>C</strong>. A can come later if liveness inside long frames ever measures as a problem.</p>
     <p>Under C, the collector walks each JIT frame as: the declared slots (typed), the and/or slot (typed by <code>RefMap</code> at the frame's current pc), then the <code>TMP_REF_*</code> slots (typed <code>ref</code>, 0 when empty). Nothing else. The and/or slot needs the pc, and this design has not yet confirmed that a JIT frame records it at every GC-reachable call. Phase 1 checks this. If it does not, phase 3 adds one store of the instruction index per such call, which is option A's cost for this one slot only.</p>
-    <h3 id="7-phases">7. Phases</h3>
+    <h2 id="7-phases">7. Phases</h2>
     <p>Each phase is one PR against master. The full regression suite, the GC verifier legs and the stress tests (<code>gc_*_stress</code>, <code>jit_gc_stress</code>, <code>gc_mt_small_nursery_stress</code>, the nightly <code>verify-major</code> and <code>--nursery</code> configurations) stay green. Before/after numbers are recorded in each PR (§8).</p>
     <table class="ref-table">
      <thead>
@@ -335,7 +309,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
      </tbody>
     </table>
     <p>5d92132687's <code>GC_TRACED_BIT</code> is kept either way. It makes typed tracing of a closure happen exactly once, which stays useful with precise roots.</p>
-    <h4 id="what-v2026102-needs">What v2026.10.2 needs</h4>
+    <h3 id="what-v2026102-needs">What v2026.10.2 needs</h3>
     <p><strong>Recommendation: none of phases 1-6.</strong> Ship 10.2 without them.</p>
     <ul>
      <li>The spill-slot defect is retention: at most one object per slot per live frame, nothing freed while in use.</li>
@@ -344,7 +318,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
     </ul>
     <p>If one item must go in, take phase 0's <code>--jit=off</code> fix. It is small and VM-only, and it makes the nightly differential's "interpreter" column mean what it says.</p>
     <p>The one-line entry-zeroing change would also be safe, but it fixes one path of one symptom, which is the pattern this design replaces. It stays on the evidence branch unless the user decides otherwise.</p>
-    <h3 id="8-measurement">8. Measurement</h3>
+    <h2 id="8-measurement">8. Measurement</h2>
     <ul>
      <li><strong>GC pause.</strong> <code>OBJECK_GC_STATS=1</code> (minor/major counts, pause p50/p95/max, promoted bytes, peak RSS) on:
     <ul>
@@ -359,7 +333,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
      <li><strong>Codegen.</strong> Per method: code bytes and compile time, added to the <code>OBJECK_JIT_REPORT</code> line, summed over the regression suite under <code>OBJECK_JIT_THRESHOLD=1</code>. Run time: the CLBG suite through the <code>benchmark</code> skill (median of runs, flagged against <code>docs/performance.md</code>). The only new instruction on a hot path is the clear after a reference reload at a call site, which is next to a call.</li>
      <li><strong>Interpreter.</strong> Dispatch is unchanged. The analysis cost is measured once per method and cached, and reported as a total per suite run.</li>
     </ul>
-    <h3 id="9-tests">9. Tests</h3>
+    <h2 id="9-tests">9. Tests</h2>
     <table class="ref-table">
      <thead>
       <tr><th>test</th><th>catches</th><th>lands in</th></tr>
@@ -368,7 +342,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
       <tr><td data-label="test"><code>jit_stale_spill_slot</code> (rewritten without <code>native</code>, so <code>--jit=off</code> is a true control; checks both the s0 and s3 paths)</td><td data-label="catches">§3.1</td><td data-label="lands in">phase 3 (AMD64), extended in 4</td></tr>
       <tr><td data-label="test"><code>gc_int_not_relocated</code>, the §3.3 reproducer, all four configurations at <code>--nursery=64k</code></td><td data-label="catches">§3.3</td><td data-label="lands in">phase 2 (interpreter), phase 3 (JIT)</td></tr>
       <tr><td data-label="test"><code>jit_inline_local_root</code></td><td data-label="catches">nothing today (§3.2)</td><td data-label="lands in">not landed; phase 5 deleted the code it would test</td></tr>
-      <tr><td data-label="test"><strong><code>gc_root_coverage</code>, randomized</strong> (below)</td><td data-label="catches">the whole class</td><td data-label="lands in">built as <code>tools/gc_roots/</code> (generator <code>gen_roots.py</code>, runner <code>run_roots.py</code>, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/gc_roots/README.md" target="_blank">README</a>); an advisory 30-seed step in <code>ci-build.yml</code>, a larger local mode; the audit and the fixtures in <code>run_vm_flag_tests.py</code> sections 24 to 28 and 31 remain</td></tr>
+      <tr><td data-label="test"><strong><code>gc_root_coverage</code>, randomized</strong> (below)</td><td data-label="catches">the whole class</td><td data-label="lands in">built as <code>tools/gc_roots/</code> (generator <code>gen_roots.py</code>, runner <code>run_roots.py</code>, <a href="https://github.com/objeck/objeck-lang/blob/master/tools/gc_roots/README.md" target="_blank" rel="noopener">README</a>); an advisory 30-seed step in <code>ci-build.yml</code>, a larger local mode; the audit and the fixtures in <code>run_vm_flag_tests.py</code> sections 24 to 28 and 31 remain</td></tr>
      </tbody>
     </table>
     <p><strong>As built</strong> (<code>tools/gc_roots/</code>): the generator is <code>gen_roots.py --seed N</code>, the runner compares every configuration with an uncollected interpreter run (<code>run_roots.py</code>), and a failing seed is reproduced with <code>--start N --count 1</code> and minimized with <code>--reduce N</code>. The generated programs follow the plan below, with these differences: the oracle is agreement with an uncollected run rather than per-value checks, the heap verifier is <code>OBJECK_GC_VERIFY=checkmark</code> on the <code>jit1v</code> configuration only, and address-valued <code>Int</code>s (<code>Runtime-&gt;TestAddressOf</code>) are opt-in (<code>--addr on</code>) because an interpreted method under compiled frames, which <code>?-&gt;</code> regions force, is still scanned conservatively (§12).</p>
@@ -379,7 +353,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
      <li>allocate between every pair of uses.</li>
     </ul>
     <p>It checks every value afterwards: integers unchanged, objects with their fields intact. It runs under <code>OBJECK_GC_VERIFY=checkmark</code> with <code>--nursery=64k</code>, at s0 and s3, with <code>--jit=off</code> and with <code>OBJECK_JIT_THRESHOLD=1</code>, plus a two-thread variant that parks at loop polls. The fixed seeds run in the regression suite, and the nightly runs fresh seeds. During phase 1 <code>OBJECK_GC_ROOTS=audit</code> must report zero differences across the suite before phase 2 starts.</p>
-    <h3 id="10-not-established">10. Not established</h3>
+    <h2 id="10-not-established">10. Not established</h2>
     <ul>
      <li><strong>#1443</strong> (<code>query_url_cache_processes</code>, Windows only, parent at <code>s3/jit1</code>, children get "no response from the server"). Neither mechanism here is shown to cause it:
     <ul>
@@ -394,7 +368,7 @@ if(Same(o-&gt;GetInstanceID(), Churn(i), before) = false) { bad += 1; };
      <li><strong>When the s0 trigger appeared.</strong> It is absent on 10-22 and present on master, and it was not bisected.</li>
      <li><strong>Heap <code>Int[]</code> elements are rewritten by a minor collection (found 2026-10-31; fixed by phase 6, the <code>Int[]</code> tag, 2026-11-01).</strong> An <code>Int[]</code> and an object array share <code>INT_TYPE</code> on the heap (§6.1 says the same of the bytecode), so the collector's fixup of a reachable array's elements cannot tell an integer from a reference and relocates any element equal to a forwarded young object's address. Evidence, with the test hook from PR 1483 (<code>Runtime-&gt;TestAddressOf</code>, <code>OBJECK_GC_TEST_HOOKS=1</code>): a test that stores an object's address in an <code>Int[]</code> element and then allocates enough for a minor collection sees the element change in 242 of 2,000 iterations, in default mode (no <code>OBJECK_GC_ROOTS</code>), interpreted and compiled alike. This is the heap-side twin of §3.3: it is not a root problem, and the reference maps cannot reach it, because the array header is what lacks the type. It needs a distinct reference-array tag from the compiler, which is phase 6 territory (the heap side), and is not fixed in phases 1-5.</li>
     </ul>
-    <h3 id="11-how-to-check">11. How to check</h3>
+    <h2 id="11-how-to-check">11. How to check</h2>
     <p>All of these are environment variables read once at start-up (<code>core/vm/arch/memory_verify.cpp</code>, <code>core/vm/arch/memory.cpp</code>); none changes program output.</p>
 <pre class="plain">OBJECK_GC_ROOTS=audit        obr --nursery=256k prog.obe   # at every collection, compare the maps with the live stacks
 OBJECK_GC_ROOTS=conservative obr prog.obe                  # the old guess: negative control for the fixtures below
@@ -403,21 +377,41 @@ OBJECK_JIT_REPORT=1 obr --jit=1 prog.obe                   # per method: compile
 OBJECK_GC_VERIFY=checkmark   obr --nursery=64k prog.obe    # typed heap verifier (arch/README.md lists its invariants)
 python programs/regression/run_vm_flag_tests.py &lt;bin_dir&gt; --only gc_roots   # sections 24 to 28 and 31</pre>
     <p>The fixtures that make the claims above falsifiable are under <code>programs/regression/vm_flag_fixtures/</code> (<code>jit_stale_spill_slot</code>, <code>gc_address_int_pending</code>, <code>gc_address_int_array</code>) and <code>programs/regression/</code> (<code>gc_int_not_relocated</code>, <code>gc_roots_jit_bridge</code>, <code>gc_instance_id_stable</code>). Each is expected to fail under <code>OBJECK_GC_ROOTS=conservative</code> where the section says so. The numbers in the status blocks (771 tests, 293,818 collections, 42 unknown words, and so on) were measured by the author on the dates given and are reproduced by running the audit over the suite with the settings named in each block; they are not re-measured by CI.</p>
-    <h3 id="12-known-limits-of-this-design">12. Known limits of this design</h3>
+    <h2 id="12-known-limits-of-this-design">12. Known limits of this design</h2>
     <ul>
      <li><code>RefMap</code> is a type inference over bytecode, not a proof: a value nothing types stays <code>unknown</code> and a value typed two ways is <code>conflict</code>, and the collector treats both as references. Soundness depends on the maps never calling a reference an <code>Int</code>; the audit reports each word typed <code>Int</code> or <code>Float</code> that points at an object; the suite-wide audit block above records that every such word was the deliberate <code>gc_conservative_bad_class</code> case.</li>
      <li>The stack effects in <code>ref_map.h</code> mirror the handlers in <code>dispatch.cpp</code> by hand. A handler that changes its stack effect without a matching change there shifts every word above it; the audit's "segments add up" check is what catches that, and only on programs that run under it.</li>
      <li>A native library or a trap that holds a reference across an allocation must keep it on the operand stack (§5.2 rule 9). Nothing enforces that; #1457 was three handlers that did not.</li>
      <li>Compiled frames on a thread above the first compiled frame, and the words the maps leave <code>unknown</code>, are scanned conservatively, so an address-valued integer there can still be retained or rewritten.</li>
     </ul>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#1-summary">1. Summary</a></li><li><a href="#2-evidence-method-and-environment">2. Evidence: method and environment</a></li><li><a href="#3-what-the-two-tests-actually-show">3. What the two tests actually show</a></li><li><a href="#4-the-nine-patches-traced-to-the-assumption-each-worked-around">4. The nine patches, traced to the assumption each worked around</a></li><li><a href="#5-root-model">5. Root model</a></li><li><a href="#6-how-live-references-are-reported">6. How live references are reported</a></li><li><a href="#7-phases">7. Phases</a></li><li><a href="#8-measurement">8. Measurement</a></li><li><a href="#9-tests">9. Tests</a></li><li><a href="#10-not-established">10. Not established</a></li><li><a href="#11-how-to-check">11. How to check</a></li><li><a href="#12-known-limits-of-this-design">12. Known limits of this design</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

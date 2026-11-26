@@ -1,385 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>Objeck — Object-Oriented, JIT-Compiled Programming Language</title>
-  <meta name="description" content="A modern, JIT-compiled programming language with built-in AI, ML, and computer vision libraries. ARM64 and x86-64 native performance. Try it in your browser."/>
-  <link href="style/styles.css" rel="stylesheet"/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon"/>
-  <style>
-    .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-    .perf-stat { text-align: center; padding: 24px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; transition: border-color 0.15s; }
-    .perf-stat:hover { border-color: var(--blue); }
-    .perf-num { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; white-space: nowrap; color: var(--sky); }
-    .perf-label { margin-top: 8px; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
-    .perf-note { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 16px auto 0; max-width: 720px; line-height: 1.5; }
-    .platform-note { text-align: center; font-size: 0.85rem; color: var(--muted); margin: 16px auto 0; max-width: 680px; line-height: 1.5; }
-    .doc-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 18px 0 0; }
-    .doc-links a { font-family: var(--mono); font-size: 0.78rem; color: var(--sky); text-decoration: none; border: 1px solid var(--line); border-radius: 3px; padding: 5px 12px; background: var(--card); }
-    .doc-links a:hover { border-color: var(--blue); color: var(--cyan); }
-  </style>
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-
-      document.addEventListener("click", () => {
-        menuItems.classList.remove("open");
-      });
-    });
-
-    function showTab(tabId) {
-      document.querySelectorAll('.code-tab-content').forEach(el => el.style.display = 'none');
-      document.querySelectorAll('.code-tab').forEach(el => el.classList.remove('active'));
-      document.getElementById(tabId).style.display = 'block';
-      document.querySelector('[data-tab="' + tabId + '"]').classList.add('active');
-    }
-  </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Objeck — Object-Oriented and Functional Programming Language</title>
+  <meta name="description" content="Objeck is an object-oriented and functional language. Everything you need ships in the box: a standard library with collections, JSON, XML, HTTP, SQL, ML, ONNX inference and agents, plus a compiler, debugger, language server and playground.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-
-      <!-- Hamburger Menu -->
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main">
-    <!-- Hero Section -->
-    <section class="hero">
-      <a class="hero-badge" href="readme.html">v2026.11.3 &middot; JIT-compiled &middot; AI-native</a>
-      <h1 class="hero-title">From Vibe to <span>Silicon.</span></h1>
-      <p class="hero-subtitle">
-        Write AI, ML, and network apps in fewer lines. No external packages.
-        No build system hallucinations. Native ARM64 and x86-64 performance.
-      </p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">
-          Download Latest
-        </a>
-        <a class="btn btn-secondary" href="getting_started.html">
-          Quick Start
-        </a>
+  <main id="main" tabindex="-1">
+<!-- content:start -->
+   <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+     <div>
+      <h1 id="hero-title"><span>Object-oriented.</span> <span>Functional.</span> <span>Fast.</span></h1>
+      <p class="lead">Everything you need ships in the box.</p>
+      <div class="btn-row">
+       <a class="btn btn-primary" href="https://playground.objeck.org">Try it in the playground</a>
+       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/releases/latest">Download</a>
       </div>
-      <div class="hero-stats">
-        <span><b>5</b> platforms</span>
-        <span><b>0</b> external packages</span>
-        <span><b>350+</b> Rosetta solutions</span>
-        <span><b>7</b> editors with LSP</span>
-      </div>
-    </section>
+      <p class="hero-meta"><a href="readme.html">v<!-- version:start -->2026.11.4<!-- version:end --></a> &middot; Windows, macOS, Linux &middot; x64, ARM64 &middot; <a href="start.html">Install guide</a></p>
+     </div>
+     <div>
+      <!-- example:lambdas:start -->
+      <pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> Collection;
 
-    <!-- Code Examples with Tabs -->
-    <section class="code-preview">
-      <div class="code-tabs">
-        <button class="code-tab active" data-tab="tab-ai" onclick="showTab('tab-ai')">OpenAI Chat</button>
-        <button class="code-tab" data-tab="tab-h2" onclick="showTab('tab-h2')">HTTP/2 Client</button>
-        <button class="code-tab" data-tab="tab-fn" onclick="showTab('tab-fn')">Functional</button>
-      </div>
-      <div id="tab-ai" class="code-tab-content" style="display: block;">
-        <pre><code><span class="kw">use</span> API.OpenAI, API.OpenAI.Chat, Collection;
+<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    words <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
+    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"compiler"</span>);
+    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"jit"</span>);
+    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"collector"</span>);
 
-<span class="kw">class</span> CodeReviewer {
-  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    token  := System.IO.Filesystem.FileReader->ReadFile(<span class="str">"api_key.txt"</span>)->Trim();
-    prompt := Pair->New(<span class="str">"user"</span>, args[<span class="num">0</span>])<span class="kw">&lt;String, String&gt;</span>;
-
-    completion := Completion->Complete(<span class="str">"gpt-4o"</span>, prompt, token);
-    <span class="kw">if</span>(completion <> <span class="kw">Nil</span>) {
-      message := completion->GetFirstChoice()->GetMessage();
-      message->GetSecond()->PrintLine();
+    lengths <span class="t-op">:=</span> words<span class="t-op">-&gt;</span>Map(\(<span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">IntRef</span> : (w) <span class="t-op">=&gt;</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(w<span class="t-op">-&gt;</span>Size()));
+    <span class="t-kw">each</span>(i : words) {
+      <span class="t-str">"{$(words-&gt;Get(i))}: {$(lengths-&gt;Get(i)-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
     };
+
+    triple <span class="t-op">:=</span> \(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> : (x) <span class="t-op">=&gt;</span> x * <span class="t-num">3</span>;
+    triple(<span class="t-num">14</span>)<span class="t-op">-&gt;</span>PrintLine();
   }
 }</code></pre>
-      </div>
-      <div id="tab-h2" class="code-tab-content" style="display: none;">
-        <pre><code><span class="kw">use</span> Web.HTTP, Collection;
+      <pre class="cmd example-out">$ obc -src lambdas.obs
+$ obr lambdas.obe
+compiler: 8
+jit: 3
+collector: 9
+42</pre>
+      <!-- example:lambdas:end -->
+     </div>
+    </div>
+   </section>
 
-<span class="kw">class</span> RepoStats {
-  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    client := Http2Client->New(<span class="str">"api.github.com"</span>);
-    client->AddHeader(<span class="str">"user-agent"</span>, <span class="str">"objeck-app"</span>);
+   <section class="band" aria-labelledby="what-title">
+    <div class="wrap">
+     <h2 id="what-title" class="sr-only">Features</h2>
+     <ul class="features">
+      <li><h3>Compiled to native code by a JIT</h3><p>Hot methods on AMD64 and ARM64. Call: 26.5 &rarr; 5.5 ns.</p></li>
+      <li><h3>SQL in the language</h3><p>Typed in-memory tables, joins, indexes.</p></li>
+      <li><h3>Network built in</h3><p>HTTP/1.1, HTTP/2, HTTP/3, WebSocket, TLS, server.</p></li>
+      <li><h3>ML and AI</h3><p>Trees, SVMs, ONNX, OpenCV, LLM clients, MCP, agents.</p></li>
+      <li><h3>Generational GC</h3><p>Nursery, write barrier, parallel marking.</p></li>
+      <li><h3>Tooling</h3><p>Language server, debugger, REPL, browser playground.</p></li>
+     </ul>
+    </div>
+   </section>
 
-    resp := client->Get(<span class="str">"/repos/objeck/objeck-lang"</span>);
-    <span class="kw">if</span>(resp <> <span class="kw">Nil</span>) {
-      <span class="str">"Status : {$resp->GetCode()}"</span>->PrintLine();
-      resp->GetContent()->ToString()->PrintLine();
-    };
-    client->Close();
-  }
-}</code></pre>
-      </div>
-      <div id="tab-fn" class="code-tab-content" style="display: none;">
-        <pre><code><span class="kw">use</span> Collection;
+   <section class="band soft" id="fast" aria-labelledby="perf-title">
+    <div class="wrap">
+     <h2 id="perf-title">Fast, measured</h2>
+     <div class="table-wrap" tabindex="0" role="region" aria-label="Benchmark results">
+     <table>
+      <caption class="fine">Seconds, lower is better. Median of 3. Objeck v2026.11.3, 2026-11-22, Ryzen 9 7950X3D, Docker. <a href="doc_performance.html">All six benchmarks, method and limits</a>.</caption>
+      <thead><tr><th scope="col">Benchmark</th><th scope="col">Objeck</th><th scope="col">CPython 3.12</th><th scope="col">LuaJIT 2.1</th><th scope="col">Java 21</th></tr></thead>
+      <tbody>
+       <tr><th scope="row">nbody, 50M</th><td>8.15</td><td>144.46</td><td>4.29</td><td>2.29</td></tr>
+       <tr><th scope="row">spectralnorm, 5500</th><td>2.91</td><td>126.57</td><td>1.12</td><td>1.18</td></tr>
+       <tr><th scope="row">fannkuchredux, 12</th><td>33.24</td><td>422.92</td><td>116.46</td><td>20.50</td></tr>
+       <tr><th scope="row">mandelbrot, 4000</th><td>1.90 (0.98 on 3 threads)</td><td>33.20</td><td>0.73</td><td>0.70</td></tr>
+       <tr><th scope="row">binarytrees, 17</th><td>2.03</td><td>3.55</td><td>3.53</td><td>0.24</td></tr>
+      </tbody>
+     </table>
+     </div>
+     <p class="fine">Ahead of CPython on all six benchmarks (1.7x to 43.5x). Ahead of LuaJIT on fannkuchredux and binarytrees, level on fasta, behind on nbody, spectralnorm and mandelbrot. Behind Java on all six. A compiled call costs 5.5 ns, a <code>virtual</code> call 6.0 ns (v2026.9.1, AMD64). Five of the six Objeck programs mark hot methods <code>native</code>; the peers have no equivalent.</p>
+    </div>
+   </section>
 
-<span class="kw">class</span> WordFilter {
-  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    words := Vector->New()<span class="kw">&lt;String&gt;</span>;
-    words->AddBack(<span class="str">"compiler"</span>); words->AddBack(<span class="str">"jit"</span>);
-    words->AddBack(<span class="str">"runtime"</span>); words->AddBack(<span class="str">"gc"</span>);
-    words->AddBack(<span class="str">"lambda"</span>);  words->AddBack(<span class="str">"arm64"</span>);
-
-    words->Each(\^(w) => {
-      <span class="kw">if</span>(w->Size() > <span class="num">3</span>) {
-        <span class="str">"  {$w->ToUpper()}"</span>->PrintLine();
-      };
-    });
-  }
-}</code></pre>
-      </div>
-    </section>
-
-    <!-- Feature Cards -->
-    <section class="features">
-      <div class="boxes">
-        <a class="box" href="ai_guide.html">
-          <div class="box-icon">AI</div>
-          <b>AI Developer Guide</b>
-          <hr/>
-          <span class="box-text">
-            OpenAI, Gemini, Ollama, ONNX, and OpenCV with working code examples.
-          </span>
-        </a>
-        <a class="box" href="guides.html">
-          <div class="box-icon">GD</div>
-          <b>Guides</b>
-          <hr/>
-          <span class="box-text">
-            Query, HTTP, JSON and RegEx, collections, game AI and editor setup, each with a program that was compiled and run.
-          </span>
-        </a>
-        <a class="box" href="https://www.objeck.org/api/latest/index.html" target="_blank">
-          <div class="box-icon">API</div>
-          <b>API Reference</b>
-          <hr/>
-          <span class="box-text">
-            Full documentation for all supported libraries.
-          </span>
-        </a>
-        <a class="box" href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">
-          <div class="box-icon">RC</div>
-          <b>350+ Solutions</b>
-          <hr/>
-          <span class="box-text">
-            Rosetta Code examples compared with other languages.
-          </span>
-        </a>
-        <a class="box" href="docs.html">
-          <div class="box-icon">DOC</div>
-          <b>Documentation</b>
-          <hr/>
-          <span class="box-text">
-            Architecture, the language reference, design notes, performance and tools.
-          </span>
-        </a>
-        <a class="box" href="readme.html">
-          <div class="box-icon">CL</div>
-          <b>Changelog</b>
-          <hr/>
-          <span class="box-text">
-            Release notes and what's new across every version.
-          </span>
-        </a>
-      </div>
-    </section>
-
-    <!-- Highlights -->
-    <section class="highlights">
-      <h2 class="section-title">Language Highlights</h2>
-      <div class="highlight-grid">
-        <div class="highlight-item">
-          <div class="highlight-icon">JIT</div>
-          <h3>JIT Compiled</h3>
-          <p>Automatic hot-code detection with ARM64 and x86-64 native compilation. Direct JIT-to-JIT calling and generational GC with bump allocation.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">AI</div>
-          <h3>AI-Native</h3>
-          <p>First-party OpenAI, Gemini, Ollama, ONNX, and OpenCV — built in, not bolted on. AI writes pure logic against a stable API. Zero dependency hallucinations.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">FN</div>
-          <h3>OOP + Functional</h3>
-          <p>Generics with bounds and variance, closures and lambdas, records, string interpolation, nil-safe operators, and reflection. One language, both paradigms.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">ML</div>
-          <h3>Machine Learning &amp; AI</h3>
-          <p><code>System.ML</code>: linear and logistic regression, decision trees, random forests, gradient boosting, naive Bayes, k-NN, k-means, kernel and one-class SVMs, and outlier detection (isolation forest, LOF, elliptic envelope, DBSCAN, an autoencoder). <code>System.ML.Lab</code> runs experiments and writes result tables and SVG charts. <code>System.AI</code>: A*, minimax, Monte Carlo tree search, genetic algorithms, and Q-learning.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">DATA</div>
-          <h3>Data &amp; Text</h3>
-          <p><code>Query.Structured</code>: a columnar in-memory database with SQL joins, grouping, expressions and indexes, reading CSV, JSON, XML, archives, Excel workbooks and ODBC databases as tables. <code>System.NLP</code>: tokenization, Porter stemming, TF-IDF, VADER-style sentiment, and BERT sentence embeddings over ONNX.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">NET</div>
-          <h3>Web &amp; Networking</h3>
-          <p>A self-contained networking engine: TCP/UDP, DTLS, HTTP/1.1 + WebSockets, HTTP/2, HTTP/3/QUIC, and an embeddable <code>Web.Server</code> — all standard library, no packages required.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">MT</div>
-          <h3>Concurrency</h3>
-          <p>Threads and mutexes in the core library, structured concurrency with <code>System.Concurrency</code> (<code>TaskScope</code>, <code>Task</code>, <code>Monitor</code>), and a generational garbage collector with parallel marking.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">3D</div>
-          <h3>Graphics &amp; Games</h3>
-          <p>SDL2 for 2D games and <code>Game.OpenGL</code> for 3D: shaders, meshes, textures, quaternions, normal maps, and a procedural skybox.</p>
-        </div>
-        <div class="highlight-item">
-          <div class="highlight-icon">DEV</div>
-          <h3>Industrial Tooling</h3>
-          <p>LSP for 7 editors (VS Code, Sublime, Neovim, Emacs, Kate, ecode, Helix), a DAP debugger that stops in any thread, a REPL with a full-screen editor, and automated API docs.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Performance -->
-    <section class="highlights">
-      <h2 class="section-title">Performance</h2>
-      <div class="perf-grid">
-        <div class="perf-stat">
-          <div class="perf-num">26.5 → 5.5 ns</div>
-          <div class="perf-label">A compiled method call, now made directly between JIT-compiled methods</div>
-        </div>
-        <div class="perf-stat">
-          <div class="perf-num">125 → 6.0 ns</div>
-          <div class="perf-label">A <code>virtual</code> call, through an inline cache</div>
-        </div>
-        <div class="perf-stat">
-          <div class="perf-num">15.4x</div>
-          <div class="perf-label">spectralnorm, from 44.86 s to 2.91 s between the June release and v2026.11.3</div>
-        </div>
-        <div class="perf-stat">
-          <div class="perf-num">12–43x</div>
-          <div class="perf-label">faster than CPython 3.12 on nbody, spectralnorm, and fannkuchredux</div>
-        </div>
-      </div>
-      <p class="perf-note">
-        Call costs on AMD64 as measured for v2026.9.1; benchmarks on an AMD Ryzen 9 7950X3D with Objeck v2026.11.3, median of three runs.
-        Java and LuaJIT remain faster on several benchmarks &mdash;
-        <a href="doc_performance.html" target="_blank">full results and methodology</a>.
-      </p>
-    </section>
-
-    <!-- Platforms -->
-    <section class="platforms">
-      <h2 class="section-title">Cross-Platform</h2>
-      <div class="platform-list">
-        <span class="platform-badge">Linux x64</span>
-        <span class="platform-badge">Linux ARM64</span>
-        <span class="platform-badge">macOS ARM64</span>
-        <span class="platform-badge">Windows x64</span>
-        <span class="platform-badge">Windows ARM64</span>
-        <span class="platform-badge">Raspberry Pi (64-bit)</span>
-      </div>
-      <p class="platform-note">
-        Every release is built and tested on all five platforms before it ships. Windows installers are Authenticode-signed,
-        and the macOS package is notarized and needs nothing from Homebrew.
-      </p>
-    </section>
-
-    <!-- Architecture -->
-    <section class="highlights">
-      <h2 class="section-title">Architecture</h2>
-      <p style="text-align:center; color:#9ca3af; margin: -0.5rem 0 1.5rem;">One compiler front end serves <code>obc</code> and the language server; the VM interprets, then JIT-compiles hot methods for AMD64 and ARM64; libraries reach SDL2, ONNX Runtime, OpenCV and mbedTLS through native modules.</p>
-      <a href="images/objeck-architecture.svg" target="_blank" title="Open the full-size diagram">
-        <img src="images/objeck-architecture.svg" alt="Objeck toolchain architecture: editors and the language server, the obc compiler pipeline, the obr virtual machine and JIT, command-line tools, libraries, native modules, platforms, and the build and release pipeline" width="1600" height="1180" loading="lazy" style="display:block; width:100%; height:auto; background:#fff; border:1px solid #2d3a4d; border-radius:10px; padding:8px; box-sizing:border-box;">
-      </a>
-      <p style="text-align:center; color:#9ca3af; margin-top:1rem; font-size:0.9rem;"><a href="doc_architecture.html">More diagrams: compiler, VM, JIT, memory, libraries and CI</a></p>
-      <div class="doc-links">
-        <a href="doc_gc_roots.html">GC roots</a>
-        <a href="doc_security.html">Security model</a>
-        <a href="doc_query_design.html">Query design</a>
-        <a href="doc_features.html">Language reference</a>
-      </div>
-    </section>
-
-    <!-- Deep Dives -->
-    <section class="highlights">
-      <h2 class="section-title">Deep Dives</h2>
-      <p style="text-align:center; color:#9ca3af; margin: -0.5rem 0 1.5rem;">AI-generated video overviews — start with the introduction, then the AI features and the internals.</p>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem;">
-        <div class="highlight-item">
-          <h3 style="margin-bottom:0.75rem;">Introduction &amp; Edge Architecture</h3>
-          <div style="position:relative; aspect-ratio:16/9;">
-            <video controls preload="none" playsinline poster="video/objeck_edge_architecture_poster.jpg"
-              title="Objeck and edge architecture: the language, the network and AI updates, and where it runs — video overview"
-              style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;background:#0a101c;">
-              <source src="video/objeck_edge_architecture.mp4" type="video/mp4">
-              Your browser cannot play this video.
-            </video>
-          </div>
-          <p style="margin:0.6rem 0 0; font-size:0.8rem; color:var(--muted);">7 min &middot; the language, the network and AI updates, edge architecture</p>
-        </div>
-        <div class="highlight-item">
-          <h3 style="margin-bottom:0.75rem;">Internals (v2026.9)</h3>
-          <button type="button" class="video-facade" id="internals-video" aria-label="Play the video: Objeck Internals, v2026.9">
-            <span class="video-play" aria-hidden="true"></span>
-            <span class="video-title">Play: Objeck Internals</span>
-            <span class="video-note">Opens the YouTube player</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Links -->
-    <section class="link-bar">
-      <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/discussions">Discussions</a>
-    </section>
+   <section class="band" aria-labelledby="release-title">
+    <div class="wrap">
+     <h2 id="release-title">Latest release</h2>
+     <!-- release:start -->
+     <div class="release">
+      <div><p class="tag">v2026.11.4</p><p class="date">Released 25 November 2026</p></div>
+      <ul>
+       <li><b>Performance:</b> The Linux x64 JIT keeps Float loop locals in registers</li>
+       <li><b>Security:</b> The OpenAI, Gemini and Anthropic clients no longer hand out an API key while TLS certificate checking is off</li>
+       <li><b>Changed:</b> Console-&gt;ReadLine returns Nil at the end of input</li>
+      </ul>
+      <a class="btn btn-secondary" href="readme.html">Release notes</a>
+     </div>
+     <!-- release:end -->
+    </div>
+   </section>
+  
+<!-- content:end -->
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
- <script>
-   // The video loads YouTube only when played: no third-party requests until then.
-   var INTERNALS_EMBED = "https://www.youtube-nocookie.com/embed/jToZaCETby8?autoplay=1&rel=0";
-   document.querySelectorAll(".video-facade").forEach(function (b) {
-     b.addEventListener("click", function () {
-       var f = document.createElement("iframe");
-       f.src = INTERNALS_EMBED;
-       f.title = "Objeck: Internals, v2026.9 — video overview";
-       f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-       f.referrerPolicy = "strict-origin-when-cross-origin";
-       f.allowFullscreen = true;
-       f.className = "video-frame";
-       b.replaceWith(f);
-     });
-   });
- </script>
+  <script src="style/site.js"></script>
  </body>
 </html>

@@ -1,0 +1,5 @@
+$ obc -src query.obs -lib query,misc,net,json,regex,xml,csv,cipher
+$ obr query.obe
+region,total
+east,13
+west,4

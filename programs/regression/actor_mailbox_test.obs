@@ -168,7 +168,8 @@ class MailboxTest {
     status := box->Send(IntRef->New(2), 60);
     elapsed := ActorClock->Now() - started;
     Check("a full BLOCK mailbox times out", status = Mailbox->Status->TIMED_OUT);
-    Check("it waited at least the timeout ({$elapsed} ms)", elapsed >= 55);
+    "  waited {$elapsed} ms"->ErrorLine();
+    Check("it waited at least the timeout", elapsed >= 55);
     Check("timeout 0 does not wait", box->Send(IntRef->New(3), 0) = Mailbox->Status->TIMED_OUT);
     Check("the queue is unchanged", box->Size() = 1 & Val(box->Receive(0)) = 1);
     Check("no sender is left waiting", box->GetWaitingSenders() = 0);
@@ -230,7 +231,8 @@ class MailboxTest {
     item := box->Receive(60);
     elapsed := ActorClock->Now() - started;
     Check("an empty mailbox times out with Nil", item = Nil);
-    Check("it waited at least the timeout ({$elapsed} ms)", elapsed >= 55);
+    "  waited {$elapsed} ms"->ErrorLine();
+    Check("it waited at least the timeout", elapsed >= 55);
     Check("a timeout is not a close", box->IsDrained() = false & box->IsClosed() = false);
     Check("TryReceive on empty is Nil", box->TryReceive() = Nil);
     Check("nobody is left waiting", box->GetWaitingReceivers() = 0);

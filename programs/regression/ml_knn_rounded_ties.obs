@@ -1,0 +1,93 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML KNearestNeighbors->Query reports a distance (the square root of the squared sum), and
+rows whose reported distances are equal must come back in row order, as the contract says. Two rows
+whose squared distances differ by one unit in the last place can still report the same rounded
+distance; they were ranked by the unrounded value, so a later row could come back first with an
+identical reported distance. Row 0 is (1, 2^-26) and row 1 is (1, 2^-27): squared distances
+1 + 2^-52 and 1.0, both reported as 1.0. Checked for every k, and on a larger set built from the
+same pair so the heap, not only the first insertions, is exercised.
+~#
+use System.ML;
+use Collection;
+
+class MlKnnRoundedTies {
+	@ok : Int;
+	@bad : Int;
+
+	New() {
+		@ok := 0;
+		@bad := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlKnnRoundedTies->New();
+		t->Run();
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(cond) {
+			@ok += 1;
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		far := 1.0 / 67108864.0;
+		near := 1.0 / 134217728.0;
+
+		pair := Float->New[2, 2];
+		pair[0, 0] := 1.0; pair[0, 1] := far;
+		pair[1, 0] := 1.0; pair[1, 1] := near;
+		knn := KNearestNeighbors->New(pair, ["a", "b"]);
+		q := [0.0, 0.0];
+		one := knn->Query(1, q);
+		Check("k=1 gives one row", one->Size() = 1);
+		if(one->Size() = 1) {
+			Check("k=1: row 0 (equal reported distance, first row), got row {$one[0]->GetRow()}", one[0]->GetRow() = 0);
+		};
+		two := knn->Query(2, q);
+		Check("k=2 gives two rows", two->Size() = 2);
+		if(two->Size() = 2) {
+			Check("k=2: equal reported distances", two[0]->GetDistance() = two[1]->GetDistance());
+			Check("k=2: rows in order 0, 1, got {$two[0]->GetRow()}, {$two[1]->GetRow()}", two[0]->GetRow() = 0 & two[1]->GetRow() = 1);
+		};
+
+		# alternate the two kinds of row: every k must give the first k rows, as all report 1.0
+		n := 40;
+		many := Float->New[n, 2];
+		each(i : n) {
+			many[i, 0] := 1.0;
+			if(i % 2 = 0) {
+				many[i, 1] := far;
+			}
+			else {
+				many[i, 1] := near;
+			};
+		};
+		big := KNearestNeighbors->New(many, Nil);
+		ks := [1, 3, 10, 40];
+		each(ki : 4) {
+			k := ks[ki];
+			got := big->Query(k, q);
+			in_order := got->Size() = k;
+			if(in_order) {
+				each(r : k) {
+					if(got[r]->GetRow() <> r | got[r]->GetDistance() <> 1.0) {
+						in_order := false;
+					};
+				};
+			};
+			Check("40 rows k={$k}: the first k rows in row order", in_order);
+		};
+
+		if(@bad > 0) {
+			"FAIL: ml_knn_rounded_ties, {$@bad} failed, {$@ok} passed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: ml_knn_rounded_ties ({$@ok} checks)"->PrintLine();
+	}
+}

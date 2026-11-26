@@ -47,6 +47,14 @@ install): two of them read files from `data/`, which ships alongside.
 | [`llm_29.obs`](llm_29.obs) | `-lib gemini,net,net_server,json,misc,cipher` | ask a large language model (Gemini) a question |
 | [`ai_search_30.obs`](ai_search_30.obs) | `-lib ai` | A* pathfinding and minimax |
 | [`game_31.obs`](game_31.obs) | `-lib sdl2,sdl_game,json` | an SDL2 game: collect gems, dodge spiders, keep a best score |
+| [`mcp_32.obs`](mcp_32.obs) | `-lib mcp,json,net,net_server,cipher,misc,gen_collect` | an MCP server and a client calling its tools, in one program |
+| [`agent_33.obs`](agent_33.obs) | `-lib agent,json,net,cipher,misc` | a tool-using agent loop: model asks, tools answer, with a trace |
+| [`agent_control_34.obs`](agent_control_34.obs) | `-lib agent,json,net,cipher,misc` | stopping an agent: budgets, cancellation and a hung tool |
+| [`actors_35.obs`](actors_35.obs) | `-lib gen_collect,concurrent,actor` | actors and a supervisor that restarts a failing worker |
+| [`rag_36.obs`](rag_36.obs) | `-lib rag,ml_vector,gen_collect` | retrieval-augmented answers from documents, with citations |
+| [`structured_37.obs`](structured_37.obs) | `-lib llm_util,json,regex,gen_collect` | JSON out of a model: templates, schema checks, retry and repair |
+| [`telemetry_38.obs`](telemetry_38.obs) | `-lib telemetry,gen_collect,json` | timing a computation: p50, p95, p99 and saved profiles |
+| [`forecast_39.obs`](forecast_39.obs) | `-lib ml_timeseries,gen_collect` | forecasting a seasonal series: Holt-Winters against a benchmark |
 
 ## Building all of them
 
@@ -83,7 +91,11 @@ obr json_14.obe
 ## Notes
 
 - Read them in order: 0-13 teach the language, 14-21 work with data, 22-24
-  are networking, 25-30 are AI and machine learning, and 31 is a game.
+  are networking, 25-30 are AI and machine learning, 31 is a game, and 32-39 are
+  AI engineering (MCP tools, agents, actors, retrieval, structured output,
+  telemetry, forecasting).
+- 32-39 run offline and print the same thing every time: a scripted model stands
+  in for a real one, so they need no key. Swap in a real backend to use one.
 - Each program's header gives its compile and run lines and what it prints.
 - `obc` does not pull in a library's own dependencies, so some `-lib` lists name
   libraries the program never uses directly: `ml` needs `csv`, and `query` needs

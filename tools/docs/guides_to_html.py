@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""Render the Markdown the site links to as pages in the site's theme.
+"""Render the Markdown the site links to as pages in the site's theme, and keep the site's chrome in one place.
 
-Two sets of source files become pages in docs/web:
+Source files that become pages in docs/web:
 
   * docs/guides/*.md     ->  guides.html and guide_*.html (the getting-started guides)
   * the files in DOCS    ->  docs.html (an index) and doc_*.html (architecture, design notes,
                              the language reference, performance, editors and so on)
+  * the files in SITE    ->  start.html, learn.html and community.html (docs/site/*.md)
+  * core/compiler/build_libs.sh + lib_src/*.obs + the LIBS table below  ->  libraries.html
 
-The Markdown is the source. Every page copies its head, menu and footer from
-docs/web/ai_guide.html, so a change to the menu there reaches all of them the next time this runs.
+The head, the top navigation, the section list, the breadcrumbs and the footer are written by this script
+(see CHROME below). The hand-written pages (index.html, getting_started.html, ai_guide.html, readme.html)
+keep their own <main> content; this script rewrites everything around it, and fills the marked regions
+(<!-- version:start --> ... <!-- version:end --> and <!-- release:start --> ... <!-- release:end -->) from
+core/shared/version.h and CHANGELOG.md. A change to the navigation or footer here reaches every page the next time it runs.
 
   python tools/docs/guides_to_html.py           write the pages
   python tools/docs/guides_to_html.py --check   exit 1 if a page on disk differs from what the
-                                                Markdown renders to
+                                                sources render to (it also fails when a library in
+                                                lib_src has no description in LIBS, or the reverse)
 
 It handles the Markdown these files use: headings, paragraphs, fenced code ('text', 'bash' and
 'cmd' blocks become command blocks, 'mermaid' blocks become diagrams, 'ruby', 'objeck' and 'json'
@@ -25,6 +31,9 @@ import html
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import objeck_highlight  # noqa: E402  (the Objeck and JSON highlighter; word lists come from the VS Code grammar)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 WEB = os.path.join(ROOT, "docs", "web")
@@ -135,7 +144,16 @@ for _md, _v in DOCS.items():
     PAGE_OF[_md] = _v[0]
 
 CMD_LANGS = {"text", "bash", "sh", "cmd", "powershell", "ps1", "shell", "console"}
-LANG_CLASS = {"ruby": "cpp", "objeck": "cpp", "json": "json", "elisp": "lisp", "vim": "vim", "": ""}
+LANG_CLASS = {"ruby": "objeck", "objeck": "objeck", "json": "json", "elisp": "lisp", "vim": "vim", "": ""}
+
+
+def highlight(source, lang, escaped):
+    """Highlighted HTML for a code block; `escaped` is the plain escaped text for a language with no highlighter."""
+    if lang == "objeck":
+        return objeck_highlight.highlight_objeck(source)
+    if lang == "json":
+        return objeck_highlight.highlight_json(source)
+    return escaped
 
 
 def slug_guide(text):
@@ -159,6 +177,8 @@ def fix_link(url, srcdir):
     rel = os.path.normpath(os.path.join(srcdir, path)).replace("\\", "/")
     if rel in PAGE_OF:
         return PAGE_OF[rel] + frag
+    if rel.startswith("docs/web/") and rel.endswith(".html"):
+        return rel[len("docs/web/"):] + frag
     if rel.startswith(".."):
         return url
     real = os.path.join(ROOT, rel.replace("/", os.sep))
@@ -226,12 +246,12 @@ def inline(text, srcdir):
     def link(m):
         label, url = m.group(1), m.group(2)
         url = fix_link(html.unescape(url), srcdir)
-        ext = ' target="_blank"' if url.startswith("http") and "objeck.org" not in url else ""
+        ext = ' target="_blank" rel="noopener"' if url.startswith("http") and "objeck.org" not in url else ""
         return '<a href="%s"%s>%s</a>' % (url, ext, label)
 
     text = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, text)
     text = re.sub(r"&lt;(https?://[^&\s]+)&gt;",
-                  lambda m: '<a href="%s" target="_blank">%s</a>' % (m.group(1), m.group(1)), text)
+                  lambda m: '<a href="%s" target="_blank" rel="noopener">%s</a>' % (m.group(1), m.group(1)), text)
     text = re.sub(r"\x00(\d+)\x00", lambda m: spans[int(m.group(1))], text)
     return text
 
@@ -322,8 +342,8 @@ def render(md_text, srcdir, doc=False):
             elif lang == "" and doc:
                 out.append('<pre class="plain">%s</pre>' % body)
             else:
-                cl = LANG_CLASS.get(lang, lang or "cpp")
-                out.append('<pre class="line-numbers"><code class="language-%s">%s\n</code></pre>' % (cl, body))
+                cl = LANG_CLASS.get(lang, lang or "objeck")
+                out.append('<pre class="line-numbers"><code class="language-%s">%s\n</code></pre>' % (cl, highlight("\n".join(buf), cl, body)))
             continue
         if ln.startswith("# "):
             if title is None:
@@ -333,7 +353,7 @@ def render(md_text, srcdir, doc=False):
             txt = ln[2:].strip()
             sid = unique(slug(txt))
             toc.append((sid, inline(txt, srcdir)))
-            out.append('<h3 id="%s">%s</h3>' % (sid, inline(txt, srcdir)))
+            out.append('<h2 id="%s">%s</h2>' % (sid, inline(txt, srcdir)))
             i += 1
             continue
         m = re.match(r"(#{2,6}) (.*)", ln)
@@ -347,8 +367,10 @@ def render(md_text, srcdir, doc=False):
             sid = unique(slug(txt))
             if lvl == 2:
                 toc.append((sid, inline(txt, srcdir)))
-                out.append('<h3 id="%s">%s</h3>' % (sid, inline(txt, srcdir)))
+                out.append('<h2 id="%s">%s</h2>' % (sid, inline(txt, srcdir)))
             elif lvl == 3:
+                out.append('<h3 id="%s">%s</h3>' % (sid, inline(txt, srcdir)))
+            elif lvl == 4:
                 out.append('<h4 id="%s">%s</h4>' % (sid, inline(txt, srcdir)))
             else:
                 out.append('<h5 id="%s">%s</h5>' % (sid, inline(txt, srcdir)))
@@ -438,13 +460,272 @@ def render(md_text, srcdir, doc=False):
     return title, toc, out, has_mermaid
 
 
+# ---------------------------------------------------------------------------------------------------
+# Pages written from Markdown in docs/site: repo-relative Markdown -> (html file, title, description)
+SITE = {
+    "docs/site/start.md": ("start.html", "Get started",
+                           "Install Objeck on Windows, macOS or Linux, write and run a first program, or skip the install and use the browser playground."),
+    "docs/site/learn.md": ("learn.html", "Learn",
+                           "Where to learn Objeck: the quick start, the task-oriented guides, the AI and ML guide, the language reference and worked examples."),
+    "docs/site/community.md": ("community.html", "Community",
+                               "Ask a question, report a bug, send a pull request, run the tests: how to take part in Objeck."),
+}
+for _md, _v in SITE.items():
+    PAGE_OF[_md] = _v[0]
+
+# Pages written by hand: their <main> content is kept, the chrome around it is rewritten.
+HAND = ("index.html", "getting_started.html", "ai_guide.html", "readme.html")
+
+API_URL = "https://www.objeck.org/api/latest/index.html"
+PLAYGROUND = "https://playground.objeck.org"
+
+# top navigation: (label, page, key)
+NAV = [("Get started", "start.html", "start"), ("Learn", "learn.html", "learn"), ("Docs", "docs.html", "docs"),
+       ("Libraries", "libraries.html", "libraries"), ("Community", "community.html", "community")]
+
+FOOTER_LINKS = [("Playground", PLAYGROUND), ("Download", GH + "/releases/latest"), ("API reference", API_URL),
+                ("AI &amp; ML guide", "ai_guide.html"), ("Changelog", "readme.html"), ("GitHub", GH),
+                ("Discussions", GH + "/discussions"), ("Issues", GH + "/issues"),
+                ("Code of conduct", GH + "/blob/master/CODE_OF_CONDUCT.md"), ("License", GH + "/blob/master/LICENSE")]
+
+# ---------------------------------------------------------------------------------------------------
+# The library list. build_libs.sh says which .obs files make which .obl (the name `-lib` takes); this table says what each is.
+# The script stops when a library is missing here or listed here and gone from the tree, so the page cannot drift.
+LIB_GROUPS = ["Core", "Data and text", "Web and networking", "LLMs, agents and inference",
+              "Machine learning and statistics", "Graphics, games and media"]
+LIBS = {
+    "lang": (0, "The core classes: console, files, sockets, reflection, threads and time. Always loaded; never passed to <code>-lib</code>."),
+    "gen_collect": (0, "Generic collections: Vector, Map, Hash, Set and the rest, plus tuples. Also always loaded."),
+    "concurrent": (0, "Structured concurrency (<code>TaskScope</code>, <code>Task</code>) and a runtime <code>Monitor</code>."),
+    "actor": (0, "Actors with supervision, the base for programs made of cooperating agents."),
+    "math": (0, "Arbitrary-precision and exact arithmetic."),
+    "regex": (0, "Regular expressions: matching, replacing, anchors, groups."),
+    "cipher": (0, "SHA and MD5 hashes, HMAC, AES-256 encryption and Base64."),
+    "misc": (0, "Date parsing and formatting, and network time."),
+    "diags": (0, "Static analysis behind the language server: symbols, diagnostics and hover information."),
+    "json": (1, "Parse and build JSON, with a schema layer for typed access."),
+    "json_stream": (1, "A streaming JSON parser for documents too large to hold as a tree."),
+    "json_rpc": (1, "JSON-RPC 2.0 client and server."),
+    "xml": (1, "Parse and build XML."),
+    "csv": (1, "Read and write delimited text (RFC 4180)."),
+    "query": (1, "An in-memory, column-oriented SQL engine over typed tables, with joins, grouping and indexes; reads CSV, JSON, XML and archives."),
+    "query_ml": (1, "Model evaluation results as <code>Query.Structured</code> tables."),
+    "query_odbc": (1, "A table or a query in a real database, read as a table."),
+    "query_server": (1, "Publish tables over HTTP, read-only, with a SQL endpoint."),
+    "query_vision": (1, "A folder of images, and what a detector found in them, as tables."),
+    "odbc": (1, "ODBC database access: connections, statements, result sets."),
+    "rss": (2, "An RSS 2.0 feed reader."),
+    "net": (2, "HTTP/1.1 and HTTPS clients, URL and response types, and a downloader."),
+    "net_h2": (2, "An HTTP/2 client with multiplexed streams."),
+    "net_quic": (2, "An HTTP/3 (QUIC) client."),
+    "net_server": (2, "An HTTP server framework: routes, static files, an MCP transport and OAuth helpers."),
+    "web_server": (2, "A small embedded web server with typed access to the request."),
+    "openai": (3, "OpenAI chat, responses, audio, embeddings, vision and more."),
+    "gemini": (3, "Google Gemini client, including tuning and corpora."),
+    "anthropic": (3, "Anthropic Messages API client."),
+    "ollama": (3, "Ollama client, for models that run on your own machine."),
+    "llm_util": (3, "Prompt templates, token estimates, context windows and JSON Schema validation for model calls."),
+    "agent": (3, "A provider-neutral tool-use loop: an agent that calls the functions you give it."),
+    "actor_agents": (3, "Run an agent as a supervised actor."),
+    "mcp": (3, "Model Context Protocol server and client."),
+    "models": (3, "Backend-neutral inference types shared by the model libraries."),
+    "inference": (3, "A client for HTTP model-inference servers."),
+    "onnx": (3, "ONNX Runtime inference for pre-trained models."),
+    "opencv": (3, "OpenCV computer vision: load, transform and detect in images."),
+    "ai_hub": (3, "Download models from the Hugging Face Hub into a local cache."),
+    "rag": (3, "Retrieval-augmented generation: chunking, retrieval and grounded prompts."),
+    "rag_adapters": (3, "Adapters that connect the RAG kit to the embedding and chat libraries."),
+    "ml": (4, "Matrices and neural networks, linear models, trees and forests, naive Bayes, nearest neighbours, clustering, SVMs, outlier detection and preprocessing."),
+    "ml_boost": (4, "Gradient boosting for regression and classification."),
+    "ml_lab": (4, "Experiment support: splits, resampling and parameter sweeps."),
+    "ml_report": (4, "Replicate statistics and a report builder for a study."),
+    "ml_timeseries": (4, "Time series: transforms, forecasters, ARIMA and forecast evaluation."),
+    "ml_vector": (4, "A local vector index: store embeddings, ask for the nearest."),
+    "ml_verify": (4, "Verification metrics (FAR, FRR, EER) for match decisions."),
+    "ml_clip": (4, "CLIP image embeddings and face-pair scoring."),
+    "ml_cnn": (4, "Convolutional neural networks on the CPU."),
+    "nlp": (4, "Tokenization, stemming, TF-IDF, similarity and sentiment."),
+    "nlp_onnx": (4, "Sentence embeddings from BERT-family models exported to ONNX."),
+    "nlp_topics": (4, "Topic modeling (LDA), quality metrics and an SVG topic report."),
+    "ai": (4, "Classic AI: graph search, minimax and Monte Carlo tree search, optimization, reinforcement learning."),
+    "stats": (4, "Descriptive statistics, distributions, t-tests and an OLS summary."),
+    "plot": (4, "Scatter, histogram, line and bar charts as standalone SVG."),
+    "plot_sdl": (4, "An SDL2 window for <code>System.Plot</code>, and PNG export."),
+    "telemetry": (4, "Per-model, per-device inference timing and resource sampling."),
+    "sdl2": (5, "SDL2: 2D graphics, input, audio and windows."),
+    "sdl_game": (5, "A 2D game framework: sprites, collisions, tilemaps, camera and scenes."),
+    "sdl_gl": (5, "OpenGL 3.3 core rendering on top of SDL2."),
+    "lame": (5, "MP3 encoding with LAME."),
+}
+
+
+def lib_catalog():
+    """{obl name: [lib_src files]} from build_libs.sh, plus lang. Exits on a mismatch with lib_src or LIBS."""
+    cat = {"lang": ["lang.obs"]}
+    with open(os.path.join(ROOT, "core", "compiler", "build_libs.sh"), encoding="utf-8") as f:
+        for ln in f:
+            m = re.search(r"-src\s+(\S+)\s.*-dest\s+\.\./lib/(\w+)\.obl", ln)
+            if m:
+                cat[m.group(2)] = [os.path.basename(s) for s in m.group(1).split(",")]
+    src = os.path.join(ROOT, "core", "compiler", "lib_src")
+    on_disk = set(n for n in os.listdir(src) if n.endswith(".obs"))
+    built = set(n for files in cat.values() for n in files)
+    problems = []
+    for n in sorted(on_disk - built):
+        problems.append("lib_src/%s is in no library of build_libs.sh" % n)
+    for n in sorted(built - on_disk):
+        problems.append("build_libs.sh names lib_src/%s, which does not exist" % n)
+    for n in sorted(set(cat) - set(LIBS)):
+        problems.append("library '%s' has no description in LIBS (tools/docs/guides_to_html.py)" % n)
+    for n in sorted(set(LIBS) - set(cat)):
+        problems.append("LIBS describes '%s', which build_libs.sh no longer builds" % n)
+    if problems:
+        sys.exit("libraries.html: " + "; ".join(problems))
+    return cat
+
+
+def lib_facts(files):
+    """(sorted bundle names, experimental?) read from a library's source files."""
+    bundles, experimental = set(), False
+    for n in files:
+        with open(os.path.join(ROOT, "core", "compiler", "lib_src", n), encoding="utf-8-sig", errors="replace") as f:
+            text = f.read()
+        bundles.update(re.findall(r"^\s*bundle\s+([A-Za-z][\w.]*)", text, re.M))
+        if re.search(r"Experimental: API may change", text):
+            experimental = True
+    return sorted(bundles), experimental
+
+
+def libraries_body():
+    cat = lib_catalog()
+    out = []
+    toc = []
+    for gi, gname in enumerate(LIB_GROUPS):
+        names = sorted((n for n in cat if LIBS[n][0] == gi), key=lambda n: (n not in ("lang", "gen_collect"), n))
+        sid = slug_guide(gname)
+        toc.append((sid, html.escape(gname, quote=False)))
+        out.append('<h2 id="%s">%s</h2>' % (sid, html.escape(gname, quote=False)))
+        out.append('<table class="ref-table lib-table">\n <thead><tr><th>Library</th><th>What it gives you</th><th>Namespaces</th></tr></thead>\n <tbody>')
+        for n in names:
+            bundles, exp = lib_facts(cat[n])
+            label = "<code>%s</code>" % n if n in ("lang", "gen_collect") else "<code>-lib %s</code>" % n
+            desc = LIBS[n][1] + (' <em>Experimental: the API may change.</em>' if exp else "")
+            ns = ", ".join("<code>%s</code>" % b for b in bundles)
+            out.append('  <tr><td data-label="Library">%s</td><td data-label="What it gives you">%s</td><td data-label="Namespaces" class="ns">%s</td></tr>' % (label, desc, ns))
+        out.append(" </tbody>\n</table>")
+    lead = ('<p class="page-lead">%d libraries, generated from <code>core/compiler/build_libs.sh</code> and the sources. '
+            'Pass them to <code>obc -lib</code>; a library\'s own dependencies are not added for you. '
+            '<a href="%s" target="_blank" rel="noopener">API reference</a>.</p>' % (len(cat), API_URL))
+    how = ['<pre class="cmd">obc -src app.obs -lib json,net,cipher</pre>']
+    shown = []
+    for ex, label in (("json", "JSON"), ("query", "SQL"), ("ml", "Machine learning"), ("threads", "Threads")):
+        shown.append("<h3>%s</h3>" % label + example_html(ex).strip())
+    toc.insert(0, ("in-practice", "In practice"))
+    return "Libraries", toc, [lead] + how + ['<h2 id="in-practice">In practice</h2>'] + shown + out
+
+
+# ---------------------------------------------------------------------------------------------------
+# facts read from the repository
+def read(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read().replace("\r\n", "\n")
+
+
+def project_version():
+    m = re.search(r'VERSION_STRING\s+L?"([^"]+)"', read(os.path.join(ROOT, "core", "shared", "version.h")))
+    if not m:
+        sys.exit("cannot read VERSION_STRING from core/shared/version.h")
+    return m.group(1)
+
+
+def latest_release():
+    """(version, date, [(section, highlight title)]) from the newest section of CHANGELOG.md."""
+    text = read(os.path.join(ROOT, "CHANGELOG.md"))
+    m = re.search(r"^## \[v?([\d.]+)\] - (\d{4}-\d{2}-\d{2})\s*$(.*?)(?=^## \[)", text, re.M | re.S)
+    if not m:
+        sys.exit("cannot read the newest release from CHANGELOG.md")
+    picks = []
+    for sect in ("Performance", "Security", "Changed", "Added", "Fixed"):
+        sm = re.search(r"^### %s\s*$(.*?)(?=^### |\Z)" % sect, m.group(3), re.M | re.S)
+        if not sm:
+            continue
+        b = re.search(r"^- \*\*(.+?)\*\*", sm.group(1), re.M)
+        if b:
+            title = re.sub(r"`([^`]*)`", r"\1", b.group(1)).strip().rstrip(".:")
+            picks.append((sect, title))
+        if len(picks) == 3:
+            break
+    return m.group(1), m.group(2), picks
+
+
+def long_date(iso):
+    months = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+              "October", "November", "December"]
+    y, mo, d = iso.split("-")
+    return "%d %s %s" % (int(d), months[int(mo) - 1], y)
+
+
+def example_files(name):
+    """(source, transcript) of a tested sample in docs/site/examples (see tools/cicd/check_site_examples.py)."""
+    base = os.path.join(ROOT, "docs", "site", "examples", name)
+    return read(base + ".obs").strip("\n"), read(base + ".out").strip("\n")
+
+
+def example_md(name):
+    src, out = example_files(name)
+    return "```objeck\n%s\n```\n\n```text\n%s\n```" % (src, out)
+
+
+def example_html(name):
+    src, out = example_files(name)
+    return ('\n      <pre aria-label="Objeck example program"><code class="language-objeck">%s</code></pre>\n'
+            '      <pre class="cmd example-out">%s</pre>\n      ' % (objeck_highlight.highlight_objeck(src), esc(out)))
+
+
+CODE_BLOCK = re.compile(r'(<code class="language-)(cpp|objeck|ruby|json)(">)(.*?)(</code>)', re.S)
+
+
+def rehighlight(text):
+    """Highlight the code blocks of a hand-written page; safe to run again on its own output."""
+    def one(m):
+        src = html.unescape(re.sub(r"<[^>]+>", "", m.group(4)))
+        lang = "json" if m.group(2) == "json" else "objeck"
+        return m.group(1) + lang + m.group(3) + highlight(src, lang, "") + m.group(5)
+    return CODE_BLOCK.sub(one, text)
+
+
+def fill(text, name, value):
+    pat = re.compile(r"(<!-- %s:start -->).*?(<!-- %s:end -->)" % (name, name), re.S)
+    if not pat.search(text):
+        return text
+    return pat.sub(lambda m: m.group(1) + value + m.group(2), text)
+
+
+# ---------------------------------------------------------------------------------------------------
+# CHROME: head, header and navigation, breadcrumbs, section list, footer
 MERMAID = ('  <script type="module">\n'
            "    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';\n"
-           "    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose',\n"
-           "      themeVariables: { fontFamily: 'Inter, sans-serif', primaryColor: '#16223a', primaryBorderColor: '#6366f1',\n"
-           "                        lineColor: '#7dd3fc', primaryTextColor: '#e8eef8' } });\n"
+           "    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;\n"
+           "    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose' });\n"
            "    await mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });\n"
            "  </script>\n")
+
+_TITLES = {}
+
+
+def md_title(md):
+    if md not in _TITLES:
+        title = md
+        for ln in read(os.path.join(ROOT, md.replace("/", os.sep))).split("\n"):
+            if ln.startswith("# "):
+                title = ln[2:].strip().replace("`", "")
+                break
+        _TITLES[md] = title
+    return _TITLES[md]
+
+
+def esc(s):
+    return html.escape(s, quote=False)
 
 
 def plain_text(para_html):
@@ -452,101 +733,266 @@ def plain_text(para_html):
     return html.unescape(t).strip()
 
 
-def page_head(tpl_head, title, desc, mermaid=False):
-    h = re.sub(r"<title>.*?</title>", "<title>%s — Objeck Language</title>" % html.escape(title, quote=False),
-               tpl_head, flags=re.S)
-    h = re.sub(r'<meta name="description" content=".*?"/>',
-               lambda _m: '<meta name="description" content="%s"/>' % html.escape(desc), h, flags=re.S)
+def page_head(title, desc, mermaid=False):
+    h = ['<!DOCTYPE html>', '<html lang="en">', ' <head>', '  <meta charset="utf-8">',
+         '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+         '  <title>%s</title>' % title,
+         '  <meta name="description" content="%s">' % html.escape(desc),
+         '  <meta name="color-scheme" content="dark light">',
+         '  <link rel="icon" href="style/favicon.ico" type="image/x-icon">',
+         '  <link rel="stylesheet" href="style/site.css">',
+         '  <script>document.documentElement.className = "js";</script>']
     if mermaid:
-        h = h.replace(" </head>", MERMAID + " </head>")
-    return h
+        h.append(MERMAID.rstrip("\n"))
+    h += [' </head>', ' <body>']
+    return "\n".join(h)
 
 
-def page_tail():
-    return ["", "   </div>", "  </main>", "", '  <footer class="footer">',
-            "    &copy; 2026 Randy Hollines. All Rights Reserved.", "    <br>",
-            '    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck\'s own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>',
-            "  </footer>", " </body>", "</html>", ""]
+def site_header(active):
+    items = []
+    for label, page, key in NAV:
+        cur = ' aria-current="page"' if key == active else ""
+        items.append('     <li><a href="%s"%s>%s</a></li>' % (page, cur, label))
+    return "\n".join([
+        '  <a class="skip" href="#main">Skip to content</a>',
+        '  <header class="site-header">',
+        '   <div class="bar">',
+        '    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>',
+        '    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>',
+        '    <nav class="site-nav" id="site-nav" aria-label="Main">',
+        '     <ul>'] + items + [
+        '     </ul>',
+        '    </nav>',
+        '    <div class="bar-actions">',
+        '     <a class="link" href="%s">GitHub</a>' % GH,
+        '     <a class="btn btn-primary btn-small" href="%s">Playground</a>' % PLAYGROUND,
+        '    </div>',
+        '   </div>',
+        '  </header>'])
 
 
-def build_page(tpl_head, md_rel, text, name, title_hint, desc, doc):
+def site_footer():
+    lis = "\n".join('     <li><a href="%s">%s</a></li>' % (u, l) for l, u in FOOTER_LINKS)
+    return "\n".join([
+        '  <footer class="site-footer">',
+        '   <div class="wrap">',
+        '    <nav aria-label="Footer"><ul class="footer-links">', lis, '    </ul></nav>',
+        '    <div class="footer-base">',
+        '     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>',
+        '     <a class="powered" href="%s" title="This site is served by Objeck\'s own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>' % GH,
+        '    </div>',
+        '   </div>',
+        '  </footer>',
+        '  <script src="style/site.js"></script>',
+        ' </body>',
+        '</html>', ''])
+
+
+def crumbs(trail):
+    """trail: [(label, href or None)]; Home is added."""
+    items = ['<li><a href="index.html">Home</a></li>']
+    for label, href in trail:
+        if href:
+            items.append('<li><a href="%s">%s</a></li>' % (href, label))
+        else:
+            items.append('<li aria-current="page">%s</li>' % label)
+    return '   <nav class="crumbs" aria-label="Breadcrumb"><ol>%s</ol></nav>' % "".join(items)
+
+
+def guide_short(title):
+    return re.sub(r" Guide$", "", title).replace("What is New in", "What is new in")
+
+
+def sidebar(area, current):
+    """The section list: the pages that belong with `current`."""
+    def link(label, page):
+        cur = ' aria-current="page"' if page == current else ""
+        return '<li><a href="%s"%s>%s</a></li>' % (page, cur, label)
+    parts = []
+    if area == "learn":
+        parts.append("<p class=\"nav-title\">Start</p><ul>%s</ul>" % "".join(link(l, p) for l, p in [
+            ("Get started", "start.html"), ("Learn overview", "learn.html"), ("Quick start tour", "getting_started.html")]))
+        gl = [link("All guides", "guides.html")]
+        for md, (page, title, _d) in GUIDES.items():
+            if md != "docs/guides/README.md":
+                gl.append(link(esc(guide_short(title)), page))
+        parts.append("<p class=\"nav-title\">Guides</p><ul>%s</ul>" % "".join(gl))
+        parts.append("<p class=\"nav-title\">AI and ML</p><ul>%s</ul>" % "".join(link(l, p) for l, p in [
+            ("AI &amp; ML developer guide", "ai_guide.html"), ("Which models run", "doc_models.html"), ("AI examples", "doc_ai.html")]))
+        label = "Learn"
+    elif area == "docs":
+        groups = []
+        for md, (page, group, _l, _b) in DOCS.items():
+            if group not in [g for g, _ in groups]:
+                groups.append((group, []))
+            dict(groups)[group].append((esc(md_title(md)) if page != "doc_changelog.html" else "Changelog", page))
+        parts.append("<p class=\"nav-title\">Documentation</p><ul>%s</ul>" % link("All documentation", "docs.html"))
+        for group, entries in groups:
+            if group == "Releases":
+                entries = [("Release notes and install", "readme.html")] + entries
+            parts.append("<p class=\"nav-title\">%s</p><ul>%s</ul>" % (esc(group), "".join(link(l, p) for l, p in entries)))
+        label = "Documentation"
+    else:
+        return ""
+    return '   <nav class="sidebar" aria-label="%s sections">\n    %s\n   </nav>' % (label, "\n    ".join(parts))
+
+
+def toc_nav(toc):
+    lis = "".join('<li><a href="#%s">%s</a></li>' % (sid, label) for sid, label in toc)
+    return '   <nav class="toc" aria-label="On this page">\n    <p class="nav-title">On this page</p>\n    <ul>%s</ul>\n   </nav>' % lis
+
+
+def classify(name, group=None):
+    """(nav key, sidebar area, breadcrumb trail before the page title) for a page."""
+    if name == "start.html":
+        return "start", "learn", []
+    if name == "learn.html":
+        return "learn", "learn", []
+    if name in ("getting_started.html", "guides.html"):
+        return "learn", "learn", [("Learn", "learn.html")]
+    if name.startswith("guide_"):
+        return "learn", "learn", [("Learn", "learn.html"), ("Guides", "guides.html")]
+    if name == "ai_guide.html":
+        return "ai", "learn", [("Learn", "learn.html")]
+    if name == "libraries.html":
+        return "libraries", None, []
+    if name == "community.html":
+        return "community", None, []
+    if name == "docs.html":
+        return "docs", "docs", []
+    if name == "readme.html":
+        return "docs", "docs", [("Docs", "docs.html")]
+    if name.startswith("doc_"):
+        trail = [("Docs", "docs.html")]
+        if group:
+            trail.append((esc(group), "docs.html#%s" % slug_guide(group)))
+        return "docs", "docs", trail
+    return "", None, []
+
+
+def shell(name, title, desc, inner, toc=(), mermaid=False, group=None, wrap=True):
+    """A whole page: chrome around `inner` (the <main> content)."""
+    inner = "<!-- content:start -->\n%s\n<!-- content:end -->" % inner
+    if name == "index.html":
+        page = [page_head(title, desc), site_header(""), '  <main id="main" tabindex="-1">', inner, "  </main>", site_footer()]
+        return "\n".join(page)
+    active, area, trail = classify(name, group)
+    side = sidebar(area, name) if area else ""
+    tocn = toc_nav(list(toc)) if toc else ""
+    page = [page_head("%s — Objeck Language" % title, desc, mermaid), site_header(active), '  <main id="main" tabindex="-1">',
+            crumbs(trail + [(esc(title), None)])]
+    cls = "layout" + (" has-side" if side else "") + (" has-toc" if tocn else "")
+    page.append('  <div class="%s">' % cls)
+    if side:
+        page.append(side)
+    page.append('   <div class="content">')
+    page.append(inner)
+    page.append("   </div>")
+    if tocn:
+        page.append(tocn)
+    page.append("  </div>")
+    page.append("  </main>")
+    page.append(site_footer())
+    return "\n".join(page)
+
+
+# ---------------------------------------------------------------------------------------------------
+def build_page(md_rel, text, name, title_hint, desc, doc, group=None, site=False, version=None):
     srcdir = os.path.dirname(md_rel)
+    if site:
+        text = text.replace("{{version}}", version)
+        text = re.sub(r"\{\{example:(\w+)\}\}", lambda m: example_md(m.group(1)), text)
     t, toc, body, mermaid = render(text, srcdir, doc)
     t = t or title_hint
     plain_title = t.replace("`", "")
     lead = [b for b in body if b.startswith('<p class="page-lead">')]
     rest = [b for b in body if not b.startswith('<p class="page-lead">')]
-    if doc:
+    if doc or site:
         desc = (plain_text(lead[0]) if lead else desc)[:240] or desc
-    page = [page_head(tpl_head, plain_title, desc, mermaid) + '  <main id="main" role="main" style="text-align: left;">',
-            '   <div class="container">', ""]
-    page.append('    <h1 class="page-title">%s</h1>' % inline(t, srcdir))
+    inner = ['    <h1 class="page-title">%s</h1>' % inline(t, srcdir)]
     if doc:
-        page.append('    <div class="doc-meta"><a href="docs.html">&larr; All docs</a>'
-                    '<a href="%s/blob/master/%s" target="_blank">%s on GitHub</a></div>' % (GH, md_rel, md_rel))
-    page += ["    " + b for b in lead]
-    if len(toc) > 3:
-        page.append('    <div id="toc_container"%s>' % (' class="plain"' if doc else ""))
-        page.append("     <h4>Contents</h4>")
-        page.append("     <ul>")
-        for sid, label in toc:
-            page.append('      <li><a href="#%s">%s</a></li>' % (sid, label))
-        page.append("     </ul>")
-        page.append("    </div>")
-    page.append("")
+        inner.append('    <p class="doc-meta"><a href="docs.html">All documentation</a>'
+                     '<a href="%s/blob/master/%s" target="_blank" rel="noopener">View %s on GitHub</a></p>' % (GH, md_rel, md_rel))
+    inner += ["    " + b for b in lead]
+    inner.append("")
     for b in rest:
-        page.append("    " + b.replace("\n", "\n    ") if not b.startswith("<pre") else b)
-    return "\n".join(page + page_tail())
+        inner.append("    " + b.replace("\n", "\n    ") if not b.startswith("<pre") else b)
+    return shell(name, plain_title, desc, "\n".join(inner), toc if len(toc) > 2 else (), mermaid, group)
 
 
-def docs_index(tpl_head):
+def docs_index():
     groups = []
     for md, (name, group, label, blurb) in DOCS.items():
         if group not in [g for g, _ in groups]:
             groups.append((group, []))
         dict(groups)[group].append((md, name, label, blurb))
-    page = [page_head(tpl_head, "Documentation",
-                      "Architecture, design notes, the language reference, performance and tooling for Objeck.")
-            + '  <main id="main" role="main" style="text-align: left;">',
-            '   <div class="container">', "",
-            '    <h1 class="page-title">Documentation</h1>',
-            '    <p class="page-lead">How Objeck works inside, the language and library reference, and the tools around it. '
-            'New to the language? Start with the <a href="getting_started.html">Quick Start</a> and the '
-            '<a href="guides.html">guides</a>; the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API reference</a> '
-            'lists every class.</p>', ""]
+    inner = ['    <h1 class="page-title">Documentation</h1>',
+             '    <p class="page-lead">Architecture, design notes, reference and tools. New here? <a href="start.html">Get started</a>.</p>', ""]
+    toc = []
     for group, entries in groups:
-        page.append('    <h3 id="%s">%s</h3>' % (slug_guide(group), group))
-        page.append('    <div class="boxes">')
+        toc.append((slug_guide(group), esc(group)))
+        inner.append('    <h2 id="%s">%s</h2>' % (slug_guide(group), esc(group)))
+        inner.append('    <div class="boxes">')
         for md, name, label, blurb in entries:
-            title = None
-            with open(os.path.join(ROOT, md.replace("/", os.sep)), encoding="utf-8", newline="") as f:
-                for ln in f.read().replace("\r\n", "\n").split("\n"):
-                    if ln.startswith("# "):
-                        title = ln[2:].strip()
-                        break
-            page.append('     <a class="box" href="%s"><span class="box-icon">%s</span><b>%s</b>'
-                        '<span class="box-text">%s</span></a>'
-                        % (name, label, html.escape(title or md, quote=False), html.escape(blurb, quote=False)))
-        page.append("    </div>")
-    return "\n".join(page + page_tail())
+            inner.append('     <a class="box" href="%s"><b>%s</b><span class="box-text">%s</span></a>'
+                         % (name, esc(md_title(md)), esc(blurb)))
+        inner.append("    </div>")
+    return shell("docs.html", "Documentation", "Architecture, design notes, the language reference, performance and tooling for Objeck.",
+                 "\n".join(inner), toc)
 
 
-def read(path):
-    with open(path, encoding="utf-8", newline="") as f:
-        return f.read().replace("\r\n", "\n")
+def libraries_page():
+    title, toc, body = libraries_body()
+    inner = ['    <h1 class="page-title">%s</h1>' % title] + body
+    return shell("libraries.html", title, "Every library that ships with Objeck, one line each, generated from the repository: collections, data, networking, LLM clients, ML, graphics.",
+                 "\n".join(inner), toc)
+
+
+# ---- hand-written pages: keep <main>, rewrite what is around it
+def rechrome(name, text, version, release):
+    title = re.search(r"<title>(.*?)</title>", text, re.S).group(1).strip()
+    desc = re.search(r'<meta\s+name="description"\s+content="(.*?)"\s*/?>', text, re.S)
+    desc = html.unescape(desc.group(1)) if desc else title
+    marked = re.search(r"<!-- content:start -->\n(.*)\n<!-- content:end -->", text, re.S)
+    inner = marked.group(1) if marked else re.search(r"<main\b[^>]*>(.*)</main>", text, re.S).group(1)
+    inner = fill(inner, "version", version)
+    inner = re.sub(r"Download v[\d.]+", "Download v" + version, inner)  # deploy_website.sh greps for this literal text
+    for ex in re.findall(r"<!-- example:(\w+):start -->", inner):
+        inner = fill(inner, "example:" + ex, example_html(ex))
+    inner = rehighlight(inner)
+    if name == "index.html":
+        rv, rdate, picks = release
+        strip = ['\n     <div class="release">',
+                 '      <div><p class="tag">v%s</p><p class="date">Released %s</p></div>' % (rv, long_date(rdate)),
+                 "      <ul>"]
+        for sect, t in picks:
+            strip.append("       <li><b>%s:</b> %s</li>" % (sect, esc(t)))
+        strip += ["      </ul>",
+                  '      <a class="btn btn-secondary" href="readme.html">Release notes</a>',
+                  "     </div>\n     "]
+        inner = fill(inner, "release", "\n".join(strip))
+        return shell(name, re.sub(r"\s+", " ", title), desc, inner.strip("\n"))
+    short = re.sub(r"\s*[—-]\s*Objeck Language\s*$", "", title)
+    return shell(name, html.unescape(short), desc, inner.strip("\n"))
 
 
 def main():
     check = "--check" in sys.argv
     stale = []
-    tpl = read(os.path.join(WEB, "ai_guide.html"))
-    head = tpl[:tpl.index('  <main id="main"')]
+    version = project_version()
+    release = latest_release()
     pages = {}
     for md, (name, title, desc) in GUIDES.items():
-        pages[name] = build_page(head, md, read(os.path.join(ROOT, md.replace("/", os.sep))), name, title, desc, False)
+        pages[name] = build_page(md, read(os.path.join(ROOT, md.replace("/", os.sep))), name, title, desc, False)
     for md, (name, group, label, blurb) in DOCS.items():
-        pages[name] = build_page(head, md, read(os.path.join(ROOT, md.replace("/", os.sep))), name, md, blurb, True)
-    pages["docs.html"] = docs_index(head)
+        pages[name] = build_page(md, read(os.path.join(ROOT, md.replace("/", os.sep))), name, md, blurb, True, group)
+    for md, (name, title, desc) in SITE.items():
+        pages[name] = build_page(md, read(os.path.join(ROOT, md.replace("/", os.sep))), name, title, desc, False,
+                                 site=True, version=version)
+    pages["docs.html"] = docs_index()
+    pages["libraries.html"] = libraries_page()
+    for name in HAND:
+        pages[name] = rechrome(name, read(os.path.join(WEB, name)), version, release)
     for name, text_out in pages.items():
         target = os.path.join(WEB, name)
         if check:

@@ -1,62 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Loader fuzz targets — Objeck Language</title>
-  <meta name="description" content="libFuzzer targets for the VM&#x27;s bytecode loader (Loader::Load, core/vm/loader.cpp), the code that reads an .obe before anything runs. An .obe is untrusted input to obr (see docs/SECURITY_MODEL.md): whatever its bytes, the loader must refuse "/>
-  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
-  <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>hljs.highlightAll();</script>
-
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const menu = document.querySelector(".menu");
-      const menuItems = document.querySelector(".menu-items");
-      menu.addEventListener("click", (e) => {
-        e.stopPropagation();
-        menuItems.classList.toggle("open");
-      });
-      document.addEventListener("click", () => { menuItems.classList.remove("open"); });
-    });
-  </script>
+  <meta name="description" content="libFuzzer targets for the VM&#x27;s bytecode loader (Loader::Load, core/vm/loader.cpp), the code that reads an .obe before anything runs. An .obe is untrusted input to obr (see docs/SECURITY_MODEL.md): whatever its bytes, the loader must refuse ">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
  </head>
  <body>
-
-  <header>
-    <div class="banner">
-      <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
-      </a>
-      <div class="menu">
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-bar"></div>
-        <div class="menu-items">
-          <a href="index.html">Home</a>
-          <a href="getting_started.html">Quick Start</a>
-          <a href="ai_guide.html">AI Guide</a>
-          <a href="guides.html">Guides</a>
-          <a href="docs.html">Docs</a>
-          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
-          <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
-          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
-        </div>
-      </div>
-
-      <a class="pill" href="https://playground.objeck.org">Playground</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html" aria-current="page">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
     </div>
+   </div>
   </header>
-
-  <main id="main" role="main" style="text-align: left;">
-   <div class="container">
-
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#contributing">Contributing</a></li><li aria-current="page">Loader fuzz targets</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Documentation sections">
+    <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
+    <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
+    <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
+    <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html" aria-current="page">Loader fuzz targets</a></li></ul>
+    <p class="nav-title">Tools</p><ul><li><a href="doc_editors.html">Editor &amp; IDE Support</a></li><li><a href="doc_lsp.html">Debian / Ubuntu</a></li><li><a href="doc_sublime.html">Objeck LSP</a></li><li><a href="doc_deploy_examples.html">Objeck example programs</a></li><li><a href="doc_checkers.html">Checkers: a game, a thinking computer and a music box, all in Objeck</a></li></ul>
+    <p class="nav-title">Releases</p><ul><li><a href="readme.html">Release notes and install</a></li><li><a href="doc_changelog.html">Changelog</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
     <h1 class="page-title">Loader fuzz targets</h1>
-    <div class="doc-meta"><a href="docs.html">&larr; All docs</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/fuzz/loader/README.md" target="_blank">tools/fuzz/loader/README.md on GitHub</a></div>
+    <p class="doc-meta"><a href="docs.html">All documentation</a><a href="https://github.com/objeck/objeck-lang/blob/master/tools/fuzz/loader/README.md" target="_blank" rel="noopener">View tools/fuzz/loader/README.md on GitHub</a></p>
     <p class="page-lead">libFuzzer targets for the VM's bytecode loader (<code>Loader::Load</code>, <code>core/vm/loader.cpp</code>), the code that reads an <code>.obe</code> before anything runs. An <code>.obe</code> is untrusted input to <code>obr</code> (see <a href="doc_security.html">docs/SECURITY_MODEL.md</a>): whatever its bytes, the loader must refuse it with a message, never crash, hang or allocate without bound.</p>
 
     <table class="ref-table">
@@ -78,14 +69,14 @@
      <li><code>loader_file_fuzz</code> takes an <strong><code>.obe</code> file</strong> as <code>obc</code> writes it (<code>[uncompressed size:4][zlib]</code>, or raw zlib), decodes it with <code>Loader::DecodeImage</code> and loads what decodes.</li>
     </ul>
     <p>A refusal is a clean result: <code>Loader::Load</code> returns false with its message, which must not be empty. So is a method signature <code>StackMethod</code> cannot parse (a <code>std::runtime_error</code>, which <code>obr</code> reports as a load error). Anything else -- a sanitizer report, a leak, a signal, a timeout, an allocation over the limit -- is a finding. The image target runs the loader's verification pass too (<code>Loader::Verify</code>), so the checks that relate operands to the program are fuzzed with the rest.</p>
-    <h3 id="nightly">Nightly</h3>
+    <h2 id="nightly">Nightly</h2>
     <p><code>.github/workflows/nightly-hardening.yml</code> runs both targets every night in its <code>loader-fuzz</code> job (linux-x64, 30 minutes) through <code>run_nightly.py</code>: it builds the targets, seeds them from the regression programs the CI tree's <code>obc</code> compiles, fuzzes (65% the image target in fork mode, 25% the file target, 10% a single process with leak detection on), replays every input libFuzzer saved and prints one `FAIL loader-fuzz:</p>
     <div class="raw"><error> <function>` line per distinct finding, which the nightly triage reads like any other
     failure. The name has no address, line number or input hash, so the same bug on another night
     is the same signature (`known.json` can suppress it). The saved inputs are in the run's
     `nightly-loader-fuzz` artifact under `linux-x64/loader-fuzz-out/`.</div>
     <p><code>test_run_nightly.py</code> tests the runner against fake fuzz targets, no clang needed: <code>python3 -m unittest tools/fuzz/loader/test_run_nightly.py</code>.</p>
-    <h3 id="running-it-wsl2-ubuntu-2404">Running it (WSL2 Ubuntu 24.04)</h3>
+    <h2 id="running-it-wsl2-ubuntu-2404">Running it (WSL2 Ubuntu 24.04)</h2>
 <pre class="plain">sudo apt install clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev
 CXX=clang++ tools/fuzz/loader/build.sh ~/loader-fuzz/build
 
@@ -103,7 +94,7 @@ build/loader_fuzz art/crash-...          # replay one finding with its stack
 build/loader_fuzz -minimize_crash=1 -runs=100000 art/crash-...</pre>
     <p><code>seeds/images</code> holds the whole decompressed programs (100 KB to 1.5 MB each: every program carries the standard library), which run at about 100 inputs a second. <code>seeds/slices</code> holds pieces cut from them by <code>obe_image.py</code> -- one to three classes, a few methods, string tables emptied -- at a few thousand inputs a second per worker, which is where mutation pays.</p>
     <p>A refused load frees what it had read, so leak detection stays on (the commands above turn it off only to keep fork mode's jobs fast. Seeds carry the toolchain version they were compiled with; rebuild them after a version bump, or every input is refused at the version check.</p>
-    <h3 id="findings">Findings</h3>
+    <h2 id="findings">Findings</h2>
     <p>Every finding is fixed and has a case in <code>programs/regression/run_vm_flag_tests.py</code> (section 30), which runs <code>obr</code> on a reduced input and expects the loader's message and exit status 1. The inputs are in <code>programs/regression/vm_flag_fixtures/loader/</code>, written by <code>make_regression_inputs.py</code> from a small compiled program; the test stamps each with the current toolchain version before it runs, so a version bump does not turn them into version-mismatch refusals.</p>
     <table class="ref-table">
      <thead>
@@ -118,14 +109,34 @@ build/loader_fuzz -minimize_crash=1 -runs=100000 art/crash-...</pre>
       <tr><td data-label="input">any refused image (fuzz build)</td><td data-label="before">everything read so far leaked; libFuzzer's RSS limit fired after a few minutes per job</td><td data-label="fix">partial loads free what they read; the targets run with leak detection on and report none</td></tr>
      </tbody>
     </table>
-
+<!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#nightly">Nightly</a></li><li><a href="#running-it-wsl2-ubuntu-2404">Running it (WSL2 Ubuntu 24.04)</a></li><li><a href="#findings">Findings</a></li></ul>
+   </nav>
+  </div>
   </main>
-
-  <footer class="footer">
-    &copy; 2026 Randy Hollines. All Rights Reserved.
-    <br>
-    <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo.png" alt="Objeck" height="20"></a>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
   </footer>
+  <script src="style/site.js"></script>
  </body>
 </html>

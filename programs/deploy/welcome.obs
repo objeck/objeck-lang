@@ -24,7 +24,9 @@ class Welcome {
 			"csv_16.obs", "regex_17.obs", "sql_tables_18.obs", "sql_files_19.obs",
 			"serialize_20.obs", "odbc_21.obs", "http_client_22.obs", "web_server_23.obs",
 			"rss_reader_24.obs", "ml_regression_25.obs", "ml_classify_26.obs", "ml_outliers_27.obs",
-			"nlp_28.obs", "llm_29.obs", "ai_search_30.obs", "game_31.obs"];
+			"nlp_28.obs", "llm_29.obs", "ai_search_30.obs", "game_31.obs",
+			"mcp_32.obs", "agent_33.obs", "agent_control_34.obs", "actors_35.obs",
+			"rag_36.obs", "structured_37.obs", "telemetry_38.obs", "forecast_39.obs"];
 
 		libs := [
 			"",
@@ -58,7 +60,15 @@ class Welcome {
 			"nlp",
 			"gemini,net,net_server,json,misc,cipher",
 			"ai",
-			"sdl2,sdl_game,json"];
+			"sdl2,sdl_game,json",
+			"mcp,json,net,net_server,cipher,misc,gen_collect",
+			"agent,json,net,cipher,misc",
+			"agent,json,net,cipher,misc",
+			"gen_collect,concurrent,actor",
+			"rag,ml_vector,gen_collect",
+			"llm_util,json,regex,gen_collect",
+			"telemetry,gen_collect,json",
+			"ml_timeseries,gen_collect"];
 
 		about := [
 			"a class, a function, Main, and one line of output",
@@ -92,7 +102,15 @@ class Welcome {
 			"tokenizing, stemming, sentiment and TF-IDF search",
 			"ask a large language model (Gemini) a question",
 			"A* pathfinding and minimax",
-			"an SDL2 game: collect gems, dodge spiders, keep a best score"];
+			"an SDL2 game: collect gems, dodge spiders, keep a best score",
+			"an MCP server and a client calling its tools, in one program",
+			"a tool-using agent loop: model asks, tools answer, with a trace",
+			"stopping an agent: budgets, cancellation and a hung tool",
+			"actors and a supervisor that restarts a failing worker",
+			"retrieval-augmented answers from documents, with citations",
+			"JSON out of a model: templates, schema checks, retry and repair",
+			"timing a computation: p50, p95, p99 and saved profiles",
+			"forecasting a seasonal series: Holt-Winters against a benchmark"];
 
 		""->PrintLine();
 		"Objeck example programs"->PrintLine();
@@ -109,9 +127,9 @@ class Welcome {
 		"    obr json_14.obe"->PrintLine();
 		""->PrintLine();
 
-		header := Pad("  FILE", 24) + Pad("LIBRARIES (-lib ...)", 44) + "WHAT IT SHOWS";
+		header := Pad("  FILE", 24) + Pad("LIBRARIES (-lib ...)", 50) + "WHAT IT SHOWS";
 		header->PrintLine();
-		rule := Pad("  ----", 24) + Pad("--------------------", 44) + "-------------";
+		rule := Pad("  ----", 24) + Pad("--------------------", 50) + "-------------";
 		rule->PrintLine();
 
 		each(i : files) {
@@ -125,7 +143,7 @@ class Welcome {
 			# "  " + file straight into Pad() inside this expression prints the
 			# file name twice -- issue #750, a compiler defect, not a style choice.
 			indented := "  " + file;
-			line := Pad(indented, 24) + Pad(lib, 44) + desc;
+			line := Pad(indented, 24) + Pad(lib, 50) + desc;
 			line->PrintLine();
 		};
 
@@ -133,7 +151,9 @@ class Welcome {
 		"Notes"->PrintLine();
 		"-----"->PrintLine();
 		"  Read them in order: 0-13 teach the language, 14-21 data, 22-24 networking,"->PrintLine();
-		"  25-30 AI and machine learning, and 31 is a game."->PrintLine();
+		"  25-30 AI and machine learning, 31 is a game, and 32-39 are AI engineering:"->PrintLine();
+		"  MCP tools, agents, actors, retrieval, structured output, telemetry, forecasts."->PrintLine();
+		"  32-39 run offline: a scripted model stands in for a real one, so no key is needed."->PrintLine();
 		"  game_31 opens a window, so it needs a display (not SSH or a container)."->PrintLine();
 		"  odbc_21 needs a configured data source, llm_29 needs an API key, and"->PrintLine();
 		"  http_client_22 and rss_reader_24 need the internet."->PrintLine();
