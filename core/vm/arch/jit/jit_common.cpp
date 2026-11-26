@@ -511,7 +511,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       const size_t fref = op_stack[(*stack_pos) - 1];
       // 0 is an unassigned function variable (see FUNC_VALUE_TAG): no callee;
       // the interpreter below reports it, or recovers it under a Try() (#1183)
-      callee = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF))->GetMethod((long)(fref & 0xFFFF)) : nullptr;
+      // (a class id that names no class: no callee either, where this read a null class)
+      StackClass* fref_cls = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF)) : nullptr;
+      callee = fref_cls ? fref_cls->GetMethod((long)(fref & 0xFFFF)) : nullptr;
     }
     else {
       callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());

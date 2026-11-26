@@ -67,6 +67,13 @@ class Loader {
     INT64_VALUE inst_end;
     StackMethod* inst_where;
     long inst_ip;
+    // the element count of each literal in the five constant tables, for the
+    // traps that copy one into a new array (CheckLiteralCopy)
+    std::vector<long> float_lengths;
+    std::vector<long> bool_lengths;
+    std::vector<long> byte_lengths;
+    std::vector<long> int_lengths;
+    std::vector<long> char_lengths;
   } verify;
 
   // What a failed load says, exactly as obr prints it (Load, GetError). The
@@ -90,6 +97,9 @@ class Loader {
   long CheckDimension(StackMethod* mthd, long ip, long dimension);
   long CheckClassId(StackMethod* mthd, long ip, long id);
   long CheckTarget(StackMethod* mthd, long ip, long target, long count);
+  void CheckLiteralCopy(StackMethod* mthd, StackInstr* instrs, long ip, INT64_VALUE trap_id, long num_args);
+  void CheckParameterStores(StackMethod* mthd, StackInstr* instrs, long count);
+  void CheckDeclaredSize(StackClass* cls, StackDclr** dclrs, long count, INT64_VALUE bytes, const wchar_t* why);
   [[noreturn]] void VerifyFailed(StackClass* cls, StackMethod* mthd, long ip, const wchar_t* why);
 
   // Bounds guard for the raw deserialization cursor. Bytecode (.obe/.obl) is
