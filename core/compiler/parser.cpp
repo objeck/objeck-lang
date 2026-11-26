@@ -9754,6 +9754,11 @@ namespace {
   };
 }
 
+bool Parser::IsAgentSpliceName()
+{
+  return Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier().compare(0, AGENT_SPLICE_PREFIX.size(), AGENT_SPLICE_PREFIX) == 0;
+}
+
 /****************************
  * After every file is parsed: a class of the program that an agent's 'tools' names must have an '@tool'
  * function. A name that is no class of the program is left to the analyzer (a library's class, or none).

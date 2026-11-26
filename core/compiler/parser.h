@@ -344,8 +344,11 @@ class Parser {
   std::vector<AgentSplice>* agent_splices = nullptr;
   // a placeholder for one of those pieces, in the class written for the declaration
   inline bool IsAgentSplice() {
-    return agent_splices && Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier().compare(0, 8, L"agent__x") == 0;
+    return agent_splices && IsAgentSpliceName();
   }
+  // Out of line on purpose: the token's text is a copy, and inline the copy would sit in the frame of each
+  // caller, which are the functions that recurse once per nesting level (the nesting limit is a stack budget).
+  bool IsAgentSpliceName();
   Class* ParseAgent(const std::wstring& bundle_name, int depth);
   Expression* ParseAgentSplice(DeclarationList** declarations, int depth);
   Statement* ParseAgentName(int depth);
