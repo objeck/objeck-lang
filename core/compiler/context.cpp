@@ -7916,7 +7916,15 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];    
     AnalyzeExpression(expression, depth + 1);
-    Type* eval_type = expression->GetEvalType();
+    // The index is the value the expression ends in: for a call chain, what
+    // its last call returns. Reading the first call's type refused
+    // 'a[order->Line()->Count()]' (an object is not an index) and accepted
+    // 'a[refs->Get(i)->Get()]' only by replacing the written 'Get()'.
+    Expression* index_value = expression;
+    while(index_value->GetMethodCall()) {
+      index_value = index_value->GetMethodCall();
+    }
+    Type* eval_type = index_value->GetEvalType();
     if(eval_type) {
       switch(eval_type->GetType()) {
       case BYTE_TYPE:
@@ -7932,12 +7940,8 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
         else {
           // an IntRef, CharRef or ByteRef index is its value; a FloatRef or a
           // BoolRef is not an index, as a Float or a Bool is not
-          Expression* last = expression;
-          while(last->GetMethodCall()) {
-            last = last->GetMethodCall();
-          }
           bool unboxed = false;
-          Expression* unboxed_expresion = UnboxAs(TypeFactory::Instance()->MakeType(INT_TYPE), last, true, unboxed, depth);
+          Expression* unboxed_expresion = UnboxAs(TypeFactory::Instance()->MakeType(INT_TYPE), index_value, true, unboxed, depth);
           if(unboxed) {
             unboxed_expressions.push_back(unboxed_expresion ? unboxed_expresion : expression);
           }
