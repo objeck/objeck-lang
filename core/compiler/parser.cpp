@@ -2258,7 +2258,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     statement = ParseTry(depth + 1);
   }
   // identifier
-  else if(Match(TOKEN_IDENT)) {
+  else if(Match(TOKEN_IDENT) && !IsPromptLiteral()) {
     const std::wstring ident = ParseBundleName();
     statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
   }
@@ -6063,7 +6063,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
   Expression* expression = nullptr;
 
-  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
+  // 'prompt "..."': a contextual keyword, so 'prompt' stays an ordinary name
+  if(IsPromptLiteral()) {
+    expression = ParsePromptLiteral(depth + 1);
+  }
+  else if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;
@@ -9404,4 +9408,228 @@ void Parser::RejectToolDoc(const wchar_t* what)
   if(doc) {
     diagnostics.Error(GetFileName(), doc->line, doc->pos, std::wstring(L"'@tool' marks a function, but its doc comment is before ") + what + L"; move the comment to the function");
   }
+}
+
+/****************************************************************************
+ * Prompt literals (docs/design/AGENT_SYNTAX.md, section 2).
+ *
+ *   p := prompt "Summarise {text} in {count : Int} bullets.";
+ *
+ * 'prompt' is a word only where a string literal follows it, so a variable, a parameter or a method called
+ * 'prompt' is untouched. The literal is rewritten here into the calls a person would write,
+ *
+ *   API.LlmUtil.Prompt->New()->Text("Summarise ")->Slot("text", text)->Text(" in ")->Slot("count", count)->Text(" bullets.")
+ *
+ * with every node placed at the line and column of the text it came from. A hole is '{name}' or
+ * '{name : Type}'; '{{' and '}}' are literal braces; '{$...}' is the ordinary string interpolation and is left
+ * to the text piece it sits in. What a hole may name, and whether its value has the declared type, is checked
+ * by the analyzer (ContextAnalyzer::AnalyzePromptHole), where the types are known.
+ ****************************************************************************/
+namespace {
+  // the code of a hole's declared type: 1 none, 2 String, 3 Int, 4 Float, 5 Bool, 6 Char, 7 Byte; 0 when the name is no hole type
+  int PromptHoleType(const std::wstring& name)
+  {
+    if(name.empty()) { return 1; }
+    if(name == L"String") { return 2; }
+    if(name == L"Int") { return 3; }
+    if(name == L"Float") { return 4; }
+    if(name == L"Bool") { return 5; }
+    if(name == L"Char") { return 6; }
+    if(name == L"Byte") { return 7; }
+    return 0;
+  }
+
+  bool PromptIsName(const std::wstring& name)
+  {
+    size_t i = 0;
+    if(!name.empty() && name[0] == L'@') {
+      i = 1;
+    }
+    if(i >= name.size() || !(iswalpha(name[i]) || name[i] == L'_')) {
+      return false;
+    }
+    for(; i < name.size(); ++i) {
+      if(!(iswalnum(name[i]) || name[i] == L'_')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  std::wstring PromptTrim(const std::wstring& text)
+  {
+    const size_t a = text.find_first_not_of(L" \t");
+    if(a == std::wstring::npos) {
+      return L"";
+    }
+    return text.substr(a, text.find_last_not_of(L" \t") - a + 1);
+  }
+}
+
+Expression* Parser::ParsePromptLiteral(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int word_line = GetLineNumber();
+  const int word_pos = GetLinePosition();
+  NextToken();
+
+  // a string the scanner rejected gets the errors any string gets
+  if(Match(TOKEN_BAD_CHAR_STRING_LIT)) {
+    return ParseSimpleExpression(depth + 1);
+  }
+
+  // the string: its text as written (escapes not yet read), and where its opening quote is
+  const std::wstring text = scanner->GetToken()->GetIdentifier();
+  const bool is_raw = scanner->GetToken()->GetByteLit();
+  // (line, pos) is the first character of the text: a string's token is placed there when the string is on one
+  // line, and on its last line when it is not
+  const int end_line = GetLineNumber();
+  int line = end_line;
+  int pos = GetLinePosition();
+  if(text.find(L'\n') != std::wstring::npos) {
+    const Scanner::MultiLineString* multi = scanner->FindMultiLineStringEndingOn(end_line);
+    if(multi) {
+      line = multi->line;
+      pos = multi->pos + 1;
+    }
+  }
+  NextToken();
+  size_t i = 0;
+
+  const std::wstring klass_name = current_class ? current_class->GetName() : L"";
+  MethodCall* head = TreeFactory::Instance()->MakeMethodCall(file_name, word_line, word_pos, word_line, word_pos, NEW_INST_CALL,
+                                                             L"API.LlmUtil.Prompt", TreeFactory::Instance()->MakeExpressionList());
+  if(is_raw) {
+    diagnostics.Error(file_name, word_line, word_pos, L"A prompt literal takes an ordinary string, not a '$\"...\"' string: its holes and escapes are read from the text");
+    return head;
+  }
+
+  MethodCall* tail = head;
+  // the text piece being collected and where it began; (at_line, at_pos) is where the character at 'i' is
+  std::wstring piece;
+  int piece_line = line;
+  int piece_pos = pos;
+  int at_line = line;
+  int at_pos = pos;
+
+  // ends the piece: '->Text("...")'
+  auto flush = [&]() {
+    if(piece.empty()) {
+      return;
+    }
+    if(HasUnclosedInterpolation(piece)) {
+      diagnostics.Error(file_name, piece_line, piece_pos, L"A '{$' interpolation in a prompt literal is not closed: expected '}'");
+    }
+    ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+    arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, piece_line, piece_pos, piece, false));
+    MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, piece_line, piece_pos, -1, -1, at_line, at_pos,
+                                                               klass_name, L"Text", arguments);
+    tail->SetMethodCall(call);
+    tail = call;
+    piece.clear();
+  };
+
+  // takes 'count' characters of the text into the piece
+  auto take = [&](size_t count) {
+    if(piece.empty()) {
+      piece_line = at_line;
+      piece_pos = at_pos;
+    }
+    for(size_t k = 0; k < count; ++k) {
+      piece += text[i + k];
+      if(text[i + k] == L'\n') {
+        at_line += 1;
+        at_pos = 1;
+      }
+      else {
+        at_pos += 1;
+      }
+    }
+    i += count;
+  };
+
+  const size_t size = text.size();
+  while(i < size) {
+    const wchar_t c = text[i];
+    // an escape is two characters of text, whatever it escapes
+    if(c == L'\\' && i + 1 < size) {
+      take(2);
+    }
+    // '{{' and '}}' are one literal brace
+    else if((c == L'{' || c == L'}') && i + 1 < size && text[i + 1] == c) {
+      if(piece.empty()) {
+        piece_line = at_line;
+        piece_pos = at_pos;
+      }
+      piece += c;
+      at_pos += 2;
+      i += 2;
+      // a brace and then a dollar are not the start of an interpolation: they go to separate pieces
+      if(c == L'{' && i < size && text[i] == L'$') {
+        flush();
+      }
+    }
+    // '{$...}' is the string's own interpolation: kept whole, braces and all
+    else if(c == L'{' && i + 1 < size && text[i + 1] == L'$') {
+      size_t close = i;
+      while(close < size && text[close] != L'}') {
+        ++close;
+      }
+      take((close < size ? close + 1 : size) - i);
+    }
+    // a hole, which closes on its own line
+    else if(c == L'{') {
+      size_t close = i + 1;
+      while(close < size && text[close] != L'}' && text[close] != L'{' && text[close] != L'\n' && text[close] != L'\r') {
+        ++close;
+      }
+      if(close >= size || text[close] != L'}') {
+        diagnostics.Error(file_name, at_line, at_pos, L"A prompt hole is not closed: expected '}' on the line of its '{'\n\tWrite a hole as {name} or {name : Type}; write {{ for a literal '{'");
+        // the brace is taken as text, so the rest of the literal is still read
+        take(1);
+        continue;
+      }
+      flush();
+
+      const std::wstring inner = text.substr(i + 1, close - i - 1);
+      const size_t colon = inner.find(L':');
+      const std::wstring name = PromptTrim(colon == std::wstring::npos ? inner : inner.substr(0, colon));
+      const std::wstring type_name = colon == std::wstring::npos ? L"" : PromptTrim(inner.substr(colon + 1));
+      const int hole_type = PromptHoleType(type_name);
+      const std::wstring shown = L"'{" + inner + L"}'";
+      if(PromptTrim(inner).empty()) {
+        diagnostics.Error(file_name, at_line, at_pos, L"An empty prompt hole '{}' names no variable\n\tWrite a hole as {name} or {name : Type}; write {{ and }} for literal braces");
+      }
+      else if(!PromptIsName(name)) {
+        diagnostics.Error(file_name, at_line, at_pos, shown + L" is not a prompt hole: a hole names one variable, as in {text} or {count : Int}\n\tCompute other values into a local first; write {{ and }} for literal braces");
+      }
+      else if(colon != std::wstring::npos && (type_name.empty() || !hole_type)) {
+        diagnostics.Error(file_name, at_line, at_pos, L"Unknown type '" + type_name + L"' in the prompt hole " + shown + L": a hole takes a String, Int, Float, Bool, Char or Byte");
+      }
+      else {
+        const int name_pos = at_pos + 1 + (int)inner.find(name);
+        const int end_pos = at_pos + (int)(close - i) + 1;
+        ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+        arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, at_line, at_pos, name[0] == L'@' ? name.substr(1) : name, true));
+        arguments->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, at_line, name_pos, name));
+        MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, at_line, at_pos, -1, -1, at_line, end_pos, klass_name, L"Slot", arguments);
+        call->SetPromptHole(hole_type);
+        tail->SetMethodCall(call);
+        tail = call;
+      }
+      at_pos += (int)(close - i) + 1;
+      i = close + 1;
+    }
+    else if(c == L'}') {
+      diagnostics.Error(file_name, at_line, at_pos, L"A '}' in a prompt literal closes no hole\n\tWrite }} for a literal '}'");
+      take(1);
+    }
+    else {
+      take(1);
+    }
+  }
+  flush();
+
+  return head;
 }

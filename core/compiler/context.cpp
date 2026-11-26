@@ -4735,7 +4735,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
                        VariableSuggestion(variable_name));
         }
         else {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" + BundleSuggestion(variable_name));
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" +
+                       (variable_name == L"API.LlmUtil.Prompt" ? std::wstring(L"\n\tA prompt literal is made with the llm_util library: compile with -lib llm_util,regex,json,gen_collect")
+                                                               : BundleSuggestion(variable_name)));
         }
         undefined_classes.insert(variable_name);
       }
@@ -5217,6 +5219,11 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       AnalyzeCurriedCall(expression, method_call, depth);
     }
     else {
+      // a hole of a prompt literal is checked before the call that fills it
+      if(method_call->GetPromptHole()) {
+        AnalyzePromptHole(method_call, depth);
+      }
+
       // track rouge return
       ++nested_call_depth;
 
@@ -5301,6 +5308,65 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       --nested_call_depth;
       RogueReturn(method_call);
     }
+  }
+}
+
+/****************************
+ * A hole of a prompt literal, '{name}' or '{name : Type}', lowered by the parser
+ * to 'Slot("name", name)' (docs/design/AGENT_SYNTAX.md). The variable must exist
+ * and hold a String, Int, Float, Bool, Char or Byte, and a declared type must be
+ * the variable's type exactly. An error is reported at the hole; the value is
+ * then replaced by an empty string, so the call resolves and the holes after it
+ * are still checked.
+ ****************************/
+void ContextAnalyzer::AnalyzePromptHole(MethodCall* method_call, const int depth)
+{
+  ExpressionList* arguments = method_call->GetCallingParameters();
+  if(!arguments || arguments->GetExpressions().size() != 2 || arguments->GetExpressions()[1]->GetExpressionType() != VAR_EXPR) {
+    return;
+  }
+  Variable* variable = static_cast<Variable*>(arguments->GetExpressions()[1]);
+  const std::wstring name = variable->GetName();
+
+  AnalyzeExpression(variable, depth + 1);
+  Type* type = variable->GetEvalType();
+
+  // a name that is not declared has been reported as that, and has no type to check
+  bool valid = false;
+  if(type && type->GetType() != VAR_TYPE) {
+    // what the hole's value is: 2 String, 3 Int, 4 Float, 5 Bool, 6 Char, 7 Byte, as MethodCall::GetPromptHole
+    int found = 0;
+    if(type->GetDimension() == 0) {
+      switch(type->GetType()) {
+      case CLASS_TYPE:
+        found = (type->GetName() == L"System.String" || type->GetName() == L"String") ? 2 : 0;
+        break;
+      case INT_TYPE: found = 3; break;
+      case FLOAT_TYPE: found = 4; break;
+      case BOOLEAN_TYPE: found = 5; break;
+      case CHAR_TYPE: found = 6; break;
+      case BYTE_TYPE: found = 7; break;
+      default: break;
+      }
+    }
+
+    static const wchar_t* const names[] = { L"", L"", L"String", L"Int", L"Float", L"Bool", L"Char", L"Byte" };
+    const int declared = method_call->GetPromptHole();
+    if(!found) {
+      ProcessError(static_cast<Expression*>(method_call), L"The prompt hole '{" + name + L"}' cannot take '" + name + L"', which is " + DescribeType(type) +
+                   L": a hole takes a String, Int, Float, Bool, Char or Byte\n\tPut the text to send in a String variable first, then name that variable in the hole");
+    }
+    else if(declared > 1 && declared != found) {
+      ProcessError(static_cast<Expression*>(method_call), L"The prompt hole '{" + name + L" : " + names[declared] + L"}' declares " + names[declared] +
+                   L", but '" + name + L"' is " + DescribeType(type));
+    }
+    else {
+      valid = true;
+    }
+  }
+
+  if(!valid) {
+    arguments->SetExpression(TreeFactory::Instance()->MakeCharacterString(variable->GetFileName(), variable->GetLineNumber(), variable->GetLinePosition(), L"", true), 1);
   }
 }
 
