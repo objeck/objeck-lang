@@ -1,4 +1,6 @@
 # EXTRA_LIBS: ml_boost,ml,gen_collect,csv
+# DIFF_TIMEOUT: 600
+# reason: the --jit=off configurations take about 25 s on an idle 16-core desktop and 100-140 s on a loaded hosted Windows runner (nightly run 45775388385: 36 + 55 + 15 s for the three fits alone); the 180 s default leaves no room
 #~
 System.ML.Boost performance guard: 10,000 rows x 20 features.
 
@@ -7,10 +9,16 @@ Fits depth-4 trees (learning rate 0.1) on the first 8,000 rows and scores the ot
 boost_ref.py's make_large (the same MINSTD recipe); scikit-learn 1.9.1 needs 0.6 s for the
 15-stage fit, and its test mse and XGBoost's are the REF_* numbers below.
 
-Time budget, documented in docs/ai_sections/ml_boost.md: each fit must finish within 20 s,
-which leaves room on a loaded machine (on the development PC the exact fit takes about 1 s
-with the JIT and 11 s with --jit=off, the histogram fit 0.6 s and 12 s); the whole test runs
-under the regression runner's 60 s cap.
+Time guard: a wall-clock bound ("within 20 s") is not a fact about the code. The same fit
+takes about 1 s with the JIT and 12 s with --jit=off on the development PC, and 36-55 s
+with --jit=off on a loaded hosted runner (nightly run 45775388385), so a fixed limit flipped
+the verdict between configurations and between runs. What a regression to quadratic work
+changes is the SCALING, which does not depend on the machine, the load or the JIT: the same
+fit on a quarter of the rows must cost about a quarter of the time (linear 4x, n log n about
+4.6x, quadratic 16x). The test times 3 stages on 2,000 and on 8,000 rows (best of two, so one
+slow moment does not decide it) and requires the ratio to stay under 10. The seconds go to
+stderr and stdout never holds a time, so the differential runner compares the same lines in
+every configuration. A hang is caught by the runners' own per-run limits.
 ~#
 use System.ML;
 use System.ML.Boost;
@@ -63,7 +71,6 @@ class MlBoostPerf {
 		# wall-clock seconds go to stderr: the differential runner compares stdout only
 		"  exact search: {$exact_s} s"->ErrorLine();
 		"  exact search: test mse {$exact_mse}"->PrintLine();
-		ok := Report("exact search finishes within 20 s", exact_s < 20.0) & ok;
 		ok := Report("exact test mse {$exact_mse} within 1% of XGBoost exact {$REF_XGB_EXACT_MSE}", Float->Abs(exact_mse - REF_XGB_EXACT_MSE) / REF_XGB_EXACT_MSE < 0.01) & ok;
 		ok := Report("exact test mse within 2% of scikit-learn {$REF_SK_MSE}", Float->Abs(exact_mse - REF_SK_MSE) / REF_SK_MSE < 0.02) & ok;
 
@@ -74,7 +81,6 @@ class MlBoostPerf {
 		hist_mse := hist->Score(tex, te);
 		"  histogram search: {$hist_s} s"->ErrorLine();
 		"  histogram search: test mse {$hist_mse}"->PrintLine();
-		ok := Report("histogram search finishes within 20 s", hist_s < 20.0) & ok;
 		ok := Report("histogram test mse {$hist_mse} within 3% of XGBoost hist {$REF_XGB_HIST_MSE}", Float->Abs(hist_mse - REF_XGB_HIST_MSE) / REF_XGB_HIST_MSE < 0.03) & ok;
 
 		# a 3-class problem of the same size runs three trees per stage
@@ -93,13 +99,61 @@ class MlBoostPerf {
 		ok := Report("multiclass histogram fit", multi->Fit(trx, labels)) & ok;
 		"  3-class histogram, 8 stages: {$multi->GetFitSeconds()} s"->ErrorLine();
 		"  3-class histogram, 8 stages: training accuracy {$multi->Score(trx, labels)}"->PrintLine();
-		ok := Report("multiclass fit within 20 s and learns", multi->GetFitSeconds() < 20.0 & multi->Score(trx, labels) > 0.75) & ok;
+		ok := Report("multiclass fit learns", multi->Score(trx, labels) > 0.75) & ok;
+
+		# cost grows with the data about linearly, not quadratically (see the header)
+		ok := Report("exact search cost scales sub-quadratically with the rows", Scales(trx, tr, p, false)) & ok;
+		ok := Report("histogram search cost scales sub-quadratically with the rows", Scales(trx, tr, p, true)) & ok;
 
 		if(ok = false) {
 			Runtime->Exit(1);
 		};
 
 		"ml_boost_perf: ok"->PrintLine();
+	}
+
+	# Best-of-two fit time of 3 stages on the first `rows` rows.
+	function : FitSeconds(trx : Float[,], tr : Float[], p : Int, rows : Int, histogram : Bool) ~ Float {
+		x := Float->New[rows, p];
+		t := Float->New[rows];
+		each(i : rows) {
+			each(j : p) {
+				x[i, j] := trx[i, j];
+			};
+
+			t[i] := tr[i];
+		};
+
+		best := 1.0e9;
+		each(rep : 2) {
+			model := GradientBoostingRegressor->New(3, 0.1, 4, 1);
+			if(histogram) {
+				model->SetHistogram(255);
+			};
+
+			if(model->Fit(x, t) = false) {
+				return 1.0e9;
+			};
+
+			if(model->GetFitSeconds() < best) {
+				best := model->GetFitSeconds();
+			};
+		};
+
+		return best;
+	}
+
+	# True when 4x the rows costs under 10x the time (linear is 4x, quadratic 16x).
+	function : Scales(trx : Float[,], tr : Float[], p : Int, histogram : Bool) ~ Bool {
+		small := FitSeconds(trx, tr, p, 2000, histogram);
+		large := FitSeconds(trx, tr, p, 8000, histogram);
+		if(small < 0.001) {
+			small := 0.001;
+		};
+
+		ratio := large / small;
+		"  scaling ({$histogram}): 2000 rows {$small} s, 8000 rows {$large} s, ratio {$ratio}"->ErrorLine();
+		return ratio < 10.0;
 	}
 
 	function : Report(name : String, passed : Bool) ~ Bool {
