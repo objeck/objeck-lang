@@ -119,6 +119,16 @@ result <span class="t-op">:=</span> agent<span class="t-op">-&gt;</span>Run(<spa
 <pre class="cmd">budget:  budget_tool_calls after 2 tool calls ran
 cancel:  cancelled after 1 tool calls ran
 hung:    completed, the slow tool was a timeout</pre>
+    <p><code>AgentScope</code> puts one set of limits, one cancel switch and one trace around every agent run in a block, so you do not hand a budget to each agent. The limits are totals: <code>agent_scope_45</code> gives three questions a scope of two steps, and the second and third are not started:</p>
+<pre class="line-numbers"><code class="language-objeck">scope <span class="t-op">:=</span> <span class="t-cls">AgentScope</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">2</span>)<span class="t-op">-&gt;</span>SetTrace(<span class="t-const">true</span>);
+<span class="t-cls">AgentScope</span><span class="t-op">-&gt;</span>Run(scope, Questions() <span class="t-op">~</span> <span class="t-const">Nil</span>);
+</code></pre>
+<pre class="cmd">scope: 2 steps allowed
+question 1: completed (2 steps)
+question 2: budget_steps (0 steps)
+question 3: budget_steps (0 steps)
+agent scope: 3 runs, 2 steps, 30 tokens, 1 tool calls, halt=budget_steps, events=10
+outside the block: no scope (true)</pre>
     <p>Reference: <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/agent_control.md" target="_blank" rel="noopener">Agent run control</a>.</p>
     <h2 id="smaller-changes-you-can-see">Smaller changes you can see</h2>
     <p><code>new_in_11_4.obs</code> shows four: an out-of-bounds index reports the same message compiled and interpreted, a local declared without a value starts empty on every pass of a loop, a file records a failed open or write, and a read into a <code>Char[]</code> lands at its offset. Compile it with no <code>-lib</code>:</p>

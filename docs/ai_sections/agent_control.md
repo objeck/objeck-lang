@@ -143,6 +143,17 @@ AgentScope->Run(scope, Work() ~ Nil);      # Work() runs agents; they share the 
 "{$scope->GetStepsUsed()} steps, halt: {$scope->GetHalt()}"->PrintLine();
 ```
 
+`programs/deploy/agent_scope_45.obs` (scripted model, no key) gives three questions a scope of two steps; the second and third are not started:
+
+```text
+scope: 2 steps allowed
+question 1: completed (2 steps)
+question 2: budget_steps (0 steps)
+question 3: budget_steps (0 steps)
+agent scope: 3 runs, 2 steps, 30 tokens, 1 tool calls, halt=budget_steps, events=10
+outside the block: no scope (true)
+```
+
 - **Totals, not per run.** What a run used (steps = model replies, tokens, tool calls, time inside runs) is subtracted; the next run gets what is left. A run that finds nothing left is not started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or `deadline`, and the model is not called.
 - **An agent's own budget still applies**, and the smaller limit wins. A scope never loosens a limit.
 - **Nesting.** A scope run inside another is limited by both; every scope in the chain is checked and charged, so an inner scope can only tighten. Its cancel token is a child of the outer one.

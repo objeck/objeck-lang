@@ -148,6 +148,24 @@ cancel:  cancelled after 1 tool calls ran
 hung:    completed, the slow tool was a timeout
 ```
 
+`AgentScope` puts one set of limits, one cancel switch and one trace around every agent run in a block, so
+you do not hand a budget to each agent. The limits are totals: `agent_scope_45` gives three questions a scope of
+two steps, and the second and third are not started:
+
+```ruby
+scope := AgentScope->New()->SetMaxSteps(2)->SetTrace(true);
+AgentScope->Run(scope, Questions() ~ Nil);
+```
+
+```text
+scope: 2 steps allowed
+question 1: completed (2 steps)
+question 2: budget_steps (0 steps)
+question 3: budget_steps (0 steps)
+agent scope: 3 runs, 2 steps, 30 tokens, 1 tool calls, halt=budget_steps, events=10
+outside the block: no scope (true)
+```
+
 Reference: [Agent run control](../ai_sections/agent_control.md).
 
 ## Smaller changes you can see
