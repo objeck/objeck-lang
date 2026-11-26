@@ -1260,6 +1260,7 @@ class Live {
 | a deadline, or a cap on steps, model calls, tool calls, tokens or cost | `AgentBudget`, `agent->SetBudget(budget)` |
 | a hung tool or model call to stop costing the run | `AgentTool->Mode->BOUNDED_THREAD`, `agent->SetBoundedModelCalls(true)` |
 | to see each step | `agent->SetTrace(sink)`, `AgentTraceBuffer` |
+| one set of limits, a cancel and a trace for every run inside a block of code | `AgentScope->Run(scope, Work() ~ Nil)` |
 
 - **Cancel.** `AgentCancel` is a thread-safe token; any thread calls `Cancel("reason")`. The loop checks it before every step and between tool calls; a cancelled run ends with the stop reason `cancelled`, the calls that did not run are answered `skipped`, and the same agent can run again with a fresh token. `AgentCancel->New(parent)` links a token to a parent, so one cancel stops a group. A handler that implements `AgentCancelableHandler` (`Run(arguments, cancel)`) is handed the token, which also becomes cancelled when the run's deadline passes, so it can poll `IsCancelled()` and stop early.
 - **Budgets.** `AgentBudget` limits one `Run`; every limit is off (0) until set and the first one reached ends the run: `SetMaxSteps` (`budget_steps`), `SetMaxModelCalls` (`budget_model_calls`, retries count), `SetMaxToolCalls` (`budget_tool_calls`; the call over the limit is `skipped`), `SetMaxTokens` (`budget_tokens`), `SetMaxCost` with `SetPrice(in, out)` or `SetPrices(table, model)` (`budget_cost`; prices are currency per million tokens) and `SetMaxWallMs` (`deadline`, enforced everywhere the loop waits). Tokens and cost count only what the backend reports; a backend that reports none never trips them. A reply that crosses a token or cost limit and asks for tools ends the run before those tools run; a final answer is kept as `completed`.
@@ -1365,6 +1366,51 @@ cancel: cancelled after 231 ms
 ```
 
 Compiled and run with the current toolchain; the elapsed time varies. `agent_control_test` in the regression suite covers each budget and stop reason, the cancel cases, a hung tool with an abandoned worker, the trace and its key redaction, and retries, all on a scripted model. The provider backends' own total deadline is not covered.
+
+### Local models with Ollama
+
+`OllamaBackend` runs the same loop on a model served by [Ollama](https://ollama.com): no API key, and no data
+leaves the machine. **Requires a local Ollama server** with a model that supports tool calls
+(`ollama pull qwen3:8b`); it listens on `http://localhost:11434`, and `SetHost("http://host:11434")` points the
+backend at another machine. This program hands an `@tool` function to the model through `McpAgentTools`
+(`programs/examples/guides/agent_local.obs`, compiled with `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent`):
+
+```ruby
+use API.MCP, API.Agent, Collection;
+
+class LocalAgent {
+  #~
+  Add two integers.
+  @tool
+  @readonly
+  ~#
+  function : Add(a : Int, b : Int) ~ Int {
+    return a + b;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("local", "1.0.0");
+    LocalAgent->McpTools(server);
+    client := McpClient->InProcess(server);
+    client->Initialize("local-client", "1.0");
+    registry := ToolRegistry->New();
+    McpAgentTools->AddAll(registry, client);
+
+    agent := Agent->New(OllamaBackend->New("qwen3:8b"), registry);
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(6)->SetMaxWallMs(120000));
+    result := agent->Run("What is 17 plus 25? Use the add tool.");
+    "answer: {$(result->GetText())}"->PrintLine();
+  }
+}
+```
+
+```
+answer: The sum of 17 and 25 is **42**.
+```
+
+The answer's wording varies from run to run; the call `add({"a":17,"b":25})` does not. Set a budget: a small local
+model can loop, and the wall-clock limit is what ends it. Without a server the run fails with the HTTP error in
+`result->GetError()`.
 
 ---
 

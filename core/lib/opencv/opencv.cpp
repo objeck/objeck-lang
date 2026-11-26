@@ -104,7 +104,9 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void unload_lib() {
-      // a batch still decoding must finish before the library goes
+      // A batch still decoding must stop before the library goes. The VM calls this
+      // for DllProxy->Unload and when the program ends with the library loaded: a
+      // worker left running then would use OpenCV while exit() destroys it.
       // Take the jobs out under the lock, then join with the lock RELEASED: joining
       // while holding batch_mutex would deadlock against any thread that needs the
       // mutex to finish (opencv_batch_free, batch_find, a new batch).
@@ -112,6 +114,10 @@ extern "C" {
       {
          std::lock_guard<std::mutex> lock(batch_mutex);
          jobs.swap(batch_jobs);
+      }
+      // nobody can read these results any more: the images not yet started are skipped
+      for(std::map<size_t, BatchJob*>::iterator it = jobs.begin(); it != jobs.end(); ++it) {
+         it->second->next = it->second->paths.size();
       }
       for(std::map<size_t, BatchJob*>::iterator it = jobs.begin(); it != jobs.end(); ++it) {
          batch_join(it->second);

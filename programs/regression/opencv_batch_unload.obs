@@ -2,13 +2,18 @@
 use Collection, System.IO.Filesystem, API.OpenCV;
 
 #~
-# ImageBatch decodes on native worker threads, and the library's unload_lib joins
-# any batch still running when the program ends (it used to do so holding batch_mutex).
+# ImageBatch decodes on native worker threads. A program that ends with a batch still
+# running leaves those workers inside OpenCV while exit() destroys OpenCV's static state
+# (the image decoder table among it), which crashed the process on its way out. The VM
+# therefore calls the unload_lib of every native library still loaded before it exits,
+# and the library's unload_lib stops and joins its batches (with batch_mutex released).
 #
-# This decodes one batch to completion and checks the bytes, then starts a second batch
-# and ends the program WITHOUT Wait or Close, so the join happens in unload_lib. The test
-# passing means the program exited. It cannot show the old lock held across the join, which
-# needs a second thread to want the mutex at that moment; it covers the unload path.
+# This decodes one batch to completion and checks the bytes, then starts a second, long
+# batch and ends the program WITHOUT Wait or Close. The second batch names files that no
+# longer exist: every one still goes through cv::imread, which walks the decoder table
+# before it opens the file, and nothing is left behind on disk. The test passing means the
+# process ended cleanly with workers running; before the fix it ended with a segmentation
+# fault (exit 139) or an abort.
 ~#
 class OpenCvBatchUnload {
 	function : Write(path : String, text : String) ~ Nil {
@@ -51,15 +56,19 @@ class OpenCvBatchUnload {
 		};
 		first->Close();
 
-		# left running and never closed: unload_lib has to finish it
-		second := ImageBatch->Start(paths, 64, 2);
+		each(i : paths) {
+			File->Delete(paths[i]);
+		};
+
+		# left running and never closed: the VM has to stop it before the process exits
+		missing := String->New[100000];
+		each(i : missing) {
+			missing[i] := paths[i % 8];
+		};
+		second := ImageBatch->Start(missing, 2, 2);
 		if(second = Nil) {
 			"FAIL: the second batch did not start"->PrintLine();
 			failures += 1;
-		};
-
-		each(i : paths) {
-			File->Delete(paths[i]);
 		};
 
 		if(failures > 0) {

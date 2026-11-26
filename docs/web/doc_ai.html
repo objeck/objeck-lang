@@ -37,7 +37,7 @@
    <nav class="sidebar" aria-label="Documentation sections">
     <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
     <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
-    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_ai.html" aria-current="page">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
+    <p class="nav-title">Language and libraries</p><ul><li><a href="doc_features.html">Objeck Language Features</a></li><li><a href="doc_mcp.html">MCP walkthrough: declare, serve, consume, hand to an agent</a></li><li><a href="doc_ai.html" aria-current="page">Objeck AI &amp; ML Developer Guide</a></li><li><a href="doc_collections.html">Choosing a collection</a></li><li><a href="doc_errors.html">Error reporting in the libraries: what exists, and one rule to adopt</a></li><li><a href="doc_examples.html">Objeck Code Examples</a></li><li><a href="doc_models.html">AI Models for Objeck</a></li></ul>
     <p class="nav-title">Design notes</p><ul><li><a href="doc_gc_roots.html">GC roots: a precise root model for the interpreter and both JITs</a></li><li><a href="doc_incremental.html">Incremental Analysis for the Language Server — Design</a></li><li><a href="doc_query_design.html">Query.Structured: a columnar, indexed in-memory query engine — Design</a></li><li><a href="doc_ai_foundation.html">AI Foundation — Design (BERT is the first consumer)</a></li><li><a href="doc_ml_bert.html">BERT embeddings and a trainable head — Design</a></li><li><a href="doc_ml_lab.html">System.ML.Lab: experiment support for a cybersecurity-ML lab</a></li><li><a href="doc_named_arguments.html">Named Arguments — Design</a></li><li><a href="doc_method_generics.html">Method-Level Generics — Design</a></li><li><a href="doc_reference_parameters.html">Reference Parameters — Design</a></li><li><a href="doc_recovered_errors.html">Reading a Recovered Error — Design</a></li><li><a href="doc_jagged_arrays.html">Jagged Arrays — Design</a></li></ul>
     <p class="nav-title">Reference</p><ul><li><a href="doc_otab_format.html">The .otab table file format, versions 1 and 2</a></li><li><a href="doc_cli_options.html">Objeck CLI Options</a></li><li><a href="doc_native_interface.html">Writing native libraries for Objeck</a></li><li><a href="doc_dependencies.html">Third-party dependencies: where each platform gets them, and how to check versions</a></li></ul>
     <p class="nav-title">Contributing</p><ul><li><a href="doc_intrinsic.html">Adding an intrinsic (a new trap)</a></li><li><a href="doc_instruction_set.html">The instruction table</a></li><li><a href="doc_regression.html">Objeck Language Regression Test Suite</a></li><li><a href="doc_fuzz.html">Loader fuzz targets</a></li></ul>
@@ -974,6 +974,7 @@ answer: It is 18C and sunny in Paris.</pre>
       <tr><td data-label="You want">a deadline, or a cap on steps, model calls, tool calls, tokens or cost</td><td data-label="You use"><code>AgentBudget</code>, <code>agent-&gt;SetBudget(budget)</code></td></tr>
       <tr><td data-label="You want">a hung tool or model call to stop costing the run</td><td data-label="You use"><code>AgentTool-&gt;Mode-&gt;BOUNDED_THREAD</code>, <code>agent-&gt;SetBoundedModelCalls(true)</code></td></tr>
       <tr><td data-label="You want">to see each step</td><td data-label="You use"><code>agent-&gt;SetTrace(sink)</code>, <code>AgentTraceBuffer</code></td></tr>
+      <tr><td data-label="You want">one set of limits, a cancel and a trace for every run inside a block of code</td><td data-label="You use"><code>AgentScope-&gt;Run(scope, Work() ~ Nil)</code></td></tr>
      </tbody>
     </table>
     <ul>
@@ -1075,6 +1076,37 @@ hung tool: timeout, completed
 trace: run_start,model_start,model_end,tool_start,tool_end,model_start,model_end,run_end
 cancel: cancelled after 231 ms</pre>
     <p>Compiled and run with the current toolchain; the elapsed time varies. <code>agent_control_test</code> in the regression suite covers each budget and stop reason, the cancel cases, a hung tool with an abandoned worker, the trace and its key redaction, and retries, all on a scripted model. The provider backends' own total deadline is not covered.</p>
+    <h3 id="local-models-with-ollama">Local models with Ollama</h3>
+    <p><code>OllamaBackend</code> runs the same loop on a model served by <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>: no API key, and no data leaves the machine. <strong>Requires a local Ollama server</strong> with a model that supports tool calls (<code>ollama pull qwen3:8b</code>); it listens on <code>http://localhost:11434</code>, and <code>SetHost("http://host:11434")</code> points the backend at another machine. This program hands an <code>@tool</code> function to the model through <code>McpAgentTools</code> (<code>programs/examples/guides/agent_local.obs</code>, compiled with <code>-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent</code>):</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP, <span class="t-cls">API</span>.Agent, Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">LocalAgent</span> {
+  <span class="t-com">#~
+  Add two integers.
+  @tool
+  @readonly
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Add</span>(a : <span class="t-type">Int</span>, b : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> a + b;
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    server <span class="t-op">:=</span> <span class="t-cls">McpService</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"local"</span>, <span class="t-str">"1.0.0"</span>);
+    <span class="t-cls">LocalAgent</span><span class="t-op">-&gt;</span>McpTools(server);
+    client <span class="t-op">:=</span> <span class="t-cls">McpClient</span><span class="t-op">-&gt;</span>InProcess(server);
+    client<span class="t-op">-&gt;</span>Initialize(<span class="t-str">"local-client"</span>, <span class="t-str">"1.0"</span>);
+    registry <span class="t-op">:=</span> <span class="t-cls">ToolRegistry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    <span class="t-cls">McpAgentTools</span><span class="t-op">-&gt;</span>AddAll(registry, client);
+
+    agent <span class="t-op">:=</span> <span class="t-cls">Agent</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">OllamaBackend</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"qwen3:8b"</span>), registry);
+    agent<span class="t-op">-&gt;</span>SetBudget(<span class="t-cls">AgentBudget</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">6</span>)<span class="t-op">-&gt;</span>SetMaxWallMs(<span class="t-num">120000</span>));
+    result <span class="t-op">:=</span> agent<span class="t-op">-&gt;</span>Run(<span class="t-str">"What is 17 plus 25? Use the add tool."</span>);
+    <span class="t-str">"answer: {$(result-&gt;GetText())}"</span><span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="plain">answer: The sum of 17 and 25 is **42**.</pre>
+    <p>The answer's wording varies from run to run; the call <code>add({"a":17,"b":25})</code> does not. Set a budget: a small local model can loop, and the wall-clock limit is what ends it. Without a server the run fails with the HTTP error in <code>result-&gt;GetError()</code>.</p>
     <hr class="section-end">
     <h2 id="model-context-protocol-apimcp">Model Context Protocol (API.MCP)</h2>
     <p><code>API.MCP</code> is a pure-Objeck implementation of the <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol</a>. A <strong>server</strong> offers tools, resources and prompts that an MCP client (Claude Desktop, Claude Code, or this library's own client) can discover with the <code>tools/list</code>, <code>resources/list</code> and <code>prompts/list</code> requests and then call; a <strong>client</strong> does the same against another program; and a <strong>bridge</strong> hands a connected server's tools to the Anthropic, OpenAI and Gemini clients. Compile with <code>-lib mcp</code> plus the libraries it links:</p>

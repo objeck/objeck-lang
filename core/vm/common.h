@@ -111,6 +111,17 @@ typedef SSIZE_T ssize_t;
 // running.
 [[noreturn]] void VmExit(int status);
 
+// Native libraries the program loaded and has not unloaded; defined in
+// arch/memory.cpp beside the exit path that uses them. A library is recorded once
+// its load_lib has run and forgotten when DllProxy->Unload releases it.
+// UnloadNativeLibrariesAtExit calls unload_lib of each one still recorded, so a
+// library's own threads are stopped BEFORE exit() starts destroying the statics
+// they use (theirs, and those of the libraries they link). It runs once, on the
+// thread ending the process, and only where exit()'s teardown runs at all.
+void NativeLibraryLoaded(void* handle);
+void NativeLibraryUnloaded(void* handle);
+void UnloadNativeLibrariesAtExit();
+
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>

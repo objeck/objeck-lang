@@ -1,0 +1,50 @@
+#~
+# compile: obc -src new_in_11_4.obs
+# run:     obr new_in_11_4.obe
+#
+# Four things that behave differently in v2026.11.4.
+~#
+use System.IO.Filesystem;
+
+class NewIn1114 {
+	function : Main(args : String[]) ~ Nil {
+		# 1. an out-of-bounds index reports the index and the size, compiled or interpreted
+		a := Int->New[2];
+		i := 5;
+		try {
+			a[i] := 1;
+		}
+		on(e : Error) {
+			e->GetMessage()->PrintLine();
+		};
+
+		# 2. a local declared without a value starts empty on every pass of a loop
+		for(n := 0; n < 3; n += 1;) {
+			x : Int;
+			if(n = 0) {
+				x := 5;
+			};
+			"n={$n} x={$x}"->PrintLine();
+		};
+
+		# 3. a file records a failed open or write instead of ignoring it
+		writer := FileWriter->New("no_such_dir/out.txt");
+		"open ok? {$(writer->IsOK())}, errno {$(writer->GetLastError())}"->PrintLine();
+
+		# 4. a read into a Char[] lands at the offset
+		FileWriter->WriteFile("abc.txt", "abcdef");
+		reader := FileReader->New("abc.txt");
+		chars := Char->New[8];
+		each(k : chars) {
+			chars[k] := '.';
+		};
+		got := reader->ReadBuffer(3, 4, chars);
+		text := "";
+		each(k : chars) {
+			text += chars[k];
+		};
+		"read {$got}: {$text}"->PrintLine();
+		reader->Close();
+		File->Delete("abc.txt");
+	}
+}

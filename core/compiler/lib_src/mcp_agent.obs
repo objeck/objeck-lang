@@ -15,15 +15,17 @@ the effect hints (readOnlyHint, destructiveHint) come from tools/list, and the a
 them (AgentTool->NeedsApproval, Agent->SetApproveUnlessReadOnly).
 
 Compile with -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent.
-
-```
-registry := ToolRegistry->New();
-registry->Add(McpAgentTools->FromSpec(spec, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
-McpAgentTools->AddAll(registry, McpClient->Http("http://127.0.0.1:8080/mcp"));
-```
-
 ~#
 bundle API.MCP {
+	#~
+	Hands MCP tools to an agent: FromSpec for a declared function, FromClient and AddAll for the tools of a server
+
+	```
+	registry := ToolRegistry->New();
+	registry->Add(McpAgentTools->FromSpec(spec, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>));
+	McpAgentTools->AddAll(registry, McpClient->Http("http://127.0.0.1:8080/mcp"));
+	```
+	~#
 	class McpAgentTools {
 		#~
 		Makes an agent tool from a declared function. The tool's name, description, schema and effect hints are the spec's
