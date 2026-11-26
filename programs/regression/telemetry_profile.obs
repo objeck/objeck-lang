@@ -26,6 +26,23 @@ class TelemetryProfileTest {
 		@failures := 0;
 		@calls := 0;
 
+		# --- names that differ only in a character the series key escapes stay separate cells ---
+		keys := ProfileStore->New();
+		keys->Record("team|model", "cpu", 1, "", 1.0);
+		keys->Record("team/model", "cpu", 1, "", 2.0);
+		keys->Record("team%7Cmodel", "cpu", 1, "", 3.0);
+		keys->Record("m", "a|b", 1, "x", 4.0);
+		keys->Record("m", "a/b", 1, "x", 5.0);
+		keys->Record("m", "cpu", 1, "t|1", 6.0);
+		keys->Record("m", "cpu", 1, "t/1", 7.0);
+		Check("model, device and tag names with | or / or % do not share a cell", keys->Size() = 7);
+		kp := keys->Predict("team|model", "cpu", 1);
+		kq := keys->Predict("team/model", "cpu", 1);
+		kr := keys->Predict("team%7Cmodel", "cpu", 1);
+		Check("each keeps its own latencies", kp <> Nil & kq <> Nil & kr <> Nil & kp->GetMean() = 1.0 & kq->GetMean() = 2.0 & kr->GetMean() = 3.0 & kp->GetModel()->Equals("team|model"));
+		kback := ProfileStore->FromJsonString(keys->ToJsonString());
+		Check("they survive a JSON round trip", kback <> Nil & kback->Size() = 7 & kback->Predict("team/model", "cpu", 1)->GetMean() = 2.0);
+
 		# --- a store filled with known numbers ---
 		store := ProfileStore->New();
 		# resnet on cuda, batch 8: 10, 11 ... 29 (20 samples): p50 is rank 10 = 19, p95 is rank 19 = 28

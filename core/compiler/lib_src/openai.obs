@@ -1678,6 +1678,11 @@ choice->GetMessage()->GetSecond()->PrintLine();
 				ResponseText(response)->PrintLine();
 			};
 
+			# a rate limit or a gateway error is a failure even when its body is JSON that has no 'error' member
+			if(HttpFailed(response)) {
+				return Nil;
+			};
+
 			return ParseCompletion(ResponseText(response));
 		}
 
@@ -1885,13 +1890,60 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 		#~
 		Parses the arguments, which the model writes as text and may get wrong
-		@return arguments object, or Nil if the text is not valid JSON
+		@return arguments object, or Nil if the text is not exactly one valid JSON object
 		~#
 		method : public : GetArgumentsJson() ~ JsonElement {
 			if(@arguments->IsEmpty()) {
 				return Nil;
 			};
-			return JsonParser->TextToElement(@arguments);
+
+			# a function's arguments are one JSON object: not an array or a bare value, and nothing after it
+			# (the JSON reader stops after the first value and ignores the rest)
+			if(<>IsSingleObject(@arguments)) {
+				return Nil;
+			};
+			root := JsonParser->TextToElement(@arguments);
+			if(root = Nil | root->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+			return root;
+		}
+
+		# true if the text is one {...} and only white space follows its closing brace
+		function : IsSingleObject(text : String) ~ Bool {
+			chars := text->Trim()->ToCharArray();
+			if(chars->Size() < 2 | chars[0] <> '{') {
+				return false;
+			};
+
+			depth := 0;
+			in_string := false;
+			i := 0;
+			while(i < chars->Size()) {
+				c := chars[i];
+				if(in_string) {
+					if(c->As(Int) = 92) {
+						i += 1;
+					}
+					else if(c = '"') {
+						in_string := false;
+					};
+				}
+				else if(c = '"') {
+					in_string := true;
+				}
+				else if(c = '{' | c = '[') {
+					depth += 1;
+				}
+				else if(c = '}' | c = ']') {
+					depth -= 1;
+					if(depth = 0) {
+						return i = chars->Size() - 1;
+					};
+				};
+				i += 1;
+			};
+			return false;
 		}
 	}
 
@@ -6583,6 +6635,44 @@ job = Batch->Get(job->GetId(), token);
 
 			base_url := GetBaseUrl();
 			SetLastError("No response from {$base_url}");
+			return true;
+		}
+
+		#~
+		Checks the HTTP status of an answered request, recording a failure as the last error. The
+		provider's message is kept when the body carries one (an 'error' member, or a top-level
+		'message' as a gateway sends it); otherwise the error is the status code.
+		@param response HTTP response, not Nil
+		@return true if the status is not 2xx
+		~#
+		function : HttpFailed(response : Web.HTTP.Response) ~ Bool {
+			code := response->GetCode();
+			if(code >= 200 & code < 300) {
+				return false;
+			};
+
+			message : String;
+			body := ResponseText(response);
+			if(<>body->IsEmpty()) {
+				body_json := JsonParser->TextToElement(body);
+				if(body_json <> Nil & body_json->GetType() = JsonElement->JsonType->OBJECT) {
+					error_json := body_json->Get("error");
+					if(error_json <> Nil & <>error_json->IsNull()) {
+						message := ParseErrorMessage(body_json);
+					}
+					else {
+						message_json := body_json->Get("message");
+						if(message_json <> Nil & message_json->GetType() = JsonElement->JsonType->STRING) {
+							message := message_json->GetString();
+						};
+					};
+				};
+			};
+
+			if(message = Nil | message->IsEmpty()) {
+				message := "HTTP {$code}";
+			};
+			SetLastError(message);
 			return true;
 		}
 

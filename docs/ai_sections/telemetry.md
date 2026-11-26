@@ -29,7 +29,7 @@ if(outputs = Nil) { probe->Cancel(); };
 ms := Telemetry->Time("resnet34", "cuda", 32, "run", MyClass->Work() ~ Nil);
 ```
 
-`Telemetry->Start(model, device, tag)` is the batch-1 form. A handle that is never stopped records nothing; a second `Stop` returns the same interval and records nothing more. Names may not contain `|` (it becomes `/` in the series key). The static calls use a process-wide recorder (`Telemetry->Default()`, emptied by `Telemetry->Reset()`); make your own with `TimingRecorder->New()` to keep profiles apart. A recorder may be shared by threads: it records under a lock.
+`Telemetry->Start(model, device, tag)` is the batch-1 form. A handle that is never stopped records nothing; a second `Stop` returns the same interval and records nothing more. Names may contain any character, including `|`: the series key escapes `%` and `|` (as `%25` and `%7C`), so two different names never share a cell. The static calls use a process-wide recorder (`Telemetry->Default()`, emptied by `Telemetry->Reset()`); make your own with `TimingRecorder->New()` to keep profiles apart. A recorder may be shared by threads: it records under a lock.
 
 The **tag** names a phase ("pre", "infer", "post"): each (model, device, batch, tag) is its own series. `Predict(model, device, batch)` takes the series with an empty tag, or the only tagged one if there is no untagged one; ask for one explicitly with `PredictTag`.
 
