@@ -16,7 +16,17 @@
 # On POSIX a write to a peer that hung up no longer ends the process (SIGPIPE).
 #
 # Ports: a server takes a random port and closes it again, so the port is
-# known to be free a moment later (nothing listens on it: refused).
+# known to be free a moment later (nothing listens on it: refused). Each stage
+# takes its own, just before it needs it: the stages take 20 seconds between
+# them on Windows (a refused connect is retried for two), and a port another
+# program took in that time would be answered, not refused -- and by a
+# listener that does not speak TLS, the TLS connect would wait out its five
+# minute read timeout in the handshake.
+#
+# No wait here is unbounded. The server accepts only after its client is known
+# to have connected: an Accept with no client on the way never returns, and a
+# connect can fail on a machine whose loopback drops a SYN (the connect gives
+# up after 21 seconds on Windows), which ended this test as a hang.
 # EXTRA_LIBS: net
 ~#
 
@@ -53,22 +63,16 @@ class ClientSocketErrors {
 	function : Main(args : String[]) ~ Nil {
 		@failed := 0;
 
-		free_port := FreePort();
-		if(free_port = 0) {
-			"FAIL: no free port to test with"->PrintLine();
-			Runtime->Exit(1);
-		};
-
 		"stage: tcp connect"->ErrorLine();
-		CheckConnect(free_port);
+		CheckConnect(StageFreePort());
 		"stage: tcp read"->ErrorLine();
 		CheckRead();
 		"stage: threads"->ErrorLine();
-		CheckThreads(free_port);
+		CheckThreads(StageFreePort());
 		"stage: udp"->ErrorLine();
-		CheckUdp(free_port);
+		CheckUdp(StageFreePort());
 		"stage: tls"->ErrorLine();
-		CheckTls(free_port);
+		CheckTls(StageFreePort());
 
 		if(@failed > 0) {
 			"FAIL: {$@failed} client socket error check(s) failed"->PrintLine();
@@ -97,6 +101,16 @@ class ClientSocketErrors {
 	# a reason, not a report of success
 	function : IsReason(text : String) ~ Bool {
 		return text <> Nil & text->Size() > 0 & <>Has(text, "success");
+	}
+
+	# a free port for the stage about to run, or the end of the test
+	function : StageFreePort() ~ Int {
+		port := FreePort();
+		if(port = 0) {
+			"FAIL: no free port to test with"->PrintLine();
+			Runtime->Exit(1);
+		};
+		return port;
 	}
 
 	# a port that was just bound, listened on and released
@@ -203,7 +217,14 @@ class ClientSocketErrors {
 		};
 
 		client := TCPSocket->New("127.0.0.1", @server_port);
-		connection := server->Accept();
+		# Accept only once the client is in: without one it would wait forever
+		connection : TCPSocket;
+		if(client->IsOpen()) {
+			connection := server->Accept();
+		}
+		else {
+			"  read: the connect failed: '{$(TCPSocket->GetLastError())}'"->ErrorLine();
+		};
 		Check("read: the client connects", client->IsOpen() & connection <> Nil);
 		if(connection = Nil) {
 			client->Close();

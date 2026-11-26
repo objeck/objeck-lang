@@ -309,8 +309,22 @@ class SlurmShimTests(Base):
             self.assertEqual(f.read().strip(), "img.sif")
 
 
+def runs_here(obr):
+    """True when this obr can be started on this machine. A deploy tree built for another OS or
+    architecture is on disk but cannot be executed (WinError 216 / Exec format error): it must be
+    skipped, not mistaken for the tree to test. Only starting matters here, not the exit code
+    (obr with no program prints its usage)."""
+    try:
+        subprocess.run([obr], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+    except subprocess.TimeoutExpired:
+        return True
+    except OSError:
+        return False
+    return True
+
+
 def find_objeck():
-    """(obc, obr) from $OBJECK_BIN or a deploy tree of this checkout, else None."""
+    """(obc, obr) from $OBJECK_BIN or a deploy tree of this checkout that actually runs here, else None."""
     cands = [os.environ.get("OBJECK_BIN")]
     root = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
     for d in ("deploy-x64", "deploy-arm64", "deploy"):
@@ -319,7 +333,7 @@ def find_objeck():
         if c:
             ext = ".exe" if os.name == "nt" else ""
             obc, obr = os.path.join(c, "obc" + ext), os.path.join(c, "obr" + ext)
-            if os.path.exists(obc) and os.path.exists(obr):
+            if os.path.exists(obc) and os.path.exists(obr) and runs_here(obr):
                 return obc, obr
     return None
 
