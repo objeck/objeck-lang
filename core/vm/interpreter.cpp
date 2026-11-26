@@ -4212,10 +4212,15 @@ size_t StackInterpreter::ThreadKey(pthread_t handle)
 void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message)
 {
   std::lock_guard<std::mutex> guard(thread_fault_lock);
-  // bounded: a program that never joins its faulted threads keeps the newest
-  if(ThreadFaults().size() >= 4096) {
-    ThreadFaults().clear();
-  }
+  // Not capped. An entry is the fault of a thread that ended and has not been
+  // joined, and Join may still come for any of them: the cap that was here
+  // (clear all at 4096) made a program that started 4097 workers and then
+  // joined them read "no fault" for the first 4096. An entry goes when its
+  // thread is joined (TakeThreadFault) or when a new thread is given its id
+  // (ForgetThreadFault), and the id is not given out again while the thread can
+  // still be joined, so the map holds at most one entry per ended, unjoined
+  // thread. Each of those already holds more than its entry until it is joined:
+  // its handle on Windows, its stack elsewhere.
   ThreadFaults()[key] = message;
   last_thread_fault = message;
   thread_fault_count.fetch_add(1, std::memory_order_relaxed);
