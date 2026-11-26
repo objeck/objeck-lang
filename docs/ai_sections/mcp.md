@@ -347,7 +347,7 @@ class Weather {
 * **Parameters.** `Int`, `Float`, `Bool`, `Byte`, `Char`, `String`, `JsonElement`, an enum (a string of its item names), a record (an object with its fields, which may themselves be records, enums, arrays), a one-dimensional array, `Vector<T>` or `Map<String,T>` of those. A parameter with a default is optional; the default must be a number, `Bool`, `Char`, `String` or `Nil` literal. A parameter of type `McpCall` is not part of the schema: it gives the function the call (`IsCancelled()`, `ReportProgress`).
 * **Result.** `String`, `Int`, `Float`, `Bool`, nothing, `JsonElement` (the structured result, declared as an object) or `McpToolResult` (sent as it is). A raised error, or a `Nil` String, is an error result the model can read.
 * **Diagnostics.** A parameter or return type that cannot be sent (a function type, a class that is not a record, an array of two dimensions, a `ref` parameter), a default that is not a literal, a tag before a method, constructor, class, enum or variable, `@param` of nothing, two tools with one name, and a file that does not `use API.MCP` are compile errors that name the tool and point at the function.
-* **Limits.** Enums and records must be declared in the sources being compiled, before the class that uses them (the compiler does not read them from a library). An enum cannot be an optional parameter (its default would not be a literal) or an array element. `obr prog.obe --mcp` to serve a program with no code at all is not there yet: the program calls `Class->McpTools(server)` and `ServeStdio()` itself.
+* **Limits.** Enums and records must be declared in the sources being compiled, before the class that uses them (the compiler does not read them from a library). An enum cannot be an optional parameter (its default would not be a literal) or an array element. `obr --mcp prog.obe` serves the program's tools, resources and prompts with no further code (see below).
 
 ### A function is a resource or a prompt: `@resource`, `@prompt`
 
@@ -385,6 +385,21 @@ class Docs {
 * **Resources.** The URI (a fixed one, or a template with `{name}` variables) comes after `@resource`; a fixed URI is listed by `resources/list`, a template by `resources/templates/list`. Every variable is a parameter of the same name (`String`, `Int`, `Float`, `Bool` or `Char`, read from the URI text; `McpUriTemplate->Match` does the matching) and every parameter is a variable; a default is an error. `@mime type` sets the media type (`text/plain` by default). A `String` result is the text of the resource, a `McpContents` is sent as it is (use it for a blob or a different URI); a `Nil` result, or a URI that does not fit the template, reads nothing. The name is the function's name in snake_case. Values are not percent-decoded.
 * **Prompts.** The arguments of a prompt are text on the wire, so a parameter is a `String`, `Int`, `Float`, `Bool` or `Char` (converted from the text), and a parameter with a default is optional; `@param` documents it. A `String` result is one user message, a `McpPromptResult` (several messages, roles) is sent as it is; a `McpCall` parameter is not an argument. `@prompt name` names it, otherwise snake_case.
 * **Diagnostics.** A function is exactly one of `@tool`, `@resource`, `@prompt`; the hints (`@readonly`...) belong to tools and `@mime` to resources; a URI variable with no parameter, a parameter that is not a variable, an unsupported parameter or return type, and two resources with one URI are compile errors with the function's position.
+
+### Serving a program: `obr --mcp`, `obr --mcp-http`
+
+```
+obr --mcp tools.obe                       # standard input and output: Claude Desktop, Claude Code, `mcp_stubs --cmd`
+obr --mcp-http=8080 tools.obe             # streamable HTTP on 127.0.0.1:8080
+obr --mcp-http=0 --mcp-http-host=0.0.0.0 tools.obe     # any free port on every interface; the port goes to standard error
+```
+
+The flags come before the program, like every VM option. The VM does not run `Main`: it starts the program at `McpMain(args : String[])`, which the compiler writes into a class with a tagged function (`McpService->New(<class>, "1.0")`, `Class->McpTools(server)`, `McpServe->Run(server, args)`), after adding the transport (`stdio`, or `http`, the address and the port) to the front of the program's arguments. A program that wants one server for several classes writes its own `McpMain` (it wins over the generated one) that calls each `McpTools` and then `McpServe->Run(server, args)`; two classes with a generated `McpMain` and none of the program's own is an error that says so, and so is a program with nothing to serve.
+
+* **Standard output is the protocol** under `--mcp`: a tool that prints there corrupts it. Log with `ErrorLine` (standard error); the HTTP port announcement goes there too.
+* **End.** stdio ends when standard input ends (exit 0, after the running calls); HTTP stops when the process is terminated.
+* **Progress and cancellation** are the `McpCall` of the tool: `call->ReportProgress(done, total)` becomes `notifications/progress`, and a client's `notifications/cancelled` sets `call->IsCancelled()`.
+* **Nothing changes without the flags**: the loader reads one environment variable the flags set, and a run without them takes no other path (no JIT, GC or interpreter change; `run_vm_flag_tests.py` and the regression suites pass unchanged).
 
 ### Declaring a tool from its types (the library form)
 

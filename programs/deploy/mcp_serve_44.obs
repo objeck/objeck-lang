@@ -1,0 +1,68 @@
+#~
+# compile: obc -src mcp_serve_44.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+# run:     obr mcp_serve_44.obe                         (prints how to serve it)
+#          obr --mcp mcp_serve_44.obe                   (an MCP server on standard input and output)
+#          obr --mcp-http=8080 mcp_serve_44.obe         (the same over HTTP, http://127.0.0.1:8080/)
+#
+# A program with @tool, @resource or @prompt functions needs no server code at all. The compiler writes
+# the registration, and obr --mcp (or --mcp-http=<port>) starts the program at that server instead of
+# at Main: the VM adds the transport to the program's arguments and runs the McpMain the compiler wrote.
+#
+# To use it from Claude Code or Claude Desktop, give the client this command (in .mcp.json):
+#   {"mcpServers":{"notes":{"command":"obr","args":["--mcp","/full/path/mcp_serve_44.obe"]}}}
+#
+# Under --mcp standard output carries the protocol and nothing else, so a function must not print there:
+# it logs with ErrorLine, which goes to standard error. Without the flags this program runs its Main.
+#
+# To see the protocol by hand (the client sends one JSON message per line):
+#   echo {"jsonrpc":"2.0","id":1,"method":"tools/list"} | obr --mcp mcp_serve_44.obe
+~#
+use API.MCP, Data.JSON, Collection;
+
+class Notes {
+	#~
+	Count the words in a text.
+	@tool
+	@readonly
+	@param text the text to count
+	~#
+	function : CountWords(text : String) ~ Int {
+		count := 0;
+		in_word := false;
+		for(i := 0; i < text->Size(); i += 1;) {
+			if(text->Get(i) = ' ') {
+				in_word := false;
+			}
+			else if(<>in_word) {
+				in_word := true;
+				count += 1;
+			};
+		};
+		"counted {$count} words"->ErrorLine();
+		return count;
+	}
+
+	#~
+	A greeting for a name.
+	@resource greeting://{name}
+	~#
+	function : Greeting(name : String) ~ String {
+		return "Hello, {$name}!";
+	}
+
+	#~
+	Ask for a summary of some text.
+	@prompt
+	@param text the text to summarize
+	@param sentences how many sentences
+	~#
+	function : Summarize(text : String, sentences : Int := 3) ~ String {
+		return "Summarize the following in {$sentences} sentences: {$text}";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"This program is an MCP server. Serve it with:"->PrintLine();
+		"  obr --mcp mcp_serve_44.obe              (standard input and output)"->PrintLine();
+		"  obr --mcp-http=8080 mcp_serve_44.obe    (HTTP on 127.0.0.1:8080)"->PrintLine();
+	}
+}

@@ -51,13 +51,18 @@ checked against it.
 
 ## 2. Serve
 
-The same server speaks the protocol on standard input and output with `obr mcp_declare_40.obe --stdio`
-(or `server->ServeHttp(8080)`), which is what Claude Code and Claude Desktop launch: put
-`{"mcpServers":{"demo":{"command":"obr","args":["mcp_declare_40.obe","--stdio"]}}}` in `.mcp.json`. The
-protocol path is tested against a scripted client, and the MCP reference records the one real-client check
-(Claude Code with `mcp_server_demo`). This example's `--stdio` mode was driven by hand with an initialize and a
-`tools/call` and answered correctly; it has not been tried with Claude Code. A one-line `obr prog.obe --mcp`
-that serves a program's tools with no code at all is not built yet.
+A program with `@tool`, `@resource` or `@prompt` functions needs no server code: `obr --mcp prog.obe` serves them on
+standard input and output, which is what Claude Code and Claude Desktop launch (put
+`{"mcpServers":{"demo":{"command":"obr","args":["--mcp","mcp_declare_40.obe"]}}}` in `.mcp.json`), and
+`obr --mcp-http=8080 prog.obe` serves the same over streamable HTTP (`--mcp-http-host=0.0.0.0` to listen beyond
+the loopback address; `--mcp-http=0` picks a free port and prints it on standard error). The VM starts the
+program at the `McpMain` the compiler wrote for the class instead of at `Main`; a program that has several
+tagged classes writes its own `McpMain(args : String[])` that registers them all and calls
+`McpServe->Run(server, args)`. On standard input and output the protocol owns standard output: anything the
+program prints there corrupts it, so log with `ErrorLine` (standard error). The program must still have a
+`Main` (it is what runs without the flag). Tested by `mcp_launch_test.py` (stdio in three execution modes,
+hostile input, HTTP, the refusals); the same client library that tests it is what the stub generator uses.
+An older `--stdio` flag in `mcp_declare_40.obs` is the program's own and still works.
 
 ## 3. Consume through a typed client
 
@@ -119,8 +124,7 @@ a generated typed client (`obr mcp_canvas.obe --demo`, or `--stub` to print that
 
 ## What this does not do yet
 
-`obr prog.obe --mcp` and `--mcp-http <port>` (serve a program's tools with no code) are the next stage; today a
-program calls `Class->McpTools(server)` and `ServeStdio()` itself. Enums and records must be declared in the
+The compile-time typed client (a build step that fails when a server's schema changes) and the visual traffic showcase are the next stages. Enums and records must be declared in the
 sources being compiled, before the class that uses them; an enum cannot be an optional parameter (a default must
 be a literal). A tool's result is text, a `JsonElement` (structured) or an `McpToolResult`; a record result and a
 derived `outputSchema` beyond "an object" are not derived. The design document has the reasons and the plan.

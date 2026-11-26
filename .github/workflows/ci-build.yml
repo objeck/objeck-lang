@@ -1372,6 +1372,26 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python mcp_tool_tags_diag_test.py "%BIN%"
 
+    # 'obr --mcp' and 'obr --mcp-http' (docs/design/MCP_FIRST_CLASS.md, Stage 3): a program's tools, resources and prompts
+    # served with no server code; stdio in three execution modes, hostile input, HTTP, the refusals.
+    - name: obr --mcp serves a program's tools (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 mcp_launch_test.py "$BIN"
+
+    - name: obr --mcp serves a program's tools (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_launch_test.py "%BIN%"
+
     # A build of several files reports each file's errors together, in the order the
     # files were given, rather than interleaved by line number.
     - name: obc reports a multi-file build's errors file by file (POSIX)

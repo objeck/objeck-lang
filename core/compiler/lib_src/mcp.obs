@@ -1223,6 +1223,66 @@ bundle API.MCP {
 		}
 	}
 
+	# Tells where the HTTP transport is listening, once it is: on standard error, so that standard output stays free
+	class : private : McpPortAnnouncer from Thread {
+		@service : McpService;
+		@address : String;
+
+		New(service : McpService, address : String) {
+			Parent();
+			@service := service;
+			@address := address;
+		}
+
+		method : public : Run(arg : System.Base) ~ Nil {
+			for(waited := 0; waited < 500; waited += 1;) {
+				port := @service->GetBoundPort();
+				if(port > 0) {
+					"mcp: serving http://{$@address}:{$port}/"->ErrorLine();
+					return;
+				};
+				Thread->Sleep(10);
+			};
+		}
+	}
+
+	#~
+	Serves a McpService the way "obr --mcp" and "obr --mcp-http=<port>" ask: the VM adds the transport to the program's arguments ("stdio", or "http", the address and the port) and starts the McpMain the compiler writes for a class with an @tool, @resource or @prompt function. A program that writes its own McpMain calls this with its arguments after registering. On standard input and output the protocol owns standard output: anything else the program prints there corrupts it, so log with ErrorLine, which goes to standard error
+	~#
+	class McpServe {
+		#~
+		Serves until standard input ends (stdio) or the HTTP server is stopped
+		@param service the server, with everything registered
+		@param args the transport: Nil or an empty array or "stdio" for standard input and output, "http" followed by the address and the port (0 for any free one, announced on standard error)
+		~#
+		function : Run(service : McpService, args : String[]) ~ Nil {
+			mode := "stdio";
+			if(args <> Nil & args->Size() > 0) {
+				mode := args[0];
+			};
+
+			if(mode->Equals("stdio")) {
+				service->ServeStdio();
+			}
+			else if(mode->Equals("http")) {
+				address := "127.0.0.1";
+				port := 0;
+				if(args->Size() > 1) {
+					address := args[1];
+				};
+				if(args->Size() > 2) {
+					port := args[2]->ToInt();
+				};
+				McpPortAnnouncer->New(service, address)->Execute(Nil);
+				service->ServeHttp(address, port);
+			}
+			else {
+				"mcp: unknown transport '{$mode}', expected stdio or http"->ErrorLine();
+				Runtime->Exit(2);
+			};
+		}
+	}
+
 	#~
 	A resource URI template such as "weather://{city}/forecast/{days}": reads the variables out of a URI. The compiler writes calls to it for a function marked "@resource"
 	~#

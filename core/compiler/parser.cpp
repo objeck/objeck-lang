@@ -9374,6 +9374,27 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
   }
   all += L"}";
   McpAddFunction(klass, all, first_line, depth);
+
+  // The entry point of 'obr --mcp' / 'obr --mcp-http': a server of this class's tools, resources and prompts.
+  // A McpMain the program wrote itself wins (it can register several classes, which a generated one cannot).
+  bool has_entry = false;
+  std::vector<Method*> existing = klass->GetMethods();
+  for(size_t i = 0; i < existing.size(); ++i) {
+    if(McpAfterColon(existing[i]->GetName()) == L"McpMain") {
+      has_entry = true;
+    }
+  }
+  if(!has_entry) {
+    // named for the class so that the VM can tell it from one the program wrote
+    std::wstring entry_class = klass->GetName();
+    for(size_t i = 0; i < entry_class.size(); ++i) {
+      if(!iswalnum(entry_class[i])) {
+        entry_class[i] = L'_';
+      }
+    }
+    McpAddFunction(klass, L"function : McpMain_" + entry_class + L"(mcp_args : String[]) ~ Nil { mcp_service := API.MCP.McpService->New(\"" + McpLit(klass->GetName()) + L"\", \"1.0\"); " +
+                          helpers.cls + L"->McpTools(mcp_service); API.MCP.McpServe->Run(mcp_service, mcp_args); }", first_line, depth);
+  }
 }
 
 // '@tool' belongs to a function: say so where it sits before anything else
