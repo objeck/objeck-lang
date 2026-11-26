@@ -20,8 +20,14 @@ Left alone (each source must compile and, run, print what it should):
   'prompt' as a local, a parameter, an instance variable, a function, a method, a class, a label of a select and
   an enum item; a string on the line after a statement that ends in 'prompt'; the word in a comment and in a
   string; a program that has no prompt literal compiles without the llm_util library.
+
+Damaged programs (syntax_mutants.py): 300 random mutants of prompt_literal_test.obs, from a fixed seed, are
+compiled; the compiler may accept or refuse each one, and must not crash or hang on any.
 """
 import os, subprocess, sys, tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import syntax_mutants  # noqa: E402
 
 EXE = ".exe" if os.name == "nt" else ""
 LIBS = "llm_util,regex,json,gen_collect"
@@ -208,6 +214,12 @@ def main():
                 continue
             code, out = run([obr, obe], env, work)
             check("left alone: %s" % what, code == 0 and expect in out.replace("\r\n", "\n"), out)
+
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompt_literal_test.obs"), encoding="utf-8") as f:
+            source = f.read()
+        accepted, refused, findings = syntax_mutants.smoke(bin_dir, [source], LIBS, work, 300, 20261126)
+        check("300 damaged programs: the compiler answers every one (%d accepted, %d refused)" % (accepted, refused),
+              not findings and accepted + refused == 300, findings)
 
     if failures:
         print("FAIL: %d check(s) failed" % len(failures))
