@@ -1599,8 +1599,10 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		@size : Int;
 		@size_vram : Int;
 		@digest : String;
+		@capabilities : Vector<String>;
 
 		New(model_json : JsonElement) {
+			@capabilities := Field->Strings(model_json->Get("capabilities"));
 			@name := Field->Text(model_json, "name");
 			@model := Field->Text(model_json, "model");
 			@modified_at_str := Field->Text(model_json, "modified_at");
@@ -1692,6 +1694,14 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		method : public : GetDigest() ~ String {
 			return @digest;
 		}
+
+		#~
+		Get the model's capabilities (e.g. "completion", "tools", "thinking"), as reported by newer servers
+		@return capabilities, empty if the server did not report them
+		~#
+		method : public : GetCapabilities() ~ Vector<String> {
+			return @capabilities;
+		}
 	}
 
 	#~
@@ -1714,7 +1724,11 @@ if(models <> Nil) {
 		New(model_json : JsonElement) {
 			Parent();
 
-			if(model_json->Has("modelfile") | model_json->Has("capabilities") | model_json->Has("model_info")) {
+			# A listing entry (/api/tags, /api/ps) names the model and carries its digest; a
+			# /api/show reply has neither. 'capabilities' cannot tell them apart: current
+			# servers put it on both.
+			is_listing := model_json->Has("name") | model_json->Has("digest");
+			if(<>is_listing & (model_json->Has("modelfile") | model_json->Has("capabilities") | model_json->Has("model_info") | model_json->Has("template"))) {
 				@model_info := ModelInfo->New(model_json);
 			}
 			else {
