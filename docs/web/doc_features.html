@@ -350,7 +350,21 @@ next : <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>
      <li>A later assignment to the captured local is not seen: with <code>n := 1;</code>, then a lambda that reads <code>n</code>, then <code>n := 2;</code>, the lambda still sees <code>1</code>. A loop variable captured in each iteration keeps that iteration's value.</li>
      <li>An object is copied as a reference, so the lambda and the enclosing method share it: <code>c-&gt;Inc()</code> inside the lambda is visible as <code>c-&gt;Get()</code> outside. Rebinding the local (<code>c := Counter-&gt;New();</code>) does not change which object the lambda uses.</li>
     </ul>
-    <p>Not available in lambda bodies yet: <code>self</code>, <code>@field</code> access, and calling an instance method of the enclosing class without a receiver (<code>Inc()</code>), which is rejected with "Cannot reference an instance method from this context". Capture the object in a local and call through it instead.</p>
+    <p><strong>Fields and <code>@self</code> (a lambda in an instance method).</strong> A lambda written in an instance method captures the instance it was created in, so its body may read and write the instance's fields and name the instance:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before: copy the field into a local (a later write is not seen), call through a local</span>
+<span class="t-kw">method</span> : <span class="t-fn">Incrementer</span>() <span class="t-op">~</span> <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; {
+  me <span class="t-op">:=</span> @self;                       <span class="t-com"># was not allowed in a lambda</span>
+  ...
+}
+<span class="t-com"># after</span>
+<span class="t-kw">method</span> : <span class="t-fn">Incrementer</span>() <span class="t-op">~</span> <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; {
+  <span class="t-kw">return</span> \() <span class="t-op">=&gt;</span> { @count += <span class="t-num">1</span>; <span class="t-kw">return</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(@count); };
+}
+<span class="t-kw">method</span> : <span class="t-fn">Caller</span>() <span class="t-op">~</span> <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; {
+  <span class="t-kw">return</span> \() <span class="t-op">=&gt;</span> @self<span class="t-op">-&gt;</span>Bump();       <span class="t-com"># an instance method, through the instance</span>
+}
+</code></pre>
+    <p>Unlike a captured local, a field is <strong>not</strong> copied: it is read and written through the captured instance, so a write in the lambda is a write to the field, the method sees it, and the lambda sees the method's later writes. The lambda keeps the instance alive. Limits: only a lambda directly in an instance method (not one inside another lambda, and not one in a function); an instance method of the class is called with <code>@self-&gt;Name(..)</code>, never as a bare <code>Name(..)</code> (still rejected, with a message that says so); <code>@field</code> inside a <code>"{$ ...}"</code> interpolation in a lambda is still rejected. Test: <code>lambda_self_fields</code>.</p>
     <h3 id="first-class-functions">First-Class Functions</h3>
     <p>A named function is passed as <code>Name(types) ~ Return</code>, and a function type is written the same way. Compose two by returning a <strong>parameterised lambda</strong>, which closes over them:</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Compose</span>(f : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>, g : (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span>) <span class="t-op">~</span> (<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {

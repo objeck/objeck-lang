@@ -1,0 +1,125 @@
+#~
+Lambdas in an instance method read and write the instance's fields (@x) and name
+the instance (@self), so `@self->Method()` is callable from the body. The lambda
+captures the instance it was created in, so a write inside the lambda is a write to
+the field, a later read in the method sees it, and the reverse. Covers Int, Float,
+Bool, object and array fields, compound assignment, two instances, a lambda that
+outlives every other reference to its instance (GC), and a lambda called many times.
+~#
+use Collection;
+
+class Counter {
+	@count : Int;
+	@ratio : Float;
+	@flag : Bool;
+	@ref : IntRef;
+	@items : Int[];
+	@name : String;
+
+	New(name : String) {
+		@count := 0;
+		@ratio := 0.5;
+		@flag := false;
+		@ref := IntRef->New(100);
+		@items := Int->New[3];
+		@name := name;
+	}
+
+	method : public : Bump() ~ IntRef {
+		@count += 10;
+		return IntRef->New(@count);
+	}
+
+	method : public : GetCount() ~ Int { return @count; }
+	method : public : SetCount(n : Int) ~ Nil { @count := n; }
+	method : public : GetItem(i : Int) ~ Int { return @items[i]; }
+	method : public : GetFlag() ~ Bool { return @flag; }
+
+	# a write inside the lambda is a write to the field
+	method : public : Incrementer() ~ FuncRef<IntRef> {
+		return \() => { @count += 1; return IntRef->New(@count); };
+	}
+
+	# a read inside the lambda sees later writes by the method
+	method : public : Reader() ~ FuncRef<IntRef> {
+		return \() => IntRef->New(@count);
+	}
+
+	# fields of every kind
+	method : public : Mixer() ~ FuncRef<IntRef> {
+		return \() => {
+			@ratio := @ratio * 4.0;
+			@flag := true;
+			@ref->Set(@ref->Get() + 1);
+			@items[1] := @items[1] + 7;
+			return IntRef->New(@ratio->As(Int));
+		};
+	}
+
+	# @self names the instance: an instance method is called through it
+	method : public : Caller() ~ FuncRef<IntRef> {
+		return \() => @self->Bump();
+	}
+
+	method : public : Describe() ~ FuncRef<IntRef> {
+		return \() => IntRef->New(@name->Size());
+	}
+
+	method : public : RefValue() ~ Int { return @ref->Get(); }
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		c := Counter->New("c");
+		inc := c->Incrementer();
+		rd := c->Reader();
+		if(inc()->Get() <> 1) { "FAIL write 1"->PrintLine(); pass := false; };
+		if(inc()->Get() <> 2) { "FAIL write 2"->PrintLine(); pass := false; };
+		if(c->GetCount() <> 2) { "FAIL field after lambda write"->PrintLine(); pass := false; };
+		c->SetCount(50);
+		if(rd()->Get() <> 50) { "FAIL lambda sees method write"->PrintLine(); pass := false; };
+		if(inc()->Get() <> 51) { "FAIL increment after method write"->PrintLine(); pass := false; };
+
+		mix := c->Mixer();
+		if(mix()->Get() <> 2) { "FAIL float field"->PrintLine(); pass := false; };
+		if(mix()->Get() <> 8) { "FAIL float field 2"->PrintLine(); pass := false; };
+		if(<>c->GetFlag()) { "FAIL bool field"->PrintLine(); pass := false; };
+		if(c->RefValue() <> 102) { "FAIL object field"->PrintLine(); pass := false; };
+		if(c->GetItem(1) <> 14) { "FAIL array field"->PrintLine(); pass := false; };
+
+		call := c->Caller();
+		if(call()->Get() <> 61) { "FAIL @self call"->PrintLine(); pass := false; };
+		if(c->GetCount() <> 61) { "FAIL @self call effect"->PrintLine(); pass := false; };
+
+		# two instances do not share a lambda's instance
+		d := Counter->New("d");
+		dinc := d->Incrementer();
+		if(dinc()->Get() <> 1) { "FAIL second instance"->PrintLine(); pass := false; };
+		if(inc()->Get() <> 62) { "FAIL first instance unchanged"->PrintLine(); pass := false; };
+
+		# the lambda keeps its instance alive: drop every other reference, collect, call
+		kept := Counter->New("kept")->Describe();
+		keep := Vector->New()<FuncRef<IntRef>>;
+		each(i : 20000) { keep->AddBack(Counter->New("x")->Incrementer()); };
+		sink := 0;
+		each(i : 200000) { sink += IntRef->New(i)->Get() % 3; };
+		if(kept()->Get() <> 4) { "FAIL GC kept name"->PrintLine(); pass := false; };
+		f7 := keep->Get(7);
+		if(f7()->Get() <> 1) { "FAIL GC keep"->PrintLine(); pass := false; };
+		flast := keep->Get(19999);
+		if(flast()->Get() <> 1) { "FAIL GC keep last"->PrintLine(); pass := false; };
+
+		# many calls
+		total := 0;
+		each(i : 1000) { total += inc()->Get(); };
+		if(c->GetCount() <> 1062) { "FAIL many calls"->PrintLine(); pass := false; };
+
+		if(pass) {
+			"PASS: lambda self and fields"->PrintLine();
+		}
+		else {
+			"FAIL: lambda self and fields"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

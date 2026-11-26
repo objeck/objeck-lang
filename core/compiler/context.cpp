@@ -4132,7 +4132,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     }
 
     // static check
-    if(InvalidStatic(entry)) {
+    if(InvalidStatic(entry) && !CaptureLambdaSelf(variable, entry)) {
       ProcessError(variable, L"Cannot reference an instance variable from this context");
     }
   }
@@ -6445,7 +6445,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     // static check
     if(!is_expr && InvalidStatic(method_call, method)) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context" +
+                   std::wstring(current_method && current_method->IsLambda() ? L"\n\tIn a lambda, call it through the instance: @self->" + method_call->GetMethodName() + L"(..)" : L""));
     }
     
     // cannot create an instance of a virtual class
@@ -7128,7 +7129,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     
     // static check
     if(InvalidStatic(method_call, lib_method)) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context" +
+                   std::wstring(current_method && current_method->IsLambda() ? L"\n\tIn a lambda, call it through the instance: @self->" + method_call->GetMethodName() + L"(..)" : L""));
     }
     
     // cannot create an instance of a virtual class
@@ -11510,6 +11512,53 @@ SymbolEntry* ContextAnalyzer::ResolveCaptureEntry(const std::wstring& name, size
   }
 
   return copy_entry;
+}
+
+/****************************
+ * A lambda written in an instance method may read and write the instance's fields
+ * (@x) and name the instance (@self). It captures the instance it was created in
+ * as one more closure value, the way it captures a local; a field is then loaded
+ * through that copy, so a write is a write to the field, not to a copy of it, and
+ * a later read sees it. Returns false (the caller reports the usual error) when
+ * the use is not inside a lambda directly in an instance method; a lambda inside
+ * a lambda does not capture the instance.
+ ****************************/
+bool ContextAnalyzer::CaptureLambdaSelf(Variable* variable, SymbolEntry* entry)
+{
+  if(!current_method || !current_method->IsLambda() || !capture_lambda || capture_frames.size() != 1) {
+    return false;
+  }
+
+  Method* enclosing = capture_frames[0].method;
+  if(!enclosing || enclosing->IsStatic() || enclosing->IsLambda() ||
+     entry->IsLocal() || entry->IsStatic() || entry->IsClosureEntry()) {
+    return false;
+  }
+
+  SymbolEntry* self_entry = entry->IsSelf() ? entry : GetEntry(SELF_ID);
+  if(!self_entry || !self_entry->IsSelf()) {
+    return false;
+  }
+  self_entry->WasLoaded();
+
+  SymbolEntry* copy_entry = capture_lambda->GetClosure(self_entry);
+  if(!copy_entry) {
+    copy_entry = TreeFactory::Instance()->MakeSymbolEntry(current_method->GetName() + L':' + SELF_ID, self_entry->GetType(), false, false);
+    copy_entry->SetClosureEntry();
+    symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
+    capture_lambda->AddClosure(copy_entry, self_entry);
+  }
+
+  if(entry->IsSelf()) {
+    variable->SetTypes(copy_entry->GetType());
+    variable->SetEntry(copy_entry);
+    copy_entry->AddVariable(variable);
+  }
+  else {
+    variable->SetLambdaSelf(copy_entry);
+  }
+
+  return true;
 }
 
 SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const std::wstring& variable_name, int depth)

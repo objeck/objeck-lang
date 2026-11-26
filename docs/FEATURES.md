@@ -480,10 +480,33 @@ Captures are **by copy**, taken when the lambda is created:
   Rebinding the local (`c := Counter->New();`) does not change which object
   the lambda uses.
 
-Not available in lambda bodies yet: `self`, `@field` access, and calling an
-instance method of the enclosing class without a receiver (`Inc()`), which is
-rejected with "Cannot reference an instance method from this context". Capture
-the object in a local and call through it instead.
+**Fields and `@self` (a lambda in an instance method).** A lambda written in an
+instance method captures the instance it was created in, so its body may read and
+write the instance's fields and name the instance:
+
+```ruby
+# before: copy the field into a local (a later write is not seen), call through a local
+method : Incrementer() ~ FuncRef<IntRef> {
+  me := @self;                       # was not allowed in a lambda
+  ...
+}
+# after
+method : Incrementer() ~ FuncRef<IntRef> {
+  return \() => { @count += 1; return IntRef->New(@count); };
+}
+method : Caller() ~ FuncRef<IntRef> {
+  return \() => @self->Bump();       # an instance method, through the instance
+}
+```
+
+Unlike a captured local, a field is **not** copied: it is read and written through
+the captured instance, so a write in the lambda is a write to the field, the method
+sees it, and the lambda sees the method's later writes. The lambda keeps the
+instance alive. Limits: only a lambda directly in an instance method (not one
+inside another lambda, and not one in a function); an instance method of the class
+is called with `@self->Name(..)`, never as a bare `Name(..)` (still rejected, with
+a message that says so); `@field` inside a `"{$ ...}"` interpolation in a lambda is
+still rejected. Test: `lambda_self_fields`.
 
 ### First-Class Functions
 

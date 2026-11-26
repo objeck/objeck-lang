@@ -387,6 +387,7 @@ std::vector<std::wstring> alt_error_method_names;
   // returns a symbol table entry by name
   SymbolEntry* GetEntry(std::wstring name, bool is_parent = false);
   SymbolEntry* ResolveCaptureEntry(const std::wstring& name, size_t frame_index);
+  bool CaptureLambdaSelf(Variable* variable, SymbolEntry* entry);
   SymbolEntry* ResolveCapturedVariable(const std::wstring& name, ParseNode* node, const int depth);
 
   // returns a symbol table entry by name for a given method
