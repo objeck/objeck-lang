@@ -252,6 +252,9 @@ class ContextAnalyzer {
   };
   std::vector<CaptureFrame> capture_frames;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
+  // the constructor call whose type arguments come from a declared type, and that type
+  MethodCall* expected_new_call;
+  Type* expected_new_type;
   DiagnosticSink diagnostics;
 // the statement, expression or declaration being analyzed: where a name it
   // resolves is written (see CheckAmbiguousUse)
@@ -753,6 +756,12 @@ std::vector<std::wstring> alt_error_method_names;
   bool InferLibraryMethodGenerics(LibraryMethod* method, const std::vector<Expression*> &arguments, const size_t offset,
                                   std::map<std::wstring, Type*> &bindings, std::wstring &error, const int depth);
   Type* BoxedBindingType(Type* type);
+  // type arguments a constructor call leaves out
+  void ExpectNewType(Expression* expression, Type* type, bool is_element);
+  Type* WrittenTypeArgument(Type* type);
+  bool UnifyClassGeneric(Type* param, Type* arg, int arg_dimension, Class* klass, LibraryClass* lib_klass,
+                         std::vector<Type*> &bindings, std::wstring &error);
+  bool InferNewTypeArguments(Class* klass, LibraryClass* lib_klass, MethodCall* method_call, const int depth);
   Type* SubstituteAlong(Type* original, Type* resolved, const std::map<std::wstring, Type*> &bindings);
   Type* LambdaResultType(Lambda* lambda);
   bool ResolveConcatToString(const std::wstring &cls_name, Method* &method, LibraryMethod* &lib_method);
@@ -775,6 +784,8 @@ std::vector<std::wstring> alt_error_method_names;
     current_class = nullptr;
     current_method = nullptr;
     resolve_site = nullptr;
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
     skip_use_check = 0;
     in_use_check = false;
     // initialize linker
