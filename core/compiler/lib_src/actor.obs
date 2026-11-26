@@ -246,9 +246,13 @@ box->Receive(100)->ToString()->PrintLine();  # a
 			return status;
 		}
 
-		# Queues an item past the capacity and the policy. Internal: the actor uses it for DOWN and EXIT
-		# notices, which a full bounded mailbox must not lose (and which must not block the exiting
-		# actor). Fails only when the mailbox is closed.
+		#~
+		Queues an item past the capacity and the policy. Internal: the actor uses it for DOWN and EXIT
+		notices, which a full bounded mailbox must not lose (and which must not block the exiting
+		actor). Fails only when the mailbox is closed.
+		@param item the item, never Nil
+		@return OK, CLOSED, or INVALID for a Nil item
+		~#
 		method : public : SendUrgent(item : System.Base) ~ Mailbox->Status {
 			if(item = Nil) {
 				return Mailbox->Status->INVALID;
@@ -1356,6 +1360,9 @@ a->Join()->ToString()->PrintLine();   # stopped
 			return n;
 		}
 
+		#~
+		Counts an answer that arrived after its caller had given up (GetLateAnswers). Internal: a call's slot reports it.
+		~#
 		method : public : NoteLateAnswer() ~ Nil {
 			critical(@lock) {
 				@late += 1;
@@ -1439,7 +1446,11 @@ a->Join()->ToString()->PrintLine();   # stopped
 			};
 		}
 
-		# the other side of Link: record the link, or deliver the notice at once if this actor ended
+		#~
+		The other side of Link: records the link, or delivers the exit notice at once if this actor has ended.
+		Internal: call Link, not this.
+		@param peer the actor that linked to this one
+		~#
 		method : public : AddLink(peer : Actor) ~ Nil {
 			ended := false;
 			reason : ExitReason;
@@ -1457,7 +1468,11 @@ a->Join()->ToString()->PrintLine();   # stopped
 			};
 		}
 
-		# a linked actor ended
+		#~
+		A linked actor ended. An abnormal end puts an EXIT notice in this actor's mailbox. Internal.
+		@param source the actor that ended
+		@param reason why it ended
+		~#
 		method : public : LinkedExit(source : Actor, reason : ExitReason) ~ Nil {
 			if(reason->IsAbnormal()) {
 				@mailbox->SendUrgent(Mail->Exit(source, reason));
