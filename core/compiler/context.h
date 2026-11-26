@@ -359,6 +359,9 @@ std::vector<std::wstring> alt_error_method_names;
   // returns true if expression is a character string
   bool IsStringExpression(Expression* expression);
 
+  // returns true if expression is a string literal with nothing interpolated or called on it
+  bool IsStringConstant(Expression* expression);
+
   // returns true if entry static context is not valid
   bool DuplicateParentEntries(SymbolEntry* entry, Class* klass);
 

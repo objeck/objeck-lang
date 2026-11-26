@@ -33,7 +33,7 @@
   </header>
   <main id="main" tabindex="-1">
    <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="docs.html">Docs</a></li><li><a href="docs.html#reference">Reference</a></li><li aria-current="page">Third-party dependencies: where each platform gets them, and how to check versions</li></ol></nav>
-  <div class="layout has-side">
+  <div class="layout has-side has-toc">
    <nav class="sidebar" aria-label="Documentation sections">
     <p class="nav-title">Documentation</p><ul><li><a href="docs.html">All documentation</a></li></ul>
     <p class="nav-title">How it works</p><ul><li><a href="doc_architecture_map.html">Architecture map</a></li><li><a href="doc_architecture.html">Objeck Language Architecture</a></li><li><a href="doc_assessment.html">Architecture assessment, November 2026</a></li><li><a href="doc_security.html">The Objeck VM trust model</a></li><li><a href="doc_performance.html">Objeck Performance</a></li></ul>
@@ -67,6 +67,8 @@
       <tr><td data-label="Library">VC runtime</td><td data-label="Windows x64 / ARM64"><code>vcruntime140*.dll</code>, <code>msvcp140*.dll</code>, <code>concrt140.dll</code> copied from the toolset (<code>deploy_windows.cmd</code>)</td><td data-label="Linux x64 / ARM64">—</td><td data-label="macOS ARM64">—</td><td data-label="Used by">every Windows binary</td></tr>
      </tbody>
     </table>
+    <h2 id="mbedtls-and-threads">mbedTLS and threads</h2>
+    <p>mbedTLS protects the state its connections share (the PSA key store that TLS 1.3 uses, a server's private key and random generator) only when it is built with <code>MBEDTLS_THREADING_C</code>. The Debian and Ubuntu packages and the macOS build (<code>core/lib/openssl/macos/mbedtls_config.h</code>) are; vcpkg's default <code>mbedtls</code> port, which the Windows builds link, is not (its <code>pthreads</code> feature turns it on, at the price of shipping pthreads4w). Objeck runs TLS connections on many threads, so the VM checks the macro it was compiled against: without it, every call into mbedTLS is made holding one process-wide lock (<code>TlsLibraryLock</code> in <code>core/vm/common.h</code>), let go while a call waits on the network. That is correct with either kind of library, and on Windows it means the cryptography of concurrent TLS connections runs one at a time. Linking a Windows mbedTLS built with threading (<code>MBEDTLS_THREADING_ALT</code> over SRW locks needs no extra DLL) would lift that with no change to the VM beyond registering the lock functions; <code>programs/regression/tls_concurrent_connections.obs</code> is the test either way.</p>
     <h2 id="checking-what-a-build-actually-used">Checking what a build actually used</h2>
     <ul>
      <li><strong>Windows</strong>: in the CI log's "Install Windows dependencies" step, <code>vcpkg install</code> names each port with its version (<code>mbedtls:x64-windows@&lt;version&gt;</code>). OpenCV x64's version is <code>$opencvVersion</code> in the workflows (and the <code>4120</code> in its DLL name); ONNX Runtime x64's is the NuGet version in <code>core/lib/onnx/vs/packages.config</code>. The vendored DLLs, SDL2 and the ARM64 QNN ONNX Runtime (1.23.0), carry theirs in their file-version resources (<code>(Get-Item SDL2.dll).VersionInfo</code>).</li>
@@ -83,6 +85,10 @@
     <p>A scheduled job that prints these versions into the CI summary would turn step 1 into a glance; it is not built yet.</p>
 <!-- content:end -->
    </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#mbedtls-and-threads">mbedTLS and threads</a></li><li><a href="#checking-what-a-build-actually-used">Checking what a build actually used</a></li><li><a href="#what-audit-means-here">What "audit" means here</a></li></ul>
+   </nav>
   </div>
   </main>
   <footer class="site-footer">

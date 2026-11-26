@@ -1,0 +1,309 @@
+#~
+# TLS connections made at the same time, from several threads, all work
+#
+# A TLS server gives each connection its own thread, and a program may open TLS
+# clients from as many threads as it likes. mbedTLS keeps state those
+# connections share -- the key store every TLS 1.3 handshake uses, and per
+# server the private key and the random generator -- and protects it only when
+# it is built with threading support. The Windows builds link vcpkg's mbedtls,
+# which is not: eight threads connecting to one server in the same process
+# ended with every later handshake failing ("SSL - The handshake negotiation
+# failed", "SSL - Verification of the message MAC failed"), and a server
+# thread spinning for good inside the RSA signature of a handshake, on blinding
+# values two threads had updated at once. One client at a time never showed it,
+# which is all the other TLS tests do; tls_verify_test failed once on a hosted
+# Windows ARM64 runner, in the one place where a new connection's handshake can
+# overlap the server's end of the previous one.
+#
+# The VM now makes every call into a TLS library that cannot protect itself
+# while holding one lock, let go while a call waits on the network.
+#
+# Two stages: raw TLS sockets against a TCPSecureSocketServer, then HttpsClient
+# against Web.HTTP.Server, each from eight threads at once. Every exchange must
+# succeed. The clients' connects and reads are bounded, and a thread gives up
+# after three failures, so a broken build fails here in seconds rather than
+# waiting out read timeouts.
+# EXTRA_LIBS: net,net_server
+~#
+
+use Collection, System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+# one accepted connection: a line in, a line out
+class TlsPong from Thread {
+	New() {
+		Parent("tls-pong");
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := param->As(TCPSecureSocket);
+		client->SetRecvTimeout(15000);
+		line := client->ReadLine();
+		if(line <> Nil & line->Size() > 0) {
+			client->WriteString("pong\r\n");
+		};
+		client->Close();
+	}
+}
+
+class TlsAcceptor from Thread {
+	@server : TCPSecureSocketServer;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-acceptor");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				TlsPong->New()->Execute(client);
+			};
+		};
+	}
+}
+
+# 'count' exchanges with the raw TLS server, one connection each
+class TlsPinger from Thread {
+	@port : Int;
+	@cert : String;
+	@count : Int;
+	@done : Int;
+	@failed : Int;
+	@first : String;
+
+	New(port : Int, cert : String, count : Int) {
+		Parent("tls-pinger");
+		@port := port;
+		@cert := cert;
+		@count := count;
+	}
+
+	method : public : GetDone() ~ Int { return @done; }
+	method : public : GetFailed() ~ Int { return @failed; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : public : Run(param : Base) ~ Nil {
+		for(i := 0; i < @count & @failed < 3; i += 1;) {
+			# ten seconds to connect and to read, twenty for the lot
+			socket := TCPSecureSocket->New("127.0.0.1", @port, @cert, 10000, 10000, 20000);
+			ok := false;
+			stage := "connect";
+			if(socket->IsOpen()) {
+				stage := "read";
+				socket->WriteString("ping\r\n");
+				line := socket->ReadLine();
+				ok := line <> Nil & line->Equals("pong");
+			};
+			if(ok) {
+				@done += 1;
+			}
+			else {
+				@failed += 1;
+				if(@first = Nil) {
+					@first := "{$stage}: {$(TCPSecureSocket->GetLastError())}";
+				};
+			};
+			socket->Close();
+		};
+	}
+}
+
+# 'count' GETs of the HTTPS server
+class HttpsGetter from Thread {
+	@url : String;
+	@cert : String;
+	@count : Int;
+	@done : Int;
+	@failed : Int;
+
+	New(url : String, cert : String, count : Int) {
+		Parent("https-getter");
+		@url := url;
+		@cert := cert;
+		@count := count;
+	}
+
+	method : public : GetDone() ~ Int { return @done; }
+	method : public : GetFailed() ~ Int { return @failed; }
+
+	method : public : Run(param : Base) ~ Nil {
+		for(i := 0; i < @count & @failed < 3; i += 1;) {
+			client := Web.HTTP.HttpsClient->New();
+			client->SetConnectTimeout(10000);
+			client->SetReadTimeout(10000);
+			response := client->Get(Web.HTTP.Url->New(@url), "text/plain", @cert);
+			if(response <> Nil & response->GetCode() = 200) {
+				@done += 1;
+			}
+			else {
+				@failed += 1;
+			};
+		};
+	}
+}
+
+class TlsOkHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class TlsConcurrentConnections {
+	@failed : static : Int;
+	@cert : static : String;
+	@key : static : String;
+
+	function : Cert() ~ String { return @cert; }
+	function : Key() ~ String { return @key; }
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+		@cert := "tls-concurrent-cert-{$(Runtime->GetProcessId())}.pem";
+		@key := "tls-concurrent-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(@cert, @key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			"FAIL: openssl could not create the certificate -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: tls sockets"->ErrorLine();
+		CheckSockets();
+		"stage: https"->ErrorLine();
+		CheckHttps();
+
+		File->Delete(@cert);
+		File->Delete(@key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} concurrent TLS check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: TLS connections made at the same time all work"->PrintLine();
+		# the servers' accept loops never return: end the process
+		Runtime->Exit(0);
+	}
+
+	function : CheckSockets() ~ Nil {
+		server := TCPSecureSocketServer->New(@cert, @key, "", "127.0.0.1", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("sockets: the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+		TlsAcceptor->New(server)->Execute(Nil);
+
+		threads := 8;
+		count := 25;
+		pingers := TlsPinger->New[threads];
+		each(i : threads) {
+			pingers[i] := TlsPinger->New(port, @cert, count);
+		};
+		each(i : threads) {
+			pingers[i]->Execute(Nil);
+		};
+		done := 0;
+		failures := 0;
+		first : String := Nil;
+		each(i : threads) {
+			pingers[i]->Join();
+			done += pingers[i]->GetDone();
+			failures += pingers[i]->GetFailed();
+			if(first = Nil) {
+				first := pingers[i]->GetFirst();
+			};
+		};
+		"sockets: {$done} of {$(threads * count)} exchanges worked, {$failures} failed, first failure '{$first}'"->ErrorLine();
+		Check("sockets: every exchange of {$(threads * count)}, from {$threads} threads at once, works", done = threads * count & failures = 0);
+	}
+
+	function : CheckHttps() ~ Nil {
+		server := Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : Base) ~ Nil {
+				WebServer->ServeSecure(TlsOkHandler->New()->GetClass(), 0, TlsConcurrentConnections->Cert(), TlsConcurrentConnections->Key(), "", false);
+			}
+		};
+		server->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := WebServer->GetBoundPort();
+		Check("https: the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+
+		threads := 8;
+		count := 10;
+		url := "https://localhost:{$port}/ok";
+		getters := HttpsGetter->New[threads];
+		each(i : threads) {
+			getters[i] := HttpsGetter->New(url, @cert, count);
+		};
+		each(i : threads) {
+			getters[i]->Execute(Nil);
+		};
+		done := 0;
+		failures := 0;
+		each(i : threads) {
+			getters[i]->Join();
+			done += getters[i]->GetDone();
+			failures += getters[i]->GetFailed();
+		};
+		"https: {$done} of {$(threads * count)} requests worked, {$failures} failed"->ErrorLine();
+		Check("https: every request of {$(threads * count)}, from {$threads} threads at once, is answered", done = threads * count & failures = 0);
+	}
+}
