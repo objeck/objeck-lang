@@ -4626,6 +4626,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case COND_EXPR:
     EmitConditional(static_cast<Cond*>(expression));
     break;
+
+  case STMT_SEQ_EXPR:
+    EmitSequence(static_cast<SequenceExpression*>(expression));
+    break;
     
   case CHAR_STR_EXPR:
     EmitCharacterString(static_cast<CharacterString*>(expression));
@@ -4840,7 +4844,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // dimension, so the receiver is typed as a scalar and the call resolves
       // to 'System.$Int:Size'. That mistyping is a separate defect -- the
       // hoisted form 'x := t ? p : q; x->Size()' has always answered wrongly.
-      EmitMethodCall(method_call, is_nested || (expression->GetExpressionType() == COND_EXPR && is_instance_call));
+      // a sequence's value is on the stack as a conditional's is
+      EmitMethodCall(method_call, is_nested || ((expression->GetExpressionType() == COND_EXPR ||
+                                                 expression->GetExpressionType() == STMT_SEQ_EXPR) && is_instance_call));
       // subscript on the call result: GetItems()[0]
       EmitCallIndices(method_call);
 
@@ -5583,6 +5589,39 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   // expression end
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, load_type, temp_id, LOCL));
+}
+
+/****************************
+ * Translates statements that run where an expression is evaluated, then loads
+ * the value they left in a hidden local. The enclosing statement is part way
+ * through its own expression, so what it tracks per statement is set aside:
+ * a post-increment it has queued runs after it, not after one of these, and a
+ * string literal it has pushed does not pair with one of theirs.
+ ****************************/
+void IntermediateEmitter::EmitSequence(SequenceExpression* sequence)
+{
+  Statement* outer_statement = current_statement;
+  std::queue<OperationAssignment*> outer_post_statements;
+  outer_post_statements.swap(post_statements);
+  const int outer_char_str_count = new_char_str_count;
+  new_char_str_count = 0;
+
+  const std::vector<Statement*>& statements = sequence->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    EmitStatement(statements[i]);
+  }
+
+  post_statements.swap(outer_post_statements);
+  new_char_str_count = outer_char_str_count;
+  current_statement = outer_statement;
+  cur_line_num = static_cast<Expression*>(sequence)->GetLineNumber();
+
+  EmitExpression(sequence->GetValue());
+  // a cast of the value, as for a variable ('->TypeOf(..)' is emitted by EmitExpression)
+  if(sequence->GetCastType()) {
+    EmitCast(sequence);
+  }
+  EmitClassCast(sequence, true);
 }
 
 /****************************

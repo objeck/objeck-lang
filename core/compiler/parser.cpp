@@ -4502,6 +4502,31 @@ void Parser::TakeTrailingStatements(StatementList* statements, Statement* statem
 }
 
 /****************************
+ * Declares the hidden local '#<what>_<n>' that a SequenceExpression leaves its
+ * value in. Its type is the type of the first value assigned to it. Such an
+ * expression needs a method's frame to hold the local, so it is an error where
+ * there is none.
+ ****************************/
+SymbolEntry* Parser::AddHiddenLocal(const std::wstring& what, std::wstring& ident, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  ident = L'#' + what + L'_' + std::to_wstring(hidden_local_id++);
+  if(!current_method) {
+    ProcessError(L"This expression is only allowed inside a function or method");
+    return nullptr;
+  }
+
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(ident),
+                                                                TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
+  if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
+    return nullptr;
+  }
+
+  return entry;
+}
+
+/****************************
  * Moves the hidden declarations the last statement needs into its list,
  * ahead of it.
  ****************************/

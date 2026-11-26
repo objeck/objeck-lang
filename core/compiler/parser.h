@@ -323,6 +323,8 @@ class Parser {
   Statement* ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth);
   Statement* ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth);
   void TakePendingStatements(StatementList* statements);
+  // the hidden local a SequenceExpression leaves its value in
+  SymbolEntry* AddHiddenLocal(const std::wstring& what, std::wstring& ident, int line_num, int line_pos);
   void TakeTrailingStatements(StatementList* statements, Statement* statement);
   Expression* ParseReferenceArgument(Expression* expression);
   void CheckStatementSeparator(Statement* statement);
