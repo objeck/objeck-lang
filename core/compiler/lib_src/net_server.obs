@@ -1582,7 +1582,9 @@ bundle Web.HTTP.Server {
 			};
 
 			value := @request_headers->Find(name->ToLower())->As(String);
-			value := value ?? @request_headers->Find(name)->As(String);
+			if(value = Nil) {
+				value := @request_headers->Find(name)->As(String);
+			};
 
 			return value;
 		}
