@@ -1247,7 +1247,7 @@ bundle API.MCP {
 	}
 
 	#~
-	Serves a McpService the way "obr --mcp" and "obr --mcp-http=<port>" ask: the VM adds the transport to the program's arguments ("stdio", or "http", the address and the port) and starts the McpMain the compiler writes for a class with an @tool, @resource or @prompt function. A program that writes its own McpMain calls this with its arguments after registering. On standard input and output the protocol owns standard output: anything else the program prints there corrupts it, so log with ErrorLine, which goes to standard error
+	Serves a McpService the way "obr --mcp" and "obr --mcp-http=<port>" ask: the VM adds the transport to the program's arguments ("stdio", or "http", the address and the port) and starts the McpMain the compiler writes for a class with a function tagged tool, resource or prompt. A program that writes its own McpMain calls this with its arguments after registering. On standard input and output the protocol owns standard output: anything else the program prints there corrupts it, so log with ErrorLine, which goes to standard error
 	~#
 	class McpServe {
 		#~
@@ -1284,7 +1284,7 @@ bundle API.MCP {
 	}
 
 	#~
-	A resource URI template such as "weather://{city}/forecast/{days}": reads the variables out of a URI. The compiler writes calls to it for a function marked "@resource"
+	A resource URI template such as "weather://{city}/forecast/{days}": reads the variables out of a URI. The compiler writes calls to it for a function tagged resource
 	~#
 	class McpUriTemplate {
 		#~
