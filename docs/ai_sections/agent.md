@@ -104,6 +104,51 @@ obr agent_demo.obe gemini gemini-2.5-flash "..."
 obr agent_demo.obe ollama llama3.2 "..."
 ```
 
+### Local models with Ollama
+
+`OllamaBackend` runs the same loop on a model served by [Ollama](https://ollama.com): no API key, and no data
+leaves the machine. **Requires a local Ollama server** with a model that supports tool calls
+(`ollama pull qwen3:8b`); it listens on `http://localhost:11434`, and `SetHost("http://host:11434")` points the
+backend at another machine. This program hands an `@tool` function to the model through `McpAgentTools`
+(`programs/examples/guides/agent_local.obs`, compiled with `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent`):
+
+```ruby
+use API.MCP, API.Agent, Collection;
+
+class LocalAgent {
+  #~
+  Add two integers.
+  @tool
+  @readonly
+  ~#
+  function : Add(a : Int, b : Int) ~ Int {
+    return a + b;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("local", "1.0.0");
+    LocalAgent->McpTools(server);
+    client := McpClient->InProcess(server);
+    client->Initialize("local-client", "1.0");
+    registry := ToolRegistry->New();
+    McpAgentTools->AddAll(registry, client);
+
+    agent := Agent->New(OllamaBackend->New("qwen3:8b"), registry);
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(6)->SetMaxWallMs(120000));
+    result := agent->Run("What is 17 plus 25? Use the add tool.");
+    "answer: {$(result->GetText())}"->PrintLine();
+  }
+}
+```
+
+```
+answer: The sum of 17 and 25 is **42**.
+```
+
+The answer's wording varies from run to run; the call `add({"a":17,"b":25})` does not. Set a budget: a small local
+model can loop, and the wall-clock limit is what ends it. Without a server the run fails with the HTTP error in
+`result->GetError()`.
+
 ### What the loop does with a call
 
 `Agent->Run(prompt)` sends the conversation, and for every tool call in the reply it applies these gates in order. Whatever fails becomes an error result the model can read, and the loop carries on, so one bad call does not end the run.

@@ -1,0 +1,39 @@
+#~
+# compile: obc -src mcp_tool.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+# run:     obr --mcp mcp_tool.obe          (an MCP server on standard input and output)
+#          obr --mcp-http=8080 mcp_tool.obe   (the same over HTTP)
+#
+# A function is an MCP tool: the @tool line in its doc comment is the whole declaration.
+# The compiler writes the name (count_words), the JSON Schema and the argument checks.
+# Under --mcp standard output carries the protocol, so the function logs to standard error.
+# Try it by hand, one JSON message per line:
+#   echo {"jsonrpc":"2.0","id":1,"method":"tools/list"} | obr --mcp mcp_tool.obe
+~#
+use API.MCP;
+
+class Notes {
+	#~
+	Count the words in a text.
+	@tool
+	@readonly
+	@param text the text to count
+	~#
+	function : CountWords(text : String) ~ Int {
+		count := 0;
+		in_word := false;
+		each(i : text) {
+			if(text->Get(i) = ' ') {
+				in_word := false;
+			}
+			else if(<>in_word) {
+				in_word := true;
+				count += 1;
+			};
+		};
+		return count;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"serve me with: obr --mcp mcp_tool.obe"->PrintLine();
+	}
+}

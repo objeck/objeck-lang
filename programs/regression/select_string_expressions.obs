@@ -1,0 +1,210 @@
+#~
+# A select on a string takes any string expression, not only a variable or a literal.
+#
+# The compiler turns a string select into an integer one: each label's text is
+# hashed while compiling, and the value is hashed with HashID() when the program
+# runs. It built that HashID() call only for a plain variable. Every other string
+# expression was read as if it were a literal -- the syntax-tree node was cast to
+# a literal whatever it really was -- and the "text" it hashed was whatever bytes
+# lay where a literal keeps its string:
+#
+#   select(GetName())            a call's result: compiled, and took 'other' every
+#                                time on Linux; "internal error: out of memory
+#                                during compilation" on Windows
+#   select(name->Trim())         a variable with a call after it: the compiler
+#                                crashed (SIGSEGV) on Linux
+#   select(flag ? "a" : "b")     "out of memory during compilation"
+#   select("x{$v}")              hashed the text 'x{$v}', not the value
+#   select("B"->ToLower())       hashed "B", ignoring the call
+#
+# The value is now hashed at run time by a HashID() at the end of the expression's
+# call chain, for every string that is not a literal with nothing interpolated and
+# nothing called on it. tools/lsp/server/inline_completion.obs is the program that
+# found this: 'select(GetProvider())' stopped the Windows build of the language
+# server, and on Linux the server built and silently chose no model.
+#
+# Each case below must reach its "hit" label; 'other' is the failure the bug gave.
+~#
+
+class SelectStringExpressions {
+  @name : String;
+
+  New(name : String) {
+    @name := name;
+  }
+
+  method : public : Name() ~ String {
+    return @name;
+  }
+
+  function : Provider() ~ String {
+    return "ollama";
+  }
+
+  function : Check(what : String, got : String, failed : Int) ~ Int {
+    if(got->Equals("hit")) {
+      return failed;
+    };
+
+    "FAIL: {$what}: took '{$got}'"->PrintLine();
+    return failed + 1;
+  }
+
+  # the shape that found it: a return from inside a label, as in a getter
+  function : Model() ~ String {
+    select(Provider()) {
+      label "ollama" { return "hit"; }
+      label "anthropic" { return "anthropic"; }
+      other { return "other"; }
+    };
+
+    return "fell through";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    failed := 0;
+    r : String;
+
+    # an unqualified function call
+    r := "none";
+    select(Provider()) {
+      label "ollama" { r := "hit"; }
+      label "openai" { r := "openai"; }
+      other { r := "other"; }
+    };
+    failed := Check("function call", r, failed);
+
+    # a qualified function call
+    r := "none";
+    select(SelectStringExpressions->Provider()) {
+      label "ollama" { r := "hit"; }
+      label "openai" { r := "openai"; }
+      other { r := "other"; }
+    };
+    failed := Check("qualified function call", r, failed);
+
+    # a method call on an instance
+    who := SelectStringExpressions->New("gemini");
+    r := "none";
+    select(who->Name()) {
+      label "gemini" { r := "hit"; }
+      label "openai" { r := "openai"; }
+      other { r := "other"; }
+    };
+    failed := Check("method call", r, failed);
+
+    # calls chained on a call
+    r := "none";
+    select(who->Name()->ToUpper()->Trim()) {
+      label "GEMINI" { r := "hit"; }
+      label "gemini" { r := "lower"; }
+      other { r := "other"; }
+    };
+    failed := Check("call chain", r, failed);
+
+    # a variable with a call after it
+    padded := "  anthropic ";
+    r := "none";
+    select(padded->Trim()) {
+      label "anthropic" { r := "hit"; }
+      label "  anthropic " { r := "untrimmed"; }
+      other { r := "other"; }
+    };
+    failed := Check("variable with a call", r, failed);
+
+    # an array element with a call after it
+    names := ["  openai ", "ollama"];
+    r := "none";
+    select(names[0]->Trim()) {
+      label "openai" { r := "hit"; }
+      label "ollama" { r := "second"; }
+      other { r := "other"; }
+    };
+    failed := Check("element with a call", r, failed);
+
+    # a conditional
+    local := args->Size() = 0;
+    r := "none";
+    select(local ? "ollama" : "openai") {
+      label "ollama" { r := "hit"; }
+      label "openai" { r := "openai"; }
+      other { r := "other"; }
+    };
+    failed := Check("conditional", r, failed);
+
+    # an interpolated literal: its value, not its text
+    part := "lama";
+    r := "none";
+    select("ol{$part}") {
+      label "ollama" { r := "hit"; }
+      label "ol" { r := "prefix"; }
+      other { r := "other"; }
+    };
+    failed := Check("interpolated literal", r, failed);
+
+    # a literal with a call after it
+    r := "none";
+    select("OLLAMA"->ToLower()) {
+      label "ollama" { r := "hit"; }
+      label "OLLAMA" { r := "uncalled"; }
+      other { r := "other"; }
+    };
+    failed := Check("literal with a call", r, failed);
+
+    # one select inside another, both on calls
+    r := "none";
+    select(Provider()) {
+      label "ollama" {
+        select(who->Name()) {
+          label "gemini" { r := "hit"; }
+          other { r := "inner other"; }
+        };
+      }
+      other { r := "other"; }
+    };
+    failed := Check("nested", r, failed);
+
+    # a value no label names still takes 'other'
+    r := "none";
+    select(who->Name()->ToUpper()) {
+      label "gemini" { r := "lower"; }
+      label "ollama" { r := "ollama"; }
+      other { r := "hit"; }
+    };
+    failed := Check("no label matches", r, failed);
+
+    # a return from inside a label
+    failed := Check("return in a label", Model(), failed);
+
+    # what always worked still does: a variable, a literal, an integer call
+    plain := "openai";
+    r := "none";
+    select(plain) {
+      label "openai" { r := "hit"; }
+      other { r := "other"; }
+    };
+    failed := Check("variable", r, failed);
+
+    r := "none";
+    select("openai") {
+      label "openai" { r := "hit"; }
+      other { r := "other"; }
+    };
+    failed := Check("literal", r, failed);
+
+    r := "none";
+    select(plain->Size()) {
+      label 6 { r := "hit"; }
+      label 4 { r := "four"; }
+      other { r := "other"; }
+    };
+    failed := Check("integer call", r, failed);
+
+    if(failed > 0) {
+      "FAIL: {$failed} select(s) on a string expression chose the wrong label"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: select on string expressions (15 shapes)"->PrintLine();
+  }
+}

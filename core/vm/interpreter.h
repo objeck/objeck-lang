@@ -82,6 +82,17 @@ namespace Runtime {
     // program
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
+    // Threads the program has spawned that have not finished: counted by the
+    // PARENT before the native thread exists (ProcessAsyncMethodCall) and given
+    // back as the child's last act (AsyncMethodCall). intpr_threads alone cannot
+    // answer "has every thread stopped" at exit: a child is absent from it until
+    // it has started and registered, and again while it frees its interpreter.
+    static std::atomic<long> spawned_threads;
+    // Set by HaltAllExcept, under the intpr_threads lock: a thread that registers
+    // after the halt went out is halted as it registers. Cleared when a program
+    // starts (Initialize): obd runs one program after another in a process, and
+    // the halt that ended one run is not meant for the next run's threads.
+    static std::atomic<bool> halting_threads;
 
 #ifdef _WIN32
     static bool is_stdio_binary;
@@ -869,6 +880,9 @@ namespace Runtime {
 #endif
       
       intpr_threads.insert(i);
+      if(halting_threads) {
+        i->Halt();
+      }
       
 #ifdef _WIN32
       LeaveCriticalSection(&intpr_threads_cs);
@@ -917,6 +931,20 @@ namespace Runtime {
       halt = true;
     }
 
+    bool IsHalted() const {
+      return halt.load(std::memory_order_relaxed);
+    }
+
+    // A spawned thread, from before it exists until it has released everything
+    // it owns. See spawned_threads.
+    static void ThreadSpawned() {
+      ++spawned_threads;
+    }
+
+    static void ThreadFinished() {
+      --spawned_threads;
+    }
+
     // Halt every registered interpreter EXCEPT `self`. Used at program teardown
     // so other VM threads (e.g. web-server request workers) stop before the
     // Loader frees the program — otherwise a worker can auto-JIT (PatchCallSites
@@ -928,6 +956,8 @@ namespace Runtime {
 #else
       pthread_mutex_lock(&intpr_threads_mutex);
 #endif
+      // a thread still on its way to AddThread is halted there
+      halting_threads = true;
       for(std::set<StackInterpreter*>::iterator iter = intpr_threads.begin(); iter != intpr_threads.end(); ++iter) {
         if(*iter != self) {
           (*iter)->Halt();
@@ -941,9 +971,16 @@ namespace Runtime {
     }
 
     // Wait (bounded) until only `self` (or nothing) remains registered, i.e.
-    // every other thread has unwound and deregistered (RemoveThread). Returns
-    // true if drained, false on timeout (a worker blocked in a syscall may not
-    // observe Halt; the caller proceeds anyway). Pair with HaltAllExcept.
+    // every other thread has unwound and deregistered (RemoveThread), and every
+    // spawned thread has finished. Returns true if drained, false on timeout (a
+    // worker blocked in a syscall may not observe Halt; the caller proceeds
+    // anyway). Pair with HaltAllExcept.
+    //
+    // The spawned count is what covers a thread that was created moments before
+    // Main returned and has not registered yet. Counting only the registered ones
+    // reported "drained" with such a thread about to start, the program was freed
+    // and the thread then ran its entry method against it: three threads started
+    // and not joined crashed four runs in five.
     static bool WaitForThreadsToDrain(StackInterpreter* self, long timeout_ms) {
       // Measure real elapsed time. Counting iterations and assuming each
       // sleep_for(1ms) costs 1ms overshoots badly on Windows, where the default
@@ -962,7 +999,7 @@ namespace Runtime {
         remaining = intpr_threads.size();
         // self stays registered during Release teardown (RemoveThread is only in
         // the _SANITIZE path), so <= 1 means no other threads remain.
-        const bool only_self = (remaining <= 1);
+        const bool only_self = (remaining <= 1) && spawned_threads.load() == 0;
         (void)self;
 #ifdef _WIN32
         LeaveCriticalSection(&intpr_threads_cs);
