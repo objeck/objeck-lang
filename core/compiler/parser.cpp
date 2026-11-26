@@ -8140,11 +8140,21 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
 
   // A token the scanner rejected is an error even where the parse recovered from it
   // (a malformed literal stands in as a literal): the interpolation is not valid.
-  if(expr_parser.lexical_error_seen) {
+  // So is a syntax error the parser reported and stepped over: '{$n->Size()?}' reads as
+  // a conditional with no branches, and the tree it leaves has a part missing. That
+  // tree used to be handed to the analyzer, which ended the compiler with an access
+  // violation on the missing part.
+  if(expr_parser.lexical_error_seen || expr_parser.diagnostics.HasErrors()) {
     if(reason) {
       const std::vector<Diagnostic> errors = expr_parser.diagnostics.UniqueErrors();
       if(!errors.empty()) {
         *reason = errors[0].message;
+        // the text the scanner was given is the interpolation, not the file
+        const std::wstring end_of_file = L"end of file";
+        const size_t at = reason->find(end_of_file);
+        if(at != std::wstring::npos) {
+          reason->replace(at, end_of_file.size(), L"the end of the interpolation");
+        }
       }
     }
     delete expr_scanner;
