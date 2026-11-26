@@ -46,6 +46,31 @@ REM included.
 
 if not exist "%RESULTS_DIR%" mkdir "%RESULTS_DIR%"
 
+REM REGRESSION_SHARD=i/n runs every nth test starting at the ith (0-based), so the suite can run
+REM as n jobs side by side (ci-windows.yml does); it is the same rule as run_regression.sh. Unset,
+REM every test runs. The tests of this run are written to %SHARD_LIST%, one name to a line, so the
+REM CI job can count what the run was meant to cover.
+set SHARD_INDEX=0
+set SHARD_COUNT=
+set SHARD_LIST=%RESULTS_DIR%\_shard_tests.txt
+if defined REGRESSION_SHARD (
+    for /f "tokens=1,2 delims=/" %%a in ("%REGRESSION_SHARD%") do (
+        set SHARD_INDEX=%%a
+        set SHARD_COUNT=%%b
+    )
+    set SHARD_BAD=
+    if not defined SHARD_COUNT set SHARD_BAD=1
+    echo !SHARD_INDEX!!SHARD_COUNT!| findstr /R "^[0-9][0-9]*$" >nul 2>&1 || set SHARD_BAD=1
+    if not defined SHARD_BAD (
+        if !SHARD_COUNT! lss 1 set SHARD_BAD=1
+        if !SHARD_INDEX! geq !SHARD_COUNT! set SHARD_BAD=1
+    )
+    if defined SHARD_BAD (
+        echo REGRESSION_SHARD must be i/n with 0 ^<= i ^< n, got '%REGRESSION_SHARD%'
+        exit /b 2
+    )
+)
+if defined SHARD_COUNT echo   Shard: !SHARD_INDEX! of !SHARD_COUNT!
 set PASS_COUNT=0
 set FAIL_COUNT=0
 set SKIP_COUNT=0
@@ -96,7 +121,19 @@ set WATCHDOG_RUNNING=%RESULTS_DIR%\_watchdog_running
 echo %TEST_TIMEOUT% > "%WATCHDOG_RUNNING%"
 start /b "" powershell -NoProfile -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_watchdog.ps1" %TEST_TIMEOUT% "%ABS_VM%" "%REGRESSION_DIR%\%TIMED_OUT_FILE%" "%REGRESSION_DIR%\%WATCHDOG_RUNNING%" >nul 2>&1
 
-for %%f in (*.obs) do (
+type nul > "%SHARD_LIST%"
+set TEST_INDEX=0
+for /f "delims=" %%t in ('dir /b /a-d *.obs') do (
+    set SHARD_TAKE=1
+    if defined SHARD_COUNT (
+        set /a SHARD_REM=!TEST_INDEX! %% !SHARD_COUNT!
+        if not !SHARD_REM! equ !SHARD_INDEX! set SHARD_TAKE=
+    )
+    set /a TEST_INDEX+=1
+    if defined SHARD_TAKE >>"%SHARD_LIST%" echo %%t
+)
+
+for /f "usebackq delims=" %%f in ("%SHARD_LIST%") do (
     echo Running: %%~nf...
 
     REM Build library list: base libs + any EXTRA_LIBS from test file
