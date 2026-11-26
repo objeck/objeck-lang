@@ -1,6 +1,6 @@
 # Agent syntax: typed results, prompt literals, agent declarations, scoped limits
 
-FEATURE FREEZE for v2026.11.4 (2026-11-26): typed results (section 1, `class Name : json`) are DEFERRED past 11.4 (draft work on branch feat/typed-json-results); `prompt` literals and `agent` declarations stay deferred; only `AgentScope` (section 4) ships in 11.4.
+Release scope (2026-11-26, final): typed results (section 1, `class Name : json`, PR #1841) and scoped limits (section 4, `AgentScope`, merged in #1837) are IN v2026.11.4; `prompt` literals (section 2) and `agent` declarations (section 3) stay DEFERRED until after the release. The as-built design of section 1 is in the notes of PR #1841.
 
 Status, decisions of 2026-11-26: (1) typed results use the opt-in `class : json` modifier, no call-site type arguments, built on the MCP derivation once #1819-#1822 are in master; (4) scoped limits are a LIBRARY call, `AgentScope` (implemented, section 4); `prompt` literals (2) and `agent` declarations (3) are DEFERRED until after v2026.11.4. Part of v2026.11.4 per the maintainer. Composes with the MCP
 stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md` on those branches) and does not redo `@tool`.
