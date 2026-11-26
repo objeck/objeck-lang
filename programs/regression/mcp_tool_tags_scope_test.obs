@@ -6,7 +6,8 @@ value, before the fix it guards:
 
 - an enum declared in a class, taken by a tagged function of another class as 'Palette->Color': the compiler holds
   the name as 'Palette#Color', and written back that way the '#' started a comment in the generated function
-  ("Expected '{', found end of file"); also as a field of a record;
+  ("Expected '{', found end of file"); also as a field of a record, and an enum of the function's own class,
+  by its short name;
 - a String default with escapes: the literal was escaped a second time, so the tool call got a backslash and an 'n'
   where the function called directly gets a newline; a default with a '$' got a backslash before it;
 - a record and an enum declared BELOW the class whose tagged function takes them: the tools were derived when the
@@ -36,6 +37,22 @@ bundle Scope {
 	}
 
 	class Tools {
+		enum Level {
+			LOW,
+			HIGH
+		}
+
+		#~
+		Rank a level.
+		@tool
+		~#
+		function : Rank(level : Level) ~ Int {
+			if(level = Level->HIGH) {
+				return 2;
+			};
+			return 1;
+		}
+
 		#~
 		Name a color.
 		@tool
@@ -166,7 +183,7 @@ bundle Scope {
 			client := McpClient->InProcess(server);
 			Check(client->Initialize("scope-test", "1.0"), "the client initializes");
 			tools := client->ListTools();
-			Check(tools->Size() = 12, "12 tools");
+			Check(tools->Size() = 13, "13 tools");
 
 			# ---- an enum declared in another class ----
 			paint := Find(tools, "paint");
@@ -177,6 +194,8 @@ bundle Scope {
 			Check(Call(client, "paint", "{\"color\":\"GREEN\"}")->Equals("green"), "the second item");
 			Check(Call(client, "paint", "{\"color\":\"BLUE\"}")->Equals("blue"), "the third item");
 			Check(Call(client, "stroke", "{\"brush\":{\"color\":\"GREEN\",\"width\":3}}")->Equals("green/3"), "a record with a field of that enum");
+
+			Check(Call(client, "rank", "{\"level\":\"LOW\"}")->Equals("1") & Call(client, "rank", "{\"level\":\"HIGH\"}")->Equals("2"), "an enum of the function's own class, by its short name");
 
 			# ---- a record and an enum declared below this class ----
 			Check(Call(client, "sum", "{\"p\":{\"x\":3,\"y\":4},\"mode\":\"PLAIN\"}")->Equals("7"), "a record and an enum declared below the class");
