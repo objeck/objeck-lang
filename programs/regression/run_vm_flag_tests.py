@@ -2626,6 +2626,65 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
             check(f"signal storm {jit}: handlers ran",
                   seen is not None and int(seen.group(1)) > 0, f"out={out[-200:]!r}")
 
+    # ---- the dispatcher is started once --------------------------------------------
+    # Eight threads register their first SIGINT and SIGTERM handlers at the same moment.
+    # Two that both found the dispatcher missing each made a wake-up pipe and a thread;
+    # the first pipe and its thread were left behind. The process must end up with one
+    # pipe (two descriptors) and one thread beyond main, every time. Linux only: the
+    # count is read from /proc. Standard streams are files here, so no pipe is theirs.
+    if sys.platform.startswith("linux"):
+        worst_pipes, worst_threads, failed_runs = 0, 0, ""
+        for attempt in range(40):
+            with tempfile.TemporaryDirectory() as scratch:
+                ready = os.path.join(scratch, "ready")
+                with open(os.path.join(scratch, "out"), "wb") as out_file:
+                    proc = subprocess.Popen([obr, dest, "race", ready], env=env, cwd=SCRIPT_DIR,
+                                            stdin=subprocess.DEVNULL, stdout=out_file, stderr=subprocess.STDOUT)
+                    deadline = time.time() + 60
+                    while not os.path.exists(ready) and proc.poll() is None and time.time() < deadline:
+                        time.sleep(0.005)
+                    pipes, threads = -1, -1
+                    if os.path.exists(ready) and proc.poll() is None:
+                        fd_dir = f"/proc/{proc.pid}/fd"
+                        pipes = 0
+                        for fd in os.listdir(fd_dir):
+                            try:
+                                if os.readlink(os.path.join(fd_dir, fd)).startswith("pipe:"):
+                                    pipes += 1
+                            except OSError:
+                                pass
+                        threads = len(os.listdir(f"/proc/{proc.pid}/task"))
+                        os.remove(ready)
+                    try:
+                        proc.wait(timeout=60)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                with open(os.path.join(scratch, "out"), "rb") as out_file:
+                    text = out_file.read()
+                if proc.returncode != 0 or b"PASS: signal_dispatch race" not in text or pipes < 0:
+                    failed_runs = f"run {attempt}: rc={proc.returncode} pipes={pipes} out={text[-200:]!r}"
+                    break
+                worst_pipes = max(worst_pipes, pipes)
+                worst_threads = max(worst_threads, threads)
+        check("signal handlers registered by eight threads at once: every run finishes", not failed_runs, failed_runs)
+        check(f"signal handlers registered by eight threads at once: one wake-up pipe (most descriptors seen: {worst_pipes})",
+              not failed_runs and worst_pipes == 2)
+        check(f"signal handlers registered by eight threads at once: one dispatcher thread (most threads seen: {worst_threads})",
+              not failed_runs and worst_threads == 2)
+
+    # ---- no dispatcher, no handler ---------------------------------------------------
+    # OBJECK_SIGNAL_TEST_FAULT makes the wake-up, or the dispatcher thread, fail to
+    # start. SetSignal for SIGINT/SIGTERM then fails and says so; it used to go on and
+    # install a handler that ran the Objeck method inside the OS signal handler.
+    for stage in ("wake", "thread"):
+        fault_env = dict(env)
+        fault_env["OBJECK_SIGNAL_TEST_FAULT"] = stage
+        rc, out, err = run([obr, dest], env=fault_env, cwd=SCRIPT_DIR)
+        check(f"signal dispatcher cannot start ({stage}): SetSignal fails and says why",
+              rc != 0 and b"Unable to start the signal dispatcher" in err and b"PASS: signal_dispatch" not in out,
+              f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):
     # ---- every VM-initiated exit flushes what the program printed ------------------

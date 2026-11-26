@@ -215,7 +215,11 @@ static std::atomic<unsigned> pending_signals(0);   // bit 0: SIGINT, bit 1: SIGT
 static_assert(std::atomic<unsigned>::is_always_lock_free, "the signal handler needs a lock-free flag word");
 static thread_local bool raised_from_vm = false;   // inside Runtime->RaiseSignal on this thread
 static std::mutex signal_table_lock;               // guards signal_handler_func for the dispatcher
-static bool signal_dispatch_ready = false;         // the dispatcher thread and its wake-up exist
+// The dispatcher thread and its wake-up exist. Read by the signal handler, so a lock-free atomic; set
+// once, under signal_dispatch_start_lock, after the wake-up is published and the thread has started.
+static std::atomic<bool> signal_dispatch_ready(false);
+static_assert(std::atomic<bool>::is_always_lock_free, "the signal handler needs a lock-free ready flag");
+static std::mutex signal_dispatch_start_lock;      // one thread at a time starts the dispatcher
 // Shutdown handshake. The dispatcher thread outlives the program's main thread, and a handler it starts
 // after the VM has begun to tear the program down would run against freed classes and JIT code. A handler
 // is counted in BEFORE it checks the flag and the stopper sets the flag BEFORE it looks at the count, so
@@ -243,17 +247,22 @@ static void QueueSignal(unsigned bit)
 #endif
 }
 
-// the VM thread that runs queued signals' Objeck handlers
-static void SignalDispatchLoop()
+// the VM thread that runs queued signals' Objeck handlers; 'wake' is its end of the wake-up (the event,
+// or the pipe's read end), handed over by value so the thread never reads a global that is being set
+#ifdef _WIN32
+static void SignalDispatchLoop(HANDLE wake)
+#else
+static void SignalDispatchLoop(int wake)
+#endif
 {
   for(;;) {
 #ifdef _WIN32
-    if(WaitForSingleObject(signal_wake_event, INFINITE) != WAIT_OBJECT_0) {
+    if(WaitForSingleObject(wake, INFINITE) != WAIT_OBJECT_0) {
       return;
     }
 #else
     char drain[64];
-    const ssize_t count = read(signal_wake_pipe[0], drain, sizeof(drain));
+    const ssize_t count = read(wake, drain, sizeof(drain));
     if(count < 0 && errno == EINTR) {
       continue;
     }
@@ -281,45 +290,86 @@ static void SignalDispatchLoop()
   }
 }
 
-// creates the wake-up and starts the dispatcher once; false leaves signals inline
+// Test hook: OBJECK_SIGNAL_TEST_FAULT=wake makes the wake-up fail to be created and =thread makes the
+// dispatcher thread fail to start, the two failures StartSignalDispatch has to survive and that cannot
+// otherwise be produced on demand. Read only while the dispatcher is being started.
+static bool SignalDispatchFault(const char* stage)
+{
+#ifdef _WIN32
+  char value[16] = {0};
+  size_t len = 0;
+  return !getenv_s(&len, value, sizeof(value), "OBJECK_SIGNAL_TEST_FAULT") && !strcmp(value, stage);
+#else
+  const char* value = std::getenv("OBJECK_SIGNAL_TEST_FAULT");
+  return value && !strcmp(value, stage);
+#endif
+}
+
+// Creates the wake-up and starts the dispatcher, once. Two VM threads registering their first SIGINT
+// and SIGTERM handlers at the same moment both found the dispatcher missing and each made a wake-up and
+// a thread: the first pipe (or event) and its thread were left behind, and the globals were written by
+// two threads at once. One thread at a time now, and the wake-up and the ready flag are published only
+// after the thread has started. False means there is no dispatcher and nothing is left open: the caller
+// must not install an operating-system handler for SIGINT or SIGTERM (see AddSignalHandler).
 static bool StartSignalDispatch()
 {
-  if(signal_dispatch_ready) {
+  std::lock_guard<std::mutex> guard(signal_dispatch_start_lock);
+  if(signal_dispatch_ready.load()) {
     return true;
   }
 #ifdef _WIN32
-  signal_wake_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-  if(!signal_wake_event) {
+  HANDLE wake_event = SignalDispatchFault("wake") ? nullptr : CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  if(!wake_event) {
     return false;
   }
 #else
-  if(pipe(signal_wake_pipe) != 0) {
+  int wake_pipe[2] = {-1, -1};
+  if(SignalDispatchFault("wake") || pipe(wake_pipe) != 0) {
     return false;
   }
   // close-on-exec is best effort: a pipe end inherited across exec is harmless, so a failure here is tolerated
   // (Coverity CID 1689664). The write end MUST be non-blocking: the signal handler writes to it, and a blocking
   // write there could hang the process, so a failure to set that flag fails the dispatcher like pipe() does.
   for(int i = 0; i < 2; ++i) {
-    const int fd_flags = fcntl(signal_wake_pipe[i], F_GETFD);
+    const int fd_flags = fcntl(wake_pipe[i], F_GETFD);
     if(fd_flags != -1) {
-      (void)fcntl(signal_wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
+      (void)fcntl(wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
     }
   }
-  const int status_flags = fcntl(signal_wake_pipe[1], F_GETFL);
-  if(status_flags == -1 || fcntl(signal_wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
-    close(signal_wake_pipe[0]);
-    close(signal_wake_pipe[1]);
-    signal_wake_pipe[0] = signal_wake_pipe[1] = -1;
+  const int status_flags = fcntl(wake_pipe[1], F_GETFL);
+  if(status_flags == -1 || fcntl(wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
+    close(wake_pipe[0]);
+    close(wake_pipe[1]);
     return false;
   }
 #endif
+  // a thread that cannot be started leaves no wake-up behind (the pipe or event leaked before)
   try {
-    std::thread(SignalDispatchLoop).detach();
+    if(SignalDispatchFault("thread")) {
+      throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+    }
+#ifdef _WIN32
+    std::thread(SignalDispatchLoop, wake_event).detach();
+#else
+    std::thread(SignalDispatchLoop, wake_pipe[0]).detach();
+#endif
   }
   catch(const std::system_error&) {
+#ifdef _WIN32
+    CloseHandle(wake_event);
+#else
+    close(wake_pipe[0]);
+    close(wake_pipe[1]);
+#endif
     return false;
   }
-  signal_dispatch_ready = true;
+#ifdef _WIN32
+  signal_wake_event = wake_event;
+#else
+  signal_wake_pipe[0] = wake_pipe[0];
+  signal_wake_pipe[1] = wake_pipe[1];
+#endif
+  signal_dispatch_ready.store(true);
   return true;
 }
 
@@ -350,13 +400,19 @@ StackMethod* StackProgram::FindSignalHandler(long key)
 
 bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 {
+  // SIGINT and SIGTERM arrive from outside at any moment, and their Objeck handler can only run safely on
+  // the dispatcher thread. Without one (no pipe or event, no thread) the handler is NOT registered and
+  // the signal keeps the disposition it had: this used to ignore the failure and install the handler
+  // anyway, which then ran the method inside the operating system's handler, where an allocation or a
+  // lock can deadlock the thread it interrupted. The trap fails, as for a signal id that does not exist.
+  if((signal_id == VM_SIGINT || signal_id == VM_SIGTERM) && !StartSignalDispatch()) {
+    std::wcerr << L">>> Unable to start the signal dispatcher: no handler was set for signal " << signal_id << L" <<<" << std::endl;
+    return false;
+  }
+
   {
     std::lock_guard<std::mutex> guard(signal_table_lock);
     signal_handler_func.insert(std::make_pair(signal_id, mthd));
-  }
-
-  if(signal_id == VM_SIGINT || signal_id == VM_SIGTERM) {
-    StartSignalDispatch();
   }
 
   switch(signal_id) {
