@@ -136,7 +136,7 @@
   "mcp": {
    "deps": ["json", "net", "net_server", "cipher", "misc"],
    "bundles": {
-    "API.MCP": ["McpCall", "McpClient", "McpCollector", "McpCommandTransport", "McpContents", "McpHttpHandler", "McpHttpTransport", "McpLoopback", "McpPrompt", "McpPromptResult", "McpProtocol", "McpResource", "McpService", "McpSink", "McpStdio", "McpStdoutSink", "McpStubGenerator", "McpTool", "McpToolBridge", "McpToolResult", "McpToolSpec", "McpTransport"]
+    "API.MCP": ["McpCall", "McpClient", "McpCollector", "McpCommandTransport", "McpContents", "McpHttpHandler", "McpHttpTransport", "McpLoopback", "McpPrompt", "McpPromptResult", "McpProtocol", "McpResource", "McpService", "McpSink", "McpStdio", "McpStdoutSink", "McpStubGenerator", "McpTool", "McpToolBridge", "McpToolResult", "McpToolSpec", "McpTransport", "McpUriTemplate"]
    }
   },
   "mcp_agent": {
