@@ -105,6 +105,11 @@ void Loader::LoadImage()
 
   int i;
 
+  // obr --mcp / --mcp-http (vm_options.h set OBJECK_MCP): the transport goes in front of the program's
+  // arguments, for the McpMain the compiler wrote (or the program did) to read. Without the flag the
+  // variable is absent and nothing here runs beyond this one lookup.
+  const bool mcp_launch = ReadMcpLaunch();
+
   //
   // read float strings
   //
@@ -251,6 +256,9 @@ void Loader::LoadImage()
 #endif
 
   LoadClasses();
+  if(mcp_launch) {
+    SelectMcpEntry();
+  }
   Verify();
   
   const std::wstring name = L"$Initialization$:";
@@ -562,6 +570,103 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
   }
 
   return dclrs;
+}
+
+// The OBJECK_MCP launch request, "stdio" or "http <host> <port>": adds its words to the program's
+// arguments, first. True when there was one.
+bool Loader::ReadMcpLaunch()
+{
+  std::wstring request;
+#ifdef _WIN32
+  wchar_t buffer[512];
+  size_t length = 0;
+  if(_wgetenv_s(&length, buffer, 512, L"OBJECK_MCP") == 0 && length > 1) {
+    request = buffer;
+  }
+#else
+  const char* value = getenv("OBJECK_MCP");
+  if(value && *value) {
+    request = BytesToUnicode(value);
+  }
+#endif
+  if(request.empty()) {
+    return false;
+  }
+
+  std::vector<std::wstring> words;
+  size_t start = 0;
+  while(start <= request.size()) {
+    size_t end = request.find(L' ', start);
+    if(end == std::wstring::npos) {
+      end = request.size();
+    }
+    words.push_back(request.substr(start, end - start));
+    start = end + 1;
+  }
+  arguments.insert(arguments.begin(), words.begin(), words.end());
+  return true;
+}
+
+// Starts the program at its McpMain(args : String[]) instead of its Main: the function the compiler writes
+// into a class that has an '@tool', '@resource' or '@prompt' function, or one the program defines itself
+// (which wins: it can register several classes). Exactly one must exist, because a second would be a
+// second server.
+void Loader::SelectMcpEntry()
+{
+  StackClass** classes = program->GetClasses();
+  const int count = (int)program->GetClassNumber();
+  std::vector<std::pair<int, int> > own;        // a function the program wrote: McpMain
+  std::vector<std::pair<int, int> > generated;  // the compiler's: McpMain_<class>
+  std::vector<std::wstring> where;
+  const std::wstring params = L":o.System.String*,";
+  for(int i = 0; i < count; ++i) {
+    StackClass* cls = classes[i];
+    if(!cls) {
+      continue;
+    }
+    StackMethod** methods = cls->GetMethods();
+    for(int j = 0; j < cls->GetMethodCount(); ++j) {
+      StackMethod* method = methods[j];
+      const std::wstring& name = method ? method->GetName() : std::wstring();
+      // "Class:McpMain:o.System.String*," and "Class:McpMain_Class:o.System.String*,", a function taking the argument array
+      if(name.size() <= params.size() || name.compare(name.size() - params.size(), params.size(), params) != 0) {
+        continue;
+      }
+      const size_t colon = name.find(L':');
+      if(colon == std::wstring::npos) {
+        continue;
+      }
+      const std::wstring entry = name.substr(colon + 1, name.size() - params.size() - colon - 1);
+      if(entry == L"McpMain") {
+        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
+        where.push_back(cls->GetName());
+      }
+      else if(entry.compare(0, 8, L"McpMain_") == 0) {
+        generated.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
+        where.push_back(cls->GetName());
+      }
+    }
+  }
+
+  // a McpMain the program wrote wins over the generated ones: it can register several classes
+  std::vector<std::pair<int, int> >& found = own.empty() ? generated : own;
+  if(found.empty()) {
+    error << L"obr --mcp: " << filename << L" has nothing to serve." << std::endl
+          << L"	Mark a function with '@tool', '@resource' or '@prompt' in its doc comment (and link -lib mcp)," << std::endl
+          << L"	or write 'function : McpMain(args : String[]) ~ Nil' that registers and serves." << std::endl;
+    LoadFailed();
+  }
+  if(found.size() > 1) {
+    error << L"obr --mcp: " << filename << L" has " << found.size() << (own.empty() ? L" servers (one for each class with a tagged function):" : L" McpMain functions:");
+    for(size_t i = 0; i < where.size(); ++i) {
+      error << L" " << where[i];
+    }
+    error << std::endl << L"	Serve them from one: write 'function : McpMain(args : String[]) ~ Nil' in one class that calls" << std::endl
+          << L"	each class's McpTools(server) and then API.MCP.McpServe->Run(server, args)." << std::endl;
+    LoadFailed();
+  }
+  start_class_id = found[0].first;
+  start_method_id = found[0].second;
 }
 
 void Loader::LoadMethods(StackClass* cls, bool is_debug)

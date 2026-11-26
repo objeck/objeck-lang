@@ -119,6 +119,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\agent.obs ^
 	%LIB_SRC%\actor_agents.obs ^
 	%LIB_SRC%\mcp.obs ^
+	%LIB_SRC%\mcp_agent.obs ^
 	%LIB_SRC%\rag.obs ^
 	%LIB_SRC%\rag_adapters.obs ^
 	%LIB_SRC%\models.obs ^

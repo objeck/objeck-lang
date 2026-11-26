@@ -1,0 +1,77 @@
+#~
+Uses a generated stub (WeatherClient.golden, written by mcp_stubs from weather_server.obs) against the
+weather server, which this program starts once per request (McpClient->Command). Compiled together with
+the stub by mcp_stubs_test.py: the calls below are checked by the compiler, which is the point. Pass the
+server command as the argument.
+
+  obc -src use_stub.obs,WeatherClient.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp -dest use_stub.obe
+  obr use_stub.obe "obr weather_server.obe --stdio"
+~#
+use API.MCP, Data.JSON;
+
+class UseStub {
+	@pass : static : Int;
+	@fail : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		client := McpClient->Command(args[0]);
+		if(<>client->Initialize("use-stub", "1.0")) {
+			"FAIL: could not reach the server"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		weather := WeatherClient->New(client);
+
+		text := weather->Forecast("Denver");
+		Check(text <> Nil & text->Equals("Denver: 3 days, 21C"), "Forecast(city): the optional parameters take the server's defaults");
+		text := weather->Forecast("Denver", 5, "imperial");
+		Check(text <> Nil & text->Equals("Denver: 5 days, 70F"), "Forecast(city, days, units): the typed call reaches the server");
+		text := weather->Convert([1.5, 2.5, 3.0], 2.0);
+		Check(text <> Nil & text->Has("14"), "Convert(Float[], Float): an array of numbers");
+		names := String->New[2];
+		names[0] := "wind";
+		names[1] := "rain";
+		text := weather->Describe("Hill", true, names);
+		Check(text <> Nil & text->Equals("Hill active=true tags=2 options=false"), "Describe(String, Bool, String[]): a Bool and an array");
+		options := JsonParser->TextToElement("{\"depth\":3}");
+		text := weather->Describe("Hill", false, names, options);
+		Check(text <> Nil & text->Has("options=true"), "Describe(..., JsonElement): a JSON argument");
+
+		structured := weather->LookupJson("Denver");
+		Check(structured <> Nil & structured->Get("population")->GetInt() = 715522 & structured->Get("capital")->GetType() = JsonElement->JsonType->TRUE, "LookupJson returns the structured result");
+		text := weather->Lookup("Denver");
+		Check(text <> Nil & text->Has("715522"), "Lookup returns its text");
+
+		text := weather->Erase("cache");
+		Check(text <> Nil & text->Equals("erased cache"), "a destructive tool is an ordinary method here: the stub does not ask, the agent does");
+
+		text := weather->Broken();
+		Check(text = Nil & weather->GetError()->Equals("the weather service is down"), "isError gives Nil and the reason in GetError()");
+		text := weather->Forecast("Oslo");
+		Check(text <> Nil & weather->GetError() = Nil, "a call that works clears GetError()");
+
+		bad := McpClient->Command("objeck_no_such_command_xyz");
+		stub := WeatherClient->New(bad);
+		Check(stub->Forecast("x") = Nil & stub->GetError() <> Nil, "a server that cannot be reached gives Nil and a reason");
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: stub use, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: stub use, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

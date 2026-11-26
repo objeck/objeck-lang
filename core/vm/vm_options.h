@@ -86,6 +86,14 @@ namespace Runtime {
     // native/ to it for libobjk_*, reads cacert.pem from it, and reports it
     // as the lib_dir runtime property.
     std::wstring lib_path;
+    // From --mcp / --mcp-http: serve the program's MCP tools, resources and prompts
+    // instead of running its Main (docs/design/MCP_FIRST_CLASS.md, Stage 3).
+    // 0 = not asked, 1 = standard input and output, 2 = streamable HTTP.
+    int mcp_mode = 0;
+    // --mcp-http=<port>, 0 to 65535 (0: any free port, which the server reports)
+    long mcp_port = 0;
+    // --mcp-http-host=<address>, default 127.0.0.1
+    std::wstring mcp_host;
     // Leading argv entries the VM used for itself; the rest go to the program.
     int consumed = 0;
     // Non-empty means refuse to run and print this followed by the usage.
@@ -350,6 +358,64 @@ namespace Runtime {
       }
     }
 
+    // --mcp, --mcp=stdio, --mcp-http=<port>, --mcp-http-host=<address>
+    //
+    // A bare "--mcp" followed by the program is read by the command line parser as
+    // "--mcp=<program>" (a flag takes the next word as its value); the VM then still
+    // counts one entry, which is exactly the flag, so the program is where it
+    // should be. A value other than "stdio" is therefore taken to be the program.
+    {
+      const std::vector<std::wstring> names = {L"mcp"};
+      if(HasCommandLineArgumentWithAliases(args, names)) {
+        ++opts.consumed;
+        const std::wstring value = GetCommandLineArgumentWithAliases(args, names, L"");
+        if(value == L"http") {
+          opts.error = L"--mcp: serves standard input and output; use --mcp-http=<port> for HTTP";
+          return opts;
+        }
+        opts.mcp_mode = 1;
+      }
+      const std::vector<std::wstring> http_names = {L"mcp-http"};
+      if(HasCommandLineArgumentWithAliases(args, http_names)) {
+        ++opts.consumed;
+        const std::wstring value = GetCommandLineArgumentWithAliases(args, http_names, L"");
+        long port = 0;
+        bool ok = !value.empty() && value.size() <= 5;
+        for(wchar_t c : value) {
+          if(c < L'0' || c > L'9') { ok = false; break; }
+          port = port * 10 + (c - L'0');
+        }
+        if(!ok || port > 65535) {
+          opts.error = L"--mcp-http: expected a port from 0 to 65535, got '" + value + L"'";
+          return opts;
+        }
+        if(opts.mcp_mode == 1) {
+          opts.error = L"--mcp and --mcp-http choose different transports; give one";
+          return opts;
+        }
+        opts.mcp_mode = 2;
+        opts.mcp_port = port;
+      }
+      const std::vector<std::wstring> host_names = {L"mcp-http-host"};
+      if(HasCommandLineArgumentWithAliases(args, host_names)) {
+        ++opts.consumed;
+        const std::wstring value = GetCommandLineArgumentWithAliases(args, host_names, L"");
+        if(opts.mcp_mode != 2) {
+          opts.error = L"--mcp-http-host: only with --mcp-http=<port>";
+          return opts;
+        }
+        bool ok = !value.empty();
+        for(wchar_t c : value) {
+          if(c <= L' ') { ok = false; break; }
+        }
+        if(!ok) {
+          opts.error = L"--mcp-http-host: expected an address such as 127.0.0.1 or 0.0.0.0, got '" + value + L"'";
+          return opts;
+        }
+        opts.mcp_host = value;
+      }
+    }
+
     return opts;
   }
 
@@ -388,6 +454,20 @@ namespace Runtime {
     }
     if(opts.thread_faults >= 0) {
       SetThreadFaults(opts.thread_faults == 1);
+    }
+    // The loader reads this: it adds the transport to the program's arguments and
+    // starts the program's McpMain instead of its Main (loader.cpp). Nothing else
+    // reads it, so a run without the flag is not touched.
+    if(opts.mcp_mode != 0) {
+      std::wstring value = L"stdio";
+      if(opts.mcp_mode == 2) {
+        value = L"http " + (opts.mcp_host.empty() ? std::wstring(L"127.0.0.1") : opts.mcp_host) + L" " + std::to_wstring(opts.mcp_port);
+      }
+#ifdef _WIN32
+      _wputenv_s(L"OBJECK_MCP", value.c_str());
+#else
+      setenv("OBJECK_MCP", UnicodeToBytes(value).c_str(), 1);
+#endif
     }
   }
 
@@ -430,6 +510,14 @@ namespace Runtime {
     usage += L"                            Console I/O mode (Windows only; accepted and\n";
     usage += L"                            ignored elsewhere)\n";
     usage += L"                            Legacy: --OBJECK_STDIO=binary\n";
+    usage += L"  --mcp                     Serve the program's MCP tools, resources and prompts\n";
+    usage += L"                            (the functions marked @tool, @resource, @prompt) on\n";
+    usage += L"                            standard input and output instead of running Main.\n";
+    usage += L"                            Standard output carries the protocol only: the\n";
+    usage += L"                            program must not print to it (use standard error)\n";
+    usage += L"  --mcp-http=<port>         The same over streamable HTTP on <port> (0 to 65535;\n";
+    usage += L"                            0 picks a free port and prints it to standard error)\n";
+    usage += L"  --mcp-http-host=<address> The address --mcp-http listens on (default 127.0.0.1)\n";
     usage += L"\nExamples:\n";
     usage += L"  obr hello.obe\n";
     usage += L"  obr --gc-threshold=2m hello.obe\n";
@@ -437,6 +525,8 @@ namespace Runtime {
     usage += L"  obr --jit=off hello.obe          (does it still happen without the JIT?)\n";
     usage += L"  obr --lib-path=/opt/objeck/lib hello.obe\n";
     usage += L"  obr --objeck-stdio=binary hello.obe\n";
+    usage += L"  obr --mcp tools.obe              (an MCP server for Claude Desktop or Claude Code)\n";
+    usage += L"  obr --mcp-http=8080 tools.obe    (the same over HTTP, 127.0.0.1:8080)\n";
     usage += L"\nVersion: ";
     usage += VERSION_STRING;
 
