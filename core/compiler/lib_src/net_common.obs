@@ -73,7 +73,7 @@ bundle Web.HTTP {
 		method : public : GetQueryParameters() ~ Map<String, String> {
 			if(@parsed & @query_params = Nil) {
 				@query_params := Map->New()<String, String>;
-				
+
 				query_keys_values := @query->Split('&');
 				if(query_keys_values->Size() > 0) {
 					each(query_key_value in query_keys_values) {
@@ -90,7 +90,7 @@ bundle Web.HTTP {
 					};
 				};
 			};
-			
+
 			return @query_params;
 		}
 
@@ -145,7 +145,7 @@ bundle Web.HTTP {
 
 			return Nil;
 		}
-		
+
 		#~
 		Gets port
 		@return port, -1 if not present
@@ -233,16 +233,16 @@ bundle Web.HTTP {
 						port_str := part->SubString(port_index, part->Size() - port_index);
 						@port := port_str->ToInt();
 					}
-					
+
 					query_index := part->Find('?');
 					if(query_index > -1) {
 						query_index += 1;
 						@query := part->SubString(query_index, part->Size() - query_index);
 						@host := part->SubString(query_index - 1);
 					}
-					
+
 					@host := @host ?? part;
-					
+
 					if(@host->EndsWith('/')) {
 						@path := "/";
 					};
@@ -590,7 +590,7 @@ bundle Web.HTTP {
 			if(@path <> Nil) {
 				buffer += "\tpath='{$@path}'\n";
 			};
-			
+
 			if(@port > -1) {
 				buffer += "\tport='{$@port}'\n";
 			};
@@ -598,12 +598,12 @@ bundle Web.HTTP {
 			if(@query <> Nil) {
 				buffer += "\tquery='{$@query}'\n";
 			};
-			
+
 			if(@frag <> Nil) {
 				buffer += "\tfragment='{$@frag}'\n";
 			};
-					
-			return buffer;			
+
+			return buffer;
 		}
 	}
 
@@ -615,7 +615,7 @@ bundle Web.HTTP {
 			if(names_values->Size() > 0) {
 				each(names_value in names_values) {
 					name_value_index := names_value->Find('=');
-					if(name_value_index > 0) {						
+					if(name_value_index > 0) {
 						name := names_value->SubString(0, name_value_index);
 						name_value_index += 1;
 						value := names_value->SubString(name_value_index, names_value->Size() - name_value_index);
@@ -628,7 +628,7 @@ bundle Web.HTTP {
 			}
 			else {
 				name_value_index := attrib_str->Find('=');
-				if(name_value_index > 0) {						
+				if(name_value_index > 0) {
 					name := attrib_str->SubString(0, name_value_index);
 					name_value_index += 1;
 					value := attrib_str->SubString(name_value_index, attrib_str->Size() - name_value_index);
@@ -1227,7 +1227,7 @@ bundle Web.HTTP {
 				@attribs->Remove("Expires");
 			};
 			@expires := System.Time.Date->New(true);
-			
+
 		}
 
 		#~
@@ -1239,7 +1239,7 @@ bundle Web.HTTP {
 				@attribs->Remove("Expires");
 			};
 			@expires := expires;
-			
+
 			return true;
 		}
 
@@ -1293,22 +1293,22 @@ bundle Web.HTTP {
 		~#
 		method : public : ToShortString() ~ String {
 			buffer := "";
-			
+
 			buffer += @name;
 			buffer += '=';
 			buffer += @value;
 
 			return buffer;
 		}
-		
+
 		method : Parse(cookie_str : String) ~ Nil {
 			if(cookie_str <> Nil) {
 				names_values := cookie_str->Split("; ");
 				if(names_values->Size() > 0) {
 					each(i : names_values) {
-						names_value := names_values[i];					
+						names_value := names_values[i];
 						name_value_index := names_value->Find('=');
-						if(name_value_index > 0) {						
+						if(name_value_index > 0) {
 							name := names_value->SubString(0, name_value_index);
 							name_value_index += 1;
 							value := names_value->SubString(name_value_index, names_value->Size() - name_value_index);
@@ -1321,7 +1321,7 @@ bundle Web.HTTP {
 				}
 				else {
 					name_value_index := cookie_str->Find('=');
-					if(name_value_index > 0) {						
+					if(name_value_index > 0) {
 						name := cookie_str->SubString(0, name_value_index);
 						name_value_index += 1;
 						value := cookie_str->SubString(name_value_index, cookie_str->Size() - name_value_index);
@@ -1354,7 +1354,7 @@ bundle Web.HTTP {
 				};
 			};
 		}
-		
+
 		method : native : FormatGmtTime(date : System.Time.Date) ~ String {
 			buffer := "";
 
@@ -1364,7 +1364,7 @@ bundle Web.HTTP {
 
 			day := date->GetDay();
 			if(day < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += day;
 			buffer += " ";
@@ -1378,21 +1378,21 @@ bundle Web.HTTP {
 
 			hour := date->GetHours();
 			if(hour < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += hour;
 			buffer += ":";
 
 			min := date->GetMinutes();
 			if(min < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += min;
 			buffer += ":";
 
 			sec := date->GetSeconds();
 			if(sec < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += sec;
 			buffer += " GMT";

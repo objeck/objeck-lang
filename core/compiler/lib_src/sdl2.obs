@@ -11,7 +11,7 @@ SDL2 multimedia library for 2D graphics, input handling, audio playback, and win
 bundle Game.SDL2 {
 	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
-		
+
 		function : GetDllProxy() ~ DllProxy {
 			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_sdl");
 
@@ -34,7 +34,7 @@ bundle Game.SDL2 {
 		SDL_INIT_NOPARACHUTE := 0x00100000,
 		SDL_INIT_EVERYTHING := 0xf231
 	}
-	
+
 	#~
  	SDL_MessageBox flags. If supported will display warning icon, etc.
 	~#
@@ -45,7 +45,7 @@ bundle Game.SDL2 {
 	    SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT := 0x00000080,
 	    SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT := 0x00000100
 	}
-	
+
 	#~
 	SDL mouse wheel direction
 	~#
@@ -195,10 +195,10 @@ bundle Game.SDL2 {
 
 	#~
 	Joystick power level
-	SDL_JOYSTICK_POWER_EMPTY <= 5% 
-    SDL_JOYSTICK_POWER_LOW <= 20% 
-    SDL_JOYSTICK_POWER_MEDIUM <= 70% 
-    SDL_JOYSTICK_POWER_FULL <= 100% 
+	SDL_JOYSTICK_POWER_EMPTY <= 5%
+    SDL_JOYSTICK_POWER_LOW <= 20%
+    SDL_JOYSTICK_POWER_MEDIUM <= 70%
+    SDL_JOYSTICK_POWER_FULL <= 100%
 	~#
 	enum JoystickPowerLevel := -1 {
 	    SDL_JOYSTICK_POWER_UNKNOWN,
@@ -336,7 +336,7 @@ bundle Game.SDL2 {
 	    SDL_PIXELFORMAT_IYUV := 1448433993,
 	    SDL_PIXELFORMAT_UYVY := 1498831189
 	}
-	
+
 	#~
 	Hardware flags
 	~#
@@ -362,7 +362,7 @@ bundle Game.SDL2 {
 	   SDL_MIX_INIT_OPUS := 0x00000040,
 	   SDL_MIX_INIT_WAVPACK := 0x00000080
 	}
-	
+
 	#~
 	Audio format flags
 	~#
@@ -378,7 +378,7 @@ bundle Game.SDL2 {
 		SDL_AUDIO_S32 := 0x8020,
 		SDL_AUDIO_F32 := 0x8120
 	}
-	
+
 	#~
 	Window flags
 	~#
@@ -787,7 +787,7 @@ bundle Game.SDL2 {
 	}
 
 	#~
-	Image formats 
+	Image formats
 	~#
 	consts ImageFlags {
 	    IMG_INIT_JPG := 0x00000001,
@@ -816,7 +816,7 @@ bundle Game.SDL2 {
 	}
 
 	#~
-	Video display 
+	Video display
 	~#
 	class Display {
 		# Native entry-point names, held rather than written at each call
@@ -851,7 +851,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get the name of a built in video driver
 		@param index the index of a video driver
@@ -889,7 +889,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Initialize the video subsystem, optionally specifying a video driver
 		@param driver_name name of a video driver to initialize, or Nil for the default driver
@@ -910,7 +910,7 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Shut down the video subsystem
 		~#
@@ -919,7 +919,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_display_video_quit = Nil) { @fn_sdl_display_video_quit := "sdl_display_video_quit"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_video_quit, array_args);
 		}
-		
+
 		#~
 		Name of the currently initialized video driver
 		@return name of the current video driver
@@ -933,7 +933,7 @@ bundle Game.SDL2 {
 
 			return array_args[0]->As(String);
 		}
-		
+
 		#~
 		Get the number of available video displays
 		@return number >= 1 or a negative error code on failure
@@ -948,7 +948,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get the name of a display in UTF-8 encoding
 		@param displayIndex the index of display from which the name should be queried
@@ -964,7 +964,7 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-		
+
 		#~
 		Get the desktop area represented by a display, with the primary display located at 0,0
 		@param displayIndex the index of the display to query
@@ -987,7 +987,7 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Get the number of available display modes
 		@param displayIndex the index of the display to query
@@ -1004,7 +1004,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get information about a specific display mode
 		@param displayIndex the index of the display to query
@@ -1029,7 +1029,7 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Get information about the current display mode
 		@param displayIndex the index of the display to query
@@ -1052,13 +1052,13 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Get the closest match to the requested display mode
 		@param displayIndex the index of the display to query
 		@param mode an SDL_DisplayMode structure containing the desired display mode
 		@param closest an SDL_DisplayMode structure filled in with the closest match of the available display modes
-		@return true of success, false otherwise 
+		@return true of success, false otherwise
 		~#
 		function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ Bool {
 			if(mode <> Nil & closest <> Nil) {
@@ -1078,7 +1078,7 @@ bundle Game.SDL2 {
 			return false;
 		}
 	}
-	
+
 	#~
 	An OpenGL context, created from a Window with GLCreateContext.
 
@@ -1183,11 +1183,11 @@ bundle Game.SDL2 {
 		@fn_sdl_window_show_simple_messagebox : static : String;
 		@fn_sdl_window_update_surface : static : String;
 		@window : Int;
-		
+
 		New(window : Int) {
 			@window := window;
 		}
-		
+
 		#~
 		Creates a window with the specified position, dimensions, and flags
 		@param title the title of the window, in UTF-8 encoding
@@ -1213,7 +1213,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			@window := value->Get();
 		}
-		
+
 		#~
 		Determines if the underlying SDL C-struct is NULL
 		@return true if NULL, false otherwise
@@ -1275,7 +1275,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_gl_get_drawable_size, array_args);
 			};
 		}
-		
+
 		#~
 		Update a window with OpenGL rendering.
 		~#
@@ -1338,7 +1338,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get the index of the display associated with a window
 		@return index of the display containing the center of the window on success or a negative error code on failure
@@ -1355,10 +1355,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Set the display mode to use when a window is visible at full-screen
 		@param mode the SDL_DisplayMode structure representing the mode to use, or NULL to use the window's dimensions and the desktop's format and refresh rate
@@ -1376,10 +1376,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the pixel format associated with the window
 		@return pixel format of the window on success or SDL_PIXELFORMAT_UNKNOWN on failure
@@ -1396,10 +1396,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the numeric ID of a window, for logging purposes
 		@return the ID of the window on success or 0 on failure
@@ -1416,10 +1416,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the numeric ID of a window, for logging purposes
 		@param id window ID
@@ -1437,10 +1437,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return Window->New(value->Get());
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Get the window flags
 		@return OR'd mask of the SDL_WindowFlags associated with window
@@ -1457,10 +1457,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Set the title of a window
 		@param title the desired window title in UTF-8 format
@@ -1473,9 +1473,9 @@ bundle Game.SDL2 {
 
 				if(@fn_sdl_window_set_title = Nil) { @fn_sdl_window_set_title := "sdl_window_set_title"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_title, array_args);
-			};	
+			};
 		}
-		
+
 		#~
 		Set the icon for a window
 		@param icon a Surface instance containing the icon for the window
@@ -1490,7 +1490,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_icon, array_args);
 			};
 		}
-		
+
 		#~
 		Set the position of a window
 		@param x the x coordinate of the window in screen coordinates, or WindowFlags->SDL_WINDOWPOS_CENTERED or WindowFlags->SDL_WINDOWPOS_UNDEFINED
@@ -1507,7 +1507,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_position, array_args);
 			};
 		}
-		
+
 		#~
 		Get the position of a window
 		@param x pointer filled in with the x position of the window, in screen coordinates
@@ -1524,7 +1524,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_position, array_args);
 			};
 		}
-		
+
 		#~
 		Set the size of a window's client area
 		@param w width of the window in pixels, in screen coordinates, must be > 0
@@ -1542,7 +1542,7 @@ bundle Game.SDL2 {
 
 			};
 		}
-		
+
 		#~
 		Get the size of a window's client area
 		@param w pointer filled in with the width of the window, in screen coordinates
@@ -1577,7 +1577,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_size_in_pixels, array_args);
 			};
 		}
-		
+
 		#~
 		Set the minimum size of a window's client area
 		@param min_w the minimum width of the window in pixels
@@ -1594,7 +1594,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_minimum_size, array_args);
 			};
 		}
-		
+
 		#~
 		Get the minimum size of a window's client area
 		@param w pointer filled in with the minimum width of the window
@@ -1611,7 +1611,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_minimum_size, array_args);
 			};
 		}
-		
+
 		#~
 		Set the maximum size of a window's client area
 		@param max_w maximum width of the window in pixels
@@ -1628,7 +1628,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_maximum_size, array_args);
 			};
 		}
-		
+
 		#~
 		Get the maximum size of a window's client area
 		@param w pointer filled in with the maximum width of the window,
@@ -1645,7 +1645,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_maximum_size, array_args);
 			};
 		}
-		
+
 		#~
 		Set the border state of a window
 		@param bordered false to remove border, true to add border
@@ -1660,7 +1660,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_bordered, array_args);
 			};
 		}
-		
+
 		#~
 		Show a window
 		~#
@@ -1673,7 +1673,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_show, array_args);
 			};
 		}
-		
+
 		#~
 		Hide a window
 		~#
@@ -1686,7 +1686,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_hide, array_args);
 			};
 		}
-		
+
 		#~
 		Raise a window above other windows and set the input focus
 		~#
@@ -1699,7 +1699,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_raise, array_args);
 			};
 		}
-		
+
 		#~
 		Make a window as large as possible
 		~#
@@ -1712,7 +1712,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_maximize, array_args);
 			};
 		}
-		
+
 		#~
 		Minimize a window to an iconic representation
 		~#
@@ -1725,7 +1725,7 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_minimize, array_args);
 			};
 		}
-		
+
 		#~
 		Restore the size and position of a minimized or maximized window
 		~#
@@ -1739,7 +1739,7 @@ bundle Game.SDL2 {
 
 			};
 		}
-		
+
 		#~
 		Set a window's full-screen state
 		@param flags WindowFlags->SDL_WINDOW_FULLSCREEN, WindowFlags->SDL_WINDOW_FULLSCREEN_DESKTOP or 0
@@ -1757,10 +1757,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the SDL surface associated with the window
 		@return surface associated with the window, or NULL on failure
@@ -1777,10 +1777,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Use this function to copy the window surface to the screen
 		~#
@@ -1796,7 +1796,7 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-		
+
 			return -1;
 		}
 
@@ -1815,7 +1815,7 @@ bundle Game.SDL2 {
 
 			};
 		}
-		
+
 		#~
 		Get a window's input grab mode
 		@return Returns true if input is grabbed, false otherwise
@@ -1832,10 +1832,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 0 ? false : true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets the brightness (gamma multiplier) for the display that owns a given window
 		@param brightness the brightness (gamma multiplier) value to set where 0.0 is completely dark and 1.0 is normal brightness
@@ -1854,10 +1854,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Gets the brightness (gamma multiplier) for the display that owns a given window
 		@return brightness for the display where 0.0 is completely dark and 1.0 is normal brightness
@@ -1874,10 +1874,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(FloatRef);
 				return value->Get();
 			};
-			
+
 			return 0.0;
 		}
-		
+
 		#~
 		Sets the gamma ramp for the display that owns a given window
 		@param red a 256 element array of 16-bit quantities representing the translation table for the red channel
@@ -1900,10 +1900,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Gets the gamma ramp for the display that owns a given window
 		@param red a 256 element array of 16-bit quantities representing the translation table for the red channel
@@ -1926,10 +1926,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Destroy a window
 		~#
@@ -1942,7 +1942,7 @@ bundle Game.SDL2 {
 				@window := 0;
 			};
 		}
-		
+
 		#~
 		Check whether the screensaver is currently enabled
 		@return Returns true if the screensaver is enabled, false if it is disabled
@@ -1957,7 +1957,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
-		
+
 		#~
 		Allow the screen to be blanked by a screen saver
 		~#
@@ -1967,7 +1967,7 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_enable_screen_saver, array_args);
 
 		}
-		
+
 		#~
 		Prevent the screen from being blanked by a screen saver
 		~#
@@ -1985,18 +1985,18 @@ bundle Game.SDL2 {
 		@scancode : Scancode;
 		@sym : Int;
 		@mod : Int;
-		
+
 		New() {
 		}
-		
+
 		#~
 		Gets the scan code
-		@return scan code 
+		@return scan code
 		~#
 		method : public : GetScancode() ~ Int {
 			return @scancode;
 		}
-		
+
 		#~
 		Gets the symbol
 		@return symbol
@@ -2004,7 +2004,7 @@ bundle Game.SDL2 {
 		method : public : GetSym() ~ Int {
 			return @sym;
 		}
-		
+
 		#~
 		Gets the modifier
 		@return modifier
@@ -2013,7 +2013,7 @@ bundle Game.SDL2 {
 			return @mod;
 		}
 	}
-	
+
 	#~
 	Keyboard event
 	~#
@@ -2024,11 +2024,11 @@ bundle Game.SDL2 {
 		@state : KeyState;
 		@repeat : Int;
 		@keysym : Keysym;
-		
+
 		New() {
 			@keysym := Keysym->New();
 		}
-		
+
 		#~
 		Get the event type
 		@return EventType->SDL_KEYDOWN or EventType->SDL_KEYUP
@@ -2036,7 +2036,7 @@ bundle Game.SDL2 {
 		method : public : GetType() ~ Int {
 			return @type;
 		}
-		
+
 		#~
 		Get the event type
 		@return EventType->SDL_KEYDOWN or EventType->SDL_KEYUP
@@ -2044,7 +2044,7 @@ bundle Game.SDL2 {
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
-		
+
 		#~
 		Get the timestamp of the event
 		@return timestamp of the event
@@ -2052,7 +2052,7 @@ bundle Game.SDL2 {
 		method : public : GetWindowID() ~ Int {
 			return @windowID;
 		}
-		
+
 		#~
 		Get the state of the key
 		@return KeyState->SDL_PRESSED or KeyState->SDL_RELEASED
@@ -2060,7 +2060,7 @@ bundle Game.SDL2 {
 		method : public : GetState() ~ KeyState {
 			return @state;
 		}
-		
+
 		#~
 		Get key repeat
 		@return non-zero if this is a key repeat
@@ -2068,7 +2068,7 @@ bundle Game.SDL2 {
 		method : public : GetRepeat() ~ Int {
 			return @repeat;
 		}
-		
+
 		#~
 		The Keysym instance representing the key that was pressed or released
 		@return key that was pressed or released
@@ -2094,14 +2094,14 @@ bundle Game.SDL2 {
 		@fn_sdl_keyboard_stop_text_input : static : String;
 		#~
 		Get a snapshot of the current state of the keyboard
-		@return pointer to an array of key states. A value 
-		of 1 means that the key is pressed and a value of 0 
-		means that it is not. Indexes into this array are 
+		@return pointer to an array of key states. A value
+		of 1 means that the key is pressed and a value of 0
+		means that it is not. Indexes into this array are
 		obtained by using SDL_Scancode values
 		~#
 		function : GetState() ~ Byte[] {
 	        array_args := Base->New[1];
-	        
+
 	if(@fn_sdl_keyboard_get_state = Nil) { @fn_sdl_keyboard_get_state := "sdl_keyboard_get_state"; };
 	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_keyboard_get_state, array_args);
 
@@ -2369,7 +2369,7 @@ bundle Game.SDL2 {
 		This function can be called before any controllers are opened
  		@param joystick_index the device_index of a device
 		@return the implementation-dependent path for the game controller, or Nil
-		
+
 		function : PathForIndex(joystick_index : Int) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -2379,11 +2379,11 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-		
+
 		Get the type of a game controller. This can be called before any controllers are opened.
  		@param joystick_index the device_index of a device
  		@return the controller type
-		
+
 		function : TypeForIndex(joystick_index : Int) ~ GameControllerType {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -2408,7 +2408,7 @@ bundle Game.SDL2 {
 
 			if(@fn_sdl_gamecontroller_from_instanceid = Nil) { @fn_sdl_gamecontroller_from_instanceid := "sdl_gamecontroller_from_instanceid"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_from_instanceid, array_args);
-			
+
 			value := array_args[0]->As(IntRef);
 			return GameController->New(value->Get());
 		}
@@ -2417,7 +2417,7 @@ bundle Game.SDL2 {
 		Get the SDL_GameController associated with an instance id
  		@param player_index the player index, which is not the device index or the instance id!
  		@return an SDL_GameController on success or NULL on failure
- 		
+
 		method : public : FromPlayerIndex(player_index : Int) ~ GameController {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -2445,12 +2445,12 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-	
+
 		#~
 		Get the SDL_GameController associated with an instance id
 		@param joyid the instance id to get the SDL_GameController for
 		@return an SDL_GameController on success or NULL on failure
-		
+
 		method : public : Path() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -2460,7 +2460,7 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-		
+
 		Get the type of this currently opened controller
 		@return the controller type.
 
@@ -2475,7 +2475,7 @@ bundle Game.SDL2 {
 			return value->Get()->As(GameControllerType);
 		}
 		~#
-	
+
 		#~
 		Get the player index of an opened game controller
 		@return the player index for controller, or -1 if it's not available
@@ -2496,7 +2496,7 @@ bundle Game.SDL2 {
 		Get the player index of an opened game controller
  		@param player_index Player index to assign to this controller, or -1 to clear the player index and turn off player LEDs.
 		@return the player index for controller, or -1 if it's not available
-		
+
 		method : public : SetPlayerIndex(player_index : Int) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New(@gamecontroller);
@@ -2539,7 +2539,7 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Get the product version of an opened controller, if available. 
+		Get the product version of an opened controller, if available.
 		If the product version isn't available this function returns 0.
 		@return the USB product version, or zero if unavailable
 		~#
@@ -2558,7 +2558,7 @@ bundle Game.SDL2 {
 		#~
 		Get the firmware version of an opened controller, if available
 		@return the controller firmware version, or zero if unavailable
-		
+
 		method : public : GetFirmwareVersion() ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -2698,7 +2698,7 @@ bundle Game.SDL2 {
 		Query whether a game controller has a given axis
 		@param axis an axis enum value (an SDL_GameControllerAxis value)
  		@return true if the controller has this axis, false otherwise
- 		
+
 		method : public : HasAxis(axis : GameControllerAxis) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntRef->New();
@@ -2784,7 +2784,7 @@ bundle Game.SDL2 {
 		Query whether a game controller has a given button
 		@param button a button enum value (an SDL_GameControllerButton value)
  		@return true if the controller has this button, false otherwise
- 		
+
 		method : public : HasButton(button : GameControllerButton) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntRef->New();
@@ -2815,7 +2815,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get the number of touchpads on a game controller.
 		~#
@@ -2834,7 +2834,7 @@ bundle Game.SDL2 {
 		#~
 		Get the number of supported simultaneous fingers on a touchpad on a game controller.
 		@param touchpad touchpad
-		
+
 		method : public : GetNumTouchpadFingers(touchpad : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntRef->New();
@@ -2847,16 +2847,16 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		
+
 		Get the current state of a finger on a touchpad on a game controller.
 		@param touchpad touchpad
-		@param finger finger 
+		@param finger finger
 		@param state state
 		@param x x
 		@param y y
 		@param pressure pressure
 		@return 0 on success or a negative error code on failure
-		
+
 		method : public : GetTouchpadFinger(touchpad : Int, finger : Int, state : IntRef, x : FloatRef, y : FloatRef, pressure : FloatRef) ~ Int {
 			array_args := Base->New[8];
 			array_args[0] := IntRef->New();
@@ -2874,11 +2874,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		
+
 		Return whether a game controller has a particular sensor.
 		@param type The type of sensor to query
  		@return true if the sensor exists, false otherwise
- 		
+
 		method : public : HasSensor(type : SensorType) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntRef->New();
@@ -2891,12 +2891,12 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		
+
 		Set whether data reporting for a game controller sensor is enabled
 		@param type The type of sensor to enable/disable
  		@param enabled Whether data reporting should be enabled
  		@return 0 or -1 if an error occurred
-		
+
 		method : public : SetSensorEnabled(type : SensorType, enabled : Bool) ~ Int {
 			array_args := Base->New[4];
 			array_args[0] := IntRef->New();
@@ -2910,11 +2910,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		
+
 		Query whether sensor data reporting is enabled for a game controller.
 		@param type The type of sensor to query
  		@return true if the sensor is enabled, false otherwise
- 		
+
 		method : public : IsSensorEnabled(type : SensorType) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntRef->New();
@@ -2927,11 +2927,11 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		
+
 		Get the data rate (number of events per second) of a game controller sensor
 		@param type The type of sensor to query
  		@return the data rate, or 0.0f if the data rate is not available
-		
+
 		method : public : GetSensorDataRate(type : SensorType) ~ Float {
 			array_args := Base->New[3];
 			array_args[0] := FloatRef->New();
@@ -2943,13 +2943,13 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
 		}
-		
+
 		Get the current state of a game controller sensor
 		@param type The type of sensor to query
 		@param data A pointer filled with the current sensor state
 		@param num_values The number of values to write to data
 		@return 0 or -1 if an error occurred
-		
+
 		method : public : GetSensorData(type : SensorType, data : FloatRef, num_values : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntRef->New();
@@ -2993,7 +2993,7 @@ bundle Game.SDL2 {
 		@param right_rumble The intensity of the right trigger rumble motor, from 0 to 0xFFFF
 		@param duration_ms The duration of the rumble effect, in milliseconds
 		@return 0, or -1 if trigger rumble isn't supported on this controller
-		
+
 		method : public : RumbleTriggers(left_rumble : Int, right_rumble : Int, duration_ms : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntRef->New();
@@ -3007,12 +3007,12 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
 
-		
+
+
 		Query whether a game controller has an LED
 		@return true, or false if this controller does not have a modifiable LED
-		
+
 		method : public : HasLED() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -3026,7 +3026,7 @@ bundle Game.SDL2 {
 
 		Query whether a game controller has rumble support
 		@return true, or false if this controller does not have rumble support
-		
+
 		method : public : HasRumble() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -3038,10 +3038,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		
+
 		Query whether a game controller has rumble support on triggers
 		@return true, or false if this controller does not have trigger rumble support
-		
+
 		method : public : HasRumbleTriggers() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -3053,13 +3053,13 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		
+
 		Update a game controller's LED color
 		@param red The intensity of the red LED
 		@param green The intensity of the green LED
 		@param blue The intensity of the blue LED
 		@return 0, or -1 if this controller does not have a modifiable LED
-		
+
 		method : public : SetLED(red : Int, green : Int, blue : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntRef->New();
@@ -3100,7 +3100,7 @@ bundle Game.SDL2 {
 		Return the sfSymbolsName for a given button on a game controller on Apple platforms
 		@param button a button on the game controller
 		@return the sfSymbolsName or NULL if the name can't be found
-		
+
 		method : public : GetAppleSFSymbolsNameForButton(button : GameControllerButton) ~ String {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
@@ -3112,11 +3112,11 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
-		
+
 		Return the sfSymbolsName for a given axis on a game controller on Apple platforms
 		@param axis an axis on the game controller
 		@return the sfSymbolsName or NULL if the name can't be found
-		
+
 		method : public : GetAppleSFSymbolsNameForAxis(axis : GameControllerAxis) ~ String {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
@@ -3398,7 +3398,7 @@ bundle Game.SDL2 {
 				if(@fn_sdl_joystick_close = Nil) { @fn_sdl_joystick_close := "sdl_joystick_close"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_close, array_args);
 				@joystick := 0;
-			}; 
+			};
 	    }
 
 	    #~
@@ -3442,7 +3442,7 @@ bundle Game.SDL2 {
 		@axis : Int;
 		@value : Int;
 
-		New() {			
+		New() {
 		}
 
 		#~
@@ -3476,7 +3476,7 @@ bundle Game.SDL2 {
 		method : public : GetAxis() ~ Int {
 			return @axis;
 		}
-		
+
 		#~
 		Current position of the axis (range: -32768 to 32767)
 		@return axis position
@@ -3496,7 +3496,7 @@ bundle Game.SDL2 {
 		@hat : Int;
 		@value : JoystickHatValue;
 
-		New() {			
+		New() {
 		}
 
 		#~
@@ -3530,7 +3530,7 @@ bundle Game.SDL2 {
 		method : public : GetHat() ~ Int {
 			return @hat;
 		}
-		
+
 		#~
 		New position of the hat
 		@return hat value
@@ -3550,7 +3550,7 @@ bundle Game.SDL2 {
     	@button : Int;
     	@state : KeyState;
 
-    	New() {			
+    	New() {
 		}
 
 		#~
@@ -3584,7 +3584,7 @@ bundle Game.SDL2 {
 		method : public : GetButton() ~ Int {
 			return @button;
 		}
-		
+
 		#~
 		State of the button
 		@return KeyState->SDL_PRESSED or KeyState->SDL_RELEASED
@@ -3608,7 +3608,7 @@ bundle Game.SDL2 {
 	    @xrel : Int;
 	    @yrel : Int;
 
-	    New() {			
+	    New() {
 		}
 
 		#~
@@ -3697,7 +3697,7 @@ bundle Game.SDL2 {
 	    @x : Int;
 	    @y : Int;
 
-	    New() {			
+	    New() {
 		}
 
 		#~
@@ -3784,7 +3784,7 @@ bundle Game.SDL2 {
 	    @y : Int;
 	    @direction : MouseWheelDirection;
 
-	    New() {			
+	    New() {
 		}
 
 		#~
@@ -3840,9 +3840,9 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetDirection() ~ MouseWheelDirection {
 			return @direction;
-		}		
+		}
 	}
-		
+
 	#~
 	Text input event
 	~#
@@ -3852,7 +3852,7 @@ bundle Game.SDL2 {
 	    @windowID : Int;
 	    @text : String;
 
-	    New() {			
+	    New() {
 		}
 
 		#~
@@ -4405,7 +4405,7 @@ bundle Game.SDL2 {
 		@motion : MouseMotionEvent;
 		@mbutton : MouseButtonEvent;
 		@wheel : MouseWheelEvent;
-		
+
 		#~
 		Create a new event instance
 		~#
@@ -4417,7 +4417,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			@event := value->Get();
 		}
-		
+
 
 		New : private (events : Int) {
 			@event := events;
@@ -4430,7 +4430,7 @@ bundle Game.SDL2 {
 		method : public : IsNull() ~ Bool {
 			return @event = 0;
 		}
-		
+
 		#~
 		Frees the event
 		~#
@@ -4443,7 +4443,7 @@ bundle Game.SDL2 {
 				@event := 0;
 			};
 		}
-		
+
 		#~
 		Event type
 		@return type
@@ -4453,17 +4453,17 @@ bundle Game.SDL2 {
 				array_args := Base->New[2];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
-				
+
 				if(@fn_sdl_event_type = Nil) { @fn_sdl_event_type := "sdl_event_type"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_type, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get()->As(EventType);
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get keyboard event
 		@return keyboard event
@@ -4471,12 +4471,12 @@ bundle Game.SDL2 {
 		method : public : GetKey() ~ KeyboardEvent {
 			if(@event <> 0) {
 				@key := @key ?? KeyboardEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @key;
-				
+
 				if(@fn_sdl_event_key = Nil) { @fn_sdl_event_key := "sdl_event_key"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_key, array_args);
 
@@ -4487,7 +4487,7 @@ bundle Game.SDL2 {
 
 				return @key;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4498,12 +4498,12 @@ bundle Game.SDL2 {
 		method : public : GetTextInput() ~ TextInputEvent {
 			if(@event <> 0) {
 				@text := @text ?? TextInputEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @text;
-				
+
 				if(@fn_sdl_text_key = Nil) { @fn_sdl_text_key := "sdl_text_key"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_text_key, array_args);
 
@@ -4514,7 +4514,7 @@ bundle Game.SDL2 {
 
 				return @text;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4525,12 +4525,12 @@ bundle Game.SDL2 {
 		method : public : GetMouseMotion() ~ MouseMotionEvent {
 			if(@event <> 0) {
 				@motion := @motion ?? MouseMotionEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @motion;
-				
+
 				if(@fn_sdl_mouse_motion = Nil) { @fn_sdl_mouse_motion := "sdl_mouse_motion"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mouse_motion, array_args);
 
@@ -4541,7 +4541,7 @@ bundle Game.SDL2 {
 
 				return @motion;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4582,12 +4582,12 @@ bundle Game.SDL2 {
 		method : public : GetMouseWheel() ~ MouseWheelEvent {
 			if(@event <> 0) {
 				@wheel := @wheel ?? MouseWheelEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @wheel;
-				
+
 				if(@fn_sdl_mouse_wheel = Nil) { @fn_sdl_mouse_wheel := "sdl_mouse_wheel"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mouse_wheel, array_args);
 
@@ -4598,7 +4598,7 @@ bundle Game.SDL2 {
 
 				return @wheel;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4609,12 +4609,12 @@ bundle Game.SDL2 {
 		method : public : GetJAxis() ~ JoyAxisEvent {
 			if(@event <> 0) {
 				@axis := @axis ?? JoyAxisEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @axis;
-				
+
 				if(@fn_sdl_axis_key = Nil) { @fn_sdl_axis_key := "sdl_axis_key"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_axis_key, array_args);
 
@@ -4625,7 +4625,7 @@ bundle Game.SDL2 {
 
 				return @axis;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4636,12 +4636,12 @@ bundle Game.SDL2 {
 		method : public : GetJButton() ~ JoyButtonEvent {
 			if(@event <> 0) {
 				@jbutton := @jbutton ?? JoyButtonEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @jbutton;
-				
+
 				if(@fn_sdl_jbutton_key = Nil) { @fn_sdl_jbutton_key := "sdl_jbutton_key"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_jbutton_key, array_args);
 
@@ -4652,7 +4652,7 @@ bundle Game.SDL2 {
 
 				return @jbutton;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4663,15 +4663,15 @@ bundle Game.SDL2 {
 		method : public : GetJHat() ~ JoyHatEvent {
 			if(@event <> 0) {
 				@hat := @hat ?? JoyHatEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @hat;
-				
+
 				if(@fn_sdl_hat_key = Nil) { @fn_sdl_hat_key := "sdl_hat_key"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_hat_key, array_args);
-				
+
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
 					return Nil;
@@ -4679,7 +4679,7 @@ bundle Game.SDL2 {
 
 				return @hat;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4690,12 +4690,12 @@ bundle Game.SDL2 {
 		method : public : GetMButton() ~ MouseButtonEvent {
 			if(@event <> 0) {
 				@mbutton := @mbutton ?? MouseButtonEvent->New();
-				
+
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @mbutton;
-				
+
 				if(@fn_sdl_mbutton_key = Nil) { @fn_sdl_mbutton_key := "sdl_mbutton_key"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mbutton_key, array_args);
 
@@ -4889,7 +4889,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_event_pump = Nil) { @fn_sdl_event_pump := "sdl_event_pump"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_pump, Nil->As(Base[]));
 		}
-		
+
 		#~
 		Check the event queue for messages and optionally return them
 		@param vents destination buffer for the retrieved events
@@ -4915,15 +4915,15 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Check for the existence of certain event types in the event queue
 		@param type the type of event to be queried
 		@return true if events matching type are present, false otherwise
-		~# 
+		~#
 		function : Has(type : Int) ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -4935,7 +4935,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
-		
+
 		#~
 		Clear events from the event queue
 		@param type the type of event to be cleared
@@ -4946,7 +4946,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_event_flush = Nil) { @fn_sdl_event_flush := "sdl_event_flush"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_flush, array_args);
 		}
-		
+
 		#~
 		Poll for currently pending events
 		~#
@@ -4962,10 +4962,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-		
+
 			return -1;
 		}
-		
+
 		#~
 		Waits indefinitely for the next available event.
 		@return 1, or 0 if there was an error while waiting for events
@@ -4982,10 +4982,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Waits until the specified timeout (in milliseconds) for the next available event
 		@param timeout The timeout (in milliseconds) to wait for next event
@@ -5004,13 +5004,13 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Add an event to the event queue
- 		@return 1 on success, 0 if the event was filtered, or -1 if 
+ 		@return 1 on success, 0 if the event was filtered, or -1 if
  		the event queue was full or there was some other error.
  		~#
 		method : public : Push() ~ Int {
@@ -5025,15 +5025,15 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
  		Allows you to set the state of processing certain events.
  		@param type the type of event; see SDL_EventType for details
 		@param state how to process the event; see Remarks for details
-		@return SDL_DISABLE or SDL_ENABLE, representing the 
+		@return SDL_DISABLE or SDL_ENABLE, representing the
 		processing state of the event before this function makes any changes to it
  		~#
 		function : State(type : Int, state : Int) ~ Int {
@@ -5048,9 +5048,9 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
-		Allocate a set of user-defined events, and return the beginning 
+		Allocate a set of user-defined events, and return the beginning
 		event number for that set of events
 		@param numevents the number of events to be allocated
 		~#
@@ -5066,7 +5066,7 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 	}
-	
+
 	#~
 	SDL core operations
 	~#
@@ -5101,7 +5101,7 @@ bundle Game.SDL2 {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(flags);
-			
+
 			if(@fn_sdl_core_init = Nil) { @fn_sdl_core_init := "sdl_core_init"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_init, array_args);
 			value := array_args[0]->As(IntRef);
@@ -5116,13 +5116,13 @@ bundle Game.SDL2 {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(flags);
-			
+
 			if(@fn_sdl_core_init_sub_system = Nil) { @fn_sdl_core_init_sub_system := "sdl_core_init_sub_system"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_init_sub_system, array_args);
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Shut down specific SDL subsystems.
 		@param flags subsystem initialization flags
@@ -5130,11 +5130,11 @@ bundle Game.SDL2 {
 		function : QuitSubSystem(flags : Int) ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(flags);
-			
+
 			if(@fn_sdl_core_quit_sub_system = Nil) { @fn_sdl_core_quit_sub_system := "sdl_core_quit_sub_system"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_quit_sub_system, array_args);
 		}
-		
+
 		#~
 		Mask of the specified subsystems which have previously been initialized
 		@param flags subsystem initialization flags
@@ -5143,13 +5143,13 @@ bundle Game.SDL2 {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(flags);
-			
+
 			if(@fn_sdl_core_was_init = Nil) { @fn_sdl_core_was_init := "sdl_core_was_init"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_was_init, array_args);
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Clean up all initialized subsystems. You should call it upon all exit conditions.
 		~#
@@ -5158,10 +5158,10 @@ bundle Game.SDL2 {
 			if(@fn_sdl_core_quit = Nil) { @fn_sdl_core_quit := "sdl_core_quit"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_quit, array_args);
 		}
-		
+
 		#~
 		dynamically load an OpenGL library
-		@param path the platform dependent OpenGL library name, 
+		@param path the platform dependent OpenGL library name,
 			or Nil to open the default OpenGL library
 		~#
 		function : GLLoadLibrary(path : String) ~ Int {
@@ -5175,7 +5175,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Unload the OpenGL library previously loaded
 		~#
@@ -5184,7 +5184,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_core_gl_unload_library = Nil) { @fn_sdl_core_gl_unload_library := "sdl_core_gl_unload_library"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_unload_library, array_args);
 		}
-		
+
 		#~
 		Check if an OpenGL extension is supported for the current context
 		@param extension the name of the extension to check
@@ -5201,7 +5201,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
-		
+
 		#~
 		Reset all previously set OpenGL context attributes to their default values
 		~#
@@ -5210,7 +5210,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_core_gl_reset_attributes = Nil) { @fn_sdl_core_gl_reset_attributes := "sdl_core_gl_reset_attributes"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_reset_attributes, array_args);
 		}
-		
+
 		#~
 		Set an OpenGL window attribute before window creation
 		@param attr the OpenGL attribute to set; see Remarks for details
@@ -5229,7 +5229,7 @@ bundle Game.SDL2 {
 			rtrn_value := array_args[0]->As(IntRef);
 			return rtrn_value->Get();
 		}
-		
+
 		#~
 		Get the actual value for an attribute from the current context
 		@param attr the SDL_GLattr structure to query
@@ -5248,7 +5248,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get the currently active OpenGL window
 		@return active window
@@ -5263,10 +5263,10 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return Window->New(value->Get());
 		}
-		
+
 		#~
 		Set the swap interval for the current OpenGL context
-		@param interval 0 for immediate updates, 1 for updates 
+		@param interval 0 for immediate updates, 1 for updates
 		synchronized with the vertical retrace, -1 for adaptive vsync
 		@return 0 on success or -1 if setting the swap interval is not supported
 		~#
@@ -5281,12 +5281,12 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get the swap interval for the current OpenGL context
-		@return 0 if there is no vertical retrace synchronization, 
-		1 if the buffer swap is synchronized with the vertical retrace, 
-		and -1 if late swaps happen immediately instead of waiting for 
+		@return 0 if there is no vertical retrace synchronization,
+		1 if the buffer swap is synchronized with the vertical retrace,
+		and -1 if late swaps happen immediately instead of waiting for
 		the next retrace;
 		~#
 		function : GLGetSwapInterval() ~ Int {
@@ -5331,7 +5331,7 @@ bundle Game.SDL2 {
 
 			if(@fn_sdl_core_get_error = Nil) { @fn_sdl_core_get_error := "sdl_core_get_error"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_get_error, array_args);
-			
+
 			return array_args[0]->As(String);
 		}
 
@@ -5343,9 +5343,9 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_clear_error, Nil->As(Base[]));
 		}
 	}
-		
+
 	#~
-	Configuration management 
+	Configuration management
 	~#
 	class Hints {
 		# Native entry-point names, held rather than written at each call
@@ -5373,11 +5373,11 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(priority->As(Int));
 			if(@fn_sdl_hints_set_hint_with_priority = Nil) { @fn_sdl_hints_set_hint_with_priority := "sdl_hints_set_hint_with_priority"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_set_hint_with_priority, array_args);
-			
+
 			rvalue := array_args[0]->As(IntRef);
 			return rvalue->Get() = 0 ? false : true;
 		}
-		
+
 		#~
 		Set a hint with normal priority.
 		@param name the hint to set; see the list of hints on CategoryHints for details
@@ -5396,7 +5396,7 @@ bundle Game.SDL2 {
 			rvalue := array_args[0]->As(IntRef);
 			return rvalue->Get() = 0 ? false : true;
 		}
-		
+
 		#~
 		Get the value of a hint.
 		@param name the hint to query
@@ -5406,7 +5406,7 @@ bundle Game.SDL2 {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
 			array_args[1] := name;
-			
+
 			if(@fn_sdl_hints_get_hint = Nil) { @fn_sdl_hints_get_hint := "sdl_hints_get_hint"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_get_hint, array_args);
 
@@ -5424,7 +5424,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := name;
 			array_args[2] := IntRef->New(value ? 1 : 0);
-			
+
 			if(@fn_sdl_hints_get_hint_boolean = Nil) { @fn_sdl_hints_get_hint_boolean := "sdl_hints_get_hint_boolean"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_get_hint_boolean, array_args);
 
@@ -5441,7 +5441,7 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_clear, array_args);
 		}
 	}
-		
+
 	#~
 	Structure that represents a color
 	~#
@@ -5450,7 +5450,7 @@ bundle Game.SDL2 {
 		@g : Int;
 		@b : Int;
 		@a : Int;
-		
+
 		#~
 		Default black color
 		~#
@@ -5495,7 +5495,7 @@ bundle Game.SDL2 {
 		method : public : GetR() ~ Int {
 			return @r;
 		}
-		
+
 		#~
 		Set red
 		@param r red
@@ -5511,7 +5511,7 @@ bundle Game.SDL2 {
 		method : public : GetG() ~ Int {
 			return @g;
 		}
-		
+
 		#~
 		Set green
 		@param g green
@@ -5527,7 +5527,7 @@ bundle Game.SDL2 {
 		method : public : GetB() ~ Int {
 			return @b;
 		}
-		
+
 		#~
 		Set blue
 		@param b blue
@@ -5543,7 +5543,7 @@ bundle Game.SDL2 {
 		method : public : GetA() ~ Int {
 			return @a;
 		}
-		
+
 		#~
 		Set alpha
 		@param a alpha
@@ -5560,7 +5560,7 @@ bundle Game.SDL2 {
 			return "#{$@r}, #{$@g}, #{$@b}, #{$@a}";
 		}
 	}
-	
+
 	#~
 	Contains the description of a display mode
 	~#
@@ -5569,7 +5569,7 @@ bundle Game.SDL2 {
 	    @w : Int;
 	    @h : Int;
 	    @refresh_rate : Int;
-		
+
 	    New() {
 	    }
 
@@ -5652,19 +5652,19 @@ bundle Game.SDL2 {
 			@refresh_rate := refresh_rate;
 		}
 	}
-	
+
 	#~
 	Defines a two dimensional point
 	~#
 	class Point {
 		@x : Int;
 		@y : Int;
-		
+
 		#~
 		Constructor
 		@param x x position
 		@param y y position
-		~#		
+		~#
 		New(x : Int, y : Int) {
 			@x := x;
 			@y := y;
@@ -5677,7 +5677,7 @@ bundle Game.SDL2 {
 			@x := 0;
 			@y := 0;
 		}
-		
+
 		#~
 		Get x
 		@return x position
@@ -5685,7 +5685,7 @@ bundle Game.SDL2 {
 		method : public : GetX() ~ Int {
 			return @x;
 		}
-		
+
 		#~
 		Get y
 		@return y position
@@ -5693,7 +5693,7 @@ bundle Game.SDL2 {
 		method : public : GetY() ~ Int {
 			return @y;
 		}
-		
+
 		#~
 		Set x
 		@param x x position
@@ -5701,7 +5701,7 @@ bundle Game.SDL2 {
 		method : public : SetX(x : Int) ~ Nil {
 			@x := x;
 		}
-		
+
 		#~
 		Set y
 		@param y y position
@@ -5790,13 +5790,13 @@ bundle Game.SDL2 {
 		@y : Int;
 		@w : Int;
 		@h : Int;
-		
+
 		#~
 		Creates a new rectangle
 		~#
 		New() {
 		}
-		
+
 		#~
 		Creates a new rectangle
 		@param w width
@@ -5833,7 +5833,7 @@ bundle Game.SDL2 {
 			@w := rect->GetW();
 			@h := rect->GetH();
 		}
-		
+
 		#~
 		Get X
 		@return x-position
@@ -5841,7 +5841,7 @@ bundle Game.SDL2 {
 		method : public : GetX() ~ Int {
 			return @x;
 		}
-		
+
 		#~
 		Get Y
 		@return y-position
@@ -5849,7 +5849,7 @@ bundle Game.SDL2 {
 		method : public : GetY() ~ Int {
 			return @y;
 		}
-		
+
 		#~
 		Get height
 		@return height
@@ -5857,7 +5857,7 @@ bundle Game.SDL2 {
 		method : public : GetH() ~ Int {
 			return @h;
 		}
-		
+
 		#~
 		Get width
 		@return width
@@ -5865,7 +5865,7 @@ bundle Game.SDL2 {
 		method : public : GetW() ~ Int {
 			return @w;
 		}
-		
+
 		#~
 		Set x-position
 		@param x x-position
@@ -5873,7 +5873,7 @@ bundle Game.SDL2 {
 		method : public : SetX(x : Int) ~ Nil {
 			@x := x;
 		}
-		
+
 		#~
 		Set y-position
 		@param y y-position
@@ -5881,17 +5881,17 @@ bundle Game.SDL2 {
 		method : public : SetY(y : Int) ~ Nil {
 			@y := y;
 		}
-		
+
 		#~
-		Set height 
+		Set height
 		@param h height
 		~#
 		method : public : SetH(h : Int) ~ Nil {
 			@h := h;
 		}
-		
+
 		#~
-		Set width 
+		Set width
 		@param w width
 		~#
 		method : public : SetW(w : Int) ~ Nil {
@@ -5905,7 +5905,7 @@ bundle Game.SDL2 {
 		method : public : AddX(x : Int) ~ Nil {
 			@x += x;
 		}
-		
+
 		#~
 		Add to current y position
 		@param y value to add
@@ -5913,7 +5913,7 @@ bundle Game.SDL2 {
 		method : public : AddY(y : Int) ~ Nil {
 			@y += y;
 		}
-		
+
 		#~
 		Add to current height
 		@param h value to add
@@ -5921,7 +5921,7 @@ bundle Game.SDL2 {
 		method : public : AddH(h : Int) ~ Nil {
 			@h += h;
 		}
-		
+
 		#~
 		Add to current width
 		@param w value to add
@@ -5937,7 +5937,7 @@ bundle Game.SDL2 {
 		method : public : SubX(x : Int) ~ Nil {
 			@x -= x;
 		}
-		
+
 		#~
 		Subtracts from current y position
 		@param y value to subtract
@@ -5945,23 +5945,23 @@ bundle Game.SDL2 {
 		method : public : SubY(y : Int) ~ Nil {
 			@y -= y;
 		}
-		
+
 		#~
-		Subtracts from current height 
+		Subtracts from current height
 		@param h value to subtract
 		~#
 		method : public : SubH(h : Int) ~ Nil {
 			@h -= h;
 		}
-		
+
 		#~
-		Subtracts from current width 
+		Subtracts from current width
 		@param w value to subtract
 		~#
 		method : public : SubW(w : Int) ~ Nil {
 			@w -= w;
 		}
-		
+
 		#~
 		String representation of rect
 		@return string representation
@@ -5969,7 +5969,7 @@ bundle Game.SDL2 {
 		method : public : ToString() ~ String {
 			return "[{$@x}, {$@y}, {$@w}, {$@h}]";
 		}
-		
+
 		#~
 		Determines if two rectangles intersects
 		@param B rectangle to compare
@@ -5987,7 +5987,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
-		
+
 		#~
 		Calculate the intersection of two rectangles
 		@param B rectangle to compare
@@ -6003,7 +6003,7 @@ bundle Game.SDL2 {
 
 			if(@fn_sdl_rect_intersect = Nil) { @fn_sdl_rect_intersect := "sdl_rect_intersect"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_intersect, array_args);
-			
+
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
@@ -6023,7 +6023,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_rect_union = Nil) { @fn_sdl_rect_union := "sdl_rect_union"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_union, array_args);
 		}
-		
+
 		#~
 		Calculate the intersection of a rectangle and line segment
 		@param X1 a holder to the starting X-coordinate of the line
@@ -6066,7 +6066,7 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 	}
-	
+
 	#~
 	PixelFormat class
 	~#
@@ -6153,7 +6153,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Get pixel format
 		@return pixel format
@@ -6161,7 +6161,7 @@ bundle Game.SDL2 {
 		method : public : GetFormat() ~ PixelValue {
 			return @format;
 		}
-		
+
 		#~
 		Set pixel format
 		@param format pixel format
@@ -6169,7 +6169,7 @@ bundle Game.SDL2 {
 		method : public : SetFormat(format : Int) ~ Nil {
 			@format := format;
 		}
-		
+
 		#~
 		Get the number of significant bits in a pixel value
 		@return bits per pixel
@@ -6177,7 +6177,7 @@ bundle Game.SDL2 {
 		method : public : GetBitsPerPixel() ~ Int {
 			return @bits_per_pixel;
 		}
-		
+
 		#~
 		Set bits per pixel
 		@param bits_per_pixel bits per pixel
@@ -6185,7 +6185,7 @@ bundle Game.SDL2 {
 		method : public : SetBitsPerPixel(bits_per_pixel : Int) ~ Nil {
 			@bits_per_pixel := bits_per_pixel;
 		}
-		
+
 		#~
 		Get the number of bytes required to hold a pixel value
 		@return bytes per pixel
@@ -6193,7 +6193,7 @@ bundle Game.SDL2 {
 		method : public : GetBytesPerPixel() ~ Int {
 			return @bytes_per_pixel;
 		}
-		
+
 		#~
 		Set bytes per pixel
 		@param bytes_per_pixel bytes per pixel
@@ -6201,7 +6201,7 @@ bundle Game.SDL2 {
 		method : public : SetBytesPerPixel(bytes_per_pixel : Int) ~ Nil {
 			@bytes_per_pixel := bytes_per_pixel;
 		}
-		
+
 		#~
 		Get mask representing the location of the red component of the pixel
 		@return pixel mask
@@ -6209,7 +6209,7 @@ bundle Game.SDL2 {
 		method : public : GetRmask() ~ Int {
 			return @r_mask;
 		}
-		
+
 		#~
 		Set red mask
 		@param r_mask red mask
@@ -6217,7 +6217,7 @@ bundle Game.SDL2 {
 		method : public : SetRmask(r_mask : Int) ~ Nil {
 			@r_mask := r_mask;
 		}
-		
+
 		#~
 		Get mask representing the location of the green component of the pixel
 		@return pixel mask
@@ -6225,7 +6225,7 @@ bundle Game.SDL2 {
 		method : public : GetGmask() ~ Int {
 			return @g_mask;
 		}
-		
+
 		#~
 		Set green mask
 		@param g_mask green mask
@@ -6233,7 +6233,7 @@ bundle Game.SDL2 {
 		method : public : SetGmask(g_mask : Int) ~ Nil {
 			@g_mask := g_mask;
 		}
-		
+
 		#~
 		Get mask representing the location of the blue component of the pixel
 		@return pixel mask
@@ -6241,7 +6241,7 @@ bundle Game.SDL2 {
 		method : public : GetBmask() ~ Int {
 			return @b_mask;
 		}
-		
+
 		#~
 		Set blue mask
 		@param b_mask blue mask
@@ -6249,16 +6249,16 @@ bundle Game.SDL2 {
 		method : public : SetBmask(b_mask : Int) ~ Nil {
 			@b_mask := b_mask;
 		}
-		
+
 		#~
-		Get mask representing the location of the alpha component of the 
+		Get mask representing the location of the alpha component of the
 		pixel or 0 if the pixel format doesn't have any alpha information
 		@return pixel mask
 		~#
 		method : public : GetAmask() ~ Int {
 			return @a_mask;
 		}
-		
+
 		#~
 		Set alpha mask
 		@param a_mask alpha mask
@@ -6318,11 +6318,11 @@ bundle Game.SDL2 {
 		@fn_sdl_surface_zoom : static : String;
 		@fn_sdl_surface_zoom_size : static : String;
 		@surface : Int;
-		
+
 		New(surface : Int) {
 			@surface := surface;
 		}
-		
+
 		#~
 		Creates new RGB surface
 		@param flags the flags are unused and should be set to 0
@@ -6374,7 +6374,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			@surface := value->Get();
 		}
-		
+
 		#~
 		Determines if the underlying SDL C-struct is NULL
 		@return true if NULL, false otherwise
@@ -6419,7 +6419,7 @@ bundle Game.SDL2 {
 
 				if(@fn_sdl_surface_duplicate = Nil) { @fn_sdl_surface_duplicate := "sdl_surface_duplicate"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_duplicate, array_args);
-				
+
 				value := array_args[0]->As(IntRef);
 				if(value->Get() <> 0) {
 					return Surface->New(value->Get());
@@ -6428,7 +6428,7 @@ bundle Game.SDL2 {
 
 			return Nil;
 		}
-		
+
 		#~
 		Get pixel format
 		@return pixel format
@@ -6440,7 +6440,7 @@ bundle Game.SDL2 {
 				array_args := Base->New[2];
 				array_args[0] := pixel_format;
 				array_args[1] := IntRef->New(@surface);
-		
+
 				if(@fn_sdl_surface_get_pixel_format = Nil) { @fn_sdl_surface_get_pixel_format := "sdl_surface_get_pixel_format"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_pixel_format, array_args);
 
@@ -6466,7 +6466,7 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
 
@@ -6486,7 +6486,7 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
 
@@ -6506,7 +6506,7 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
 
@@ -6528,7 +6528,7 @@ bundle Game.SDL2 {
 
 			return Nil;
 		}
-		
+
 		#~
 		Set up a surface for directly accessing the pixels
 		~#
@@ -6544,10 +6544,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Release a surface after directly accessing the pixels
 		~#
@@ -6571,7 +6571,7 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := renderer;
-				
+
 				if(@fn_sdl_surface_create_texture = Nil) { @fn_sdl_surface_create_texture := "sdl_surface_create_texture"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_create_texture, array_args);
 
@@ -6581,7 +6581,7 @@ bundle Game.SDL2 {
 
 			return Nil;
 		}
-		
+
 		#~
 		Load a surface from a BMP file.
 		@param file the file containing a BMP image
@@ -6597,7 +6597,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return Surface->New(value->Get());
 		}
-		
+
 		#~
 		save a surface to a BMP file
 		@param surface Surface instance containing the image to be saved
@@ -6617,7 +6617,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Set the RLE acceleration hint for a surface
 		@param flag 0 to disable, non-zero to enable RLE acceleration
@@ -6636,10 +6636,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Set the color key (transparent pixel) in a surface
 		@param flag true to enable color key, false to disable color key
@@ -6660,10 +6660,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the color key (transparent pixel) for a surface
 		@param key a holder filled in with the transparent pixel
@@ -6682,10 +6682,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Set an additional color value multiplied into blit operation
 		@param r the red color value multiplied into blit operations
@@ -6708,10 +6708,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the additional color value multiplied into blit operations
 		@param r pointer filled in with the current red color value
@@ -6720,7 +6720,7 @@ bundle Game.SDL2 {
 		@return 0 on success or a negative error code on failure
 		~#
 		method : public : GetColorMod(r : IntRef, g : IntRef, b : IntRef) ~ Int {
-			if(@surface <> 0) {		
+			if(@surface <> 0) {
 				array_args := Base->New[5];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
@@ -6735,10 +6735,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Set an additional alpha value used in blit operations
 		@param alpha alpha value multiplied into blit operations
@@ -6757,10 +6757,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Get the additional alpha value used in blit operations
 		@param alpha holder filled in with the current alpha value
@@ -6779,10 +6779,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		set the blend mode used for blit operations
 		@param blendMode BlendMode to use for blit blending
@@ -6801,10 +6801,10 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		get the blend mode used for blit operations
 		@param blendMode pointer filled in with the current BlendMode
@@ -6823,7 +6823,7 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
 
@@ -6841,12 +6841,12 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_clip_rect, array_args);
 			};
 		}
-		
+
 		#~
 		Set the clipping rectangle for a surface
-		@param rect Rect structure representing the clipping rectangle, or 
+		@param rect Rect structure representing the clipping rectangle, or
 		Nil to disable clipping
-		@return Returns true if the rectangle intersects the surface, 
+		@return Returns true if the rectangle intersects the surface,
 		otherwise false and blits will be completely clipped
 		~#
 		method : public : SetClipRect(rect : Rect) ~ Bool {
@@ -6862,12 +6862,12 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 0 ? false : true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
-		Copy an existing surface into a new one that is optimized for blitting 
+		Copy an existing surface into a new one that is optimized for blitting
 		to a surface of a specified pixel format
 		@param fmt PixelFormat structure that the new surface is optimized for
 		@param flags flags are unused and should be set to 0
@@ -6887,7 +6887,7 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
 			};
-			
+
 			return Nil;
 		}
 
@@ -6911,13 +6911,13 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
 			};
-			
+
 			return Nil;
 		}
 
 		#~
 		perform a fast fill of a rectangle with a specific color
-		@param rect Rect structure representing the rectangle to fill, or Nil 
+		@param rect Rect structure representing the rectangle to fill, or Nil
 		to fill the entire surface
 		@param color color to fill with
 		@return 0 on success or a negative error code on failure
@@ -6936,13 +6936,13 @@ bundle Game.SDL2 {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Perform a fast surface copy to a destination surface
-		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL
 		to copy the entire surface
 		@param dst the SDL_Surface structure that is the blit target
 		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
@@ -6966,10 +6966,10 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Perform low-level surface blitting only
-		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL
 		to copy the entire surface
 		@param dst the SDL_Surface structure that is the blit target
 		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
@@ -6993,10 +6993,10 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Scaled surface copy to a destination surface
-		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL
 		to copy the entire surface
 		@param dst the SDL_Surface structure that is the blit target
 		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
@@ -7021,10 +7021,10 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Perform low-level surface scaled blitting only
-		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL
 		to copy the entire surface
 		@param dst the SDL_Surface structure that is the blit target
 		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
@@ -7259,7 +7259,7 @@ bundle Game.SDL2 {
 		@fn_sdl_image_load : static : String;
 		@fn_sdl_image_quit : static : String;
 		@fn_sdl_image_save_png : static : String;
-		#~ 
+		#~
 		Initialize by loading support as indicated by the flags
 		@param flags OR'd values ImageFlags->IMG_INIT_JPG, ImageFlags->IMG_INIT_PNG and ImageFlags->IMG_INIT_TIF
 		@return status code
@@ -7275,8 +7275,8 @@ bundle Game.SDL2 {
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
 		}
-	
-		#~ 
+
+		#~
 		Uninitialize image library
 		~#
 		function : Quit() ~ Nil {
@@ -7284,7 +7284,7 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_image_quit, Nil->As(Base[]));
 		}
 
-		#~ 
+		#~
 		Load image into surface
 		@param file file path to image
 		@return loaded surface
@@ -7445,7 +7445,7 @@ bundle Game.SDL2 {
 		#~
 		Create a 2D rendering context for a window
 		@param window window context
-		@param index the index of the rendering driver to initialize, 
+		@param index the index of the rendering driver to initialize,
 		or -1 to initialize the first one supporting the requested flags
 		@param flags 0, or one or more SDL_RendererFlags OR'd together
 		@return rendering context
@@ -7519,7 +7519,7 @@ bundle Game.SDL2 {
 
 		#~
 		Set a texture as the current rendering target.
-		@param texture the targeted texture, which must be created 
+		@param texture the targeted texture, which must be created
 		with the SDL_TEXTUREACCESS_TARGET flag, or Nil for the default render target
 		@return 0 on success or a negative error code on failure
 		~#
@@ -7570,7 +7570,7 @@ bundle Game.SDL2 {
 
 		#~
 		Fill a rectangle on the current rendering target with the drawing color
-		@param rect Rect representing the rectangle to fill, or NULL for the 
+		@param rect Rect representing the rectangle to fill, or NULL for the
 		entire rendering target
 		@return 0 on success or a negative error code on failure
 		~#
@@ -7777,7 +7777,7 @@ bundle Game.SDL2 {
 
 		#~
 		Draw a rectangle on the current rendering target
-		@param rect Rect representing the rectangle to draw, 
+		@param rect Rect representing the rectangle to draw,
 		or Nil to outline the entire rendering target
 		@return 0 on success or a negative error code on failure
 		~#
@@ -8165,7 +8165,7 @@ bundle Game.SDL2 {
 
 		#~
 		set the drawing area for rendering on the current target
-		@param rect Rect representing the drawing area, or Nil to 
+		@param rect Rect representing the drawing area, or Nil to
 		set the viewport to the entire target
 		@return 0 on success or a negative error code on failure
 		~#
@@ -8189,7 +8189,7 @@ bundle Game.SDL2 {
 
 		#~
 		Get information about a rendering context
-		@param info an RendererInfo filled with information about 
+		@param info an RendererInfo filled with information about
 		the current renderer
 		@return 0 on success or a negative error code on failure
 		~#
@@ -8233,7 +8233,7 @@ bundle Game.SDL2 {
 		Copy a portion of the texture to the current rendering target
 		@param texture the source texture; see Remarks for details
 		@param srcrect the source SDL_Rect structure or Nil for the entire texture
-		@param dstrect the destination SDL_Rect structure or Nil for the entire 
+		@param dstrect the destination SDL_Rect structure or Nil for the entire
 		rendering target; the texture will be stretched to fill the given rectangle
 		@return 0 on success or a negative error code on failure
 		~#
@@ -8257,14 +8257,14 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Copy a portion of the texture to the current rendering target, optionally rotating it by angle 
+		Copy a portion of the texture to the current rendering target, optionally rotating it by angle
 		around the given center and also flipping it top-bottom and/or left-right
 		@param texture the source texture; see Remarks for details
 		@param srcrect the source SDL_Rect structure or Nil for the entire texture
 		@param dstrect the destination SDL_Rect structure or Nil for the entire rendering target
-		@param angle an angle in degrees that indicates the rotation that will be applied to dstrect, 
+		@param angle an angle in degrees that indicates the rotation that will be applied to dstrect,
 		rotating it in a clockwise direction
-		@param center a holder to a point indicating the point around which dstrect will be rotated 
+		@param center a holder to a point indicating the point around which dstrect will be rotated
 		(if Nil, rotation will be done around dstrect.w/2, dstrect.h/2)
 		@param flip a SDL_RendererFlip value stating which flipping actions should be performed on the texture
 		@return 0 on success or a negative error code on failure
@@ -8304,7 +8304,7 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Draw pixel with blending enabled if a<255. 
+		Draw pixel with blending enabled if a<255.
 		@param x x-position
 		@param y y-position
 		@param color color
@@ -8578,7 +8578,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-	
+
 		#~
 		Raw anti-aliased circle with blending.
 		@param x X coordinate of the center of the aa-circle.
@@ -8792,7 +8792,7 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Draw anti-aliased trigon (triangle outline) with alpha blending. 
+		Draw anti-aliased trigon (triangle outline) with alpha blending.
 		Note: Creates vertex array and uses aapolygon routine to render.
 		@param x1 X coordinate of the first point of the aa-trigon.
 		@param y1 Y coordinate of the first point of the aa-trigon.
@@ -8876,7 +8876,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-	
+
 		#~
 		Draw a string in the currently set font.
 		@param x X (horizontal) coordinate of the upper left corner of the string.
@@ -8900,7 +8900,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Draw polygon with alpha blending.
 		@param vx Vertex array containing X coordinates of the points of the polygon.
@@ -8923,7 +8923,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
-		
+
 		#~
 		Draw anti-aliased polygon with alpha blending.
 		@param vx Vertex array containing X coordinates of the points of the polygon.
@@ -8981,7 +8981,7 @@ bundle Game.SDL2 {
 	    @texture_formats : Int[];
 	    @max_texture_width : Int;
 	    @max_texture_height : Int;
-		
+
 		New() {
 			@texture_formats := Int->New[16];
 		}
@@ -9080,7 +9080,7 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
-		
+
 		#~
 		Get pixel value for x and y offset
 		@param x x-offset
@@ -9216,7 +9216,7 @@ bundle Game.SDL2 {
 			if(@fn_sdl_texture_destroy = Nil) { @fn_sdl_texture_destroy := "sdl_texture_destroy"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_destroy, array_args);
 		}
-		
+
 		#~
 		Determines if the underlying SDL C-struct is NULL
 		@return true if NULL, false otherwise
@@ -9245,7 +9245,7 @@ bundle Game.SDL2 {
 
 				if(@fn_sdl_texture_query = Nil) { @fn_sdl_texture_query := "sdl_texture_query"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_query, array_args);
-			
+
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
@@ -9430,7 +9430,7 @@ bundle Game.SDL2 {
 
 				if(@fn_sdl_texture_set_blend_mode = Nil) { @fn_sdl_texture_set_blend_mode := "sdl_texture_set_blend_mode"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_set_blend_mode, array_args);
-				
+
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
@@ -9460,7 +9460,7 @@ bundle Game.SDL2 {
 			return -1;
 		}
 	}
-	
+
 	#~
 	SDL time management routines
 	~#
@@ -9529,7 +9529,7 @@ bundle Game.SDL2 {
 		function : GetTicks() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
-			
+
 			if(@fn_sdl_timer_get_ticks = Nil) { @fn_sdl_timer_get_ticks := "sdl_timer_get_ticks"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_timer_get_ticks, array_args);
 
@@ -9544,7 +9544,7 @@ bundle Game.SDL2 {
 		function : Delay(ms : Int) ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(ms);
-			
+
 			if(@fn_sdl_timer_delay = Nil) { @fn_sdl_timer_delay := "sdl_timer_delay"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_timer_delay, array_args);
 		}
@@ -9560,7 +9560,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(a);
 			array_args[2] := IntRef->New(b);
-			
+
 			if(@fn_sdl_ticks_passed = Nil) { @fn_sdl_ticks_passed := "sdl_ticks_passed"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_ticks_passed, array_args);
 
@@ -9623,7 +9623,7 @@ bundle Game.SDL2 {
 if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
         	Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_quit, array_args);
 		}
-		
+
 		#~
 		Load file for use as a font, this can load TTF and FON files.
 		@param file file name to load font from.
@@ -9646,7 +9646,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		Load file for use as a font, this can load TTF and FON files.
 		@param file file name to load font from.
 		@param ptsize Point size (based on 72DPI) to load font as
-		@param index choose a font face from a file containing multiple 
+		@param index choose a font face from a file containing multiple
 		font faces. The first face is always index 0.
 		~#
 		New(file : String, ptsize : Int, index : Int) {
@@ -9660,7 +9660,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_open_index, array_args);
 
 	        value := array_args[0]->As(IntRef);
-	        @font := value->Get();        
+	        @font := value->Get();
 		}
 
 		#~
@@ -9735,7 +9735,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
 		}
-		
+
 		#~
 		Render the LATIN1 encoded text blended
 		@param text the LATIN1 null terminated string to render.
@@ -10196,7 +10196,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 			return value->Get() = 0;
 		}
 
-		#~ 
+		#~
 		Initialize the audio mixer
 		@param flags OR'd values refer to MixerInitFlags
 		@return status code
@@ -10213,7 +10213,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 	        return value->Get();
 		}
 
-		#~ 
+		#~
 		List available recording devices
 		@return available recording devices
 		~#
@@ -10645,7 +10645,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		#~
 		Play chunk on channel
 		@param channel to play on, or -1 for the first free unreserved channel.
-		@param loops number of loops, -1 is infinite loops. Passing one here 
+		@param loops number of loops, -1 is infinite loops. Passing one here
 		plays the sample twice
 		@return the channel the sample is played on
 		~#
@@ -10684,20 +10684,20 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		@param channel channel to play on, or -1 for the first free unreserved channel.
 		@param loops number of loops, -1 is infinite loops.
 		Passing one here plays the sample twice (1 loop).
-		@param ms milliseconds of time that the fade-in effect should take to go from 
+		@param ms milliseconds of time that the fade-in effect should take to go from
 		silence to full volume.
 		@return channel the sample is played on
 		~#
 		method : public : FadeInChannel(channel : Int, loops : Int, ms : Int) ~ Int {
 			return FadeInChannelTimed(channel, loops, ms, -1);
 		}
-		
+
 		#~
 		Fade in sample
 		@param channel channel to play on, or -1 for the first free unreserved channel.
 		@param loops number of loops, -1 is infinite loops.
 		Passing one here plays the sample twice (1 loop).
-		@param ms milliseconds of time that the fade-in effect should take to go from 
+		@param ms milliseconds of time that the fade-in effect should take to go from
 		silence to full volume.
 		@param ticks millisecond limit to play sample, at most
 		@return channel the sample is played on
@@ -10801,7 +10801,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		function : Paused() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
-			
+
 			if(@fn_sdl_mixer_paused_music = Nil) { @fn_sdl_mixer_paused_music := "sdl_mixer_paused_music"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_paused_music, array_args);
 
@@ -10813,7 +10813,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		Resumes music
 		~#
 		function : Resume() ~ Nil {
-			array_args := Base->New[0];			
+			array_args := Base->New[0];
 			if(@fn_sdl_mixer_resume_music = Nil) { @fn_sdl_mixer_resume_music := "sdl_mixer_resume_music"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_resume_music, array_args);
 		}
@@ -10822,7 +10822,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		Pauses music
 		~#
 		function : Pause() ~ Nil {
-			array_args := Base->New[0];			
+			array_args := Base->New[0];
 			if(@fn_sdl_mixer_pause_music = Nil) { @fn_sdl_mixer_pause_music := "sdl_mixer_pause_music"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_pause_music, array_args);
 		}
@@ -10844,7 +10844,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		}
 
 		#~
-		Sets music volume 
+		Sets music volume
 		@param volume volume between 0 - 128
 		@return set volume
 		~#
@@ -10862,7 +10862,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 
 		#~
 		Plays music
-		@param loops number of loops to play or -1 for infinite 
+		@param loops number of loops to play or -1 for infinite
 		@return channel music is playing on
 		~#
 		method : public : PlayMusic(loops : Int) ~ Int {
@@ -10871,7 +10871,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@mix_music);
 				array_args[2] := IntRef->New(loops);
-				
+
 				if(@fn_sdl_mixer_play_music = Nil) { @fn_sdl_mixer_play_music := "sdl_mixer_play_music"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_play_music, array_args);
 
@@ -10884,7 +10884,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 
 		#~
 		Fades in music
-		@param loops number of loops to play or -1 for infinite 
+		@param loops number of loops to play or -1 for infinite
 		@param ms millisecond delay
 		@return channel music is playing on
 		~#
@@ -10962,7 +10962,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 			return array_args[0]->As(String);
 		}
 	}
-	
+
 	#~
 	Operations for gathering information about the processor's features
 	~#
@@ -11192,7 +11192,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 			return value->Get();
 		}
 	}
-	
+
 	#~
 	Filesystem helper functions
 	~#
@@ -11219,8 +11219,8 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		}
 
 		#~
-		Use this function to get the "pref dir". This is meant to be where the application 
-		can write personal files (Preferences and save games, etc.) that are specific to 
+		Use this function to get the "pref dir". This is meant to be where the application
+		can write personal files (Preferences and save games, etc.) that are specific to
 		the application. This directory is unique per user and per application.
 		@param org the name of your organization
 		@param app the name of your application

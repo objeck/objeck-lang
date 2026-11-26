@@ -1,7 +1,7 @@
 #~~
-# Objeck encryption routines 
+# Objeck encryption routines
 # Copyright (c) 2023 Randy Hollines
-~~#	
+~~#
 
 use System.API;
 
@@ -11,14 +11,14 @@ Cryptographic utilities including AES-256 encryption/decryption, SHA-1/256/512 a
 bundle Cipher {
 	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
-		
+
 		function : GetDllProxy() ~ DllProxy {
 			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_crypto");
 
 			return @lib_proxy;
 		}
 	}
-	
+
 	#~
 	Support for one-way hashes
 	~#
@@ -48,17 +48,17 @@ bundle Cipher {
 			if(stream_in <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayRef->New(stream_in);				
+				array_args[1] := ByteArrayRef->New(stream_in);
 				if(@fn_crypto_hash_sha1 = Nil) { @fn_crypto_hash_sha1 := "crypto_hash_sha1"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha1, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Hash input using SHA-256
 		@param stream_in bytes to hashed
@@ -73,7 +73,7 @@ bundle Cipher {
 			if(stream_in <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayRef->New(stream_in);				
+				array_args[1] := ByteArrayRef->New(stream_in);
 				if(@fn_crypto_hash_sha256 = Nil) { @fn_crypto_hash_sha256 := "crypto_hash_sha256"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha256, array_args);
 
@@ -125,17 +125,17 @@ bundle Cipher {
 			if(stream_in <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayRef->New(stream_in);				
+				array_args[1] := ByteArrayRef->New(stream_in);
 				if(@fn_crypto_hash_sha512 = Nil) { @fn_crypto_hash_sha512 := "crypto_hash_sha512"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha512, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Hash input using MD5
 		@param stream_in bytes to hashed
@@ -150,17 +150,17 @@ bundle Cipher {
 			if(stream_in <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayRef->New(stream_in);				
+				array_args[1] := ByteArrayRef->New(stream_in);
 				if(@fn_crypto_hash_md5 = Nil) { @fn_crypto_hash_md5 := "crypto_hash_md5"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_md5, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Hash input using RIPEMD digest
 		@param stream_in bytes to hashed
@@ -179,15 +179,15 @@ bundle Cipher {
 
 				if(@fn_crypto_hash_ripemd160 = Nil) { @fn_crypto_hash_ripemd160 := "crypto_hash_ripemd160"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_ripemd160, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 	}
-	
+
 	#~
 	Encrypts data
 	~#
@@ -220,11 +220,11 @@ bundle Cipher {
 
 				if(@fn_crypto_encrypt_aes256 = Nil) { @fn_crypto_encrypt_aes256 := "crypto_encrypt_aes256"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_encrypt_aes256, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -249,7 +249,7 @@ bundle Cipher {
 			return array_args[0]->As(String);
 		}
 	}
-	
+
 	#~
 	Decrypts data
 	~#
@@ -279,15 +279,15 @@ bundle Cipher {
 				array_args := Base->New[3];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(key);
-				array_args[2] := ByteArrayRef->New(stream_in);	
+				array_args[2] := ByteArrayRef->New(stream_in);
 
 				if(@fn_crypto_decrypt_aes256 = Nil) { @fn_crypto_decrypt_aes256 := "crypto_decrypt_aes256"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_crypto_decrypt_aes256, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 

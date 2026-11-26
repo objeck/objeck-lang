@@ -7,14 +7,14 @@ ODBC database access layer. Connection manages database sessions; Statement and 
 bundle Database.ODBC {
 	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
-		
+
 		function : GetDllProxy() ~ DllProxy {
 			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_odbc");
 
 			return @lib_proxy;
 		}
 	}
-	
+
 	#~
 	ODBC database connection
 	~#
@@ -37,7 +37,7 @@ bundle Database.ODBC {
 		@fn_odbc_set_autocommit : static : String;
 		@fn_odbc_update_statement : static : String;
 		@native_connection : Int;
-		
+
 		#~
 		Constructor
 		@param ds ODBC data source
@@ -92,7 +92,7 @@ bundle Database.ODBC {
 			value := array_args[0]->As(IntRef);
 			@native_connection := value->Get();
 		}
-      	
+
 		#~
 		Check rather a connect is open
 		@return true if connected, false otherwise
@@ -107,7 +107,7 @@ bundle Database.ODBC {
 		method : public : IsOpen() ~ Bool {
 			return @native_connection <> 0;
 		}
-		
+
 		#~
 		Closes a connection
 		~#
@@ -121,7 +121,7 @@ bundle Database.ODBC {
 				@native_connection := 0;
 			};
 		}
-		
+
 		#~
 		Executes a SQL update statement
 		@param sql SQL statement
@@ -144,14 +144,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_update_statement = Nil) { @fn_odbc_update_statement := "odbc_update_statement"; };
 				lib_proxy->CallFunction(@fn_odbc_update_statement, array_args);
-				
+
 				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
 		#~
 		Executes a SQL select statement
 		@param sql SQL statement
@@ -179,16 +179,16 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_select_statement = Nil) { @fn_odbc_select_statement := "odbc_select_statement"; };
 				lib_proxy->CallFunction(@fn_odbc_select_statement, array_args);
-				
+
 				native_stmt := array_args[0]->As(IntRef);
 				native_names := array_args[1]->As(IntRef);
 				exec_data := array_args[2]->As(IntRef);
 				return ResultSet->New(native_stmt->Get(), native_names->Get(), exec_data->Get());
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Create a parametrized SQL statement
 		@param sql SQL statement
@@ -215,7 +215,7 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_prepare_statement = Nil) { @fn_odbc_prepare_statement := "odbc_prepare_statement"; };
 				lib_proxy->CallFunction(@fn_odbc_prepare_statement, array_args);
-				
+
 				native_stmt := array_args[0]->As(IntRef);
 				native_names := array_args[1]->As(IntRef);
 				exec_data := array_args[2]->As(IntRef);
@@ -417,14 +417,14 @@ bundle Database.ODBC {
 		@native_names : Int;
 		@exec_data : Int;
 		@params : Vector<Base>;
-		
+
 		New(native_stmt : Int, native_names : Int, exec_data : Int) {
 			@native_stmt := native_stmt;
 			@native_names := native_names;
 			@exec_data := exec_data;
 			@params := Vector->New()<Base>;
 		}
-		
+
 		#~
 		Sets a bit type to NULL
 		@param pos parameter position
@@ -439,11 +439,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_bit_null = Nil) { @fn_odbc_stmt_set_bit_null := "odbc_stmt_set_bit_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_bit_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -457,7 +457,7 @@ bundle Database.ODBC {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := IntRef->New(value ? 1 : 0);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -466,14 +466,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_bit = Nil) { @fn_odbc_stmt_set_bit := "odbc_stmt_set_bit"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_bit, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a small integer type to NULL
 		@param pos parameter position
@@ -488,11 +488,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_smallint_null = Nil) { @fn_odbc_stmt_set_smallint_null := "odbc_stmt_set_smallint_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_smallint_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -506,7 +506,7 @@ bundle Database.ODBC {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := IntRef->New(value);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -515,14 +515,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_smallint = Nil) { @fn_odbc_stmt_set_smallint := "odbc_stmt_set_smallint"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_smallint, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a integer type to NULL
 		@param pos parameter position
@@ -538,11 +538,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_int_null = Nil) { @fn_odbc_stmt_set_int_null := "odbc_stmt_set_int_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_int_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -556,7 +556,7 @@ bundle Database.ODBC {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := IntRef->New(value);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -565,14 +565,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_int = Nil) { @fn_odbc_stmt_set_int := "odbc_stmt_set_int"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_int, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a big integer type to NULL
 		@param pos parameter position
@@ -636,11 +636,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_double_null = Nil) { @fn_odbc_stmt_set_double_null := "odbc_stmt_set_double_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_double_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -654,7 +654,7 @@ bundle Database.ODBC {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := FloatRef->New(value);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -663,14 +663,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_double = Nil) { @fn_odbc_stmt_set_double := "odbc_stmt_set_double"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_double, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a real type to NULL
 		@param pos parameter position
@@ -685,11 +685,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_real_null = Nil) { @fn_odbc_stmt_set_real_null := "odbc_stmt_set_real_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_real_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -703,7 +703,7 @@ bundle Database.ODBC {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := FloatRef->New(value);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -712,11 +712,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_real = Nil) { @fn_odbc_stmt_set_real := "odbc_stmt_set_real"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_real, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -725,7 +725,7 @@ bundle Database.ODBC {
 		@param pos parameter position
 		@return true if set, false otherwise
 		~#
-		method : public : SetVarchar(pos : Int) ~ Bool {		
+		method : public : SetVarchar(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -734,11 +734,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_varchar_null = Nil) { @fn_odbc_stmt_set_varchar_null := "odbc_stmt_set_varchar_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_varchar_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -755,11 +755,11 @@ bundle Database.ODBC {
 		conn->Close();
 		```
 		~#
-		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
+		method : public : SetVarchar(pos : Int, value : String) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := ByteArrayRef->New(value->ToByteArray());
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -768,20 +768,20 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_varchar = Nil) { @fn_odbc_stmt_set_varchar := "odbc_stmt_set_varchar"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_varchar, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a blob type to NULL
 		@param pos parameter position
 		@return true if set, false otherwise
 		~#
-		method : public : SetBlob(pos : Int) ~ Bool {		
+		method : public : SetBlob(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -790,11 +790,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_blob_null = Nil) { @fn_odbc_stmt_set_blob_null := "odbc_stmt_set_blob_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_blob_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -804,11 +804,11 @@ bundle Database.ODBC {
 		@param buffer byte buffer
 		@return true if set, false otherwise
 		~#
-		method : public : SetBlob(pos : Int, buffer : Byte[]) ~ Bool {		
+		method : public : SetBlob(pos : Int, buffer : Byte[]) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				input := ByteArrayRef->New(buffer);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[5];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -818,18 +818,18 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_blob = Nil) { @fn_odbc_stmt_set_blob := "odbc_stmt_set_blob"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_blob, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
-		method : public : SetBytes(pos : Int, buffer : Byte[]) ~ Bool {			
+
+		method : public : SetBytes(pos : Int, buffer : Byte[]) ~ Bool {
 			return SetBytes(pos, buffer, buffer->Size());
 		}
-		
+
 		#~
 		Sets a stream of bytes
 		@param pos parameter position
@@ -837,7 +837,7 @@ bundle Database.ODBC {
 		@param length number of bytes to write
 		@return true if set, false otherwise
 		~#
-		method : public : SetBytes(pos : Int, buffer : Byte[], length : Int) ~ Bool {		
+		method : public : SetBytes(pos : Int, buffer : Byte[], length : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				if(length > buffer->Size()) {
 					length := buffer->Size();
@@ -845,7 +845,7 @@ bundle Database.ODBC {
 
 				input := ByteArrayRef->New(buffer);
 				@params->AddBack(input);
-				
+
 				array_args := Base->New[6];
 				array_args[0] := IntRef->New();
 				array_args[1] := input;
@@ -856,20 +856,20 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_bytes = Nil) { @fn_odbc_stmt_set_bytes := "odbc_stmt_set_bytes"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_bytes, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a date type to NULL
 		@param pos parameter position
 		@return true if set, false otherwise
 		~#
-		method : public : SetDate(pos : Int) ~ Bool {		
+		method : public : SetDate(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -878,11 +878,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_date_null = Nil) { @fn_odbc_stmt_set_date_null := "odbc_stmt_set_date_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_date_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -892,7 +892,7 @@ bundle Database.ODBC {
 		@param value date value
 		@return true if set, false otherwise
 		~#
-		method : public : SetDate(pos : Int, value : Date) ~ Bool {		
+		method : public : SetDate(pos : Int, value : Date) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				@params->AddBack(value);
 
@@ -904,20 +904,20 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_date = Nil) { @fn_odbc_stmt_set_date := "odbc_stmt_set_date"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_date, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Sets a timestamp type to NULL
 		@param pos parameter position
 		@return true if set, false otherwise
 		~#
-		method : public : SetTimestamp(pos : Int) ~ Bool {		
+		method : public : SetTimestamp(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -926,11 +926,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_timestamp_null = Nil) { @fn_odbc_stmt_set_timestamp_null := "odbc_stmt_set_timestamp_null"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_timestamp_null, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
 
@@ -940,7 +940,7 @@ bundle Database.ODBC {
 		@param value timestamp value
 		@return true if set, false otherwise
 		~#
-		method : public : SetTimestamp(pos : Int, value : Timestamp) ~ Bool {		
+		method : public : SetTimestamp(pos : Int, value : Timestamp) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				@params->AddBack(value);
 
@@ -952,14 +952,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_set_timestamp = Nil) { @fn_odbc_stmt_set_timestamp := "odbc_stmt_set_timestamp"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_set_timestamp, array_args);
-				
+
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Executes a SQL update statement. Statement is closed after calling.
 		@param sql SQL statement
@@ -990,10 +990,10 @@ bundle Database.ODBC {
 				value := array_args[0]->As(IntRef);
 				return value->Get();
       		};
-      		
+
       		return -1;
 		}
-		
+
 		#~
 		Executes a SQL select statement
 		@param sql SQL statement
@@ -1029,10 +1029,10 @@ bundle Database.ODBC {
 				# statement, which Close frees, ready to run again
 				return ResultSet->New(@native_stmt, @native_names, @exec_data, true);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Gets the last error message from the statement.
 		@return error message string, or empty if no error
@@ -1127,7 +1127,7 @@ bundle Database.ODBC {
 			@exec_data := exec_data;
 			@borrowed := borrowed;
 		}
-		
+
 
 		#~
 		Get the metadata for a given column
@@ -1144,11 +1144,11 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_metadata = Nil) { @fn_odbc_result_metadata := "odbc_result_metadata"; };
 				lib_proxy->CallFunction(@fn_odbc_result_metadata, array_args);
-				
+
 				value := array_args[0]->As(ColumnInfoRef);
 				return value->Get();
       		};
-      		
+
       		return Nil;
 		}
 
@@ -1173,14 +1173,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_next = Nil) { @fn_odbc_result_next := "odbc_result_next"; };
 				lib_proxy->CallFunction(@fn_odbc_result_next, array_args);
-				
+
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 1;
       		};
-      		
+
       		return false;
 		}
-				
+
 		#~
 		Checks to see if the value fetched is NUL. This method should be called
 		after a value is fetched using GetX(column).
@@ -1189,7 +1189,7 @@ bundle Database.ODBC {
 		method : public : IsNull() ~ Bool {
 			return @is_null;
 		}
-		
+
 		#~
 		Gets an integer value
 		@param column column ID
@@ -1216,14 +1216,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_int_by_id = Nil) { @fn_odbc_result_get_int_by_id := "odbc_result_get_int_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_int_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
-      		
+
       		return 0;
 		}
 
@@ -1243,17 +1243,17 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_int_by_name = Nil) { @fn_odbc_result_get_int_by_name := "odbc_result_get_int_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_int_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
-      		
+
       		return 0;
 		}
-		
+
 		#~
 		Gets a big integer value
 		@param column column ID
@@ -1324,14 +1324,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_smallint_by_id = Nil) { @fn_odbc_result_get_smallint_by_id := "odbc_result_get_smallint_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_smallint_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
-      		
+
       		return 0;
 		}
 
@@ -1351,17 +1351,17 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_smallint_by_name = Nil) { @fn_odbc_result_get_smallint_by_name := "odbc_result_get_smallint_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_smallint_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
-      		
+
       		return 0;
 		}
-		
+
 		#~
 		Gets a bit value
 		@param column column ID
@@ -1378,14 +1378,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_bit_by_id = Nil) { @fn_odbc_result_get_bit_by_id := "odbc_result_get_bit_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_bit_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(IntRef);
 				return value->Get() = 1;
       		};
-      		
+
       		return false;
 		}
 
@@ -1405,17 +1405,17 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_bit_by_name = Nil) { @fn_odbc_result_get_bit_by_name := "odbc_result_get_bit_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_bit_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(IntRef);
 				return value->Get() = 1;
       		};
-      		
+
       		return false;
 		}
-		
+
 		#~
 		Gets a double value
 		@param column column ID
@@ -1432,14 +1432,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_double_by_id = Nil) { @fn_odbc_result_get_double_by_id := "odbc_result_get_double_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_double_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
-      		
+
       		return 0.0;
 		}
 
@@ -1459,17 +1459,17 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_double_by_name = Nil) { @fn_odbc_result_get_double_by_name := "odbc_result_get_double_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_double_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
-      		
+
       		return 0.0;
 		}
-		
+
 		#~
 		Gets a real value
 		@param column column ID
@@ -1486,14 +1486,14 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_real_by_id = Nil) { @fn_odbc_result_get_real_by_id := "odbc_result_get_real_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_real_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
-      		
+
       		return 0.0;
 		}
 
@@ -1513,17 +1513,17 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_real_by_name = Nil) { @fn_odbc_result_get_real_by_name := "odbc_result_get_real_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_real_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
-      		
+
       		return 0.0;
 		}
-		
+
 		#~
 		Gets a varchar value
 		@param column column ID
@@ -1550,16 +1550,16 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_varchar_by_id = Nil) { @fn_odbc_result_get_varchar_by_id := "odbc_result_get_varchar_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_varchar_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				if(@is_null) {
 					return Nil;
 				};
 				return array_args[1]->As(String);
       		};
-      		
+
       		return Nil;
 		}
 
@@ -1579,16 +1579,16 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_varchar_by_name = Nil) { @fn_odbc_result_get_varchar_by_name := "odbc_result_get_varchar_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_varchar_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				if(@is_null) {
 					return Nil;
 				};
 				return array_args[1]->As(String);
       		};
-      		
+
       		return Nil;
 		}
 
@@ -1608,7 +1608,7 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_blob_by_id = Nil) { @fn_odbc_result_get_blob_by_id := "odbc_result_get_blob_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_blob_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
       		};
@@ -1630,12 +1630,12 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_blob_by_name = Nil) { @fn_odbc_result_get_blob_by_name := "odbc_result_get_blob_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_blob_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
       		};
 		}
-		
+
 		#~
 		Gets a whole binary value, however long, as a new array of exactly its length. GetBlob
 		fills a buffer the caller sized and cannot say how much of it the value used, or that
@@ -1690,16 +1690,16 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_date_by_id = Nil) { @fn_odbc_result_get_date_by_id := "odbc_result_get_date_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_date_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				if(@is_null) {
 					return Nil;
 				};
 				return array_args[1]->As(Database.ODBC.Date);
       		};
-      		
+
       		return Nil;
 		}
 
@@ -1719,19 +1719,19 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_date_by_name = Nil) { @fn_odbc_result_get_date_by_name := "odbc_result_get_date_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_date_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				if(@is_null) {
 					return Nil;
 				};
 				return array_args[1]->As(Database.ODBC.Date);
       		};
-      		
+
       		return Nil;
 		}
-		
+
 		#~
 		Gets a timestamp value
 		@param column column ID
@@ -1748,16 +1748,16 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_timestamp_by_id = Nil) { @fn_odbc_result_get_timestamp_by_id := "odbc_result_get_timestamp_by_id"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_timestamp_by_id, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				if(@is_null) {
 					return Nil;
 				};
 				return array_args[1]->As(Timestamp);
       		};
-      		
+
       		return Nil;
 		}
 
@@ -1777,19 +1777,19 @@ bundle Database.ODBC {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_result_get_timestamp_by_name = Nil) { @fn_odbc_result_get_timestamp_by_name := "odbc_result_get_timestamp_by_name"; };
 				lib_proxy->CallFunction(@fn_odbc_result_get_timestamp_by_name, array_args);
-				
+
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
-				
+
 				if(@is_null) {
 					return Nil;
 				};
 				return array_args[1]->As(Timestamp);
       		};
-      		
+
       		return Nil;
 		}
-		
+
 		#~
 		Whether the statement ran and its rows can be read. A Select whose SQL the database
 		refused gives a result set that is not open; GetLastError says why.
@@ -1928,7 +1928,7 @@ bundle Database.ODBC {
 		}
 
 		#~
-		Get column decimal digits 
+		Get column decimal digits
 		@return decimal digits
 		~#
 		method : public : GetDecimalDigits() ~ Int {
@@ -2030,7 +2030,7 @@ bundle Database.ODBC {
 		@year : Int;
 		@month : Int;
 		@day : Int;
-		
+
 		#~
 		Default constructor
 		~#
@@ -2038,7 +2038,7 @@ bundle Database.ODBC {
 			# size of c struct
 			@buffer := Byte->New[6];
 		}
-		
+
 		#~
 		Copy constructor for System.Time.Date
 		@param date System.Time.Date
@@ -2046,12 +2046,12 @@ bundle Database.ODBC {
 		New(date : System.Time.Date) {
 			# size of c struct
 			@buffer := Byte->New[6];
-			
+
 			@year := date->GetYear();
 			@month := date->GetMonth();
 			@day := date->GetDay();
 		}
-		
+
 		#~
 		Gets the year
 		@return year
@@ -2067,7 +2067,7 @@ bundle Database.ODBC {
 		method : public : SetYear(year : Int) ~ Nil {
 			@year := year;
 		}
-		
+
 		#~
 		Gets the month
 		@return month
@@ -2083,7 +2083,7 @@ bundle Database.ODBC {
 		method : public : SetMonth(month : Int) ~ Nil {
 			@month := month;
 		}
-		
+
 		#~
 		Gets the day
 		@return day
@@ -2091,7 +2091,7 @@ bundle Database.ODBC {
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
-		
+
 		#~
 		Sets the day
 		@param day value
@@ -2117,7 +2117,7 @@ bundle Database.ODBC {
 		method : public : ToDate() ~ System.Time.Date {
 			return System.Time.Date->New(@day, @month, @year, false);
 		}
-		
+
 		#~
 		Creates a string representation of the date
 		@return string representation of the date
@@ -2134,7 +2134,7 @@ bundle Database.ODBC {
 			return out;
 		}
 	}
-	
+
 	#~
 	ODBC Timestamp holder
 	~#
@@ -2147,7 +2147,7 @@ bundle Database.ODBC {
 		@minute : Int;
 		@second : Int;
 		@fraction : Int;
-		
+
 		#~
 		Default constructor
 		~#
@@ -2155,7 +2155,7 @@ bundle Database.ODBC {
 			# size of c struct
 			@buffer := Byte->New[16];
 		}
-		
+
 		#~
 		Copy constructor for System.Time.Date
 		@param date System.Time.Date
@@ -2163,7 +2163,7 @@ bundle Database.ODBC {
 		New(date : System.Time.Date) {
 			# size of c struct
 			@buffer := Byte->New[16];
-			
+
 			@year := date->GetYear();
 			@month := date->GetMonth();
 			@day := date->GetDay();
@@ -2171,7 +2171,7 @@ bundle Database.ODBC {
 			@minute := date->GetMinutes();
 			@second := date->GetSeconds();
 		}
-		
+
 		#~
 		Gets the year
 		@return year
@@ -2187,7 +2187,7 @@ bundle Database.ODBC {
 		method : public : SetYear(year : Int) ~ Nil {
 			@year := year;
 		}
-		
+
 		#~
 		Gets the month
 		@return month
@@ -2203,7 +2203,7 @@ bundle Database.ODBC {
 		method : public : SetMonth(month : Int) ~ Nil {
 			@month := month;
 		}
-		
+
 		#~
 		Gets the day
 		@return day
@@ -2211,7 +2211,7 @@ bundle Database.ODBC {
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
-		
+
 		#~
 		Sets the day
 		@param day value
@@ -2227,7 +2227,7 @@ bundle Database.ODBC {
 		method : public : GetHours() ~ Int {
 			return @hours;
 		}
-		
+
 		#~
 		Sets the hours
 		@param hours hours
@@ -2243,7 +2243,7 @@ bundle Database.ODBC {
 		method : public : GetMinutes() ~ Int {
 			return @minute;
 		}
-		
+
 		#~
 		Sets the minutes
 		@param minute minutes
@@ -2259,7 +2259,7 @@ bundle Database.ODBC {
 		method : public : GetSeconds() ~ Int {
 			return @second;
 		}
-		
+
 		#~
 		Sets the seconds
 		@param second seconds
@@ -2295,10 +2295,10 @@ bundle Database.ODBC {
 			date->AddHours(@hours);
 			date->AddMinutes(@minute);
 			date->AddSeconds(@second);
-			
+
 			return date;
 		}
-		
+
 		#~
 		Creates a string representation of the timestamp
 		@return string representation of the timestamp

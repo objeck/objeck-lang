@@ -2781,10 +2781,10 @@ tree->Predict([true, true])->PrintLine();   # true
 		@param input training matrix
 		@return list of decision tree splits
 		~#
-		function : native : Train(input : Bool[,]) ~ Vector<Split> {					
+		function : native : Train(input : Bool[,]) ~ Vector<Split> {
 			decisions := Vector->New()<Split>;
 			dims := input->Size();
-			
+
 			cols := dims[1] - 1;
 			if(cols > 0) {
 				done := false;
@@ -2880,7 +2880,7 @@ tree->Predict([true, true])->PrintLine();   # true
 				return 0.0;
 			};
 
-			
+
 			# right
 			goal := Mismatches(test, input);
 			if(goal > 0.0) {
@@ -2990,7 +2990,7 @@ tree->Predict([true, true])->PrintLine();   # true
 								matrix[i - 1, j] := false;
 							}
 							else {
-								matrix[i - 1, j] := true;	
+								matrix[i - 1, j] := true;
 							};
 						};
 					};
@@ -3006,7 +3006,7 @@ tree->Predict([true, true])->PrintLine();   # true
 	class Split {
 		@index : Int;
 		@weighted_gini : Float;
-		
+
 		New(index : Int, weighted_gini : Float) {
 			@index := index;
 			@weighted_gini := weighted_gini;

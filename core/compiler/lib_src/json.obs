@@ -303,7 +303,7 @@ builder->Pop()->ToString()->PrintLine();
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
-			
+
 			@stack->Top()->Insert(name, value);
 			return @self;
 		}
@@ -326,7 +326,7 @@ builder->Pop()->ToString()->PrintLine();
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
-			
+
 			@stack->Top()->Insert(name, value);
 			return @self;
 		}
@@ -349,7 +349,7 @@ builder->Pop()->ToString()->PrintLine();
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
-			
+
 			@stack->Top()->Insert(name, value);
 			return @self;
 		}
@@ -364,7 +364,7 @@ builder->Pop()->ToString()->PrintLine();
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
-			
+
 			@stack->Top()->Insert(name, value);
 			return @self;
 		}
@@ -412,7 +412,7 @@ if(doc <> Nil) {
 		@error_msg : String;
 		@depth : Int;
 		@max_depth : Int;
-		
+
 		#~
 		Constructor
 		@param stream_in JSON string to process
@@ -488,10 +488,10 @@ if(doc <> Nil) {
 			if(parser->Parse()) {
 				return parser->GetRoot();
 			};
-	
+
 			return Nil;
 		}
-		
+
 		#~
 		Parses a Json string
 		@return true is successful, false otherwise
@@ -555,10 +555,10 @@ if(doc <> Nil) {
 		method : public : GetRoot() ~ JsonElement {
 			return @root;
 		}
-		
+
 		method : ParseValue() ~ JsonElement {
 			element : JsonElement;
-			
+
 			select(@cur_token->GetType()) {
 				label Token->Type->OBR: {
 # "array"->PrintLine();
@@ -566,49 +566,49 @@ if(doc <> Nil) {
 				}
 
 				label Token->Type->OCBR: {
-# "object"->PrintLine();				
-					element := ParseObject();						
+# "object"->PrintLine();
+					element := ParseObject();
 				}
 
 				label Token->Type->IDENT: {
 					element := JsonElement->New(@cur_token->GetValue());
 # Console->Print("string=")->PrintLine(@cur_token->GetValue());
 					NextToken();
-					
+
 				}
-				
+
 				label Token->Type->INT_NUM:
 				label Token->Type->FLOAT_NUM: {
 					element := JsonElement->New(JsonType->NUMBER, @cur_token->GetValue());
 # Console->Print("number=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 				}
-				
+
 				label Token->Type->TRUE: {
 					element := JsonElement->New(JsonType->TRUE);
 # "true"->PrintLine();
 					NextToken();
 				}
-				
+
 				label Token->Type->FALSE: {
 					element := JsonElement->New(JsonType->FALSE);
 # "false"->PrintLine();
 					NextToken();
 				}
-				
+
 				label Token->Type->NULL: {
 					element := JsonElement->New(JsonType->NULL);
 # "null"->PrintLine();
 					NextToken();
 				}
-				
+
 				other: {
 					@error_msg := TokenError("*** Unexpected value *** ");
-# @cur_token->GetType()->As(Int)->PrintLine();				
+# @cur_token->GetType()->As(Int)->PrintLine();
 					return Nil;
 				}
 			};
-			
+
 			return element;
 		}
 
@@ -738,12 +738,12 @@ if(doc <> Nil) {
 	 		};
 		}
 
-		method : native : Scan() ~ Nil {			
+		method : native : Scan() ~ Nil {
 			if(@input <> Nil) {
-				
+
 
 				# TODO: add-in line numbers
-				
+
 				@token_read_pos := @token_write_pos := 0;
 
 				while(@token_write_pos < @tokens_max) {
@@ -945,7 +945,7 @@ if(doc <> Nil) {
 									label '[': {
 										AddToken(Token->New(Token->Type->OBR));
 									}
-			
+
 									label ']': {
 										AddToken(Token->New(Token->Type->CBR));
 									}
@@ -953,7 +953,7 @@ if(doc <> Nil) {
 									label '{': {
 										AddToken(Token->New(Token->Type->OCBR));
 									}
-			
+
 									label '}': {
 										AddToken(Token->New(Token->Type->CCBR));
 									}
@@ -973,11 +973,11 @@ if(doc <> Nil) {
 								# update
 								@input_index += 1;
 							};
-						};	
+						};
 					}
 					else {
 						AddToken(Token->New(Token->Type->OTHER));
-					};				
+					};
 				};
 
 				@cur_token := @tokens[@token_read_pos++];
@@ -1128,7 +1128,7 @@ if(doc <> Nil) {
 
 						label Token->Type->CBR: {
 							"token=']'"->PrintLine();
-						}            
+						}
 
 						label Token->Type->OCBR: {
 							"token='{'"->PrintLine();
@@ -1150,10 +1150,10 @@ if(doc <> Nil) {
 							"token=','"->PrintLine();
 						}
 
-						label Token->Type->OTHER: 
+						label Token->Type->OTHER:
 						label Token->Type->BAD_NUM: {
 							"token=OTHER"->PrintLine();
-						}						
+						}
 					};
 				};
 			};
@@ -1204,7 +1204,7 @@ obj->ToString()->PrintLine();
 			OBJECT,
 			OTHER
 		}
-		
+
 		#~
 		Constructor
 		@param type Json element type
@@ -1212,17 +1212,17 @@ obj->ToString()->PrintLine();
 		New(type : JsonElement->JsonType) {
 			select(type) {
 				label JsonElement->JsonType->TRUE {
-					@type := type;	
+					@type := type;
 					@value := "true";
 				}
 
 				label JsonElement->JsonType->FALSE {
-					@type := type;	
+					@type := type;
 					@value := "false";
 				}
 
 				label JsonElement->JsonType->NULL {
-					@type := type;	
+					@type := type;
 					@value := "";
 				}
 
@@ -1234,7 +1234,7 @@ obj->ToString()->PrintLine();
 				label JsonElement->JsonType->ARRAY {
 					@type := type;
 					@array_elems := Vector->New()<JsonElement>;
-				}   
+				}
 
 				other {
 					@type := JsonElement->JsonType->OTHER;
@@ -1249,29 +1249,29 @@ obj->ToString()->PrintLine();
 		~#
 		New(type : JsonElement->JsonType, value : String) {
 			if(type = JsonElement->JsonType->STRING | type = JsonElement->JsonType->NUMBER) {
-				@type := type;	
-				@value := value;				
+				@type := type;
+				@value := value;
 			}
 			else {
 				@type := JsonElement->JsonType->OTHER;
 			};
 		}
-		
+
 		#~
 		Constructor
 		@param value Json string value
 		~#
 		New(value : String) {
-			@type := JsonElement->JsonType->STRING;	
+			@type := JsonElement->JsonType->STRING;
 			@value := value;
 		}
-		
+
 		#~
 		Constructor
 		@param value Json integer value
 		~#
 		New(value : Int) {
-			@type := JsonElement->JsonType->NUMBER;	
+			@type := JsonElement->JsonType->NUMBER;
 			@value := value->ToString();
 		}
 
@@ -1294,7 +1294,7 @@ obj->ToString()->PrintLine();
 			@type := JsonElement->JsonType->ARRAY;
 			@array_elems := array_elems;
 		}
-		
+
 		#~
 		Constructor
 		@param map_elems Json object (names/values)
@@ -1303,7 +1303,7 @@ obj->ToString()->PrintLine();
 			@type := JsonElement->JsonType->OBJECT;
 			@map_elems := map_elems;
 		}
-		
+
 		#~
 		Gets the type
 		@return type
@@ -1333,7 +1333,7 @@ obj->ToString()->PrintLine();
 		method : public : IsNull() ~ Bool {
 			return @type = JsonType->NULL;
 		}
-		
+
 		#~
 		Checks for 'null' JSON value
 		@param elem element to check
@@ -1343,7 +1343,7 @@ obj->ToString()->PrintLine();
 			if(elem = Nil | elem->GetType() = JsonType->NULL) {
 				return true;
 			};
-			
+
 			return false;
 		}
 
@@ -1377,7 +1377,7 @@ obj->ToString()->PrintLine();
 			if(@value <> Nil) {
 				return @value;
 			};
-			
+
 			return "";
 		}
 
@@ -1403,7 +1403,7 @@ obj->ToString()->PrintLine();
 				};
 				return @value->ToInt();
 			};
-			
+
 			return 0;
 		}
 
@@ -1423,7 +1423,7 @@ obj->ToString()->PrintLine();
 			if(@value <> Nil) {
 				return @value->ToFloat();
 			};
-			
+
 			return 0.0;
 		}
 
@@ -1443,10 +1443,10 @@ obj->ToString()->PrintLine();
 			if(@value <> Nil) {
 				return @value->ToBool();
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Gets an indexed value from an array type
 		@param index index
@@ -1461,7 +1461,7 @@ obj->ToString()->PrintLine();
 			if(@array_elems <> Nil & index >= 0 & index < @array_elems->Size()) {
 				return @array_elems->Get(index);
 			};
-			
+
 			return Nil;
 		}
 
@@ -1491,7 +1491,7 @@ obj->ToString()->PrintLine();
 			if(@map_elems <> Nil) {
 				return @map_elems->Find(name);
 			};
-			
+
 			return Nil;
 		}
 
@@ -1503,7 +1503,7 @@ obj->ToString()->PrintLine();
 		method : public : Has(name : String) ~ Bool {
 			return Get(name) = Nil ? false : true;
 		}
-		
+
 		#~
 		Adds an element
 		@param elem element
@@ -1605,7 +1605,7 @@ obj->ToString()->PrintLine();
 		@param name class name
 		@return child class
 		~#
-		method : public : AddChild(name : String) ~ JsonElement {        
+		method : public : AddChild(name : String) ~ JsonElement {
 			if(@type = JsonElement->JsonType->OBJECT) {
 				elem := JsonElement->New(JsonElement->JsonType->OBJECT);
 				@map_elems->Insert(name, elem);
@@ -1622,7 +1622,7 @@ obj->ToString()->PrintLine();
 		@param elem element
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, elem : JsonElement) ~ Bool {        
+		method : public : Insert(name : String, elem : JsonElement) ~ Bool {
 			if(@type = JsonElement->JsonType->OBJECT) {
 				if(elem = Nil) {
 					@map_elems->Insert(name, JsonElement->New(JsonElement->JsonType->NULL));
@@ -1650,7 +1650,7 @@ obj->ToString()->PrintLine();
 		obj->ToString()->PrintLine();
 		```
 		~#
-		method : public : Insert(name : String, value : String) ~ Bool {        
+		method : public : Insert(name : String, value : String) ~ Bool {
 			if(@type = JsonElement->JsonType->OBJECT) {
 				@map_elems->Insert(name, JsonElement->New(value));
 				return true;
@@ -1665,7 +1665,7 @@ obj->ToString()->PrintLine();
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Int) ~ Bool {        
+		method : public : Insert(name : String, value : Int) ~ Bool {
 			if(@type = JsonElement->JsonType->OBJECT) {
 				@map_elems->Insert(name, JsonElement->New(value));
 				return true;
@@ -1680,7 +1680,7 @@ obj->ToString()->PrintLine();
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Float) ~ Bool {        
+		method : public : Insert(name : String, value : Float) ~ Bool {
 			if(@type = JsonElement->JsonType->OBJECT) {
 				@map_elems->Insert(name, JsonElement->New(value));
 				return true;
@@ -1695,7 +1695,7 @@ obj->ToString()->PrintLine();
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Bool) ~ Bool {        
+		method : public : Insert(name : String, value : Bool) ~ Bool {
 			if(@type = JsonElement->JsonType->OBJECT) {
 				if(value) {
 					@map_elems->Insert(name, JsonElement->New(JsonElement->JsonType->TRUE));
@@ -1709,7 +1709,7 @@ obj->ToString()->PrintLine();
 
 			return false;
 		}
-        
+
 		#~
 		Deprecated: the parser decodes. Unescapes JSON escape sequences in text that
 		still holds them, such as a string literal copied out of JSON source. Values
@@ -1928,7 +1928,7 @@ obj->ToString()->PrintLine();
 
 			return buffer;
 		}
-		
+
 		#~
 		Gets the names of object attributes
 		@return object attribute names
@@ -1937,10 +1937,10 @@ obj->ToString()->PrintLine();
 			if(@map_elems <> Nil) {
 				return @map_elems->GetKeys()<String>;
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Gets the size of an array or object value
 		@return size of an array or object value
@@ -1954,11 +1954,11 @@ obj->ToString()->PrintLine();
 			if(@array_elems <> Nil) {
 				return @array_elems->Size();
 			};
-			
+
 			if(@map_elems <> Nil) {
 				return @map_elems->Size();
 			};
-			
+
 			return 0;
 		}
 
@@ -1972,10 +1972,10 @@ obj->ToString()->PrintLine();
 			if(elem <> Nil & elem->GetType() = type) {
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Checks a node's type
 		@param elem element to check
@@ -1986,10 +1986,10 @@ obj->ToString()->PrintLine();
 			if(elem <> Nil & elem->GetType() = JsonElement->JsonType->STRING & elem->GetValue()->Equals(value)) {
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Stringify the JSON element
 		String values and object keys are escaped as they are written, so text that
@@ -2005,7 +2005,7 @@ obj->ToString()->PrintLine();
 		~#
 		method : public : ToString() ~ String {
 			output := String->New();
-			Format(output, false, 0);		
+			Format(output, false, 0);
 			return output;
 		}
 
@@ -2020,10 +2020,10 @@ obj->ToString()->PrintLine();
 		~#
 		method : public : ToFormattedString() ~ String {
 			output := String->New();
-			Format(output, true, 0);		
+			Format(output, true, 0);
 			return output;
 		}
-		
+
 		method : Format(output : String, pretty : Bool, depth : Int) ~ Nil {
 			select(@type) {
 				label JsonElement->JsonType->STRING: {
@@ -2045,7 +2045,7 @@ obj->ToString()->PrintLine();
 						output->Append(@value);
 					};
 				}
-				
+
 				label JsonElement->JsonType->TRUE: {
 					output->Append("true");
 				}
@@ -2053,7 +2053,7 @@ obj->ToString()->PrintLine();
 				label JsonElement->JsonType->FALSE: {
 					output->Append("false");
 				}
-				
+
 				label JsonElement->JsonType->NULL: {
 					output->Append("null");
 				}
@@ -2099,7 +2099,7 @@ obj->ToString()->PrintLine();
 						keys := @map_elems->GetKeys()<String>;
 						each(i : keys) {
 							key := keys->Get(i);
-							value := @map_elems->Find(key);	
+							value := @map_elems->Find(key);
 
 							output->Append('"');
 							output->Append(JsonElement->Encode(key));
@@ -2135,7 +2135,7 @@ obj->ToString()->PrintLine();
 				output->Append('\t');
 			};
 		}
-		
+
 		#~
 		Queries the object graph. Object attributes referenced by '/' while array elements are referenced by '[index]'. Example "cars/[last]/make".
 		@param path query path
@@ -2147,29 +2147,29 @@ obj->ToString()->PrintLine();
 		alice->GetString()->PrintLine();  # Alice
 		```
 		~#
-		method : public : FindElements(path : String) ~ JsonElement {					
+		method : public : FindElements(path : String) ~ JsonElement {
 			filters := path->Split("/");
 			if(filters->Size() > 0) {
 				element := @self;
 				for(i := 0; i < filters->Size() & element <> Nil; i += 1;) {
 					element := FindElement(filters[i], element);
 				};
-				
+
 				return element;
 			}
 			else {
 				return FindElement(path, @self);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		method : FindElement(filter : String, node : JsonElement) ~ JsonElement {
 			# array
 			if(filter->StartsWith('[') & filter->EndsWith(']') & node->GetType() = JsonElement->JsonType->ARRAY) {
 				end := filter->Find(']');
 				index := filter->SubString(1, end - 1);
-				
+
 				offset : Int;
 				if(index->Equals("first")) {
 					offset := 0;
@@ -2180,7 +2180,7 @@ obj->ToString()->PrintLine();
 				else {
 					offset := index->ToInt();
 				};
-				
+
 				if(offset > -1 & offset < node->Size()) {
 					return node->Get(offset);
 				};
@@ -2189,16 +2189,16 @@ obj->ToString()->PrintLine();
 			else if(node->GetType() = JsonElement->JsonType->OBJECT) {
 				return node->Get(filter);
 			};
-			
+
 			return Nil;
 		}
 	}
-	
+
 	# token class
 	class Token {
 		@type : Token->Type;
 		@value : String;
-		
+
 		#~
 		The kind of a token read by the JSON scanner.
 		~#
@@ -2269,12 +2269,12 @@ obj->ToString()->PrintLine();
 			~#
 			EOS
 		}
-		
+
 		New(type : Token->Type, value : String) {
 			@type := type;
 			@value := value;
 		}
-			
+
 		New(type : Token->Type) {
 			@type := type;
 			@value := Nil;
@@ -2295,7 +2295,7 @@ Support for e JSON Schema metadata (-lib json)
 ~#
 bundle Data.JSON.Scheme {
 	#~
-	Function type definition 
+	Function type definition
 	~#
 	class FunctionType implements Compare {
 		@name: String;
@@ -2323,11 +2323,11 @@ bundle Data.JSON.Scheme {
 
 		method : Parse(func_type_json : JsonElement, params_header : String) ~ Nil {
 			@name := func_type_json->Get("name")->GetString();
-			
+
 			if(func_type_json->Has("title")){
 				@title := func_type_json->Get("title")->GetString();
 			}
-			
+
 			if(func_type_json->Has("description")){
 				@desc := func_type_json->Get("description")->GetString();
 			}
@@ -2369,7 +2369,7 @@ bundle Data.JSON.Scheme {
 				if(param <> Nil) {
 					@params->Insert(param_name, param);
 				};
-				
+
 				# "param_name='{$param_name}', param_type={$param_type}, param_desc='{$param_desc}'"->PrintLine();
 			};
 
@@ -2385,7 +2385,7 @@ bundle Data.JSON.Scheme {
 		Constructor
 		@param name function name
 		@param params parameters to add to JSON object
-		@param req_params required parameters 
+		@param req_params required parameters
 		~#
 		New(name : String, params : Map<String, ParameterType>, req_params : String[]) {
 			@name := name;
@@ -2407,7 +2407,7 @@ bundle Data.JSON.Scheme {
 		Constructor
 		@param name function name
 		@param params parameters to add to JSON object
-		@param desc description 
+		@param desc description
 		~#
 		New(name : String, params : Map<String, ParameterType>, desc : String) {
 			@name := name;
@@ -2419,8 +2419,8 @@ bundle Data.JSON.Scheme {
 		Constructor
 		@param name function name
 		@param params parameters to add to JSON object
-		@param req_params required parameters 
-		@param desc description 
+		@param req_params required parameters
+		@param desc description
 		~#
 		New(name : String, params : Map<String, ParameterType>, req_params : String[], desc : String) {
 			@name := name;
@@ -2434,8 +2434,8 @@ bundle Data.JSON.Scheme {
 		@param name function name
 		@param title function title
 		@param params parameters to add to JSON object
-		@param req_params required parameters 
-		@param desc description 
+		@param req_params required parameters
+		@param desc description
 		~#
 		New(name : String, title : String, params : Map<String, ParameterType>, req_params : String[], desc : String) {
 			@name := name;
@@ -2468,7 +2468,7 @@ bundle Data.JSON.Scheme {
 		method : public : GetDesc() ~ String {
 			return @desc;
 		}
-		
+
 		#~
 		Get function parameters
 		@return function parameters
@@ -2503,9 +2503,9 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
-		JSON element representation 
+		JSON element representation
 		@return JSON element representation
-		~# 
+		~#
 		method : public : ToJson() ~ JsonElement {
 			func_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			func_obj_json->Insert("name", @name);
@@ -2513,7 +2513,7 @@ bundle Data.JSON.Scheme {
 			if(@desc <> Nil) {
 				func_obj_json->Insert("description", @desc);
 			};
-			
+
 			# JSON parameters
 			prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			if(@params <> Nil) {
@@ -2540,16 +2540,16 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
-		JSON string representation 
+		JSON string representation
 		@return JSON string representation
-		~# 
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}
 	}
 
 	#~
-	Function parameter type definition 
+	Function parameter type definition
 	~#
 	class ParameterType implements Compare {
 		@type : ParameterType->Type;
@@ -2557,9 +2557,9 @@ bundle Data.JSON.Scheme {
 		@props : Map<String, ParameterType>;
 		@req_params : String[];
 		@is_array : Bool;
-		
+
 		#~
-		JSON function parameter type 
+		JSON function parameter type
 		~#
 		enum Type {
 			STRING,
@@ -2585,7 +2585,7 @@ bundle Data.JSON.Scheme {
 		Constructor
 		@param type parameter type
 		@param is_array true if array, false otherwise
-		@param desc description 
+		@param desc description
 		~#
 		New(type : ParameterType->Type, is_array : Bool, desc : String) {
 			@type := type;
@@ -2621,7 +2621,7 @@ bundle Data.JSON.Scheme {
 		#~
 		Constructor
 		@param type parameter type
-		@param desc description 
+		@param desc description
 		~#
 		New(type : ParameterType->Type, desc : String) {
 			@type := type;
@@ -2644,7 +2644,7 @@ bundle Data.JSON.Scheme {
 		#~
 		Constructor
 		@param req_params require parameters
-		@param desc description 
+		@param desc description
 		~#
 		New(req_params : String[], desc : String) {
 			@type := ParameterType->Type->OBJECT;
@@ -2733,19 +2733,19 @@ bundle Data.JSON.Scheme {
 			if(@self->GetClassID() <> rhs->GetClassID()) {
 				r := -1;
 			};
-			
+
 			right : ParameterType := rhs->As(ParameterType);
 			if(@type = right->GetType()) {
 				r := 0;
 			};
-			
+
 			return r;
 		}
 
 		#~
-		JSON element representation 
+		JSON element representation
 		@return JSON element representation
-		~# 
+		~#
 		method : public : ToJson() ~ JsonElement {
 			param_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2776,13 +2776,13 @@ bundle Data.JSON.Scheme {
 					label ParameterType->Type->OBJECT {
 						items_obj_json->Insert("type", "object");
 						prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						
+
 						prop_values := @props->GetKeyValues()<Pair<String, ParameterType>>;
 						each(prop_value in prop_values) {
 							prop_name := prop_value->GetFirst();
 							prop := prop_value->GetSecond();
-							
-							if(prop_name <> Nil)	{		
+
+							if(prop_name <> Nil)	{
 								prop_obj_json->Insert(prop_name, prop->ToJson());
 							};
 						}
@@ -2835,13 +2835,13 @@ bundle Data.JSON.Scheme {
 						param_obj_json->Insert("type", "object");
 
 						prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						
+
 						prop_values := @props->GetKeyValues()<Pair<String, ParameterType>>;
 						each(prop_value in prop_values) {
 							prop_name := prop_value->GetFirst();
 							prop := prop_value->GetSecond();
-							
-							if(prop_name <> Nil)	{		
+
+							if(prop_name <> Nil)	{
 								prop_obj_json->Insert(prop_name, prop->ToJson());
 							};
 						}
@@ -2866,9 +2866,9 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
-		JSON string representation 
+		JSON string representation
 		@return JSON string representation
-		~# 
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}

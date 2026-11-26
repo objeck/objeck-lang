@@ -1,6 +1,6 @@
 #~~
 Copyright (c) 2024 Randy Hollines
-~~#	
+~~#
 
 use Data.JSON, Collection, System.IO.Net;
 
@@ -99,7 +99,7 @@ bundle Data.JSON.RPC {
 						client_funs := arg->As(Collection.Tuple.Pair<TCPSocket, Hash<String, Func2Ref<JsonElement, JsonElement>>>);
 						client := client_funs->GetFirst();
 						funcs := client_funs->GetSecond();
-						
+
 						response_str := client->ReadLine();
 						if(response_str <> Nil) {
 							response_json := JsonParser->TextToElement(response_str);

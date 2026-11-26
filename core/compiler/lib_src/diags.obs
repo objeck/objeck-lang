@@ -48,7 +48,7 @@ bundle System.Diagnostics {
 			array_args[4] := IntRef->New();
 			if(@fn_diag_parse_file = Nil) { @fn_diag_parse_file := "diag_parse_file"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_parse_file, array_args);
-			
+
 			program_handle := array_args[0]->As(IntRef);
 			table_handle := array_args[3]->As(IntRef);
 			is_parsed := array_args[1]->As(IntRef);
@@ -75,16 +75,16 @@ bundle System.Diagnostics {
 			dims := src_strs->Size();
 			size := dims[0];
 
-			names := String->New[size]; 
+			names := String->New[size];
 			texts := String->New[size];
 
-			for(i := 0; i < size; i += 1;) {				
+			for(i := 0; i < size; i += 1;) {
 				name := src_strs[i,0];
 				text := src_strs[i,1];
 				if(name = Nil | text = Nil) {
 					return Nil;
 				};
-				
+
 				names[i] := name;
 				# Append to a copy: `+=` modifies the string in place, and these are the
 				# caller's own strings. The LSP passes its live document text, so every
@@ -104,7 +104,7 @@ bundle System.Diagnostics {
 			array_args[5] := IntRef->New();
 			if(@fn_diag_parse_text = Nil) { @fn_diag_parse_text := "diag_parse_text"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_parse_text, array_args);
-			
+
 			program_handle := array_args[0]->As(IntRef);
 			table_handle := array_args[4]->As(IntRef);
 			is_parsed := array_args[1]->As(IntRef);
@@ -221,7 +221,7 @@ bundle System.Diagnostics {
 				if(@fn_diag_get_symbols = Nil) { @fn_diag_get_symbols := "diag_get_symbols"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_diag_get_symbols, array_args);
 			};
-			
+
 			return @symbols_result;
 		}
 
@@ -266,7 +266,7 @@ bundle System.Diagnostics {
 
 			return @diagnostics_results;
 		}
-		
+
 		#~
 		Get references specified symbol
 		@param uri file uri
@@ -476,7 +476,7 @@ bundle System.Diagnostics {
 			array_args[4] := sys_path;
 			if(@fn_diag_code_rename = Nil) { @fn_diag_code_rename := "diag_code_rename"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_code_rename, array_args);
-			
+
 			return @rename_results;
 		}
 
@@ -502,7 +502,7 @@ bundle System.Diagnostics {
 			array_args[7] := sys_path;
 			if(@fn_diag_signature_help = Nil) { @fn_diag_signature_help := "diag_signature_help"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_signature_help, array_args);
-			
+
 			return array_args[0]->As(Result);
 		}
 
@@ -524,7 +524,7 @@ bundle System.Diagnostics {
 			array_args[5] := var_name;
 			if(@fn_diag_code_action = Nil) { @fn_diag_code_action := "diag_code_action"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_code_action, array_args);
-			
+
 			return array_args[0]->As(Result);
 		}
 
@@ -558,10 +558,10 @@ bundle System.Diagnostics {
 			array_args[7] := sys_path;
 			if(@fn_diag_hover = Nil) { @fn_diag_hover := "diag_hover"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_hover, array_args);
-			
+
 			return array_args[0]->As(Result);
 		}
-		
+
 		#~
 		Get completion options
 		@param uri file uri
@@ -592,7 +592,7 @@ bundle System.Diagnostics {
 			array_args[7] := sys_path;
 			if(@fn_diag_completion_help = Nil) { @fn_diag_completion_help := "diag_completion_help"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_completion_help, array_args);
-			
+
 			return array_args[0]->As(Result);
 		}
 
@@ -614,7 +614,7 @@ bundle System.Diagnostics {
 			array_args[5] := sys_path;
 			if(@fn_diag_find_declaration = Nil) { @fn_diag_find_declaration := "diag_find_declaration"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_declaration, array_args);
-			
+
 			return array_args[0]->As(Result);
 		}
 
@@ -644,10 +644,10 @@ bundle System.Diagnostics {
 			array_args[5] := sys_path;
 			if(@fn_diag_find_definition = Nil) { @fn_diag_find_definition := "diag_find_definition"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_definition, array_args);
-			
+
 			return array_args[0]->As(Result);
 		}
-		
+
 		#~
 		Finds type definition (go to the type of a symbol)
 		@param uri file uri
@@ -847,7 +847,7 @@ bundle System.Diagnostics {
 			ENUM := 210,
 			METHOD := 206,
 			VARIABLE  := 213,
-			
+
 			UNKN := 0
 		}
 

@@ -1,7 +1,7 @@
 #~~
 # Copyright (c) 2026 Randy Hollines
 # ONNX wrapper
-~~#	
+~~#
 
 use Collection, System.API, API.Models, API.OpenCV, Data.JSON, System.IO.Filesystem;
 
@@ -11,7 +11,7 @@ ONNX Runtime inference library for running pre-trained models. Supports object d
 bundle API.Onnx {
 	class : private : Proxy {
 		@lib_proxy : static : DllProxy;
-		
+
 		function : GetDllProxy() ~ DllProxy {
 			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_onnx");
 
@@ -62,10 +62,10 @@ bundle API.Onnx {
 		function : GetProviders() ~ String[] {
 			array_args := Base->New[1];
 			array_args[0] := StringArrayRef->New();
-			
+
 			if(@fn_onnx_get_provider_names = Nil) { @fn_onnx_get_provider_names := "onnx_get_provider_names"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_get_provider_names, array_args);
-			
+
 			holder := array_args[0]->As(StringArrayRef);
 			return holder->Get();
 		}
@@ -172,7 +172,7 @@ bundle API.Onnx {
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
-						
+
 			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
@@ -184,7 +184,7 @@ bundle API.Onnx {
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
@@ -254,7 +254,7 @@ session->Close();
 
 			if(@fn_onnx_yolo_image_inf = Nil) { @fn_onnx_yolo_image_inf := "onnx_yolo_image_inf"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_yolo_image_inf, array_args);
-			
+
 			results := array_args[0]->As(API.Onnx.YoloResult);
 			# the native side returns without writing this slot when it refuses --
 			# a null session, or input it cannot use -- so Nil here is a refusal,
@@ -324,7 +324,7 @@ session->Close();
 		@return image dimensions
 		~#
 		method : public : GetDimensions() ~ Int[] {
-			return @dims; 
+			return @dims;
 		}
 
 		#~
@@ -354,8 +354,8 @@ each(cls in result->GetClassifications()) {
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -379,8 +379,8 @@ each(cls in result->GetClassifications()) {
 		}
 
 		#~
-		String representation 
-		@return string representation 
+		String representation
+		@return string representation
 		~#
 		method : public : ToString() ~ String {
 			buffer := "confidences-size=";
@@ -475,8 +475,8 @@ each(cls in result->GetClassifications()) {
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -562,7 +562,7 @@ each(cls in result->GetClassifications()) {
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
-						
+
 			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
@@ -574,7 +574,7 @@ each(cls in result->GetClassifications()) {
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
@@ -639,7 +639,7 @@ session->Close();
 
 			if(@fn_onnx_resnet_image_inf = Nil) { @fn_onnx_resnet_image_inf := "onnx_resnet_image_inf"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_resnet_image_inf, array_args);
-			
+
 			results := array_args[0]->As(API.Onnx.ResNetResult);
 			# the native side returns without writing this slot when it refuses --
 			# a null session, or input it cannot use -- so Nil here is a refusal,
@@ -713,12 +713,12 @@ session->Close();
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			
+
 			conf_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(confidence in @confidences) {
 				conf_array_json->Add(confidence);
@@ -817,7 +817,7 @@ session->Close();
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
-						
+
 			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
@@ -829,7 +829,7 @@ session->Close();
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
@@ -894,7 +894,7 @@ session->Close();
 
 			if(@fn_onnx_deeplab_image_inf = Nil) { @fn_onnx_deeplab_image_inf := "onnx_deeplab_image_inf"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_deeplab_image_inf, array_args);
-			
+
 			results := array_args[0]->As(API.Onnx.DeepLabResult);
 
 			return results;
@@ -956,8 +956,8 @@ session->Close();
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -1026,7 +1026,7 @@ session->Close();
 		}
 
 		#~
-		Get identified polygons 
+		Get identified polygons
 		@return identified polygons
 		~#
 		method : public : GetPolygons() ~ Collection.Tuple.Pair[]<IntRef, IntRef> {
@@ -1050,8 +1050,8 @@ session->Close();
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1160,7 +1160,7 @@ session->Close();
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
-						
+
 			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
@@ -1172,7 +1172,7 @@ session->Close();
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
@@ -1238,10 +1238,10 @@ session->Close();
 			array_args[1] := IntRef->New(@session);
 			array_args[2] := ByteArrayRef->New(image);
 			array_args[3] := StringArrayRef->New(labels);
-			
+
 			if(@fn_onnx_openpose_image_inf = Nil) { @fn_onnx_openpose_image_inf := "onnx_openpose_image_inf"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_openpose_image_inf, array_args);
-			
+
 			results := array_args[0]->As(API.Onnx.OpenPoseResult);
 
 			return results;
@@ -1261,7 +1261,7 @@ session->Close();
 		@masked : API.OpenCV.Image;
 
 		@classifications : OpenPoseClassification[];
-		
+
 		New : private () {}
 
 		#~
@@ -1289,15 +1289,15 @@ session->Close();
 		}
 
 		#~
-		Get normalized X-coordinate 
-		@return normalized X-coordinate 
+		Get normalized X-coordinate
+		@return normalized X-coordinate
 		~#
 		method : public : GetNormalizedX() ~ Float {
 			return @norm_x;
 		}
 
 		#~
-		Get normalized y-coordinate 
+		Get normalized y-coordinate
 		@return normalized y-coordinate
 		~#
 		method : public : GetNormalizedY() ~ Float {
@@ -1321,8 +1321,8 @@ session->Close();
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1829,7 +1829,7 @@ ids := tokenizer->Encode("What is 2+2?");
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
@@ -2053,13 +2053,13 @@ text->PrintLine();
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
 		returns Nil from every inference method, which is otherwise
 		indistinguishable from a model that found nothing.
-		
+
 		All three sessions -- vision, embedding and decoder -- must have loaded;
 		any one of them missing leaves generation unable to run.
 		@return true when the model is loaded and inference can run
@@ -2148,7 +2148,7 @@ text->PrintLine();
 		A body keypoint, in the order of the COCO keypoint set the OpenPose model reports.
 		~#
 		enum Type {
-			NOSE, 
+			NOSE,
 			LEFT_EYE,
 			RIGHT_EYE,
 			LEFT_EAR,
@@ -2195,7 +2195,7 @@ text->PrintLine();
 		}
 
 		#~
-		Get normalized X-coordinate 
+		Get normalized X-coordinate
 		@return normalized X-coordinate
 		~#
 		method : public : GetNormalizedX() ~ Float {
@@ -2203,7 +2203,7 @@ text->PrintLine();
 		}
 
 		#~
-		Get normalized y-coordinate 
+		Get normalized y-coordinate
 		@return normalized y-coordinate
 		~#
 		method : public : GetNormalizedY() ~ Float {
@@ -2211,8 +2211,8 @@ text->PrintLine();
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -2480,7 +2480,7 @@ text->PrintLine();
 		~#
 		#~
 		Whether the model loaded.
-		
+
 		A session that failed to open is not an error at construction -- the
 		constructor returns an object either way, and the reason was written to
 		stderr while it happened. Test this before inferring: a closed session
@@ -2495,7 +2495,7 @@ text->PrintLine();
 
 		#~
 		Whether a recognizer model loaded.
-		
+
 		Separate from IsOpen because the recognizer is optional: the
 		detection-only constructor leaves it unset by design, so a false here
 		is not necessarily a failure.
@@ -4003,23 +4003,23 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 
 	#~
 	API.Onnx as an Engine: a model run in-process.
-	
+
 	A thin wrapper over Session, which is the whole reason the generic run came
 	first -- without onnx_run there was nothing for an Engine to call, and the
 	eight per-family entry points could not supply one.
-	
+
 	Use it when calling code should not choose a backend at every call site.
 	Session itself is the better choice when the code is ONNX-specific anyway:
 	GetModelInfo has no equivalent on a remote engine, so it is not on the
 	interface, and this class exposes the Session for that reason.
-	
+
 	```
 	engine := OnnxEngine->New("model.onnx");
 	if(<>engine->IsOpen()) {
 	  EndPoint->GetLastError()->PrintLine();
 	  return;
 	};
-	
+
 	outputs := engine->Run(inputs);
 	engine->Close();
 	```

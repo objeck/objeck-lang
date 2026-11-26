@@ -561,7 +561,7 @@ bundle Web.HTTP.Server {
 			# connections ends those threads now.
 			Web.HTTP.HttpClient->CloseIdleConnections();
 		}
-		
+
 		function : Shutdown(id : Int) ~ Nil {
 			if(@secure_server <> Nil) {
 				@secure_server->Close();
@@ -574,7 +574,7 @@ bundle Web.HTTP.Server {
 			if(@is_debug) {
 				"Shutting down..."->PrintLine();
 			};
-			
+
 			Runtime->Exit(0);
 		}
 	}
@@ -727,17 +727,17 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : Load() ~ Bool {
 			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
-			if(parser->Parse()) {				
+			if(parser->Parse()) {
 				# process network config
 				network_json := parser->GetRoot()->Get("network");
 				if(network_json = Nil | network_json->IsNull()) {
 					"Error: missing 'network' tag"->ErrorLine();
 					return false;
 				};
-				
+
 				network_instance_json := network_json->Get("instance");
 				network_port_json := network_json->Get("port");
-				if(network_instance_json = Nil | network_instance_json->IsNull() | 
+				if(network_instance_json = Nil | network_instance_json->IsNull() |
 						network_port_json = Nil| network_port_json->IsNull()) {
 					"Error: missing 'instance' or 'port' tag"->ErrorLine();
 					return false;
@@ -749,7 +749,7 @@ bundle Web.HTTP.Server {
 				if(is_debug_json <> Nil & <>is_debug_json->IsNull()) {
 					@is_debug := is_debug_json->GetBool();
 				};
-				
+
 				network_secure_json := network_json->Get("secure");
 				if(network_secure_json <> Nil & <>network_secure_json->IsNull()) {
 					network_cert_path_json := network_secure_json->Get("cert_path");
@@ -757,7 +757,7 @@ bundle Web.HTTP.Server {
 					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
 
 					if(network_cert_path_json = Nil | network_cert_path_json->IsNull() |
-							network_cert_key_json = Nil | network_cert_key_json->IsNull() | 
+							network_cert_key_json = Nil | network_cert_key_json->IsNull() |
 							network_cert_passwd_json = Nil | network_cert_passwd_json->IsNull()) {
 						"Error: missing SSL certificate tags"->ErrorLine();
 						return false;
@@ -770,7 +770,7 @@ bundle Web.HTTP.Server {
 				# process files
 				files_json := parser->GetRoot()->Get("files");
 				if(files_json <> Nil & <>files_json->IsNull()) {
-					# common configuration 
+					# common configuration
 					common_json := files_json->Get("common");
 					if(common_json <> Nil & <>common_json->IsNull()) {
 						common_base_dir_json := common_json->Get("base_dir");
@@ -866,7 +866,7 @@ bundle Web.HTTP.Server {
 		@param item_json JSON configuration
 		@return true if successful, false otherwise
 		~#
-		method : AddFiles(group : String, mimi : String, item_json : JsonElement) ~ Bool {		
+		method : AddFiles(group : String, mimi : String, item_json : JsonElement) ~ Bool {
 			if(<>group->StartsWith('.')) {
 				"Error: file 'group' value must start with '.'"->ErrorLine();
 				return false;
@@ -945,7 +945,7 @@ bundle Web.HTTP.Server {
 				file_group_handler := file_group_pair->GetSecond();
 				buffer += file_group_handler->ToString();
 			};
-			
+
 			return buffer;
 		}
 
@@ -1018,7 +1018,7 @@ bundle Web.HTTP.Server {
 			if(@default_handler <> Nil) {
 				return Process(@default_handler, response);
 			};
-			
+
 			return false;
 		}
 
@@ -1033,7 +1033,7 @@ bundle Web.HTTP.Server {
 				file_handler_str := file_handler->ToString();
 				"Item properties: {$file_handler_str}"->PrintLine();
 			};
-			
+
 			buffer : Byte[];
 
 			file_location : String;
@@ -1074,14 +1074,14 @@ bundle Web.HTTP.Server {
 				};
 			}
 			# non-caching
-			else {	
+			else {
 				buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_location);
 				if(buffer = Nil) {
 					return false;
-				};					
+				};
 			};
 			response->SetCodeContent(200, buffer);
-			
+
 			return true;
 		}
 	}
@@ -1490,7 +1490,7 @@ bundle Web.HTTP.Server {
 		method : ParseCookies() ~ Nil {
 			if(@cookies = Nil) {
 				@cookies := Map->New()<String, Cookie>;
-				
+
 				cookies_str := @request_headers->Find("Cookie");
 				if(cookies_str <> Nil) {
 					cookie_names_values := cookies_str->Split("; ");
@@ -3515,7 +3515,7 @@ bundle Web.HTTP.Server {
 				buffer->Append(part->GetContent());
 				buffer->Append(crlf);
 			};
-	
+
 			buffer->Append("--"->ToByteArray());
 			buffer->Append(@boundary->ToByteArray());
 			buffer->Append("--"->ToByteArray());
@@ -3539,10 +3539,10 @@ bundle Web.HTTP.Server {
 				while(@boundary->Size() < 48);
 			};
 
-			return @boundary;		
+			return @boundary;
 		}
 	}
-	
+
 	#~
 	Multipart decoder
 	~#
@@ -3556,7 +3556,7 @@ bundle Web.HTTP.Server {
 		New(encoded : Byte[]) {
 			@encoded := encoded;
 		}
-		
+
 		#~
 		Parses multipart encoding
 		@return content parts
@@ -3574,7 +3574,7 @@ bundle Web.HTTP.Server {
 				else {
 					offset += bytes->Size() + 1;
 					line := String->New(bytes)->Trim();
-					
+
 					if(line->IsEmpty()) {
 						offset := -1;
 					}
@@ -3597,7 +3597,7 @@ bundle Web.HTTP.Server {
 			};
 
 			encoding_size := @encoded->Size();
-			
+
 			# fetch all markers
 			marker_indexes := Byte->FindAll(@encoded, marker_bytes);
 			if(marker_indexes = Nil) {
@@ -3620,24 +3620,24 @@ bundle Web.HTTP.Server {
 				if(MatchSpace(boundry_index, @encoded)) {
 					boundry_index += 2;
 				};
-	 
+
 				# read content headers
 				done := false;
 				headers := Map->New()<String, String>;
 				do {
 					# read content line
 					header_bytes := ReadLine(boundry_index, @encoded);
-					if(header_bytes <> Nil) {			
+					if(header_bytes <> Nil) {
 						boundry_index += header_bytes->Size();
 						content_str := header_bytes->ToString();
-						
+
 						# parse header name/value pair
 						content_str_index := content_str->Find(':');
 						if(content_str_index > 0) {
 							header_name := content_str->SubString(content_str_index);
 							content_str_index += 2;
 							header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
-							
+
 							if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
 								headers->Insert(header_name->ToLower(), header_value);
 							};
@@ -3655,10 +3655,10 @@ bundle Web.HTTP.Server {
 					boundry_index += 2;
 				}
 				while(<>done);
-				
+
 				# read content
 				content_size := marker_indexes[i + 1] - boundry_index - 2;
-				
+
 				content_bytes := Byte->New[content_size];
 				if(<>Runtime->Copy(content_bytes, 0, @encoded, boundry_index, content_size)) {
 					return Nil;
@@ -3729,7 +3729,7 @@ bundle Web.HTTP.Server {
 	}
 
 	#~
-	Multipart content 
+	Multipart content
 	~#
 	class MultipartContent {
 		@headers : Map<String, String>;
@@ -3757,13 +3757,13 @@ bundle Web.HTTP.Server {
 		@param name header name
 		@return header value
 		~#
-		method : public : GetHeader(name : String) ~ String {	
+		method : public : GetHeader(name : String) ~ String {
 			return @headers->Find(name);
 		}
 
 		#~
 		Get MIME content headers
-		@return content headers 
+		@return content headers
 		~#
 		method : public : GetHeaders() ~ Map<String, String> {
 			return @headers;
@@ -3773,7 +3773,7 @@ bundle Web.HTTP.Server {
 		Get MIME content header names
 		@return header names
 		~#
-		method : public : GetHeaderNames() ~ Vector<String> {	
+		method : public : GetHeaderNames() ~ Vector<String> {
 			return @headers->GetKeys()<String>;
 		}
 
@@ -3829,7 +3829,7 @@ class RequestHandler from HttpsRequestHandler {
    New() {
       Parent();
    }
-   
+
    method : ProcessGet(request : Request, response : Response) ~ Bool {
       return response->HasStaticHandler();
    }
@@ -3837,7 +3837,7 @@ class RequestHandler from HttpsRequestHandler {
    method : ProcessPost(request : Request, response : Response) ~ Bool {
       return false;
    }
-}      
+}
 ```
 	~#
 	class HttpsRequestHandler from System.Concurrency.Thread {
@@ -4028,7 +4028,7 @@ class RequestHandler from HttpsRequestHandler {
 			connection_value := @keep_alive ? "keep-alive" : "close";
 			@client->WriteString("HTTP/1.1 {$status}\r\nContent-Length: 0\r\nConnection: {$connection_value}\r\n\r\n");
 		}
-		
+
 		#~
 		Decides whether the connection survives this request. An explicit
 		Connection header wins; otherwise HTTP/1.1 persists by default and
@@ -4232,7 +4232,7 @@ class RequestHandler from HttpsRequestHandler {
 					# under @is_debug. Handlers need both.
 					http_request->SetConnectionInfo(request_verb, @client->GetAddress(), WebServer->GetBoundPort());
 					http_response := Response->New(@server_config, http_request->GetPath());
-					
+
 					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
 						@server_config->ProcessGet(http_request, http_response);
 					};
@@ -4307,7 +4307,7 @@ class RequestHandler from HttpsRequestHandler {
 			@client->WriteString("HTTP/1.1 {$status}\r\nContent-Length: 0\r\nConnection: {$connection_value}\r\n\r\n");
 			if(@keep_alive = false) { @wait_for_peer_close := true; };
 		}
-		
+
 		#~
 		Decides whether the connection survives this request. An explicit
 		Connection header wins; otherwise HTTP/1.1 persists by default and
@@ -4719,7 +4719,7 @@ bundle Web.HTTP.Server.MCP {
 						if(time_diff >= @session_timeout) {
 							expired_session_keys->AddBack(session_key);
 						}
-					};				
+					};
 				};
 
 				each(session_key in expired_session_keys) {
@@ -4803,7 +4803,7 @@ bundle Web.HTTP.Server.MCP {
 				has_session := session <> Nil;
 				"\n### GET: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
 			};
-			
+
 			response->SetCodeTypeContent(200, "text/event-stream", ": keepalive\n\n");
 			return false;
 		}
@@ -5688,7 +5688,7 @@ bundle Web.HTTP.Server.MCP {
 		~#
 		New(name : String, input_schema : FunctionType, output_schema : FunctionType) {
 			@name := name;
-			
+
 			@input_schema := input_schema;
 			@output_schema := output_schema;
 		}
@@ -5741,7 +5741,7 @@ bundle Web.HTTP.Server.MCP {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			buffer_json->Insert("name", @name);
-			
+
 			if(@title <> Nil) {
 				buffer_json->Insert("title", @title);
 			};
@@ -5893,7 +5893,7 @@ bundle Web.HTTP.Server.MCP {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			buffer_json->Insert("type", @type);
-			
+
 			if(@title <> Nil) {
 				buffer_json->Insert("title", @title);
 			};
@@ -6024,7 +6024,7 @@ bundle Web.HTTP.Server.MCP {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			buffer_json->Insert("name", @name);
-			
+
 			if(@title <> Nil) {
 				buffer_json->Insert("title", @title);
 			};
@@ -6123,7 +6123,7 @@ bundle Web.HTTP.Server.MCP {
 
 			buffer_json->Insert("name", @name);
 			buffer_json->Insert("required", @required);
-			
+
 			if(@description <> Nil) {
 				buffer_json->Insert("description", @description);
 			};
@@ -6233,9 +6233,9 @@ OAuth client (-lib net_server)
 bundle System.IO.Net.OAuth {
 	#~
 	OAuth client
-	
+
 ```
-scopes := ["https://www.googleapis.com/auth/cloud-platform", 
+scopes := ["https://www.googleapis.com/auth/cloud-platform",
   "https://www.googleapis.com/auth/generative-language.retriever"];
 client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes);
 each(i : 3) {
@@ -6410,7 +6410,7 @@ each(i : 3) {
 				post_response := HttpsClient->QuickPost(Url->New(@token_uri_str), data, "application/x-www-form-urlencoded", headers);
 
 				if(post_response <> Nil) {
-					# post_response->GetContent()->ToString()->PrintLine();			
+					# post_response->GetContent()->ToString()->PrintLine();
 					response_json : JsonElement;
 					if(post_response->GetContent() <> Nil) {
 						response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
@@ -6429,7 +6429,7 @@ each(i : 3) {
 						return false;
 					};
 				}
-			};	
+			};
 
 			@token := Nil;
 			return false;
@@ -6602,14 +6602,14 @@ each(i : 3) {
 		@return random state string
 		~#
 		method : GenerateState() ~ String {
-			values := [ 
+			values := [
 				'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-				'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 
-				'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 
-				'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 
-				'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 
-				'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 
-				'w', 'x', 'y', 'z', '0', '1', '2', '3', 
+				'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+				'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+				'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+				'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+				'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+				'w', 'x', 'y', 'z', '0', '1', '2', '3',
 				'4', '5', '6', '7', '8', '9'
 			];
 
@@ -6643,7 +6643,7 @@ each(i : 3) {
 		~#
 		New(access_token : String, refresh_token : String, expires_in : Int, scope : String) {
 			@access_token := access_token;
-			@refresh_token := refresh_token; 
+			@refresh_token := refresh_token;
 			@expires_in := expires_in;
 			@scope := scope;
 

@@ -1,7 +1,7 @@
 #~~
 # Generic collections for Objeck
 # Copyright (c) 2024 Randy Hollines
-# 
+#
 # credits:
 # - H.W. Lang - merge sort implementation based on his work
 # - Arne Andersson - map classes use a red-black tree variant he created
@@ -112,7 +112,7 @@ pair->ToString()->PrintLine(); # [x,99]
 			return buffer;
 		}
 	}
-	
+
 	#~
 	Tuple class that supports 3 values
 
@@ -246,7 +246,7 @@ t->ToString()->PrintLine(); # [Alice,30,true]
 			return buffer;
 		}
 	}
-	
+
 	#~
 	Tuple class that supports 4 values
 
@@ -595,7 +595,7 @@ q->ToString()->PrintLine(); # [x,1,2.5,a,true]
 					buffer->Append(@e->GetInstanceID()->ToHexString());
 				};
 			};
-			
+
 			buffer += "]";
 
 			return buffer;
@@ -612,7 +612,7 @@ bundle Collection {
 
 ```
 heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
-        
+
 heap->Insert(IntRef->New(3));
 heap->Insert(IntRef->New(1));
 heap->Insert(IntRef->New(9));
@@ -932,13 +932,13 @@ heap->Size()->PrintLine(); # 2
 				while(HasParent(index) & (Order(GetParent(index), @heap[index]) > 0)) {
 					Swap(index, GetParentIndex(index));
 					index := GetParentIndex(index);
-				}   
+				}
 			}
 			else {
 				while(HasParent(index) & (Order(GetParent(index), @heap[index]) < 0)) {
 					Swap(index, GetParentIndex(index));
 					index := GetParentIndex(index);
-				};  
+				};
 			};
 		}
 
@@ -961,7 +961,7 @@ heap->Size()->PrintLine(); # 2
 						break;
 					};
 					index := smaller;
-				}               
+				}
 			}
 			else {
 				while(HasLeftChild((index))) {
@@ -973,11 +973,11 @@ heap->Size()->PrintLine(); # 2
 					if(Order(@heap[index], @heap[larger]) < 0) {
 						Swap(index, larger);
 					}
-					else { 
+					else {
 						break;
 					};
 					index := larger;
-				}               
+				}
 			}
 		}
 
@@ -1054,7 +1054,7 @@ heap->ToString()->PrintLine();
 
 	#~
 	MRU/LRU object cache
-	
+
 	```
 cache := Collection.Cache->New(Cache->Type->LRU, 3)<IntRef, String>;
 cache->Insert(415, "San Francisco");
@@ -1079,7 +1079,7 @@ values := cache->GetKeys()<IntRef>;
 each(value := values) {
    value->PrintLine();
 };
-	```	
+	```
 	~#
 	class Cache<K : Compare, S> {
 		@type : Cache->Type;
@@ -2741,7 +2741,7 @@ hash->Filter(\(k) => k->Size() > 4)->Size()->PrintLine(); # 1
 			return filtered;
 		}
 	}
-	
+
 	#~
 	Growable stack of generics (LIFO)
 
@@ -2963,7 +2963,7 @@ stack->Size()->PrintLine(); # 2
 			return @size;
 		}
 	}
-	
+
 	#~
 	Queue of generics
 
@@ -2984,11 +2984,11 @@ queue->Size()->PrintLine();
 # get value by key
 queue->Back()->PrintLine();
 queue->Front()->PrintLine();
-	```	
+	```
 	~#
 	class Queue<H> {
 		@queue : List<H>;
-		
+
 		#~
 		Default constructor
 
@@ -3067,7 +3067,7 @@ queue->Front()->PrintLine();       # second
 				@queue->RemoveFront();
 				return value;
 			};
-			
+
 			return Nil;
 		}
 
@@ -3089,10 +3089,10 @@ queue->Back()->PrintLine();       # alpha
 				@queue->RemoveBack();
 				return value;
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Get the value from the front of the queue
 		@return head value, Nil if queue is empty
@@ -3122,7 +3122,7 @@ queue->Back()->PrintLine(); # last
 		method : public: Back() ~ H {
 			return @queue->Back();
 		}
-		
+
 		#~
 		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
@@ -3190,7 +3190,7 @@ queue->Size()->PrintLine(); # 2
 	class CompareForwardIterator<out H : Compare> {
 		@node : CompareListNode<H>;
 		@list : CompareList<H>;
-		
+
 		New(node : CompareListNode<H>, list : CompareList<H>) {
 			@node := node;
 			@list := list;
@@ -3355,7 +3355,7 @@ it->Get()->PrintLine(); # 77
 
 
 	```
-function : Example() ~ Nil {	
+function : Example() ~ Nil {
    # insert elements
    list := Collection.CompareList->New()<FloatRef>;
    list->AddBack(33.3);
@@ -3378,7 +3378,7 @@ function : Example() ~ Nil {
       list->Next();
    };
 
-   # iterate backward	   
+   # iterate backward
    backwards := list->BackwardIterator()<FloatRef>;
    while(backwards->More()) {
       backwards->Get()->PrintLine();
@@ -3776,7 +3776,7 @@ rest->Size()->PrintLine(); # 2
 		~#
 		method : public : Rest() ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
-			
+
 			if(@head <> Nil) {
 				start := @head->GetNext();
 				while(start <> Nil) {
@@ -3830,7 +3830,7 @@ list->Has(IntRef->New(99))->PrintLine(); # false
 
 			return false;
 		}
-		
+
 		#~
 		Finds a value in the list and sets the pointer
 		@param value value to search for
@@ -3856,10 +3856,10 @@ found->PrintLine(); # 2
 				};
 				@cursor := @cursor->GetNext();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Inserts a value into the list based upon the pointer location
 		@param value value to insert
@@ -3893,17 +3893,17 @@ list->Size()->PrintLine(); # 3
 			 		node->SetPrevious(@cursor);
 			 	};
 			 	@size += 1;
-				
+
 				return true;
 			}
 			else if(@head = Nil & @tail = Nil) {
 				AddBack(value);
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Removes the element at the pointer position
 
@@ -4122,11 +4122,11 @@ list->Size()->PrintLine(); # 2
 		New(value : H) {
 			@value := value;
 		}
-		
+
 		method : public : Set(value : H) ~ Nil {
 			@value := value;
 		}
-	
+
 		method : public : Get() ~ H {
 			return @value;
 		}
@@ -4134,7 +4134,7 @@ list->Size()->PrintLine(); # 2
 		method : public : SetNext(next :  CompareListNode<H>) ~ Nil {
 			@next := next;
 		}
-	
+
 		method : public : GetNext() ~ CompareListNode<H> {
 			return @next;
 		}
@@ -4142,7 +4142,7 @@ list->Size()->PrintLine(); # 2
 		method : public : SetPrevious(previous :  CompareListNode<H>) ~ Nil {
 			@previous := previous;
 		}
-	
+
 		method : public : GetPrevious() ~ CompareListNode<H> {
 			return @previous;
 		}
@@ -4154,7 +4154,7 @@ list->Size()->PrintLine(); # 2
 	class ForwardIterator<out H> {
 		@node : ListNode<H>;
 		@list : List<H>;
-		
+
 		New(node : ListNode<H>, list : List<H>) {
 			@node := node;
 			@list := list;
@@ -4315,7 +4315,7 @@ it->Get()->PrintLine(); # last
 
 
 	```
-function : Example() ~ Nil {	
+function : Example() ~ Nil {
    # insert elements
    list := Collection.List->New()<FloatRef>;
    list->AddBack(33.3);
@@ -4335,7 +4335,7 @@ function : Example() ~ Nil {
       list->Next();
    };
 
-   # iterate backward	   
+   # iterate backward
    backwards := list->BackwardIterator()<FloatRef>;
    while(backwards->More()) {
       backwards->Get()->PrintLine();
@@ -4446,7 +4446,7 @@ list->Back()->PrintLine(); # second
 			}
 			else {
 				@tail->SetNext(node);
-			 	node->SetPrevious(@tail);	
+			 	node->SetPrevious(@tail);
 				@tail := node;
 			};
 			@size += 1;
@@ -4467,7 +4467,7 @@ upper->Size()->PrintLine(); # 2
 		~#
 		method : public : Map<R>(f : (H) ~ R) ~ List<R> {
 			list : List<R> := List->New()<R>;
-			
+
 			start := @head;
 			while(start <> Nil) {
 				list->AddBack(f(start->Get()));
@@ -4515,7 +4515,7 @@ list->ToString()->PrintLine(); # [foo,bar]
 
 			elem := @head;
 			while(elem <> Nil) {
-				# get string value if instance implements 'Stringify'				
+				# get string value if instance implements 'Stringify'
 				value := elem->Get();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
@@ -4532,7 +4532,7 @@ list->ToString()->PrintLine(); # [foo,bar]
 				if(elem <> Nil) {
 					buffer->Append(',');
 				};
-				
+
 			};
 			buffer->Append(']');
 
@@ -4586,7 +4586,7 @@ filtered->Size()->PrintLine(); # 2
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ List<H> {
 			list : List<H> := List->New()<H>;
-			
+
 			start := @head;
 			while(start <> Nil) {
 				if(f(start->Get())) {
@@ -4640,7 +4640,7 @@ rest->Front()->PrintLine();  # b
 		~#
 		method : public : Rest() ~ List<H> {
 			list : List<H> := List->New()<H>;
-			
+
 			if(@head <> Nil) {
 				start := @head->GetNext();
 				while(start <> Nil) {
@@ -4653,7 +4653,7 @@ rest->Front()->PrintLine();  # b
 
 			return list;
 		}
-		
+
 		#~
 		Removes the last value from the list
 
@@ -4695,7 +4695,7 @@ list->Front()->PrintLine(); # first
 			};
 			@size += 1;
 		}
-		
+
 		#~
 		Removes the first value from the list
 
@@ -4831,17 +4831,17 @@ list->Size()->PrintLine(); # 3
 			 		node->SetPrevious(@cursor);
 			 	};
 			 	@size += 1;
-				
+
 				return true;
 			}
 			else if(@head = Nil & @tail = Nil) {
 				AddBack(value);
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Removes the element at the pointer position
 		~#
@@ -5045,11 +5045,11 @@ list->Size()->PrintLine(); # 2
 		New(value : H) {
 			@value := value;
 		}
-		
+
 		method : public : Set(value : H) ~ Nil {
 			@value := value;
 		}
-	
+
 		method : public : Get() ~ H {
 			return @value;
 		}
@@ -5057,7 +5057,7 @@ list->Size()->PrintLine(); # 2
 		method : public : SetNext(next :  ListNode<H>) ~ Nil {
 			@next := next;
 		}
-	
+
 		method : public : GetNext() ~ ListNode<H> {
 			return @next;
 		}
@@ -5065,17 +5065,17 @@ list->Size()->PrintLine(); # 2
 		method : public : SetPrevious(previous :  ListNode<H>) ~ Nil {
 			@previous := previous;
 		}
-	
+
 		method : public : GetPrevious() ~ ListNode<H> {
 			return @previous;
 		}
 	}
-	
+
 	#~
 	Growable generic array
-	
+
 	```
-	function : Example() ~ Nil {	
+	function : Example() ~ Nil {
 	   # insert elements
 	   vector := Collection.Vector->New()<IntRef>;
 	   vector->AddBack(4);
@@ -5083,21 +5083,21 @@ list->Size()->PrintLine(); # 2
 	   vector->AddBack(5);
 	   vector->AddBack(1);
 	   vector->AddBack(0);
-   
+
 	   # remove last item
 	   vector->RemoveBack();
-   
+
 	   # get size
 	   vector->Size()->PrintLine();
-	   
+
 	   # get elements
 	   (vector->Get(0) + vector->Get(1))->PrintLine();
-   
+
 	   # print all items with a loop
 	   each(item := vector) {
 	   	item->PrintLine();
 	   };
-   
+
 	   # print all items with a function
 	   vector->Each(Show(IntRef) ~ Nil);
 	}
@@ -5242,7 +5242,7 @@ zipped->Size()->PrintLine(); # 1
 				tuple := Collection.Tuple.Triplet->New(a->Get(i), b->Get(i), c->Get(i))<H,H,H>;
 				zipped->AddBack(tuple)<Collection.Tuple.Triplet<H,H,H>>;
 			};
-			
+
 			return zipped;
 		}
 
@@ -5281,7 +5281,7 @@ zipped->Size()->PrintLine(); # 1
 				tuple := Collection.Tuple.Quartet->New(a->Get(i), b->Get(i), c->Get(i), d->Get(i))<H,H,H,H>;
 				zipped->AddBack(tuple)<Collection.Tuple.Quartet<H,H,H,H>>;
 			};
-			
+
 			return zipped;
 		}
 
@@ -5467,10 +5467,10 @@ first2->Size()->PrintLine(); # 2
 				};
 				return Vector->New(array)<H>;
 			};
-      		
+
 			return Vector->New()<H>;
 		}
-		
+
 		#~
 		Swap two values in the vector
 		@param a first value
@@ -5488,11 +5488,11 @@ v->Get(0)->PrintLine(); # b
 			if(a < 0 | b < 0 | a >= @size | b >= @size) {
 				return false;
 			};
-			
+
 			temp := @values[a];
 			@values[a] := @values[b];
 			@values[b] := temp;
-			
+
 			return true;
 		}
 
@@ -5974,7 +5974,7 @@ v->Get(0)->PrintLine(); # fig
 
 
 	```
-function : Example() ~ Nil {	
+function : Example() ~ Nil {
    # insert elements
    vector := Collection.CompareVector->New()<IntRef>;
    vector->AddBack(4);
@@ -5989,13 +5989,13 @@ function : Example() ~ Nil {
 
    # get size
    vector->Size()->PrintLine();
-   
+
    # get elements
    (vector->Get(0) + vector->Get(1))->PrintLine();
 
    # sort elements
    vector->Sort();
-	
+
    # print all items with a loop
    each(item := vector) {
    	item->PrintLine();
@@ -6013,7 +6013,7 @@ function : Show(value : IntRef) ~ Nil {
 	class CompareVector<H : Compare> {
 		@values : H[];
 		@size : Int;
-		
+
 		#~
 		Default constructor
 
@@ -6181,7 +6181,7 @@ doubled->Get(0)->PrintLine(); # 2
 			for(i : Int := 0; i < @size; i += 1;) {
 				array[i] := f(@values[i]);
 			};
-      
+
 			return CompareVector->New(array)<H>;
 		}
 
@@ -6205,7 +6205,7 @@ first2->Size()->PrintLine(); # 2
 				};
 				return CompareVector->New(array)<H>;
 			};
-      		
+
 			return CompareVector->New()<H>;
 		}
 
@@ -6516,7 +6516,7 @@ v->IsEmpty()->PrintLine(); # false
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 }
-		
+
 		#~
 		Sorts the values in the vector
 
@@ -6566,7 +6566,7 @@ v->Get(0)->PrintLine(); # fig
 				if(a[mid]->Compare(a[mid + 1]) > 0) {
 					Merge(low, mid, hi, a, b);
 				};
-			};	
+			};
 		}
 
 		method : InsertionSort(low : Int, hi : Int, a : H[]) ~ Nil {
@@ -6580,7 +6580,7 @@ v->Get(0)->PrintLine(); # fig
 				a[j + 1] := value;
 			};
 		}
-		
+
 		method : native : Merge(low : Int, mid : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			# copy both halves of a to auxiliary array b
 			for(i := low; i <= hi; i += 1;) {
@@ -6640,7 +6640,7 @@ v->Find(IntRef->New(99))->PrintLine();  # -1
 
          return -1;
       }
-		
+
 		#~
 		Performs a binary search O(log n)
 		@param value value to search for
@@ -6663,7 +6663,7 @@ v->BinarySearch(IntRef->New(3))->PrintLine(); # 1
 
 			while(low <= high) {
 				mid := (low + high) >> 1;
-      	
+
 				cmp := @values[mid]->Compare(value);
 				if(cmp > 0) {
 					high := mid - 1;
@@ -6678,7 +6678,7 @@ v->BinarySearch(IntRef->New(3))->PrintLine(); # 1
 
 			return -1;
 		}
-		
+
 		#~
 		Check of the given value is in the vector
 		@param value value to check for
@@ -6701,10 +6701,10 @@ v->Has(IntRef->New(99))->PrintLine(); # false
 					return true;
 				};
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
@@ -6720,13 +6720,13 @@ evens->Size()->PrintLine(); # 1
 		method : public : Filter(f : (H) ~ Bool) ~ CompareVector<H> {
 			filtered := CompareVector->New()<H>;
 			filtered->Reserve(@size);
-			
+
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(f(@values[i])) {
 					filtered->AddBack(@values[i]);
 				};
 			};
-			
+
 			return filtered;
 		}
 
@@ -6903,9 +6903,9 @@ v->FindIndex(\(IntRef) ~ Bool : (x) => x->Get() > 4)->PrintLine(); # 1
 
 	#~
 	Balanced ordered tree of 'Compare' keys and 'Base' values
-	
+
 	```
-	function : Example() ~ Nil {	
+	function : Example() ~ Nil {
 	   # insert elements
 	   map := Collection.Map->New()<IntRef, String>;
 	   map->Insert(415, "San Francisco");
@@ -6958,14 +6958,14 @@ map->Size()->PrintLine(); # 1
 			if(node = Nil | node->GetLeft() = Nil) {
 				return node;
 			};
-				
+
 			if(node->GetLeft()->GetLevel() = node->GetLevel()) {
 				left : TreeNode<K, V> := node->GetLeft();
 				node->SetLeft(left->GetRight());
 				left->SetRight(node);
 				return left;
 			};
-			
+
 			return node;
 		}
 
@@ -7038,9 +7038,9 @@ map->IsEmpty()->PrintLine(); # true
 			@last := Nil;
 			@size := 0;
 		}
-		
+
 		method : native : Split(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
-			if(node = Nil | node->GetRight() = Nil | 
+			if(node = Nil | node->GetRight() = Nil |
 					node->GetRight()->GetRight() = Nil) {
 				return node;
 			};
@@ -7050,13 +7050,13 @@ map->IsEmpty()->PrintLine(); # true
 				node->SetRight(right->GetLeft());
 				right->SetLeft(node);
 				right->SetLevel(right->GetLevel() + 1);
-				
+
 				return right;
 			};
-			
+
 			return node;
 		}
-		
+
 		#~
 		Searches for a value in a map
 		@param key search key
@@ -7084,13 +7084,13 @@ map->Find("e")->PrintLine();    # (Nil)
 					node := node->GetRight();
 				}
 				else {
-					return node->Get();		
+					return node->Get();
 				};
 			};
 
 			return Nil;
 		}
-		
+
 		#~
 		Checks for a value in a map
 		@param key search key
@@ -7118,13 +7118,13 @@ map->Has("dog")->PrintLine(); # false
 					node := node->GetRight();
 				}
 				else {
-					return true;		
+					return true;
 				};
 			};
 
 			return false;
 		}
-		
+
 		method : Find(key : K, node : Collection.TreeNode<K, V>) ~ V {
 			if(node <> Nil) {
 				cmp := key->Compare(node->GetKey());
@@ -7135,10 +7135,10 @@ map->Has("dog")->PrintLine(); # false
 					return Find(key, node->GetRight());
 				}
 				else {
-					return node->Get();		
+					return node->Get();
 				};
 			};
-			
+
 			return Nil;
 		}
 
@@ -7159,7 +7159,7 @@ map->Each(\(String, IntRef) ~ Nil : (k, v) => "{$k}={$v}"->PrintLine());
 
 		method : Each(node : Collection.TreeNode<K, V>, f : (K, V) ~ Nil) ~ Nil {
 			if(node <> Nil) {
-				# process left 
+				# process left
 				Each(node->GetLeft(), f);
 
 				key := node->GetKey();
@@ -7191,17 +7191,17 @@ each(k := keys) { k->PrintLine(); }
 
 		method : GetKeys(node : Collection.TreeNode<K, V>, vector : Collection.Vector<K>) ~ Nil {
 			if(node <> Nil) {
-				# process left 
+				# process left
 				GetKeys(node->GetLeft(), vector);
-				
+
 				key : K := node->GetKey();
 				vector->AddBack(key);
-				
+
 				# process right
 				GetKeys(node->GetRight(), vector);
 			};
 		}
-        
+
 		#~
 		Get a collection of key-value pairs
 		@return vector of key-value pairs
@@ -7222,14 +7222,14 @@ each(kv := kvs) { "{$kv->GetFirst()}={$kv->GetSecond()}"->PrintLine(); }
 
 		method : GetKeyValues(node : Collection.TreeNode<K, V>, vector : Collection.Vector<Pair<K,V>>) ~ Nil {
 			if(node <> Nil) {
-				# process left 
+				# process left
 				GetKeyValues(node->GetLeft(), vector);
-				
+
 				key : K := node->GetKey();
                 value : V := node->Get();
-                
+
 				vector->AddBack(Pair->New(key, value)<K,V>);
-				
+
 				# process right
 				GetKeyValues(node->GetRight(), vector);
 			};
@@ -7292,7 +7292,7 @@ map->ToString()->PrintLine(); # [(a:1),(b:2)]
 
 			return count;
 		}
-        
+
 		#~
 		Gets a collection of values
 		@return vector of values
@@ -7313,17 +7313,17 @@ each(v := values) { v->PrintLine(); }
 
 		method : GetValues(node : Collection.TreeNode<K, V>, vector : Collection.Vector<V>) ~ Nil {
 			if(node <> Nil) {
-				# process left 
+				# process left
 				GetValues(node->GetLeft(), vector);
-				
+
 				value : V := node->Get();
 				vector->AddBack(value);
-				
+
 				# process right
 				GetValues(node->GetRight(), vector);
 			};
 		}
-        
+
 		#~
 		Inserts a value into the map
 		@param key key
@@ -7347,7 +7347,7 @@ map->Find("city")->PrintLine(); # 42
 				@root := Insert(key, value, @root);
 			};
 		}
-		
+
 		method : Insert(key : K, value : V, node : Collection.TreeNode<K, V>) ~  Collection.TreeNode<K, V> {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1)<K, V>;
@@ -7367,11 +7367,11 @@ map->Find("city")->PrintLine(); # 42
 				};
 				node := Skew(node);
 				node := Split(node);
-			};	
-			
+			};
+
 			return node;
 		}
-		
+
 		#~
 		Removes a value from the map
 		@param key key for value to remove
@@ -7391,13 +7391,13 @@ map->Has("tmp")->PrintLine();     # false
 			if(@root = Nil) {
 				return false;
 			};
-			
+
 			if(@size = 1 & key->Compare(@root->GetKey()) = 0) {
 				@root := Nil;
 				@size := 0;
 				return true;
 			};
-			
+
 			@last := Nil;
 			@root := Remove(key, @root);
 			if(@last <> Nil) {
@@ -7405,10 +7405,10 @@ map->Has("tmp")->PrintLine();     # false
 				@last := Nil;
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		method : native : Remove(key : K, node : Collection.TreeNode<K, V>) ~  Collection.TreeNode<K, V> {
 			if(node = Nil) {
 				return Nil;
@@ -7431,29 +7431,29 @@ map->Has("tmp")->PrintLine();     # false
 					node->SetRight(Remove(temp->GetKey(), node->GetRight()));
 					node->SetKey(temp->GetKey());
 					node->Set(temp->Get());
-				} 
+				}
 				else {
 					temp : TreeNode<K, V> := Predecessor(node);
 					node->SetLeft(Remove(temp->GetKey(), node->GetLeft()));
 					node->SetKey(temp->GetKey());
 					node->Set(temp->Get());
 				};
-				
+
 			};
-			
+
 			# rebalanced
-			node := DecreaseLevel(node);				
+			node := DecreaseLevel(node);
 			node := Skew(node);
 			node->SetRight(Skew(node->GetRight()));
 			if(node->GetRight() <> Nil & node->GetRight()->GetRight() <> Nil) {
 				node->GetRight()->SetRight(Skew(node->GetRight()->GetRight()));
-			};	
-			node := Split(node);								
+			};
+			node := Split(node);
 			node->SetRight(Split(node->GetRight()));
 
 			return node;
 		}
-		
+
 		method : Predecessor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode<K, V> := node->GetLeft();
@@ -7502,7 +7502,7 @@ map->Has("tmp")->PrintLine();     # false
 			};
 			return node;
 		}
-		
+
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
@@ -7569,7 +7569,7 @@ concat->PrintLine(); # ab
 		@left : TreeNode<K, V>;
 		@right : TreeNode<K, V>;
 		@level : Int;
-		
+
 		New(key : K, value : V, level : Int) {
 			@key := key;
 			@value := value;
@@ -7581,7 +7581,7 @@ concat->PrintLine(); # ab
 		method : public : SetKey(key : K) ~ Nil {
 			@key := key;
 		}
-		
+
 		method : public : GetKey() ~ K {
 			return @key;
 		}
@@ -7618,7 +7618,7 @@ concat->PrintLine(); # ab
 			@right := right;
 		}
 	}
-	
+
 	#~
 	Ordered set of generic objects
 
@@ -7634,7 +7634,7 @@ set->Size()->PrintLine();
 
 # get value by key
 set->Has("Oakland")->PrintLine();
-	```	
+	```
 	~#
 	class Set<K : Compare> {
 		@map : Map<K, Base>;
@@ -7703,7 +7703,7 @@ set->ToString()->PrintLine(); # [x,y]
 
 			return buffer;
 		}
-		
+
 		#~
 		Removes a key from the set
 		@param key key for value to remove
@@ -8060,7 +8060,7 @@ set_hash->Size()->PrintLine();
 
 # get value by key
 set_hash->Has("Oakland")->PrintLine();
-	```	
+	```
 	~#
 	class SetHash<K : Compare> {
 		@set : HashSet<K>;
@@ -8443,7 +8443,7 @@ set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
 			return result;
 		}
 	}
-		
+
 	#~
 	Ordered binary tree that holds multiple values with the same key
 
@@ -8594,7 +8594,7 @@ mmap->ToString()->PrintLine(); # [(a:12)]
 					if(value <> Nil) {
 						if(value->TypeOf(Stringify)) {
 							buffer->Append(value->As(System.Stringify)->ToString());
-							
+
 						}
 						# use instance ID instead
 						else {
@@ -8678,7 +8678,7 @@ filtered->Size()->PrintLine(); # 1
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ MultiMap<K, V> {
 			filtered := MultiMap->New()<K, V>;
-			
+
 			keys := GetKeys();
 			each(key in keys) {
 				if(f(key)) {
@@ -8688,7 +8688,7 @@ filtered->Size()->PrintLine(); # 1
 					};
 				};
 			};
-			
+
 			return filtered;
 		}
 
@@ -8936,7 +8936,7 @@ mmap->ToString()->PrintLine(); # [(a:12)]
 					if(value <> Nil) {
 						if(value->TypeOf(Stringify)) {
 							buffer->Append(value->As(System.Stringify)->ToString());
-							
+
 						}
 						# use instance ID instead
 						else {
@@ -9020,7 +9020,7 @@ filtered->Size()->PrintLine(); # 1
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ MultiHash<K, V> {
 			filtered := MultiHash->New()<K, V>;
-			
+
 			keys := GetKeys();
 			each(key in keys) {
 				if(f(key)) {
@@ -9030,7 +9030,7 @@ filtered->Size()->PrintLine(); # 1
 					};
 				};
 			};
-			
+
 			return filtered;
 		}
 

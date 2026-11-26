@@ -4746,9 +4746,9 @@ results->ToString()->PrintLine();
 		@left : Int;
 		@qualifier : Conditional->Qualifier;
 		@value : Compare;
-		
+
 		#~
-		Conditional comparisons 
+		Conditional comparisons
 		~#
 		enum Qualifier {
 			EQUAL,
@@ -4760,7 +4760,7 @@ results->ToString()->PrintLine();
 			LIKE,
 			NOT_LIKE
 		}
-		
+
 		#~
 		Constructor
 		@param left index of column to compare
@@ -4772,7 +4772,7 @@ results->ToString()->PrintLine();
 			@qualifier := qualifier;
 			@value := value;
 		}
-		
+
 		#~
 		Get the qualifying value
 		@return qualifying value
@@ -4780,7 +4780,7 @@ results->ToString()->PrintLine();
 		method : public : GetQualifier() ~ Qualifier {
 			return @qualifier;
 		}
-		
+
 		#~
 		Gets the comparison value
 		@return comparison value
@@ -4788,7 +4788,7 @@ results->ToString()->PrintLine();
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
-		
+
 		#~
 		Gets comparison index
 		@return comparison index
@@ -4797,7 +4797,7 @@ results->ToString()->PrintLine();
 			return @left;
 		}
 	}
-	
+
 	# Cell value helpers shared by Table and Query: numeric tests for the
 	# aggregates, type-aware comparison for 'where' and 'order by', LIKE
 	# matching and CSV text conversion.
@@ -5151,7 +5151,7 @@ results->ToString()->PrintLine();
 			return text;
 		}
 	}
-	
+
 
 	#~
 	A cursor over one row of a table: reading or writing it reads or writes the table's columns.
@@ -17062,18 +17062,18 @@ if(file->IsOpen()) {
 			@reserved->Insert("order", Token->New(Token->Type->ORDER));
 			@reserved->Insert("by", Token->New(Token->Type->BY));
 		}
-		
+
 		method : public : Parse() ~ Term {
 			@tokens := Scan();
 
 			term : Term;
 			if(@tokens = Nil)	{
 				return Nil;
-			};			
+			};
 			NextToken();
 
 			if(TokenType() = Token->Type->SELECT) {
-				NextToken();		
+				NextToken();
 				term := ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
@@ -17103,23 +17103,23 @@ if(file->IsOpen()) {
 			if(TokenType() <> Token->Type->EOS) {
 				return Nil;
 			};
-			
+
 			return term;
 		}
-		
+
 		method : ParseSelect() ~ Term {
-# "--- Select ---"->PrintLine();		
+# "--- Select ---"->PrintLine();
 			term := Term->New(Token->Type->SELECT);
 			term->SetValue(TokenValue());
-			
+
 			if(TokenType() = Token->Type->STAR) {
 				term->AddTerm(Term->New(TokenType()));
-				NextToken();		
+				NextToken();
 			}
 			else if(TokenType() = Token->Type->DISTINCT) {
 				term->AddTerm(Term->New(TokenType()));
 				NextToken();
-				
+
 				if(TokenType() <> Token->Type->REF) {
 					return Nil;
 				};
@@ -17138,21 +17138,21 @@ if(file->IsOpen()) {
 					term->AddTerm(name);
 					NextToken();
 
-				
+
 					if(TokenType() = Token->Type->COMMA) {
 						NextToken();
 					};
 				}
 				while(TokenType() <> Token->Type->EOS & TokenType() <> Token->Type->FROM);
 			};
-			
-			if(TokenType() <> Token->Type->FROM) {			
+
+			if(TokenType() <> Token->Type->FROM) {
 				return Nil;
 			};
-			
+
 			NextToken();
 			left := ParseFrom();
-			if(left = Nil) {			
+			if(left = Nil) {
 				return Nil;
 			};
 			term->SetLeft(left);
@@ -17169,7 +17169,7 @@ if(file->IsOpen()) {
 			term := Term->New(Token->Type->FROM);
 			term->SetValue(TokenValue());
 			NextToken();
-			
+
 			if(TokenType() = Token->Type->WHERE) {
 				NextToken();
 				left := ParseWhere();
@@ -17178,7 +17178,7 @@ if(file->IsOpen()) {
 				};
 				term->SetLeft(left);
 			};
-			
+
 			term->SetRight(Term->New(Token->Type->EOS));
 			return term;
 		}
@@ -17193,28 +17193,28 @@ if(file->IsOpen()) {
 			if(left = Nil) {
 				return Nil;
 			};
-			
+
 			where := Term->New(Token->Type->WHERE);
 			where->SetLeft(left);
 			return where;
 		}
-		
+
 		method : ParseOr() ~ Term {
 			left := ParseAnd();
 			if(left = Nil) {
 				return Nil;
 			};
-			
+
 			while(TokenType() = Token->Type->OR) {
 				term := Term->New(TokenType());
 				term->SetValue(TokenValue());
 				NextToken();
-				
+
 				right := ParseAnd();
 				if(right = Nil) {
 					return Nil;
 				};
-				
+
 				term->SetLeft(left);
 				term->SetRight(right);
 				left := term;
@@ -17222,7 +17222,7 @@ if(file->IsOpen()) {
 
 			return left;
 		}
-		
+
 		method : ParseAnd() ~ Term {
 			left := ParsePrimary();
 			if(left = Nil) {
@@ -17262,13 +17262,13 @@ if(file->IsOpen()) {
 
 			return ParseTerm();
 		}
-		
+
 		# column [not] operator value; the left side must name a column
 		method : ParseTerm() ~ Term {
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
 			};
-			
+
 			left := Term->New(TokenType());
 			left->SetValue(TokenValue());
 			NextToken();
@@ -17276,9 +17276,9 @@ if(file->IsOpen()) {
 			is_not := false;
 			if(TokenType() = Token->Type->NOT) {
 				is_not := true;
-				NextToken();		
+				NextToken();
 			};
-			
+
 			term : Term;
 			select(TokenType()) {
 				label Token->Type->LIKE:
@@ -17287,7 +17287,7 @@ if(file->IsOpen()) {
 				label Token->Type->LESS:
 				label Token->Type->GREATER:
 				label Token->Type->LESS_EQUAL:
-				label Token->Type->GREATER_EQUAL: {				
+				label Token->Type->GREATER_EQUAL: {
 					term := Term->New(TokenType());
 					term->SetValue(TokenValue());
 					term->SetNot(is_not);
@@ -17298,57 +17298,57 @@ if(file->IsOpen()) {
 					return Nil;
 				}
 			};
-			
-			right : Term;			
+
+			right : Term;
 			select(TokenType()) {
 				label Token->Type->REF:
 				label Token->Type->DATE:
 				label Token->Type->INT:
 				label Token->Type->PARAM:
-				label Token->Type->FLOAT: {			
-					right := Term->New(TokenType());					
+				label Token->Type->FLOAT: {
+					right := Term->New(TokenType());
 					right->SetValue(TokenValue());
 					NextToken();
 				}
-				
+
 				other: {
 					return Nil;
 				}
 			};
-		
+
 			term->SetLeft(left);
 			term->SetRight(right);
-			
+
 			return term;
 		}
-		
+
 		method : NextToken() ~ Bool {
 			if(@tokens_index < @tokens->Size()) {
 				@cur_token := @tokens->Get(@tokens_index);
 				@tokens_index += 1;
 				return true;
 			};
-			
+
 			@cur_token := Nil;
 			return false;
 		}
-		
+
 		method : TokenType() ~ Token->Type {
 			if(@cur_token <> Nil) {
 				return @cur_token->GetType();
 			};
-			
+
 			return Token->Type->EOS;
 		}
-		
+
 		method : TokenValue() ~ Compare {
 			if(@cur_token <> Nil) {
 				return @cur_token->GetValue();
 			};
-			
+
 			return "";
 		}
-		
+
 		# the character at index, or '\0' past the end of the line
 		method : Peek(index : Int) ~ Char {
 			if(index < @line->Size()) {
@@ -17380,12 +17380,12 @@ if(file->IsOpen()) {
 			i := 0;
 			params := 0;
 			tokens := Vector->New()<Token>;
-			while(i < @line->Size()) { 			 			  
+			while(i < @line->Size()) {
 				# skip whitespace
 				while(i < @line->Size() & (@line->Get(i) = ' ' | @line->Get(i) = '\t' | @line->Get(i) = '\r' | @line->Get(i) = '\n')) {
-					i += 1;					
+					i += 1;
 				};
-				
+
 				# parse the @line
 				if(i < @line->Size()) {
 					# string
@@ -17396,44 +17396,44 @@ if(file->IsOpen()) {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
-						
+
 						# unterminated
 						if(i >= @line->Size()) {
 							return Nil;
 						};
 						i += 1;
-						
+
 						tokens->AddBack(Token->New(string));
 					}
 					# date
 					else if(@line->Get(i) = '#') {
-						i += 1;					
+						i += 1;
 						string := "";
 						while(i < @line->Size() & @line->Get(i) <> '#') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
-					
+
 						# unterminated
 						if(i >= @line->Size()) {
 							return Nil;
 						};
 						i += 1;
-						
+
 						date : Date := Nil;
 						select(string->Size()) {
 							label 8: {
 								date := DateUtility->Parse(string, "MM/dd/yy", false);
 							}
-							
-							label 10: {						
-								date := DateUtility->Parse(string, "MM/dd/yyyy", false);	
+
+							label 10: {
+								date := DateUtility->Parse(string, "MM/dd/yyyy", false);
 							}
-							
+
 							label 17: {
 								date := DateUtility->Parse(string, "MM/dd/yy hh:mm:ss", false);
 							}
-							
+
 							label 19: {
 								date := DateUtility->Parse(string, "MM/dd/yyyy hh:mm:ss", false);
 							}
@@ -17510,19 +17510,19 @@ if(file->IsOpen()) {
 							label ',': {
 								tokens->AddBack(Token->New(Token->Type->COMMA));
 							}
-							
+
 							label '(': {
 								tokens->AddBack(Token->New(Token->Type->OPRN));
 							}
-							
+
 							label ')': {
 								tokens->AddBack(Token->New(Token->Type->CPRN));
 							}
-							
+
 							label '=': {
 								tokens->AddBack(Token->New(Token->Type->EQUAL));
 							}
-							
+
 							label '<': {
 								if(Peek(i + 1) = '>') {
 									i += 1;
@@ -17536,7 +17536,7 @@ if(file->IsOpen()) {
 									tokens->AddBack(Token->New(Token->Type->LESS));
 								};
 							}
-							
+
 							label '!': {
 								if(Peek(i + 1) <> '=') {
 									return Nil;
@@ -17554,21 +17554,21 @@ if(file->IsOpen()) {
 									tokens->AddBack(Token->New(Token->Type->GREATER));
 								};
 							}
-              
+
 							other: {
 								return Nil;
 							}
 						};
 						i += 1;
 					};
-				};			
-			};			
+				};
+			};
 			tokens->AddBack(Token->New(Token->Type->EOS));
 
 			return tokens;
 		}
 	}
-	
+
 	class Term {
 		@type : Token->Type;
 		@oper : Conditional->Qualifier;
@@ -17578,15 +17578,15 @@ if(file->IsOpen()) {
 		@value : Compare;
 		@is_not : Bool;
 
-		
+
 		New(type : Token->Type) {
 			@type := type;
 		}
-		
+
 		method : public : GetType() ~ Token->Type {
 			return @type;
 		}
-		
+
 		method : public : SetType(type : Token->Type) ~ Nil {
 			@type := type;
 		}
@@ -17594,54 +17594,54 @@ if(file->IsOpen()) {
 		method : public : GetNot() ~ Bool {
 			return @is_not;
 		}
-		
+
 		method : public : SetNot(is_not : Bool) ~ Nil {
 			@is_not := is_not;
 		}
-		
+
 		method : public : GetOperator() ~ Conditional->Qualifier {
 			return @oper;
 		}
-		
+
 		method : public : SetOperator(oper : Conditional->Qualifier) ~ Nil {
 			@oper := oper;
 		}
-		
+
 		method : public : SetValue(value : Compare) ~ Nil {
 			@value := value;
 		}
-		
+
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
-		
+
 		method : public : SetLeft(left : Term) ~ Nil {
 			@left := left;
 		}
-		
+
 		method : public : GetLeft() ~ Term {
 			return @left;
 		}
-		
+
 		method : public : SetRight(right : Term) ~ Nil {
 			@right := right;
 		}
-		
+
 		method : public : GetRight() ~ Term {
 			return @right;
 		}
-		
+
 		method : public : AddTerm(term : Term) ~ Nil {
 			@terms := @terms ?? Vector->New()<Term>;
-			
+
 			@terms->AddBack(term);
 		}
-		
+
 		method : public : GetTerms() ~ Vector<Term> {
 			return @terms;
 		}
 	}
-	
+
 	class Token {
 		@type : Type;
 		@value : Compare;
@@ -17700,17 +17700,17 @@ if(file->IsOpen()) {
 			~#
 			PARAM
 		}
-		
+
 		New(value : String) {
 			@type := Type->REF;
 			@value := value;
 		}
-		
+
 		New(value : Date) {
 			@type := Type->DATE;
 			@value := value;
 		}
-		
+
 		New(type : Type) {
 			@type := type;
 			@value := "";
@@ -17720,7 +17720,7 @@ if(file->IsOpen()) {
 			@type := type;
 			@value := value;
 		}
-		
+
 		New(value : Float) {
 			@type := Type->FLOAT;
 			@value := FloatRef->New(value);
@@ -17730,11 +17730,11 @@ if(file->IsOpen()) {
 			@type := Type->INT;
 			@value := IntRef->New(value);
 		}
-		
+
 		method : public : GetType() ~ Type {
 			return @type;
 		}
-		
+
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
@@ -17750,7 +17750,7 @@ if(file->IsOpen()) {
 				label Type->DISTINCT: {
 					buffer += "DISTINCT";
 				}
-				
+
 				label Type->FROM: {
 					buffer += "FROM";
 				}
@@ -17802,7 +17802,7 @@ if(file->IsOpen()) {
 				label Type->OPRN: {
 					buffer += "OPRN";
 				}
-				
+
 				label Type->CPRN: {
 					buffer += "CPRN";
 				}
