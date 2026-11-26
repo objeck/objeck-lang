@@ -1244,9 +1244,7 @@ cache->Has(5)->PrintLine();    # false
 			};
 			@head := node;
 
-			if(@tail = Nil) {
-				@tail := node;
-			};
+			@tail := @tail ?? node;
 		}
 
 		#~

@@ -421,9 +421,7 @@ lda->LogPerplexityBound(corpus)->PrintLine();
 				psi_tot[k] := TopicMath->Digamma(tot[k] + vv->As(Float) * @eta);
 			};
 
-			if(@eb = Nil) {
-				@eb := Float->New[vv * kk];
-			};
+			@eb := @eb ?? Float->New[vv * kk];
 
 			for(w := 0; w < vv; w += 1;) {
 				base := w * kk;

@@ -452,9 +452,7 @@ resp->GetText()->PrintLine();
 						content_type := content->GetType();
 						text := content->GetText();
 						if(content_type <> Nil & content_type->Equals("output_text") & text <> Nil) {
-							if(buffer = Nil) {
-								buffer := "";
-							};
+							buffer := buffer ?? "";
 							buffer += text;
 						};
 					};
@@ -4727,9 +4725,7 @@ session->Close();
 				tool_desc := tool->Get("type")->GetString();
 				if(tool_desc->Equals("function")) {
 					func_json := tool->Get("function");
-					if(@funcs = Nil) {
-						@funcs := Vector->New()<FunctionType>;
-					};
+					@funcs := @funcs ?? Vector->New()<FunctionType>;
 
 					func := FunctionType->New(func_json);
 					@funcs->AddBack(func);
@@ -6558,9 +6554,7 @@ job = Batch->Get(job->GetId(), token);
 		@return base
 		~#
 		function : GetBaseUrl() ~ String {
-			if(@base_url = Nil) {
-				@base_url := "https://api.openai.com/v1";
-			};
+			@base_url := @base_url ?? "https://api.openai.com/v1";
 
 			return @base_url;
 		}

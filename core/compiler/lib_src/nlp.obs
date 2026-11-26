@@ -2022,13 +2022,9 @@ jaccard := TextSimilarity->JaccardSimilarity(t1, t2);
 ```
 		~#
 		function : JaccardSimilarity(tokens1 : String[], tokens2 : String[]) ~ Float {
-			if(tokens1 = Nil) {
-				tokens1 := String->New[0];
-			};
+			tokens1 := tokens1 ?? String->New[0];
 
-			if(tokens2 = Nil) {
-				tokens2 := String->New[0];
-			};
+			tokens2 := tokens2 ?? String->New[0];
 
 			if(tokens1->Size() = 0 & tokens2->Size() = 0) {
 				return 1.0;
@@ -2080,13 +2076,9 @@ dist := TextSimilarity->LevenshteinDistance("kitten", "sitting");
 ```
 		~#
 		function : LevenshteinDistance(str1 : String, str2 : String) ~ Int {
-			if(str1 = Nil) {
-				str1 := "";
-			};
+			str1 := str1 ?? "";
 
-			if(str2 = Nil) {
-				str2 := "";
-			};
+			str2 := str2 ?? "";
 
 			len1 := str1->Size();
 			len2 := str2->Size();
@@ -2151,13 +2143,9 @@ if(TextSimilarity->LevenshteinDistance("opentelemetry", "opentelemetri", 2) <= 2
 ```
 		~#
 		function : LevenshteinDistance(str1 : String, str2 : String, max_distance : Int) ~ Int {
-			if(str1 = Nil) {
-				str1 := "";
-			};
+			str1 := str1 ?? "";
 
-			if(str2 = Nil) {
-				str2 := "";
-			};
+			str2 := str2 ?? "";
 
 			if(max_distance < 0) {
 				max_distance := 0;
@@ -2285,13 +2273,9 @@ nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
 ```
 		~#
 		function : NormalizedEditDistance(str1 : String, str2 : String) ~ Float {
-			if(str1 = Nil) {
-				str1 := "";
-			};
+			str1 := str1 ?? "";
 
-			if(str2 = Nil) {
-				str2 := "";
-			};
+			str2 := str2 ?? "";
 
 			distance := LevenshteinDistance(str1, str2);
 			max_len := str1->Size() > str2->Size() ? str1->Size() : str2->Size();
@@ -3554,9 +3538,7 @@ encoding := tokenizer->Encode("the quick brown fox", 128);
 			first := true;
 			each(i : ids) {
 				token := IdToToken(ids[i]);
-				if(token = Nil) {
-					token := "[UNK]";
-				};
+				token := token ?? "[UNK]";
 
 				if(<>skip_special | <>IsSpecial(token)) {
 					if(<>first & token->StartsWith("##")) {

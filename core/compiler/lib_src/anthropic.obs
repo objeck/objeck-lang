@@ -42,9 +42,7 @@ bundle API.Anthropic {
 		@return base URL
 		~#
 		function : GetBaseUrl() ~ String {
-			if(@base_url = Nil) {
-				@base_url := "https://api.anthropic.com/v1";
-			};
+			@base_url := @base_url ?? "https://api.anthropic.com/v1";
 			return @base_url;
 		}
 
@@ -164,9 +162,7 @@ bundle API.Anthropic {
 				error_json := json->Get("error");
 				message := Field->Text(error_json, "message");
 				kind := Field->Text(error_json, "type");
-				if(message = Nil) {
-					message := "the API returned an error";
-				};
+				message := message ?? "the API returned an error";
 				if(kind <> Nil) {
 					message := "{$kind}: {$message}";
 				};
@@ -327,9 +323,7 @@ bundle API.Anthropic {
 			@id := Field->Text(block, "id");
 			@name := Field->Text(block, "name");
 			@input := block->Get("input");
-			if(@input = Nil) {
-				@input := JsonElement->New(JsonElement->JsonType->OBJECT);
-			};
+			@input := @input ?? JsonElement->New(JsonElement->JsonType->OBJECT);
 		}
 
 		#~
@@ -651,9 +645,7 @@ bundle API.Anthropic {
 			else if(event->Equals("error")) {
 				error_json := json->Get("error");
 				message := Field->Text(error_json, "message");
-				if(message = Nil) {
-					message := "the stream carried an error";
-				};
+				message := message ?? "the stream carried an error";
 				kind := Field->Text(error_json, "type");
 				if(kind <> Nil) {
 					message := "{$kind}: {$message}";
@@ -1100,9 +1092,7 @@ chat->Send("And at sunset?")->PrintLine();
 		}
 
 		method : Key() ~ String {
-			if(@key = Nil) {
-				@key := GetApiKey();
-			};
+			@key := @key ?? GetApiKey();
 			return @key;
 		}
 

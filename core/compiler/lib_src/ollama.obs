@@ -74,9 +74,7 @@ bundle API.Ollama {
 		@return host URL
 		~#
 		function : GetHost() ~ String {
-			if(@host = Nil) {
-				@host := "http://localhost:11434";
-			};
+			@host := @host ?? "http://localhost:11434";
 			return @host;
 		}
 
@@ -575,9 +573,7 @@ tool := Tool->New("get_weather", "Get the weather for a location", params);
 				@arguments := func_json->Get("arguments");
 			};
 
-			if(@arguments = Nil) {
-				@arguments := JsonElement->New(JsonElement->JsonType->OBJECT);
-			};
+			@arguments := @arguments ?? JsonElement->New(JsonElement->JsonType->OBJECT);
 		}
 
 		#~
@@ -688,9 +684,7 @@ if(reply <> Nil) {
 				@thinking := Field->Text(json, "thinking");
 			};
 
-			if(@text = Nil) {
-				@text := "";
-			};
+			@text := @text ?? "";
 		}
 
 		#~

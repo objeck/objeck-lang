@@ -9,9 +9,7 @@ bundle System.Diagnostics {
 		@lib_proxy : static : DllProxy;
 
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_diags");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_diags");
 
 			return @lib_proxy;
 		}

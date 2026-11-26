@@ -241,9 +241,7 @@ bundle Web.HTTP {
 						@host := part->SubString(query_index - 1);
 					}
 					
-					if(@host = Nil) {
-						@host := part;
-					};
+					@host := @host ?? part;
 					
 					if(@host->EndsWith('/')) {
 						@path := "/";
@@ -252,9 +250,7 @@ bundle Web.HTTP {
 			}
 			# path, query and fragment
 			else {
-				if(@path = Nil) {
-					@path := "";
-				};
+				@path := @path ?? "";
 				@path += '/';
 
 				# query and fragment
@@ -1201,9 +1197,7 @@ bundle Web.HTTP {
 		```
 		~#
 		method : public : AddAttrib(name : String, value : String) ~ Bool {
-			if(@attribs = Nil) {
-				@attribs := Map->New()<String, String>;
-			};
+			@attribs := @attribs ?? Map->New()<String, String>;
 
 			if(@attribs->Has(name)) {
 				return false;
@@ -1350,9 +1344,7 @@ bundle Web.HTTP {
 				@value := value;
 			}
 			else {
-				if(@attribs = Nil) {
-					@attribs := Map->New()<String, String>;
-				};
+				@attribs := @attribs ?? Map->New()<String, String>;
 				@attribs->Insert(name, value);
 			};
 

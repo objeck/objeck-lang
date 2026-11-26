@@ -27,9 +27,7 @@ bundle Game.OpenGL {
 		@lib_proxy : static : DllProxy;
 
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_sdl");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_sdl");
 
 			return @lib_proxy;
 		}
@@ -2390,7 +2388,7 @@ bundle Game.OpenGL {
 			if(@program <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@program);
-				if(@use_name = Nil) { @use_name := "sdl_gl_program_use"; };
+				@use_name := @use_name ?? "sdl_gl_program_use";
 				Proxy->GetDllProxy()->CallFunction(@use_name, array_args);
 			};
 		}
@@ -2457,7 +2455,7 @@ bundle Game.OpenGL {
 				array_args[1] := name;
 				array_args[2] := IntRef->New(value);
 
-				if(@int_name = Nil) { @int_name := "sdl_gl_uniform_int"; };
+				@int_name := @int_name ?? "sdl_gl_uniform_int";
 				Proxy->GetDllProxy()->CallFunction(@int_name, array_args);
 			};
 		}
@@ -2511,7 +2509,7 @@ bundle Game.OpenGL {
 			array_args[1] := name;
 			array_args[2] := FloatRef->New(value);
 
-			if(@float_name = Nil) { @float_name := "sdl_gl_uniform_float"; };
+			@float_name := @float_name ?? "sdl_gl_uniform_float";
 			Proxy->GetDllProxy()->CallFunction(@float_name, array_args);
 		}
 
@@ -2536,7 +2534,7 @@ bundle Game.OpenGL {
 			array_args[3] := FloatRef->New(y);
 			array_args[4] := FloatRef->New(z);
 
-			if(@vec3_name = Nil) { @vec3_name := "sdl_gl_uniform_vec3"; };
+			@vec3_name := @vec3_name ?? "sdl_gl_uniform_vec3";
 			Proxy->GetDllProxy()->CallFunction(@vec3_name, array_args);
 		}
 
@@ -2564,7 +2562,7 @@ bundle Game.OpenGL {
 			array_args[4] := FloatRef->New(z);
 			array_args[5] := FloatRef->New(w);
 
-			if(@vec4_name = Nil) { @vec4_name := "sdl_gl_uniform_vec4"; };
+			@vec4_name := @vec4_name ?? "sdl_gl_uniform_vec4";
 			Proxy->GetDllProxy()->CallFunction(@vec4_name, array_args);
 		}
 
@@ -4818,7 +4816,7 @@ bundle Game.OpenGL {
 				array_args := Base->New[2];
 				array_args[0] := IntRef->New(@texture);
 				array_args[1] := IntRef->New(unit);
-				if(@bind_name = Nil) { @bind_name := "sdl_gl_texture_bind"; };
+				@bind_name := @bind_name ?? "sdl_gl_texture_bind";
 				Proxy->GetDllProxy()->CallFunction(@bind_name, array_args);
 			};
 		}
@@ -10272,9 +10270,7 @@ bundle Game.OpenGL {
 		@param opacity 0.0 invisible to 1.0 solid
 		~#
 		method : public : SetOpacity(opacity : Float) ~ Nil {
-			if(@material = Nil) {
-				@material := Material->New(@texture);
-			};
+			@material := @material ?? Material->New(@texture);
 
 			@material->SetOpacity(opacity);
 		}
@@ -10933,13 +10929,9 @@ bundle Game.OpenGL {
 			};
 
 			use_rig := @rig;
-			if(use_rig = Nil) {
-				use_rig := rig;
-			};
+			use_rig := use_rig ?? rig;
 			use_light := @light;
-			if(use_light = Nil) {
-				use_light := light;
-			};
+			use_light := use_light ?? light;
 
 			if(use_rig <> Nil) {
 				use_rig->ApplyTo(@shader);

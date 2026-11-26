@@ -297,9 +297,7 @@ stream->Close();
 				}
 				else if(@cur_char->IsDigit() | @cur_char = '-' | @cur_char = '.' | (num_buffer <> Nil & (@cur_char = 'e' | @cur_char = 'E' | @cur_char = '+'))) {
 					if(string_buffer = Nil) {
-						if(num_buffer = Nil) {
-							num_buffer := String->New();
-						}
+						num_buffer := num_buffer ?? String->New();
 						num_buffer->Append(@cur_char);
 					}
 					else {

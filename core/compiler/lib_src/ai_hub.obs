@@ -80,17 +80,11 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 
 		method : Init(cache_dir : String) ~ Nil {
 			home := Runtime->GetProperty("user_dir");
-			if(home = Nil) {
-				home := ".";
-			};
+			home := home ?? ".";
 
 			@cache_dir := cache_dir;
-			if(@cache_dir = Nil) {
-				@cache_dir := Env("OBJECK_HUB_CACHE");
-			};
-			if(@cache_dir = Nil) {
-				@cache_dir := Join(home, ".objeck/hub");
-			};
+			@cache_dir := @cache_dir ?? Env("OBJECK_HUB_CACHE");
+			@cache_dir := @cache_dir ?? Join(home, ".objeck/hub");
 			@cache_dir := Trim(@cache_dir);
 
 			@python_cache := Env("HF_HUB_CACHE");
@@ -100,20 +94,14 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 					@python_cache := Join(hf_home, "hub");
 				};
 			};
-			if(@python_cache = Nil) {
-				@python_cache := Join(home, ".cache/huggingface/hub");
-			};
+			@python_cache := @python_cache ?? Join(home, ".cache/huggingface/hub");
 
 			@endpoint := Env("HF_ENDPOINT");
-			if(@endpoint = Nil) {
-				@endpoint := "https://huggingface.co";
-			};
+			@endpoint := @endpoint ?? "https://huggingface.co";
 			@endpoint := Trim(@endpoint);
 
 			@token := Env("OBJECK_HUB_TOKEN");
-			if(@token = Nil) {
-				@token := Env("HF_TOKEN");
-			};
+			@token := @token ?? Env("HF_TOKEN");
 
 			@offline := IsSet(Env("OBJECK_HUB_OFFLINE")) | IsSet(Env("HF_HUB_OFFLINE"));
 		}

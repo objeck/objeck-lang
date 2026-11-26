@@ -1145,9 +1145,7 @@ bundle Query.Structured {
 		# gives a column of no type the arrays for one
 		method : Become(type : ColumnType) ~ Nil {
 			@type := type;
-			if(@nulls = Nil) {
-				@nulls := Int->New[(@capacity + 63) / 64];
-			};
+			@nulls := @nulls ?? Int->New[(@capacity + 63) / 64];
 
 			select(type) {
 				label ColumnType->INT: {
@@ -1420,9 +1418,7 @@ bundle Query.Structured {
 		@lock : static : System.Concurrency.ThreadMutex;
 
 		function : Get() ~ System.Concurrency.ThreadMutex {
-			if(@lock = Nil) {
-				@lock := System.Concurrency.ThreadMutex->New("query_rebuild");
-			};
+			@lock := @lock ?? System.Concurrency.ThreadMutex->New("query_rebuild");
 
 			return @lock;
 		}
@@ -1446,9 +1442,7 @@ bundle Query.Structured {
 		}
 
 		function : Lock() ~ System.Concurrency.ThreadMutex {
-			if(@lock = Nil) {
-				@lock := System.Concurrency.ThreadMutex->New("query_errors");
-			};
+			@lock := @lock ?? System.Concurrency.ThreadMutex->New("query_errors");
 
 			return @lock;
 		}
@@ -1481,9 +1475,7 @@ bundle Query.Structured {
 			lock := Lock();
 			critical(lock) {
 				if(message <> Nil) {
-					if(@messages = Nil) {
-						@messages := Map->New()<IntRef, String>;
-					};
+					@messages := @messages ?? Map->New()<IntRef, String>;
 					@messages->Insert(id, message);
 				}
 				else if(@messages <> Nil) {
@@ -1524,9 +1516,7 @@ bundle Query.Structured {
 		@files : static : System.Concurrency.ThreadMutex[];
 
 		function : Prepare() ~ Nil {
-			if(@maps = Nil) {
-				@maps := System.Concurrency.ThreadMutex->New("query_catalog");
-			};
+			@maps := @maps ?? System.Concurrency.ThreadMutex->New("query_catalog");
 
 			if(@files = Nil) {
 				files := System.Concurrency.ThreadMutex->New[16];
@@ -2903,9 +2893,7 @@ results->ToString()->PrintLine();
 				return false;
 			};
 
-			if(name = Nil) {
-				name := "{$@name}_{$column}";
-			};
+			name := name ?? "{$@name}_{$column}";
 
 			for(i := 1; i < @columns->Size(); i += 1;) {
 				other_name := @columns[i]->GetIndexName();
@@ -4327,9 +4315,7 @@ results->ToString()->PrintLine();
 				return false;
 			};
 
-			if(@deleted = Nil) {
-				@deleted := Int->New[(@size + 64) / 64 + 1];
-			};
+			@deleted := @deleted ?? Int->New[(@size + 64) / 64 + 1];
 
 			@deleted[row >> 6] := @deleted[row >> 6] or (1 << (row and 63));
 			@count -= 1;
@@ -5264,9 +5250,7 @@ results->ToString()->PrintLine();
 		@return 'true' value holder
 		~#
 		function : True() ~ IntRef {
-			if(@true_token = Nil) {
-				@true_token := IntRef->New(1);
-			};
+			@true_token := @true_token ?? IntRef->New(1);
 
 			return @true_token;
 		}
@@ -5276,9 +5260,7 @@ results->ToString()->PrintLine();
 		@return 'false' value holder
 		~#
 		function : False() ~ IntRef {
-			if(@false_token = Nil) {
-				@false_token := IntRef->New(0);
-			};
+			@false_token := @false_token ?? IntRef->New(0);
 
 			return @false_token;
 		}
@@ -17673,9 +17655,7 @@ if(file->IsOpen()) {
 		}
 		
 		method : public : AddTerm(term : Term) ~ Nil {
-			if(@terms = Nil) {
-				@terms := Vector->New()<Term>;
-			};
+			@terms := @terms ?? Vector->New()<Term>;
 			
 			@terms->AddBack(term);
 		}
@@ -19435,9 +19415,7 @@ catalog->Load(source);
 
 		function : Folder() ~ String {
 			folder := Runtime->GetTempDir();
-			if(folder = Nil) {
-				folder := ".";
-			};
+			folder := folder ?? ".";
 
 			last := folder->Size() > 0 ? folder->Get(folder->Size() - 1) : ' ';
 			folder := String->New(folder);
@@ -19569,9 +19547,7 @@ catalog->Load(source);
 			};
 
 			body := response->GetContent();
-			if(body = Nil) {
-				body := Byte->New[0];
-			};
+			body := body ?? Byte->New[0];
 
 			headers := client->GetResponseHeaders();
 			etag := headers->Find("etag");
@@ -24122,9 +24098,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		# a cell's kind and value; Nil for a cell with no value
 		method : ReadCell(element : XmlElement, row : Int, column : Int, where : String, error : StringHolder) ~ XlsxCell {
 			type := Attribute(element, "t");
-			if(type = Nil) {
-				type := "n";
-			};
+			type := type ?? "n";
 
 			if(type->Equals("inlineStr")) {
 				inline := Child(element, "is");

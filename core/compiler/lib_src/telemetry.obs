@@ -1167,9 +1167,7 @@ bundle System.Telemetry {
 		@return the default recorder
 		~#
 		function : Default() ~ TimingRecorder {
-			if(@default_recorder = Nil) {
-				@default_recorder := TimingRecorder->New();
-			};
+			@default_recorder := @default_recorder ?? TimingRecorder->New();
 			return @default_recorder;
 		}
 
@@ -1802,9 +1800,7 @@ bundle System.Telemetry {
 				return false;
 			};
 			t := tag;
-			if(t = Nil) {
-				t := "";
-			};
+			t := t ?? "";
 			return Entry(model, device, batch, t)->GetStats()->Add(ms);
 		}
 
@@ -2443,9 +2439,7 @@ bundle System.Telemetry {
 				return;
 			};
 			t := tag;
-			if(t = Nil) {
-				t := "";
-			};
+			t := t ?? "";
 			critical(@lock) {
 				if(@store->Record(model, device, batch, t, ms)) {
 					entry := @store->Entry(model, device, batch, t);

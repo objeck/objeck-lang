@@ -16,9 +16,7 @@ bundle System.ML.Cnn {
 		@lib_proxy : static : DllProxy;
 
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_ml");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_ml");
 
 			return @lib_proxy;
 		}
@@ -915,9 +913,7 @@ probabilities := model->Predict(images);
 			if(@handle = 0 | pixels = Nil) {
 				return false;
 			};
-			if(aug = Nil) {
-				aug := @no_augment;
-			};
+			aug := aug ?? @no_augment;
 
 			array_args := Base->New[8];
 			array_args[0] := IntRef->New();

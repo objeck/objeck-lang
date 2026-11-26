@@ -1008,9 +1008,7 @@ line->PrintLine();
 
 			each(i : values) {
 				value := values[i];
-				if(value = Nil) {
-					value := "";
-				};
+				value := value ?? "";
 
 				if(NeedsQuotes(value, delimiter) | (values->Size() = 1 & value->IsEmpty())) {
 					buffer->Append('"');

@@ -1566,9 +1566,7 @@ root->ToString()->PrintLine();
 ```
 		~#
 		method : public : AddChild(tag : XmlElement) ~ Nil {
-			if(@children = Nil) {
-				@children := Vector->New()<XmlElement>;
-			};
+			@children := @children ?? Vector->New()<XmlElement>;
 			@children->AddBack(tag);
 		}
 		

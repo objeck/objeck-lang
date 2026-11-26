@@ -166,9 +166,7 @@ bundle API.MCP {
 
 			text := result->GetText();
 			if(result->IsError()) {
-				if(text = Nil) {
-					text := "the tool failed";
-				};
+				text := text ?? "the tool failed";
 				Runtime->Raise(Error->New(text));
 			};
 			return text;

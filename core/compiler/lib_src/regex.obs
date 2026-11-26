@@ -362,9 +362,7 @@ result->PrintLine();
 				return Nil;
 			};
 
-			if(replace = Nil) {
-				replace := "";
-			};
+			replace := replace ?? "";
 
 			left := 0;
 			chars := stream_in->ToCharArray();
@@ -405,9 +403,7 @@ result->PrintLine();
 				return Nil;
 			};
 
-			if(replace = Nil) {
-				replace := "";
-			};
+			replace := replace ?? "";
 
 			# one pass over the ORIGINAL input: matching never sees text already replaced, so \b and
 			# friends cannot be changed by a replacement, and the work is linear in the output size

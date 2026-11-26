@@ -80,9 +80,7 @@ bundle System.Actor {
 
 			if(@fail_on_error & result->IsCompleted() = false) {
 				error := result->GetError();
-				if(error = Nil) {
-					error := result->GetStatus();
-				};
+				error := error ?? result->GetStatus();
 				Runtime->Raise(Error->New("the agent run did not complete: {$error}"));
 			};
 			return true;

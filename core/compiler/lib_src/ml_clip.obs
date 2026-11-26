@@ -938,9 +938,7 @@ if(<>encoder->IsOpen()) {
 				};
 
 				dims := rows->Size();
-				if(result = Nil) {
-					result := Float->New[total, dims[1]];
-				};
+				result := result ?? Float->New[total, dims[1]];
 				for(b := 0; b < count; b += 1;) {
 					for(j := 0; j < dims[1]; j += 1;) {
 						result[start + b, j] := rows[b, j];
@@ -968,9 +966,7 @@ if(<>encoder->IsOpen()) {
 			tensor := outputs->Get(0);
 			shape := tensor->GetShape();
 			values := tensor->GetFloats();
-			if(values = Nil) {
-				values := tensor->AsFloats();
-			};
+			values := values ?? tensor->AsFloats();
 			if(shape->Size() <> 2 | shape[0] <> count | values = Nil) {
 				text := tensor->ToString();
 				@error := "the model returned {$text}, not [{$count}, dimension]";

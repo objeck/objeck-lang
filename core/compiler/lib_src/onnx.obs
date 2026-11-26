@@ -13,9 +13,7 @@ bundle API.Onnx {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_onnx");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_onnx");
 
 			return @lib_proxy;
 		}
@@ -3109,9 +3107,7 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 			};
 
 			wanted := output_names;
-			if(wanted = Nil) {
-				wanted := String->New[0];
-			};
+			wanted := wanted ?? String->New[0];
 
 			if(@session = 0) {
 				">>> ONNX: run on a session that is not open. <<<"->ErrorLine();

@@ -524,9 +524,7 @@ bundle API.MCP {
 		@param text the text
 		~#
 		method : public : AddText(text : String) ~ Nil {
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 			item := JsonElement->New(JsonElement->JsonType->OBJECT);
 			item->Insert("type", "text");
 			item->Insert("text", text);
@@ -676,9 +674,7 @@ bundle API.MCP {
 		New(name : String, arguments : JsonElement, id : JsonElement, token : JsonElement, sink : McpSink) {
 			@name := name;
 			@arguments := arguments;
-			if(@arguments = Nil) {
-				@arguments := McpMessage->EmptyObject();
-			};
+			@arguments := @arguments ?? McpMessage->EmptyObject();
 			@id := id;
 			@token := token;
 			@sink := sink;
@@ -843,9 +839,7 @@ bundle API.MCP {
 			@name := name;
 			@description := description;
 			@schema := schema;
-			if(@schema = Nil) {
-				@schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
-			};
+			@schema := @schema ?? JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
 			@handler := handler;
 		}
 
@@ -1496,9 +1490,7 @@ bundle API.MCP {
 		~#
 		function : FromJson(json : JsonElement) ~ McpResource {
 			uri := McpMessage->Str(json, "uri");
-			if(uri = Nil) {
-				uri := McpMessage->Str(json, "uriTemplate");
-			};
+			uri := uri ?? McpMessage->Str(json, "uriTemplate");
 			if(uri = Nil) {
 				return Nil;
 			};
@@ -1897,9 +1889,7 @@ bundle API.MCP {
 
 		method : Count(name : String, kind : Int, ms : Float) ~ Nil {
 			critical(@mutex) {
-				if(@stats = Nil) {
-					@stats := Hash->New()<String, McpToolStat>;
-				};
+				@stats := @stats ?? Hash->New()<String, McpToolStat>;
 				stat := @stats->Find(name);
 				if(stat = Nil) {
 					stat := McpToolStat->New();
@@ -2075,9 +2065,7 @@ bundle API.MCP {
 				return Nil;
 			};
 
-			if(params = Nil) {
-				params := McpMessage->EmptyObject();
-			};
+			params := params ?? McpMessage->EmptyObject();
 
 			# whatever a handler or a malformed argument does, the server answers and goes on
 			reply : JsonElement;
@@ -2298,9 +2286,7 @@ bundle API.MCP {
 				return Nil;
 			};
 
-			if(result = Nil) {
-				result := McpToolResult->Error("Tool {$name} returned no result");
-			};
+			result := result ?? McpToolResult->Error("Tool {$name} returned no result");
 
 			if(timer <> Nil) {
 				kind := 0;
@@ -3458,9 +3444,7 @@ bundle API.MCP {
 			text := @transport->Request(McpMessage->Request(id, rpc, params)->ToString(), id->ToString());
 			if(text = Nil) {
 				reason := @transport->GetError();
-				if(reason = Nil) {
-					reason := "no reply to {$rpc}";
-				};
+				reason := reason ?? "no reply to {$rpc}";
 				Fail(0, reason);
 				return Nil;
 			};
@@ -3480,9 +3464,7 @@ bundle API.MCP {
 				};
 
 				message := McpMessage->Str(err, "message");
-				if(message = Nil) {
-					message := "error";
-				};
+				message := message ?? "error";
 				Fail(code, message);
 				return Nil;
 			};
@@ -3531,9 +3513,7 @@ bundle API.MCP {
 		New(client : McpClient) {
 			@client := client;
 			@tools := client->ListTools();
-			if(@tools = Nil) {
-				@tools := Vector->New()<McpTool>;
-			};
+			@tools := @tools ?? Vector->New()<McpTool>;
 		}
 
 		#~
@@ -3613,9 +3593,7 @@ bundle API.MCP {
 			};
 
 			description := tool->GetDescription();
-			if(description = Nil) {
-				description := "";
-			};
+			description := description ?? "";
 			return FunctionType->New(tool->GetName(), params, required_names, description);
 		}
 
@@ -3687,9 +3665,7 @@ bundle API.MCP {
 		@count : static : Int;
 
 		function : Make(client : McpClient, name : String) ~ Func2Ref<JsonElement, JsonElement> {
-			if(@clients = Nil) {
-				@clients := Hash->New()<String, McpClient>;
-			};
+			@clients := @clients ?? Hash->New()<String, McpClient>;
 
 			@count += 1;
 			key := "{$@count}:{$name}";
@@ -3706,9 +3682,7 @@ bundle API.MCP {
 			};
 
 			name := McpMessage->Tail(key, key->Find(':') + 1);
-			if(input = Nil) {
-				input := McpMessage->EmptyObject();
-			};
+			input := input ?? McpMessage->EmptyObject();
 
 			result := client->CallTool(name, input);
 			if(result = Nil) {

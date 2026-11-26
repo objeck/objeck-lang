@@ -256,18 +256,14 @@ embedder := RagOpenAIEmbedder->New("text-embedding-3-small", Nil);
 			};
 
 			token := @key;
-			if(token = Nil) {
-				token := API.OpenAI.EndPoint->GetApiKey();
-			};
+			token := token ?? API.OpenAI.EndPoint->GetApiKey();
 
 			out : Float[,];
 			each(i : texts) {
 				vector := API.OpenAI.Embedding->Create(texts[i], @model, token);
 				if(vector = Nil) {
 					reason := API.OpenAI.EndPoint->GetLastError();
-					if(reason = Nil) {
-						reason := "the OpenAI call failed";
-					};
+					reason := reason ?? "the OpenAI call failed";
 					@error := reason;
 					return Nil;
 				};
@@ -344,9 +340,7 @@ embedder := RagGeminiEmbedder->New("models/text-embedding-004", Nil);
 			};
 
 			token := @key;
-			if(token = Nil) {
-				token := API.Google.Gemini.EndPoint->GetApiKey();
-			};
+			token := token ?? API.Google.Gemini.EndPoint->GetApiKey();
 
 			list := Vector->New()<String>;
 			each(i : texts) {
@@ -356,9 +350,7 @@ embedder := RagGeminiEmbedder->New("models/text-embedding-004", Nil);
 			values := API.Google.Gemini.Model->BatchEmbedContent(@model, list, token);
 			if(values = Nil | values->Size() <> texts->Size()) {
 				reason := API.Google.Gemini.EndPoint->GetLastError();
-				if(reason = Nil) {
-					reason := "the Gemini call failed";
-				};
+				reason := reason ?? "the Gemini call failed";
 				@error := reason;
 				return Nil;
 			};
@@ -441,9 +433,7 @@ generator := RagOllamaGenerator->New("llama3.2");
 
 			if(reply = Nil) {
 				@error := API.Ollama.EndPoint->GetLastError();
-				if(@error = Nil) {
-					@error := "the Ollama call failed";
-				};
+				@error := @error ?? "the Ollama call failed";
 			};
 
 			return reply;
@@ -489,9 +479,7 @@ generator := RagOpenAIGenerator->New("gpt-4o-mini", Nil);
 		method : public : Generate(prompt : String) ~ String {
 			@error := "";
 			token := @key;
-			if(token = Nil) {
-				token := API.OpenAI.EndPoint->GetApiKey();
-			};
+			token := token ?? API.OpenAI.EndPoint->GetApiKey();
 
 			message := Pair->New("user", prompt)<String, String>;
 			done := API.OpenAI.Chat.Completion->Complete(@model, message, token);
@@ -503,9 +491,7 @@ generator := RagOpenAIGenerator->New("gpt-4o-mini", Nil);
 			};
 
 			@error := API.OpenAI.EndPoint->GetLastError();
-			if(@error = Nil) {
-				@error := "the OpenAI call returned no reply";
-			};
+			@error := @error ?? "the OpenAI call returned no reply";
 
 			return Nil;
 		}
@@ -566,9 +552,7 @@ generator := RagAnthropicGenerator->New("claude-sonnet-5-5", Nil);
 			reply := chat->Send(prompt);
 			if(reply = Nil) {
 				@error := API.Anthropic.EndPoint->GetLastError();
-				if(@error = Nil) {
-					@error := "the Anthropic call failed";
-				};
+				@error := @error ?? "the Anthropic call failed";
 			};
 
 			return reply;
@@ -614,9 +598,7 @@ generator := RagGeminiGenerator->New("gemini-2.5-flash", Nil);
 		method : public : Generate(prompt : String) ~ String {
 			@error := "";
 			token := @key;
-			if(token = Nil) {
-				token := API.Google.Gemini.EndPoint->GetApiKey();
-			};
+			token := token ?? API.Google.Gemini.EndPoint->GetApiKey();
 
 			content := API.Google.Gemini.Content->New("user")->AddPart(API.Google.Gemini.TextPart->New(prompt));
 			candidates := API.Google.Gemini.Model->GenerateContent(@model, content, token);
@@ -625,9 +607,7 @@ generator := RagGeminiGenerator->New("gemini-2.5-flash", Nil);
 			};
 
 			@error := API.Google.Gemini.EndPoint->GetLastError();
-			if(@error = Nil) {
-				@error := "the Gemini call returned no candidate";
-			};
+			@error := @error ?? "the Gemini call returned no candidate";
 
 			return Nil;
 		}

@@ -795,9 +795,7 @@ if(doc <> Nil) {
 										else if(c = '\\') {
 											# the first escape switches to a buffer; text with none is
 											# copied in one piece below
-											if(decoded = Nil) {
-												decoded := String->New();
-											};
+											decoded := decoded ?? String->New();
 											if(@input_index > offset) {
 												decoded->Append(@input, offset, @input_index - offset);
 											};

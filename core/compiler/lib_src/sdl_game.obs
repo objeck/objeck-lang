@@ -454,9 +454,7 @@ bundle Game.Framework {
 			if(@font <> Nil) {
 				Free();
 
-				if(color = Nil) {
-					color := Color->New(32, 32, 32);
-				};
+				color := color ?? Color->New(32, 32, 32);
 
 				# Render text surface
 				text_surface := @font->RenderTextSolid(text, color);
@@ -1001,9 +999,7 @@ bundle Game.Framework {
 		@param y y-position
 		~#
 		method : public : Render(x : Int, y : Int) ~ Nil {
-			if(@color = Nil) {
-				@color := Color->New();
-			};
+			@color := @color ?? Color->New();
 
 			@render_rect->SetX(x);
 			@render_rect->SetY(y);

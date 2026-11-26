@@ -17,9 +17,7 @@ bundle System.ML {
 		@lib_proxy : static : System.API.DllProxy;
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := System.API.DllProxy->New("libobjk_ml");
-			};
+			@lib_proxy := @lib_proxy ?? System.API.DllProxy->New("libobjk_ml");
 
 			return @lib_proxy;
 		}

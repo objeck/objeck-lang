@@ -115,9 +115,7 @@ bundle Data.JSON.RPC {
 										# gets an empty object, not Nil, so a handler that reads its
 										# parameters does not end the server with a Nil dereference
 										call_params := response_json->Get("params");
-										if(call_params = Nil) {
-											call_params := JsonElement->New(JsonElement->JsonType->OBJECT);
-										};
+										call_params := call_params ?? JsonElement->New(JsonElement->JsonType->OBJECT);
 										result_params_json := func(call_params);
 									 	result_id_json := response_json->Get("id");
 									 	if(result_params_json = Nil | result_id_json = Nil) {

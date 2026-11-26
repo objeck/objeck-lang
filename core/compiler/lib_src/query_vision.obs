@@ -191,9 +191,7 @@ detector->Close();
 		~#
 		method : public : Detect(path : String, image : Byte[], width : Int, height : Int) ~ Detection[] {
 			if(<>IsOpen()) {
-				if(@error = Nil) {
-					@error := "the model is not loaded";
-				};
+				@error := @error ?? "the model is not loaded";
 				return Nil;
 			};
 			if(@labels = Nil | @labels->Size() = 0) {

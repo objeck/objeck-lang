@@ -1561,9 +1561,7 @@ rep->GetCiHigh("depth 4", "test_accuracy")->PrintLine();
 					sd[c] := spread[r, c];
 				};
 				name := cells[r + 1, 0];
-				if(name = Nil) {
-					name := "";
-				};
+				name := name ?? "";
 				table->AddRow(name, RowValue(name, r), row, stds ? sd : Nil->As(Float[]));
 			};
 
@@ -2055,9 +2053,7 @@ report->Save("report.html");
 				all := true;
 				each(r : rows) {
 					text := cells[r, c];
-					if(text = Nil) {
-						text := "";
-					};
+					text := text ?? "";
 					grid[r, c] := text;
 					if(r > 0) {
 						if(text->Trim()->Size() > 0) {

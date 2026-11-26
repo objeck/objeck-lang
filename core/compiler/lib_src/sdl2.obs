@@ -13,9 +13,7 @@ bundle Game.SDL2 {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_sdl");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_sdl");
 
 			return @lib_proxy;
 		}
@@ -4472,9 +4470,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetKey() ~ KeyboardEvent {
 			if(@event <> 0) {
-				if(@key = Nil) {
-					@key := KeyboardEvent->New();
-				};
+				@key := @key ?? KeyboardEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4501,9 +4497,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetTextInput() ~ TextInputEvent {
 			if(@event <> 0) {
-				if(@text = Nil) {
-					@text := TextInputEvent->New();
-				};
+				@text := @text ?? TextInputEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4530,9 +4524,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetMouseMotion() ~ MouseMotionEvent {
 			if(@event <> 0) {
-				if(@motion = Nil) {
-					@motion := MouseMotionEvent->New();
-				};
+				@motion := @motion ?? MouseMotionEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4562,9 +4554,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetMouseButton() ~ MouseButtonEvent {
 			if(@event <> 0) {
-				if(@mbutton = Nil) {
-					@mbutton := MouseButtonEvent->New();
-				};
+				@mbutton := @mbutton ?? MouseButtonEvent->New();
 
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4591,9 +4581,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetMouseWheel() ~ MouseWheelEvent {
 			if(@event <> 0) {
-				if(@wheel = Nil) {
-					@wheel := MouseWheelEvent->New();
-				};
+				@wheel := @wheel ?? MouseWheelEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4620,9 +4608,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetJAxis() ~ JoyAxisEvent {
 			if(@event <> 0) {
-				if(@axis = Nil) {
-					@axis := JoyAxisEvent->New();
-				};
+				@axis := @axis ?? JoyAxisEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4649,9 +4635,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetJButton() ~ JoyButtonEvent {
 			if(@event <> 0) {
-				if(@jbutton = Nil) {
-					@jbutton := JoyButtonEvent->New();
-				};
+				@jbutton := @jbutton ?? JoyButtonEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4678,9 +4662,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetJHat() ~ JoyHatEvent {
 			if(@event <> 0) {
-				if(@hat = Nil) {
-					@hat := JoyHatEvent->New();
-				};
+				@hat := @hat ?? JoyHatEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4707,9 +4689,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetMButton() ~ MouseButtonEvent {
 			if(@event <> 0) {
-				if(@mbutton = Nil) {
-					@mbutton := MouseButtonEvent->New();
-				};
+				@mbutton := @mbutton ?? MouseButtonEvent->New();
 				
 				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
@@ -4753,9 +4733,7 @@ bundle Game.SDL2 {
 		@return window event, or Nil if this is not an EventType->SDL_WINDOWEVENT
 		~#
 		method : public : GetWindow() ~ WindowEvent {
-			if(@window = Nil) {
-				@window := WindowEvent->New();
-			};
+			@window := @window ?? WindowEvent->New();
 
 			if(@fn_sdl_event_window = Nil) { @fn_sdl_event_window := "sdl_event_window"; };
 			if(ReadInto(@fn_sdl_event_window, @window)) {
@@ -4770,9 +4748,7 @@ bundle Game.SDL2 {
 		@return controller axis event, or Nil if this is not an EventType->SDL_CONTROLLERAXISMOTION
 		~#
 		method : public : GetControllerAxis() ~ ControllerAxisEvent {
-			if(@caxis = Nil) {
-				@caxis := ControllerAxisEvent->New();
-			};
+			@caxis := @caxis ?? ControllerAxisEvent->New();
 
 			if(@fn_sdl_event_caxis = Nil) { @fn_sdl_event_caxis := "sdl_event_caxis"; };
 			if(ReadInto(@fn_sdl_event_caxis, @caxis)) {
@@ -4787,9 +4763,7 @@ bundle Game.SDL2 {
 		@return controller button event, or Nil if this is not an EventType->SDL_CONTROLLERBUTTONDOWN or SDL_CONTROLLERBUTTONUP
 		~#
 		method : public : GetControllerButton() ~ ControllerButtonEvent {
-			if(@cbutton = Nil) {
-				@cbutton := ControllerButtonEvent->New();
-			};
+			@cbutton := @cbutton ?? ControllerButtonEvent->New();
 
 			if(@fn_sdl_event_cbutton = Nil) { @fn_sdl_event_cbutton := "sdl_event_cbutton"; };
 			if(ReadInto(@fn_sdl_event_cbutton, @cbutton)) {
@@ -4804,9 +4778,7 @@ bundle Game.SDL2 {
 		@return controller device event, or Nil if this is not a controller added, removed or remapped event
 		~#
 		method : public : GetControllerDevice() ~ ControllerDeviceEvent {
-			if(@cdevice = Nil) {
-				@cdevice := ControllerDeviceEvent->New();
-			};
+			@cdevice := @cdevice ?? ControllerDeviceEvent->New();
 
 			if(@fn_sdl_event_cdevice = Nil) { @fn_sdl_event_cdevice := "sdl_event_cdevice"; };
 			if(ReadInto(@fn_sdl_event_cdevice, @cdevice)) {
@@ -4822,9 +4794,7 @@ bundle Game.SDL2 {
 		@return drop event, or Nil if this is not a drop event
 		~#
 		method : public : GetDrop() ~ DropEvent {
-			if(@drop = Nil) {
-				@drop := DropEvent->New();
-			};
+			@drop := @drop ?? DropEvent->New();
 
 			if(@fn_sdl_event_drop = Nil) { @fn_sdl_event_drop := "sdl_event_drop"; };
 			if(ReadInto(@fn_sdl_event_drop, @drop)) {
@@ -4839,9 +4809,7 @@ bundle Game.SDL2 {
 		@return touch finger event, or Nil if this is not an EventType->SDL_FINGERDOWN, SDL_FINGERUP or SDL_FINGERMOTION
 		~#
 		method : public : GetTouchFinger() ~ TouchFingerEvent {
-			if(@tfinger = Nil) {
-				@tfinger := TouchFingerEvent->New();
-			};
+			@tfinger := @tfinger ?? TouchFingerEvent->New();
 
 			if(@fn_sdl_event_tfinger = Nil) { @fn_sdl_event_tfinger := "sdl_event_tfinger"; };
 			if(ReadInto(@fn_sdl_event_tfinger, @tfinger)) {
@@ -4856,9 +4824,7 @@ bundle Game.SDL2 {
 		@return text editing event, or Nil if this is not an EventType->SDL_TEXTEDITING
 		~#
 		method : public : GetTextEditing() ~ TextEditingEvent {
-			if(@edit = Nil) {
-				@edit := TextEditingEvent->New();
-			};
+			@edit := @edit ?? TextEditingEvent->New();
 
 			if(@fn_sdl_event_edit = Nil) { @fn_sdl_event_edit := "sdl_event_edit"; };
 			if(ReadInto(@fn_sdl_event_edit, @edit)) {
@@ -4873,9 +4839,7 @@ bundle Game.SDL2 {
 		@return user event, or Nil if the type is below EventType->SDL_USEREVENT
 		~#
 		method : public : GetUser() ~ UserEvent {
-			if(@user = Nil) {
-				@user := UserEvent->New();
-			};
+			@user := @user ?? UserEvent->New();
 
 			if(@fn_sdl_event_user = Nil) { @fn_sdl_event_user := "sdl_event_user"; };
 			if(ReadInto(@fn_sdl_event_user, @user)) {

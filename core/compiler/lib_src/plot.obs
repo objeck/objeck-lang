@@ -1794,13 +1794,9 @@ ax->SetLogX(true);
 			};
 
 			rn := row_names;
-			if(rn = Nil) {
-				rn := Indexes(rows);
-			};
+			rn := rn ?? Indexes(rows);
 			cn := col_names;
-			if(cn = Nil) {
-				cn := Indexes(cols);
-			};
+			cn := cn ?? Indexes(cols);
 
 			@artists->AddBack(Artist->New("", flat, rows, cols, rn, cn, annotate, decimals));
 		}

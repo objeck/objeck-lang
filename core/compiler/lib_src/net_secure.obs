@@ -702,9 +702,7 @@ if(html <> Nil) {
 
 			address := url->GetHost();
 			location := url->GetPath();
-			if(location = Nil) {
-				location := "/";
-			};
+			location := location ?? "/";
 
 			query := url->GetQuery();
 			if(query <> Nil) {
@@ -874,9 +872,7 @@ if(html <> Nil) {
 				address := url->GetHost();
 
 				location := url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
+				location := location ?? "/";
 
 				query := url->GetQuery();
 				if(query <> Nil) {
@@ -1399,9 +1395,7 @@ if(response <> Nil & response->GetCode() = 200) {
 				address := url->GetHost();
 
 				location := url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
+				location := location ?? "/";
 
 				query := url->GetQuery();
 				if(query <> Nil) {
@@ -1679,9 +1673,7 @@ if(client->Connect()) {
 				address := @url->GetHost();
 				
 				location := @url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
+				location := location ?? "/";
 
 				query := @url->GetQuery();
 				if(query <> Nil) {

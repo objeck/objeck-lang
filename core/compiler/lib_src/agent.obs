@@ -227,13 +227,9 @@ bundle API.Agent {
 		~#
 		New(text : String, calls : Vector<AgentToolCall>, stop : String, input_tokens : Int, output_tokens : Int) {
 			@text := text;
-			if(@text = Nil) {
-				@text := "";
-			};
+			@text := @text ?? "";
 			@calls := calls;
-			if(@calls = Nil) {
-				@calls := Vector->New()<AgentToolCall>;
-			};
+			@calls := @calls ?? Vector->New()<AgentToolCall>;
 			@stop := stop;
 			@input_tokens := input_tokens;
 			@output_tokens := output_tokens;
@@ -357,9 +353,7 @@ bundle API.Agent {
 		New(role : String, text : String) {
 			@role := role;
 			@text := text;
-			if(@text = Nil) {
-				@text := "";
-			};
+			@text := @text ?? "";
 			@calls := Vector->New()<AgentToolCall>;
 		}
 
@@ -620,9 +614,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 			@name := name;
 			@description := description;
 			@schema := schema;
-			if(@schema = Nil) {
-				@schema := AgentJs->Arguments("{\"type\":\"object\",\"properties\":{}}");
-			};
+			@schema := @schema ?? AgentJs->Arguments("{\"type\":\"object\",\"properties\":{}}");
 			@dangerous := false;
 			@timeout_ms := 0;
 			@mode := AgentTool->Mode->IN_THREAD;
@@ -790,9 +782,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		method : public : InvokeWith(arguments : JsonElement, cancel : AgentCancel) ~ String {
 			if(@cancel_handler <> Nil) {
 				token := cancel;
-				if(token = Nil) {
-					token := AgentCancel->New();
-				};
+				token := token ?? AgentCancel->New();
 				return @cancel_handler->Run(arguments, token);
 			};
 
@@ -1787,9 +1777,7 @@ agent->SetBudget(budget);
 			@kind := kind;
 			@step := step;
 			@data := data;
-			if(@data = Nil) {
-				@data := AgentJs->Object();
-			};
+			@data := @data ?? AgentJs->Object();
 		}
 
 		#~
@@ -2068,17 +2056,13 @@ agent->SetBudget(budget);
 					reply := @backend->Chat(@conversation, @tools);
 					if(reply = Nil) {
 						failure := @backend->GetLastError();
-						if(failure = Nil) {
-							failure := "the backend returned no reply";
-						};
+						failure := failure ?? "the backend returned no reply";
 					};
 				};
 			}
 			on(e : Error) {
 				failure := e->GetMessage();
-				if(failure = Nil) {
-					failure := "the worker failed";
-				};
+				failure := failure ?? "the worker failed";
 			};
 			@slot->Complete(text, failure, reply);
 		}
@@ -2141,9 +2125,7 @@ result->GetText()->PrintLine();
 		New(backend : ChatBackend, registry : ToolRegistry) {
 			@backend := backend;
 			@registry := registry;
-			if(@registry = Nil) {
-				@registry := ToolRegistry->New();
-			};
+			@registry := @registry ?? ToolRegistry->New();
 			@conversation := AgentConversation->New();
 			@max_steps := 10;
 			@tool_timeout_ms := 0;
@@ -2382,9 +2364,7 @@ result->GetText()->PrintLine();
 						}
 						else {
 							message := @last_error;
-							if(message = Nil) {
-								message := "the backend returned no reply";
-							};
+							message := message ?? "the backend returned no reply";
 							result->Finish("", "error", message);
 						};
 						running := false;
@@ -2637,9 +2617,7 @@ result->GetText()->PrintLine();
 					finished := true;
 				}
 				else {
-					if(@last_error = Nil) {
-						@last_error := "the backend returned no reply";
-					};
+					@last_error := @last_error ?? "the backend returned no reply";
 
 					NearDeadline();
 					if(Checkpoint() <> Nil) {
@@ -2915,9 +2893,7 @@ result->GetText()->PrintLine();
 				}
 				on(e : Error) {
 					failure := e->GetMessage();
-					if(failure = Nil) {
-						failure := "the tool failed";
-					};
+					failure := failure ?? "the tool failed";
 				};
 			}
 			else {
@@ -3312,9 +3288,7 @@ result->GetText()->PrintLine();
 				return;
 			};
 
-			if(@secrets = Nil) {
-				@secrets := Vector->New()<String>;
-			};
+			@secrets := @secrets ?? Vector->New()<String>;
 
 			i := 0;
 			while(i < @secrets->Size()) {
@@ -3508,9 +3482,7 @@ backend := ScriptedBackend->New(script);
 		~#
 		New(script : Vector<AgentReply>) {
 			@script := script;
-			if(@script = Nil) {
-				@script := Vector->New()<AgentReply>;
-			};
+			@script := @script ?? Vector->New()<AgentReply>;
 		}
 
 		#~
@@ -3657,13 +3629,9 @@ backend := ScriptedBackend->New(script);
 
 			message := AgentJs->Text(error_json, "message");
 			kind := AgentJs->Text(error_json, "type");
-			if(kind = Nil) {
-				kind := AgentJs->Text(error_json, "status");
-			};
+			kind := kind ?? AgentJs->Text(error_json, "status");
 
-			if(message = Nil) {
-				message := "the API returned an error";
-			};
+			message := message ?? "the API returned an error";
 			if(kind <> Nil) {
 				message := "{$kind}: {$message}";
 			};
@@ -4304,9 +4272,7 @@ backend := ScriptedBackend->New(script);
 			};
 
 			text := AgentJs->Text(message, "content");
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 
 			refusal := AgentJs->Text(message, "refusal");
 			calls := Vector->New()<AgentToolCall>;
@@ -4664,9 +4630,7 @@ backend := ScriptedBackend->New(script);
 							args := AgentJs->Object();
 						};
 						id := AgentJs->Text(function_json, "id");
-						if(id = Nil) {
-							id := AgentIds->Next("gemini_call_");
-						};
+						id := id ?? AgentIds->Next("gemini_call_");
 						calls->AddBack(AgentToolCall->New(id, AgentJs->Text(function_json, "name"), args));
 					}
 					else {
@@ -5006,9 +4970,7 @@ backend := ScriptedBackend->New(script);
 			};
 
 			text := AgentJs->Text(message, "content");
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 
 			calls := Vector->New()<AgentToolCall>;
 			made := AgentJs->Child(message, "tool_calls");
@@ -5240,9 +5202,7 @@ registry->Add(AgentTools->ReadFile("notes"));
 		@pos : Int;
 
 		New(text : String) {
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 			@chars := text->ToCharArray();
 			@pos := 0;
 		}

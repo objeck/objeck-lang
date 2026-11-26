@@ -13,9 +13,7 @@ bundle Game.SDL2.Aux {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_lame");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_lame");
 
 			return @lib_proxy;
 		}

@@ -702,9 +702,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 			};
 
 			@error := Nil;
-			if(vars = Nil) {
-				vars := PromptVars->New();
-			};
+			vars := vars ?? PromptVars->New();
 
 			out := String->New();
 			Walk(@root, vars, out, Nil, 0, 0);
@@ -822,9 +820,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 				};
 			};
 
-			if(value = Nil) {
-				value := "";
-			};
+			value := value ?? "";
 			filter := node->GetFilter();
 			if(filter <> Nil) {
 				if(filter->Equals("json")) {
@@ -1893,9 +1889,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 
 		method : CheckString(schema : JsonElement, value : JsonElement, path : String) ~ Nil {
 			text := value->GetString();
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 			len := Length(text);
 
 			min := schema->Get("minLength");
@@ -2169,9 +2163,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 		}
 
 		method : Fail(message : String) ~ Nil {
-			if(@error = Nil) {
-				@error := "{$message} at offset {$@pos}";
-			};
+			@error := @error ?? "{$message} at offset {$@pos}";
 		}
 
 		method : SkipSpace() ~ Nil {
@@ -3149,9 +3141,7 @@ if(outcome->IsOk()) {
 				reply := @chat->Complete(turns);
 				if(reply = Nil) {
 					reason := @chat->GetError();
-					if(reason = Nil) {
-						reason := "no reply";
-					};
+					reason := reason ?? "no reply";
 					outcome->SetError("the chat backend failed: {$reason}");
 					outcome->SetErrors(Vector->New()<SchemaError>);
 					return outcome;

@@ -13,9 +13,7 @@ bundle Cipher {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_crypto");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_crypto");
 
 			return @lib_proxy;
 		}

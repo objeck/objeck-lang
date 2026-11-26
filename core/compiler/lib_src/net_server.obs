@@ -48,9 +48,7 @@ bundle Web.HTTP.Server {
 		```
 		~#
 		function : ServeSecure(filename : String) ~ Nil {
-			if(@server_config = Nil) {
-				@server_config := WebServerConfig->New(filename);
-			};
+			@server_config := @server_config ?? WebServerConfig->New(filename);
 
 			if(@server_config->Load()) {
 				callback := @server_config->GetClass();
@@ -365,9 +363,7 @@ bundle Web.HTTP.Server {
 		# Called by the accept loop for each connection; false when the server is full.
 		# The handler's Run calls ConnectionClosed when it is done with the socket.
 		function : ConnectionOpened() ~ Bool {
-			if(@connection_mutex = Nil) {
-				@connection_mutex := System.Concurrency.ThreadMutex->New("web_connections");
-			};
+			@connection_mutex := @connection_mutex ?? System.Concurrency.ThreadMutex->New("web_connections");
 
 			limit := @max_connections;
 			if(limit < 1) {
@@ -1451,9 +1447,7 @@ bundle Web.HTTP.Server {
 					};
 
 					if(name <> Nil & name->Size() > 0) {
-						if(value = Nil) {
-							value := "";
-						};
+						value := value ?? "";
 						params->Insert(Url->Decode(name), Url->Decode(value));
 					};
 				};
@@ -1592,9 +1586,7 @@ bundle Web.HTTP.Server {
 			};
 
 			value := @request_headers->Find(name->ToLower())->As(String);
-			if(value = Nil) {
-				value := @request_headers->Find(name)->As(String);
-			};
+			value := value ?? @request_headers->Find(name)->As(String);
 
 			return value;
 		}
@@ -4062,9 +4054,7 @@ class RequestHandler from HttpsRequestHandler {
 		method : public : GetHeaders() ~ Map<String, String> {
 			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
 			# answer with in @header_status
-			if(@clock = Nil) {
-				@clock := Int->New[1];
-			};
+			@clock := @clock ?? Int->New[1];
 			status := Int->New[1];
 			headers := RequestGuard->ReadHeaders(@client, @clock, @is_debug, status);
 			@header_status := status[0];
@@ -4343,9 +4333,7 @@ class RequestHandler from HttpsRequestHandler {
 		method : public : GetHeaders() ~ Map<String, String> {
 			# a request that breaks a limit or a rule is refused whole: Nil, and the status to
 			# answer with in @header_status
-			if(@clock = Nil) {
-				@clock := Int->New[1];
-			};
+			@clock := @clock ?? Int->New[1];
 			status := Int->New[1];
 			headers := RequestGuard->ReadHeaders(@client, @clock, @is_debug, status);
 			@header_status := status[0];
@@ -4816,9 +4804,7 @@ bundle Web.HTTP.Server.MCP {
 			};
 
 			if(McpServer->IsDebug()) {
-				if(session_id = Nil) {
-					session_id := "<nil>";
-				};
+				session_id := session_id ?? "<nil>";
 
 				has_session := session <> Nil;
 				"\n### GET: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
@@ -4899,9 +4885,7 @@ bundle Web.HTTP.Server.MCP {
 			parser := JsonParser->New(content);
 			if(<>parser->Parse()) {
 				reason := parser->GetError();
-				if(reason = Nil) {
-					reason := "invalid JSON";
-				};
+				reason := reason ?? "invalid JSON";
 				WriteError(McpRequestHandler->ErrorCode->PARSE_ERROR->As(Int), "Parse error: {$reason}", Nil, response, 400);
 				return false;
 			};
@@ -4967,9 +4951,7 @@ bundle Web.HTTP.Server.MCP {
 			}
 			on(e : Error) {
 				reason := e->GetMessage();
-				if(reason = Nil) {
-					reason := "unknown";
-				};
+				reason := reason ?? "unknown";
 				if(McpServer->IsDebug()) {
 					">>> {$method_name} failed: {$reason} <<<"->ErrorLine();
 				};
@@ -6576,9 +6558,7 @@ each(i : 3) {
 		@return client ID
 		~#
 		method : public : GetClientId() ~ String {
-			if(@client_id = Nil) {
-				@client_id := Get("client_id");
-			};
+			@client_id := @client_id ?? Get("client_id");
 
 			return @client_id;
 		}
@@ -6588,9 +6568,7 @@ each(i : 3) {
 		@return client secret
 		~#
 		method : public : GetClientSecret() ~ String {
-			if(@client_secret = Nil) {
-				@client_secret := Get("client_secret");
-			};
+			@client_secret := @client_secret ?? Get("client_secret");
 
 			return @client_secret;
 		}
@@ -6600,9 +6578,7 @@ each(i : 3) {
 		@return authorization URI
 		~#
 		method : public : GetAuthUri() ~ String {
-			if(@auth_uri = Nil) {
-				@auth_uri := Get("auth_uri");
-			};
+			@auth_uri := @auth_uri ?? Get("auth_uri");
 
 			return @auth_uri;
 		}
@@ -6612,9 +6588,7 @@ each(i : 3) {
 		@return token URI
 		~#
 		method : public : GetTokenUri() ~ String {
-			if(@token_uri = Nil) {
-				@token_uri := Get("token_uri");
-			};
+			@token_uri := @token_uri ?? Get("token_uri");
 
 			return @token_uri;
 		}
@@ -6624,9 +6598,7 @@ each(i : 3) {
 		@return state parameter
 		~#
 		method : public : GetState() ~ String {
-			if(@state = Nil) {
-				@state := GenerateState();
-			};
+			@state := @state ?? GenerateState();
 
 			return @state;
 		}
