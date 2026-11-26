@@ -19,8 +19,20 @@ What it covers, against a real process:
   endings and non-ASCII text; that standard output carries nothing but JSON-RPC;
   that the server ends when standard input does; and the Objeck client library
   against the same server (the round trip in one run).
+
+What an independent review of the library found, each against a real process:
+  two messages on one line are a parse error, not one answer and one silence;
+  a request id names one call at a time (a second tools/call under an id still
+  at work is refused, and the id is free again afterwards); a cancellation
+  written on the line after its request is heard, a hundred times out of a
+  hundred; more calls at once than the server runs at once are all answered, and
+  one that is still waiting can be cancelled; the threads that run the calls are
+  joined (handles on Windows, address space on Linux do not grow with the number
+  of calls); a UTF-16 line cut inside a character is a parse error; and
+  over HTTP a cancellation reaches only the session it came from, and a refused
+  initialize opens no session.
 """
-import json, os, queue, subprocess, sys, tempfile, threading, time
+import json, os, queue, subprocess, sys, tempfile, threading, time, urllib.error, urllib.request
 
 EXE = ".exe" if os.name == "nt" else ""
 LIBS = "gen_collect,json,net,net_server,cipher,misc,mcp"
@@ -105,6 +117,208 @@ def run(cmd, env, cwd, timeout=300):
     return p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")
 
 
+def resources(pid):
+    """What a thread that is never joined keeps: (count, what is counted), None where it cannot be read."""
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k = ctypes.windll.kernel32
+        k.OpenProcess.restype = wintypes.HANDLE
+        h = k.OpenProcess(0x1000, False, pid)   # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return None
+        count = wintypes.DWORD()
+        ok = k.GetProcessHandleCount(wintypes.HANDLE(h), ctypes.byref(count))
+        k.CloseHandle(wintypes.HANDLE(h))
+        return (count.value, "handles") if ok else None
+    try:
+        with open("/proc/%d/status" % pid) as f:
+            for l in f:
+                if l.startswith("VmSize:"):
+                    return (int(l.split()[1]) // 1024, "MB of address space")
+    except OSError:
+        pass
+    return None
+
+
+def review_stdio(obr, obe, env, work, init, check):
+    """Standard input and output: one message a line, ids, cancellation, the workers."""
+    def call_add(id_, a, b):
+        return {"jsonrpc": "2.0", "id": id_, "method": "tools/call", "params": {"name": "add", "arguments": {"a": a, "b": b}}}
+
+    def slow(id_, token=None):
+        params = {"name": "slow", "arguments": {}}
+        if token:
+            params["_meta"] = {"progressToken": token}
+        return {"jsonrpc": "2.0", "id": id_, "method": "tools/call", "params": params}
+
+    def cancel(id_):
+        return {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": id_}}
+
+    def line(message):
+        return json.dumps(message).encode("utf-8") + b"\n"
+
+    s = Server(obr, obe, env, work)
+    s.call(1, "initialize", init)
+
+    # ---- one line is one message ----
+    s.send_raw(json.dumps({"jsonrpc": "2.0", "id": 2, "method": "ping"}).encode() + json.dumps({"jsonrpc": "2.0", "id": 3, "method": "ping"}).encode() + b"\n")
+    r = s.recv()
+    check("two messages on one line are a parse error", r and r.get("error", {}).get("code") == -32700 and r["id"] is None, r)
+    check("and neither is answered", s.quiet(0.5))
+    r = s.call(4, "ping")
+    check("and the next line is read intact", r and r["result"] == {}, r)
+
+    # ---- a request id names one call at a time ----
+    s.send(slow(90, "tok"))
+    got = [s.recv(15), s.recv(15)]
+    check("a slow call is in flight", all(m and m.get("method") == "notifications/progress" for m in got), got)
+    s.send(call_add(90, 1, 2))
+    r = s.recv(15)
+    check("a second call under an id still at work is an invalid request", r and r.get("id") == 90 and r.get("error", {}).get("code") == -32600, r)
+    s.send(cancel(90))
+    check("the first call is still there to cancel, and is not answered", s.quiet(1.5))
+    r = s.call(90, "tools/call", {"name": "add", "arguments": {"a": 40, "b": 2}})
+    check("the id is free once the call has ended", r and r.get("result", {}).get("content", [{}])[0].get("text") == "42", r)
+
+    # ---- more calls at once than the server runs at once ----
+    s.send_raw(b"".join(line(call_add(1000 + i, i, 1)) for i in range(100)))
+    answers = {}
+    end = time.time() + 60
+    while len(answers) < 100 and time.time() < end:
+        m = s.recv(5)
+        if m is None:
+            break
+        if isinstance(m.get("id"), int) and 1000 <= m["id"] < 1100:
+            answers[m["id"]] = m.get("result", {}).get("content", [{}])[0].get("text")
+    check("a hundred calls written at once are each answered", answers == {1000 + i: str(i + 1) for i in range(100)}, sorted(answers.items())[:5])
+
+    s.send_raw(b"".join(line(slow(2000 + i)) for i in range(24)))
+    r = s.call(5, "ping")
+    check("the server answers while more calls wait than it runs at once", r and r["result"] == {}, r)
+    s.send_raw(b"".join(line(cancel(2000 + i)) for i in range(24)))
+    check("calls that were cancelled, running or still waiting, are not answered", s.quiet(1.5))
+    r = s.call(6, "ping")
+    check("and the server serves on", r and r["result"] == {}, r)
+
+    # ---- the threads that ran the calls are joined ----
+    before = resources(s.proc.pid)
+    calls = 1500
+    ok = True
+    for i in range(calls):
+        r = s.call(3000 + i, "tools/call", {"name": "add", "arguments": {"a": i, "b": 1}})
+        ok = ok and bool(r) and r.get("result", {}).get("content", [{}])[0].get("text") == str(i + 1)
+    after = resources(s.proc.pid)
+    check("%d calls one after another are each answered" % calls, ok)
+    if before is None or after is None:
+        print("  [SKIP] what the process holds cannot be read on this system")
+    else:
+        check("and the process holds no more %s for them (%d before, %d after)" % (before[1], before[0], after[0]),
+              after[0] - before[0] < calls // (10 if os.name == "nt" else 2), (before, after))
+    check("the server ends when standard input does", s.close() == 0)
+
+    # ---- a cancellation on the very next line ----
+    # 'slow' works until it is cancelled, or for 15 seconds. A cancellation that is lost leaves it working: the
+    # server then waits for it at the end of input and answers it. Heard, every call ends at once, unanswered.
+    c = Server(obr, obe, env, work)
+    c.call(1, "initialize", init)
+    pairs = 100
+    c.send_raw(b"".join(line(slow(100 + i)) + line(cancel(100 + i)) for i in range(pairs)))
+    r = c.call(2, "ping")
+    check("the server read the calls and their cancellations", r and r["result"] == {}, r)
+    start = time.time()
+    status = c.close()
+    elapsed = time.time() - start
+    answered = []
+    while True:
+        m = c.recv(1)
+        if m is None:
+            break
+        if isinstance(m.get("id"), int) and m["id"] >= 100:
+            answered.append(m["id"])
+    check("a cancellation written on the line after its request is heard: none of %d calls is answered" % pairs, not answered, answered[:10])
+    check("and none is left working when the input ends (%.1f s)" % elapsed, status == 0 and elapsed < 10, (status, elapsed))
+
+
+def review_http(obr, obe, env, work, init, check):
+    """Streamable HTTP: request ids are a session's own, and a session begins with an initialize that was answered."""
+    proc = subprocess.Popen([obr, obe, "--http"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env, cwd=work)
+    errlines = []
+
+    def read_err():
+        for raw in proc.stderr:
+            errlines.append(raw.decode("utf-8", "replace"))
+    threading.Thread(target=read_err, daemon=True).start()
+    port = None
+    end = time.time() + 60
+    while time.time() < end and port is None:
+        for l in list(errlines):
+            if "mcp: serving http://127.0.0.1:" in l:
+                port = int(l.strip().rsplit(":", 1)[1].rstrip("/"))
+        time.sleep(0.05)
+    check("the fixture serves HTTP and announces its port", port is not None, "".join(errlines))
+    if port is None:
+        proc.kill()
+        return
+
+    def post(message, session=None, timeout=40):
+        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+        if session:
+            headers["Mcp-Session-Id"] = session
+        req = urllib.request.Request("http://127.0.0.1:%d/" % port, data=json.dumps(message).encode(), headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.status, r.headers.get("Mcp-Session-Id"), r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get("Mcp-Session-Id"), e.read().decode()
+
+    try:
+        initialize = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": init}
+        st, a, body = post(initialize)
+        st2, b, body2 = post(initialize)
+        check("two clients each get a session", st == 200 and st2 == 200 and a and b and a != b, (st, a, st2, b))
+
+        st, sid, body = post({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        check("an initialize without a revision is answered with invalid params", "-32602" in body, (st, body))
+        check("and opens no session", sid is None, sid)
+
+        slow = {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "slow", "arguments": {}}}
+        cancel = {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 7}}
+        done = {}
+
+        def run(name, session):
+            done[name] = post(slow, session)
+        ta = threading.Thread(target=run, args=("a", a), daemon=True)
+        ta.start()
+        time.sleep(0.5)
+        tb = threading.Thread(target=run, args=("b", b), daemon=True)
+        tb.start()
+        time.sleep(0.5)
+
+        st, _, body = post({"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "add", "arguments": {"a": 1, "b": 2}}}, a)
+        check("the id of a call still at work is refused within its session", st == 400 and "-32600" in body, (st, body))
+
+        # both sessions have a request 7 in flight: the first client cancels its own
+        post(cancel, a)
+        ta.join(8)
+        check("a client's cancellation stops its own call, which is not answered", not ta.is_alive() and done.get("a", (0,))[0] == 202, done.get("a"))
+        time.sleep(0.5)
+        check("and leaves the other client's call with the same id at work", tb.is_alive() and "b" not in done, done.get("b"))
+        post(cancel, b)
+        tb.join(8)
+        check("which its own client then cancels", not tb.is_alive() and done.get("b", (0,))[0] == 202, done.get("b"))
+        st, _, body = post({"jsonrpc": "2.0", "id": 8, "method": "ping"}, a)
+        check("and the server serves on", st == 200 and '"result"' in body, (st, body))
+    except Exception as e:
+        check("the HTTP checks ran", False, repr(e))
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
 def utf16_checks(w, init, check):
     """A POSIX VM handed UTF-16 (what a Windows console VM delivers by default) decodes it."""
     def wide(message):
@@ -120,6 +334,27 @@ def utf16_checks(w, init, check):
     r = w.recv()
     check("and a parse error is still a parse error", r and r["error"]["code"] == -32700, r)
     check("and it ends when its input does", w.close() == 0)
+
+
+def utf16_cut(w, init, check):
+    """The input ends inside a character: the line is not what was sent, so it is not acted on."""
+    def wide(message):
+        return json.dumps(message).encode("utf-16-le")
+    w.send_raw(wide({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": init}) + "\n".encode("utf-16-le"))
+    r = w.recv_id(1)
+    check("a second server whose input arrives as UTF-16 is answered", r and "result" in r, r)
+    # a whole message, then one byte of the two that make its line ending
+    w.send_raw(wide({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "add", "arguments": {"a": 1, "b": 2}}}) + b"\x0a")
+    status = w.close()
+    replies = []
+    while True:
+        m = w.recv(2)
+        if m is None:
+            break
+        replies.append(m)
+    check("a UTF-16 line cut inside a character is a parse error", len(replies) == 1 and replies[0].get("error", {}).get("code") == -32700, replies)
+    check("and the call on it is not run", not any(m.get("id") == 2 for m in replies), replies)
+    check("and the server still ends cleanly", status == 0, status)
 
 
 def main():
@@ -297,6 +532,11 @@ def main():
             print("  [SKIP] UTF-16 standard input: the Windows VM decodes it as UTF-8 and every test above ran in that mode")
         else:
             utf16_checks(w, init, check)
+            utf16_cut(Server(obr, obe, env, work), init, check)
+
+        # ---- what an independent review found ----
+        review_stdio(obr, obe, env, work, init, check)
+        review_http(obr, obe, env, work, init, check)
 
         # ---- the Objeck client against the same server, run once per request ----
         command = '"%s" "%s" --stdio' % (obr, obe)

@@ -8,12 +8,44 @@ resources/list, resources/templates/list, resources/read, prompts/list,
 prompts/get), the JSON-RPC errors (parse error, invalid request, method not
 found, invalid params), a tool that fails, a tool that raises, a tool that
 returns nothing, bad arguments, cancellation, progress, a one-megabyte message,
-and the bridge that hands a server's tools to the AI clients. The stdio
+and the bridge that hands a server's tools to the AI clients; then what an
+independent review found: two messages in one frame, request ids that belong to
+a connection, an exact resource behind a template, the limits a schema
+advertises, a reply that answers another request, and a session for an
+initialize that was refused. The stdio
 transport is tested by mcp_stdio_test.py, which drives a server process.
 ~#
 use API.MCP, Data.JSON, Data.JSON.Scheme, Collection;
 
+# A transport that answers every request with the same text: a server that replies wrongly
+class CannedTransport from McpTransport {
+	@reply : String;
+
+	New(reply : String) {
+		Parent();
+		@reply := reply;
+	}
+
+	method : public : Request(message : String, id : String) ~ String {
+		return @reply;
+	}
+
+	method : public : Notify(message : String) ~ Nil {
+	}
+
+	method : public : SetProtocolVersion(version : String) ~ Nil {
+	}
+
+	method : public : Close() ~ Nil {
+	}
+
+	method : public : GetError() ~ String {
+		return Nil;
+	}
+}
+
 class McpCoreTest {
+	@ran : static : Int;
 	@pass : static : Int;
 	@fail : static : Int;
 	@service : static : McpService;
@@ -260,6 +292,202 @@ class McpCoreTest {
 		reply := Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":4000000000,\"method\":\"ping\"}");
 		Check("a large id is echoed", reply->Get("id")->GetInt() = 4000000000);
 		Check("a response from the peer is ignored", server->Handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}", Nil) = Nil);
+
+		# one frame is one message: the parser would answer the first and drop the second without a word
+		Check("two messages in one frame are a parse error", ErrorCode(Ask(server, Req(50, "ping", Nil) + Req(51, "ping", Nil))) = -32700);
+		Check("also with a space between them", ErrorCode(Ask(server, Req(50, "ping", Nil) + " " + Req(51, "ping", Nil))) = -32700);
+		Check("a message followed by another value is a parse error", ErrorCode(Ask(server, Req(50, "ping", Nil) + "{}")) = -32700);
+		Check("a message with text and a brace after it is a parse error", ErrorCode(Ask(server, Req(50, "ping", Nil) + " xyz}")) = -32700);
+		Check("two strings are a parse error", ErrorCode(Ask(server, "\"a\" \"b\"")) = -32700);
+		Check("one string is still an invalid request", ErrorCode(Ask(server, "\"a\"")) = -32600);
+		reply := Ask(server, Req(52, "tools/call", "{\"name\":\"echo\",\"arguments\":{\"text\":\"}{ ]\\\"[ \\\\\"}}"));
+		Check("braces, brackets and escaped quotes inside a string are text", reply <> Nil & reply->Has("result") & reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Equals("8"));
+		Check("surrounding whitespace is not a second value", Ask(server, "  " + Req(53, "ping", Nil) + " \r\n")->Has("result"));
+	}
+
+	# ---- an exact resource and the templates around it ----
+
+	function : ReadPreview(uri : String) ~ McpContents {
+		if(McpUriTemplate->Match("doc://{name}/preview", uri) = Nil) {
+			return Nil;
+		};
+		return McpContents->OfText(uri, "text/plain", "preview");
+	}
+
+	function : ReadRaw(uri : String) ~ McpContents {
+		if(McpUriTemplate->Match("doc://{name}/raw", uri) = Nil) {
+			return Nil;
+		};
+		return McpContents->OfText(uri, "text/plain", "raw");
+	}
+
+	function : ReadAny(uri : String) ~ McpContents {
+		return McpContents->OfText(uri, "text/plain", "any");
+	}
+
+	function : Text(reply : JsonElement) ~ String {
+		if(reply = Nil | <>reply->Has("result")) {
+			return "";
+		};
+		return reply->Get("result")->Get("contents")->Get(0)->Get("text")->GetString();
+	}
+
+	function : Templates() ~ Nil {
+		server := McpService->New("templates", "1.0");
+		# the templates first: a read used to go to the first resource whose leading text matched
+		server->AddResource(McpResource->New("doc://{name}/preview", "preview", "A preview", "text/plain", Func2Ref->New(McpCoreTest->ReadPreview(String) ~ McpContents)<String, McpContents>));
+		server->AddResource(McpResource->New("doc://{name}/raw", "raw", "The raw text", "text/plain", Func2Ref->New(McpCoreTest->ReadRaw(String) ~ McpContents)<String, McpContents>));
+		server->AddResource(McpResource->New("doc://guide/full", "guide", "The guide", "text/plain", "the full guide"));
+		server->AddResource(McpResource->New("doc://guide/preview", "guide-preview", "The guide's own preview", "text/plain", "the guide's own preview"));
+		server->AddResource(McpResource->New("blob://{id}", "blob", "Read its own way", "text/plain", Func2Ref->New(McpCoreTest->ReadAny(String) ~ McpContents)<String, McpContents>));
+
+		Check("an exact resource is read though a template registered before it shares its start", Text(Ask(server, Req(1, "resources/read", "{\"uri\":\"doc://guide/full\"}")))->Equals("the full guide"));
+		Check("an exact resource wins over a template that also fits", Text(Ask(server, Req(2, "resources/read", "{\"uri\":\"doc://guide/preview\"}")))->Equals("the guide's own preview"));
+		Check("the first template still answers what it fits", Text(Ask(server, Req(3, "resources/read", "{\"uri\":\"doc://x/preview\"}")))->Equals("preview"));
+		Check("a second template with the same start answers what it fits", Text(Ask(server, Req(4, "resources/read", "{\"uri\":\"doc://x/raw\"}")))->Equals("raw"));
+		Check("a URI no template fits is -32002", ErrorCode(Ask(server, Req(5, "resources/read", "{\"uri\":\"doc://x/other\"}"))) = -32002);
+		Check("a template with one variable takes the rest of the URI", Text(Ask(server, Req(6, "resources/read", "{\"uri\":\"blob://a/b/c\"}")))->Equals("any"));
+	}
+
+	# ---- the limits a derived schema advertises ----
+
+	function : Ran(call : McpCall) ~ McpToolResult {
+		@ran += 1;
+		return McpToolResult->Text("ran");
+	}
+
+	function : Refused(server : McpService, id : Int, arguments : String, why : String) ~ Bool {
+		before := @ran;
+		reply := Ask(server, Req(id, "tools/call", "{\"name\":\"limits\",\"arguments\":{$arguments}}"));
+		if(reply = Nil | <>reply->Has("result")) {
+			return false;
+		};
+		result := reply->Get("result");
+		return result->Get("isError")->GetType() = JsonElement->JsonType->TRUE & result->Get("content")->Get(0)->Get("text")->GetString()->Has(why) & @ran = before;
+	}
+
+	function : Accepted(server : McpService, id : Int, arguments : String) ~ Bool {
+		before := @ran;
+		reply := Ask(server, Req(id, "tools/call", "{\"name\":\"limits\",\"arguments\":{$arguments}}"));
+		return reply <> Nil & reply->Has("result") & reply->Get("result")->Get("isError")->GetType() = JsonElement->JsonType->FALSE & @ran = before + 1;
+	}
+
+	function : Limits() ~ Nil {
+		server := McpService->New("limits", "1.0");
+		spec := McpToolSpec->New("limits", "Takes a byte, a character, bytes and a table of bytes");
+		spec->AddOptional("level", "Byte", "0 to 255")->AddOptional("initial", "Char", "one character")->AddOptional("bytes", "Byte[]", "bytes")->AddOptional("table", "Byte[,]", "rows of bytes");
+		spec->AddSchema("ratio", "{\"type\":\"number\",\"minimum\":0.5,\"maximum\":1.5}", "a ratio", false);
+		spec->AddSchema("word", "{\"type\":\"string\",\"minLength\":2,\"maxLength\":4}", "a short word", false);
+		spec->AddTo(server, Func2Ref->New(McpCoreTest->Ran(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		schema := Ask(server, Req(1, "tools/list", Nil))->Get("result")->Get("tools")->Get(0)->Get("inputSchema")->Get("properties");
+		Check("a Byte is advertised as 0 to 255", schema->Get("level")->Get("minimum")->GetInt() = 0 & schema->Get("level")->Get("maximum")->GetInt() = 255);
+
+		Check("0 and 255 are bytes", Accepted(server, 2, "{\"level\":0}") & Accepted(server, 3, "{\"level\":255}"));
+		Check("256 is refused before the handler runs", Refused(server, 4, "{\"level\":256}", "'level' must be at most 255"));
+		Check("-1 is refused before the handler runs", Refused(server, 5, "{\"level\":-1}", "'level' must be at least 0"));
+		Check("one character is a Char", Accepted(server, 6, "{\"initial\":\"x\"}"));
+		Check("two characters are not", Refused(server, 7, "{\"initial\":\"xy\"}", "'initial' must be at most 1 character(s) long"));
+		Check("nor is none", Refused(server, 8, "{\"initial\":\"\"}", "'initial' must be at least 1 character(s) long"));
+		Check("bytes in range are accepted", Accepted(server, 9, "{\"bytes\":[0,128,255]}"));
+		Check("a byte out of range in an array is refused with its place", Refused(server, 10, "{\"bytes\":[1,2,300]}", "'bytes' item 2 must be at most 255"));
+		Check("an item of the wrong type is refused as before", Refused(server, 11, "{\"bytes\":[1,\"x\"]}", "must be an array of integer, item 1 is not"));
+		Check("a table of bytes is accepted", Accepted(server, 12, "{\"table\":[[1,2],[3,4]]}"));
+		Check("a byte out of range in a row is refused", Refused(server, 13, "{\"table\":[[1,2],[3,-4]]}", "'table' item 1 item 1 must be at least 0"));
+		Check("a row that is not an array is refused", Refused(server, 14, "{\"table\":[[1,2],3]}", "must be an array of array, item 1 is not"));
+		Check("fractional bounds hold", Accepted(server, 15, "{\"ratio\":0.5}") & Accepted(server, 16, "{\"ratio\":1.5}") & Refused(server, 17, "{\"ratio\":0.49}", "'ratio' must be at least 0.5") & Refused(server, 18, "{\"ratio\":2}", "'ratio' must be at most 1.5"));
+		Check("string lengths hold", Accepted(server, 19, "{\"word\":\"ab\"}") & Accepted(server, 20, "{\"word\":\"abcd\"}") & Refused(server, 21, "{\"word\":\"a\"}", "'word' must be at least 2") & Refused(server, 22, "{\"word\":\"abcde\"}", "'word' must be at most 4"));
+	}
+
+	# ---- a reply that does not answer the request ----
+
+	function : CannedPing(reply : String) ~ McpClient {
+		client := McpClient->New(CannedTransport->New(reply));
+		client->Ping();
+		return client;
+	}
+
+	function : Replies() ~ Nil {
+		good := McpClient->New(CannedTransport->New("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
+		Check("a reply with the id of the request is taken", good->Ping());
+		Check("and the next request has the next id, so the same reply is now refused", <>good->Ping() & good->GetErrorCode() = -32600);
+
+		client := CannedPing("{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}");
+		Check("a reply with another id is refused", client->GetErrorCode() = -32600 & client->GetError()->Has("answers another request"));
+		client := CannedPing("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}");
+		Check("a string id is not the number that was sent", client->GetErrorCode() = -32600);
+		client := CannedPing("{\"jsonrpc\":\"2.0\",\"result\":{}}");
+		Check("a result with no id is refused", client->GetErrorCode() = -32600);
+		client := CannedPing("{\"id\":1,\"result\":{}}");
+		Check("a reply that is not JSON-RPC 2.0 is refused", client->GetErrorCode() = -32600 & client->GetError()->Has("JSON-RPC 2.0"));
+		client := CannedPing("{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32601,\"message\":\"no\"}}");
+		Check("an error for another request is refused, not reported as this one's", client->GetErrorCode() = -32600);
+		client := CannedPing("{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\"}}");
+		Check("an error with a null id is the server's answer", client->GetErrorCode() = -32700 & client->GetError()->Equals("Parse error"));
+		client := CannedPing("{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32601,\"message\":\"no\"}}");
+		Check("an error for this request is reported with its code", client->GetErrorCode() = -32601);
+	}
+
+	# ---- request ids belong to a connection ----
+
+	function : Scopes(server : McpService) ~ Nil {
+		Sink()->Clear();
+		@saw_cancel := false;
+		@reply_set := false;
+		@reply := "unset";
+		worker := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				reply := McpCoreTest->Service()->Handle("{\"jsonrpc\":\"2.0\",\"id\":200,\"method\":\"tools/call\",\"params\":{\"name\":\"slow\",\"_meta\":{\"progressToken\":\"tok-2\"}}}", McpCoreTest->Sink(), "conn-a");
+				McpCoreTest->SetReply(reply);
+			}
+		};
+		worker->Execute(Nil);
+
+		waited := 0;
+		while(Sink()->GetMessages()->Size() < 2 & waited < 60000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		Check("the call on connection a is in flight", Sink()->GetMessages()->Size() = 2);
+		if(Sink()->GetMessages()->Size() < 2) {
+			return;
+		};
+
+		cancel := "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":200}}";
+		add := Req(200, "tools/call", "{\"name\":\"add\",\"arguments\":{\"a\":40,\"b\":2}}");
+
+		# the same request id on another connection is another request
+		server->Handle(cancel, Nil, "conn-b");
+		server->Handle(cancel, Nil);
+		System.Concurrency.Thread->Sleep(300);
+		Check("a cancellation from another connection does not stop the call", <>@reply_set & <>@saw_cancel);
+
+		elsewhere := JsonParser->TextToElement(server->Handle(add, Nil, "conn-b"));
+		Check("another connection may use the same id", elsewhere <> Nil & elsewhere->Has("result") & elsewhere->Get("result")->Get("content")->Get(0)->Get("text")->GetString()->Equals("42"));
+		Check("and its ending leaves the first call in flight", <>@reply_set);
+
+		again := JsonParser->TextToElement(server->Handle(add, Nil, "conn-a"));
+		Check("the id of a call still at work is refused on its own connection", ErrorCode(again) = -32600 & again->Get("id")->GetInt() = 200);
+		System.Concurrency.Thread->Sleep(100);
+		Check("and the refusal leaves the call in flight", <>@reply_set & <>@saw_cancel);
+
+		server->Handle(cancel, Nil, "conn-a");
+		waited := 0;
+		while(<>@reply_set & waited < 60000) {
+			System.Concurrency.Thread->Sleep(10);
+			waited += 10;
+		};
+		Check("its own connection's cancellation stops it", @reply_set & @saw_cancel & @reply = Nil);
+		worker->Join();
+
+		again := JsonParser->TextToElement(server->Handle(add, Nil, "conn-a"));
+		Check("the id is free once the call has ended", again <> Nil & again->Has("result"));
+
+		# two clients in the process: each is a connection of its own
+		first := McpClient->InProcess(server);
+		second := McpClient->InProcess(server);
+		Check("two in-process clients, the same ids", first->Initialize("one", "1.0") & second->Initialize("two", "1.0") & first->Ping() & second->Ping() & first->GetLastRequestId() = second->GetLastRequestId());
 	}
 
 	# ---- messages that are JSON but wrong in every way a client might get them wrong ----
@@ -563,6 +791,19 @@ class McpCoreTest {
 		response := raw->Get(Web.HTTP.Url->New(url));
 		Check("GET is 405: the server opens no stream", response <> Nil & response->GetCode() = 405);
 
+		# a session begins with an initialize that was answered
+		headers := local->GetResponseHeaders();
+		Check("an initialize that is answered opens a session", headers <> Nil & headers->Find("mcp-session-id") <> Nil);
+		refused := Web.HTTP.HttpClient->New();
+		response := refused->Post(Web.HTTP.Url->New(url), Req(1, "initialize", "{}")->ToByteArray(), "application/json");
+		headers := refused->GetResponseHeaders();
+		Check("an initialize without a revision is answered with invalid params", response <> Nil & String->New(response->GetContent())->Has("-32602"));
+		Check("and opens no session", headers = Nil | headers->Find("mcp-session-id") = Nil);
+
+		# one POST is one message
+		response := raw->Post(Web.HTTP.Url->New(url), (Req(1, "ping", Nil) + Req(2, "ping", Nil))->ToByteArray(), "application/json");
+		Check("two messages in one POST are 400 with a parse error", response <> Nil & response->GetCode() = 400 & String->New(response->GetContent())->Has("-32700"));
+
 		client->Close();
 		again := McpClient->Http(url);
 		Check("a new session works after the first was deleted", again->Initialize("http-test-2", "1.0") & again->Ping());
@@ -576,8 +817,12 @@ class McpCoreTest {
 
 		Protocol(@service);
 		Hostile();
+		Templates();
+		Limits();
+		Replies();
 		Client(@service);
 		Cancellation(@service);
+		Scopes(@service);
 		Bridge(@service);
 		Http(@service);
 

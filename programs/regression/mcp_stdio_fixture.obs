@@ -5,6 +5,8 @@ output. Run by the regression suite with no arguments it only checks that the
 server answers an initialize request in process and ends, so it never waits on
 standard input:
   --stdio             serve the stdio transport until standard input ends
+  --http              serve the streamable HTTP transport on 127.0.0.1, on a port
+                      the system chooses and standard error announces
   --client <command>  a client that starts <command> once per request (the
                       runtime has no process with pipes) and uses the tools,
                       resources and prompts of the server it runs
@@ -131,6 +133,15 @@ class McpStdioFixture {
 
 		if(args->Size() > 0 & args[0]->Equals("--stdio")) {
 			server->ServeStdio();
+			return;
+		};
+
+		if(args->Size() > 0 & args[0]->Equals("--http")) {
+			transport := String->New[3];
+			transport[0] := "http";
+			transport[1] := "127.0.0.1";
+			transport[2] := "0";
+			McpServe->Run(server, transport);
 			return;
 		};
 
