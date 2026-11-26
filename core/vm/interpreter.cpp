@@ -3505,7 +3505,10 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     ext_unload_def ext_unload = (ext_unload_def)GetProcAddress(dll_handle, "unload_lib");
     if(!ext_unload) {
       std::wcerr << L">>> Runtime error calling function: unload_lib <<<" << std::endl;
+      // released all the same; nothing may keep a pointer into it, or its handle
+      InvalidateSharedLibraryCache();
       FreeLibrary(dll_handle);
+      instance[1] = 0;
 #ifdef _NO_HALT
       return;
 #else
@@ -3518,6 +3521,11 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     InvalidateSharedLibraryCache();
     // free handle
     FreeLibrary(dll_handle);
+    // The handle is dead: a second Unload, or a call through this proxy, finds
+    // none instead of using it. Read again from the frame, as unload_lib is
+    // the library's code and may have called back into the program.
+    instance = (size_t*)(*stack_frame)->mem[0];
+    instance[1] = 0;
   }
 #else
   void* dll_handle = (void*)instance[1];
@@ -3529,6 +3537,13 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     char* error;
     if((error = dlerror()) != nullptr)  {
       std::wcerr << L">>> Runtime error calling function: " << error << L" <<<" << std::endl;
+      // The library has no unload_lib to call, and it is released all the same,
+      // as on Windows: it has just been taken off the list the exit path
+      // unloads, so a return here (_NO_HALT: the REPL, the debugger) left it
+      // loaded with nothing to release it.
+      InvalidateSharedLibraryCache();
+      dlclose(dll_handle);
+      instance[1] = 0;
 #ifdef _NO_HALT
       return;
 #else
@@ -3542,6 +3557,11 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     InvalidateSharedLibraryCache();
     // unload lib
     dlclose(dll_handle);
+    // The handle is dead: a second Unload, or a call through this proxy, finds
+    // none instead of using it. Read again from the frame, as unload_lib is
+    // the library's code and may have called back into the program.
+    instance = (size_t*)(*stack_frame)->mem[0];
+    instance[1] = 0;
   }
 #endif
 }
