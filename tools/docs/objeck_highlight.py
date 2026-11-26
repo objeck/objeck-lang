@@ -79,6 +79,9 @@ def highlight_objeck(text):
                 out.append(_span("kw", tok))
             elif tok in ("class", "interface", "enum", "bundle", "alias", "consts", "method", "function"):
                 out.append(_span("kw", tok))
+            elif tok == "prompt" and re.match(r'\s*"', text[last:last + 16]):
+                # a prompt literal: 'prompt' is a keyword only directly before a string
+                out.append(_span("kw", tok))
             elif prev in DECL or (tok[:1].isupper() and re.match(r"\s*(->|\.)", text[last:last + 4])):
                 out.append(_span("cls", tok))
             elif (prev in MODIFIERS or prev in ("method", "function")) and re.match(r"\s*\(", text[last:last + 4]):

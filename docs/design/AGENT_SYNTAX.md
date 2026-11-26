@@ -1,9 +1,8 @@
 # Agent syntax: typed results, prompt literals, agent declarations, scoped limits
 
-Release scope (2026-11-26, final): typed results (section 1, `class Name : json`, PR #1841) and scoped limits (section 4, `AgentScope`, merged in #1837) are IN v2026.11.4; `prompt` literals (section 2) and `agent` declarations (section 3) stay DEFERRED until after the release.
+Release scope (2026-11-26, after the maintainer asked for everything that was designed to be built): typed results (section 1, `class Name : json`, PR #1841), scoped limits (section 4, `AgentScope`, merged in #1837) and `prompt` literals (section 2) are implemented and in v2026.11.4; `agent` declarations (section 3) are designed here and implemented in the pull request that follows the one for prompt literals.
 
-Decisions of 2026-11-26: (1) typed results use the opt-in `class Name : json` modifier, no call-site type arguments (implemented, section 1); (4) scoped limits are a LIBRARY call, `AgentScope` (implemented, section 4); `prompt` literals (2) and `agent` declarations (3) are DEFERRED until after v2026.11.4. Part of v2026.11.4 per the maintainer. Composes with the MCP
-stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md` on those branches) and does not redo `@tool`.
+Decisions: (1) typed results use the opt-in `class Name : json` modifier, no call-site type arguments; (2) a hole of a `prompt` literal binds a variable in scope and is checked at compile time, and a reusable template is a function; (3) an `agent` declaration is a class with one `Build` function that returns an `Agent`; (4) scoped limits are a LIBRARY call, `AgentScope`. All compose with the MCP stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md`) and do not redo `@tool`.
 Rule for all four: pure source-to-source lowering to existing constructs (no VM, JIT or opcode change), and
 a program that does not use a feature compiles to a byte-identical `.obe`.
 
@@ -135,7 +134,7 @@ literal was a syntax error in every position before, so no program changes meani
 **Not done, on purpose:** hole expressions (`{user->GetName()}`): a hole is one name so that what reaches the
 model is visible at the hole; format specifiers; a hole for a list (use `{$...}` or build a `String`).
 
-## 3. `agent` declarations (IMPLEMENTED, v2026.11.4)
+## 3. `agent` declarations (designed; implemented in the pull request after prompt literals)
 
 ```
 agent Helper(script : Vector<AgentReply>, remote : McpClient) {
@@ -258,7 +257,7 @@ syntax alone does not solve:
 `programs/regression/*.obs` with ScriptedBackend (auto-picked-up); a test per error case, compile-error
 cases via a checker wired into ci-build.yml, ci-windows.yml and `tools/cicd/local_ci.py`; `.obe` byte
 identity at -opt s0/s3; compile-time medians; both JIT modes; WSL2; fuzz smoke; docs; CHANGELOG under
-v2026.11.4 and regenerated doc_changelog.html; deploy samples agent_45..48; editor grammar and LSP keywords.
+v2026.11.4 and regenerated doc_changelog.html; deploy samples agent_scope_45, json_class_46, prompt_literal_47, agent_decl_48; editor grammars (the words are contextual, so the language server's reserved-word list is unchanged).
 
 ## 6. Order, conflicts, open decisions
 
@@ -266,3 +265,8 @@ Order: 1 (needs the `json` modifier decision) then 2, 3 (needs MCP #1819), 4 (ne
 conflict files: `scanner.cpp` (keyword tables), `parser.cpp` (class member loop, statement parser),
 `context.cpp` (synthesis hook). Open decisions for the maintainer: call-site type-argument syntax;
 `class : json` modifier vs derive-by-use; whether exit-path unwinding exists for scoped limits.
+
+Where sections 2 and 3 touch the compiler, for whoever merges other grammar work: no keyword is added to the
+scanner's tables. `prompt` literals are `Parser::ParsePromptLiteral` at the end of `parser.cpp`, one test
+(`IsPromptLiteral`) in `ParseSimpleExpression` and one in `ParseStatement`, `ContextAnalyzer::AnalyzePromptHole`
+with one test in `AnalyzeExpressionMethodCall`, and one integer in `MethodCall` (`tree.h`).

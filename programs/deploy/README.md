@@ -61,6 +61,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`mcp_resources_43.obs`](mcp_resources_43.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: @resource and @prompt functions next to a @tool, read through a client |
 | [`mcp_serve_44.obs`](mcp_serve_44.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp` | MCP: obr --mcp and --mcp-http serve the tagged functions with no server code |
 | [`agent_scope_45.obs`](agent_scope_45.obs) | `-lib agent,json,net,cipher,misc` | AgentScope: one set of step, token and tool limits for every agent run in a block |
+| [`prompt_literal_47.obs`](prompt_literal_47.obs) | `-lib llm_util,json,regex,gen_collect` | prompt literals: holes the compiler checks, and values that cannot leave their slot |
 
 ## Building all of them
 

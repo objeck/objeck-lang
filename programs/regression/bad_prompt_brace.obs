@@ -1,0 +1,14 @@
+# EXTRA_LIBS: llm_util,regex
+# EXPECT_COMPILE_ERROR: (11,41): A '}' in a prompt literal closes no hole
+# EXPECT_ERROR_COUNT: 1
+#~
+A closing brace that closes no hole of a prompt literal is a compile error where it stands; a
+literal brace is written doubled (docs/design/AGENT_SYNTAX.md).
+~#
+class BadPromptBrace {
+	function : Main(args : String[]) ~ Nil {
+		count := 2;
+		p := prompt "Reply as {{\"n\": {count}}";
+		p->ToString()->PrintLine();
+	}
+}

@@ -27,6 +27,14 @@ contexts:
     - match: \'(.|{{escaped_char}})\'
       scope: constant.character.escape.objeck-obs
 
+    # prompt "...": 'prompt' is a word only before a string; {name} and {name : Type} are
+    # holes, {{ and }} literal braces (docs/design/AGENT_SYNTAX.md)
+    - match: '\b(prompt)(\s*)(")'
+      captures:
+        1: keyword.control.objeck-obs
+        3: string.quoted.double.objeck-obs
+      push: prompt_string
+
     - match: '"'
       scope: string.quoted.double.objeck-obs
       push: double_quoted_string
@@ -156,6 +164,21 @@ contexts:
     - meta_scope: string.quoted.double.objeck-obs
     - match: \\.
     - match: '"'
+      pop: true
+
+  prompt_string:
+    - meta_content_scope: string.quoted.double.objeck-obs
+    - match: \\.
+    - match: '\{\{|\}\}'
+      scope: constant.character.escape.objeck-obs
+    - match: '\{\$[^}"]*\}'
+      scope: meta.interpolation.objeck-obs
+    - match: '(\{)\s*(@?[[:alpha:]_][[:alnum:]_]*)\s*(?:(:)\s*(String|Int|Float|Bool|Char|Byte)\s*)?(\})'
+      captures:
+        2: variable.parameter.objeck-obs
+        4: storage.type.objeck-obs
+    - match: '"'
+      scope: string.quoted.double.objeck-obs
       pop: true
       
   cls_def:

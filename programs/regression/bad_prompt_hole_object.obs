@@ -1,0 +1,17 @@
+# EXTRA_LIBS: llm_util,regex
+# EXPECT_COMPILE_ERROR: (14,23): The prompt hole '{list}' cannot take 'list', which is Collection.Vector
+# EXPECT_ERROR_COUNT: 1
+#~
+Only a String, Int, Float, Bool, Char or Byte can be written into a prompt: a hole whose variable
+is an object is a compile error at the hole (docs/design/AGENT_SYNTAX.md).
+~#
+use Collection;
+
+class BadPromptHoleObject {
+	function : Main(args : String[]) ~ Nil {
+		list := Vector->New()<String>;
+		list->AddBack("a");
+		p := prompt "Items: {list}.";
+		p->ToString()->PrintLine();
+	}
+}
