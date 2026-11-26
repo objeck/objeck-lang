@@ -1,0 +1,211 @@
+#~
+The map literal: `m : Map<String, IntRef> := {"a": 1, "b": 2};` builds the map
+where it is written. It is typed by its target (a declared variable or field, an
+assignment, a `return`): the target's class is constructed, `Map->New()<K, V>`,
+and each entry is an `Insert(key, value)` on it in the order written, so keys
+and values are checked and boxed as the long form's are. Covers Map, Hash,
+OrderedHash, MultiMap, MultiHash, BiMap and IntMap, the empty literal, entries
+that are expressions (evaluated once, in order), fields, returns, loops,
+lambdas, nested maps, and that the long form gives the same map.
+~#
+use Collection;
+
+class Counter {
+	@log : String;
+
+	New() {
+		@log := "";
+	}
+
+	method : public : Key(tag : String) ~ String {
+		@log += tag;
+		return tag;
+	}
+
+	method : public : Value(tag : String, value : Int) ~ IntRef {
+		@log += tag;
+		return IntRef->New(value);
+	}
+
+	method : public : Log() ~ String {
+		return @log;
+	}
+}
+
+class Registry {
+	@names : Map<String, IntRef>;
+	@codes : Hash<IntRef, String>;
+
+	New() {
+		@names := {"zero": 0, "one": 1};
+		@codes := {};
+	}
+
+	method : public : Reset() ~ Nil {
+		@names := {};
+		@codes := {404: "not found", 500: "error"};
+	}
+
+	method : public : Names() ~ Map<String, IntRef> {
+		return @names;
+	}
+
+	method : public : Codes() ~ Hash<IntRef, String> {
+		return @codes;
+	}
+}
+
+class MapLiteral {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MapLiteral->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	# the long form this replaces
+	function : StatusLong() ~ Map<IntRef, String> {
+		status := Map->New()<IntRef, String>;
+		status->Insert(200, "OK");
+		status->Insert(404, "Not Found");
+		status->Insert(500, "Server Error");
+		return status;
+	}
+
+	function : Status() ~ Map<IntRef, String> {
+		return {200: "OK", 404: "Not Found", 500: "Server Error"};
+	}
+
+	function : Scaled(n : Int) ~ Hash<String, FloatRef> {
+		return {"whole": n->As(Float), "half": n->As(Float) / 2.0, "double": (n * 2)->As(Float)};
+	}
+
+	function : Empty() ~ Map<String, String> {
+		return {};
+	}
+
+	method : Run() ~ Nil {
+		# a declaration, with values boxed as Insert boxes them
+		a := 5;
+		m : Map<String, IntRef> := {"a": 1, "b": a * 2, "c": IntRef->New(30)};
+		Check("map", m->Size() = 3 & m->Find("a")->Get() = 1 & m->Find("b")->Get() = 10 & m->Find("c")->Get() = 30 & m->Find("d") = Nil);
+
+		# the same map as the long form's
+		long_form := StatusLong();
+		literal := Status();
+		same := literal->Size() = long_form->Size();
+		keys := long_form->GetKeys();
+		each(i : keys->Size()) {
+			key := keys->Get(i);
+			if(literal->Find(key) = Nil | <>literal->Find(key)->Equals(long_form->Find(key))) {
+				same := false;
+			};
+		};
+		Check("same as the long form", same & literal->Find(404)->Equals("Not Found"));
+
+		# a return, values that are expressions, Float boxing
+		scaled := Scaled(9);
+		Check("return", scaled->Size() = 3 & scaled->Find("half")->Get() = 4.5 & scaled->Find("double")->Get() = 18.0);
+
+		# the empty literal, and assignment to an existing variable
+		empty := Empty();
+		Check("empty return", empty->Size() = 0);
+		e : Map<IntRef, String> := {};
+		Check("empty", e->Size() = 0);
+		e := {1: "one", 2: "two"};
+		Check("assignment", e->Size() = 2 & e->Find(2)->Equals("two"));
+		e := {};
+		Check("assigned empty", e->Size() = 0);
+
+		# fields, in a constructor and a method
+		registry := Registry->New();
+		Check("field", registry->Names()->Find("one")->Get() = 1 & registry->Codes()->Size() = 0);
+		registry->Reset();
+		Check("field assigned", registry->Names()->Size() = 0 & registry->Codes()->Find(404)->Equals("not found"));
+
+		# every map class
+		h : Hash<String, String> := {"k": "v", "x": "y"};
+		Check("hash", h->Size() = 2 & h->Find("x")->Equals("y"));
+		ordered : OrderedHash<String, IntRef> := {"z": 26, "a": 1, "m": 13};
+		Check("ordered hash", ordered->Size() = 3 & ordered->Find("m")->Get() = 13 & ordered->GetKeys()->Get(0)->Equals("z"));
+		multi : MultiMap<String, IntRef> := {"k": 1, "k": 2, "j": 3};
+		Check("multi map", multi->Find("k")->Size() = 2 & multi->Find("j")->Size() = 1);
+		multi_hash : MultiHash<String, IntRef> := {"k": 1, "k": 2};
+		Check("multi hash", multi_hash->Find("k")->Size() = 2);
+		both : BiMap<String, IntRef> := {"one": 1, "two": 2};
+		Check("bimap", both->Size() = 2);
+		ints : IntMap := {1: 10, 2: 20, 3: 30};
+		Check("int map", ints->Size() = 3 & ints->Find(2) = 20);
+
+		# keys and values are evaluated once, in the order written
+		counter := Counter->New();
+		ordered_map : Map<String, IntRef> := {counter->Key("a"): counter->Value("1", 1), counter->Key("b"): counter->Value("2", 2)};
+		Check("order", counter->Log()->Equals("a1b2") & ordered_map->Find("b")->Get() = 2);
+
+		# variables and interpolated strings as keys may repeat: the last one stays
+		k := "same";
+		repeated : Map<String, IntRef> := {k: 1, k: 2, "{$k}": 3};
+		Check("repeated variable key", repeated->Size() = 1 & repeated->Find("same")->Get() = 3);
+
+		# nested maps, each literal typed by its own target
+		inner : Map<String, IntRef> := {"x": 1, "y": 2};
+		outer : Map<String, Map<String, IntRef>> := {"in": inner};
+		Check("nested", outer->Find("in")->Find("y")->Get() = 2);
+
+		# in loops, each time a new map
+		maps := Vector->New()<Map<String, IntRef>>;
+		each(i : 3) {
+			each(j : 2) {
+				cell := i * 10 + j;
+				one : Map<String, IntRef> := {"i": i, "j": j, "cell": cell};
+				maps->AddBack(one);
+			};
+		};
+		Check("loops", maps->Size() = 6 & maps->Get(5)->Find("cell")->Get() = 21 & maps->Get(0)->Find("cell")->Get() = 0 & maps->Get(0) <> maps->Get(1));
+
+		# in a lambda, with a captured variable
+		base := 100;
+		make := \(Int) ~ Int : (n) => {
+			made : Map<String, IntRef> := {"n": n, "sum": base + n};
+			return made->Find("sum")->Get() + made->Size();
+		};
+		Check("lambda", make(7) = 109);
+
+		# many under memory pressure: the maps built first survive those built later
+		kept := Vector->New()<Map<String, String>>;
+		each(i : 20000) {
+			text := "item " + i->ToString();
+			one : Map<String, String> := {"name": text, "upper": text->ToUpper(), "index": i->ToString()};
+			if(i % 1000 = 0) {
+				kept->AddBack(one);
+			};
+		};
+		kept_ok := kept->Size() = 20;
+		each(i : kept->Size()) {
+			want := (i * 1000)->ToString();
+			if(<>kept->Get(i)->Find("index")->Equals(want) | <>kept->Get(i)->Find("upper")->Equals("ITEM " + want)) {
+				kept_ok := false;
+			};
+		};
+		Check("many", kept_ok);
+
+		if(@fails = 0) {
+			"PASS: map literal"->PrintLine();
+		}
+		else {
+			"FAIL: map literal"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

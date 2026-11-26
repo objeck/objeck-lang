@@ -115,6 +115,24 @@ triangle <span class="t-op">:=</span> [[<span class="t-num">1</span>], [<span cl
 <span class="t-kw">function</span> : <span class="t-fn">Sum</span>(rows : <span class="t-type">Int</span>[][]) <span class="t-op">~</span> <span class="t-type">Int</span> { ... }
 </code></pre>
     <p>See <a href="doc_jagged_arrays.html">JAGGED_ARRAYS_DESIGN.md</a>.</p>
+    <h3 id="map-literals">Map literals</h3>
+    <p><code>{key: value, ...}</code> builds a map where it is written. Its type comes from its target: a declared variable or field, an assignment, or a <code>return</code>:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+status <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt;;
+status<span class="t-op">-&gt;</span>Insert(<span class="t-num">200</span>, <span class="t-str">"OK"</span>);
+status<span class="t-op">-&gt;</span>Insert(<span class="t-num">404</span>, <span class="t-str">"Not Found"</span>);
+status<span class="t-op">-&gt;</span>Insert(<span class="t-num">500</span>, <span class="t-str">"Server Error"</span>);
+
+<span class="t-com"># after</span>
+status : Map&lt;<span class="t-type">IntRef</span>, <span class="t-type">String</span>&gt; <span class="t-op">:=</span> {<span class="t-num">200</span>: <span class="t-str">"OK"</span>, <span class="t-num">404</span>: <span class="t-str">"Not Found"</span>, <span class="t-num">500</span>: <span class="t-str">"Server Error"</span>};
+status<span class="t-op">-&gt;</span>Find(<span class="t-num">404</span>)<span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># Not Found</span>
+
+<span class="t-kw">function</span> : <span class="t-fn">Limits</span>() <span class="t-op">~</span> Hash&lt;<span class="t-type">String</span>, <span class="t-type">FloatRef</span>&gt; {
+  <span class="t-kw">return</span> {<span class="t-str">"low"</span>: <span class="t-num">0.25</span>, <span class="t-str">"high"</span>: <span class="t-num">4.0</span>};
+}
+@cache <span class="t-op">:=</span> {};                      <span class="t-com"># the empty map, of the field's type</span>
+</code></pre>
+    <p>The targets are <code>Map</code>, <code>Hash</code>, <code>OrderedHash</code>, <code>MultiMap</code>, <code>MultiHash</code>, <code>BiMap</code> and <code>IntMap</code>. Each entry is an <code>Insert(key, value)</code> in the order written, so keys and values are checked and boxed as <code>Insert</code> does; an entry of the wrong type is an error at the entry (<code>An entry of this map literal is String: IntRef; this one is String: String</code>), and the same constant key twice is an error for a map that keeps one value per key. With no typed target (an inferred <code>m := {...}</code>, an argument, inside <code>?</code>) the literal has no type and the compiler says to declare one. Tests: <code>map_literal</code>, <code>bad_map_literal_*</code>.</p>
     <h3 id="type-inference">Type Inference</h3>
 <pre class="line-numbers"><code class="language-objeck">value <span class="t-op">:=</span> <span class="t-str">"Hello World!"</span>;
 value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();

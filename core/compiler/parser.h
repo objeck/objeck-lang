@@ -336,6 +336,8 @@ class Parser {
   Statement* ParseControlFlowStatement(int line_num, int line_pos, const std::wstring& file_name, int depth);
   Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
+  // '{key: value, ...}': a Map or Hash, typed by what it is assigned to
+  Expression* ParseMapLiteral(int depth);
   If* ParseIf(int depth);
   DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);

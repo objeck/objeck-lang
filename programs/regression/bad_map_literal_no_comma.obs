@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: (14,39): Expected ',' or '}' after an entry of a map literal
+# EXPECT_ERROR_COUNT: 1
+#~
+Entries are separated by commas.
+~#
+use Collection;
+
+class BadMapLiteralNoComma {
+	function : Take(m : Map<String, IntRef>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		m : Map<String, IntRef> := {"a": 1 "b": 2};
+		m->Size()->PrintLine();
+	}
+}
