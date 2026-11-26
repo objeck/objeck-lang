@@ -118,6 +118,9 @@ value->Size()->PrintLine();
 ```
 
 ### Nil Safety
+`value->TypeOf(Type)` is false when the value is `Nil` (Nil is of no type), and
+`Nil->As(Type)` is `Nil`.
+
 `?->` calls a method only when the receiver is non-`Nil`, yielding `Nil` instead
 of faulting. `??` supplies a value when the left side is `Nil`.
 

@@ -120,6 +120,7 @@ triangle <span class="t-op">:=</span> [[<span class="t-num">1</span>], [<span cl
 value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
     <h3 id="nil-safety">Nil Safety</h3>
+    <p><code>value-&gt;TypeOf(Type)</code> is false when the value is <code>Nil</code> (Nil is of no type), and <code>Nil-&gt;As(Type)</code> is <code>Nil</code>.</p>
     <p><code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> instead of faulting. <code>??</code> supplies a value when the left side is <code>Nil</code>.</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># without them</span>
 city <span class="t-op">:=</span> <span class="t-const">Nil</span>;

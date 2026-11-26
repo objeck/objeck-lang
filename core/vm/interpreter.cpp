@@ -1523,24 +1523,16 @@ void StackInterpreter::ZeroFloatAry(size_t*& op_stack, size_t*& stack_pos)
 
 void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
 {
+  // Nil is of no type: the test is false. It used to end the program here
+  // (">>> TypeOf(..) check on Nil value <<<") while the JIT's callback for the
+  // same instruction answered false, so what 'x->TypeOf(T)' did with a Nil x
+  // depended on whether the method had been compiled yet.
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
-  if(mem) {
-    const size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
-    if(result) {
-      PushInt(1, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+  if(mem && MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces())) {
+    PushInt(1, op_stack, stack_pos);
   }
   else {
-    std::wcerr << L">>> TypeOf(..) check on Nil value <<<" << std::endl;
-#ifdef _NO_HALT
-    halt = true;
-    return;
-#else
-    VmExit(1);
-#endif
+    PushInt(0, op_stack, stack_pos);
   }
 }
 
