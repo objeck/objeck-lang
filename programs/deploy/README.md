@@ -96,9 +96,8 @@ obr json_14.obe
 - Read them in order: 0-13 teach the language, 14-21 work with data, 22-24
   are networking, 25-30 are AI and machine learning, 31 is a game, and 32-39 are
   AI engineering (MCP tools, agents, actors, retrieval, structured output,
-  telemetry, forecasting); 40-42 are MCP again (declared tools, a typed client,
-  approval by effect).
-- 32-42 run offline and print the same thing every time: a scripted model stands
+  telemetry, forecasting).
+- 32-39 run offline and print the same thing every time: a scripted model stands
   in for a real one, so they need no key. Swap in a real backend to use one.
 - Each program's header gives its compile and run lines and what it prints.
 - `obc` does not pull in a library's own dependencies, so some `-lib` lists name
