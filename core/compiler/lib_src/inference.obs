@@ -46,7 +46,7 @@ bundle API.Inference {
 		@return parsed element, or Nil
 		~#
 		function : ParseResponse(body : String) ~ JsonElement {
-			if(body = Nil | body->Size() = 0) {
+			if(body = Nil | body->IsEmpty()) {
 				EndPoint->SetLastError("empty response from the server");
 				return Nil;
 			};
@@ -231,7 +231,7 @@ bundle API.Inference {
 		@return output tensors, or Nil with EndPoint->GetLastError set
 		~#
 		method : public : Predict(model : String, inputs : Vector<Tensor>) ~ Vector<Tensor> {
-			if(model = Nil | model->Size() = 0) {
+			if(model = Nil | model->IsEmpty()) {
 				EndPoint->SetLastError("no model name");
 				return Nil;
 			};

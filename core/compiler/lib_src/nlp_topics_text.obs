@@ -52,7 +52,7 @@ tweets := reader->ExtractStrings("text");
 		@return the reader, or Nil when the file is missing or unreadable
 		~#
 		function : FromFile(path : String) ~ BsonReader {
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return Nil;
 			};
 
@@ -93,7 +93,7 @@ tweets := reader->ExtractStrings("text");
 		@return true if Next may be called
 		~#
 		method : public : HasNext() ~ Bool {
-			return @error->Size() = 0 & @pos < @data->Size();
+			return @error->IsEmpty() & @pos < @data->Size();
 		}
 
 		#~
@@ -142,7 +142,7 @@ tweets := reader->ExtractStrings("text");
 		~#
 		method : public : ExtractStrings(field : String) ~ Vector<String> {
 			@skipped := 0;
-			if(field = Nil | field->Size() = 0) {
+			if(field = Nil | field->IsEmpty()) {
 				@error := "field name is Nil or empty";
 				return Nil;
 			};
@@ -212,7 +212,7 @@ tweets := reader->ExtractStrings("text");
 		}
 
 		method : private : Fail(message : String) ~ Nil {
-			if(@error->Size() = 0) {
+			if(@error->IsEmpty()) {
 				@error := "{$message} (at byte {$@pos})";
 			};
 		}
@@ -853,7 +853,7 @@ tweets := reader->ExtractStrings("text");
 				};
 
 				if((code >= 97 & code <= 122) | (code >= 48 & code <= 57)) {
-					if(run->Size() = 0) {
+					if(run->IsEmpty()) {
 						run_start := i;
 					};
 					run->Append(lower->Get(i));

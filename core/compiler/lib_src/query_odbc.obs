@@ -249,7 +249,7 @@ else {
 
 			# a query with nothing to push into it is sent as it is, so its ORDER BY and its
 			# column names reach the table unchanged
-			if(@query <> Nil & columns->Equals("*") & (@where = Nil | @where->Size() = 0) & limit < 0) {
+			if(@query <> Nil & columns->Equals("*") & (@where = Nil | @where->IsEmpty()) & limit < 0) {
 				return Run(@query, -1);
 			};
 
@@ -419,10 +419,10 @@ else {
 			if(rs <> Nil) {
 				reason := rs->GetLastError();
 			};
-			if(reason = Nil | reason->Size() = 0) {
+			if(reason = Nil | reason->IsEmpty()) {
 				reason := @connection->GetLastError();
 			};
-			if(reason = Nil | reason->Size() = 0) {
+			if(reason = Nil | reason->IsEmpty()) {
 				reason := "the database refused the statement";
 			};
 			@error := "'{$@name}': {$reason}";
@@ -597,7 +597,7 @@ else {
 			seen := Set->New()<String>;
 			each(i : infos) {
 				name := infos[i]->GetName();
-				if(name = Nil | name->Size() = 0) {
+				if(name = Nil | name->IsEmpty()) {
 					name := "c{$(i + 1)}";
 				};
 				# a query can repeat a name, as a join of two tables with an 'id' does

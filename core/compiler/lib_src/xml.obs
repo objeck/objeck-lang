@@ -1699,7 +1699,7 @@ elem->ToString()->PrintLine();
 
 				# the parser files the text that follows a self-closing tag as that tag's
 				# content, so it is written after the tag, where it came from
-				if(@type = XmlElement->Type->UNARY_ELEMENT & (@children = Nil | @children->Size() = 0)) {
+				if(@type = XmlElement->Type->UNARY_ELEMENT & (@children = Nil | @children->IsEmpty())) {
 					input->Append("/>");
 					if(@content <> Nil) {
 						input->Append(@content);

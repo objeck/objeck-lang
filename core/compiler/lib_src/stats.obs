@@ -661,7 +661,7 @@ bundle System.Stats {
 		@return true if every number is meaningful
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -946,7 +946,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 		function : TwoSample(x : Float[], y : Float[], level : Float) ~ TTestResult {
 			name := "Student two-sample t-test";
 			msg := Check(name, x, 2, level);
-			if(msg->Size() = 0) {
+			if(msg->IsEmpty()) {
 				msg := Check(name, y, 2, level);
 			};
 			if(msg->Size() > 0) {
@@ -987,7 +987,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 		function : Welch(x : Float[], y : Float[], level : Float) ~ TTestResult {
 			name := "Welch t-test";
 			msg := Check(name, x, 2, level);
-			if(msg->Size() = 0) {
+			if(msg->IsEmpty()) {
 				msg := Check(name, y, 2, level);
 			};
 			if(msg->Size() > 0) {
@@ -1033,10 +1033,10 @@ if(r->IsValid() & r->GetP() < 0.05) {
 		function : Paired(x : Float[], y : Float[], level : Float) ~ TTestResult {
 			name := "Paired t-test";
 			msg := Check(name, x, 2, level);
-			if(msg->Size() = 0) {
+			if(msg->IsEmpty()) {
 				msg := Check(name, y, 2, level);
 			};
-			if(msg->Size() = 0 & x->Size() <> y->Size()) {
+			if(msg->IsEmpty() & x->Size() <> y->Size()) {
 				msg := "paired samples must have the same length, got {$x->Size()} and {$y->Size()}";
 			};
 			if(msg->Size() > 0) {
@@ -1088,7 +1088,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 		@return true if every number is meaningful
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -1474,7 +1474,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 			@df_resid := nan;
 			@df_model := nan;
 			@k := 0;
-			if(error->Size() = 0) {
+			if(error->IsEmpty()) {
 				@k := beta->Size();
 				nf := n->As(Float);
 				@ssr := 0.0;
@@ -1518,7 +1518,7 @@ if(r->IsValid() & r->GetP() < 0.05) {
 		@return true if every number is meaningful
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~

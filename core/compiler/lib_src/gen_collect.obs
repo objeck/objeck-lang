@@ -8631,7 +8631,7 @@ mmap->IsEmpty()->PrintLine(); # false
 ```
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @map->Size() = 0;
+			return @map->IsEmpty();
 		}
 
 		#~
@@ -8973,7 +8973,7 @@ mmap->IsEmpty()->PrintLine(); # false
 ```
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @map->Size() = 0;
+			return @map->IsEmpty();
 		}
 
 		#~
@@ -12342,7 +12342,7 @@ h->Each(\(k, v) => k->PrintLine());
 		@return true if empty
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @index->Size() = 0;
+			return @index->IsEmpty();
 		}
 
 		#~
@@ -12525,7 +12525,7 @@ m->Size()->PrintLine();         # 1
 		@return true if empty
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @forward->Size() = 0;
+			return @forward->IsEmpty();
 		}
 
 		#~

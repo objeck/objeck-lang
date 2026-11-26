@@ -176,7 +176,7 @@ server->EndWrite();
 			}
 			else if(path->Equals("/query")) {
 				sql := body;
-				if(sql = Nil | sql->Size() = 0) {
+				if(sql = Nil | sql->IsEmpty()) {
 					sql := request->GetParam("sql");
 				};
 				if(sql = Nil | sql->Trim()->Size() = 0) {

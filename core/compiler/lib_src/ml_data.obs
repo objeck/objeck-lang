@@ -957,7 +957,7 @@ if(test_x = Nil) {
 		@return one index per data row; a class unseen at Fit becomes -1.0
 		~#
 		method : public : TransformLabels(table : CsvTable) ~ Float[] {
-			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->Size() = 0) {
+			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->IsEmpty()) {
 				return Nil;
 			};
 
@@ -999,7 +999,7 @@ if(test_x = Nil) {
 		@return one value per data row, or Nil when unfitted or the label is missing
 		~#
 		method : public : TransformLabelsBinary(table : CsvTable, negative : String) ~ Float[] {
-			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->Size() = 0) {
+			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->IsEmpty()) {
 				return Nil;
 			};
 

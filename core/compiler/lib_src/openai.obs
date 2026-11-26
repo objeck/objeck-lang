@@ -6701,7 +6701,7 @@ job = Batch->Get(job->GetId(), token);
 		~#
 		function : InsecureTlsBlocksKey() ~ Bool {
 			skip := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY");
-			if(skip = Nil | skip->Size() = 0) {
+			if(skip = Nil | skip->IsEmpty()) {
 				return false;
 			};
 

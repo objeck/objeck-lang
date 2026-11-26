@@ -1496,7 +1496,7 @@ bundle Query.Structured {
 					};
 				};
 
-				if(@messages->Size() = 0) {
+				if(@messages->IsEmpty()) {
 					@messages := Nil;
 				};
 			};
@@ -8810,7 +8810,7 @@ results := statement->Execute();
 					return Nil;
 				};
 
-				if(name->Size() = 0) {
+				if(name->IsEmpty()) {
 					error->Set("the footer's index {$(i + 1)} has no name");
 					return Nil;
 				};
@@ -13335,7 +13335,7 @@ if(file->IsOpen()) {
 					};
 				};
 
-				if(matched->Size() = 0) {
+				if(matched->IsEmpty()) {
 					error->Set("no files match '{$path}'");
 					return Nil;
 				};
@@ -13637,7 +13637,7 @@ if(file->IsOpen()) {
 				};
 			};
 
-			if(matched->Size() = 0) {
+			if(matched->IsEmpty()) {
 				error->Set("no member of '{$(file->GetPath())}' matches '{$member}'");
 				return Nil;
 			};
@@ -13675,7 +13675,7 @@ if(file->IsOpen()) {
 
 				each(i : names) {
 					if(sheet = Nil) {
-						if(sheets->Size() = 0) {
+						if(sheets->IsEmpty()) {
 							sheets->AddBack(names[i]);
 						};
 					}
@@ -13684,7 +13684,7 @@ if(file->IsOpen()) {
 					};
 				};
 
-				if(sheets->Size() = 0) {
+				if(sheets->IsEmpty()) {
 					if(sheet = Nil) {
 						error->Set("'{$(file->GetPath())}' has no worksheets");
 					}
@@ -14138,7 +14138,7 @@ if(file->IsOpen()) {
 			# no column list: every column, in a list of its own; the statement's list belongs to a
 			# cached plan, so filling it would fix this table's columns into the plan for good
 			names := @statement->GetColumns();
-			if(names->Size() = 0) {
+			if(names->IsEmpty()) {
 				names := Vector->New()<String>;
 				all := table->GetColumnNames();
 				for(i := 1; i < all->Size(); i += 1;) {
@@ -19436,7 +19436,7 @@ catalog->Load(source);
 			};
 
 			base := path->SubString(start, path->Size() - start);
-			if(base->Size() = 0) {
+			if(base->IsEmpty()) {
 				base := "index";
 			};
 			return base;
@@ -19535,7 +19535,7 @@ catalog->Load(source);
 
 			# without a validator the content itself tells versions apart
 			stamp := "{$etag}|{$modified}";
-			if(etag->Size() = 0 & modified->Size() = 0) {
+			if(etag->IsEmpty() & modified->IsEmpty()) {
 				size := body->Size();
 				check := body->CRC32();
 				stamp := "{$size}|{$check}";
@@ -19610,7 +19610,7 @@ catalog->Load(source);
 			};
 
 			version := fields->Get(3);
-			if(version->Size() = 0 | version->Has("/") | version->Has("\\") | <>File->Exists("{$entry}/{$version}")) {
+			if(version->IsEmpty() | version->Has("/") | version->Has("\\") | <>File->Exists("{$entry}/{$version}")) {
 				return Nil;
 			};
 			return fields;
@@ -20077,7 +20077,7 @@ runs := source->Read();
 
 		# the value at a dotted path, Nil if a step is missing; an empty path is the root
 		function : Navigate(root : Data.JSON.JsonElement, path : String) ~ Data.JSON.JsonElement {
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return root;
 			};
 
@@ -20997,7 +20997,7 @@ runs->Describe()->ToString()->PrintLine();
 	# the shapes of tables, for Source->GetTables
 	class : private : TableShapes {
 		function : Of(tables : Vector<Table>, fallback : String) ~ TableSpec[] {
-			if(tables = Nil | tables->Size() = 0) {
+			if(tables = Nil | tables->IsEmpty()) {
 				specs := TableSpec->New[1];
 				specs[0] := TableSpec->New(fallback, String->New[0], ColumnType->New[0]);
 				return specs;
@@ -21288,7 +21288,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 					Remember(name, order, seen);
 				};
 
-				if(elements->Size() = 0 & TextOf(row) <> Nil) {
+				if(elements->IsEmpty() & TextOf(row) <> Nil) {
 					Remember("_text", order, seen);
 				};
 			};
@@ -21352,7 +21352,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 					};
 				};
 
-				if(elements->Size() = 0) {
+				if(elements->IsEmpty()) {
 					text := TextOf(row);
 					if(text <> Nil) {
 						values->Insert("_text", text);
@@ -21519,7 +21519,7 @@ rs := catalog->Query("select title, @lang from books where year > 2000");
 		method : public : Read(hint : ScanHint) ~ Table {
 			@error := Nil;
 			@tables := Nil;
-			if(@row_element = Nil | @row_element->Size() = 0) {
+			if(@row_element = Nil | @row_element->IsEmpty()) {
 				@error := "no row element named";
 				return Nil;
 			};
@@ -21900,7 +21900,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			chosen := format->Size() > 0 ? format : FormatOf(member);
-			if(chosen->Size() = 0) {
+			if(chosen->IsEmpty()) {
 				@error := "'{$@title}': member '{$member}' is not in a format read as a table; name it with csv(), tsv(), json(), jsonl() or xml()";
 				return Nil;
 			};
@@ -21976,7 +21976,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		# whether a member becomes a table: a known format, matching the pattern
 		method : IsTable(path : String) ~ Bool {
 			format := FormatOf(path);
-			if(format->Size() = 0 | (format->Equals("xml") & @row_element = Nil)) {
+			if(format->IsEmpty() | (format->Equals("xml") & @row_element = Nil)) {
 				return false;
 			};
 
@@ -22040,7 +22040,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			tables := Vector->New()<Table>;
-			if(format->Size() = 0) {
+			if(format->IsEmpty()) {
 				format := FormatOf(path);
 			};
 			if(format->Equals("otab")) {
@@ -22494,7 +22494,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		# the archive's own folder ('./'); Nil, with 'error' set, for an absolute path or one
 		# that climbs out of the archive
 		method : Normalize(raw : String, error : StringHolder) ~ String {
-			if(raw = Nil | raw->Size() = 0) {
+			if(raw = Nil | raw->IsEmpty()) {
 				error->Set("'{$@title}' has a member with no name");
 				return Nil;
 			};
@@ -22717,7 +22717,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 					type := "symlink";
 				};
 
-				if(path->Size() = 0) {
+				if(path->IsEmpty()) {
 					if(<>type->Equals("dir")) {
 						error->Set("'{$@title}' has a member with no name");
 						return false;
@@ -23141,7 +23141,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 								return false;
 							};
 
-							if(path->Size() = 0) {
+							if(path->IsEmpty()) {
 								if(<>kind->Equals("dir")) {
 									error->Set("'{$@title}' has a member with no name");
 									return false;
@@ -23401,7 +23401,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		~#
 		method : public : Read() ~ Table {
 			tables := ReadAll();
-			if(tables = Nil | tables->Size() = 0) {
+			if(tables = Nil | tables->IsEmpty()) {
 				return Nil;
 			};
 
@@ -23434,7 +23434,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 				};
 			};
 
-			if(@sheet <> Nil & tables->Size() = 0) {
+			if(@sheet <> Nil & tables->IsEmpty()) {
 				@error := "'{$@title}' has no worksheet '{$@sheet}'";
 				return Nil;
 			};
@@ -24068,7 +24068,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			};
 			# a formula not yet calculated may carry an empty value
 			value := Text(value_element);
-			if(value->Size() = 0) {
+			if(value->IsEmpty()) {
 				return Nil;
 			};
 			reference := "{$(Letters(column))}{$row}";

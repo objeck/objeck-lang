@@ -438,7 +438,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 		}
 
 		method : ValidName(name : String) ~ Bool {
-			if(name = Nil | name->Size() = 0) {
+			if(name = Nil | name->IsEmpty()) {
 				return false;
 			};
 			chars := name->ToCharArray();
@@ -515,7 +515,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 							if(inner->Equals("/if")) {
 								want := 3;
 							};
-							if(stack->Size() = 0 | stack->Last()->GetKind() <> want) {
+							if(stack->IsEmpty() | stack->Last()->GetKind() <> want) {
 								@error := "'{{{$inner}}}' at offset {$i} closes nothing";
 							}
 							else {
@@ -523,7 +523,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 								if(want = 2) {
 									loops -= 1;
 								};
-								if(stack->Size() = 0) {
+								if(stack->IsEmpty()) {
 									cur := @root;
 								}
 								else {
@@ -532,7 +532,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 							};
 						}
 						else if(inner->Equals("else")) {
-							if(stack->Size() = 0 | stack->Last()->GetKind() <> 3 | stack->Last()->InElse()) {
+							if(stack->IsEmpty() | stack->Last()->GetKind() <> 3 | stack->Last()->InElse()) {
 								@error := "'{{else}}' at offset {$i} is not inside an {{#if}}";
 							}
 							else {
@@ -1122,7 +1122,7 @@ b->Size()->PrintLine();   # 3 turns, the system prompt is kept apart
 		@return estimated tokens, 0 for empty text
 		~#
 		method : public : Estimate(text : String) ~ Int {
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return 0;
 			};
 
@@ -1499,7 +1499,7 @@ short := window->Fit(long_conversation);
 		@return string form
 		~#
 		method : public : ToString() ~ String {
-			if(@path->Size() = 0) {
+			if(@path->IsEmpty()) {
 				return "(root): {$@message}";
 			};
 			return "{$@path}: {$@message}";
@@ -2097,7 +2097,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 					best_score := score;
 				};
 			};
-			if(best = Nil | best->Size() = 0) {
+			if(best = Nil | best->IsEmpty()) {
 				return "no detail";
 			};
 			text := best->Get(0)->ToString();
@@ -2830,8 +2830,8 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 				};
 			};
 
-			if(values->Size() = 0) {
-				if(candidates->Size() = 0) {
+			if(values->IsEmpty()) {
+				if(candidates->IsEmpty()) {
 					@error := "the reply is empty";
 				}
 				else if(text->Find('{') < 0 & text->Find('[') < 0) {
@@ -3146,7 +3146,7 @@ if(outcome->IsOk()) {
 				values := extractor->ParseAll(reply);
 				errors : Vector<SchemaError>;
 				parse_error : String;
-				if(values->Size() = 0) {
+				if(values->IsEmpty()) {
 					parse_error := extractor->GetError();
 					errors := Vector->New()<SchemaError>;
 					errors->AddBack(SchemaError->New("", "parse", parse_error));
@@ -3154,7 +3154,7 @@ if(outcome->IsOk()) {
 				else {
 					for(i := 0; i < values->Size() & outcome->GetValue() = Nil; i += 1;) {
 						found := @validator->Validate(values->Get(i));
-						if(found->Size() = 0) {
+						if(found->IsEmpty()) {
 							outcome->SetValue(values->Get(i));
 							outcome->SetRepaired(extractor->IsRepaired(i));
 						}

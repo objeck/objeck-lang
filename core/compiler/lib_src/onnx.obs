@@ -1560,7 +1560,7 @@ ids := tokenizer->Encode("What is 2+2?");
 ```
 		~#
 		method : public : Encode(text : String) ~ Int[] {
-			if(text = Nil | text->Size() = 0 | @token_to_id->Size() = 0) {
+			if(text = Nil | text->IsEmpty() | @token_to_id->IsEmpty()) {
 				return Int->New[0];
 			};
 
@@ -1638,7 +1638,7 @@ ids := tokenizer->Encode("What is 2+2?");
 		@return array of token IDs
 		~#
 		method : EncodeBPE(text : String) ~ Int[] {
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return Int->New[0];
 			};
 
@@ -3027,7 +3027,7 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 			# reachable without a live session, and so testable by a suite that ships
 			# no model. Checking the session first made every such assertion pass for
 			# the wrong reason.
-			if(inputs = Nil | inputs->Size() = 0) {
+			if(inputs = Nil | inputs->IsEmpty()) {
 				">>> ONNX: a run needs at least one input tensor. <<<"->ErrorLine();
 				return Nil;
 			};

@@ -1942,7 +1942,7 @@ d2 := envelope->Score(X_test);    # squared Mahalanobis distances
 			};
 
 			if(raw = Nil) {
-				if(@error = Nil | @error->Size() = 0) {
+				if(@error = Nil | @error->IsEmpty()) {
 					@error := "the support covariance is singular";
 				};
 				return false;

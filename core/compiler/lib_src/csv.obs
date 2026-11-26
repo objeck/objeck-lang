@@ -238,7 +238,7 @@ Console->PrintLine(row->Average());
 		@return row average
 		~#
 		method : public : Average(start : Int, end : Int) ~ Float {
-			if(@columns->Size() = 0) {
+			if(@columns->IsEmpty()) {
 				return 0.0;
 			};
 
@@ -516,7 +516,7 @@ Console->PrintLine(col->Average());
 		@return column average
 		~#
 		method : public : Average(start : Int, end : Int) ~ Float {
-			if(@rows->Size() = 0) {
+			if(@rows->IsEmpty()) {
 				return 0.0;
 			};
 
@@ -717,7 +717,7 @@ Console->PrintLine(csv->GetErrorRow());
 
 			# No ending given (or an empty one): any of CRLF, LF or CR ends a record,
 			# and ToString() reuses the first one the data contains.
-			if(ending = Nil | ending->Size() = 0) {
+			if(ending = Nil | ending->IsEmpty()) {
 				@auto_ending := true;
 				@ending := "\r\n";
 			}

@@ -2291,7 +2291,7 @@ Y_hat := net->Predict(X);
 
 		method : CheckInput(X : Float[,], cols : Int) ~ Bool {
 			if(@w = Nil) {
-				if(@error = Nil | @error->Size() = 0) {
+				if(@error = Nil | @error->IsEmpty()) {
 					@error := "the network was not constructed";
 				};
 				return false;
@@ -2544,7 +2544,7 @@ Y_hat := net->Predict(X);
 			# Declared here, not inside the branches: a local declared in a nested
 			# block and read outside it is a known way to fault.
 			table : CsvTable;
-			if(line_ending = Nil | line_ending->Size() = 0) {
+			if(line_ending = Nil | line_ending->IsEmpty()) {
 				table := CsvTable->New(data);
 			}
 			else {

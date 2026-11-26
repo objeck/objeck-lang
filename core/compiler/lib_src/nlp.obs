@@ -1104,7 +1104,7 @@ bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 				};
 			};
 
-			if(@vocabulary->Size() = 0) {
+			if(@vocabulary->IsEmpty()) {
 				@fit_error := "no term is left: the documents have no words, or min_df is above every term's document count";
 				return false;
 			};
@@ -3986,7 +3986,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		~#
 		method : public : AddSpecialToken(content : String, lstrip : Bool, rstrip : Bool) ~ Bool {
 			id := Id(content);
-			if(id < 0 | content->Size() = 0) {
+			if(id < 0 | content->IsEmpty()) {
 				@error := "the vocabulary has no '{$content}'";
 				return false;
 			};

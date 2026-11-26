@@ -62,7 +62,7 @@ bundle Web.HTTP {
 		@return true when safe to serialize as a field name
 		~#
 		function : IsValidName(n : String) ~ Bool {
-			if(n = Nil | n->Size() = 0) { return false; };
+			if(n = Nil | n->IsEmpty()) { return false; };
 			if(n->Get(0) = ':') { return false; };
 			each(c in n) {
 				ok := (c >= 'a' & c <= 'z') | (c >= '0' & c <= '9') |

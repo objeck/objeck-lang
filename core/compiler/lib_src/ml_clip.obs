@@ -502,7 +502,7 @@ pairs := FacePairs->ReadLfw("lfw_home/pairsDevTest.txt", "lfw_home/lfw_funneled"
 		@return true when it holds pairs
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -957,7 +957,7 @@ if(<>encoder->IsOpen()) {
 			inputs := Vector->New()<Tensor>;
 			inputs->AddBack(Tensor->New(@input_name, [count, 3, side, side], pixels));
 			outputs := @session->Run(inputs, [@output_name]);
-			if(outputs = Nil | outputs->Size() = 0) {
+			if(outputs = Nil | outputs->IsEmpty()) {
 				reason := EndPoint->GetLastError();
 				@error := "the model run failed: {$reason}";
 				return Nil;

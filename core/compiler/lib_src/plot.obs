@@ -977,7 +977,7 @@ bundle System.Plot {
 				};
 			};
 
-			if(found->Size() = 0) {
+			if(found->IsEmpty()) {
 				# nothing of 1-2-5 inside: label the two ends
 				ts := Float->New[2];
 				ts[0] := low;
@@ -1853,10 +1853,10 @@ ax->SetLogX(true);
 			# counts and fractions start at 0: the smallest cell is only the darkest when it is 0
 			@heat_from_zero := true;
 
-			if(@x_label->Size() = 0) {
+			if(@x_label->IsEmpty()) {
 				@x_label := "predicted";
 			};
-			if(@y_label->Size() = 0) {
+			if(@y_label->IsEmpty()) {
 				@y_label := "actual";
 			};
 		}
@@ -2071,10 +2071,10 @@ ax->SetLogX(true);
 			if(@y_fixed = false) {
 				SetYLim(-0.02, 1.02);
 			};
-			if(@x_label->Size() = 0) {
+			if(@x_label->IsEmpty()) {
 				@x_label := x_title;
 			};
-			if(@y_label->Size() = 0) {
+			if(@y_label->IsEmpty()) {
 				@y_label := y_title;
 			};
 		}
@@ -2372,7 +2372,7 @@ ax->SetLogX(true);
 		@param height height of the rectangle
 		~#
 		method : public : Draw(scene : PlotScene, x : Float, y : Float, width : Float, height : Float) ~ Nil {
-			if(@artists->Size() = 0) {
+			if(@artists->IsEmpty()) {
 				Refuse("nothing to draw: add a plot, scatter, histogram or bars first");
 			};
 
@@ -2834,7 +2834,7 @@ ax->SetLogX(true);
 					colors->AddBack(PlotMath->Color(i));
 				};
 			};
-			if(names->Size() = 0) {
+			if(names->IsEmpty()) {
 				return;
 			};
 

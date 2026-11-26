@@ -114,7 +114,7 @@ bundle System.ML.Report {
 			};
 
 			trimmed := text->Trim();
-			if(trimmed->Size() = 0) {
+			if(trimmed->IsEmpty()) {
 				return false;
 			};
 			if(trimmed->Equals("n/a") | trimmed->Equals("inf") | trimmed->Equals("-inf")) {
@@ -566,11 +566,11 @@ rep->GetCiHigh("depth 4", "test_accuracy")->PrintLine();
 		~#
 		method : public : Add(group : String, metric : String, seed : Int, value : Float) ~ Bool {
 			@error := "";
-			if(group = Nil | group->Size() = 0) {
+			if(group = Nil | group->IsEmpty()) {
 				@error := "a value needs a group name";
 				return false;
 			};
-			if(metric = Nil | metric->Size() = 0) {
+			if(metric = Nil | metric->IsEmpty()) {
 				@error := "a value needs a metric name";
 				return false;
 			};
@@ -1036,7 +1036,7 @@ rep->GetCiHigh("depth 4", "test_accuracy")->PrintLine();
 			seen := Hash->New()<String, IntRef>;
 			for(c := 0; c < metrics; c += 1;) {
 				name := header->Get(2 + c);
-				if(name->Size() = 0) {
+				if(name->IsEmpty()) {
 					Fail("column {$c} has no name");
 					return Nil;
 				};
@@ -1511,7 +1511,7 @@ rep->GetCiHigh("depth 4", "test_accuracy")->PrintLine();
 			names := Hash->New()<String, IntRef>;
 			each(c : cols) {
 				name := cells[0, c + 1];
-				if(name = Nil | name->Size() = 0) {
+				if(name = Nil | name->IsEmpty()) {
 					Fail("column {$c} has no name");
 					return Nil;
 				};
@@ -1727,7 +1727,7 @@ report->Save("report.html");
 		~#
 		method : public : SetPaper(paper : String) ~ Bool {
 			@error := "";
-			if(paper = Nil | paper->Size() = 0) {
+			if(paper = Nil | paper->IsEmpty()) {
 				@paper := "";
 				return true;
 			};
@@ -1797,7 +1797,7 @@ report->Save("report.html");
 			if(marker->Size() > 0) {
 				parent := "";
 				k := level - 2;
-				while(k >= 0 & parent->Size() = 0) {
+				while(k >= 0 & parent->IsEmpty()) {
 					parent := @paths[k];
 					k -= 1;
 				};
@@ -1890,7 +1890,7 @@ report->Save("report.html");
 
 			grid := ResultTables->ToCells(table);
 			text := caption;
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				text := table->GetTitle();
 			};
 			if(AddGrid(text, grid, false)) {
@@ -1973,7 +1973,7 @@ report->Save("report.html");
 		~#
 		method : public : AddFigureSlot(caption : String, stem : String) ~ Bool {
 			@error := "";
-			if(stem = Nil | stem->Size() = 0) {
+			if(stem = Nil | stem->IsEmpty()) {
 				return Refuse("the figure path is empty");
 			};
 
@@ -1987,7 +1987,7 @@ report->Save("report.html");
 				path := png;
 			};
 
-			if(path->Size() = 0) {
+			if(path->IsEmpty()) {
 				AddNote("Figure slot, not run yet: {$caption}. Drop {$svg} (or {$png}) and rebuild.");
 				return false;
 			};
@@ -2291,7 +2291,7 @@ report->Save("report.html");
 			};
 
 			heading := title;
-			if(heading = Nil | heading->Size() = 0) {
+			if(heading = Nil | heading->IsEmpty()) {
 				heading := table->GetTitle();
 			};
 
@@ -2564,7 +2564,7 @@ report->Save("report.html");
 		}
 
 		method : FigureFile(stem : String, block : ReportBlock) ~ String {
-			prefix := (stem = Nil | stem->Size() = 0) ? "figure" : "{$stem}-figure";
+			prefix := (stem = Nil | stem->IsEmpty()) ? "figure" : "{$stem}-figure";
 			index := block->GetLabel()->SubString(7, block->GetLabel()->Size() - 7);
 			return ReportText->LinkPath("{$prefix}-{$index}.svg");
 		}
@@ -2901,7 +2901,7 @@ report->Save("report.html");
 		~#
 		method : public : Save(path : String) ~ Bool {
 			@error := "";
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return Refuse("no path");
 			};
 

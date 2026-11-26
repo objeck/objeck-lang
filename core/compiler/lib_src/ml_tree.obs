@@ -1918,7 +1918,7 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@return one score per row, or Nil when unfitted
 		~#
 		method : public : PredictScore(X : Float[,]) ~ Float[] {
-			if(<>@fitted | @trees = Nil | @trees->Size() = 0) {
+			if(<>@fitted | @trees = Nil | @trees->IsEmpty()) {
 				return Nil;
 			};
 			if(<>InputCheck->HasCols(X, @importance->Size())) {

@@ -487,7 +487,7 @@ index->Store("pets.vix");
 				return Fail("id is Nil");
 			};
 
-			if(id->Size() = 0) {
+			if(id->IsEmpty()) {
 				return Fail("id is empty");
 			};
 
@@ -763,7 +763,7 @@ index->Store("pets.vix");
 				return Fail("the index has no valid dimension");
 			};
 
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Fail("file name is Nil or empty");
 			};
 
@@ -808,7 +808,7 @@ index->Store("pets.vix");
 		@return the index, or Nil
 		~#
 		function : Load(filename : String) ~ VectorIndex {
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Nil;
 			};
 

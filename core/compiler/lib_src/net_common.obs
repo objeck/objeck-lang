@@ -1972,7 +1972,7 @@ bundle Web.HTTP {
 			# Read lines until we hit a blank line (event boundary)
 			line := @socket->ReadLine();
 			while(line <> Nil & line->Size() >= 0) {
-				if(line->Size() = 0) {
+				if(line->IsEmpty()) {
 					# Blank line = end of event
 					if(has_data) {
 						return SSEEvent->New(event_type, data_buf, id);

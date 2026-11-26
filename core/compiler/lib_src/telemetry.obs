@@ -1117,7 +1117,7 @@ bundle System.Telemetry {
 		~#
 		function : NowMs() ~ Int {
 			text := Runtime->GetProperty("runtime.uptime_ms");
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return -1;
 			};
 			return text->ToInt();
@@ -1129,7 +1129,7 @@ bundle System.Telemetry {
 		@return true if it parses completely as a number
 		~#
 		function : IsNumber(s : String) ~ Bool {
-			if(s = Nil | s->Size() = 0) {
+			if(s = Nil | s->IsEmpty()) {
 				return false;
 			};
 			digits := 0;
@@ -1870,7 +1870,7 @@ bundle System.Telemetry {
 				};
 			};
 
-			if(found->Size() = 0) {
+			if(found->IsEmpty()) {
 				dev_list := StripComma(devices);
 				batch_list := StripComma(batches);
 				if(seen_model = false) {
@@ -1979,7 +1979,7 @@ bundle System.Telemetry {
 		~#
 		method : public : ParseJson(text : String) ~ Bool {
 			@error := "";
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				@error := "empty profile text";
 				return false;
 			};
@@ -2151,7 +2151,7 @@ bundle System.Telemetry {
 		~#
 		method : public : ParseCsv(text : String) ~ Bool {
 			@error := "";
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				@error := "empty CSV text";
 				return false;
 			};

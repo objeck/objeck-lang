@@ -269,7 +269,7 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 				@error := "'{$repo}' is not a repository name: owner/name, of letters, digits, '-', '_' and '.'";
 				return Nil;
 			};
-			if(revision = Nil | revision->Size() = 0 | revision->Has("..") | revision->Has('\\')) {
+			if(revision = Nil | revision->IsEmpty() | revision->Has("..") | revision->Has('\\')) {
 				@error := "'{$revision}' is not a revision";
 				return Nil;
 			};
@@ -659,13 +659,13 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 		# a relative path inside the repository: no leading '/', no '\', no '..' or '.'
 		# segment, so a file name from the Hub cannot step outside the snapshot folder
 		function : ValidFile(file : String) ~ Bool {
-			if(file = Nil | file->Size() = 0 | file->StartsWith("/") | file->Has('\\') | file->Has(':')) {
+			if(file = Nil | file->IsEmpty() | file->StartsWith("/") | file->Has('\\') | file->Has(':')) {
 				return false;
 			};
 			segment := "";
 			each(c in file) {
 				if(c = '/') {
-					if(segment->Size() = 0 | segment->Equals(".") | segment->Equals("..")) {
+					if(segment->IsEmpty() | segment->Equals(".") | segment->Equals("..")) {
 						return false;
 					};
 					segment := "";

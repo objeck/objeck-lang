@@ -161,7 +161,7 @@ bundle API.MCP {
 			};
 
 			trimmed := text->Trim();
-			if(trimmed->Size() = 0) {
+			if(trimmed->IsEmpty()) {
 				return Nil;
 			};
 
@@ -1315,7 +1315,7 @@ bundle API.MCP {
 					};
 
 					end : Int;
-					if(literal->Size() = 0) {
+					if(literal->IsEmpty()) {
 						end := uri->Size();
 					}
 					else {
@@ -2053,7 +2053,7 @@ bundle API.MCP {
 			};
 
 			rpc := McpMessage->Str(root, "method");
-			if(rpc = Nil | rpc->Size() = 0) {
+			if(rpc = Nil | rpc->IsEmpty()) {
 				return McpMessage->Error(id, McpProtocol->InvalidRequest(), "Invalid Request: rpc must be a non-empty string");
 			};
 
@@ -2931,7 +2931,7 @@ bundle API.MCP {
 					};
 					data += value;
 				}
-				else if(line->Size() = 0 & data->Size() > 0) {
+				else if(line->IsEmpty() & data->Size() > 0) {
 					json := JsonParser->TextToElement(data);
 					data := "";
 					if(json <> Nil & json->Has("id") & json->Get("id")->ToString()->Equals(id)) {
@@ -4101,7 +4101,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 		@return Objeck source text
 		~#
 		function : Generate(server_name : String, server_version : String, tools : Vector<McpTool>, class_name : String) ~ String {
-			if(class_name = Nil | class_name->Size() = 0) {
+			if(class_name = Nil | class_name->IsEmpty()) {
 				class_name := McpStubGenerator->ClassName(server_name);
 			};
 
@@ -4426,7 +4426,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 				};
 			};
 
-			if(text->Size() = 0) {
+			if(text->IsEmpty()) {
 				text->Append("the argument");
 			};
 			return text;
@@ -4452,7 +4452,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 
 		# letters, digits, underscore and hyphen (and a dot for a tool name) only, so the name fits a string literal and a method name
 		function : IsSafe(name : String, is_tool : Bool) ~ Bool {
-			if(name = Nil | name->Size() = 0) {
+			if(name = Nil | name->IsEmpty()) {
 				return false;
 			};
 
@@ -4483,7 +4483,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 		# server name to a class name: words joined, each starting with a capital, then "Client"
 		function : ClassName(server_name : String) ~ String {
 			base := McpStubGenerator->Pascal(server_name);
-			if(base->Size() = 0) {
+			if(base->IsEmpty()) {
 				base := "Mcp";
 			};
 			return base + "Client";
@@ -4492,7 +4492,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 		# tool name to a method name: weather_forecast and weather-forecast become WeatherForecast, getForecast becomes GetForecast
 		function : MethodName(name : String) ~ String {
 			mname := McpStubGenerator->Pascal(name);
-			if(mname->Size() = 0) {
+			if(mname->IsEmpty()) {
 				mname := "Tool";
 			};
 			c := mname->Get(0);
@@ -4549,7 +4549,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			};
 
 			result := out->ToString();
-			if(result->Size() = 0 | (result->Get(0) >= '0' & result->Get(0) <= '9')) {
+			if(result->IsEmpty() | (result->Get(0) >= '0' & result->Get(0) <= '9')) {
 				result := "arg_" + result;
 			};
 

@@ -3912,7 +3912,7 @@ class RequestHandler from HttpsRequestHandler {
 			if(request <> Nil & request->Size() > 0) {
 				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
 			};
-			if(request = Nil | request->Size() = 0) {
+			if(request = Nil | request->IsEmpty()) {
 				# peer closed, or the accepted socket's receive timeout expired
 				return false;
 			};
@@ -4189,7 +4189,7 @@ class RequestHandler from HttpsRequestHandler {
 			if(request <> Nil & request->Size() > 0) {
 				@client->SetRecvTimeout(RequestGuard->RequestReadTimeoutMs());
 			};
-			if(request = Nil | request->Size() = 0) {
+			if(request = Nil | request->IsEmpty()) {
 				# peer closed, or the accepted socket's receive timeout expired
 				return false;
 			};

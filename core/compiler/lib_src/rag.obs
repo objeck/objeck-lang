@@ -158,7 +158,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		@return true if Split will cut
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -218,7 +218,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		~#
 		method : public : SplitBySize(source : String, text : String) ~ Vector<RagChunk> {
 			chunks := Vector->New()<RagChunk>;
-			if(<>IsValid() | text = Nil | text->Size() = 0) {
+			if(<>IsValid() | text = Nil | text->IsEmpty()) {
 				return chunks;
 			};
 
@@ -247,7 +247,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		~#
 		method : public : SplitParagraphs(source : String, text : String) ~ Vector<RagChunk> {
 			chunks := Vector->New()<RagChunk>;
-			if(<>IsValid() | text = Nil | text->Size() = 0) {
+			if(<>IsValid() | text = Nil | text->IsEmpty()) {
 				return chunks;
 			};
 
@@ -263,7 +263,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		~#
 		method : public : SplitSentences(source : String, text : String) ~ Vector<RagChunk> {
 			chunks := Vector->New()<RagChunk>;
-			if(<>IsValid() | text = Nil | text->Size() = 0) {
+			if(<>IsValid() | text = Nil | text->IsEmpty()) {
 				return chunks;
 			};
 
@@ -777,7 +777,7 @@ reply->PrintLine();
 		# the sentence of the text that shares the most words with the question; the first on a tie
 		function : BestSentence(text : String, question : String) ~ String {
 			spans := RagChunker->SentenceSpans(text);
-			if(spans->Size() = 0) {
+			if(spans->IsEmpty()) {
 				return text;
 			};
 
@@ -957,7 +957,7 @@ index->Store("rag.idx");
 			};
 
 			id := chunk->GetId();
-			if(id = Nil | id->Size() = 0) {
+			if(id = Nil | id->IsEmpty()) {
 				return Fail("chunk id is Nil or empty");
 			};
 
@@ -1058,7 +1058,7 @@ index->Store("rag.idx");
 				return Fail("the index has no valid dimension");
 			};
 
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Fail("file name is Nil or empty");
 			};
 
@@ -1105,7 +1105,7 @@ index->Store("rag.idx");
 		}
 
 		function : Bytes(text : String) ~ Byte[] {
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return Byte->New[0];
 			};
 
@@ -1130,7 +1130,7 @@ index->Store("rag.idx");
 		@return the index, or Nil
 		~#
 		function : Load(filename : String) ~ RagIndex {
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Nil;
 			};
 
@@ -1185,7 +1185,7 @@ index->Store("rag.idx");
 				offset := deserializer->ReadInt();
 				text := Text(deserializer->ReadByteArray());
 				vector := deserializer->ReadFloatArray();
-				if(id->Size() = 0 | vector = Nil | index->Contains(id)) {
+				if(id->IsEmpty() | vector = Nil | index->Contains(id)) {
 					return Nil;
 				};
 
@@ -1294,7 +1294,7 @@ prompt->PrintLine();
 		method : public : Build(question : String, matches : Vector<RagMatch>) ~ String {
 			chosen := Select(matches);
 			prompt := "{$@instruction}\n\nSources:\n";
-			if(chosen->Size() = 0) {
+			if(chosen->IsEmpty()) {
 				prompt += "(none)\n";
 			};
 
@@ -1691,7 +1691,7 @@ pipeline->GetIndex()->Store("faq.idx");
 		@return how many chunks were added; -1 on failure (see GetError)
 		~#
 		method : public : AddText(source : String, text : String) ~ Int {
-			if(source = Nil | source->Size() = 0) {
+			if(source = Nil | source->IsEmpty()) {
 				Fail("source is Nil or empty");
 				return -1;
 			};
@@ -1796,7 +1796,7 @@ pipeline->GetIndex()->Store("faq.idx");
 		@return matches, closest first, at most the top k; empty when nothing is indexed or nothing scores above the floor; Nil on failure (see GetError)
 		~#
 		method : public : Retrieve(question : String) ~ Vector<RagMatch> {
-			if(question = Nil | question->Size() = 0) {
+			if(question = Nil | question->IsEmpty()) {
 				Fail("question is Nil or empty");
 				return Nil;
 			};
@@ -1821,7 +1821,7 @@ pipeline->GetIndex()->Store("faq.idx");
 			};
 
 			hits := @index->Search(query, @top_k);
-			if(hits->Size() = 0 & @index->GetError()->Size() > 0) {
+			if(hits->IsEmpty() & @index->GetError()->Size() > 0) {
 				Fail("index: {$@index->GetError()}");
 				return Nil;
 			};
@@ -1848,7 +1848,7 @@ pipeline->GetIndex()->Store("faq.idx");
 				return Nil;
 			};
 
-			if(matches->Size() = 0) {
+			if(matches->IsEmpty()) {
 				return RagAnswer->New(question, @no_answer, matches, "");
 			};
 

@@ -772,7 +772,7 @@ result->PrintLine();
 
 		# End of the longest match starting at 'offset', or -1. Uses the DFA when it can.
 		method : private : Longest(stream_in : String, chars : Char[], offset : Int) ~ Int {
-			if(@error <> Nil | @program->Size() = 0 | stream_in = Nil) {
+			if(@error <> Nil | @program->IsEmpty() | stream_in = Nil) {
 				return -1;
 			};
 
@@ -1153,7 +1153,7 @@ result->PrintLine();
 		# Parallel NFA simulation. Returns end position of the longest match starting at 'offset', or -1.
 		# Uses two pre-allocated Int[] arrays swapped each step â€” zero hot-path allocation.
 		method : Evaluate(stream_in : String, offset : Int) ~ Int {
-			if(@error <> Nil | @program->Size() = 0 | stream_in = Nil) {
+			if(@error <> Nil | @program->IsEmpty() | stream_in = Nil) {
 				return -1;
 			};
 

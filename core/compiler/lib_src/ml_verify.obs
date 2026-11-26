@@ -183,7 +183,7 @@ bundle System.ML.Verification {
 		@return true when the curve and the EER are usable
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~

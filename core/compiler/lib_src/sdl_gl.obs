@@ -683,7 +683,7 @@ bundle Game.OpenGL {
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_extensions, array_args);
 
 			all := array_args[0]->As(String);
-			if(all = Nil | all->Size() = 0) {
+			if(all = Nil | all->IsEmpty()) {
 				return String->New[0];
 			};
 
@@ -696,7 +696,7 @@ bundle Game.OpenGL {
 		@return true when it is present
 		~#
 		function : HasExtension(name : String) ~ Bool {
-			if(name = Nil | name->Size() = 0) {
+			if(name = Nil | name->IsEmpty()) {
 				return false;
 			};
 
@@ -1257,7 +1257,7 @@ bundle Game.OpenGL {
 
 		method : CheckVersion() ~ Bool {
 			version := Core->GLGetVersionString();
-			if(version = Nil | version->Size() = 0) {
+			if(version = Nil | version->IsEmpty()) {
 				@error := "no current GL context after creation";
 				return false;
 			};
@@ -4194,7 +4194,7 @@ bundle Game.OpenGL {
 			};
 
 			trimmed := line->Trim();
-			if(trimmed->Size() = 0) {
+			if(trimmed->IsEmpty()) {
 				return Nil;
 			};
 			if(trimmed->Get(0) = '#') {
@@ -4309,7 +4309,7 @@ bundle Game.OpenGL {
 		@return a 0-based index, or -1 when there is none
 		~#
 		function : private : Resolve(field : String, count : Int) ~ Int {
-			if(field = Nil | field->Size() = 0 | count = 0) {
+			if(field = Nil | field->IsEmpty() | count = 0) {
 				return -1;
 			};
 
@@ -5619,7 +5619,7 @@ bundle Game.OpenGL {
 				@error := "the sky needs an inward-facing cube mesh";
 			};
 
-			if(@error->Size() = 0 & (@shader = Nil | <>@shader->IsOk())) {
+			if(@error->IsEmpty() & (@shader = Nil | <>@shader->IsOk())) {
 				@error := "the sky shader did not build";
 				if(@shader <> Nil & @shader->GetLog()->Size() > 0) {
 					@error := @shader->GetLog();
@@ -5631,7 +5631,7 @@ bundle Game.OpenGL {
 		@return true when the shader built and the geometry uploaded
 		~#
 		method : public : IsOk() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -7393,7 +7393,7 @@ bundle Game.OpenGL {
 		@return the width the text occupied, so the next one can follow it
 		~#
 		method : public : Text(text : String, x : Int, y : Int) ~ Int {
-			if(<>IsOk() | @font = Nil | text = Nil | text->Size() = 0) {
+			if(<>IsOk() | @font = Nil | text = Nil | text->IsEmpty()) {
 				return 0;
 			};
 
@@ -7421,7 +7421,7 @@ bundle Game.OpenGL {
 		@return its width in pixels, or 0 when there is no font
 		~#
 		method : public : MeasureWidth(text : String) ~ Int {
-			if(<>IsOk() | @font = Nil | text = Nil | text->Size() = 0) {
+			if(<>IsOk() | @font = Nil | text = Nil | text->IsEmpty()) {
 				return 0;
 			};
 
@@ -8267,7 +8267,7 @@ bundle Game.OpenGL {
 			};
 
 			@depth_shader := Shader->DepthCube();
-			if(@error->Size() = 0 & <>@depth_shader->IsOk()) {
+			if(@error->IsEmpty() & <>@depth_shader->IsOk()) {
 				@error := @depth_shader->GetLog();
 			};
 		}
@@ -8617,7 +8617,7 @@ bundle Game.OpenGL {
 			};
 
 			@depth_shader := Shader->DepthOnly();
-			if(@error->Size() = 0 & <>@depth_shader->IsOk()) {
+			if(@error->IsEmpty() & <>@depth_shader->IsOk()) {
 				@error := @depth_shader->GetLog();
 			};
 		}
@@ -10880,7 +10880,7 @@ bundle Game.OpenGL {
 			if(<>@visible | view_projection = Nil | <>IsOk()) {
 				return;
 			};
-			if(@transforms->Size() = 0) {
+			if(@transforms->IsEmpty()) {
 				return;
 			};
 

@@ -2706,7 +2706,7 @@ result->GetText()->PrintLine();
 		method : Await(slot : AgentSlot, limit : Int) ~ String {
 			start := @clock->Ms();
 			how := "";
-			while(how->Size() = 0) {
+			while(how->IsEmpty()) {
 				slice := 10;
 				if(limit > 0) {
 					left := limit - (@clock->Ms() - start);
@@ -2853,7 +2853,7 @@ result->GetText()->PrintLine();
 				i += 1;
 			};
 
-			if(names->Size() = 0) {
+			if(names->IsEmpty()) {
 				return "none";
 			};
 			return names;
@@ -3714,7 +3714,7 @@ backend := ScriptedBackend->New(script);
 		# true when TLS checking is off and nothing says sending a key that way is intended
 		function : InsecureTlsBlocksKey() ~ Bool {
 			skip := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY");
-			if(skip = Nil | skip->Size() = 0) {
+			if(skip = Nil | skip->IsEmpty()) {
 				return false;
 			};
 
@@ -3754,7 +3754,7 @@ backend := ScriptedBackend->New(script);
 					if(line_end > -1) {
 						value := value->SubString(line_end)->Trim();
 					};
-					if(value->Size() = 0) {
+					if(value->IsEmpty()) {
 						value := Nil;
 					};
 				};
@@ -4214,7 +4214,7 @@ backend := ScriptedBackend->New(script);
 			message := AgentJs->Object();
 			message->Insert("role", "assistant");
 			calls := entry->GetToolCalls();
-			if(entry->GetText()->Size() > 0 | calls->Size() = 0) {
+			if(entry->GetText()->Size() > 0 | calls->IsEmpty()) {
 				message->Insert("content", entry->GetText());
 			};
 
@@ -4301,7 +4301,7 @@ backend := ScriptedBackend->New(script);
 				stop := "filtered";
 			};
 
-			if(refusal <> Nil & text->Size() = 0 & calls->Size() = 0) {
+			if(refusal <> Nil & text->IsEmpty() & calls->IsEmpty()) {
 				text := refusal;
 				stop := "filtered";
 			};
@@ -5083,7 +5083,7 @@ registry->Add(AgentTools->ReadFile("notes"));
 			};
 
 			clean := path->ReplaceAll('\\', '/')->Trim();
-			if(clean->Size() = 0 | clean->StartsWith('/') | clean->Has('\0')) {
+			if(clean->IsEmpty() | clean->StartsWith('/') | clean->Has('\0')) {
 				return Nil;
 			};
 

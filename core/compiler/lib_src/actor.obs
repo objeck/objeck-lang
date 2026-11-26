@@ -56,14 +56,14 @@ bundle System.Actor {
 		}
 
 		method : public : IsHead(t : Int) ~ Bool {
-			if(@line->Size() = 0) {
+			if(@line->IsEmpty()) {
 				return false;
 			};
 			return @line->Get(0)->Get() = t;
 		}
 
 		method : public : IsEmpty() ~ Bool {
-			return @line->Size() = 0;
+			return @line->IsEmpty();
 		}
 
 		method : public : Size() ~ Int {

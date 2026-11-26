@@ -1256,7 +1256,7 @@ train->SetAugmentation(aug);
 		@return true if added
 		~#
 		method : public : AddFile(path : String, cls : Int) ~ Bool {
-			if(path = Nil | path->Size() = 0 | (cls <> 0 & cls <> 1)) {
+			if(path = Nil | path->IsEmpty() | (cls <> 0 & cls <> 1)) {
 				@error := "a Nil or empty path, or a label other than 0 or 1";
 				return false;
 			};
@@ -1956,7 +1956,7 @@ train->SetAugmentation(aug);
 		@return true if written
 		~#
 		method : public : SaveCsv(path : String) ~ Bool {
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return false;
 			};
 

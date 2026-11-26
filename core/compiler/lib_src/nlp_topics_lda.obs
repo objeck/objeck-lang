@@ -1075,7 +1075,7 @@ lda->LogPerplexityBound(corpus)->PrintLine();
 		@return true when the configuration is valid
 		~#
 		method : public : IsValid() ~ Bool {
-			return @config_error->Size() = 0;
+			return @config_error->IsEmpty();
 		}
 
 		#~
@@ -1235,7 +1235,7 @@ lda->LogPerplexityBound(corpus)->PrintLine();
 				return false;
 			};
 
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Refuse("file name is Nil or empty");
 			};
 
@@ -1295,7 +1295,7 @@ lda->LogPerplexityBound(corpus)->PrintLine();
 		@return the fitted model, or Nil
 		~#
 		function : Load(filename : String) ~ Lda {
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Nil;
 			};
 

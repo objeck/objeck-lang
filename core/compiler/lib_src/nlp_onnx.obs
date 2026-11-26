@@ -710,7 +710,7 @@ if(X = Nil) {
 			};
 
 			outputs := @session->Run(inputs, wanted);
-			if(outputs = Nil | outputs->Size() = 0) {
+			if(outputs = Nil | outputs->IsEmpty()) {
 				reason := EndPoint->GetLastError();
 				Fail("the model run failed: {$reason}");
 				return Nil;
@@ -1692,10 +1692,10 @@ classifier->Close();
 			# The build's provider can open a model and still fail to run it: CoreML on macOS
 			# refuses some nodes of a torch.export-based export only when they execute. With no
 			# provider asked for, any provider will do, so run on the CPU, as opening does.
-			if((outputs = Nil | outputs->Size() = 0) & @default_provider & <>@cpu_fallback & ReopenOnCpu()) {
+			if((outputs = Nil | outputs->IsEmpty()) & @default_provider & <>@cpu_fallback & ReopenOnCpu()) {
 				outputs := @session->Run(inputs, [@logits_name]);
 			};
-			if(outputs = Nil | outputs->Size() = 0) {
+			if(outputs = Nil | outputs->IsEmpty()) {
 				Fail("the model run failed; ONNX Runtime's reason is on standard error");
 				return Nil;
 			};
