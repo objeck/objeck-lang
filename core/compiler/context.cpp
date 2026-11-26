@@ -7931,7 +7931,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     }
 
     if(is_str_expr) {
-      if(expression->GetExpressionType() == VAR_EXPR) {
+      if(expression->GetExpressionType() == VAR_EXPR && !expression->GetMethodCall()) {
         Variable* var_expr = static_cast<Variable*>(expression);
         expression = TreeFactory::Instance()->MakeMethodCall(select_stmt->GetFileName(), select_stmt->GetLineNumber(),
                                                              select_stmt->GetLinePosition(), select_stmt->GetEndLineNumber(),
@@ -7940,11 +7940,35 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
         AnalyzeExpression(expression, depth + 1);
         select_stmt->GetAssignment()->SetExpression(expression);
       }
-      else {
+      else if(IsStringConstant(expression)) {
         const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
         expression = TreeFactory::Instance()->MakeIntegerLiteral(select_stmt->GetFileName(), select_stmt->GetLineNumber(), 
                                                                  select_stmt->GetLinePosition(), HashString(char_str_expr->GetString().c_str()));
         select_stmt->GetAssignment()->SetExpression(expression);
+      }
+      else {
+        // Any other string: a call's result ('select(GetName())'), a variable
+        // with calls after it ('select(name->Trim())'), an interpolated literal.
+        // Its value exists only when the program runs, so the hash is taken
+        // there, by a HashID() at the end of the expression's call chain. This
+        // branch used to treat every string that was not a variable as a
+        // literal: the node was read as a CharacterString whatever it was, and
+        // the text hashed came from memory that was not a string. The select
+        // then compared against that number and took 'other', or the compiler
+        // stopped with "out of memory" or a crash while copying the "text".
+        Expression* tail = expression;
+        while(tail->GetMethodCall()) {
+          tail = tail->GetMethodCall();
+        }
+        tail->SetMethodCall(TreeFactory::Instance()->MakeMethodCall(select_stmt->GetFileName(), select_stmt->GetLineNumber(),
+                                                                    select_stmt->GetLinePosition(), -1, -1,
+                                                                    select_stmt->GetEndLineNumber(), select_stmt->GetEndLinePosition(),
+                                                                    L"", L"HashID", TreeFactory::Instance()->MakeExpressionList()));
+        // resolved as AnalyzeExpression resolves a link: inside an expression,
+        // so the call's value is not taken for one that nothing uses
+        ++expression_depth;
+        AnalyzeExpressionMethodCall(tail, depth + 1);
+        --expression_depth;
       }
     }
 #else
@@ -11294,6 +11318,24 @@ bool ContextAnalyzer::IsStringExpression(Expression* expression)
   }
 
   return false;
+}
+
+// A string literal whose text is all there is to it: nothing interpolated and
+// nothing called on it, so its hash is known while compiling.
+bool ContextAnalyzer::IsStringConstant(Expression* expression)
+{
+  if(expression->GetExpressionType() != CHAR_STR_EXPR || expression->GetMethodCall()) {
+    return false;
+  }
+
+  const std::vector<CharacterStringSegment*> segments = static_cast<CharacterString*>(expression)->GetSegments();
+  for(size_t i = 0; i < segments.size(); ++i) {
+    if(segments[i]->GetType() != STRING) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool ContextAnalyzer::IsIntegerExpression(Expression* expression)
