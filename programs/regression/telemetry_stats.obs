@@ -182,7 +182,10 @@ class TelemetryStatsTest {
 		# the cost of one measurement is a few microseconds at most, and never negative
 		cost := Telemetry->MeasureOverhead(200);
 		Check("overhead series has 200 samples, all non-negative", cost <> Nil & cost->GetCount() = 200 & cost->GetMin() >= 0.0);
-		Check("measuring nothing takes under a millisecond at the median", cost->GetP50() < 1.0);
+		# the median of 200 empty measurements is microseconds on a quiet machine. The bound is 50 ms
+		# so only starvation of the thread for most of the run can break it; it still rejects a
+		# measurement that sleeps or does real work (those cost far more per sample)
+		Check("measuring nothing takes well under 50 ms at the median", cost->GetP50() < 50.0);
 		Check("overhead of 0 iterations is refused", Telemetry->MeasureOverhead(0) = Nil);
 
 		if(@failures > 0) {

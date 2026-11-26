@@ -10,7 +10,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Fixed
 
-- **`telemetry_contention` no longer fails on a loaded runner**: the one-lock check compared the mean call time of two separate timed runs, which workers started far apart can defeat; the lock holder now waits until all four workers have queued, and the check asserts lower bounds that follow from mutual exclusion alone (test only).
+- **`telemetry_contention` and `telemetry_stats` no longer fail on a loaded runner**: the one-lock check compared the mean call time of two separate timed runs, and the parallel-sleepers checks compared throughput and latency between two runs, which workers started far apart can invert; the lock holder now waits until all four workers have queued, the sleepers run in lockstep rounds so they provably overlap, the checks assert lower bounds and exact invariants on the report's own figures, and the one absolute time bound in `telemetry_stats` is now 50 ms (test only).
 
 ## [v2026.11.3] - 2026-11-22
 

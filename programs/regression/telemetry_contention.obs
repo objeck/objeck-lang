@@ -21,6 +21,8 @@ class TelemetryContentionTest {
 	@gate : static : ThreadMutex;
 	@announced : static : Int;
 	@expected : static : Int;
+	@inflight : static : Int;
+	@peak : static : Int;
 
 	# worker w sleeps (w + 1) * 20 ms and notes that it was called. The step is far above the
 	# 15.6 ms timer tick of a Windows sleep, so the order of the workers survives it.
@@ -31,6 +33,33 @@ class TelemetryContentionTest {
 
 	function : Quick(worker : Int, call : Int) ~ Nil {
 		Thread->Sleep(5);
+	}
+
+	# Sleeps 5 ms in lockstep rounds: a worker announces round c, waits until every expected
+	# worker has announced it too (bounded to 5 s), and only then sleeps and leaves. No worker can
+	# leave before all have arrived, so the sleeps overlap and @peak reaches the worker count on
+	# any machine, however far apart the threads were started.
+	function : Lockstep(worker : Int, call : Int) ~ Nil {
+		critical(@gate) {
+			@announced += 1;
+			@inflight += 1;
+			if(@inflight > @peak) {
+				@peak := @inflight;
+			};
+		};
+		ready := false;
+		for(spin := 0; ready = false & spin < 5000; spin += 1;) {
+			critical(@gate) {
+				ready := @announced >= @expected * (call + 1);
+			};
+			if(ready = false) {
+				Thread->Sleep(1);
+			};
+		};
+		Thread->Sleep(5);
+		critical(@gate) {
+			@inflight -= 1;
+		};
 	}
 
 	# Holds one lock for 20 ms. Every worker announces itself before it asks for the lock, and
@@ -133,11 +162,37 @@ class TelemetryContentionTest {
 		Check("warm-up: 6 counted and 4 discarded per worker", wr->GetWorker(0)->GetCount() = 6 & wr->GetWorker(0)->GetDiscarded() = 4 & wr->GetWorker(2)->GetCount() = 6);
 		Check("warm-up: the combined series has 18", wr->GetCombined()->GetCount() = 18 & wr->GetCombined()->GetDiscarded() = 12);
 
-		# independent sleepers scale with the number of workers; one lock does not
-		one := ContentionRunner->New(1, 20, TelemetryContentionTest->Quick(Int, Int) ~ Nil)->Run();
-		four := ContentionRunner->New(4, 20, TelemetryContentionTest->Quick(Int, Int) ~ Nil)->Run();
-		Check("sleepers in parallel: 4 workers do at least 1.5x the calls per second of 1", four->GetThroughput() > 1.5 * one->GetThroughput());
-		Check("sleepers in parallel: median latency does not grow with the workers", four->GetCombined()->GetP50() < 3.0 * one->GetCombined()->GetP50());
+		# Independent sleepers overlap. Whether they did is not read off wall-clock ratios between
+		# two runs (a loaded runner starts threads far apart and any such ratio can invert): the
+		# lockstep rounds make every worker present in every round, so the peak number of calls in
+		# flight is exactly the worker count, and the report's figures are held to lower bounds a
+		# sleep cannot undercut and to one generous upper bound that only a starved machine breaks.
+		@announced := 0;
+		@expected := 1;
+		@inflight := 0;
+		@peak := 0;
+		one := ContentionRunner->New(1, 20, TelemetryContentionTest->Lockstep(Int, Int) ~ Nil)->Run();
+		Check("sleepers: one worker never overlaps itself", @peak = 1 & one->GetCombined()->GetCount() = 20);
+		@announced := 0;
+		@expected := 4;
+		@inflight := 0;
+		@peak := 0;
+		four := ContentionRunner->New(4, 20, TelemetryContentionTest->Lockstep(Int, Int) ~ Nil)->Run();
+		Check("sleepers in parallel: four calls were in flight at once", @peak = 4 & four->GetCombined()->GetCount() = 80);
+		Check("sleepers in parallel: every call took at least its 5 ms sleep", four->GetCombined()->GetMin() >= 4.5);
+		Check("sleepers in parallel: wall time covers 20 rounds of 5 ms and the report's throughput is calls over it", four->GetWallSeconds() >= 0.09 & four->GetThroughput() * four->GetWallSeconds() > 79.9 & four->GetThroughput() * four->GetWallSeconds() < 80.1);
+		# Latency does not grow with the workers because the calls do not wait on each other: each
+		# worker's calls run one after another inside the run, so the sum of one worker's latencies
+		# cannot exceed the wall time (any overlap or timer error would show here). No absolute time
+		# bound is used, so a starved machine cannot fail it.
+		within := true;
+		for(w := 0; w < 4; w += 1;) {
+			s := four->GetWorker(w);
+			if(s->GetMean() * s->GetCount() > four->GetWallSeconds() * 1000.0 + 5.0) {
+				within := false;
+			};
+		};
+		Check("sleepers in parallel: each worker's latencies add up to no more than the wall time", within);
 		# One lock, four workers, one call each. Every call is timed from before its worker
 		# announced itself, and the first holder lets go only after all four have, so the k-th
 		# worker to get the lock (k = 0 to 3) waited for k earlier holds of at least 19 ms each
