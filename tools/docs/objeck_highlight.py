@@ -32,9 +32,23 @@ def _words(repo, name_part):
     return out
 
 
+def _contextual(repo):
+    """word -> what must follow it, for the grammar's contextual keywords: rules written `\\bword(?=...)`."""
+    out = {}
+    for rule in repo.values():
+        for pat in rule.get("patterns", []):
+            if "keyword." in pat.get("name", ""):
+                m = re.match(r"\\b(\w+)(\(\?=.*\))$", pat.get("match", ""))
+                if m:
+                    out[m.group(1)] = re.compile(m.group(2))
+    return out
+
+
 def _load():
     with open(GRAMMAR, encoding="utf-8") as f:
         repo = json.load(f)["repository"]
+    global CONTEXTUAL
+    CONTEXTUAL = _contextual(repo)
     kw = _words(repo, "keyword.") | _words(repo, "support.function")
     mod = _words(repo, "storage.modifier")
     typ = _words(repo, "storage.type")
@@ -44,6 +58,7 @@ def _load():
     return kw, mod, typ, const
 
 
+CONTEXTUAL = {}
 KEYWORDS, MODIFIERS, TYPES, CONSTS = _load()
 DECL = {"class", "interface", "enum", "bundle", "alias", "consts", "from", "implements"}
 
@@ -76,6 +91,9 @@ def highlight_objeck(text):
             elif tok in TYPES:
                 out.append(_span("type", tok))
             elif tok in KEYWORDS:
+                out.append(_span("kw", tok))
+            elif tok in CONTEXTUAL and CONTEXTUAL[tok].match(text, last):
+                # a keyword only where the grammar expects it, an ordinary name elsewhere
                 out.append(_span("kw", tok))
             elif tok in ("class", "interface", "enum", "bundle", "alias", "consts", "method", "function"):
                 out.append(_span("kw", tok))

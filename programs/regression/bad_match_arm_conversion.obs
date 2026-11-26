@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: (20,35): The arms of a 'match' used as a value differ in type: this one is not Int, as an earlier one is
+# EXPECT_ERROR_COUNT: 1
+#~
+A Float arm after an Int one would be truncated without a word: it is an error, not a conversion.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchArmConversion {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := match n { 1 => 1, other => 2.5 };
+		x->PrintLine();
+	}
+}

@@ -40,6 +40,12 @@ class Highlight(unittest.TestCase):
         self.assertIn('<span class="t-num">1</span>', out)
         self.assertIn('<span class="t-const">null</span>', out)
 
+    def test_contextual_keyword_match(self):
+        # 'match' is a keyword before its subject and a name everywhere else
+        got = classes("x := match c { Color->Red => 1, other => 2 };\nmatch := 3;\nmatch += 1;\n")
+        self.assertEqual(got.count(("kw", "match")), 1)
+        self.assertIn(("kw", "other"), got)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)

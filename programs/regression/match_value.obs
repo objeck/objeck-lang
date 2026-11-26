@@ -1,0 +1,295 @@
+#~
+'match' used as a value: `x := match subject { pattern | pattern => value, other => value };`
+It is a `select` on the subject whose arms each leave a value, written where the
+value is wanted. This test holds it to expected values (not to agreement between
+the interpreter and the JIT): every kind of subject and result, each way a select
+is emitted (one label, a dense jump table, a sparse tree), the subject evaluated
+once, only the taken arm evaluated, evaluation only when the expression is
+reached ('&', '?', a loop condition), nesting, loops, lambdas and call chains.
+~#
+use Collection;
+
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Level := 10 {
+	Low,
+	Mid,
+	High
+}
+
+consts Limits {
+	LOW := 1,
+	HIGH := 9
+}
+
+class Shape {
+	enum Mode { On, Off, Auto }
+
+	@kind : Int;
+	@calls : Int;
+	@mode : Shape->Mode;
+
+	New(kind : Int) {
+		@kind := kind;
+		@calls := 0;
+		@mode := Shape->Mode->Auto;
+	}
+
+	method : public : Kind() ~ Int {
+		@calls += 1;
+		return @kind;
+	}
+
+	method : public : Calls() ~ Int {
+		return @calls;
+	}
+
+	# a field as the subject, in an instance method
+	method : public : Name() ~ String {
+		return match @kind { 0 => "point", 1 => "line", 2 => "triangle", other => "polygon" };
+	}
+
+	# an enum nested in a class, its items named without the class
+	method : public : ModeName() ~ String {
+		return match @mode { Mode->On => "on", Mode->Off => "off", Mode->Auto => "auto" };
+	}
+
+	method : public : GetMode() ~ Shape->Mode {
+		return @mode;
+	}
+}
+
+class MatchValue {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MatchValue->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	function : Pick(c : Color) ~ Int {
+		return match c { Color->Red => 1, Color->Green => 2, Color->Blue => 3 };
+	}
+
+	function : Add3(a : Int, b : Int, c : Int) ~ Int {
+		return a * 100 + b * 10 + c;
+	}
+
+	function : Mix(a : Float, b : Int, c : Float) ~ Float {
+		return a + b->As(Float) * 10.0 + c * 100.0;
+	}
+
+	function : FloatOf(l : Level) ~ Float {
+		return match l { Level->Low => 0.25, Level->Mid => 0.5, Level->High => 1.0 };
+	}
+
+	function : Next(c : Color) ~ Color {
+		return match c { Color->Red => Color->Green, Color->Green => Color->Blue, Color->Blue => Color->Red };
+	}
+
+	function : Boxed(n : Int) ~ IntRef {
+		return match n { 1 => IntRef->New(10), 2 => Nil, other => IntRef->New(-1) };
+	}
+
+	function : NilFirst(n : Int) ~ String {
+		return match n { 0 => Nil, 1 => "one", other => "x" };
+	}
+
+	function : CharKind(c : Char) ~ String {
+		return match c { 'a' | 'e' | 'i' | 'o' | 'u' => "vowel", ' ' => "space", other => "other" };
+	}
+
+	function : Word(s : String) ~ Int {
+		return match s { "zero" => 0, "one" => 1, "two" => 2, other => -1 };
+	}
+
+	function : Clean(s : String) ~ Int {
+		return match s->Trim()->ToLower() { "alpha" => 1, "beta" => 2, other => 0 };
+	}
+
+	function : Dense(n : Int) ~ Int {
+		return match n {
+			0 => 100, 1 => 101, 2 => 102, 3 => 103, 4 => 104, 5 => 105, 6 => 106, 7 => 107,
+			8 => 108, 9 => 109, 10 => 110, 11 => 111, 12 => 112, 13 => 113, 14 => 114, 15 => 115,
+			other => -1
+		};
+	}
+
+	function : Sparse(n : Int) ~ Int {
+		return match n { 1 => 1, 100 => 2, 10000 => 3, 1000000 => 4, -5 => 5, other => 0 };
+	}
+
+	function : Bound(n : Int) ~ String {
+		return match n { Limits->LOW => "low", Limits->HIGH => "high", other => "mid" };
+	}
+
+	function : Sizes(n : Int) ~ Int[] {
+		return match n { 1 => [1], 2 => [1, 2], other => [1, 2, 3] };
+	}
+
+	method : Run() ~ Nil {
+		one := 1;
+		two := 2;
+		three := 3;
+		five := 5;
+		six := 6;
+		seven := 7;
+
+		# every item of an enum, and 'other'
+		Check("enum", Pick(Color->Red) = 1 & Pick(Color->Green) = 2 & Pick(Color->Blue) = 3);
+		warm := match Color->Blue { Color->Red => true, other => false };
+		Check("other", <>warm);
+
+		# as arguments, with other arguments on either side
+		Check("args", Add3(1, match Color->Green { Color->Red => 7, Color->Green => 8, Color->Blue => 9 }, 3) = 183);
+		Check("args all", Add3(match one { 1 => 4, other => 0 }, match two { 2 => 5, other => 0 }, match three { 3 => 6, other => 0 }) = 456);
+		Check("args float", Mix(match one { 1 => 1.5, other => 0.0 }, match two { 2 => 2, other => 0 }, match three { 3 => 0.5, other => 0.0 }) = 71.5);
+
+		# arithmetic around it
+		v := 2 * match Color->Blue { Color->Red => 1, Color->Green => 2, Color->Blue => 3 } + 1;
+		Check("arithmetic", v = 7);
+		both := match one { 1 => 10, other => 0 } + match two { 2 => 5, other => 0 };
+		Check("two in one expression", both = 15);
+
+		# floats, enums, objects, Nil, arrays
+		Check("float", FloatOf(Level->Mid) = 0.5 & FloatOf(Level->High) = 1.0 & FloatOf(Level->Low) = 0.25);
+		Check("enum value", Next(Color->Red) = Color->Green & Next(Color->Blue) = Color->Red);
+		Check("object", Boxed(1)->Get() = 10 & Boxed(2) = Nil & Boxed(9)->Get() = -1);
+		Check("nil first", NilFirst(0) = Nil & NilFirst(1)->Equals("one") & NilFirst(5)->Equals("x"));
+		Check("array", Sizes(1)->Size() = 1 & Sizes(2)->Size() = 2 & Sizes(7)->Size() = 3 & Sizes(7)[2] = 3);
+
+		# subjects: Char, String (a variable, a call chain), consts, a nested enum
+		Check("char", CharKind('e')->Equals("vowel") & CharKind(' ')->Equals("space") & CharKind('z')->Equals("other"));
+		Check("string", Word("zero") = 0 & Word("two") = 2 & Word("nope") = -1);
+		Check("string chain", Clean(" ALPHA ") = 1 & Clean("Beta") = 2 & Clean("x") = 0);
+		Check("consts", Bound(1)->Equals("low") & Bound(9)->Equals("high") & Bound(5)->Equals("mid"));
+		sh := Shape->New(2);
+		Check("nested enum", sh->ModeName()->Equals("auto"));
+		mode := match sh->GetMode() { Shape->Mode->On => 1, Shape->Mode->Off => 2, Shape->Mode->Auto => 3 };
+		Check("nested enum qualified", mode = 3);
+
+		# dense (a jump table), sparse (a tree) and one label
+		dense := true;
+		each(i : 16) {
+			if(Dense(i) <> 100 + i) {
+				dense := false;
+			};
+		};
+		Check("dense", dense & Dense(16) = -1 & Dense(-1) = -1);
+		Check("sparse", Sparse(1) = 1 & Sparse(100) = 2 & Sparse(10000) = 3 & Sparse(1000000) = 4 & Sparse(-5) = 5 & Sparse(7) = 0);
+		Check("one label", match five { 5 => true, other => false } & <>match six { 5 => true, other => false });
+
+		# the subject is evaluated once
+		s := Shape->New(2);
+		n := match s->Kind() { 0 => "a", 1 => "b", 2 => "c", other => "d" };
+		Check("subject once", n->Equals("c") & s->Calls() = 1);
+
+		# only the taken arm is evaluated
+		t := Shape->New(1);
+		u := Shape->New(1);
+		w := match one { 0 => t->Kind(), 1 => u->Kind(), other => t->Kind() };
+		Check("one arm", w = 1 & t->Calls() = 0 & u->Calls() = 1);
+
+		# evaluated only when it is reached: short circuit and '?'
+		p := Shape->New(0);
+		b := false & match p->Kind() { 0 => true, other => false };
+		Check("short circuit", <>b & p->Calls() = 0);
+		q := true ? 5 : match p->Kind() { 0 => 1, other => 2 };
+		Check("conditional not taken", q = 5 & p->Calls() = 0);
+		r := false ? 5 : match p->Kind() { 0 => 1, other => 2 };
+		Check("conditional taken", r = 1 & p->Calls() = 1);
+
+		# in a loop condition it is evaluated every time round
+		count := 0;
+		i := 0;
+		while(match i { 0 | 1 | 2 => true, other => false }) {
+			count += 1;
+			i += 1;
+		};
+		Check("while", count = 3 & i = 3);
+
+		# nested loops, with a new local each time round
+		total := 0;
+		each(a : 3) {
+			each(c : 3) {
+				z := match a { 0 => 10, 1 => 20, other => 30 };
+				y := z + 100;
+				total += y + match c { 0 => 1, other => 2 };
+			};
+		};
+		Check("nested loops", total = 3 * (110 + 120 + 130) + 3 * 5);
+
+		# nested: in the subject and in an arm
+		nested := match match two { 2 => Color->Blue, other => Color->Red } {
+			Color->Red => "r",
+			Color->Green => "g",
+			Color->Blue => match seven { 7 => "b7", other => "b" }
+		};
+		Check("nested", nested->Equals("b7"));
+
+		# a call on the value, and a cast of it
+		Check("call on value", match one { 1 => "abc", other => "" }->Size() = 3);
+		Check("call chain on value", match one { 1 => "abc", other => "" }->ToUpper()->Equals("ABC"));
+		f := match two { 2 => 7, other => 0 }->As(Float) / 2.0;
+		Check("cast", f = 3.5);
+		base : Base := match one { 1 => "text", other => "none" };
+		Check("class cast", base->As(String)->Equals("text"));
+		wide : Float := match two { 1 => 1, other => 2 };
+		Check("assigned to a Float", wide = 2.0);
+
+		# a field as the subject
+		Check("field", sh->Name()->Equals("triangle") & Shape->New(9)->Name()->Equals("polygon"));
+
+		# in a lambda, and with a captured variable in an arm
+		fn := \(Int) ~ Int : (c) => match c { 1 => 11, 2 => 22, other => 0 };
+		Check("lambda", fn(1) = 11 & fn(2) = 22 & fn(3) = 0);
+		bonus := 1000;
+		gn := \(Int) ~ Int : (c) => match c { 1 => bonus + 1, other => bonus };
+		Check("lambda capture", gn(1) = 1001 & gn(4) = 1000);
+
+		# as an element, an interpolated value and a statement of its own
+		names := Vector->New()<String>;
+		each(k : 4) {
+			names->AddBack(match k { 0 => "zero", 1 => "one", other => "many" });
+		};
+		Check("vector", names->Get(0)->Equals("zero") & names->Get(1)->Equals("one") & names->Get(3)->Equals("many"));
+		word := match two { 1 => "one", 2 => "two", other => "many" };
+		Check("interpolated", "n={$word}"->Equals("n=two"));
+		buffer := "";
+		match three { 3 => buffer, other => Nil }->Append("xyz");
+		Check("statement", buffer->Equals("xyz"));
+
+		# with a post-increment beside it in the same statement
+		k := 5;
+		sum := Add3(k++, match k { 5 => 1, 6 => 2, other => 9 }, k);
+		Check("post increment", sum = 515 & k = 6);
+
+		# 'match' is still an ordinary name
+		match := 3;
+		match += 1;
+		Check("name", match = 4);
+
+		if(@fails = 0) {
+			"PASS: match value"->PrintLine();
+		}
+		else {
+			"FAIL: match value"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

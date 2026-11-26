@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: (20,37): The arms of a 'match' used as a value agree in type: this one is Int, an earlier one is String
+# EXPECT_ERROR_COUNT: 1
+#~
+The arms of a 'match' used as a value agree in type, as the two branches of '?' do.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchArmTypes {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := match n { 1 => "a", other => 2 };
+		x->PrintLine();
+	}
+}

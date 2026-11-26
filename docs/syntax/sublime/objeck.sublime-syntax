@@ -35,6 +35,10 @@ contexts:
     - match: '\b(if|in|else|do|while|static|select|break|continue|other|for|each|reverse|label|return|critical)\b'
       scope: keyword.control.objeck-obs
 
+    # contextual: 'match subject { pattern => ... }'
+    - match: '\bmatch(?=\s+[A-Za-z_@])'
+      scope: keyword.control.objeck-obs
+
     - match: '\b(use|leaving|virtual|Parent|As|TypeOf|from|implements)\b'
       scope: keyword.other
 

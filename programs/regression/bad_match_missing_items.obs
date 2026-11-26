@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: (20,8): This 'match' does not cover every item of 'Color', missing: Green, Blue
+# EXPECT_ERROR_COUNT: 1
+#~
+A 'match' on an enum with no 'other' arm names every item; the error lists the ones it leaves out.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchMissingItems {
+	function : Main(args : String[]) ~ Nil {
+		c := Color->Red;
+		x := match c { Color->Red => 1 };
+		x->PrintLine();
+	}
+}

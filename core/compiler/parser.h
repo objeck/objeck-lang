@@ -340,6 +340,13 @@ class Parser {
   DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);
   Select* ParseSelect(int depth);
+  // 'match subject { pattern | pattern => ..., other => ... }' and 'select' as a value
+  bool IsMatchStart();
+  Select* ParseMatch(bool is_statement, std::wstring& value_ident, int depth);
+  Expression* ParseMatchExpression(int depth);
+  Expression* ParseSelectExpression(int depth);
+  StatementList* MakeValueArm(const std::wstring& value_ident, Expression* value, int line_num, int line_pos);
+  Expression* MakeValueSelect(Select* select, const std::wstring& value_ident, int line_num, int line_pos);
   Enum* ParseEnum(int depth);
   Alias* ParseLambdas(int depth);
   Enum* ParseConsts(int depth);

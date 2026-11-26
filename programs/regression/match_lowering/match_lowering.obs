@@ -1,0 +1,141 @@
+#~
+Fixture for check_match_lowering.py. Each function 'ValueN' returns a 'match' or
+'select' used as a value; 'HandN' is the same table written out by hand, as a
+'select' statement that assigns a local and then returns it. The check compiles
+this file with -asm and requires the two listings of every pair to be the same
+instruction for instruction: a value 'match' is that statement and nothing else.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+class MatchLowering {
+	# an enum, every item: a dense jump table
+	function : Value1(c : Color) ~ String {
+		return match c { Color->Red => "red", Color->Green => "green", Color->Blue => "blue" };
+	}
+
+	function : Hand1(c : Color) ~ String {
+		r : String;
+		select(c) {
+			label Color->Red: { r := "red"; }
+			label Color->Green: { r := "green"; }
+			label Color->Blue: { r := "blue"; }
+		};
+		return r;
+	}
+
+	# sparse Ints with 'other': a tree of compares
+	function : Value2(n : Int) ~ Int {
+		return match n { 1 => 10, 100 => 20, 10000 => 30, 1000000 => 40, -5 => 50, other => 0 };
+	}
+
+	function : Hand2(n : Int) ~ Int {
+		r : Int;
+		select(n) {
+			label 1: { r := 10; }
+			label 100: { r := 20; }
+			label 10000: { r := 30; }
+			label 1000000: { r := 40; }
+			label -5: { r := 50; }
+			other: { r := 0; }
+		};
+		return r;
+	}
+
+	# one label
+	function : Value3(n : Int) ~ Bool {
+		return match n { 7 => true, other => false };
+	}
+
+	function : Hand3(n : Int) ~ Bool {
+		r : Bool;
+		select(n) {
+			label 7: { r := true; }
+			other: { r := false; }
+		};
+		return r;
+	}
+
+	# a String subject and Float values
+	function : Value4(unit : String) ~ Float {
+		return match unit { "km" => 1000.0, "m" => 1.0, "cm" => 0.01, other => 0.0 };
+	}
+
+	function : Hand4(unit : String) ~ Float {
+		r : Float;
+		select(unit) {
+			label "km": { r := 1000.0; }
+			label "m": { r := 1.0; }
+			label "cm": { r := 0.01; }
+			other: { r := 0.0; }
+		};
+		return r;
+	}
+
+	# several patterns on an arm, and arms that compute
+	function : Value5(c : Char, n : Int) ~ Int {
+		return match c { '+' | '-' => n + 1, '*' | '/' => n * 2, other => n };
+	}
+
+	function : Hand5(c : Char, n : Int) ~ Int {
+		r : Int;
+		select(c) {
+			label '+', '-': { r := n + 1; }
+			label '*', '/': { r := n * 2; }
+			other: { r := n; }
+		};
+		return r;
+	}
+
+	# 'select' used as a value
+	function : Value6(n : Int) ~ String {
+		return select(n) {
+			label 0: "none"
+			label 1: "one"
+			label 2, 3: "few"
+			other: "many"
+		};
+	}
+
+	function : Hand6(n : Int) ~ String {
+		r : String;
+		select(n) {
+			label 0: { r := "none"; }
+			label 1: { r := "one"; }
+			label 2, 3: { r := "few"; }
+			other: { r := "many"; }
+		};
+		return r;
+	}
+
+	# objects and Nil
+	function : Value7(n : Int) ~ IntRef {
+		return match n { 1 => IntRef->New(10), 2 => Nil, other => IntRef->New(-1) };
+	}
+
+	function : Hand7(n : Int) ~ IntRef {
+		r : IntRef;
+		select(n) {
+			label 1: { r := IntRef->New(10); }
+			label 2: { r := Nil; }
+			other: { r := IntRef->New(-1); }
+		};
+		return r;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := Value1(Color->Blue)->Equals(Hand1(Color->Blue)) & Value2(10000) = Hand2(10000) & Value3(7) = Hand3(7) &
+			Value4("cm") = Hand4("cm") & Value5('*', 4) = Hand5('*', 4) & Value6(3)->Equals(Hand6(3)) &
+			Value7(1)->Get() = Hand7(1)->Get();
+		if(ok) {
+			"PASS: match lowering"->PrintLine();
+		}
+		else {
+			"FAIL: match lowering"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

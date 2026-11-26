@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (20,19): A 'match' needs at least one arm: 'pattern => ...'
+# EXPECT_ERROR_COUNT: 1
+#~
+A 'match' has at least one arm.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchNoArms {
+	function : Main(args : String[]) ~ Nil {
+		c := Color->Red;
+		x := match c { };
+	}
+}
