@@ -43,6 +43,7 @@ def lib_sources():
 CHECKS = [
     ("Library lists agree with lib_src", lambda: py("tools/cicd/check_doc_lists.py")),
     ("Doc comments end with their code fence", lambda: py("tools/cicd/check_doc_fences.py")),
+    ("Code doc guard flags every failure output", lambda: py("tools/cicd/check_code_doc_log.py", "--self-test")),
     ("Regression tests can report failure", lambda: py("tools/cicd/check_test_exit_codes.py")),
     ("JIT opt-outs are directives with a stated reason", lambda: py("tools/cicd/check_jit_optouts.py")),
     ("Every VM trap has a handler and every intrinsic is parsed", lambda: py("tools/cicd/check_trap_handlers.py")),
