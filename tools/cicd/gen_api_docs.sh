@@ -129,14 +129,10 @@ set -o pipefail
   "$SRC/lame.obs" \
   2>&1 | tee code_doc.log
 
-# A doc comment the parser rejects drops its member from the API reference with
-# only an ERROR line to show for it: two GLWindow members shipped undocumented
-# for weeks that way (issue #729). Refuse to package such a build.
-if grep -q '^ERROR:' code_doc.log; then
-  echo "code_doc rejected doc comment(s); their members would be missing from api.zip:"
-  grep '^ERROR:' code_doc.log | head -20
-  exit 1
-fi
+# A doc comment the parser rejects drops its member from the API reference, and
+# code_doc still exits 0 (issue #729). check_code_doc_log.py knows every failure
+# output ('ERROR:', '*** Unable to parse ...', '--- Unable ...'). Refuse to package.
+python3 "$(dirname "$0")/check_code_doc_log.py" code_doc.log
 
 # Move the generated tree to where the packaging step looks, and bring the
 # stylesheet and logos across as code_doc64.cmd does -- without style/ every
