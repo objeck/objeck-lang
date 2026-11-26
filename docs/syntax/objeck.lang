@@ -166,6 +166,7 @@
                     <keyword>label</keyword>
                     <keyword>return</keyword>
                     <keyword>critical</keyword>
+                    <keyword>spawn</keyword>
                     <keyword>leaving</keyword>
                     <keyword>use</keyword>
                     <keyword>New</keyword>

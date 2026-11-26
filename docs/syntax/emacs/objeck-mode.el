@@ -34,7 +34,7 @@
 (defvar objeck-font-lock-keywords
   (let* ((control-keywords '("if" "else" "do" "while" "for" "each" "reverse"
                              "select" "other" "break" "continue" "return"
-                             "label" "in" "critical"))
+                             "label" "in" "critical" "spawn"))
          (decl-keywords '("class" "interface" "enum" "consts" "bundle" "alias"
                           "method" "function" "native" "virtual" "static"
                           "public" "private"))

@@ -28,7 +28,7 @@ syn match objeckFloat '\<\.\d\+\([eE][+-]\?\d\+\)\?\>'
 
 " Control flow keywords
 syn keyword objeckControl if else do while for each reverse select other
-syn keyword objeckControl break continue return label in critical
+syn keyword objeckControl break continue return label in critical spawn
 
 " Declaration keywords
 syn keyword objeckDecl class interface enum consts bundle alias

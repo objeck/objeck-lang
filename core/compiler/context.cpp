@@ -13601,6 +13601,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   found_completion.push_back(std::pair<int, std::wstring>(14, L"label"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"return"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"critical"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"spawn"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"use"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"leaving"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"virtual"));
