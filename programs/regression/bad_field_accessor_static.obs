@@ -1,0 +1,9 @@
+# EXPECT_COMPILE_ERROR: apply to an instance field, not a static one
+#~
+Accessors are for instance fields (line 6).
+~#
+class BadFieldAccessorStatic {
+	@count : static : get : Int;
+	function : Main(args : String[]) ~ Nil {
+	}
+}

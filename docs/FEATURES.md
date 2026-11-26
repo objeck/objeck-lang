@@ -47,6 +47,32 @@ interface Color {
 }
 ```
 
+### Field Accessors
+
+`@x : get : T` writes the getter and `@x : get set : T` the getter and the setter;
+`get` and `set` are contextual words (a type named `get` is still a type), and a comma
+list shares the modifier. The getter is `Get` plus the field in PascalCase (the 2,000
+hand-written accessors in the libraries and examples follow this: `input_tokens` is
+`GetInputTokens`, `capacity` is `GetCapacity`); a `Bool` is `Is` plus the name, a
+leading `is_` or `has_` is the prefix itself (`is_error` is `IsError`, `has_uses` is
+`HasUses`); the setter is `Set` plus the name without `is_`/`has_`. A method of the
+same name written by hand wins. Instance fields of a class only.
+
+```ruby
+# before
+@input_tokens : Int;
+method : public : GetInputTokens() ~ Int { return @input_tokens; }
+@model : String;
+method : public : GetModel() ~ String { return @model; }
+method : public : SetModel(value : String) ~ Nil { @model := value; }
+# after
+@input_tokens : get : Int;
+@model : get set : String;
+```
+Test: `field_accessors`. The generated methods are made by the compiler, so the
+source-text doc tools (code_doc, `doc_coverage.py`) do not list them yet.
+
+
 ### Default and Named Arguments
 Trailing parameters can have default values. An argument can be passed by name,
 `name: value`, after any positional ones. Named arguments may come in any order,

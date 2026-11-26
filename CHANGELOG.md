@@ -2,6 +2,14 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+Post-v2026.11.4. Language sugar, each a separate draft and not part of any release yet.
+
+### Added
+
+- **Field accessor modifiers**: `@x : get : T` and `@x : get set : T` write the getter (and setter) the field would have by hand: `GetInputTokens` for `input_tokens` (the form 2,081 of the 2,125 hand-written `Get` accessors in the libraries and examples already take), `IsError` for a `Bool` `is_error`, `HasUses` for `has_uses`, `SetModel`. `get`/`set` are contextual words; a hand-written method of the same name wins; instance fields only. The source-text doc tools do not list the generated methods yet. Test: `field_accessors`, `bad_field_accessor_*`.
+
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance

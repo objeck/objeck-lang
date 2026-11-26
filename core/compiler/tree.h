@@ -2267,6 +2267,9 @@ namespace frontend {
     SymbolEntry* entry;
     Assignment* assignment;
     Declaration* child;
+    // field accessor modifiers: `@x : get : T` and `@x : get set : T`
+    bool accessor_get = false;
+    bool accessor_set = false;
 
     Declaration(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                 SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -2299,6 +2302,19 @@ namespace frontend {
 
     Declaration* GetChild() {
       return child;
+    }
+
+    void SetAccessors(bool g, bool s) {
+      accessor_get = g;
+      accessor_set = s;
+    }
+
+    bool HasGetter() {
+      return accessor_get;
+    }
+
+    bool HasSetter() {
+      return accessor_set;
     }
 
     Assignment* GetAssignment() {
