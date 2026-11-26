@@ -7752,10 +7752,15 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
   std::vector<Expression*> unboxed_expressions;
   std::vector<Expression*> expressions = indices->GetExpressions();
 
+  // AnalyzeExpressions above has analyzed every index. Each was analyzed a second time
+  // here, so an index that is itself a subscript was analyzed four times, the one inside
+  // it eight: 'a[a[a[...]]]' took twice as long for every level (20 levels 1.7 s, 30
+  // about half an hour), and anything analysis does once per visit was done twice.
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];    
-    AnalyzeExpression(expression, depth + 1);
-    Type* eval_type = expression->GetEvalType();
+    // what the index pushes: the end of a call chain, not its head. '"ab"->Size()' and
+    // '(s + t)->Size()' are Ints though they start with a String, and were refused.
+    Type* eval_type = expression->GetEvalType() ? EffectiveStackType(expression) : nullptr;
     if(eval_type) {
       switch(eval_type->GetType()) {
       case BYTE_TYPE:
