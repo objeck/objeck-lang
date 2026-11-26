@@ -280,6 +280,47 @@ namespace Runtime {
       state.message = text;
     }
 
+    // The index and size of the last array access a compiled guard stub
+    // rejected. Compiled code carries only a status (-2/-3) back to the
+    // interpreter, which used to give "Index out of bounds" with neither
+    // number, while the interpreter says "Index out of bounds: 5,2". The
+    // guard's cold out-of-line stub calls JitBoundsFault with both values
+    // before the method returns its status; whoever reports the status
+    // (RecordRecoveredStatus, or the uncaught-error printers) reads them back
+    // here. Per thread: the fault and its report are on the same thread, and
+    // only the cold path touches it.
+    struct BoundsFaultState {
+      bool valid = false;
+      int64_t index = 0;
+      int64_t size = 0;
+    };
+
+    static BoundsFaultState& BoundsFault() {
+      static thread_local BoundsFaultState state;
+      return state;
+    }
+
+    // Called from the JIT's guard stubs (index, size); returns the status the
+    // method hands back. Touches no managed memory and never reaches a
+    // safepoint, so it is safe to call from a frame that is being abandoned.
+    static int64_t JitBoundsFault(int64_t index, int64_t size) {
+      BoundsFaultState& state = BoundsFault();
+      state.valid = true;
+      state.index = index;
+      state.size = size;
+      return index < 0 ? -2 : -3;
+    }
+
+    // The interpreter's text for the fault a compiled guard recorded
+    static std::wstring TakeBoundsMessage() {
+      BoundsFaultState& state = BoundsFault();
+      if(!state.valid) {
+        return L"Index out of bounds";
+      }
+      state.valid = false;
+      return L"Index out of bounds: " + std::to_wstring(state.index) + L"," + std::to_wstring(state.size);
+    }
+
     // a JIT status (-1 to -5) as a recovered error
     static void RecordRecoveredStatus(long status) {
       switch(status) {
@@ -288,7 +329,7 @@ namespace Runtime {
         break;
       case -2:
       case -3:
-        RecordRecoveredError(RECOVERED_INDEX_OUT_OF_BOUNDS, L"Index out of bounds");
+        RecordRecoveredError(RECOVERED_INDEX_OUT_OF_BOUNDS, TakeBoundsMessage());
         break;
       case -4:
         RecordRecoveredError(RECOVERED_DIVIDE_BY_ZERO, OBJECK_DIVIDE_BY_ZERO_MESSAGE);
