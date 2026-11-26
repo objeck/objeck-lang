@@ -733,6 +733,9 @@ std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
   return detail;
 }
 
+// what a value in a JSON literal can be (see Parser::ParseJsonObject)
+static const wchar_t* const JSON_VALUE_KINDS = L"a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]";
+
 /****************************
  * Makes an error specific from what
  * the analyzer knows when it raises it
@@ -741,6 +744,21 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
 {
   if(msg.find(L"Did you mean") != std::wstring::npos) {
     return msg;
+  }
+
+  // A Char or Byte among the values of a JSON literal matches the JsonElement
+  // overload of the literal's Insert or Add and then fails that cast. The call
+  // is the compiler's: the message is about the value.
+  const std::wstring json_cast = L"Invalid cast with classes: Data.JSON.JsonElement and ";
+  if(StartsWith(msg, json_cast.c_str()) && diag_call && StartsWith(diag_call->GetVariableName(), L"#json_") && diag_call->GetCallingParameters()) {
+    const std::vector<Expression*> args = diag_call->GetCallingParameters()->GetExpressions();
+    for(size_t i = 0; i < args.size(); ++i) {
+      if(node == static_cast<ParseNode*>(args[i])) {
+        const std::wstring found = PlainTypeName(msg.substr(json_cast.size(), msg.find(L'\n') == std::wstring::npos ? std::wstring::npos : msg.find(L'\n') - json_cast.size()));
+        return std::wstring(diag_call->GetMethodName() == L"Add" ? L"An element of a JSON array is " : L"The value of a JSON member is ") +
+          JSON_VALUE_KINDS + L"; this one is " + found;
+      }
+    }
   }
 
   // Only the first few errors are ever shown, and a suggestion searches every name in scope:
@@ -865,6 +883,48 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
     }
     alt_error_method_names.clear();
   }
+}
+
+/****************************
+ * A member or an element of a JSON literal that no 'Insert' or 'Add' of
+ * JsonElement takes. The call on the literal's hidden local is the compiler's;
+ * the error is about the name or value the programmer wrote, and is reported
+ * there. False when the call is not a JSON literal's.
+ ****************************/
+bool ContextAnalyzer::ReportJsonLiteralValue(MethodCall* method_call)
+{
+  if(!StartsWith(method_call->GetVariableName(), L"#json_") || !method_call->GetCallingParameters()) {
+    return false;
+  }
+
+  // the type at the end of a call chain is the value's
+  auto value_type = [](Expression* expression) {
+    while(expression->GetMethodCall()) {
+      expression = expression->GetMethodCall();
+    }
+    return expression->GetCastType() ? expression->GetCastType() : expression->GetEvalType();
+  };
+
+  alt_error_method_names.clear();
+  const std::wstring kinds = JSON_VALUE_KINDS;
+  const std::vector<Expression*> args = method_call->GetCallingParameters()->GetExpressions();
+  if(method_call->GetMethodName() == L"Insert" && args.size() == 2) {
+    Type* name_type = value_type(args[0]);
+    if(!name_type || name_type->GetType() != CLASS_TYPE || name_type->GetDimension() > 0 || name_type->GetName() != L"System.String") {
+      ProcessError(args[0], L"The name of a JSON member is a String; this one is " + DescribeType(name_type));
+    }
+    else {
+      ProcessError(args[1], L"The value of a JSON member is " + kinds + L"; this one is " + DescribeType(value_type(args[1])));
+    }
+    return true;
+  }
+
+  if(method_call->GetMethodName() == L"Add" && args.size() == 1) {
+    ProcessError(args[0], L"An element of a JSON array is " + kinds + L"; this one is " + DescribeType(value_type(args[0])));
+    return true;
+  }
+
+  return false;
 }
 
 /****************************
@@ -6602,7 +6662,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
-    if(mthd_name.size() > 0) {
+    if(ReportJsonLiteralValue(method_call)) {
+      // said in terms of the literal
+    }
+    else if(mthd_name.size() > 0) {
       std::wstring message = L"Undefined function/method call: '" +
         mthd_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
@@ -7565,7 +7628,10 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
-    if(mthd_name.size() > 0) {
+    if(ReportJsonLiteralValue(method_call)) {
+      // said in terms of the literal
+    }
+    else if(mthd_name.size() > 0) {
       std::wstring message = L"Undefined function/method call: '" + mthd_name +
         L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);

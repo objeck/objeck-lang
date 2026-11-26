@@ -39,6 +39,8 @@ syn keyword objeckDeclaration class method function interface enum alias consts 
 syn keyword objeckKeyword use leaving if else do while select break continue
 syn keyword objeckKeyword in other for each reverse label return critical
 syn keyword objeckKeyword from implements virtual
+" contextual: 'json{ ... }', a JSON literal
+syn match objeckKeyword "\<json\>\ze\s*{"
 
 " Builtins
 syn keyword objeckBuiltin New Parent Try Otherwise

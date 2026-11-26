@@ -2257,6 +2257,10 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
     statement = ParseTry(depth + 1);
   }
+  // 'json{...}->ToString()->PrintLine();': a JSON literal with a call on it
+  else if(IsJsonLiteralStart()) {
+    statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ParseSimpleExpression(depth + 1));
+  }
   // identifier
   else if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
@@ -4878,6 +4882,192 @@ Statement* Parser::ParseControlFlowStatement(int line_num, int line_pos, const s
 }
 
 /****************************
+ * Whether a JSON literal starts here: 'json' and then '{'. A name followed by
+ * '{' starts nothing else in an expression, so 'json' is a keyword only in
+ * this position and stays an ordinary name everywhere else.
+ ****************************/
+bool Parser::IsJsonLiteralStart()
+{
+  return Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"json";
+}
+
+/****************************
+ * 'Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType-><type>)': an
+ * empty object or array, or null
+ ****************************/
+Expression* Parser::MakeJsonElement(const std::wstring& json_type, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+  args->AddExpression(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                                                              L"Data.JSON.JsonElement#JsonType", json_type));
+  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, NEW_INST_CALL,
+                                                 L"Data.JSON.JsonElement", args);
+}
+
+/****************************
+ * The start of a JSON object or array: a hidden local holding a new element,
+ * declared where the literal is evaluated. The members follow as calls on it.
+ ****************************/
+SequenceExpression* Parser::MakeJsonContainer(const std::wstring& json_type, std::wstring& ident, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  SymbolEntry* entry = AddHiddenLocal(L"json", ident, line_num, line_pos);
+  SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
+                                                                              TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+  if(entry) {
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
+    Assignment* assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, target,
+                                                                 MakeJsonElement(json_type, line_num, line_pos));
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, assign));
+  }
+
+  return sequence;
+}
+
+/****************************
+ * Parses a JSON object, from '{': '{ key: value, ... }'. It is a JsonElement
+ * of type OBJECT and an 'Insert(key, value)' on it for each member, in the
+ * order written. A key is any String expression; a value is a nested object
+ * or array, or any expression JsonElement has an Insert for (a String, Int,
+ * Float, Bool or JsonElement), and Nil is JSON's null.
+ ****************************/
+Expression* Parser::ParseJsonObject(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"JSON object", depth);
+#endif
+
+  std::wstring ident;
+  SequenceExpression* sequence = MakeJsonContainer(L"OBJECT", ident, line_num, line_pos);
+  NextToken();
+
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int member_line_num = GetLineNumber();
+    const int member_line_pos = GetLinePosition();
+
+    Expression* key = ParseExpression(depth + 1);
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ':' after the name of a JSON member: '\"name\": value'");
+    }
+    else {
+      NextToken();
+    }
+
+    Expression* value = ParseJsonValue(depth + 1);
+    if(key && value) {
+      ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+      args->AddExpression(key);
+      args->AddExpression(value);
+      sequence->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, member_line_num, member_line_pos, member_line_num, member_line_pos,
+                                                                     GetLineNumber(), GetLinePosition(), ident, L"Insert", args));
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or '}' after a JSON member");
+    }
+
+    // a member that read nothing would be read again from the same token
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return sequence;
+}
+
+/****************************
+ * Parses a JSON array, from '[': '[ value, ... ]'. It is a JsonElement of type
+ * ARRAY and an 'Add(value)' on it for each element, in the order written.
+ ****************************/
+Expression* Parser::ParseJsonArray(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"JSON array", depth);
+#endif
+
+  std::wstring ident;
+  SequenceExpression* sequence = MakeJsonContainer(L"ARRAY", ident, line_num, line_pos);
+  NextToken();
+
+  while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int element_line_num = GetLineNumber();
+    const int element_line_pos = GetLinePosition();
+
+    Expression* value = ParseJsonValue(depth + 1);
+    if(value) {
+      ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+      args->AddExpression(value);
+      sequence->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, element_line_num, element_line_pos, element_line_num, element_line_pos,
+                                                                     GetLineNumber(), GetLinePosition(), ident, L"Add", args));
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(!Match(TOKEN_CLOSED_BRACKET)) {
+      ProcessError(L"Expected ',' or ']' after a JSON array element");
+    }
+
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACKET)) {
+    ProcessError(L"Expected ']'", TOKEN_CLOSED_BRACKET);
+  }
+  NextToken();
+
+  return sequence;
+}
+
+/****************************
+ * Parses a value in a JSON literal: a nested object or array, Nil (null), or
+ * an expression whose value is inserted as it is
+ ****************************/
+Expression* Parser::ParseJsonValue(int depth)
+{
+  CheckDepth(depth);
+  if(Match(TOKEN_OPEN_BRACE)) {
+    return ParseJsonObject(depth + 1);
+  }
+
+  if(Match(TOKEN_OPEN_BRACKET)) {
+    return ParseJsonArray(depth + 1);
+  }
+
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  Expression* value = ParseExpression(depth + 1);
+  if(value && value->GetExpressionType() == NIL_LIT_EXPR && !value->GetCastType() && !value->GetMethodCall()) {
+    return MakeJsonElement(L"NULL", line_num, line_pos);
+  }
+
+  return value;
+}
+
+/****************************
  * Parses a static array
  ****************************/
 StaticArray* Parser::ParseStaticArray(int depth) {
@@ -6088,7 +6278,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
   Expression* expression = nullptr;
 
-  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
+  // 'json{ ... }'
+  if(IsJsonLiteralStart()) {
+    NextToken();
+    expression = ParseJsonObject(depth + 1);
+  }
+  else if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;

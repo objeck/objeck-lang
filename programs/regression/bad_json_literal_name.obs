@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: (12,19): The name of a JSON member is a String; this one is Int
+# EXPECT_ERROR_COUNT: 1
+#~
+The name of a member is a String.
+~#
+use Collection;
+use Data.JSON;
+
+class BadJsonLiteralName {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		request := json{n: "three"};
+		request->ToString()->PrintLine();
+	}
+}

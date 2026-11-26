@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: (11,32): Expected ',' or ']' after a JSON array element
+# EXPECT_ERROR_COUNT: 1
+#~
+An array in a JSON literal closes with ']'.
+~#
+use Collection;
+use Data.JSON;
+
+class BadJsonLiteralArrayClose {
+	function : Main(args : String[]) ~ Nil {
+		request := json{"tags": [1, 2};
+		request->ToString()->PrintLine();
+	}
+}

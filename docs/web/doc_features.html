@@ -115,6 +115,31 @@ triangle <span class="t-op">:=</span> [[<span class="t-num">1</span>], [<span cl
 <span class="t-kw">function</span> : <span class="t-fn">Sum</span>(rows : <span class="t-type">Int</span>[][]) <span class="t-op">~</span> <span class="t-type">Int</span> { ... }
 </code></pre>
     <p>See <a href="doc_jagged_arrays.html">JAGGED_ARRAYS_DESIGN.md</a>.</p>
+    <h3 id="json-literals">JSON literals</h3>
+    <p><code>json{ ... }</code> builds a <code>Data.JSON.JsonElement</code> where it is written (link the <code>json</code> library):</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+request <span class="t-op">:=</span> <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>OBJECT);
+request<span class="t-op">-&gt;</span>Insert(<span class="t-str">"model"</span>, model);
+request<span class="t-op">-&gt;</span>Insert(<span class="t-str">"max_tokens"</span>, max_tokens);
+messages <span class="t-op">:=</span> <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>ARRAY);
+user <span class="t-op">:=</span> <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>OBJECT);
+user<span class="t-op">-&gt;</span>Insert(<span class="t-str">"role"</span>, <span class="t-str">"user"</span>);
+user<span class="t-op">-&gt;</span>Insert(<span class="t-str">"content"</span>, prompt);
+messages<span class="t-op">-&gt;</span>Add(user);
+request<span class="t-op">-&gt;</span>Insert(<span class="t-str">"messages"</span>, messages);
+request<span class="t-op">-&gt;</span>Insert(<span class="t-str">"stop"</span>, <span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">JsonElement</span><span class="t-op">-&gt;</span><span class="t-cls">JsonType</span><span class="t-op">-&gt;</span>NULL));
+
+<span class="t-com"># after</span>
+request <span class="t-op">:=</span> <span class="t-kw">json</span>{
+  <span class="t-str">"model"</span>: model,
+  <span class="t-str">"max_tokens"</span>: max_tokens,
+  <span class="t-str">"messages"</span>: [{<span class="t-str">"role"</span>: <span class="t-str">"user"</span>, <span class="t-str">"content"</span>: prompt}],
+  <span class="t-str">"stop"</span>: <span class="t-const">Nil</span>
+};
+request<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
+<span class="t-com"># {"max_tokens":256,"messages":[{"content":"Hi","role":"user"}],"model":"m-1","stop":null}</span>
+</code></pre>
+    <p>A member's name is any String expression. A value is any expression <code>JsonElement</code> has an <code>Insert</code> for (a String, Int, Float, Bool or JsonElement), a nested <code>{ }</code> or <code>[ ]</code>, or <code>Nil</code> for null; names and values are evaluated once, in the order written. Anything else is a compile error at the value: <code>The value of a JSON member is a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]; this one is IntRef</code>. The literal is an object at the top; an array is written inside one or built with <code>JsonElement-&gt;New</code>. It compiles to the <code>New</code>, <code>Insert</code> and <code>Add</code> calls shown above. <code>json</code> is a keyword only before <code>{</code>. Tests: <code>json_literal</code>, <code>bad_json_literal_*</code>.</p>
     <h3 id="type-inference">Type Inference</h3>
 <pre class="line-numbers"><code class="language-objeck">value <span class="t-op">:=</span> <span class="t-str">"Hello World!"</span>;
 value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
@@ -389,7 +414,7 @@ true       use        virtual    while      xor</pre>
       <tr><td data-label="word"><code>reverse</code></td><td data-label="reserved for"><code>each(... reverse ...)</code></td><td data-label="commonly wanted as">a sort direction</td></tr>
      </tbody>
     </table>
-    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code> and <code>out</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
+    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>json</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
     <hr class="section-end">
     <div class="raw"><a name="integers"></a>
     ## Integer Arithmetic</div>

@@ -998,6 +998,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_select_label_order.py "$BIN"
 
+    # A JSON literal, `json{"name": value, "list": [a, b]}`, is the JsonElement calls it stands
+    # for: New(OBJECT) and an Insert per member, New(ARRAY) and an Add per element. The fixture
+    # pairs literals with the same element built by hand: a flat one must have the same listing,
+    # a nested one the same instructions in the literal's own order, at -opt s0 and s3.
+    - name: a JSON literal compiles to the JsonElement calls it stands for (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_json_literal_lowering.py "$BIN"
+
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
     - name: obc and obr find their libraries from another working directory (POSIX)

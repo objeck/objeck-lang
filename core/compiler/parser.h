@@ -336,6 +336,13 @@ class Parser {
   Statement* ParseControlFlowStatement(int line_num, int line_pos, const std::wstring& file_name, int depth);
   Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
+  // 'json{"name": value, "list": [a, b], "inner": {...}}': a Data.JSON.JsonElement built in place
+  bool IsJsonLiteralStart();
+  Expression* ParseJsonObject(int depth);
+  Expression* ParseJsonArray(int depth);
+  Expression* ParseJsonValue(int depth);
+  Expression* MakeJsonElement(const std::wstring& json_type, int line_num, int line_pos);
+  SequenceExpression* MakeJsonContainer(const std::wstring& json_type, std::wstring& ident, int line_num, int line_pos);
   If* ParseIf(int depth);
   DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);

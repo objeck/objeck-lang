@@ -29,6 +29,8 @@ syn match objeckFloat '\<\.\d\+\([eE][+-]\?\d\+\)\?\>'
 " Control flow keywords
 syn keyword objeckControl if else do while for each reverse select other
 syn keyword objeckControl break continue return label in critical
+" contextual: 'json{ ... }', a JSON literal
+syn match objeckControl "\<json\>\ze\s*{"
 
 " Declaration keywords
 syn keyword objeckDecl class interface enum consts bundle alias

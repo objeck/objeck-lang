@@ -111,6 +111,42 @@ function : Sum(rows : Int[][]) ~ Int { ... }
 ```
 See [JAGGED_ARRAYS_DESIGN.md](JAGGED_ARRAYS_DESIGN.md).
 
+### JSON literals
+
+`json{ ... }` builds a `Data.JSON.JsonElement` where it is written (link the `json`
+library):
+```ruby
+# before
+request := JsonElement->New(JsonElement->JsonType->OBJECT);
+request->Insert("model", model);
+request->Insert("max_tokens", max_tokens);
+messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+user := JsonElement->New(JsonElement->JsonType->OBJECT);
+user->Insert("role", "user");
+user->Insert("content", prompt);
+messages->Add(user);
+request->Insert("messages", messages);
+request->Insert("stop", JsonElement->New(JsonElement->JsonType->NULL));
+
+# after
+request := json{
+  "model": model,
+  "max_tokens": max_tokens,
+  "messages": [{"role": "user", "content": prompt}],
+  "stop": Nil
+};
+request->ToString()->PrintLine();
+# {"max_tokens":256,"messages":[{"content":"Hi","role":"user"}],"model":"m-1","stop":null}
+```
+A member's name is any String expression. A value is any expression `JsonElement` has an
+`Insert` for (a String, Int, Float, Bool or JsonElement), a nested `{ }` or `[ ]`, or
+`Nil` for null; names and values are evaluated once, in the order written. Anything else
+is a compile error at the value: `The value of a JSON member is a String, Int, Float,
+Bool, Nil, JsonElement, or a nested { } or [ ]; this one is IntRef`. The literal is an
+object at the top; an array is written inside one or built with `JsonElement->New`. It
+compiles to the `New`, `Insert` and `Add` calls shown above. `json` is a keyword only
+before `{`. Tests: `json_literal`, `bad_json_literal_*`.
+
 ### Type Inference
 ```ruby
 value := "Hello World!";
@@ -557,7 +593,7 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 `self`, `parent` and `value` are **not** reserved as identifiers. The capitalized
 `Byte`, `Int`, `Float`, `Char`, `Bool`, `Nil`, `New`, `Parent`, `As` and `TypeOf` are
 keywords of the scanner too (`ident_map` in `scanner.cpp`), so they cannot name a
-variable either. `ref`, `try`, `on`, `finally` and `out` are **contextual**: a keyword
+variable either. `ref`, `try`, `on`, `finally`, `out` and `json` are **contextual**: a keyword
 only where the grammar expects it, so they remain usable as names.
 
 ---

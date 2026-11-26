@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: (11,28): Expected expression
+# EXPECT_ERROR_COUNT: 1
+#~
+A member needs a value.
+~#
+use Collection;
+use Data.JSON;
+
+class BadJsonLiteralNoValue {
+	function : Main(args : String[]) ~ Nil {
+		request := json{"model": };
+		request->ToString()->PrintLine();
+	}
+}

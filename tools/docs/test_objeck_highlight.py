@@ -40,6 +40,11 @@ class Highlight(unittest.TestCase):
         self.assertIn('<span class="t-num">1</span>', out)
         self.assertIn('<span class="t-const">null</span>', out)
 
+    def test_contextual_keyword_json(self):
+        # 'json' is a keyword before '{' and a name everywhere else
+        got = classes('request := json{"n": 1};\njson := 3;\njson += 1;\n')
+        self.assertEqual(got.count(("kw", "json")), 1)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)
