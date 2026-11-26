@@ -639,6 +639,7 @@ void Parser::ParseFile(const std::wstring &file_name)
 {
   ResetErrorState();
   const size_t errors_before = diagnostics.ErrorCount();
+  diagnostics.NoteFile(file_name);
   scanner = new Scanner(file_name, alt_syntax);
   NextToken();
   char stack_mark = 0;
@@ -665,6 +666,7 @@ void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
 {
   ResetErrorState();
   const size_t errors_before = diagnostics.ErrorCount();
+  diagnostics.NoteFile(progam.first);
   scanner = new Scanner(progam.first, alt_syntax, progam.second);
   NextToken();
   char stack_mark = 0;

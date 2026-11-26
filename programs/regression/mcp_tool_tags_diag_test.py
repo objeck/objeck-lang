@@ -228,6 +228,10 @@ def main():
             code, out, obe = compile_files("two_" + label, files)
             check("a syntax error in a file %s it does not hide a bad tag" % label,
                   code != 0 and not os.path.exists(obe) and "Expected expression" in out and "'@param nope'" in out and "has no such parameter" in out, out)
+            # the files print in the order they were given, though the tag is checked after the last file is read
+            syntax_at, tag_at = out.find("Expected expression"), out.find("'@param nope'")
+            check("  and the two files' errors print in the order the files were given",
+                  syntax_at >= 0 and tag_at >= 0 and (syntax_at < tag_at) == (label == "before"), out)
 
         broken_record_src = "record Point {\n\t@x : Int;\n\t@y : Int\n}\n"
         for label, files in (("before", [broken_record_src, sum_src]), ("after", [sum_src, broken_record_src])):
