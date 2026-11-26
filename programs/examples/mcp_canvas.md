@@ -34,10 +34,21 @@ A painter without a key falls back to the scripted painter. A live run costs a f
 Headless (no window, software renderer), for screenshots and smoke tests:
 
     obr mcp_canvas.obe --demo --shot out.png      # writes out_mid.png and out.png
-    obr mcp_canvas.obe --selftest                 # 18 checks of the tools, no SDL, no network
+    obr mcp_canvas.obe --selftest                 # 23 checks of the tools, no SDL, no network
+    obr mcp_canvas.obe --stub                     # print the generated typed client
 
 Other options: `--prompt-a TEXT`, `--prompt-b TEXT`, `--shot-after N`, `--seconds N`, `--verbose`
 (print every call). ESC or closing the window quits.
+
+## How the tools are made
+
+The tools are declared, not described. Each one is an `McpToolSpec` (name, one-line
+description, parameters with their Objeck types) and the input schema is derived from the
+types; this file used to build the JSON with a small text language. The scripted painters
+call the server through `CanvasClient`, a typed client at the end of the file that
+`mcp_stubs` (`API.MCP`'s `McpStubGenerator`) wrote from the server's tool list, so
+`canvas->FillRect(0, 12, 40, 12)` is checked by the compiler. The two LLM painters get the
+same tools as JSON through `McpToolBridge`. See `docs/MCP_WALKTHROUGH.md`.
 
 ## Notes
 

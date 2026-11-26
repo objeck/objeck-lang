@@ -1,0 +1,137 @@
+#~
+# compile: obc -src mcp_declare_40.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+# run:     obr mcp_declare_40.obe
+#          obr mcp_declare_40.obe --stdio      (serve the same tools to Claude Code or Claude Desktop)
+#
+# A function is a tool. MCP (the Model Context Protocol) is how an AI model finds
+# and calls a program's functions, and each tool needs a name, a description and a
+# JSON Schema that tells the model what arguments it takes. Here you write none of
+# that: put a line that says @tool in the function's doc comment and the compiler
+# writes the rest from what is already there. The description is the comment's
+# text, the schema comes from the parameter types (a default makes a parameter
+# optional, an enum becomes a list of allowed values), @param lines describe the
+# parameters, and @readonly or @destructive tell an agent which calls are safe to
+# run without asking. The compiler also writes Tools->McpTools(server), which
+# registers every tool of the class, and the code that reads the arguments.
+#
+# The server and the client here run in the same program, which is how the
+# regression tests exercise MCP. With --stdio the same server speaks the protocol
+# on standard input and output, so a real MCP client can use it.
+#
+# output:
+#   The server lists 3 tools:
+#     add (read-only): Add two integers.
+#       schema: {"properties":{"a":{"description":"the first number","type":"integer"},"b":{"description":"the second number","type":"integer"}},"required":["a","b"],"type":"object"}
+#     greet (read-only): Greet a person.
+#       schema: {"properties":{"name":{"description":"who to greet","type":"string"},"style":{"description":"how to greet","enum":["FORMAL","CASUAL"],"type":"string"}},"required":["name","style"],"type":"object"}
+#     remove_file (destructive): Delete a file.
+#       schema: {"properties":{"path":{"description":"the file to delete","type":"string"}},"required":["path"],"type":"object"}
+#   add(17, 25)                  -> 42
+#   greet("Ada", FORMAL)         -> Good day, Ada
+#   greet("Ada", CASUAL)         -> hi Ada
+#   add(1, "two")                -> refused: Invalid arguments for add: argument 'b' must be of type integer
+#   greet("Ada", "RUDE")         -> refused: Invalid arguments for greet: argument 'style' must be one of: FORMAL, CASUAL
+#   add(1) with no b             -> refused: Invalid arguments for add: missing required argument 'b'
+~#
+use API.MCP, Data.JSON, Collection;
+
+enum Style {
+	FORMAL,
+	CASUAL
+}
+
+class Tools {
+	#~
+	Add two integers.
+	@tool
+	@readonly
+	@param a the first number
+	@param b the second number
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	#~
+	Greet a person.
+	@tool
+	@readonly
+	@param name who to greet
+	@param style how to greet
+	~#
+	function : Greet(name : String, style : Style) ~ String {
+		if(style = Style->CASUAL) {
+			return "hi {$name}";
+		};
+		return "Good day, {$name}";
+	}
+
+	#~
+	Delete a file.
+	@tool remove_file
+	@destructive
+	@param path the file to delete
+	~#
+	function : DeleteFile(path : String) ~ String {
+		return "pretending to delete {$path}";
+	}
+
+	function : Show(client : McpClient, what : String, name : String, arguments : String) ~ Nil {
+		while(what->Size() < 28) {
+			what += " ";
+		};
+
+		result := client->CallTool(name, arguments);
+		if(result = Nil) {
+			reason := client->GetError();
+			"{$what} -> no answer: {$reason}"->PrintLine();
+		}
+		else if(result->IsError()) {
+			text := result->GetText();
+			"{$what} -> refused: {$text}"->PrintLine();
+		}
+		else {
+			text := result->GetText();
+			"{$what} -> {$text}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		server := McpService->New("declare-example", "1.0.0");
+		Tools->McpTools(server);
+
+		if(args->Size() > 0 & args[0]->Equals("--stdio")) {
+			server->ServeStdio();
+			return;
+		};
+
+		client := McpClient->InProcess(server);
+		client->Initialize("declare-example-client", "1.0");
+
+		tools := client->ListTools();
+		count := tools->Size();
+		"The server lists {$count} tools:"->PrintLine();
+		each(tool in tools) {
+			name := tool->GetName();
+			description := tool->GetDescription();
+			effect := "no hint";
+			if(tool->GetReadOnlyHint()) {
+				effect := "read-only";
+			}
+			else if(tool->GetDestructiveHint()) {
+				effect := "destructive";
+			};
+			schema := tool->GetInputSchema()->ToString();
+			"  {$name} ({$effect}): {$description}"->PrintLine();
+			"    schema: {$schema}"->PrintLine();
+		};
+
+		Show(client, "add(17, 25)", "add", "{\"a\":17,\"b\":25}");
+		Show(client, "greet(\"Ada\", FORMAL)", "greet", "{\"name\":\"Ada\",\"style\":\"FORMAL\"}");
+		Show(client, "greet(\"Ada\", CASUAL)", "greet", "{\"name\":\"Ada\",\"style\":\"CASUAL\"}");
+		Show(client, "add(1, \"two\")", "add", "{\"a\":1,\"b\":\"two\"}");
+		Show(client, "greet(\"Ada\", \"RUDE\")", "greet", "{\"name\":\"Ada\",\"style\":\"RUDE\"}");
+		Show(client, "add(1) with no b", "add", "{\"a\":1}");
+		client->Close();
+	}
+}

@@ -916,6 +916,30 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python mcp_stdio_test.py "%BIN%"
 
+    - name: the MCP stub generator writes a client that compiles and works (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_stubs_test.py "%BIN%"
+
+    - name: the MCP tool tag diagnostics hold (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_tool_tags_diag_test.py "%BIN%"
+
+    - name: obr --mcp serves a program's tools (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python mcp_launch_test.py "%BIN%"
+
     - name: obc reports a multi-file build's errors file by file (Windows)
       working-directory: ./programs/regression
       shell: cmd
