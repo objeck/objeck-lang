@@ -2361,6 +2361,7 @@ namespace frontend {
     Leaving* leaving;
     MethodType method_type;
     bool is_lambda;
+    bool is_spawn_body;
     bool is_static;
     bool is_native;
     bool has_and_or;
@@ -2398,6 +2399,7 @@ namespace frontend {
       is_static = s;
       is_native = c;
       is_lambda = false;
+      is_spawn_body = false;
       statements = nullptr;
       return_type = nullptr;
       leaving = nullptr;
@@ -2417,6 +2419,7 @@ namespace frontend {
       is_static = true;
       is_native = false;
       is_lambda = true;
+      is_spawn_body = false;
       statements = nullptr;
       return_type = nullptr;
       leaving = nullptr;
@@ -2472,6 +2475,15 @@ namespace frontend {
 
     bool IsLambda() {
       return is_lambda;
+    }
+
+    // the block of a 'spawn': a lambda that runs as a thread and returns nothing
+    bool IsSpawnBody() {
+      return is_spawn_body;
+    }
+
+    void SetSpawnBody(bool s) {
+      is_spawn_body = s;
     }
 
     void SetReturn(Type* r) {

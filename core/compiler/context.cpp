@@ -8385,6 +8385,13 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 
   Type* mthd_type = current_method->GetReturn();
   Expression* expression = rtrn->GetExpression();
+  // the block of a 'spawn' is a thread's body: there is nobody to return a value to
+  if(expression && current_method->IsSpawnBody()) {
+    AnalyzeExpression(expression, depth + 1);
+    ProcessError(rtrn, L"A 'spawn' block does not return a value\n\tUse 'return;' to end the thread, and hand a result back through an object the block shares");
+    in_return = false;
+    return;
+  }
   if(expression) {
     // auto-wrap a bare lambda when the return type is FuncRef<R>
     Expression* wrapped = WrapBareLambdaInFuncRef(expression, mthd_type, depth);

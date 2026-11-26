@@ -1833,6 +1833,7 @@ Lambda* Parser::ParseLambda(int depth, Type* block_type) {
   // a block that is given its type (a 'spawn' body): no signature, no
   // parameters and no '=>', only the '{ ... }' that follows
   if(block_type) {
+    method->SetSpawnBody(true);
     if(!Match(TOKEN_OPEN_BRACE)) {
       ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
     }
@@ -6987,9 +6988,6 @@ MethodCall* Parser::ParseSpawn(int depth)
   Debug(L"Spawn", depth);
 #endif
 
-  // 'spawn'
-  NextToken();
-
   if(!current_class || !current_method) {
     ProcessError(L"'spawn' must be used in a method or function", TOKEN_SEMI_COLON);
     return nullptr;
@@ -7000,6 +6998,9 @@ MethodCall* Parser::ParseSpawn(int depth)
     ProcessError(L"'spawn' cannot be used in a method of an anonymous class", TOKEN_SEMI_COLON);
     return nullptr;
   }
+
+  // 'spawn'
+  NextToken();
 
   // the block
   std::vector<Type*> no_params;
