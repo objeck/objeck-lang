@@ -23,10 +23,9 @@ if [%2] NEQ [deploy] goto end
 type ..\code_doc.log
 REM A doc comment the parser rejects drops its member from the API reference with
 REM only an ERROR line to show for it (issue #729). Refuse to package such a build.
-findstr /B /C:"ERROR:" ..\code_doc.log >nul
-if not errorlevel 1 (
-	echo ERROR: code_doc rejected doc comment^(s^) -- members would be missing from api.zip:
-	findstr /B /C:"ERROR:" ..\code_doc.log
+python ..\..\..\..\tools\cicd\check_code_doc_log.py ..\code_doc.log
+if errorlevel 1 (
+	echo ERROR: code_doc rejected doc comment^(s^) -- members would be missing from api.zip
 	exit /b 1
 )
 REM An api.zip with no pages shipped once (2026-09-08, locally) because nothing

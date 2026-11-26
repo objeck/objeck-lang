@@ -43,6 +43,7 @@ def lib_sources():
 CHECKS = [
     ("Library lists agree with lib_src", lambda: py("tools/cicd/check_doc_lists.py")),
     ("Doc comments end with their code fence", lambda: py("tools/cicd/check_doc_fences.py")),
+    ("Code doc guard flags every failure output", lambda: py("tools/cicd/check_code_doc_log.py", "--self-test")),
     ("Regression tests can report failure", lambda: py("tools/cicd/check_test_exit_codes.py")),
     ("JIT opt-outs are directives with a stated reason", lambda: py("tools/cicd/check_jit_optouts.py")),
     ("Every VM trap has a handler and every intrinsic is parsed", lambda: py("tools/cicd/check_trap_handlers.py")),
@@ -59,6 +60,11 @@ CHECKS = [
     ("Differential and verifier markers have a stated reason", lambda: py("tools/cicd/check_diff_markers.py")),
     ("Differential runner catches divergence", lambda: py("programs/regression/test_run_differential.py")),
     ("Shipped examples are all indexed", lambda: py("tools/cicd/check_examples_index.py")),
+    ("Site code samples are consistent", lambda: py("tools/cicd/check_site_examples.py")),
+    ("Site highlighter produces the expected token classes", lambda: py("tools/docs/test_objeck_highlight.py")),
+    ("Guides HTML is current", lambda: py("tools/docs/guides_to_html.py", "--check")),
+    ("Release snapshot traffic helper", lambda: py("tools/release-stats/test_snapshot_traffic.py")),
+    ("Mock inference server validates itself", lambda: py("tools/cicd/mock_inference_server.py", "--selftest")),
     ("Checkers regression test matches the example sources",
      lambda: py("programs/examples/checkers/make_regression_test.py", "--check")),
     ("Generated files match their .in templates", lambda: py("tools/cicd/check_version_templates.py")),
@@ -100,7 +106,7 @@ def self_test():
     needs_build = {"check_api_index.py", "check_openai_image_dispatch.py", "mock_inference_server.py",
                    "test_inference_round_trip.py", "run_lsp_tests.py"}
     missing = []
-    for script in sorted(set(re.findall(r"python3? (tools/cicd/(?:check|test)_\w+\.py)", wf))):
+    for script in sorted(set(re.findall(r"python3? (tools/(?:cicd/(?:check|test)_\w+|docs/(?:test|guides_to_html)\w*|release-stats/test_\w+)\.py)", wf))):
         if os.path.basename(script) in needs_build:
             continue
         if script not in listed:

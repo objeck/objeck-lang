@@ -9,6 +9,7 @@ every release.
 
 | Guide | Libraries | What you learn |
 |---|---|---|
+| [What is new in v2026.11.4](whats_new_11_4.md) | `mcp`, `agent`, `mcp_agent` | MCP tools from a doc comment, typed clients, agents on a local model, run control |
 | [What is new in v2026.10.3](whats_new_10_3.md) | | what to do when you upgrade, and what changed for users |
 | [Query.Structured](query.md) | `query` and friends | tables, SQL, joins, prepared statements, saving to disk |
 | [HTTP client and web server](http.md) | `net`, `net_server` | a server, a client, connection reuse |
@@ -29,6 +30,10 @@ every release.
 | [`data_bad_input.obs`](../../programs/examples/guides/data_bad_input.obs) | `json,xml,regex` |
 | [`collections_tour.obs`](../../programs/examples/guides/collections_tour.obs) | none |
 | [`ai_tictactoe.obs`](../../programs/examples/guides/ai_tictactoe.obs) | `ai` |
+| [`mcp_tool.obs`](../../programs/examples/guides/mcp_tool.obs) | `gen_collect,json,net,net_server,cipher,misc,mcp` |
+| [`agent_local.obs`](../../programs/examples/guides/agent_local.obs) | `gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` (needs a local Ollama server) |
+| [`new_in_11_4.obs`](../../programs/examples/guides/new_in_11_4.obs) | none |
+| [`eof_lines.obs`](../../programs/examples/guides/eof_lines.obs) | none |
 
 The seven `readme_*.obs` programs are the short examples shown in the project
 [README](../../README.md#examples): `readme_tour`, `readme_query`, `readme_json`, `readme_regex`,

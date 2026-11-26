@@ -93,9 +93,64 @@ static void FlushOutputStreams()
   fflush(nullptr);
 }
 
+// A native library may run threads of its own (OpenCV's ImageBatch decodes on
+// workers). exit() destroys static objects -- the library's, and those of
+// everything it links -- on the calling thread while such a worker still uses
+// them: a program that ended with a batch running crashed in cv::imread on Linux,
+// the image decoder table already destroyed under it. No destructor order fixes
+// that, because the statics a worker creates on first use are destroyed first.
+// So the library is told to stop before exit() begins: its unload_lib runs, as
+// DllProxy->Unload would have run it. The library stays mapped; only the process
+// teardown that follows unmaps it.
+static std::mutex native_libraries_lock;
+static std::vector<void*> native_libraries;
+
+void NativeLibraryLoaded(void* handle)
+{
+  // once per library, however many DllProxy instances name it: its unload_lib
+  // is called once at exit, and not at all after the program unloaded it
+  std::lock_guard<std::mutex> lock(native_libraries_lock);
+  if(std::find(native_libraries.begin(), native_libraries.end(), handle) == native_libraries.end()) {
+    native_libraries.push_back(handle);
+  }
+}
+
+void NativeLibraryUnloaded(void* handle)
+{
+  std::lock_guard<std::mutex> lock(native_libraries_lock);
+  std::vector<void*>::iterator found = std::find(native_libraries.begin(), native_libraries.end(), handle);
+  if(found != native_libraries.end()) {
+    native_libraries.erase(found);
+  }
+}
+
+void UnloadNativeLibrariesAtExit()
+{
+  // taken out under the lock and called with it released; a second call finds none
+  std::vector<void*> libraries;
+  {
+    std::lock_guard<std::mutex> lock(native_libraries_lock);
+    libraries.swap(native_libraries);
+  }
+
+  typedef void (*ext_unload_def)();
+  // last loaded, first unloaded
+  for(size_t i = libraries.size(); i > 0; --i) {
+#ifdef _WIN32
+    ext_unload_def ext_unload = (ext_unload_def)GetProcAddress((HINSTANCE)libraries[i - 1], "unload_lib");
+#else
+    ext_unload_def ext_unload = (ext_unload_def)dlsym(libraries[i - 1], "unload_lib");
+#endif
+    if(ext_unload) {
+      (*ext_unload)();
+    }
+  }
+}
+
 [[noreturn]] void MemoryManager::EndProcess(int status, bool run_teardown)
 {
   if(run_teardown) {
+    UnloadNativeLibrariesAtExit();
     exit(status);
   }
 
