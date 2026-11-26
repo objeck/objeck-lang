@@ -459,6 +459,70 @@ extern thread_local SocketError tls_socket_error;
 extern thread_local SocketError dtls_socket_error;
 
 //
+// One TLS library, many threads.
+//
+// mbedTLS keeps state that the connections of a process share: the PSA key store that
+// every TLS 1.3 handshake and record uses, and, per server, the private key (an RSA key
+// updates its blinding values on every signature) and the random generator that all of
+// that server's connections draw from. It guards that state with mutexes of its own only
+// when it is built with MBEDTLS_THREADING_C. The Linux distributions and the macOS build
+// are; vcpkg's default mbedtls port, which the Windows builds link, is not.
+//
+// Objeck gives every connection of a server its own thread, and a program may open TLS
+// clients from as many threads as it likes. Against a library without threading, eight
+// threads making TLS connections to one in-process server ended with every later
+// handshake failing ("SSL - The handshake negotiation failed", "Verification of the
+// message MAC failed") and a server thread spinning in mbedtls_mpi_div_mpi, called from
+// the RSA signature of a handshake, on corrupted blinding values.
+//
+// So when the library cannot protect itself, the VM does: every call into mbedTLS is made
+// holding one process-wide lock (TlsLibraryLock, which a thread may take again while it
+// holds it), and the lock is let go for as long as a call waits on the network
+// (TlsLibraryUnlock, in the record I/O callbacks and around a connect), so a slow or
+// silent peer holds up nobody else. The cryptography of concurrent connections then runs
+// one at a time. When the library has threading, both classes are empty and nothing is
+// serialized.
+//
+#if defined(MBEDTLS_THREADING_C)
+class TlsLibraryLock {
+ public:
+  TlsLibraryLock() {}
+  ~TlsLibraryLock() {}
+};
+
+class TlsLibraryUnlock {
+ public:
+  TlsLibraryUnlock() {}
+  ~TlsLibraryUnlock() {}
+};
+#else
+// (defined in common.cpp) TlsLibraryEnter and TlsLibraryLeave nest; TlsLibraryYield lets
+// go of every level this thread holds and answers how many, for TlsLibraryResume
+void TlsLibraryEnter();
+void TlsLibraryLeave();
+int TlsLibraryYield();
+void TlsLibraryResume(int depth);
+
+class TlsLibraryLock {
+ public:
+  TlsLibraryLock() { TlsLibraryEnter(); }
+  ~TlsLibraryLock() { TlsLibraryLeave(); }
+  TlsLibraryLock(const TlsLibraryLock&) = delete;
+  TlsLibraryLock& operator=(const TlsLibraryLock&) = delete;
+};
+
+class TlsLibraryUnlock {
+  int depth;
+
+ public:
+  TlsLibraryUnlock() : depth(TlsLibraryYield()) {}
+  ~TlsLibraryUnlock() { TlsLibraryResume(depth); }
+  TlsLibraryUnlock(const TlsLibraryUnlock&) = delete;
+  TlsLibraryUnlock& operator=(const TlsLibraryUnlock&) = delete;
+};
+#endif
+
+//
 // mbedTLS context wrappers for SSL/TLS connections
 //
 struct SecureSocketCtx {
@@ -503,6 +567,7 @@ struct SecureSocketCtx {
   }
 
   ~SecureSocketCtx() {
+    TlsLibraryLock library_lock;
     mbedtls_ssl_free(&ssl);
     mbedtls_ssl_config_free(&conf);
     mbedtls_net_free(&net);
@@ -527,6 +592,14 @@ extern thread_local int dtls_last_error;
 //
 int TlsBioSend(void* ctx, const unsigned char* buf, size_t len);
 int TlsBioRecv(void* ctx, unsigned char* buf, size_t len);
+
+//
+// mbedtls_net_send and mbedtls_net_recv for mbedtls_ssl_set_bio, whose context is the
+// mbedtls_net_context (an accepted TLS connection, an HTTP/2 client): the same calls,
+// made without holding the TLS library (see TlsLibraryLock). (defined in common.cpp)
+//
+int TlsNetSend(void* ctx, const unsigned char* buf, size_t len);
+int TlsNetRecv(void* ctx, unsigned char* buf, size_t len);
 
 //
 // DTLS record I/O for mbedtls_ssl_set_bio, whose context is the
@@ -584,6 +657,7 @@ struct DtlsSocketCtx {
   }
 
   ~DtlsSocketCtx() {
+    TlsLibraryLock library_lock;
     mbedtls_ssl_free(&ssl);
     mbedtls_ssl_config_free(&conf);
     mbedtls_net_free(&net);
@@ -612,6 +686,7 @@ struct SecureServerCtx {
   }
 
   ~SecureServerCtx() {
+    TlsLibraryLock library_lock;
     mbedtls_ssl_config_free(&conf);
     mbedtls_x509_crt_free(&srvcert);
     mbedtls_pk_free(&pkey);
@@ -651,6 +726,7 @@ struct DtlsServerCtx {
   }
 
   ~DtlsServerCtx() {
+    TlsLibraryLock library_lock;
     mbedtls_ssl_cookie_free(&cookie_ctx);
     mbedtls_ssl_config_free(&conf);
     mbedtls_x509_crt_free(&srvcert);

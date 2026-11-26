@@ -840,6 +840,7 @@ class IPSecureSocket {
   }
 
   static bool OpenH2(const char* address, int port, const std::string& pem_file, SecureSocketCtx*& sctx) {
+    TlsLibraryLock library_lock;
     sctx = new SecureSocketCtx();
 
     const char* pers = "objeck_ssl_h2_client";
@@ -853,7 +854,11 @@ class IPSecureSocket {
     if(ret < 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     SocketError reason;
-    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
+    {
+      // a connect waits on the network, and on a name lookup before it
+      TlsLibraryUnlock library_unlock;
+      ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason);
+    }
     if(ret != 0) { sctx->SetError(ret, reason); delete sctx; sctx = nullptr; return false; }
 
     ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
@@ -881,7 +886,7 @@ class IPSecureSocket {
     ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
     if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
-    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, TlsNetSend, TlsNetRecv, nullptr);
 
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
       if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
@@ -911,6 +916,7 @@ class IPSecureSocket {
   // the socket's deadline is changed (SecureSocketCtx::deadline_ms).
   //
   static bool Open(const char* address, int port, const std::string &pem_file, SecureSocketCtx* &sctx, int connect_ms = 0, long long deadline_ms = 0, int read_ms = 0) {
+    TlsLibraryLock library_lock;
     sctx = new SecureSocketCtx();
 
     // Seed the random number generator
@@ -953,7 +959,11 @@ class IPSecureSocket {
     }
 
     SocketError reason;
-    ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason, connect_ms, deadline_ms);
+    {
+      // a connect waits on the network, and on a name lookup before it
+      TlsLibraryUnlock library_unlock;
+      ret = ConnectNet(sctx->net, address, port, SOCK_STREAM, reason, connect_ms, deadline_ms);
+    }
     if(ret != 0) {
       sctx->SetError(ret, reason);
       delete sctx;
@@ -1055,6 +1065,7 @@ class IPSecureSocket {
   // true when the byte was written; it returned nothing, and the trap answered
   // true whatever happened. A failure is recorded for GetLastError.
   static bool WriteByte(char value, SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     int ret;
     do {
       ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
@@ -1070,6 +1081,7 @@ class IPSecureSocket {
   }
 
   static int WriteBytes(const char* values, int len, SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     int written = 0;
     while(written < len) {
       int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)values + written, len - written);
@@ -1086,6 +1098,7 @@ class IPSecureSocket {
   }
 
   static char ReadByte(SecureSocketCtx* sctx, int &status) {
+    TlsLibraryLock library_lock;
     unsigned char value;
     do {
       status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
@@ -1100,6 +1113,7 @@ class IPSecureSocket {
   }
 
   static int ReadBytes(char* values, int len, SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     int total = 0;
     while(total < len) {
       int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
@@ -1119,6 +1133,7 @@ class IPSecureSocket {
   }
 
   static void Close(SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     if(sctx) {
       if(!sctx->send_closed) {
         mbedtls_ssl_close_notify(&sctx->ssl);
@@ -1132,6 +1147,7 @@ class IPSecureSocket {
   // cleanly rather than as a truncation), and the FIN after it ends the stream
   // for a peer that does not look. Close then sends no second alert.
   static void ShutdownSend(SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     if(sctx && !sctx->send_closed) {
       mbedtls_ssl_close_notify(&sctx->ssl);
       shutdown((SOCKET)sctx->net.fd, 1 /* SD_SEND */);
@@ -1207,6 +1223,7 @@ class IPSecureSocket {
 class IPDtlsSocket {
  public:
   static bool Open(const char* address, int port, const std::string &pem_file, DtlsSocketCtx* &sctx, bool verify = true) {
+    TlsLibraryLock library_lock;
     sctx = new DtlsSocketCtx();
 
     const char* pers = "objeck_dtls_client";
@@ -1246,7 +1263,11 @@ class IPDtlsSocket {
     }
 
     SocketError reason;
-    ret = IPSecureSocket::ConnectNet(sctx->net, address, port, SOCK_DGRAM, reason);
+    {
+      // a connect waits on the network, and on a name lookup before it
+      TlsLibraryUnlock library_unlock;
+      ret = IPSecureSocket::ConnectNet(sctx->net, address, port, SOCK_DGRAM, reason);
+    }
     if(ret != 0) {
       sctx->SetError(ret, reason);
       delete sctx;
@@ -1316,6 +1337,7 @@ class IPDtlsSocket {
   // true when the byte was written; it returned nothing, and the trap answered
   // true whatever happened. A failure is recorded for GetLastError.
   static bool WriteByte(char value, DtlsSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     int ret;
     do {
       ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
@@ -1331,6 +1353,7 @@ class IPDtlsSocket {
   }
 
   static int WriteBytes(const char* values, int len, DtlsSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     int written = 0;
     while(written < len) {
       int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)values + written, len - written);
@@ -1347,6 +1370,7 @@ class IPDtlsSocket {
   }
 
   static char ReadByte(DtlsSocketCtx* sctx, int &status) {
+    TlsLibraryLock library_lock;
     unsigned char value;
     status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
     if(status <= 0) {
@@ -1362,6 +1386,7 @@ class IPDtlsSocket {
   // what one record carried, as a UDP read does: looping to fill 'len', the
   // way the TLS stream does, waited forever for records the peer never sent.
   static int ReadBytes(char* values, int len, DtlsSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     int status;
     do {
       status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values, len);
@@ -1379,6 +1404,7 @@ class IPDtlsSocket {
   }
 
   static void Close(DtlsSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
     if(sctx) {
       mbedtls_ssl_close_notify(&sctx->ssl);
       delete sctx;

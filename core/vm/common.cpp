@@ -6012,6 +6012,14 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 }
 
 //
+// A TLS server's accept queue: the 128 the HTTP server asks of a plain socket
+// (WebServer, net_server.obs), not mbedTLS's MBEDTLS_NET_LISTEN_BACKLOG of 10.
+// Windows refuses a connect that finds the queue full, so 64 clients connecting
+// at once had 168 of 6,400 connects refused by a server that was only busy.
+//
+static const int TLS_SERVER_LISTEN_BACKLOG = 128;
+
+//
 // Binds a server's listening socket for mbedtls: a wildcard socket that takes
 // IPv4 and IPv6 clients (IPSocket::BindAny), listening when it is TCP.
 // mbedtls_net_bind(nullptr, ...) bound whichever passive address getaddrinfo
@@ -6037,7 +6045,7 @@ static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, Socket
     return MBEDTLS_ERR_NET_BIND_FAILED;
   }
 
-  if(type == SOCK_STREAM && listen(sock, MBEDTLS_NET_LISTEN_BACKLOG) != 0) {
+  if(type == SOCK_STREAM && listen(sock, TLS_SERVER_LISTEN_BACKLOG) != 0) {
     reason = { CurrentSocketError(), false };
 #ifdef _WIN32
     closesocket(sock);
@@ -6261,6 +6269,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
 
     if(cert_obj && key_obj) {
       ClearTlsError();
+      // seeding, parsing the certificate and key, the configuration: library calls
+      TlsLibraryLock library_lock;
       SecureServerCtx* srv = new SecureServerCtx();
 
       // Seed the random number generator
@@ -6320,9 +6330,13 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
         // heap). The instance is re-rooted on the op_stack so a collection
         // that moves it fixes the reference, and is re-read after (#874).
         PushInt((size_t)instance, op_stack, stack_pos);
-        MemoryManager::BeginBlocking();
-        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM, tls_socket_error, host.c_str());
-        MemoryManager::EndBlocking();
+        {
+          // nor is the TLS library held while it waits
+          TlsLibraryUnlock library_unlock;
+          MemoryManager::BeginBlocking();
+          ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM, tls_socket_error, host.c_str());
+          MemoryManager::EndBlocking();
+        }
         instance = (size_t*)PopInt(op_stack, stack_pos);
       }
       if(ret != 0) {
@@ -6409,9 +6423,10 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       int ret = mbedtls_net_accept(&srv->listen_fd, &client->net, nullptr, 0, nullptr);
       if(ret == 0) {
         // Setup SSL session for this client (uses server's config)
+        TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
         if(ret == 0) {
-          mbedtls_ssl_set_bio(&client->ssl, &client->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+          mbedtls_ssl_set_bio(&client->ssl, &client->net, TlsNetSend, TlsNetRecv, nullptr);
         }
       }
       MemoryManager::EndBlocking();
@@ -7248,18 +7263,86 @@ static bool PendingAlert(SOCKET sock)
   return head[0] == 21;
 }
 
+#if !defined(MBEDTLS_THREADING_C)
+//
+// The TLS library lock (see TlsLibraryLock in common.h): one mutex for the process, and
+// how many times this thread holds it. The mutex is never destroyed: a thread may be
+// holding it when the process ends, and the C++ runtime ends a program that destroys a
+// mutex in use ("mutex destroyed while busy").
+//
+static std::mutex& TlsLibraryMutex()
+{
+  static std::mutex* const mutex = new std::mutex();
+  return *mutex;
+}
+
+static thread_local int tls_library_depth = 0;
+
+void TlsLibraryEnter()
+{
+  if(tls_library_depth++ == 0) {
+    TlsLibraryMutex().lock();
+  }
+}
+
+void TlsLibraryLeave()
+{
+  if(--tls_library_depth == 0) {
+    TlsLibraryMutex().unlock();
+  }
+}
+
+int TlsLibraryYield()
+{
+  const int depth = tls_library_depth;
+  if(depth > 0) {
+    tls_library_depth = 0;
+    TlsLibraryMutex().unlock();
+  }
+  return depth;
+}
+
+void TlsLibraryResume(int depth)
+{
+  if(depth > 0) {
+    TlsLibraryMutex().lock();
+    tls_library_depth = depth;
+  }
+}
+#endif
+
+//
+// mbedtls_net_send and mbedtls_net_recv, made without holding the TLS library (see
+// common.h). The context is the mbedtls_net_context.
+//
+int TlsNetSend(void* ctx, const unsigned char* buf, size_t len)
+{
+  TlsLibraryUnlock library_unlock;
+  return mbedtls_net_send(ctx, buf, len);
+}
+
+int TlsNetRecv(void* ctx, unsigned char* buf, size_t len)
+{
+  TlsLibraryUnlock library_unlock;
+  return mbedtls_net_recv(ctx, buf, len);
+}
+
 //
 // TLS client record I/O (see common.h). The context is the SecureSocketCtx.
 //
 int TlsBioSend(void* ctx, const unsigned char* buf, size_t len)
 {
   SecureSocketCtx* sctx = (SecureSocketCtx*)ctx;
+  // a send can wait on a full buffer: not while holding the TLS library
+  TlsLibraryUnlock library_unlock;
   return mbedtls_net_send(&sctx->net, buf, len);
 }
 
 int TlsBioRecv(void* ctx, unsigned char* buf, size_t len)
 {
   SecureSocketCtx* sctx = (SecureSocketCtx*)ctx;
+  // the wait for the peer, and the read: not while holding the TLS library
+  TlsLibraryUnlock library_unlock;
 
   // With a deadline, wait for the peer here, for no longer than what is left of the
   // deadline and the read timeout, before reading. The wait is cut to what is left
@@ -7295,6 +7378,9 @@ int TlsBioRecv(void* ctx, unsigned char* buf, size_t len)
 int DtlsBioSend(void* ctx, const unsigned char* buf, size_t len)
 {
   DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
+  // socket calls: not while holding the TLS library (DtlsHandshakeOver reads this
+  // connection's own state)
+  TlsLibraryUnlock library_unlock;
   // An established session whose peer has sent an alert -- a close_notify, or
   // a fatal one -- is over: the write fails, and the alert stays queued for the
   // next read to report in full. On Windows this is also the only way a write
@@ -7322,6 +7408,7 @@ int DtlsBioSend(void* ctx, const unsigned char* buf, size_t len)
 int DtlsBioRecv(void* ctx, unsigned char* buf, size_t len)
 {
   DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
+  TlsLibraryUnlock library_unlock;
   const int ret = mbedtls_net_recv(&sctx->net, buf, len);
   if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ) {
     sctx->net_reason = { CurrentSocketError(), false };
@@ -7332,6 +7419,7 @@ int DtlsBioRecv(void* ctx, unsigned char* buf, size_t len)
 int DtlsBioRecvTimeout(void* ctx, unsigned char* buf, size_t len, uint32_t timeout)
 {
   DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
+  TlsLibraryUnlock library_unlock;
   const int ret = mbedtls_net_recv_timeout(&sctx->net, buf, len, timeout);
   if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_TIMEOUT) {
     sctx->net_reason = { CurrentSocketError(), false };
@@ -9992,6 +10080,7 @@ static ssize_t h2_recv_cb(nghttp2_session*, uint8_t* buf, size_t len, int, void*
   // Once the response stream is complete, return WOULDBLOCK so nghttp2_session_recv
   // exits gracefully instead of blocking on the next mbedtls_ssl_read.
   if(ctx->response_complete) return NGHTTP2_ERR_WOULDBLOCK;
+  TlsLibraryLock library_lock;
   int ret = mbedtls_ssl_read(&ctx->tls->ssl, buf, (int)len);
   if(ret > 0) return (ssize_t)ret;
   if(ret == 0) return NGHTTP2_ERR_EOF;
@@ -11443,6 +11532,8 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
 
     if(cert_obj && key_obj) {
       ClearDtlsError();
+      // seeding, parsing the certificate and key, the configuration: library calls
+      TlsLibraryLock library_lock;
       DtlsServerCtx* srv = new DtlsServerCtx();
 
       // Seed the random number generator
@@ -11500,9 +11591,13 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
         // heap). The instance is re-rooted on the op_stack so a collection
         // that moves it fixes the reference, and is re-read after (#874).
         PushInt((size_t)instance, op_stack, stack_pos);
-        MemoryManager::BeginBlocking();
-        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM, dtls_socket_error, host.c_str());
-        MemoryManager::EndBlocking();
+        {
+          // nor is the TLS library held while it waits
+          TlsLibraryUnlock library_unlock;
+          MemoryManager::BeginBlocking();
+          ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM, dtls_socket_error, host.c_str());
+          MemoryManager::EndBlocking();
+        }
         instance = (size_t*)PopInt(op_stack, stack_pos);
 
         // the address bound, for the listener each accept binds afresh
@@ -11604,6 +11699,7 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       int ret = DtlsAccept(srv, &client_sctx->net, client_ip, sizeof(client_ip), &client_ip_len);
       if(ret == 0) {
         // Setup SSL session for this client (uses server's config)
+        TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
         if(ret == 0) {
           ret = mbedtls_ssl_set_client_transport_id(&client_sctx->ssl, client_ip, client_ip_len);

@@ -2139,6 +2139,23 @@
 				}
 			}
 		},
+		"API.MCP.McpAgentTools": {
+			"description": "Hands MCP tools to an agent: FromSpec for a declared function, FromClient and AddAll for the tools of a server",
+			"functions": {
+				"AddAll": {
+					"descriptions": ["**Registers every tool of a server on an agent's registry**\n\n```function : AddAll(registry:ToolRegistry, client:McpClient) ~ Int```\n\n\n\nregistry: ToolRegistry\n\nclient: McpClient\n\nreturn: Int"]
+				},
+				"FromClient": {
+					"descriptions": ["**Makes agent tools from the tools of a server. Each call goes to the server over the client**\n\n```function : FromClient(client:McpClient) ~ Vector&lt;AgentTool&gt;```\n\n\n\nclient: McpClient\n\nreturn: Vector&lt;AgentTool&gt;"]
+				},
+				"FromSpec": {
+					"descriptions": ["**Makes an agent tool from a declared function. The tool's name, description, schema and effect hints are the spec's**\n\n```function : FromSpec(spec:McpToolSpec, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ AgentTool```\n\n\n\nspec: McpToolSpec\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: AgentTool"]
+				},
+				"FromTool": {
+					"descriptions": ["**Makes an agent tool from a tool that has a handler in this process**\n\n```function : FromTool(tool:McpTool) ~ AgentTool```\n\n\n\ntool: McpTool\n\nreturn: AgentTool"]
+				}
+			}
+		},
 		"API.MCP.McpCall": {
 			"description": "What a tool, resource or prompt handler is called with: the arguments, and the means to report progress and to learn that the client cancelled the request",
 			"functions": {
@@ -2441,7 +2458,7 @@
 			}
 		},
 		"API.MCP.McpServe": {
-			"description": "Serves a McpService the way \"obr --mcp\" and \"obr --mcp-http=<port>\" ask: the VM adds the transport to the program's arguments (\"stdio\", or \"http\", the address and the port) and starts the McpMain the compiler writes for a class with an",
+			"description": "Serves a McpService the way \"obr --mcp\" and \"obr --mcp-http=<port>\" ask: the VM adds the transport to the program's arguments (\"stdio\", or \"http\", the address and the port) and starts the McpMain the compiler writes for a class with a function tagged tool, resource or prompt. A program that writes its own McpMain calls this with its arguments after registering. On standard input and output the protocol owns standard output: anything else the program prints there corrupts it, so log with ErrorLine, which goes to standard error",
 			"functions": {
 				"Run": {
 					"descriptions": ["**Serves until standard input ends (stdio) or the HTTP server is stopped**\n\n```function : Run(service:McpService, args:String[]) ~ Nil```\n\n\n\nservice: McpService\n\nargs: String[]\n\nreturn: Nil"]
@@ -2529,18 +2546,6 @@
 		"API.MCP.McpStubGenerator": {
 			"description": "Writes Objeck source for a typed client of an MCP server: one class, one method per tool, parameters typed from the tool's inputSchema (integer to Int, number to Float, string to String, boolean to Bool, an array of those to Int[], Float[], String[] or Bool[], anything else to JsonElement). A parameter that is not required makes a second overload that leaves the optional parameters out. The text of the result is returned as a String, or Nil with the reason in GetError() when the tool failed (isError) or the call could not be made; a tool that declares an outputSchema also gets a method ending in Json that returns its structuredContent as a JsonElement. The output depends only on the tool list, so it can be compared to a checked-in copy. The mcp_stubs tool (tools/mcp/mcp_stubs.obs) is a command line around Generate.",
 			"functions": {
-				"AddAll": {
-					"descriptions": ["**Registers every tool of a server on an agent's registry**\n\n```function : AddAll(registry:ToolRegistry, client:McpClient) ~ Int```\n\n\n\nregistry: ToolRegistry\n\nclient: McpClient\n\nreturn: Int"]
-				},
-				"FromClient": {
-					"descriptions": ["**Makes agent tools from the tools of a server. Each call goes to the server over the client**\n\n```function : FromClient(client:McpClient) ~ Vector&lt;AgentTool&gt;```\n\n\n\nclient: McpClient\n\nreturn: Vector&lt;AgentTool&gt;"]
-				},
-				"FromSpec": {
-					"descriptions": ["**Makes an agent tool from a declared function. The tool's name, description, schema and effect hints are the spec's**\n\n```function : FromSpec(spec:McpToolSpec, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ AgentTool```\n\n\n\nspec: McpToolSpec\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: AgentTool"]
-				},
-				"FromTool": {
-					"descriptions": ["**Makes an agent tool from a tool that has a handler in this process**\n\n```function : FromTool(tool:McpTool) ~ AgentTool```\n\n\n\ntool: McpTool\n\nreturn: AgentTool"]
-				},
 				"Generate": {
 					"descriptions": ["**Generates the client class of a server**\n\n```function : Generate(server_name:String, server_version:String, tools:Vector&lt;McpTool&gt;, class_name:String) ~ String```\n\n\n\nserver_name: String\n\nserver_version: String\n\ntools: Vector&lt;McpTool&gt;\n\nclass_name: String\n\nreturn: String"]
 				},
@@ -2702,6 +2707,9 @@
 				"AddOptional": {
 					"descriptions": ["**Adds an optional parameter**\n\n```method : public : AddOptional(name:String, type:String, description:String) ~ McpToolSpec```\n\n\n\nname: String\n\ntype: String\n\ndescription: String\n\nreturn: McpToolSpec"]
 				},
+				"AddSchema": {
+					"descriptions": ["**Adds a parameter whose JSON Schema is given as JSON text. The compiler writes this call for a function carrying a tool doc tag: it derives the schema from the parameter's type, and an enum, a record or a nested collection is more than SchemaFor can say**\n\n```method : public : AddSchema(name:String, schema_json:String, description:String, required:Bool) ~ McpToolSpec```\n\n\n\nname: String\n\nschema_json: String\n\ndescription: String\n\nrequired: Bool\n\nreturn: McpToolSpec"]
+				},
 				"AddTo": {
 					"descriptions": ["**Builds the tool and registers it on a server**\n\n```method : public : AddTo(service:McpService, handler:Func2Ref&lt;McpCall,McpToolResult&gt;) ~ Nil```\n\n\n\nservice: McpService\n\nhandler: Func2Ref&lt;McpCall,McpToolResult&gt;\n\nreturn: Nil"]
 				},
@@ -2767,7 +2775,7 @@
 			}
 		},
 		"API.MCP.McpUriTemplate": {
-			"description": "A resource URI template such as \"weather://{city}/forecast/{days}\": reads the variables out of a URI. The compiler writes calls to it for a function marked \"",
+			"description": "A resource URI template such as \"weather://{city}/forecast/{days}\": reads the variables out of a URI. The compiler writes calls to it for a function tagged resource",
 			"functions": {
 				"Match": {
 					"descriptions": ["**Matches a URI against a template and reads the variables. A variable is not empty and runs up to the literal text that follows it in the template (its first occurrence), or to the end of the URI; the values are not percent-decoded**\n\n```function : Match(template:String, uri:String) ~ JsonElement```\n\n\n\ntemplate: String\n\nuri: String\n\nreturn: JsonElement"]
@@ -26477,6 +26485,12 @@
 			{
 				"bundle": "API.LlmUtil",
 				"file": "llm_util.obl"
+			}
+		],
+		"McpAgentTools": [
+			{
+				"bundle": "API.MCP",
+				"file": "mcp.obl"
 			}
 		],
 		"McpCall": [
