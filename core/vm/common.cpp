@@ -6477,7 +6477,11 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
         if(ret == 0) {
-          mbedtls_ssl_set_bio(&client->ssl, &client->net, TlsNetSend, TlsNetRecv, nullptr);
+          // Record I/O through the socket's own context, as a connecting socket's is (IPSecureSocket::Open):
+          // TlsBioRecv holds every read, the handshake's among them, to the deadline SetDeadline stores in
+          // the context. This used TlsNetRecv, which never looks at it, so SetDeadline on an accepted
+          // connection did nothing and a peer sending a byte now and then held the read as long as it liked.
+          mbedtls_ssl_set_bio(&client->ssl, client, TlsBioSend, TlsBioRecv, nullptr);
         }
       }
       MemoryManager::EndBlocking();
