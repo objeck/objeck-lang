@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: A select label must be a constant: a string literal with nothing interpolated and nothing called on it
+# EXPECT_ERROR_COUNT: 1
+#~
+A call on a select label was ignored: 'label "B"->ToLower()' was hashed as "B", so
+this compiled and took 'other' for the value "b" in silence.
+~#
+class BadSelectLabelCall {
+	function : Main(args : String[]) ~ Nil {
+		v := "b";
+		n := 2;
+		r := "other";
+		select(v) {
+			label "B"->ToLower() { r := "called"; }
+			label "c" { r := "c"; }
+			other { r := "other"; }
+		};
+		r->PrintLine();
+	}
+}

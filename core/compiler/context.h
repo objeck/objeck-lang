@@ -362,6 +362,9 @@ std::vector<std::wstring> alt_error_method_names;
   // returns true if expression is a string literal with nothing interpolated or called on it
   bool IsStringConstant(Expression* expression);
 
+  // reports an integer or character select label that has a call on it, or that labels a string select
+  void CheckSelectIntegerLabel(Expression* expression, bool is_str_select);
+
   // returns true if entry static context is not valid
   bool DuplicateParentEntries(SymbolEntry* entry, Class* klass);
 

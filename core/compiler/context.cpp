@@ -7869,11 +7869,17 @@ void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 {
+  // What the select is on, for the labels below: a label is a constant of the
+  // same kind. Both stay false when the expression is neither (reported here).
+  bool is_int_select = false;
+  bool is_str_select = false;
+
   // expression
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
     const bool is_int_expr = IsIntegerExpression(expression);
+    is_int_select = is_int_expr;
 
 #ifndef _SYSTEM
     const bool is_str_expr = IsStringExpression(expression);
@@ -7881,6 +7887,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       ProcessError(expression, L"Expected integer or string expression");
     }
 
+    is_str_select = is_str_expr && !is_int_expr;
     if(is_str_expr) {
       if(expression->GetExpressionType() == VAR_EXPR && !expression->GetMethodCall()) {
         Variable* var_expr = static_cast<Variable*>(expression);
@@ -7974,6 +7981,16 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
         switch(expression->GetExpressionType()) {
         case CHAR_STR_EXPR: {
           const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
+          // A label is matched by the hash of its text, taken here. A label with
+          // something interpolated ("{$v}") or called on it ("B"->ToLower()) has
+          // no text until the program runs: its source text was hashed instead,
+          // and the label then matched nothing, or the wrong value, in silence.
+          if(!IsStringConstant(expression)) {
+            ProcessError(expression, L"A select label must be a constant: a string literal with nothing interpolated and nothing called on it");
+          }
+          else if(is_int_select) {
+            ProcessError(expression, L"String label in a select on an integer");
+          }
           value = HashString(char_str_expr->GetString().c_str());
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select hash value for '" + char_str_expr->GetString() + L'\'');
@@ -7982,6 +7999,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
           break;
 
         case CHAR_LIT_EXPR:
+          CheckSelectIntegerLabel(expression, is_str_select);
           value = static_cast<CharacterLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
@@ -7989,6 +8007,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
           break;
 
         case INT_LIT_EXPR:
+          CheckSelectIntegerLabel(expression, is_str_select);
           value = static_cast<IntegerLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
@@ -8002,6 +8021,9 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
             mthd_call = mthd_call->GetMethodCall();
           }
           // check type
+          if((mthd_call->GetEnumItem() || mthd_call->GetLibraryEnumItem()) && is_str_select) {
+            ProcessError(expression, L"Integer label in a select on a string");
+          }
           if(mthd_call->GetEnumItem()) {
             value = mthd_call->GetEnumItem()->GetId();
             if(DuplicateCaseItem(label_statements, value)) {
@@ -11269,6 +11291,19 @@ bool ContextAnalyzer::IsStringExpression(Expression* expression)
   }
 
   return false;
+}
+
+// An integer or character literal used as a select label: nothing may be called
+// on it (the call was ignored and the literal's own value used), and it cannot
+// label a select on a string, whose labels are compared by hash.
+void ContextAnalyzer::CheckSelectIntegerLabel(Expression* expression, bool is_str_select)
+{
+  if(expression->GetMethodCall()) {
+    ProcessError(expression, L"A select label must be a constant: a literal with nothing called on it");
+  }
+  else if(is_str_select) {
+    ProcessError(expression, L"Integer label in a select on a string");
+  }
 }
 
 // A string literal whose text is all there is to it: nothing interpolated and
