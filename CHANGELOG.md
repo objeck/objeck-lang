@@ -2,6 +2,14 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+Post-v2026.11.4. Language sugar, each a separate draft and not part of any release yet.
+
+### Added
+
+- **Collection literals typed by the target**: `v : Vector<IntRef> := [a, b, c]` (also `CompareVector`, `IntVector`, `FloatVector`; a declaration, an assignment or a `return`) is `Vector->New([a, b, c])<IntRef>`, the constructor those classes already have for an array. Elements of the wrong type give that call's error. Not typed by a call argument, and there is no map literal. Test: `collection_literals`, `bad_collection_literal_type`.
+
 ## [v2026.11.4] - 2026-11-25
 
 ### Performance

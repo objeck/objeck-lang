@@ -97,6 +97,28 @@ row := ["id", x, 2.5, true];           # Base[]: String, IntRef, FloatRef, BoolR
 PrintEach([name, title->ToUpper()]);   # the variadic idiom: an array at the call site
 ```
 
+#### Collection literals
+
+An array literal takes the type of its target when the target is a `Vector`,
+`CompareVector`, `IntVector` or `FloatVector` (a declaration or assignment target
+or a `return`): it is the array those classes' constructors already accept, so the
+`->New(..)<T>` and an `AddBack` per element are not written.
+
+```ruby
+# before
+v := Vector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->AddBack(IntRef->New(2));
+# after
+v : Vector<IntRef> := [IntRef->New(1), IntRef->New(2)];
+nums : IntVector := [4, 5, 6];
+```
+
+It is exactly `Vector->New([..])<IntRef>`; elements of the wrong type give that
+call's error. The literal is not typed by a call argument (overloads are chosen
+before a target is known): assign it to a typed variable first. There is no map
+literal: `Map` has no array constructor to lower to. Test: `collection_literals`.
+
 ### Jagged Arrays
 `T[][]` is an array of `T[]` rows of any length, at any depth:
 ```ruby

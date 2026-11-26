@@ -103,6 +103,17 @@ squares <span class="t-op">:=</span> [x, x * x, Square(x + <span class="t-num">1
 row <span class="t-op">:=</span> [<span class="t-str">"id"</span>, x, <span class="t-num">2.5</span>, <span class="t-const">true</span>];           <span class="t-com"># Base[]: String, IntRef, FloatRef, BoolRef</span>
 PrintEach([name, title<span class="t-op">-&gt;</span>ToUpper()]);   <span class="t-com"># the variadic idiom: an array at the call site</span>
 </code></pre>
+    <h4 id="collection-literals">Collection literals</h4>
+    <p>An array literal takes the type of its target when the target is a <code>Vector</code>, <code>CompareVector</code>, <code>IntVector</code> or <code>FloatVector</code> (a declaration or assignment target or a <code>return</code>): it is the array those classes' constructors already accept, so the <code>-&gt;New(..)&lt;T&gt;</code> and an <code>AddBack</code> per element are not written.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+v <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">IntRef</span>&gt;;
+v<span class="t-op">-&gt;</span>AddBack(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">1</span>));
+v<span class="t-op">-&gt;</span>AddBack(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">2</span>));
+<span class="t-com"># after</span>
+v : Vector&lt;<span class="t-type">IntRef</span>&gt; <span class="t-op">:=</span> [<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">1</span>), <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">2</span>)];
+nums : IntVector <span class="t-op">:=</span> [<span class="t-num">4</span>, <span class="t-num">5</span>, <span class="t-num">6</span>];
+</code></pre>
+    <p>It is exactly <code>Vector-&gt;New([..])&lt;IntRef&gt;</code>; elements of the wrong type give that call's error. The literal is not typed by a call argument (overloads are chosen before a target is known): assign it to a typed variable first. There is no map literal: <code>Map</code> has no array constructor to lower to. Test: <code>collection_literals</code>.</p>
     <h3 id="jagged-arrays">Jagged Arrays</h3>
     <p><code>T[][]</code> is an array of <code>T[]</code> rows of any length, at any depth:</p>
 <pre class="line-numbers"><code class="language-objeck">rows <span class="t-op">:=</span> <span class="t-type">Int</span>[]<span class="t-op">-&gt;</span><span class="t-kw">New</span>[<span class="t-num">3</span>];               <span class="t-com"># three rows, each Nil until set</span>

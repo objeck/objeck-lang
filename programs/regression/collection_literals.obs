@@ -1,0 +1,56 @@
+#~
+Collection literals typed by the target: `v : Vector<IntRef> := [a, b, c]` is
+`Vector->New([a, b, c])<IntRef>`. Covers Vector, CompareVector, IntVector and
+FloatVector as a declaration, an assignment and a return, elements that are
+expressions, an empty-free single element, and that a plain array literal and an
+explicit constructor are unchanged.
+~#
+use Collection;
+
+class CollectionLiterals {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		a := IntRef->New(1);
+		v : Vector<IntRef> := [a, IntRef->New(2), IntRef->New(a->Get() + 2)];
+		if(v->Size() <> 3 | v->Get(2)->Get() <> 3 | v->Get(0) <> a) { "FAIL vector"->PrintLine(); pass := false; };
+
+		s : Vector<String> := ["x", "y"];
+		if(s->Size() <> 2 | s->Get(1)->Size() <> 1) { "FAIL strings"->PrintLine(); pass := false; };
+
+		iv : IntVector := [4, 5, 6, 7];
+		if(iv->Size() <> 4 | iv->Get(3) <> 7) { "FAIL int vector"->PrintLine(); pass := false; };
+
+		fv : FloatVector := [1.5, 2.5];
+		if(fv->Size() <> 2 | fv->Get(1) <> 2.5) { "FAIL float vector"->PrintLine(); pass := false; };
+
+		cv : CompareVector<IntRef> := [IntRef->New(3), IntRef->New(1)];
+		if(cv->Size() <> 2) { "FAIL compare vector"->PrintLine(); pass := false; };
+
+		# assignment to an existing variable, and a return
+		w : Vector<IntRef>;
+		w := [IntRef->New(9)];
+		if(w->Size() <> 1) { "FAIL assign"->PrintLine(); pass := false; };
+		if(Make()->Get(1)->Get() <> 20) { "FAIL return"->PrintLine(); pass := false; };
+
+		# an array literal that is not assigned to a collection is unchanged
+		arr := [1, 2, 3];
+		if(arr->Size() <> 3) { "FAIL array"->PrintLine(); pass := false; };
+
+		# the explicit forms still work
+		x := Vector->New([IntRef->New(5)])<IntRef>;
+		if(x->Size() <> 1) { "FAIL explicit"->PrintLine(); pass := false; };
+
+		if(pass) {
+			"PASS: collection literals"->PrintLine();
+		}
+		else {
+			"FAIL: collection literals"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Make() ~ Vector<IntRef> {
+		return [IntRef->New(10), IntRef->New(20)];
+	}
+}

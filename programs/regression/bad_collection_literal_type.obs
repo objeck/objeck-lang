@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Invalid cast between classes
+#~
+The literal is typed by the target, so elements of the wrong type are the same
+error as the long form gives (line 9).
+~#
+use Collection;
+class BadCollectionLiteralType {
+	function : Main(args : String[]) ~ Nil {
+		v : Vector<IntRef> := ["a", "b"];
+	}
+}
