@@ -24,2298 +24,2298 @@ envelope), Actor, ActorBehavior (the handler), ExitReason, CallResult (the answe
 Supervisor with ChildSpec and BehaviorFactory. Link with -lib gen_collect,concurrent,actor.
 ~#
 bundle System.Actor {
-  #~
-  A clock for timeouts: milliseconds since the program started, from the VM's steady clock, so a
-  change of the wall clock cannot shorten or lengthen a wait.
-  ~#
-  class ActorClock {
-    #~
-    Milliseconds since the program started
-    @return a number that only grows
-    ~#
-    function : Now() ~ Int {
-      return System.Runtime->GetProperty("runtime.uptime_ms")->ToInt();
-    }
-  }
+	#~
+	A clock for timeouts: milliseconds since the program started, from the VM's steady clock, so a
+	change of the wall clock cannot shorten or lengthen a wait.
+	~#
+	class ActorClock {
+		#~
+		Milliseconds since the program started
+		@return a number that only grows
+		~#
+		function : Now() ~ Int {
+			return System.Runtime->GetProperty("runtime.uptime_ms")->ToInt();
+		}
+	}
 
-  # Waiters in arrival order. The caller holds the mailbox mutex for every call.
-  class : private : TicketLine {
-    @next : Int;
-    @line : Vector<IntRef>;
+	# Waiters in arrival order. The caller holds the mailbox mutex for every call.
+	class : private : TicketLine {
+		@next : Int;
+		@line : Vector<IntRef>;
 
-    New() {
-      @next := 0;
-      @line := Vector->New()<IntRef>;
-    }
+		New() {
+			@next := 0;
+			@line := Vector->New()<IntRef>;
+		}
 
-    method : public : Join() ~ Int {
-      t := @next;
-      @next += 1;
-      @line->AddBack(IntRef->New(t));
-      return t;
-    }
+		method : public : Join() ~ Int {
+			t := @next;
+			@next += 1;
+			@line->AddBack(IntRef->New(t));
+			return t;
+		}
 
-    method : public : IsHead(t : Int) ~ Bool {
-      if(@line->Size() = 0) {
-        return false;
-      };
-      return @line->Get(0)->Get() = t;
-    }
+		method : public : IsHead(t : Int) ~ Bool {
+			if(@line->Size() = 0) {
+				return false;
+			};
+			return @line->Get(0)->Get() = t;
+		}
 
-    method : public : IsEmpty() ~ Bool {
-      return @line->Size() = 0;
-    }
+		method : public : IsEmpty() ~ Bool {
+			return @line->Size() = 0;
+		}
 
-    method : public : Size() ~ Int {
-      return @line->Size();
-    }
+		method : public : Size() ~ Int {
+			return @line->Size();
+		}
 
-    method : public : Leave(t : Int) ~ Nil {
-      i := 0;
-      found := false;
-      while(i < @line->Size() & found = false) {
-        if(@line->Get(i)->Get() = t) {
-          @line->Remove(i);
-          found := true;
-        }
-        else {
-          i += 1;
-        };
-      };
-    }
-  }
+		method : public : Leave(t : Int) ~ Nil {
+			i := 0;
+			found := false;
+			while(i < @line->Size() & found = false) {
+				if(@line->Get(i)->Get() = t) {
+					@line->Remove(i);
+					found := true;
+				}
+				else {
+					i += 1;
+				};
+			};
+		}
+	}
 
-  #~
-  A thread-safe FIFO queue between threads. Unbounded by default; with a capacity it applies an
-  overflow policy when full: BLOCK makes the sender wait (in arrival order, with an optional
-  timeout), REJECT refuses the new item.
-  Receivers are served in arrival order too. Items are never Nil. Close() ends sending but lets
-  the receivers drain what is queued, then Receive returns Nil.
-  ```
+	#~
+	A thread-safe FIFO queue between threads. Unbounded by default; with a capacity it applies an
+	overflow policy when full: BLOCK makes the sender wait (in arrival order, with an optional
+	timeout), REJECT refuses the new item.
+	Receivers are served in arrival order too. Items are never Nil. Close() ends sending but lets
+	the receivers drain what is queued, then Receive returns Nil.
+	```
 box := Mailbox->New(2, Mailbox->Policy->REJECT);
 box->Send("a")->PrintLine();      # OK
 box->Send("b");
 box->Send("c")->PrintLine();      # FULL
 box->Receive(100)->ToString()->PrintLine();  # a
-  ```
-  ~#
-  class Mailbox {
-    #~
-    What a full bounded mailbox does with a new item.<br/>
-    <p><pre>Mailbox->Policy</pre></p>
-    @class Mailbox
-    ~#
-    enum Policy {
-      BLOCK,
-      REJECT
-    }
-
-    #~
-    What Send reports.<br/>
-    <p><pre>Mailbox->Status</pre></p>
-    @class Mailbox
-    ~#
-    enum Status {
-      OK,
-      FULL,
-      TIMED_OUT,
-      CLOSED,
-      INVALID
-    }
-
-    @mutex : ThreadMutex;
-    @not_full : Condition;
-    @not_empty : Condition;
-    @items : Deque<System.Base>;
-    @capacity : Int;
-    @policy : Mailbox->Policy;
-    @closed : Bool;
-    @senders : TicketLine;
-    @receivers : TicketLine;
-    @sent : Int;
-    @received : Int;
-    @rejected : Int;
-
-    #~
-    Creates an unbounded mailbox
-    ~#
-    New() {
-      Init(0, Mailbox->Policy->BLOCK);
-    }
-
-    #~
-    Creates a bounded mailbox
-    @param capacity most items queued at once; zero or less means unbounded
-    @param policy what to do with an item that arrives when the mailbox is full
-    ~#
-    New(capacity : Int, policy : Mailbox->Policy) {
-      Init(capacity, policy);
-    }
-
-    method : Init(capacity : Int, policy : Mailbox->Policy) ~ Nil {
-      @mutex := ThreadMutex->New("mailbox");
-      @not_full := Condition->New();
-      @not_empty := Condition->New();
-      @items := Deque->New()<System.Base>;
-      @capacity := capacity < 0 ? 0 : capacity;
-      @policy := policy;
-      @closed := false;
-      @senders := TicketLine->New();
-      @receivers := TicketLine->New();
-      @sent := 0;
-      @received := 0;
-      @rejected := 0;
-    }
-
-    method : HasRoom() ~ Bool {
-      return @capacity <= 0 | @items->Size() < @capacity;
-    }
-
-    # the caller holds the mutex
-    method : Push(item : System.Base) ~ Nil {
-      @items->AddBack(item);
-      @sent += 1;
-      @not_empty->Broadcast();
-    }
-
-    #~
-    Queues an item, waiting without limit while a BLOCK mailbox is full
-    @param item what to queue, not Nil
-    @return OK, FULL (REJECT policy), CLOSED or INVALID
-    ~#
-    method : public : Send(item : System.Base) ~ Mailbox->Status {
-      return Send(item, -1);
-    }
-
-    #~
-    Queues an item
-    @param item what to queue, not Nil
-    @param timeout how long a BLOCK mailbox may make the sender wait, in milliseconds: -1 forever, 0 not at all
-    @return OK, FULL, TIMED_OUT (a BLOCK mailbox stayed full), CLOSED or INVALID
-    ~#
-    method : public : Send(item : System.Base, timeout : Int) ~ Mailbox->Status {
-      if(item = Nil) {
-        return Mailbox->Status->INVALID;
-      };
-
-      status := Mailbox->Status->OK;
-      critical(@mutex) {
-        if(@closed) {
-          status := Mailbox->Status->CLOSED;
-        }
-        else if(HasRoom() & @senders->IsEmpty()) {
-          Push(item);
-        }
-        else if(@policy = Mailbox->Policy->REJECT) {
-          @rejected += 1;
-          status := Mailbox->Status->FULL;
-        }
-        else {
-          deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-          t := @senders->Join();
-          done := false;
-          while(done = false) {
-            if(@closed) {
-              status := Mailbox->Status->CLOSED;
-              done := true;
-            }
-            else if(@senders->IsHead(t) & HasRoom()) {
-              Push(item);
-              done := true;
-            }
-            else if(timeout < 0) {
-              @not_full->Wait(@mutex);
-            }
-            else {
-              remaining := deadline - ActorClock->Now();
-              if(remaining <= 0) {
-                status := Mailbox->Status->TIMED_OUT;
-                done := true;
-              }
-              else {
-                @not_full->Wait(@mutex, remaining);
-              };
-            };
-          };
-          @senders->Leave(t);
-          # the next sender in line may fit now
-          @not_full->Broadcast();
-        };
-      };
-
-      return status;
-    }
-
-    # Queues an item past the capacity and the policy. Internal: the actor uses it for DOWN and EXIT
-    # notices, which a full bounded mailbox must not lose (and which must not block the exiting
-    # actor). Fails only when the mailbox is closed.
-    method : public : SendUrgent(item : System.Base) ~ Mailbox->Status {
-      if(item = Nil) {
-        return Mailbox->Status->INVALID;
-      };
-      status := Mailbox->Status->OK;
-      critical(@mutex) {
-        if(@closed) {
-          status := Mailbox->Status->CLOSED;
-        }
-        else {
-          Push(item);
-        };
-      };
-      return status;
-    }
-
-    #~
-    Takes the oldest item, waiting without limit
-    @return the item, or Nil once the mailbox is closed and empty
-    ~#
-    method : public : Receive() ~ System.Base {
-      return Receive(-1);
-    }
-
-    #~
-    Takes the oldest item. Waiting receivers are served in arrival order.
-    @param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
-    @return the item, or Nil on timeout or when the mailbox is closed and empty (IsDrained tells which)
-    ~#
-    method : public : Receive(timeout : Int) ~ System.Base {
-      result : System.Base;
-      critical(@mutex) {
-        if(@items->IsEmpty() = false & (@receivers->IsEmpty() | timeout = 0)) {
-          result := @items->RemoveFront();
-          @received += 1;
-          @not_full->Broadcast();
-        }
-        else if(timeout <> 0 & (@closed = false | @items->IsEmpty() = false)) {
-          deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-          t := @receivers->Join();
-          done := false;
-          while(done = false) {
-            if(@receivers->IsHead(t) & @items->IsEmpty() = false) {
-              result := @items->RemoveFront();
-              @received += 1;
-              done := true;
-            }
-            else if(@closed & @items->IsEmpty()) {
-              done := true;
-            }
-            else if(timeout < 0) {
-              @not_empty->Wait(@mutex);
-            }
-            else {
-              remaining := deadline - ActorClock->Now();
-              if(remaining <= 0) {
-                done := true;
-              }
-              else {
-                @not_empty->Wait(@mutex, remaining);
-              };
-            };
-          };
-          @receivers->Leave(t);
-          # the next receiver in line may have an item now, and a sender may have room
-          @not_empty->Broadcast();
-          @not_full->Broadcast();
-        };
-      };
-      return result;
-    }
-
-    #~
-    Takes the oldest item if there is one, without waiting
-    @return the item or Nil
-    ~#
-    method : public : TryReceive() ~ System.Base {
-      return Receive(0);
-    }
-
-    #~
-    Ends sending: later sends return CLOSED and blocked senders and receivers wake. What is queued
-    can still be received.
-    ~#
-    method : public : Close() ~ Nil {
-      critical(@mutex) {
-        @closed := true;
-        @not_full->Broadcast();
-        @not_empty->Broadcast();
-      };
-    }
-
-    #~
-    Says whether Close was called
-    @return true once closed
-    ~#
-    method : public : IsClosed() ~ Bool {
-      v := false;
-      critical(@mutex) {
-        v := @closed;
-      };
-      return v;
-    }
-
-    #~
-    Says whether the mailbox is closed and empty, so no item will ever come out of it
-    @return true when drained
-    ~#
-    method : public : IsDrained() ~ Bool {
-      v := false;
-      critical(@mutex) {
-        v := @closed & @items->IsEmpty();
-      };
-      return v;
-    }
-
-    #~
-    Number of items queued now
-    @return the count
-    ~#
-    method : public : Size() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @items->Size();
-      };
-      return n;
-    }
-
-    #~
-    The capacity
-    @return most items queued at once, 0 when unbounded
-    ~#
-    method : public : GetCapacity() ~ Int {
-      return @capacity;
-    }
-
-    #~
-    The overflow policy
-    @return the policy
-    ~#
-    method : public : GetPolicy() ~ Mailbox->Policy {
-      return @policy;
-    }
-
-    #~
-    Number of items accepted so far
-    @return the count
-    ~#
-    method : public : GetSentCount() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @sent;
-      };
-      return n;
-    }
-
-    #~
-    Number of items handed to receivers so far
-    @return the count
-    ~#
-    method : public : GetReceivedCount() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @received;
-      };
-      return n;
-    }
-
-    #~
-    Number of items refused by the REJECT policy
-    @return the count
-    ~#
-    method : public : GetRejectedCount() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @rejected;
-      };
-      return n;
-    }
-
-    #~
-    Number of senders waiting for room in a full BLOCK mailbox
-    @return the count
-    ~#
-    method : public : GetWaitingSenders() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @senders->Size();
-      };
-      return n;
-    }
-
-    #~
-    Number of receivers waiting for an item
-    @return the count
-    ~#
-    method : public : GetWaitingReceivers() ~ Int {
-      n := 0;
-      critical(@mutex) {
-        n := @receivers->Size();
-      };
-      return n;
-    }
-
-    #~
-    Removes every queued item, and tells the Mail among them that they were discarded (a waiting
-    Call fails at once instead of waiting for its timeout)
-    @return how many items were removed
-    ~#
-    method : public : DiscardAll() ~ Int {
-      taken := Vector->New()<System.Base>;
-      critical(@mutex) {
-        while(@items->IsEmpty() = false) {
-          taken->AddBack(@items->RemoveFront());
-        };
-        @not_full->Broadcast();
-      };
-      each(i : taken) {
-        item := taken->Get(i);
-        if(item->TypeOf(Mail)) {
-          item->As(Mail)->Discarded();
-        };
-      };
-      return taken->Size();
-    }
-  }
-
-  #~
-  Why an actor ended. NORMAL: the handler asked to end. STOPPED: Stop was called and the queue
-  was drained. FAILED: the init, a handler or the terminate hook raised an error or hit a runtime
-  fault, or a linked actor failed; GetError says what. KILLED: Kill was called.
-  ~#
-  class ExitReason {
-    #~
-    The kinds of exit.<br/>
-    <p><pre>ExitReason->Kind</pre></p>
-    @class ExitReason
-    ~#
-    enum Kind {
-      NORMAL,
-      STOPPED,
-      FAILED,
-      KILLED
-    }
-
-    @kind : ExitReason->Kind;
-    @error : String;
-
-    New(kind : ExitReason->Kind, error : String) {
-      @kind := kind;
-      @error := error;
-    }
-
-    #~
-    A normal exit
-    @return the reason
-    ~#
-    function : Normal() ~ ExitReason {
-      return ExitReason->New(ExitReason->Kind->NORMAL, Nil);
-    }
-
-    #~
-    An exit after Stop
-    @return the reason
-    ~#
-    function : Stopped() ~ ExitReason {
-      return ExitReason->New(ExitReason->Kind->STOPPED, Nil);
-    }
-
-    #~
-    An exit after Kill
-    @return the reason
-    ~#
-    function : Killed() ~ ExitReason {
-      return ExitReason->New(ExitReason->Kind->KILLED, Nil);
-    }
-
-    #~
-    A failure
-    @param error what went wrong
-    @return the reason
-    ~#
-    function : Failed(error : String) ~ ExitReason {
-      return ExitReason->New(ExitReason->Kind->FAILED, error);
-    }
-
-    #~
-    The kind of exit
-    @return the kind
-    ~#
-    method : public : GetKind() ~ ExitReason->Kind {
-      return @kind;
-    }
-
-    #~
-    The error of a failure
-    @return the message, Nil unless FAILED
-    ~#
-    method : public : GetError() ~ String {
-      return @error;
-    }
-
-    #~
-    Says whether the exit was NORMAL or STOPPED
-    @return true for an orderly end
-    ~#
-    method : public : IsOrderly() ~ Bool {
-      return @kind = ExitReason->Kind->NORMAL | @kind = ExitReason->Kind->STOPPED;
-    }
-
-    #~
-    Says whether the exit was FAILED or KILLED, which is what makes a linked actor fail and a
-    transient child restart
-    @return true for an abnormal end
-    ~#
-    method : public : IsAbnormal() ~ Bool {
-      return IsOrderly() = false;
-    }
-
-    #~
-    The reason as text
-    @return text such as failed: Divide by zero
-    ~#
-    method : public : ToString() ~ String {
-      if(@kind = ExitReason->Kind->NORMAL) {
-        return "normal";
-      };
-      if(@kind = ExitReason->Kind->STOPPED) {
-        return "stopped";
-      };
-      if(@kind = ExitReason->Kind->KILLED) {
-        return "killed";
-      };
-      return "failed: {$@error}";
-    }
-  }
-
-  #~
-  What a Call came back with
-  ~#
-  class CallResult {
-    #~
-    How the call ended.<br/>
-    <p><pre>CallResult->Status</pre></p>
-    @class CallResult
-    ~#
-    enum Status {
-      OK,
-      TIMED_OUT,
-      DEAD,
-      FAILED
-    }
-
-    @status : CallResult->Status;
-    @value : System.Base;
-    @error : String;
-    @id : Int;
-
-    New(status : CallResult->Status, value : System.Base, error : String, id : Int) {
-      @status := status;
-      @value := value;
-      @error := error;
-      @id := id;
-    }
-
-    #~
-    How the call ended: OK (answered), TIMED_OUT, DEAD (the actor was not accepting mail, or ended before answering) or FAILED (the handler failed on this call)
-    @return the status
-    ~#
-    method : public : GetStatus() ~ CallResult->Status {
-      return @status;
-    }
-
-    #~
-    Says whether the call was answered
-    @return true for OK
-    ~#
-    method : public : IsOk() ~ Bool {
-      return @status = CallResult->Status->OK;
-    }
-
-    #~
-    The answer
-    @return the value the handler gave to Answer, Nil unless OK
-    ~#
-    method : public : GetValue() ~ System.Base {
-      return @value;
-    }
-
-    #~
-    Why a call did not succeed
-    @return a message, Nil for OK
-    ~#
-    method : public : GetError() ~ String {
-      return @error;
-    }
-
-    #~
-    The correlation id of the call, unique among the calls to one actor
-    @return the id
-    ~#
-    method : public : GetId() ~ Int {
-      return @id;
-    }
-  }
-
-  # One pending call: the caller waits on it, the handler answers it. A call that timed out is
-  # marked abandoned, so a late answer is dropped (and counted) instead of reaching anyone.
-  class : private : CallSlot {
-    @mutex : ThreadMutex;
-    @changed : Condition;
-    @state : Int;    # 0 pending, 1 answered, 2 failed, 3 abandoned
-    @value : System.Base;
-    @error : String;
-    @id : Int;
-    @target : Actor;
-
-    New(target : Actor, id : Int) {
-      @mutex := ThreadMutex->New("call");
-      @changed := Condition->New();
-      @state := 0;
-      @id := id;
-      @target := target;
-    }
-
-    method : public : GetId() ~ Int {
-      return @id;
-    }
-
-    method : public : Answer(value : System.Base) ~ Bool {
-      accepted := false;
-      late := false;
-      critical(@mutex) {
-        if(@state = 0) {
-          @state := 1;
-          @value := value;
-          accepted := true;
-          @changed->Broadcast();
-        }
-        else if(@state = 3) {
-          late := true;
-        };
-      };
-      if(late & @target <> Nil) {
-        @target->NoteLateAnswer();
-      };
-      return accepted;
-    }
-
-    method : public : Fail(error : String) ~ Bool {
-      accepted := false;
-      critical(@mutex) {
-        if(@state = 0) {
-          @state := 2;
-          @error := error;
-          accepted := true;
-          @changed->Broadcast();
-        };
-      };
-      return accepted;
-    }
-
-    method : public : IsPending() ~ Bool {
-      v := false;
-      critical(@mutex) {
-        v := @state = 0;
-      };
-      return v;
-    }
-
-    # waits for the answer; timeout -1 waits without limit
-    method : public : Await(timeout : Int) ~ CallResult {
-      deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-      status := CallResult->Status->OK;
-      value : System.Base;
-      error : String;
-      critical(@mutex) {
-        done := false;
-        while(done = false) {
-          if(@state = 1) {
-            value := @value;
-            done := true;
-          }
-          else if(@state = 2) {
-            status := CallResult->Status->FAILED;
-            error := @error;
-            done := true;
-          }
-          else if(timeout < 0) {
-            @changed->Wait(@mutex);
-          }
-          else {
-            remaining := deadline - ActorClock->Now();
-            if(remaining <= 0) {
-              @state := 3;
-              status := CallResult->Status->TIMED_OUT;
-              error := "no answer within {$timeout} ms";
-              done := true;
-            }
-            else {
-              @changed->Wait(@mutex, remaining);
-            };
-          };
-        };
-      };
-      return CallResult->New(status, value, error, @id);
-    }
-  }
-
-  #~
-  What an actor receives: a Mail carries a payload (DATA), a question to answer (CALL), or a
-  notice that a watched actor ended (DOWN, from Monitor) or that a linked actor ended (EXIT, from
-  Link, delivered only to an actor that traps exits).
-  ~#
-  class Mail {
-    #~
-    The kinds of mail.<br/>
-    <p><pre>Mail->Kind</pre></p>
-    @class Mail
-    ~#
-    enum Kind {
-      DATA,
-      CALL,
-      DOWN,
-      EXIT
-    }
-
-    @kind : Mail->Kind;
-    @payload : System.Base;
-    @sender : Actor;
-    @slot : CallSlot;
-    @source : Actor;
-    @reason : ExitReason;
-
-    New(kind : Mail->Kind, payload : System.Base, sender : Actor, slot : CallSlot, source : Actor, reason : ExitReason) {
-      @kind := kind;
-      @payload := payload;
-      @sender := sender;
-      @slot := slot;
-      @source := source;
-      @reason := reason;
-    }
-
-    #~
-    A data mail
-    @param payload what to deliver, not Nil
-    @param sender who sent it, or Nil
-    @return the mail
-    ~#
-    function : Data(payload : System.Base, sender : Actor) ~ Mail {
-      return Mail->New(Mail->Kind->DATA, payload, sender, Nil, Nil, Nil);
-    }
-
-    #~
-    A down notice
-    @param source the actor that ended
-    @param reason why
-    @return the mail
-    ~#
-    function : Down(source : Actor, reason : ExitReason) ~ Mail {
-      return Mail->New(Mail->Kind->DOWN, Nil, Nil, Nil, source, reason);
-    }
-
-    #~
-    An exit notice
-    @param source the actor that ended
-    @param reason why
-    @return the mail
-    ~#
-    function : Exit(source : Actor, reason : ExitReason) ~ Mail {
-      return Mail->New(Mail->Kind->EXIT, Nil, Nil, Nil, source, reason);
-    }
-
-    #~
-    The kind of mail
-    @return the kind
-    ~#
-    method : public : GetKind() ~ Mail->Kind {
-      return @kind;
-    }
-
-    #~
-    The payload of a DATA or CALL mail
-    @return the payload, Nil for a notice
-    ~#
-    method : public : GetPayload() ~ System.Base {
-      return @payload;
-    }
-
-    #~
-    Who sent a DATA mail
-    @return the sender, Nil when not given
-    ~#
-    method : public : GetSender() ~ Actor {
-      return @sender;
-    }
-
-    #~
-    The actor a DOWN or EXIT notice is about
-    @return the actor that ended, Nil for other mail
-    ~#
-    method : public : GetSource() ~ Actor {
-      return @source;
-    }
-
-    #~
-    Why the actor of a DOWN or EXIT notice ended
-    @return the reason, Nil for other mail
-    ~#
-    method : public : GetReason() ~ ExitReason {
-      return @reason;
-    }
-
-    #~
-    Says whether this mail is a question waiting for an answer
-    @return true for a CALL that nobody has answered or failed yet
-    ~#
-    method : public : IsPendingCall() ~ Bool {
-      return @slot <> Nil & @slot->IsPending();
-    }
-
-    #~
-    The correlation id of a CALL
-    @return the id, 0 for other mail
-    ~#
-    method : public : GetCallId() ~ Int {
-      if(@slot = Nil) {
-        return 0;
-      };
-      return @slot->GetId();
-    }
-
-    #~
-    Answers a CALL. May be done after the handler returns (keep the Mail and answer later).
-    @param value the answer
-    @return true if the caller got it; false if the call is not a CALL, was answered already, or the caller gave up (a late answer, counted by the actor)
-    ~#
-    method : public : Answer(value : System.Base) ~ Bool {
-      if(@slot = Nil) {
-        return false;
-      };
-      return @slot->Answer(value);
-    }
-
-    #~
-    Fails a CALL, so the caller returns FAILED with this message instead of waiting
-    @param error what went wrong
-    @return true if the caller was told
-    ~#
-    method : public : Fail(error : String) ~ Bool {
-      if(@slot = Nil) {
-        return false;
-      };
-      return @slot->Fail(error);
-    }
-
-    #~
-    Called when the mail is thrown away unread
-    ~#
-    method : public : Discarded() ~ Nil {
-      if(@slot <> Nil) {
-        @slot->Fail("the mail was discarded unread");
-      };
-    }
-  }
-
-  #~
-  What an actor does. Implement it, keep the state in fields (only the actor's thread touches
-  them), and write Handle. A handler may raise an error or fault: the actor ends FAILED. A
-  behavior that also implements ActorLifecycle gets Init and Terminate calls.
-  ```
+	```
+	~#
+	class Mailbox {
+		#~
+		What a full bounded mailbox does with a new item.<br/>
+		<p><pre>Mailbox->Policy</pre></p>
+		@class Mailbox
+		~#
+		enum Policy {
+			BLOCK,
+			REJECT
+		}
+
+		#~
+		What Send reports.<br/>
+		<p><pre>Mailbox->Status</pre></p>
+		@class Mailbox
+		~#
+		enum Status {
+			OK,
+			FULL,
+			TIMED_OUT,
+			CLOSED,
+			INVALID
+		}
+
+		@mutex : ThreadMutex;
+		@not_full : Condition;
+		@not_empty : Condition;
+		@items : Deque<System.Base>;
+		@capacity : Int;
+		@policy : Mailbox->Policy;
+		@closed : Bool;
+		@senders : TicketLine;
+		@receivers : TicketLine;
+		@sent : Int;
+		@received : Int;
+		@rejected : Int;
+
+		#~
+		Creates an unbounded mailbox
+		~#
+		New() {
+			Init(0, Mailbox->Policy->BLOCK);
+		}
+
+		#~
+		Creates a bounded mailbox
+		@param capacity most items queued at once; zero or less means unbounded
+		@param policy what to do with an item that arrives when the mailbox is full
+		~#
+		New(capacity : Int, policy : Mailbox->Policy) {
+			Init(capacity, policy);
+		}
+
+		method : Init(capacity : Int, policy : Mailbox->Policy) ~ Nil {
+			@mutex := ThreadMutex->New("mailbox");
+			@not_full := Condition->New();
+			@not_empty := Condition->New();
+			@items := Deque->New()<System.Base>;
+			@capacity := capacity < 0 ? 0 : capacity;
+			@policy := policy;
+			@closed := false;
+			@senders := TicketLine->New();
+			@receivers := TicketLine->New();
+			@sent := 0;
+			@received := 0;
+			@rejected := 0;
+		}
+
+		method : HasRoom() ~ Bool {
+			return @capacity <= 0 | @items->Size() < @capacity;
+		}
+
+		# the caller holds the mutex
+		method : Push(item : System.Base) ~ Nil {
+			@items->AddBack(item);
+			@sent += 1;
+			@not_empty->Broadcast();
+		}
+
+		#~
+		Queues an item, waiting without limit while a BLOCK mailbox is full
+		@param item what to queue, not Nil
+		@return OK, FULL (REJECT policy), CLOSED or INVALID
+		~#
+		method : public : Send(item : System.Base) ~ Mailbox->Status {
+			return Send(item, -1);
+		}
+
+		#~
+		Queues an item
+		@param item what to queue, not Nil
+		@param timeout how long a BLOCK mailbox may make the sender wait, in milliseconds: -1 forever, 0 not at all
+		@return OK, FULL, TIMED_OUT (a BLOCK mailbox stayed full), CLOSED or INVALID
+		~#
+		method : public : Send(item : System.Base, timeout : Int) ~ Mailbox->Status {
+			if(item = Nil) {
+				return Mailbox->Status->INVALID;
+			};
+
+			status := Mailbox->Status->OK;
+			critical(@mutex) {
+				if(@closed) {
+					status := Mailbox->Status->CLOSED;
+				}
+				else if(HasRoom() & @senders->IsEmpty()) {
+					Push(item);
+				}
+				else if(@policy = Mailbox->Policy->REJECT) {
+					@rejected += 1;
+					status := Mailbox->Status->FULL;
+				}
+				else {
+					deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
+					t := @senders->Join();
+					done := false;
+					while(done = false) {
+						if(@closed) {
+							status := Mailbox->Status->CLOSED;
+							done := true;
+						}
+						else if(@senders->IsHead(t) & HasRoom()) {
+							Push(item);
+							done := true;
+						}
+						else if(timeout < 0) {
+							@not_full->Wait(@mutex);
+						}
+						else {
+							remaining := deadline - ActorClock->Now();
+							if(remaining <= 0) {
+								status := Mailbox->Status->TIMED_OUT;
+								done := true;
+							}
+							else {
+								@not_full->Wait(@mutex, remaining);
+							};
+						};
+					};
+					@senders->Leave(t);
+					# the next sender in line may fit now
+					@not_full->Broadcast();
+				};
+			};
+
+			return status;
+		}
+
+		# Queues an item past the capacity and the policy. Internal: the actor uses it for DOWN and EXIT
+		# notices, which a full bounded mailbox must not lose (and which must not block the exiting
+		# actor). Fails only when the mailbox is closed.
+		method : public : SendUrgent(item : System.Base) ~ Mailbox->Status {
+			if(item = Nil) {
+				return Mailbox->Status->INVALID;
+			};
+			status := Mailbox->Status->OK;
+			critical(@mutex) {
+				if(@closed) {
+					status := Mailbox->Status->CLOSED;
+				}
+				else {
+					Push(item);
+				};
+			};
+			return status;
+		}
+
+		#~
+		Takes the oldest item, waiting without limit
+		@return the item, or Nil once the mailbox is closed and empty
+		~#
+		method : public : Receive() ~ System.Base {
+			return Receive(-1);
+		}
+
+		#~
+		Takes the oldest item. Waiting receivers are served in arrival order.
+		@param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
+		@return the item, or Nil on timeout or when the mailbox is closed and empty (IsDrained tells which)
+		~#
+		method : public : Receive(timeout : Int) ~ System.Base {
+			result : System.Base;
+			critical(@mutex) {
+				if(@items->IsEmpty() = false & (@receivers->IsEmpty() | timeout = 0)) {
+					result := @items->RemoveFront();
+					@received += 1;
+					@not_full->Broadcast();
+				}
+				else if(timeout <> 0 & (@closed = false | @items->IsEmpty() = false)) {
+					deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
+					t := @receivers->Join();
+					done := false;
+					while(done = false) {
+						if(@receivers->IsHead(t) & @items->IsEmpty() = false) {
+							result := @items->RemoveFront();
+							@received += 1;
+							done := true;
+						}
+						else if(@closed & @items->IsEmpty()) {
+							done := true;
+						}
+						else if(timeout < 0) {
+							@not_empty->Wait(@mutex);
+						}
+						else {
+							remaining := deadline - ActorClock->Now();
+							if(remaining <= 0) {
+								done := true;
+							}
+							else {
+								@not_empty->Wait(@mutex, remaining);
+							};
+						};
+					};
+					@receivers->Leave(t);
+					# the next receiver in line may have an item now, and a sender may have room
+					@not_empty->Broadcast();
+					@not_full->Broadcast();
+				};
+			};
+			return result;
+		}
+
+		#~
+		Takes the oldest item if there is one, without waiting
+		@return the item or Nil
+		~#
+		method : public : TryReceive() ~ System.Base {
+			return Receive(0);
+		}
+
+		#~
+		Ends sending: later sends return CLOSED and blocked senders and receivers wake. What is queued
+		can still be received.
+		~#
+		method : public : Close() ~ Nil {
+			critical(@mutex) {
+				@closed := true;
+				@not_full->Broadcast();
+				@not_empty->Broadcast();
+			};
+		}
+
+		#~
+		Says whether Close was called
+		@return true once closed
+		~#
+		method : public : IsClosed() ~ Bool {
+			v := false;
+			critical(@mutex) {
+				v := @closed;
+			};
+			return v;
+		}
+
+		#~
+		Says whether the mailbox is closed and empty, so no item will ever come out of it
+		@return true when drained
+		~#
+		method : public : IsDrained() ~ Bool {
+			v := false;
+			critical(@mutex) {
+				v := @closed & @items->IsEmpty();
+			};
+			return v;
+		}
+
+		#~
+		Number of items queued now
+		@return the count
+		~#
+		method : public : Size() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @items->Size();
+			};
+			return n;
+		}
+
+		#~
+		The capacity
+		@return most items queued at once, 0 when unbounded
+		~#
+		method : public : GetCapacity() ~ Int {
+			return @capacity;
+		}
+
+		#~
+		The overflow policy
+		@return the policy
+		~#
+		method : public : GetPolicy() ~ Mailbox->Policy {
+			return @policy;
+		}
+
+		#~
+		Number of items accepted so far
+		@return the count
+		~#
+		method : public : GetSentCount() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @sent;
+			};
+			return n;
+		}
+
+		#~
+		Number of items handed to receivers so far
+		@return the count
+		~#
+		method : public : GetReceivedCount() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @received;
+			};
+			return n;
+		}
+
+		#~
+		Number of items refused by the REJECT policy
+		@return the count
+		~#
+		method : public : GetRejectedCount() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @rejected;
+			};
+			return n;
+		}
+
+		#~
+		Number of senders waiting for room in a full BLOCK mailbox
+		@return the count
+		~#
+		method : public : GetWaitingSenders() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @senders->Size();
+			};
+			return n;
+		}
+
+		#~
+		Number of receivers waiting for an item
+		@return the count
+		~#
+		method : public : GetWaitingReceivers() ~ Int {
+			n := 0;
+			critical(@mutex) {
+				n := @receivers->Size();
+			};
+			return n;
+		}
+
+		#~
+		Removes every queued item, and tells the Mail among them that they were discarded (a waiting
+		Call fails at once instead of waiting for its timeout)
+		@return how many items were removed
+		~#
+		method : public : DiscardAll() ~ Int {
+			taken := Vector->New()<System.Base>;
+			critical(@mutex) {
+				while(@items->IsEmpty() = false) {
+					taken->AddBack(@items->RemoveFront());
+				};
+				@not_full->Broadcast();
+			};
+			each(i : taken) {
+				item := taken->Get(i);
+				if(item->TypeOf(Mail)) {
+					item->As(Mail)->Discarded();
+				};
+			};
+			return taken->Size();
+		}
+	}
+
+	#~
+	Why an actor ended. NORMAL: the handler asked to end. STOPPED: Stop was called and the queue
+	was drained. FAILED: the init, a handler or the terminate hook raised an error or hit a runtime
+	fault, or a linked actor failed; GetError says what. KILLED: Kill was called.
+	~#
+	class ExitReason {
+		#~
+		The kinds of exit.<br/>
+		<p><pre>ExitReason->Kind</pre></p>
+		@class ExitReason
+		~#
+		enum Kind {
+			NORMAL,
+			STOPPED,
+			FAILED,
+			KILLED
+		}
+
+		@kind : ExitReason->Kind;
+		@error : String;
+
+		New(kind : ExitReason->Kind, error : String) {
+			@kind := kind;
+			@error := error;
+		}
+
+		#~
+		A normal exit
+		@return the reason
+		~#
+		function : Normal() ~ ExitReason {
+			return ExitReason->New(ExitReason->Kind->NORMAL, Nil);
+		}
+
+		#~
+		An exit after Stop
+		@return the reason
+		~#
+		function : Stopped() ~ ExitReason {
+			return ExitReason->New(ExitReason->Kind->STOPPED, Nil);
+		}
+
+		#~
+		An exit after Kill
+		@return the reason
+		~#
+		function : Killed() ~ ExitReason {
+			return ExitReason->New(ExitReason->Kind->KILLED, Nil);
+		}
+
+		#~
+		A failure
+		@param error what went wrong
+		@return the reason
+		~#
+		function : Failed(error : String) ~ ExitReason {
+			return ExitReason->New(ExitReason->Kind->FAILED, error);
+		}
+
+		#~
+		The kind of exit
+		@return the kind
+		~#
+		method : public : GetKind() ~ ExitReason->Kind {
+			return @kind;
+		}
+
+		#~
+		The error of a failure
+		@return the message, Nil unless FAILED
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Says whether the exit was NORMAL or STOPPED
+		@return true for an orderly end
+		~#
+		method : public : IsOrderly() ~ Bool {
+			return @kind = ExitReason->Kind->NORMAL | @kind = ExitReason->Kind->STOPPED;
+		}
+
+		#~
+		Says whether the exit was FAILED or KILLED, which is what makes a linked actor fail and a
+		transient child restart
+		@return true for an abnormal end
+		~#
+		method : public : IsAbnormal() ~ Bool {
+			return IsOrderly() = false;
+		}
+
+		#~
+		The reason as text
+		@return text such as failed: Divide by zero
+		~#
+		method : public : ToString() ~ String {
+			if(@kind = ExitReason->Kind->NORMAL) {
+				return "normal";
+			};
+			if(@kind = ExitReason->Kind->STOPPED) {
+				return "stopped";
+			};
+			if(@kind = ExitReason->Kind->KILLED) {
+				return "killed";
+			};
+			return "failed: {$@error}";
+		}
+	}
+
+	#~
+	What a Call came back with
+	~#
+	class CallResult {
+		#~
+		How the call ended.<br/>
+		<p><pre>CallResult->Status</pre></p>
+		@class CallResult
+		~#
+		enum Status {
+			OK,
+			TIMED_OUT,
+			DEAD,
+			FAILED
+		}
+
+		@status : CallResult->Status;
+		@value : System.Base;
+		@error : String;
+		@id : Int;
+
+		New(status : CallResult->Status, value : System.Base, error : String, id : Int) {
+			@status := status;
+			@value := value;
+			@error := error;
+			@id := id;
+		}
+
+		#~
+		How the call ended: OK (answered), TIMED_OUT, DEAD (the actor was not accepting mail, or ended before answering) or FAILED (the handler failed on this call)
+		@return the status
+		~#
+		method : public : GetStatus() ~ CallResult->Status {
+			return @status;
+		}
+
+		#~
+		Says whether the call was answered
+		@return true for OK
+		~#
+		method : public : IsOk() ~ Bool {
+			return @status = CallResult->Status->OK;
+		}
+
+		#~
+		The answer
+		@return the value the handler gave to Answer, Nil unless OK
+		~#
+		method : public : GetValue() ~ System.Base {
+			return @value;
+		}
+
+		#~
+		Why a call did not succeed
+		@return a message, Nil for OK
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The correlation id of the call, unique among the calls to one actor
+		@return the id
+		~#
+		method : public : GetId() ~ Int {
+			return @id;
+		}
+	}
+
+	# One pending call: the caller waits on it, the handler answers it. A call that timed out is
+	# marked abandoned, so a late answer is dropped (and counted) instead of reaching anyone.
+	class : private : CallSlot {
+		@mutex : ThreadMutex;
+		@changed : Condition;
+		@state : Int;    # 0 pending, 1 answered, 2 failed, 3 abandoned
+		@value : System.Base;
+		@error : String;
+		@id : Int;
+		@target : Actor;
+
+		New(target : Actor, id : Int) {
+			@mutex := ThreadMutex->New("call");
+			@changed := Condition->New();
+			@state := 0;
+			@id := id;
+			@target := target;
+		}
+
+		method : public : GetId() ~ Int {
+			return @id;
+		}
+
+		method : public : Answer(value : System.Base) ~ Bool {
+			accepted := false;
+			late := false;
+			critical(@mutex) {
+				if(@state = 0) {
+					@state := 1;
+					@value := value;
+					accepted := true;
+					@changed->Broadcast();
+				}
+				else if(@state = 3) {
+					late := true;
+				};
+			};
+			if(late & @target <> Nil) {
+				@target->NoteLateAnswer();
+			};
+			return accepted;
+		}
+
+		method : public : Fail(error : String) ~ Bool {
+			accepted := false;
+			critical(@mutex) {
+				if(@state = 0) {
+					@state := 2;
+					@error := error;
+					accepted := true;
+					@changed->Broadcast();
+				};
+			};
+			return accepted;
+		}
+
+		method : public : IsPending() ~ Bool {
+			v := false;
+			critical(@mutex) {
+				v := @state = 0;
+			};
+			return v;
+		}
+
+		# waits for the answer; timeout -1 waits without limit
+		method : public : Await(timeout : Int) ~ CallResult {
+			deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
+			status := CallResult->Status->OK;
+			value : System.Base;
+			error : String;
+			critical(@mutex) {
+				done := false;
+				while(done = false) {
+					if(@state = 1) {
+						value := @value;
+						done := true;
+					}
+					else if(@state = 2) {
+						status := CallResult->Status->FAILED;
+						error := @error;
+						done := true;
+					}
+					else if(timeout < 0) {
+						@changed->Wait(@mutex);
+					}
+					else {
+						remaining := deadline - ActorClock->Now();
+						if(remaining <= 0) {
+							@state := 3;
+							status := CallResult->Status->TIMED_OUT;
+							error := "no answer within {$timeout} ms";
+							done := true;
+						}
+						else {
+							@changed->Wait(@mutex, remaining);
+						};
+					};
+				};
+			};
+			return CallResult->New(status, value, error, @id);
+		}
+	}
+
+	#~
+	What an actor receives: a Mail carries a payload (DATA), a question to answer (CALL), or a
+	notice that a watched actor ended (DOWN, from Monitor) or that a linked actor ended (EXIT, from
+	Link, delivered only to an actor that traps exits).
+	~#
+	class Mail {
+		#~
+		The kinds of mail.<br/>
+		<p><pre>Mail->Kind</pre></p>
+		@class Mail
+		~#
+		enum Kind {
+			DATA,
+			CALL,
+			DOWN,
+			EXIT
+		}
+
+		@kind : Mail->Kind;
+		@payload : System.Base;
+		@sender : Actor;
+		@slot : CallSlot;
+		@source : Actor;
+		@reason : ExitReason;
+
+		New(kind : Mail->Kind, payload : System.Base, sender : Actor, slot : CallSlot, source : Actor, reason : ExitReason) {
+			@kind := kind;
+			@payload := payload;
+			@sender := sender;
+			@slot := slot;
+			@source := source;
+			@reason := reason;
+		}
+
+		#~
+		A data mail
+		@param payload what to deliver, not Nil
+		@param sender who sent it, or Nil
+		@return the mail
+		~#
+		function : Data(payload : System.Base, sender : Actor) ~ Mail {
+			return Mail->New(Mail->Kind->DATA, payload, sender, Nil, Nil, Nil);
+		}
+
+		#~
+		A down notice
+		@param source the actor that ended
+		@param reason why
+		@return the mail
+		~#
+		function : Down(source : Actor, reason : ExitReason) ~ Mail {
+			return Mail->New(Mail->Kind->DOWN, Nil, Nil, Nil, source, reason);
+		}
+
+		#~
+		An exit notice
+		@param source the actor that ended
+		@param reason why
+		@return the mail
+		~#
+		function : Exit(source : Actor, reason : ExitReason) ~ Mail {
+			return Mail->New(Mail->Kind->EXIT, Nil, Nil, Nil, source, reason);
+		}
+
+		#~
+		The kind of mail
+		@return the kind
+		~#
+		method : public : GetKind() ~ Mail->Kind {
+			return @kind;
+		}
+
+		#~
+		The payload of a DATA or CALL mail
+		@return the payload, Nil for a notice
+		~#
+		method : public : GetPayload() ~ System.Base {
+			return @payload;
+		}
+
+		#~
+		Who sent a DATA mail
+		@return the sender, Nil when not given
+		~#
+		method : public : GetSender() ~ Actor {
+			return @sender;
+		}
+
+		#~
+		The actor a DOWN or EXIT notice is about
+		@return the actor that ended, Nil for other mail
+		~#
+		method : public : GetSource() ~ Actor {
+			return @source;
+		}
+
+		#~
+		Why the actor of a DOWN or EXIT notice ended
+		@return the reason, Nil for other mail
+		~#
+		method : public : GetReason() ~ ExitReason {
+			return @reason;
+		}
+
+		#~
+		Says whether this mail is a question waiting for an answer
+		@return true for a CALL that nobody has answered or failed yet
+		~#
+		method : public : IsPendingCall() ~ Bool {
+			return @slot <> Nil & @slot->IsPending();
+		}
+
+		#~
+		The correlation id of a CALL
+		@return the id, 0 for other mail
+		~#
+		method : public : GetCallId() ~ Int {
+			if(@slot = Nil) {
+				return 0;
+			};
+			return @slot->GetId();
+		}
+
+		#~
+		Answers a CALL. May be done after the handler returns (keep the Mail and answer later).
+		@param value the answer
+		@return true if the caller got it; false if the call is not a CALL, was answered already, or the caller gave up (a late answer, counted by the actor)
+		~#
+		method : public : Answer(value : System.Base) ~ Bool {
+			if(@slot = Nil) {
+				return false;
+			};
+			return @slot->Answer(value);
+		}
+
+		#~
+		Fails a CALL, so the caller returns FAILED with this message instead of waiting
+		@param error what went wrong
+		@return true if the caller was told
+		~#
+		method : public : Fail(error : String) ~ Bool {
+			if(@slot = Nil) {
+				return false;
+			};
+			return @slot->Fail(error);
+		}
+
+		#~
+		Called when the mail is thrown away unread
+		~#
+		method : public : Discarded() ~ Nil {
+			if(@slot <> Nil) {
+				@slot->Fail("the mail was discarded unread");
+			};
+		}
+	}
+
+	#~
+	What an actor does. Implement it, keep the state in fields (only the actor's thread touches
+	them), and write Handle. A handler may raise an error or fault: the actor ends FAILED. A
+	behavior that also implements ActorLifecycle gets Init and Terminate calls.
+	```
 class Counter implements ActorBehavior {
-  @n : Int;
-  New() {}
-  method : public : Handle(me : Actor, mail : Mail) ~ Bool {
-    if(mail->GetKind() = Mail->Kind->CALL) {
-      mail->Answer(IntRef->New(@n));
-    }
-    else {
-      @n += mail->GetPayload()->As(IntRef)->Get();
-    };
-    return true;
-  }
+	@n : Int;
+	New() {}
+	method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+		if(mail->GetKind() = Mail->Kind->CALL) {
+			mail->Answer(IntRef->New(@n));
+		}
+		else {
+			@n += mail->GetPayload()->As(IntRef)->Get();
+		};
+		return true;
+	}
 }
-  ```
-  ~#
-  interface ActorBehavior {
-    #~
-    Handles one mail
-    @param me the actor running this behavior
-    @param mail the mail; a CALL should be answered with mail->Answer
-    @return true to keep running, false to end with the reason NORMAL
-    ~#
-    method : virtual : public : Handle(me : Actor, mail : Mail) ~ Bool;
-  }
+	```
+	~#
+	interface ActorBehavior {
+		#~
+		Handles one mail
+		@param me the actor running this behavior
+		@param mail the mail; a CALL should be answered with mail->Answer
+		@return true to keep running, false to end with the reason NORMAL
+		~#
+		method : virtual : public : Handle(me : Actor, mail : Mail) ~ Bool;
+	}
 
-  #~
-  Optional hooks for an ActorBehavior: implement this as well to run code when the actor starts
-  and when it ends.
-  ~#
-  interface ActorLifecycle {
-    #~
-    Runs once on the actor's thread before the first mail. Raising an error here fails the actor.
-    @param me the actor running this behavior
-    ~#
-    method : virtual : public : Init(me : Actor) ~ Nil;
+	#~
+	Optional hooks for an ActorBehavior: implement this as well to run code when the actor starts
+	and when it ends.
+	~#
+	interface ActorLifecycle {
+		#~
+		Runs once on the actor's thread before the first mail. Raising an error here fails the actor.
+		@param me the actor running this behavior
+		~#
+		method : virtual : public : Init(me : Actor) ~ Nil;
 
-    #~
-    Runs once on the actor's thread when it ends, whatever the reason (a Kill cannot interrupt a
-    blocked handler, so it does not run then). An error raised here turns an orderly exit into FAILED.
-    @param me the actor running this behavior
-    @param reason why the actor ends
-    ~#
-    method : virtual : public : Terminate(me : Actor, reason : ExitReason) ~ Nil;
-  }
+		#~
+		Runs once on the actor's thread when it ends, whatever the reason (a Kill cannot interrupt a
+		blocked handler, so it does not run then). An error raised here turns an orderly exit into FAILED.
+		@param me the actor running this behavior
+		@param reason why the actor ends
+		~#
+		method : virtual : public : Terminate(me : Actor, reason : ExitReason) ~ Nil;
+	}
 
-  class : private : ActorThread from Thread {
-    @actor : Actor;
+	class : private : ActorThread from Thread {
+		@actor : Actor;
 
-    New(name : String, actor : Actor) {
-      Parent(name);
-      @actor := actor;
-    }
+		New(name : String, actor : Actor) {
+			Parent(name);
+			@actor := actor;
+		}
 
-    method : public : Run(param : System.Base) ~ Nil {
-      @actor->Loop();
-    }
-  }
+		method : public : Run(param : System.Base) ~ Nil {
+			@actor->Loop();
+		}
+	}
 
-  #~
-  A thread with a mailbox and a behavior. Create it, Start it, Send it mail; it handles one mail
-  at a time, in arrival order. It ends when the handler returns false (NORMAL), when Stop empties
-  the queue (STOPPED), when Kill is called (KILLED), or when something fails (FAILED). Join waits
-  for the end and returns the reason. Stop is graceful and Kill is cooperative: neither can
-  interrupt a handler that is blocked or looping.
-  ```
+	#~
+	A thread with a mailbox and a behavior. Create it, Start it, Send it mail; it handles one mail
+	at a time, in arrival order. It ends when the handler returns false (NORMAL), when Stop empties
+	the queue (STOPPED), when Kill is called (KILLED), or when something fails (FAILED). Join waits
+	for the end and returns the reason. Stop is graceful and Kill is cooperative: neither can
+	interrupt a handler that is blocked or looping.
+	```
 a := Actor->New("counter", Counter->New())->Start();
 a->Send(IntRef->New(2));
 a->Send(IntRef->New(3));
 r := a->Call(Nil, 1000);
 a->Stop();
 a->Join()->ToString()->PrintLine();   # stopped
-  ```
-  ~#
-  class Actor {
-    @name : String;
-    @behavior : ActorBehavior;
-    @mailbox : Mailbox;
-    @lock : ThreadMutex;
-    @exited : Condition;
-    @state : Int;        # 0 created, 1 running, 2 ending (reason known), 3 done
-    @ready : Bool;       # Init has finished without failing
-    @reason : ExitReason;
-    @kill : Bool;
-    @trap_exits : Bool;
-    @monitors : Vector<Mailbox>;
-    @links : Vector<Actor>;
-    @call_seq : Int;
-    @late : Int;
-    @processed : Int;
-    @discarded : Int;
-    @thread : Thread;
+	```
+	~#
+	class Actor {
+		@name : String;
+		@behavior : ActorBehavior;
+		@mailbox : Mailbox;
+		@lock : ThreadMutex;
+		@exited : Condition;
+		@state : Int;        # 0 created, 1 running, 2 ending (reason known), 3 done
+		@ready : Bool;       # Init has finished without failing
+		@reason : ExitReason;
+		@kill : Bool;
+		@trap_exits : Bool;
+		@monitors : Vector<Mailbox>;
+		@links : Vector<Actor>;
+		@call_seq : Int;
+		@late : Int;
+		@processed : Int;
+		@discarded : Int;
+		@thread : Thread;
 
-    #~
-    Creates an actor with an unbounded mailbox; Start runs it
-    @param name a name for logs and failure messages
-    @param behavior what the actor does
-    ~#
-    New(name : String, behavior : ActorBehavior) {
-      Init(name, behavior, Mailbox->New());
-    }
+		#~
+		Creates an actor with an unbounded mailbox; Start runs it
+		@param name a name for logs and failure messages
+		@param behavior what the actor does
+		~#
+		New(name : String, behavior : ActorBehavior) {
+			Init(name, behavior, Mailbox->New());
+		}
 
-    #~
-    Creates an actor with a mailbox of your choosing, to bound its queue
-    @param name a name for logs and failure messages
-    @param behavior what the actor does
-    @param mailbox the actor's mailbox (not shared with another actor)
-    ~#
-    New(name : String, behavior : ActorBehavior, mailbox : Mailbox) {
-      Init(name, behavior, mailbox);
-    }
+		#~
+		Creates an actor with a mailbox of your choosing, to bound its queue
+		@param name a name for logs and failure messages
+		@param behavior what the actor does
+		@param mailbox the actor's mailbox (not shared with another actor)
+		~#
+		New(name : String, behavior : ActorBehavior, mailbox : Mailbox) {
+			Init(name, behavior, mailbox);
+		}
 
-    method : Init(name : String, behavior : ActorBehavior, mailbox : Mailbox) ~ Nil {
-      @name := name = Nil ? "actor" : name;
-      @behavior := behavior;
-      @mailbox := mailbox = Nil ? Mailbox->New() : mailbox;
-      @lock := ThreadMutex->New("actor");
-      @exited := Condition->New();
-      @state := 0;
-      @kill := false;
-      @trap_exits := false;
-      @monitors := Vector->New()<Mailbox>;
-      @links := Vector->New()<Actor>;
-      @call_seq := 0;
-      @late := 0;
-      @processed := 0;
-      @discarded := 0;
-    }
+		method : Init(name : String, behavior : ActorBehavior, mailbox : Mailbox) ~ Nil {
+			@name := name = Nil ? "actor" : name;
+			@behavior := behavior;
+			@mailbox := mailbox = Nil ? Mailbox->New() : mailbox;
+			@lock := ThreadMutex->New("actor");
+			@exited := Condition->New();
+			@state := 0;
+			@kill := false;
+			@trap_exits := false;
+			@monitors := Vector->New()<Mailbox>;
+			@links := Vector->New()<Actor>;
+			@call_seq := 0;
+			@late := 0;
+			@processed := 0;
+			@discarded := 0;
+		}
 
-    #~
-    Starts the actor's thread
-    @return this actor
-    ~#
-    method : public : Start() ~ Actor {
-      go := false;
-      critical(@lock) {
-        if(@state = 0) {
-          @state := 1;
-          go := true;
-        };
-      };
-      if(go) {
-        @thread := ActorThread->New(@name, @self);
-        @thread->Execute(Nil);
-      };
-      return @self;
-    }
+		#~
+		Starts the actor's thread
+		@return this actor
+		~#
+		method : public : Start() ~ Actor {
+			go := false;
+			critical(@lock) {
+				if(@state = 0) {
+					@state := 1;
+					go := true;
+				};
+			};
+			if(go) {
+				@thread := ActorThread->New(@name, @self);
+				@thread->Execute(Nil);
+			};
+			return @self;
+		}
 
-    #~
-    The name given at creation
-    @return the name
-    ~#
-    method : public : GetName() ~ String {
-      return @name;
-    }
+		#~
+		The name given at creation
+		@return the name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
 
-    #~
-    The actor's mailbox
-    @return the mailbox
-    ~#
-    method : public : GetMailbox() ~ Mailbox {
-      return @mailbox;
-    }
+		#~
+		The actor's mailbox
+		@return the mailbox
+		~#
+		method : public : GetMailbox() ~ Mailbox {
+			return @mailbox;
+		}
 
-    #~
-    Makes the actor receive an EXIT mail, instead of failing, when a linked actor ends abnormally
-    @param trap true to receive the notice
-    @return this actor
-    ~#
-    method : public : SetTrapExits(trap : Bool) ~ Actor {
-      critical(@lock) {
-        @trap_exits := trap;
-      };
-      return @self;
-    }
+		#~
+		Makes the actor receive an EXIT mail, instead of failing, when a linked actor ends abnormally
+		@param trap true to receive the notice
+		@return this actor
+		~#
+		method : public : SetTrapExits(trap : Bool) ~ Actor {
+			critical(@lock) {
+				@trap_exits := trap;
+			};
+			return @self;
+		}
 
-    #~
-    Sends a data mail, waiting without limit if a BLOCK mailbox is full
-    @param payload what to send, not Nil
-    @return the mailbox status: OK, FULL, TIMED_OUT, CLOSED, INVALID
-    ~#
-    method : public : Send(payload : System.Base) ~ Mailbox->Status {
-      return @mailbox->Send(Mail->Data(payload, Nil), -1);
-    }
+		#~
+		Sends a data mail, waiting without limit if a BLOCK mailbox is full
+		@param payload what to send, not Nil
+		@return the mailbox status: OK, FULL, TIMED_OUT, CLOSED, INVALID
+		~#
+		method : public : Send(payload : System.Base) ~ Mailbox->Status {
+			return @mailbox->Send(Mail->Data(payload, Nil), -1);
+		}
 
-    #~
-    Sends a data mail
-    @param payload what to send, not Nil
-    @param timeout how long a full BLOCK mailbox may keep the sender waiting, in milliseconds
-    @return the mailbox status
-    ~#
-    method : public : Send(payload : System.Base, timeout : Int) ~ Mailbox->Status {
-      return @mailbox->Send(Mail->Data(payload, Nil), timeout);
-    }
+		#~
+		Sends a data mail
+		@param payload what to send, not Nil
+		@param timeout how long a full BLOCK mailbox may keep the sender waiting, in milliseconds
+		@return the mailbox status
+		~#
+		method : public : Send(payload : System.Base, timeout : Int) ~ Mailbox->Status {
+			return @mailbox->Send(Mail->Data(payload, Nil), timeout);
+		}
 
-    #~
-    Sends a data mail that says who it is from
-    @param payload what to send, not Nil
-    @param sender the sending actor, readable with Mail->GetSender
-    @param timeout how long a full BLOCK mailbox may keep the sender waiting, in milliseconds
-    @return the mailbox status
-    ~#
-    method : public : Send(payload : System.Base, sender : Actor, timeout : Int) ~ Mailbox->Status {
-      return @mailbox->Send(Mail->Data(payload, sender), timeout);
-    }
+		#~
+		Sends a data mail that says who it is from
+		@param payload what to send, not Nil
+		@param sender the sending actor, readable with Mail->GetSender
+		@param timeout how long a full BLOCK mailbox may keep the sender waiting, in milliseconds
+		@return the mailbox status
+		~#
+		method : public : Send(payload : System.Base, sender : Actor, timeout : Int) ~ Mailbox->Status {
+			return @mailbox->Send(Mail->Data(payload, sender), timeout);
+		}
 
-    #~
-    Asks the actor something and waits for the answer. The handler answers with Mail->Answer. If
-    the wait times out the call is abandoned, and an answer that arrives later is dropped and counted
-    (GetLateAnswers). A call to an actor that ends first, or whose handler fails on it, returns
-    DEAD or FAILED at once. Do not call an actor from its own handler, or in a cycle: it deadlocks
-    until the timeout.
-    @param payload the question, or Nil
-    @param timeout how long to wait for the answer, in milliseconds: -1 forever
-    @return the outcome
-    ~#
-    method : public : Call(payload : System.Base, timeout : Int) ~ CallResult {
-      id := 0;
-      critical(@lock) {
-        @call_seq += 1;
-        id := @call_seq;
-      };
-      slot := CallSlot->New(@self, id);
-      deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-      status := @mailbox->Send(Mail->New(Mail->Kind->CALL, payload, Nil, slot, Nil, Nil), timeout);
-      if(status = Mailbox->Status->CLOSED) {
-        return CallResult->New(CallResult->Status->DEAD, Nil, "the actor {$@name} is not accepting mail", id);
-      };
-      if(status = Mailbox->Status->TIMED_OUT) {
-        return CallResult->New(CallResult->Status->TIMED_OUT, Nil, "the mailbox of {$@name} stayed full", id);
-      };
-      if(status = Mailbox->Status->FULL | status = Mailbox->Status->INVALID) {
-        return CallResult->New(CallResult->Status->DEAD, Nil, "the mailbox of {$@name} refused the call", id);
-      };
-      remaining := timeout < 0 ? -1 : deadline - ActorClock->Now();
-      if(timeout >= 0 & remaining < 0) {
-        remaining := 0;
-      };
-      result := slot->Await(remaining);
-      if(result->GetStatus() = CallResult->Status->FAILED & result->GetError() <> Nil & result->GetError()->StartsWith("the mail was discarded")) {
-        return CallResult->New(CallResult->Status->DEAD, Nil, "the actor {$@name} ended before it answered", id);
-      };
-      return result;
-    }
+		#~
+		Asks the actor something and waits for the answer. The handler answers with Mail->Answer. If
+		the wait times out the call is abandoned, and an answer that arrives later is dropped and counted
+		(GetLateAnswers). A call to an actor that ends first, or whose handler fails on it, returns
+		DEAD or FAILED at once. Do not call an actor from its own handler, or in a cycle: it deadlocks
+		until the timeout.
+		@param payload the question, or Nil
+		@param timeout how long to wait for the answer, in milliseconds: -1 forever
+		@return the outcome
+		~#
+		method : public : Call(payload : System.Base, timeout : Int) ~ CallResult {
+			id := 0;
+			critical(@lock) {
+				@call_seq += 1;
+				id := @call_seq;
+			};
+			slot := CallSlot->New(@self, id);
+			deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
+			status := @mailbox->Send(Mail->New(Mail->Kind->CALL, payload, Nil, slot, Nil, Nil), timeout);
+			if(status = Mailbox->Status->CLOSED) {
+				return CallResult->New(CallResult->Status->DEAD, Nil, "the actor {$@name} is not accepting mail", id);
+			};
+			if(status = Mailbox->Status->TIMED_OUT) {
+				return CallResult->New(CallResult->Status->TIMED_OUT, Nil, "the mailbox of {$@name} stayed full", id);
+			};
+			if(status = Mailbox->Status->FULL | status = Mailbox->Status->INVALID) {
+				return CallResult->New(CallResult->Status->DEAD, Nil, "the mailbox of {$@name} refused the call", id);
+			};
+			remaining := timeout < 0 ? -1 : deadline - ActorClock->Now();
+			if(timeout >= 0 & remaining < 0) {
+				remaining := 0;
+			};
+			result := slot->Await(remaining);
+			if(result->GetStatus() = CallResult->Status->FAILED & result->GetError() <> Nil & result->GetError()->StartsWith("the mail was discarded")) {
+				return CallResult->New(CallResult->Status->DEAD, Nil, "the actor {$@name} ended before it answered", id);
+			};
+			return result;
+		}
 
-    #~
-    Asks the actor to end after it has handled what is already queued. The mailbox stops taking
-    new mail. A handler that is blocked keeps the actor alive.
-    ~#
-    method : public : Stop() ~ Nil {
-      never_started := false;
-      critical(@lock) {
-        if(@state = 0) {
-          @state := 1;
-          never_started := true;
-        };
-      };
-      @mailbox->Close();
-      if(never_started) {
-        Finish(ExitReason->Stopped());
-      };
-    }
+		#~
+		Asks the actor to end after it has handled what is already queued. The mailbox stops taking
+		new mail. A handler that is blocked keeps the actor alive.
+		~#
+		method : public : Stop() ~ Nil {
+			never_started := false;
+			critical(@lock) {
+				if(@state = 0) {
+					@state := 1;
+					never_started := true;
+				};
+			};
+			@mailbox->Close();
+			if(never_started) {
+				Finish(ExitReason->Stopped());
+			};
+		}
 
-    #~
-    Asks the actor to end now: queued mail is thrown away (waiting calls fail) and the actor ends
-    with KILLED as soon as its current handler returns. This is cooperative: a handler that is
-    blocked or looping cannot be interrupted, and the actor stays alive until it returns.
-    ~#
-    method : public : Kill() ~ Nil {
-      never_started := false;
-      critical(@lock) {
-        @kill := true;
-        if(@state = 0) {
-          @state := 1;
-          never_started := true;
-        };
-      };
-      @mailbox->Close();
-      n := @mailbox->DiscardAll();
-      critical(@lock) {
-        @discarded += n;
-      };
-      if(never_started) {
-        Finish(ExitReason->Killed());
-      };
-    }
+		#~
+		Asks the actor to end now: queued mail is thrown away (waiting calls fail) and the actor ends
+		with KILLED as soon as its current handler returns. This is cooperative: a handler that is
+		blocked or looping cannot be interrupted, and the actor stays alive until it returns.
+		~#
+		method : public : Kill() ~ Nil {
+			never_started := false;
+			critical(@lock) {
+				@kill := true;
+				if(@state = 0) {
+					@state := 1;
+					never_started := true;
+				};
+			};
+			@mailbox->Close();
+			n := @mailbox->DiscardAll();
+			critical(@lock) {
+				@discarded += n;
+			};
+			if(never_started) {
+				Finish(ExitReason->Killed());
+			};
+		}
 
-    #~
-    Waits for the actor to end
-    @return why it ended
-    ~#
-    method : public : Join() ~ ExitReason {
-      return Join(-1);
-    }
+		#~
+		Waits for the actor to end
+		@return why it ended
+		~#
+		method : public : Join() ~ ExitReason {
+			return Join(-1);
+		}
 
-    #~
-    Waits for the actor to end, for a while
-    @param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
-    @return why it ended, Nil if it was still running when the time was up
-    ~#
-    method : public : Join(timeout : Int) ~ ExitReason {
-      result : ExitReason;
-      deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-      critical(@lock) {
-        done := false;
-        while(done = false) {
-          if(@state = 3) {
-            result := @reason;
-            done := true;
-          }
-          else if(timeout < 0) {
-            @exited->Wait(@lock);
-          }
-          else {
-            remaining := deadline - ActorClock->Now();
-            if(remaining <= 0) {
-              done := true;
-            }
-            else {
-              @exited->Wait(@lock, remaining);
-            };
-          };
-        };
-      };
-      return result;
-    }
+		#~
+		Waits for the actor to end, for a while
+		@param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
+		@return why it ended, Nil if it was still running when the time was up
+		~#
+		method : public : Join(timeout : Int) ~ ExitReason {
+			result : ExitReason;
+			deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
+			critical(@lock) {
+				done := false;
+				while(done = false) {
+					if(@state = 3) {
+						result := @reason;
+						done := true;
+					}
+					else if(timeout < 0) {
+						@exited->Wait(@lock);
+					}
+					else {
+						remaining := deadline - ActorClock->Now();
+						if(remaining <= 0) {
+							done := true;
+						}
+						else {
+							@exited->Wait(@lock, remaining);
+						};
+					};
+				};
+			};
+			return result;
+		}
 
-    #~
-    Waits until the actor's Init hook has finished, so the actor is ready for mail (a Supervisor
-    does this before it starts the next child, which makes the start order real)
-    @param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
-    @return true if Init finished without failing; false on timeout, or if the actor ended first
-    ~#
-    method : public : AwaitStarted(timeout : Int) ~ Bool {
-      ok := false;
-      deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
-      critical(@lock) {
-        done := false;
-        while(done = false) {
-          if(@ready) {
-            ok := true;
-            done := true;
-          }
-          else if(@state >= 2) {
-            done := true;
-          }
-          else if(timeout < 0) {
-            @exited->Wait(@lock);
-          }
-          else {
-            remaining := deadline - ActorClock->Now();
-            if(remaining <= 0) {
-              done := true;
-            }
-            else {
-              @exited->Wait(@lock, remaining);
-            };
-          };
-        };
-      };
-      return ok;
-    }
+		#~
+		Waits until the actor's Init hook has finished, so the actor is ready for mail (a Supervisor
+		does this before it starts the next child, which makes the start order real)
+		@param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
+		@return true if Init finished without failing; false on timeout, or if the actor ended first
+		~#
+		method : public : AwaitStarted(timeout : Int) ~ Bool {
+			ok := false;
+			deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
+			critical(@lock) {
+				done := false;
+				while(done = false) {
+					if(@ready) {
+						ok := true;
+						done := true;
+					}
+					else if(@state >= 2) {
+						done := true;
+					}
+					else if(timeout < 0) {
+						@exited->Wait(@lock);
+					}
+					else {
+						remaining := deadline - ActorClock->Now();
+						if(remaining <= 0) {
+							done := true;
+						}
+						else {
+							@exited->Wait(@lock, remaining);
+						};
+					};
+				};
+			};
+			return ok;
+		}
 
-    #~
-    Says whether the actor has been started and has not ended
-    @return true while it runs
-    ~#
-    method : public : IsRunning() ~ Bool {
-      v := false;
-      critical(@lock) {
-        v := @state = 1;
-      };
-      return v;
-    }
+		#~
+		Says whether the actor has been started and has not ended
+		@return true while it runs
+		~#
+		method : public : IsRunning() ~ Bool {
+			v := false;
+			critical(@lock) {
+				v := @state = 1;
+			};
+			return v;
+		}
 
-    #~
-    Says whether the actor has ended (its exit reason is known)
-    @return true once it ended
-    ~#
-    method : public : IsExited() ~ Bool {
-      v := false;
-      critical(@lock) {
-        v := @state >= 2;
-      };
-      return v;
-    }
+		#~
+		Says whether the actor has ended (its exit reason is known)
+		@return true once it ended
+		~#
+		method : public : IsExited() ~ Bool {
+			v := false;
+			critical(@lock) {
+				v := @state >= 2;
+			};
+			return v;
+		}
 
-    #~
-    Why the actor ended
-    @return the reason, Nil while it runs
-    ~#
-    method : public : GetExitReason() ~ ExitReason {
-      r : ExitReason;
-      critical(@lock) {
-        if(@state >= 2) {
-          r := @reason;
-        };
-      };
-      return r;
-    }
+		#~
+		Why the actor ended
+		@return the reason, Nil while it runs
+		~#
+		method : public : GetExitReason() ~ ExitReason {
+			r : ExitReason;
+			critical(@lock) {
+				if(@state >= 2) {
+					r := @reason;
+				};
+			};
+			return r;
+		}
 
-    #~
-    Number of mails the handler has taken so far
-    @return the count
-    ~#
-    method : public : GetProcessedCount() ~ Int {
-      n := 0;
-      critical(@lock) {
-        n := @processed;
-      };
-      return n;
-    }
+		#~
+		Number of mails the handler has taken so far
+		@return the count
+		~#
+		method : public : GetProcessedCount() ~ Int {
+			n := 0;
+			critical(@lock) {
+				n := @processed;
+			};
+			return n;
+		}
 
-    #~
-    Number of answers that arrived after their caller had given up
-    @return the count
-    ~#
-    method : public : GetLateAnswers() ~ Int {
-      n := 0;
-      critical(@lock) {
-        n := @late;
-      };
-      return n;
-    }
+		#~
+		Number of answers that arrived after their caller had given up
+		@return the count
+		~#
+		method : public : GetLateAnswers() ~ Int {
+			n := 0;
+			critical(@lock) {
+				n := @late;
+			};
+			return n;
+		}
 
-    #~
-    Number of mails thrown away unread when the actor ended or was killed
-    @return the count
-    ~#
-    method : public : GetDiscardedCount() ~ Int {
-      n := 0;
-      critical(@lock) {
-        n := @discarded;
-      };
-      return n;
-    }
+		#~
+		Number of mails thrown away unread when the actor ended or was killed
+		@return the count
+		~#
+		method : public : GetDiscardedCount() ~ Int {
+			n := 0;
+			critical(@lock) {
+				n := @discarded;
+			};
+			return n;
+		}
 
-    method : public : NoteLateAnswer() ~ Nil {
-      critical(@lock) {
-        @late += 1;
-      };
-    }
+		method : public : NoteLateAnswer() ~ Nil {
+			critical(@lock) {
+				@late += 1;
+			};
+		}
 
-    #~
-    Watches this actor: when it ends, a DOWN mail naming it and the reason is put in the
-    watcher's mailbox (past its capacity). If it has ended already, the notice is sent now.
-    @param watcher the mailbox to notify, an actor's or one a thread reads
-    ~#
-    method : public : Monitor(watcher : Mailbox) ~ Nil {
-      now := false;
-      reason : ExitReason;
-      critical(@lock) {
-        if(@state >= 2) {
-          now := true;
-          reason := @reason;
-        }
-        else {
-          @monitors->AddBack(watcher);
-        };
-      };
-      if(now) {
-        watcher->SendUrgent(Mail->Down(@self, reason));
-      };
-    }
+		#~
+		Watches this actor: when it ends, a DOWN mail naming it and the reason is put in the
+		watcher's mailbox (past its capacity). If it has ended already, the notice is sent now.
+		@param watcher the mailbox to notify, an actor's or one a thread reads
+		~#
+		method : public : Monitor(watcher : Mailbox) ~ Nil {
+			now := false;
+			reason : ExitReason;
+			critical(@lock) {
+				if(@state >= 2) {
+					now := true;
+					reason := @reason;
+				}
+				else {
+					@monitors->AddBack(watcher);
+				};
+			};
+			if(now) {
+				watcher->SendUrgent(Mail->Down(@self, reason));
+			};
+		}
 
-    #~
-    Watches this actor with another actor's mailbox
-    @param watcher the actor that receives the DOWN mail
-    ~#
-    method : public : Monitor(watcher : Actor) ~ Nil {
-      Monitor(watcher->GetMailbox());
-    }
+		#~
+		Watches this actor with another actor's mailbox
+		@param watcher the actor that receives the DOWN mail
+		~#
+		method : public : Monitor(watcher : Actor) ~ Nil {
+			Monitor(watcher->GetMailbox());
+		}
 
-    #~
-    Stops watching
-    @param watcher the mailbox given to Monitor
-    ~#
-    method : public : Demonitor(watcher : Mailbox) ~ Nil {
-      critical(@lock) {
-        i := 0;
-        found := false;
-        while(i < @monitors->Size() & found = false) {
-          if(@monitors->Get(i) = watcher) {
-            @monitors->Remove(i);
-            found := true;
-          }
-          else {
-            i += 1;
-          };
-        };
-      };
-    }
+		#~
+		Stops watching
+		@param watcher the mailbox given to Monitor
+		~#
+		method : public : Demonitor(watcher : Mailbox) ~ Nil {
+			critical(@lock) {
+				i := 0;
+				found := false;
+				while(i < @monitors->Size() & found = false) {
+					if(@monitors->Get(i) = watcher) {
+						@monitors->Remove(i);
+						found := true;
+					}
+					else {
+						i += 1;
+					};
+				};
+			};
+		}
 
-    #~
-    Links this actor and another: when either ends abnormally (FAILED or KILLED) the other is told,
-    and fails with it unless it traps exits (SetTrapExits), in which case it gets an EXIT mail. An
-    orderly end (NORMAL or STOPPED) is not passed on. If one of them has ended already, the other
-    is told now.
-    @param peer the actor to link with
-    ~#
-    method : public : Link(peer : Actor) ~ Nil {
-      mine_ended := false;
-      my_reason : ExitReason;
-      critical(@lock) {
-        if(@state >= 2) {
-          mine_ended := true;
-          my_reason := @reason;
-        }
-        else {
-          @links->AddBack(peer);
-        };
-      };
-      if(mine_ended) {
-        peer->LinkedExit(@self, my_reason);
-      }
-      else {
-        peer->AddLink(@self);
-      };
-    }
+		#~
+		Links this actor and another: when either ends abnormally (FAILED or KILLED) the other is told,
+		and fails with it unless it traps exits (SetTrapExits), in which case it gets an EXIT mail. An
+		orderly end (NORMAL or STOPPED) is not passed on. If one of them has ended already, the other
+		is told now.
+		@param peer the actor to link with
+		~#
+		method : public : Link(peer : Actor) ~ Nil {
+			mine_ended := false;
+			my_reason : ExitReason;
+			critical(@lock) {
+				if(@state >= 2) {
+					mine_ended := true;
+					my_reason := @reason;
+				}
+				else {
+					@links->AddBack(peer);
+				};
+			};
+			if(mine_ended) {
+				peer->LinkedExit(@self, my_reason);
+			}
+			else {
+				peer->AddLink(@self);
+			};
+		}
 
-    # the other side of Link: record the link, or deliver the notice at once if this actor ended
-    method : public : AddLink(peer : Actor) ~ Nil {
-      ended := false;
-      reason : ExitReason;
-      critical(@lock) {
-        if(@state >= 2) {
-          ended := true;
-          reason := @reason;
-        }
-        else {
-          @links->AddBack(peer);
-        };
-      };
-      if(ended) {
-        peer->LinkedExit(@self, reason);
-      };
-    }
+		# the other side of Link: record the link, or deliver the notice at once if this actor ended
+		method : public : AddLink(peer : Actor) ~ Nil {
+			ended := false;
+			reason : ExitReason;
+			critical(@lock) {
+				if(@state >= 2) {
+					ended := true;
+					reason := @reason;
+				}
+				else {
+					@links->AddBack(peer);
+				};
+			};
+			if(ended) {
+				peer->LinkedExit(@self, reason);
+			};
+		}
 
-    # a linked actor ended
-    method : public : LinkedExit(source : Actor, reason : ExitReason) ~ Nil {
-      if(reason->IsAbnormal()) {
-        @mailbox->SendUrgent(Mail->Exit(source, reason));
-      };
-    }
+		# a linked actor ended
+		method : public : LinkedExit(source : Actor, reason : ExitReason) ~ Nil {
+			if(reason->IsAbnormal()) {
+				@mailbox->SendUrgent(Mail->Exit(source, reason));
+			};
+		}
 
-    method : IsKilled() ~ Bool {
-      v := false;
-      critical(@lock) {
-        v := @kill;
-      };
-      return v;
-    }
+		method : IsKilled() ~ Bool {
+			v := false;
+			critical(@lock) {
+				v := @kill;
+			};
+			return v;
+		}
 
-    method : Traps() ~ Bool {
-      v := false;
-      critical(@lock) {
-        v := @trap_exits;
-      };
-      return v;
-    }
+		method : Traps() ~ Bool {
+			v := false;
+			critical(@lock) {
+				v := @trap_exits;
+			};
+			return v;
+		}
 
-    method : Describe(e : Error) ~ String {
-      if(e = Nil | e->GetMessage() = Nil) {
-        return "error";
-      };
-      return e->GetMessage();
-    }
+		method : Describe(e : Error) ~ String {
+			if(e = Nil | e->GetMessage() = Nil) {
+				return "error";
+			};
+			return e->GetMessage();
+		}
 
-    #~
-    The actor's receive loop, which runs on its thread. Called by Start; do not call it.
-    ~#
-    method : public : Loop() ~ Nil {
-      failure : String;
-      try {
-        if(@behavior->TypeOf(ActorLifecycle)) {
-          @behavior->As(ActorLifecycle)->Init(@self);
-        };
-      }
-      on(e : Error) {
-        failure := "init failed: {$(Describe(e))}";
-      };
+		#~
+		The actor's receive loop, which runs on its thread. Called by Start; do not call it.
+		~#
+		method : public : Loop() ~ Nil {
+			failure : String;
+			try {
+				if(@behavior->TypeOf(ActorLifecycle)) {
+					@behavior->As(ActorLifecycle)->Init(@self);
+				};
+			}
+			on(e : Error) {
+				failure := "init failed: {$(Describe(e))}";
+			};
 
-      critical(@lock) {
-        if(failure = Nil) {
-          @ready := true;
-        };
-        @exited->Broadcast();
-      };
+			critical(@lock) {
+				if(failure = Nil) {
+					@ready := true;
+				};
+				@exited->Broadcast();
+			};
 
-      normal := false;
-      killed := false;
-      running := failure = Nil;
-      while(running) {
-        item := @mailbox->Receive(-1);
-        if(item = Nil) {
-          running := false;
-        }
-        else if(IsKilled()) {
-          item->As(Mail)->Discarded();
-          running := false;
-        }
-        else {
-          mail := item->As(Mail);
-          deliver := true;
-          if(mail->GetKind() = Mail->Kind->EXIT & Traps() = false) {
-            deliver := false;
-            failure := "linked actor {$(mail->GetSource()->GetName())} ended: {$(mail->GetReason()->ToString())}";
-            running := false;
-          };
+			normal := false;
+			killed := false;
+			running := failure = Nil;
+			while(running) {
+				item := @mailbox->Receive(-1);
+				if(item = Nil) {
+					running := false;
+				}
+				else if(IsKilled()) {
+					item->As(Mail)->Discarded();
+					running := false;
+				}
+				else {
+					mail := item->As(Mail);
+					deliver := true;
+					if(mail->GetKind() = Mail->Kind->EXIT & Traps() = false) {
+						deliver := false;
+						failure := "linked actor {$(mail->GetSource()->GetName())} ended: {$(mail->GetReason()->ToString())}";
+						running := false;
+					};
 
-          if(deliver) {
-            err : String;
-            cont := true;
-            try {
-              cont := @behavior->Handle(@self, mail);
-            }
-            on(e : Error) {
-              err := Describe(e);
-            };
+					if(deliver) {
+						err : String;
+						cont := true;
+						try {
+							cont := @behavior->Handle(@self, mail);
+						}
+						on(e : Error) {
+							err := Describe(e);
+						};
 
-            critical(@lock) {
-              @processed += 1;
-            };
-            if(err <> Nil) {
-              failure := err;
-              mail->Fail("the handler failed: {$err}");
-              running := false;
-            }
-            else if(cont = false) {
-              normal := true;
-              running := false;
-            };
-          };
-        };
-      };
+						critical(@lock) {
+							@processed += 1;
+						};
+						if(err <> Nil) {
+							failure := err;
+							mail->Fail("the handler failed: {$err}");
+							running := false;
+						}
+						else if(cont = false) {
+							normal := true;
+							running := false;
+						};
+					};
+				};
+			};
 
-      killed := IsKilled();
-      reason : ExitReason;
-      if(failure <> Nil) {
-        reason := ExitReason->Failed(failure);
-      }
-      else if(killed) {
-        reason := ExitReason->Killed();
-      }
-      else if(normal) {
-        reason := ExitReason->Normal();
-      }
-      else {
-        reason := ExitReason->Stopped();
-      };
+			killed := IsKilled();
+			reason : ExitReason;
+			if(failure <> Nil) {
+				reason := ExitReason->Failed(failure);
+			}
+			else if(killed) {
+				reason := ExitReason->Killed();
+			}
+			else if(normal) {
+				reason := ExitReason->Normal();
+			}
+			else {
+				reason := ExitReason->Stopped();
+			};
 
-      terr : String;
-      try {
-        if(@behavior->TypeOf(ActorLifecycle)) {
-          @behavior->As(ActorLifecycle)->Terminate(@self, reason);
-        };
-      }
-      on(e : Error) {
-        terr := Describe(e);
-      };
-      if(terr <> Nil & reason->IsOrderly()) {
-        reason := ExitReason->Failed("terminate failed: {$terr}");
-      };
+			terr : String;
+			try {
+				if(@behavior->TypeOf(ActorLifecycle)) {
+					@behavior->As(ActorLifecycle)->Terminate(@self, reason);
+				};
+			}
+			on(e : Error) {
+				terr := Describe(e);
+			};
+			if(terr <> Nil & reason->IsOrderly()) {
+				reason := ExitReason->Failed("terminate failed: {$terr}");
+			};
 
-      Finish(reason);
-    }
+			Finish(reason);
+		}
 
-    # records the reason, closes the mailbox, tells the watchers and the links, then wakes the joiners
-    method : Finish(reason : ExitReason) ~ Nil {
-      mons : Vector<Mailbox>;
-      lnks : Vector<Actor>;
-      critical(@lock) {
-        @reason := reason;
-        @state := 2;
-        mons := Vector->New()<Mailbox>;
-        mons->AddAll(@monitors);
-        lnks := Vector->New()<Actor>;
-        lnks->AddAll(@links);
-      };
+		# records the reason, closes the mailbox, tells the watchers and the links, then wakes the joiners
+		method : Finish(reason : ExitReason) ~ Nil {
+			mons : Vector<Mailbox>;
+			lnks : Vector<Actor>;
+			critical(@lock) {
+				@reason := reason;
+				@state := 2;
+				mons := Vector->New()<Mailbox>;
+				mons->AddAll(@monitors);
+				lnks := Vector->New()<Actor>;
+				lnks->AddAll(@links);
+			};
 
-      @mailbox->Close();
-      n := @mailbox->DiscardAll();
-      critical(@lock) {
-        @discarded += n;
-      };
+			@mailbox->Close();
+			n := @mailbox->DiscardAll();
+			critical(@lock) {
+				@discarded += n;
+			};
 
-      each(i : mons) {
-        mons->Get(i)->SendUrgent(Mail->Down(@self, reason));
-      };
-      each(i : lnks) {
-        lnks->Get(i)->LinkedExit(@self, reason);
-      };
+			each(i : mons) {
+				mons->Get(i)->SendUrgent(Mail->Down(@self, reason));
+			};
+			each(i : lnks) {
+				lnks->Get(i)->LinkedExit(@self, reason);
+			};
 
-      critical(@lock) {
-        @state := 3;
-        @exited->Broadcast();
-      };
-    }
-  }
+			critical(@lock) {
+				@state := 3;
+				@exited->Broadcast();
+			};
+		}
+	}
 
-  #~
-  Makes a fresh ActorBehavior each time a Supervisor starts or restarts a child, so a restarted
-  child begins with clean state.
-  ~#
-  interface BehaviorFactory {
-    #~
-    Makes a behavior
-    @return a new behavior, never a shared one
-    ~#
-    method : virtual : public : Create() ~ ActorBehavior;
-  }
+	#~
+	Makes a fresh ActorBehavior each time a Supervisor starts or restarts a child, so a restarted
+	child begins with clean state.
+	~#
+	interface BehaviorFactory {
+		#~
+		Makes a behavior
+		@return a new behavior, never a shared one
+		~#
+		method : virtual : public : Create() ~ ActorBehavior;
+	}
 
-  #~
-  How a Supervisor treats one child: its id, how to build it, when to restart it, and how long it
-  gets to stop.
-  ```
+	#~
+	How a Supervisor treats one child: its id, how to build it, when to restart it, and how long it
+	gets to stop.
+	```
 spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANSIENT, 1000);
-  ```
-  ~#
-  class ChildSpec {
-    #~
-    When a child is restarted.<br/>
-    <p><pre>ChildSpec->Restart</pre></p>
-    @class ChildSpec
-    ~#
-    enum Restart {
-      PERMANENT,
-      TRANSIENT,
-      TEMPORARY
-    }
+	```
+	~#
+	class ChildSpec {
+		#~
+		When a child is restarted.<br/>
+		<p><pre>ChildSpec->Restart</pre></p>
+		@class ChildSpec
+		~#
+		enum Restart {
+			PERMANENT,
+			TRANSIENT,
+			TEMPORARY
+		}
 
-    @id : String;
-    @factory : BehaviorFactory;
-    @restart : ChildSpec->Restart;
-    @shutdown : Int;
-    @capacity : Int;
-    @policy : Mailbox->Policy;
+		@id : String;
+		@factory : BehaviorFactory;
+		@restart : ChildSpec->Restart;
+		@shutdown : Int;
+		@capacity : Int;
+		@policy : Mailbox->Policy;
 
-    #~
-    Creates a spec
-    @param id a name for the child, unique in its supervisor
-    @param factory builds the child's behavior
-    @param restart PERMANENT (always restart), TRANSIENT (restart after FAILED or KILLED) or TEMPORARY (never; the child is forgotten when it ends)
-    @param shutdown_ms how long the child gets to stop before it is killed, in milliseconds (-1 without limit)
-    ~#
-    New(id : String, factory : BehaviorFactory, restart : ChildSpec->Restart, shutdown_ms : Int) {
-      @id := id;
-      @factory := factory;
-      @restart := restart;
-      @shutdown := shutdown_ms;
-      @capacity := 0;
-      @policy := Mailbox->Policy->BLOCK;
-    }
+		#~
+		Creates a spec
+		@param id a name for the child, unique in its supervisor
+		@param factory builds the child's behavior
+		@param restart PERMANENT (always restart), TRANSIENT (restart after FAILED or KILLED) or TEMPORARY (never; the child is forgotten when it ends)
+		@param shutdown_ms how long the child gets to stop before it is killed, in milliseconds (-1 without limit)
+		~#
+		New(id : String, factory : BehaviorFactory, restart : ChildSpec->Restart, shutdown_ms : Int) {
+			@id := id;
+			@factory := factory;
+			@restart := restart;
+			@shutdown := shutdown_ms;
+			@capacity := 0;
+			@policy := Mailbox->Policy->BLOCK;
+		}
 
-    #~
-    Bounds the child's mailbox
-    @param capacity most mails queued, 0 for unbounded
-    @param policy the overflow policy
-    @return this spec
-    ~#
-    method : public : SetMailbox(capacity : Int, policy : Mailbox->Policy) ~ ChildSpec {
-      @capacity := capacity;
-      @policy := policy;
-      return @self;
-    }
+		#~
+		Bounds the child's mailbox
+		@param capacity most mails queued, 0 for unbounded
+		@param policy the overflow policy
+		@return this spec
+		~#
+		method : public : SetMailbox(capacity : Int, policy : Mailbox->Policy) ~ ChildSpec {
+			@capacity := capacity;
+			@policy := policy;
+			return @self;
+		}
 
-    #~
-    The id
-    @return the id
-    ~#
-    method : public : GetId() ~ String {
-      return @id;
-    }
+		#~
+		The id
+		@return the id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
 
-    #~
-    The behavior factory
-    @return the factory
-    ~#
-    method : public : GetFactory() ~ BehaviorFactory {
-      return @factory;
-    }
+		#~
+		The behavior factory
+		@return the factory
+		~#
+		method : public : GetFactory() ~ BehaviorFactory {
+			return @factory;
+		}
 
-    #~
-    The restart policy
-    @return the policy
-    ~#
-    method : public : GetRestart() ~ ChildSpec->Restart {
-      return @restart;
-    }
+		#~
+		The restart policy
+		@return the policy
+		~#
+		method : public : GetRestart() ~ ChildSpec->Restart {
+			return @restart;
+		}
 
-    #~
-    The shutdown timeout
-    @return milliseconds, -1 for none
-    ~#
-    method : public : GetShutdown() ~ Int {
-      return @shutdown;
-    }
+		#~
+		The shutdown timeout
+		@return milliseconds, -1 for none
+		~#
+		method : public : GetShutdown() ~ Int {
+			return @shutdown;
+		}
 
-    #~
-    Makes the mailbox for a new incarnation of the child
-    @return a mailbox
-    ~#
-    method : public : NewMailbox() ~ Mailbox {
-      if(@capacity > 0) {
-        return Mailbox->New(@capacity, @policy);
-      };
-      return Mailbox->New();
-    }
-  }
+		#~
+		Makes the mailbox for a new incarnation of the child
+		@return a mailbox
+		~#
+		method : public : NewMailbox() ~ Mailbox {
+			if(@capacity > 0) {
+				return Mailbox->New(@capacity, @policy);
+			};
+			return Mailbox->New();
+		}
+	}
 
-  #~
-  A snapshot of one child of a supervisor
-  ~#
-  class ChildInfo {
-    @id : String;
-    @actor : Actor;
-    @restarts : Int;
+	#~
+	A snapshot of one child of a supervisor
+	~#
+	class ChildInfo {
+		@id : String;
+		@actor : Actor;
+		@restarts : Int;
 
-    New(id : String, actor : Actor, restarts : Int) {
-      @id := id;
-      @actor := actor;
-      @restarts := restarts;
-    }
+		New(id : String, actor : Actor, restarts : Int) {
+			@id := id;
+			@actor := actor;
+			@restarts := restarts;
+		}
 
-    #~
-    The child's id
-    @return the id
-    ~#
-    method : public : GetId() ~ String {
-      return @id;
-    }
+		#~
+		The child's id
+		@return the id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
 
-    #~
-    The running incarnation
-    @return the actor, Nil when the child is not running
-    ~#
-    method : public : GetActor() ~ Actor {
-      return @actor;
-    }
+		#~
+		The running incarnation
+		@return the actor, Nil when the child is not running
+		~#
+		method : public : GetActor() ~ Actor {
+			return @actor;
+		}
 
-    #~
-    Says whether the child is running
-    @return true while it runs
-    ~#
-    method : public : IsRunning() ~ Bool {
-      return @actor <> Nil;
-    }
+		#~
+		Says whether the child is running
+		@return true while it runs
+		~#
+		method : public : IsRunning() ~ Bool {
+			return @actor <> Nil;
+		}
 
-    #~
-    How many times the supervisor restarted the child
-    @return the count
-    ~#
-    method : public : GetRestarts() ~ Int {
-      return @restarts;
-    }
-  }
+		#~
+		How many times the supervisor restarted the child
+		@return the count
+		~#
+		method : public : GetRestarts() ~ Int {
+			return @restarts;
+		}
+	}
 
-  # the supervisor's own state for one child
-  class : private : ChildState {
-    @spec : ChildSpec;
-    @actor : Actor;
-    @restarts : Int;
+	# the supervisor's own state for one child
+	class : private : ChildState {
+		@spec : ChildSpec;
+		@actor : Actor;
+		@restarts : Int;
 
-    New(spec : ChildSpec) {
-      @spec := spec;
-      @restarts := 0;
-    }
+		New(spec : ChildSpec) {
+			@spec := spec;
+			@restarts := 0;
+		}
 
-    method : public : GetSpec() ~ ChildSpec {
-      return @spec;
-    }
+		method : public : GetSpec() ~ ChildSpec {
+			return @spec;
+		}
 
-    method : public : GetActor() ~ Actor {
-      return @actor;
-    }
+		method : public : GetActor() ~ Actor {
+			return @actor;
+		}
 
-    method : public : SetActor(actor : Actor) ~ Nil {
-      @actor := actor;
-    }
+		method : public : SetActor(actor : Actor) ~ Nil {
+			@actor := actor;
+		}
 
-    method : public : GetRestarts() ~ Int {
-      return @restarts;
-    }
+		method : public : GetRestarts() ~ Int {
+			return @restarts;
+		}
 
-    method : public : AddRestart() ~ Nil {
-      @restarts += 1;
-    }
-  }
+		method : public : AddRestart() ~ Nil {
+			@restarts += 1;
+		}
+	}
 
-  # a request to a supervisor, answered through Call
-  class : private : SupervisorCommand {
-    @op : Int;     # 1 add, 2 remove, 3 list, 4 restart count, 5 child actor
-    @spec : ChildSpec;
-    @id : String;
+	# a request to a supervisor, answered through Call
+	class : private : SupervisorCommand {
+		@op : Int;     # 1 add, 2 remove, 3 list, 4 restart count, 5 child actor
+		@spec : ChildSpec;
+		@id : String;
 
-    New(op : Int, spec : ChildSpec, id : String) {
-      @op := op;
-      @spec := spec;
-      @id := id;
-    }
+		New(op : Int, spec : ChildSpec, id : String) {
+			@op := op;
+			@spec := spec;
+			@id := id;
+		}
 
-    method : public : GetOp() ~ Int {
-      return @op;
-    }
+		method : public : GetOp() ~ Int {
+			return @op;
+		}
 
-    method : public : GetSpec() ~ ChildSpec {
-      return @spec;
-    }
+		method : public : GetSpec() ~ ChildSpec {
+			return @spec;
+		}
 
-    method : public : GetId() ~ String {
-      return @id;
-    }
-  }
+		method : public : GetId() ~ String {
+			return @id;
+		}
+	}
 
-  #~
-  Supervision strategies, shared by Supervisor and SupervisorBehavior.<br/>
-  ONE_FOR_ONE restarts only the child that ended. ONE_FOR_ALL stops the others (last started
-  first) and restarts all. REST_FOR_ONE stops the children started after the one that ended
-  and restarts it and them.
-  ~#
-  class SupervisorStrategy {
-    #~
-    The strategies.<br/>
-    <p><pre>SupervisorStrategy->Kind</pre></p>
-    @class SupervisorStrategy
-    ~#
-    enum Kind {
-      ONE_FOR_ONE,
-      ONE_FOR_ALL,
-      REST_FOR_ONE
-    }
-  }
+	#~
+	Supervision strategies, shared by Supervisor and SupervisorBehavior.<br/>
+	ONE_FOR_ONE restarts only the child that ended. ONE_FOR_ALL stops the others (last started
+	first) and restarts all. REST_FOR_ONE stops the children started after the one that ended
+	and restarts it and them.
+	~#
+	class SupervisorStrategy {
+		#~
+		The strategies.<br/>
+		<p><pre>SupervisorStrategy->Kind</pre></p>
+		@class SupervisorStrategy
+		~#
+		enum Kind {
+			ONE_FOR_ONE,
+			ONE_FOR_ALL,
+			REST_FOR_ONE
+		}
+	}
 
-  #~
-  The behavior of a supervisor. Use Supervisor, which wraps it in an actor; use this directly
-  (through SupervisorFactory) to put a supervisor under another supervisor. It starts its children
-  in order, watches them, restarts them by the strategy and the children's policies, and fails
-  itself when it has to restart more than max_restarts times in period_seconds (so its own
-  supervisor, if any, decides what to do next). When it ends it stops its children, last started
-  first, each with its shutdown timeout and then a Kill.
-  ~#
-  class SupervisorBehavior implements ActorBehavior, ActorLifecycle {
-    @strategy : SupervisorStrategy->Kind;
-    @max_restarts : Int;
-    @period_ms : Int;
-    @states : Vector<ChildState>;
-    @recent : Vector<IntRef>;
-    @total_restarts : Int;
-    @abandoned : Int;
-    @me : Actor;
+	#~
+	The behavior of a supervisor. Use Supervisor, which wraps it in an actor; use this directly
+	(through SupervisorFactory) to put a supervisor under another supervisor. It starts its children
+	in order, watches them, restarts them by the strategy and the children's policies, and fails
+	itself when it has to restart more than max_restarts times in period_seconds (so its own
+	supervisor, if any, decides what to do next). When it ends it stops its children, last started
+	first, each with its shutdown timeout and then a Kill.
+	~#
+	class SupervisorBehavior implements ActorBehavior, ActorLifecycle {
+		@strategy : SupervisorStrategy->Kind;
+		@max_restarts : Int;
+		@period_ms : Int;
+		@states : Vector<ChildState>;
+		@recent : Vector<IntRef>;
+		@total_restarts : Int;
+		@abandoned : Int;
+		@me : Actor;
 
-    #~
-    Creates a supervisor behavior
-    @param strategy what to restart when a child ends
-    @param max_restarts most restarts allowed in the period; one more fails the supervisor
-    @param period_seconds the length of the window, in seconds
-    @param specs the children, in start order (copied)
-    ~#
-    New(strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int, specs : Vector<ChildSpec>) {
-      @strategy := strategy;
-      @max_restarts := max_restarts;
-      @period_ms := period_seconds * 1000;
-      @states := Vector->New()<ChildState>;
-      @recent := Vector->New()<IntRef>;
-      @total_restarts := 0;
-      @abandoned := 0;
-      if(specs <> Nil) {
-        each(i : specs) {
-          @states->AddBack(ChildState->New(specs->Get(i)));
-        };
-      };
-    }
+		#~
+		Creates a supervisor behavior
+		@param strategy what to restart when a child ends
+		@param max_restarts most restarts allowed in the period; one more fails the supervisor
+		@param period_seconds the length of the window, in seconds
+		@param specs the children, in start order (copied)
+		~#
+		New(strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int, specs : Vector<ChildSpec>) {
+			@strategy := strategy;
+			@max_restarts := max_restarts;
+			@period_ms := period_seconds * 1000;
+			@states := Vector->New()<ChildState>;
+			@recent := Vector->New()<IntRef>;
+			@total_restarts := 0;
+			@abandoned := 0;
+			if(specs <> Nil) {
+				each(i : specs) {
+					@states->AddBack(ChildState->New(specs->Get(i)));
+				};
+			};
+		}
 
-    method : public : Init(me : Actor) ~ Nil {
-      @me := me;
-      me->SetTrapExits(true);
-      each(i : @states) {
-        StartChild(@states->Get(i));
-      };
-    }
+		method : public : Init(me : Actor) ~ Nil {
+			@me := me;
+			me->SetTrapExits(true);
+			each(i : @states) {
+				StartChild(@states->Get(i));
+			};
+		}
 
-    method : Find(id : String) ~ ChildState {
-      each(i : @states) {
-        if(@states->Get(i)->GetSpec()->GetId()->Equals(id)) {
-          return @states->Get(i);
-        };
-      };
-      return Nil;
-    }
+		method : Find(id : String) ~ ChildState {
+			each(i : @states) {
+				if(@states->Get(i)->GetSpec()->GetId()->Equals(id)) {
+					return @states->Get(i);
+				};
+			};
+			return Nil;
+		}
 
-    method : IndexOfActor(actor : Actor) ~ Int {
-      each(i : @states) {
-        if(@states->Get(i)->GetActor() = actor) {
-          return i;
-        };
-      };
-      return -1;
-    }
+		method : IndexOfActor(actor : Actor) ~ Int {
+			each(i : @states) {
+				if(@states->Get(i)->GetActor() = actor) {
+					return i;
+				};
+			};
+			return -1;
+		}
 
-    method : StartChild(state : ChildState) ~ Nil {
-      spec := state->GetSpec();
-      behavior := spec->GetFactory()->Create();
-      if(behavior = Nil) {
-        Runtime->Raise(Error->New("the factory of child {$(spec->GetId())} made no behavior"));
-      };
-      child := Actor->New(spec->GetId(), behavior, spec->NewMailbox());
-      state->SetActor(child);
-      child->Monitor(@me);
-      child->Start();
-      # the next child starts after this one's Init: the start order is real
-      child->AwaitStarted(30000);
-    }
+		method : StartChild(state : ChildState) ~ Nil {
+			spec := state->GetSpec();
+			behavior := spec->GetFactory()->Create();
+			if(behavior = Nil) {
+				Runtime->Raise(Error->New("the factory of child {$(spec->GetId())} made no behavior"));
+			};
+			child := Actor->New(spec->GetId(), behavior, spec->NewMailbox());
+			state->SetActor(child);
+			child->Monitor(@me);
+			child->Start();
+			# the next child starts after this one's Init: the start order is real
+			child->AwaitStarted(30000);
+		}
 
-    # stops a child with its shutdown timeout, then kills it; a child that will not end is abandoned
-    method : StopChild(state : ChildState) ~ Nil {
-      child := state->GetActor();
-      if(child = Nil) {
-        return;
-      };
-      # forget the incarnation first: its DOWN notice is then stale and is ignored
-      state->SetActor(Nil);
-      shutdown := state->GetSpec()->GetShutdown();
-      child->Stop();
-      if(shutdown <> 0) {
-        r := child->Join(shutdown);
-        if(r <> Nil) {
-          return;
-        };
-      };
-      child->Kill();
-      if(child->Join(SupervisorBehavior->KILL_GRACE()) = Nil) {
-        @abandoned += 1;
-      };
-    }
+		# stops a child with its shutdown timeout, then kills it; a child that will not end is abandoned
+		method : StopChild(state : ChildState) ~ Nil {
+			child := state->GetActor();
+			if(child = Nil) {
+				return;
+			};
+			# forget the incarnation first: its DOWN notice is then stale and is ignored
+			state->SetActor(Nil);
+			shutdown := state->GetSpec()->GetShutdown();
+			child->Stop();
+			if(shutdown <> 0) {
+				r := child->Join(shutdown);
+				if(r <> Nil) {
+					return;
+				};
+			};
+			child->Kill();
+			if(child->Join(SupervisorBehavior->KILL_GRACE()) = Nil) {
+				@abandoned += 1;
+			};
+		}
 
-    function : KILL_GRACE() ~ Int {
-      return 100;
-    }
+		function : KILL_GRACE() ~ Int {
+			return 100;
+		}
 
-    method : public : Handle(me : Actor, mail : Mail) ~ Bool {
-      kind := mail->GetKind();
-      if(kind = Mail->Kind->DOWN) {
-        OnDown(mail->GetSource(), mail->GetReason());
-      }
-      else if(kind = Mail->Kind->CALL) {
-        OnCommand(mail);
-      }
-      else if(kind = Mail->Kind->EXIT) {
-        # a link (nothing links to a supervisor unless a program asks): not a child
-      };
-      return true;
-    }
+		method : public : Handle(me : Actor, mail : Mail) ~ Bool {
+			kind := mail->GetKind();
+			if(kind = Mail->Kind->DOWN) {
+				OnDown(mail->GetSource(), mail->GetReason());
+			}
+			else if(kind = Mail->Kind->CALL) {
+				OnCommand(mail);
+			}
+			else if(kind = Mail->Kind->EXIT) {
+				# a link (nothing links to a supervisor unless a program asks): not a child
+			};
+			return true;
+		}
 
-    method : OnCommand(mail : Mail) ~ Nil {
-      cmd := mail->GetPayload()->As(SupervisorCommand);
-      op := cmd->GetOp();
-      if(op = 1) {
-        ok := false;
-        if(Find(cmd->GetSpec()->GetId()) = Nil) {
-          state := ChildState->New(cmd->GetSpec());
-          @states->AddBack(state);
-          StartChild(state);
-          ok := true;
-        };
-        mail->Answer(BoolRef->New(ok));
-      }
-      else if(op = 2) {
-        state := Find(cmd->GetId());
-        if(state = Nil) {
-          mail->Answer(BoolRef->New(false));
-        }
-        else {
-          StopChild(state);
-          i := 0;
-          while(i < @states->Size()) {
-            if(@states->Get(i) = state) {
-              @states->Remove(i);
-            }
-            else {
-              i += 1;
-            };
-          };
-          mail->Answer(BoolRef->New(true));
-        };
-      }
-      else if(op = 3) {
-        info := Vector->New()<ChildInfo>;
-        each(i : @states) {
-          s := @states->Get(i);
-          info->AddBack(ChildInfo->New(s->GetSpec()->GetId(), s->GetActor(), s->GetRestarts()));
-        };
-        mail->Answer(info);
-      }
-      else if(op = 4) {
-        mail->Answer(IntRef->New(@total_restarts));
-      }
-      else if(op = 5) {
-        state := Find(cmd->GetId());
-        if(state = Nil | state->GetActor() = Nil) {
-          mail->Answer(Nil);
-        }
-        else {
-          mail->Answer(state->GetActor());
-        };
-      }
-      else {
-        mail->Fail("unknown supervisor request");
-      };
-    }
+		method : OnCommand(mail : Mail) ~ Nil {
+			cmd := mail->GetPayload()->As(SupervisorCommand);
+			op := cmd->GetOp();
+			if(op = 1) {
+				ok := false;
+				if(Find(cmd->GetSpec()->GetId()) = Nil) {
+					state := ChildState->New(cmd->GetSpec());
+					@states->AddBack(state);
+					StartChild(state);
+					ok := true;
+				};
+				mail->Answer(BoolRef->New(ok));
+			}
+			else if(op = 2) {
+				state := Find(cmd->GetId());
+				if(state = Nil) {
+					mail->Answer(BoolRef->New(false));
+				}
+				else {
+					StopChild(state);
+					i := 0;
+					while(i < @states->Size()) {
+						if(@states->Get(i) = state) {
+							@states->Remove(i);
+						}
+						else {
+							i += 1;
+						};
+					};
+					mail->Answer(BoolRef->New(true));
+				};
+			}
+			else if(op = 3) {
+				info := Vector->New()<ChildInfo>;
+				each(i : @states) {
+					s := @states->Get(i);
+					info->AddBack(ChildInfo->New(s->GetSpec()->GetId(), s->GetActor(), s->GetRestarts()));
+				};
+				mail->Answer(info);
+			}
+			else if(op = 4) {
+				mail->Answer(IntRef->New(@total_restarts));
+			}
+			else if(op = 5) {
+				state := Find(cmd->GetId());
+				if(state = Nil | state->GetActor() = Nil) {
+					mail->Answer(Nil);
+				}
+				else {
+					mail->Answer(state->GetActor());
+				};
+			}
+			else {
+				mail->Fail("unknown supervisor request");
+			};
+		}
 
-    # a child ended: restart it and its peers as the strategy and its policy say
-    method : OnDown(source : Actor, reason : ExitReason) ~ Nil {
-      index := IndexOfActor(source);
-      if(index < 0) {
-        return;
-      };
+		# a child ended: restart it and its peers as the strategy and its policy say
+		method : OnDown(source : Actor, reason : ExitReason) ~ Nil {
+			index := IndexOfActor(source);
+			if(index < 0) {
+				return;
+			};
 
-      state := @states->Get(index);
-      state->SetActor(Nil);
-      policy := state->GetSpec()->GetRestart();
-      restart := false;
-      if(policy = ChildSpec->Restart->PERMANENT) {
-        restart := true;
-      }
-      else if(policy = ChildSpec->Restart->TRANSIENT) {
-        restart := reason->IsAbnormal();
-      };
+			state := @states->Get(index);
+			state->SetActor(Nil);
+			policy := state->GetSpec()->GetRestart();
+			restart := false;
+			if(policy = ChildSpec->Restart->PERMANENT) {
+				restart := true;
+			}
+			else if(policy = ChildSpec->Restart->TRANSIENT) {
+				restart := reason->IsAbnormal();
+			};
 
-      if(policy = ChildSpec->Restart->TEMPORARY) {
-        @states->Remove(index);
-      };
+			if(policy = ChildSpec->Restart->TEMPORARY) {
+				@states->Remove(index);
+			};
 
-      if(restart = false) {
-        return;
-      };
+			if(restart = false) {
+				return;
+			};
 
-      CountRestart(state->GetSpec()->GetId(), reason);
+			CountRestart(state->GetSpec()->GetId(), reason);
 
-      first := index;
-      last := index;
-      if(@strategy = SupervisorStrategy->Kind->ONE_FOR_ALL) {
-        first := 0;
-        last := @states->Size() - 1;
-      }
-      else if(@strategy = SupervisorStrategy->Kind->REST_FOR_ONE) {
-        last := @states->Size() - 1;
-      };
+			first := index;
+			last := index;
+			if(@strategy = SupervisorStrategy->Kind->ONE_FOR_ALL) {
+				first := 0;
+				last := @states->Size() - 1;
+			}
+			else if(@strategy = SupervisorStrategy->Kind->REST_FOR_ONE) {
+				last := @states->Size() - 1;
+			};
 
-      # stop the others, last started first
-      i := last;
-      while(i >= first) {
-        if(i <> index) {
-          StopChild(@states->Get(i));
-        };
-        i -= 1;
-      };
+			# stop the others, last started first
+			i := last;
+			while(i >= first) {
+				if(i <> index) {
+					StopChild(@states->Get(i));
+				};
+				i -= 1;
+			};
 
-      # forget the stopped temporary children, then start the rest in order
-      i := last;
-      while(i >= first) {
-        s := @states->Get(i);
-        if(i <> index & s->GetSpec()->GetRestart() = ChildSpec->Restart->TEMPORARY) {
-          @states->Remove(i);
-          last -= 1;
-        };
-        i -= 1;
-      };
+			# forget the stopped temporary children, then start the rest in order
+			i := last;
+			while(i >= first) {
+				s := @states->Get(i);
+				if(i <> index & s->GetSpec()->GetRestart() = ChildSpec->Restart->TEMPORARY) {
+					@states->Remove(i);
+					last -= 1;
+				};
+				i -= 1;
+			};
 
-      i := first;
-      while(i <= last & i < @states->Size()) {
-        s := @states->Get(i);
-        s->AddRestart();
-        StartChild(s);
-        i += 1;
-      };
-    }
+			i := first;
+			while(i <= last & i < @states->Size()) {
+				s := @states->Get(i);
+				s->AddRestart();
+				StartChild(s);
+				i += 1;
+			};
+		}
 
-    # restart intensity: more than max_restarts restarts inside the window fails the supervisor
-    method : CountRestart(id : String, reason : ExitReason) ~ Nil {
-      now := ActorClock->Now();
-      kept := Vector->New()<IntRef>;
-      each(i : @recent) {
-        if(now - @recent->Get(i)->Get() < @period_ms) {
-          kept->AddBack(@recent->Get(i));
-        };
-      };
-      @recent := kept;
-      @recent->AddBack(IntRef->New(now));
-      @total_restarts += 1;
-      if(@recent->Size() > @max_restarts) {
-        Runtime->Raise(Error->New("restart intensity exceeded: more than {$@max_restarts} restarts in {$(@period_ms / 1000)} s (last: {$id} {$(reason->ToString())})"));
-      };
-    }
+		# restart intensity: more than max_restarts restarts inside the window fails the supervisor
+		method : CountRestart(id : String, reason : ExitReason) ~ Nil {
+			now := ActorClock->Now();
+			kept := Vector->New()<IntRef>;
+			each(i : @recent) {
+				if(now - @recent->Get(i)->Get() < @period_ms) {
+					kept->AddBack(@recent->Get(i));
+				};
+			};
+			@recent := kept;
+			@recent->AddBack(IntRef->New(now));
+			@total_restarts += 1;
+			if(@recent->Size() > @max_restarts) {
+				Runtime->Raise(Error->New("restart intensity exceeded: more than {$@max_restarts} restarts in {$(@period_ms / 1000)} s (last: {$id} {$(reason->ToString())})"));
+			};
+		}
 
-    method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
-      i := @states->Size() - 1;
-      while(i >= 0) {
-        StopChild(@states->Get(i));
-        i -= 1;
-      };
-    }
+		method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
+			i := @states->Size() - 1;
+			while(i >= 0) {
+				StopChild(@states->Get(i));
+				i -= 1;
+			};
+		}
 
-    #~
-    How many children had to be abandoned (they ignored Stop and Kill) so far
-    @return the count
-    ~#
-    method : public : GetAbandoned() ~ Int {
-      return @abandoned;
-    }
-  }
+		#~
+		How many children had to be abandoned (they ignored Stop and Kill) so far
+		@return the count
+		~#
+		method : public : GetAbandoned() ~ Int {
+			return @abandoned;
+		}
+	}
 
-  #~
-  Makes SupervisorBehavior objects, so a supervisor can be a child of another supervisor: the
-  parent builds a new supervisor, with its children, at every restart.
-  ~#
-  class SupervisorFactory implements BehaviorFactory {
-    @strategy : SupervisorStrategy->Kind;
-    @max_restarts : Int;
-    @period : Int;
-    @specs : Vector<ChildSpec>;
+	#~
+	Makes SupervisorBehavior objects, so a supervisor can be a child of another supervisor: the
+	parent builds a new supervisor, with its children, at every restart.
+	~#
+	class SupervisorFactory implements BehaviorFactory {
+		@strategy : SupervisorStrategy->Kind;
+		@max_restarts : Int;
+		@period : Int;
+		@specs : Vector<ChildSpec>;
 
-    New(strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int, specs : Vector<ChildSpec>) {
-      @strategy := strategy;
-      @max_restarts := max_restarts;
-      @period := period_seconds;
-      @specs := specs;
-    }
+		New(strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int, specs : Vector<ChildSpec>) {
+			@strategy := strategy;
+			@max_restarts := max_restarts;
+			@period := period_seconds;
+			@specs := specs;
+		}
 
-    method : public : Create() ~ ActorBehavior {
-      return SupervisorBehavior->New(@strategy, @max_restarts, @period, @specs);
-    }
-  }
+		method : public : Create() ~ ActorBehavior {
+			return SupervisorBehavior->New(@strategy, @max_restarts, @period, @specs);
+		}
+	}
 
-  #~
-  A supervisor: an actor that starts child actors in order, restarts them when they end (by
-  strategy and by each child's restart policy) and fails itself when the restarts come too fast.
-  Add the children, Start it, and Stop it to stop the children in reverse order.
-  ```
+	#~
+	A supervisor: an actor that starts child actors in order, restarts them when they end (by
+	strategy and by each child's restart policy) and fails itself when the restarts come too fast.
+	Add the children, Start it, and Stop it to stop the children in reverse order.
+	```
 sup := Supervisor->New("team", SupervisorStrategy->Kind->ONE_FOR_ONE, 3, 10);
 sup->AddChild(ChildSpec->New("w1", WorkerFactory->New(), ChildSpec->Restart->PERMANENT, 500));
 sup->Start();
 sup->Stop();
 sup->Join()->ToString()->PrintLine();
-  ```
-  ~#
-  class Supervisor {
-    @name : String;
-    @strategy : SupervisorStrategy->Kind;
-    @max_restarts : Int;
-    @period : Int;
-    @specs : Vector<ChildSpec>;
-    @actor : Actor;
-    @behavior : SupervisorBehavior;
+	```
+	~#
+	class Supervisor {
+		@name : String;
+		@strategy : SupervisorStrategy->Kind;
+		@max_restarts : Int;
+		@period : Int;
+		@specs : Vector<ChildSpec>;
+		@actor : Actor;
+		@behavior : SupervisorBehavior;
 
-    #~
-    Creates a supervisor
-    @param name a name for logs
-    @param strategy ONE_FOR_ONE, ONE_FOR_ALL or REST_FOR_ONE
-    @param max_restarts most restarts allowed in the period; one more fails the supervisor
-    @param period_seconds the length of the window, in seconds
-    ~#
-    New(name : String, strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int) {
-      @name := name;
-      @strategy := strategy;
-      @max_restarts := max_restarts;
-      @period := period_seconds;
-      @specs := Vector->New()<ChildSpec>;
-    }
+		#~
+		Creates a supervisor
+		@param name a name for logs
+		@param strategy ONE_FOR_ONE, ONE_FOR_ALL or REST_FOR_ONE
+		@param max_restarts most restarts allowed in the period; one more fails the supervisor
+		@param period_seconds the length of the window, in seconds
+		~#
+		New(name : String, strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int) {
+			@name := name;
+			@strategy := strategy;
+			@max_restarts := max_restarts;
+			@period := period_seconds;
+			@specs := Vector->New()<ChildSpec>;
+		}
 
-    #~
-    Adds a child to the start order. Before Start only; use StartChild afterwards.
-    @param spec the child
-    @return this supervisor
-    ~#
-    method : public : AddChild(spec : ChildSpec) ~ Supervisor {
-      @specs->AddBack(spec);
-      return @self;
-    }
+		#~
+		Adds a child to the start order. Before Start only; use StartChild afterwards.
+		@param spec the child
+		@return this supervisor
+		~#
+		method : public : AddChild(spec : ChildSpec) ~ Supervisor {
+			@specs->AddBack(spec);
+			return @self;
+		}
 
-    #~
-    Starts the supervisor, which starts its children in the order they were added
-    @return this supervisor
-    ~#
-    method : public : Start() ~ Supervisor {
-      @behavior := SupervisorBehavior->New(@strategy, @max_restarts, @period, @specs);
-      @actor := Actor->New(@name, @behavior);
-      @actor->Start();
-      return @self;
-    }
+		#~
+		Starts the supervisor, which starts its children in the order they were added
+		@return this supervisor
+		~#
+		method : public : Start() ~ Supervisor {
+			@behavior := SupervisorBehavior->New(@strategy, @max_restarts, @period, @specs);
+			@actor := Actor->New(@name, @behavior);
+			@actor->Start();
+			return @self;
+		}
 
-    #~
-    A factory for this supervisor's design, to use it as a child of another supervisor
-    @return the factory
-    ~#
-    method : public : AsFactory() ~ BehaviorFactory {
-      return SupervisorFactory->New(@strategy, @max_restarts, @period, @specs);
-    }
+		#~
+		A factory for this supervisor's design, to use it as a child of another supervisor
+		@return the factory
+		~#
+		method : public : AsFactory() ~ BehaviorFactory {
+			return SupervisorFactory->New(@strategy, @max_restarts, @period, @specs);
+		}
 
-    #~
-    The supervisor's own actor
-    @return the actor, Nil before Start
-    ~#
-    method : public : GetActor() ~ Actor {
-      return @actor;
-    }
+		#~
+		The supervisor's own actor
+		@return the actor, Nil before Start
+		~#
+		method : public : GetActor() ~ Actor {
+			return @actor;
+		}
 
-    #~
-    Starts one more child, after the existing ones
-    @param spec the child
-    @return false if a child has that id already, or the supervisor is not running
-    ~#
-    method : public : StartChild(spec : ChildSpec) ~ Bool {
-      r := @actor->Call(SupervisorCommand->New(1, spec, Nil), 10000);
-      return r->IsOk() & r->GetValue()->As(BoolRef)->Get();
-    }
+		#~
+		Starts one more child, after the existing ones
+		@param spec the child
+		@return false if a child has that id already, or the supervisor is not running
+		~#
+		method : public : StartChild(spec : ChildSpec) ~ Bool {
+			r := @actor->Call(SupervisorCommand->New(1, spec, Nil), 10000);
+			return r->IsOk() & r->GetValue()->As(BoolRef)->Get();
+		}
 
-    #~
-    Stops a child and removes it
-    @param id the child's id
-    @return false if there is no such child or the supervisor is not running
-    ~#
-    method : public : TerminateChild(id : String) ~ Bool {
-      r := @actor->Call(SupervisorCommand->New(2, Nil, id), 60000);
-      return r->IsOk() & r->GetValue()->As(BoolRef)->Get();
-    }
+		#~
+		Stops a child and removes it
+		@param id the child's id
+		@return false if there is no such child or the supervisor is not running
+		~#
+		method : public : TerminateChild(id : String) ~ Bool {
+			r := @actor->Call(SupervisorCommand->New(2, Nil, id), 60000);
+			return r->IsOk() & r->GetValue()->As(BoolRef)->Get();
+		}
 
-    #~
-    A snapshot of the children, in start order
-    @return the children, Nil if the supervisor is not running
-    ~#
-    method : public : Children() ~ Vector<ChildInfo> {
-      r := @actor->Call(SupervisorCommand->New(3, Nil, Nil), 10000);
-      if(r->IsOk() = false) {
-        return Nil;
-      };
-      return r->GetValue()->As(Vector<ChildInfo>);
-    }
+		#~
+		A snapshot of the children, in start order
+		@return the children, Nil if the supervisor is not running
+		~#
+		method : public : Children() ~ Vector<ChildInfo> {
+			r := @actor->Call(SupervisorCommand->New(3, Nil, Nil), 10000);
+			if(r->IsOk() = false) {
+				return Nil;
+			};
+			return r->GetValue()->As(Vector<ChildInfo>);
+		}
 
-    #~
-    The running actor of a child
-    @param id the child's id
-    @return the actor, Nil if the child is not running or unknown
-    ~#
-    method : public : GetChild(id : String) ~ Actor {
-      r := @actor->Call(SupervisorCommand->New(5, Nil, id), 10000);
-      if(r->IsOk() = false | r->GetValue() = Nil) {
-        return Nil;
-      };
-      return r->GetValue()->As(Actor);
-    }
+		#~
+		The running actor of a child
+		@param id the child's id
+		@return the actor, Nil if the child is not running or unknown
+		~#
+		method : public : GetChild(id : String) ~ Actor {
+			r := @actor->Call(SupervisorCommand->New(5, Nil, id), 10000);
+			if(r->IsOk() = false | r->GetValue() = Nil) {
+				return Nil;
+			};
+			return r->GetValue()->As(Actor);
+		}
 
-    #~
-    How many restarts the supervisor has done
-    @return the count, -1 if the supervisor is not running
-    ~#
-    method : public : GetRestartCount() ~ Int {
-      r := @actor->Call(SupervisorCommand->New(4, Nil, Nil), 10000);
-      if(r->IsOk() = false) {
-        return -1;
-      };
-      return r->GetValue()->As(IntRef)->Get();
-    }
+		#~
+		How many restarts the supervisor has done
+		@return the count, -1 if the supervisor is not running
+		~#
+		method : public : GetRestartCount() ~ Int {
+			r := @actor->Call(SupervisorCommand->New(4, Nil, Nil), 10000);
+			if(r->IsOk() = false) {
+				return -1;
+			};
+			return r->GetValue()->As(IntRef)->Get();
+		}
 
-    #~
-    How many children the supervisor had to abandon because they ignored both Stop and Kill
-    (a handler that never returns): their threads are still running
-    @return the count; it can be read after the supervisor ended
-    ~#
-    method : public : GetAbandonedCount() ~ Int {
-      if(@behavior = Nil) {
-        return 0;
-      };
-      return @behavior->GetAbandoned();
-    }
+		#~
+		How many children the supervisor had to abandon because they ignored both Stop and Kill
+		(a handler that never returns): their threads are still running
+		@return the count; it can be read after the supervisor ended
+		~#
+		method : public : GetAbandonedCount() ~ Int {
+			if(@behavior = Nil) {
+				return 0;
+			};
+			return @behavior->GetAbandoned();
+		}
 
-    #~
-    Asks the supervisor to end: it stops its children, last started first
-    ~#
-    method : public : Stop() ~ Nil {
-      @actor->Stop();
-    }
+		#~
+		Asks the supervisor to end: it stops its children, last started first
+		~#
+		method : public : Stop() ~ Nil {
+			@actor->Stop();
+		}
 
-    #~
-    Waits for the supervisor to end
-    @return why it ended; FAILED when the restart intensity was exceeded
-    ~#
-    method : public : Join() ~ ExitReason {
-      return @actor->Join();
-    }
+		#~
+		Waits for the supervisor to end
+		@return why it ended; FAILED when the restart intensity was exceeded
+		~#
+		method : public : Join() ~ ExitReason {
+			return @actor->Join();
+		}
 
-    #~
-    Waits for the supervisor to end, for a while
-    @param timeout milliseconds
-    @return why it ended, Nil if still running
-    ~#
-    method : public : Join(timeout : Int) ~ ExitReason {
-      return @actor->Join(timeout);
-    }
-  }
+		#~
+		Waits for the supervisor to end, for a while
+		@param timeout milliseconds
+		@return why it ended, Nil if still running
+		~#
+		method : public : Join(timeout : Int) ~ ExitReason {
+			return @actor->Join(timeout);
+		}
+	}
 }
