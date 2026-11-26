@@ -32,6 +32,7 @@ class FormatterRegressionTest {
 		TestKeywordFormatting();
 		TestOperatorSpacing();
 		TestNilSafeOperators();
+		TestArrowAndCompare();
 		TestNestedBlocks();
 		TestLineDepths();
 
@@ -219,6 +220,28 @@ class FormatterRegressionTest {
 
 		Check("Nil-safe: ternary still formats", ternary <> Nil);
 		Check("Nil-safe: ternary '?' preserved", ternary->Find("?") > -1);
+	}
+
+	function : TestArrowAndCompare() ~ Nil {
+		"\n>> '=>' and '<='..."->PrintLine();
+
+		# '<=' was scanned as the lambda arrow and written back as '=>', and '=>'
+		# as '<>' followed by a stray '>': formatting changed what a file means.
+		src := "class Foo{function:F(a:Int,b:Int)~Bool{c:=a<=b;d:=a>=b;e:=a<>b;return c;}function:G(k:Int)~String{return match k{1=>\"one\",2|3=>\"few\",other=>\"many\"};}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Arrow: result not nil", result <> Nil);
+		Check("Arrow: '<=' kept", result->Find("a <= b") > -1);
+		Check("Arrow: '>=' kept", result->Find("a >= b") > -1);
+		Check("Arrow: '<>' kept", result->Find("a <> b") > -1);
+		Check("Arrow: '=>' kept", result->Find("1 => \"one\"") > -1 & result->Find("other => \"many\"") > -1);
+		Check("Arrow: '=>' not split", result->Find("<> >") = -1 & result->Find("= >") = -1);
+		Check("Arrow: patterns kept", result->Find("2 | 3 =>") > -1);
 	}
 
 	function : TestNestedBlocks() ~ Nil {
