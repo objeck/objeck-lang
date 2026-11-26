@@ -783,7 +783,6 @@ resp->GetText()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
@@ -957,7 +956,6 @@ resp->GetText()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
@@ -1158,7 +1156,6 @@ resp->GetText()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
@@ -1640,7 +1637,6 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
@@ -1859,7 +1855,6 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
