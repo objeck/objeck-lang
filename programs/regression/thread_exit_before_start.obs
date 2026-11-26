@@ -1,0 +1,76 @@
+#~
+# Main may return while threads it has just started have not begun to run.
+#
+# The shape is the smallest threaded program there is: start a few threads, do not
+# join them, return from Main. At that moment a thread exists but has not reached
+# its entry method yet, so it is not in the VM's table of running threads. The
+# teardown in vm.cpp halts the threads in that table and waits for the table to
+# empty before it frees the program; a thread that was not in it yet was neither
+# halted nor waited for. It then started, and ran its entry method against a
+# program that had been freed: SIGSEGV in the first method call, cast or JIT
+# compile it made, on Windows x64 and Linux x64, with the JIT on, off and at
+# threshold 1. programs/examples/concur.obs (three threads, no join) crashed four
+# runs in five that way, in v2026.11.3 as well.
+#
+# The spawning thread now counts a thread before it creates it, the count is given
+# back as the thread's last act, the teardown waits for the count as well as the
+# table, and a thread that registers after the halt went out is halted there and
+# never enters its method.
+#
+# The assertion is the exit code: 0. Nothing a thread prints is checked, because a
+# thread that Main's return overtakes prints nothing, which is correct -- a program
+# that needs its threads' work joins them (thread_join_handles.obs covers that).
+#
+# Main makes the three thread objects first and then starts them one after the
+# other, with nothing in between and nothing after. That is what keeps the race
+# open on every platform. Two earlier shapes of this test lost it: with four
+# threads started and joined first, as a control, a pre-fix obr failed 1 to 3 runs
+# in 100 on Windows, because thread start-up was warm; and with eight threads made
+# and started in a loop it failed most runs on Windows and none in 60 on Linux,
+# where the first threads were registered and halting by the time the last was
+# created, and that kept the teardown waiting long enough for the last to register.
+#
+# One run is one sample of a race, so a single green run is weak evidence on its
+# own; the suite runs this on every leg in both JIT modes.
+~#
+
+use System.Concurrency;
+
+class StartWork from Thread {
+  @sum : Int;
+
+  New(name : String) {
+    Parent(name);
+  }
+
+  method : Fold(text : String) ~ Int {
+    upper := text->ToUpper();
+    total := 0;
+    each(i : upper) {
+      total += upper->Get(i)->As(Int);
+    };
+
+    return total + upper->Size();
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    text := param->As(String);
+    for(i := 0; i < 200; i += 1;) {
+      @sum += Fold("{$text}-{$i}");
+    };
+  }
+}
+
+class ThreadExitBeforeStart {
+  function : Main(args : String[]) ~ Nil {
+    # made first, so that nothing separates one start from the next
+    first := StartWork->New("first");
+    second := StartWork->New("second");
+    third := StartWork->New("third");
+
+    # the case: started, not joined, and Main returns at once
+    first->Execute("enjoy");
+    second->Execute("rosetta");
+    third->Execute("code");
+  }
+}

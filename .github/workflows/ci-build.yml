@@ -1523,14 +1523,18 @@ jobs:
           ../../../compiler/lib_src/ai_hub.obs \
           ../../../compiler/lib_src/lame.obs \
           ../../../compiler/lib_src/web_server.obs 2>&1 | tee code_doc.log
-        # A doc comment the parser rejects drops its member from the API reference with
-        # only an ERROR line to show for it: two GLWindow members shipped undocumented
-        # for weeks that way (issue #729). Refuse to package such a build.
-        if grep -q '^ERROR:' code_doc.log; then
-          echo "code_doc rejected doc comment(s); their members would be missing from api.zip:"
-          grep '^ERROR:' code_doc.log | head -20
-          exit 1
-        fi
+        # A doc comment the parser rejects drops its member from the API reference, and
+        # code_doc still exits 0: two GLWindow members shipped undocumented for weeks that
+        # way (issue #729), and a bundle comment with a code fence (mcp_agent.obs) passed
+        # because it prints '*** Unable to parse bundle block' rather than an ERROR line.
+        # check_code_doc_log.py knows every failure output. Refuse to package such a build.
+        python3 ../../../../tools/cicd/check_code_doc_log.py code_doc.log
+
+    # Proves the guard above can fail: a bundle comment with a code fence must be flagged,
+    # and every library source must be clean.
+    - name: Code doc guard catches a bad bundle comment
+      if: matrix.platform == 'linux-x64'
+      run: python3 tools/cicd/check_code_doc_log.py --fixture core/release/${{ steps.deploy-dir.outputs.dir }}/bin
 
     - name: Package API documentation
       if: matrix.platform == 'linux-x64'

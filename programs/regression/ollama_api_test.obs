@@ -297,6 +297,33 @@ class OllamaApiTest {
       Check("ps ToString does not crash", running->Get(0)->ToString()->Size() > 0);
     };
 
+    # current servers (0.40.x): every /api/tags entry carries "capabilities" and extra
+    # details; it is still a listing entry, not a /api/show record
+    body := "{\"models\":[{\"name\":\"qwen3:8b\",\"model\":\"qwen3:8b\",\"modified_at\":\"2026-11-26T17:30:28.89528819Z\",";
+    body += "\"size\":5225388164,\"digest\":\"500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"qwen3\",\"families\":[\"qwen3\"],\"parameter_size\":\"8.2B\",\"quantization_level\":\"Q4_K_M\",\"context_length\":40960,\"embedding_length\":4096,\"runner\":\"ggml\"},";
+    body += "\"capabilities\":[\"completion\",\"tools\",\"thinking\"]}]}";
+    models := Model->ParseModelList(body);
+    Check("new tags entry parses", models <> Nil & models->Size() = 1);
+    if(models <> Nil & models->Size() = 1) {
+      entry := models->Get(0);
+      Check("new tags entry is a listing entry", entry->GetPulled() <> Nil & entry->GetInfo() = Nil);
+      if(entry->GetPulled() <> Nil) {
+        Check("new tags name and size", entry->GetPulled()->GetName()->Equals("qwen3:8b") & entry->GetPulled()->GetSize() = 5225388164);
+        Check("new tags capabilities", entry->GetPulled()->GetCapabilities()->Size() = 3 & entry->GetPulled()->GetCapabilities()->Get(2)->Equals("thinking"));
+        Check("new tags has a modified time", entry->GetPulled()->GetModifiedTime() <> Nil);
+      };
+      Check("new tags details", entry->GetDetails() <> Nil & entry->GetDetails()->GetFamily()->Equals("qwen3"));
+      Check("new tags ToString does not crash", entry->ToString()->Size() > 0);
+    };
+
+    # current /api/ps entry
+    body := "{\"models\":[{\"name\":\"qwen3:8b\",\"model\":\"qwen3:8b\",\"size\":5586592726,\"digest\":\"500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"qwen3\",\"families\":[\"qwen3\"],\"parameter_size\":\"8.2B\",\"quantization_level\":\"Q4_K_M\"},";
+    body += "\"expires_at\":\"2026-11-26T18:43:15.575141103Z\",\"size_vram\":5586592726,\"context_length\":4096,\"runner\":\"llamacpp\"}]}";
+    running := Model->ParseModelList(body);
+    Check("new ps entry", running <> Nil & running->Size() = 1 & running->Get(0)->GetPulled() <> Nil & running->Get(0)->GetPulled()->GetSizeVram() = 5586592726);
+
     empty := Model->ParseModelList("{\"models\":[]}");
     Check("empty listing", empty <> Nil & empty->Size() = 0);
 
@@ -321,6 +348,16 @@ class OllamaApiTest {
         Check("show ToString does not crash", model->ToString()->Size() > 0);
       };
       Check("show details", model->GetDetails() <> Nil & model->GetDetails()->GetParameterSize()->Equals("8.0B"));
+    };
+
+    # a show reply from a current server (0.40.x): top-level modified_at, template_source, no name
+    body := "{\"license\":\"MIT\",\"modelfile\":\"FROM x\",\"parameters\":\"stop \\\"a\\\"\",\"template\":\"{{ .Prompt }}\",\"template_source\":\"go_template\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"llama\",\"families\":[\"llama\"],\"parameter_size\":\"8.0B\",\"quantization_level\":\"Q4_K_M\"},";
+    body += "\"model_info\":{\"general.architecture\":\"llama\"},\"capabilities\":[\"completion\",\"tools\"],\"modified_at\":\"2026-11-26T17:29:08.032333268Z\"}";
+    model := Model->ParseShowResponse(body);
+    Check("new show reply is a show record", model <> Nil & model->GetInfo() <> Nil & model->GetPulled() = Nil);
+    if(model <> Nil & model->GetInfo() <> Nil) {
+      Check("new show reply fields", model->GetInfo()->HasCapability("tools") & model->GetInfo()->GetLicense()->Equals("MIT"));
     };
 
     Check("version", Model->ParseVersionResponse("{\"version\":\"0.12.6\"}")->Equals("0.12.6"));
