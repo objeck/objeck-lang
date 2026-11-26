@@ -295,8 +295,7 @@ else {
 			quoted := String->New();
 			quoted->Append(open);
 			if(name <> Nil) {
-				each(i : name) {
-					c := name->Get(i);
+				each(c in name) {
 					quoted->Append(c);
 					if(c = close) {
 						quoted->Append(close);

@@ -2438,8 +2438,7 @@ report->Save("report.html");
 
 			if(@contents & @sections > 0) {
 				out->Append("## Contents\n\n");
-				each(i : @blocks) {
-					block := @blocks->Get(i);
+				each(block in @blocks) {
 					if(block->GetKind() = 1) {
 						indent := String->New();
 						indent_by := block->GetLevel() - 1;
@@ -2457,8 +2456,7 @@ report->Save("report.html");
 				out->Append("\n");
 			};
 
-			each(i : @blocks) {
-				block := @blocks->Get(i);
+			each(block in @blocks) {
 				kind := block->GetKind();
 				if(kind = 1) {
 					out->Append("<a id=\"");
@@ -2724,8 +2722,7 @@ report->Save("report.html");
 
 			if(@contents & @sections > 0) {
 				out->Append("<nav class=\"contents\">\n<h2>Contents</h2>\n<ul>\n");
-				each(i : @blocks) {
-					block := @blocks->Get(i);
+				each(block in @blocks) {
 					if(block->GetKind() = 1) {
 						out->Append("<li class=\"l{$block->GetLevel()}\"><a href=\"#");
 						out->Append(block->GetAnchor());
@@ -2737,8 +2734,7 @@ report->Save("report.html");
 				out->Append("</ul>\n</nav>\n");
 			};
 
-			each(i : @blocks) {
-				block := @blocks->Get(i);
+			each(block in @blocks) {
 				kind := block->GetKind();
 				if(kind = 1) {
 					tag := "h{$block->GetLevel() + 1}";
@@ -2942,8 +2938,7 @@ report->Save("report.html");
 			if(<>System.IO.Filesystem.FileWriter->WriteFile(path, ToMarkdown(stem))) {
 				return Refuse("cannot write '{$path}'");
 			};
-			each(i : @blocks) {
-				block := @blocks->Get(i);
+			each(block in @blocks) {
 				if(block->GetKind() = 6 & block->GetMediaKind() = 0) {
 					file := dir + "{$stem}-figure-{$block->GetLabel()->SubString(7, block->GetLabel()->Size() - 7)}.svg";
 					if(<>System.IO.Filesystem.FileWriter->WriteFile(file, block->GetMedia() + "\n")) {

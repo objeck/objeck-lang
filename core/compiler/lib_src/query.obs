@@ -2082,8 +2082,7 @@ bundle Query.Structured {
 
 		# appends the marked slots of a list, in its order
 		function : Marked(slots : Int[], words : Int[], out : Int[], n : Int) ~ Int {
-			each(i : slots) {
-				slot := slots[i];
+			each(slot in slots) {
 				if((words[slot >> 6] and (1 << (slot and 63))) <> 0) {
 					out[n] := slot;
 					n += 1;
@@ -4396,8 +4395,7 @@ results->ToString()->PrintLine();
 				sum := 0.0;
 				low := 0.0;
 				high := 0.0;
-				each(j : rows) {
-					row := rows[j];
+				each(row in rows) {
 					if(<>column->IsNull(row)) {
 						filled += 1;
 						if(column->IsNumeric(row)) {
@@ -6392,8 +6390,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 					if(probe <> Nil) {
 						merged := false;
 						if(probe->IsRange()) {
-							each(j : probes) {
-								earlier := probes->Get(j);
+							each(earlier in probes) {
 								if(<>merged & earlier->IsRange() & earlier->GetIndex() = probe->GetIndex()) {
 									earlier->Intersect(probe);
 									merged := true;
@@ -6449,8 +6446,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 
 			best : IndexProbe;
 			best_count := 0;
-			each(i : probes) {
-				probe := probes->Get(i);
+			each(probe in probes) {
 				if(probe->IsEmpty()) {
 					return probe;
 				};
@@ -6663,8 +6659,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 			if(rows <> Nil) {
 				kept := Int->New[rows->Size()];
 				n := 0;
-				each(i : rows) {
-					row := rows[i];
+				each(row in rows) {
 					if(Test(row)) {
 						kept[n] := row;
 						n += 1;
@@ -10215,8 +10210,7 @@ if(file->IsOpen()) {
 
 			table := Table->Restore(@name, column_names, columns, @next_key);
 			# the indexes of the columns read, built by the first query that uses each
-			each(i : @indexes) {
-				definition := @indexes[i];
+			each(definition in @indexes) {
 				each(w : wanted) {
 					if(w > 0 & wanted[w] = definition->GetColumn()) {
 						table->AttachIndex(w, definition->GetName(), definition->GetIndexKind());
@@ -11695,8 +11689,7 @@ if(file->IsOpen()) {
 
 		# whether the select list, HAVING or ORDER BY uses an aggregate
 		method : public : HasAggregates() ~ Bool {
-			each(i : @items) {
-				item := @items->Get(i);
+			each(item in @items) {
 				if(item->IsAggregate() | (item->GetExpr() <> Nil & item->GetExpr()->HasAggregate())) {
 					return true;
 				};
@@ -13250,8 +13243,7 @@ if(file->IsOpen()) {
 				base := @member;
 			};
 			name := "";
-			each(i : base) {
-				c := base->Get(i);
+			each(c in base) {
 				if(c <> '*' & c <> '?') {
 					name->Append(c);
 				};
@@ -13334,8 +13326,7 @@ if(file->IsOpen()) {
 				};
 
 				matched := Vector->New()<String>;
-				each(i : names) {
-					name := names[i];
+				each(name in names) {
 					if(<>name->Equals(".") & <>name->Equals("..") & GlobMatches(pattern, 0, name, 0)) {
 						full := cut < 0 ? String->New(name) : "{$folder}/{$name}";
 						if(<>Directory->Exists(full)) {
@@ -13409,8 +13400,7 @@ if(file->IsOpen()) {
 		# seconds: see FileEntry for the write a stamp cannot tell)
 		function : Stamp(files : Vector<String>) ~ String {
 			stamp := "";
-			each(i : files) {
-				name := files->Get(i);
+			each(name in files) {
 				size := File->Size(name);
 				modified := File->ModifiedTime(name);
 				when := modified <> Nil ? modified->ToString() : "";
@@ -13633,8 +13623,7 @@ if(file->IsOpen()) {
 
 			# each path once, in archive order: a tar may repeat one, and the last copy is read
 			matched := Vector->New()<String>;
-			each(i : members) {
-				candidate := members[i];
+			each(candidate in members) {
 				if(GlobMatches(member, 0, candidate, 0)) {
 					seen := false;
 					each(j : matched) {
@@ -14172,8 +14161,7 @@ if(file->IsOpen()) {
 
 			added := Vector->New()<IntRef>;
 			ok := BoolRef->New(true);
-			each(i : rows) {
-				values := rows->Get(i);
+			each(values in rows) {
 				row := table->Insert();
 				added->AddBack(row->GetKey());
 				each(j : indexes) {
@@ -14228,8 +14216,7 @@ if(file->IsOpen()) {
 			old_columns := Vector->New()<IntRef>;
 			old_rows := Vector->New()<IntRef>;
 			old_values := Vector->New()<Compare>;
-			each(i : rows) {
-				row := rows[i];
+			each(row in rows) {
 				each(j : indexes) {
 					column := table->GetColumn(indexes[j]);
 					old_columns->AddBack(indexes[j]);
@@ -14886,8 +14873,7 @@ if(file->IsOpen()) {
 			# each expression bound to the working table before anything is copied, so an
 			# unknown column is reported first
 			bound := Vector->New()<SqlEval>;
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				eval : SqlEval := Nil;
 				if(item->GetExpr() <> Nil) {
 					expr := WorkExpr(item->GetExpr(), Nil, "'{$(item->GetName())}'", false);
@@ -14977,8 +14963,7 @@ if(file->IsOpen()) {
 			if(where <> Nil) {
 				parts := Vector->New()<Predicate>;
 				Conjuncts(where, parts);
-				each(i : parts) {
-					part := parts->Get(i);
+				each(part in parts) {
 					source := SourceOf(part);
 					if(source = -2) {
 						return Nil;
@@ -15010,8 +14995,7 @@ if(file->IsOpen()) {
 				right := k + 1;
 				parts := Vector->New()<Predicate>;
 				Conjuncts(joins->Get(k)->GetOn(), parts);
-				each(i : parts) {
-					part := parts->Get(i);
+				each(part in parts) {
 					tables := TablesOf(part);
 					if(tables < 0) {
 						return Nil;
@@ -15422,8 +15406,7 @@ if(file->IsOpen()) {
 			};
 
 			# the other key equalities, matched as join keys are
-			each(k : extra_keys) {
-				test := extra_keys->Get(k);
+			each(test in extra_keys) {
 				left := PairColumn(test->GetLeftExpr(), table, passing);
 				right_side := PairColumn(test->GetRightExpr(), table, passing);
 				if(left = Nil | right_side = Nil) {
@@ -15465,8 +15448,7 @@ if(file->IsOpen()) {
 
 		# adds a column to the working set once
 		method : Want(wanted : Vector<SqlRef>, ref : SqlRef) ~ Nil {
-			each(i : wanted) {
-				known := wanted->Get(i);
+			each(known in wanted) {
 				if(known->GetSource() = ref->GetSource() & known->GetColumn()->Equals(ref->GetColumn())) {
 					return;
 				};
@@ -15558,8 +15540,7 @@ if(file->IsOpen()) {
 				};
 			}
 			else {
-				each(i : items) {
-					item := items->Get(i);
+				each(item in items) {
 					expr := item->GetExpr();
 					if(expr <> Nil) {
 						reads := Vector->New()<String>;
@@ -15606,8 +15587,7 @@ if(file->IsOpen()) {
 
 			# an ORDER BY name may be a select-list label rather than a column
 			order := @statement->GetOrder();
-			each(i : order) {
-				entry := order->Get(i);
+			each(entry in order) {
 				if(entry->GetExpr() <> Nil) {
 					# inside an ORDER BY expression a name is a select-list alias first
 					reads := Vector->New()<String>;
@@ -15997,8 +15977,7 @@ if(file->IsOpen()) {
 			# HAVING's and ORDER BY's
 			@aggs := Vector->New()<SqlExpr>;
 			@agg_labels := Vector->New()<String>;
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				if(item->IsAggregate()) {
 					if(<>NoteAggregateItem(item)) {
 						return Nil;
@@ -16064,8 +16043,7 @@ if(file->IsOpen()) {
 			};
 
 			# a plain column in the select list must be one of the grouping columns
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				if(<>item->IsAggregate() & item->GetExpr() = Nil) {
 					index := WorkIndex(item->GetName());
 					if(index < 0) {
@@ -16484,8 +16462,7 @@ if(file->IsOpen()) {
 			};
 
 			extras := @statement->GetExtra();
-			each(i : extras) {
-				extra := extras->Get(i);
+			each(extra in extras) {
 				if(extra->GetCall()->Equals(name)) {
 					return LabelIndex(labels, extra->GetLabel());
 				};
@@ -19694,8 +19671,7 @@ catalog->Load(source);
 				return;
 			};
 
-			each(i : names) {
-				name := names[i];
+			each(name in names) {
 				if(<>name->Equals("current") & <>name->Equals(current) & <>name->Equals(keep)) {
 					path := "{$entry}/{$name}";
 					if(now - File->ModifiedTime(path, true)->GetUnixTime() > grace) {
@@ -20107,8 +20083,7 @@ runs := source->Read();
 
 			node := root;
 			part := "";
-			each(i : path) {
-				c := path->Get(i);
+			each(c in path) {
 				if(c = '.') {
 					node := Step(node, part);
 					if(node = Nil) {
@@ -20305,8 +20280,7 @@ runs := source->Read();
 			has_float := false;
 			has_date := false;
 			has_text := false;
-			each(i : values) {
-				text := values->Get(i);
+			each(text in values) {
 				if(text <> Nil & text->Size() > 0) {
 					kind := Cell->NumberKind(text);
 					if(kind = 1) {
@@ -20870,8 +20844,7 @@ runs->Describe()->ToString()->PrintLine();
 		# an object's members as cells, nested objects under dotted names, arrays as child rows
 		method : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>, id : Int) ~ Nil {
 			names := element->GetNames();
-			each(i : names) {
-				key := names->Get(i);
+			each(key in names) {
 				name := String->New(prefix);
 				name += key;
 				child := element->Get(key);
@@ -20910,8 +20883,7 @@ runs->Describe()->ToString()->PrintLine();
 			if(table = Nil) {
 				name := String->New(@name);
 				name += '_';
-				each(i : member) {
-					c := member->Get(i);
+				each(c in member) {
 					name->Append(c = '.' ? '_' : c);
 				};
 				table := JsonTableBuilder->New(name, true);
@@ -20934,8 +20906,7 @@ runs->Describe()->ToString()->PrintLine();
 			};
 
 			first_data := names->Size();
-			each(i : @order) {
-				name := @order->Get(i);
+			each(name in @order) {
 				if(hint = Nil | hint->Wants(name)) {
 					names->AddBack(name);
 				};
@@ -21258,8 +21229,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			found := Vector->New()<XmlElement>;
 			children := element->GetChildren();
 			if(children <> Nil) {
-				each(i : children) {
-					child := children->Get(i);
+				each(child in children) {
 					if(IsElement(child)) {
 						found->AddBack(child);
 					};
@@ -21291,8 +21261,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			order := Vector->New()<String>;
 			seen := Hash->New()<String, IntRef>;
 			nested := Hash->New()<String, BoolRef>;
-			each(r : @rows) {
-				row := @rows->Get(r);
+			each(row in @rows) {
 				attributes := row->GetAttributes();
 				each(a : attributes) {
 					attribute_name := attributes->Get(a)->GetName();
@@ -21327,8 +21296,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			# the child tables, one per nested element name, in the order first seen
 			children := Vector->New()<XmlTableBuilder>;
 			child_index := Hash->New()<String, XmlTableBuilder>;
-			each(i : order) {
-				name := order->Get(i);
+			each(name in order) {
 				if(nested->Has(name)) {
 					child := XmlTableBuilder->New("{$@name}_{$name}", true);
 					children->AddBack(child);
@@ -21345,8 +21313,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 				names->AddBack("_parent_id");
 			};
 			first_data := names->Size();
-			each(i : order) {
-				name := order->Get(i);
+			each(name in order) {
 				if(<>nested->Has(name) & (hint = Nil | hint->Wants(name))) {
 					names->AddBack(name);
 				};
@@ -21363,8 +21330,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 				row := @rows->Get(r);
 				values := Hash->New()<String, String>;
 				attributes := row->GetAttributes();
-				each(a : attributes) {
-					attribute := attributes->Get(a);
+				each(attribute in attributes) {
 					value := attribute->GetValue();
 					if(value <> Nil) {
 						attribute_name := attribute->GetName();
@@ -21373,8 +21339,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 				};
 
 				elements := Elements(row);
-				each(e : elements) {
-					element := elements->Get(e);
+				each(element in elements) {
 					child := child_index->Find(element->GetName());
 					if(child <> Nil) {
 						child->Add(element, r + 1);
@@ -21830,8 +21795,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 
 			files := Vector->New()<String>;
 			entries := reader->GetEntries();
-			each(i : entries) {
-				entry := entries->Get(i);
+			each(entry in entries) {
 				if(entry->GetType()->Equals("file")) {
 					files->AddBack(entry->GetPath());
 				};
@@ -22197,8 +22161,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			folders := Map->New()<String, IntRef>;
 			entries := reader->GetEntries();
 			row : Row := Nil;
-			each(i : entries) {
-				entry := entries->Get(i);
+			each(entry in entries) {
 				path := entry->GetPath();
 				is_dir := entry->GetType()->Equals("dir");
 				parent := AddFolders(table, folders, path);
@@ -22385,8 +22348,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		method : public : Find(path : String) ~ ArchiveEntry {
 			found : ArchiveEntry := Nil;
 			if(path <> Nil) {
-				each(i : @entries) {
-					entry := @entries->Get(i);
+				each(entry in @entries) {
 					if(entry->GetPath()->Equals(path)) {
 						found := entry;
 					};
@@ -22538,8 +22500,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			text := "";
-			each(i : raw) {
-				c := raw->Get(i);
+			each(c in raw) {
 				if(c = '\0') {
 					error->Set("'{$@title}' has a member whose name holds a NUL character; refused");
 					return Nil;
@@ -22794,8 +22755,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			# members' data must not overlap, or a few bytes could be read as many members
 			starts := spans->GetKeys();
 			previous_end := 0;
-			each(i : starts) {
-				start := starts->Get(i);
+			each(start in starts) {
 				if(start->Get() < previous_end) {
 					error->Set("'{$@title}': members overlap at byte {$(start->Get())}; refused");
 					return false;
@@ -23624,8 +23584,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			};
 
 			children := XmlTableBuilder->Elements(root);
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				if(child->GetName()->Equals("Relationship")) {
 					id := Attribute(child, "Id");
 					type := Attribute(child, "Type");
@@ -23702,8 +23661,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		function : ItemText(item : XmlElement) ~ String {
 			text := "";
 			children := XmlTableBuilder->Elements(item);
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				name := child->GetName();
 				if(name->Equals("t")) {
 					text += Text(child);
@@ -23723,8 +23681,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		function : Text(element : XmlElement) ~ String {
 			text := element->GetDecodedText();
 			children := element->GetChildren();
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				if(child->GetType() = XmlElement->Type->CDATA) {
 					text += child->GetContent();
 				};
@@ -23772,8 +23729,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			sheets := Child(root, "sheets");
 			if(sheets <> Nil) {
 				children := XmlTableBuilder->Elements(sheets);
-				each(i : children) {
-					sheet := children->Get(i);
+				each(sheet in children) {
 					name := Attribute(sheet, "name");
 					id := Attribute(sheet, "id");
 					if(name <> Nil & id <> Nil) {
@@ -23833,8 +23789,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			formats := Child(styles, "numFmts");
 			if(formats <> Nil) {
 				children := XmlTableBuilder->Elements(formats);
-				each(i : children) {
-					format := children->Get(i);
+				each(format in children) {
 					id := Attribute(format, "numFmtId");
 					code := Attribute(format, "formatCode");
 					if(id <> Nil & code <> Nil & Cell->NumberKind(id) = 1) {
@@ -23846,8 +23801,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			cell_formats := Child(styles, "cellXfs");
 			if(cell_formats <> Nil) {
 				children := XmlTableBuilder->Elements(cell_formats);
-				each(i : children) {
-					xf := children->Get(i);
+				each(xf in children) {
 					if(xf->GetName()->Equals("xf")) {
 						id_text := Attribute(xf, "numFmtId");
 						id := id_text <> Nil & Cell->NumberKind(id_text) = 1 ? id_text->ToInt() : 0;
@@ -24171,8 +24125,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		# the cells with each merged range's top-left value copied into the rest of the range
 		method : FillMerged(cells : Vector<XlsxCell>, ranges : Vector<XmlElement>, where : String, error : StringHolder) ~ Vector<XlsxCell> {
 			at := Map->New()<IntRef, XlsxCell>;
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				at->Insert(IntRef->New(cell->GetRow() * 16385 + cell->GetColumn()), cell);
 			};
 
@@ -24235,8 +24188,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			bottom := -1;
 			left := -1;
 			right := -1;
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				if(cell->GetRow() >= top) {
 					if(cell->GetRow() > bottom) {
 						bottom := cell->GetRow();
@@ -24271,8 +24223,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 				names[c] := Letters(left + c);
 			};
 			if(header) {
-				each(i : cells) {
-					cell := cells->Get(i);
+				each(cell in cells) {
 					if(cell->GetRow() = top) {
 						text := Value(cell, ColumnType->STRING)->As(String)->Trim();
 						if(text->Size() > 0) {
@@ -24289,8 +24240,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			each(c : whole) {
 				whole[c] := true;
 			};
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				if(cell->GetRow() >= data_top) {
 					c := cell->GetColumn() - left;
 					kinds[c * 5 + cell->GetKind()] += 1;
@@ -24325,8 +24275,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 				table->Insert();
 			};
 
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				if(cell->GetRow() >= data_top) {
 					c := cell->GetColumn() - left;
 					table->Get(cell->GetRow() - data_top)->Set(c + 1, Value(cell, types[c]));
@@ -24544,8 +24493,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			live := files->LiveRows();
 			rows := Int->New[live->Size()];
 			n := 0;
-			each(i : live) {
-				row := live[i];
+			each(row in live) {
 				if(dirs->GetInt(row) = 0) {
 					full_name := File->GetFullName(paths->GetString(row));
 					if(full_name <> Nil & @regex->MatchExact(full_name)) {

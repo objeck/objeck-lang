@@ -725,8 +725,7 @@ index->Store("pets.vix");
 
 				# the best `want` of the parts' best: the same order a single scan would give
 				final := VectorScan->New(@blocks, @rows, @dim, @metric, query, q_scale, want, 0, 0);
-				each(i : scans) {
-					part := scans->Get(i);
+				each(part in scans) {
 					for(j := 0; j < part->GetSize(); j += 1;) {
 						final->Offer(part->GetKey(j), part->GetSlot(j));
 					};

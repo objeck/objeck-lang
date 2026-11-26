@@ -368,8 +368,7 @@ row->ToJson()->PrintLine();
 		function : AppendJsonString(str : String, buffer : String) ~ Nil {
 			hex := "0123456789abcdef";
 			buffer->Append('"');
-			each(i : str) {
-				c := str->Get(i);
+			each(c in str) {
 				if(c = '"') {
 					buffer->Append("\\\"");
 				}

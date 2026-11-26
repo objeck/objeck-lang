@@ -712,8 +712,7 @@ bundle Web.HTTP.Server {
 			};
 
 			file_groups := @file_group_handler_map->GetValues()<FileGroupHandler>;
-			each(i : file_groups) {
-				file_group := file_groups->Get(i);
+			each(file_group in file_groups) {
 				if(file_group->HasGroupHander(alias_str)) {
 					return true;
 				};
@@ -939,8 +938,7 @@ bundle Web.HTTP.Server {
 
 			buffer += "[Files]\n";
 			file_group_pairs := @file_group_handler_map->GetKeyValues()<Pair<String, FileGroupHandler>>;
-			each(i : file_group_pairs) {
-				file_group_pair := file_group_pairs->Get(i);
+			each(file_group_pair in file_group_pairs) {
 
 				file_group_name := file_group_pair->GetFirst();
 				buffer += "\t{'{$file_group_name}}\n";
@@ -1149,8 +1147,7 @@ bundle Web.HTTP.Server {
 			buffer := "";
 
 			alias_handlers := @alias_map->GetValues()<FileHandler>;
-			each(i : alias_handlers) {
-				alias_handler := alias_handlers->Get(i);
+			each(alias_handler in alias_handlers) {
 				buffer += '\t';
 				buffer += alias_handler->ToString();
 				buffer += "\n";
@@ -1429,8 +1426,7 @@ bundle Web.HTTP.Server {
 				return params;
 			};
 
-			each(i : segments) {
-				segment := segments[i];
+			each(segment in segments) {
 				if(segment <> Nil & segment->Size() > 0) {
 					name : String;
 					value : String;
@@ -3391,8 +3387,7 @@ bundle Web.HTTP.Server {
 			has_location := false;
 			has_accept_ranges := false;
 			key_values := response->GetHeaders()->GetKeyValues()<Pair<String, String>>;
-			each(i : key_values) {
-				key_value := key_values->Get(i);
+			each(key_value in key_values) {
 				key := key_value->GetFirst();
 				value := key_value->GetSecond();
 				lowered_key := key->ToLower();
@@ -3436,8 +3431,7 @@ bundle Web.HTTP.Server {
 			header += "Connection: {$connection_value}\r\n";
 
 			cookies := response->GetCookies()<Cookie>;
-			each(i : cookies) {
-				cookie := cookies->Get(i);
+			each(cookie in cookies) {
 				header += "Set-Cookie: ";
 				header += cookie->ToString();
 				header += "\r\n";

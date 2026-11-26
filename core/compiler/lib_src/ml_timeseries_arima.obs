@@ -1170,8 +1170,7 @@ bundle System.ML.TimeSeries {
 				};
 			};
 
-			each(i : cands) {
-				m := cands->Get(i);
+			each(m in cands) {
 				if(m->Fit(y)) {
 					ic := Float->Inf();
 					if(@crit = SelectionCriterion->Kind->AIC) {

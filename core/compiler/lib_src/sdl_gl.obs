@@ -844,8 +844,7 @@ bundle Game.OpenGL {
 
 			if(count > 0) {
 				"{$count} GL error(s) during {$during}:"->ErrorLine();
-				each(i : errors) {
-					code := errors[i];
+				each(code in errors) {
 					"  0x{$code}"->ErrorLine();
 				};
 			};
@@ -2216,8 +2215,7 @@ bundle Game.OpenGL {
 			# Free here bottoms out in a glDelete*, which needs one. Order within
 			# this list does not matter; order relative to the context does.
 			if(@owned <> Nil) {
-				each(i : @owned) {
-					owned := @owned->Get(i);
+				each(owned in @owned) {
 					if(owned <> Nil) {
 						owned->Free();
 					};
@@ -4213,8 +4211,7 @@ bundle Game.OpenGL {
 				return Nil;
 			};
 
-			each(i : pieces) {
-				piece := pieces[i];
+			each(piece in pieces) {
 				if(piece <> Nil & piece->Size() > 0) {
 					words->AddBack(piece);
 				};
@@ -12113,8 +12110,7 @@ bundle Game.OpenGL {
 		method : DrawBatches(view_projection : Float[]) ~ Nil {
 			touched := false;
 
-			each(i : @batches) {
-				batch := @batches->Get(i);
+			each(batch in @batches) {
 
 				visible := batch->IsVisible();
 				# Radius is 0 until the batch has packed, which happens on its first
@@ -12268,8 +12264,7 @@ bundle Game.OpenGL {
 				@frustum->SetFromMatrix(view_projection);
 			};
 
-			each(i : @boxes) {
-				box := @boxes->Get(i);
+			each(box in @boxes) {
 
 				visible := true;
 				if(cull_here) {
@@ -12294,8 +12289,7 @@ bundle Game.OpenGL {
 			# Transparency is ignored here on purpose: a depth pass records where
 			# geometry IS, and a half-transparent pane still occludes light. Doing
 			# otherwise needs alpha-tested shadows, which is a different feature.
-			each(i : @props) {
-				prop := @props->Get(i);
+			each(prop in @props) {
 				mesh := prop->GetMesh();
 
 				visible := prop->IsVisible() & mesh <> Nil & mesh->IsOk();
@@ -12550,8 +12544,7 @@ bundle Game.OpenGL {
 			best_box := Nil->As(Box);
 			best_prop := Nil->As(Prop);
 
-			each(i : @boxes) {
-				box := @boxes->Get(i);
+			each(box in @boxes) {
 				centre := box->GetCenter();
 				half := box->GetHalf();
 
@@ -12628,8 +12621,7 @@ bundle Game.OpenGL {
 			# segfaulted the moment a prop was in range. Boxes never hit it because
 			# their loop happens to declare at one level shallower. Assignment into
 			# an already-declared local is fine at any depth.
-			each(i : @props) {
-				prop := @props->Get(i);
+			each(prop in @props) {
 				at := prop->GetTransform();
 				radius := prop->GetBoundsRadius();
 
@@ -12830,8 +12822,7 @@ bundle Game.OpenGL {
 		@return true when the position is blocked
 		~#
 		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
-			each(i : @boxes) {
-				box := @boxes->Get(i);
+			each(box in @boxes) {
 				if(box->IsSolid() & box->OverlapsXZ(x, z, radius)) {
 					return true;
 				};

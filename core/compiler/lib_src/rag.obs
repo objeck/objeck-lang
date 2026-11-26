@@ -605,8 +605,7 @@ vectors := embedder->Embed(["red apples", "green pears"]);
 
 			lower := text->ToLower();
 			word := "";
-			each(i : lower) {
-				c := lower->Get(i);
+			each(c in lower) {
 				if(IsWordChar(c)) {
 					word += c;
 				}
@@ -1016,8 +1015,7 @@ index->Store("rag.idx");
 		~#
 		method : public : RemoveSource(source : String) ~ Int {
 			doomed := Vector->New()<String>;
-			each(i : @order) {
-				chunk := @order->Get(i);
+			each(chunk in @order) {
 				if(source <> Nil & chunk->GetSource() <> Nil & chunk->GetSource()->Equals(source)) {
 					doomed->AddBack(chunk->GetId());
 				};
@@ -1040,8 +1038,7 @@ index->Store("rag.idx");
 			matches := Vector->New()<RagMatch>;
 			hits := @vectors->Search(query, k);
 			@error := @vectors->GetError();
-			each(i : hits) {
-				hit := hits->Get(i);
+			each(hit in hits) {
 				chunk := @chunks->Find(hit->GetId());
 				if(chunk <> Nil) {
 					matches->AddBack(RagMatch->New(chunk, hit->GetScore(), matches->Size() + 1));
@@ -1077,8 +1074,7 @@ index->Store("rag.idx");
 			serializer->Write(@dim);
 			serializer->Write(code);
 			serializer->Write(@order->Size());
-			each(i : @order) {
-				chunk := @order->Get(i);
+			each(chunk in @order) {
 				serializer->Write(Bytes(chunk->GetId()));
 				serializer->Write(Bytes(chunk->GetSource()));
 				serializer->Write(chunk->GetOffset());
@@ -1321,8 +1317,7 @@ prompt->PrintLine();
 
 			out := "";
 			pending := false;
-			each(i : text) {
-				c := text->Get(i);
+			each(c in text) {
 				code := c->As(Int);
 				if(code = 32 | code = 9 | code = 10 | code = 13) {
 					pending := out->Size() > 0;
@@ -1831,8 +1826,7 @@ pipeline->GetIndex()->Store("faq.idx");
 				return Nil;
 			};
 
-			each(i : hits) {
-				hit := hits->Get(i);
+			each(hit in hits) {
 				if(@use_min & @metric <> VectorMetric->L2 & hit->GetScore() < @min_score) {
 					return found;
 				};

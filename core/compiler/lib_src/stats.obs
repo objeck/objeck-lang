@@ -451,8 +451,7 @@ bundle System.Stats {
 				return false;
 			};
 
-			each(i : x) {
-				v := x[i];
+			each(v in x) {
 				if(v <> v | v - v <> 0.0) {
 					return false;
 				};

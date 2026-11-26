@@ -1680,8 +1680,7 @@ a->Intersect(b)->Size()->PrintLine(); # 2
 		method : public : Intersect(that : HashSet<H>) ~ HashSet<H> {
 			result := HashSet->New()<H>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(that = Nil) {
 				}
 				else if(that->Has(key)) {
@@ -1707,8 +1706,7 @@ a->Difference(b)->Has(1)->PrintLine(); # true
 		method : public : Difference(that : HashSet<H>) ~ HashSet<H> {
 			result := HashSet->New()<H>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(that = Nil) {
 					result->Insert(key);
 				}
@@ -1828,8 +1826,7 @@ set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
 		method : public : Filter(f : (H) ~ Bool) ~ HashSet<H> {
 			result := HashSet->New()<H>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(f(key)) {
 					result->Insert(key);
 				};
@@ -2697,8 +2694,7 @@ a->Size()->PrintLine();    # 3
 			};
 
 			pairs := that->GetKeyValues();
-			each(i : pairs) {
-				pair := pairs->Get(i);
+			each(pair in pairs) {
 				Insert(pair->GetFirst(), pair->GetSecond());
 			};
 			return @self;
@@ -2717,8 +2713,7 @@ hash->Each(\(k, v) => { "{$k}={$v}"->PrintLine(); });
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ Hash<K, V> {
 			pairs := GetKeyValues();
-			each(i : pairs) {
-				pair := pairs->Get(i);
+			each(pair in pairs) {
 				f(pair->GetFirst(), pair->GetSecond());
 			};
 			return @self;
@@ -2738,8 +2733,7 @@ hash->Filter(\(k) => k->Size() > 4)->Size()->PrintLine(); # 1
 		method : public : Filter(f : (K) ~ Bool) ~ Hash<K, V> {
 			filtered := Hash->New(@auto_resize)<K, V>;
 			pairs := GetKeyValues();
-			each(i : pairs) {
-				pair := pairs->Get(i);
+			each(pair in pairs) {
 				if(f(pair->GetFirst())) {
 					filtered->Insert(pair->GetFirst(), pair->GetSecond());
 				};
@@ -7896,8 +7890,7 @@ a->Intersect(b)->Size()->PrintLine(); # 2
 		method : public : Intersect(that : Set<K>) ~ Set<K> {
 			result := Set->New()<K>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(that = Nil) {
 				}
 				else if(that->Has(key)) {
@@ -7923,8 +7916,7 @@ a->Difference(b)->Has(1)->PrintLine(); # true
 		method : public : Difference(that : Set<K>) ~ Set<K> {
 			result := Set->New()<K>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(that = Nil) {
 					result->Insert(key);
 				}
@@ -8044,8 +8036,7 @@ set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
 		method : public : Filter(f : (K) ~ Bool) ~ Set<K> {
 			result := Set->New()<K>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(f(key)) {
 					result->Insert(key);
 				};
@@ -8298,8 +8289,7 @@ a->Intersect(b)->Size()->PrintLine(); # 2
 		method : public : Intersect(that : SetHash<K>) ~ SetHash<K> {
 			result := SetHash->New()<K>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(that = Nil) {
 				}
 				else if(that->Has(key)) {
@@ -8325,8 +8315,7 @@ a->Difference(b)->Has(1)->PrintLine(); # true
 		method : public : Difference(that : SetHash<K>) ~ SetHash<K> {
 			result := SetHash->New()<K>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(that = Nil) {
 					result->Insert(key);
 				}
@@ -8446,8 +8435,7 @@ set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
 		method : public : Filter(f : (K) ~ Bool) ~ SetHash<K> {
 			result := SetHash->New()<K>;
 			keys := ToVector();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(f(key)) {
 					result->Insert(key);
 				};
@@ -8559,8 +8547,7 @@ all_values->Size()->PrintLine(); # 2
 			values->Reserve(TotalSize());
 
 			keys := @map->GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				local_values := @map->Find(key)<V>;
 				each(j : local_values) {
 					values->AddBack(local_values->Get(j));
@@ -8693,8 +8680,7 @@ filtered->Size()->PrintLine(); # 1
 			filtered := MultiMap->New()<K, V>;
 			
 			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(f(key)) {
 					values := Find(key);
 					each(j : values) {
@@ -8721,8 +8707,7 @@ concat->PrintLine(); # ab
 		~#
 		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
 			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				a := f(a, key);
 			};
 
@@ -8741,8 +8726,7 @@ mmap->Each(\(String, IntRef) ~ Nil : (k, v) => "{$k}={$v}"->PrintLine());
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ MultiMap<K, V> {
 			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				values := Find(key);
 				each(j : values) {
 					f(key, values->Get(j));
@@ -8905,8 +8889,7 @@ all_values->Size()->PrintLine(); # 2
 			values->Reserve(TotalSize());
 
 			keys := @map->GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				local_values := @map->Find(key)<V>;
 				each(j : local_values) {
 					values->AddBack(local_values->Get(j));
@@ -9039,8 +9022,7 @@ filtered->Size()->PrintLine(); # 1
 			filtered := MultiHash->New()<K, V>;
 			
 			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				if(f(key)) {
 					values := Find(key);
 					each(j : values) {
@@ -9067,8 +9049,7 @@ concat->PrintLine(); # ab
 		~#
 		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
 			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				a := f(a, key);
 			};
 
@@ -9087,8 +9068,7 @@ mmap->Each(\(k, v) => { "{$k}={$v}"->PrintLine(); });
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ MultiHash<K, V> {
 			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+			each(key in keys) {
 				values := Find(key);
 				each(j : values) {
 					f(key, values->Get(j));

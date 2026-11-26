@@ -454,8 +454,7 @@ if(html <> Nil) {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -499,8 +498,7 @@ if(html <> Nil) {
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -617,8 +615,7 @@ if(html <> Nil) {
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -757,8 +754,7 @@ if(html <> Nil) {
 			oper->Append("\r\nAccept: text/event-stream\r\n");
 
 			request_keys := @request_headers->GetKeys()<String>;
-			each(i : request_keys) {
-				request_key := request_keys->Get(i);
+			each(request_key in request_keys) {
 				request_value := @request_headers->Find(request_key);
 				oper->Append(request_key);
 				oper->Append(": ");
@@ -932,8 +928,7 @@ if(html <> Nil) {
 					oper->Append("\r\nConnection: close\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {
 						# the caller's credentials go to the caller's origin only (#1453)
 						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
 							request_value := @request_headers->Find(request_key);
@@ -1103,8 +1098,7 @@ if(html <> Nil) {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -1133,8 +1127,7 @@ if(html <> Nil) {
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -1225,8 +1218,7 @@ if(html <> Nil) {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -1254,8 +1246,7 @@ if(html <> Nil) {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -1448,8 +1439,7 @@ if(response <> Nil & response->GetCode() = 200) {
 					oper->Append("\r\nConnection: close\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {
 						# the caller's credentials go to the caller's origin only (#1453)
 						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
 							request_value := @request_headers->Find(request_key);
@@ -1714,8 +1704,7 @@ if(client->Connect()) {
 					oper->Append("\r\n");
 					
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {		
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {		
 						request_value := @request_headers->Find(request_key);					
 						oper->Append(request_key);
 						oper->Append(": ");

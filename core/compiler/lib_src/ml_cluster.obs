@@ -328,8 +328,7 @@ labels := scanner->GetLabels();   # cluster id per row; -1 = noise
 
 						head := 0;
 						tail := 0;
-						each(n : neighbors) {
-							q := neighbors[n];
+						each(q in neighbors) {
 							if(@labels[q] = -2 | @labels[q] = -1) {
 								@labels[q] := cluster;
 								queue[tail] := q;
@@ -344,8 +343,7 @@ labels := scanner->GetLabels();   # cluster id per row; -1 = noise
 							p_neighbors := RegionQuery(X, p);
 							if(p_neighbors->Size() >= @min_points) {
 								# core point: claim and extend the frontier
-								each(n : p_neighbors) {
-									q := p_neighbors[n];
+								each(q in p_neighbors) {
 									if(@labels[q] = -2 | @labels[q] = -1) {
 										@labels[q] := cluster;
 										queue[tail] := q;
@@ -908,8 +906,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 			@dunn_index := -1.0;
 
 			names := Vector->New()<String>;
-			each(i : group_labels) {
-				group_name := group_labels[i];
+			each(group_name in group_labels) {
 				if(group_name <> Nil) {
 					group := groups->Find(group_name);
 					if(group <> Nil & <>@groups->Has(group_name)) {
@@ -1073,8 +1070,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 		#
 		function : AppendJsonText(str : String, buffer : String) ~ Nil {
 			hex := "0123456789abcdef";
-			each(i : str) {
-				c := str->Get(i);
+			each(c in str) {
 				if(c = '"') {
 					buffer->Append("\\\"");
 				}

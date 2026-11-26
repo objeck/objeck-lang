@@ -332,8 +332,7 @@ bundle Web.HTTP {
 
 			buffer := String->New();
 			points := str->CodePoints();
-			each(i : points) {
-				cp := points[i];
+			each(cp in points) {
 				if(IsUnreserved(cp) | (keep_slash & cp = 0x2F)) {
 					buffer->Append(cp->As(Char));
 				}
@@ -614,8 +613,7 @@ bundle Web.HTTP {
 
 			names_values := attrib_str->Split("; ");
 			if(names_values->Size() > 0) {
-				each(i : names_values) {
-					names_value := names_values[i];					
+				each(names_value in names_values) {
 					name_value_index := names_value->Find('=');
 					if(name_value_index > 0) {						
 						name := names_value->SubString(0, name_value_index);
@@ -692,8 +690,7 @@ bundle Web.HTTP {
 
 			size := 0;
 			digits := 0;
-			each(i : line) {
-				c := line->Get(i);
+			each(c in line) {
 				value := -1;
 				if(c >= '0' & c <= '9') {
 					value := c->As(Int) - '0'->As(Int);

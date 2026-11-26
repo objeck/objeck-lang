@@ -4456,8 +4456,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 				return false;
 			};
 
-			each(i : name) {
-				c := name->Get(i);
+			each(c in name) {
 				if(<>McpStubGenerator->Alnum(c) & c <> '_' & c <> '-' & (<>is_tool | c <> '.')) {
 					return false;
 				};
@@ -4510,8 +4509,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			};
 
 			upper := true;
-			each(i : name) {
-				c := name->Get(i);
+			each(c in name) {
 				if(McpStubGenerator->Alnum(c)) {
 					if(upper & c >= 'a' & c <= 'z') {
 						out->Append(c->ToUpper());

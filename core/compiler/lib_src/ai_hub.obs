@@ -319,8 +319,7 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 				};
 			};
 
-			each(i : files) {
-				name := files[i];
+			each(name in files) {
 				entry := FindSibling(siblings, name);
 				if(entry = Nil) {
 					@error := "'{$repo}' has no file '{$name}' at {$commit}";
@@ -547,8 +546,7 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 		# models--owner--name, as huggingface_hub names it
 		function : RepoDir(cache : String, repo : String) ~ String {
 			name := "models--";
-			each(i : repo) {
-				c := repo->Get(i);
+			each(c in repo) {
 				if(c = '/') {
 					name += "--";
 				}
@@ -631,8 +629,7 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 			if(text = Nil | text->Size() <> 40) {
 				return false;
 			};
-			each(i : text) {
-				c := text->Get(i);
+			each(c in text) {
 				if(<>((c >= '0' & c <= '9') | (c >= 'a' & c <= 'f'))) {
 					return false;
 				};
@@ -649,8 +646,7 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 			if(slash < 1 | slash = repo->Size() - 1 | repo->FindLast('/') <> slash) {
 				return false;
 			};
-			each(i : repo) {
-				c := repo->Get(i);
+			each(c in repo) {
 				if(<>(c->IsChar() | c->IsDigit() | c = '-' | c = '_' | c = '.' | c = '/')) {
 					return false;
 				};
@@ -667,8 +663,7 @@ folder->PrintLine();   # .../models--Xenova--distilbert-.../snapshots/0b6928ef..
 				return false;
 			};
 			segment := "";
-			each(i : file) {
-				c := file->Get(i);
+			each(c in file) {
 				if(c = '/') {
 					if(segment->Size() = 0 | segment->Equals(".") | segment->Equals("..")) {
 						return false;

@@ -1670,8 +1670,7 @@ bundle Game.Framework {
 						# chucks
 						chunks := sound->Get("chunks");
 						if(chunks <> Nil & chunks->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : chunks) {
-								chunk := chunks->Get(i);
+							each(chunk in chunks) {
 								if(chunk->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := chunk->Get("name");
 									path_attrib := chunk->Get("path");
@@ -1698,8 +1697,7 @@ bundle Game.Framework {
 					# colors
 					colors := root->Get("colors");
 					if(colors <> Nil & colors->GetType() = JsonElement->JsonType->ARRAY) {
-						each(i : colors) {
-							color := colors->Get(i);
+						each(color in colors) {
 							if(color->GetType() = JsonElement->JsonType->OBJECT) {
 								name_attrib := color->Get("name");
 								code_attrib := color->Get("code");
@@ -1730,8 +1728,7 @@ bundle Game.Framework {
 					# fonts
 					fonts := root->Get("fonts");
 					if(fonts <> Nil & fonts->GetType() = JsonElement->JsonType->ARRAY) {
-						each(i : fonts) {
-							font_obj := fonts->Get(i);
+						each(font_obj in fonts) {
 							if(font_obj->GetType() = JsonElement->JsonType->OBJECT) {
 								name_attrib := font_obj->Get("name");
 								path_attrib := font_obj->Get("path");
@@ -1763,8 +1760,7 @@ bundle Game.Framework {
 						# image_sprites
 						image_sprites := assets->Get("image_sprites");
 						if(image_sprites <> Nil & image_sprites->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : image_sprites) {
-								image_sprite := image_sprites->Get(i);
+							each(image_sprite in image_sprites) {
 								if(image_sprite->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := image_sprite->Get("name");
 									path_attrib := image_sprite->Get("path");
@@ -1816,8 +1812,7 @@ bundle Game.Framework {
 						# rectangles
 						rectangles := assets->Get("rectangles");
 						if(rectangles <> Nil & rectangles->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : rectangles) {
-								rectangle := rectangles->Get(i);
+							each(rectangle in rectangles) {
 								if(rectangle->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := rectangle->Get("name");
 									size_attrib := rectangle->Get("size");
@@ -1862,8 +1857,7 @@ bundle Game.Framework {
 						# text_sprites
 						text_sprites := assets->Get("text_sprites");
 						if(text_sprites <> Nil & text_sprites->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : text_sprites) {
-								text_sprite := text_sprites->Get(i);
+							each(text_sprite in text_sprites) {
 								if(text_sprite->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := text_sprite->Get("name");
 									font_attrib := text_sprite->Get("font");
@@ -2168,8 +2162,7 @@ bundle Game.Framework {
 		Removes all shapes
 		~#
 		method : public : FreeShapes() ~ Nil {
-			each(i : @shapes) {
-				shape := @shapes->Get(i);
+			each(shape in @shapes) {
 				shape->Free();
 			};
 			@shapes->Empty();
@@ -2179,8 +2172,7 @@ bundle Game.Framework {
 		Removes all mix chunks
 		~#
 		method : public : FreeMixChunks() ~ Nil {
-			each(i : @mix_chunks) {
-				chunk := @mix_chunks->Get(i);
+			each(chunk in @mix_chunks) {
 				chunk->Free();
 			};
 			@mix_chunks->Empty();
@@ -2190,8 +2182,7 @@ bundle Game.Framework {
 		Removes all font
 		~#
 		method : public : FreeFonts() ~ Nil {
-			each(i : @fonts) {
-				chunk := @fonts->Get(i);
+			each(chunk in @fonts) {
 				chunk->Quit();
 			};
 			@fonts->Empty();

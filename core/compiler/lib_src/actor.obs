@@ -470,8 +470,7 @@ box->Receive(100)->ToString()->PrintLine();  # a
 				};
 				@not_full->Broadcast();
 			};
-			each(i : taken) {
-				item := taken->Get(i);
+			each(item in taken) {
 				if(item->TypeOf(Mail)) {
 					item->As(Mail)->Discarded();
 				};
@@ -2021,8 +2020,7 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			}
 			else if(op = 3) {
 				info := Vector->New()<ChildInfo>;
-				each(i : @states) {
-					s := @states->Get(i);
+				each(s in @states) {
 					info->AddBack(ChildInfo->New(s->GetSpec()->GetId(), s->GetActor(), s->GetRestarts()));
 				};
 				mail->Answer(info);

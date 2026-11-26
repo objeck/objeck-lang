@@ -627,8 +627,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 		}
 
 		method : Collect(nodes : Vector<TemplateNode>, required : Vector<String>, optional : Vector<String>) ~ Nil {
-			each(i : nodes) {
-				node := nodes->Get(i);
+			each(node in nodes) {
 				kind := node->GetKind();
 				name := node->GetText();
 				if(kind = 1 & <>IsSpecial(name)) {
@@ -736,8 +735,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 		}
 
 		method : Walk(nodes : Vector<TemplateNode>, vars : PromptVars, out : String, item : String, index : Int, depth : Int) ~ Nil {
-			each(i : nodes) {
-				node := nodes->Get(i);
+			each(node in nodes) {
 				kind := node->GetKind();
 				if(kind = 0) {
 					out->Append(node->GetText());
@@ -1715,8 +1713,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 					return false;
 				};
 				names := a->GetNames();
-				each(i : names) {
-					name := names->Get(i);
+				each(name in names) {
 					if(<>b->Has(name)) {
 						return false;
 					};
@@ -2011,8 +2008,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 			props := schema->Get("properties");
 			if(props <> Nil & props->GetType() = JsonElement->JsonType->OBJECT) {
 				names := props->GetNames();
-				each(i : names) {
-					name := names->Get(i);
+				each(name in names) {
 					member := value->Get(name);
 					if(member <> Nil) {
 						Walk(props->Get(name), member, Join(path, name), depth + 1);
@@ -2023,8 +2019,7 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 			extra := schema->Get("additionalProperties");
 			if(extra <> Nil) {
 				names := value->GetNames();
-				each(i : names) {
-					name := names->Get(i);
+				each(name in names) {
 					if(props = Nil | <>props->Has(name)) {
 						if(extra->GetType() = JsonElement->JsonType->FALSE) {
 							Fail(Join(path, name), "additionalProperties", "the property '{$name}' is not allowed");

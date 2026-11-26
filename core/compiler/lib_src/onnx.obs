@@ -1435,8 +1435,7 @@ session->Close();
 				@id_to_token := String->New[@vocab_size + 100];
 
 				names := vocab->GetNames();
-				each(i : names) {
-					name := names->Get(i);
+				each(name in names) {
 					id_elem := vocab->Get(name);
 					if(id_elem <> Nil) {
 						id := id_elem->GetInt();
@@ -1452,8 +1451,7 @@ session->Close();
 			added := root->Get("added_tokens");
 			if(added <> Nil) {
 				added_vec := Vector->New()<String>;
-				each(i : added) {
-					token_elem := added->Get(i);
+				each(token_elem in added) {
 					if(token_elem <> Nil) {
 						id := token_elem->Get("id")->GetInt();
 						content := token_elem->Get("content")->GetString();
@@ -1517,8 +1515,7 @@ text->PrintLine();
 			};
 
 			buffer := String->New();
-			each(i : token_ids) {
-				id := token_ids[i];
+			each(id in token_ids) {
 				if(id >= 0 & id < @id_to_token->Size()) {
 					token := @id_to_token[id];
 					if(token <> Nil) {
@@ -1580,8 +1577,7 @@ ids := tokenizer->Encode("What is 2+2?");
 				# Try to match an added token at current position (longest match)
 				best_match : String;
 				best_len := 0;
-				each(i : @added_tokens) {
-					st := @added_tokens[i];
+				each(st in @added_tokens) {
 					st_len := st->Size();
 					if(st_len > best_len & pos + st_len <= text->Size()) {
 						if(text->SubString(pos, st_len)->Equals(st)) {
@@ -1604,8 +1600,7 @@ ids := tokenizer->Encode("What is 2+2?");
 					seg_start := pos;
 					found := false;
 					while(pos < text->Size() & found = false) {
-						each(j : @added_tokens) {
-							st := @added_tokens[j];
+						each(st in @added_tokens) {
 							st_len := st->Size();
 							if(found = false & pos + st_len <= text->Size()) {
 								if(text->SubString(pos, st_len)->Equals(st)) {
@@ -1650,8 +1645,7 @@ ids := tokenizer->Encode("What is 2+2?");
 			# Replace spaces with SentencePiece marker
 			buffer := String->New();
 			buffer->Append("\u2581");
-			each(i : text) {
-				ch := text->Get(i);
+			each(ch in text) {
 				if(ch = ' ') {
 					buffer->Append("\u2581");
 				}
@@ -1719,8 +1713,7 @@ ids := tokenizer->Encode("What is 2+2?");
 
 			# Look up token IDs
 			ids := Vector->New()<IntRef>;
-			each(i : tokens) {
-				token := tokens->Get(i);
+			each(token in tokens) {
 				id_ref := @token_to_id->Find(token);
 				if(id_ref <> Nil) {
 					ids->AddBack(id_ref);

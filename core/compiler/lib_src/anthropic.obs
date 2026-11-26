@@ -408,8 +408,7 @@ bundle API.Anthropic {
 			@text := "";
 			@thinking := "";
 
-			each(i : content) {
-				block := content->Get(i);
+			each(block in content) {
 				kind := Field->Text(block, "type");
 				if(kind <> Nil) {
 					if(kind->Equals("text")) {
@@ -1213,8 +1212,7 @@ reply->GetText()->PrintLine();
 			};
 
 			uses := reply->GetToolUses();
-			each(i : uses) {
-				call := uses->Get(i);
+			each(call in uses) {
 				if(call->GetName() <> Nil & call->GetName()->Equals(name)) {
 					return call->GetInput();
 				};
@@ -1330,8 +1328,7 @@ reply->GetText()->PrintLine();
 		method : AddReply(reply : Reply) ~ Nil {
 			content := JsonElement->New(JsonElement->JsonType->ARRAY);
 			blocks := reply->GetContent();
-			each(i : blocks) {
-				block := blocks->Get(i);
+			each(block in blocks) {
 				empty_text := Field->Is(block, "type", "text") & Field->Text(block, "text") <> Nil & Field->Text(block, "text")->Size() = 0;
 				if(<>empty_text) {
 					content->Add(block);

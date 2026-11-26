@@ -1309,8 +1309,7 @@ train->SetAugmentation(aug);
 			};
 
 			files := Vector->New()<String>;
-			each(i : names) {
-				name := names[i];
+			each(name in names) {
 				lower := name->ToLower();
 				if(lower->EndsWith(".jpg") | lower->EndsWith(".jpeg") | lower->EndsWith(".png") | lower->EndsWith(".bmp")) {
 					files->AddBack(name);

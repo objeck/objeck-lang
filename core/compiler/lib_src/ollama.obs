@@ -1791,8 +1791,7 @@ if(models <> Nil) {
 			};
 
 			models := Vector->New()<Model>;
-			each(i : models_json) {
-				model_json := models_json->Get(i);
+			each(model_json in models_json) {
 				if(model_json->GetType() = JsonElement->JsonType->OBJECT) {
 					models->AddBack(Model->New(model_json));
 				};

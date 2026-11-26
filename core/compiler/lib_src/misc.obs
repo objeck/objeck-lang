@@ -81,8 +81,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 		
 			offset := 0;
 			values := parts->GetValues()<DatePart>;
-			each(i : values) {
-				part := values->Get(i);
+			each(part in values) {
 				type := part->GetType();
 
 				select(type) {

@@ -2067,8 +2067,7 @@ XmlElement->EncodeText(raw)->PrintLine();   # price &lt; 10 &amp; size &gt; 5
 		function : EncodeText(input : String) ~ String {
 			out := String->New();
 
-			each(i : input) {
-				c := input->Get(i);
+			each(c in input) {
 				select(c) {
 					label '<': {
 						out->Append("&lt;");
@@ -2115,8 +2114,7 @@ encoded->PrintLine();
 		function : EncodeString(input : String) ~ String {
 			out := String->New();
 			
-			each(i : input) {
-				c := input->Get(i);
+			each(c in input) {
 				select(c) {
 					label ' ': {
 						out->Append("&#x20;");

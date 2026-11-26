@@ -2272,8 +2272,7 @@ d2 := envelope->Score(X_test);    # squared Mahalanobis distances
 		method : SelectFrom(Z : Float[,], n : Int, q : Int, h : Int, starts : Vector<McdEstimate>,
 				keep : Int, n_iter : Int) ~ Vector<McdEstimate> {
 			found := Vector->New()<McdEstimate>;
-			each(s : starts) {
-				start := starts->Get(s);
+			each(start in starts) {
 				# one step to turn the given location and covariance into a support of Z
 				dist := Distances(Z, n, q, start->GetLocation(), start->GetCholesky());
 				support := Smallest(dist, h);

@@ -64,8 +64,7 @@ bundle Web.HTTP {
 		function : IsValidName(n : String) ~ Bool {
 			if(n = Nil | n->Size() = 0) { return false; };
 			if(n->Get(0) = ':') { return false; };
-			each(i : n) {
-				c := n->Get(i);
+			each(c in n) {
 				ok := (c >= 'a' & c <= 'z') | (c >= '0' & c <= '9') |
 					c = '!' | c = '#' | c = '$' | c = '%' | c = '&' |
 					c = '*' | c = '+' | c = '-' | c = '.' |
@@ -120,16 +119,14 @@ bundle Web.HTTP {
 			keys := headers->GetKeys()<String>;
 
 			count := 0;
-			each(i : keys) {
-				k := keys->Get(i);
+			each(k in keys) {
 				v := headers->Find(k);
 				if(IsValidName(k) & IsValidValue(v)) { count += 1; };
 			};
 
 			out := String->New[count * 2];
 			n := 0;
-			each(i : keys) {
-				k := keys->Get(i);
+			each(k in keys) {
 				v := headers->Find(k);
 				if(IsValidName(k) & IsValidValue(v)) {
 					out[n] := k;
@@ -560,8 +557,7 @@ response->GetStatusCode()->PrintLine();
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -661,8 +657,7 @@ response->ToString()->PrintLine();
 			client := HttpClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -751,8 +746,7 @@ if(response <> Nil) {
 			client := HttpClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -826,8 +820,7 @@ response->GetStatusCode()->PrintLine();  # 204
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -898,8 +891,7 @@ response->GetStatusCode()->PrintLine();
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -980,8 +972,7 @@ response->GetStatusCode()->PrintLine();
 			client := HttpClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					
@@ -1165,8 +1156,7 @@ response->GetStatusCode()->PrintLine();
 					oper->Append("\r\nConnection: keep-alive\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {
 						# the caller's credentials go to the caller's origin only (#1453)
 						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
 							request_value := @request_headers->Find(request_key);
@@ -1457,8 +1447,7 @@ if(response <> Nil & response->GetCode() = 200) {
 					oper->Append("\r\nConnection: keep-alive\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {
 						# the caller's credentials go to the caller's origin only (#1453)
 						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
 							request_value := @request_headers->Find(request_key);
@@ -1926,8 +1915,7 @@ if(ws->Connect()) {
 					oper->Append("\r\n");
 					
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {		
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {		
 						request_value := @request_headers->Find(request_key);					
 						oper->Append(request_key);
 						oper->Append(": ");
