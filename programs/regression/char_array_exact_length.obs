@@ -202,7 +202,9 @@ class CharArrayExactLength {
 	}
 
 	function : CheckFileRead() ~ Nil {
-		name := "char_array_exact_length.tmp";
+		# a name of this process's own: two runs side by side in one directory (the stress probe) read and
+		# deleted each other's file
+		name := "char_array_exact_length_{$Runtime->GetProcessId()}.tmp";
 		writer := FileWriter->New(name);
 		writer->WriteString("abc");
 		writer->Close();
