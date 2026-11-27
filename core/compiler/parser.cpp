@@ -5746,6 +5746,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
             break;
           }
           expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
+          static_cast<CharacterString*>(expression)->SetTextStart(scanner->GetToken()->GetTextLine(), scanner->GetToken()->GetTextPosition());
           NextToken();
         }
                                     break;
@@ -7241,6 +7242,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
         break;
       }
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
+      static_cast<CharacterString*>(expression)->SetTextStart(scanner->GetToken()->GetTextLine(), scanner->GetToken()->GetTextPosition());
       NextToken();
     }
       break;
@@ -10088,11 +10090,16 @@ Type* Parser::ParseType(int depth)
  * Parses an expression from a text string.
  * Used for string interpolation expressions.
  ****************************/
-Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class,
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class,
                                         std::wstring* reason)
 {
   // Create scanner on the expression text
   Scanner* expr_scanner = new Scanner(filename, false, text);
+  // The text was cut out of a string at (line_num, line_pos): its tokens, and the nodes made
+  // of them, are placed there. They were placed in the text itself, so what the analyzer
+  // said about an interpolated expression pointed at line 1 of the file ("(1,5): Undefined
+  // variable"), whatever line the string was on, and a debug image had line 1 for its calls.
+  expr_scanner->PlaceAt(line_num, line_pos);
 
   // Create minimal Parser instance
   std::vector<std::pair<std::wstring, std::wstring>> empty_programs;

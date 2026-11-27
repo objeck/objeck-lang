@@ -109,7 +109,7 @@ BAD = [
     ("a raw string", 'p := prompt $"a {n}";\np->ToString()->PrintLine();',
      ["A prompt literal takes an ordinary string"], 'prompt $'),
     ("an unknown variable in an interpolation beside a hole", 'n := 1;\np := prompt "{n} {$nope}";\np->ToString()->PrintLine();',
-     ["Undefined variable: 'nope'"], ' {$nope}'),
+     ["Undefined variable: 'nope'"], 'nope}'),   # at the name, not at the start of the text piece it is in
 ]
 
 # several bad holes in one literal: every one is reported, each at its own place

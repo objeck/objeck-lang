@@ -687,6 +687,22 @@ void Scanner::StartAt(int line, int pos)
 }
 
 /****************************
+ * Says where the text stands in
+ * the source it was cut from;
+ * call before the first token
+ * is read
+ ****************************/
+void Scanner::PlaceAt(int line, int pos)
+{
+  if(!buffer || !is_first_token || line < 1 || pos < 1) {
+    return;
+  }
+
+  line_nbr = line;
+  line_pos = pos;
+}
+
+/****************************
  * The source line and a caret
  * under the column, indented
  * as a detail of a message
@@ -1601,6 +1617,9 @@ void Scanner::ParseToken(int index)
 
     // mark
     start_pos = buffer_pos - 1;
+    // where the text starts, for what is located inside it (Token::SetTextStart)
+    const int text_line = line_nbr;
+    const int text_pos = (int)line_pos - 1;
     bool is_valid = true;
     wchar_t bad_escape = 0;
     int bad_line = 0;
@@ -1656,6 +1675,7 @@ void Scanner::ParseToken(int index)
     // check string
     NextChar();
     CheckString(index, is_lit, is_valid && !unterminated);
+    tokens[index]->SetTextStart(text_line, text_pos);
 
     if(!unterminated && last_line > tok_line) {
       MultiLineString multi;
