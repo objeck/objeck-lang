@@ -534,6 +534,15 @@ struct SecureServerCtx;
 void TlsServerRelease(SecureServerCtx* srv);
 struct DtlsServerCtx;
 void DtlsServerRelease(DtlsServerCtx* srv);
+#ifdef _WIN32
+// Windows: the clients of a DTLS server and their queued datagrams (see "A DTLS server's clients on
+// Windows" in common.cpp)
+struct DtlsPeer;
+struct DtlsPeerTable;
+void DtlsPeerForget(DtlsServerCtx* srv, DtlsPeer* peer);
+int DtlsPeerReadable(DtlsServerCtx* srv, DtlsPeer* peer);
+void DtlsPeerTableFree(DtlsPeerTable* table);
+#endif
 
 struct SecureSocketCtx {
   mbedtls_ssl_context ssl;
@@ -664,6 +673,11 @@ struct DtlsSocketCtx {
   DtlsServerCtx* server;
   int users;
   bool closed;
+#ifdef _WIN32
+  // a connection a server accepted has no socket of its own on Windows (net.fd is -1): it is this
+  // client of the server's one socket
+  DtlsPeer* peer;
+#endif
 
   void SetError(int error) {
     const SocketError reason = net_reason;
@@ -679,7 +693,11 @@ struct DtlsSocketCtx {
     dtls_socket_error = reason;
   }
 
-  DtlsSocketCtx() : last_error(0), net_reason{ 0, false }, server(nullptr), users(0), closed(false) {
+  DtlsSocketCtx() : last_error(0), net_reason{ 0, false }, server(nullptr), users(0), closed(false)
+#ifdef _WIN32
+    , peer(nullptr)
+#endif
+  {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -698,6 +716,11 @@ struct DtlsSocketCtx {
     mbedtls_entropy_free(&entropy);
     // after mbedtls_ssl_free: the session no longer reads the server's configuration
     if(server) {
+#ifdef _WIN32
+      if(peer) {
+        DtlsPeerForget(server, peer);
+      }
+#endif
       DtlsServerRelease(server);
     }
   }
@@ -761,8 +784,16 @@ struct DtlsServerCtx {
   int refs;
   int accepting;
   bool closed;
+#ifdef _WIN32
+  // the clients sharing listen_fd, made by Listen
+  DtlsPeerTable* peers;
+#endif
 
-  DtlsServerCtx() : last_error(0), port(0), bound_len(0), refs(1), accepting(0), closed(false) {
+  DtlsServerCtx() : last_error(0), port(0), bound_len(0), refs(1), accepting(0), closed(false)
+#ifdef _WIN32
+    , peers(nullptr)
+#endif
+  {
     memset(&bound_addr, 0, sizeof(bound_addr));
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
@@ -782,6 +813,9 @@ struct DtlsServerCtx {
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
     mbedtls_net_free(&listen_fd);
+#ifdef _WIN32
+    DtlsPeerTableFree(peers);
+#endif
   }
 };
 
@@ -2959,6 +2993,13 @@ class TrapProcessor {
             return 1;
          }
       }
+
+#ifdef _WIN32
+      // a connection a server accepted: its datagrams are queued for it, and a send never waits
+      if(ctx->peer) {
+         return is_write ? 1 : DtlsPeerReadable(ctx->server, ctx->peer);
+      }
+#endif
 
       // Get the underlying socket file descriptor.
       int fd = ctx->net.fd;

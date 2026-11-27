@@ -132,6 +132,7 @@ static bool h3_valid_header_name(const std::string& n)
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <deque>
 #if defined(__APPLE__)
 #include <mach/mach.h>
 #include <sys/resource.h>
@@ -6201,6 +6202,40 @@ class ListenerUse {
   }
 };
 
+// The two steps that end a server's listener (ServerCtxClose): shut down, then closed. Both under the
+// context lock.
+static inline void ShutListener(SecureServerCtx* srv)
+{
+  if(srv->listen_fd.fd >= 0) {
+    shutdown((SOCKET)srv->listen_fd.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+  }
+}
+
+static inline void CloseListener(SecureServerCtx* srv)
+{
+  mbedtls_net_free(&srv->listen_fd);
+}
+
+#ifdef _WIN32
+// On Windows a DTLS server's socket is also the socket of every connection it accepted (see "A DTLS
+// server's clients on Windows"), so closing the server does not end it: it is closed with the context,
+// when the last of those connections has been. An Accept sees 'closed' at its next look.
+static inline void ShutListener(DtlsServerCtx*) {}
+static inline void CloseListener(DtlsServerCtx*) {}
+#else
+static inline void ShutListener(DtlsServerCtx* srv)
+{
+  if(srv->listen_fd.fd >= 0) {
+    shutdown((SOCKET)srv->listen_fd.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+  }
+}
+
+static inline void CloseListener(DtlsServerCtx* srv)
+{
+  mbedtls_net_free(&srv->listen_fd);
+}
+#endif
+
 // Close() of a server. The object lets go of its context, and the listener ends: it is shut down,
 // which on Linux ends the accept calls waiting on it, and then closed, which is what ends them on the
 // other systems. The close used to follow at once, so an Accept that had read the descriptor's number
@@ -6223,9 +6258,7 @@ static void ServerCtxClose(size_t* instance)
     if(srv) {
       instance[0] = 0;
       srv->closed = true;
-      if(srv->listen_fd.fd >= 0) {
-        shutdown((SOCKET)srv->listen_fd.fd, 2 /* SHUT_RDWR, SD_BOTH */);
-      }
+      ShutListener(srv);
       accepting = srv->accepting > 0;
     }
   }
@@ -6248,7 +6281,7 @@ static void ServerCtxClose(size_t* instance)
 
   {
     std::lock_guard<std::mutex> guard(tls_context_lock);
-    mbedtls_net_free(&srv->listen_fd);
+    CloseListener(srv);
   }
   ServerCtxRelease(srv);
 }
@@ -6316,6 +6349,237 @@ static Socket* SocketCtxDetach(size_t* instance)
   return sctx;
 }
 
+#ifdef _WIN32
+//
+// A DTLS server's clients on Windows
+//
+// A DTLS "accept" in the mbedTLS style gives the client the socket its first datagram arrived on,
+// connected to that client, and binds a new listener to the same port for the next client. The system
+// then has to hand each datagram to the socket connected to its sender and everything else to the
+// listener. Linux and macOS do. Windows gives every datagram for a port to the socket that was bound
+// to it first: the first client's, which is connected to that client and drops anyone else's. The new
+// listener heard nothing while an earlier connection was open, so a DTLS server on Windows served one
+// client at a time, and a second client's connect waited for ever (a probe with two plain UDP sockets
+// shows the same; dtls_concurrent_clients.obs is the test).
+//
+// So on Windows the server keeps the one socket it bound, never connects it, and sorts what arrives on
+// it by sender: each accepted connection is a DtlsPeer with a queue of its datagrams, and a datagram
+// from an address that has no connection is a new client when it is a ClientHello (it waits for an
+// Accept) and is dropped when it is anything else. Whichever thread is waiting -- a connection's read
+// or an Accept -- reads the socket, one at a time, and puts what it reads in its owner's queue. A
+// connection sends with sendto. The socket therefore lives as long as the server's context does: until
+// the server is closed AND every connection it accepted has been, so the port stays bound for that long.
+//
+struct DtlsPeer {
+  struct sockaddr_storage addr;
+  int addr_len;
+  std::deque<std::string> datagrams;
+  // handed to an Accept (until then it is a client waiting to be accepted)
+  bool accepted;
+  // its connection is being closed: a read waiting on it ends
+  bool aborted;
+};
+
+struct DtlsPeerTable {
+  std::mutex lock;
+  std::condition_variable changed;
+  // a thread is in select/recvfrom on the socket, for everyone
+  bool receiving;
+  std::vector<DtlsPeer*> peers;
+
+  DtlsPeerTable() : receiving(false) {}
+};
+
+// What a queue holds at most, as a socket's receive buffer would: more is dropped, as UDP drops. And
+// how many clients may wait to be accepted: an address is cheap to forge, and each costs an entry.
+static const size_t DTLS_PEER_QUEUE_MAX = 256;
+static const size_t DTLS_PEER_WAITING_MAX = 64;
+// how long a wait goes without looking again at what would end it (a closed server, a deadline)
+static const int DTLS_PEER_SLICE_MS = 50;
+
+void DtlsPeerTableFree(DtlsPeerTable* table)
+{
+  if(table) {
+    for(size_t i = 0; i < table->peers.size(); ++i) {
+      delete table->peers[i];
+    }
+    delete table;
+  }
+}
+
+// Reads the socket for up to wait_ms and files what arrives. Called with the lock held and nobody
+// else receiving; the lock is let go for the wait and held again on return.
+static void DtlsPeerPump(DtlsServerCtx* srv, std::unique_lock<std::mutex>& held, int wait_ms)
+{
+  DtlsPeerTable* table = srv->peers;
+  table->receiving = true;
+  held.unlock();
+
+  const SOCKET sock = (SOCKET)srv->listen_fd.fd;
+  std::string datagram;
+  struct sockaddr_storage from;
+  memset(&from, 0, sizeof(from));
+  int from_len = sizeof(from);
+  fd_set readable;
+  FD_ZERO(&readable);
+  FD_SET(sock, &readable);
+  struct timeval wait = { wait_ms / 1000, (wait_ms % 1000) * 1000 };
+  if(select(0, &readable, nullptr, nullptr, &wait) > 0) {
+    datagram.resize(65536);
+    // An error here is not this socket's end: Windows reports the refusal of an earlier send to a
+    // client that has gone (WSAECONNRESET) on the next receive, whoever that receive was for.
+    const int size = recvfrom(sock, &datagram[0], (int)datagram.size(), 0, (struct sockaddr*)&from, &from_len);
+    datagram.resize(size > 0 ? (size_t)size : 0);
+  }
+
+  held.lock();
+  table->receiving = false;
+  if(!datagram.empty()) {
+    DtlsPeer* owner = nullptr;
+    size_t waiting = 0;
+    for(size_t i = 0; i < table->peers.size(); ++i) {
+      DtlsPeer* peer = table->peers[i];
+      if(peer->addr_len == from_len && !memcmp(&peer->addr, &from, (size_t)from_len)) {
+        owner = peer;
+      }
+      if(!peer->accepted) {
+        ++waiting;
+      }
+    }
+
+    if(!owner) {
+      // DTLS record header: content type 22 (handshake), version, epoch 0, ...; then the handshake
+      // message type, 1 (ClientHello), at offset 13. Anything else from a stranger -- typically the
+      // close_notify of a client whose connection has just been closed -- is nobody's.
+      const unsigned char* head = (const unsigned char*)datagram.data();
+      const bool hello = datagram.size() >= 14 && head[0] == 22 && head[3] == 0 && head[4] == 0 && head[13] == 1;
+      if(hello && !srv->closed && waiting < DTLS_PEER_WAITING_MAX) {
+        owner = new DtlsPeer();
+        owner->addr = from;
+        owner->addr_len = from_len;
+        owner->accepted = false;
+        owner->aborted = false;
+        table->peers.push_back(owner);
+      }
+    }
+    if(owner && owner->datagrams.size() < DTLS_PEER_QUEUE_MAX) {
+      owner->datagrams.push_back(std::move(datagram));
+    }
+  }
+  table->changed.notify_all();
+}
+
+// One round of waiting: this thread reads the socket if nobody is, else waits for whoever is.
+static void DtlsPeerWait(DtlsServerCtx* srv, std::unique_lock<std::mutex>& held, int wait_ms)
+{
+  if(!srv->peers->receiving) {
+    DtlsPeerPump(srv, held, wait_ms);
+  }
+  else {
+    srv->peers->changed.wait_for(held, std::chrono::milliseconds(wait_ms));
+  }
+}
+
+// The next datagram for a connection: its size, MBEDTLS_ERR_SSL_TIMEOUT after timeout_ms (0: no limit),
+// or a failure when the connection is being closed under this read.
+static int DtlsPeerReceive(DtlsServerCtx* srv, DtlsPeer* peer, unsigned char* buf, size_t len, uint32_t timeout_ms)
+{
+  const ULONGLONG start = GetTickCount64();
+  std::unique_lock<std::mutex> held(srv->peers->lock);
+  for(;;) {
+    if(peer->aborted) {
+      return MBEDTLS_ERR_NET_CONN_RESET;
+    }
+    if(!peer->datagrams.empty()) {
+      const std::string& datagram = peer->datagrams.front();
+      // what does not fit is lost, as with a datagram socket
+      const size_t size = datagram.size() < len ? datagram.size() : len;
+      memcpy(buf, datagram.data(), size);
+      peer->datagrams.pop_front();
+      return (int)size;
+    }
+
+    int wait_ms = DTLS_PEER_SLICE_MS;
+    if(timeout_ms > 0) {
+      const ULONGLONG waited = GetTickCount64() - start;
+      if(waited >= timeout_ms) {
+        return MBEDTLS_ERR_SSL_TIMEOUT;
+      }
+      if(timeout_ms - waited < (ULONGLONG)wait_ms) {
+        wait_ms = (int)(timeout_ms - waited);
+      }
+    }
+    DtlsPeerWait(srv, held, wait_ms);
+  }
+}
+
+// The next client waiting to be accepted, its ClientHello left in its queue for the handshake;
+// nullptr once the server has been closed.
+static DtlsPeer* DtlsPeerAccept(DtlsServerCtx* srv, const ListenerUse<DtlsServerCtx>& listening)
+{
+  std::unique_lock<std::mutex> held(srv->peers->lock);
+  for(;;) {
+    if(listening.ServerClosed()) {
+      return nullptr;
+    }
+    for(size_t i = 0; i < srv->peers->peers.size(); ++i) {
+      DtlsPeer* peer = srv->peers->peers[i];
+      if(!peer->accepted) {
+        peer->accepted = true;
+        return peer;
+      }
+    }
+    DtlsPeerWait(srv, held, DTLS_PEER_SLICE_MS);
+  }
+}
+
+static int DtlsPeerSend(DtlsServerCtx* srv, DtlsPeer* peer, const unsigned char* buf, size_t len)
+{
+  const int sent = sendto((SOCKET)srv->listen_fd.fd, (const char*)buf, (int)len, 0, (const struct sockaddr*)&peer->addr, peer->addr_len);
+  return sent == SOCKET_ERROR ? MBEDTLS_ERR_NET_SEND_FAILED : sent;
+}
+
+// whether the peer's next datagram is an alert (content type 21): see DtlsBioSend
+static bool DtlsPeerAlertPending(DtlsServerCtx* srv, DtlsPeer* peer)
+{
+  std::lock_guard<std::mutex> guard(srv->peers->lock);
+  return !peer->datagrams.empty() && !peer->datagrams.front().empty() && (unsigned char)peer->datagrams.front()[0] == 21;
+}
+
+// 1 when a datagram is queued for the connection, else 0 (Select)
+int DtlsPeerReadable(DtlsServerCtx* srv, DtlsPeer* peer)
+{
+  std::unique_lock<std::mutex> held(srv->peers->lock);
+  if(peer->datagrams.empty() && !srv->peers->receiving) {
+    // nobody is reading the socket: look, without waiting
+    DtlsPeerPump(srv, held, 0);
+  }
+  return peer->datagrams.empty() ? 0 : 1;
+}
+
+// ends a read waiting on the connection, which is being closed (EndWaitsOn)
+static void DtlsPeerAbort(DtlsServerCtx* srv, DtlsPeer* peer)
+{
+  std::lock_guard<std::mutex> guard(srv->peers->lock);
+  peer->aborted = true;
+  srv->peers->changed.notify_all();
+}
+
+// the connection is freed: its address is a stranger's again
+void DtlsPeerForget(DtlsServerCtx* srv, DtlsPeer* peer)
+{
+  std::lock_guard<std::mutex> guard(srv->peers->lock);
+  std::vector<DtlsPeer*>& peers = srv->peers->peers;
+  for(size_t i = 0; i < peers.size(); ++i) {
+    if(peers[i] == peer) {
+      peers.erase(peers.begin() + i);
+      break;
+    }
+  }
+  delete peer;
+}
+#endif
+
 // whether a close still owes the peer its close_notify alert: a TLS socket's ShutdownSend sends it early
 static inline bool CloseNotifyDue(const SecureSocketCtx* sctx) { return !sctx->send_closed; }
 static inline bool CloseNotifyDue(const DtlsSocketCtx*) { return true; }
@@ -6336,6 +6600,13 @@ static inline void EndWaitsOn(SecureSocketCtx* sctx)
 // as it did then: that window is not closed here, the use of freed memory is.
 static inline void EndWaitsOn(DtlsSocketCtx* sctx)
 {
+#ifdef _WIN32
+  if(sctx->peer) {
+    // a connection a server accepted has no socket to close: its wait is on the server's queue for it
+    DtlsPeerAbort(sctx->server, sctx->peer);
+    return;
+  }
+#endif
   shutdown((SOCKET)sctx->net.fd, 2 /* SHUT_RDWR, SD_BOTH */);
 #ifdef _WIN32
   closesocket((SOCKET)sctx->net.fd);
@@ -6665,21 +6936,17 @@ static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, Socket
 // recorded by getsockname at Listen), as IPSocket::BindAddress bound it:
 // SO_REUSEADDR, so it can share the port with the socket just handed to the
 // client, and IPv6-only for an IPv6 address. No name lookup: nothing here
-// blocks.
+// blocks. Not on Windows, where a server keeps the one socket it bound (see "A DTLS server's clients
+// on Windows").
 //
+#ifndef _WIN32
 static SOCKET DtlsRebind(DtlsServerCtx* srv)
 {
   const int family = ((const struct sockaddr*)srv->bound_addr)->sa_family;
   SOCKET sock = socket(family, SOCK_DGRAM, IPPROTO_UDP);
-#ifdef _WIN32
-  if(sock == INVALID_SOCKET) {
-    return INVALID_SOCKET;
-  }
-#else
   if(sock < 0) {
     return -1;
   }
-#endif
 
   // best effort: the bind below is the call that has to succeed
   int on = 1;
@@ -6689,19 +6956,15 @@ static SOCKET DtlsRebind(DtlsServerCtx* srv)
   (void)setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
 
   if(::bind(sock, (const struct sockaddr*)srv->bound_addr, srv->bound_len) != 0) {
-#ifdef _WIN32
-    closesocket(sock);
-    return INVALID_SOCKET;
-#else
     close(sock);
     return -1;
-#endif
   }
 
   return sock;
 }
+#endif
 
-static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned char* client_ip,
+static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* client_ip,
                       size_t buffer_size, size_t* ip_len)
 {
   // the listener is in use until this returns (see ServerCtxClose)
@@ -6710,6 +6973,19 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
   if(fd < 0) {
     return MBEDTLS_ERR_NET_ACCEPT_FAILED;
   }
+
+#ifdef _WIN32
+  // the next client of the server's one socket (see "A DTLS server's clients on Windows"): there is
+  // no socket to hand over and no listener to bind again
+  DtlsPeer* peer = DtlsPeerAccept(srv, listening);
+  if(!peer) {
+    return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+  }
+  client->peer = peer;
+  // freed with the connection, which from here on is this server's (SockDtlsAccept gives it the
+  // reference): until then the peer could not be told apart from a client nobody accepted
+  const struct sockaddr_storage& client_addr = peer->addr;
+#else
 
   // Wait for a ClientHello, leaving it queued for the handshake. Anything else
   // arriving here -- typically the close_notify of a client that was just
@@ -6722,13 +6998,7 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
     memset(&client_addr, 0, sizeof(client_addr));
     addr_len = sizeof(client_addr);
     unsigned char peek[16] = {0};
-    int ret = (int)recvfrom(fd, (char*)peek, sizeof(peek), MSG_PEEK, (struct sockaddr*)&client_addr, &addr_len);
-#ifdef _WIN32
-    // a datagram longer than the peek buffer is still a datagram, peeked in part
-    if(ret == SOCKET_ERROR && WSAGetLastError() == WSAEMSGSIZE) {
-      ret = (int)sizeof(peek);
-    }
-#endif
+    const int ret = (int)recvfrom(fd, (char*)peek, sizeof(peek), MSG_PEEK, (struct sockaddr*)&client_addr, &addr_len);
     // a closed server's listener is shut down, which ends the wait above with nothing read
     if(ret < 0 || listening.ServerClosed()) {
       return MBEDTLS_ERR_NET_ACCEPT_FAILED;
@@ -6768,11 +7038,7 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
     socklen_t from_len = sizeof(from);
     char head[1];
     const int peeked = (int)recvfrom(fd, head, sizeof(head), MSG_PEEK, (struct sockaddr*)&from, &from_len);
-#ifdef _WIN32
-    if(peeked == SOCKET_ERROR && WSAGetLastError() != WSAEMSGSIZE) {
-#else
     if(peeked < 0) {
-#endif
       break;
     }
 
@@ -6788,7 +7054,7 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
   // the connected socket is the client's now; listen again on a fresh one, unless the server was
   // closed meanwhile: then nobody is left to accept on it, and the socket handed over was shut down
   // with the listener it was (the client is freed by the caller, with it)
-  client->fd = fd;
+  client->net.fd = fd;
   {
     std::lock_guard<std::mutex> guard(tls_context_lock);
     srv->listen_fd.fd = -1;
@@ -6797,11 +7063,7 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
     }
   }
   const SOCKET next = srv->bound_len > 0 ? DtlsRebind(srv) : IPSocket::BindAny(srv->port, SOCK_DGRAM);
-#ifdef _WIN32
-  if(next != INVALID_SOCKET) {
-#else
   if(next >= 0) {
-#endif
     std::lock_guard<std::mutex> guard(tls_context_lock);
     if(srv->closed) {
       // closed while the new listener was being bound: it is nobody's
@@ -6811,6 +7073,8 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
     srv->listen_fd.fd = (int)next;
   }
   // else the next Accept fails; this client is served regardless
+
+#endif
 
   if(client_addr.ss_family == AF_INET6) {
     const struct sockaddr_in6* addr6 = (const struct sockaddr_in6*)&client_addr;
@@ -8079,6 +8343,22 @@ int DtlsBioSend(void* ctx, const unsigned char* buf, size_t len)
   // socket calls: not while holding the TLS library (DtlsHandshakeOver reads this
   // connection's own state)
   TlsLibraryUnlock library_unlock;
+#ifdef _WIN32
+  if(sctx->peer) {
+    // A connection a server accepted: a client of the server's socket, sent to by address. The alert
+    // rule below holds for it, read from its queue; a refusal is not looked for, because the socket's
+    // refusals are not any one client's.
+    if(DtlsHandshakeOver(&sctx->ssl) && DtlsPeerAlertPending(sctx->server, sctx->peer)) {
+      sctx->net_reason = { 0, false };
+      return MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY;
+    }
+    const int sent = DtlsPeerSend(sctx->server, sctx->peer, buf, len);
+    if(sent < 0) {
+      sctx->net_reason = { CurrentSocketError(), false };
+    }
+    return sent;
+  }
+#endif
   // An established session whose peer has sent an alert -- a close_notify, or
   // a fatal one -- is over: the write fails, and the alert stays queued for the
   // next read to report in full. On Windows this is also the only way a write
@@ -8107,6 +8387,11 @@ int DtlsBioRecv(void* ctx, unsigned char* buf, size_t len)
 {
   DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
   TlsLibraryUnlock library_unlock;
+#ifdef _WIN32
+  if(sctx->peer) {
+    return DtlsPeerReceive(sctx->server, sctx->peer, buf, len, 0);
+  }
+#endif
   const int ret = mbedtls_net_recv(&sctx->net, buf, len);
   if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ) {
     sctx->net_reason = { CurrentSocketError(), false };
@@ -8118,6 +8403,11 @@ int DtlsBioRecvTimeout(void* ctx, unsigned char* buf, size_t len, uint32_t timeo
 {
   DtlsSocketCtx* sctx = (DtlsSocketCtx*)ctx;
   TlsLibraryUnlock library_unlock;
+#ifdef _WIN32
+  if(sctx->peer) {
+    return DtlsPeerReceive(sctx->server, sctx->peer, buf, len, timeout);
+  }
+#endif
   const int ret = mbedtls_net_recv_timeout(&sctx->net, buf, len, timeout);
   if(ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_TIMEOUT) {
     sctx->net_reason = { CurrentSocketError(), false };
@@ -12493,6 +12783,10 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
         return;
       }
       mbedtls_ssl_conf_dtls_cookies(&srv->conf, mbedtls_ssl_cookie_write, mbedtls_ssl_cookie_check, &srv->cookie_ctx);
+#ifdef _WIN32
+      // the clients that will share this socket (see "A DTLS server's clients on Windows")
+      srv->peers = new DtlsPeerTable();
+#endif
 
       instance[0] = (size_t)srv;
       instance[1] = 0;
@@ -12543,11 +12837,13 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
 
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      int ret = DtlsAccept(srv, &client_sctx->net, client_ip, sizeof(client_ip), &client_ip_len);
+      // The session keeps the reference this accept holds, for as long as it lives: it reads the
+      // server's configuration and cookie context, and on Windows it is a client of the server's socket
+      // from the moment it is accepted.
+      client_sctx->server = server.Give();
+      int ret = DtlsAccept(srv, client_sctx, client_ip, sizeof(client_ip), &client_ip_len);
       if(ret == 0) {
-        // Setup SSL session for this client (uses server's config, and its cookie context: the
-        // session keeps the reference this accept held, for as long as it lives)
-        client_sctx->server = server.Give();
+        // Setup SSL session for this client (uses server's config)
         TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
         if(ret == 0) {
@@ -12597,10 +12893,13 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       }
 
       // Get peer address info
-      int sock_fd = client_sctx->net.fd;
-
       struct sockaddr_storage pin;
       memset(&pin, 0, sizeof(pin));
+#ifdef _WIN32
+      // the connection has no socket of its own to ask (see "A DTLS server's clients on Windows")
+      pin = client_sctx->peer->addr;
+#else
+      int sock_fd = client_sctx->net.fd;
       socklen_t pen_len = sizeof(pin);
       int status = getpeername(sock_fd, (sockaddr*)&pin, &pen_len);
       if(status < 0) {
@@ -12608,6 +12907,7 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
         PushInt(0, op_stack, stack_pos);
         return true;
       }
+#endif
 
       // numeric; an IPv4 client of the dual-stack listener arrives as
       // ::ffff:a.b.c.d and is reported as a.b.c.d
