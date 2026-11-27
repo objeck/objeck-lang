@@ -9,6 +9,13 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# A new push to a pull request cancels the run still going for its older commit (every merge of master into a
+# branch used to leave a full CI run behind it, which is what queued 70+ runs). Runs on master, tags and
+# schedules are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Every core/lib/*.obl built from source on one Linux job; the other jobs download them.
   libs:
@@ -1986,14 +1993,50 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 45
+    # pull-requests: read is for the file list the first step asks for.
+    permissions:
+      contents: read
+      pull-requests: read
     env:
       TREE: core/release/deploy-x64
     steps:
+      # The fuzz exercises the .obe loader (core/vm, core/shared), fed with programs the compiler
+      # emits (core/compiler, programs/regression) by the driver in tools/fuzz. A pull request that
+      # touches none of those cannot change what it finds, and the nightly run (nightly-hardening.yml,
+      # 30 minutes) covers every change on master anyway, so such a pull request skips the 8 minutes.
+      # Every other case runs it: a push, and any failure to read the file list (fail open). The job
+      # still reports success when skipped, as it does when advisory findings exist.
+      - name: Decide whether this change can reach the loader
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          run=true
+          if [ "$EVENT" = "pull_request" ]; then
+            if files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' 2>/dev/null) && [ -n "$files" ]; then
+              if echo "$files" | grep -qE '^(core/|programs/regression/|tools/fuzz/|\.github/workflows/ci-build\.yml$)'; then
+                echo "A changed file can reach the loader or the fuzz inputs: running the fuzz."
+              else
+                run=false
+                echo "No changed file is under core/, programs/regression/, tools/fuzz/ or this workflow: skipping the fuzz."
+                echo "### Loader fuzz skipped: no loader-relevant file changed (nightly covers master)" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            else
+              echo "Could not read the pull request's file list: running the fuzz."
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: steps.gate.outputs.run == 'true'
         timeout-minutes: 5
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install the fuzz toolchain
+        if: steps.gate.outputs.run == 'true'
         timeout-minutes: 10
         run: |
           sudo bash tools/cicd/apt_harden.sh
@@ -2001,6 +2044,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends clang libclang-rt-18-dev zlib1g-dev libmbedtls-dev
 
       - name: Download the deploy tree built by this run
+        if: steps.gate.outputs.run == 'true'
         timeout-minutes: 10
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -2008,6 +2052,7 @@ jobs:
           path: ${{ env.TREE }}
 
       - name: Fuzz the bytecode loader (5 minutes)
+        if: steps.gate.outputs.run == 'true'
         timeout-minutes: 30
         run: |
           set -o pipefail
@@ -2028,7 +2073,7 @@ jobs:
           exit 0
 
       - name: Upload any saved inputs
-        if: always()
+        if: steps.gate.outputs.run == 'true' && always()
         timeout-minutes: 5
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
