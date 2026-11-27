@@ -627,7 +627,11 @@ void Loader::SelectMcpEntry()
     StackMethod** methods = cls->GetMethods();
     for(int j = 0; j < cls->GetMethodCount(); ++j) {
       StackMethod* method = methods[j];
-      const std::wstring& name = method ? method->GetName() : std::wstring();
+      // a hole in the method table (never from a well-formed .obe) has no name or id to offer
+      if(!method) {
+        continue;
+      }
+      const std::wstring& name = method->GetName();
       // "Class:McpMain:o.System.String*," and "Class:McpMain_Class:o.System.String*,", a function taking the argument array
       if(name.size() <= params.size() || name.compare(name.size() - params.size(), params.size(), params) != 0) {
         continue;
