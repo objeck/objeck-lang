@@ -14967,8 +14967,15 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
                    (reason.empty() ? L"" : L"\n\t" + reason));
       return;
     }
+    const size_t errors_before = diagnostics.ErrorCount();
     AnalyzeExpression(probe, depth + 1);
     probe_type = probe->GetEvalType();
+    if(probe_type && diagnostics.ErrorCount() != errors_before) {
+      // What is wrong with the expression has been said, here, of the text as it was
+      // written. The wrapper below holds the same expression: analyzing it there said
+      // each mistake a second time, at a column counted in the wrapper's text.
+      return;
+    }
   }
   if(!probe_type) {
     ProcessError(char_str, at, L"Cannot determine type of expression: '" + shown + L"'");
@@ -15027,9 +15034,17 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
     ProcessError(char_str, at, L"Invalid format expression in string interpolation: '" + shown + L":" + spec_text + L"'");
     return;
   }
+
+  // The wrapper is the compiler's text. The expression in it is sound (the probe said
+  // nothing), so an error from here on is about the format not fitting the value, and is
+  // said once, of what was written: '"{$[[1]]:8}"' used to get "Dimension size mismatch"
+  // and "Invalid array cast" at columns counted in 'Int->ToString(([[1]]))', and a longer
+  // one quoted the wrapper's call back. Those are taken out again.
+  const DiagnosticSink before_wrapper = diagnostics;
   AnalyzeExpression(expr_node, depth + 1);
 
-  if(!expr_node->GetEvalType()) {
+  if(diagnostics.ErrorCount() != before_wrapper.ErrorCount() || !expr_node->GetEvalType()) {
+    diagnostics = before_wrapper;
     ProcessError(char_str, at, L"Cannot apply format specifier '" + spec_text + L"' to expression: '" + shown + L"'");
     return;
   }

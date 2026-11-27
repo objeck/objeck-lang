@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: bad_interp_format_wrapper.obs:(15,23): Cannot apply format specifier '.2' to expression: 'args'
+# EXPECT_ERROR_COUNT: 1
+#~
+A format that does not fit the value is one error, at the interpolation, in the program's own
+words. The format is applied by a call the compiler writes around the expression
+('Float->ToString((args)->As(Float), 2)' for "{$args:.2}"), and what the analyzer said about that
+call was passed on as it came: "Dimension size mismatch" and "Invalid array cast", at line 1 of
+the file and at columns counted in the compiler's text, which for a longer expression was quoted
+back as well.
+~#
+class BadInterpFormatWrapper {
+	function : Main(args : String[]) ~ Nil {
+		ratio := 0.5;
+		ok := "ratio {$ratio:.2}";
+		bad := "arguments {$args:.2}";
+		ok->PrintLine();
+		bad->PrintLine();
+	}
+}
