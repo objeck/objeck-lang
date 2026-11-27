@@ -1091,6 +1091,18 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_generic_chain.py "%BIN%"
 
+    # A primitive is boxed and a holder unboxed to fit a parameter, and the method
+    # that fits best is called. A library's methods are matched and ranked by the
+    # analyzer's library path, from the signatures in the .obl; this builds a library
+    # whose overloads are declared holder-first and calls each of them.
+    - name: boxing and unboxing choose among a library's overloads (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_boxing_overloads.py "%BIN%"
+
     - name: a generic array parameter survives the .obl round trip (Windows)
       working-directory: ./programs/regression
       shell: cmd

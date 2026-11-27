@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: (11,18): Invalid cast with classes: System.Bool and System.IntRef
+# EXPECT_ERROR_COUNT: 1
+#~
+A holder where a primitive is wanted is its value, converted as that value
+would be: an Int is not a Bool, so an IntRef is not one either. Before
+v2026.11.4 this compiled, and 'done' was whatever the Int's bits said.
+~#
+class BadBoxingBoolFromIntRef {
+	function : Main(args : String[]) ~ Nil {
+		count := IntRef->New(2);
+		done : Bool := count;
+		done->PrintLine();
+	}
+}

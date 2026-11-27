@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (20,3): Ambiguous function/method call: 'Pick(..)' boxes or unboxes an argument to fit, and more than one method fits as well
+# EXPECT_ERROR_COUNT: 1
+#~
+Two methods take the call once an argument is boxed, and neither fits every
+argument at least as well as the other: the first boxes its first argument,
+the second its second. Before v2026.11.4 the one declared first was called.
+The call is refused until the programmer writes which box is meant
+('Pick(IntRef->New(1), 2)').
+~#
+class BadBoxingAmbiguousOverload {
+	function : Pick(a : IntRef, b : Int) ~ String {
+		return "first";
+	}
+
+	function : Pick(a : Int, b : IntRef) ~ String {
+		return "second";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Pick(1, 2)->PrintLine();
+	}
+}

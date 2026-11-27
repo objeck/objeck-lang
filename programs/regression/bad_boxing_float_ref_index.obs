@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: (10,9): Expected Byte, Char, Int or Enum class type
+#~
+An index is unboxed from an IntRef, a CharRef or a ByteRef. A FloatRef is not
+an index, as a Float is not; before v2026.11.4 its bits were used as one.
+~#
+class BadBoxingFloatRefIndex {
+	function : Main(args : String[]) ~ Nil {
+		slots := Int->New[4];
+		where := FloatRef->New(1.0);
+		slots[where] := 7;
+		slots[1]->PrintLine();
+	}
+}
