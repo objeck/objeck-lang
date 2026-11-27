@@ -886,7 +886,25 @@ public:
     // bytes read. shutdown() hands the queued bytes off and sends FIN before the
     // descriptor goes away. Errors are ignored on purpose: the peer may already
     // have torn the connection down, and there is nothing useful to do here.
-    shutdown(sock, SHUT_WR);
+    //
+    // A listening socket is another matter: it has nothing to send, and a thread
+    // may be blocked in accept() on it. On Linux close() does not wake that
+    // thread -- the blocked call keeps the socket alive and goes on waiting for a
+    // client that can no longer be told the port -- and SHUT_WR does nothing to a
+    // listener. So a server's accept loop never saw its Stop(): the thread stayed
+    // parked until the process ended, and every program that ran a server waited
+    // out the VM's two-second thread drain on its way out and left with a thread
+    // still live. Shutting down the receiving side is what ends a blocked
+    // accept() on Linux (it returns EINVAL), so a listener gets that first.
+    // Connected sockets close exactly as before.
+    int listening = 0;
+    socklen_t listening_len = sizeof(listening);
+    if(getsockopt(sock, SOL_SOCKET, SO_ACCEPTCONN, &listening, &listening_len) == 0 && listening) {
+      shutdown(sock, SHUT_RDWR);
+    }
+    else {
+      shutdown(sock, SHUT_WR);
+    }
     close(sock);
   }
 
