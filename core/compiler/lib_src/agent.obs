@@ -1436,6 +1436,10 @@ agent->SetCancel(cancel);
 		@reason : String;
 		@parent : AgentCancel;
 		@also : AgentCancel;
+		@limit_ms : Int;
+		@timer : System.Time.Timer;
+		@waited : Float;
+		@expired : Bool;
 
 		#~
 		Constructor
@@ -1490,18 +1494,27 @@ agent->SetCancel(cancel);
 		@return true after Cancel
 		~#
 		method : public : IsCancelled() ~ Bool {
-			flag := false;
-			critical(@mutex) {
-				flag := @cancelled;
-			};
+			# A line of tokens with one parent each is walked as it is. Where a token has two (a scope's
+			# token, an agent's under a scope) the lines above it can meet again, and again above that: every
+			# token is then looked at once, not once for each way that leads to it
+			node := @self;
+			while(node <> Nil) {
+				if(node->IsSet()) {
+					return true;
+				};
 
-			if(<>flag & @parent <> Nil) {
-				flag := @parent->IsCancelled();
+				first := node->GetParent();
+				second := node->GetAlso();
+				if(first <> Nil & second <> Nil & first <> second) {
+					return AnySet(node);
+				};
+
+				if(first = Nil) {
+					first := second;
+				};
+				node := first;
 			};
-			if(<>flag & @also <> Nil) {
-				flag := @also->IsCancelled();
-			};
-			return flag;
+			return false;
 		}
 
 		#~
@@ -1509,18 +1522,138 @@ agent->SetCancel(cancel);
 		@return the reason, or Nil while it is not cancelled
 		~#
 		method : public : GetReason() ~ String {
+			# the token's own reason, else its parent's line, else its second parent's: the order a token is
+			# first reached in, each token read once
+			seen := Vector->New()<AgentCancel>;
+			todo := Vector->New()<AgentCancel>;
+			todo->AddBack(@self);
+			while(todo->Size() > 0) {
+				node := todo->RemoveBack();
+				if(<>Holds(seen, node)) {
+					seen->AddBack(node);
+					text := node->GetOwnReason();
+					if(text <> Nil) {
+						return text;
+					};
+
+					if(node->GetAlso() <> Nil) {
+						todo->AddBack(node->GetAlso());
+					};
+					if(node->GetParent() <> Nil) {
+						todo->AddBack(node->GetParent());
+					};
+				};
+			};
+			return Nil;
+		}
+
+		#~
+		Makes the token cancel itself, with the reason deadline, once this much time has passed. The loop
+		sets it on the token of a run that has a deadline: a handler on the loop's own thread then hears of
+		the deadline from the token it polls, when the loop itself is inside that handler and can not look
+		at the clock. Called by Agent.
+		@hidden
+		@param millis milliseconds from now, 0 or less for none
+		~#
+		method : public : SetDeadlineMs(millis : Int) ~ Nil {
+			critical(@mutex) {
+				if(millis > 0) {
+					@limit_ms := millis;
+					@waited := 0.0;
+					@timer := System.Time.Timer->New(true);
+				}
+				else {
+					@timer := Nil;
+				};
+			};
+		}
+
+		#~
+		Says whether the token cancelled itself because its deadline passed. Called by Agent.
+		@hidden
+		@return true once the time given to SetDeadlineMs has passed, unless the token was cancelled first
+		~#
+		method : public : IsExpired() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				Expire();
+				flag := @expired;
+			};
+			return flag;
+		}
+
+		# cancels the token when its deadline has passed; the caller holds the mutex
+		method : Expire() ~ Nil {
+			if(@timer <> Nil & <>@cancelled) {
+				@waited += @timer->GetElapsedTime();
+				@timer->Start();
+				if(@waited * 1000.0 >= @limit_ms->As(Float)) {
+					@cancelled := true;
+					@expired := true;
+					@reason := "deadline";
+					@timer := Nil;
+				};
+			};
+		}
+
+		# true when this token itself was cancelled, whatever its parents say
+		method : IsSet() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				Expire();
+				flag := @cancelled;
+			};
+			return flag;
+		}
+
+		method : GetOwnReason() ~ String {
 			text : String;
 			critical(@mutex) {
+				Expire();
 				text := @reason;
 			};
-
-			if(text = Nil & @parent <> Nil) {
-				text := @parent->GetReason();
-			};
-			if(text = Nil & @also <> Nil) {
-				text := @also->GetReason();
-			};
 			return text;
+		}
+
+		method : GetParent() ~ AgentCancel {
+			return @parent;
+		}
+
+		method : GetAlso() ~ AgentCancel {
+			return @also;
+		}
+
+		# whether a token or any token above it is cancelled, each one looked at once
+		function : AnySet(start : AgentCancel) ~ Bool {
+			seen := Vector->New()<AgentCancel>;
+			seen->AddBack(start);
+			i := 0;
+			while(i < seen->Size()) {
+				node := seen->Get(i);
+				if(node->IsSet()) {
+					return true;
+				};
+
+				if(node->GetParent() <> Nil & <>Holds(seen, node->GetParent())) {
+					seen->AddBack(node->GetParent());
+				};
+				if(node->GetAlso() <> Nil & <>Holds(seen, node->GetAlso())) {
+					seen->AddBack(node->GetAlso());
+				};
+				i += 1;
+			};
+			return false;
+		}
+
+		function : Holds(all : Vector<AgentCancel>, token : AgentCancel) ~ Bool {
+			i := 0;
+			while(i < all->Size()) {
+				if(all->Get(i) = token) {
+					return true;
+				};
+				i += 1;
+			};
+			return false;
 		}
 	}
 
@@ -2048,6 +2181,9 @@ agent->SetBudget(budget);
 	  `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.
 	  A child may also be entered on the parent's own thread; when it is left the thread is back in the scope
 	  it was in before.
+	  The worker threads an agent starts itself (a BOUNDED_THREAD tool, a model call under
+	  SetBoundedModelCalls) are the exception: they run inside a child of the run's scope, so an agent such
+	  a tool runs is limited and charged as it is when the tool runs on the loop's own thread.
 	* A child entered inside a scope that is not its parent is limited by both: its parent (and what the
 	  parent is inside) and the scope around it (and what that is inside). Each scope is checked and charged
 	  once, and cancelling any of them stops the child's runs.
@@ -2055,6 +2191,11 @@ agent->SetBudget(budget);
 	  from zero only when the parent is entered). The child is tied to the parent's cancellation only when
 	  the parent is entered at the moment the child is; a token left over from an earlier entry of the parent
 	  is never used.
+	* A child that outlives the scopes above it (it is still at work on another thread when they are
+	  left) stays limited by them: the scopes that limit a scope are fixed when it is entered and kept until
+	  it is left, and they go on being checked and charged. A scope further up that is entered again in the
+	  meantime is a new block with counters of its own; the child neither charges it nor is limited by it
+	  (its own parent it is always charged to, as above).
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
 	  its counters from zero. A scope may not be entered inside its own child either (it would be limited by
 	  itself): that raises, like entering it twice.
@@ -2086,6 +2227,8 @@ scope->GetStepsUsed()->PrintLine();
 		@wall_used : Int;
 		@runs : Int;
 		@halt : String;
+		@held : Vector<AgentScopeLink>;
+		@entries : Int;
 		@slots : static : Vector<AgentScopeSlot>;
 		@registry_lock : static : ThreadMutex;
 
@@ -2182,6 +2325,23 @@ scope->GetStepsUsed()->PrintLine();
 		~#
 		method : public : SetParent(parent : AgentScope) ~ Nil {
 			@fixed_parent := parent;
+		}
+
+		#~
+		Enters the scope on the calling thread, as Run does before the body. Called by the worker thread of
+		a bounded tool or model call, which is handed a Child() of the run's scope; use Run.
+		@hidden
+		~#
+		method : public : EnterWorker() ~ Nil {
+			Enter();
+		}
+
+		#~
+		Leaves the scope the calling thread entered with EnterWorker. Called by the worker thread.
+		@hidden
+		~#
+		method : public : LeaveWorker() ~ Nil {
+			Leave();
 		}
 
 		#~
@@ -2333,6 +2493,10 @@ scope->GetStepsUsed()->PrintLine();
 					side := outer;
 				};
 
+				# this is a new entry: a scope that was entered under an earlier one (and is still at work on
+				# another thread) holds that entry, not this one
+				@entries += 1;
+
 				# nothing is published when the scope would come to limit itself, through either of the two
 				seen := Vector->New()<AgentScope>;
 				AddOnce(seen, above);
@@ -2356,6 +2520,20 @@ scope->GetStepsUsed()->PrintLine();
 					@previous := outer;
 					@parent := above;
 					@also := side;
+
+					# Every scope that limits this one now is kept for as long as this one is entered. A scope
+					# above forgets its own parents when it is left; one that is left while this scope is still
+					# at work on another thread must not take the limits above it away with it
+					held := Vector->New()<AgentScopeLink>;
+					k := 0;
+					while(k < seen->Size()) {
+						held->AddBack(AgentScopeLink->New(seen->Get(k), seen->Get(k)->GetEntries()));
+						k += 1;
+					};
+					@held := held;
+				}
+				else {
+					@entries -= 1;
 				};
 			};
 
@@ -2413,6 +2591,7 @@ scope->GetStepsUsed()->PrintLine();
 				@previous := Nil;
 				@parent := Nil;
 				@also := Nil;
+				@held := Nil;
 			};
 
 			if(@print) {
@@ -2487,8 +2666,30 @@ scope->GetStepsUsed()->PrintLine();
 				scope := all->Get(i);
 				AddOnce(all, scope->GetOuter());
 				AddOnce(all, scope->GetAlso());
+				scope->AddHeld(all);
 				i += 1;
 			};
+		}
+
+		# Adds the scopes that limited this one when it was entered, those that have been left since as well:
+		# they still limit it and are still charged. One that has been entered again since is another block
+		# with counters of its own, and is left alone. The caller holds the registry lock
+		method : AddHeld(all : Vector<AgentScope>) ~ Nil {
+			if(@held <> Nil) {
+				h := 0;
+				while(h < @held->Size()) {
+					link := @held->Get(h);
+					if(link->GetScope()->GetEntries() = link->GetEntry()) {
+						AddOnce(all, link->GetScope());
+					};
+					h += 1;
+				};
+			};
+		}
+
+		# how many times the scope has been entered; read and written under the registry lock
+		method : GetEntries() ~ Int {
+			return @entries;
 		}
 
 		# this scope and every scope that limits it, each once: the parent's chain and, for a Child() entered
@@ -2797,6 +2998,25 @@ scope->GetStepsUsed()->PrintLine();
 		}
 	}
 
+	# a scope that limited another when that one was entered, and which of its entries it was
+	class : private : AgentScopeLink {
+		@scope : AgentScope;
+		@entry : Int;
+
+		New(scope : AgentScope, entry : Int) {
+			@scope := scope;
+			@entry := entry;
+		}
+
+		method : public : GetScope() ~ AgentScope {
+			return @scope;
+		}
+
+		method : public : GetEntry() ~ Int {
+			return @entry;
+		}
+	}
+
 	# sends each trace event to several sinks
 	class : private : AgentScopeTee implements AgentTraceSink {
 		@sinks : Vector<AgentTraceSink>;
@@ -2952,6 +3172,7 @@ scope->GetStepsUsed()->PrintLine();
 		@backend : ChatBackend;
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
+		@scope : AgentScope;
 
 		#~
 		Constructor
@@ -2960,6 +3181,20 @@ scope->GetStepsUsed()->PrintLine();
 		New(slot : AgentSlot) {
 			Parent("agent_worker");
 			@slot := slot;
+		}
+
+		#~
+		Puts the worker under the scope of the run it works for. A thread does not inherit a scope, so the
+		worker enters a Child() of it around the call: an agent the tool (or the backend) runs is then
+		limited and charged as it is when the call is made on the loop's own thread
+		@param scope the run's scope, or Nil for none
+		@return self for chaining
+		~#
+		method : public : Under(scope : AgentScope) ~ AgentWorker {
+			if(scope <> Nil) {
+				@scope := scope->Child();
+			};
+			return @self;
 		}
 
 		#~
@@ -3004,7 +3239,13 @@ scope->GetStepsUsed()->PrintLine();
 			text : String;
 			failure : String;
 			reply : AgentReply;
+			entered := false;
 			try {
+				if(@scope <> Nil) {
+					@scope->EnterWorker();
+					entered := true;
+				};
+
 				if(@kind = 0) {
 					text := @tool->InvokeWith(@arguments, @cancel);
 				}
@@ -3019,6 +3260,16 @@ scope->GetStepsUsed()->PrintLine();
 			on(e : Error) {
 				failure := e->GetMessage();
 				failure := failure ?? "the worker failed";
+			};
+
+			# the scope is left however the call ended; the result is handed in whatever leaving does
+			if(entered) {
+				try {
+					@scope->LeaveWorker();
+				}
+				on(e : Error) {
+					failure := failure ?? e->GetMessage();
+				};
 			};
 			@slot->Complete(text, failure, reply);
 		}
@@ -3374,6 +3625,10 @@ result->GetText()->PrintLine();
 			@wall_charged := 0;
 			@scope_spent := false;
 			@token := AgentCancel->New(@cancel);
+			# the token knows the deadline too: a handler on this thread polls it while the loop can not
+			if(@budget <> Nil & @budget->GetMaxWallMs() > 0) {
+				@token->SetDeadlineMs(@budget->GetMaxWallMs());
+			};
 			@halt := Nil;
 			@model_calls := 0;
 			@tool_calls := 0;
@@ -3614,6 +3869,10 @@ result->GetText()->PrintLine();
 			}
 			else if(@token->IsCancelled()) {
 				reason := "cancelled";
+				# the token's own clock reached the deadline a moment before the loop's did
+				if(@token->IsExpired()) {
+					reason := "deadline";
+				};
 			};
 
 			if(reason <> Nil) {
@@ -3804,10 +4063,21 @@ result->GetText()->PrintLine();
 				if(@bounded_model) {
 					slot := AgentSlot->New();
 					Reap();
-					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools);
+					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools)->Under(@scope);
 					worker->Execute(Nil);
-					how := Await(slot, limit);
-					Release(worker);
+					how : String;
+					try {
+						how := Await(slot, limit);
+					}
+					finally {
+						# The wait can end in an error: a cancel or the deadline is traced as a halt, and a
+						# sink or an observer may raise. The worker is running all the same, so it is cut
+						# loose and kept for Reap like any other that was not waited for to its end
+						if(how = Nil) {
+							slot->Abandon();
+						};
+						Release(worker);
+					};
 					if(how->Equals("done")) {
 						reply := slot->GetReply();
 						@last_error := slot->GetFailure();
@@ -4209,10 +4479,26 @@ result->GetText()->PrintLine();
 				slot := AgentSlot->New();
 				Reap();
 				worker := AgentWorker->New(slot);
-				worker->ForTool(tool, call->GetArguments(), @token);
+				worker->ForTool(tool, call->GetArguments(), @token)->Under(@scope);
 				worker->Execute(Nil);
-				how := Await(slot, limit);
-				Release(worker);
+				waited := false;
+				try {
+					how := Await(slot, limit);
+					# A handler that polls the token hears of the deadline from the token itself, perhaps a
+					# moment before the loop does, and returns. The deadline passed while it ran all the
+					# same: the call ends as it always has, as a timeout whose result is discarded
+					if(how->Equals("done") & @token->IsExpired()) {
+						how := Checkpoint();
+					};
+					waited := true;
+				}
+				finally {
+					# see ModelCall: an error out of the wait must not lose the worker
+					if(<>waited) {
+						slot->Abandon();
+					};
+					Release(worker);
+				};
 				if(how->Equals("done")) {
 					failure := slot->GetFailure();
 					output := slot->GetText();

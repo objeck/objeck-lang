@@ -1,0 +1,188 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+AgentCancel with two parents (API.Agent), against a scripted fake model (no key, no network).
+
+A scope's token has two parents when the scope is a Child() entered inside a scope that is not its
+parent, and so has an agent's token under a scope. When each new scope is a Child() of the scope two
+levels up and is entered inside the scope one level up, every token is linked to both tokens before it,
+and the two lines meet again at every level. A check that followed each line by itself looked at the
+same tokens over and over: the work doubled about every level and a half, so some forty levels made one
+IsCancelled() run for minutes although nothing was cancelled. Each token is now looked at once.
+
+The test builds such a nest (48 levels; a number as the first argument changes that), then inside the
+innermost scope times the checks, makes a run, and cancels the outermost scope. It also checks that the
+answers did not change: which reason is reported when both parents were cancelled, and that every scope
+of the nest is charged once for the run.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+class NoteHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return "ok";
+  }
+}
+
+class AgentCancelSharedParentsTest {
+  @failures : static : Int;
+  @depth : static : Int;
+  @level : static : Int;
+  @scopes : static : Vector<AgentScope>;
+  @check_ms : static : Int;
+  @run_ms : static : Int;
+  @result : static : AgentResult;
+  @before : static : Bool;
+  @after : static : Bool;
+  @reason : static : String;
+  @late : static : AgentResult;
+  @backend : static : ScriptedBackend;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : NewAgent() ~ Agent {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("note", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), NoteHandler->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "note", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    script->AddBack(AgentReply->Say("never asked for"));
+    @backend := ScriptedBackend->New(script);
+    return Agent->New(@backend, registry);
+  }
+
+  # enters the next scope of the nest, or does the work once the nest is as deep as asked
+  function : Descend() ~ Nil {
+    if(@level < @depth) {
+      scope : AgentScope;
+      if(@level < 2) {
+        scope := AgentScope->New();
+      }
+      else {
+        scope := @scopes->Get(@level - 2)->Child();
+      };
+      @scopes->AddBack(scope);
+      @level += 1;
+      AgentScope->Run(scope, Descend() ~ Nil);
+      return;
+    };
+
+    token := AgentScope->Current()->GetCancel();
+    timer := System.Time.Timer->New(true);
+    @before := false;
+    for(i := 0; i < 200; i += 1;) {
+      if(token->IsCancelled()) {
+        @before := true;
+      };
+    };
+    if(token->GetReason() <> Nil) {
+      @before := true;
+    };
+    @check_ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+
+    agent := NewAgent();
+    timer := System.Time.Timer->New(true);
+    @result := agent->Run("go");
+    @run_ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+
+    @scopes->Get(0)->Cancel("stopped at the top");
+    @after := token->IsCancelled();
+    @reason := token->GetReason();
+    @late := agent->Run("again");
+  }
+
+  function : TestNest() ~ Nil {
+    "a nest of {$@depth} scopes whose tokens share their parents:"->PrintLine();
+    @scopes := Vector->New()<AgentScope>;
+    @level := 0;
+    Descend();
+
+    "  200 checks and a reason: {$@check_ms} ms; one run of two steps: {$@run_ms} ms"->PrintLine();
+    Check("the nest is as deep as asked", @scopes->Size() = @depth);
+    Check("nothing is cancelled to begin with", <>@before);
+    Check("200 checks of the innermost token take under 5 s", @check_ms < 5000);
+    Check("a run in the innermost scope completes, in under 10 s", @result <> Nil & @result->IsCompleted() & @run_ms < 10000);
+
+    charged := true;
+    each(scope in @scopes) {
+      if(scope->GetStepsUsed() <> 2 | scope->GetToolCallsUsed() <> 1) {
+        charged := false;
+      };
+    };
+    Check("every scope of the nest was charged once for the run", charged);
+    Check("cancelling the outermost scope reaches the innermost token", @after);
+    Check("with the reason it was given", Same(@reason, "stopped at the top"));
+    Check("and the next run does not start", @late <> Nil & Same(@late->GetStopReason(), "cancelled") & @backend->GetAskedCount() = 2);
+  }
+
+  function : TestOrder() ~ Nil {
+    "the reason of a token with two parents:"->PrintLine();
+    top := AgentCancel->New();
+    left := AgentCancel->New(top);
+    right := AgentCancel->New(top);
+    both := AgentCancel->New(left, right);
+    below := AgentCancel->New(both);
+    Check("nothing cancelled: no reason", <>below->IsCancelled() & below->GetReason() = Nil);
+
+    right->Cancel("right");
+    Check("the second parent alone cancels", below->IsCancelled() & Same(below->GetReason(), "right"));
+    left->Cancel("left");
+    Check("the first parent's reason comes first", Same(below->GetReason(), "left"));
+    top->Cancel("top");
+    Check("a nearer token's reason comes before the one both lines end in", Same(below->GetReason(), "left"));
+    both->Cancel("both");
+    Check("the token's own reason comes before its parents'", Same(below->GetReason(), "both") & Same(both->GetReason(), "both"));
+
+    # the parent's whole line is read before the second parent
+    far := AgentCancel->New();
+    far->Cancel("far up the first line");
+    near := AgentCancel->New();
+    near->Cancel("the second parent");
+    joined := AgentCancel->New(AgentCancel->New(AgentCancel->New(far)), near);
+    Check("the first parent's line is read to its end before the second", Same(joined->GetReason(), "far up the first line"));
+
+    # one token given as both parents, and a long line of single parents
+    twice := AgentCancel->New(top, top);
+    Check("the same token as both parents", twice->IsCancelled() & Same(twice->GetReason(), "top"));
+    root := AgentCancel->New();
+    last := root;
+    for(i := 0; i < 5000; i += 1;) {
+      last := AgentCancel->New(last);
+    };
+    Check("a line of 5000 tokens, none cancelled", <>last->IsCancelled() & last->GetReason() = Nil);
+    root->Cancel("the root");
+    Check("a line of 5000 tokens, the first cancelled", last->IsCancelled() & Same(last->GetReason(), "the root"));
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    @depth := 48;
+    if(args->Size() > 0) {
+      @depth := args[0]->ToInt();
+    };
+
+    TestOrder();
+    TestNest();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

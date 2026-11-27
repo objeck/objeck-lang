@@ -2101,7 +2101,7 @@ bundle API.MCP {
 		}
 
 		#~
-		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default)
+		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default). With sessions off the server cannot tell one client from another, so a notifications/cancelled is accepted and ignored: cancellation over HTTP needs sessions
 		@param on true for sessions
 		~#
 		method : public : SetSessions(on : Bool) ~ Nil {
@@ -2613,6 +2613,36 @@ bundle API.MCP {
 		@return the reply, Nil when the client cancelled the call
 		~#
 		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
+			if(slot <> Nil) {
+				return RunTool(id, params, sink, scope, slot);
+			};
+
+			# Nobody reserved the request id (HTTP, an in-process client, Handle): it is reserved here, before
+			# anything about the tool is looked at. A cancellation is a message of its own and can arrive
+			# while the arguments are still being checked; it then finds the reservation, and RunTool carries
+			# it over to the call. On a named connection an id still at work is refused. A caller that names
+			# no connection cannot be told from another, so there the newer call takes the name, as before
+			held := Reserve(scope, id);
+			if(held = Nil) {
+				if(scope <> Nil) {
+					return InUse(id);
+				};
+				return RunTool(id, params, sink, scope, Nil);
+			};
+
+			reply : JsonElement;
+			try {
+				reply := RunTool(id, params, sink, scope, held);
+			}
+			finally {
+				# whichever way the call ended; a no-op once the call itself took the reservation's place
+				Release(scope, id, held);
+			};
+			return reply;
+		}
+
+		# tools/call with the request id reserved under `slot`, or under nothing when slot is Nil
+		method : RunTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			name := McpMessage->Str(params, "name");
 			if(name = Nil) {
 				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: name is required");
@@ -3270,6 +3300,14 @@ bundle API.MCP {
 					response->SetCodeTypeContent(404, "application/json", McpMessage->Error(root->Get("id"), McpProtocol->InvalidRequest(), "Unknown session")->ToString());
 					return false;
 				};
+			}
+			else if(<>@service->UsesSessions()) {
+				# With sessions off nothing tells one client from another, and request ids are each
+				# client's own. Every message is then a connection by itself: two clients that both have
+				# a call under id 1 at work do not take each other's place, and a notifications/cancelled,
+				# which could only name "whoever has a call under this id", reaches no call (it is
+				# accepted with 202 and ignored). Cancellation needs sessions
+				scope := "http-{$System.Runtime->GetUuid()}";
 			};
 
 			reply := @service->HandleJson(root, Nil, scope);

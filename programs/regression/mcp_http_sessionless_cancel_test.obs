@@ -1,0 +1,209 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+The streamable HTTP transport with sessions off (McpService->SetSessions(false)): one client cannot
+cancel, or take the place of, another client's call (API.MCP). Loopback only, port 0.
+
+A request id is unique within one client. With sessions the session is the connection, and ids, in-use
+checks and cancellations belong to it. With sessions off every message arrived under no connection at
+all, so all clients shared one set of ids: with two clients each waiting for a call numbered 1, the second
+call took the first one's place among the calls in progress, and the first client's
+notifications/cancelled for "1" cancelled the second client's call. Now each message of a sessionless
+server is a connection by itself: the calls do not meet, and a cancellation, which could only name
+"whoever has a call under this id", is accepted (202) and ignored. Cancellation needs sessions.
+
+Two threads each POST a tools/call numbered 1 to a tool that works for a second and a half unless it is
+cancelled; when both are at work the main thread POSTs a cancellation for 1. Neither call may be
+cancelled and both must be answered.
+~#
+use API.MCP, Data.JSON, Collection, System.Concurrency;
+
+class Poster from Thread {
+	@url : String;
+	@tag : String;
+
+	New(url : String, tag : String) {
+		Parent();
+		@url := url;
+		@tag := tag;
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		body := "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"hold\",\"arguments\":{\"tag\":\"{$@tag}\"}}}";
+		client := Web.HTTP.HttpClient->New();
+		client->AddHeader("Accept", "application/json, text/event-stream");
+		response := client->Post(Web.HTTP.Url->New(@url), body->ToByteArray(), "application/json");
+		code := 0;
+		text := "";
+		if(response <> Nil) {
+			code := response->GetCode();
+			if(response->GetContent() <> Nil) {
+				text := String->New(response->GetContent());
+			};
+		};
+		McpHttpSessionlessCancelTest->Answered(@tag, code, text);
+	}
+}
+
+class McpHttpSessionlessCancelTest {
+	@pass : static : Int;
+	@fail : static : Int;
+	@service : static : McpService;
+	@lock : static : ThreadMutex;
+	@started_a : static : Bool;
+	@started_b : static : Bool;
+	@cancelled_a : static : Bool;
+	@cancelled_b : static : Bool;
+	@code_a : static : Int;
+	@code_b : static : Int;
+	@text_a : static : String;
+	@text_b : static : String;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Service() ~ McpService {
+		return @service;
+	}
+
+	function : Answered(tag : String, code : Int, text : String) ~ Nil {
+		critical(@lock) {
+			if(tag->Equals("a")) {
+				@code_a := code;
+				@text_a := text;
+			}
+			else {
+				@code_b := code;
+				@text_b := text;
+			};
+		};
+	}
+
+	# works for a second and a half unless the client cancels
+	function : Hold(call : McpCall) ~ McpToolResult {
+		tag := call->GetString("tag");
+		first := tag->Equals("a");
+		if(first) {
+			@started_a := true;
+		}
+		else {
+			@started_b := true;
+		};
+
+		waited := 0;
+		while(<>call->IsCancelled() & waited < 1500) {
+			Thread->Sleep(10);
+			waited += 10;
+		};
+
+		if(call->IsCancelled()) {
+			if(first) {
+				@cancelled_a := true;
+			}
+			else {
+				@cancelled_b := true;
+			};
+			return McpToolResult->Text("cancelled {$tag}");
+		};
+		return McpToolResult->Text("finished {$tag}");
+	}
+
+	function : Wait(which : Int) ~ Bool {
+		waited := 0;
+		done := false;
+		while(<>done & waited < 20000) {
+			if(which = 0) {
+				done := @started_a;
+			}
+			else {
+				done := @started_b;
+			};
+			if(<>done) {
+				Thread->Sleep(5);
+				waited += 5;
+			};
+		};
+		return done;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@lock := ThreadMutex->New("sessionless_test");
+		@text_a := "";
+		@text_b := "";
+		@service := McpService->New("sessionless-test", "1.0");
+		@service->SetSessions(false);
+		@service->AddTool("hold", "Works until cancelled", "{\"type\":\"object\",\"properties\":{\"tag\":{\"type\":\"string\"}},\"required\":[\"tag\"]}", Func2Ref->New(McpHttpSessionlessCancelTest->Hold(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		thread := Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				McpHttpSessionlessCancelTest->Service()->ServeHttp(0);
+			}
+		};
+		thread->Execute(Nil);
+
+		waited := 0;
+		while(@service->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := @service->GetBoundPort();
+		Check("the HTTP transport listens", port > 0);
+		if(port <= 0) {
+			"FAIL: MCP sessionless HTTP, the server did not start"->PrintLine();
+			Runtime->Exit(1);
+		};
+		url := "http://127.0.0.1:{$port}/mcp";
+
+		# no session is asked for
+		raw := Web.HTTP.HttpClient->New();
+		raw->AddHeader("Accept", "application/json, text/event-stream");
+		response := raw->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/list\"}"->ToByteArray(), "application/json");
+		Check("a request with no session is answered when sessions are off", response <> Nil & response->GetCode() = 200 & String->New(response->GetContent())->Has("hold"));
+
+		# two clients, each with a call numbered 1 at work
+		first := Poster->New(url, "a");
+		first->Execute(Nil);
+		Check("the first client's call is at work", Wait(0));
+		second := Poster->New(url, "b");
+		second->Execute(Nil);
+		Check("the second client's call, under the same id, is at work too", Wait(1));
+
+		# the first client gives up on "1"
+		canceller := Web.HTTP.HttpClient->New();
+		response := canceller->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":1}}"->ToByteArray(), "application/json");
+		Check("the cancellation is accepted with 202", response <> Nil & response->GetCode() = 202);
+
+		first->Join();
+		second->Join();
+		Check("the second client's call was not cancelled by the first client's notification", <>@cancelled_b);
+		Check("nor was the first client's: without a session the server cannot tell whose it is", <>@cancelled_a);
+		Check("the first client was answered", @code_a = 200 & @text_a->Has("finished a"));
+		Check("the second client was answered", @code_b = 200 & @text_b->Has("finished b"));
+
+		# the same id again, one call after the other, as a single client does
+		@started_a := false;
+		again := Poster->New(url, "a");
+		again->Execute(Nil);
+		again->Join();
+		Check("the id is free for the next call", @code_a = 200 & @text_a->Has("finished a"));
+
+		Web.HTTP.Server.WebServer->Stop();
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP sessionless HTTP, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP sessionless HTTP, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
