@@ -119,14 +119,21 @@ obr welcome.obe</pre>
       <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_class_46.obs" target="_blank" rel="noopener"><code>json_class_46.obs</code></a></td><td data-label="Libraries"><code>-lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json</code></td><td data-label="What it shows">class Weather : json: a model's answer as a typed object, with the schema and the reader written for you</td></tr>
       <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/prompt_literal_47.obs" target="_blank" rel="noopener"><code>prompt_literal_47.obs</code></a></td><td data-label="Libraries"><code>-lib llm_util,json,regex,gen_collect</code></td><td data-label="What it shows">prompt literals: holes the compiler checks, and values that cannot leave their slot</td></tr>
       <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/agent_decl_48.obs" target="_blank" rel="noopener"><code>agent_decl_48.obs</code></a></td><td data-label="Libraries"><code>-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent</code></td><td data-label="What it shows">agent declarations: model, instructions, tools and budget stated in one place</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/nil_safety_49.obs" target="_blank" rel="noopener"><code>nil_safety_49.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">Nil safety: ??, ?-&gt;, ?? return and a recovered error, instead of a pyramid of if(x &lt;&gt; Nil)</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/assert_50.obs" target="_blank" rel="noopener"><code>assert_50.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">assert: a check that stops the program with the file, line and values when it fails</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/using_51.obs" target="_blank" rel="noopener"><code>using_51.obs</code></a></td><td data-label="Libraries">none</td><td data-label="What it shows">using: a file, connection or your own class closed on every way out of a block</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/local_model_52.obs" target="_blank" rel="noopener"><code>local_model_52.obs</code></a></td><td data-label="Libraries"><code>-lib agent,json,net,cipher,misc</code></td><td data-label="What it shows">an agent on a model on your own machine (Ollama), with a scripted stand-in by default</td></tr>
      </tbody>
     </table>
     <h2 id="building-all-of-them">Building all of them</h2>
     <p><code>build_examples.py</code> beside this file reads the <strong>Libraries</strong> column above and compiles each example with exactly what it names:</p>
 <pre class="plain">python build_examples.py              compile every example, report
 python build_examples.py --only json  just the ones whose name matches
-python build_examples.py --keep       leave the .obe files behind</pre>
-    <p>It finds <code>obc</code> in <code>../bin</code> (an install) or the repo's deploy tree, and exits non-zero if any example fails. CI runs it on every change, so the table above is verified rather than merely written down: a wrong entry in the Libraries column fails the build.</p>
+python build_examples.py --keep       leave the .obe files behind
+python build_examples.py --opt s0,s3  compile at each optimizer level
+python build_examples.py --run        also run them, and check each against the
+                                      'output:' block in its own header</pre>
+    <p>It finds <code>obc</code> in <code>../bin</code> (an install) or the repo's deploy tree, and exits non-zero if any example fails. CI runs it on every change, so the table above is verified rather than merely written down: a wrong entry in the Libraries column fails the build. With <code>--run</code> it also runs the examples that need no display, database, key or network and compares what each prints with the <code>output:</code> block at the top of its source (<code>...</code> in that block stands for text left out), so what a header says an example prints is checked too.</p>
     <h2 id="building-one">Building one</h2>
     <p>With no libraries:</p>
 <pre class="plain">obc -src hello_0.obs
@@ -136,8 +143,8 @@ obr hello_0.obe</pre>
 obr json_14.obe</pre>
     <h2 id="notes">Notes</h2>
     <ul>
-     <li>Read them in order: 0-13 teach the language, 14-21 work with data, 22-24 are networking, 25-30 are AI and machine learning, 31 is a game, and 32-39 are AI engineering (MCP tools, agents, actors, retrieval, structured output, telemetry, forecasting).</li>
-     <li>32-39 run offline and print the same thing every time: a scripted model stands in for a real one, so they need no key. Swap in a real backend to use one.</li>
+     <li>Read them in order: 0-13 teach the language, 14-21 work with data, 22-24 are networking, 25-30 are AI and machine learning, 31 is a game, and 32-48 are AI engineering (MCP tools, agents, actors, retrieval, structured output, telemetry, forecasting, typed results, prompt literals, agent declarations). 49-51 return to the language (Nil safety, assert, using) and 52 runs an agent on a model on your own machine.</li>
+     <li>32-52 run offline and print the same thing every time: a scripted model stands in for a real one, so they need no key. Swap in a real backend to use one.</li>
      <li>Each program's header gives its compile and run lines and what it prints.</li>
      <li><code>obc</code> does not pull in a library's own dependencies, so some <code>-lib</code> lists name libraries the program never uses directly: <code>ml</code> needs <code>csv</code>, and <code>query</code> needs the rest of its list.</li>
      <li><code>game_31.obs</code> opens a window and needs a display; the rest run in a terminal.</li>

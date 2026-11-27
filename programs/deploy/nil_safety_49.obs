@@ -1,0 +1,125 @@
+#~
+# compile: obc -src nil_safety_49.obs
+# run:     obr nil_safety_49.obe
+#
+# Nil means "no object here", and calling a method on it is an error. A lookup
+# that can find nothing, or a record with an optional part, would turn every
+# use into a pyramid of 'if(x <> Nil)'. Four small tools keep the code flat:
+#
+#   a ?? b                 a, or b when a is Nil (b is only evaluated then)
+#   a?->M()                call M only when a is not Nil; one '?->' guards the
+#                          whole rest of the chain, and the result is Nil
+#   x := E ?? return V;    bind x to E, or leave the method at once with V
+#                          when E is Nil ('?? break;' and '?? continue;' too)
+#   Runtime->HasError()    after a '?->' recovered from a fault, the fault
+#
+# A chain that ends in a number needs '??' to say what a failed chain means:
+# an Int cannot be Nil.
+#
+# output:
+#   Ada lives in London
+#   Nomad lives in (unknown)
+#   the default is only computed when it is needed:
+#     kept: present
+#   computing the default
+#     used: fallback
+#   ada: Ada lives in London
+#   nomad: Nomad has no address
+#   grace: no such person
+#   length of Ada's city: 6, of Nomad's: -1
+#   recovered an index error: true
+#   the shelf is fine: book
+~#
+
+use Collection;
+
+class Address {
+  @city : get : String;
+
+  New(@city : String) {
+  }
+}
+
+class Person {
+  @name : get : String;
+  @address : get : Address;
+
+  New(@name : String, @address : Address) {
+  }
+}
+
+class Shelf {
+  @items : String[];
+
+  New() {
+    @items := ["book", "lamp"];
+  }
+
+  # an index past the end raises an error, which '?->' recovers from
+  method : public : Item(index : Int) ~ String {
+    return @items[index];
+  }
+}
+
+class NilSafety {
+  function : Main(args : String[]) ~ Nil {
+    ada := Person->New("Ada", Address->New("London"));
+    nomad := Person->New("Nomad", Nil);
+
+    # --- ?-> and ?? : a lookup that may find nothing ---
+    # without them: if(person->GetAddress() <> Nil) { ... } at every step.
+    # Here a missing address makes the whole chain Nil, and ?? names the answer
+    everyone := [ada, nomad];
+    each(person in everyone) {
+      city := person?->GetAddress()->GetCity() ?? "(unknown)";
+      "{$(person->GetName())} lives in {$city}"->PrintLine();
+    };
+
+    # --- ?? is lazy: the right side runs only when the left is Nil ---
+    "the default is only computed when it is needed:"->PrintLine();
+    kept := "present" ?? Default();
+    "  kept: {$kept}"->PrintLine();
+    missing : String;
+    used := missing ?? Default();
+    "  used: {$used}"->PrintLine();
+
+    # --- ?? return: look it up, or leave ---
+    people : Map<String, Person> := {"ada": ada, "nomad": nomad};
+    keys := ["ada", "nomad", "grace"];
+    each(key in keys) {
+      "{$key}: {$(Describe(people, key))}"->PrintLine();
+    };
+
+    # --- a chain that ends in a number ---
+    # ?? is what turns "the chain failed" into a number
+    ada_size := ada->GetAddress()?->GetCity()->Size() ?? -1;
+    nomad_size := nomad->GetAddress()?->GetCity()->Size() ?? -1;
+    "length of Ada's city: {$ada_size}, of Nomad's: {$nomad_size}"->PrintLine();
+
+    # --- a fault is recovered too, and remembered ---
+    # ?-> guards against most runtime errors, not only Nil: asking for an
+    # item that is not there gives Nil, and the fault is on record
+    shelf := Shelf->New();
+    third := shelf?->Item(2);
+    if(third = Nil & Runtime->HasError()) {
+      is_index := Runtime->GetErrorKind() = Runtime->ErrorKind->INDEX_OUT_OF_BOUNDS;
+      "recovered an index error: {$is_index}"->PrintLine();
+      Runtime->ClearError();
+    };
+    first := shelf?->Item(0) ?? "(nothing)";
+    "the shelf is fine: {$first}"->PrintLine();
+  }
+
+  # the work of this function is the two guards: each leaves with a reason,
+  # and everything after them can rely on a real person and a real address
+  function : Describe(people : Map<String, Person>, key : String) ~ String {
+    person := people->Find(key) ?? return "no such person";
+    address := person->GetAddress() ?? return "{$(person->GetName())} has no address";
+    return "{$(person->GetName())} lives in {$(address->GetCity())}";
+  }
+
+  function : Default() ~ String {
+    "computing the default"->PrintLine();
+    return "fallback";
+  }
+}

@@ -1,0 +1,110 @@
+#~
+# compile: obc -src using_51.obs
+# run:     obr using_51.obe
+#
+# Anything that must be closed when you are done with it (a file, a socket, a
+# database connection, a lock) is a chance to forget the close on one of the
+# ways out of a method: the early return added later, the error nobody
+# expected. using(name := expression) { ... } closes it for you:
+#
+#   using(file := FileReader->New(path)) {
+#     ...                      # file is closed when this block ends,
+#   };                         # however it ends
+#
+# The block calls the resource's Close() method on every way out: the end of
+# the block, a return, a break or continue that leaves it, and an error that
+# unwinds through it (the error then carries on to whoever catches it). Nested
+# blocks close innermost first. Any class with a Close() method works: the
+# library's files, sockets and database handles, and your own, like Door below.
+#
+# output:
+#   -- the end of the block
+#   open front
+#     inside front
+#   close front
+#   -- a return from inside
+#   open back
+#   close back
+#   found: back
+#   -- an error
+#   open side
+#   close side
+#   caught: the side door is stuck
+#   -- two doors: the inner one closes first
+#   open hall
+#   open office
+#   close office
+#   close hall
+#   -- a break out of a loop
+#   open door 1
+#   close door 1
+#   open door 2
+#   stopped at door 2
+#   close door 2
+~#
+
+# a resource that says what happens to it, so the order is visible
+class Door {
+  @name : get : String;
+
+  New(@name : String) {
+    "open {$@name}"->PrintLine();
+  }
+
+  method : public : Close() ~ Nil {
+    "close {$@name}"->PrintLine();
+  }
+
+  method : public : Jam() ~ Nil {
+    Runtime->Raise(Error->New("the {$@name} door is stuck"));
+  }
+}
+
+class UsingTour {
+  function : Main(args : String[]) ~ Nil {
+    "-- the end of the block"->PrintLine();
+    using(door := Door->New("front")) {
+      "  inside {$(door->GetName())}"->PrintLine();
+    };
+
+    "-- a return from inside"->PrintLine();
+    "found: {$(Find())}"->PrintLine();
+
+    "-- an error"->PrintLine();
+    try {
+      using(door := Door->New("side")) {
+        door->Jam();
+        "never printed"->PrintLine();
+      };
+    }
+    on(e : Error) {
+      "caught: {$(e->GetMessage())}"->PrintLine();
+    };
+
+    "-- two doors: the inner one closes first"->PrintLine();
+    using(hall := Door->New("hall")) {
+      using(office := Door->New("office")) {
+      };
+    };
+
+    "-- a break out of a loop"->PrintLine();
+    each(i : 5) {
+      using(door := Door->New("door {$(i + 1)}")) {
+        if(i = 1) {
+          "stopped at door {$(i + 1)}"->PrintLine();
+          break;
+        };
+      };
+    };
+  }
+
+  # the return runs after the value is computed and before the caller sees it:
+  # the door is closed first, with no close written here
+  function : Find() ~ String {
+    using(door := Door->New("back")) {
+      return door->GetName();
+    };
+
+    return "nothing";
+  }
+}

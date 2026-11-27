@@ -4,7 +4,7 @@ Short, task-oriented guides, each built around a complete program you can compil
 programs are in [`programs/examples/guides/`](../../programs/examples/guides/); every one was
 compiled and run, and the output printed in a guide is what it printed. If you have not yet written a
 first program, start with the [Quick Start](https://www.objeck.org/getting_started.html), then
-the 32 numbered examples in [`programs/deploy`](../../programs/deploy/README.md) that ship with
+the 53 numbered examples in [`programs/deploy`](../../programs/deploy/README.md) that ship with
 every release.
 
 | Guide | Libraries | What you learn |
