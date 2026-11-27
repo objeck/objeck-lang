@@ -142,6 +142,7 @@ class IntermediateEmitter {
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
   void EmitCallIndices(MethodCall* method_call);
   void EmitMethodCallStatement(MethodCall* method_call);
+  void EmitSimpleStatement(SimpleStatement* simple);
   void EmitSystemDirective(SystemStatement* statement);
   int CalculateEntrySpace(SymbolTable* table, int &index, IntermediateDeclarations* parameters, bool is_static);
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
