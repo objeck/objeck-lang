@@ -3485,6 +3485,49 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
 }
 
 /****************************
+ * The first index i for which 'prefix' + i names nothing in the scopes in view.
+ *
+ * An interpolated string and a '+' concatenation each take a hidden local named
+ * by the lowest index not in use, so that the name is fresh where two of them
+ * are live at once (#750). The names in view are therefore always 0..n-1 -- a
+ * scope sees its ancestors' and its own, and each new one extends the run -- so
+ * the first free index is found by doubling and then bisecting. Probing upward
+ * from 0 made the k-th one in a method cost k lookups: 4,000 interpolated
+ * strings in one method took 1.6 s to reach the "Local space has been exceeded"
+ * error. Should the run ever have a gap, the result is still a name nothing in
+ * view has.
+ ****************************/
+static int FirstFreeHiddenIndex(SymbolTable* table, const std::wstring& prefix)
+{
+  auto taken = [&](int index) {
+    return table->GetEntry(prefix + std::to_wstring(index)) != nullptr;
+  };
+
+  if(!taken(0)) {
+    return 0;
+  }
+
+  // taken(low) holds, taken(high) does not
+  int low = 0;
+  int high = 1;
+  while(taken(high)) {
+    low = high;
+    high <<= 1;
+  }
+  while(high - low > 1) {
+    const int middle = low + (high - low) / 2;
+    if(taken(middle)) {
+      low = middle;
+    }
+    else {
+      high = middle;
+    }
+  }
+
+  return high;
+}
+
+/****************************
  * Analyzes a character literal
  ****************************/
 void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth)
@@ -3576,12 +3619,8 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     // A fresh accumulator per interpolated string, for the reason spelled out at
     // the '+' concatenation site below: one slot per method breaks as soon as two
     // of these are live at once, e.g. "{$a}" + Id("{$b}") (#750).
-    std::wstring scope_name;
-    int concat_index = 0;
-    do {
-      scope_name = current_method->GetName() + L":#_var_concat_#" + std::to_wstring(concat_index++);
-    }
-    while(current_table->GetEntry(scope_name));
+    const std::wstring scope_prefix = current_method->GetName() + L":#_var_concat_#";
+    const std::wstring scope_name = scope_prefix + std::to_wstring(FirstFreeHiddenIndex(current_table, scope_prefix));
 
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
     current_table->AddEntry(entry, true);
@@ -12427,12 +12466,8 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
         // into, and the outer then appends into the inner's object. That silently
         // duplicated values and could drop an operand outright -- issue #746's
         // sibling, #750. Probe for an unused name so every node gets a fresh slot.
-        std::wstring scope_name;
-        int concat_index = 0;
-        do {
-          scope_name = current_method->GetName() + L":#_add_concat_#" + std::to_wstring(concat_index++);
-        }
-        while(current_table->GetEntry(scope_name));
+        const std::wstring scope_prefix = current_method->GetName() + L":#_add_concat_#";
+        const std::wstring scope_name = scope_prefix + std::to_wstring(FirstFreeHiddenIndex(current_table, scope_prefix));
 
         SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
         current_table->AddEntry(entry, true);
