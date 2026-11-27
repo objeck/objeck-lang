@@ -22,8 +22,8 @@ mutator, runs the method.
                  that both found the dispatcher missing each started one, and the first
                  pipe and its thread were left behind.
 
-With OBJECK_SIGNAL_TEST_FAULT=wake or =thread the dispatcher cannot be started (its
-wake-up cannot be made, its thread cannot start): SetSignal for SIGINT or SIGTERM must
+With OBJECK_SIGNAL_TEST_FAULT=wake, =thread or =alloc the dispatcher cannot be started (its
+wake-up cannot be made, its thread cannot start, its start runs out of memory): SetSignal for SIGINT or SIGTERM must
 then fail, saying so, rather than install a handler that would run the method inside
 the operating system's signal handler.
 ~#

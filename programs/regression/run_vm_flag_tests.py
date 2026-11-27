@@ -3125,7 +3125,11 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
     # OBJECK_SIGNAL_TEST_FAULT makes the wake-up, or the dispatcher thread, fail to
     # start. SetSignal for SIGINT/SIGTERM then fails and says so; it used to go on and
     # install a handler that ran the Objeck method inside the OS signal handler.
-    for stage in ("wake", "thread"):
+    # "alloc" is the thread's start running out of memory (std::bad_alloc, where "thread"
+    # is std::system_error): only std::system_error was handled, so that failure left the
+    # dispatcher's start as an exception, with the wake-up pipe (or event) still open,
+    # and ended the program as "out of memory" instead of failing the one call.
+    for stage in ("wake", "thread", "alloc"):
         fault_env = dict(env)
         fault_env["OBJECK_SIGNAL_TEST_FAULT"] = stage
         rc, out, err = run([obr, dest], env=fault_env, cwd=SCRIPT_DIR)

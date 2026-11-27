@@ -290,9 +290,10 @@ static void SignalDispatchLoop(int wake)
   }
 }
 
-// Test hook: OBJECK_SIGNAL_TEST_FAULT=wake makes the wake-up fail to be created and =thread makes the
-// dispatcher thread fail to start, the two failures StartSignalDispatch has to survive and that cannot
-// otherwise be produced on demand. Read only while the dispatcher is being started.
+// Test hook: OBJECK_SIGNAL_TEST_FAULT=wake makes the wake-up fail to be created, =thread makes the
+// dispatcher thread fail to start (std::system_error) and =alloc makes its start run out of memory
+// (std::bad_alloc), the failures StartSignalDispatch has to survive and that cannot otherwise be
+// produced on demand. Read only while the dispatcher is being started.
 static bool SignalDispatchFault(const char* stage)
 {
 #ifdef _WIN32
@@ -304,6 +305,42 @@ static bool SignalDispatchFault(const char* stage)
   return value && !strcmp(value, stage);
 #endif
 }
+
+// The dispatcher's wake-up (a pipe, or on Windows an event) while StartSignalDispatch owns it: closed
+// when the start is given up, however it is left, and kept only once the dispatcher has it (Release).
+// The thread's start can fail with more than std::system_error -- std::thread allocates its state, so
+// std::bad_alloc -- and the one handler there was let any other exception leave with the pipe open.
+struct SignalWakeOwner {
+#ifdef _WIN32
+  HANDLE wake_event = nullptr;
+#else
+  int wake_pipe[2] = {-1, -1};
+#endif
+  bool owned = true;
+
+  SignalWakeOwner() {}
+  SignalWakeOwner(const SignalWakeOwner&) = delete;
+  SignalWakeOwner& operator=(const SignalWakeOwner&) = delete;
+
+  ~SignalWakeOwner() {
+    if(!owned) {
+      return;
+    }
+#ifdef _WIN32
+    if(wake_event) {
+      CloseHandle(wake_event);
+    }
+#else
+    for(int i = 0; i < 2; ++i) {
+      if(wake_pipe[i] != -1) {
+        close(wake_pipe[i]);
+      }
+    }
+#endif
+  }
+
+  void Release() { owned = false; }
+};
 
 // Creates the wake-up and starts the dispatcher, once. Two VM threads registering their first SIGINT
 // and SIGTERM handlers at the same moment both found the dispatcher missing and each made a wake-up and
@@ -317,58 +354,56 @@ static bool StartSignalDispatch()
   if(signal_dispatch_ready.load()) {
     return true;
   }
+  SignalWakeOwner wake;
 #ifdef _WIN32
-  HANDLE wake_event = SignalDispatchFault("wake") ? nullptr : CreateEvent(nullptr, FALSE, FALSE, nullptr);
-  if(!wake_event) {
+  wake.wake_event = SignalDispatchFault("wake") ? nullptr : CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  if(!wake.wake_event) {
     return false;
   }
 #else
-  int wake_pipe[2] = {-1, -1};
-  if(SignalDispatchFault("wake") || pipe(wake_pipe) != 0) {
+  if(SignalDispatchFault("wake") || pipe(wake.wake_pipe) != 0) {
     return false;
   }
   // close-on-exec is best effort: a pipe end inherited across exec is harmless, so a failure here is tolerated
   // (Coverity CID 1689664). The write end MUST be non-blocking: the signal handler writes to it, and a blocking
   // write there could hang the process, so a failure to set that flag fails the dispatcher like pipe() does.
   for(int i = 0; i < 2; ++i) {
-    const int fd_flags = fcntl(wake_pipe[i], F_GETFD);
+    const int fd_flags = fcntl(wake.wake_pipe[i], F_GETFD);
     if(fd_flags != -1) {
-      (void)fcntl(wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
+      (void)fcntl(wake.wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
     }
   }
-  const int status_flags = fcntl(wake_pipe[1], F_GETFL);
-  if(status_flags == -1 || fcntl(wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
-    close(wake_pipe[0]);
-    close(wake_pipe[1]);
+  const int status_flags = fcntl(wake.wake_pipe[1], F_GETFL);
+  if(status_flags == -1 || fcntl(wake.wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
     return false;
   }
 #endif
-  // a thread that cannot be started leaves no wake-up behind (the pipe or event leaked before)
+  // A thread that cannot be started leaves no wake-up behind (the pipe or event leaked before): the
+  // owner closes it. Whatever the start throws is a dispatcher that did not start, and is answered as
+  // one (false) rather than thrown through the trap that asked for the handler.
   try {
     if(SignalDispatchFault("thread")) {
       throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
     }
+    if(SignalDispatchFault("alloc")) {
+      throw std::bad_alloc();
+    }
 #ifdef _WIN32
-    std::thread(SignalDispatchLoop, wake_event).detach();
+    std::thread(SignalDispatchLoop, wake.wake_event).detach();
 #else
-    std::thread(SignalDispatchLoop, wake_pipe[0]).detach();
+    std::thread(SignalDispatchLoop, wake.wake_pipe[0]).detach();
 #endif
   }
-  catch(const std::system_error&) {
-#ifdef _WIN32
-    CloseHandle(wake_event);
-#else
-    close(wake_pipe[0]);
-    close(wake_pipe[1]);
-#endif
+  catch(const std::exception&) {
     return false;
   }
 #ifdef _WIN32
-  signal_wake_event = wake_event;
+  signal_wake_event = wake.wake_event;
 #else
-  signal_wake_pipe[0] = wake_pipe[0];
-  signal_wake_pipe[1] = wake_pipe[1];
+  signal_wake_pipe[0] = wake.wake_pipe[0];
+  signal_wake_pipe[1] = wake.wake_pipe[1];
 #endif
+  wake.Release();
   signal_dispatch_ready.store(true);
   return true;
 }
