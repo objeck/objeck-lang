@@ -6376,6 +6376,15 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
         if(calling_type->GetType() == CLASS_TYPE &&
            IsClassEnumParameterMatch(calling_type, method_type) &&
            calling_type->GetDimension() == method_type->GetDimension()) {
+          // An array of a generic is matched by its type arguments too, as one
+          // value of it is below. Without this a Vector[]<String> matched a
+          // Vector[]<IntRef> parameter: two methods that differ only there
+          // could not be told apart, and the one picked was then refused for
+          // the mismatch ("Incompatible generic type arguments").
+          if((calling_type->HasGenerics() || method_type->HasGenerics()) &&
+             !CheckGenericEqualTypes(calling_type, method_type, calling_param, true, false)) {
+            return -1;
+          }
           return 0;
         }
         // basic arrays
@@ -7254,7 +7263,8 @@ bool ContextAnalyzer::GenericArgumentsMayFit(Type* param, Type* arg, Class* klas
  * a Vector<String> for a Vector<IntRef>.
  * Anything this cannot tell -- a function type, a class it does not find (a
  * type parameter of the class the call stands in), the classes of two arrays
- * -- counts as passable, so the answer errs towards the candidate.
+ * that are not one generic class -- counts as passable, so the answer errs
+ * towards the candidate.
  *
  * The type arguments of a generic used to count as passable too. With
  * 'New(a : T, b : Vector<String>, c : Vector<IntRef>)' and
@@ -7291,16 +7301,12 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
   const bool param_class = param->GetType() == CLASS_TYPE;
   const bool arg_class = arg->GetType() == CLASS_TYPE;
 
-  // arrays: of the same primitive, or of classes. The classes are not
-  // compared, and neither are their type arguments: the resolver takes a
-  // Vector[]<String> for a Vector[]<IntRef> parameter when it picks a method
-  // (MatchCallingParameter) and reports the difference afterwards, so setting
-  // such a constructor aside here would only change which error is shown.
-  if(arg_dimension > 0) {
-    if(param_class || arg_class) {
-      return param_class && arg_class;
-    }
-    return param->GetType() == arg->GetType();
+  // arrays: of the same primitive, or of classes. Of two class arrays only
+  // the type arguments of one generic class are compared (below), as the
+  // resolver compares them (MatchCallingParameter).
+  const bool is_array = arg_dimension > 0;
+  if(is_array && !(param_class && arg_class)) {
+    return !param_class && !arg_class && param->GetType() == arg->GetType();
   }
 
   // the classes, resolved on copies (resolving renames a type in place)
@@ -7335,6 +7341,11 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
     if(!arg_known) {
       return true;
     }
+  }
+
+  if(is_array) {
+    const bool same_class = (param_klass || param_lib_klass) && param_klass == arg_klass && param_lib_klass == arg_lib_klass;
+    return !same_class || GenericArgumentsMayFit(param_type, arg_type, param_klass, param_lib_klass, klass);
   }
 
   EntryType held;

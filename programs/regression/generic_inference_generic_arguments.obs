@@ -15,10 +15,10 @@ rule the call is resolved by, at every depth.
 
 Each constructor is selected in turn by the type arguments alone: of a Vector,
 and of a Map's value that is itself a Vector, also beside a parameter that is
-an array of Vectors (whose own type arguments the resolver does not tell
-apart, so they are not compared here either). Two constructors that can both
-be called and disagree are still refused: bad_generic_infer_generic_conflict.obs.
-Exits 1 on a mismatch.
+an array of Vectors (constructors that differ in the array's own type
+arguments: generic_array_argument_overloads.obs). Two constructors that can
+both be called and disagree are still refused:
+bad_generic_infer_generic_conflict.obs. Exits 1 on a mismatch.
 ~#
 use Collection;
 
