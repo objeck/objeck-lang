@@ -5835,6 +5835,64 @@ static std::wstring SocketErrorText(const SocketError& error)
   return SocketErrorText(error.code);
 }
 
+//
+// The handle word of a TCPSocket or TCPSocketServer object, instance[0]: the
+// descriptor, or -1 when the socket is not open. One thread closes a socket
+// while another is in Accept() or a read on it -- that is how a server is
+// stopped and how a blocked read is ended -- so the word is read and written
+// by different threads with nothing else ordering them. Every trap goes
+// through these three: a relaxed atomic load or store is the one instruction
+// the plain access was, and says what the access is (the value is either the
+// descriptor or -1, never a mixture). ThreadSanitizer reported the plain pair
+// in the v2026.11.4 soak (socket_server_stop_exit_time: SockTcpAccept against
+// SockTcpClose).
+//
+// TakeSocketHandle is what Close() uses: it swaps -1 in and returns what was
+// there, so of two threads closing one socket exactly one gets the descriptor
+// and closes it. With a plain read and a plain store both could read it, and
+// the second close() then closed whatever the process had opened under that
+// number in between.
+//
+// What this does not give: a thread that has loaded the descriptor can still
+// make its system call after another thread's Close() has released the number.
+// The TLS and DTLS classes keep a counted context for that (ListenerUse,
+// SocketCtxUse); a plain socket's word is only a descriptor.
+//
+// The whole word: a Windows SOCKET is 64 bits wide, so the descriptor is taken from
+// this, and only the "is it open" test from SocketHandle's long (32 bits there).
+static inline size_t SocketWord(const size_t* instance)
+{
+#if defined(_MSC_VER)
+  return (size_t)ReadNoFence64((const volatile LONG64*)&instance[0]);
+#else
+  return __atomic_load_n(&instance[0], __ATOMIC_RELAXED);
+#endif
+}
+
+// open when > -1, the test every trap makes
+static inline long SocketHandle(const size_t* instance)
+{
+  return (long)SocketWord(instance);
+}
+
+static inline void SetSocketHandle(size_t* instance, size_t handle)
+{
+#if defined(_MSC_VER)
+  WriteNoFence64((volatile LONG64*)&instance[0], (LONG64)handle);
+#else
+  __atomic_store_n(&instance[0], handle, __ATOMIC_RELAXED);
+#endif
+}
+
+static inline size_t TakeSocketHandle(size_t* instance)
+{
+#if defined(_MSC_VER)
+  return (size_t)_InterlockedExchange64((volatile LONG64*)&instance[0], (LONG64)-1);
+#else
+  return __atomic_exchange_n(&instance[0], (size_t)-1, __ATOMIC_ACQ_REL);
+#endif
+}
+
 bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const long port = (long)PopInt(op_stack, stack_pos);
@@ -5869,11 +5927,11 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
 	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
 	       << (long)sock << L") #" << std::endl;
 #endif
-    instance[0] = sock;
+    SetSocketHandle(instance, (size_t)sock);
   }
   else if(instance) {
     // no address: not open (the handle was left at 0, which read as open)
-    instance[0] = (size_t)-1;
+    SetSocketHandle(instance, (size_t)-1);
     RecordSocketError(SOCKET_INVALID_ARGUMENT);
   }
 
@@ -5924,7 +5982,7 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
       << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
       << L") #" << std::endl;
 #endif
-    instance[0] = (long)server;
+    SetSocketHandle(instance, (size_t)(long)server);
     // @port: the port bound, which for a port of 0 the system chose
     if(bound) {
       const int bound_port = BoundPort(server);
@@ -5972,7 +6030,7 @@ bool TrapProcessor::SockTcpBindAddress(StackProgram* program, size_t* inst, size
     std::wcout << L"# socket bind: address='" << BytesToUnicode(host) << L"'; port=" << port
       << L"; addr=" << server << L"(" << (long)server << L") #" << std::endl;
 #endif
-    instance[0] = (long)server;
+    SetSocketHandle(instance, (size_t)(long)server);
     // @port: the port bound, which for a port of 0 the system chose
     if((long)server >= 0) {
       const int bound_port = BoundPort(server);
@@ -5990,8 +6048,8 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
   long backlog = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(instance && (long)instance[0] > -1) {
-    SOCKET server = (SOCKET)instance[0];
+  if(instance && SocketHandle(instance) > -1) {
+    SOCKET server = (SOCKET)SocketWord(instance);
 #ifdef _DEBUG
     std::wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance
       << L"(" << (size_t)instance << L")" << L"; addr=" << server << L"("
@@ -6019,8 +6077,8 @@ bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& 
    const bool is_write = (bool)PopInt(op_stack, stack_pos);
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-   if(instance && (long)instance[0] > -1) {
-      SOCKET sock = (SOCKET)instance[0];
+   if(instance && SocketHandle(instance) > -1) {
+      SOCKET sock = (SOCKET)SocketWord(instance);
       const int ready = socket_ready_for_io(sock, is_write);
       RecordSocketError(ready < 0 ? CurrentSocketError() : 0);
       PushInt(ready, op_stack, stack_pos);
@@ -6034,8 +6092,10 @@ bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& 
 bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    SOCKET server = (SOCKET)instance[0];
+  // read once: Close() on another thread stores -1 in the word (see SocketHandle)
+  const size_t handle = instance ? SocketWord(instance) : (size_t)-1;
+  if((long)handle > -1) {
+    SOCKET server = (SOCKET)handle;
     char client_address[SMALL_BUFFER_MAX] = {0};
     int client_port;
     // accept() blocks indefinitely; park so a stop-the-world collection elsewhere
@@ -6084,17 +6144,19 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    SOCKET sock = (SOCKET)instance[0];
+  // taken, not read: of two threads closing this socket one closes the descriptor
+  const size_t handle = instance ? TakeSocketHandle(instance) : (size_t)-1;
+  if((long)handle > -1) {
+    SOCKET sock = (SOCKET)handle;
 #ifdef _DEBUG
     std::wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << std::endl;
 #endif  
-    // -1, not 0: every socket guard in this file tests `(long)instance[0] > -1`,
+    // -1, not 0: every socket guard in this file tests `SocketHandle(instance) > -1`,
     // and the open path already stores INVALID_SOCKET/-1 on failure. Writing 0
     // here left a closed socket reading as *open*, so IsConnected() answered
     // true afterwards and later reads/writes/closes fell through to handle 0 --
     // harmless on Windows (WSAENOTSOCK), but fd 0 is stdin on POSIX.
-    instance[0] = (size_t)-1;
+    // (TakeSocketHandle above stored the -1.)
     IPSocket::Close(sock);
   }
 
@@ -6105,8 +6167,8 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (long)instance[0] > -1) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(array && instance && SocketHandle(instance) > -1) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
 
 #ifdef _DEBUG
     std::wcout << L"# socket write std::string: instance=" << instance << L"(" << (size_t)instance << L")"
@@ -6128,9 +6190,9 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (long)instance[0] > -1) {
+  if(array && instance && SocketHandle(instance) > -1) {
     char buffer[MID_BUFFER_MAX] = {0};
-    SOCKET sock = (SOCKET)instance[0];
+    SOCKET sock = (SOCKET)SocketWord(instance);
     const TcpReadLimits limits(instance);
     int status;
 
@@ -6414,15 +6476,25 @@ static void SocketCtxRelease(Socket* sctx)
 // never connected, or it has been closed). ShutdownSend() copied the pointer out of the object and
 // then waited, for the collector and for the TLS library; Close() on another thread deleted the
 // context meanwhile, and the same held for a read or a write that Close() was meant to end.
+//
+// IsOpen() is the object's "connected" word, instance[3], read under the same hold of
+// tls_context_lock as the context. The traps used to test instance[3] after the constructor had
+// returned, outside the lock, while Close() on another thread cleared it inside (SocketCtxDetach):
+// harmless, since the counted context is what keeps the trap safe, but an unsynchronized read of a
+// word being written (ThreadSanitizer, v2026.11.4 soak, tls_close_races). The two words are stored
+// together under the lock (SocketCtxDetach, SocketCtxInstall), so a trap now sees a context and
+// its flag from the same moment.
 template<typename Socket>
 class SocketCtxUse {
   Socket* sctx;
+  bool open;
 
  public:
-  explicit SocketCtxUse(const size_t* instance) : sctx(nullptr) {
+  explicit SocketCtxUse(const size_t* instance) : sctx(nullptr), open(false) {
     if(instance) {
       std::lock_guard<std::mutex> guard(tls_context_lock);
       sctx = (Socket*)instance[0];
+      open = instance[3] != 0;
       if(sctx) {
         ++sctx->users;
       }
@@ -6439,6 +6511,7 @@ class SocketCtxUse {
   SocketCtxUse& operator=(const SocketCtxUse&) = delete;
 
   Socket* Get() const { return sctx; }
+  bool IsOpen() const { return open; }
 };
 
 typedef SocketCtxUse<SecureSocketCtx> TlsSocketUse;
@@ -6447,6 +6520,18 @@ typedef SocketCtxUse<DtlsSocketCtx> DtlsSocketUse;
 // Close(), first half: takes the context out of the socket object, which from here on has none, and
 // marks it closed. The caller is counted as a user until SocketCtxFinish. Not a wait: call it before
 // parking, while the object can be written.
+// A connect's result goes into the socket object: the new context and the "connected" word, or
+// four zeros when the open failed. Under tls_context_lock, as SocketCtxDetach's stores are, because
+// SocketCtxUse reads both words under it on other threads.
+template<typename Socket>
+static void SocketCtxInstall(size_t* instance, Socket* sctx)
+{
+  std::lock_guard<std::mutex> guard(tls_context_lock);
+  instance[0] = (size_t)sctx;
+  instance[1] = instance[2] = 0;
+  instance[3] = sctx ? 1 : 0;
+}
+
 template<typename Socket>
 static Socket* SocketCtxDetach(size_t* instance)
 {
@@ -6805,12 +6890,8 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     // The old context is freed whatever happens next. A failed open used to
     // leave instance[0] pointing at it and instance[3] still claiming open, so
     // the next read, write or Close used, or freed, the context a second time.
-    instance[0] = instance[1] = instance[2] = instance[3] = 0;
+    SocketCtxInstall(instance, is_open ? sctx : nullptr);
     if(is_open) {
-      instance[0] = (size_t)sctx;
-      instance[1] = 0;
-      instance[2] = 0;
-      instance[3] = 1;
 
 #ifdef _DEBUG
       std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
@@ -6922,7 +7003,7 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
   if(array && instance) {
     TlsSocketUse use(instance);
     SecureSocketCtx* sctx = use.Get();
-    if(instance[3] && sctx) {
+    if(use.IsOpen() && sctx) {
       ClearTlsError();
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
       // a TLS write can block on a full send buffer; park (out is C heap)
@@ -6944,7 +7025,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
     TlsSocketUse use(instance);
     SecureSocketCtx* sctx = use.Get();
     int status;
-    if(instance[3] && sctx) {
+    if(use.IsOpen() && sctx) {
       ClearTlsError();
       const size_t capacity = array[0];
       size_t index = 0;
@@ -7624,8 +7705,8 @@ bool TrapProcessor::SockTcpSetKeepAlive(StackProgram* program, size_t* inst, siz
 {
   const bool enable = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    PushInt(SocketOptionResult(IPSocket::SetKeepAlive((SOCKET)instance[0], enable)), op_stack, stack_pos);
+  if(instance && SocketHandle(instance) > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetKeepAlive((SOCKET)SocketWord(instance), enable)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7637,8 +7718,8 @@ bool TrapProcessor::SockTcpSetNoDelay(StackProgram* program, size_t* inst, size_
 {
   const bool enable = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    PushInt(SocketOptionResult(IPSocket::SetNoDelay((SOCKET)instance[0], enable)), op_stack, stack_pos);
+  if(instance && SocketHandle(instance) > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetNoDelay((SOCKET)SocketWord(instance), enable)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7650,10 +7731,10 @@ bool TrapProcessor::SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, s
 {
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && SocketHandle(instance) > -1) {
     // remembered for a read that has a deadline (TcpReadLimits)
     instance[5] = (size_t)(long)(ms > 0 ? ms : -1);
-    PushInt(SocketOptionResult(IPSocket::SetRecvTimeout((SOCKET)instance[0], ms)), op_stack, stack_pos);
+    PushInt(SocketOptionResult(IPSocket::SetRecvTimeout((SOCKET)SocketWord(instance), ms)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7665,8 +7746,8 @@ bool TrapProcessor::SockTcpSetSendTimeout(StackProgram* program, size_t* inst, s
 {
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    PushInt(SocketOptionResult(IPSocket::SetSendTimeout((SOCKET)instance[0], ms)), op_stack, stack_pos);
+  if(instance && SocketHandle(instance) > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetSendTimeout((SOCKET)SocketWord(instance), ms)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7701,7 +7782,7 @@ bool TrapProcessor::SockTcpSetDeadline(StackProgram* program, size_t* inst, size
     if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocket") {
       TlsSocketUse use(instance);
       SecureSocketCtx* sctx = use.Get();
-      if(sctx && instance[3]) {
+      if(sctx && use.IsOpen()) {
         sctx->deadline_ms = deadline_ms;
       }
     }
@@ -7729,7 +7810,7 @@ bool TrapProcessor::SockTcpShutdownSend(StackProgram* program, size_t* inst, siz
       // rather than freeing the context under it (see TlsSocketUse)
       TlsSocketUse use(instance);
       SecureSocketCtx* sctx = use.Get();
-      if(sctx && instance[3]) {
+      if(sctx && use.IsOpen()) {
         // the close_notify alert is a write, which can block on a full send buffer;
         // park for it (sctx is C heap)
         MemoryManager::BeginBlocking();
@@ -7737,8 +7818,8 @@ bool TrapProcessor::SockTcpShutdownSend(StackProgram* program, size_t* inst, siz
         MemoryManager::EndBlocking();
       }
     }
-    else if((long)instance[0] > -1) {
-      IPSocket::ShutdownSend((SOCKET)instance[0]);
+    else if(SocketHandle(instance) > -1) {
+      IPSocket::ShutdownSend((SOCKET)SocketWord(instance));
     }
   }
   return true;
@@ -7748,8 +7829,8 @@ bool TrapProcessor::SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t
 {
   const int bytes = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    PushInt(SocketOptionResult(IPSocket::SetRecvBufSize((SOCKET)instance[0], bytes)), op_stack, stack_pos);
+  if(instance && SocketHandle(instance) > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetRecvBufSize((SOCKET)SocketWord(instance), bytes)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7761,8 +7842,8 @@ bool TrapProcessor::SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t
 {
   const int bytes = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    PushInt(SocketOptionResult(IPSocket::SetSendBufSize((SOCKET)instance[0], bytes)), op_stack, stack_pos);
+  if(instance && SocketHandle(instance) > -1) {
+    PushInt(SocketOptionResult(IPSocket::SetSendBufSize((SOCKET)SocketWord(instance), bytes)), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -10934,7 +11015,7 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && SocketHandle(instance) > -1) {
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -10947,8 +11028,8 @@ bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size
 bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(instance && SocketHandle(instance) > -1) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
     const TcpReadLimits limits(instance);
     int status;
     int error;
@@ -10973,8 +11054,8 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(array && instance && SocketHandle(instance) > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
     const TcpReadLimits limits(instance);
     // blocking read; park for the duration. recv() lands in a temp C buffer (a
     // parked thread's GC array can be moved by promotion mid-read), and the
@@ -11007,8 +11088,8 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(array && instance && SocketHandle(instance) > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
     const TcpReadLimits limits(instance);
     // allocate temporary buffer
     char* byte_buffer = new char[(size_t)num + UTF8_TAIL_MAX + 1];
@@ -11052,8 +11133,8 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
 {
   INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(instance && SocketHandle(instance) > -1) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
     // send() can block on a full buffer; park so STW GC elsewhere can proceed
     int error;
     MemoryManager::BeginBlocking();
@@ -11077,8 +11158,8 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(array && instance && SocketHandle(instance) > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
     // send() can block on a full buffer; park for the duration. Data is staged
     // in a temp C buffer first — a parked thread's GC array can be moved (and
     // its young-gen slot reused) by promotion mid-send.
@@ -11106,8 +11187,8 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SOCKET sock = (SOCKET)instance[0];
+  if(array && instance && SocketHandle(instance) > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+    SOCKET sock = (SOCKET)SocketWord(instance);
 
     // The characters from 'offset', at most 'num' of them, up to the first zero (see SockUdpOutCharAry:
     // offset and num were ignored). Convert to bytes and write out (buffer_out is C heap, safe across a park)
@@ -12644,12 +12725,8 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     // The old context is freed whatever happens next. A failed open used to
     // leave instance[0] pointing at it and instance[3] still claiming open, so
     // the next read, write or Close used, or freed, the context a second time.
-    instance[0] = instance[1] = instance[2] = instance[3] = 0;
+    SocketCtxInstall(instance, is_open ? sctx : nullptr);
     if(is_open) {
-      instance[0] = (size_t)sctx;
-      instance[1] = 0;
-      instance[2] = 0;
-      instance[3] = 1;
 
 #ifdef _DEBUG
       std::wcout << L"# dtls socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
@@ -12759,7 +12836,7 @@ bool TrapProcessor::SockDtlsOutString(StackProgram* program, size_t* inst, size_
   if(array && instance) {
     DtlsSocketUse use(instance);
     DtlsSocketCtx* sctx = use.Get();
-    if(instance[3] && sctx) {
+    if(use.IsOpen() && sctx) {
       ClearDtlsError();
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
       // a DTLS write can block; park (out is C heap)
@@ -12781,7 +12858,7 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
     DtlsSocketUse use(instance);
     DtlsSocketCtx* sctx = use.Get();
     int status;
-    if(instance[3] && sctx) {
+    if(use.IsOpen() && sctx) {
       ClearDtlsError();
       const size_t capacity = array[0];
       size_t index = 0;

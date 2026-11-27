@@ -1,0 +1,152 @@
+#~
+One thread closes a plain TCP socket while another is using it
+
+A TCPSocket or TCPSocketServer object holds its descriptor in one word, -1 once it is
+closed. Closing a socket from another thread is how a server's accept loop is stopped and
+how a blocked read is ended, so that word is read by one thread while another stores -1
+in it. The VM read and wrote it as a plain word: ThreadSanitizer reported SockTcpAccept
+against SockTcpClose in the v2026.11.4 soak. And Close() read the descriptor, then stored
+-1, then closed it, so two threads closing one socket could both read the descriptor and
+both close it -- the second close() landing on whatever the process had opened under that
+number in between.
+
+The word is now loaded and stored atomically, and Close() takes the descriptor out with
+one exchange, so exactly one of two closers closes it.
+
+Three shapes, each many times, with no sleeps and no shared flags of the test's own (so a
+ThreadSanitizer run of this file, tools/tsan/run_tsan.sh, has only the VM to report on):
+
+1. a thread in Accept() while Main closes the listener: the thread's Accept() answers Nil
+   or a socket that is not open, and the thread ends;
+2. two threads close one connected socket at the same moment, while Main opens and closes
+   sockets of its own: a descriptor closed twice would close one of those, and its
+   write would then fail;
+3. one thread half-closes a connected socket (CloseGracefully sends the FIN and waits for
+   the peer) while another closes it.
+
+The assertions are that every thread ends, that Main's own sockets keep working, and
+the exit status.
+~#
+use System.Concurrency, System.IO.Net;
+
+# accepts until its listener is closed under it; closes whatever it accepted
+class Acceptor from Thread {
+	@server : TCPSocketServer;
+
+	New(server : TCPSocketServer) {
+		Parent("acceptor");
+		@server := server;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client = Nil) {
+				return;
+			};
+			if(<>client->IsOpen()) {
+				return;
+			};
+			client->Close();
+		};
+	}
+}
+
+class Closer from Thread {
+	@socket : TCPSocket;
+	@graceful : Bool;
+
+	New(socket : TCPSocket, graceful : Bool) {
+		Parent("closer");
+		@socket := socket;
+		@graceful := graceful;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		if(@graceful) {
+			@socket->CloseGracefully(50);
+		}
+		else {
+			@socket->Close();
+		};
+	}
+}
+
+class SocketCloseRaces {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		# 1. Close() under Accept()
+		for(i := 0; i < 40; i += 1;) {
+			server := TCPSocketServer->New(0);
+			if(<>server->Listen(4)) {
+				"FAIL: listen (accept race {$i})"->PrintLine();
+				Runtime->Exit(1);
+			};
+			acceptor := Acceptor->New(server);
+			acceptor->Execute(Nil);
+			# every other round a connection first, so the thread is between two Accept() calls
+			if(i % 2 = 0) {
+				probe := TCPSocket->New("127.0.0.1", server->GetPort());
+				probe->Close();
+			};
+			server->Close();
+			acceptor->Join();
+		};
+		"ok: 40 listeners closed under their accept threads"->PrintLine();
+
+		# 2 and 3. two threads end one connected socket
+		listener := TCPSocketServer->New(0);
+		if(<>listener->Listen(16)) {
+			"FAIL: listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		port := listener->GetPort();
+
+		for(i := 0; i < 60; i += 1;) {
+			shared := TCPSocket->New("127.0.0.1", port);
+			peer := listener->Accept();
+			if(<>shared->IsOpen() | peer = Nil) {
+				"FAIL: connect (close race {$i})"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			first := Closer->New(shared, i % 3 = 2);
+			second := Closer->New(shared, false);
+			first->Execute(Nil);
+			second->Execute(Nil);
+
+			# Main's own connection, opened and used while the two close: a descriptor
+			# closed twice is likely to be this one's
+			mine := TCPSocket->New("127.0.0.1", port);
+			mine_peer := listener->Accept();
+			if(<>mine->IsOpen() | mine_peer = Nil) {
+				"FAIL: connect (own socket {$i})"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			first->Join();
+			second->Join();
+
+			mine->WriteString("ping\r\n");
+			line := mine_peer->ReadLine();
+			if(line = Nil | <>line->Equals("ping")) {
+				failures += 1;
+			};
+			mine->Close();
+			mine_peer->Close();
+			peer->Close();
+
+			if(shared->IsOpen()) {
+				failures += 1;
+			};
+		};
+		listener->Close();
+
+		if(failures > 0) {
+			"FAIL: {$failures} round(s) lost a socket of their own or left the shared one open"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"ok: 60 sockets closed by two threads at once, Main's own sockets unharmed"->PrintLine();
+	}
+}
