@@ -80,6 +80,7 @@ class IntermediateEmitter {
   void EmitCriticalUnlocks(size_t keep_depth, Statement* statement);
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;
+  void EmitPostStatements();
   
   // emit operations
   void EmitStrings();

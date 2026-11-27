@@ -115,6 +115,9 @@ void SelectArrayTree::Emit()
       
   emitter->EmitExpression(select->GetAssignment()->GetExpression());
   // the selector, an Int, Char or enum, waits in the and/or temporary
+  // the subject's 'i++' runs before the dispatch, on the way to every arm; and
+  // before the store, as an update may use the temporary itself ('a[x ?? 0]++')
+  emitter->EmitPostStatements();
   emitter->EmitAndOrStore(select, nullptr, STOR_INT_VAR, INT_PARM);
 
   int end_label = ++emitter->unconditional_label;
@@ -4226,6 +4229,29 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 }
 
 /****************************
+ * Emits every postfix update ('i++', 'i--') that is waiting.
+ *
+ * An update is queued when its variable is read and emitted later, so the
+ * expression it is written in sees the value from before it. 'Later' has to be
+ * a point the program reaches whenever it read the variable: a subject that is
+ * dispatched on, or an operand that is evaluated only on one path, emits its
+ * updates here, before control divides or rejoins. Left in the queue, an update
+ * went into whichever branch was emitted next and ran only when that branch did
+ * (`match i++ { 0 => .., 1 => .. }` incremented for 0 and for no other value).
+ *
+ * The updates are assignments: they leave the operand stack as they found it,
+ * so a value the expression has already pushed stays where it is.
+ ****************************/
+void IntermediateEmitter::EmitPostStatements()
+{
+  while(!post_statements.empty()) {
+    OperationAssignment* post_statement = post_statements.front();
+    post_statements.pop();
+    EmitAssignment(post_statement);
+  }
+}
+
+/****************************
  * Translates an 'select' statement
  ****************************/
 void IntermediateEmitter::EmitSelect(Select* select_stmt)
@@ -4250,6 +4276,8 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     // emit code
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
+    // the subject's 'i++' runs before the test, on the way to every arm
+    EmitPostStatements();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, other_label, false));
@@ -4324,6 +4352,8 @@ void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
 
   // evaluate select expression; result consumed by JMP_TABLE
   EmitExpression(select_stmt->GetAssignment()->GetExpression());
+  // the subject's 'i++' runs before the dispatch, on the way to every arm
+  EmitPostStatements();
 
   // JMP_TABLE header: base(min_val), range, default_label
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
