@@ -18,7 +18,8 @@ or `perf stat -x, -e instructions:u`), --ir adds an instruction count, which doe
   compile   obc on generated pathological sources (gen_compile.py) and, with --corpus DIR, on every .obs
             of a directory (the regression corpus)
 
-Options: --runs N, --ir, --modes default,jit1,nojit (coll, json), --only SUBSTR, --json-out FILE
+Options: --runs N, --ir, --modes default,jit1,nojit (coll, json), --only SUBSTR, --json-out FILE,
+         --coll-sizes 1e3,1e4,1e5 (default up to 1e6), --coll-total N (n * repetitions, default 2e6)
 """
 import json, os, re, resource, shutil, subprocess, sys, time
 
@@ -230,9 +231,9 @@ COLL_CAP = {"str_concat_new": 100000}
 def do_coll(ctx, opts, results):
     obe = compile_obs(ctx, "coll_bench", "gen_collect")
     total = int(float(opts.get("coll_total", 2e6)))
-    sizes = [1000, 10000, 100000, 1000000]
+    sizes = [int(float(x)) for x in opts.get("coll_sizes", "1e3,1e4,1e5,1e6").split(",")]
     print("== strings and collections: ns of CPU per element at n = 1e3 .. 1e6 (best of %d); ratio = largest / smallest" % ctx.runs)
-    print("  %-20s %-7s %9s %9s %9s %9s %7s" % ("test", "mode", "1e3", "1e4", "1e5", "1e6", "ratio"))
+    print("  %-20s %-7s %s %7s" % ("test", "mode", " ".join("%9.0e" % n for n in sizes), "ratio"))
     for test in COLL_TESTS:
         if opts.get("only") and opts["only"] not in test:
             continue
