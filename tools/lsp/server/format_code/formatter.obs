@@ -75,6 +75,15 @@ class CodeFormatter {
 		};
 	}
 
+	# removes the indentation at the end of the buffer
+	method : TrimIndent() ~ Nil {
+		if(InRange()) {
+			while(@buffer->EndsWith(' ') | @buffer->EndsWith('\t')) {
+				@buffer->Pop();
+			};
+		};
+	}
+
 	method : InRange() ~ Bool {
 		return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
 	}	
@@ -434,7 +443,12 @@ class CodeFormatter {
 					}
 
 					label Token->Type->NEW_ID {
-						PopBuffer();
+						# "->New": drop the space after the arrow. A constructor's
+						# "New" starts a line, and popping there took a character
+						# of its indentation.
+						if(@prev_token->GetType() = Token->Type->ASSESSOR) {
+							PopBuffer();
+						};
 						AppendBuffer("New");
 						@skip_space := in_new := true;
 					}
@@ -583,13 +597,65 @@ class CodeFormatter {
 					}
 
 					label Token->Type->CCBRACE {
-						AppendBuffer('\n');
+						# an empty block closes on the line after its '{', with no
+						# line of indentation left between the two
+						if(@prev_token->GetType() = Token->Type->OCBRACE) {
+							TrimIndent();
+						}
+						else {
+							AppendBuffer('\n');
+						};
 						tab_space -= 1;
 						TabSpace(tab_space, @ident_space);
-						AppendBuffer('}'); # TODO: Fix me!
-
+						AppendBuffer('}');
+					
 						if(in_consts) {
 							in_consts := false;
+						};
+					
+						# What follows the brace. AppendBuffer joins the next token to
+						# a '}', which is right for the few that belong on its line and
+						# wrong for a constructor, field, comment or statement with no
+						# blank line before it: they came out as "}New() {", "}@y : Int;"
+						# and "}# note".
+						select(@next_token->GetType()) {
+							# stay on the brace's line
+							label Token->Type->SEMI
+							label Token->Type->CPREN
+							label Token->Type->CBRACE
+							label Token->Type->COMMA
+							label Token->Type->ASSESSOR
+							label Token->Type->WHILE_ID
+							# start a line of their own, or are given one by VerticalSpace
+							label Token->Type->CCBRACE
+							label Token->Type->VTAB
+							label Token->Type->ELSE_ID
+							label Token->Type->CLASS_ID
+							label Token->Type->FUNCTION_ID
+							label Token->Type->METHOD_ID
+							label Token->Type->LABEL_ID
+							label Token->Type->OTHER_ID
+							label Token->Type->ENUM_ID
+							label Token->Type->CONSTS_ID
+							label Token->Type->ALIAS_ID
+							label Token->Type->BUNDLE_ID
+							label Token->Type->INTERFACE_ID
+							# end of the source
+							label Token->Type->OTHER {
+							}
+					
+							# a constructor is set apart like a method
+							label Token->Type->NEW_ID {
+								AppendBuffer("\n\n");
+								TabSpace(tab_space, @ident_space);
+								@skip_space := true;
+							}
+					
+							other {
+								AppendBuffer('\n');
+								TabSpace(tab_space, @ident_space);
+								@skip_space := true;
+							}
 						};
 					}
 
