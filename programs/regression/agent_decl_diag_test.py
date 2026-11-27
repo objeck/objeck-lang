@@ -304,6 +304,30 @@ def main():
         errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
         check("a budget without braces is one error", len(errors) == 1, out)
 
+        # A value with more chained operators than a statement may have: the reading of the file is given up
+        # from inside the two scanners an agent is read with (the class written for it, and the piece of the
+        # user's text inside that class). It is one error, and the parser is put back as it was for the files
+        # read after it: the names the compiler uses for the pieces ('agent__x0') are ordinary names there, and
+        # a mistake in a later file is reported at its place. (Neither scanner swap was undone, so two scanners
+        # were never released and the parser was left pointing at the pieces of an agent that was gone: a
+        # sanitizer build of obc shows both, and in a release build the mistake in the later file went unsaid.)
+        long_sum = " + ".join(["1"] * 2100)
+        later_ok = "class Later {\n\tfunction : F() ~ Int {\n\t\tagent__x0 := 1;\n\t\tagent__x7 := 2;\n\t\treturn agent__x0 + agent__x7;\n\t}\n}\n"
+        later_bad = "class Later {\n\tfunction : F() ~ Int {\n\t\tagent__x0 := 1;\n\t\treturn agent__x0 +;\n\t}\n}\n"
+        for label, setting in (("backend", "\tbackend : ScriptedBackend->New(script)->Add(AgentReply->Say((%s)->ToString()));\n" % long_sum),
+                               ("instructions", OKB + "\tinstructions : (%s)->ToString();\n" % long_sum),
+                               ("an entry of tools", OKB + "\ttools : Tools, script->Size() = %s ? AgentTools->Calculator() : Nil;\n" % long_sum),
+                               ("a limit", OKB + "\tbudget { steps : %s; }\n" % long_sum)):
+            first = HEAD + "agent Deep(script : Vector<AgentReply>) {\n" + setting + "}\n"
+            for files, want in (({"a.obs": first}, 1), ({"a.obs": first, "b.obs": later_ok}, 1), ({"a.obs": first, "b.obs": later_bad}, 2)):
+                code, out, obe = compile_files("deep", files)
+                errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+                ok = code != 0 and not os.path.exists(obe) and len(errors) == want and "Expression is too long" in errors[0] and "deep_a.obs" in errors[0]
+                if want == 2:
+                    ok = ok and "deep_b.obs:(4,21): Expected expression" in errors[1]
+                check("%s with more than 2000 chained operators is one error%s" %
+                      (label, "" if len(files) == 1 else ", and a later file is read as any other (%d error(s) in all)" % want), ok, out[-900:])
+
         # A ')' or ']' that closes nothing, where a setting starts or after 'budget': the declaration still ends
         # at its own '}', so a mistake in the class after it is reported, at its place. (The stray token used
         # to take the recovery's depth below zero; the agent's '}' was then skipped as nested, the rest of the
