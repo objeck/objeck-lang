@@ -7875,15 +7875,15 @@ PARSER_NO_INLINE MethodCall* Parser::ParseSpawn(int depth)
           L"method : public : SpawnStart(body : () ~ Nil) ~ System.Concurrency.Thread { @body := body; Execute(Nil); return @self; } "
           L"method : public : Run(param : System.Base) ~ Nil { body := @body; body(); } }";
 
-  Scanner* saved = scanner;
+  ScannerScope spawn_scanner(scanner);
+  StateScope<bool> spawn_flag(spawn_class);
   scanner = new Scanner(file_name, alt_syntax, text);
   NextToken();
   spawn_class = true;
   Expression* thread = ParseSimpleExpression(depth + 1);
   spawn_class = false;
   const bool whole = Match(TOKEN_END_OF_STREAM);
-  delete scanner;
-  scanner = saved;
+  spawn_scanner.Restore();
 
   if(!thread || !whole || thread->GetExpressionType() != METHOD_CALL_EXPR) {
     diagnostics.Error(file_name, line_num, line_pos, L"Unable to build the thread for 'spawn'");
@@ -10921,8 +10921,8 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   std::wstring text(line > 1 ? line - 1 : 0, L'\n');
   text += code;
 
-  Scanner* saved = scanner;
-  Method* previous_method = current_method;
+  ScannerScope function_scanner(scanner);
+  StateScope<Method*> function_method(current_method);
   scanner = new Scanner(klass->GetFileName(), alt_syntax, std::move(text));
   NextToken();
 
@@ -10938,9 +10938,8 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
     ProcessError(L"The code written for " + owner + L" has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
   }
 
-  delete scanner;
-  scanner = saved;
-  current_method = previous_method;
+  function_scanner.Restore();
+  current_method = function_method.saved;
 
   if(method && !klass->AddMethod(method)) {
     diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which " + owner + L" needs for itself");
@@ -11968,8 +11967,8 @@ Expression* Parser::ParseAgentSplice(DeclarationList** declarations, int depth)
   NextToken();
 
   // the user's text is read with no placeholders of its own: a name that looks like one is just a name
-  Scanner* saved_scanner = scanner;
-  std::vector<AgentSplice>* saved_splices = agent_splices;
+  ScannerScope piece_scanner(scanner);
+  StateScope<std::vector<AgentSplice>*> piece_splices(agent_splices);
   agent_splices = nullptr;
   scanner = new Scanner(splice.file_name, alt_syntax, splice.text);
   scanner->StartAt(splice.line, splice.pos);
@@ -11990,10 +11989,6 @@ Expression* Parser::ParseAgentSplice(DeclarationList** declarations, int depth)
   if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
     ProcessError(L"Unexpected " + scanner->DescribeToken(scanner->GetToken()) + L" in " + splice.what);
   }
-
-  delete scanner;
-  scanner = saved_scanner;
-  agent_splices = saved_splices;
 
   return expression;
 }
@@ -12503,8 +12498,10 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   }
   code.Add(L" return agent__a; } }");
 
-  Scanner* saved_scanner = scanner;
-  Method* saved_method = current_method;
+  // 'splices' is a local of this function: the parser is not left pointing at it
+  ScannerScope class_scanner(scanner);
+  StateScope<std::vector<AgentSplice>*> class_splices(agent_splices);
+  StateScope<Method*> class_method(current_method);
   scanner = new Scanner(file_name, alt_syntax, code.text);
   agent_splices = &splices;
   NextToken();
@@ -12516,11 +12513,6 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
     ProcessError(L"The code written for the agent '" + name + L"' has an extra " + scanner->DescribeToken(scanner->GetToken()));
   }
-
-  agent_splices = nullptr;
-  delete scanner;
-  scanner = saved_scanner;
-  current_method = saved_method;
 
   return klass;
 }

@@ -235,6 +235,36 @@ class Parser {
     explicit ChainScope(int& r) : ref(r), saved(r) { ref = 0; }
     ~ChainScope() { ref = saved; }
   };
+  // A piece of text read with a scanner of its own (the class written for an 'agent', a piece of
+  // the user's text inside it, a generated function, the class of a 'spawn'). Declared before the
+  // piece's scanner is made: that scanner is released and the parser's own put back when the
+  // reading ends (Restore, or the end of the scope), and also when it is given up, by the
+  // NestingTooDeep that an expression too long or too deep inside the piece throws. Done only by
+  // hand after the reading, that exception left the piece's scanner as the parser's, so the
+  // scanners under it were never released, and what the reading had set (StateScope) stayed set.
+  struct ScannerScope {
+    Scanner*& slot;
+    Scanner* saved;
+    explicit ScannerScope(Scanner*& s) : slot(s), saved(s) {}
+    ~ScannerScope() { Restore(); }
+    void Restore() {
+      if(slot != saved) {
+        delete slot;
+        slot = saved;
+      }
+    }
+    ScannerScope(const ScannerScope&) = delete;
+    ScannerScope& operator=(const ScannerScope&) = delete;
+  };
+  // parser state that is set for such a reading, put back when the scope ends
+  template<typename T> struct StateScope {
+    T& slot;
+    T saved;
+    explicit StateScope(T& s) : slot(s), saved(s) {}
+    ~StateScope() { slot = saved; }
+    StateScope(const StateScope&) = delete;
+    StateScope& operator=(const StateScope&) = delete;
+  };
   void CheckDepth(int depth);
   // branches of ParseStatement and ParseIf kept out of their stack frames
   Statement* ParseNilGuardStatement(int line_num, int line_pos, int depth);
