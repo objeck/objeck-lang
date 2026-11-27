@@ -4186,6 +4186,8 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
     post_statements.pop();
   }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
+  // the jump consumed the condition's string literal (see EmitBranch)
+  new_char_str_count = 0;
   
   std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
@@ -6528,6 +6530,11 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
   // anything else: evaluate, then jump on the value
   EmitExpression(expression);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
+  // The jump consumed the value, and with it any string literal the test pushed
+  // ('s = "hi"'). The count of literals waiting to be paired must not carry into
+  // what follows: the first literal of the branch's body counted as a second one
+  // and got a SWAP_INT over a stack of one, which the load-time verifier refuses.
+  new_char_str_count = 0;
 }
 
 /****************************
