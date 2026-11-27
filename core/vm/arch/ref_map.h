@@ -34,6 +34,7 @@
 
 #include "../common.h"
 #include "../../shared/trap_signatures.h"
+#include "../../shared/stack_limit.h"
 #include <vector>
 #include <string>
 #include <cwchar>
@@ -155,8 +156,13 @@
     std::vector<uint8_t> kinds;
     // per instruction: kind of the and/or slot on entry (RK_UNKNOWN when unset)
     std::vector<uint8_t> andor;
+    // a verifying build: the most words the operand stack stands above the method's
+    // arguments on entry to an instruction, the number the limit is held against
+    // (-1 where the walk did not finish). Read by OBJECK_STACK_DEPTH_OUT only
+    // (Loader::Verify), which checks the compiler's count of it against this one.
+    long growth;
 
-    RefMap() : ok(false), refuse(false), error_ip(-1) {}
+    RefMap() : ok(false), refuse(false), error_ip(-1), growth(-1) {}
 
     inline uint8_t Kind(long ip, int depth) const {
       return kinds[offset[ip] + depth];
@@ -177,8 +183,9 @@
   namespace ref_map_detail {
 
     // Words a method may push above its arguments: CallStack::OP_HEADROOM (1024)
-    // less a margin for the words one instruction pushes past its entry height
-    static const size_t MAX_OPERAND_GROWTH = 1000;
+    // less a margin for the words one instruction pushes past its entry height.
+    // The compiler measures against the same number (shared/stack_limit.h).
+    static const size_t MAX_OPERAND_GROWTH = instructions::OPERAND_STACK_MAX_GROWTH;
 
     inline uint8_t MergeKind(uint8_t a, uint8_t b) {
       if(a == b) return a;
@@ -2970,6 +2977,7 @@
                   L" words past the arguments, more than a call's room", true);
           return;
         }
+        map->growth = static_cast<long>(deepest - entry.size());
       }
 
       // CONTRACT: a verifying build stops here. It has checked the method; it does
@@ -3015,6 +3023,7 @@
     map->refuse = false;
     map->error.clear();
     map->error_ip = -1;
+    map->growth = -1;
     map->kinds.clear();
     if(!context->builder) {
       context->builder = new ref_map_detail::Builder(prgm, method, map, true, context);

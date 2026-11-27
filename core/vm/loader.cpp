@@ -1867,6 +1867,29 @@ void Loader::Verify()
   // pops what was never pushed reads below the operand stack (found by the loader
   // fuzzer: a STOR_FUNC_VAR, a conditional JMP and a two-index array load, each
   // with the one operand changed).
+  //
+  // OBJECK_STACK_DEPTH_OUT=<file> appends a line for every method verified, its
+  // name, a tab and the most words its operand stack stands above its arguments
+  // ('?' where the walk did not finish). obc writes the same lines under the same
+  // variable from its own count (compiler/stack_depth.h), which is what lets it
+  // report a method the limit below refuses while the source is at hand; the two
+  // files of one program must be equal (programs/regression/check_stack_depth.py).
+  std::ofstream depth_out;
+  {
+#ifdef _WIN32
+    char* value = nullptr;
+    size_t length = 0;
+    if(_dupenv_s(&value, &length, "OBJECK_STACK_DEPTH_OUT") == 0 && value && *value) {
+      depth_out.open(value, std::ios::app | std::ios::binary);
+    }
+    free(value);
+#else
+    const char* value = getenv("OBJECK_STACK_DEPTH_OUT");
+    if(value && *value) {
+      depth_out.open(value, std::ios::app | std::ios::binary);
+    }
+#endif
+  }
   VerifyContext context;
   for(long i = 0; i < num_classes; ++i) {
     StackClass* cls = classes[i];
@@ -1881,6 +1904,17 @@ void Loader::Verify()
       const bool refuse = RefMap::Verify(program, mthd, &context, why, where);
       if(refuse) {
         VerifyFailed(cls, mthd, where, why.c_str());
+      }
+      if(depth_out.is_open()) {
+        const std::wstring& name = mthd->GetName();
+        depth_out << UnicodeToBytes(name) << '\t';
+        if(context.map->growth < 0) {
+          depth_out << '?';
+        }
+        else {
+          depth_out << context.map->growth;
+        }
+        depth_out << '\n';
       }
     }
   }
