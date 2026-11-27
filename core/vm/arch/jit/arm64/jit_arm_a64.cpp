@@ -1818,11 +1818,19 @@ void JitArm64::ProcessStoreIntElement(StackInstr* instr) {
   // object reference into an (always old-gen) array; a minor GC must see it via the
   // remembered set.
   RegInstr* arr = working_stack.front();
+  // A literal where the array should be (Nil indexed directly) has no register:
+  // ArrayIndex refuses it for every element instruction, and this one read the
+  // register first (found by the mutation campaign: two instructions exchanged
+  // left a literal 0 as the array, and compiling the method crashed the VM).
+  if(arr->GetType() == IMM_INT) {
+    std::wcerr << L">>> trying to index a constant! <<<" << std::endl;
+    VmExit(1);
+  }
   RegisterHolder* base_holder = GetRegister();
   if(arr->GetType() == MEM_INT) {
     move_mem_reg((long)arr->GetOperand(), SP, base_holder->GetRegister());
   }
-  else {  // REG_INT (IMM_INT is rejected by ArrayIndex)
+  else {  // REG_INT
     move_reg_reg(arr->GetRegister()->GetRegister(), base_holder->GetRegister());
   }
 

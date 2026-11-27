@@ -511,7 +511,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       const size_t fref = op_stack[(*stack_pos) - 1];
       // 0 is an unassigned function variable (see FUNC_VALUE_TAG): no callee;
       // the interpreter below reports it, or recovers it under a Try() (#1183)
-      callee = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF))->GetMethod((long)(fref & 0xFFFF)) : nullptr;
+      // (a class id that names no class: no callee either, where this read a null class)
+      StackClass* fref_cls = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF)) : nullptr;
+      callee = fref_cls ? fref_cls->GetMethod((long)(fref & 0xFFFF)) : nullptr;
     }
     else {
       callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
@@ -1152,6 +1154,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_BYTE_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     char* buffer = (char*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(char));
@@ -1160,6 +1168,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_CHAR_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     wchar_t* buffer = (wchar_t*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(wchar_t));
@@ -1168,6 +1182,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_INT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     size_t* buffer = (size_t*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(size_t));
@@ -1176,6 +1196,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_FLOAT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));

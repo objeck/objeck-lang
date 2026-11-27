@@ -1492,9 +1492,30 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, size_t*& stack_pos)
   }
 }
 
+// A Nil array handed to one of the four clears below: the same runtime error as
+// any other use of Nil. They read the array's length with no check, so clearing a
+// Nil array ended the VM with a segmentation fault instead.
+void StackInterpreter::NilArrayCleared(size_t* &stack_pos)
+{
+  if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
+    return;
+  }
+  std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+#else
+  VmExit(1);
+#endif
+}
+
 void StackInterpreter::ZeroByteAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   char* buffer = (char*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(char));
@@ -1503,6 +1524,10 @@ void StackInterpreter::ZeroByteAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroCharAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   wchar_t* buffer = (wchar_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(wchar_t));
@@ -1511,6 +1536,10 @@ void StackInterpreter::ZeroCharAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroIntAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   size_t* buffer = (size_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(size_t));
@@ -1519,6 +1548,10 @@ void StackInterpreter::ZeroIntAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroFloatAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));
@@ -2686,6 +2719,17 @@ StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMet
  * GetVirtualMethod is asked about next time -- where it used to go on the
  * class the walk ended at, so an inherited override missed on every call.
  ********************************/
+#ifdef _MSC_VER
+[[noreturn]] static __declspec(noinline) void UnresolvedVirtualCall(StackClass* concrete_class, StackMethod* concrete_call, const wchar_t* why)
+#else
+[[noreturn]] static void __attribute__((noinline, cold)) UnresolvedVirtualCall(StackClass* concrete_class, StackMethod* concrete_call, const wchar_t* why)
+#endif
+{
+  std::wcerr << L">>> Invalid virtual call: '" << concrete_call->GetName() << L"' on an instance of '"
+             << concrete_class->GetName() << L"': " << why << L" <<<" << std::endl;
+  VmExit(1);
+}
+
 StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, StackMethod* concrete_call, const long virtual_cls_id, const long virtual_mthd_id)
 {
   StackMethod* virtual_call = concrete_class->GetVirtualMethod(virtual_cls_id, virtual_mthd_id);
@@ -2698,8 +2742,30 @@ StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, 
     virtual_call = klass->GetMethod(method_name);
     while(!virtual_call) {
       klass = klass->GetParent();
+      // The receiver's class and its parents have no such method: the receiver is
+      // not what the call's declaration says. The compiler does not write that, so
+      // this is a changed program image; the walk used to run off the top of the
+      // hierarchy and read a null class. Checked here, on the miss, so a resolved
+      // call costs what it did.
+      if(!klass) {
+        UnresolvedVirtualCall(concrete_class, concrete_call, L"no such method in the receiver's class");
+      }
       method_name = klass->GetName() + method_ending;
       virtual_call = klass->GetMethod(method_name);
+    }
+    // The caller's stack was checked against the declaration (Loader::Verify): the
+    // override must take and leave the same words, and must have a body to run.
+    // A name ending carries the parameter types, so a compiled override always
+    // agrees; a changed image need not.
+    if(virtual_call->GetInstructionCount() < 1) {
+      UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to has no body");
+    }
+    if(virtual_call->GetParamCount() != concrete_call->GetParamCount() || virtual_call->GetReturn() != concrete_call->GetReturn()) {
+      UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to takes or returns different words");
+    }
+    if(virtual_call->GetReturn() != NIL_TYPE && virtual_call->GetInstructionCount() == 1 &&
+       virtual_call->GetInstruction(0)->GetType() == RTRN) {
+      UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to returns no value");
     }
     concrete_class->AddVirutalMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
   }

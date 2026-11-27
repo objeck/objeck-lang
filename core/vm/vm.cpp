@@ -69,6 +69,25 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       return USAGE_ERROR;
     }
 
+    // OBJECK_VERIFY_ONLY=1: load and verify the program, then stop without running
+    // it. For checking that a program is accepted (or refused) without its side
+    // effects: the loader's tests and the fuzz tools (docs/SECURITY_MODEL.md).
+    {
+#ifdef _WIN32
+      char* value = nullptr;
+      size_t length = 0;
+      const bool verify_only = _dupenv_s(&value, &length, "OBJECK_VERIFY_ONLY") == 0 && value && strcmp(value, "1") == 0;
+      free(value);
+#else
+      const char* value = getenv("OBJECK_VERIFY_ONLY");
+      const bool verify_only = value && strcmp(value, "1") == 0;
+#endif
+      if(verify_only) {
+        CleanUpCommandLine(argc, commands);
+        return SUCCESS;
+      }
+    }
+
     // execute
     size_t* stack_pos = new size_t;
     (*stack_pos) = 0;

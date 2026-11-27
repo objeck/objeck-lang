@@ -232,3 +232,34 @@ ignores `--jit=1`, and the round trip with the nightly triage: a finding
 recorded under `nightly_triage.py run` is `new` without a known.json entry,
 `known` with one, and `run_fuzz` honours the same file. `test_known_schema.py`
 covers the schema itself.
+
+## Changed program images (`adhoc/obe_campaign.py`)
+
+The generators above write source; this one changes what `obc` wrote. It reads a
+compiled program's image (`loader/obe_image.py`) and changes one opcode (for
+another with the same operand layout), operand, literal, instruction or record
+field, or, three times in ten, bytes at random as `adhoc/obe_mutfuzz.py` does.
+Each result runs with the default JIT, `--jit=off` and `OBJECK_JIT_THRESHOLD=1`
+and must be refused by the loader, stop with a runtime error, or run: a crash is
+kept under `<out>/crashes` with a line in `crashes.jsonl` saying what was
+changed, and with `--gdb` (Linux, a VM built with `-g`) the crashes are grouped
+by faulting function.
+
+    python3 tools/fuzz/adhoc/obe_campaign.py --obr <obr> --seeds <dir of .obe> \
+        --out <dir> --count 30000 --seed 2 --jobs 16 --gdb
+
+Seeds are small programs that neither read input nor touch the network or the
+file system (a changed program can reach any trap); run it in a scratch
+directory on a machine you can afford to have files appear on. A run is the same
+at any `--jobs`. Timeouts are counted as hangs, not failures (a changed loop
+bound is not a defect), so on a loaded machine a slow crash can be miscounted
+as one: compare runs made on a quiet machine. What still crashes, and why, is in
+[docs/design/OBE_TYPE_VERIFIER.md](../../docs/design/OBE_TYPE_VERIFIER.md).
+
+The other half is `adhoc/obe_corpus_gate.py <tree> <deploy dir> <out dir> [jobs]`:
+every `.obs` of the tree compiled at `-opt s0` and `s3` (a third at `s1` and `s2`
+too, a quarter with `-debug`), and one program per library that names every
+documented class so the whole library links, each loaded with
+`OBJECK_VERIFY_ONLY=1`. Nothing it compiles is run. It exits 1 if the loader
+refuses any image: a rule that refuses what `obc` writes is wrong, or has found a
+compiler bug.
