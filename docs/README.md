@@ -107,6 +107,7 @@ Written before the work, and kept afterwards as the record of why it looks the w
 | [JIT_SELECT_TABLES_DESIGN.md](JIT_SELECT_TABLES_DESIGN.md): dense `select` as a jump table (F8) | **built** on both backends |
 | [JIT_LOOP_LOCALS_DESIGN.md](JIT_LOOP_LOCALS_DESIGN.md): loop-carried locals in registers (F3) and short-circuit conditions (F6) | **partly built**: AMD64 only |
 | [TRY_IN_JIT_DESIGN.md](TRY_IN_JIT_DESIGN.md): `Try()` inside compiled code | **built** |
+| [JIT_OPERAND_STACK_DESIGN.md](JIT_OPERAND_STACK_DESIGN.md): how compiled code holds operand-stack values in registers, the rules that keep them safe, and the inline allocator's result | **built**: the working stack on both backends; the allocator change on AMD64 only (ARM64 has no inline allocator) |
 | [JIT_ARM64_HANDOFF_2026_09.md](JIT_ARM64_HANDOFF_2026_09.md): the open ARM64 JIT track and the macOS build-and-test loop | **working**: 4a loop locals, 4b float pins, 4c `HasAndOr` narrowing are open |
 | [JIT_CODEGEN_ASSESSMENT_2026_09.md](JIT_CODEGEN_ASSESSMENT_2026_09.md): how efficient the emitted code is, measured, with ranked fixes | **snapshot**; the AMD64 fixes are done, ARM64's are not |
 

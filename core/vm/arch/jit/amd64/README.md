@@ -23,6 +23,7 @@ Each compile creates its register holders once, through `NewRegisterHolder`, and
 | Loop detection | Backward-jump pre-scan records `{header, backedge}` in `detected_loops`, which `PlanPinRegions` uses for the loop locals below. |
 | Loop locals in registers (F3) | The hottest `Int`/`Char` locals of each loop, up to three, live in `R13`-`R15` for the loop's extent: loaded at the header, stored back on every exit. On Windows up to four `Float` locals also live in `XMM6`-`XMM9` (callee-saved there, caller-saved on POSIX). `OBJECK_JIT_PIN_MAX` / `OBJECK_JIT_PIN_SKIP` narrow it for bisecting. **AMD64 only** so far; `docs/JIT_LOOP_LOCALS_DESIGN.md`. |
 | `cmov` | Branchless conditional moves where profitable. |
+| Inline allocation | `NEW_OBJ_INST` for a small object is a bump allocation emitted inline (`EmitNewObjectInline`), with the bridge callback as its nursery-full path. Since v2026.11.4 the new pointer ends in a register chosen before either path is emitted instead of going through the operand stack, and `RAX`-`RDX` are saved around the sequence only when they hold a pending value. `OBJECK_JIT_ALLOC_REG=0` restores the old sequence; `docs/JIT_OPERAND_STACK_DESIGN.md`. |
 | `JMP_TABLE` codegen | `select` tables compile to RIP-relative `LEA` of the slot table → `MOVSXD` (index×4) → indirect `JMP`, no interpreter fallback. |
 
 ### Calling-convention details

@@ -471,7 +471,7 @@ void JitAmd64::ProcessParameters(long params, Register top) {
 
 }
 
-void JitAmd64::ProcessIntCallParameter() {
+void JitAmd64::ProcessIntCallParameter(RegisterHolder* into) {
 #ifdef _DEBUG_JIT
   std::wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
@@ -480,7 +480,9 @@ void JitAmd64::ProcessIntCallParameter() {
   // the value -- where this took two, and a trap whose arguments were pending
   // in seven of the pool's eight registers (a 7-string array literal's
   // NEW_OBJ_INST) had only one left (ProcessReturn has the same shape).
-  RegisterHolder* holder = GetRegister();
+  // `into` is a register the caller already holds for the value (NEW_OBJ_INST,
+  // whose inline path ends in the same register).
+  RegisterHolder* holder = into ? into : GetRegister();
   const Register r = holder->GetRegister();
   move_mem_reg(STACK_POS, RBP, r);
   dec_mem(0, r);
@@ -941,16 +943,43 @@ void JitAmd64::ProcessInstructions() {
             << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       // note: object id passed in instruction param
-      // Inline young-gen bump-alloc fast path; callback is the slow path. Both
-      // leave the new pointer on the op stack for ProcessReturnParameters.
+      // Inline young-gen bump-alloc fast path; callback is the slow path.
       StackClass* new_klass = program->GetClass(instr->GetOperand());
-      const long inline_done = EmitNewObjectInline(new_klass);
-      ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
-      if(inline_done >= 0) {
-        const int off = (int)(code_index - (inline_done + 4));
-        memcpy(&code[(size_t)inline_done], &off, 4);   // backpatch success jmp past callback
+      // The result's register is chosen before either path is emitted, so the
+      // inline path can end with the new pointer in it and skip the operand
+      // stack. It used to store the pointer at op_stack[count], bump the
+      // count, and join the callback's exit, which dropped the count and
+      // loaded the word again: thirteen instructions, two of them
+      // read-modify-writes of the count, on the path every small allocation
+      // takes. Only the callback, which hands its value back on the operand
+      // stack, pops now. The register comes from the free pool with one to
+      // spare: the callback takes a scratch register of its own, and a pool
+      // tighter than that (an eight-string array literal) keeps the old
+      // sequence, so nothing that compiled before stops compiling.
+      // docs/JIT_OPERAND_STACK_DESIGN.md, section 4, has the invariants.
+      FlushLocalCache();
+      RegisterHolder* result = nullptr;
+      if(JitAllocResultInRegister() && aval_regs.size() >= 2) {
+        result = GetRegister();
       }
-      ProcessReturnParameters(INT_TYPE);
+      const long inline_done = EmitNewObjectInline(new_klass, result);
+      ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
+      if(result) {
+        // callback exit: the value comes off the operand stack into `result`;
+        // the inline path jumps past the pop with the pointer already there
+        ProcessIntCallParameter(result);
+        if(inline_done >= 0) {
+          const int off = (int)(code_index - (inline_done + 4));
+          memcpy(&code[(size_t)inline_done], &off, 4);   // backpatch success jmp past callback and pop
+        }
+      }
+      else {
+        if(inline_done >= 0) {
+          const int off = (int)(code_index - (inline_done + 4));
+          memcpy(&code[(size_t)inline_done], &off, 4);   // backpatch success jmp past callback
+        }
+        ProcessReturnParameters(INT_TYPE);
+      }
     }
       break;
 
@@ -1507,7 +1536,16 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
 // reaches a safepoint and the stop-the-world collector deadlocks.
 // Inline young-gen bump alloc for NEW_OBJ_INST (mirror MemoryManager::AllocateObject).
 // Returns code offset of the success-path jmp (rel32) for the caller to backpatch.
-long JitAmd64::EmitNewObjectInline(StackClass* cls) {
+//
+// With `result` (a register the caller holds for the new pointer) the path ends
+// with the pointer in that register and never touches the operand stack; the
+// caller pops the callback's value into the same register. RAX-RDX are this
+// sequence's scratch, and with `result` only the ones that hold a pending
+// value are saved around it: a register in the free pool holds nothing (the
+// local cache was flushed above, and it writes through to the frame anyway),
+// and `result` itself is about to be overwritten. Without `result` the
+// sequence is the one emitted before v2026.11.4, byte for byte.
+long JitAmd64::EmitNewObjectInline(StackClass* cls, RegisterHolder* result) {
   const long size = cls->GetInstanceMemorySize();
   // same block size as AllocateObject: a zero-field class gets one pad word
   const size_t alloc_size = MemoryManager::ObjectBlockSize((size_t)size);
@@ -1528,10 +1566,15 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   FlushLocalCache();
   // scratch saves: nothing between here and the restores can collect, so the
   // collector never reads these slots (jit_frame_layout.h)
-  move_reg_mem(RAX, TMP_SCR_0, RBP);
-  move_reg_mem(RBX, TMP_SCR_1, RBP);
-  move_reg_mem(RCX, TMP_SCR_2, RBP);
-  move_reg_mem(RDX, TMP_SCR_3, RBP);
+  static const Register scratch_regs[4] = { RAX, RBX, RCX, RDX };
+  static const long scratch_slots[4] = { TMP_SCR_0, TMP_SCR_1, TMP_SCR_2, TMP_SCR_3 };
+  bool scratch_live[4];
+  for(int i = 0; i < 4; ++i) {
+    scratch_live[i] = !result || (scratch_regs[i] != result->GetRegister() && !IsRegisterFree(scratch_regs[i]));
+    if(scratch_live[i]) {
+      move_reg_mem(scratch_regs[i], scratch_slots[i], RBP);
+    }
+  }
 
   move_imm_reg((int64_t)MemoryManager::YoungOffsetAddr(), RBX);   // RBX = &young_offset
 
@@ -1565,17 +1608,19 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   move_imm_reg((int64_t)(size_t)cls, RAX); move_reg_mem(RAX, (long)(sizeof(size_t) * 2), RDX);
   add_imm_reg((int64_t)(sizeof(size_t) * (EXTRA_BUF_SIZE + 1)), RDX);  // RDX = result ptr
 
-  move_mem_reg(OP_STACK, RBP, RAX);                   // RAX = op_stack base
-  move_mem_reg(STACK_POS, RBP, RBX);                  // RBX = &stack_pos counter
+  if(!result) {
+    move_mem_reg(OP_STACK, RBP, RAX);                   // RAX = op_stack base
+    move_mem_reg(STACK_POS, RBP, RBX);                  // RBX = &stack_pos counter
 #ifdef _WIN64
-  move_mem_reg32(0, RBX, RCX);                        // RCX = counter (32-bit on Win64)
+    move_mem_reg32(0, RBX, RCX);                        // RCX = counter (32-bit on Win64)
 #else
-  move_mem_reg(0, RBX, RCX);                          // RCX = counter (64-bit)
+    move_mem_reg(0, RBX, RCX);                          // RCX = counter (64-bit)
 #endif
-  shl_imm_reg(3, RCX);
-  add_reg_reg(RCX, RAX);                              // RAX = op_stack + counter*8
-  move_reg_mem(RDX, 0, RAX);                          // op_stack[counter] = result
-  inc_mem(0, RBX);                                    // ++*stack_pos
+    shl_imm_reg(3, RCX);
+    add_reg_reg(RCX, RAX);                              // RAX = op_stack + counter*8
+    move_reg_mem(RDX, 0, RAX);                          // op_stack[counter] = result
+    inc_mem(0, RBX);                                    // ++*stack_pos
+  }
 
   // allocation_size += size (match AllocateObject — drives the major-GC trigger;
   // skipping it starves GC -> old-gen bloat -> O(n^2) collection time).
@@ -1584,18 +1629,25 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   // raced the locked old-gen updates and lost increments, skewing the major-GC trigger.
   AddMachineCode(0xF0); AddMachineCode(0x48); AddMachineCode(0x81); AddMachineCode(0x00); AddImm((int)size);
 
-  move_mem_reg(TMP_SCR_0, RBP, RAX);
-  move_mem_reg(TMP_SCR_1, RBP, RBX);
-  move_mem_reg(TMP_SCR_2, RBP, RCX);
-  move_mem_reg(TMP_SCR_3, RBP, RDX);
+  // the pointer leaves RDX for the caller's register before RDX is restored;
+  // `result` is never among the restores (scratch_live), so none overwrites it
+  if(result && result->GetRegister() != RDX) {
+    move_reg_reg(RDX, result->GetRegister());
+  }
+  for(int i = 0; i < 4; ++i) {
+    if(scratch_live[i]) {
+      move_mem_reg(scratch_slots[i], RBP, scratch_regs[i]);
+    }
+  }
   AddMachineCode(0xe9);
   const long done_jmp_pos = code_index; AddImm(0);
 
   { int off = (int)(code_index - (ja_pos + 4)); memcpy(&code[(size_t)ja_pos], &off, 4); }   // OVERFLOW:
-  move_mem_reg(TMP_SCR_0, RBP, RAX);
-  move_mem_reg(TMP_SCR_1, RBP, RBX);
-  move_mem_reg(TMP_SCR_2, RBP, RCX);
-  move_mem_reg(TMP_SCR_3, RBP, RDX);
+  for(int i = 0; i < 4; ++i) {
+    if(scratch_live[i]) {
+      move_mem_reg(scratch_slots[i], RBP, scratch_regs[i]);
+    }
+  }
   return done_jmp_pos;
 }
 
