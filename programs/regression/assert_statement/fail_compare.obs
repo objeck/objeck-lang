@@ -1,0 +1,8 @@
+class FailCompare {
+	function : Main(args : String[]) ~ Nil {
+		x := 3;
+		assert x + 1 = 4 : "holds";
+		assert x + 1 = 5 : "x plus one is five";
+		"NOT REACHED"->PrintLine();
+	}
+}

@@ -1,0 +1,6 @@
+class FailBool {
+	function : Main(args : String[]) ~ Nil {
+		ok := false;
+		assert ok : "flag is off";
+	}
+}

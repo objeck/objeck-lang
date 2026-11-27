@@ -1019,6 +1019,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obc_debug_reproducible.py "%BIN%"
 
+    - name: assert statement fails a program with its FAIL line and exit code 1 (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_assert_statement.py "%BIN%"
+
     - name: obc and obr find their libraries from another working directory (Windows)
       working-directory: ./programs/regression
       shell: cmd
