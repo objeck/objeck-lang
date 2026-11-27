@@ -1528,11 +1528,8 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
         EmitByteNarrowing();
       }
     }
-    // post statements
-    if(!post_statements.empty()) {
-      EmitAssignment(post_statements.front());
-      post_statements.pop();
-    }
+    // post statements, all of them (see the end of this function)
+    EmitPostStatements();
     // leaving: as for finally, a returned string literal on the stack must not
     // pair with the leaving block's own literals (#1247)
     if(current_method->GetLeaving()) {
@@ -1613,10 +1610,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     throw CompilerFatal(L"internal error");
   }
   
-  if(!post_statements.empty()) {
-    EmitAssignment(post_statements.front());
-    post_statements.pop();
-  }
+  // Every postfix update the statement queued runs here. One was emitted per
+  // statement: with two in a statement ('k := i++ + j++;') the second stayed
+  // queued and ran after the NEXT statement, so that statement still read the
+  // old value; left over at the end of a 'match' arm or a method it never ran.
+  EmitPostStatements();
 
   current_statement = nullptr;
 }
@@ -4492,10 +4490,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   // EmitWhile is unaffected -- it drains the queue after the body, once the
   // condition has already been emitted.
   EmitExpression(do_while_stmt->GetExpression());
-  if(!post_statements.empty()) {
-    EmitAssignment(post_statements.front());
-    post_statements.pop();
-  }
+  EmitPostStatements();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   // the jump consumed the condition's string literal (see EmitBranch)
   new_char_str_count = 0;
@@ -4529,10 +4524,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
     EmitStatement(while_statements[i]);
   }
 
-  if(!post_statements.empty()) {
-    EmitAssignment(post_statements.front());
-    post_statements.pop();
-  }
+  EmitPostStatements();
   
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, unconditional, -1));
   
