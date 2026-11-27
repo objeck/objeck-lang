@@ -2181,6 +2181,9 @@ agent->SetBudget(budget);
 	  `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.
 	  A child may also be entered on the parent's own thread; when it is left the thread is back in the scope
 	  it was in before.
+	  The worker threads an agent starts itself (a BOUNDED_THREAD tool, a model call under
+	  SetBoundedModelCalls) are the exception: they run inside a child of the run's scope, so an agent such
+	  a tool runs is limited and charged as it is when the tool runs on the loop's own thread.
 	* A child entered inside a scope that is not its parent is limited by both: its parent (and what the
 	  parent is inside) and the scope around it (and what that is inside). Each scope is checked and charged
 	  once, and cancelling any of them stops the child's runs.
@@ -2315,6 +2318,23 @@ scope->GetStepsUsed()->PrintLine();
 		~#
 		method : public : SetParent(parent : AgentScope) ~ Nil {
 			@fixed_parent := parent;
+		}
+
+		#~
+		Enters the scope on the calling thread, as Run does before the body. Called by the worker thread of
+		a bounded tool or model call, which is handed a Child() of the run's scope; use Run.
+		@hidden
+		~#
+		method : public : EnterWorker() ~ Nil {
+			Enter();
+		}
+
+		#~
+		Leaves the scope the calling thread entered with EnterWorker. Called by the worker thread.
+		@hidden
+		~#
+		method : public : LeaveWorker() ~ Nil {
+			Leave();
 		}
 
 		#~
@@ -3085,6 +3105,7 @@ scope->GetStepsUsed()->PrintLine();
 		@backend : ChatBackend;
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
+		@scope : AgentScope;
 
 		#~
 		Constructor
@@ -3093,6 +3114,20 @@ scope->GetStepsUsed()->PrintLine();
 		New(slot : AgentSlot) {
 			Parent("agent_worker");
 			@slot := slot;
+		}
+
+		#~
+		Puts the worker under the scope of the run it works for. A thread does not inherit a scope, so the
+		worker enters a Child() of it around the call: an agent the tool (or the backend) runs is then
+		limited and charged as it is when the call is made on the loop's own thread
+		@param scope the run's scope, or Nil for none
+		@return self for chaining
+		~#
+		method : public : Under(scope : AgentScope) ~ AgentWorker {
+			if(scope <> Nil) {
+				@scope := scope->Child();
+			};
+			return @self;
 		}
 
 		#~
@@ -3137,7 +3172,13 @@ scope->GetStepsUsed()->PrintLine();
 			text : String;
 			failure : String;
 			reply : AgentReply;
+			entered := false;
 			try {
+				if(@scope <> Nil) {
+					@scope->EnterWorker();
+					entered := true;
+				};
+
 				if(@kind = 0) {
 					text := @tool->InvokeWith(@arguments, @cancel);
 				}
@@ -3152,6 +3193,16 @@ scope->GetStepsUsed()->PrintLine();
 			on(e : Error) {
 				failure := e->GetMessage();
 				failure := failure ?? "the worker failed";
+			};
+
+			# the scope is left however the call ended; the result is handed in whatever leaving does
+			if(entered) {
+				try {
+					@scope->LeaveWorker();
+				}
+				on(e : Error) {
+					failure := failure ?? e->GetMessage();
+				};
 			};
 			@slot->Complete(text, failure, reply);
 		}
@@ -3945,7 +3996,7 @@ result->GetText()->PrintLine();
 				if(@bounded_model) {
 					slot := AgentSlot->New();
 					Reap();
-					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools);
+					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools)->Under(@scope);
 					worker->Execute(Nil);
 					how : String;
 					try {
@@ -4361,7 +4412,7 @@ result->GetText()->PrintLine();
 				slot := AgentSlot->New();
 				Reap();
 				worker := AgentWorker->New(slot);
-				worker->ForTool(tool, call->GetArguments(), @token);
+				worker->ForTool(tool, call->GetArguments(), @token)->Under(@scope);
 				worker->Execute(Nil);
 				waited := false;
 				try {
