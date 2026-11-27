@@ -418,6 +418,48 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     peaked at 1,073 MB (23 MB without the calls); its peak resident size
     ([gc-stats] peak_rss_bytes) must now be within 32 MB of the same program
     making no call, with the JIT at its default and off.
+ 38. The thread-fault registry holds nothing for a thread that can no longer
+    be joined. OBJECK_THREAD_FAULT_STATS=1 (a test hook) makes the VM print
+    what the registry holds when Main returns: "[thread-faults] records=N
+    handles=M". A Thread object started again while its earlier run was still
+    going made that run unjoinable, and when it then faulted its message was
+    stored under a key no Join could ask for, one for good per repetition:
+    thread_fault_registry.obs "abandoned" 200 times left records=200. It must
+    leave records=0, and thread_restart_join.obs (a restart while a Join of the
+    earlier run is parked, and a restart whose earlier run then faults) must
+    leave records=0 handles=0 in each JIT mode. A thread that returned normally
+    and was never joined kept its handle's binding, with isolation on or off
+    ("unjoined" and "plain" 2000 times left handles=2000): both must leave
+    handles=0, and 4,000 such threads must cost under 32 KB of peak resident
+    memory each over 500 (9 to 13 KB on Linux x64, all of it the unjoined
+    thread's own stack, which this does not change: the bound is a ceiling,
+    the registry line is the measurement). Faulted threads that are never
+    joined are the one open-ended case, and are capped: "capped" 10000 times
+    (ten thousand faulting, unjoined threads) must leave records=4095
+    handles=4095 dropped=5904 -- the newest 4096 kept, less the newest one
+    that the program joins -- must print the one-line count of dropped faults,
+    and its three Joins must report the newest worker's own message, "Thread
+    fault record dropped" for the oldest, and nothing for a worker that did
+    not fault; "capped" 100 times, under the cap, drops nothing.
+ 39. A caller and its callee compiled at the same moment by two threads give
+    the right code. A generated program has 24 pairs: a long `Caller`, compiled
+    on its first call, that holds a call of a `native` `Leaf` its first call
+    does not take. The main thread announces each caller and calls it; a
+    second thread waits for the announcement and calls the leaf, so the leaf's
+    compile patches the caller's call site while the caller's backend is still
+    reading the caller's opcodes. The values must be right in each JIT mode.
+    Under a ThreadSanitizer build of obr (docs/design/JIT_CALL_SITE_PATCHING.md
+    says how to make one) this section also fails on any data race report
+    between PatchCallSites and a compiling backend: there was one per pair,
+    24 in every run, until a compile held the call-site lock shared.
+ 40. A dynamic call site is never written to. Two threads call functions the
+    JIT refuses through one site (jit_dynamic_call_shared_site.obs); the
+    auto-JIT's "refused" mark used to be stored into the shared instruction
+    by both. Under OBJECK_JIT_PATCH_VERIFY=1, which now stops the VM when it
+    finds a dynamic call with a non-zero third operand, the program must pass
+    at the default threshold and with --jit=1, and its compilable function
+    must still be reported compiled after the refused ones went through the
+    site.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -791,6 +833,8 @@ def main():
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
     check_dynamic_call_threshold(obc, obr, env, bin_dir)
+    check_jit_compile_race(obc, obr, env, bin_dir)
+    check_dynamic_site_unwritten(obc, obr, env, bin_dir)
     check_virtual_table_memory(obc, obr, env, bin_dir)
 
     check_compiler_fatal(obc, obr, env, bin_dir)
@@ -807,6 +851,7 @@ def main():
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
+    check_thread_fault_registry(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
 
@@ -1934,6 +1979,200 @@ def check_virtual_table_memory(obc, obr, env, bin_dir):
                       busy - idle < limit, f"idle={idle} busy={busy}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def thread_fault_registry_left(err):
+    # ("records", "handles") from the test hook's line, or None when it is not there
+    found = re.search(rb"^\[thread-faults\] records=(\d+) handles=(\d+)", err, re.M)
+    return (int(found.group(1)), int(found.group(2))) if found else None
+
+
+def check_thread_fault_registry(obc, obr, env, bin_dir):
+    # ---- 38. the thread-fault registry is bounded by the threads that can be joined ----
+    stats_env = dict(env)
+    stats_env["OBJECK_THREAD_FAULT_STATS"] = "1"
+
+    dest = compile_fixture(obc, "thread_fault_registry", env, bin_dir)
+    if dest:
+        # the control: without the variable the VM prints no such line
+        rc, out, err = run([obr, dest, "abandoned", "2"], env=env, cwd=bin_dir)
+        check("no registry line without OBJECK_THREAD_FAULT_STATS (control)",
+              rc == 0 and thread_fault_registry_left(err) is None, f"rc={rc} stderr={err[-200:]!r}")
+        for scenario, count, want in (("abandoned", 200, (0, 0)), ("unjoined", 2000, (0, 0)), ("plain", 2000, (0, 0))):
+            rc, out, err = run([obr, dest, scenario, str(count)], env=stats_env, cwd=bin_dir, timeout=300)
+            left = thread_fault_registry_left(err)
+            check(f"thread_fault_registry {scenario} x {count} passes its own checks",
+                  rc == 0 and f"PASS: {scenario} x {count}".encode() in out and left is not None,
+                  f"rc={rc} out={out[-200:]!r} stderr={err[-200:]!r}")
+            if left is not None:
+                check(f"{scenario} x {count} leaves nothing in the registry (records={left[0]} handles={left[1]})",
+                      left == want, f"left={left}")
+
+        # faulted and never joined: the newest 4096 records are kept
+        for count, want, dropped in ((100, (98, 98), 0), (10000, (4095, 4095), 5904)):
+            rc, out, err = run([obr, dest, "capped", str(count)], env=stats_env, cwd=bin_dir, timeout=600)
+            left = thread_fault_registry_left(err)
+            said = re.search(rb"^\[thread-faults\] (\d+) unjoined worker faults dropped \(cap 4096\)", err, re.M)
+            check(f"capped x {count}: the newest, the oldest and an unfaulted worker each report what they should",
+                  rc == 0 and f"PASS: capped x {count}".encode() in out and left is not None,
+                  f"rc={rc} out={out[-200:]!r}")
+            if left is not None:
+                check(f"capped x {count} leaves {want[0]} records (records={left[0]} handles={left[1]})",
+                      left == want, f"left={left}")
+            check(f"capped x {count}: {dropped} dropped faults are " + ("counted on stderr" if dropped else "not mentioned"),
+                  (int(said.group(1)) == dropped) if said else dropped == 0, f"line={said.group(0) if said else None!r}")
+
+        # peak resident memory per unjoined thread, isolation off
+        rss_env = dict(stats_env)
+        rss_env["OBJECK_GC_STATS"] = "1"
+        peaks = {}
+        for count in (500, 4000):
+            rc, out, err = run([obr, dest, "plain", str(count)], env=rss_env, cwd=bin_dir, timeout=300)
+            found = re.search(rb"^\[gc-stats\] .*\bpeak_rss_bytes=(\d+)", err, re.M)
+            peaks[count] = int(found.group(1)) if rc == 0 and found else None
+        check("plain x 500 and x 4000 run and report a peak resident size", None not in peaks.values(), f"peaks={peaks}")
+        if None not in peaks.values():
+            each = (peaks[4000] - peaks[500]) / 3500.0
+            check(f"an unjoined thread costs under 32 KB of peak resident memory ({each / 1024:.1f} KB each)",
+                  each < 32 * 1024, f"peaks={peaks}")
+
+    dest = compile_fixture(obc, "thread_restart_join", env, bin_dir)
+    if dest:
+        for label, flags in (("default", []), ("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=stats_env, cwd=bin_dir, timeout=300)
+            left = thread_fault_registry_left(err)
+            check(f"thread_restart_join passes ({label})",
+                  rc == 0 and b"thread_restart_join: all checks passed" in out and left is not None,
+                  f"rc={rc} out={out[-300:]!r}")
+            if left is not None:
+                check(f"and leaves nothing in the registry ({label}: records={left[0]} handles={left[1]})",
+                      left == (0, 0), f"left={left}")
+
+
+def jit_compile_race_source(pairs, body):
+    out = ["use System.Concurrency;", "", "class Pairs {"]
+    for i in range(pairs):
+        # the callee: `native`, so obc does not fold it into its caller and the JIT
+        # compiles it on its first call
+        out.append(f"\tfunction : native : Leaf{i}(v : Int) ~ Int {{")
+        out.append("\t\tt := v;")
+        out.append("\t\tfor(k := 0; k < 3; k += 1;) {")
+        out += [f"\t\t\tt := (t * 17 + {j + i}) % 1000003;" for j in range(16)]
+        out += ["\t\t};", "\t\treturn t;", "\t}"]
+        # the caller: a loop (compiled on its first call), a long body (the compile takes
+        # a while), and a call of the callee that its first call does not take
+        out.append(f"\tfunction : Caller{i}(v : Int) ~ Int {{")
+        out.append("\t\tt := v;")
+        out.append("\t\tfor(k := 0; k < 2; k += 1;) {")
+        out += [f"\t\t\tt := (t * 31 + {j + i}) % 1000003;" for j in range(body)]
+        out += ["\t\t};", f"\t\tif(v > 0) {{ t += Leaf{i}(v); }};", "\t\treturn t;", "\t}"]
+    out.append("}")
+    # the second thread compiles Leaf i as soon as the main thread has said it is about to
+    # call, and so compile, Caller i
+    out += ["class Side from Thread {", "\t@at : Int[];", "\t@total : Int;", "\tNew(at : Int[]) {",
+            "\t\tParent(\"side\");", "\t\t@at := at;", "\t\t@total := 0;", "\t}",
+            "\tmethod : public : Total() ~ Int {", "\t\treturn @total;", "\t}",
+            "\tmethod : public : Run(param : System.Base) ~ Nil {", "\t\tat := @at;", "\t\ttotal := 0;"]
+    for i in range(pairs):
+        out.append(f"\t\twhile(at[0] < {i + 1}) {{ }};")
+        out.append(f"\t\ttotal := (total + Pairs->Leaf{i}(1)) % 1000003;")
+    out += ["\t\t@total := total;", "\t}", "}"]
+    out += ["class CompileRace {", "\tfunction : Main(args : String[]) ~ Nil {",
+            "\t\tat := Int->New[1];", "\t\tside := Side->New(at);", "\t\tside->Execute(Nil);",
+            "\t\tThread->Sleep(20);", "\t\tfirst := 0;"]
+    for i in range(pairs):
+        out.append(f"\t\tat[0] := {i + 1};")
+        out.append(f"\t\tfirst := (first + Pairs->Caller{i}(0)) % 1000003;")
+    out += ["\t\tside->Join();", "\t\tsecond := 0;"]
+    out += [f"\t\tsecond := (second + Pairs->Caller{i}(1)) % 1000003;" for i in range(pairs)]
+    out += ["\t\tleaves := side->Total();",
+            '\t\t"PASS: first={$first} second={$second} leaves={$leaves}"->PrintLine();', "\t}", "}"]
+    return "\n".join(out) + "\n"
+
+
+def check_jit_compile_race(obc, obr, env, bin_dir):
+    # ---- 39. a caller and its callee compiled at once by two threads -------------------
+    pairs, body, mod = 24, 1500, 1000003
+
+    def leaf(i, v):
+        t = v
+        for _ in range(3):
+            for j in range(16):
+                t = (t * 17 + j + i) % mod
+        return t
+
+    def caller(i, v):
+        t = v
+        for _ in range(2):
+            for j in range(body):
+                t = (t * 31 + j + i) % mod
+        return t + (leaf(i, v) if v > 0 else 0)
+
+    expected = "PASS: first={} second={} leaves={}".format(
+        sum(caller(i, 0) for i in range(pairs)) % mod, sum(caller(i, 1) for i in range(pairs)) % mod,
+        sum(leaf(i, 1) for i in range(pairs)) % mod).encode()
+
+    race_env = dict(env)
+    for name in ("OBJECK_JIT_DISABLE", "OBJECK_JIT_THRESHOLD"):
+        race_env.pop(name, None)
+    work = tempfile.mkdtemp(prefix="objk-race-")
+    try:
+        src = os.path.join(work, "compile_race.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(jit_compile_race_source(pairs, body))
+        dest = os.path.join(work, "compile_race.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir, timeout=300)
+        check("the caller/callee compile race program compiles", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        for label, flags in (("default", []), ("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=race_env, cwd=bin_dir, timeout=600)
+            check(f"callers and callees compiled together compute the right values ({label})",
+                  expected in out and (rc == 0 or b"ThreadSanitizer" in err),
+                  f"rc={rc} out={out[-200:]!r} expected={expected!r}")
+            # only a ThreadSanitizer build prints these; the two access stacks are the first
+            # two blocks of a report
+            text = err.decode(errors="replace")
+            reports = re.findall(r"WARNING: ThreadSanitizer: data race.*?SUMMARY: ThreadSanitizer[^\n]*", text, re.S)
+            unsynchronised = 0
+            for report in reports:
+                stacks = "\n".join(b for b in report.split("\n\n") if re.search(r"^\s*(Previous )?(read|write|Read|Write) of size", b, re.M))
+                if "PatchCallSites" in stacks and re.search(r"Jit(Amd64|Arm64)::|JitCompiler::HasLoop|RefMap|ref_map_detail", stacks):
+                    unsynchronised += 1
+            if reports or label == "default":
+                check(f"no call-site patch races a compiling backend ({label}: {len(reports)} ThreadSanitizer report(s), "
+                      f"{unsynchronised} of them between PatchCallSites and a compile)", unsynchronised == 0,
+                      f"reports={len(reports)}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def check_dynamic_site_unwritten(obc, obr, env, bin_dir):
+    # ---- 40. a dynamic call site is never written to ----------------------------------
+    dest = compile_fixture(obc, "jit_dynamic_call_shared_site", env, bin_dir)
+    if not dest:
+        return
+    verify_env = dict(env)
+    for name in ("OBJECK_JIT_DISABLE", "OBJECK_JIT_THRESHOLD"):
+        verify_env.pop(name, None)
+    verify_env["OBJECK_JIT_PATCH_VERIFY"] = "1"
+    verify_env["OBJECK_JIT_REPORT"] = "1"
+    for label, flags in (("default", []), ("--jit=1", ["--jit=1"])):
+        rc, out, err = run([obr] + flags + [dest], env=verify_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        check(f"two threads through one dynamic site leave it unwritten (OBJECK_JIT_PATCH_VERIFY=1, {label})",
+              rc == 0 and b"PASS: two threads through one dynamic call site" in out and "Internal error" not in text,
+              f"rc={rc} out={out[-200:]!r} stderr={[l for l in text.splitlines() if 'Internal error' in l]!r}")
+        # The controls, from a run with the threads one after the other (two threads printing
+        # the report at once run their lines together): all sixteen callees were refused and
+        # the compilable one was compiled.
+        rc, out, err = run([obr] + flags + [dest, "serial"], env=verify_env, cwd=bin_dir)
+        lines = err.decode(errors="replace").splitlines()
+        refused = [l for l in lines if re.match(r"\[jit\] Site:[RS]\d:i,: not compiled", l)]
+        check(f"sixteen functions are refused and the compilable one is compiled ({label})",
+              rc == 0 and len(refused) == 16 and "[jit] Site:Often:i,: compiled" in lines,
+              f"rc={rc} refused={len(refused)} often={[l for l in lines if 'Often' in l][:3]!r}")
 
 
 def check_compiler_fatal(obc, obr, env, bin_dir):

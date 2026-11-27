@@ -1,0 +1,172 @@
+#~
+One dynamic call site, called from two threads at once with functions the JIT
+refuses, then with one it compiles: every call returns the right value, and
+nothing is stored into the shared call instruction.
+
+A call through a function value names no method in its instruction, so nothing
+about a callee belongs on the instruction. The interpreter's auto-JIT helper
+still took the instruction and stored -1 into its third operand whenever the
+callee it was counting turned out not to be compilable: two threads calling
+different refused functions through one site stored into the same word with no
+lock. Nothing reads that operand of a dynamic call any more, so no call went
+wrong, but it was a data race (ThreadSanitizer: one report per pair of stores).
+Dynamic calls now count their callee with a helper that takes no instruction.
+
+Apply holds the one call site and is itself interpreted (it has a ?-> region).
+Each of two threads calls eight functions of its own through it, twelve times
+each; every one of the sixteen has a ?-> region, so the JIT refuses it on its
+tenth call. Then Often, which the JIT does compile, goes through the same site
+from both threads, and the refused ones once more.
+
+With the argument "serial" the two threads run one after the other, which
+run_vm_flag_tests.py uses to read the JIT's report (two threads printing it at
+once run their lines together).
+
+ARM64 and macOS: run this in the default, OBJECK_JIT_THRESHOLD=1 and --jit=off
+modes; under a ThreadSanitizer build it must report no race that names
+ProcessDynamicMethodCall.
+~#
+use System.Concurrency;
+
+class Site {
+	# the one dynamic call site; the ?-> region keeps Apply interpreted
+	function : Apply(f : (Int) ~ Int, v : Int) ~ Int {
+		h := IntRef->New(v);
+		p := h?->Get();
+		return f(v) + p - v;
+	}
+
+	function : Hammer(f : (Int) ~ Int) ~ Int {
+		total := 0;
+		for(i := 0; i < 12; i += 1;) {
+			total += Apply(f, i);
+		};
+		return total;
+	}
+
+	function : Often(v : Int) ~ Int {
+		return v * 5;
+	}
+
+
+	# refused by the JIT: a ?-> region
+	function : R0(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 0; }
+	function : R1(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 1; }
+	function : R2(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 2; }
+	function : R3(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 3; }
+	function : R4(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 4; }
+	function : R5(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 5; }
+	function : R6(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 6; }
+	function : R7(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 2 + 7; }
+
+	# refused by the JIT: a ?-> region
+	function : S0(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 0; }
+	function : S1(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 1; }
+	function : S2(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 2; }
+	function : S3(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 3; }
+	function : S4(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 4; }
+	function : S5(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 5; }
+	function : S6(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 6; }
+	function : S7(v : Int) ~ Int { h := IntRef->New(v); p := h?->Get(); return p * 3 + 7; }
+}
+
+class Caller from Thread {
+	@which : Int;
+	@refused : Int;
+	@compiled : Int;
+	@again : Int;
+
+	New(which : Int) {
+		Parent("caller");
+		@which := which;
+	}
+
+	method : public : Refused() ~ Int {
+		return @refused;
+	}
+
+	method : public : Compiled() ~ Int {
+		return @compiled;
+	}
+
+	method : public : Again() ~ Int {
+		return @again;
+	}
+
+	method : Round() ~ Int {
+		total := 0;
+		if(@which = 0) {
+			total += Site->Hammer(Site->R0(Int) ~ Int);
+			total += Site->Hammer(Site->R1(Int) ~ Int);
+			total += Site->Hammer(Site->R2(Int) ~ Int);
+			total += Site->Hammer(Site->R3(Int) ~ Int);
+			total += Site->Hammer(Site->R4(Int) ~ Int);
+			total += Site->Hammer(Site->R5(Int) ~ Int);
+			total += Site->Hammer(Site->R6(Int) ~ Int);
+			total += Site->Hammer(Site->R7(Int) ~ Int);
+		}
+		else {
+			total += Site->Hammer(Site->S0(Int) ~ Int);
+			total += Site->Hammer(Site->S1(Int) ~ Int);
+			total += Site->Hammer(Site->S2(Int) ~ Int);
+			total += Site->Hammer(Site->S3(Int) ~ Int);
+			total += Site->Hammer(Site->S4(Int) ~ Int);
+			total += Site->Hammer(Site->S5(Int) ~ Int);
+			total += Site->Hammer(Site->S6(Int) ~ Int);
+			total += Site->Hammer(Site->S7(Int) ~ Int);
+		};
+		return total;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@refused := Round();
+		@compiled := Site->Hammer(Site->Often(Int) ~ Int) + Site->Hammer(Site->Often(Int) ~ Int);
+		@again := Round();
+	}
+}
+
+class JitDynamicCallSharedSite {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		a := Caller->New(0);
+		b := Caller->New(1);
+		if(args->Size() > 0 & args[0]->Equals("serial")) {
+			# one thread after the other: the JIT's report is then readable line by line
+			a->Execute(Nil);
+			a->Join();
+			b->Execute(Nil);
+			b->Join();
+		}
+		else {
+			a->Execute(Nil);
+			b->Execute(Nil);
+			a->Join();
+			b->Join();
+		};
+
+		# twelve calls with v = 0..11: R k is 2v + k, S k is 3v + k, over k = 0..7
+		if(a->Refused() <> 1392 | b->Refused() <> 1920) {
+			ar := a->Refused();
+			br := b->Refused();
+			"FAIL: refused functions through the shared site: {$ar} and {$br}, expected 1392 and 1920"->PrintLine();
+			failures += 1;
+		};
+		if(a->Compiled() <> 660 | b->Compiled() <> 660) {
+			ac := a->Compiled();
+			bc := b->Compiled();
+			"FAIL: the compiled function through the shared site: {$ac} and {$bc}, expected 660 and 660"->PrintLine();
+			failures += 1;
+		};
+		if(a->Again() <> 1392 | b->Again() <> 1920) {
+			aa := a->Again();
+			ba := b->Again();
+			"FAIL: refused functions after the compiled one: {$aa} and {$ba}, expected 1392 and 1920"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: two threads through one dynamic call site: refused callees, a compiled one, refused again"->PrintLine();
+	}
+}
