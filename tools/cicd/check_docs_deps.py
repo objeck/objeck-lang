@@ -20,6 +20,20 @@ system. This gate checks it from both sides:
       A dependency the manifest does not list fails (the docs cannot mention
       it); a listed one nothing links fails too (the docs overstate it).
 
+  --portable <deploy tree> --platform linux-x64|linux-arm64
+      The RELEASE tree, built by tools/packaging/build_portable_linux.sh, must
+      run on every distribution the manifest's linux.release section promises
+      (docs/design/PORTABLE_LINUX.md):
+        - no file needs a glibc, libstdc++ or libgcc symbol version newer than
+          the floor (GLIBC_2.28 is what AlmaLinux 8, Debian 10 and Ubuntu 18.10
+          have; one newer symbol and the tool does not start there);
+        - bin/* link the C and C++ runtime and zlib and nothing else, so no
+          missing package can stop obr, obc, obd, obi, obu or obb from starting;
+        - the native libraries listed as self-contained link nothing outside
+          the tree either, and the rest link exactly the listed system sonames;
+        - bin/* keep the hardening the Ubuntu-built releases had (PIE, full
+          RELRO, non-executable stack).
+
 Why: v2026.9.2's release notes told Linux users to install nghttp2, ngtcp2 and
 GnuTLS packages and macOS users to `brew install opencv@4 onnxruntime` -- while
 the macOS obr also needed four more Homebrew formulas no document mentioned,
@@ -205,6 +219,109 @@ def check_linux_artifacts(tree, arch, manifest):
     return findings
 
 
+def version_key(v):
+    return tuple(int(x) for x in v.split("."))
+
+
+def elf_files_of(tree):
+    """(regular ELF files, every name the tree provides -- files and version symlinks)."""
+    in_tree = set()
+    elf_files = []
+    for dirpath, _, names in os.walk(tree):
+        for n in names:
+            p = os.path.join(dirpath, n)
+            if os.path.islink(p):
+                in_tree.add(n)
+                continue
+            if not os.path.isfile(p):
+                continue
+            with open(p, "rb") as f:
+                if f.read(4) != b"\x7fELF":
+                    continue
+            elf_files.append(p)
+            in_tree.add(n)
+    return sorted(elf_files), in_tree
+
+
+def check_linux_portable(tree, arch, manifest):
+    linux = manifest["linux"]
+    release = linux["release"]
+    toolchain = set(linux["toolchain_sonames"]) | set(release["core_sonames"])
+    floors = release["max_symbol_versions"]
+    families = "|".join(re.escape(f) for f in floors)
+    core_linked = set()
+    core = release["core_binaries"]
+    self_contained = set(release["self_contained_natives"])
+    expected = set(release["sonames"][arch])
+    elf_files, in_tree = elf_files_of(tree)
+    findings = 0
+
+    def fail(msg):
+        nonlocal findings
+        print(f"  linux-{arch}: {msg}")
+        findings += 1
+
+    for name in core:
+        if not os.path.isfile(os.path.join(tree, "bin", name)):
+            fail(f"bin/{name} is missing")
+    for name in sorted(self_contained):
+        if not os.path.isfile(os.path.join(tree, "lib", "native", name)):
+            fail(f"lib/native/{name} is missing")
+    if not elf_files:
+        fail(f"no ELF files under {tree}")
+
+    external = {}
+    for p in elf_files:
+        rel = os.path.relpath(p, tree).replace(os.sep, "/")
+        # 1. symbol versions: the highest of each family this file asks the system for
+        highest = {}
+        for fam, ver in re.findall(r"Name: (" + families + r")_([0-9]+(?:\.[0-9]+)*)\b", run(["readelf", "-V", "-W", p])):
+            if fam not in highest or version_key(ver) > version_key(highest[fam]):
+                highest[fam] = ver
+        for fam, ver in sorted(highest.items()):
+            if version_key(ver) > version_key(floors[fam]):
+                fail(f"{rel} needs {fam}_{ver}; the release floor is {fam}_{floors[fam]}")
+
+        # 2. what it links outside the tree and the C/C++ runtime
+        dynamic = run(["readelf", "-d", "-W", p])
+        needed = set(re.findall(r"\(NEEDED\)\s+Shared library: \[([^\]]+)\]", dynamic))
+        outside = {s for s in needed if s not in toolchain and s not in in_tree}
+        core_linked |= needed & set(release["core_sonames"])
+        is_core = rel.startswith("bin/")
+        if is_core or os.path.basename(p) in self_contained:
+            for s in sorted(outside):
+                fail(f"{rel} links {s}; it must need nothing but the C and C++ runtime, zlib"
+                     + ("" if is_core else " and the tree"))
+        else:
+            for s in outside:
+                external.setdefault(s, set()).add(rel)
+
+        # 3. hardening of the executables
+        if is_core:
+            header = run(["readelf", "-h", "-W", p])
+            segments = run(["readelf", "-l", "-W", p])
+            if not re.search(r"Type:\s+DYN", header):
+                fail(f"{rel} is not position-independent (PIE)")
+            if "GNU_RELRO" not in segments:
+                fail(f"{rel} has no read-only relocations (RELRO)")
+            if not re.search(r"\bBIND_NOW\b|Flags:.*\bNOW\b", dynamic):
+                fail(f"{rel} does not bind at start-up (BIND_NOW), so RELRO is partial")
+            stack = re.search(r"GNU_STACK\s+(?:0x[0-9a-f]+\s+){5}(\S+)", segments)
+            if not stack or "E" in stack.group(1):
+                fail(f"{rel} has an executable stack")
+
+    for s in sorted(set(external) - expected):
+        fail(f"links {s} (from {', '.join(sorted(external[s]))}) but runtime_deps.json linux.release does not list it")
+    for s in sorted(expected - set(external)):
+        fail(f"runtime_deps.json linux.release lists {s} but nothing in {tree} links it")
+    for s in sorted(set(release["core_sonames"]) - core_linked):
+        fail(f"runtime_deps.json linux.release core_sonames lists {s} but nothing in {tree} links it")
+    if not findings:
+        print(f"  {len(elf_files)} ELF files: " + ", ".join(f"{f} <= {v}" for f, v in sorted(floors.items()))
+              + f"; bin/ links only the C/C++ runtime and {', '.join(release['core_sonames'])}; {len(expected)} optional system sonames, as listed")
+    return findings
+
+
 def check_macos_artifacts(tree, manifest):
     allowed = manifest["macos"]["external_prefixes"]
     tree = os.path.abspath(tree)
@@ -238,13 +355,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--docs", action="store_true", help="check install instructions in the docs")
     ap.add_argument("--artifacts", metavar="TREE", help="check what a built deploy tree links")
+    ap.add_argument("--portable", metavar="TREE", help="hold a Linux release tree to the portability floor")
     ap.add_argument("--platform", choices=["linux-x64", "linux-arm64", "macos-arm64"])
     args = ap.parse_args()
-    if not args.docs and not args.artifacts:
+    if not args.docs and not args.artifacts and not args.portable:
         ap.print_usage()
         return 2
-    if args.artifacts and not args.platform:
-        print("--artifacts needs --platform")
+    if (args.artifacts or args.portable) and not args.platform:
+        print("--artifacts and --portable need --platform")
+        return 2
+    if args.portable and not args.platform.startswith("linux"):
+        print("--portable is for linux-x64 and linux-arm64")
         return 2
 
     with open(MANIFEST, encoding="utf-8") as f:
@@ -260,6 +381,10 @@ def main():
             findings += check_linux_artifacts(args.artifacts, args.platform.split("-")[1], manifest)
         else:
             findings += check_macos_artifacts(args.artifacts, manifest)
+
+    if args.portable:
+        print(f"== portable: {args.portable} ({args.platform}) vs core/release/runtime_deps.json linux.release")
+        findings += check_linux_portable(args.portable, args.platform.split("-")[1], manifest)
 
     if findings:
         print(f"FAIL: {findings} dependency statement(s) disagree with what Objeck actually needs")

@@ -13,7 +13,7 @@ the three build workflows.
 
 | Library | Windows x64 / ARM64 | Linux x64 / ARM64 | macOS ARM64 | Used by |
 |---|---|---|---|---|
-| mbedTLS | vcpkg `mbedtls:<arch>-windows` (`ci-build.yml`, "Install Windows dependencies") | apt `libmbedtls-dev` | 3.6.4, static, `tools/deps/build_macos_deps.sh` (in-tree `mbedtls_config.h`) | TLS sockets, HTTPS, `libobjk_crypto` hashes/ciphers |
+| mbedTLS | vcpkg `mbedtls:<arch>-windows` (`ci-build.yml`, "Install Windows dependencies") | release: 3.6.4, static, `tools/deps/build_linux_portable_deps.sh` (the same in-tree `mbedtls_config.h` as macOS); a build from source: apt `libmbedtls-dev` | 3.6.4, static, `tools/deps/build_macos_deps.sh` (in-tree `mbedtls_config.h`) | TLS sockets, HTTPS, `libobjk_crypto` hashes/ciphers |
 | nghttp2 | vcpkg `nghttp2` | v1.70.0, static, `tools/deps/build_quic_deps.sh` | v1.70.0, static, same script | HTTP/2 (`net_h2`) |
 | ngtcp2 / nghttp3 / AWS-LC | not used: HTTP/3 goes through WinHTTP (Windows 11 and later) | ngtcp2 v1.25.0, nghttp3 v1.18.0, AWS-LC v5.8.0, static, `tools/deps/build_quic_deps.sh` | same versions, static, same script | HTTP/3 (`net_quic`) |
 | SDL2, SDL2_image, SDL2_mixer, SDL2_ttf | DLLs vendored in `core/lib/sdl/lib/<arch>` and copied to `bin\` by `deploy_windows.cmd`; their version resources say SDL2 2.31.0, SDL2_image 2.9.0, SDL2_mixer 2.8.0, SDL2_ttf 2.25.0 | apt `libsdl2-*-dev` | brew `sdl2*` | `sdl2`, `sdl_game`, `sdl_gl` |
@@ -43,7 +43,7 @@ lift that with no change to the VM beyond registering the lock functions;
 ## Checking what a build actually used
 
 - **Windows**: in the CI log's "Install Windows dependencies" step, `vcpkg install` names each port with its version (`mbedtls:x64-windows@<version>`). OpenCV x64's version is `$opencvVersion` in the workflows (and the `4120` in its DLL name); ONNX Runtime x64's is the NuGet version in `core/lib/onnx/vs/packages.config`. The vendored DLLs, SDL2 and the ARM64 QNN ONNX Runtime (1.23.0), carry theirs in their file-version resources (`(Get-Item SDL2.dll).VersionInfo`).
-- **Linux**: `dpkg -l libmbedtls-dev libsdl2-dev libopencv-dev libmp3lame-dev` on the runner image (`ubuntu-24.04` — the image, not the tree, decides the version). The HTTP/2 and HTTP/3 versions are pinned in `tools/deps/build_quic_deps.sh` and recorded in its prefix's `.quic-deps-stamp`.
+- **Linux**: the release links mbedTLS and OpenCV statically, pinned by version and sha256 in `tools/deps/build_linux_portable_deps.sh` and recorded in its prefix's `.portable-deps-stamp` ([PORTABLE_LINUX.md](design/PORTABLE_LINUX.md)); SDL2, GTK, GStreamer, unixODBC and LAME are whatever the user's system has. A build from source (CI, `deploy_posix.sh` run directly) links the machine's own packages: `dpkg -l libmbedtls-dev libsdl2-dev libopencv-dev libmp3lame-dev` (`ubuntu-24.04` on the CI runners — the image, not the tree, decides the version). The HTTP/2 and HTTP/3 versions are pinned in `tools/deps/build_quic_deps.sh` and recorded in its prefix's `.quic-deps-stamp`.
 - **macOS**: every third-party library is pinned in `tools/deps/build_macos_deps.sh` (version and sha256) and recorded in its prefix's `macos-bundle/.macos-deps-stamp`; HTTP/2 and HTTP/3 as on Linux (`.quic-deps-stamp`). The licenses ship under each library's `licenses/`.
 - **Shipped tree**: `ldd lib/native/libobjk_crypto.so` / `otool -L` / `dumpbin /dependents` names the exact runtime libraries a native module links, which is also what `verify_native_libs.sh|.ps1` checks resolve.
 

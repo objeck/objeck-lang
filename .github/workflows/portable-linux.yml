@@ -1,0 +1,107 @@
+name: Portable Linux release
+
+# Builds the Linux release the way release-build.yml does and runs it on every
+# distribution it promises (docs/design/PORTABLE_LINUX.md), for any change that
+# can alter what the release links: the build image, the static libraries, the
+# makefiles, the deploy script, the dependency manifest.
+#
+# ci-build.yml cannot see this. It builds against the runner's own libraries, so
+# a change that makes the release need a newer glibc, or a library only Ubuntu
+# 24.04 has, is green there -- v2026.11.3 shipped that way and did not start on
+# Ubuntu 26.04. release-build.yml runs the same two scripts, but only on a tag
+# or a dispatch, which is after the change merged.
+
+on:
+  pull_request:
+    paths:
+      - 'tools/packaging/**'
+      - 'tools/deps/**'
+      - 'tools/install_deps.sh'
+      - 'tools/cicd/check_docs_deps.py'
+      - 'core/release/deploy_posix.sh'
+      - 'core/release/runtime_deps.json'
+      - 'core/release/verify_native_libs.sh'
+      - 'core/*/make/Makefile.amd64*'
+      - 'core/*/make/Makefile.arm64*'
+      - 'core/vm/arch/**/make/**'
+      - 'core/utils/*/make/**'
+      - 'core/lib/*/build_linux.sh'
+      - 'core/lib/onnx/eq/build.sh'
+      - 'core/lib/openssl/macos/mbedtls_config.h'
+      - '.github/workflows/portable-linux.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and run everywhere (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: ubuntu-24.04
+            machine: x86_64
+          - arch: arm64
+            os: ubuntu-24.04-arm
+            machine: aarch64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The same key as release-build.yml. A cache saved by a pull request is
+      # visible to that pull request only, so this cannot feed a release build.
+      - name: Cache portable Linux libraries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/objeck-deps/portable-linux-${{ matrix.machine }}
+          key: portable-linux-deps-${{ runner.arch }}-${{ hashFiles('tools/deps/build_linux_portable_deps.sh', 'tools/deps/build_quic_deps.sh', 'tools/packaging/portable-linux/Dockerfile', 'tools/packaging/portable-linux/cc-wrapper.sh', 'core/lib/openssl/macos/mbedtls_config.h') }}
+
+      # Builds in the AlmaLinux 8 image, then holds the tree to runtime_deps.json's
+      # linux.release: symbol versions, NEEDED entries, hardening.
+      - name: Build the release tree and tarball
+        run: bash tools/packaging/build_portable_linux.sh
+
+      - name: Run the tarball on every supported distribution
+        run: bash tools/packaging/test_portable_linux.sh ~/Desktop/objeck-linux-${{ matrix.arch }}_0.0.0.tgz
+
+      # The other half: with the network on, the tarball's install_deps.sh must find
+      # a package for every system library the optional bindings use, after which
+      # each native library resolves to the last symbol and OpenCV, LAME and ONNX
+      # run. Not in release-build.yml: it depends on eight distributions' package
+      # mirrors answering, which a release should not wait on.
+      - name: Optional bindings on every supported distribution
+        run: bash tools/packaging/test_portable_linux.sh --natives ~/Desktop/objeck-linux-${{ matrix.arch }}_0.0.0.tgz
+
+      # release-deb.yml packages a PUBLISHED tarball; this is the same packaging,
+      # of the tarball just built, installed with apt on each Debian and Ubuntu
+      # release the package supports.
+      - name: Build the .deb
+        run: |
+          set -euo pipefail
+          sudo bash tools/cicd/apt_harden.sh
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dpkg-dev
+          mkdir -p tree && tar -xzf ~/Desktop/objeck-linux-${{ matrix.arch }}_0.0.0.tgz -C tree
+          bash tree/objeck-lang/install_deps.sh --yes --tree tree/objeck-lang
+          bash tools/packaging/build_deb.sh ~/Desktop/objeck-linux-${{ matrix.arch }}_0.0.0.tgz --out out
+          dpkg-deb -I out/*.deb
+
+      - name: Install the .deb on every supported Debian and Ubuntu
+        run: bash tools/packaging/test_deb.sh out/objeck-ubuntu24.04-${{ matrix.arch }}_0.0.0.deb
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: portable-linux-${{ matrix.arch }}
+          path: |
+            ~/Desktop/objeck-linux-${{ matrix.arch }}_0.0.0.tgz
+            out/*.deb
+          if-no-files-found: error
+          retention-days: 7

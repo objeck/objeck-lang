@@ -167,21 +167,23 @@ jobs:
             shell: cmd
             artifact_pattern: "objeck-windows-arm64_*.*"
 
-          # Linux x64
+          # Linux x64 and ARM64. The runner only hosts docker: the build runs in the
+          # AlmaLinux 8 image of tools/packaging/portable-linux, where deploy_posix.sh
+          # links mbedTLS and OpenCV statically against glibc 2.28, so the
+          # tarball runs on every distribution in runtime_deps.json's linux.release
+          # (docs/design/PORTABLE_LINUX.md). v2026.11.3 was built on this runner
+          # directly and did not start on Ubuntu 26.04, Debian or Fedora.
           - platform: linux-x64
-            # Pinned: ubuntu-latest became 26.04 on 2026-10-31, which links OpenCV 4.10 and mbedTLS 3.x
-            # and would ship binaries older distributions cannot run (runtime_deps.json describes 24.04).
             os: ubuntu-24.04
             arch: x64
-            deploy_script: ./deploy_posix.sh x64 deploy
+            deploy_script: bash ../../tools/packaging/build_portable_linux.sh
             shell: bash
             artifact_pattern: "objeck-linux-x64_0.0.0.tgz"
 
-          # Linux ARM64 - using GitHub-hosted ARM64 runners (now GA)
           - platform: linux-arm64
             os: ubuntu-24.04-arm
             arch: arm64
-            deploy_script: ./deploy_posix.sh arm64 deploy
+            deploy_script: bash ../../tools/packaging/build_portable_linux.sh
             shell: bash
             artifact_pattern: "objeck-linux-arm64_0.0.0.tgz"
 
@@ -222,36 +224,18 @@ jobs:
       # Install Dependencies (Same as CI)
       # ============================================
 
-      # Cache a USER-OWNED archive dir; restoring root-owned /var/cache/apt/archives
-      # as the unprivileged runner fails with "tar: ...deb: Permission denied".
-      - name: Cache APT packages (Linux)
+      # The static libraries the Linux build links (AWS-LC, ngtcp2, nghttp3, nghttp2,
+      # mbedTLS, OpenCV), built in the container by
+      # tools/deps/build_linux_portable_deps.sh and kept between runs: OpenCV alone
+      # is most of an hour on these runners. The key covers everything that decides
+      # what is in them; the script also stamps the directory and rebuilds on a
+      # mismatch, so a stale restore cannot be linked.
+      - name: Cache portable Linux libraries
         if: runner.os == 'Linux'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/apt-cache
-          key: ${{ runner.os }}-${{ matrix.arch }}-apt-release
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-apt-
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p ~/apt-cache/partial
-          sudo bash tools/cicd/apt_harden.sh
-          sudo apt-get update
-          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
-            build-essential \
-            libopencv-dev \
-            libmbedtls-dev \
-            unixodbc-dev \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-ttf-dev \
-            libsdl2-mixer-dev \
-            libreadline-dev \
-            libeigen3-dev \
-            libmp3lame-dev
-          sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
+          path: ~/objeck-deps/portable-linux-${{ runner.arch == 'ARM64' && 'aarch64' || 'x86_64' }}
+          key: portable-linux-deps-${{ runner.arch }}-${{ hashFiles('tools/deps/build_linux_portable_deps.sh', 'tools/deps/build_quic_deps.sh', 'tools/packaging/portable-linux/Dockerfile', 'tools/packaging/portable-linux/cc-wrapper.sh', 'core/lib/openssl/macos/mbedtls_config.h') }}
 
       - name: Cache Homebrew (macOS)
         if: runner.os == 'macOS'
@@ -509,9 +493,10 @@ jobs:
           echo "Certificates installed."
 
       # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
-      # from cache or build them with tools/deps/build_quic_deps.sh.
+      # from cache or build them with tools/deps/build_quic_deps.sh. The Linux
+      # legs build theirs inside the container, with the other static libraries.
       - name: QUIC dependencies
-        if: runner.os != 'Windows'
+        if: runner.os == 'macOS'
         uses: ./.github/actions/quic-deps
 
       # The macOS package carries static OpenCV, mbedTLS and libiodbc, the prebuilt
@@ -610,7 +595,7 @@ jobs:
           (cd "$LIC" && find . -type f | sed 's|^\./|  |' | sort)
           NEED="aws-lc ngtcp2 nghttp3 nghttp2 eigen libsvm sdl2_gfx vader"
           case "${{ matrix.platform }}" in
-            linux-*) NEED="$NEED onnxruntime" ;;
+            linux-*) NEED="$NEED onnxruntime mbedtls opencv" ;;
             macos-*) NEED="$NEED onnxruntime opencv mbedtls iodbc lame sdl2" ;;
           esac
           MISSING=""
@@ -699,6 +684,16 @@ jobs:
             exit 1
           fi
           echo "✅ Shipped toolchain compiles, runs and reports ${REPORTED:-$VERSION}"
+
+      # The build step already held the tree to the portability floor
+      # (check_docs_deps.py --portable: symbol versions, NEEDED entries,
+      # hardening). This runs the tarball itself where users will: a clean
+      # container of each distribution in runtime_deps.json, no network, nothing
+      # installed. A dependency the release gains fails the first; one the floor
+      # check cannot see fails here.
+      - name: Run the tarball on every supported distribution (Linux)
+        if: runner.os == 'Linux'
+        run: bash tools/packaging/test_portable_linux.sh ~/Desktop/${{ matrix.artifact_pattern }}
 
       - name: Smoke test the shipped toolchain (Windows)
         if: runner.os == 'Windows' && matrix.arch != 'ARM64'

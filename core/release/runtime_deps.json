@@ -3,7 +3,11 @@
     "The single source of truth for what Objeck needs from the operating system.",
     "tools/cicd/check_docs_deps.py enforces it in both directions:",
     "  --artifacts: the libraries a built deploy tree actually links must match 'sonames'/'external'",
+    "  --portable:  a Linux RELEASE tree must meet linux.release (docs/design/PORTABLE_LINUX.md)",
     "  --docs:      every package a doc tells users to install must be listed here",
+    "Linux has two builds. linux.sonames is a build from source against Ubuntu 24.04's own",
+    "libraries, which is what CI and a developer make. linux.release is the published tarball",
+    "and .deb, built in an AlmaLinux 8 container with mbedTLS and OpenCV linked in.",
     "Change this file in the same PR as any change to what the binaries link, and the",
     "docs gate names every page that still says otherwise.",
     "The x64 and arm64 soname lists are currently IDENTICAL, which is a consequence",
@@ -20,19 +24,60 @@
     "sonames": {
       "x64": [
         "libmbedtls.so.14", "libmbedx509.so.1", "libmbedcrypto.so.7", "libz.so.1",
-        "libreadline.so.8", "libodbc.so.2", "libmp3lame.so.0",
+        "libodbc.so.2", "libmp3lame.so.0",
         "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
         "libopencv_core.so.406", "libopencv_imgproc.so.406", "libopencv_imgcodecs.so.406",
         "libopencv_calib3d.so.406", "libopencv_dnn.so.406", "libopencv_highgui.so.406", "libopencv_videoio.so.406"
       ],
       "arm64": [
         "libmbedtls.so.14", "libmbedx509.so.1", "libmbedcrypto.so.7", "libz.so.1",
-        "libreadline.so.8", "libodbc.so.2", "libmp3lame.so.0",
+        "libodbc.so.2", "libmp3lame.so.0",
         "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
         "libopencv_core.so.406", "libopencv_imgproc.so.406", "libopencv_imgcodecs.so.406",
         "libopencv_calib3d.so.406",
         "libopencv_dnn.so.406", "libopencv_highgui.so.406", "libopencv_videoio.so.406"
       ]
+    },
+    "release": {
+      "_comment": [
+        "The published Linux tarball and .deb. bin/* may link toolchain_sonames and core_sonames",
+        "and nothing else; so may each of self_contained_natives, plus files in the tree.",
+        "core_sonames is zlib alone: every dpkg, rpm and pacman system has libz.so.1, because its",
+        "package manager links it, and a static zlib made obc 20% slower. 'sonames' is everything the",
+        "remaining native libraries (odbc, lame, sdl, opencv) take from the system: each is optional,",
+        "and a program that loads one without them stops with the loader's message, exit 1.",
+        "max_symbol_versions is the newest symbol version any file may ask of glibc, libstdc++ and",
+        "libgcc: AlmaLinux 8's. obd looks for readline_dlopen at run time and works without it.",
+        "tested_images is what tools/packaging/test_portable_linux.sh runs the tarball on;",
+        "its --natives mode leaves out natives_untested, where the optional bindings are not",
+        "promised: AlmaLinux 8's own repositories have no SDL2_image, SDL2_mixer or SDL2_ttf,",
+        "and its SDL2 2.0.10 is older than libobjk_sdl needs. x64_only_images have no arm64",
+        "image to run: Arch Linux is an x86-64 distribution (Arch Linux ARM is a separate project)."
+      ],
+      "max_symbol_versions": { "GLIBC": "2.28", "GLIBCXX": "3.4.25", "CXXABI": "1.3.11", "GCC": "7.0.0", "ZLIB": "1.2.11" },
+      "core_sonames": ["libz.so.1"],
+      "core_binaries": ["obc", "obr", "obd", "obi", "obu", "obb"],
+      "self_contained_natives": ["libobjk_crypto.so", "libobjk_diags.so", "libobjk_ml.so", "libobjk_onnx.so"],
+      "readline_dlopen": ["libreadline.so.8", "libreadline.so.7", "libreadline.so.6"],
+      "tested_images": ["ubuntu:22.04", "ubuntu:24.04", "ubuntu:26.04", "debian:12", "debian:13", "fedora:latest", "archlinux:latest", "almalinux:8"],
+      "natives_untested": ["almalinux:8"],
+      "x64_only_images": ["archlinux:latest"],
+      "sonames": {
+        "x64": [
+          "libodbc.so.2", "libmp3lame.so.0",
+          "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
+          "libgtk-3.so.0", "libgdk-3.so.0", "libcairo.so.2", "libgdk_pixbuf-2.0.so.0", "libgobject-2.0.so.0", "libglib-2.0.so.0",
+          "libgstreamer-1.0.so.0", "libgstbase-1.0.so.0", "libgstapp-1.0.so.0", "libgstriff-1.0.so.0",
+          "libgstpbutils-1.0.so.0", "libgstvideo-1.0.so.0", "libgstaudio-1.0.so.0"
+        ],
+        "arm64": [
+          "libodbc.so.2", "libmp3lame.so.0",
+          "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
+          "libgtk-3.so.0", "libgdk-3.so.0", "libcairo.so.2", "libgdk_pixbuf-2.0.so.0", "libgobject-2.0.so.0", "libglib-2.0.so.0",
+          "libgstreamer-1.0.so.0", "libgstbase-1.0.so.0", "libgstapp-1.0.so.0", "libgstriff-1.0.so.0",
+          "libgstpbutils-1.0.so.0", "libgstvideo-1.0.so.0", "libgstaudio-1.0.so.0"
+        ]
+      }
     }
   },
   "macos": {

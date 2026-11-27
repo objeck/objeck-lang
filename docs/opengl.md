@@ -38,23 +38,27 @@ From a repo checkout it lives at `tools/install_deps.sh`; the two are the same
 script and take the same options.
 
 It covers every system library the distribution links against, not only SDL2.
-On a clean machine `obr` does not start without it:
+Since v2026.11.4 the tools themselves (`obc`, `obr`, `obd`, `obi`) need none:
+mbedTLS and OpenCV are linked in
+([PORTABLE_LINUX.md](design/PORTABLE_LINUX.md)). What is left belongs to four
+optional bindings, and to the debugger's line editing:
 
-| Needed by | Libraries |
+| Used by | Libraries |
 |---|---|
-| `obr`, `obd`, `obi` | mbedTLS (TLS and crypto) |
-| `obd` | readline |
 | `libobjk_sdl.so` | SDL2 (core, image, mixer, ttf), OpenGL |
-| `libobjk_opencv.so`, `libobjk_onnx.so` | OpenCV 4.6 |
+| `libobjk_opencv.so` | GTK 3 and GStreamer (windows and video files) |
 | `libobjk_odbc.so` | unixODBC |
 | `libobjk_lame.so` | LAME |
-| `libobjk_crypto.so` | mbedTLS |
+| `obd` | readline, if present (line editing and history) |
+
+A program that loads one of these bindings without its libraries stops with a
+message that names the missing library; nothing else is affected.
 
 The list is not hardcoded. The script runs `ldd` on the distribution's own
 `bin/*` and `lib/native/libobjk_*.so`, then asks the package manager (apt,
 dnf/yum, pacman, zypper) which package provides each library that does not
 resolve, so it picks the right name on each distribution (for example,
-`libmbedtls14t64` on Ubuntu 24.04 and `libmbedtls14` on Debian 12). Useful
+`libgtk-3-0t64` on Ubuntu 24.04 and `libgtk-3-0` on Debian 12). Useful
 variants:
 
 ```bash
@@ -67,20 +71,18 @@ variants:
 Use `--dev` only when compiling the native library yourself; running a release
 build needs just the runtime packages.
 
-Linux releases are built on Ubuntu 24.04. They link against its library
-versions and need glibc 2.38 or newer, and they run as shipped on Ubuntu 24.04.
-Elsewhere the script tells you what is in the way:
+Linux releases are built against glibc 2.28 and run on Ubuntu 22.04 and
+later, Debian 12 and later, Fedora, Arch and RHEL 8 and its rebuilds. Where a
+tree cannot run at all, the script says why instead of installing anything:
 
-- **An older C library.** Debian 12 packages every library, but its glibc 2.36
-  is too old, so nothing would start. The script says so and installs nothing.
-- **Different library versions.** Fedora 44, for example, packages no mbedTLS
-  2.28 or OpenCV 4.6. The script installs what it can, names the
-  rest and exits 1.
+- **An older C library.** A distribution older than glibc 2.28 cannot load the
+  tools. So is a v2026.11.3 or earlier tree anywhere but Ubuntu 24.04: those
+  needed glibc 2.38 and that release's mbedTLS and OpenCV.
 - **musl or another architecture.** Alpine cannot run glibc binaries, and an
   arm64 tree cannot run on x86-64. The script names the case and exits 1.
 
-In the first two cases, build Objeck from source on that system
-(`core/release/deploy_posix.sh`).
+In the first case, use v2026.11.4 or later, or build Objeck from source on that
+system (`core/release/deploy_posix.sh`).
 
 ### Verifying the setup
 
