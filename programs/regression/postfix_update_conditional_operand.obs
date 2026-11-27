@@ -1,0 +1,233 @@
+#~
+A postfix update written in an operand that only one path evaluates runs when
+that operand is evaluated, and not otherwise.
+
+An update ('i++') is queued when its variable is read and emitted at the end
+of the statement. For an operand that may be skipped, the end of the statement
+is after the paths have rejoined, so the update ran either way:
+
+  - `k := t ? 7 : i++;` incremented i for a true t
+  - `b := false & (i++ > 0);` and `b := true | (i++ > 0);` incremented i
+    although the second operand was short-circuited
+  - `v := none?->Take(i++);` incremented i although the receiver was Nil and
+    neither the call nor its argument was evaluated
+
+(The default of '??' is the same construct: nil_coalesce_default_postfix.obs.)
+Each operand's updates are now emitted on its own path. An update outside such
+an operand still runs at the end of the statement, on every path, and both are
+checked together. Exits 1 on a mismatch.
+~#
+class Taker {
+	@taken : Int;
+
+	New() {
+		@taken := 0;
+	}
+
+	method : public : Take(n : Int) ~ Int {
+		@taken += 1;
+		return n * 2;
+	}
+
+	method : public : Divide(n : Int, d : Int) ~ Int {
+		return n / d;
+	}
+
+	method : public : Next(n : Int) ~ Taker {
+		@taken += n;
+		return @self;
+	}
+
+	method : public : Taken() ~ Int {
+		return @taken;
+	}
+}
+
+class PostfixUpdateConditionalOperand {
+	@fails : Int;
+	@field : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := PostfixUpdateConditionalOperand->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@field := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	function : Pick(t : Bool, after : IntRef) ~ Int {
+		i := 1;
+		j := 10;
+		k := t ? i++ : j++;
+		after->Set(i * 100 + j);
+		return k;
+	}
+
+	function : And(first : Bool, after : IntRef) ~ Bool {
+		i := 1;
+		b := first & (i++ > 0);
+		after->Set(i);
+		return b;
+	}
+
+	function : Or(first : Bool, after : IntRef) ~ Bool {
+		i := 1;
+		b := first | (i++ > 0);
+		after->Set(i);
+		return b;
+	}
+
+	function : Guarded(taker : Taker, after : IntRef) ~ Int {
+		i := 1;
+		v := taker?->Take(i++);
+		after->Set(i);
+		return v;
+	}
+
+	method : FieldPick(t : Bool) ~ Int {
+		return t ? @field++ : -1;
+	}
+
+	method : Run() ~ Nil {
+		after := IntRef->New(0);
+
+		# '?:': the branch taken, and only it
+		k := Pick(true, after);
+		Check("?: first branch, value", k, 1);
+		Check("?: first branch, updates", after->Get(), 210);
+		k := Pick(false, after);
+		Check("?: second branch, value", k, 10);
+		Check("?: second branch, updates", after->Get(), 111);
+
+		i := 1;
+		t := true;
+		k := t ? 7 : i++;
+		Check("?: skipped branch", i, 1);
+		t := false;
+		k := t ? 7 : i++;
+		Check("?: taken branch, value", k, 1);
+		Check("?: taken branch, update", i, 2);
+
+		# an update of the statement's own, beside one in a branch
+		i := 1;
+		j := 1;
+		t := true;
+		k := j++ + (t ? 100 : i++);
+		Check("own update, branch skipped: value", k, 101);
+		Check("own update, branch skipped: updates", i * 10 + j, 12);
+		t := false;
+		k := j++ + (t ? 100 : i++);
+		Check("own update, branch taken: value", k, 3);
+		Check("own update, branch taken: updates", i * 10 + j, 23);
+
+		# nested: only the innermost branch reached
+		i := 1;
+		j := 1;
+		n := 1;
+		t := true;
+		f := false;
+		k := t ? (f ? i++ : j++) : n++;
+		Check("nested ?:, value", k, 1);
+		Check("nested ?:, updates", i * 100 + j * 10 + n, 121);
+
+		# a field
+		k := FieldPick(false);
+		Check("field, skipped", @field, 0);
+		k := FieldPick(true);
+		Check("field, taken: value", k, 0);
+		Check("field, taken: update", @field, 1);
+
+		# '&' and '|': the second operand only when it is evaluated
+		b := And(false, after);
+		Check("&, short-circuited", after->Get() * 10 + (b ? 1 : 0), 10);
+		b := And(true, after);
+		Check("&, evaluated", after->Get() * 10 + (b ? 1 : 0), 21);
+		b := Or(true, after);
+		Check("|, short-circuited", after->Get() * 10 + (b ? 1 : 0), 11);
+		b := Or(false, after);
+		Check("|, evaluated", after->Get() * 10 + (b ? 1 : 0), 21);
+
+		# the first operand is always evaluated: its update is the statement's
+		i := 1;
+		j := 1;
+		b := (i++ > 5) & (j++ > 0);
+		Check("&, first operand's update", i * 10 + j, 21);
+		b := (i++ > 0) | (j++ > 0);
+		Check("|, first operand's update", i * 10 + j, 31);
+
+		# a chain of three: each operand on its own
+		i := 1;
+		j := 1;
+		t := true;
+		f := false;
+		b := t & f & (i++ > 0);
+		Check("& chain, stops at the second", i, 1);
+		b := t & t & (i++ > 0);
+		Check("& chain, reaches the third", i, 2);
+		b := f | t | (j++ > 0);
+		Check("| chain, stops at the second", j, 1);
+		b := f | f | (j++ > 0);
+		Check("| chain, reaches the third", j, 2);
+
+		# a guarded call's argument
+		taker := Taker->New();
+		none : Taker := Nil;
+		v := Guarded(none, after);
+		Check("?->, Nil receiver: value", v, 0);
+		Check("?->, Nil receiver: update", after->Get(), 1);
+		v := Guarded(taker, after);
+		Check("?->, receiver: value", v, 2);
+		Check("?->, receiver: update", after->Get(), 2);
+		Check("?->, receiver: called once", taker->Taken(), 1);
+
+		# the argument was evaluated, then the call failed: the update stands
+		i := 1;
+		v := taker?->Divide(i++, 0);
+		Check("?->, call fails: value", v, 0);
+		Check("?->, call fails: update", i, 2);
+
+		# two guarded calls, each with an update
+		i := 1;
+		j := 5;
+		v := taker?->Next(i++)->Take(j++);
+		Check("?->, chain: value", v, 10);
+		Check("?->, chain: updates", i * 10 + j, 26);
+		i := 1;
+		j := 5;
+		v := none?->Next(i++)->Take(j++);
+		Check("?->, chain, Nil receiver: updates", i * 10 + j, 15);
+
+		# with a default: one of the two runs
+		i := 1;
+		j := 5;
+		v := none?->Take(i++) ?? j++;
+		Check("?-> ??, Nil receiver: value", v, 5);
+		Check("?-> ??, Nil receiver: updates", i * 10 + j, 16);
+		v := taker?->Take(i++) ?? j++;
+		Check("?-> ??, receiver: value", v, 2);
+		Check("?-> ??, receiver: updates", i * 10 + j, 26);
+
+		# in a loop, so the JIT compiles the functions
+		total := 0;
+		for(n := 0; n < 3000; n += 1;) {
+			k := Pick(n % 2 = 0, after);
+			total += after->Get();
+		};
+		Check("loop", total, 1500 * 210 + 1500 * 111);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a postfix update in a skipped operand does not run"->PrintLine();
+	}
+}

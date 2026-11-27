@@ -1819,20 +1819,27 @@ namespace frontend {
     std::wstring name;
     INT64_VALUE offset;
     INT64_VALUE index;
+    // a 'consts' group: named integers, not the closed set of items an enum is
+    bool is_consts;
     std::map<const std::wstring, EnumItem*> items;
 
+    // an 'enum', numbered from 'o'
     Enum(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, INT64_VALUE o) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
       index = offset = o;
+      is_consts = false;
     }
 
+    // a 'consts' group: each item is given its value, and the offset written to
+    // a library is -1
     Enum(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring &n) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
       index = offset = -1;
+      is_consts = true;
     }
     
     ~Enum() {
@@ -1896,8 +1903,10 @@ namespace frontend {
       return items;
     }
     
+    // Not 'offset < 0': an enum may be numbered from a negative value
+    // ('enum Level := -20 { .. }'), and was then taken for a consts group.
     bool IsConsts() {
-      return offset < 0;
+      return is_consts;
     }
   };
 
@@ -1919,6 +1928,9 @@ namespace frontend {
     bool is_value = false;
     // "match" or "select", for messages
     std::wstring keyword = L"select";
+    // checked, on an enum, with no 'other': the labels were found to name every
+    // item, so some arm is always taken (AnalyzeSelectCoverage)
+    bool is_exhaustive = false;
 
     Select(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
            Assignment* e, std::map<ExpressionList*, StatementList*> &s, std::vector<StatementList*> &sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -1975,6 +1987,14 @@ namespace frontend {
 
     bool IsValue() {
       return is_value;
+    }
+
+    void SetExhaustive() {
+      is_exhaustive = true;
+    }
+
+    bool IsExhaustive() {
+      return is_exhaustive;
     }
 
     const std::wstring& GetKeyword() {

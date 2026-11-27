@@ -626,7 +626,7 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const std::wstring &f, const int l) : Expression() {
+    NilLiteral([[maybe_unused]] const std::wstring &f, [[maybe_unused]] const int l) : Expression() {
     }
 
     ~NilLiteral() {

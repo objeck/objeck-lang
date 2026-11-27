@@ -20,8 +20,11 @@ the same short name. This builds two libraries and checks, against them:
   - two libraries that each have a 'Holder<T>': the class the call names
     (by its bundle) is the one that is built, and its type argument is the
     argument's own class, not a class of the same short name elsewhere
+  - two constructors that take as many arguments, when the arguments can be
+    passed to one of them only: that one settles the type argument
   - a library class used without type arguments where nothing settles them,
-    a conflict and a broken bound are still refused, each on its line
+    a conflict, a broken bound and two constructors that can both be called
+    and disagree are still refused, each on its line
 
 Each program runs three ways: the default, the JIT on every call and the
 interpreter alone.
@@ -94,6 +97,22 @@ bundle InferOne {
 
     method : public : First() ~ T {
       return @values->Get(0);
+    }
+  }
+
+  class Tagged<T> {
+    @which : Int;
+
+    New(left : T, right : Item) {
+      @which := 1;
+    }
+
+    New(left : IntRef, right : T) {
+      @which := 2;
+    }
+
+    method : public : Which() ~ Int {
+      return @which;
     }
   }
 
@@ -191,11 +210,18 @@ class User {
     crossed := InferOne.Holder->New(InferTwo.Item->New(33));
     crossed->Where()->PrintLine();
     crossed->Get()->Id()->PrintLine();
+
+    # two constructors take two arguments, and these can be passed to one of them only
+    left := InferOne.Tagged->New("left", InferOne.Item->New("item"));
+    left->Which()->PrintLine();
+
+    right := InferOne.Tagged->New(7, "right");
+    right->Which()->PrintLine();
   }
 }
 """
 
-EXPECTED = ["text", "42", "9", "first", "5", "6", "one", "item one", "two", "22", "one", "33"]
+EXPECTED = ["text", "42", "9", "first", "5", "6", "one", "item one", "two", "22", "one", "33", "1", "2"]
 
 # (name, source, the line and message the compiler must report)
 BAD = [
@@ -225,6 +251,15 @@ class Bad {
 }
 """, "bad.obs:(3,15): Cannot infer the type arguments of 'InferOne.Holder': no argument gives type parameter 'T' a class"),
 ]
+
+BAD.append(("two constructors that can both be called", """class Bad {
+  function : Main(args : String[]) ~ Nil {
+    tagged := InferOne.Tagged->New(IntRef->New(1), InferOne.Item->New("item"));
+    tagged->GetClassID()->PrintLine();
+  }
+}
+""", "bad.obs:(3,15): Cannot infer the type arguments of 'InferOne.Tagged': its constructors make type parameter 'T' both "
+     "'System.IntRef' and 'InferOne.Item'"))
 
 MODES = [("default", {}), ("JIT on every call", {"OBJECK_JIT_THRESHOLD": "1"}),
          ("interpreter", {"OBJECK_JIT_DISABLE": "1"})]

@@ -568,7 +568,7 @@ Source (.obs) → Lexer → Parser → AST → Optimizer (s0-s3) → Bytecode (.
 - `s2` - Moderate (+ common subexpressions, loop-invariant code motion, strength reduction, dead code elimination)
 - `s3` - Aggressive (+ instruction replacement, peephole, method inlining) ⭐ **default**
 
-The authoritative pass list, and what a library build skips, is [optimization_pipeline.md](../docs/optimization_pipeline.md). (`CopyProp` exists in `optimization.cpp` but nothing calls it.)
+The authoritative pass list, and what a library build skips, is [optimization_pipeline.md](../docs/optimization_pipeline.md).
 
 ### VM Execution Flow
 ```

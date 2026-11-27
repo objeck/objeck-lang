@@ -673,8 +673,11 @@ static bool IsGeneratedMcpEntryName(const std::wstring& entry, const std::wstrin
 // virtual declaration) that takes the argument array and returns Nil. The name alone used to decide, so
 // a virtual 'McpMain' with no body, or one that returns a value, was started. Whether it is a function or
 // an instance method is not in a program file (a method record carries no such flag), so that part is
-// the compiler's: obc refuses a McpMain(args : String[]) that is not 'function ... ~ Nil'
-// (Parser::ParseMethod). A file not written by obc can still name an instance method here; it is started
+// the compiler's, and only in a program 'obr --mcp' can serve: obc refuses a McpMain(args : String[])
+// that is not 'function ... ~ Nil' when the declaring file has 'use API.MCP' or some class of the
+// program has an '@tool', '@resource' or '@prompt' function (Parser::RefuseMcpEntry,
+// Parser::ReportMcpEntries). In any other program such a method is an ordinary method and is
+// compiled as written. A file not written by obc can still name an instance method here; it is started
 // without an instance and its first use of one is the VM's Nil-dereference error.
 //
 // A generated entry is told from a function the program wrote by all the compiler gives it: the name

@@ -1,0 +1,218 @@
+#~
+An arm that several labels share behaves the same for each of them.
+
+`match n { 0 | 1 => i++, other => 0 }` emitted the arm's code once per label.
+Emitting a tree a second time is not repeatable: a variable's postfix update is
+taken off its node the first time it is emitted, so only the first copy had it.
+n = 0 incremented i and n = 1 did not. `label 0: label 1: { .. }` in a 'select'
+statement is the same construct and behaved the same way. A shared arm now has
+one target that all of its labels jump to, and its code is emitted once.
+
+Each label of a shared arm and the 'other' path are checked, for a dense set of
+labels (a jump table) and a sparse one (a tree of compares), as a value and as a
+statement, with enum items, characters and strings as labels. Exits 1 on a
+mismatch.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue,
+	Black
+}
+
+class MatchSharedArm {
+	@fails : Int;
+	@count : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MatchSharedArm->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@count := 0;
+	}
+
+	method : Check(name : String, got_value : Int, want_value : Int, got_count : Int, want_count : Int) ~ Nil {
+		if(got_value <> want_value | got_count <> want_count) {
+			@fails += 1;
+			"FAIL {$name}: value {$got_value} (expected {$want_value}), counter {$got_count} (expected {$want_count})"->PrintLine();
+		};
+	}
+
+	function : Dense(n : Int, after : IntRef) ~ Int {
+		i := 5;
+		v := match n { 0 | 1 => i++, other => 0 };
+		after->Set(i);
+		return v;
+	}
+
+	function : DenseThree(n : Int, after : IntRef) ~ Int {
+		i := 5;
+		v := match n { 0 | 2 | 4 => i++, 1 | 3 => i--, other => 0 };
+		after->Set(i);
+		return v;
+	}
+
+	function : Sparse(n : Int, after : IntRef) ~ Int {
+		i := 5;
+		v := match n { 0 | 1 | 500 | 90000 => i++, 7 | 7000000 => i--, other => 0 };
+		after->Set(i);
+		return v;
+	}
+
+	function : Statement(n : Int, after : IntRef) ~ Int {
+		i := 5;
+		v := -1;
+		select(n) {
+			label 0:
+			label 1: {
+				v := i++;
+			}
+
+			label 2: {
+				v := 2;
+			}
+
+			other: {
+				v := 0;
+			}
+		};
+		after->Set(i);
+		return v;
+	}
+
+	function : StatementSparse(n : Int, after : IntRef) ~ Int {
+		i := 5;
+		v := -1;
+		select(n) {
+			label 3:
+			label 4000:
+			label 5000000: {
+				v := i++;
+				v += i++;
+			}
+
+			label 9: {
+				v := 2;
+			}
+		};
+		after->Set(i);
+		return v;
+	}
+
+	function : Items(c : Color, after : IntRef) ~ Int {
+		i := 5;
+		v := match c { Color->Red | Color->Blue => i++, Color->Green => 1, Color->Black => 0 };
+		after->Set(i);
+		return v;
+	}
+
+	function : Characters(c : Char, after : IntRef) ~ Int {
+		i := 5;
+		v := match c { 'a' | 'e' | 'i' | 'o' | 'u' => i++, other => 0 };
+		after->Set(i);
+		return v;
+	}
+
+	function : Strings(s : String, after : IntRef) ~ Int {
+		i := 5;
+		v := -1;
+		select(s) {
+			label "yes":
+			label "y": {
+				v := i++;
+			}
+
+			label "no": {
+				v := 1;
+			}
+
+			other: {
+				v := 0;
+			}
+		};
+		after->Set(i);
+		return v;
+	}
+
+	# a field: the update is the arm's, whichever label reached it
+	method : Field(n : Int) ~ Int {
+		return match n { 10 | 11 | 12 => @count++, other => -1 };
+	}
+
+	# a shared arm that holds another match
+	function : Nested(n : Int, m : Int, after : IntRef) ~ Int {
+		i := 5;
+		v := match n { 0 | 1 => match m { 0 | 1 => i++, other => i-- }, other => 0 };
+		after->Set(i);
+		return v;
+	}
+
+	method : Run() ~ Nil {
+		after := IntRef->New(0);
+
+		v := Dense(0, after); Check("dense, first label", v, 5, after->Get(), 6);
+		v := Dense(1, after); Check("dense, second label", v, 5, after->Get(), 6);
+		v := Dense(2, after); Check("dense, other", v, 0, after->Get(), 5);
+
+		v := DenseThree(0, after); Check("dense three, 0", v, 5, after->Get(), 6);
+		v := DenseThree(2, after); Check("dense three, 2", v, 5, after->Get(), 6);
+		v := DenseThree(4, after); Check("dense three, 4", v, 5, after->Get(), 6);
+		v := DenseThree(1, after); Check("dense three, 1", v, 5, after->Get(), 4);
+		v := DenseThree(3, after); Check("dense three, 3", v, 5, after->Get(), 4);
+		v := DenseThree(5, after); Check("dense three, other", v, 0, after->Get(), 5);
+
+		v := Sparse(0, after); Check("sparse, 0", v, 5, after->Get(), 6);
+		v := Sparse(1, after); Check("sparse, 1", v, 5, after->Get(), 6);
+		v := Sparse(500, after); Check("sparse, 500", v, 5, after->Get(), 6);
+		v := Sparse(90000, after); Check("sparse, 90000", v, 5, after->Get(), 6);
+		v := Sparse(7, after); Check("sparse, 7", v, 5, after->Get(), 4);
+		v := Sparse(7000000, after); Check("sparse, 7000000", v, 5, after->Get(), 4);
+		v := Sparse(8, after); Check("sparse, other", v, 0, after->Get(), 5);
+
+		v := Statement(0, after); Check("statement, first label", v, 5, after->Get(), 6);
+		v := Statement(1, after); Check("statement, second label", v, 5, after->Get(), 6);
+		v := Statement(2, after); Check("statement, own arm", v, 2, after->Get(), 5);
+		v := Statement(3, after); Check("statement, other", v, 0, after->Get(), 5);
+
+		v := StatementSparse(3, after); Check("statement sparse, 3", v, 11, after->Get(), 7);
+		v := StatementSparse(4000, after); Check("statement sparse, 4000", v, 11, after->Get(), 7);
+		v := StatementSparse(5000000, after); Check("statement sparse, 5000000", v, 11, after->Get(), 7);
+		v := StatementSparse(9, after); Check("statement sparse, own arm", v, 2, after->Get(), 5);
+		v := StatementSparse(10, after); Check("statement sparse, no label", v, -1, after->Get(), 5);
+
+		v := Items(Color->Red, after); Check("enum, first item", v, 5, after->Get(), 6);
+		v := Items(Color->Blue, after); Check("enum, second item", v, 5, after->Get(), 6);
+		v := Items(Color->Green, after); Check("enum, own arm", v, 1, after->Get(), 5);
+		v := Items(Color->Black, after); Check("enum, last arm", v, 0, after->Get(), 5);
+
+		v := Characters('a', after); Check("char, a", v, 5, after->Get(), 6);
+		v := Characters('i', after); Check("char, i", v, 5, after->Get(), 6);
+		v := Characters('u', after); Check("char, u", v, 5, after->Get(), 6);
+		v := Characters('x', after); Check("char, other", v, 0, after->Get(), 5);
+
+		v := Strings("yes", after); Check("string, yes", v, 5, after->Get(), 6);
+		v := Strings("y", after); Check("string, y", v, 5, after->Get(), 6);
+		v := Strings("no", after); Check("string, own arm", v, 1, after->Get(), 5);
+		v := Strings("maybe", after); Check("string, other", v, 0, after->Get(), 5);
+
+		v := Field(10); Check("field, 10", v, 0, @count, 1);
+		v := Field(11); Check("field, 11", v, 1, @count, 2);
+		v := Field(12); Check("field, 12", v, 2, @count, 3);
+		v := Field(13); Check("field, other", v, -1, @count, 3);
+
+		v := Nested(0, 0, after); Check("nested, 0 0", v, 5, after->Get(), 6);
+		v := Nested(1, 1, after); Check("nested, 1 1", v, 5, after->Get(), 6);
+		v := Nested(1, 2, after); Check("nested, 1 other", v, 5, after->Get(), 4);
+		v := Nested(0, 2, after); Check("nested, 0 other", v, 5, after->Get(), 4);
+		v := Nested(2, 0, after); Check("nested, other", v, 0, after->Get(), 5);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: every label of a shared match/select arm runs the same arm"->PrintLine();
+	}
+}

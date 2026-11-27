@@ -517,6 +517,16 @@ class LibraryEnum {
     return offset;
   }
 
+  // True for a 'consts' group. A library records an enum's name, its offset and
+  // its items, and a consts group is written with offset -1, so a negative
+  // offset alone does not tell the two apart: an enum may be numbered from a
+  // negative value ('enum Format := -20', 'enum SensorType := -1'). The items
+  // do: an enum's are numbered offset, offset + 1, .. with no gap, while a
+  // consts group's are whatever values were written. (A consts group written
+  // as exactly -1, 0, 1, .. cannot be told from 'enum := -1' and reads as the
+  // enum it is equivalent to.)
+  bool IsConsts();
+
   void AddItem(LibraryEnumItem* i) {
     items.insert(std::pair<std::wstring, LibraryEnumItem*>(i->GetName(), i));
   }

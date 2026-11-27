@@ -93,6 +93,10 @@ CHECKS = [
     ("HPC sweep helper (objeck-slurm)", lambda: py("tools/hpc/alderaan/tests/test_objeck_slurm.py")),
     ("HPC scaling harness and report", lambda: py("tools/hpc/alderaan/tests/test_scaling.py")),
     ("Nightly workflow contract", lambda: py("tools/cicd/test_nightly_contract.py")),
+    ("Exit-code checker tests", lambda: py("tools/cicd/test_check_test_exit_codes.py")),
+    ("Fuzz library tests", lambda: py("tools/fuzz/test_fuzzlib.py")),
+    ("Fuzz reducer tests", lambda: py("tools/fuzz/test_reduce.py")),
+    ("GC roots generator tests", lambda: py("tools/gc_roots/test_gen_roots.py")),
     ("CI package installs retry a network failure", lambda: ["bash", "tools/cicd/test_apt_harden.sh"]),
     ("Editor grammars know the contextual words", lambda: py("tools/docs/test_editor_grammars.py")),
 ]
@@ -118,7 +122,7 @@ def self_test():
     needs_build = {"check_openai_image_dispatch.py", "mock_inference_server.py",
                    "test_inference_round_trip.py", "run_lsp_tests.py"}
     missing = []
-    for script in sorted(set(re.findall(r"python3? (tools/(?:cicd/(?:check|test)_\w+|docs/(?:test|guides_to_html)\w*|release-stats/test_\w+)\.py)", wf))):
+    for script in sorted(set(re.findall(r"python3? (tools/(?:cicd/(?:check|test)_\w+|fuzz/test_\w+|gc_roots/test_\w+|docs/(?:test|guides_to_html)\w*|release-stats/test_\w+)\.py)", wf))):
         if os.path.basename(script) in needs_build:
             continue
         if script not in listed:

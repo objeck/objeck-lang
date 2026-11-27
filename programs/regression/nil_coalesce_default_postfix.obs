@@ -1,0 +1,150 @@
+#~
+A postfix update in the default of '??' runs only when the default is evaluated.
+
+`chosen := current ?? IntRef->New(i++);` queued the increment while the default
+was emitted and left it queued, so it was emitted at the end of the statement,
+after the two paths had rejoined: i changed although 'current' was not Nil and
+the default was skipped. The same held for the default of a guarded call
+(`s?->Size() ?? i++`). The default's updates are now emitted on the path that
+evaluates it.
+
+Both paths are checked for each form: an object receiver, a guarded call that
+yields a value and one that yields an object, a chain of two defaults, a field,
+and an update that belongs to the statement itself (it still runs on both
+paths). Exits 1 on a mismatch.
+~#
+class Holder {
+	@value : Int;
+
+	New(value : Int) {
+		@value := value;
+	}
+
+	method : public : Get() ~ Int {
+		return @value;
+	}
+
+	method : public : Next() ~ Holder {
+		return Holder->New(@value + 1);
+	}
+}
+
+class NilCoalesceDefaultPostfix {
+	@fails : Int;
+	@field : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := NilCoalesceDefaultPostfix->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@field := 0;
+	}
+
+	method : Check(name : String, got_value : Int, want_value : Int, got_counter : Int, want_counter : Int) ~ Nil {
+		if(got_value <> want_value | got_counter <> want_counter) {
+			@fails += 1;
+			"FAIL {$name}: value {$got_value} (expected {$want_value}), counter {$got_counter} (expected {$want_counter})"->PrintLine();
+		};
+	}
+
+	function : Object(current : IntRef, after : IntRef) ~ Int {
+		i := 1;
+		chosen := current ?? IntRef->New(i++);
+		after->Set(i);
+		return chosen->Get();
+	}
+
+	# the guarded call yields a value: the handler takes the default
+	function : GuardedValue(s : String, after : IntRef) ~ Int {
+		i := 10;
+		n := s?->Size() ?? i++;
+		after->Set(i);
+		return n;
+	}
+
+	# the guarded call yields an object: Nil is replaced after the region
+	function : GuardedObject(h : Holder, after : IntRef) ~ Int {
+		i := 20;
+		next := h?->Next() ?? Holder->New(i++);
+		after->Set(i);
+		return next->Get();
+	}
+
+	# 'a ?? b ?? c': each default is its own path
+	function : Chain(first : IntRef, second : IntRef, after : IntRef) ~ Int {
+		i := 1;
+		j := 100;
+		chosen := first ?? (i++ > 0 ? second : second) ?? IntRef->New(j++);
+		after->Set(i * 1000 + j);
+		return chosen->Get();
+	}
+
+	method : Field(current : IntRef) ~ Int {
+		chosen := current ?? IntRef->New(@field++);
+		return chosen->Get();
+	}
+
+	# 'k++' is the statement's own: it runs on both paths, 'i++' on one
+	function : Mixed(current : IntRef, after : IntRef) ~ Int {
+		i := 1;
+		k := 50;
+		sum := k++ + (current ?? IntRef->New(i++))->Get();
+		after->Set(i * 1000 + k);
+		return sum;
+	}
+
+	# a call after the default: the update still belongs to the Nil path
+	function : Tail(current : Holder, after : IntRef) ~ Int {
+		i := 30;
+		v := (current ?? Holder->New(i++))->Next()->Get();
+		after->Set(i);
+		return v;
+	}
+
+	method : Run() ~ Nil {
+		after := IntRef->New(0);
+
+		v := Object(IntRef->New(100), after); Check("object, not Nil", v, 100, after->Get(), 1);
+		v := Object(Nil, after); Check("object, Nil", v, 1, after->Get(), 2);
+
+		v := GuardedValue("abc", after); Check("guarded value, not Nil", v, 3, after->Get(), 10);
+		v := GuardedValue("", after); Check("guarded value, empty", v, 0, after->Get(), 10);
+		v := GuardedValue(Nil, after); Check("guarded value, Nil", v, 10, after->Get(), 11);
+
+		v := GuardedObject(Holder->New(7), after); Check("guarded object, not Nil", v, 8, after->Get(), 20);
+		v := GuardedObject(Nil, after); Check("guarded object, Nil", v, 20, after->Get(), 21);
+
+		v := Chain(IntRef->New(5), IntRef->New(6), after); Check("chain, first", v, 5, after->Get(), 1100);
+		v := Chain(Nil, IntRef->New(6), after); Check("chain, second", v, 6, after->Get(), 2100);
+		v := Chain(Nil, Nil, after); Check("chain, third", v, 100, after->Get(), 2101);
+
+		v := Field(IntRef->New(9)); Check("field, not Nil", v, 9, @field, 0);
+		v := Field(Nil); Check("field, Nil", v, 0, @field, 1);
+		v := Field(Nil); Check("field, Nil again", v, 1, @field, 2);
+		v := Field(IntRef->New(9)); Check("field, not Nil again", v, 9, @field, 2);
+
+		v := Mixed(IntRef->New(100), after); Check("mixed, not Nil", v, 150, after->Get(), 1051);
+		v := Mixed(Nil, after); Check("mixed, Nil", v, 51, after->Get(), 2051);
+
+		v := Tail(Holder->New(3), after); Check("tail, not Nil", v, 4, after->Get(), 30);
+		v := Tail(Nil, after); Check("tail, Nil", v, 31, after->Get(), 31);
+
+		# in a loop: one update per Nil
+		i := 0;
+		total := 0;
+		for(n := 0; n < 6; n += 1;) {
+			current : IntRef := n % 2 = 0 ? Nil : IntRef->New(1000);
+			total += (current ?? IntRef->New(i++))->Get();
+		};
+		Check("loop", total, 3003, i, 3);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a postfix update in the default of '??' runs with the default"->PrintLine();
+	}
+}

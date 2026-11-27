@@ -667,7 +667,7 @@ public:
           next_max = cap;
         }
 
-        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(next_max));
+        char* temp = (char*)calloc(static_cast<size_t>(next_max), sizeof(char));
         if(!temp) {
           break;
         }

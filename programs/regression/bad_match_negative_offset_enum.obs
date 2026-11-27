@@ -1,0 +1,35 @@
+# EXPECT_COMPILE_ERROR: (30,8): This 'match' does not cover every item of 'Level', missing: High
+# EXPECT_ERROR_COUNT: 3
+#~
+An enum numbered from a negative value is checked like any other
+(match_negative_offset_enum.obs): a 'match' on it with no 'other' arm names
+every item, and the error names the ones that are missing, for a program enum
+and for a library enum (Number->Format is numbered from -20). Both used to be
+told only to add an 'other' arm.
+
+A 'consts' group is not an enum, whatever its values: a 'match' on one used as
+a value still needs an 'other' arm.
+~#
+enum Level := -20 {
+	Low,
+	Mid,
+	High
+}
+
+consts Limits {
+	LOW := -1,
+	MID := 0,
+	HIGH := 1
+}
+
+class BadMatchNegativeOffsetEnum {
+	function : Main(args : String[]) ~ Nil {
+		l := Level->Mid;
+		f := Number->Format->HEX;
+		n := 1;
+		a := match l { Level->Low => 1, Level->Mid => 2 };
+		b := match f { Number->Format->HEX => 16, Number->Format->DEC => 10, Number->Format->OCT => 8 };
+		c := match n { Limits->LOW => 1, Limits->MID => 2, Limits->HIGH => 3 };
+		(a + b + c)->PrintLine();
+	}
+}

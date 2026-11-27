@@ -1,0 +1,139 @@
+#~
+An enum numbered from a negative value is an enum to 'match'.
+
+`enum Level := -20 { Low, Mid, High }` was taken for a 'consts' group, which is
+written with offset -1 and was recognized by "offset below zero". A 'match' on
+it that named every item was therefore refused as a value ("needs an 'other'
+arm, unless it is on an enum and names every item") and, as a method's last
+statement with every arm returning, as not returning on every path. The same
+held for the library enums numbered that way: Number->Format (-20),
+Runtime->Signal (-40).
+
+A program enum is now marked as an enum or a consts group when it is parsed. A
+library enum is told from a consts group by its items: an enum's are numbered
+from its offset with no gap. What is still refused is in
+bad_match_negative_offset_enum.obs. Exits 1 on a mismatch.
+~#
+enum Level := -20 {
+	Low,
+	Mid,
+	High
+}
+
+enum Edge := -1 {
+	Left,
+	Right
+}
+
+consts Limits {
+	LOW := -1,
+	MID := 0,
+	HIGH := 7
+}
+
+class Gauge {
+	enum Zone := -3 { Cold, Warm, Hot }
+
+	@zone : Gauge->Zone;
+
+	New(zone : Gauge->Zone) {
+		@zone := zone;
+	}
+
+	method : public : Score() ~ Int {
+		return match @zone { Zone->Cold => 1, Zone->Warm => 2, Zone->Hot => 3 };
+	}
+}
+
+class MatchNegativeOffsetEnum {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MatchNegativeOffsetEnum->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# as a value, no 'other'
+	function : Rank(l : Level) ~ Int {
+		return match l { Level->Low => 1, Level->Mid => 2, Level->High => 3 };
+	}
+
+	# as a method's last statement, every arm returning
+	function : Name(l : Level) ~ String {
+		match l {
+			Level->Low => { return "low"; }
+			Level->Mid => { return "mid"; }
+			Level->High => { return "high"; }
+		};
+	}
+
+	# numbered from -1, the offset a consts group is written with
+	function : Side(e : Edge) ~ Int {
+		return match e { Edge->Left => 10, Edge->Right => 20 };
+	}
+
+	# library enums numbered from a negative value
+	function : Base(f : Number->Format) ~ Int {
+		return match f {
+			Number->Format->FIXED | Number->Format->SCIENTIFIC | Number->Format->DEFAULT => 0,
+			Number->Format->HEX => 16,
+			Number->Format->DEC => 10,
+			Number->Format->OCT => 8
+		};
+	}
+
+	function : Fatal(s : Runtime->Signal) ~ Bool {
+		match s {
+			Runtime->Signal->SIGINT | Runtime->Signal->SIGTERM => { return false; }
+			Runtime->Signal->SIGABRT | Runtime->Signal->SIGFPE | Runtime->Signal->SIGILL | Runtime->Signal->SIGSEGV => { return true; }
+		};
+	}
+
+	# a consts group is still a set of named integers: it takes an 'other'
+	function : Limit(n : Int) ~ Int {
+		return match n { Limits->LOW => 1, Limits->MID => 2, Limits->HIGH => 3, other => 0 };
+	}
+
+	method : Run() ~ Nil {
+		Check("value, first item", Rank(Level->Low), 1);
+		Check("value, second item", Rank(Level->Mid), 2);
+		Check("value, last item", Rank(Level->High), 3);
+		Check("the items keep their numbers", Level->Low->As(Int) * 10000 + Level->Mid->As(Int) * 100 + Level->High->As(Int), -201918);
+
+		Check("statement, first item", Name(Level->Low)->Size(), 3);
+		Check("statement, last item", Name(Level->High)->Size(), 4);
+		Check("statement, second item", Name(Level->Mid)->Equals("mid") ? 1 : 0, 1);
+
+		Check("numbered from -1, first", Side(Edge->Left), 10);
+		Check("numbered from -1, second", Side(Edge->Right), 20);
+
+		Check("nested enum, first", Gauge->New(Gauge->Zone->Cold)->Score(), 1);
+		Check("nested enum, last", Gauge->New(Gauge->Zone->Hot)->Score(), 3);
+
+		Check("library enum, shared arm", Base(Number->Format->SCIENTIFIC), 0);
+		Check("library enum, HEX", Base(Number->Format->HEX), 16);
+		Check("library enum, DEC", Base(Number->Format->DEC), 10);
+		Check("library enum, OCT", Base(Number->Format->OCT), 8);
+		Check("library enum, statement", (Fatal(Runtime->Signal->SIGSEGV) ? 10 : 0) + (Fatal(Runtime->Signal->SIGINT) ? 1 : 0), 10);
+
+		Check("consts, named", Limit(Limits->HIGH), 3);
+		Check("consts, other", Limit(5), 0);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: an enum numbered from a negative value is matched as an enum"->PrintLine();
+	}
+}
