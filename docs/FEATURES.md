@@ -377,7 +377,8 @@ for a variable you already have, run a block that must end in `return`, `break`,
 or `Runtime->Exit(..)` (a block that can fall through would leave `x` Nil, so it is an error).
 It is only a spelling of `x := E;` followed by `if(x = Nil) { ... }`; the value form
 `a ?? b` is unchanged. The guard belongs to an assignment or declaration statement, not to an
-argument.
+argument. The target may be an array element, `cells[i] := E ?? return;`: the guard tests that
+element, and `E` and `i` are evaluated once.
 
 ```ruby
 # before
@@ -388,7 +389,7 @@ return x->Get();
 x := Find(v, i) ?? return -1;
 return x->Get();
 ```
-Test: `nil_guard`, `bad_nil_guard_*`.
+Test: `nil_guard`, `nil_guard_element`, `bad_nil_guard_*`.
 
 
 ### Nil Safety
