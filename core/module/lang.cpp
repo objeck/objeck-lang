@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "lang.h"
+#include "../compiler/stack_depth.h"
 
 ObjeckLang::ObjeckLang(const std::wstring &u)
 {
@@ -84,6 +85,18 @@ bool ObjeckLang::CompileSource(std::vector<std::pair<std::wstring, std::wstring>
       // intermediate optimizer
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt_level, is_lib, is_debug);
       optimizer.Optimize();
+
+      // an expression the loader would refuse for its operand-stack depth is an
+      // error here, at its line (compiler/stack_depth.h)
+      std::vector<frontend::Diagnostic> depth_errors;
+      if(!backend::StackDepth::Check(optimizer.GetProgram(), program->GetLinker(), is_lib, depth_errors)) {
+        errors.clear();
+        for(size_t i = 0; i < depth_errors.size(); ++i) {
+          errors.push_back(depth_errors[i].Format());
+        }
+        IntermediateProgram::Release();
+        return false;
+      }
 
       // emit target code
       const std::wstring target_name = file_source.front().first;

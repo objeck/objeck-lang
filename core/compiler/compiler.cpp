@@ -38,6 +38,7 @@
 #endif
 #include <set>
 #include "compiler.h"
+#include "stack_depth.h"
 #include "types.h"
 
 #define SUCCESS 0
@@ -73,6 +74,17 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
     // intermediate optimizer
     ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
     optimizer.Optimize();
+    // The loader refuses a method whose operand stack outgrows a call's room; the
+    // same count over the finished code names the expression here, while there is
+    // a source line to name (stack_depth.h). Nothing is written when one is found.
+    std::vector<frontend::Diagnostic> depth_errors;
+    if(!backend::StackDepth::Check(optimizer.GetProgram(), program->GetLinker(), is_lib, depth_errors)) {
+      for(size_t i = 0; i < depth_errors.size(); ++i) {
+        std::wcerr << depth_errors[i].Format() << std::endl;
+      }
+      IntermediateProgram::Release();
+      return CONTEXT_ERROR;
+    }
     // emit target code
     FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, dest_file);
     target.Emit();
