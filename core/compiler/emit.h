@@ -506,6 +506,13 @@ namespace backend {
     bool is_lib;
     bool is_virtual;
     bool has_and_or;
+    // What the and/or temporary (local id 0 of a method that has one) holds over
+    // the whole method, as the emitter saw it: AND_OR_TEMP_UNKNOWN when it could
+    // not say, otherwise the declaration that fits every value stored there --
+    // INT_PARM for values that are never references, a reference type when every
+    // store is a reference of that one kind. The inliner declares the temporary's
+    // copy in the caller's frame from this (ItermediateOptimizer::InlineMethod).
+    int and_or_temp_type;
     bool is_lambda;
     int instr_count;
     std::vector<IntermediateBlock*> blocks;
@@ -536,6 +543,7 @@ namespace backend {
       is_lib = false;
       klass = k;
       instr_count = 0;
+      and_or_temp_type = AND_OR_TEMP_UNKNOWN;
     }
 
     IntermediateMethod(LibraryMethod* lib_method, IntermediateClass* k) {
@@ -554,6 +562,8 @@ namespace backend {
       entries = lib_method->GetEntries();
       is_lib = true;
       instr_count = 0;
+      // as the library's compiler recorded it; unknown from an older one
+      and_or_temp_type = lib_method->GetAndOrTempType();
       klass = k;
       param_names = lib_method->GetParameterNames();
       param_defaults = lib_method->GetParameterDefaults();
@@ -640,6 +650,16 @@ namespace backend {
 
     bool HasAndOr() {
       return has_and_or;
+    }
+
+    static const int AND_OR_TEMP_UNKNOWN = -1;
+
+    int GetAndOrTempType() {
+      return and_or_temp_type;
+    }
+
+    void SetAndOrTempType(int t) {
+      and_or_temp_type = t;
     }
 
     int GetNumParams() {

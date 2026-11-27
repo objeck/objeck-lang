@@ -1,0 +1,329 @@
+#~
+An inlined method's and/or temporary must be declared as what it holds.
+
+A conditional ('c ? a : b') leaves its value in the method's and/or temporary,
+local slot 0, which has no declaration. In the method's own frame the collector
+handles that slot specially (gc_cond_value_root.obs). At -opt s3 the inliner
+pastes a small method into its caller, and the callee's temporary becomes one
+more declared local of the caller's frame. It was always declared Int.
+
+An object a conditional left there was then an Int to everything that reads
+declarations:
+
+- the reference maps typed the word the join loads from it an Int, so while it
+  waited on the operand stack it was a root only if a later use happened to say
+  "reference". 'Pick(c, a, b) = Keep(a)' has no such use: a minor collection
+  inside Keep() promoted 'a', relocated the typed local and left the pending
+  word naming the old nursery address, and the comparison answered false for
+  one and the same object. Interpreted and compiled, x64 and ARM64; right at
+  -opt s0, where nothing is inlined;
+- the slot itself was never marked or relocated, which an interpreted thread
+  parked at a safepoint between the store and the load exposes.
+
+Found by reading the declarations of an inlined 'value <> Nil ? value->As(String) : ""'
+(query_source_archive.obs, TextOf inlined into RowOf).
+
+The inliner now declares the temporary from what the emitter recorded it holds:
+Int for values, the reference type when every store is a reference of one kind.
+A temporary that holds both, or that the emitter cannot classify (Otherwise(),
+a closure), has no right declaration and the method stays a call.
+
+Each case pairs a value that came through an inlined helper's conditional with
+the same value from a typed local, with a minor collection in between; they
+must be the same object. The array, enum and mixed cases are here for the
+declared types: run_vm_flag_tests.py runs this file under OBJECK_GC_VERIFY,
+which checks every typed frame slot against the kind of block it names, and at
+128k and 256k nurseries in both JIT modes.
+~#
+
+enum InlineTempColor {
+  RED,
+  GREEN
+}
+
+class InlineTempSmall {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+# 32 field words: most of each round's allocation, so most collections run here
+class InlineTempBig {
+  @small : InlineTempSmall;
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int;
+
+  New(small : InlineTempSmall) {
+    @small := small;
+  }
+
+  method : public : GetSmall() ~ InlineTempSmall {
+    return @small;
+  }
+}
+
+class GcInlineConditionalTemp {
+  function : Main(args : String[]) ~ Nil {
+    if(Run() = false) {
+      Runtime->Exit(1);
+    };
+    "PASS: an inlined conditional's object value is a root in its caller's frame"->PrintLine();
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  function : Capacity() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.capacity")->ToInt();
+  }
+
+  #
+  # the helpers the inliner pastes into the cases below
+  #
+
+  # an object conditional: the temporary holds an object
+  function : Pick(c : Bool, a : InlineTempSmall, b : InlineTempSmall) ~ InlineTempSmall {
+    return c ? a : b;
+  }
+
+  # a String conditional, the shape it was found in
+  function : Text(value : String) ~ String {
+    return value <> Nil ? value : "";
+  }
+
+  # array conditionals: each kind of array has its own declaration
+  function : PickInts(c : Bool, a : Int[], b : Int[]) ~ Int[] {
+    return c ? a : b;
+  }
+
+  function : PickFloats(c : Bool, a : Float[], b : Float[]) ~ Float[] {
+    return c ? a : b;
+  }
+
+  function : PickObjects(c : Bool, a : InlineTempSmall[], b : InlineTempSmall[]) ~ InlineTempSmall[] {
+    return c ? a : b;
+  }
+
+  # values: the temporary holds an Int, an enum, a Float's bits
+  function : PickInt(c : Bool, a : Int, b : Int) ~ Int {
+    return c ? a : b;
+  }
+
+  function : PickColor(c : Bool) ~ InlineTempColor {
+    return c ? InlineTempColor->GREEN : InlineTempColor->RED;
+  }
+
+  function : PickFloat(c : Bool, a : Float, b : Float) ~ Float {
+    return c ? a : b;
+  }
+
+  # a value and an object through the same temporary: no declaration fits both
+  function : PickMixed(x : Int, y : Int, a : InlineTempSmall, b : InlineTempSmall) ~ InlineTempSmall {
+    both := x >= 0 & y >= 0;
+    return both ? a : b;
+  }
+
+  # Otherwise(): the receiver waits in the temporary
+  function : Else(a : InlineTempSmall, b : InlineTempSmall) ~ InlineTempSmall {
+    return a ?? b;
+  }
+
+  # allocates most of a round, so the collection lands while the caller's other operand is pending
+  function : Keep(small : InlineTempSmall) ~ InlineTempSmall {
+    big := InlineTempBig->New(small);
+    return big->GetSmall();
+  }
+
+  function : KeepInt(small : InlineTempSmall, v : Int) ~ Int {
+    big := InlineTempBig->New(small);
+    return big->GetSmall() <> Nil ? v : -1;
+  }
+
+  #
+  # the cases: no conditional, '&' or '|' value or select of their own
+  #
+
+  # The conditional's value is pending while the other operand collects. The
+  # right operand of a comparison is evaluated first, so that is where the
+  # helper goes; PendingLeft is the control with the operands the other way.
+  function : PendingLeft(i : Int) ~ Int {
+    small := InlineTempSmall->New(i);
+    if(Pick(i >= 0, small, Nil) <> Keep(small)) {
+      return 1;
+    };
+    return 0;
+  }
+
+  function : PendingRight(i : Int) ~ Int {
+    small := InlineTempSmall->New(i);
+    if(Keep(small) <> Pick(i >= 0, small, Nil)) {
+      return 1;
+    };
+    return 0;
+  }
+
+  # the else branch, and a fresh object nothing else holds
+  function : PendingElse(i : Int) ~ Int {
+    small := InlineTempSmall->New(i);
+    if(Keep(small) <> Pick(i < 0, Nil, small)) {
+      return 1;
+    };
+    fresh := Pick(i >= 0, InlineTempSmall->New(i + 7), Nil);
+    Keep(small);
+    if(fresh->Get() <> i + 7) {
+      return 1;
+    };
+    return 0;
+  }
+
+  function : PendingMixed(i : Int) ~ Int {
+    small := InlineTempSmall->New(i);
+    if(Keep(small) <> PickMixed(i, 1, small, Nil)) {
+      return 1;
+    };
+    return 0;
+  }
+
+  function : PendingOtherwise(i : Int) ~ Int {
+    small := InlineTempSmall->New(i);
+    if(Keep(small) <> Else(small, Nil)) {
+      return 1;
+    };
+    if(Keep(small) <> Else(Nil, small)) {
+      return 1;
+    };
+    return 0;
+  }
+
+  function : PendingText(i : Int, text : String) ~ Int {
+    small := InlineTempSmall->New(i);
+    if(Text(text) <> text) {
+      return 1;
+    };
+    Keep(small);
+    if(Text(Nil)->Size() <> 0) {
+      return 1;
+    };
+    return 0;
+  }
+
+  # the declared types of the inlined temporaries: an array in a slot declared
+  # for an object, or an Int in one declared for a reference, is what the heap
+  # verifier reports
+  function : Typed(i : Int, ints : Int[], floats : Float[], objects : InlineTempSmall[]) ~ Int {
+    small := InlineTempSmall->New(i);
+    bad := 0;
+
+    picked_ints := PickInts(i >= 0, ints, Nil);
+    Keep(small);
+    if(picked_ints <> ints | picked_ints[3] <> 33) {
+      bad += 1;
+    };
+
+    picked_floats := PickFloats(i >= 0, floats, Nil);
+    Keep(small);
+    if(picked_floats <> floats | picked_floats[3] <> 3.5) {
+      bad += 1;
+    };
+
+    picked_objects := PickObjects(i < 0, Nil, objects);
+    Keep(small);
+    if(picked_objects <> objects | picked_objects[3] = Nil) {
+      bad += 1;
+    };
+
+    # values, some of them the size of an address
+    n := PickInt(i >= 0, i * 4096 + 8, -1);
+    f := PickFloat(i >= 0, 2.5, -1.0);
+    color := PickColor(i >= 0);
+    kept := KeepInt(small, n);
+    if(kept <> i * 4096 + 8 | f <> 2.5 | color <> InlineTempColor->GREEN) {
+      bad += 1;
+    };
+
+    return bad;
+  }
+
+  function : Run() ~ Bool {
+    # about 300 bytes a round: three nurseries' worth per case. Objects only: an
+    # array is allocated in the old generation, and enough of them make every
+    # collection a major one that never lands on Keep()'s allocation.
+    rounds := Capacity() / 300 * 3;
+    # the String and array cases allocate arrays, so they get rounds of their own
+    typed_rounds := 20000;
+    before := Minors();
+
+    ints := Int->New[8];
+    ints[3] := 33;
+    floats := Float->New[8];
+    floats[3] := 3.5;
+    objects := InlineTempSmall->New[8];
+    objects[3] := InlineTempSmall->New(3);
+    text := "text";
+
+    bad_left := 0;
+    bad_right := 0;
+    bad_else := 0;
+    bad_mixed := 0;
+    bad_otherwise := 0;
+    bad_text := 0;
+    bad_typed := 0;
+    for(i := 0; i < rounds; i += 1;) {
+      bad_left += PendingLeft(i);
+      bad_right += PendingRight(i);
+      bad_else += PendingElse(i);
+      bad_mixed += PendingMixed(i);
+      bad_otherwise += PendingOtherwise(i);
+    };
+    minors := Minors() - before;
+
+    for(i := 0; i < typed_rounds; i += 1;) {
+      bad_text += PendingText(i, text);
+      bad_typed += Typed(i, ints, floats, objects);
+    };
+
+    ok := true;
+    if(bad_left > 0) {
+      "FAIL: {$bad_left} of {$rounds} inlined conditional values were stale after the right operand collected"->PrintLine();
+      ok := false;
+    };
+    if(bad_right > 0) {
+      "FAIL: {$bad_right} of {$rounds} inlined conditional values did not match the left operand"->PrintLine();
+      ok := false;
+    };
+    if(bad_else > 0) {
+      "FAIL: {$bad_else} of {$rounds} inlined conditional values (else branch, fresh object) were stale"->PrintLine();
+      ok := false;
+    };
+    if(bad_mixed > 0) {
+      "FAIL: {$bad_mixed} of {$rounds} conditional values from a helper with an and/or value were stale"->PrintLine();
+      ok := false;
+    };
+    if(bad_otherwise > 0) {
+      "FAIL: {$bad_otherwise} of {$rounds} Otherwise() values from a helper were stale"->PrintLine();
+      ok := false;
+    };
+    if(bad_text > 0) {
+      "FAIL: {$bad_text} of {$typed_rounds} inlined String conditionals were wrong"->PrintLine();
+      ok := false;
+    };
+    if(bad_typed > 0) {
+      "FAIL: {$bad_typed} inlined array or value conditionals were wrong"->PrintLine();
+      ok := false;
+    };
+    if(minors < 8) {
+      "FAIL: {$minors} minor collection(s) ran; the cases were not exercised"->PrintLine();
+      ok := false;
+    };
+    return ok;
+  }
+}
