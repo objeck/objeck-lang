@@ -144,6 +144,9 @@ name twice in one block is the error `Variable already defined in this scope`. T
 `block_local_shadowing`, `bad_local_redeclared_in_block`, `bad_local_redeclares_parameter`.
 
 ### Nil Safety
+`value->TypeOf(Type)` is false when the value is `Nil` (Nil is of no type), and
+`Nil->As(Type)` is `Nil`.
+
 `?->` calls a method only when the receiver is non-`Nil`, yielding `Nil` instead
 of faulting. `??` supplies a value when the left side is `Nil`.
 

@@ -136,6 +136,7 @@ n<span class="t-op">-&gt;</span>PrintLine();              <span class="t-com"># 
 </code></pre>
     <p><code>x := value</code> declares <code>x</code> only when no enclosing block has one; otherwise it assigns to the nearest. To hide an outer name, declare the inner one with its type. Declaring a name twice in one block is the error <code>Variable already defined in this scope</code>. Tests: <code>block_local_shadowing</code>, <code>bad_local_redeclared_in_block</code>, <code>bad_local_redeclares_parameter</code>.</p>
     <h3 id="nil-safety">Nil Safety</h3>
+    <p><code>value-&gt;TypeOf(Type)</code> is false when the value is <code>Nil</code> (Nil is of no type), and <code>Nil-&gt;As(Type)</code> is <code>Nil</code>.</p>
     <p><code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> instead of faulting. <code>??</code> supplies a value when the left side is <code>Nil</code>.</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># without them</span>
 city <span class="t-op">:=</span> <span class="t-const">Nil</span>;
