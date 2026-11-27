@@ -11026,6 +11026,12 @@ void Parser::GeneratePendingMcpTools()
 {
   ParsedBundle* previous_bundle = current_bundle;
   SymbolTableManager* previous_table = symbol_table;
+  // The functions are written as text and parsed here, after the files: outside ParseFile and
+  // ParseText, which set the mark the nesting check measures from and clear it when they end.
+  // Without one of its own the check does nothing in this parse (as it did nothing in a string
+  // interpolation's), and what is caught below could never be thrown.
+  char stack_mark = 0;
+  stack_base = &stack_mark;
   for(size_t i = 0; i < mcp_pending.size(); ++i) {
     McpPending& pending = mcp_pending[i];
     if(mcp_broken_files.find(pending.klass->GetFileName()) != mcp_broken_files.end()) {
@@ -11051,6 +11057,7 @@ void Parser::GeneratePendingMcpTools()
     current_lib_uses = previous_uses;
     current_class = nullptr;
   }
+  stack_base = nullptr;
   mcp_pending.clear();
   current_bundle = previous_bundle;
   symbol_table = previous_table;
