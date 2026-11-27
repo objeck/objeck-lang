@@ -4151,6 +4151,12 @@ result->GetText()->PrintLine();
 
 				if(slot->WaitDone(slice)) {
 					how := "done";
+					# A handler that polls the token hears of the deadline from the token itself, perhaps a
+					# moment before the loop does, and returns. The deadline passed while it ran all the
+					# same: the call ends as it always has, as a timeout whose result is discarded
+					if(@token->IsExpired()) {
+						how := Checkpoint();
+					};
 				}
 				else {
 					reason := Checkpoint();

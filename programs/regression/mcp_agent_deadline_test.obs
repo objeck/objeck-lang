@@ -108,6 +108,13 @@ class McpAgentDeadlineTest {
 		Check(elapsed >= 900 & elapsed < 5000, "{$what}: the run is back about when its deadline passes, not at the handler's own limit ({$elapsed} ms)");
 		Check(Same(result->GetStopReason(), "deadline"), "{$what}: the stop reason is deadline");
 		Check(result->GetSteps()->Size() = 1 & result->GetModelCalls() = 1, "{$what}: the model is not asked again");
+		if(mode = AgentTool->Mode->BOUNDED_THREAD) {
+			# the handler hears of the deadline from the token as soon as the loop does; the call is a timeout either way
+			Check(Same(Status(result), "timeout"), "{$what}: the call is a timeout, its result discarded");
+		}
+		else {
+			Check(Same(Status(result), "ok"), "{$what}: the handler returned by itself, so its result is kept");
+		};
 	}
 
 	function : InThread() ~ Nil {
