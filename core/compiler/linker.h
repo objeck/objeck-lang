@@ -206,6 +206,8 @@ class LibraryMethod {
   bool is_static;
   bool is_virtual;
   bool has_and_or;
+  // what the and/or temporary holds (IntermediateMethod::GetAndOrTempType); -1 unknown
+  int and_or_temp_type;
   int num_params;
   int mem_size;
   std::vector<frontend::Type*> declarations;
@@ -303,6 +305,7 @@ class LibraryMethod {
     type = t;
     is_virtual = v;
     has_and_or = h;
+    and_or_temp_type = -1;
     is_native = nt;
     is_static = s;
     is_lambda = l;
@@ -342,6 +345,48 @@ class LibraryMethod {
 
   bool HasAndOr() {
     return has_and_or;
+  }
+
+  int GetAndOrTempType() {
+    return and_or_temp_type;
+  }
+
+  void SetAndOrTempType(int t) {
+    and_or_temp_type = t;
+  }
+
+  // The and/or byte of a library method: 0 for a method with no and/or
+  // temporary and 1 for one whose temporary is unknown, which is all an older
+  // compiler wrote; from 2 up, what the temporary holds. Every reader before
+  // this one tests the byte against 0 (and the VM still does), so an older
+  // toolchain reads a newer library as it always did.
+  static int EncodeAndOr(bool has_and_or, int temp_type) {
+    if(!has_and_or) {
+      return 0;
+    }
+    switch(temp_type) {
+    case instructions::INT_PARM:       return 2;
+    case instructions::OBJ_PARM:       return 3;
+    case instructions::BYTE_ARY_PARM:  return 4;
+    case instructions::CHAR_ARY_PARM:  return 5;
+    case instructions::INT_ARY_PARM:   return 6;
+    case instructions::FLOAT_ARY_PARM: return 7;
+    case instructions::OBJ_ARY_PARM:   return 8;
+    default:                           return 1;
+    }
+  }
+
+  static int DecodeAndOrTempType(int value) {
+    switch(value) {
+    case 2:  return instructions::INT_PARM;
+    case 3:  return instructions::OBJ_PARM;
+    case 4:  return instructions::BYTE_ARY_PARM;
+    case 5:  return instructions::CHAR_ARY_PARM;
+    case 6:  return instructions::INT_ARY_PARM;
+    case 7:  return instructions::FLOAT_ARY_PARM;
+    case 8:  return instructions::OBJ_ARY_PARM;
+    default: return -1;
+    }
   }
 
   bool IsLambda() {

@@ -2446,7 +2446,12 @@ NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_st
                         # a conditional's object value pending across a
                         # collection point lives in the and/or slot, which interpreted
                         # and ARM64 JIT frames did not scan (#1429-#1431)
-                        "gc_cond_value_root")
+                        "gc_cond_value_root",
+                        # the same value in an INLINED helper's and/or temporary,
+                        # which the inliner declared Int in the caller's frame: the
+                        # word loaded from it was no root while it waited on the
+                        # operand stack
+                        "gc_inline_conditional_temp")
 NURSERY_STRESS_SIZES = ("128k", "256k")
 
 # Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).
@@ -2481,7 +2486,10 @@ VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress
                       # an and/or callee inlined into a caller without one: its locals
                       # must sit in the slots declared for them (B2, Fill:i, slot 7)
                       "gc_scoped_local_slot_types", "gc_zero_field_nursery_end",
-                      "opt_inline_and_or_slots")
+                      "opt_inline_and_or_slots",
+                      # an inlined and/or temporary declared as the object or array
+                      # it holds: a wrong declaration is a B2 wrong memory TYPE
+                      "gc_inline_conditional_temp")
 
 # Each injected fault and the report the verifier must stop the program with.
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),

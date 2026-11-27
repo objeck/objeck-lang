@@ -892,11 +892,113 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, [[ma
     }
   }
 
+  // The callee's and/or temporary becomes a declared local of this frame, and a
+  // declaration has one type. Unless the temporary can be declared as what it
+  // holds, the body stays a call (InlinedAndOrType).
+  if(mthd_called->HasAndOr() && InlinedAndOrType(mthd_called) == IntermediateMethod::AND_OR_TEMP_UNKNOWN) {
+    return false;
+  }
+
   // A body with no RTRN never returns: a tail call turned into a loop leaves by
   // its backward jump or by an error. The inliner continues the caller where the
   // callee's RTRN was, so such a body was spliced in without its loop and left
   // the caller's stack unbalanced -- a crash at s3 even interpreted (#1269).
   return found_rtrn;
+}
+
+/****************************
+ * The declaration an inlined method's and/or temporary takes in its caller's
+ * frame, or AND_OR_TEMP_UNKNOWN when none fits and the method must not be
+ * inlined.
+ *
+ * In its own frame the temporary (local id 0) has no declaration and the
+ * collector treats it specially: the interpreter reads it as a conservative
+ * root, a compiled method carries it through a typed spill slot. Inlined, it is
+ * one more declared local, and it was always declared Int. But it is not only a
+ * Bool: 'c ? a : b' over objects joins there, so does an Otherwise() receiver
+ * and a lambda's closure. Declared Int, such a reference
+ *   - is typed Int by the reference maps wherever it is loaded, so the word the
+ *     join leaves on the operand stack is no root unless a later use happens to
+ *     say "reference": 'Pick(c, a, b) = Same(a)', with a collection inside
+ *     Same(), compared the address 'a' had before it moved and answered false
+ *     (gc_inline_conditional_temp.obs: wrong at -opt s3 in the interpreter and
+ *     the JIT, right at s0), and an object nothing else holds is freed;
+ *   - is not seen at all while it sits in the slot, which an interpreted thread
+ *     parked at a safepoint between the store and the load exposes.
+ *
+ * So the temporary is declared as what the emitter recorded it holds
+ * (IntermediateEmitter::ClassifyAndOrTemp): Int for values, one reference type
+ * when every store is a reference of that kind. A temporary that holds both, or
+ * references of two kinds, or that the emitter could not classify (Otherwise(),
+ * a closure, a library built before this was recorded) has no declaration that
+ * is right, and the method is not inlined. A method that never writes its
+ * temporary -- the usual case: '&' and '|' in a condition compile to branches
+ * -- is inlined whatever was recorded.
+ ****************************/
+int ItermediateOptimizer::InlinedAndOrType(IntermediateMethod* mthd_called)
+{
+  std::vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+  if(blocks.empty()) {
+    return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+  }
+  std::vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+
+  // the body's stores to the temporary, and whether any plainly stores a
+  // non-zero literal: a value, whatever was recorded
+  bool has_store = false;
+  bool stores_literal = false;
+  for(size_t i = 0; i < instrs.size(); ++i) {
+    IntermediateInstruction* instr = instrs[i];
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+    case COPY_INT_VAR:
+      if(instr->GetOperand() == 0 && instr->GetOperand2() == LOCL) {
+        has_store = true;
+        if(i > 0 && instrs[i - 1]->GetType() == LOAD_INT_LIT && instrs[i - 1]->GetOperand7() != 0) {
+          stores_literal = true;
+        }
+        else if(i > 0 && instrs[i - 1]->GetType() == LOAD_CHAR_LIT) {
+          stores_literal = true;
+        }
+      }
+      break;
+
+    case STOR_FLOAT_VAR:
+    case COPY_FLOAT_VAR:
+    case STOR_FUNC_VAR:
+    case COPY_FUNC_VAR:
+      if(instr->GetOperand() == 0 && instr->GetOperand2() == LOCL) {
+        has_store = true;
+        stores_literal = true;
+      }
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  if(!has_store) {
+    return INT_PARM;
+  }
+
+  const int type = mthd_called->GetAndOrTempType();
+  switch(type) {
+  case INT_PARM:
+    return INT_PARM;
+
+  case OBJ_PARM:
+  case BYTE_ARY_PARM:
+  case CHAR_ARY_PARM:
+  case INT_ARY_PARM:
+  case FLOAT_ARY_PARM:
+  case OBJ_ARY_PARM:
+    // recorded as a reference, yet a value is stored: believe neither
+    return stores_literal ? IntermediateMethod::AND_OR_TEMP_UNKNOWN : type;
+
+  default:
+    return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+  }
 }
 
 int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
@@ -1541,7 +1643,9 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
 
         current_entries->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
         if(mthd_called->HasAndOr()) {
-          current_entries->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
+          // declared as what it holds, so an object a conditional leaves there
+          // is a root (InlinedAndOrType; CanInlineMethod refused the rest)
+          current_entries->AddParameter(new IntermediateDeclaration(L"", (instructions::ParamType)InlinedAndOrType(mthd_called)));
         }
 
         std::vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();

@@ -334,7 +334,9 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   }
   
   WriteByte(is_virtual, out_stream);
-  WriteByte(has_and_or, out_stream);
+  // a library also says what the and/or temporary holds, for the program that
+  // inlines the method (LibraryMethod::EncodeAndOr); an executable keeps the plain flag
+  WriteByte(emit_lib ? LibraryMethod::EncodeAndOr(has_and_or, and_or_temp_type) : (has_and_or ? 1 : 0), out_stream);
   WriteByte(is_lambda, out_stream);
   
   if(emit_lib) {
