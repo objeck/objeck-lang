@@ -161,6 +161,8 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     StackProgram::StopSignalDispatch();
     Runtime::StackInterpreter::HaltAllExcept(intpr);
     const bool threads_drained = Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000);
+    // a test hook: silent unless OBJECK_THREAD_FAULT_STATS is set
+    Runtime::StackInterpreter::ReportThreadFaultRegistry();
     const bool vm_threads_stopped = StackProgram::WaitSignalDispatchIdle(2000) && threads_drained;
     if(!vm_threads_stopped) {
       // A thread did not drain -- it is parked in a blocking syscall (a server

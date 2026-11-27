@@ -418,6 +418,16 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     peaked at 1,073 MB (23 MB without the calls); its peak resident size
     ([gc-stats] peak_rss_bytes) must now be within 32 MB of the same program
     making no call, with the JIT at its default and off.
+ 38. The thread-fault registry holds nothing for a thread that can no longer
+    be joined. OBJECK_THREAD_FAULT_STATS=1 (a test hook) makes the VM print
+    what the registry holds when Main returns: "[thread-faults] records=N
+    handles=M". A Thread object started again while its earlier run was still
+    going made that run unjoinable, and when it then faulted its message was
+    stored under a key no Join could ask for, one for good per repetition:
+    thread_fault_registry.obs "abandoned" 200 times left records=200. It must
+    leave records=0, and thread_restart_join.obs (a restart while a Join of the
+    earlier run is parked, and a restart whose earlier run then faults) must
+    leave records=0 handles=0 in each JIT mode.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -803,6 +813,7 @@ def main():
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
+    check_thread_fault_registry(obc, obr, env, bin_dir)
 
     check_int_not_relocated(obc, obr, env, bin_dir)
 
@@ -1930,6 +1941,46 @@ def check_virtual_table_memory(obc, obr, env, bin_dir):
                       busy - idle < limit, f"idle={idle} busy={busy}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def thread_fault_registry_left(err):
+    # ("records", "handles") from the test hook's line, or None when it is not there
+    found = re.search(rb"^\[thread-faults\] records=(\d+) handles=(\d+)", err, re.M)
+    return (int(found.group(1)), int(found.group(2))) if found else None
+
+
+def check_thread_fault_registry(obc, obr, env, bin_dir):
+    # ---- 38. the thread-fault registry is bounded by the threads that can be joined ----
+    stats_env = dict(env)
+    stats_env["OBJECK_THREAD_FAULT_STATS"] = "1"
+
+    dest = compile_fixture(obc, "thread_fault_registry", env, bin_dir)
+    if dest:
+        # the control: without the variable the VM prints no such line
+        rc, out, err = run([obr, dest, "abandoned", "2"], env=env, cwd=bin_dir)
+        check("no registry line without OBJECK_THREAD_FAULT_STATS (control)",
+              rc == 0 and thread_fault_registry_left(err) is None, f"rc={rc} stderr={err[-200:]!r}")
+        for scenario, count, want in (("abandoned", 200, (0, None)),):
+            rc, out, err = run([obr, dest, scenario, str(count)], env=stats_env, cwd=bin_dir, timeout=300)
+            left = thread_fault_registry_left(err)
+            check(f"thread_fault_registry {scenario} x {count} passes its own checks",
+                  rc == 0 and f"PASS: {scenario} x {count}".encode() in out and left is not None,
+                  f"rc={rc} out={out[-200:]!r} stderr={err[-200:]!r}")
+            if left is not None:
+                check(f"{scenario} x {count} leaves nothing in the registry (records={left[0]} handles={left[1]})",
+                      left[0] == want[0] and (want[1] is None or left[1] == want[1]), f"left={left}")
+
+    dest = compile_fixture(obc, "thread_restart_join", env, bin_dir)
+    if dest:
+        for label, flags in (("default", []), ("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=stats_env, cwd=bin_dir, timeout=300)
+            left = thread_fault_registry_left(err)
+            check(f"thread_restart_join passes ({label})",
+                  rc == 0 and b"thread_restart_join: all checks passed" in out and left is not None,
+                  f"rc={rc} out={out[-300:]!r}")
+            if left is not None:
+                check(f"and leaves nothing in the registry ({label}: records={left[0]} handles={left[1]})",
+                      left == (0, 0), f"left={left}")
 
 
 def check_compiler_fatal(obc, obr, env, bin_dir):

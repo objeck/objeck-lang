@@ -489,9 +489,11 @@ namespace Runtime {
     // ended by a fault, which it has then recorded for Join
     static bool ThreadEndedInFault(std::wstring& message);
     // The registry Thread->Join reads: threads that ended in a fault. A thread
-    // is known in it by a key the VM gives it when it is started, never by an
-    // id of the system's (NewThreadFaultKey).
-    static size_t NewThreadFaultKey();
+    // is known in it by a key the VM gives it before it is started, never by an
+    // id of the system's (RegisterThreadFault), and tells it how it ended
+    // (EndThreadFault), which is also when a thread nothing can join any more
+    // is dropped from it.
+    static size_t RegisterThreadFault();
     // A Thread object's handle slot (its first word) changes hands in one step,
     // under the registry's lock, so an Execute and a Join of the same object on
     // two threads cannot undo each other:
@@ -503,9 +505,12 @@ namespace Runtime {
     // (0: nothing to report).
     static void PublishThreadHandle(size_t* slot, size_t handle, size_t fault_key);
     static size_t TakeThreadHandle(size_t* slot, size_t& fault_key);
-    static void RecordThreadFault(size_t key, const std::wstring& message);
+    static void EndThreadFault(size_t key, bool faulted, const std::wstring& message);
     static void TakeThreadFault(size_t key);
     static size_t ThreadFaultCount();
+    // Test hook: with OBJECK_THREAD_FAULT_STATS=1, what the registry still holds
+    // when Main has returned, as one line on stderr. Not a program-visible value.
+    static void ReportThreadFaultRegistry();
     static std::wstring LastThreadFault();
     // the fault of the thread this thread last joined ("" when it ended normally)
     static std::wstring& JoinedThreadFault();
