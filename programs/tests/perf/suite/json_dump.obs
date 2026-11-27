@@ -1,0 +1,28 @@
+#~
+json_dump <file>: parse a JSON file and print it serialized both ways (ToString and ToFormattedString),
+then the names of the root object if it is one. Run with the library before and after a change and
+compare the output byte for byte: the equivalence check behind the JSON measurements.
+~#
+use Data.JSON, Collection, System.IO.Filesystem;
+
+class JsonDump {
+	function : Main(args : String[]) ~ Nil {
+		text := FileReader->ReadFile(args[0]);
+		parser := JsonParser->New(text);
+		if(<>parser->Parse()) {
+			error := parser->GetError();
+			"parse failed: {$error}"->PrintLine();
+			return;
+		};
+		root := parser->GetRoot();
+		root->ToString()->PrintLine();
+		root->ToFormattedString()->PrintLine();
+		names := root->GetNames();
+		if(names <> Nil) {
+			each(i : names) {
+				names->Get(i)->PrintLine();
+			};
+		};
+		root->Size()->PrintLine();
+	}
+}

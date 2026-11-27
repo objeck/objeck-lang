@@ -1,0 +1,39 @@
+#~
+Startup fixture for 'obr --mcp': a small tagged server (the shape of mcp_launch_test.py's). The harness
+times process start to the answer to 'initialize'.
+~#
+use API.MCP, Data.JSON, Collection;
+
+class Shop {
+	#~
+	Add two integers.
+	@tool
+	@readonly
+	@param a the first number
+	@param b the second number
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	#~
+	The shop's opening hours.
+	@resource shop://{day}/hours
+	~#
+	function : Hours(day : String) ~ String {
+		return "{$day}: 9 to 5";
+	}
+
+	#~
+	Ask about an item.
+	@prompt
+	@param item the item
+	~#
+	function : Ask(item : String) ~ String {
+		return "How much is {$item}?";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"the shop program ran its own Main"->PrintLine();
+	}
+}
