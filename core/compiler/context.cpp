@@ -13157,6 +13157,24 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             }
             ProcessError(expression, L"Incompatible generic type arguments: '" + FormatGenericType(left) + L"' and '" + FormatGenericType(right) + L"'");
           }
+          else {
+            // The mapping gives the right side the left side's own type
+            // arguments, for a right side that still names type parameters
+            // ('Vector<T>'). It made any two sets of them equal, written out
+            // or not: a Map<String, Vector<String>> was passed for, assigned
+            // to and returned as a Map<String, Vector<IntRef>>, and the
+            // IntRef read out of it was a String. Two type arguments that are
+            // both classes are therefore compared, at every depth
+            // (GenericArgumentMayFit); a type parameter still fits anything.
+            Type* target_arg = left_is_target ? left_generic_type : right_generic_type;
+            Type* source_arg = left_is_target ? right_generic_type : left_generic_type;
+            if(!GenericArgumentMayFit(target_arg, source_arg, variance, nullptr)) {
+              if(check_only) {
+                return false;
+              }
+              ProcessError(expression, L"Incompatible generic type arguments: '" + FormatGenericType(left) + L"' and '" + FormatGenericType(right) + L"'");
+            }
+          }
         }
       }
     }
