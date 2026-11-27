@@ -6043,8 +6043,13 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   // if-expression
   long cond = ++conditional_label;
   EmitBranch(conditional->GetCondExpression(), cond, false);
+  // each branch's postfix updates run with the branch (BeginConditionalOperand):
+  // queued to the end of the statement, 't ? 7 : i++' incremented i for a true t
+  std::queue<OperationAssignment*> outer_post_statements;
+  BeginConditionalOperand(outer_post_statements);
   EmitExpression(conditional->GetExpression());
   EmitCast(conditional);
+  EndConditionalOperand(outer_post_statements);
   if(in_and_or) {
     EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
   }
@@ -6055,8 +6060,10 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   new_char_str_count = 0;
   // else-expression
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, cond));
+  BeginConditionalOperand(outer_post_statements);
   EmitExpression(conditional->GetElseExpression());
   EmitCast(conditional);
+  EndConditionalOperand(outer_post_statements);
   if(in_and_or) {
     EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
   }
@@ -6233,6 +6240,14 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     // normal method call in chain: its arguments go under the receiver that is
     // on the stack (a '$' helper whose receiver is parameter 0 gets them from
     // EmitMethodCall instead), as in EmitExpression's chain
+    //
+    // The arguments are evaluated only for a receiver that is not Nil, so their
+    // postfix updates run here, once they are on the stack and before the call
+    // (BeginConditionalOperand): 'none?->Take(i++)' incremented i though the
+    // call, and its argument, were skipped.
+    std::queue<OperationAssignment*> outer_post_statements;
+    BeginConditionalOperand(outer_post_statements);
+    bool arguments_emitted = false;
     if(!ReceiverIsFirstParameter(method_call) && method_call->GetCallingParameters()) {
       const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
         (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
@@ -6246,8 +6261,13 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
         }
       }
       new_char_str_count = 0;
+      EndConditionalOperand(outer_post_statements);
+      arguments_emitted = true;
     }
     EmitMethodCall(method_call, is_nested);
+    if(!arguments_emitted) {
+      EndConditionalOperand(outer_post_statements);
+    }
     // subscript on the call result: 'provider?->Items()[0]'. The chain loops in
     // EmitExpression emit it; this one did not, so the array itself was left
     // where its element was expected.
@@ -7031,8 +7051,13 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
-    // emit left
+    // emit left: the operand the short circuit skips, so its postfix updates
+    // run here, with it (BeginConditionalOperand): 'false & (i++ > 0)'
+    // incremented i
+    std::queue<OperationAssignment*> outer_post_statements;
+    BeginConditionalOperand(outer_post_statements);
     EmitExpression(expression->GetLeft());
+    EndConditionalOperand(outer_post_statements);
     EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
@@ -7049,8 +7074,11 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
-    // emit left
+    // emit left: skipped when the first operand is true (see AND_EXPR)
+    std::queue<OperationAssignment*> outer_post_statements;
+    BeginConditionalOperand(outer_post_statements);
     EmitExpression(expression->GetLeft());
+    EndConditionalOperand(outer_post_statements);
     EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
