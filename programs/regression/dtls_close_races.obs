@@ -1,0 +1,273 @@
+#~
+# Closing a DTLS server or a DTLS socket while other threads are using it
+#
+# The DTLS twin of tls_close_races.obs. A DTLSSocketServer and a DTLSSocket point to a context on the C
+# heap, and Close() freed it whoever else was using it:
+#
+# - DTLSSocketServer->Close() while a thread is in Accept(), which is how a server is stopped.
+# - the connections a server accepted read the server's DTLS configuration (and its cookie context)
+#   for as long as they live, so every one still open when the server closed ran on freed memory.
+# - DTLSSocket->Close() while another thread is in a read on the socket. A DTLS read has no timeout,
+#   and on Linux closing a descriptor does not end a recv() in progress on it: the read never came
+#   back at all, and would have come back to a freed context.
+#
+# A context is now counted and freed by its last user, as a TLS one is. What is asserted here is
+# behaviour: the accept ends when the server is closed, the connection it had accepted still carries
+# data after that, and a blocked read ends at once when its socket is closed. The VM before the change
+# does not get through the first part on Linux: it stops there for good (the run times out).
+#
+# With an argument it is the number of rounds of each part (default 5 and 20), for a soak.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# accepts until the server is closed (the handshake runs inside Accept) and keeps every connection open
+class DtlsAcceptor from Thread {
+	@server : DTLSSocketServer;
+	@kept : DTLSSocket[];
+	@served : Int;
+	@stop : Bool;
+	@finished : Bool;
+
+	New(server : DTLSSocketServer, room : Int) {
+		Parent("dtls-acceptor");
+		@server := server;
+		@kept := DTLSSocket->New[room];
+	}
+
+	# the i-th connection this thread accepted, or Nil
+	method : public : GetKept(i : Int) ~ DTLSSocket { return @kept[i]; }
+	method : public : GetServed() ~ Int { return @served; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	# said just before the server is closed
+	method : public : Stop() ~ Nil { @stop := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		done := false;
+		while(<>done) {
+			socket := @server->Accept();
+			if(socket = Nil) {
+				# a failed handshake is Nil too: the loop ends only once the server is being closed
+				done := @stop;
+			}
+			else {
+				if(@served < @kept->Size()) {
+					@kept[@served] := socket;
+				};
+				@served += 1;
+			};
+		};
+		@finished := true;
+	}
+}
+
+# one read of a socket, which waits: the peer sends nothing
+class DtlsBlockedReader from Thread {
+	@socket : DTLSSocket;
+	@started : Bool;
+	@finished : Bool;
+
+	New(socket : DTLSSocket) {
+		Parent("dtls-blocked-reader");
+		@socket := socket;
+	}
+
+	method : public : IsStarted() ~ Bool { return @started; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		buffer := Byte->New[16];
+		@started := true;
+		@socket->ReadBuffer(0, 4, buffer);
+		@finished := true;
+	}
+}
+
+class DtlsCloseRaces {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+		server_rounds := 5;
+		socket_rounds := 20;
+		if(args->Size() > 0) {
+			server_rounds := args[0]->ToInt();
+			socket_rounds := server_rounds;
+		};
+
+		cert := "dtls-close-races-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "dtls-close-races-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+		}
+		else {
+			"stage: server"->ErrorLine();
+			CheckServerClose(cert, key, server_rounds);
+			"stage: socket"->ErrorLine();
+			CheckSocketClose(cert, key, socket_rounds);
+		};
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} DTLS close check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: DTLS servers and sockets can be closed under the threads that use them"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# the server closed while its thread is in Accept() and a connection it accepted is open
+	function : CheckServerClose(cert : String, key : String, rounds : Int) ~ Nil {
+		connected := 0;
+		accepts_ended := 0;
+		sessions_worked := 0;
+		for(round := 0; round < rounds; round += 1;) {
+			server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
+			if(<>server->Listen()) {
+				Check("the DTLS server listens (round {$round})", false);
+				return;
+			};
+			acceptor := DtlsAcceptor->New(server, 4);
+			acceptor->Execute(Nil);
+
+			client := DTLSSocket->New("127.0.0.1", server->GetPort(), cert, true);
+			if(client->IsOpen()) {
+				connected += 1;
+			};
+			for(waited := 0; acceptor->GetServed() < 1 & waited < 10000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			# the thread is back in Accept() by now, waiting for a second client
+			Thread->Sleep(30);
+
+			acceptor->Stop();
+			server->Close();
+
+			for(waited := 0; <>acceptor->IsFinished() & waited < 5000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			if(acceptor->IsFinished()) {
+				accepts_ended += 1;
+				acceptor->Join();
+			};
+
+			# the accepted connection outlives its server: a byte through it
+			kept := acceptor->GetKept(0);
+			if(kept <> Nil & client->IsOpen()) {
+				sent := Byte->New[1];
+				sent[0] := 0x42;
+				kept->WriteBuffer(0, 1, sent);
+				received := Byte->New[4];
+				got := client->ReadBuffer(0, 4, received);
+				if(got = 1 & received[0] = 0x42) {
+					sessions_worked += 1;
+				};
+				kept->Close();
+			};
+			client->Close();
+		};
+		Check("every client connected ({$connected} of {$rounds})", connected = rounds);
+		Check("closing the server ended the Accept() in progress ({$accepts_ended} of {$rounds} rounds)", accepts_ended = rounds);
+		Check("the connection it had accepted still worked afterwards ({$sessions_worked} of {$rounds} rounds)", sessions_worked = rounds);
+	}
+
+	# a read in progress when the socket is closed: it ends, promptly (a DTLS read has no timeout)
+	function : CheckSocketClose(cert : String, key : String, rounds : Int) ~ Nil {
+		read_ended := 0;
+		loops_ended := 0;
+		slowest := 0;
+		for(round := 0; round < rounds; round += 1;) {
+			# A server for each round, with one connection: the other end is accepted and left alone.
+			# (One server for all the rounds would hold several accepted connections at once, which
+			# is not this test's subject.)
+			server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
+			if(<>server->Listen()) {
+				Check("the DTLS server listens (round {$round})", false);
+				return;
+			};
+			acceptor := DtlsAcceptor->New(server, 4);
+			acceptor->Execute(Nil);
+
+			client := DTLSSocket->New("127.0.0.1", server->GetPort(), cert, true);
+			if(client->IsOpen()) {
+				reader := DtlsBlockedReader->New(client);
+				reader->Execute(Nil);
+				for(waited := 0; <>reader->IsStarted() & waited < 5000; waited += 1;) {
+					Thread->Sleep(1);
+				};
+				# in the read by now: sometimes just entering it, sometimes waiting in it
+				Thread->Sleep((round % 4) * 5);
+				client->Close();
+				took := 0;
+				while(<>reader->IsFinished() & took < 5000) {
+					Thread->Sleep(5);
+					took += 5;
+				};
+				if(reader->IsFinished()) {
+					read_ended += 1;
+					reader->Join();
+				};
+				if(took > slowest) {
+					slowest := took;
+				};
+			};
+
+			acceptor->Stop();
+			server->Close();
+			for(waited := 0; <>acceptor->IsFinished() & waited < 5000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			if(acceptor->IsFinished()) {
+				loops_ended += 1;
+				acceptor->Join();
+			};
+			kept := acceptor->GetKept(0);
+			if(kept <> Nil) {
+				kept->Close();
+			};
+		};
+		Check("closing a socket ended the read in progress on it ({$read_ended} of {$rounds} rounds, slowest {$slowest} ms)", read_ended = rounds);
+		Check("every accept loop ended ({$loops_ended} of {$rounds})", loops_ended = rounds);
+	}
+
+	# as dtls_socket_test.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}

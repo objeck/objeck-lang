@@ -532,6 +532,8 @@ class TlsLibraryUnlock {
 //
 struct SecureServerCtx;
 void TlsServerRelease(SecureServerCtx* srv);
+struct DtlsServerCtx;
+void DtlsServerRelease(DtlsServerCtx* srv);
 
 struct SecureSocketCtx {
   mbedtls_ssl_context ssl;
@@ -657,6 +659,11 @@ struct DtlsSocketCtx {
   // the OS reason behind the last failed record send or receive (DtlsBioSend,
   // DtlsBioRecv), taken by the next SetError
   SocketError net_reason;
+  // as SecureSocketCtx's: the server whose configuration an accepted connection reads (a reference),
+  // the traps using this context now, and whether its socket object has been closed
+  DtlsServerCtx* server;
+  int users;
+  bool closed;
 
   void SetError(int error) {
     const SocketError reason = net_reason;
@@ -672,7 +679,7 @@ struct DtlsSocketCtx {
     dtls_socket_error = reason;
   }
 
-  DtlsSocketCtx() : last_error(0), net_reason{ 0, false } {
+  DtlsSocketCtx() : last_error(0), net_reason{ 0, false }, server(nullptr), users(0), closed(false) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -689,6 +696,10 @@ struct DtlsSocketCtx {
     mbedtls_x509_crt_free(&cacert);
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
+    // after mbedtls_ssl_free: the session no longer reads the server's configuration
+    if(server) {
+      DtlsServerRelease(server);
+    }
   }
 };
 
@@ -703,8 +714,12 @@ struct SecureServerCtx {
   // who still needs this: the server object until it is closed (1), each Accept in flight and each
   // accepted connection not yet freed. Under the lock in common.cpp; freed by TlsServerRelease at 0.
   int refs;
+  // the Accept calls inside the listening descriptor now, and whether the server has been closed: a
+  // closed server's descriptor is closed once those calls have left it (ServerCtxClose in common.cpp)
+  int accepting;
+  bool closed;
 
-  SecureServerCtx() : last_error(0), refs(1) {
+  SecureServerCtx() : last_error(0), refs(1), accepting(0), closed(false) {
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
     mbedtls_pk_init(&pkey);
@@ -741,8 +756,13 @@ struct DtlsServerCtx {
   // included here on every platform.
   alignas(8) unsigned char bound_addr[128];
   int bound_len;
+  // as SecureServerCtx's: who still needs this, the Accept calls inside the listening descriptor,
+  // and whether the server has been closed
+  int refs;
+  int accepting;
+  bool closed;
 
-  DtlsServerCtx() : last_error(0), port(0), bound_len(0) {
+  DtlsServerCtx() : last_error(0), port(0), bound_len(0), refs(1), accepting(0), closed(false) {
     memset(&bound_addr, 0, sizeof(bound_addr));
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);

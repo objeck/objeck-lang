@@ -6091,9 +6091,24 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 // instance[0] in the same critical section in which it gives the object's reference up. Whoever lets go
 // last frees the context. The lock is a leaf: it is never held across an mbedTLS call or a wait.
 //
+// DTLS servers and sockets (DtlsServerCtx, DtlsSocketCtx) had the same faults and are kept the same
+// way: the code below is written once, for both.
+//
+// What is NOT freed by Close(): the configuration of a closed server stays until every connection it
+// accepted has been closed, because mbedTLS requires a configuration to outlive its sessions. A
+// program that drops an accepted socket without closing it has always leaked that connection (its
+// descriptor and session; the VM has no finalizers); it now also keeps its server's certificate, key
+// and random generator, a few kilobytes per closed server, until the process ends.
+//
 static std::mutex tls_context_lock;
 
-void TlsServerRelease(SecureServerCtx* srv)
+// How long Close() of a server waits for the Accept calls inside its listening descriptor to leave
+// before it closes the descriptor (see ServerCtxClose). They leave at once where shutting a listener
+// down ends an accept (Linux); elsewhere this is the most a Close() is held up.
+static const int LISTENER_CLOSE_GRACE_MS = 100;
+
+template<typename Server>
+static void ServerCtxRelease(Server* srv)
 {
   bool last;
   {
@@ -6105,46 +6120,141 @@ void TlsServerRelease(SecureServerCtx* srv)
   }
 }
 
-// A TLS server's context for as long as a trap uses it: a reference, and a copy of the listening
-// descriptor taken with it (Close() ends the descriptor in the context, under the lock).
-class TlsServerUse {
-  SecureServerCtx* srv;
-  mbedtls_net_context listener;
+// (declared in common.h: a connection's destructor gives its server's reference back)
+void TlsServerRelease(SecureServerCtx* srv)
+{
+  ServerCtxRelease(srv);
+}
+
+void DtlsServerRelease(DtlsServerCtx* srv)
+{
+  ServerCtxRelease(srv);
+}
+
+// A server's context for as long as a trap uses it: a reference.
+template<typename Server>
+class ServerCtxUse {
+  Server* srv;
 
  public:
-  explicit TlsServerUse(const size_t* instance) : srv(nullptr) {
-    mbedtls_net_init(&listener);
+  explicit ServerCtxUse(const size_t* instance) : srv(nullptr) {
     if(instance) {
       std::lock_guard<std::mutex> guard(tls_context_lock);
-      srv = (SecureServerCtx*)instance[0];
+      srv = (Server*)instance[0];
       if(srv) {
         ++srv->refs;
-        listener = srv->listen_fd;
       }
     }
   }
 
-  ~TlsServerUse() {
+  ~ServerCtxUse() {
     if(srv) {
-      TlsServerRelease(srv);
+      ServerCtxRelease(srv);
     }
   }
 
-  TlsServerUse(const TlsServerUse&) = delete;
-  TlsServerUse& operator=(const TlsServerUse&) = delete;
+  ServerCtxUse(const ServerCtxUse&) = delete;
+  ServerCtxUse& operator=(const ServerCtxUse&) = delete;
 
-  SecureServerCtx* Get() const { return srv; }
-  mbedtls_net_context* Listener() { return &listener; }
+  Server* Get() const { return srv; }
 
-  // hands this reference to an accepted connection (SecureSocketCtx::server), which gives it back
-  SecureServerCtx* Give() {
-    SecureServerCtx* given = srv;
+  // hands this reference to an accepted connection (its 'server'), which gives it back when freed
+  Server* Give() {
+    Server* given = srv;
     srv = nullptr;
     return given;
   }
 };
 
-static void TlsSocketRelease(SecureSocketCtx* sctx)
+typedef ServerCtxUse<SecureServerCtx> TlsServerUse;
+typedef ServerCtxUse<DtlsServerCtx> DtlsServerUse;
+
+// An Accept's use of its server's listening descriptor, from before it reads the descriptor's number
+// until it has left the last system call made on it. Close() counts these (ServerCtxClose): the
+// descriptor is not closed, so its number cannot be given to another socket, while one is inside.
+template<typename Server>
+class ListenerUse {
+  Server* srv;
+  int fd;
+
+ public:
+  explicit ListenerUse(Server* s) : srv(s) {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    // a closed server has no listener to wait on, whatever number it still holds
+    fd = srv->closed ? -1 : srv->listen_fd.fd;
+    ++srv->accepting;
+  }
+
+  ~ListenerUse() {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    --srv->accepting;
+  }
+
+  ListenerUse(const ListenerUse&) = delete;
+  ListenerUse& operator=(const ListenerUse&) = delete;
+
+  int Descriptor() const { return fd; }
+
+  bool ServerClosed() const {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    return srv->closed;
+  }
+};
+
+// Close() of a server. The object lets go of its context, and the listener ends: it is shut down,
+// which on Linux ends the accept calls waiting on it, and then closed, which is what ends them on the
+// other systems. The close used to follow at once, so an Accept that had read the descriptor's number
+// and not yet entered its system call made that call on a closed number -- or, when another thread had
+// opened a socket meanwhile, on that socket. The descriptor is now closed when the Accept calls that
+// read its number have left it, or after LISTENER_CLOSE_GRACE_MS where shutting it down did not end
+// them (there the close itself has to, as before, and the old window is still open for those calls).
+// Windows is such a system (shutting a listener down fails there and ends nothing), so its listeners
+// are closed at once, as they were, rather than hold every Close() of a busy server up for the grace.
+//
+// The context itself stays until the accepts in flight and the connections it accepted have let go.
+template<typename Server>
+static void ServerCtxClose(size_t* instance)
+{
+  Server* srv;
+  bool accepting = false;
+  {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    srv = (Server*)instance[0];
+    if(srv) {
+      instance[0] = 0;
+      srv->closed = true;
+      if(srv->listen_fd.fd >= 0) {
+        shutdown((SOCKET)srv->listen_fd.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+      }
+      accepting = srv->accepting > 0;
+    }
+  }
+  if(!srv) {
+    return;
+  }
+
+#ifndef _WIN32
+  if(accepting) {
+    // a wait, if a short one: parked (the object is not touched again)
+    MemoryManager::BeginBlocking();
+    for(int waited = 0; accepting && waited < LISTENER_CLOSE_GRACE_MS; ++waited) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::lock_guard<std::mutex> guard(tls_context_lock);
+      accepting = srv->accepting > 0;
+    }
+    MemoryManager::EndBlocking();
+  }
+#endif
+
+  {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    mbedtls_net_free(&srv->listen_fd);
+  }
+  ServerCtxRelease(srv);
+}
+
+template<typename Socket>
+static void SocketCtxRelease(Socket* sctx)
 {
   bool last;
   {
@@ -6156,43 +6266,48 @@ static void TlsSocketRelease(SecureSocketCtx* sctx)
   }
 }
 
-// A TLS connection's context for as long as a trap uses it, or nullptr when the socket has none (it
+// A connection's context for as long as a trap uses it, or nullptr when the socket has none (it
 // never connected, or it has been closed). ShutdownSend() copied the pointer out of the object and
 // then waited, for the collector and for the TLS library; Close() on another thread deleted the
 // context meanwhile, and the same held for a read or a write that Close() was meant to end.
-class TlsSocketUse {
-  SecureSocketCtx* sctx;
+template<typename Socket>
+class SocketCtxUse {
+  Socket* sctx;
 
  public:
-  explicit TlsSocketUse(const size_t* instance) : sctx(nullptr) {
+  explicit SocketCtxUse(const size_t* instance) : sctx(nullptr) {
     if(instance) {
       std::lock_guard<std::mutex> guard(tls_context_lock);
-      sctx = (SecureSocketCtx*)instance[0];
+      sctx = (Socket*)instance[0];
       if(sctx) {
         ++sctx->users;
       }
     }
   }
 
-  ~TlsSocketUse() {
+  ~SocketCtxUse() {
     if(sctx) {
-      TlsSocketRelease(sctx);
+      SocketCtxRelease(sctx);
     }
   }
 
-  TlsSocketUse(const TlsSocketUse&) = delete;
-  TlsSocketUse& operator=(const TlsSocketUse&) = delete;
+  SocketCtxUse(const SocketCtxUse&) = delete;
+  SocketCtxUse& operator=(const SocketCtxUse&) = delete;
 
-  SecureSocketCtx* Get() const { return sctx; }
+  Socket* Get() const { return sctx; }
 };
 
+typedef SocketCtxUse<SecureSocketCtx> TlsSocketUse;
+typedef SocketCtxUse<DtlsSocketCtx> DtlsSocketUse;
+
 // Close(), first half: takes the context out of the socket object, which from here on has none, and
-// marks it closed. The caller is counted as a user until TlsSocketFinish. Not a wait: call it before
+// marks it closed. The caller is counted as a user until SocketCtxFinish. Not a wait: call it before
 // parking, while the object can be written.
-static SecureSocketCtx* TlsSocketDetach(size_t* instance)
+template<typename Socket>
+static Socket* SocketCtxDetach(size_t* instance)
 {
   std::lock_guard<std::mutex> guard(tls_context_lock);
-  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  Socket* sctx = (Socket*)instance[0];
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
   if(sctx) {
     sctx->closed = true;
@@ -6201,12 +6316,41 @@ static SecureSocketCtx* TlsSocketDetach(size_t* instance)
   return sctx;
 }
 
+// whether a close still owes the peer its close_notify alert: a TLS socket's ShutdownSend sends it early
+static inline bool CloseNotifyDue(const SecureSocketCtx* sctx) { return !sctx->send_closed; }
+static inline bool CloseNotifyDue(const DtlsSocketCtx*) { return true; }
+
+// Ends the wait of a thread that is inside a read or a write on a connection being closed. Shutting
+// the connection down does it: the thread's call returns, and the descriptor stays the context's
+// until its last user frees it.
+static inline void EndWaitsOn(SecureSocketCtx* sctx)
+{
+  shutdown((SOCKET)sctx->net.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+}
+
+// The same for a datagram socket. On Windows shutting a UDP socket down ends nothing: a DTLS read,
+// which has no timeout, stayed in its wait for good. Closing the socket is what ends it there, as it
+// did before contexts were counted. The context is told its socket is gone, so that it is not closed
+// a second time when the context is freed. A thread that read the handle's value just before this and
+// has not yet used it makes its call on a closed handle (or on a socket opened since with that handle),
+// as it did then: that window is not closed here, the use of freed memory is.
+static inline void EndWaitsOn(DtlsSocketCtx* sctx)
+{
+  shutdown((SOCKET)sctx->net.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+#ifdef _WIN32
+  closesocket((SOCKET)sctx->net.fd);
+  sctx->net.fd = -1;
+#endif
+}
+
 // Close(), second half, which can wait (call it parked). With nobody else using the context this is the
 // close it always was: the close_notify alert, unless ShutdownSend already sent it, and the free. With
 // another thread inside a read or a write on it, the alert cannot be sent (one session is not to be
 // driven by two threads at once): the connection is shut down instead, which ends that thread's wait,
-// and the context is freed when the last of them lets go.
-static void TlsSocketFinish(SecureSocketCtx* sctx)
+// and the context is freed when the last of them lets go. A TCP peer sees the connection end; a DTLS
+// peer, with no alert and no connection underneath, is not told, as when its peer simply stops.
+template<typename Socket>
+static void SocketCtxFinish(Socket* sctx)
 {
   bool alone;
   {
@@ -6215,14 +6359,14 @@ static void TlsSocketFinish(SecureSocketCtx* sctx)
   }
   if(alone) {
     TlsLibraryLock library_lock;
-    if(!sctx->send_closed) {
+    if(CloseNotifyDue(sctx)) {
       mbedtls_ssl_close_notify(&sctx->ssl);
     }
   }
   else {
-    shutdown((SOCKET)sctx->net.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+    EndWaitsOn(sctx);
   }
-  TlsSocketRelease(sctx);
+  SocketCtxRelease(sctx);
 }
 
 bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
@@ -6248,7 +6392,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     // is waiting for that collection, nothing moves again. Only C locals are
     // touched while parked; the instance ref is re-rooted on the op_stack so GC
     // promotion fixup relocates it, then re-read after the wait.
-    SecureSocketCtx* old_sctx = TlsSocketDetach(instance);
+    SecureSocketCtx* old_sctx = SocketCtxDetach<SecureSocketCtx>(instance);
     SecureSocketCtx* sctx = nullptr;
     // instance[7] holds the connect timeout in ms (0 = none), instance[8] the deadline in ms
     // from now (0 = none) and instance[9] the read timeout in ms (0 = the default): the
@@ -6263,7 +6407,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     MemoryManager::BeginBlocking();
     // Close existing connection if any
     if(old_sctx) {
-      TlsSocketFinish(old_sctx);
+      SocketCtxFinish(old_sctx);
     }
     const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, connect_ms, deadline_ms, read_ms);
     MemoryManager::EndBlocking();
@@ -6362,9 +6506,9 @@ bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  // the object has no context from here on (see TlsSocketDetach); the context is freed below, or by
+  // the object has no context from here on (see SocketCtxDetach); the context is freed below, or by
   // the last thread still inside a read or a write on it
-  SecureSocketCtx* sctx = TlsSocketDetach(instance);
+  SecureSocketCtx* sctx = SocketCtxDetach<SecureSocketCtx>(instance);
 
 #ifdef _DEBUG
   std::wcout << L"# socket close: sctx=" << sctx << L"("
@@ -6374,7 +6518,7 @@ bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t*
     // the close_notify alert is a write, which can block on a full send buffer;
     // park for it (sctx is C heap, and the object is not touched again)
     MemoryManager::BeginBlocking();
-    TlsSocketFinish(sctx);
+    SocketCtxFinish(sctx);
     MemoryManager::EndBlocking();
   }
 
@@ -6560,7 +6704,9 @@ static SOCKET DtlsRebind(DtlsServerCtx* srv)
 static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned char* client_ip,
                       size_t buffer_size, size_t* ip_len)
 {
-  const int fd = srv->listen_fd.fd;
+  // the listener is in use until this returns (see ServerCtxClose)
+  ListenerUse<DtlsServerCtx> listening(srv);
+  const int fd = listening.Descriptor();
   if(fd < 0) {
     return MBEDTLS_ERR_NET_ACCEPT_FAILED;
   }
@@ -6583,7 +6729,8 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
       ret = (int)sizeof(peek);
     }
 #endif
-    if(ret < 0) {
+    // a closed server's listener is shut down, which ends the wait above with nothing read
+    if(ret < 0 || listening.ServerClosed()) {
       return MBEDTLS_ERR_NET_ACCEPT_FAILED;
     }
 
@@ -6638,15 +6785,29 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
     (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
   }
 
-  // the connected socket is the client's now; listen again on a fresh one
+  // the connected socket is the client's now; listen again on a fresh one, unless the server was
+  // closed meanwhile: then nobody is left to accept on it, and the socket handed over was shut down
+  // with the listener it was (the client is freed by the caller, with it)
   client->fd = fd;
-  srv->listen_fd.fd = -1;
+  {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    srv->listen_fd.fd = -1;
+    if(srv->closed) {
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
+  }
   const SOCKET next = srv->bound_len > 0 ? DtlsRebind(srv) : IPSocket::BindAny(srv->port, SOCK_DGRAM);
 #ifdef _WIN32
   if(next != INVALID_SOCKET) {
 #else
   if(next >= 0) {
 #endif
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    if(srv->closed) {
+      // closed while the new listener was being bound: it is nobody's
+      IPSocket::Close(next);
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
     srv->listen_fd.fd = (int)next;
   }
   // else the next Accept fails; this client is served regardless
@@ -6867,7 +7028,19 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       // (status <= 0, recorded for GetLastError) rather than as a Nil from Accept.
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      int ret = mbedtls_net_accept(server.Listener(), &client->net, nullptr, 0, nullptr);
+      int ret;
+      {
+        // the listener is in use from here until the accept has returned (see ServerCtxClose)
+        ListenerUse<SecureServerCtx> listening(srv);
+        mbedtls_net_context listener;
+        mbedtls_net_init(&listener);
+        listener.fd = listening.Descriptor();
+        ret = mbedtls_net_accept(&listener, &client->net, nullptr, 0, nullptr);
+        if(ret == 0 && listening.ServerClosed()) {
+          // a connection that arrived as the server was closed: not served (freed below, with its descriptor)
+          ret = MBEDTLS_ERR_NET_ACCEPT_FAILED;
+        }
+      }
       if(ret == 0) {
         // Setup SSL session for this client (uses server's config). mbedTLS reads that configuration
         // for as long as the session lives, so the session keeps the reference this accept held: the
@@ -6996,22 +7169,8 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    // The object lets go of its context and the listening descriptor ends here: shut down and closed
-    // (mbedtls_net_free does both), which is what wakes a thread blocked in Accept() on it. The context
-    // itself stays until the accepts in flight and the connections it accepted have let go as well:
-    // this deleted it, under both.
-    SecureServerCtx* srv;
-    {
-      std::lock_guard<std::mutex> guard(tls_context_lock);
-      srv = (SecureServerCtx*)instance[0];
-      if(srv) {
-        instance[0] = 0;
-        mbedtls_net_free(&srv->listen_fd);
-      }
-    }
-    if(srv) {
-      TlsServerRelease(srv);
-    }
+    // this deleted the context, under the accepts in flight and the connections it had accepted
+    ServerCtxClose<SecureServerCtx>(instance);
   }
 
   return true;
@@ -11984,13 +12143,15 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     // of this VM that needs a collection before it can answer, neither moves
     // again. Only C locals are touched while parked; the instance ref is
     // re-rooted on the op_stack so GC promotion fixup relocates it, then re-read.
-    DtlsSocketCtx* old_sctx = (DtlsSocketCtx*)instance[0];
+    DtlsSocketCtx* old_sctx = SocketCtxDetach<DtlsSocketCtx>(instance);
     DtlsSocketCtx* sctx = nullptr;
     ClearDtlsError();
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
-    IPDtlsSocket::Close(old_sctx);
+    if(old_sctx) {
+      SocketCtxFinish(old_sctx);
+    }
     const bool is_open = IPDtlsSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, verify);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -12019,37 +12180,44 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
 // SOCK_DTLS_SUBJECT, but instance[0] is a DtlsSocketCtx in one and a
 // DtlsServerCtx in the other. Reading a server's context as a socket's handed
 // mbedtls a garbage ssl context. A socket reports its peer's certificate, a
-// server its own.
-static const mbedtls_x509_name* DtlsCertName(StackProgram* program, size_t* instance, bool subject)
+// server its own. The name is written out here, while the context is held.
+static bool DtlsCertNameText(StackProgram* program, size_t* instance, bool subject, std::wstring& text)
 {
   if(!instance || !instance[0]) {
-    return nullptr;
+    return false;
   }
 
-  const mbedtls_x509_crt* cert = nullptr;
+  char buffer[LARGE_BUFFER_MAX] = {0};
   if(MemoryManager::GetObjectID(instance) == program->GetDtlsSocketObjectId()) {
-    cert = mbedtls_ssl_get_peer_cert(&((DtlsSocketCtx*)instance[0])->ssl);
+    DtlsSocketUse use(instance);
+    if(!use.Get()) {
+      return false;
+    }
+    const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&use.Get()->ssl);
+    if(!cert) {
+      return false;
+    }
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, subject ? &cert->subject : &cert->issuer);
   }
   else {
+    DtlsServerUse server(instance);
+    if(!server.Get()) {
+      return false;
+    }
     // set only once Listen has parsed the certificate
-    cert = &((DtlsServerCtx*)instance[0])->srvcert;
+    const mbedtls_x509_crt* cert = &server.Get()->srvcert;
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, subject ? &cert->subject : &cert->issuer);
   }
 
-  if(!cert) {
-    return nullptr;
-  }
-
-  return subject ? &cert->subject : &cert->issuer;
+  text = BytesToUnicode(buffer);
+  return true;
 }
 
 bool TrapProcessor::SockDtlsIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  const mbedtls_x509_name* name = DtlsCertName(program, instance, false);
-  if(name) {
-    char buffer[LARGE_BUFFER_MAX] = {0};
-    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
-    const std::wstring in = BytesToUnicode(buffer);
+  std::wstring in;
+  if(DtlsCertNameText(program, instance, false, in)) {
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
@@ -12062,11 +12230,8 @@ bool TrapProcessor::SockDtlsIssuer(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockDtlsSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  const mbedtls_x509_name* name = DtlsCertName(program, instance, true);
-  if(name) {
-    char buffer[LARGE_BUFFER_MAX] = {0};
-    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
-    const std::wstring in = BytesToUnicode(buffer);
+  std::wstring in;
+  if(DtlsCertNameText(program, instance, true, in)) {
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
@@ -12082,20 +12247,21 @@ bool TrapProcessor::SockDtlsClose(StackProgram* program, size_t* inst, size_t* &
   if(!instance) {
     return true;
   }
-  DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  // as SockTcpSslClose: the object has no context from here on, and the context is freed below or
+  // by the last thread still inside a read or a write on it
+  DtlsSocketCtx* sctx = SocketCtxDetach<DtlsSocketCtx>(instance);
 
 #ifdef _DEBUG
   std::wcout << L"# dtls socket close: sctx=" << sctx << L"("
     << (size_t)sctx << L") #" << std::endl;
 #endif
-  // the close_notify alert is a send, which can block; park for it (sctx is C
-  // heap, the instance ref is re-rooted)
-  PushInt((size_t)instance, op_stack, stack_pos);
-  MemoryManager::BeginBlocking();
-  IPDtlsSocket::Close(sctx);
-  MemoryManager::EndBlocking();
-  instance = (size_t*)PopInt(op_stack, stack_pos);
-  instance[0] = instance[1] = instance[2] = instance[3] = 0;
+  if(sctx) {
+    // the close_notify alert is a send, which can block; park for it (sctx is C
+    // heap, and the object is not touched again)
+    MemoryManager::BeginBlocking();
+    SocketCtxFinish(sctx);
+    MemoryManager::EndBlocking();
+  }
 
   return true;
 }
@@ -12105,7 +12271,8 @@ bool TrapProcessor::SockDtlsOutString(StackProgram* program, size_t* inst, size_
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    DtlsSocketUse use(instance);
+    DtlsSocketCtx* sctx = use.Get();
     if(instance[3] && sctx) {
       ClearDtlsError();
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
@@ -12125,7 +12292,8 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     char buffer[MID_BUFFER_MAX] = {0};
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    DtlsSocketUse use(instance);
+    DtlsSocketCtx* sctx = use.Get();
     int status;
     if(instance[3] && sctx) {
       ClearDtlsError();
@@ -12352,7 +12520,10 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    DtlsServerCtx* srv = (DtlsServerCtx*)instance[0];
+    // held for the accept and the handshake, as SockTcpSslAccept holds its server: closing the server
+    // meanwhile ends the wait for a client, and no longer frees the context under this
+    DtlsServerUse server(instance);
+    DtlsServerCtx* srv = server.Get();
 
     if(srv) {
       DtlsSocketCtx* client_sctx = new DtlsSocketCtx();
@@ -12374,7 +12545,9 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       MemoryManager::BeginBlocking();
       int ret = DtlsAccept(srv, &client_sctx->net, client_ip, sizeof(client_ip), &client_ip_len);
       if(ret == 0) {
-        // Setup SSL session for this client (uses server's config)
+        // Setup SSL session for this client (uses server's config, and its cookie context: the
+        // session keeps the reference this accept held, for as long as it lives)
+        client_sctx->server = server.Give();
         TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
         if(ret == 0) {
@@ -12465,8 +12638,9 @@ bool TrapProcessor::SockDtlsSelect(StackProgram* program, size_t* inst, size_t*&
    const bool is_write = (bool)PopInt(op_stack, stack_pos);
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-   if(instance && instance[0]) {
-      DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+   DtlsSocketUse use(instance);
+   if(use.Get()) {
+      DtlsSocketCtx* sctx = use.Get();
       PushInt(dtls_ready_for_io(sctx, is_write), op_stack, stack_pos);
       return true;
    }
@@ -12478,7 +12652,8 @@ bool TrapProcessor::SockDtlsSelect(StackProgram* program, size_t* inst, size_t*&
 bool TrapProcessor::SockDtlsCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  DtlsServerCtx* srv = (DtlsServerCtx*)instance[0];
+  DtlsServerUse server(instance);
+  DtlsServerCtx* srv = server.Get();
   if(srv) {
     char buffer[LARGE_BUFFER_MAX] = {0};
     mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &srv->srvcert.issuer);
@@ -12512,11 +12687,8 @@ bool TrapProcessor::SockDtlsCloseSrv(StackProgram* program, size_t* inst, size_t
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    DtlsServerCtx* srv = (DtlsServerCtx*)instance[0];
-    if(srv) {
-      instance[0] = 0;
-      delete srv;
-    }
+    // this deleted the context, under an accept in flight and the connections it had accepted
+    ServerCtxClose<DtlsServerCtx>(instance);
   }
 
   return true;
@@ -12527,8 +12699,9 @@ bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   // a socket whose connect failed has no context: there is nothing to read
   // or write (this used it, and crashed), and its reason stays reported
-  if(instance && instance[0]) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  DtlsSocketUse use(instance);
+  DtlsSocketCtx* sctx = use.Get();
+  if(sctx) {
     ClearDtlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
@@ -12552,8 +12725,9 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockDtlsInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  DtlsSocketUse use(instance);
+  DtlsSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearDtlsError();
     // blocking read; park for the duration. Bytes land in a temp C buffer (a
     // parked thread's GC array can be moved by promotion mid-read), and the
@@ -12585,8 +12759,9 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockDtlsInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  DtlsSocketUse use(instance);
+  DtlsSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearDtlsError();
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
@@ -12622,8 +12797,9 @@ bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t*
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   // a socket whose connect failed has no context: there is nothing to read
   // or write (this used it, and crashed), and its reason stays reported
-  if(instance && instance[0]) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  DtlsSocketUse use(instance);
+  DtlsSocketCtx* sctx = use.Get();
+  if(sctx) {
     ClearDtlsError();
     // a DTLS write can block; park so a stop-the-world collection can proceed
     MemoryManager::BeginBlocking();
@@ -12646,8 +12822,9 @@ bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockDtlsInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  DtlsSocketUse use(instance);
+  DtlsSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearDtlsError();
     // a DTLS write can block; park for the duration. Data is staged in a temp C
     // buffer first -- a parked thread's GC array can be moved (and its young-gen
@@ -12678,8 +12855,9 @@ bool TrapProcessor::SockDtlsOutCharAry(StackProgram* program, size_t* inst, size
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockDtlsInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  DtlsSocketUse use(instance);
+  DtlsSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearDtlsError();
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer

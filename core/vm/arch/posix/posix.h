@@ -1522,7 +1522,7 @@ class IPSecureSocket {
     return total;
   }
 
-  // Closing is the trap's (TlsSocketDetach and TlsSocketFinish in common.cpp): a context is freed by
+  // Closing is the trap's (SocketCtxDetach and SocketCtxFinish in common.cpp): a context is freed by
   // its last user, which a Close(sctx) here that deleted it could not know.
 
   // Ends this side's sending and leaves the session open for reading: the
@@ -1801,6 +1801,9 @@ class IPDtlsSocket {
     return status;
   }
 
+  // For a context no socket object points to yet (an accept whose handshake failed). A socket's
+  // Close() is the trap's (SocketCtxDetach and SocketCtxFinish in common.cpp), which frees a context
+  // only when its last user has let go.
   static void Close(DtlsSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     if(sctx) {
