@@ -156,7 +156,7 @@ bump through @self: 12</pre>
 large: error=true
 tiny: 3 tokens, error=true</pre>
     <h2 id="flow-collection-literals-and-the-nil-guard">Flow: collection literals and the nil guard</h2>
-    <p>An array literal takes the type of the variable it is assigned to when that is a <code>Vector</code>, <code>CompareVector</code>, <code>IntVector</code> or <code>FloatVector</code>: <code>v : Vector&lt;IntRef&gt; := [a, b]</code> is <code>Vector-&gt;New([a, b])&lt;IntRef&gt;</code>. It does not type a call argument, and there is no map literal.</p>
+    <p>An array literal takes the type of the variable it is assigned to when that is a <code>Vector</code>, <code>CompareVector</code>, <code>IntVector</code> or <code>FloatVector</code>: <code>v : Vector&lt;IntRef&gt; := [a, b]</code> is <code>Vector-&gt;New([a, b])&lt;IntRef&gt;</code>. It does not type a call argument; a map has its own literal, <code>{key: value, ...}</code>.</p>
     <p><code>x := E ?? return V;</code> (also <code>?? break;</code> and <code>?? continue;</code>) leaves when <code>E</code> is <code>Nil</code> and otherwise binds <code>x</code>. It is <code>x := E;</code> followed by <code>if(x = Nil) { return V; }</code>. A block form, <code>x := E ?? { ...; return };</code>, runs a block that must end in <code>return</code>, <code>break</code>, <code>continue</code> or <code>Runtime-&gt;Exit(..)</code>. The value form <code>a ?? b</code> is unchanged.</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-com">#~
 # compile: obc -src sugar_flow.obs

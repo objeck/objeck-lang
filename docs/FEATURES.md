@@ -167,8 +167,8 @@ nums : IntVector := [4, 5, 6];
 
 It is exactly `Vector->New([..])<IntRef>`; elements of the wrong type give that
 call's error. The literal is not typed by a call argument (overloads are chosen
-before a target is known): assign it to a typed variable first. There is no map
-literal: `Map` has no array constructor to lower to. Test: `collection_literals`.
+before a target is known): assign it to a typed variable first. A map has its own
+literal, `{key: value, ...}` (see Map literals). Test: `collection_literals`.
 
 ### Jagged Arrays
 `T[][]` is an array of `T[]` rows of any length, at any depth:
@@ -1038,12 +1038,9 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 `self`, `parent` and `value` are **not** reserved as identifiers. The capitalized
 `Byte`, `Int`, `Float`, `Char`, `Bool`, `Nil`, `New`, `Parent`, `As` and `TypeOf` are
 keywords of the scanner too (`ident_map` in `scanner.cpp`), so they cannot name a
-variable either. `ref`, `try`, `on`, `finally`, `out` and `is` are **contextual**: a keyword
-variable either. `ref`, `try`, `on`, `finally`, `out` and `json` are **contextual**: a keyword
-variable either. `ref`, `try`, `on`, `finally`, `out` and `match` are **contextual**: a keyword
-only where the grammar expects it, so they remain usable as names.
-variable either. `ref`, `try`, `on`, `finally`, `out` and `spawn` are **contextual**: a
-keyword only where the grammar expects it, so they remain usable as names.
+variable either. `ref`, `try`, `on`, `finally`, `out`, `is`, `json`, `match`, `spawn`, `assert`,
+`using`, `prompt`, `agent`, `get` and `set` are **contextual**: a keyword only where the grammar
+expects it, so they remain usable as names.
 
 ---
 
