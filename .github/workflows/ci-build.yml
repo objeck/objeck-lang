@@ -945,6 +945,16 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 mcp_tool_tags_diag_test.py "$BIN"
 
+    # 'class Name : json' (docs/design/AGENT_SYNTAX.md): every diagnostic with its line, and what must be left alone
+    - name: the json class diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 json_class_diag_test.py "$BIN"
+
     # 'obr --mcp' and 'obr --mcp-http' (docs/design/MCP_FIRST_CLASS.md, Stage 3): a program's tools, resources and prompts
     # served with no server code; stdio in three execution modes, hostile input, HTTP, the refusals.
     - name: obr --mcp serves a program's tools (POSIX)
@@ -1665,6 +1675,7 @@ jobs:
           ../../../compiler/lib_src/actor_agents.obs \
           ../../../compiler/lib_src/mcp.obs \
           ../../../compiler/lib_src/mcp_agent.obs \
+          ../../../compiler/lib_src/agent_json.obs \
           ../../../compiler/lib_src/rag.obs \
           ../../../compiler/lib_src/rag_adapters.obs \
           ../../../compiler/lib_src/json_rpc.obs \

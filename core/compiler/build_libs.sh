@@ -87,6 +87,8 @@ $OBC -src lib_src/actor_agents.obs -lib gen_collect,concurrent,actor,agent,net,j
 $OBC -src lib_src/mcp.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest ../lib/mcp.obl
 # Hands MCP tools to an API.Agent agent (declared functions and the tools of a server). After mcp and agent, which it links; kept apart so neither links the other
 $OBC -src lib_src/mcp_agent.obs -lib net,net_server,json,cipher,misc,mcp,agent -tar lib -opt s3 -dest ../lib/mcp_agent.obl
+# Typed answers from an agent's model for a `class Name : json` class. After agent and llm_util, which it links; kept apart so neither links the other
+$OBC -src lib_src/agent_json.obs -lib gen_collect,json,regex,llm_util,net,cipher,misc,agent -tar lib -opt s3 -dest ../lib/agent_json.obl
 $OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 # Hugging Face Hub downloads and the model cache (docs/AI_FOUNDATION_DESIGN.md sec. 7.3)
 $OBC -src lib_src/ai_hub.obs -lib gen_collect,cipher,json,net -tar lib -opt s3 -dest ../lib/ai_hub.obl

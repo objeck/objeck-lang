@@ -37,7 +37,7 @@
    <div class="content">
 <!-- content:start -->
     <h1 class="page-title">Libraries</h1>
-<p class="page-lead">63 libraries, generated from <code>core/compiler/build_libs.sh</code> and the sources. Pass them to <code>obc -lib</code>; a library's own dependencies are not added for you. <a href="https://www.objeck.org/api/latest/index.html" target="_blank" rel="noopener">API reference</a>.</p>
+<p class="page-lead">64 libraries, generated from <code>core/compiler/build_libs.sh</code> and the sources. Pass them to <code>obc -lib</code>; a library's own dependencies are not added for you. <a href="https://www.objeck.org/api/latest/index.html" target="_blank" rel="noopener">API reference</a>.</p>
 <pre class="cmd">obc -src app.obs -lib json,net,cipher</pre>
 <h2 id="in-practice">In practice</h2>
 <h3>JSON</h3><pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Data</span>.JSON;
@@ -196,6 +196,7 @@ $ obr threads.obe
  <tbody>
   <tr><td data-label="Library"><code>-lib actor_agents</code></td><td data-label="What it gives you">Run an agent as a supervised actor.</td><td data-label="Namespaces" class="ns"><code>System.Actor</code></td></tr>
   <tr><td data-label="Library"><code>-lib agent</code></td><td data-label="What it gives you">A provider-neutral tool-use loop: an agent that calls the functions you give it.</td><td data-label="Namespaces" class="ns"><code>API.Agent</code></td></tr>
+  <tr><td data-label="Library"><code>-lib agent_json</code></td><td data-label="What it gives you">Typed answers from an agent's model: the run-time half of `class Name : json`.</td><td data-label="Namespaces" class="ns"><code>API.AgentJson</code></td></tr>
   <tr><td data-label="Library"><code>-lib ai_hub</code></td><td data-label="What it gives you">Download models from the Hugging Face Hub into a local cache.</td><td data-label="Namespaces" class="ns"><code>System.AI.Hub</code></td></tr>
   <tr><td data-label="Library"><code>-lib anthropic</code></td><td data-label="What it gives you">Anthropic Messages API client.</td><td data-label="Namespaces" class="ns"><code>API.Anthropic</code></td></tr>
   <tr><td data-label="Library"><code>-lib gemini</code></td><td data-label="What it gives you">Google Gemini client, including tuning and corpora.</td><td data-label="Namespaces" class="ns"><code>API.Google.Gemini</code>, <code>API.Google.Gemini.Corpus</code>, <code>API.Google.Gemini.Tuning</code></td></tr>

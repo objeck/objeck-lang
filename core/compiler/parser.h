@@ -82,7 +82,7 @@ public:
  * Turns tokens into trees
  ****************************/
 enum McpKind {
-    MK_INT, MK_FLOAT, MK_BOOL, MK_BYTE, MK_CHAR, MK_STRING, MK_JSON, MK_ENUM, MK_RECORD, MK_ARRAY, MK_VECTOR, MK_MAP, MK_CALL
+    MK_INT, MK_FLOAT, MK_BOOL, MK_BYTE, MK_CHAR, MK_STRING, MK_JSON, MK_ENUM, MK_RECORD, MK_JSONCLS, MK_ARRAY, MK_VECTOR, MK_MAP, MK_CALL
 };
 
 
@@ -93,6 +93,7 @@ struct McpTy {
   std::wstring name;                // an enum or a record, as written in the source
   std::vector<std::wstring> items;  // the items of an enum, the fields of a record (in order)
   std::vector<McpTy> kids;          // the element of an array, Vector or Map; the types of a record's fields
+  std::vector<bool> optional;       // a 'class : json' class: which fields are optional (same order as items)
   std::wstring text;                // the type as Objeck source text
 };
 
@@ -103,12 +104,15 @@ struct McpCandidate {
   ToolDoc doc;
 };
 
-// a class with tagged functions, waiting for every file to be read
+// a class with tagged functions or a 'class : json', waiting for every file to be read
 struct McpPending {
   Class* klass;
   ParsedBundle* bundle;
   std::vector<McpCandidate> tools;
   bool uses_mcp;   // its file has 'use API.MCP'
+  bool is_json = false;                 // a 'class : json': its JsonSchema, JsonFill, FromJson and Ask are derived too
+  int json_line = 0;
+  std::vector<std::wstring> lib_uses;   // the 'use' names of its file
 };
 
 
@@ -328,7 +332,9 @@ class Parser {
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
   void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
   void GeneratePendingMcpTools();
-  void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth);
+  void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
+  bool McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth);
+  void GenerateJsonClass(Class* klass, int line, int depth);
   bool McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth);
   Enum* McpFindEnum(const std::wstring& name);
   Class* McpFindClass(const std::wstring& name);

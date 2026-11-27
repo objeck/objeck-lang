@@ -171,6 +171,11 @@ contexts:
       pop: true
       
   cls_def:
+    - match: '({{identifier}})(\s*:\s*)(json)\b'
+      captures:
+        1: entity.name.class.objeck-obs
+        3: storage.modifier.objeck-obs
+      pop: true
     - match: '{{identifier}}'
       scope: entity.name.class.objeck-obs
       pop: true

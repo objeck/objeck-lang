@@ -3138,6 +3138,14 @@ result->GetText()->PrintLine();
 		}
 
 		#~
+		Gets the model the agent talks to
+		@return the backend
+		~#
+		method : public : GetBackend() ~ ChatBackend {
+			return @backend;
+		}
+
+		#~
 		Gets the cancellation token
 		@return the token, or Nil
 		~#

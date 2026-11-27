@@ -255,6 +255,51 @@ With a real model, implement `ChatFn` over the client you use (build the client'
 
 It does not guess further: a missing value (`{"a":,"b":1}`), a missing colon or a missing comma between items stays an error. A repaired value is still validated against the schema, and `WasRepaired()` says it was repaired.
 
+### Typed results: `class Name : json`
+
+A class declared `class Weather : json { ... }` is its own JSON Schema and its own reader. The compiler writes four functions into it from the class's fields (no VM or JIT change; they are ordinary Objeck, as the `@tool` ones are):
+
+| Written for you | What it does |
+|---|---|
+| `Weather->JsonSchema()` | the JSON Schema of the fields, as a `JsonElement` |
+| `Weather->FromJson(json)` | checks the value against the schema (`JsonSchema->Check`) and raises an `Error` that names the bad field, then makes the object with `New()` and sets the fields |
+| `weather->JsonFill(json)` | sets the fields of an existing object from a JSON object |
+| `Weather->Ask(agent, prompt)` | asks the agent's model for a value of the class and returns a `Weather` (only when the file has `use API.AgentJson;`) |
+
+```ruby
+use API.Agent, API.LlmUtil, API.AgentJson, Data.JSON, Collection;
+
+enum Sky { CLEAR, CLOUDY, RAIN }
+
+class Weather : json(note) {          # note may be left out or be null
+  @city : String;
+  @temp_c : Float;
+  @sky : Sky;
+  @tags : Vector<String>;
+  @note : String;
+  New() {}                            # FromJson makes the object with this
+  method : public : GetCity() ~ String { return @city; }
+}
+
+agent := Agent->New(AnthropicBackend->New("claude-haiku-4-5", Nil), Nil);
+w := Weather->Ask(agent, "What is the weather in Paris?");   # a Weather, or an Error
+```
+
+Compile with `-lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json`. `Ask` goes through `StructuredCall` over the agent's backend: the schema is put in the system prompt (after the agent's own), the lenient JSON repair is on, an invalid reply is sent back with the problems and the model asks again (two retries), and no valid answer raises an `Error` that says why. It does not run the agent's tool loop and an `AgentScope` does not count it.
+
+Field types: `Int` (`integer`), `Float` (`number`), `Bool`, `String`, `Char` (one-character string), `Byte` (0 to 255), `JsonElement` (any value), an enum (a string of the item names), another `json` class (an object), `Vector<T>`, `T[]` and `Map<String, T>` of those. The fields are required unless named in `json(a, b)`; an optional field is `anyOf` its type and `null`, and is left unset when it is missing or null. A field type that cannot be derived, a parent class, a generic class, a constructor that needs parameters and no `New()`, a name in `json(...)` that is not a field, or a nested class that is not a `json` class declared above this one is a compile error with the line. The same derivation is what a `json` class gets as an `@tool` parameter.
+
+Compiled and run (`programs/deploy/json_class_46.obs`, a scripted model whose first answer is wrong, so the retry shows):
+
+```
+schema required: city,temp_c,sky,tags
+Paris: 18.500000 C, rain=true, tags=2, note=(none)
+model calls: 2
+bad value: Weather: /temp_c: expected number, got string
+```
+
+The derived schemas equal hand-written ones (`json_class_oracle_test`, twelve classes), and `json_class_test` and `json_class_diag_test.py` run on a scripted model with no key.
+
 ### API summary
 
 | Class | Main members |

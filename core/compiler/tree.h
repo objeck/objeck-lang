@@ -2932,6 +2932,8 @@ namespace frontend {
     bool is_public;
     bool is_record;
     bool is_readonly_record;
+    bool is_json = false;                       // 'class Name : json': the compiler writes JsonSchema, JsonFill and FromJson
+    std::vector<std::wstring> json_optional;    // the fields 'json(a, b)' marks optional
     MethodCall* anonymous_call;
     std::vector<std::wstring> interface_names;
     std::vector<Class*> generic_classes;
@@ -3153,6 +3155,19 @@ namespace frontend {
 
     bool IsPublic() {
       return is_public;
+    }
+
+    void SetJson(bool j, const std::vector<std::wstring>& optional) {
+      is_json = j;
+      json_optional = optional;
+    }
+
+    bool IsJson() {
+      return is_json;
+    }
+
+    const std::vector<std::wstring>& GetJsonOptional() {
+      return json_optional;
     }
 
     void SetRecord(bool r) {

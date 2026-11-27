@@ -20,6 +20,12 @@
     "API.Agent": ["Agent", "AgentApprover", "AgentBudget", "AgentCancel", "AgentCancelableHandler", "AgentConversation", "AgentDeadlineAware", "AgentEntry", "AgentEvent", "AgentObserver", "AgentPrices", "AgentReply", "AgentResult", "AgentSchema", "AgentScope", "AgentStep", "AgentTool", "AgentToolCall", "AgentToolHandler", "AgentToolResult", "AgentTools", "AgentTraceBuffer", "AgentTraceSink", "AnthropicBackend", "ChatBackend", "GeminiBackend", "OllamaBackend", "OpenAIBackend", "Redactor", "ScriptedBackend", "ToolRegistry"]
    }
   },
+  "agent_json": {
+   "deps": ["gen_collect", "json", "regex", "llm_util", "net", "cipher", "misc", "agent"],
+   "bundles": {
+    "API.AgentJson": ["AgentAsk"]
+   }
+  },
   "ai": {
    "deps": ["gen_collect"],
    "bundles": {

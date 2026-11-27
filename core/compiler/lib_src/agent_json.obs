@@ -1,0 +1,134 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Collection, Data.JSON, API.Agent, API.LlmUtil;
+
+#~
+Typed answers from an agent's model: the run-time half of `class Name : json`. Kept apart from agent and
+llm_util so that neither links the other.
+
+`AgentAsk->Value(agent, prompt, schema)` asks the agent's model, with the library's StructuredCall (the
+schema is put in the system prompt, the reply is checked against it, an invalid reply is sent back with the
+problems and the model asks again, up to two times, and the lenient JSON repair is on), and returns the valid
+JSON value. It raises an `Error` when no valid value was obtained: the text says why (a backend error or the
+schema problems of the last reply). A class declared `class Weather : json { ... }` gets
+`Weather->Ask(agent, prompt)` written by the compiler, which calls this and turns the value into a Weather.
+
+The call goes to the agent's backend directly (the agent's system prompt is kept); it does not run the agent's
+tool loop and it is not counted by an AgentScope.
+
+Compile with -lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json and `use API.AgentJson;`.
+
+```
+use API.Agent, API.LlmUtil, API.AgentJson, Data.JSON;
+
+class Weather : json(note) {
+  @city : String;
+  @temp_c : Float;
+  @note : String;
+  New() {}
+}
+
+agent := Agent->New(AnthropicBackend->New("claude-haiku-4-5", Nil), Nil);
+w := Weather->Ask(agent, "Weather in Paris today?");
+"{$w->GetCity()}"->PrintLine();
+```
+~#
+bundle API.AgentJson {
+	class AgentAsk {
+		#~
+		Asks the agent's model for a JSON value that matches a schema
+		@param agent the agent whose backend and system prompt are used
+		@param prompt the question
+		@param schema the JSON Schema the answer must match
+		@return the valid value; raises an Error when there is none
+		~#
+		function : Value(agent : Agent, prompt : String, schema : JsonElement) ~ JsonElement {
+			return Value(agent, prompt, schema, 2);
+		}
+
+		#~
+		Asks the agent's model for a JSON value that matches a schema, with a number of retries
+		@param agent the agent whose backend and system prompt are used
+		@param prompt the question
+		@param schema the JSON Schema the answer must match
+		@param retries how many times to ask again after an invalid reply, 0 for once
+		@return the valid value; raises an Error when there is none
+		~#
+		function : Value(agent : Agent, prompt : String, schema : JsonElement, retries : Int) ~ JsonElement {
+			if(agent = Nil) {
+				Runtime->Raise(Error->New("AgentAsk: there is no agent"));
+			};
+			backend := agent->GetBackend();
+			if(backend = Nil) {
+				Runtime->Raise(Error->New("AgentAsk: the agent has no backend"));
+			};
+
+			chat := AgentBackendChat->New(backend);
+			call := StructuredCall->New(chat, schema)->SetMaxRetries(retries)->SetRepair(true);
+			builder := PromptBuilder->New();
+			system := agent->GetConversation()->GetSystem();
+			if(system <> Nil & system->Size() > 0) {
+				builder->System(system);
+			};
+			builder->User(prompt);
+
+			outcome := call->Ask(builder);
+			if(outcome->IsOk()) {
+				return outcome->GetValue();
+			};
+
+			message := outcome->GetError();
+			if(message = Nil | message->Size() = 0) {
+				message := JsonSchema->Describe(outcome->GetErrors());
+			};
+			if(chat->GetError() <> Nil) {
+				message := "{$message} ({$chat->GetError()})";
+			};
+			Runtime->Raise(Error->New("AgentAsk: no valid answer after {$outcome->GetAttempts()} attempt(s): {$message}"));
+			return Nil;
+		}
+	}
+
+	# one chat backend as the ChatFn a StructuredCall asks
+	class : private : AgentBackendChat implements ChatFn {
+		@backend : ChatBackend;
+		@error : String;
+
+		New(backend : ChatBackend) {
+			@backend := backend;
+		}
+
+		method : public : Complete(turns : Vector<PromptTurn>) ~ String {
+			@error := Nil;
+			conversation := AgentConversation->New();
+			for(i := 0; i < turns->Size(); i += 1;) {
+				turn := turns->Get(i);
+				if(turn->GetRole()->Equals("system")) {
+					conversation->SetSystem(turn->GetText());
+				}
+				else if(turn->GetRole()->Equals("assistant")) {
+					conversation->AddAssistant(AgentReply->Say(turn->GetText()), @backend->GetName());
+				}
+				else {
+					conversation->AddUser(turn->GetText());
+				};
+			};
+
+			reply := @backend->Chat(conversation, Nil);
+			if(reply = Nil) {
+				@error := @backend->GetLastError();
+				if(@error = Nil) {
+					@error := "the backend returned no reply";
+				};
+				return Nil;
+			};
+			return reply->GetText();
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+}
