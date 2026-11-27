@@ -126,6 +126,8 @@ namespace {
 class GcVerifier {
 public:
   static long period;
+  // the back-off never makes full walks rarer than this (see AdjustPeriod)
+  static const long MAX_PERIOD = 1L << 20;
   static bool checkmark;
   static std::atomic<long> collection;
   static bool minor;
@@ -319,7 +321,9 @@ public:
 
   static bool IsFullCheck() {
     const long n = collection.load();
-    return n <= FIRST_FULL_CHECKS || n % period == 0;
+    // a period below 1 would be a division by zero or a walk that never comes; treat it as 1
+    const long every = period < 1 ? 1 : period;
+    return n <= FIRST_FULL_CHECKS || n % every == 0;
   }
 
   //
@@ -958,8 +962,11 @@ public:
       return;
     }
     const double fraction = window_verify_s / wall_s;
-    if(fraction > 0.2 && collection.load() > FIRST_FULL_CHECKS) {
-      period *= 2;
+    // The doubling stops at MAX_PERIOD. It had no bound: a run that stayed above 20% for
+    // 63 windows (a little over two minutes, a deep heap under a small nursery) doubled a
+    // long past its range to LONG_MIN and then to 0, and IsFullCheck divided by it (SIGFPE).
+    if(fraction > 0.2 && collection.load() > FIRST_FULL_CHECKS && period < MAX_PERIOD) {
+      period = period > MAX_PERIOD / 2 ? MAX_PERIOD : period * 2;
       std::wcerr << L"[gc-verify] verification took " << (long)(fraction * 100.0)
                  << L"% of wall time; full heap walks now every " << period << L" collections" << std::endl;
     }
