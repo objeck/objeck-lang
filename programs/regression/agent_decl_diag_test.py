@@ -198,6 +198,17 @@ OK = [
                   "class Go {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tscript := Vector->New()<AgentReply>;\n\t\tscript->AddBack(AgentReply->Say(\"no mcp\"));\n"
                   "\t\tClerk->Build(script)->Run(\"go\")->GetText()->PrintLine();\n\t}\n}\n"},
      "no mcp\n", "gen_collect,json,agent,net,cipher,misc", False),
+    # the ',' between type arguments is not the end of a list entry (it was: 'Expected expression, found '->'')
+    ("list entries with type arguments, nested ones, and a '<' that compares",
+     {"main.obs": "use API.MCP, API.Agent, Collection;\n\nclass Factory<K : Compare, V> {\n\tNew() {}\n\tmethod : public : MakeTool() ~ AgentTool {\n\t\treturn AgentTools->Calculator();\n\t}\n"
+                  "}\n\n"
+                  "agent One(script : Vector<AgentReply>) {\n" + OKB + "\ttools : Factory->New()<String, IntRef>->MakeTool();\n}\n\n"
+                  "agent Two(script : Vector<AgentReply>, n : Int) {\n" + OKB +
+                  "\ttools : Factory->New()<String, Vector<Pair<IntRef, String>>>->MakeTool(), Tools, Factory->New()<String, IntRef>->MakeTool();\n"
+                  "\tallow : n < 3 ? \"calculator\" : \"none\", Map->New()<String, IntRef>->Size() = 0 ? \"add\" : \"none\";\n}\n\n" + TOOLS +
+                  "\nclass Go {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tscript := Vector->New()<AgentReply>;\n\t\tscript->AddBack(AgentReply->Say(\"one\"));\n"
+                  "\t\tOne->Build(script)->Run(\"go\")->GetText()->PrintLine();\n" + SCRIPT + "\t\tresult := Two->Build(script, 1)->Run(\"go\");\n" + SHOW + "\t}\n}\n"},
+     "one\nadd=5\ndone\n", LIBS, False),
     ("'agent' as the name of a class, with a function called Build",
      {"main.obs": "class agent {\n\t@name : String;\n\tNew(name : String) {\n\t\t@name := name;\n\t}\n\tmethod : public : Name() ~ String {\n\t\treturn @name;\n\t}\n"
                   "\tfunction : Build(count : Int) ~ Int {\n\t\treturn count + 1;\n\t}\n}\n\n"

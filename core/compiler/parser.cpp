@@ -11954,8 +11954,8 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     }
   };
 
-  // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket when
-  // 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
+  // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket and any
+  // type-argument list when 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
   // the piece too: the parenthesis is then reported as not closed, where it is. Leaves the scanner on the
   // token that ended the piece and returns the piece's index, or -1 when it is empty. 'shape' is told what
   // the piece is made of, and (first_line, first_pos) where it starts.
@@ -11964,6 +11964,13 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
                    int& first_line, int& first_pos) -> int {
     int braces = 0;
     int brackets = 0;
+    // Type arguments, 'Factory->New()<String, Int>->MakeTool()': the ',' between them is not the end of an entry.
+    // A '<' opens them where the expression parser reads it so (ParseVariable, ParseMethodCall): always after
+    // 'New(...)' and 'New[...]'; after a name or a call when a name and then '<', '>', ',' or '.' follow.
+    int angles = 0;
+    std::vector<bool> opened_by_new;   // for each open '(' or '[': whether 'New' is before it
+    bool closed_new = false;           // the token before this one closed the '(' or '[' of a 'New'
+    ScannerTokenType previous = TOKEN_END_OF_STREAM;
     size_t count = 0;
     bool names_only = true;         // IDENT ('.' IDENT)*
     bool function_only = false;     // the names, then '->' IDENT, then nothing
@@ -11975,9 +11982,11 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     first_pos = starts_with_string ? from_pos : GetLinePosition();
     while(!Match(TOKEN_END_OF_STREAM)) {
       const ScannerTokenType type = GetToken();
-      if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && type == TOKEN_COMMA))) {
+      if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && angles == 0 && type == TOKEN_COMMA))) {
         break;
       }
+      const bool after_new = closed_new;
+      closed_new = false;
       if(type == TOKEN_OPEN_BRACE) {
         ++braces;
       }
@@ -11986,10 +11995,44 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
       }
       else if(type == TOKEN_OPEN_PAREN || type == TOKEN_OPEN_BRACKET) {
         ++brackets;
+        opened_by_new.push_back(previous == TOKEN_NEW_ID);
       }
       else if((type == TOKEN_CLOSED_PAREN || type == TOKEN_CLOSED_BRACKET) && brackets > 0) {
         --brackets;
+        closed_new = opened_by_new.back();
+        opened_by_new.pop_back();
       }
+
+      if(angles > 0) {
+        // type arguments are names, '.', ',' and nested lists; anything else and this was not a list of them
+        switch(type) {
+        case TOKEN_LES:
+          ++angles;
+          break;
+        case TOKEN_GTR:
+          --angles;
+          break;
+        case TOKEN_SHR:
+          angles = angles > 2 ? angles - 2 : 0;
+          break;
+        case TOKEN_SHR_UNSIGNED:
+          angles = angles > 3 ? angles - 3 : 0;
+          break;
+        case TOKEN_IDENT:
+        case TOKEN_PERIOD:
+        case TOKEN_COMMA:
+          break;
+        default:
+          angles = 0;
+          break;
+        }
+      }
+      else if(type == TOKEN_LES &&
+              (after_new || ((previous == TOKEN_IDENT || previous == TOKEN_CLOSED_PAREN) && Match(TOKEN_IDENT, SECOND_INDEX) &&
+                             (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))))) {
+        angles = 1;
+      }
+      previous = type;
 
       if(names_only) {
         const bool want_name = count % 2 == 0;
