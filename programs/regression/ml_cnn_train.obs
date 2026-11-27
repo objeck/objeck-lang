@@ -1,10 +1,4 @@
 # EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
-# NONDETERMINISTIC_OUTPUT
-# reason: the two 'training loss falls (a -> b)' lines print b to six decimals, and b has two
-# values that differ in the fifth (0.138337 or 0.138356, 0.003536 or 0.003533): always the first
-# when the test runs alone, the second in 2 to 11 of 16 runs started together (2026-11-27, Linux
-# x64, interpreter and JIT, 1, 2 or 8 layer threads, prefetch on or off). The checks themselves
-# (loss falls, accuracy >= 0.95) hold either way, so the exit status is the assertion.
 #~
 System.ML.Cnn learns: the baseline architecture (three Conv 3x3 + ReLU + MaxPool blocks with 16, 32
 and 64 filters, Dense 128, dropout 0.1, Adam at 1e-4, batch 32) trained for 10 epochs on the
