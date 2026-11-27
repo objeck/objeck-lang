@@ -2626,6 +2626,26 @@
       state.assign(count, std::vector<int>());
       andor_state.assign(count, -1);
       seen.assign(count, false);
+      if(verify) {
+        // about one value an instruction: grow the per-value tables once
+        const size_t values = static_cast<size_t>(count) + 16;
+        parent.reserve(values);
+        kind.reserve(values);
+        use.reserve(values);
+        elem.reserve(values);
+        origin.reserve(values);
+        deref.reserve(values);
+        lit_ip.reserve(values);
+        facts.reserve(values);
+        class_parent.reserve(values);
+        claims.reserve(values);
+        tag.reserve(values);
+        made_ip.reserve(values);
+        ring.reserve(values);
+        spelled.reserve(values);
+        func_load_slot.reserve(values);
+        edges.reserve(values + values / 4);
+      }
 
       // locals by id: the and/or slot first when the method has one
       StackDclr** dclrs = method->GetDeclarations();
