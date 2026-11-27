@@ -1,13 +1,11 @@
 #~
 Method references, 'using', the nil-guard, 'spawn' and 'match' in one flow:
-  - 'Class->Function' added to an inferred Vector of function values and called
+  - 'Class->Function' added to an inferred Vector of function values, and written
+    in a collection literal for one, and called
   - a 'using' whose resource may be Nil, guarded in the body: 'found := r ?? return -1;'
     returns from a method that ends in the 'using'; a Nil resource is not closed
   - each function value captured by a 'spawn' block that opens a resource with 'using'
     on its own thread and reports through a 'match' value; every resource is closed
-(An array literal is not typed element by element, so a method reference is not written
-inside '[ ]': it is added with AddBack, where the parameter gives it its type;
-bad_collection_literal_method_ref is the error for the other spelling.)
 ~#
 use Collection;
 use System.Concurrency;
@@ -75,6 +73,13 @@ class InteractMethodRefsUsingSpawn {
 			text := step->Get()(text);
 		};
 		assert text->Equals("ABAB") : "method references in an inferred Vector";
+
+		same : Vector<Func2Ref<String, String>> := [InteractMethodRefsUsingSpawn->Upper, InteractMethodRefsUsingSpawn->Twice];
+		again := "cd";
+		each(step in same) {
+			again := step->Get()(again);
+		};
+		assert again->Equals("CDCD") : "method references in a collection literal";
 
 		assert Length("abc") = 3 : "a using that returns its value";
 		assert Res->Closed() = 1 : "the resource was closed";

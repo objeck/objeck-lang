@@ -171,7 +171,8 @@ are boxed as that holder, by the rule that boxes an argument:
 `v : Vector<IntRef> := [1, n, n + 1];` is `[IntRef->New(1), IntRef->New(n), ...]`, a
 `Float` for an `IntRef` is truncated as `r : IntRef := 2.75;` is, and a `Bool` is boxed
 only as a `BoolRef` (`[1, true]` for a `Vector<IntRef>` is an error at the literal).
-A method reference is not typed inside `[ ]`: add it with `AddBack(Text->Upper)`. The literal is not typed by a call argument (overloads are chosen
+For a `Vector` of function values, an element that names a function is a method
+reference: `steps : Vector<Func2Ref<String, String>> := [Text->Upper, Text->Twice];`. The literal is not typed by a call argument (overloads are chosen
 before a target is known): assign it to a typed variable first. A map has its own
 literal, `{key: value, ...}` (see Map literals). Test: `collection_literals`.
 
@@ -883,8 +884,9 @@ registry->Add(AgentTool->New("get_weather", "Get the weather", schema,
 registry->Add(AgentTool->New("get_weather", "Get the weather", schema, AgentTour->Weather));
 ```
 
-It works as a declaration or assignment target, a `return`, a call argument and a
-collection element. Rules: the name must be a single, non-virtual static function
+It works as a declaration or assignment target, a `return`, a call argument, a
+collection element (`fs->AddBack(Text->Upper)`) and an element of a collection literal
+for a `Vector` of function values (`[Text->Upper, Text->Twice]`). Rules: the name must be a single, non-virtual static function
 (an overloaded name is an error that asks for the full form); the arguments and the
 return must be plain classes (a function over `Int`, an array or a generic class
 needs the full form, as the long form itself does); at most three arguments. An enum

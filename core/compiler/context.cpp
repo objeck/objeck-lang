@@ -2547,6 +2547,29 @@ Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type*
       // constructor's error said nothing of the elements.
       static_cast<StaticArray*>(expression)->SetBoxAs(element_type);
     }
+    else if(element_name == L"System.FuncRef" || element_name == L"FuncRef" ||
+            element_name == L"System.Func2Ref" || element_name == L"Func2Ref" ||
+            element_name == L"System.Func3Ref" || element_name == L"Func3Ref" ||
+            element_name == L"System.Func4Ref" || element_name == L"Func4Ref") {
+      // A Vector of function values ('[Text->Upper, Text->Twice]'): an element that names a
+      // function is the reference it would be as an argument (WrapMethodReferenceInFuncRef).
+      // One that cannot be (an overloaded name, a signature a FuncRef does not take) has been
+      // reported there; the literal is then replaced by Nil so that error is all there is.
+      ExpressionList* element_list = static_cast<StaticArray*>(expression)->GetElements();
+      const std::vector<Expression*> elements = element_list ? element_list->GetExpressions() : std::vector<Expression*>();
+      const size_t errors_before = diagnostics.ErrorCount();
+      for(size_t i = 0; i < elements.size(); ++i) {
+        Expression* reference = WrapMethodReferenceInFuncRef(elements[i], element_type, depth);
+        if(reference != elements[i]) {
+          element_list->SetExpression(reference, (int)i);
+        }
+      }
+      if(diagnostics.ErrorCount() != errors_before) {
+        return TreeFactory::Instance()->MakeNilLiteral(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition());
+      }
+      // an element built here is not a literal: the array is made when it is evaluated
+      static_cast<StaticArray*>(expression)->SetDynamic();
+    }
   }
 
   ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();

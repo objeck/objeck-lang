@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (25,61): 'Text->Over' is overloaded, so the reference is ambiguous
+# EXPECT_ERROR_COUNT: 1
+#~
+An element of a collection literal that names a function is a method reference, with a
+reference's rules: an overloaded name is refused, once, with the full form to write.
+~#
+use Collection;
+
+class Text {
+	function : Upper(s : String) ~ String {
+		return s->ToUpper();
+	}
+
+	function : Over(s : String) ~ String {
+		return s;
+	}
+
+	function : Over(s : String, t : String) ~ String {
+		return s + t;
+	}
+}
+
+class BadCollectionLiteralMethodRef {
+	function : Main(args : String[]) ~ Nil {
+		steps : Vector<Func2Ref<String, String>> := [Text->Upper, Text->Over];
+		steps->Size()->PrintLine();
+	}
+}
