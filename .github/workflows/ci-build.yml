@@ -983,6 +983,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_label_fatal.py "$BIN"
 
+    # Deeply nested source (parentheses, blocks, calls, subscripts, unary operators, generic types at 100, 250,
+    # 500 and 5000 levels) is compiled or refused with "Nesting is too deep", never a crash or a hang. The
+    # level the limit trips at is a stack budget and moves with the parser's frames, so no level or column
+    # is pinned. 100 nested subscripts never finished compiling before the index analysis was made linear.
+    - name: obc compiles or refuses deep nesting, never crashes (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_nesting_limit.py "$BIN"
+
     # Select statements hand out jump label ids in a fixed order. They used to take three
     # `++conditional_label` from one argument list, whose evaluation order C++ leaves open: g++
     # went right to left, Apple clang left to right, so the same source compiled to different

@@ -7772,18 +7772,22 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
   std::vector<Expression*> unboxed_expressions;
   std::vector<Expression*> expressions = indices->GetExpressions();
 
+  // AnalyzeExpressions above has analyzed every index. Each was analyzed a second time
+  // here, so an index that is itself a subscript was analyzed four times, the one inside
+  // it eight: 'a[a[a[...]]]' took twice as long for every level (20 levels 1.7 s, 30
+  // about half an hour), and anything analysis does once per visit was done twice.
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];    
-    AnalyzeExpression(expression, depth + 1);
-    // The index is the value the expression ends in: for a call chain, what
-    // its last call returns. Reading the first call's type refused
-    // 'a[order->Line()->Count()]' (an object is not an index) and accepted
+    // What the index pushes is the value the expression ends in: for a call chain, what
+    // its last call returns, not its head. Reading the first call's type refused
+    // 'a[order->Line()->Count()]' (an object is not an index), '"ab"->Size()' and
+    // '(s + t)->Size()' (Ints though they start with a String), and accepted
     // 'a[refs->Get(i)->Get()]' only by replacing the written 'Get()'.
     Expression* index_value = expression;
     while(index_value->GetMethodCall()) {
       index_value = index_value->GetMethodCall();
     }
-    Type* eval_type = index_value->GetEvalType();
+    Type* eval_type = expression->GetEvalType() ? EffectiveStackType(expression) : nullptr;
     if(eval_type) {
       switch(eval_type->GetType()) {
       case BYTE_TYPE:

@@ -964,6 +964,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_label_fatal.py "%BIN%"
 
+    - name: obc compiles or refuses deep nesting, never crashes (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_nesting_limit.py "%BIN%"
+
     - name: select statements emit the same jump labels on every compiler (Windows)
       working-directory: ./programs/regression
       shell: cmd
