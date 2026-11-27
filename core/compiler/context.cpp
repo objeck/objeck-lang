@@ -14633,8 +14633,20 @@ bool ContextAnalyzer::IsInterpolatedLiteral(const std::wstring& token)
  * Analyzes a character string expression
  * (for interpolated method calls, array access, etc.)
  ****************************/
+namespace {
+  // An interpolated expression as an error quotes it. A long one (generated text, or the
+  // thousands of parentheses of one refused for its nesting) used to be quoted whole,
+  // and the reason after it was lost off the end of the line: the start is enough to
+  // find it, and the error has the string's line and column.
+  std::wstring InterpolationExcerpt(const std::wstring& text) {
+    const size_t shown = 120;
+    return text.size() <= shown ? text : text.substr(0, shown) + L"...";
+  }
+}
+
 void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_text, CharacterString* char_str, int depth)
 {
+  const std::wstring shown = InterpolationExcerpt(expr_text);
 #ifdef _DEBUG
   Debug(L"expression=|" + expr_text + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
@@ -14656,7 +14668,7 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   Expression* expr = Parser::ParseExpressionText(unescaped_text, char_str->GetFileName(),
                                                   char_str->GetLineNumber(), char_str->GetLinePosition(), current_class, &reason);
   if(!expr) {
-    ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'" +
+    ProcessError(char_str, L"Invalid expression in string interpolation: '" + shown + L"'" +
                  (reason.empty() ? L"" : L"\n\t" + reason));
     return;
   }
@@ -14669,13 +14681,13 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   // returns an object with no ToString, and was rejected for it.
   Type* eval_type = expr->GetEvalType() ? EffectiveStackType(expr) : nullptr;
   if(!eval_type) {
-    ProcessError(char_str, L"Cannot determine type of expression: '" + expr_text + L"'");
+    ProcessError(char_str, L"Cannot determine type of expression: '" + shown + L"'");
     return;
   }
 
   // Check for Nil return type (compiler error)
   if(eval_type->GetType() == NIL_TYPE) {
-    ProcessError(char_str, L"Expression cannot return Nil: '" + expr_text + L"'");
+    ProcessError(char_str, L"Expression cannot return Nil: '" + shown + L"'");
     return;
   }
 
@@ -14693,7 +14705,7 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
 
   // Check for array type (not allowed)
   if(eval_type->GetDimension() > 0) {
-    ProcessError(char_str, L"Invalid expression type or dimension size: '" + expr_text + L"'");
+    ProcessError(char_str, L"Invalid expression type or dimension size: '" + shown + L"'");
     return;
   }
 
@@ -14711,7 +14723,7 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
     if(klass) {
       to_string_method = klass->GetMethod(cls_name + L":ToString:");
       if(!to_string_method || to_string_method->GetMethodType() == PRIVATE_METHOD) {
-        ProcessError(char_str, L"Expression type does not have public 'ToString' method: '" + expr_text + L"'");
+        ProcessError(char_str, L"Expression type does not have public 'ToString' method: '" + shown + L"'");
         return;
       }
     }
@@ -14720,12 +14732,12 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
       if(lib_klass) {
         to_string_lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
         if(!to_string_lib_method || to_string_lib_method->GetMethodType() == PRIVATE_METHOD) {
-          ProcessError(char_str, L"Expression type does not have public 'ToString' method: '" + expr_text + L"'");
+          ProcessError(char_str, L"Expression type does not have public 'ToString' method: '" + shown + L"'");
           return;
         }
       }
       else {
-        ProcessError(char_str, L"Expression type does not have 'ToString' method: '" + expr_text + L"'");
+        ProcessError(char_str, L"Expression type does not have 'ToString' method: '" + shown + L"'");
         return;
       }
     }
@@ -14892,6 +14904,7 @@ bool ContextAnalyzer::SplitFormatSpec(const std::wstring& token, std::wstring& e
  ****************************/
 void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text, const std::wstring& spec_text, CharacterString* char_str, int depth)
 {
+  const std::wstring shown = InterpolationExcerpt(expr_text);
   const FormatSpec fs = ParseFormatSpec(spec_text);
   if(!fs.valid) {
     ProcessError(char_str, L"Invalid format specifier in string interpolation: '" + spec_text + L"'");
@@ -14918,7 +14931,7 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
     Expression* probe = Parser::ParseExpressionText(expr, char_str->GetFileName(),
                                                     char_str->GetLineNumber(), char_str->GetLinePosition(), current_class, &reason);
     if(!probe) {
-      ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'" +
+      ProcessError(char_str, L"Invalid expression in string interpolation: '" + shown + L"'" +
                    (reason.empty() ? L"" : L"\n\t" + reason));
       return;
     }
@@ -14926,7 +14939,7 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
     probe_type = probe->GetEvalType();
   }
   if(!probe_type) {
-    ProcessError(char_str, L"Cannot determine type of expression: '" + expr_text + L"'");
+    ProcessError(char_str, L"Cannot determine type of expression: '" + shown + L"'");
     return;
   }
 
@@ -14979,13 +14992,13 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
   Expression* expr_node = Parser::ParseExpressionText(wrapped, char_str->GetFileName(),
                                                       char_str->GetLineNumber(), char_str->GetLinePosition(), current_class);
   if(!expr_node) {
-    ProcessError(char_str, L"Invalid format expression in string interpolation: '" + expr_text + L":" + spec_text + L"'");
+    ProcessError(char_str, L"Invalid format expression in string interpolation: '" + shown + L":" + spec_text + L"'");
     return;
   }
   AnalyzeExpression(expr_node, depth + 1);
 
   if(!expr_node->GetEvalType()) {
-    ProcessError(char_str, L"Cannot apply format specifier '" + spec_text + L"' to expression: '" + expr_text + L"'");
+    ProcessError(char_str, L"Cannot apply format specifier '" + spec_text + L"' to expression: '" + shown + L"'");
     return;
   }
 
