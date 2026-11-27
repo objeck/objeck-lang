@@ -12,13 +12,15 @@ Diagnostics (each source is compiled; obc must fail, name the problem and give t
   not a literal; a return type MCP cannot send; '@tool' on a method, a constructor, a class, an enum or a
   variable; '@param' naming no parameter; '@readonly' with '@destructive'; '@readonly' with text; a tool name
   with a character a tool name cannot have; two tools with one name; '@tool' twice; a name that collides with
-  a function the compiler writes.
+  a function the compiler writes; a McpMain(args : String[]) that is a method, that is virtual, or that
+  returns a value (the entry 'obr --mcp' starts must be 'function : McpMain(args : String[]) ~ Nil').
 
 Left alone (each source must compile and, run, print what it should):
   '@tool' inside a string; in a '//' or '#' or '/* */' comment; in a '#~' comment that is not at the start of a
   line; '@tools' and '@tool_name'; a tagged comment followed by another comment before the function; a
   comment cut off by the end of the file (the same errors as before the feature); a CRLF file; a comment of a
-  megabyte; non-ASCII text in the description and in a string default; a tool in a class with no 'use' lines.
+  megabyte; non-ASCII text in the description and in a string default; a tool in a class with no 'use' lines;
+  methods named McpMain with another parameter list; the entry itself.
 
 Several files (the tools are derived when every file has been read):
   a record declared in a later file than the function that takes it; a syntax error in one file does not hide
@@ -117,6 +119,16 @@ BAD = [
      ["a prompt name has letters, digits"], 3),
     ("a tagged resource on a method", "class T {\n#~\n@resource a://b\n~#\nmethod : public : F() ~ String { return \"x\"; }\n}\n",
      ["'@tool' marks a function", "a method"], 2),
+    # McpMain(args : String[]) is the entry 'obr --mcp' starts, which the VM picks by name and parameter alone
+    ("a McpMain(args : String[]) that is a method", "class T {\n\tNew() {}\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"x\"->PrintLine();\n\t}\n}\n",
+     ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "'function : McpMain(args : String[]) ~ Nil'", "declared as a method"], 3),
+    ("a virtual McpMain(args : String[])", "class T {\n\tmethod : virtual : McpMain(args : String[]) ~ Nil;\n}\n",
+     ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "declared as a method"], 2),
+    ("a McpMain(args : String[]) that returns a value", "class T {\n\tfunction : McpMain(args : System.String[]) ~ Int {\n\t\treturn 1;\n\t}\n}\n",
+     ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "it returns a value"], 2),
+    ("a McpMain(args : String[]) that is a method, in a class with a tool",
+     "class T {\n\tNew() {}\n#~\n@tool\n~#\n\tfunction : F() ~ Int { return 1; }\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"x\"->PrintLine();\n\t}\n}\n",
+     ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "declared as a method"], 7),
 ]
 
 OK = [
@@ -126,6 +138,8 @@ OK = [
     ("@tools and @tool_name", "class T {\n#~\n@tools\n@tool_name x\n~#\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
     ("a tagged comment then another comment", "class T {\n#~\n@tool\n~#\n# another comment\n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
     ("a doc comment in a method body", "class T {\n\tfunction : Main(args : String[]) ~ Nil {\n#~\n@tool\n~#\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
+    ("a method named McpMain with another parameter list", "class T {\n\tNew() {}\n\tmethod : public : McpMain(n : Int) ~ Int {\n\t\treturn n + 1;\n\t}\n\tmethod : public : McpMain(a : String[], b : Int) ~ Int {\n\t\treturn b;\n\t}\n\tmethod : public : McpMain(a : String) ~ Int {\n\t\treturn 7;\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tt := T->New();\n\t\tx := t->McpMain(1) + t->McpMain(args, 3) + t->McpMain(\"s\");\n\t\t\"fine {$x}\"->PrintLine();\n\t}\n}\n", "fine 12"),
+    ("the entry itself, function McpMain(args : String[]) ~ Nil", "class T {\n\tfunction : McpMain(args : String[]) ~ Nil {\n\t\t\"entry\"->PrintLine();\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tMcpMain(args);\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
     ("nested markers", "class T {\n#~ outer #~ @tool ~# \n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
 ]
 

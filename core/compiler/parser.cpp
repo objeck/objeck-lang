@@ -2156,6 +2156,33 @@ Lambda* Parser::ParseLambda(int depth, Type* block_type) {
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), type, alias_name, method, parameter_list);
 }
 
+// True for a method named McpMain whose one parameter is a String[]: the name and
+// signature 'obr --mcp' looks for (Loader::SelectMcpEntry reads them from the method's
+// encoded name, which carries neither its kind nor its return type). An overload named
+// McpMain with any other parameter list is an ordinary method.
+static bool HasMcpEntrySignature(Method* method)
+{
+  const std::wstring name = method->GetName();
+  const size_t colon = name.find_last_of(L':');
+  if((colon == std::wstring::npos ? name : name.substr(colon + 1)) != L"McpMain" || !method->GetDeclarations()) {
+    return false;
+  }
+
+  Type* only = nullptr;
+  int count = 0;
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    // 'a, b : T' is one declaration with children
+    for(Declaration* declaration = declarations[i]; declaration; declaration = declaration->GetChild()) {
+      ++count;
+      only = declaration->GetEntry() ? declaration->GetEntry()->GetType() : nullptr;
+    }
+  }
+
+  return count == 1 && only && only->GetType() == CLASS_TYPE && only->GetDimension() == 1 &&
+         (only->GetName() == L"String" || only->GetName() == L"System.String");
+}
+
 /****************************
  * Parses a method.
  ****************************/
@@ -2387,6 +2414,28 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     return_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, current_class->GetName(), file_name, line_num, line_pos);
   }
   method->SetReturn(return_type);
+
+  // McpMain(args : String[]) is what 'obr --mcp' starts in place of Main, and the VM picks it
+  // by its name and parameter alone: a program file does not record whether a method is a
+  // function or what it returns. So the one shape it can call is the only one allowed to have
+  // that signature. An instance method would be started with no instance, a virtual one has
+  // no body and one that returns a value leaves it on the stack.
+  if(HasMcpEntrySignature(method)) {
+    const wchar_t* why = nullptr;
+    if(!is_function) {
+      why = L"it is declared as a method, which needs an instance";
+    }
+    else if(is_virtual) {
+      why = L"it is virtual, so it has no body";
+    }
+    else if(!return_type || return_type->GetType() != NIL_TYPE || return_type->GetDimension() > 0) {
+      why = L"it returns a value";
+    }
+    if(why) {
+      diagnostics.Error(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
+                        why + L". Declare it that way or give it another name");
+    }
+  }
 
   // statements
   if(is_virtual) {
@@ -11183,10 +11232,13 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bo
 
   // The entry point of 'obr --mcp' / 'obr --mcp-http': a server of this class's tools, resources and prompts.
   // A McpMain the program wrote itself wins (it can register several classes, which a generated one cannot).
+  // Only the entry itself counts, McpMain(args : String[]), which ParseMethod has already held to
+  // 'function ... ~ Nil': the name alone used to decide, so a class with any other method named McpMain
+  // (another parameter list) got no entry at all and 'obr --mcp' found nothing to serve.
   bool has_entry = false;
   std::vector<Method*> existing = klass->GetMethods();
   for(size_t i = 0; i < existing.size(); ++i) {
-    if(McpAfterColon(existing[i]->GetName()) == L"McpMain") {
+    if(HasMcpEntrySignature(existing[i])) {
       has_entry = true;
     }
   }
