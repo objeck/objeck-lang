@@ -1696,6 +1696,8 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
     // already joined: its handle was closed and cleared below
     return;
   }
+  // before the wait, while the handle is this thread's alone (see ClaimThreadFaultKey)
+  const size_t fault_key = ClaimThreadFaultKey((size_t)vm_thread);
 
   // Joining blocks in a syscall — count this thread as parked so a collection on
   // another thread doesn't wait forever for it to reach a safepoint.
@@ -1725,6 +1727,8 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   // cleared now, while 'instance' is the live object: a second Join finds it empty
   // instead of joining a thread that no longer exists
   instance[0] = 0;
+  // before the join, while the handle is this thread's alone (see ClaimThreadFaultKey)
+  const size_t fault_key = ClaimThreadFaultKey((size_t)vm_thread);
 
   // see the note above: the handle is read before this thread parks
   MemoryManager::BeginBlocking();
@@ -1742,7 +1746,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
     VmExit(1);
 #endif
   }
-  TakeThreadFault(ThreadKey(vm_thread));
+  TakeThreadFault(fault_key);
 #ifdef __linux__
   // the stack the VM allocated for it (ProcessAsyncMethodCall)
   ThreadStacks::Release(vm_thread);
@@ -1751,7 +1755,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   MemoryManager::EndBlocking();
 
 #ifdef _WIN32
-  TakeThreadFault(ThreadKey(vm_thread));
+  TakeThreadFault(fault_key);
   // The thread has finished and been joined. Close its handle, which nothing did: each
   // thread a program started kept a kernel object for the life of the process. The Thread
   // object is read again from the frame, because a collection may have moved it while this
@@ -2208,6 +2212,9 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   holder->called = called;
   holder->param = param;
   holder->self = instance;
+  // read back below: the thread may have ended, and freed the holder, by then
+  const size_t fault_key = NewThreadFaultKey();
+  holder->fault_key = fault_key;
 
   // self/param are raw object pointers living in this heap holder until the child
   // installs them into its own scannable roots inside Execute. Register them so the
@@ -2273,6 +2280,13 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
     VmExit(-1);
   }
 
+  // A Thread started again before it was joined: the earlier thread's handle is
+  // overwritten here and can never be joined, so what was kept for its Join goes.
+  if(instance[0]) {
+    ForgetThreadFault(instance[0]);
+  }
+  // bound before the handle is published: a Join that finds the handle finds the key
+  BindThreadFaultKey((size_t)vm_thread, fault_key);
   instance[0] = (size_t)vm_thread;
 #ifdef _DEBUG
   std::wcout << L"*** New Thread ID: " << vm_thread  << L": " << instance << L" ***" << std::endl;
@@ -2292,7 +2306,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
 // interpreter.
 //
 static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack, size_t* stack_pos,
-                              StackMethod* called, size_t* self, bool isolate = false)
+                              StackMethod* called, size_t* self, bool isolate = false, size_t fault_key = 0)
 {
   try {
     if(isolate) {
@@ -2303,7 +2317,7 @@ static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack
     std::wstring fault;
     if(isolate && StackInterpreter::ThreadEndedInFault(fault)) {
       intpr->FinishThreadFault();
-      StackInterpreter::RecordThreadFault(StackInterpreter::CurrentThreadKey(), fault);
+      StackInterpreter::RecordThreadFault(fault_key, fault);
     }
   }
   catch(const std::bad_alloc&) {
@@ -2378,13 +2392,12 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-  StackInterpreter::ForgetThreadFault(StackInterpreter::CurrentThreadKey());
   // Halted on registering: Main returned before this thread started, and the
   // program is being torn down. It ends as a thread halted mid-run does, without
   // entering a method it would only leave again.
   if(!intpr->IsHalted()) {
     ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                      StackInterpreter::ThreadFaultIsolation());
+                      StackInterpreter::ThreadFaultIsolation(), holder->fault_key);
   }
   MemoryManager::UnregisterMutator();
 
@@ -2454,13 +2467,12 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
   // here becomes GC-scannable before this thread can park -> it cannot go stale.
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-  StackInterpreter::ForgetThreadFault(StackInterpreter::CurrentThreadKey());
   // Halted on registering: Main returned before this thread started, and the
   // program is being torn down. It ends as a thread halted mid-run does, without
   // entering a method it would only leave again.
   if(!intpr->IsHalted()) {
     ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                      StackInterpreter::ThreadFaultIsolation());
+                      StackInterpreter::ThreadFaultIsolation(), holder->fault_key);
   }
   MemoryManager::UnregisterMutator();
 
@@ -4264,37 +4276,75 @@ void StackInterpreter::FinishThreadFault()
   }
 }
 
-// What Join reports. Keyed by the OS thread id, which Join derives from the
-// handle it holds; an entry is dropped when the thread's id is taken by a new one.
+// What Join reports, keyed by a number the VM gives each thread it starts and
+// never gives twice.
+//
+// It was keyed by the system's thread id (GetCurrentThreadId, pthread_self),
+// which Join derived from the handle it holds, and a thread starting up dropped
+// whatever was recorded under its own id. The system gives an id out again once
+// its thread can no longer be joined. On Windows that is when the last handle
+// closes, and Join read the fault before closing it, so nothing could go wrong
+// there (measured: an ended thread's id is not given out in 200,000 starts while
+// its handle is open, and within 700 once it is closed). With pthreads it is the
+// moment pthread_join returns, which was before Join read the fault: where the
+// stack is the C library's (macOS, and Linux when the VM's own stack mapping
+// fails) a thread started in that gap by another thread took the same id and
+// dropped the fault Join was about to read, or left its own there to be read.
+// Forced on Linux (the C library's stacks, the gap held open for 2 ms, two
+// threads starting workers meanwhile; thread_fault_join_own.obs): of 600 Joins
+// of a faulted thread 157 reported no fault and 368 another thread's.
+//
+// Join finds the key by the handle it holds: bound when the thread is started,
+// before the handle is published in the Thread object, and claimed -- looked up
+// and unbound -- BEFORE Join waits, while the handle can only name that thread.
+// A handle value is not given out again before its Join closes or joins it.
 static std::mutex thread_fault_lock;
 static std::unordered_map<size_t, std::wstring>& ThreadFaults()
 {
   static std::unordered_map<size_t, std::wstring> faults;
   return faults;
 }
+static std::unordered_map<size_t, size_t>& ThreadFaultKeys()
+{
+  static std::unordered_map<size_t, size_t> keys;   // handle -> key
+  return keys;
+}
+static std::atomic<size_t> thread_fault_next_key(1);
 static std::atomic<size_t> thread_fault_count(0);
 static std::wstring last_thread_fault;
 
-size_t StackInterpreter::CurrentThreadKey()
+size_t StackInterpreter::NewThreadFaultKey()
 {
-#ifdef _WIN32
-  return (size_t)GetCurrentThreadId();
-#else
-  return (size_t)pthread_self();
-#endif
+  return thread_fault_next_key.fetch_add(1, std::memory_order_relaxed);
 }
 
-#ifdef _WIN32
-size_t StackInterpreter::ThreadKey(HANDLE handle)
+void StackInterpreter::BindThreadFaultKey(size_t handle, size_t key)
 {
-  return (size_t)GetThreadId(handle);
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  ThreadFaultKeys()[handle] = key;
 }
-#else
-size_t StackInterpreter::ThreadKey(pthread_t handle)
+
+size_t StackInterpreter::ClaimThreadFaultKey(size_t handle)
 {
-  return (size_t)handle;
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  const auto found = ThreadFaultKeys().find(handle);
+  if(found == ThreadFaultKeys().end()) {
+    return 0;
+  }
+  const size_t key = found->second;
+  ThreadFaultKeys().erase(found);
+  return key;
 }
-#endif
+
+void StackInterpreter::ForgetThreadFault(size_t handle)
+{
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  const auto found = ThreadFaultKeys().find(handle);
+  if(found != ThreadFaultKeys().end()) {
+    ThreadFaults().erase(found->second);
+    ThreadFaultKeys().erase(found);
+  }
+}
 
 void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message)
 {
@@ -4303,20 +4353,13 @@ void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message
   // joined, and Join may still come for any of them: the cap that was here
   // (clear all at 4096) made a program that started 4097 workers and then
   // joined them read "no fault" for the first 4096. An entry goes when its
-  // thread is joined (TakeThreadFault) or when a new thread is given its id
-  // (ForgetThreadFault), and the id is not given out again while the thread can
-  // still be joined, so the map holds at most one entry per ended, unjoined
-  // thread. Each of those already holds more than its entry until it is joined:
-  // its handle on Windows, its stack elsewhere.
+  // thread is joined (TakeThreadFault) or when its Thread object is started
+  // again unjoined (ForgetThreadFault), so the map holds at most one entry per
+  // ended, unjoined thread. Each of those already holds more than its entry
+  // until it is joined: its handle on Windows, its stack elsewhere.
   ThreadFaults()[key] = message;
   last_thread_fault = message;
   thread_fault_count.fetch_add(1, std::memory_order_relaxed);
-}
-
-void StackInterpreter::ForgetThreadFault(size_t key)
-{
-  std::lock_guard<std::mutex> guard(thread_fault_lock);
-  ThreadFaults().erase(key);
 }
 
 std::wstring& StackInterpreter::JoinedThreadFault()

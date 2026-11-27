@@ -1088,6 +1088,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     // TaskScope under --jit=1). A second Join of the thread then finds the slot empty and
     // returns, instead of waiting on, or closing, a handle the system may have reused.
     instance[0] = 0;
+    // before the wait, while the handle is this thread's alone (see ClaimThreadFaultKey)
+    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
@@ -1112,6 +1114,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       break;
     }
     instance[0] = 0;
+    // before the join, while the handle is this thread's alone (see ClaimThreadFaultKey)
+    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // see the note above: the handle is read before this thread parks
     MemoryManager::BeginBlocking();
@@ -1125,7 +1129,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
-    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
+    Runtime::StackInterpreter::TakeThreadFault(fault_key);
 #ifdef __linux__
     // the stack the VM allocated for it (ProcessAsyncMethodCall)
     Runtime::ThreadStacks::Release(vm_thread);
@@ -1134,7 +1138,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     MemoryManager::EndBlocking();
 
 #ifdef _WIN32
-    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
+    Runtime::StackInterpreter::TakeThreadFault(fault_key);
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a
