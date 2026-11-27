@@ -24,7 +24,7 @@ result := agent->Run("...");
 result->GetStopReason()->PrintLine();   # cancelled
 ```
 
-A cancelled run ends with the stop reason `cancelled`. The calls of the last reply that did not run are answered as `skipped`, so the conversation stays valid and the same agent can run again with a fresh token. The token is checked once more after an approver says yes: an approver can take as long as a person does, and a cancel or the deadline that arrived in the meantime stops the call before its handler starts (it is answered as `skipped`). A handler that wants to stop early implements `AgentCancelableHandler` and polls the token it is handed; the token also becomes cancelled when the run's deadline passes, so a cooperative tool stops for either.
+A cancelled run ends with the stop reason `cancelled`. The calls of the last reply that did not run are answered as `skipped`, so the conversation stays valid and the same agent can run again with a fresh token. The token is checked once more after an approver says yes: an approver can take as long as a person does, and a cancel or the deadline that arrived in the meantime stops the call before its handler starts (it is answered as `skipped`). A handler that wants to stop early implements `AgentCancelableHandler` and polls the token it is handed; the token also becomes cancelled when the run's deadline passes, so a cooperative tool stops for either. The token keeps the deadline itself (its reason is then `deadline`), so this holds in every tool mode: in `IN_THREAD` the loop is inside the handler and cannot look at the clock, and the handler still hears of the deadline at its next poll.
 
 ```ruby
 class Crawl implements AgentCancelableHandler {

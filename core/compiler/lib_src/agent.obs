@@ -1436,6 +1436,10 @@ agent->SetCancel(cancel);
 		@reason : String;
 		@parent : AgentCancel;
 		@also : AgentCancel;
+		@limit_ms : Int;
+		@timer : System.Time.Timer;
+		@waited : Float;
+		@expired : Bool;
 
 		#~
 		Constructor
@@ -1543,10 +1547,60 @@ agent->SetCancel(cancel);
 			return Nil;
 		}
 
+		#~
+		Makes the token cancel itself, with the reason deadline, once this much time has passed. The loop
+		sets it on the token of a run that has a deadline: a handler on the loop's own thread then hears of
+		the deadline from the token it polls, when the loop itself is inside that handler and can not look
+		at the clock. Called by Agent.
+		@hidden
+		@param millis milliseconds from now, 0 or less for none
+		~#
+		method : public : SetDeadlineMs(millis : Int) ~ Nil {
+			critical(@mutex) {
+				if(millis > 0) {
+					@limit_ms := millis;
+					@waited := 0.0;
+					@timer := System.Time.Timer->New(true);
+				}
+				else {
+					@timer := Nil;
+				};
+			};
+		}
+
+		#~
+		Says whether the token cancelled itself because its deadline passed. Called by Agent.
+		@hidden
+		@return true once the time given to SetDeadlineMs has passed, unless the token was cancelled first
+		~#
+		method : public : IsExpired() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				Expire();
+				flag := @expired;
+			};
+			return flag;
+		}
+
+		# cancels the token when its deadline has passed; the caller holds the mutex
+		method : Expire() ~ Nil {
+			if(@timer <> Nil & <>@cancelled) {
+				@waited += @timer->GetElapsedTime();
+				@timer->Start();
+				if(@waited * 1000.0 >= @limit_ms->As(Float)) {
+					@cancelled := true;
+					@expired := true;
+					@reason := "deadline";
+					@timer := Nil;
+				};
+			};
+		}
+
 		# true when this token itself was cancelled, whatever its parents say
 		method : IsSet() ~ Bool {
 			flag := false;
 			critical(@mutex) {
+				Expire();
 				flag := @cancelled;
 			};
 			return flag;
@@ -1555,6 +1609,7 @@ agent->SetCancel(cancel);
 		method : GetOwnReason() ~ String {
 			text : String;
 			critical(@mutex) {
+				Expire();
 				text := @reason;
 			};
 			return text;
@@ -3452,6 +3507,10 @@ result->GetText()->PrintLine();
 			@wall_charged := 0;
 			@scope_spent := false;
 			@token := AgentCancel->New(@cancel);
+			# the token knows the deadline too: a handler on this thread polls it while the loop can not
+			if(@budget <> Nil & @budget->GetMaxWallMs() > 0) {
+				@token->SetDeadlineMs(@budget->GetMaxWallMs());
+			};
 			@halt := Nil;
 			@model_calls := 0;
 			@tool_calls := 0;
@@ -3692,6 +3751,10 @@ result->GetText()->PrintLine();
 			}
 			else if(@token->IsCancelled()) {
 				reason := "cancelled";
+				# the token's own clock reached the deadline a moment before the loop's did
+				if(@token->IsExpired()) {
+					reason := "deadline";
+				};
 			};
 
 			if(reason <> Nil) {
