@@ -33,21 +33,24 @@ class JsonSerializePaths {
 	}
 
 	function : Round(name : String, text : String, want : String) ~ Nil {
+		# a failure is counted here and Main exits 1 for any: no early return
 		root := JsonParser->TextToElement(text);
 		if(root = Nil) {
 			@failures += 1;
 			"  FAIL: {$name}: did not parse"->PrintLine();
-			return;
+		}
+		else {
+			Check(name, root->ToString(), want);
+			# and once more from the text just written
+			again := JsonParser->TextToElement(root->ToString());
+			if(again = Nil) {
+				@failures += 1;
+				"  FAIL: {$name}: its own output did not parse"->PrintLine();
+			}
+			else {
+				Check("{$name}, second trip", again->ToString(), want);
+			};
 		};
-		Check(name, root->ToString(), want);
-		# and once more from the text just written
-		again := JsonParser->TextToElement(root->ToString());
-		if(again = Nil) {
-			@failures += 1;
-			"  FAIL: {$name}: its own output did not parse"->PrintLine();
-			return;
-		};
-		Check("{$name}, second trip", again->ToString(), want);
 	}
 
 	function : Main(args : String[]) ~ Nil {
