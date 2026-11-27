@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 #
-# test_deb.sh <objeck-ubuntu24.04-ARCH_VERSION.deb>
+# test_deb.sh <objeck-ubuntu24.04-ARCH_VERSION.deb> [image...]
 #
-# Install a .deb on a clean Ubuntu 24.04 the way a user would, and prove it works:
-# a container with nothing but the base image, so a dependency the package forgot
-# cannot be supplied by the machine running the test. Needs docker.
+# Install a .deb the way a user would, on a clean container of each Debian and
+# Ubuntu release the package supports, and prove it works: nothing but the base
+# image, so a dependency the package forgot cannot be supplied by the machine
+# running the test. Needs docker (DOCKER="sudo docker" where it needs root).
+#
+# The images default to the Debian-family ones in core/release/runtime_deps.json
+# (linux.release.tested_images). A package made from a tarball older than
+# v2026.11.4 depends on Ubuntu 24.04's mbedTLS and is tested there only.
 #
 #   1. --no-install-recommends: the core toolchain compiles and runs a program,
 #      with OBJECK_LIB_PATH unset and from a directory that is not the install.
@@ -14,13 +19,29 @@
 #   4. apt remove leaves nothing under /usr/lib/objeck or /usr/bin.
 
 set -euo pipefail
-DEB="${1:?usage: test_deb.sh <objeck-ubuntu24.04-ARCH_VERSION.deb>}"
+DEB="${1:?usage: test_deb.sh <objeck-ubuntu24.04-ARCH_VERSION.deb> [image...]}"
+shift
 [ -f "$DEB" ] || { echo "test_deb.sh: no such file: $DEB" >&2; exit 1; }
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+read -r -a DOCKER <<< "${DOCKER:-docker}"
+if [ $# -gt 0 ]; then
+  IMAGES=("$@")
+elif dpkg-deb -f "$DEB" Depends | grep -q libmbedtls; then
+  echo "test_deb.sh: $(basename "$DEB") depends on Ubuntu 24.04's mbedTLS (a tarball older than v2026.11.4): testing there only"
+  IMAGES=(ubuntu:24.04)
+else
+  mapfile -t IMAGES < <(python3 -c 'import json,sys; print("\n".join(i for i in json.load(open(sys.argv[1]))["linux"]["release"]["tested_images"] if i.startswith(("ubuntu:", "debian:"))))' \
+    "$REPO/core/release/runtime_deps.json")
+fi
 # pwd -W: from Git Bash, Docker Desktop needs C:/... rather than /c/...
 DIR="$(cd "$(dirname "$DEB")" && { pwd -W 2>/dev/null || pwd; })"; NAME="$(basename "$DEB")"
 export MSYS_NO_PATHCONV=1
 
-docker run --rm -v "$DIR:/pkg:ro" -e NAME="$NAME" ubuntu:24.04 bash -euo pipefail -c '
+FAILED=()
+for IMAGE in "${IMAGES[@]}"; do
+echo
+echo "================================================================ $IMAGE"
+"${DOCKER[@]}" run --rm -v "$DIR:/pkg:ro" -e NAME="$NAME" "$IMAGE" bash -euo pipefail -c '
 export DEBIAN_FRONTEND=noninteractive
 # A mirror caught mid-sync fails a download with "Hash Sum mismatch"; that is the
 # archive, not the package, so it gets a fresh index and another try.
@@ -79,4 +100,12 @@ left="$(ls -A /usr/lib/objeck 2>/dev/null; ls /usr/bin/obc /usr/bin/obr /usr/bin
 [ -z "$left" ] || { echo "FAIL: left behind: $left"; exit 1; }
 echo "ok: removed cleanly"
 echo "PASS $NAME"
-'
+' || FAILED+=("$IMAGE")
+done
+
+echo
+if [ ${#FAILED[@]} -gt 0 ]; then
+  echo "FAILED on: ${FAILED[*]}"
+  exit 1
+fi
+echo "PASS $NAME on ${#IMAGES[@]} releases: ${IMAGES[*]}"

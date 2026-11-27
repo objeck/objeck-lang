@@ -92,16 +92,15 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 ## Quick Start
 
 ```bash
-# Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
+# Ubuntu and Debian: one package (-arm64 for ARM)
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.3/objeck-ubuntu24.04-x64_2026.11.3.deb
 sudo apt install ./objeck-ubuntu24.04-x64_2026.11.3.deb
 
 # Other Linux (see Platform support below), or macOS: the archive
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.3/objeck-linux-x64_2026.11.3.tgz
 tar xzf objeck-linux-x64_2026.11.3.tgz
-# Linux only: install the system libraries the toolchain links against
-# (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
-# obr does not start without them. --check reports without installing.
+# Linux, optional: the system libraries the SDL2/OpenGL, OpenCV, ODBC and
+# LAME bindings use. Everything else runs without it. --check only reports.
 ./objeck-lang/install_deps.sh
 # Sets PATH and OBJECK_LIB_PATH for this shell. Source it, do not run it.
 source ./objeck-lang/env.sh
@@ -125,20 +124,17 @@ obc hello && obr hello
 |---|---|---|
 | Windows (x64, ARM64) | `.msi` or `.zip` | Nothing else needed |
 | macOS (Apple silicon) | `.pkg`, `.tgz` or `.zip` | Nothing else needed |
-| Ubuntu 24.04 (x64, ARM64) | `.deb` | Installs its own dependencies |
-| Other Linux (x64, ARM64) | `.tgz` | glibc 2.38 or newer, then `install_deps.sh` |
+| Ubuntu 22.04+, Debian 12+ (x64, ARM64) | `.deb` | Nothing else needed |
+| Other Linux (x64, ARM64) | `.tgz` | glibc 2.28 or newer; nothing else needed |
 
 <details>
-<summary>On an older Linux, such as Debian 12 or Ubuntu 22.04?</summary>
+<summary>Which Linux distributions, and what about v2026.11.3?</summary>
 
-The Linux release is built on Ubuntu 24.04 and needs glibc 2.38 or newer, which Debian 12 (and antiX 23, MX 23 and other distributions based on it) and Ubuntu 22.04 do not have, so `dpkg` refuses the `.deb` there. Two ways to run Objeck on them:
+Since v2026.11.4 the Linux release is built against glibc 2.28 with mbedTLS and OpenCV linked in, so the compiler, VM, debugger and REPL need only the C and C++ runtime and zlib, which every distribution has. Each release is run on clean Ubuntu 22.04, 24.04 and 26.04, Debian 12 and 13, Fedora, Arch and AlmaLinux 8 before it is published ([how](docs/design/PORTABLE_LINUX.md)). musl distributions such as Alpine are not supported.
 
-- **A container:** run the Ubuntu 24.04 release in Docker, Podman or distrobox.
-- **From source:** build with `core/release/deploy_posix.sh`, the path `install_deps.sh` itself points to (not checked on every distribution).
+Four bindings use libraries that stay the system's: SDL2 and OpenGL, GTK 3 and GStreamer (OpenCV windows and video), unixODBC, and LAME. A program that loads one without them stops with a message naming the missing library; `./objeck-lang/install_deps.sh` installs them, and the `.deb` lists them as recommended packages.
 
-A Linux build that runs on older distributions is planned.
-
-The toolchain also links the system libraries `install_deps.sh` lists, such as the mbedTLS 2.28 (`.so.14`) and OpenCV 4.6 (`.so.406`) sonames. Some newer distributions do not package those versions either (Debian 13, Fedora, Arch and openSUSE Leap, checked in September for v2026.9.2). `./objeck-lang/install_deps.sh --check` reports what is missing without installing anything.
+v2026.11.3 and earlier were built on Ubuntu 24.04 and run only there: they need glibc 2.38 and that release's mbedTLS 2.28 and OpenCV 4.6, so `obr` does not start on Ubuntu 26.04, Debian, Fedora or Arch. Use v2026.11.4 or later on those.
 
 </details>
 
@@ -615,8 +611,8 @@ result := agent->Run("What is 17 plus 25? Use the add tool.");
 |----------|--------------|----------|
 | **Windows** | x64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
 | **Windows** | ARM64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
-| **Linux** | x64 | [DEB (Ubuntu 24.04)](https://github.com/objeck/objeck-lang/releases/latest) / [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
-| **Linux** | ARM64 | [DEB (Ubuntu 24.04)](https://github.com/objeck/objeck-lang/releases/latest) / [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Linux** | x64 | [DEB (Ubuntu, Debian)](https://github.com/objeck/objeck-lang/releases/latest) / [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Linux** | ARM64 | [DEB (Ubuntu, Debian)](https://github.com/objeck/objeck-lang/releases/latest) / [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **macOS** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **LSP** | All platforms | [ZIP Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 

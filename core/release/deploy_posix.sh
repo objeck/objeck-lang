@@ -104,9 +104,8 @@ make clean; make -j3 || ui_fail
 cp obi ../release/deploy/bin
 
 # ui_fail carries on so verify_native_libs.sh can judge the native libraries,
-# but nothing later checks the core tools. A failed obd build surfaced only in
-# CI's dependency gate, as "runtime_deps.json lists libreadline.so.8 but nothing
-# links it" -- obd being the one binary that links readline. Name it instead.
+# but nothing later checks the core tools, so a failed obd or obi build would
+# otherwise go unreported. Name it.
 for _tool in obc obr obd obi; do
 	if [ ! -f ../release/deploy/bin/$_tool ]; then
 		echo "ERROR: $_tool was not built or copied - aborting deploy"
@@ -270,8 +269,11 @@ cp docs/style/readme.css core/release/deploy/doc
 cp LICENSE core/release/deploy
 # The notices no package provides, for code ported or adapted into the .obl
 # libraries: LIBSVM (System.ML's support vector machine) and VADER (the NLP
-# sentiment lexicon). SDL2, OpenCV, Mbed TLS, LAME and unixODBC are system
-# libraries on Linux, not shipped, so their licenses come with the system's.
+# sentiment lexicon). SDL2, LAME and unixODBC are system libraries on Linux, not
+# shipped, so their licenses come with the system's; so is zlib. Mbed TLS and
+# OpenCV are too in a build against the system's copies; the release build
+# (tools/packaging/build_portable_linux.sh) links them statically, and their
+# texts arrived from OBJECK_DEPS with the QUIC stack's.
 cp -R core/release/licenses/. core/release/deploy/doc/licenses/ || exit 1
 # Every third-party text this tree must carry. The QUIC stack's come from
 # OBJECK_DEPS with obr; ONNX Runtime's only when libobjk_onnx was built.
@@ -285,6 +287,17 @@ if [ -f core/release/deploy/lib/native/libonnxruntime.so.1.19.0 ] && [ ! -f core
 	echo "ERROR: ONNX Runtime ships without its license - aborting deploy"
 	exit 1
 fi
+# A library that is not a NEEDED entry was linked in, so this tree carries it
+# and must carry its license. Read from the binaries rather than from how the
+# build was started, so the rule cannot be skipped by starting it another way.
+needs_license() {   # <file> <soname pattern> <doc/licenses folder>
+	if ! readelf -d "core/release/deploy/$1" | grep -qE "NEEDED.*$2" && [ ! -d "core/release/deploy/doc/licenses/$3" ]; then
+		echo "ERROR: $1 has $3 linked in, but doc/licenses/$3 is missing - aborting deploy"
+		exit 1
+	fi
+}
+needs_license bin/obr 'libmbedtls' mbedtls
+needs_license lib/native/libobjk_opencv.so 'libopencv_core' opencv
 
 # Ship the dependency installer INSIDE the distribution. Linux links
 # libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the

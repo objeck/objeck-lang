@@ -2,15 +2,20 @@
 #
 # build_deb.sh <objeck-linux-ARCH_VERSION.tgz> [--out <dir>]
 #
-# Package a RELEASED Linux tarball as a .deb for Ubuntu 24.04 -- the same files,
-# unchanged, under /usr/lib/objeck, with wrappers in /usr/bin. Design and the
-# reasons for each choice: docs/DEB_PACKAGE_DESIGN.md.
+# Package a RELEASED Linux tarball as a .deb -- the same files, unchanged, under
+# /usr/lib/objeck, with wrappers in /usr/bin. Design and the reasons for each
+# choice: docs/DEB_PACKAGE_DESIGN.md.
+#
+# Since v2026.11.4 the tarball's tools link only the C and C++ runtime
+# (docs/design/PORTABLE_LINUX.md), so the package installs on Ubuntu 22.04 and
+# later and Debian 12 and later; the file keeps its ubuntu24.04 name because obu
+# and the install pages ask for it by that name.
 #
 # Run it on the architecture being packaged, on Ubuntu 24.04, with the tarball's
 # runtime libraries installed (its own install_deps.sh --yes does that):
 # dpkg-shlibdeps reads the package database of THIS machine to name the
-# dependencies, so a machine without them, or of another release, would write a
-# package that installs nowhere -- or everywhere except where it runs.
+# dependencies, so a machine without them would name none for the optional
+# modules. Names that differ on the other releases get an alternative below.
 #
 # Prints the path of the .deb it wrote on its last line.
 
@@ -137,7 +142,23 @@ shlibdeps() {
     | sed -n 's/^shlibs:Depends=//p'
   if grep -q 'error' "$WORK/shlibdeps.err"; then cat "$WORK/shlibdeps.err" >&2; die "dpkg-shlibdeps failed"; fi
 }
-DEPENDS="$(shlibdeps "${CORE[@]}")"
+# The names dpkg-shlibdeps reads here are Ubuntu 24.04's. Two things differ on the
+# other releases this package installs on: the 64-bit time_t transition renamed
+# libraries with a t64 suffix (24.04 and Debian 13 have libgtk-3-0t64; 22.04 and
+# Debian 12 have libgtk-3-0), and Ubuntu 22.04 ships libodbc.so.2 in libodbc1.
+# Each such dependency becomes "this name | that name"; apt takes whichever exists.
+any_release() {
+  tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' | while read -r dep; do
+    name="${dep%% *}"; rest="${dep#"$name"}"
+    case "$name" in
+      *t64)     echo "$dep | ${name%t64}$rest" ;;
+      libodbc2) echo "$dep | libodbc1$rest" ;;
+      *)        echo "$dep" ;;
+    esac
+  done | paste -sd, - | sed 's/,/, /g'
+}
+
+DEPENDS="$(shlibdeps "${CORE[@]}" | any_release)"
 [ -n "$DEPENDS" ] || die "dpkg-shlibdeps named no dependencies for bin/ -- are the runtime libraries installed? (install_deps.sh --yes)"
 
 # Recommends: what only the optional modules need, minus what Depends already has.
@@ -147,7 +168,13 @@ if [ "${#OPTIONAL[@]}" -gt 0 ]; then
   core_names=" $(echo "$DEPENDS" | tr ',' '\n' | awk '{print $1}' | tr '\n' ' ') "
   RECOMMENDS="$(echo "$ALL_OPT" | tr ',' '\n' | sed 's/^ *//' | grep -v '^$' | while read -r d; do
     case "$core_names" in *" ${d%% *} "*) ;; *) echo "$d" ;; esac
-  done | paste -sd, - | sed 's/,/, /g')"
+  done | paste -sd, - | any_release)"
+fi
+# obd loads GNU readline when it is there (line editing and history) and links
+# none, so dpkg-shlibdeps cannot see it. A tarball from before v2026.11.4 links
+# it, and already has it in Depends.
+if ! echo "$DEPENDS" | grep -q libreadline; then
+  RECOMMENDS="${RECOMMENDS:+$RECOMMENDS, }libreadline8t64 | libreadline8"
 fi
 
 INSTALLED_KB="$(du -sk "$ROOT" --exclude=DEBIAN | awk '{print $1}')"
@@ -171,8 +198,9 @@ INSTALLED_KB="$(du -sk "$ROOT" --exclude=DEBIAN | awk '{print $1}')"
   echo " (obd), the app builder (obb) and the updater's verify command (obu), with"
   echo " the standard libraries, API documentation and examples, under $PREFIX."
   echo " ."
-  echo " The recommended packages are needed only by the libraries that wrap them:"
-  echo " OpenCV, SDL2 and OpenGL, unixODBC and LAME."
+  echo " The recommended packages are needed only by the libraries that wrap them"
+  echo " (windows and video for OpenCV, SDL2 and OpenGL, unixODBC, LAME) and by the"
+  echo " debugger's line editing."
 } > "$ROOT/DEBIAN/control"
 
 mkdir -p "$OUT"

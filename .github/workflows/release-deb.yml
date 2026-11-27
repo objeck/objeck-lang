@@ -1,6 +1,6 @@
 name: Release .deb packages
 
-# Debian packages for Ubuntu 24.04, made from a PUBLISHED release's Linux tarballs,
+# Debian packages (Ubuntu 22.04+, Debian 12+), made from a PUBLISHED release's Linux tarballs,
 # so they hold exactly the binaries the release already shipped and verified.
 # Design: docs/DEB_PACKAGE_DESIGN.md.
 #
@@ -108,7 +108,7 @@ jobs:
           bash tools/packaging/build_deb.sh "dl/objeck-linux-${{ matrix.arch }}_$VERSION.tgz" --out out
           dpkg-deb -I out/*.deb
 
-      - name: Install and test on a clean Ubuntu 24.04
+      - name: Install and test on every supported Debian and Ubuntu
         run: bash tools/packaging/test_deb.sh out/objeck-ubuntu24.04-${{ matrix.arch }}_$VERSION.deb
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

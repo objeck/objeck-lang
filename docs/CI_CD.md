@@ -407,8 +407,8 @@ cat objeck_sf_key
 |----------|--------|------------|------|------------|-----------|
 | Windows x64 | `windows-2025-vs2026` | Server 2025, VS 2026 | x64 | ~10 min | MSI, ZIP |
 | Windows ARM64 | `windows-2025-vs2026` | Server 2025, VS 2026 | ARM64 | 15-70 min | MSI, ZIP |
-| Linux x64 | `ubuntu-24.04` | Ubuntu 24.04 | x64 | ~4 min | TGZ |
-| Linux ARM64 | `ubuntu-24.04-arm` | Ubuntu 24.04 | ARM64 | ~4 min | TGZ |
+| Linux x64 | `ubuntu-24.04` | AlmaLinux 8 container (glibc 2.28), see [PORTABLE_LINUX.md](design/PORTABLE_LINUX.md) | x64 | ~15 min with the static libraries cached | TGZ |
+| Linux ARM64 | `ubuntu-24.04-arm` | AlmaLinux 8 container (glibc 2.28) | ARM64 | ~15 min with the static libraries cached | TGZ |
 | macOS ARM64 | `macos-15` | macOS 15 | ARM64 | ~7 min | PKG, ZIP, TGZ |
 | LSP | `ubuntu-24.04` | Ubuntu 24.04 | x64 | ~5 min | ZIP |
 

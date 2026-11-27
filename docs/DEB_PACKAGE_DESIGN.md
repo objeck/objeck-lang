@@ -15,6 +15,15 @@ sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb
 apt resolves the system libraries, the commands are on `PATH` in every shell, and
 `sudo apt remove objeck` takes everything back out.
 
+> **Since v2026.11.4** the tarball this package is made from links mbedTLS and
+> OpenCV statically and needs only glibc 2.28 ([design/PORTABLE_LINUX.md](design/PORTABLE_LINUX.md)),
+> so the package installs on Ubuntu 22.04 and later and Debian 12 and later, and
+> `test_deb.sh` installs it on each. `Depends` is the C and C++ runtime and zlib; the
+> `Recommends` names that differ between releases carry an alternative
+> (`libgtk-3-0t64 | libgtk-3-0`, `libodbc2 | libodbc1`). The file keeps its
+> `ubuntu24.04` name. The section below is the reasoning for the packages up to
+> v2026.11.3, which did depend on Ubuntu 24.04's libraries.
+
 ## What it targets, and why only that
 
 A `.deb` names its dependencies by package, and Debian names a shared-library
@@ -52,7 +61,7 @@ the real binary.
 Computed by `dpkg-shlibdeps` on the build runner, never written by hand, and split
 by who needs them:
 
-- **Depends** -- what `bin/*` links: the C++ runtime, zlib, mbedTLS, readline.
+- **Depends** -- what `bin/*` links: the C++ runtime (and, up to v2026.11.3, zlib, mbedTLS and readline).
   Without these `obr` does not start.
 - **Recommends** -- what the optional native modules link: OpenCV
   (`libobjk_opencv`, `libobjk_onnx`), SDL2 and libGL (`libobjk_sdl`), unixODBC
