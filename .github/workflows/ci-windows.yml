@@ -97,6 +97,29 @@ jobs:
       with:
         arch: ${{ env.ARCH }}
 
+    # vcpkg's binary cache, restored before the installs below. Without it every run rebuilt
+    # mbedtls and nghttp2 (and, on ARM64, zlib, libjpeg-turbo, libpng, tiff and libwebp) from
+    # source: ~55 s on x64, ~245 s on ARM64 ("Restored 0 package(s)" in the log). vcpkg names each
+    # archive by an ABI hash of the port files, its dependencies, the triplet, the compiler and the
+    # vcpkg tool, so an entry made with a different compiler, port version or runner image is
+    # never matched -- it is ignored and the package builds -- and the restore-keys prefix cannot
+    # serve a stale binary. The key is per platform; bump v1 to discard every entry by hand.
+    - name: Point vcpkg at a binary cache directory
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path C:\vcpkg-bincache | Out-Null
+        echo "VCPKG_DEFAULT_BINARY_CACHE=C:\vcpkg-bincache" >> $env:GITHUB_ENV
+
+    - name: Cache vcpkg binary packages (Windows)
+      # An optimisation only: an error here must not fail the build, the install just builds.
+      continue-on-error: true
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: C:\vcpkg-bincache
+        key: vcpkg-bin-v1-${{ inputs.platform }}-${{ hashFiles('.github/workflows/ci-windows.yml') }}
+        restore-keys: |
+          vcpkg-bin-v1-${{ inputs.platform }}-
+
     - name: Install Windows dependencies
       shell: pwsh
       run: |
