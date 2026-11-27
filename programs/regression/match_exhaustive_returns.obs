@@ -1,0 +1,216 @@
+#~
+A method may end in a 'match' on an enum that names every item and returns
+from every arm, with no 'other' arm.
+
+The coverage check accepted such a match (some arm is always taken), and the
+return-path check then refused the method, "All method/function paths must
+return a value", because it asked every select for an 'other' arm. It now
+uses what the coverage check found.
+
+Covered: a program enum and a library enum, an enum nested in a class, arms
+that share labels, an arm that returns from both branches of an 'if', a match
+in a match, a match inside an 'if'/'else' and in an instance method, and each
+return type that has its own zero (Int, Float, Bool, String, an object). What
+must still be refused is in bad_match_returns_not_exhaustive.obs. Exits 1 on a
+mismatch.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Level := 10 {
+	Low,
+	Mid,
+	High
+}
+
+class Lamp {
+	enum Mode { On, Off, Auto }
+
+	@mode : Lamp->Mode;
+
+	New(mode : Lamp->Mode) {
+		@mode := mode;
+	}
+
+	method : public : Watts() ~ Int {
+		match @mode {
+			Mode->On => { return 60; }
+			Mode->Off => { return 0; }
+			Mode->Auto => { return 30; }
+		};
+	}
+}
+
+class MatchExhaustiveReturns {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MatchExhaustiveReturns->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	function : Number(c : Color) ~ Int {
+		match c {
+			Color->Red => { return 1; }
+			Color->Green => { return 2; }
+			Color->Blue => { return 3; }
+		};
+	}
+
+	function : Ratio(c : Color) ~ Float {
+		match c {
+			Color->Red => { return 0.25; }
+			Color->Green => { return 0.5; }
+			Color->Blue => { return 0.75; }
+		};
+	}
+
+	function : Name(c : Color) ~ String {
+		match c {
+			Color->Red => { return "red"; }
+			Color->Green => { return "green"; }
+			Color->Blue => { return "blue"; }
+		};
+	}
+
+	function : Warm(c : Color) ~ Bool {
+		match c {
+			Color->Red => { return true; }
+			Color->Green | Color->Blue => { return false; }
+		};
+	}
+
+	function : Boxed(l : Level) ~ IntRef {
+		match l {
+			Level->Low | Level->Mid => { return IntRef->New(1); }
+			Level->High => { return IntRef->New(2); }
+		};
+	}
+
+	# an arm that returns from both branches of an 'if'
+	function : Scaled(c : Color, n : Int) ~ Int {
+		match c {
+			Color->Red => {
+				if(n > 0) {
+					return n;
+				}
+				else {
+					return 0 - n;
+				};
+			}
+			Color->Green => { return n * 2; }
+			Color->Blue => { return n * 3; }
+		};
+	}
+
+	# a match in an arm of a match
+	function : Pair(c : Color, l : Level) ~ Int {
+		match c {
+			Color->Red => {
+				match l {
+					Level->Low => { return 1; }
+					Level->Mid => { return 2; }
+					Level->High => { return 3; }
+				};
+			}
+			Color->Green => { return 20; }
+			Color->Blue => { return 30; }
+		};
+	}
+
+	# the match ends one branch, a return the other
+	function : Guarded(c : Color, on : Bool) ~ Int {
+		if(on) {
+			match c {
+				Color->Red => { return 1; }
+				Color->Green => { return 2; }
+				Color->Blue => { return 3; }
+			};
+		}
+		else {
+			return -1;
+		};
+	}
+
+	# statements before the match
+	function : Counted(c : Color) ~ Int {
+		total := 0;
+		for(i := 0; i < 4; i += 1;) {
+			total += i;
+		};
+
+		match c {
+			Color->Red => { return total; }
+			Color->Green => { return total * 10; }
+			Color->Blue => { return total * 100; }
+		};
+	}
+
+	# a library enum
+	function : Severity(kind : Runtime->ErrorKind) ~ Int {
+		match kind {
+			Runtime->ErrorKind->NONE => { return 0; }
+			Runtime->ErrorKind->NIL_DEREFERENCE | Runtime->ErrorKind->INDEX_OUT_OF_BOUNDS => { return 2; }
+			Runtime->ErrorKind->DIVIDE_BY_ZERO => { return 3; }
+			Runtime->ErrorKind->INVALID_CAST => { return 4; }
+			Runtime->ErrorKind->OTHER | Runtime->ErrorKind->RAISED => { return 5; }
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("Int, first", Number(Color->Red) = 1);
+		Check("Int, second", Number(Color->Green) = 2);
+		Check("Int, last", Number(Color->Blue) = 3);
+		Check("Float, first", Ratio(Color->Red) = 0.25);
+		Check("Float, last", Ratio(Color->Blue) = 0.75);
+		Check("String, first", Name(Color->Red)->Equals("red"));
+		Check("String, second", Name(Color->Green)->Equals("green"));
+		Check("String, last", Name(Color->Blue)->Equals("blue"));
+		Check("Bool, own arm", Warm(Color->Red));
+		Check("Bool, shared arm, first", <>Warm(Color->Green));
+		Check("Bool, shared arm, second", <>Warm(Color->Blue));
+		Check("object, shared arm, first", Boxed(Level->Low)->Get() = 1);
+		Check("object, shared arm, second", Boxed(Level->Mid)->Get() = 1);
+		Check("object, own arm", Boxed(Level->High)->Get() = 2);
+		Check("if in an arm, then", Scaled(Color->Red, 4) = 4);
+		Check("if in an arm, else", Scaled(Color->Red, -4) = 4);
+		Check("if in an arm, other arms", Scaled(Color->Green, 4) = 8 & Scaled(Color->Blue, 4) = 12);
+		Check("nested, inner first", Pair(Color->Red, Level->Low) = 1);
+		Check("nested, inner last", Pair(Color->Red, Level->High) = 3);
+		Check("nested, outer", Pair(Color->Green, Level->High) = 20 & Pair(Color->Blue, Level->Low) = 30);
+		Check("in an if, match", Guarded(Color->Blue, true) = 3);
+		Check("in an if, else", Guarded(Color->Blue, false) = -1);
+		Check("after statements", Counted(Color->Red) = 6 & Counted(Color->Green) = 60 & Counted(Color->Blue) = 600);
+		Check("nested enum, instance method", Lamp->New(Lamp->Mode->On)->Watts() = 60 &
+			Lamp->New(Lamp->Mode->Off)->Watts() = 0 & Lamp->New(Lamp->Mode->Auto)->Watts() = 30);
+		Check("library enum", Severity(Runtime->ErrorKind->NONE) = 0 & Severity(Runtime->ErrorKind->INDEX_OUT_OF_BOUNDS) = 2 &
+			Severity(Runtime->ErrorKind->INVALID_CAST) = 4 & Severity(Runtime->ErrorKind->RAISED) = 5);
+
+		# called often enough for the JIT to compile them
+		total := 0;
+		for(i := 0; i < 3000; i += 1;) {
+			total += Number(i % 3 = 0 ? Color->Red : (i % 3 = 1 ? Color->Green : Color->Blue));
+		};
+		Check("loop", total = 6000);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a method may end in an exhaustive match whose arms all return"->PrintLine();
+	}
+}

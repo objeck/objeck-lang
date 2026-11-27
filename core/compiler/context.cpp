@@ -3491,7 +3491,12 @@ bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
       return false;
     }
   }
-  else {
+  // Without 'other' a value no label names falls out of the statement, so it
+  // does not return on every path -- unless it is a 'match' on an enum whose
+  // arms were found to name every item (AnalyzeSelectCoverage). That check
+  // accepted such a match and this one then refused the method: 'All
+  // method/function paths must return a value'.
+  else if(!select_stmt->IsExhaustive()) {
     return false;
   }
 
@@ -9467,6 +9472,10 @@ void ContextAnalyzer::AnalyzeSelectCoverage(Select* select_stmt, Enum* eenum, Li
   if(!missing.empty()) {
     ProcessError(select_stmt, L"This '" + keyword + L"' does not cover every item of '" + enum_name + L"', missing: " + missing +
                  L"\n\tAdd an arm for each missing item, or an 'other' arm.");
+  }
+  else {
+    // some arm is always taken: the return-path check needs no 'other'
+    select_stmt->SetExhaustive();
   }
 }
 

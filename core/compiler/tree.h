@@ -1919,6 +1919,9 @@ namespace frontend {
     bool is_value = false;
     // "match" or "select", for messages
     std::wstring keyword = L"select";
+    // checked, on an enum, with no 'other': the labels were found to name every
+    // item, so some arm is always taken (AnalyzeSelectCoverage)
+    bool is_exhaustive = false;
 
     Select(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
            Assignment* e, std::map<ExpressionList*, StatementList*> &s, std::vector<StatementList*> &sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -1975,6 +1978,14 @@ namespace frontend {
 
     bool IsValue() {
       return is_value;
+    }
+
+    void SetExhaustive() {
+      is_exhaustive = true;
+    }
+
+    bool IsExhaustive() {
+      return is_exhaustive;
     }
 
     const std::wstring& GetKeyword() {
