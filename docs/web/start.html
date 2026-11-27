@@ -53,18 +53,18 @@
      <tbody>
       <tr><td data-label="Platform">Windows x64, ARM64</td><td data-label="Download"><code>.msi</code> or <code>.zip</code></td><td data-label="Needs">nothing</td></tr>
       <tr><td data-label="Platform">macOS Apple silicon</td><td data-label="Download"><code>.pkg</code>, <code>.tgz</code> or <code>.zip</code></td><td data-label="Needs">nothing</td></tr>
-      <tr><td data-label="Platform">Ubuntu 24.04 x64, ARM64</td><td data-label="Download"><code>.deb</code></td><td data-label="Needs">installs its own dependencies</td></tr>
-      <tr><td data-label="Platform">Other Linux x64, ARM64</td><td data-label="Download"><code>.tgz</code></td><td data-label="Needs">glibc 2.38+, then <code>install_deps.sh</code></td></tr>
+      <tr><td data-label="Platform">Ubuntu 22.04+, Debian 12+ x64, ARM64</td><td data-label="Download"><code>.deb</code></td><td data-label="Needs">nothing</td></tr>
+      <tr><td data-label="Platform">Other Linux x64, ARM64</td><td data-label="Download"><code>.tgz</code></td><td data-label="Needs">glibc 2.28+</td></tr>
      </tbody>
     </table>
-    <p>Ubuntu 24.04:</p>
+    <p>Ubuntu and Debian:</p>
 <pre class="cmd">curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.11.4/objeck-ubuntu24.04-x64_2026.11.4.deb
 sudo apt install ./objeck-ubuntu24.04-x64_2026.11.4.deb</pre>
     <p>Other Linux:</p>
 <pre class="cmd">tar xzf objeck-linux-x64_2026.11.4.tgz
-./objeck-lang/install_deps.sh     # --check only reports
-source ./objeck-lang/env.sh       # sets PATH and OBJECK_LIB_PATH</pre>
-    <p>Debian 12 and Ubuntu 22.04 have an older glibc: use a container or build from source (see the <a href="https://github.com/objeck/objeck-lang#readme" target="_blank" rel="noopener">README</a>).</p>
+source ./objeck-lang/env.sh       # sets PATH and OBJECK_LIB_PATH
+./objeck-lang/install_deps.sh     # optional: SDL2, OpenCV windows, ODBC, LAME</pre>
+    <p>The Linux release runs on Ubuntu 22.04 and later, Debian 12 and later, Fedora, Arch and RHEL 8 and its rebuilds. This starts with v2026.11.4; earlier releases run on Ubuntu 24.04 only (see the <a href="https://github.com/objeck/objeck-lang#readme" target="_blank" rel="noopener">README</a>).</p>
     <h2 id="first-program">First program</h2>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">Hello</span> {
   <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {

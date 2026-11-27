@@ -52,6 +52,9 @@
 #include "windows.h"
 #include <fcntl.h>
 #include <io.h>
+#elif defined(__linux__)
+#include <dirent.h>
+#include <dlfcn.h>
 #else
 #include <dirent.h>
 #include <readline/readline.h>
@@ -501,6 +504,36 @@ namespace Runtime {
       return L"";
     }
 
+#ifdef __linux__
+    // readline() and add_history() from whichever GNU readline this system has.
+    // Their signatures have not changed since readline 4, so one pair of
+    // pointers serves every soname. Both are null when none is installed.
+    struct LineEditor {
+      typedef char* (*ReadLineFn)(const char*);
+      typedef void (*AddHistoryFn)(const char*);
+      ReadLineFn read_line;
+      AddHistoryFn add_history;
+
+      LineEditor() : read_line(nullptr), add_history(nullptr) {
+        static const char* const sonames[] = { "libreadline.so.8", "libreadline.so.7", "libreadline.so.6" };
+        for(const char* soname : sonames) {
+          void* handle = dlopen(soname, RTLD_LAZY | RTLD_LOCAL);
+          if(!handle) {
+            continue;
+          }
+          ReadLineFn read_fn = (ReadLineFn)dlsym(handle, "readline");
+          AddHistoryFn history_fn = (AddHistoryFn)dlsym(handle, "add_history");
+          if(read_fn && history_fn) {
+            read_line = read_fn;
+            add_history = history_fn;
+            return;
+          }
+          dlclose(handle);
+        }
+      }
+    };
+#endif
+
     void ReadLine(std::wstring &output) {
       // callers reuse their buffer across calls, and the POSIX path below appends
       output.clear();
@@ -511,6 +544,24 @@ namespace Runtime {
       std::wcout << C(CLR_CYAN) << L"> " << C(CLR_RESET);
       std::getline(std::wcin, output);
 #else
+#ifdef __linux__
+      // GNU readline is looked up when the first prompt is shown, not linked:
+      // its soname differs between distributions (.so.7, .so.8), and a NEEDED
+      // entry for one of them stops obd from starting wherever another is
+      // installed. Without readline obd still reads commands, as it does on
+      // Windows, with no line editing or history. docs/design/PORTABLE_LINUX.md.
+      static const LineEditor editor;
+      if(!editor.read_line) {
+        std::wcout << C(CLR_CYAN) << L"> " << C(CLR_RESET) << std::flush;
+        std::string bytes;
+        if(std::getline(std::cin, bytes) && !bytes.empty() && !BytesToUnicode(bytes, output)) {
+          output.clear();
+        }
+        return;
+      }
+      const LineEditor::ReadLineFn readline = editor.read_line;
+      const LineEditor::AddHistoryFn add_history = editor.add_history;
+#endif
       const char* prompt = color_enabled ? "\001\033[36m\002> \001\033[0m\002" : "> ";
       char* input = readline(prompt);
       if(input) {

@@ -28,12 +28,17 @@
 #            mbedTLS, ODBC and LAME ship inside the package too.
 #   Windows  the DLLs ship in bin, beside the binaries that load them, which is
 #            where Windows looks first. Nothing to install.
-#   Linux    the toolchain and its native libraries are linked against SYSTEM
-#            libraries the distribution does not ship: obr, obd and obi need
-#            mbedTLS (HTTP/2 and HTTP/3 are linked into obr), obd
-#            readline, and lib/native needs SDL2 + libGL, OpenCV, unixODBC and
-#            LAME. On a clean machine obr does not start at all. So Linux, and
-#            only Linux, needs packages -- and nothing in the tree said which.
+#   Linux    since v2026.11.4 the tools (obc, obr, obd, obi) link only the C
+#            and C++ runtime and zlib: mbedTLS, OpenCV and the HTTP/2 and HTTP/3
+#            stack are linked in (docs/design/PORTABLE_LINUX.md). Four native
+#            libraries still use SYSTEM libraries the distribution does not
+#            ship: SDL2 + libGL, GTK 3 and GStreamer (OpenCV's windows and
+#            video), unixODBC and LAME. A program that loads one without them
+#            stops with the loader's message. So Linux, and only Linux, has
+#            packages to install -- for those four -- and this script finds
+#            them. A tree from v2026.11.3 or earlier, or one built from source
+#            against the system's libraries, needs more (mbedTLS, readline,
+#            OpenCV), and the same lookup finds those.
 #
 # On Linux the list is not hardcoded. The script asks ldd which libraries the
 # tree's own binaries (bin/*, lib/native/libobjk_*.so) cannot resolve, then asks
@@ -344,9 +349,10 @@ tree_unusable_reason() {
 		say "This system's libraries are older than the ones the distribution was built"
 		say "against:"
 		printf '%s\n' "$out" | awk '{ printf "  %-22s has no %s\n", $1, $2 }'
-		say "Linux releases are built on Ubuntu 24.04, run as shipped there, and need"
-		say "glibc 2.38 or newer. Installing packages cannot upgrade a distribution's C"
-		say "library. On this distribution, build Objeck from source:"
+		say "Installing packages cannot upgrade a distribution's C library. Linux"
+		say "releases since v2026.11.4 need glibc 2.28 or newer; v2026.11.3 and earlier"
+		say "were built on Ubuntu 24.04 and need glibc 2.38. Use a newer release, or"
+		say "build Objeck from source on this distribution:"
 		say "  core/release/deploy_posix.sh"
 		return 0
 	fi
@@ -403,6 +409,33 @@ apt_package_for() {
 		*)      name="$base$ver" ;;
 	esac
 	for c in "${name}t64" "$name"; do
+		cand=$(apt-cache policy "$c" 2>/dev/null | awk '/Candidate:/ { print $2 }')
+		if [ -n "$cand" ] && [ "$cand" != "(none)" ]; then
+			printf '%s\n' "$c"
+			return 0
+		fi
+	done
+	# Libraries that ship inside a package named after a different one, so the
+	# policy name above does not exist: GDK comes with GTK, GObject and GIO with
+	# GLib, the GStreamer helper libraries with its base plugins, and Ubuntu
+	# 22.04 has libodbc.so.2 in libodbc1.
+	case "$so" in
+		libgdk-3.so.0)
+			set -- libgtk-3-0t64 libgtk-3-0 ;;
+		libglib-2.0.so.0|libgobject-2.0.so.0|libgio-2.0.so.0|libgmodule-2.0.so.0|libgthread-2.0.so.0)
+			set -- libglib2.0-0t64 libglib2.0-0 ;;
+		libgstreamer-1.0.so.0|libgstbase-1.0.so.0)
+			set -- libgstreamer1.0-0 ;;
+		libgstapp-1.0.so.0|libgstvideo-1.0.so.0|libgstaudio-1.0.so.0|libgstriff-1.0.so.0|libgstpbutils-1.0.so.0|libgsttag-1.0.so.0)
+			set -- libgstreamer-plugins-base1.0-0 ;;
+		libcairo-gobject.so.2)
+			set -- libcairo-gobject2 ;;
+		libodbc.so.2)
+			set -- libodbc1 ;;
+		*)
+			return 1 ;;
+	esac
+	for c in "$@"; do
 		cand=$(apt-cache policy "$c" 2>/dev/null | awk '/Candidate:/ { print $2 }')
 		if [ -n "$cand" ] && [ "$cand" != "(none)" ]; then
 			printf '%s\n' "$c"
@@ -527,10 +560,12 @@ explain_unresolved() {
 	fi
 	say "  No package in this system's $PM repositories provides:"
 	for so in $UNRESOLVED; do say "    $so"; done
-	say "  The distribution was linked against exactly these library versions, and"
-	say "  this system's repositories carry different ones (or none). Linux releases"
-	say "  are built on Ubuntu 24.04 and run as shipped there. On this distribution,"
-	say "  build Objeck from source: core/release/deploy_posix.sh"
+	say "  This system's repositories carry other versions of these libraries, or"
+	say "  none (on RHEL and its rebuilds, SDL2's companions are in EPEL). Only the"
+	say "  binaries listed above as needing them are affected. A release older than"
+	say "  v2026.11.4 needs Ubuntu 24.04's library versions and runs as shipped"
+	say "  there only. To use them here, build Objeck from source:"
+	say "  core/release/deploy_posix.sh"
 }
 
 # The whole Linux run against a distribution tree. Exits.

@@ -1,0 +1,95 @@
+#~
+An HTTPS request to a TLS server on the loopback, for
+tools/packaging/test_portable_linux.sh: obr's own TLS stack on both ends.
+
+  obc -src tls_smoke.obs -lib cipher,collect,xml,json,net,net_server
+  obr tls_smoke.obe <cert.pem> <key.pem>
+
+The certificate names DNS:localhost. The request must succeed when that
+certificate is trusted and be refused when it is not: a client that accepted
+both would be one that verifies nothing.
+~#
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+class TlsSmokeHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "portable-ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "portable-ok");
+		return false;
+	}
+}
+
+class TlsSmoke {
+	@cert : static : String;
+	@key : static : String;
+
+	function : Cert() ~ String { return @cert; }
+	function : Key() ~ String { return @key; }
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 2) {
+			"usage: obr tls_smoke.obe <cert.pem> <key.pem>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+		@cert := args[0];
+		@key := args[1];
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(TlsSmokeHandler->New()->GetClass(), 0, TlsSmoke->Cert(), TlsSmoke->Key(), "", false);
+			}
+		};
+		server->Execute(Nil);
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := WebServer->GetBoundPort();
+		if(port = 0) {
+			"FAIL: the TLS server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		passed := true;
+		client := Web.HTTP.HttpsClient->New();
+		url := Web.HTTP.Url->New("https://localhost:{$port}/ok");
+
+		trusted := client->Get(url, "text/plain", @cert);
+		if(trusted <> Nil & trusted->GetCode() = 200) {
+			body := String->New(trusted->GetContent());
+			"  HTTPS GET https://localhost:{$port}/ok -> 200 '{$body}'"->PrintLine();
+			if(<>body->Has("portable-ok")) {
+				"FAIL: the response body is not the server's"->PrintLine();
+				passed := false;
+			};
+		}
+		else {
+			"FAIL: the HTTPS request failed with the server certificate trusted"->PrintLine();
+			passed := false;
+		};
+
+		untrusted := client->Get(url, "text/plain");
+		if(untrusted = Nil) {
+			"  the same request without a trust anchor is refused"->PrintLine();
+		}
+		else {
+			"FAIL: an untrusted certificate was accepted"->PrintLine();
+			passed := false;
+		};
+
+		# ServeSecure blocks in accept; end the process rather than wait on it
+		if(passed) {
+			"TLS_SMOKE_OK"->PrintLine();
+			Runtime->Exit(0);
+		};
+		Runtime->Exit(1);
+	}
+}
