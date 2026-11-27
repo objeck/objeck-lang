@@ -1,0 +1,38 @@
+# Regression tests that tools/tsan/run_tsan.sh leaves out, one name to a line.
+#
+# A program may read and write its own fields from several threads without a
+# lock: the language allows it, and the VM gives such an access no ordering.
+# When the access is interpreted, ThreadSanitizer reports it against the
+# interpreter (StackInterpreter::StorClsInstIntVar, LoadClsInstIntVar and the
+# like), where it cannot be told from a fault of the VM's own. These tests do
+# that on purpose, or exercise a library that does, so a ThreadSanitizer run
+# gets nothing from them but that report. They still run in every other suite.
+#
+# A test goes here only with the field (or the VM call) it races on. Suppressing
+# the interpreter's field accessors in tsan.supp instead would hide the report
+# that matters most: the collector moving an object under a thread that was not
+# stopped.
+#
+# Found with the v2026.11.4 soak (2026-11-27), each named with a build of the VM
+# that logs which threads store and load each field.
+
+# --- a flag or counter one thread sets and another polls ---
+agent_scope_outlived_parent_test   # the test's static @entered / @go flags, set by one thread and polled by another
+gc_cond_value_threads              # CondChainWorker's @done, set by the worker and polled by the churn thread
+interact_spawn_lambda_self         # Tally's fields, read by the spawning thread while a lambda's thread stores them
+
+# --- a library object shared by threads ---
+ml_vector_parallel                 # ml_vector: every query on a shared VectorIndex clears its @error
+query_expr_concurrent              # query: a shared table's ColumnIndex state, read by one query while another builds it
+query_index_concurrent             # the same
+query_thread_errors                # query: per-table rebuild state shared by the reader threads
+diag_concurrent_analysis           # diagnostics: the library's static DllProxy, created by whichever thread comes first
+onnx_concurrency                   # onnx: the Session's static proxy, likewise; libonnxruntime itself is in tsan.supp
+
+# --- a socket closed by one thread while another is using it (the test's subject) ---
+socket_server_stop_exit_time       # Close() on a listening TCPSocketServer under a thread blocked in Accept(): the two
+                                   # traps read and write the object's handle word. Also times its exit, which the
+                                   # instrumented VM is too slow for
+tls_close_races                    # Close() against ShutdownSend() on the same TCPSecureSocket: the context is counted
+                                   # and freed by its last user, but SockTcpShutdownSend reads the object's "connected"
+                                   # word outside tls_context_lock while SocketCtxDetach clears it
