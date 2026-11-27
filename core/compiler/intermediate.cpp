@@ -615,7 +615,7 @@ IntermediateEnum* IntermediateEmitter::EmitEnum(Enum* eenum)
 {
   cur_line_num = eenum->GetLineNumber();
   
-  IntermediateEnum* imm_eenum = new IntermediateEnum(eenum->GetName(), eenum->GetOffset());
+  IntermediateEnum* imm_eenum = new IntermediateEnum(eenum->GetName(), eenum->GetOffset(), eenum->IsConsts());
   std::map<const std::wstring, EnumItem*>items =  eenum->GetItems();
   // copy items
   std::map<const std::wstring, EnumItem*>::iterator iter;

@@ -9,10 +9,9 @@ statement with every arm returning, as not returning on every path. The same
 held for the library enums numbered that way: Number->Format (-20),
 Runtime->Signal (-40).
 
-A program enum is now marked as an enum or a consts group when it is parsed. A
-library enum is told from a consts group by its items: an enum's are numbered
-from its offset with no gap. What is still refused is in
-bad_match_negative_offset_enum.obs. Exits 1 on a mismatch.
+A program enum is now marked as an enum or a consts group when it is parsed,
+and a library's record of one carries the mark (check_lib_enum_consts.py).
+What is still refused is in bad_match_negative_offset_enum.obs. Exits 1 on a mismatch.
 ~#
 enum Level := -20 {
 	Low,

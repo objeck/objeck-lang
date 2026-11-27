@@ -1253,6 +1253,20 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_inference.py "$BIN"
 
+    # A 'match' takes an enum's items as arms and a consts group's numbers, and
+    # needs 'other' for the second. A library's enum record says which of the two
+    # it is; this builds a library with both (a consts group of -1 and 0 among
+    # them, which used to read back as an enum) and holds every program to the
+    # same result and the same messages against the library and beside its source.
+    - name: an enum and a consts group read the same from a library and from source (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_enum_consts.py "$BIN"
+
     # 'spawn { ... }' is written out as an anonymous Thread class and a lambda, named
     # for the class, file and position it is written at. A library stores them in
     # its .obl beside the ones a program makes for its own 'spawn' blocks; this

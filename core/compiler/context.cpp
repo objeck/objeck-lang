@@ -9809,7 +9809,8 @@ void ContextAnalyzer::AnalyzeSelectSubjectEnum(Expression* expression, Enum*& ee
       // Not 'GetOffset() < 0': that set aside every enum numbered from a
       // negative value along with the consts groups (Number->Format := -20,
       // Runtime->Signal := -40), so a 'match' that named all of its items was
-      // still told to add an 'other' arm.
+      // still told to add an 'other' arm. The library's record says which of
+      // the two it is.
       if(lib_eenum && lib_eenum->IsConsts()) {
         lib_eenum = nullptr;
       }

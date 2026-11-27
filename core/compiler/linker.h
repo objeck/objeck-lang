@@ -505,12 +505,14 @@ class LibraryEnumItem {
 class LibraryEnum {
   std::wstring name;
   INT64_VALUE offset;
+  bool is_consts;
   std::map<const std::wstring, LibraryEnumItem*> items;
 
  public:
-  LibraryEnum(const std::wstring &n, const INT64_VALUE o) {
+  LibraryEnum(const std::wstring &n, const INT64_VALUE o, const bool c) {
     name = n;
     offset = o;
+    is_consts = c;
   }
 
   ~LibraryEnum() {
@@ -529,15 +531,18 @@ class LibraryEnum {
     return offset;
   }
 
-  // True for a 'consts' group. A library records an enum's name, its offset and
-  // its items, and a consts group is written with offset -1, so a negative
-  // offset alone does not tell the two apart: an enum may be numbered from a
-  // negative value ('enum Format := -20', 'enum SensorType := -1'). The items
-  // do: an enum's are numbered offset, offset + 1, .. with no gap, while a
-  // consts group's are whatever values were written. (A consts group written
-  // as exactly -1, 0, 1, .. cannot be told from 'enum := -1' and reads as the
-  // enum it is equivalent to.)
-  bool IsConsts();
+  // True for a 'consts' group: named integers, not the closed set of items an
+  // enum is. The library's record says which it is (Library::LoadEnums).
+  //
+  // It used to be worked out from the offset and the items: a consts group is
+  // written with offset -1 and its items are whatever values were given, an
+  // enum's are offset, offset + 1, .. with no gap. A consts group written as
+  // exactly -1, 0, .. then read back as 'enum := -1': a 'match' on it by value,
+  // which compiles beside the group's source, was refused through the library
+  // ("names item values of an enum"), and one without 'other' was accepted.
+  bool IsConsts() {
+    return is_consts;
+  }
 
   void AddItem(LibraryEnumItem* i) {
     items.insert(std::pair<std::wstring, LibraryEnumItem*>(i->GetName(), i));

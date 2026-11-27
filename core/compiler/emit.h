@@ -928,17 +928,22 @@ namespace backend {
   class IntermediateEnum : public Intermediate {
     std::wstring name;
     INT64_VALUE offset;
+    // a 'consts' group, not an 'enum': written to a library, whose readers
+    // cannot tell the two apart by the offset and the items (LibraryEnum::IsConsts)
+    bool is_consts;
     std::vector<IntermediateEnumItem*> items;
 
   public:
-    IntermediateEnum(const std::wstring &n, const INT64_VALUE o) {
+    IntermediateEnum(const std::wstring &n, const INT64_VALUE o, const bool c) {
       name = n;
       offset = o;
+      is_consts = c;
     }
 
     IntermediateEnum(LibraryEnum* e) {
       name = e->GetName();
       offset = e->GetOffset();
+      is_consts = e->IsConsts();
       // write items
       std::map<const std::wstring, LibraryEnumItem*> items = e->GetItems();
       std::map<const std::wstring, LibraryEnumItem*>::iterator iter;
