@@ -910,6 +910,8 @@ std::vector<std::wstring> alt_error_method_names;
                          std::vector<Type*> &bindings, std::wstring &error);
   Type* SubstituteClassGenerics(Type* param, Class* klass, LibraryClass* lib_klass, const std::vector<Type*> &bindings);
   bool ArgumentMayFit(Type* param, Type* arg, int arg_dimension, Expression* argument, Class* klass);
+  bool GenericArgumentsMayFit(Type* param, Type* arg, Class* klass, LibraryClass* lib_klass, Class* context);
+  bool GenericArgumentMayFit(Type* param_argument, Type* argument_argument, GenericVariance variance, Class* context);
   bool InferNewTypeArguments(Class* klass, LibraryClass* lib_klass, MethodCall* method_call, const int depth);
   Type* SubstituteAlong(Type* original, Type* resolved, const std::map<std::wstring, Type*> &bindings);
   Type* LambdaResultType(Lambda* lambda);

@@ -7152,12 +7152,111 @@ Type* ContextAnalyzer::SubstituteClassGenerics(Type* param, Class* klass, Librar
 }
 
 /****************************
+ * False when two type arguments of one generic class cannot stand for each
+ * other: the parameter's ('IntRef' in 'Vector<IntRef>', after a candidate's
+ * bindings were put in) and the argument's ('String' in 'Vector<String>').
+ *
+ * The rule is the one a call is resolved by (CheckGenericEqualTypes): the same
+ * class, or, for a type parameter declared 'out' or 'in', a class that derives
+ * from the other in that direction. It is applied to their own type arguments
+ * in turn ('Map<String, Vector<IntRef>>'). Anything that is not two classes
+ * this finds -- a type parameter of the class the call stands in, a class with
+ * a generic interface, which the resolver compares by that interface -- counts
+ * as fitting.
+ ****************************/
+bool ContextAnalyzer::GenericArgumentMayFit(Type* param_argument, Type* argument_argument, GenericVariance variance, Class* context)
+{
+  if(!param_argument || !argument_argument || param_argument->GetType() != CLASS_TYPE ||
+     argument_argument->GetType() != CLASS_TYPE) {
+    return true;
+  }
+
+  // resolved on copies (resolving renames a type in place)
+  Type* param_type = TypeFactory::Instance()->MakeType(param_argument);
+  Type* argument_type = TypeFactory::Instance()->MakeType(argument_argument);
+  Class* param_klass = nullptr; LibraryClass* param_lib_klass = nullptr;
+  Class* argument_klass = nullptr; LibraryClass* argument_lib_klass = nullptr;
+  // 'context' is the program class whose constructor declares the parameter
+  if(!(context ? ResolveClassEnumType(param_type, context) : ResolveClassEnumType(param_type)) ||
+     !GetProgramOrLibraryClass(param_type, param_klass, param_lib_klass) ||
+     !ResolveClassEnumType(argument_type) || !GetProgramOrLibraryClass(argument_type, argument_klass, argument_lib_klass)) {
+    return true;
+  }
+
+  if((param_klass && param_klass->HasGenericInterface()) || (param_lib_klass && param_lib_klass->HasGenericInterface()) ||
+     (argument_klass && argument_klass->HasGenericInterface()) || (argument_lib_klass && argument_lib_klass->HasGenericInterface())) {
+    return true;
+  }
+
+  const std::wstring param_class_name = param_klass ? param_klass->GetName() : param_lib_klass->GetName();
+  const std::wstring argument_class_name = argument_klass ? argument_klass->GetName() : argument_lib_klass->GetName();
+  if(param_class_name != argument_class_name) {
+    switch(variance) {
+    case GENERIC_COVARIANT:
+      // 'out': the argument's may derive from the parameter's
+      return ValidDownCast(param_class_name, argument_klass, argument_lib_klass);
+
+    case GENERIC_CONTRAVARIANT:
+      // 'in': the parameter's may derive from the argument's
+      return ValidDownCast(argument_class_name, param_klass, param_lib_klass);
+
+    default:
+      return false;
+    }
+  }
+
+  return GenericArgumentsMayFit(param_type, argument_type, param_klass, param_lib_klass, context);
+}
+
+/****************************
+ * False when a parameter and an argument of the same generic class name type
+ * arguments that cannot stand for each other (GenericArgumentMayFit). One
+ * that names none, or a different number of them, is left to the resolver.
+ ****************************/
+bool ContextAnalyzer::GenericArgumentsMayFit(Type* param, Type* arg, Class* klass, LibraryClass* lib_klass, Class* context)
+{
+  if(!param->HasGenerics() || !arg->HasGenerics()) {
+    return true;
+  }
+
+  const std::vector<Type*> param_arguments = param->GetGenerics();
+  const std::vector<Type*> argument_arguments = arg->GetGenerics();
+  if(param_arguments.size() != argument_arguments.size()) {
+    return true;
+  }
+
+  for(size_t i = 0; i < param_arguments.size(); ++i) {
+    GenericVariance variance = GENERIC_INVARIANT;
+    if(klass && i < klass->GetGenericClasses().size()) {
+      variance = klass->GetGenericClasses()[i]->GetVariance();
+    }
+    else if(lib_klass && i < lib_klass->GetGenericClasses().size()) {
+      variance = lib_klass->GetGenericClasses()[i]->GetVariance();
+    }
+
+    if(!GenericArgumentMayFit(param_arguments[i], argument_arguments[i], variance, context)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
  * False when an argument of this type cannot be passed for a parameter of
  * this type, whatever conversion, boxing, unboxing or widening the call is
- * allowed: a String for an IntRef, an Int[] for an Int, a Widget for a Float.
+ * allowed: a String for an IntRef, an Int[] for an Int, a Widget for a Float,
+ * a Vector<String> for a Vector<IntRef>.
  * Anything this cannot tell -- a function type, a class it does not find (a
- * type parameter of the class the call stands in), the type arguments of a
- * generic -- counts as passable, so the answer errs towards the candidate.
+ * type parameter of the class the call stands in), the classes of two arrays
+ * -- counts as passable, so the answer errs towards the candidate.
+ *
+ * The type arguments of a generic used to count as passable too. With
+ * 'New(a : T, b : Vector<String>, c : Vector<IntRef>)' and
+ * 'New(a : String, b : Vector<IntRef>, c : Vector<T>)', a call with a String, a
+ * Vector<String> and a Vector<IntRef> kept the second constructor -- only the
+ * outer Vector was compared -- and its T, IntRef, was reported as a conflict
+ * with the first one's String.
  *
  * Used only to set aside constructors while a generic class's type arguments
  * are inferred (InferNewTypeArguments); the call itself is resolved by
@@ -7187,7 +7286,11 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
   const bool param_class = param->GetType() == CLASS_TYPE;
   const bool arg_class = arg->GetType() == CLASS_TYPE;
 
-  // arrays: of the same primitive, or of classes (which this does not compare)
+  // arrays: of the same primitive, or of classes. The classes are not
+  // compared, and neither are their type arguments: the resolver takes a
+  // Vector[]<String> for a Vector[]<IntRef> parameter when it picks a method
+  // (MatchCallingParameter) and reports the difference afterwards, so setting
+  // such a constructor aside here would only change which error is shown.
   if(arg_dimension > 0) {
     if(param_class || arg_class) {
       return param_class && arg_class;
@@ -7259,7 +7362,12 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
 
   const std::wstring param_class_name = param_klass ? param_klass->GetName() : param_lib_klass->GetName();
   const std::wstring arg_class_name = arg_klass ? arg_klass->GetName() : arg_lib_klass->GetName();
-  return param_class_name == arg_class_name || ValidDownCast(param_class_name, arg_klass, arg_lib_klass);
+  if(param_class_name == arg_class_name) {
+    // one generic class: its type arguments, as the resolver compares them
+    return GenericArgumentsMayFit(param_type, arg_type, param_klass, param_lib_klass, klass);
+  }
+
+  return ValidDownCast(param_class_name, arg_klass, arg_lib_klass);
 }
 
 /****************************
