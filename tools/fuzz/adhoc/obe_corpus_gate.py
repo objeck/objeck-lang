@@ -62,11 +62,11 @@ def compile_one(args):
     m = re.search(r"# EXTRA_LIBS:\s*(\S+)", text)
     if m:
         libs += "," + m.group(1)
-    variants = [("s3", ["-opt", "s3"]), ("s0", ["-opt", "s0"])]
+    # every level for every program: a pass that only -opt s1 and s2 end with, or that a later
+    # level's pass happens to repair, writes an image the other levels never show
+    variants = [(opt, ["-opt", opt]) for opt in ("s3", "s0", "s1", "s2")]
     if idx % 4 == 0:
         variants.append(("dbg", ["-debug"]))
-    if idx % 3 == 0:
-        variants += [("s1", ["-opt", "s1"]), ("s2", ["-opt", "s2"])]
     made = 0
     for tag, flags in variants:
         dest = os.path.join(out, "img", "%05d__%s.obe" % (idx, tag))
@@ -102,7 +102,7 @@ for lib, names in sorted(by_file.items()):
             f.write("class Cover {\n  function : Main(args : String[]) ~ Nil {\n" +
                     "".join("    v%d : %s;\n" % (i, n) for i, n in enumerate(keep)) + "  }\n}\n")
         ok = True
-        for opt in ("s0", "s3"):
+        for opt in ("s0", "s1", "s2", "s3"):
             dest = src[:-4] + "__%s.obe" % opt
             p = subprocess.run([obc, "-src", src, "-lib", ALL, "-opt", opt, "-dest", dest], capture_output=True,
                                env=env, timeout=900)

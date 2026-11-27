@@ -2000,7 +2000,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
         // whose value has effects (a method call, an allocation, a trap, a
         // division that can fault) changed behaviour. `v0 := s->M(p0); v0 := 1;`
         // lost the call to M at s1+ (fuzzer, programs/regression/opt_dead_store_side_effects.obs).
-        if(IsEffectFreeRange(dead_store_edit.first, dead_store_edit.second, input_instrs)) {
+        if(dead_store_edit.first <= dead_store_edit.second &&
+           IsEffectFreeRange(dead_store_edit.first, dead_store_edit.second, input_instrs)) {
           for(size_t j = dead_store_edit.first; j <= dead_store_edit.second; ++j) {
             drop[j] = 1;
           }
@@ -2099,22 +2100,165 @@ bool ItermediateOptimizer::IsEffectFreeRange(size_t start_pos, size_t end_pos, s
   return true;
 }
 
+// What an instruction does to the operand stack, for the instructions
+// IsEffectFreeRange accepts; false for any other.
+static bool EffectFreeStackUse(IntermediateInstruction* instr, long& pops, long& pushes)
+{
+  switch(instr->GetType()) {
+  case LOAD_INT_LIT:
+  case LOAD_CHAR_LIT:
+  case LOAD_FLOAT_LIT:
+  case LOAD_CLS_MEM:
+  case LOAD_INST_MEM:
+    pops = 0;
+    pushes = 1;
+    return true;
+
+  case EQL_INT:
+  case NEQL_INT:
+  case LES_INT:
+  case GTR_INT:
+  case LES_EQL_INT:
+  case GTR_EQL_INT:
+  case EQL_FLOAT:
+  case NEQL_FLOAT:
+  case LES_FLOAT:
+  case GTR_FLOAT:
+  case LES_EQL_FLOAT:
+  case GTR_EQL_FLOAT:
+  case AND_INT:
+  case OR_INT:
+  case ADD_INT:
+  case SUB_INT:
+  case MUL_INT:
+  case BIT_AND_INT:
+  case BIT_OR_INT:
+  case BIT_XOR_INT:
+  case SHL_INT:
+  case SHR_INT:
+  case ADD_FLOAT:
+  case SUB_FLOAT:
+  case MUL_FLOAT:
+    pops = 2;
+    pushes = 1;
+    return true;
+
+  case BIT_NOT_INT:
+  case I2F:
+  case F2I:
+    pops = 1;
+    pushes = 1;
+    return true;
+
+  case SWAP_INT:
+    pops = 2;
+    pushes = 2;
+    return true;
+
+  case POP_INT:
+  case POP_FLOAT:
+    pops = 1;
+    pushes = 0;
+    return true;
+
+  case LOAD_INT_VAR:
+  case LOAD_FLOAT_VAR:
+    // a field is read off the object or class beneath it
+    pops = instr->GetOperand2() == LOCL ? 0 : 1;
+    pushes = 1;
+    return true;
+
+  case LOAD_FUNC_VAR:
+    // a function reference is two words
+    pops = instr->GetOperand2() == LOCL ? 0 : 1;
+    pushes = 2;
+    return true;
+
+  default:
+    return false;
+  }
+}
+
+// The instructions to remove with a dead store: [first, store], or
+// (store + 1, store) when the store has to stay.
+//
+// They must be exactly the instructions that put the store's words on the
+// operand stack. This used to be "the instructions before the store that carry
+// its statement", and a tag does not say where a value starts: in a chained
+// assignment, `a := b := E`, the inner link's store is tagged with its own
+// assignment while E carries the outer statement. The walk back from a dead
+// `b` stopped at once, the store went and E stayed. One word too many on that
+// path: the loader refuses the method where the path joins another ("stack
+// heights differ where control flow joins"), and in straight-line code the
+// word stays under everything the method pushes afterwards
+// (programs/regression/opt_dead_store_chain.obs).
+//
+// So the statement's instructions go only when the stack says they are the
+// value: from an empty stack they leave the store's words and nothing else.
+// When they are not, the value is found by walking back from the store until
+// the words it pops are accounted for, across statements. That walk covers
+// only instructions IsEffectFreeRange accepts, and gives up on one that also
+// pushes a word the code after the store uses.
 std::pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, std::vector<IntermediateInstruction*>& input_instrs)
 {
-  size_t end_pos = start_pos;
+  const std::pair<size_t, size_t> not_found(start_pos + 1, start_pos);
   IntermediateInstruction* dead_store_instr = input_instrs[start_pos];
+  if(dead_store_instr->GetOperand2() != LOCL) {
+    return not_found;
+  }
+  // the words the store takes off the stack
+  const long words = dead_store_instr->GetType() == STOR_FUNC_VAR ? 2 : 1;
 
-  // Walk back over the store's value, down to and INCLUDING index 0. The old
-  // iterator loop stopped at begin() without examining it, so a dead store whose
-  // value was a method's first instruction (`n := 0;` as the first statement,
-  // overwritten before any read) lost the STOR but kept the LOAD: one stray
-  // value on the operand stack that shifted the caller's arguments by one
+  // The statement's instructions before the store, down to and INCLUDING index
+  // 0: a dead store's value can be a method's first instruction
   // (programs/regression/opt_dead_store_first_instr.obs).
-  while(end_pos > 0 && input_instrs[end_pos - 1]->GetStatement() == dead_store_instr->GetStatement()) {
-    --end_pos;
+  size_t statement_pos = start_pos;
+  while(statement_pos > 0 && input_instrs[statement_pos - 1]->GetStatement() == dead_store_instr->GetStatement()) {
+    --statement_pos;
+  }
+  // A statement that does more than compute a value (a call, a jump, another
+  // store) keeps its dead store, as it always has.
+  if(!IsEffectFreeRange(statement_pos, start_pos, input_instrs)) {
+    return not_found;
   }
 
-  return std::pair<size_t, size_t>(end_pos, start_pos);
+  // the statement's instructions, run from an empty stack
+  long depth = 0;
+  bool whole = true;
+  for(size_t i = statement_pos; whole && i < start_pos; ++i) {
+    long pops;
+    long pushes;
+    if(!EffectFreeStackUse(input_instrs[i], pops, pushes) || depth < pops) {
+      whole = false;
+    }
+    else {
+      depth += pushes - pops;
+    }
+  }
+  if(whole && depth == words) {
+    return std::pair<size_t, size_t>(statement_pos, start_pos);
+  }
+
+  // not the value, or not all of it: walk back to where the store's words begin
+  long need = words;
+  size_t pos = start_pos;
+  while(need > 0) {
+    // running out of instructions means the words came from the caller
+    if(pos == 0) {
+      return not_found;
+    }
+    --pos;
+
+    long pops;
+    long pushes;
+    // more pushed than is still owed: the rest is for the code after the store
+    if(!EffectFreeStackUse(input_instrs[pos], pops, pushes) || pushes > need) {
+      return not_found;
+    }
+    need += pops - pushes;
+  }
+
+  return std::pair<size_t, size_t>(pos, start_pos);
 }
 
 IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
