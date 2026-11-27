@@ -366,6 +366,26 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (every library shipped today). native_callback/callback_lib.cpp is built four
     ways for this (no export, matching, newer ABI, other toolchain) and
     vm_native_abi.obs loads each.
+ 35. An exception that leaves the MAIN thread's interpreter while other threads
+    run ends the program by its status, never by a crash. Execute's catch used
+    to return at once, past the code that stops the program's threads when Main
+    returns: the loader freed the program under four interpreting workers and
+    8 runs in 300 of vm_error_exit_with_threads.obs under --jit=off ended with
+    an access violation on Windows x64. The failed run now takes the same way
+    out as a normal return (halt, wait, free the program only when the threads
+    have gone; with one still live, end the process without teardown). The
+    fixture runs 100 times under --jit=off and 25 by default and under --jit=1:
+    each run prints the internal-error line and exits with the plain failure
+    status.
+ 36. A memory limit that stops the VM from reserving the main thread's call and
+    operand stacks is an out-of-memory report, not an abort (POSIX only: an
+    address-space limit set with RLIMIT_AS). The reservation is made before the
+    program runs; it is now under Execute's own handler, where it used to leave
+    Execute and reach the entry point's backstop. Under limits from 96 MB to
+    1.5 GB with --call-depth at its maximum, every run either runs the program
+    or prints a line of the VM's own (out of memory, or the collector's when
+    the limit is below the nursery) and exits 1: no signal, no "terminate
+    called".
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -760,6 +780,9 @@ def main():
     check_loader_rejects_malformed(obc, obr, env, bin_dir)
     check_loader_refuses_changed(obc, obr, env, bin_dir)
     check_address_int_array(obc, obr, env, bin_dir)
+
+    check_error_exit_with_threads(obc, obr, env, bin_dir)
+    check_startup_memory_limit(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -2409,6 +2432,76 @@ def check_loader_refuses_changed(obc, obr, env, bin_dir):
                       rc == 1 and b"cleared 0" in out and b"not reached" not in out and
                       "Attempting to dereference a 'Nil' memory instance" in text,
                       f"rc={rc} out={out[-100:]!r} err={text[-200:]!r}")
+
+
+def check_error_exit_with_threads(obc, obr, env, bin_dir):
+    # ---- 35. the main thread's exception with other threads running -------------------
+    src = os.path.join(SCRIPT_DIR, "vm_error_exit_with_threads.obs")
+    with tempfile.TemporaryDirectory() as scratch:
+        dest = os.path.join(scratch, "vm_error_exit_with_threads.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("error-with-threads fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        line = b">>> virtual machine: internal error: deliberate test exception with threads running <<<"
+        # more runs interpreted: that is where the exception reaches Execute's catch, and the
+        # crash it guards against showed in about one run in forty
+        for label, flags, runs in (("jit=off", ["--jit=off"], 100), ("default", [], 25), ("jit=1", ["--jit=1"], 25)):
+            wrong = []
+            for _ in range(runs):
+                rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=120)
+                # Execute returns -1 on this path: 1 from the POSIX entry point, -1 on
+                # Windows; the JIT's bridge exits 1 on both. A crash is neither.
+                plain = rc == 1 or (os.name == "nt" and rc in (-1, 0xFFFFFFFF))
+                if not (plain and b"before" in out and b"after" not in out and line in err):
+                    wrong.append(f"rc={rc} out={out[-60:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+            check(f"an exception on the main thread with four threads running ends the program by "
+                  f"status, {runs} runs in {runs} ({label})", not wrong, f"{len(wrong)} run(s): {wrong[:2]}")
+
+
+def check_startup_memory_limit(obc, obr, env, bin_dir):
+    # ---- 36. the main thread's stacks under an address-space limit --------------------
+    if os.name == "nt":
+        print("  [SKIP] startup under an address-space limit (RLIMIT_AS is POSIX)")
+        return
+    import resource
+    with tempfile.TemporaryDirectory() as scratch:
+        src = os.path.join(scratch, "startup_limit.obs")
+        with open(src, "w") as f:
+            f.write('class StartupLimit { function : Main(args : String[]) ~ Nil { "started"->PrintLine(); } }\n')
+        dest = os.path.join(scratch, "startup_limit.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("startup-limit fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        def limited(megabytes):
+            def apply():
+                resource.setrlimit(resource.RLIMIT_AS, (megabytes << 20, megabytes << 20))
+            try:
+                p = subprocess.run([obr, "--call-depth=1048576", dest], cwd=bin_dir, env=env, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, timeout=120, preexec_fn=apply)
+            except subprocess.TimeoutExpired:
+                return -999, b"", b"<timed out>"
+            return p.returncode, p.stdout, p.stderr
+
+        ran = refused = 0
+        wrong = []
+        for megabytes in range(96, 1537, 16):
+            rc, out, err = limited(megabytes)
+            if rc == 0 and out.strip() == b"started":
+                ran += 1
+            elif rc == 1 and err.startswith(b">>> ") and b"terminate called" not in err:
+                # the VM's own line: the stacks' "out of memory", or the collector's when
+                # the limit is below the nursery ("Failed to allocate young generation region")
+                refused += 1
+            else:
+                wrong.append(f"{megabytes} MB: rc={rc} out={out[-40:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+        check("under every address-space limit the VM runs the program or refuses with a line of its own and exits 1",
+              not wrong, f"{len(wrong)} limit(s): {wrong[:3]}")
+        # the sweep is only a test while it crosses the boundary: both outcomes must occur
+        check("the limits swept include ones too small to start and ones large enough to run",
+              ran > 0 and refused > 0, f"ran={ran} refused={refused}")
 
 
 def check_address_int_array(obc, obr, env, bin_dir):

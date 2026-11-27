@@ -1,0 +1,67 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A C++ exception that leaves the MAIN thread's interpreter while other threads are
+running must end the program like any other failure: the VM's internal-error line
+and a non-zero exit status, not a crash.
+
+Execute (core/vm/vm.cpp) catches such an exception. Its catch used to print the
+line and return at once, past the code that stops the program's other threads when
+Main returns normally. The loader then freed the program (its classes, methods and
+instructions) while those threads were still interpreting it, and exit() ran its
+teardown under them. With the four workers below, 8 runs in 300 under --jit=off
+ended with an access violation (0xC0000005) instead of the failure status on
+Windows x64.
+
+The failed run now leaves by the same path as a normal return: the other threads
+are halted and waited for, the program is freed only once they have gone, and if
+one is still live after the wait (compiled code does not look at the halt flag)
+the process ends without teardown, as VmExit does for an error on any other path
+(#877, exit_with_live_threads.obs).
+
+The way in is Runtime->SetProperty("runtime.test.throw", ...), the key the VM
+reserves to throw on purpose (see vm_error_exit.obs). Under --jit=off, and by
+default while Main is interpreted, the exception reaches Execute's catch; with
+every method compiled the JIT's bridge reports it and ends the process itself.
+
+The regression runner passes this file on any non-zero exit with output, which a
+crash also is; run_vm_flag_tests.py (section 7) names the line and the status,
+many times over, under --jit=off, by default and under --jit=1.
+~#
+use System.Concurrency;
+
+class VmErrorBusyWorker from Thread {
+	New() {
+		Parent("vm-error-busy-worker");
+	}
+
+	function : Step(i : Int, j : Int) ~ Int {
+		return (i + j) % 7;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		# calls, so that an interpreted worker keeps reading the program's method
+		# table and instructions for as long as it runs
+		acc := 0;
+		for(i := 0; i < 2000000000; i += 1;) {
+			for(j := 0; j < 2000; j += 1;) {
+				acc += Step(i, j);
+			};
+		};
+		acc->PrintLine();
+	}
+}
+
+class VmErrorExitWithThreads {
+	function : Main(args : String[]) ~ Nil {
+		"before"->PrintLine();
+		workers := VmErrorBusyWorker->New[4];
+		each(i : workers) {
+			workers[i] := VmErrorBusyWorker->New();
+			workers[i]->Execute(Nil);
+		};
+		# let them get into their loops
+		Thread->Sleep(200);
+		Runtime->SetProperty("runtime.test.throw", "deliberate test exception with threads running");
+		"after"->PrintLine();
+	}
+}

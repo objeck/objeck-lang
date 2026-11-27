@@ -38,6 +38,27 @@
 // called exit(1) itself
 #define LOAD_ERROR 1
 
+// The VM's line for a C++ exception that left the interpreter, or its setup:
+// called from a catch, it rethrows to learn which. One copy, so the two places
+// in Execute cannot drift (a spawned thread's are in ExecuteThreadBody,
+// interpreter.cpp).
+static void ReportEscapedException()
+{
+  try {
+    throw;
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+  }
+  catch(...) {
+    std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+  }
+}
+
 // common execution point for all platforms
 #ifdef _WIN32
 int Execute(int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold)
@@ -99,31 +120,37 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 #ifdef _WIN32
     Runtime::StackInterpreter::SetBinaryStdio(is_stdio_binary);
 #endif
-    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram(), gc_threshold);
-    // reserved with the interpreter's call stack, which owns it (call_stack.h)
-    size_t* op_stack = intpr->GetOpStack();
+    // The interpreter's call stack and operand stack are reserved here
+    // (call_stack.h), and under a memory or address-space limit the reservation
+    // throws. It is reported as the same failure during the run is. No program
+    // thread exists yet, so there is nothing to stop before the loader frees the
+    // program.
+    Runtime::StackInterpreter* intpr = nullptr;
+    size_t* op_stack = nullptr;
+    try {
+      intpr = new Runtime::StackInterpreter(Loader::GetProgram(), gc_threshold);
+      // reserved with the interpreter's call stack, which owns it (call_stack.h)
+      op_stack = intpr->GetOpStack();
+    }
+    catch(...) {
+      ReportEscapedException();
+      delete stack_pos;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
     Runtime::StackInterpreter::AddThread(intpr);
+
+    // SUCCESS, or USAGE_ERROR when an exception left the interpreter. Either way
+    // the program is over and what follows is the one way out: the catch used to
+    // return on the spot, and `loader` then freed the program with every thread
+    // the program had started still running in it.
+    int status = SUCCESS;
     try {
       intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
     }
-    catch(const std::bad_alloc&) {
-      std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
-      delete stack_pos;
-      CleanUpCommandLine(argc, commands);
-      return USAGE_ERROR;
-    }
-    catch(const std::exception& e) {
-      const std::string msg(e.what());
-      std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
-      delete stack_pos;
-      CleanUpCommandLine(argc, commands);
-      return USAGE_ERROR;
-    }
     catch(...) {
-      std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
-      delete stack_pos;
-      CleanUpCommandLine(argc, commands);
-      return USAGE_ERROR;
+      ReportEscapedException();
+      status = USAGE_ERROR;
     }
 
     // Quiesce any still-running VM threads (e.g. web-server request workers)
@@ -150,6 +177,21 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       // UnloadNativeLibrariesAtExit). With a VM thread still live it is skipped,
       // as that thread may be inside one of those libraries.
       UnloadNativeLibrariesAtExit();
+    }
+
+    if(status != SUCCESS && !vm_threads_stopped) {
+      // The run failed and a VM thread is still live (compiled code does not
+      // observe Halt, nor does a thread parked in a syscall). Returning runs
+      // exit(), whose teardown would run under that thread: the rule VmExit
+      // follows for an error on any other path (#877) is to flush what the
+      // program wrote and end the process without teardown. The status is the
+      // one each entry point gives a failed run: 1 on POSIX (posix_main.cpp
+      // turns Execute's -1 into it), -1 on Windows.
+#ifdef _WIN32
+      MemoryManager::EndProcess(status, false);
+#else
+      MemoryManager::EndProcess(1, false);
+#endif
     }
 
 #ifdef _DEBUG
@@ -208,9 +250,9 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 #endif
 
     CleanUpCommandLine(argc, commands);
-    
-    return SUCCESS;
-  } 
+
+    return status;
+  }
   else {
     return USAGE_ERROR;
   }
