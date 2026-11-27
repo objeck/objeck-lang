@@ -379,7 +379,9 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     status.
  35. A memory limit that stops the VM from reserving the main thread's call and
     operand stacks is an out-of-memory report, not an abort (POSIX only: an
-    address-space limit set with RLIMIT_AS). The reservation is made before the
+    address-space limit set with RLIMIT_AS; skipped with a line on macOS, where
+    the limit cannot be lowered, on Windows, and wherever a probe child cannot
+    be started under one). The reservation is made before the
     program runs; it is now under Execute's own handler, where it used to leave
     Execute and reach the entry point's backstop. Under limits from 96 MB to
     1.5 GB with --call-depth at its maximum, every run either runs the program
@@ -2459,10 +2461,30 @@ def check_error_exit_with_threads(obc, obr, env, bin_dir):
                   f"status, {runs} runs in {runs} ({label})", not wrong, f"{len(wrong)} run(s): {wrong[:2]}")
 
 
+def address_space_limit_usable():
+    """None when a child process can be started under a lowered RLIMIT_AS, else the reason it
+    cannot. Darwin refuses the call (setrlimit raises "current limit exceeds maximum limit"),
+    Windows has no such limit, and a container may forbid it. Asked once, of a throwaway child,
+    so that the check below is skipped with a line instead of ending the whole script."""
+    if os.name == "nt" or sys.platform == "darwin":
+        return "RLIMIT_AS not enforced on this platform"
+    try:
+        import resource
+
+        def apply():
+            resource.setrlimit(resource.RLIMIT_AS, (1 << 30, 1 << 30))
+        p = subprocess.run([sys.executable, "-c", "pass"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           timeout=60, preexec_fn=apply)
+    except (ImportError, AttributeError, ValueError, OSError, subprocess.SubprocessError) as e:
+        return f"RLIMIT_AS cannot be set here: {type(e).__name__}: {e}"
+    return None if p.returncode == 0 else f"a child under RLIMIT_AS did not start (exit {p.returncode})"
+
+
 def check_startup_memory_limit(obc, obr, env, bin_dir):
     # ---- 36. the main thread's stacks under an address-space limit --------------------
-    if os.name == "nt":
-        print("  [SKIP] startup under an address-space limit (RLIMIT_AS is POSIX)")
+    reason = address_space_limit_usable()
+    if reason:
+        print(f"  [SKIP] startup under an address-space limit ({reason})")
         return
     import resource
     with tempfile.TemporaryDirectory() as scratch:
@@ -2483,12 +2505,19 @@ def check_startup_memory_limit(obc, obr, env, bin_dir):
                                    stderr=subprocess.PIPE, timeout=120, preexec_fn=apply)
             except subprocess.TimeoutExpired:
                 return -999, b"", b"<timed out>"
+            except (ValueError, OSError, subprocess.SubprocessError) as e:
+                # the limit could not be applied to this child: not the VM's doing
+                return None, b"", f"{type(e).__name__}: {e}".encode()
             return p.returncode, p.stdout, p.stderr
 
         ran = refused = 0
         wrong = []
         for megabytes in range(96, 1537, 16):
             rc, out, err = limited(megabytes)
+            if rc is None:
+                print(f"  [SKIP] startup under an address-space limit (the limit could not be applied at "
+                      f"{megabytes} MB: {err.decode(errors='replace')})")
+                return
             if rc == 0 and out.strip() == b"started":
                 ran += 1
             elif rc == 1 and err.startswith(b">>> ") and b"terminate called" not in err:
@@ -2499,9 +2528,14 @@ def check_startup_memory_limit(obc, obr, env, bin_dir):
                 wrong.append(f"{megabytes} MB: rc={rc} out={out[-40:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
         check("under every address-space limit the VM runs the program or refuses with a line of its own and exits 1",
               not wrong, f"{len(wrong)} limit(s): {wrong[:3]}")
-        # the sweep is only a test while it crosses the boundary: both outcomes must occur
-        check("the limits swept include ones too small to start and ones large enough to run",
-              ran > 0 and refused > 0, f"ran={ran} refused={refused}")
+        # the sweep is only a test while it crosses the boundary: both outcomes must occur. A
+        # system that accepts the limit and does not enforce it starts every run: that is said,
+        # not counted as the VM's failure.
+        if not wrong and refused == 0 and not sys.platform.startswith("linux"):
+            print("  [SKIP] the limits swept refuse nothing (RLIMIT_AS not enforced on this platform)")
+        else:
+            check("the limits swept include ones too small to start and ones large enough to run",
+                  ran > 0 and refused > 0, f"ran={ran} refused={refused}")
 
 
 def check_address_int_array(obc, obr, env, bin_dir):
