@@ -365,7 +365,8 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     program runs; it is now under Execute's own handler, where it used to leave
     Execute and reach the entry point's backstop. Under limits from 96 MB to
     1.5 GB with --call-depth at its maximum, every run either runs the program
-    or prints an out-of-memory line and exits 1: no signal, no "terminate
+    or prints a line of the VM's own (out of memory, or the collector's when
+    the limit is below the nursery) and exits 1: no signal, no "terminate
     called".
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
@@ -2190,11 +2191,13 @@ def check_startup_memory_limit(obc, obr, env, bin_dir):
             rc, out, err = limited(megabytes)
             if rc == 0 and out.strip() == b"started":
                 ran += 1
-            elif rc == 1 and b"out of memory" in err and b"terminate called" not in err:
+            elif rc == 1 and err.startswith(b">>> ") and b"terminate called" not in err:
+                # the VM's own line: the stacks' "out of memory", or the collector's when
+                # the limit is below the nursery ("Failed to allocate young generation region")
                 refused += 1
             else:
                 wrong.append(f"{megabytes} MB: rc={rc} out={out[-40:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
-        check("under every address-space limit the VM runs the program or reports out of memory and exits 1",
+        check("under every address-space limit the VM runs the program or refuses with a line of its own and exits 1",
               not wrong, f"{len(wrong)} limit(s): {wrong[:3]}")
         # the sweep is only a test while it crosses the boundary: both outcomes must occur
         check("the limits swept include ones too small to start and ones large enough to run",
