@@ -178,6 +178,39 @@ class NilGuardElement {
 		return cells[1]->Get() = 7 ? "kept" : "wrong";
 	}
 
+	# an element of a jagged array's row, and of an array a call returns: the row, or the
+	# array, is read once into a hidden local of its own, and its element is the one tested
+	function : Jagged(found : Bool) ~ String {
+		rows := Cell[]->New[3];
+		rows[1] := Cell->New[4];
+		rows[At(1)][At(2)] := Find(found) ?? return "left";
+		return rows[1][2]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	function : PlainJagged(found : Bool) ~ String {
+		rows := Cell[]->New[3];
+		rows[1] := Cell->New[4];
+		rows[At(1)][At(2)] := Find(found);
+		return rows[1][2] = Nil ? "nil" : "kept";
+	}
+
+	function : Shared() ~ Cell[] {
+		@@order += "a";
+		return @@shared;
+	}
+
+	function : CallElement(found : Bool) ~ String {
+		@@shared := Cell->New[2];
+		Shared()[At(1)] := Find(found) ?? return "left";
+		return @@shared[1]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	function : PlainCallElement(found : Bool) ~ String {
+		@@shared := Cell->New[2];
+		Shared()[At(1)] := Find(found);
+		return @@shared[1] = Nil ? "nil" : "kept";
+	}
+
 	# two guarded elements in one method: each has its own hidden locals
 	function : Two(first : Bool, second : Bool) ~ String {
 		cells := Cell->New[4];
@@ -226,6 +259,17 @@ class NilGuardElement {
 		Check("field, a value", o->Field(true), "kept", 1, 0, "v");
 		Check("a map lookup, Nil", FromMap("b"), "left", 0, 1, "i");
 		Check("a map lookup, a value", FromMap("a"), "kept", 0, 1, "i");
+		# the order is the one a plain assignment has, whatever that is
+		PlainJagged(true);
+		jagged_order := @@order;
+		Reset();
+		Check("jagged element, Nil", Jagged(false), "left", 1, 2, jagged_order);
+		Check("jagged element, a value", Jagged(true), "kept", 1, 2, jagged_order);
+		PlainCallElement(true);
+		call_order := @@order;
+		Reset();
+		Check("element of a call's array, Nil", CallElement(false), "left", 1, 1, call_order);
+		Check("element of a call's array, a value", CallElement(true), "kept", 1, 1, call_order);
 		Check("two guards, first Nil", Two(false, true), "left first", 1, 1, "vi");
 		Check("two guards, second Nil", Two(true, false), "left second", 2, 2, "vivi");
 		Check("two guards, values", Two(true, true), "kept", 2, 2, "vivi");
