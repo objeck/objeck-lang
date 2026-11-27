@@ -17,6 +17,10 @@
 # reason; a tool that ran and failed comes back as a result whose IsError() is
 # true, so a model can read the message and try again.
 #
+# Writing the schema and the handler by hand is the long way: mcp_declare_40
+# shows the same tools as plain functions marked @tool, with the schema and
+# the argument checks written for you.
+#
 # output:
 #   server: tour 1.0.0, protocol 2025-11-25
 #   tool: add - Add two integers
@@ -28,18 +32,21 @@
 ~#
 
 use API.MCP;
+use Data.JSON;
 use Collection;
 
 class McpTour {
 	function : Main(args : String[]) ~ Nil {
 		# the server: a name, a version, and two tools
 		server := McpService->New("tour", "1.0.0");
+		# each tool is a name, a description, a JSON Schema for its arguments and
+		# a function; a function can be named by itself where one is expected
 		server->AddTool("add", "Add two integers",
-			"{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"integer\"}},\"required\":[\"a\",\"b\"]}",
-			Func2Ref->New(McpTour->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+			json {"type": "object", "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}}, "required": ["a", "b"]}->ToString(),
+			McpTour->Add);
 		server->AddTool("shout", "Upper-case some text",
-			"{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}",
-			Func2Ref->New(McpTour->Shout(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+			json {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}->ToString(),
+			McpTour->Shout);
 
 		# the client: shake hands, then list and call
 		client := McpClient->InProcess(server);
@@ -54,16 +61,16 @@ class McpTour {
 			"tool: {$tool->GetName()} - {$tool->GetDescription()}"->PrintLine();
 		};
 
-		result := client->CallTool("add", "{\"a\":2,\"b\":3}");
+		result := client->CallTool("add", json {"a": 2, "b": 3});
 		"add(2, 3) = {$result->GetText()}"->PrintLine();
 
 		# a tool that ran and failed: a result with IsError()
-		bad := client->CallTool("add", "{\"a\":2}");
+		bad := client->CallTool("add", json {"a": 2});
 		if(bad->IsError()) {
 			"add(2) failed: {$bad->GetText()}"->PrintLine();
 		};
 
-		result := client->CallTool("shout", "{\"text\":\"objeck\"}");
+		result := client->CallTool("shout", json {"text": "objeck"});
 		"shout(\"objeck\") = {$result->GetText()}"->PrintLine();
 
 		# a request the server refused: Nil, with a reason and a JSON-RPC code

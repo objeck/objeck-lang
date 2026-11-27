@@ -37,10 +37,7 @@ class Ask implements AgentApprover {
 	method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
 		name := call->GetName();
 		allowed := <>name->Equals("delete_file");
-		verdict := "no";
-		if(allowed) {
-			verdict := "yes";
-		};
+		verdict := allowed ? "yes" : "no";
 		"  [approval asked for {$name}: {$verdict}]"->PrintLine();
 		return allowed;
 	}
@@ -85,14 +82,13 @@ class Tools {
 
 	function : Main(args : String[]) ~ Nil {
 		# what the "model" does: three tool calls in one turn, then an answer
-		calls := Vector->New()<AgentToolCall>;
-		calls->AddBack(AgentToolCall->New("1", "add", JsonParser->TextToElement("{\"a\":17,\"b\":25}")));
-		calls->AddBack(AgentToolCall->New("2", "note", JsonParser->TextToElement("{\"text\":\"the sum is 42\"}")));
-		calls->AddBack(AgentToolCall->New("3", "delete_file", JsonParser->TextToElement("{\"path\":\"old.txt\"}")));
-
-		script := Vector->New()<AgentReply>;
-		script->AddBack(AgentReply->AskAll(calls));
-		script->AddBack(AgentReply->Say("Added the numbers and made a note."));
+		calls : Vector<AgentToolCall> := [
+			AgentToolCall->New("1", "add", json {"a": 17, "b": 25}),
+			AgentToolCall->New("2", "note", json {"text": "the sum is 42"}),
+			AgentToolCall->New("3", "delete_file", json {"path": "old.txt"})];
+		script : Vector<AgentReply> := [
+			AgentReply->AskAll(calls),
+			AgentReply->Say("Added the numbers and made a note.")];
 
 		agent := Agent->New(ScriptedBackend->New(script), Registry());
 		agent->SetApprover(Ask->New())->SetApproveUnlessReadOnly(true);

@@ -16,7 +16,8 @@
 # The model is anything with a Complete(turns) method (the ChatFn interface).
 # The one below is a script of canned replies, one per call, so the program
 # runs offline and prints the same thing every time. A real model is another
-# ChatFn; nothing else changes.
+# ChatFn; nothing else changes. json_class_46 asks for the same kind of reply with
+# a class that is its own schema, class Person : json.
 #
 # output:
 #   prompt: Extract the person from: Ada Lovelace was 36 when she wrote it.
@@ -61,7 +62,8 @@ class ScriptedModel implements ChatFn {
 class StructuredTour {
 	function : Main(args : String[]) ~ Nil {
 		# the shape we require: a name and a whole-number age, nothing else
-		schema := JsonParser->TextToElement("{\"type\":\"object\",\"required\":[\"name\",\"age\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"age\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}");
+		fields := json {"name": {"type": "string", "minLength": 1}, "age": {"type": "integer", "minimum": 0}};
+		schema := json {"type": "object", "required": ["name", "age"], "properties": fields, "additionalProperties": false};
 
 		# a prompt template, filled in
 		template := PromptTemplate->New("Extract the person from: {{text}}");
@@ -70,7 +72,7 @@ class StructuredTour {
 		"prompt: {$prompt}"->PrintLine();
 
 		"--- a reply with the wrong type, then a corrected one"->PrintLine();
-		model := ScriptedModel->New(Replies("{\"name\":\"Ada\",\"age\":\"36\"}", "{\"name\":\"Ada\",\"age\":36}"));
+		model := ScriptedModel->New(Replies(json {"name": "Ada", "age": "36"}->ToString(), json {"name": "Ada", "age": 36}->ToString()));
 		outcome := StructuredCall->New(model, schema)->Ask(template, vars);
 		Show(outcome);
 
@@ -81,7 +83,7 @@ class StructuredTour {
 		ShowPerson(outcome);
 
 		"--- a model that never gets it right"->PrintLine();
-		model := ScriptedModel->New(Replies("{\"name\":\"Ada\",\"age\":\"old\"}", Nil));
+		model := ScriptedModel->New(Replies(json {"name": "Ada", "age": "old"}->ToString(), Nil));
 		outcome := StructuredCall->New(model, schema)->SetMaxRetries(2)->Ask("Who?");
 		"attempts: {$(outcome->GetAttempts())}, ok: {$(outcome->IsOk())}"->PrintLine();
 		last := outcome->GetErrors()->Get(0);

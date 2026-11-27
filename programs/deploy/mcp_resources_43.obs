@@ -64,7 +64,7 @@ class Docs {
 	function : WordCount(text : String) ~ Int {
 		count := 0;
 		in_word := false;
-		for(i := 0; i < text->Size(); i += 1;) {
+		each(i : text) {
 			if(text->Get(i) = ' ') {
 				in_word := false;
 			}
@@ -121,14 +121,14 @@ class McpResourcesDemo {
 		forecast := client->ReadResource("weather://Denver/forecast/3")->Get(0)->GetText();
 		"read weather://Denver/forecast/3  -> {$forecast}"->PrintLine();
 
-		review := client->GetPrompt("code_review", JsonParser->TextToElement("{\"language\":\"Objeck\"}"));
+		review := client->GetPrompt("code_review", json {"language": "Objeck"});
 		text := review->GetMessages()->Get(0)->Get("content")->Get("text")->GetString();
 		"prompt code_review(Objeck)        -> {$text}"->PrintLine();
-		review := client->GetPrompt("code_review", JsonParser->TextToElement("{\"language\":\"C\",\"focus\":\"style\"}"));
+		review := client->GetPrompt("code_review", json {"language": "C", "focus": "style"});
 		text := review->GetMessages()->Get(0)->Get("content")->Get("text")->GetString();
 		"prompt code_review(C, style)      -> {$text}"->PrintLine();
 
-		counted := client->CallTool("word_count", JsonParser->TextToElement("{\"text\":\"a b  c\"}"));
+		counted := client->CallTool("word_count", json {"text": "a b  c"});
 		count := counted->GetText();
 		"tool word_count(a b  c)           -> {$count}"->PrintLine();
 	}
