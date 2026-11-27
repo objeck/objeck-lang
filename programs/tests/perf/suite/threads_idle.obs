@@ -1,0 +1,43 @@
+#~
+Footprint fixture: threads_idle <threads> <sleep ms> <work>. Starts <threads> threads that each allocate
+<work> small strings and then sleep, so the harness can read the process's VmSize and VmRSS from /proc
+while they are parked: the cost of a thread that exists (native stack, VM stacks, allocator arena).
+~#
+use System.Concurrency;
+
+class Idle from Thread {
+	@ms : Int;
+	@work : Int;
+
+	New(ms : Int, work : Int) {
+		Parent("idle");
+		@ms := ms;
+		@work := work;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		total := 0;
+		for(i := 0; i < @work; i += 1;) {
+			total += "item {$i}"->Size();
+		};
+		Thread->Sleep(@ms);
+	}
+}
+
+class ThreadsIdle {
+	function : Main(args : String[]) ~ Nil {
+		count := args[0]->ToInt();
+		ms := args[1]->ToInt();
+		work := args[2]->ToInt();
+		threads := Idle->New[count];
+		for(i := 0; i < count; i += 1;) {
+			threads[i] := Idle->New(ms, work);
+			threads[i]->Execute(Nil);
+		};
+		"started"->PrintLine();
+		for(i := 0; i < count; i += 1;) {
+			threads[i]->Join();
+		};
+		"done"->PrintLine();
+	}
+}
