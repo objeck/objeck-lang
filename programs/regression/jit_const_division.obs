@@ -1,0 +1,127 @@
+#~
+n / d and n % d for a constant d give what the divide instruction gives.
+
+A compiled method divides by a constant with a multiply by a precomputed
+"magic" pair (core/vm/arch/jit/magic_div.h), by a shift for a power of two,
+a negation for -1, and nothing at all for 1. The same division with the
+divisor read from an array at run time goes through the divide instruction.
+The two must agree for every dividend, the extremes and the multiples of the
+divisor included, and for the divisors a compiled method treats specially.
+
+A constant 0 is not here: it must raise the divide-by-zero error
+(bad_div_zero_folded.obs, bad_mod_zero.obs), which is why the compiled code
+keeps the divide instruction for it and never asks for a magic pair.
+~#
+class JitConstDivision {
+	function : D2(n : Int) ~ Int { return n / 2; }
+	function : M2(n : Int) ~ Int { return n % 2; }
+	function : D3(n : Int) ~ Int { return n / 3; }
+	function : M3(n : Int) ~ Int { return n % 3; }
+	function : D7(n : Int) ~ Int { return n / 7; }
+	function : M7(n : Int) ~ Int { return n % 7; }
+	function : D10(n : Int) ~ Int { return n / 10; }
+	function : M10(n : Int) ~ Int { return n % 10; }
+	function : D641(n : Int) ~ Int { return n / 641; }
+	function : M641(n : Int) ~ Int { return n % 641; }
+	function : D4096(n : Int) ~ Int { return n / 4096; }
+	function : M4096(n : Int) ~ Int { return n % 4096; }
+	function : DBig(n : Int) ~ Int { return n / 1000000007; }
+	function : MBig(n : Int) ~ Int { return n % 1000000007; }
+	function : DHuge(n : Int) ~ Int { return n / 4611686018427387905; }
+	function : MHuge(n : Int) ~ Int { return n % 4611686018427387905; }
+	function : DN2(n : Int) ~ Int { return n / -2; }
+	function : MN2(n : Int) ~ Int { return n % -2; }
+	function : DN3(n : Int) ~ Int { return n / -3; }
+	function : MN3(n : Int) ~ Int { return n % -3; }
+	function : DN10(n : Int) ~ Int { return n / -10; }
+	function : MN10(n : Int) ~ Int { return n % -10; }
+	function : DN4096(n : Int) ~ Int { return n / -4096; }
+	function : MN4096(n : Int) ~ Int { return n % -4096; }
+	function : D1(n : Int) ~ Int { return n / 1; }
+	function : M1(n : Int) ~ Int { return n % 1; }
+
+	# the divisor is a value the compiler cannot see: the divide instruction
+	function : Div(n : Int, ds : Int[], i : Int) ~ Int { return n / ds[i]; }
+	function : Mod(n : Int, ds : Int[], i : Int) ~ Int { return n % ds[i]; }
+
+	function : Check(what : String, n : Int, got : Int, want : Int) ~ Int {
+		if(got <> want) {
+			"  FAIL: {$n} {$what} = {$got}, the divide instruction gives {$want}"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ds := [2, 3, 7, 10, 641, 4096, 1000000007, 4611686018427387905, -2, -3, -10, -4096, 1];
+
+		max := 9223372036854775807;
+		min := 0 - max - 1;
+		seeds := [0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 99, 100, 640, 641, 642, 4095, 4096, 4097,
+			1000000006, 1000000007, 1000000008, 2147483647, 2147483648, 4294967295, 4294967296,
+			4611686018427387904, 4611686018427387905, 4611686018427387906, 9223372036854775806, 9223372036854775807];
+
+		failed := 0;
+		# every seed, its negation, and (once) the minimum; enough calls to compile each method
+		each(round : 3) {
+			each(s : seeds) {
+				each(sign : 3) {
+					n := seeds[s];
+					if(sign = 1) {
+						n := 0 - n;
+					}
+					else if(sign = 2) {
+						n := min + s;
+					};
+
+					failed += Check("/ 2", n, D2(n), Div(n, ds, 0));
+					failed += Check("% 2", n, M2(n), Mod(n, ds, 0));
+					failed += Check("/ 3", n, D3(n), Div(n, ds, 1));
+					failed += Check("% 3", n, M3(n), Mod(n, ds, 1));
+					failed += Check("/ 7", n, D7(n), Div(n, ds, 2));
+					failed += Check("% 7", n, M7(n), Mod(n, ds, 2));
+					failed += Check("/ 10", n, D10(n), Div(n, ds, 3));
+					failed += Check("% 10", n, M10(n), Mod(n, ds, 3));
+					failed += Check("/ 641", n, D641(n), Div(n, ds, 4));
+					failed += Check("% 641", n, M641(n), Mod(n, ds, 4));
+					failed += Check("/ 4096", n, D4096(n), Div(n, ds, 5));
+					failed += Check("% 4096", n, M4096(n), Mod(n, ds, 5));
+					failed += Check("/ 1000000007", n, DBig(n), Div(n, ds, 6));
+					failed += Check("% 1000000007", n, MBig(n), Mod(n, ds, 6));
+					failed += Check("/ 4611686018427387905", n, DHuge(n), Div(n, ds, 7));
+					failed += Check("% 4611686018427387905", n, MHuge(n), Mod(n, ds, 7));
+					failed += Check("/ -2", n, DN2(n), Div(n, ds, 8));
+					failed += Check("% -2", n, MN2(n), Mod(n, ds, 8));
+					failed += Check("/ -3", n, DN3(n), Div(n, ds, 9));
+					failed += Check("% -3", n, MN3(n), Mod(n, ds, 9));
+					failed += Check("/ -10", n, DN10(n), Div(n, ds, 10));
+					failed += Check("% -10", n, MN10(n), Mod(n, ds, 10));
+					failed += Check("/ -4096", n, DN4096(n), Div(n, ds, 11));
+					failed += Check("% -4096", n, MN4096(n), Mod(n, ds, 11));
+					failed += Check("/ 1", n, D1(n), Div(n, ds, 12));
+					failed += Check("% 1", n, M1(n), Mod(n, ds, 12));
+				};
+			};
+		};
+
+		# hand-computed, so the two paths cannot agree on a wrong answer
+		failed += Check("/ 7 (by hand)", -50, D7(-50), -7);
+		failed += Check("% 7 (by hand)", -50, M7(-50), -1);
+		failed += Check("/ -3 (by hand)", 10, DN3(10), -3);
+		failed += Check("% -3 (by hand)", 10, MN3(10), 1);
+		failed += Check("/ 10 (by hand)", max, D10(max), 922337203685477580);
+		failed += Check("% 10 (by hand)", max, M10(max), 7);
+		failed += Check("/ 10 (by hand)", min, D10(min), -922337203685477580);
+		failed += Check("% 10 (by hand)", min, M10(min), -8);
+		failed += Check("/ 4096 (by hand)", -4097, D4096(-4097), -1);
+		failed += Check("% 4096 (by hand)", -4097, M4096(-4097), -1);
+
+		if(failed = 0) {
+			"PASS: constant division"->PrintLine();
+		}
+		else {
+			"FAIL: {$failed} constant division(s) differ"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
