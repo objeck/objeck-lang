@@ -801,6 +801,7 @@ def main():
     check_file_fifo_gc_park(obc, obr, env, bin_dir)
     check_fifo_line_ack(obc, obr, env, bin_dir)
     check_tls_byte_read_eof(obc, obr, env, bin_dir)
+    check_tls_listen_close_race(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
@@ -3573,6 +3574,35 @@ def check_tls_byte_read_eof(obc, obr, env, bin_dir):
             check(f"TLS Byte[] read at the end of the stream {jit}: returns 0 and stores nothing",
                   rc == 0 and b"PASS: tls_byte_read_eof read" in out,
                   f"rc={rc} server={served} out={out[-300:]!r} err={err[-300:]!r}")
+
+
+def check_tls_listen_close_race(obc, obr, env, bin_dir):
+    # ---- Close() while another thread is inside Listen() -----------------------------
+    # tls_listen_close_race.obs closes a TLS (and a DTLS) server 250 ms into a Listen()
+    # that OBJECK_NATIVE_TEST_PAUSE holds for 600 ms at one of two points: just after the
+    # server object has been given its native context, and just before. Listen() used to
+    # store the context and then read the bound port through it (a DTLS server wrote to it
+    # too); a Close() in between freed it. The program checks what a program can see: the
+    # Listen() returns, a second Close() leaves the port free. The use of freed memory
+    # itself is what an AddressSanitizer build of obr reports here before the change.
+    dest = compile_fixture(obc, "tls_listen_close_race", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] Close() during Listen(): no openssl command to make a certificate")
+            return
+        cert, key = made
+        for kind in ("tls", "dtls"):
+            for point in ("published", "publishing"):
+                paused = dict(env)
+                paused["OBJECK_NATIVE_TEST_PAUSE"] = f"{kind}-listen-{point}=600"
+                rc, out, err = run([obr, dest, kind, cert, key], env=paused, cwd=SCRIPT_DIR)
+                check(f"{kind} server closed while Listen() is paused just {'after' if point == 'published' else 'before'} "
+                      "it has its context: Listen() returns and the port is left free",
+                      rc == 0 and b"PASS: tls_listen_close_race run" in out,
+                      f"rc={rc} out={out[-300:]!r} err={err[-600:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):

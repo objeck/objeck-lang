@@ -7354,17 +7354,25 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       mbedtls_ssl_conf_own_cert(&srv->conf, &srv->srvcert, &srv->pkey);
 
-      // test points: just before, and just after, the object is given its context
-      NativeTestPause("tls-listen-publishing");
-      instance[0] = (size_t)srv;
-      instance[1] = 0;
-      instance[2] = 0;
-      NativeTestPause("tls-listen-published");
-      // @port: the port bound, which for a port of 0 the system chose
+      // @port: the port bound, which for a port of 0 the system chose. Asked for while the context
+      // is still this thread's alone.
       const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
-      if(bound_port > 0) {
-        instance[6] = bound_port;
+
+      // The object is given its context last, whole, and under the lock every other trap reads it
+      // under: from that moment a Close() on another thread can drop the only reference and free it.
+      // It used to be stored first and asked for its port afterwards, through a pointer a Close() in
+      // between had freed. Nothing below this block touches 'srv'.
+      NativeTestPause("tls-listen-publishing");   // test point: just before the object has its context
+      {
+        std::lock_guard<std::mutex> guard(tls_context_lock);
+        instance[0] = (size_t)srv;
+        instance[1] = 0;
+        instance[2] = 0;
+        if(bound_port > 0) {
+          instance[6] = bound_port;
+        }
       }
+      NativeTestPause("tls-listen-published");    // test point: just after
 
       PushInt(1, op_stack, stack_pos);
       return;
@@ -12925,21 +12933,30 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
       srv->peers = new DtlsPeerTable();
 #endif
 
-      // test points: just before, and just after, the object is given its context
-      NativeTestPause("dtls-listen-publishing");
-      instance[0] = (size_t)srv;
-      instance[1] = 0;
-      instance[2] = 0;
-      NativeTestPause("dtls-listen-published");
       // @port: the port bound, which for a port of 0 the system chose. srv->port
       // follows it too: the wildcard listener each accept binds afresh
       // (DtlsAccept, IPSocket::BindAny(srv->port)) must take this port again,
-      // not another one of the system's choosing.
+      // not another one of the system's choosing. Both while the context is still
+      // this thread's alone.
       const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
       if(bound_port > 0) {
         srv->port = bound_port;
-        instance[6] = bound_port;
       }
+
+      // The object is given its context last, whole, and under the lock every other trap reads it
+      // under (see SecureServerListen): it was stored first, and then read and written through a
+      // pointer that a Close() in between had freed. Nothing below this block touches 'srv'.
+      NativeTestPause("dtls-listen-publishing");   // test point: just before the object has its context
+      {
+        std::lock_guard<std::mutex> guard(tls_context_lock);
+        instance[0] = (size_t)srv;
+        instance[1] = 0;
+        instance[2] = 0;
+        if(bound_port > 0) {
+          instance[6] = bound_port;
+        }
+      }
+      NativeTestPause("dtls-listen-published");    // test point: just after
 
       PushInt(1, op_stack, stack_pos);
       return;
