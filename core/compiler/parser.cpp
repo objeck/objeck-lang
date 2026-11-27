@@ -11934,6 +11934,26 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     ok = false;
   };
 
+  // After an error where a setting starts: on to the next setting, past the ';' that ends this one, or to the
+  // '}' that closes the agent. What is inside parentheses, brackets or braces is skipped whole. A ')' or ']'
+  // that closes nothing is one more token to skip: counted, it took the depth below zero, the agent's own '}'
+  // was then read as nested, and the rest of the file was skipped as part of the agent with its errors unsaid.
+  auto next_setting = [&]() {
+    int nesting = 0;
+    while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+      if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+        ++nesting;
+      }
+      else if(nesting > 0 && (Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE))) {
+        --nesting;
+      }
+      NextToken();
+    }
+    if(Match(TOKEN_SEMI_COLON)) {
+      NextToken();
+    }
+  };
+
   // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket when
   // 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
   // the piece too: the parenthesis is then reported as not closed, where it is. Leaves the scanner on the
@@ -12100,20 +12120,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     if(!Match(TOKEN_IDENT)) {
       fail(key_line, key_pos, L"Expected a setting of the agent '" + name + L"', found " + scanner->DescribeToken(scanner->GetToken()) +
            L"\n\tAn agent has " + settings + L", each written 'name : value;'");
-      // on to the next setting
-      int nesting = 0;
-      while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
-        if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
-          ++nesting;
-        }
-        else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
-          --nesting;
-        }
-        NextToken();
-      }
-      if(Match(TOKEN_SEMI_COLON)) {
-        NextToken();
-      }
+      next_setting();
       continue;
     }
     const std::wstring key = scanner->GetToken()->GetIdentifier();
@@ -12133,20 +12140,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     if(is_budget) {
       if(!Match(TOKEN_OPEN_BRACE)) {
         fail(GetLineNumber(), GetLinePosition(), L"Expected '{' after 'budget': the limits are written 'budget { steps : 8; tokens : 5000; }'");
-        // on to the next setting
-        int nesting = 0;
-        while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
-          if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
-            ++nesting;
-          }
-          else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
-            --nesting;
-          }
-          NextToken();
-        }
-        if(Match(TOKEN_SEMI_COLON)) {
-          NextToken();
-        }
+        next_setting();
         continue;
       }
       NextToken();

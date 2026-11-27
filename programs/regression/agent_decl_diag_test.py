@@ -293,6 +293,33 @@ def main():
         errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
         check("a budget without braces is one error", len(errors) == 1, out)
 
+        # A ')' or ']' that closes nothing, where a setting starts or after 'budget': the declaration still ends
+        # at its own '}', so a mistake in the class after it is reported, at its place. (The stray token used
+        # to take the recovery's depth below zero; the agent's '}' was then skipped as nested, the rest of the
+        # file was read as part of the agent, and the later mistake was never reported.)
+        later = "\nclass Later {\n\tfunction : F() ~ Int {\n\t\treturn 1 +;\n\t}\n}\n"
+        for label, body, first in (
+                ("a stray ')' where a setting starts", "agent Broken { ); }\n", "Expected a setting of the agent 'Broken', found ')'"),
+                ("a stray ']' where a setting starts", "agent Broken { ]; }\n", "Expected a setting of the agent 'Broken', found ']'"),
+                ("a stray ')' with no ';' after it", "agent Broken {\n\t)\n}\n", "Expected a setting of the agent 'Broken', found ')'"),
+                ("a stray ')' after 'budget'", "agent Broken { budget ); }\n", "Expected '{' after 'budget'"),
+                ("a stray ']' after 'budget'", "agent Broken {\n\tbudget ] 8;\n}\n", "Expected '{' after 'budget'")):
+            text = HEAD + body + later
+            line, col = where(text, ";\n\t}\n}\n", len(HEAD))
+            code, out, obe = compile_files("stray", {"main.obs": text})
+            errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+            check("%s: the mistake in the class after the agent is still reported, at line %d, column %d" % (label, line, col),
+                  code != 0 and not os.path.exists(obe) and first in out and any("Expected expression" in l and ":(%d,%d):" % (line, col) in l for l in errors), out)
+            check("  and nothing else is: the agent's two errors and that one", len(errors) == 3 and "has no backend" in out, out)
+            # with nothing wrong after it, the agent's errors are the only ones
+            code, out, obe = compile_files("stray_alone", {"main.obs": HEAD + body})
+            errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+            check("%s: the rest of the file is read as before" % label, code != 0 and len(errors) == 2 and first in out and "has no backend" in out, out)
+        # brackets that do pair are still skipped whole: the ';' inside them does not end the setting
+        code, out, obe = compile_files("paired", {"main.obs": HEAD + "agent Broken { (a; b) [c; d] {e; f}; backend : API.Agent.ScriptedBackend->New(Nil); }\n" + later})
+        errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+        check("paired brackets where a setting starts are skipped whole", code != 0 and len(errors) == 2 and "found '('" in out and "Expected expression" in out, out)
+
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_decl_test.obs"), encoding="utf-8") as f:
             source = f.read()
         accepted, refused, findings = syntax_mutants.smoke(bin_dir, [source], LIBS + ",llm_util,regex", work, 300, 20261126)
