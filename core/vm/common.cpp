@@ -215,7 +215,11 @@ static std::atomic<unsigned> pending_signals(0);   // bit 0: SIGINT, bit 1: SIGT
 static_assert(std::atomic<unsigned>::is_always_lock_free, "the signal handler needs a lock-free flag word");
 static thread_local bool raised_from_vm = false;   // inside Runtime->RaiseSignal on this thread
 static std::mutex signal_table_lock;               // guards signal_handler_func for the dispatcher
-static bool signal_dispatch_ready = false;         // the dispatcher thread and its wake-up exist
+// The dispatcher thread and its wake-up exist. Read by the signal handler, so a lock-free atomic; set
+// once, under signal_dispatch_start_lock, after the wake-up is published and the thread has started.
+static std::atomic<bool> signal_dispatch_ready(false);
+static_assert(std::atomic<bool>::is_always_lock_free, "the signal handler needs a lock-free ready flag");
+static std::mutex signal_dispatch_start_lock;      // one thread at a time starts the dispatcher
 // Shutdown handshake. The dispatcher thread outlives the program's main thread, and a handler it starts
 // after the VM has begun to tear the program down would run against freed classes and JIT code. A handler
 // is counted in BEFORE it checks the flag and the stopper sets the flag BEFORE it looks at the count, so
@@ -243,17 +247,22 @@ static void QueueSignal(unsigned bit)
 #endif
 }
 
-// the VM thread that runs queued signals' Objeck handlers
-static void SignalDispatchLoop()
+// the VM thread that runs queued signals' Objeck handlers; 'wake' is its end of the wake-up (the event,
+// or the pipe's read end), handed over by value so the thread never reads a global that is being set
+#ifdef _WIN32
+static void SignalDispatchLoop(HANDLE wake)
+#else
+static void SignalDispatchLoop(int wake)
+#endif
 {
   for(;;) {
 #ifdef _WIN32
-    if(WaitForSingleObject(signal_wake_event, INFINITE) != WAIT_OBJECT_0) {
+    if(WaitForSingleObject(wake, INFINITE) != WAIT_OBJECT_0) {
       return;
     }
 #else
     char drain[64];
-    const ssize_t count = read(signal_wake_pipe[0], drain, sizeof(drain));
+    const ssize_t count = read(wake, drain, sizeof(drain));
     if(count < 0 && errno == EINTR) {
       continue;
     }
@@ -281,45 +290,86 @@ static void SignalDispatchLoop()
   }
 }
 
-// creates the wake-up and starts the dispatcher once; false leaves signals inline
+// Test hook: OBJECK_SIGNAL_TEST_FAULT=wake makes the wake-up fail to be created and =thread makes the
+// dispatcher thread fail to start, the two failures StartSignalDispatch has to survive and that cannot
+// otherwise be produced on demand. Read only while the dispatcher is being started.
+static bool SignalDispatchFault(const char* stage)
+{
+#ifdef _WIN32
+  char value[16] = {0};
+  size_t len = 0;
+  return !getenv_s(&len, value, sizeof(value), "OBJECK_SIGNAL_TEST_FAULT") && !strcmp(value, stage);
+#else
+  const char* value = std::getenv("OBJECK_SIGNAL_TEST_FAULT");
+  return value && !strcmp(value, stage);
+#endif
+}
+
+// Creates the wake-up and starts the dispatcher, once. Two VM threads registering their first SIGINT
+// and SIGTERM handlers at the same moment both found the dispatcher missing and each made a wake-up and
+// a thread: the first pipe (or event) and its thread were left behind, and the globals were written by
+// two threads at once. One thread at a time now, and the wake-up and the ready flag are published only
+// after the thread has started. False means there is no dispatcher and nothing is left open: the caller
+// must not install an operating-system handler for SIGINT or SIGTERM (see AddSignalHandler).
 static bool StartSignalDispatch()
 {
-  if(signal_dispatch_ready) {
+  std::lock_guard<std::mutex> guard(signal_dispatch_start_lock);
+  if(signal_dispatch_ready.load()) {
     return true;
   }
 #ifdef _WIN32
-  signal_wake_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-  if(!signal_wake_event) {
+  HANDLE wake_event = SignalDispatchFault("wake") ? nullptr : CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  if(!wake_event) {
     return false;
   }
 #else
-  if(pipe(signal_wake_pipe) != 0) {
+  int wake_pipe[2] = {-1, -1};
+  if(SignalDispatchFault("wake") || pipe(wake_pipe) != 0) {
     return false;
   }
   // close-on-exec is best effort: a pipe end inherited across exec is harmless, so a failure here is tolerated
   // (Coverity CID 1689664). The write end MUST be non-blocking: the signal handler writes to it, and a blocking
   // write there could hang the process, so a failure to set that flag fails the dispatcher like pipe() does.
   for(int i = 0; i < 2; ++i) {
-    const int fd_flags = fcntl(signal_wake_pipe[i], F_GETFD);
+    const int fd_flags = fcntl(wake_pipe[i], F_GETFD);
     if(fd_flags != -1) {
-      (void)fcntl(signal_wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
+      (void)fcntl(wake_pipe[i], F_SETFD, fd_flags | FD_CLOEXEC);
     }
   }
-  const int status_flags = fcntl(signal_wake_pipe[1], F_GETFL);
-  if(status_flags == -1 || fcntl(signal_wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
-    close(signal_wake_pipe[0]);
-    close(signal_wake_pipe[1]);
-    signal_wake_pipe[0] = signal_wake_pipe[1] = -1;
+  const int status_flags = fcntl(wake_pipe[1], F_GETFL);
+  if(status_flags == -1 || fcntl(wake_pipe[1], F_SETFL, status_flags | O_NONBLOCK) == -1) {
+    close(wake_pipe[0]);
+    close(wake_pipe[1]);
     return false;
   }
 #endif
+  // a thread that cannot be started leaves no wake-up behind (the pipe or event leaked before)
   try {
-    std::thread(SignalDispatchLoop).detach();
+    if(SignalDispatchFault("thread")) {
+      throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+    }
+#ifdef _WIN32
+    std::thread(SignalDispatchLoop, wake_event).detach();
+#else
+    std::thread(SignalDispatchLoop, wake_pipe[0]).detach();
+#endif
   }
   catch(const std::system_error&) {
+#ifdef _WIN32
+    CloseHandle(wake_event);
+#else
+    close(wake_pipe[0]);
+    close(wake_pipe[1]);
+#endif
     return false;
   }
-  signal_dispatch_ready = true;
+#ifdef _WIN32
+  signal_wake_event = wake_event;
+#else
+  signal_wake_pipe[0] = wake_pipe[0];
+  signal_wake_pipe[1] = wake_pipe[1];
+#endif
+  signal_dispatch_ready.store(true);
   return true;
 }
 
@@ -350,13 +400,19 @@ StackMethod* StackProgram::FindSignalHandler(long key)
 
 bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 {
+  // SIGINT and SIGTERM arrive from outside at any moment, and their Objeck handler can only run safely on
+  // the dispatcher thread. Without one (no pipe or event, no thread) the handler is NOT registered and
+  // the signal keeps the disposition it had: this used to ignore the failure and install the handler
+  // anyway, which then ran the method inside the operating system's handler, where an allocation or a
+  // lock can deadlock the thread it interrupted. The trap fails, as for a signal id that does not exist.
+  if((signal_id == VM_SIGINT || signal_id == VM_SIGTERM) && !StartSignalDispatch()) {
+    std::wcerr << L">>> Unable to start the signal dispatcher: no handler was set for signal " << signal_id << L" <<<" << std::endl;
+    return false;
+  }
+
   {
     std::lock_guard<std::mutex> guard(signal_table_lock);
     signal_handler_func.insert(std::make_pair(signal_id, mthd));
-  }
-
-  if(signal_id == VM_SIGINT || signal_id == VM_SIGTERM) {
-    StartSignalDispatch();
   }
 
   switch(signal_id) {
@@ -4029,6 +4085,100 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
   return true;
 }
 
+//
+// ReadBuffer(offset, num, Char[]) on a byte stream (the console, a file, a pipe, a TCP or TLS socket)
+//
+// The read is of up to 'num' BYTES, which are UTF-8, and what it stores and returns is the CHARACTERS
+// they decode to: never more than 'num', fewer when the text is not all ASCII. Two things follow.
+//
+// The count returned is of characters, for every stream. A file, a pipe and a UDP socket returned the
+// byte count instead, so a caller advancing by it stepped over slots that had not been written.
+//
+// A read never ends inside a character. The 'num' bytes can end part way through a multi-byte
+// character; decoded on their own those bytes are not UTF-8 (on POSIX the whole chunk then decoded to
+// nothing, on Windows to U+FFFD), and the next read began with the character's other half, so a
+// character on a read boundary was lost. The bytes the last character still lacks, at most three, are
+// read as well (ReadUtf8Tail), so the stream is left on a character boundary and every other reader
+// (ReadByte, ReadLine, the Byte[] ReadBuffer, Seek) finds it where it expects. A stream that really ends
+// inside a character gives U+FFFD for it (DecodeCharRead).
+//
+// Datagrams (UDP, DTLS) are whole messages: nothing more is read for one that was cut short.
+//
+static const size_t UTF8_TAIL_MAX = 3;
+
+// The bytes the UTF-8 character that ends [buf, buf + len) still lacks: 0 when the bytes end on a whole
+// character, or on bytes that do not start one. 'tail' is given how many bytes of that character are there.
+static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullptr)
+{
+  for(size_t back = 1; back <= 4 && back <= len; ++back) {
+    const unsigned char c = (unsigned char)buf[len - back];
+    if((c & 0xC0) == 0x80) {
+      continue;   // a continuation byte: its lead byte is further back
+    }
+    const size_t whole = (c >= 0xC2 && c <= 0xDF) ? 2 : (c >= 0xE0 && c <= 0xEF) ? 3 : (c >= 0xF0 && c <= 0xF4) ? 4 : 1;
+    if(whole > back) {
+      if(tail) {
+        *tail = back;
+      }
+      return whole - back;
+    }
+    return 0;
+  }
+  return 0;
+}
+
+// Completes the character that ends the 'len' bytes just read into 'buf' (room for UTF8_TAIL_MAX more):
+// read_more(dest, count) reads up to 'count' further bytes and returns how many, 0 or less when the
+// stream has no more. Returns the new length. No VM heap is touched: callable while parked.
+template<typename ReadMore>
+static size_t ReadUtf8Tail(char* buf, size_t len, ReadMore read_more)
+{
+  const size_t missing = Utf8TailMissing(buf, len);
+  size_t added = 0;
+  while(added < missing) {
+    const long long got = (long long)read_more(buf + len + added, missing - added);
+    if(got <= 0) {
+      break;
+    }
+    added += (size_t)got;
+  }
+  return len + added;
+}
+
+// The characters in the 'len' bytes read for a request of 'num' (buf has room for a terminator). A
+// character the stream ended inside is U+FFFD, and the rest still decodes. At most 'num' characters:
+// only where a Char is 16 bits can there be one more (a character outside the BMP is two, and its four
+// bytes may be the last byte asked for plus three completed), and then that character is U+FFFD too
+// rather than half a pair, or a write past the slots the caller named.
+static std::wstring DecodeCharRead(char* buf, size_t len, size_t num)
+{
+  size_t tail = 0;
+  const bool torn = Utf8TailMissing(buf, len, &tail) > 0;
+  buf[torn ? len - tail : len] = '\0';
+  std::wstring in = BytesToUnicode(buf);
+  if(torn) {
+    in.push_back((wchar_t)0xFFFD);
+  }
+  if(in.size() > num) {
+    in.resize(num);
+    if(num > 0 && in[num - 1] >= (wchar_t)0xD800 && in[num - 1] <= (wchar_t)0xDBFF) {
+      in[num - 1] = (wchar_t)0xFFFD;
+    }
+  }
+  return in;
+}
+
+// A socket read's or write's 'num' operand as the int the socket calls take. The operand is an Int, 64
+// bits, and was cut to a long or an int BEFORE it was checked against the array: on Windows, where a
+// long is 32 bits, 4294967297 arrived as 1 and passed (and a negative count could arrive positive).
+// Out-of-range values now stay out of range: a count too large is INT_MAX, which the check against the
+// array refuses for any array a socket call could fill, and a negative one is -1.
+static inline int SocketCount(size_t operand)
+{
+  const INT64_VALUE num = (INT64_VALUE)operand;
+  return num > INT_MAX ? INT_MAX : (num < 0 ? -1 : (int)num);
+}
+
 bool TrapProcessor::StdInByteAryLen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -4074,7 +4224,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
 
   if(array && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     // allocate temporary buffer
-    char* byte_buffer = new char[num * 2 + 1];
+    char* byte_buffer = new char[num + UTF8_TAIL_MAX + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry): the temp
     // is sized for 'num' and offset was checked against the destination, so a
     // large offset overflowed the heap allocation. A console read waits for
@@ -4082,11 +4232,12 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     size_t read = fread(byte_buffer, 1, num, stdin);
+    // never stop inside a character (see ReadUtf8Tail)
+    read = ReadUtf8Tail(byte_buffer, read, [](char* at, size_t count) { return fread(at, 1, count, stdin); });
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read) {
-      byte_buffer[read] = '\0';
-      std::wstring in = BytesToUnicode(byte_buffer);
+      std::wstring in = DecodeCharRead(byte_buffer, read, (size_t)num);
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
@@ -6424,7 +6575,11 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
         if(ret == 0) {
-          mbedtls_ssl_set_bio(&client->ssl, &client->net, TlsNetSend, TlsNetRecv, nullptr);
+          // Record I/O through the socket's own context, as a connecting socket's is (IPSecureSocket::Open):
+          // TlsBioRecv holds every read, the handshake's among them, to the deadline SetDeadline stores in
+          // the context. This used TlsNetRecv, which never looks at it, so SetDeadline on an accepted
+          // connection did nothing and a peer sending a byte now and then held the read as long as it liked.
+          mbedtls_ssl_set_bio(&client->ssl, client, TlsBioSend, TlsBioRecv, nullptr);
         }
       }
       MemoryManager::EndBlocking();
@@ -7624,7 +7779,7 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const int num = (int)PopInt(op_stack, stack_pos);
+  const int num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -7654,7 +7809,7 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -7668,10 +7823,11 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
+    // the characters stored, as every Char[] read returns (this returned the datagram's bytes), or -1
+    INT64_VALUE stored = read < 0 ? -1 : 0;
     // only terminate/decode when bytes were read
     if(read > -1) {
-      byte_buffer[read] = '\0';
-      std::wstring in(BytesToUnicode(byte_buffer));
+      std::wstring in(DecodeCharRead(byte_buffer, (size_t)read, (size_t)num));
 
       // copy and remove file BOM UTF (8, 16, 32)
       if(in.size() > 0 && IsByteOrderMark(in[0])) {
@@ -7680,13 +7836,14 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
 
       // copy
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
+      stored = (INT64_VALUE)in.size();
     }
 
     // clean up
     delete[] byte_buffer;
     byte_buffer = nullptr;
 
-    PushInt(read, op_stack, stack_pos);
+    PushInt(stored, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7745,7 +7902,7 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const int num = (int)PopInt(op_stack, stack_pos);
+  const int num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -8385,14 +8542,14 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   if(array && instance) {
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
+    // The name need not be a file on disk. Opening a FIFO waits for its writer, and the
+    // look-ahead below then waits for its first byte, with no bound on either: park for
+    // both (the name is C heap by now), with the instance re-rooted on the op_stack, or
+    // a collection on any other thread waits as long.
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     FILE* file = File::FileOpen(filename.c_str(), "rb");
-    if(!file) {
-      SetFileError(instance, errno);
-    }
-#ifdef _DEBUG
-    std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
-	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
-#endif
+    const int open_error = errno;
     // look ahead one byte, as FileInString does after each line: an empty file
     // is then at end of file from the start, and ReadLine returns Nil rather
     // than one empty line (#1180)
@@ -8402,6 +8559,15 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
         ungetc(next, file);
       }
     }
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
+    if(!file) {
+      SetFileError(instance, open_error);
+    }
+#ifdef _DEBUG
+    std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
+	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
+#endif
     instance[0] = (size_t)file;
   }
 
@@ -9537,28 +9703,40 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
 #endif
 
     // read from pipe
-    char* byte_buffer = new char[num * 2 + 1];
+    char* byte_buffer = new char[num + UTF8_TAIL_MAX + 1];
     // offset 0: the temp buffer is sized for 'num'; offset belongs to the
     // destination, not this buffer (see FileInCharAry heap-overflow fix).
     // Blocking read: park for the duration, with the array ref re-rooted on the
     // op_stack so GC promotion fixup relocates it while we wait.
+    std::wstring in;
+    size_t read;
+    bool only_mark;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    size_t read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
+    do {
+      read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
+      // a failed POSIX recv() comes back as (size_t)-1, which indexed far past
+      // the buffer here; read nothing instead
+      if(read > (size_t)num) {
+        read = 0;
+      }
+      // never stop inside a character (see ReadUtf8Tail); a failed read is no more bytes
+      read = ReadUtf8Tail(byte_buffer, read, [pipe](char* at, size_t count) {
+        const size_t more = Pipe::ReadByteArray(at, 0, count, pipe);
+        return more > count ? (size_t)0 : more;
+      });
+      in = DecodeCharRead(byte_buffer, read, (size_t)num);
+
+      // copy and remove file BOM UTF (8, 16, 32)
+      only_mark = false;
+      if(in.size() > 0 && IsByteOrderMark(in[0])) {
+        in.erase(in.begin(), in.begin() + 1);
+        only_mark = in.empty();
+      }
+    }
+    while(only_mark);   // a mark and nothing else is not the end of the stream, which 0 means: read on
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    // a failed POSIX recv() comes back as (size_t)-1, which indexed far past
-    // the buffer here; read nothing instead
-    if(read > (size_t)num) {
-      read = 0;
-    }
-    byte_buffer[read] = '\0';
-    std::wstring in(BytesToUnicode(byte_buffer));
-
-    // copy and remove file BOM UTF (8, 16, 32)
-    if(in.size() > 0 && IsByteOrderMark(in[0])) {
-      in.erase(in.begin(), in.begin() + 1);
-    }
 
     // copy
     StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
@@ -9567,7 +9745,8 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     delete[] byte_buffer;
     byte_buffer = nullptr;
 
-    PushInt(read, op_stack, stack_pos);
+    // the characters stored, as every Char[] read returns (this returned the bytes read)
+    PushInt(in.size(), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -9729,7 +9908,7 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9763,7 +9942,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9771,7 +9950,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     SOCKET sock = (SOCKET)instance[0];
     const TcpReadLimits limits(instance);
     // allocate temporary buffer
-    char* byte_buffer = new char[num * 2 + 1];
+    char* byte_buffer = new char[(size_t)num + UTF8_TAIL_MAX + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
     // Blocking read: park for the duration, with the array ref re-rooted on the
     // op_stack so GC promotion fixup relocates it while we wait.
@@ -9779,12 +9958,18 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock, error, limits.deadline_ms, limits.read_ms);
+    // Never stop inside a character (see ReadUtf8Tail). Only after a whole read: a short one means the
+    // peer closed, or the read failed or timed out, and its reason is in 'error' already.
+    if(read > 0 && read == num) {
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char* at, size_t count) {
+        return IPSocket::ReadBytes(at, (int)count, sock, error, limits.deadline_ms, limits.read_ms);
+      });
+    }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
     if(read > -1) {
-      byte_buffer[read] = '\0';
-      std::wstring in = BytesToUnicode(byte_buffer);
+      std::wstring in = DecodeCharRead(byte_buffer, (size_t)read, (size_t)num);
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
@@ -9827,7 +10012,7 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9905,7 +10090,7 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -9955,26 +10140,31 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
 bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
-  const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockTcpSslInByte)
   if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     ClearTlsError();
-    char* byte_buffer = new char[num * 2 + 1];
+    char* byte_buffer = new char[(size_t)num + UTF8_TAIL_MAX + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
     // Blocking read: park for the duration, with the array ref re-rooted on the
     // op_stack so GC promotion fixup relocates it while we wait.
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+    // never stop inside a character, after a whole read (see SockTcpInCharAry)
+    if(read > 0 && read == num) {
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char* at, size_t count) {
+        return IPSecureSocket::ReadBytes(at, (int)count, sctx);
+      });
+    }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read > -1) {
-      byte_buffer[read] = '\0';
-      std::wstring in = BytesToUnicode(byte_buffer);
+      std::wstring in = DecodeCharRead(byte_buffer, (size_t)read, (size_t)num);
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
@@ -10017,7 +10207,7 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -11894,7 +12084,7 @@ bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -11927,8 +12117,8 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
-  const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockDtlsInByte)
@@ -11945,8 +12135,7 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read > -1) {
-      byte_buffer[read] = '\0';
-      std::wstring in = BytesToUnicode(byte_buffer);
+      std::wstring in = DecodeCharRead(byte_buffer, (size_t)read, (size_t)num);
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
@@ -11989,7 +12178,7 @@ bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t*
 bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = (long)PopInt(op_stack, stack_pos);
+  const long num = SocketCount(PopInt(op_stack, stack_pos));
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -12068,23 +12257,42 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  
+
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
 
     // read from file
-    char* byte_buffer = new char[num * 2 + 1];
+    char* byte_buffer = new char[num + UTF8_TAIL_MAX + 1];
     // Read into the temp buffer at 0, not at +offset: byte_buffer is sized for
     // 'num' only, and 'offset' was bounds-checked against the destination array,
     // not this buffer — a large offset overflowed the heap allocation.
-    const size_t read = fread(byte_buffer, 1, num, file);
-    byte_buffer[read] = '\0';
-    std::wstring in(BytesToUnicode(byte_buffer));
-    
-    // remove file BOM UTF (8, 16, 32)
-    if(in.size() > 0 && IsByteOrderMark(in[0])) {
-      in.erase(in.begin(), in.begin() + 1);
+    //
+    // What the file API opened need not be a file on disk: a FIFO or a terminal
+    // waits for its writer as a pipe does, and this thread waited in fread as a
+    // running mutator, so a collection on any other thread waited with it. Park
+    // for the read, as PipeInCharAry does, with the array ref re-rooted on the
+    // op_stack so promotion fixup relocates it meanwhile.
+    std::wstring in;
+    size_t read;
+    bool only_mark;
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    do {
+      read = fread(byte_buffer, 1, num, file);
+      // never stop inside a character (see ReadUtf8Tail)
+      read = ReadUtf8Tail(byte_buffer, read, [file](char* at, size_t count) { return fread(at, 1, count, file); });
+      in = DecodeCharRead(byte_buffer, read, (size_t)num);
+
+      // remove file BOM UTF (8, 16, 32)
+      only_mark = false;
+      if(in.size() > 0 && IsByteOrderMark(in[0])) {
+        in.erase(in.begin(), in.begin() + 1);
+        only_mark = in.empty();
+      }
     }
+    while(only_mark);   // a mark and nothing else is not the end of the file, which 0 means: read on
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
 
     // copy
     // The characters read, and a zero after them where the slice or the array's spare element has room
@@ -12096,7 +12304,8 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     delete[] byte_buffer;
     byte_buffer = nullptr;
 
-    PushInt(read, op_stack, stack_pos);
+    // the characters stored, as every Char[] read returns (this returned the bytes read)
+    PushInt(in.size(), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);

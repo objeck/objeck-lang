@@ -1,0 +1,487 @@
+#~
+# ReadBuffer(offset, num, Char[]) stores whole characters and returns how many
+#
+# A Char[] read of a byte stream reads up to 'num' bytes of UTF-8 and stores the characters they decode to.
+# Three things were wrong with it (Codex review, slice 7):
+#
+# - The count returned. The console, a TCP socket and a TLS socket returned the characters stored; a file,
+#   a pipe and a UDP socket returned the BYTES read, so two bytes of "e-acute" came back as 2 with one
+#   character stored, and a caller advancing by the count stepped over a slot nothing had written.
+# - A character on a read boundary was lost. The 'num' bytes can end inside a multi-byte character; each
+#   chunk was decoded on its own, so the first half was not UTF-8 (on POSIX the WHOLE chunk then decoded to
+#   nothing, on Windows the half became U+FFFD) and the next read began with the other half. A read now
+#   takes the bytes its last character still lacks (at most three), so a read never ends inside a
+#   character and the stream is left on a character boundary for whatever reads next.
+# - A read that was only a byte-order mark stored nothing, which with a character count is 0, the answer
+#   for the end of the stream. It reads on.
+#
+# The zero that ends what a read stores is not this test's subject (char_read_slice_terminator.obs), so
+# nothing here looks at the element after the characters. A count that does not fit the socket call's
+# int is socket_count_range.obs.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# writes bytes to the one connection it accepts, then waits to be told to close
+class ByteSender from Thread {
+	@server : TCPSocketServer;
+	@bytes : Byte[];
+	@release : Bool;
+	@finished : Bool;
+
+	New(server : TCPSocketServer, bytes : Byte[]) {
+		Parent("byte-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil & client->IsOpen()) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+		@finished := true;
+	}
+}
+
+# the same over TLS
+class TlsByteSender from Thread {
+	@server : TCPSecureSocketServer;
+	@bytes : Byte[];
+	@release : Bool;
+
+	New(server : TCPSecureSocketServer, bytes : Byte[]) {
+		Parent("tls-byte-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+# one ReadBuffer(offset, num, ...) of a UDP server, into a Char[] or (when there is none) a Byte[]
+class DatagramReader from Thread {
+	@server : UDPSocketServer;
+	@chars : Char[];
+	@bytes : Byte[];
+	@offset : Int;
+	@num : Int;
+	@read : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer, offset : Int, num : Int, chars : Char[], bytes : Byte[]) {
+		Parent("datagram-reader");
+		@server := server;
+		@offset := offset;
+		@num := num;
+		@chars := chars;
+		@bytes := bytes;
+		@read := -2;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		if(@chars <> Nil) {
+			@read := @server->ReadBuffer(@offset, @num, @chars);
+		}
+		else {
+			@read := @server->ReadBuffer(@offset, @num, @bytes);
+		};
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+}
+
+class PipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe { return @pipe; }
+}
+
+class CharReadWholeCharacters {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("file")) {
+			"stage: file"->ErrorLine();
+			CheckFile();
+		};
+		if(only->Size() = 0 | only->Equals("pipe")) {
+			"stage: pipe"->ErrorLine();
+			CheckPipe();
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp"->ErrorLine();
+			CheckTcp();
+		};
+		if(only->Size() = 0 | only->Equals("udp")) {
+			"stage: udp"->ErrorLine();
+			CheckUdp();
+		};
+
+		if(only->Size() = 0 | only->Equals("tls")) {
+			"stage: tls"->ErrorLine();
+			CheckTls();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} Char[] read check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Char[] reads store whole characters and count them"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# every element: ASCII as itself, a zero as '.', anything else as its code point
+	function : Show(chars : Char[]) ~ String {
+		out := "";
+		each(i : chars) {
+			c := chars[i];
+			if(c = '\0') {
+				out += '.';
+			}
+			else if(c->As(Int) < 128) {
+				out += c;
+			}
+			else {
+				out += "<{$(c->As(Int)->ToHexString())}>";
+			};
+		};
+		return out;
+	}
+
+	function : Marks(size : Int) ~ Char[] {
+		marks := Char->New[size];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		return marks;
+	}
+
+	# 'a', e-acute (2 bytes), the euro sign (3 bytes), 'b': four characters in seven bytes
+	function : Mixed() ~ Byte[] {
+		bytes := Byte->New[7];
+		bytes[0] := 0x61;
+		bytes[1] := 0xC3; bytes[2] := 0xA9;
+		bytes[3] := 0xE2; bytes[4] := 0x82; bytes[5] := 0xAC;
+		bytes[6] := 0x62;
+		return bytes;
+	}
+
+	function : MixedOk(chars : Char[], at : Int) ~ Bool {
+		return chars[at] = 'a' & chars[at + 1]->As(Int) = 0xE9 & chars[at + 2]->As(Int) = 0x20AC & chars[at + 3] = 'b';
+	}
+
+	function : Put(name : String, bytes : Byte[]) ~ Nil {
+		writer := FileWriter->New(name);
+		writer->WriteBuffer(0, bytes->Size(), bytes);
+		writer->Close();
+	}
+
+	# reads 'step' at a time until a read returns 0 or less; the characters stored, or -1 if a count was wrong
+	function : ReadAll(reader : FileReader, step : Int, chars : Char[]) ~ Int {
+		pos := 0;
+		got := 1;
+		while(got > 0 & pos + step <= chars->Size()) {
+			got := reader->ReadBuffer(pos, step, chars);
+			if(got > step) {
+				return -1;
+			};
+			if(got > 0) {
+				pos += got;
+			};
+		};
+		return pos;
+	}
+
+	function : CheckFile() ~ Nil {
+		name := "char_read_whole_characters_{$Runtime->GetProcessId()}.tmp";
+
+		# the count is of characters
+		accent := Byte->New[2];
+		accent[0] := 0xC3; accent[1] := 0xA9;
+		Put(name, accent);
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(0, 2, chars);
+		reader->Close();
+		Check("a file read of two bytes that are one character returns 1 (got {$got}, '{$Show(chars)}')",
+			got = 1 & chars[0]->As(Int) = 0xE9);
+
+		# a character on every read boundary, for each read size
+		Put(name, Mixed());
+		for(step := 1; step <= 7; step += 1;) {
+			reader := FileReader->New(name);
+			chars := Marks(16);
+			stored := ReadAll(reader, step, chars);
+			reader->Close();
+			Check("a file read {$step} at a time keeps every character (stored {$stored}, '{$Show(chars)}')",
+				stored = 4 & MixedOk(chars, 0));
+		};
+
+		# a read that asked for less than a character leaves the stream on a character boundary
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		reader->ReadBuffer(0, 2, chars);
+		next := reader->ReadByte();
+		reader->Close();
+		Check("after a read that ended inside e-acute the next byte starts the euro sign (got {$next})",
+			chars[1]->As(Int) = 0xE9 & (next and 0xFF) = 0xE2);
+
+		# a file that ends inside a character: U+FFFD for it, the rest intact
+		torn := Byte->New[3];
+		torn[0] := 0x61; torn[1] := 0x62; torn[2] := 0xE2;
+		Put(name, torn);
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(0, 8, chars);
+		reader->Close();
+		Check("a file that ends inside a character gives the characters before it and U+FFFD (got {$got}, '{$Show(chars)}')",
+			got = 3 & chars[0] = 'a' & chars[1] = 'b' & chars[2]->As(Int) = 0xFFFD);
+
+		# a read that is only the byte-order mark is not the end of the file
+		marked := Byte->New[5];
+		marked[0] := 0xEF; marked[1] := 0xBB; marked[2] := 0xBF; marked[3] := 0x6F; marked[4] := 0x6B;
+		Put(name, marked);
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(0, 3, chars);
+		Check("a read of exactly the byte-order mark reads on (got {$got}, '{$Show(chars)}')", got = 2 & chars[0] = 'o' & chars[1] = 'k');
+		got := reader->ReadBuffer(0, 3, chars);
+		Check("and the end of the file is still 0 (got {$got})", got = 0);
+		reader->Close();
+
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		stored := ReadAll(reader, 1, chars);
+		reader->Close();
+		Check("a marked file read 1 at a time gives its text (stored {$stored}, '{$Show(chars)}')",
+			stored = 2 & chars[0] = 'o' & chars[1] = 'k');
+
+		File->Delete(name);
+	}
+
+	function : CheckPipe() ~ Nil {
+		name := "objeck-pipe-chars-{$Int->Random(100000, 999999)}";
+		owner := PipeOwner->New(name);
+		owner->Execute(Nil);
+
+		client : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			client := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := client->IsOpen();
+		};
+		owner->Join();
+		server := owner->GetPipe();
+		if(<>opened | <>server->IsOpen()) {
+			Check("the pipe connects", false);
+			return;
+		};
+
+		bytes := Mixed();
+		client->WriteBuffer(0, bytes->Size(), bytes);
+
+		# two bytes asked for: 'a' and the first half of e-acute, completed
+		chars := Marks(8);
+		got := server->ReadBuffer(0, 2, chars);
+		Check("a pipe read that ends inside a character completes it and counts characters (got {$got}, '{$Show(chars)}')",
+			got = 2 & chars[0] = 'a' & chars[1]->As(Int) = 0xE9);
+
+		# the rest: the euro sign's three bytes and 'b' are two characters
+		got := server->ReadBuffer(2, 4, chars);
+		Check("a pipe read of four bytes that are two characters returns 2 (got {$got}, '{$Show(chars)}')",
+			got = 2 & MixedOk(chars, 0));
+
+		client->Close();
+		server->Close();
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		sender := ByteSender->New(server, Mixed());
+		sender->Execute(Nil);
+
+		client := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(<>client->IsOpen()) {
+			Check("the TCP client connects", false);
+			sender->Release();
+			return;
+		};
+		client->SetRecvTimeout(10000);
+
+		# one byte at a time: each read is one whole character
+		chars := Marks(8);
+		pos := 0;
+		counts := "";
+		for(i := 0; i < 4; i += 1;) {
+			got := client->ReadBuffer(pos, 1, chars);
+			counts += got;
+			if(got > 0) {
+				pos += got;
+			};
+		};
+		Check("TCP reads of 1 each return one whole character (counts {$counts}, '{$Show(chars)}')",
+			counts->Equals("1111") & MixedOk(chars, 0));
+
+		sender->Release();
+		client->Close();
+		sender->Join();
+		server->Close();
+	}
+
+	# One datagram read with ReadBuffer(offset, num, chars) by a server of its own, and the count it
+	# returned. A datagram can be lost, on loopback too (the first to a new socket, on Windows), so it is
+	# sent until the read returns; a server per read, so a resent copy is never the next read's datagram.
+	function : UdpRead(payload : Byte[], offset : Int, num : Int, chars : Char[]) ~ Int {
+		server := UDPSocketServer->New(0);
+		if(<>server->IsBound()) {
+			return -3;
+		};
+		client := UDPSocket->New("127.0.0.1", server->GetPort());
+		reader := DatagramReader->New(server, offset, num, chars, Nil);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 15000; waited += 50;) {
+			client->WriteBuffer(0, payload->Size(), payload);
+			Thread->Sleep(50);
+		};
+		reader->Join();
+		client->Close();
+		server->Close();
+		return reader->GetRead();
+	}
+
+	function : CheckUdp() ~ Nil {
+		chars := Marks(8);
+		got := UdpRead(Mixed(), 0, 8, chars);
+		Check("a UDP read of seven bytes that are four characters returns 4 (got {$got}, '{$Show(chars)}')",
+			got = 4 & MixedOk(chars, 0));
+	}
+
+	function : CheckTls() ~ Nil {
+		cert := "char-read-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "char-read-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+			return;
+		};
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("the TLS server listens", port > 0);
+		if(port > 0) {
+			sender := TlsByteSender->New(server, Mixed());
+			sender->Execute(Nil);
+			client := TCPSecureSocket->New("127.0.0.1", port, cert);
+			if(client->IsOpen()) {
+				chars := Marks(8);
+				pos := 0;
+				counts := "";
+				for(i := 0; i < 4; i += 1;) {
+					got := client->ReadBuffer(pos, 1, chars);
+					counts += got;
+					if(got > 0) {
+						pos += got;
+					};
+				};
+				Check("TLS reads of 1 each return one whole character (counts {$counts}, '{$Show(chars)}')",
+					counts->Equals("1111") & MixedOk(chars, 0));
+				client->Close();
+			}
+			else {
+				Check("the TLS client connects ('{$(TCPSecureSocket->GetLastError())}')", false);
+			};
+			sender->Release();
+			sender->Join();
+			server->Close();
+		};
+		File->Delete(cert);
+		File->Delete(key);
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}

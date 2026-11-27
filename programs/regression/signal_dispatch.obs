@@ -16,8 +16,44 @@ mutator, runs the method.
                  as it can; handlers allocate too. Exits 0 with the counts printed.
   raise          Runtime->RaiseSignal is synchronous, and its handler must have run
                  by the time RaiseSignal returns, as before.
+  race <file>    eight threads register their first SIGINT and SIGTERM handlers at the
+                 same moment, then <file> is written and the program waits to be looked
+                 at: the driver counts the wake-up pipes and threads it has. Two threads
+                 that both found the dispatcher missing each started one, and the first
+                 pipe and its thread were left behind.
+
+With OBJECK_SIGNAL_TEST_FAULT=wake or =thread the dispatcher cannot be started (its
+wake-up cannot be made, its thread cannot start): SetSignal for SIGINT or SIGTERM must
+then fail, saying so, rather than install a handler that would run the method inside
+the operating system's signal handler.
 ~#
-use System.IO.Filesystem;
+use System.Concurrency, System.IO.Filesystem;
+
+class Registrar from Thread {
+  @go : static : Bool;
+  @which : Int;
+
+  New(which : Int) {
+    Parent("registrar");
+    @which := which;
+  }
+
+  function : Go() ~ Nil {
+    @go := true;
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+    # spin, so that every thread is running when the flag is set
+    while(<>@go) {
+    };
+    if(@which % 2 = 0) {
+      Runtime->SetSignal(Runtime->Signal->SIGINT, SignalDispatch->Handler(Int) ~ Nil);
+    }
+    else {
+      Runtime->SetSignal(Runtime->Signal->SIGTERM, SignalDispatch->Handler(Int) ~ Nil);
+    };
+  }
+}
 
 class SignalDispatch {
   @interrupts : static : Int;
@@ -25,6 +61,11 @@ class SignalDispatch {
   @bytes : static : Int;
 
   function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 2 & args[0]->Equals("race")) {
+      Race(args[1]);
+      return;
+    };
+
     Runtime->SetSignal(Runtime->Signal->SIGINT, Handler(Int) ~ Nil);
     Runtime->SetSignal(Runtime->Signal->SIGTERM, Handler(Int) ~ Nil);
 
@@ -59,6 +100,30 @@ class SignalDispatch {
     seen := @interrupts + @terminations;
     "seen={$seen}"->PrintLine();
     "PASS: signal_dispatch storm"->PrintLine();
+  }
+
+  function : Race(ready : String) ~ Nil {
+    registrars := Registrar->New[8];
+    each(i : registrars) {
+      registrars[i] := Registrar->New(i);
+      registrars[i]->Execute(Nil);
+    };
+    Thread->Sleep(200);
+    Registrar->Go();
+    each(i : registrars) {
+      registrars[i]->Join();
+    };
+
+    writer := FileWriter->New(ready);
+    writer->WriteString("ready");
+    writer->Close();
+    # until the driver has looked and removed the file
+    waited := 0;
+    while(File->Exists(ready) & waited < 20000) {
+      Thread->Sleep(20);
+      waited += 20;
+    };
+    "PASS: signal_dispatch race"->PrintLine();
   }
 
   function : Handler(id : Int) ~ Nil {

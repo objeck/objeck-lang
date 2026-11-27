@@ -585,7 +585,8 @@ struct SecureSocketCtx {
 extern thread_local int dtls_last_error;
 
 //
-// TLS record I/O for mbedtls_ssl_set_bio, whose context is the SecureSocketCtx:
+// TLS record I/O for mbedtls_ssl_set_bio, whose context is the SecureSocketCtx (a
+// connecting socket and an accepted one alike, so SetDeadline holds on both):
 // TlsBioRecv waits for the peer no longer than the socket's deadline and read
 // timeout allow, and reports a read that timed out as MBEDTLS_ERR_SSL_TIMEOUT,
 // whether the deadline or SO_RCVTIMEO ended it. (defined in common.cpp)
@@ -595,7 +596,7 @@ int TlsBioRecv(void* ctx, unsigned char* buf, size_t len);
 
 //
 // mbedtls_net_send and mbedtls_net_recv for mbedtls_ssl_set_bio, whose context is the
-// mbedtls_net_context (an accepted TLS connection, an HTTP/2 client): the same calls,
+// mbedtls_net_context (an HTTP/2 client, which has no deadline): the same calls,
 // made without holding the TLS library (see TlsLibraryLock). (defined in common.cpp)
 //
 int TlsNetSend(void* ctx, const unsigned char* buf, size_t len);

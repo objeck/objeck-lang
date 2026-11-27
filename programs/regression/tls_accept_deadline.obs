@@ -1,0 +1,156 @@
+#~
+# SetDeadline holds on an accepted TLS connection
+#
+# TCPSecureSocket->SetDeadline(ms) stores the deadline in the socket's context, and reads are held to it
+# by the record-I/O callback that looks there. A connecting socket had that callback; a connection
+# accepted by TCPSecureSocketServer was given the plain one, which never looks, so SetDeadline on the
+# server's side of a connection did nothing: a peer that stayed connected and silent (or sent a byte now
+# and then) held the read, and the thread making it, for as long as it liked. The handshake of an
+# accepted connection runs in its first read, so it was not held either.
+#
+# A peer connects (plain TCP: not even a ClientHello) and says nothing. The server sets a deadline of
+# 700 ms on the accepted connection and reads: the read must fail within a few seconds, with a reason,
+# where it used to wait until the peer went away (this test waits 8 seconds for it, then closes the peer).
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+# reads one byte from an accepted connection under a deadline and notes how long the read took
+class DeadlineReader from Thread {
+	@client : TCPSecureSocket;
+	@done : Bool;
+	@ms : Int;
+	@reason : String;
+
+	New(client : TCPSecureSocket) {
+		Parent("deadline-reader");
+		@client := client;
+	}
+
+	method : public : IsDone() ~ Bool { return @done; }
+	method : public : GetMs() ~ Int { return @ms; }
+	method : public : GetReason() ~ String { return @reason; }
+
+	method : public : Run(param : Base) ~ Nil {
+		timer := System.Time.Timer->New(true);
+		@client->SetDeadline(700);
+		@client->ReadByte();
+		timer->End();
+		@ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+		@reason := TCPSecureSocket->GetLastError();
+		@done := true;
+	}
+}
+
+class TlsAcceptDeadline {
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+		cert := "tls-accept-deadline-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "tls-accept-deadline-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			"FAIL: openssl could not create the certificate -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		CheckDeadline(cert, key);
+
+		File->Delete(cert);
+		File->Delete(key);
+		if(@failed > 0) {
+			"FAIL: {$@failed} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: SetDeadline holds on an accepted TLS connection"->PrintLine();
+	}
+
+	function : CheckDeadline(cert : String, key : String) ~ Nil {
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+
+		# only once the peer is in: an Accept with nobody on the way never returns
+		peer := TCPSocket->New("127.0.0.1", port);
+		Check("the silent peer connects", peer->IsOpen());
+		if(<>peer->IsOpen()) {
+			server->Close();
+			return;
+		};
+		accepted := server->Accept();
+		Check("the silent peer is accepted", accepted <> Nil);
+		if(accepted <> Nil) {
+			# no receive timeout of its own: the deadline alone must end the read
+			accepted->SetRecvTimeout(0);
+			reader := DeadlineReader->New(accepted);
+			reader->Execute(Nil);
+			waited := 0;
+			while(<>reader->IsDone() & waited < 8000) {
+				Thread->Sleep(50);
+				waited += 50;
+			};
+			held := reader->IsDone();
+			if(held) {
+				"a read with a 700 ms deadline ended after {$(reader->GetMs())} ms: '{$(reader->GetReason())}'"->ErrorLine();
+			};
+			Check("a read on an accepted connection ends at its deadline, with the peer still connected and silent", held);
+			Check("and not before it", held & reader->GetMs() >= 500);
+			Check("and GetLastError says why", held & reader->GetReason() <> Nil);
+			# ends the read of an unfixed VM, so the test can finish and say so
+			peer->Close();
+			reader->Join();
+			accepted->Close();
+		}
+		else {
+			peer->Close();
+		};
+		server->Close();
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}
