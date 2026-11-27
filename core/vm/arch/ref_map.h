@@ -96,6 +96,8 @@
       // or one that cannot be told from a generic's parameter (an unqualified name)
       std::vector<long> param_class;
       long return_class = -1;
+      // "m.(i,)~i" for both words of a function-typed parameter, empty otherwise
+      std::vector<std::wstring> param_function;
     };
     std::unordered_map<StackMethod*, Signature> signatures;
 
@@ -234,8 +236,8 @@
       const long num_dclrs = method->GetNumberDeclarations();
       for(long i = 0; i < num_dclrs && out.size() < words; ++i) {
         if(dclrs[i]->type == FUNC_PARM) {
-          out.push_back({ RK_REF, RK_UNKNOWN });
-          out.push_back({ RK_INT, RK_UNKNOWN });
+          out.push_back({ RK_REF, RK_UNKNOWN, SHAPE_NONE, 2 });
+          out.push_back({ RK_INT, RK_UNKNOWN, SHAPE_NONE, 1 });
         }
         else {
           out.push_back(DclrType(dclrs[i]->type));
@@ -256,7 +258,7 @@
         switch(type) {
         case NIL_TYPE: return;
         case FLOAT_TYPE: out.push_back({ RK_FLOAT, RK_UNKNOWN }); return;
-        case FUNC_TYPE: out.push_back({ RK_REF, RK_UNKNOWN }); out.push_back({ RK_INT, RK_UNKNOWN }); return;
+        case FUNC_TYPE: out.push_back({ RK_REF, RK_UNKNOWN, SHAPE_NONE, 2 }); out.push_back({ RK_INT, RK_UNKNOWN, SHAPE_NONE, 1 }); return;
         case BYTE_ARY_TYPE:
         case CHAR_ARY_TYPE: out.push_back({ RK_REF, RK_INT, SHAPE_ARRAY }); return;
         default: out.push_back({ RK_UNKNOWN, RK_UNKNOWN }); return;
@@ -267,8 +269,8 @@
         return;
       }
       if(c == L'm') {
-        out.push_back({ RK_REF, RK_UNKNOWN });
-        out.push_back({ RK_INT, RK_UNKNOWN });
+        out.push_back({ RK_REF, RK_UNKNOWN, SHAPE_NONE, 2 });
+        out.push_back({ RK_INT, RK_UNKNOWN, SHAPE_NONE, 1 });
         return;
       }
       size_t stars = 0;
@@ -396,7 +398,8 @@
         F_INT = 2,      // arithmetic, a comparison, an Int local, parameter, field or return
         F_FLOAT = 4,
         F_REF = 8,
-        F_CLS = 16      // class memory (LOAD_CLS_MEM): not a heap object
+        F_CLS = 16,     // class memory (LOAD_CLS_MEM): not a heap object
+        F_FUNC = 32     // a function value's id word, loaded, passed in or returned
       };
       struct Facts {
         uint8_t made = 0;
@@ -415,6 +418,8 @@
         // value off the stack other than a call to a method that is not virtual
         bool from_self = false;
         bool consumed = false;
+        // where the value was first used as a function value's id word, -1 for never
+        long func_ip = -1;
       };
       static const long NO_CLASS = -1;
       static const long MANY_CLASSES = -2;
@@ -473,6 +478,100 @@
       std::vector<ClassReq> class_reqs;
       std::unordered_map<long, std::vector<SlotType> > layouts;
       bool frame_trap = false;
+
+      // Load-time verification of function values. One is two words: its id (the tag,
+      // a class id and a method id packed in a literal) and its closure. Nothing at
+      // run time relates the method the id names to the DYN_MTHD_CALL that calls it
+      // or to the closure it is called with, and the collector finds a closure's
+      // layout through the id beside it. So, per value: what it was made as ('tag',
+      // 'made_ip'), the other values it has met ('ring': the members of its union,
+      // which the facts above only sum), and where a function type is spelled for
+      // it ('spelled': a parameter's or a call's result's "m.(i,)~i").
+      enum Tag : uint8_t { TAG_NONE = 0, TAG_TYPED, TAG_LIT, TAG_CLOSURE_NEW, TAG_FUNC_WORD, TAG_SELF };
+      std::vector<uint8_t> tag;
+      std::vector<long> made_ip;
+      std::vector<int> ring;
+      std::vector<const std::wstring*> spelled;
+      std::vector<long> func_load_slot;
+      // a use of two words as a function value: 'words' < 0 where the use names no
+      // signature (a store to a local or a field)
+      struct FuncUse { int id; int closure; long ip; long words; int rtrn_words; bool rtrn_float; };
+      std::vector<FuncUse> func_uses;
+      struct FuncStore { long slot; int id; };
+      std::vector<FuncStore> func_stores;
+      // the lambda each closure was made for (nullptr where two meet)
+      std::unordered_map<int, StackMethod*> closure_lambda;
+
+      // "m.(i,o.System.String,m.(i,)~i,)~f": the words its parameters take and its return
+      static bool ParseFunctionType(const std::wstring& type, long& words, int& rtrn_words, bool& rtrn_float) {
+        if(type.size() < 5 || type[0] != L'm' || type[1] != L'.' || type[2] != L'(') {
+          return false;
+        }
+        words = 0;
+        long depth = 1;
+        size_t at = 3;
+        size_t start = 3;
+        for(; at < type.size() && depth > 0; ++at) {
+          const wchar_t c = type[at];
+          if(c == L'(') {
+            ++depth;
+          }
+          else if(c == L')') {
+            --depth;
+          }
+          else if(c == L',' && depth == 1) {
+            words += (type[start] == L'm' && start + 1 < type.size() && type[start + 1] == L'.') ? 2 : 1;
+            start = at + 1;
+          }
+        }
+        if(depth != 0 || at >= type.size() || type[at] != L'~') {
+          return false;
+        }
+        std::vector<SlotType> rtrn;
+        ReturnWords(type.substr(at + 1), INT_TYPE, rtrn);
+        rtrn_words = static_cast<int>(rtrn.size());
+        rtrn_float = rtrn.size() == 1 && rtrn[0].kind == RK_FLOAT;
+        return true;
+      }
+
+      // two words used as a function value: the id on top, the closure below it
+      void UseFunction(int id, int closure, long ip, long words = -1, int rtrn_words = 0, bool rtrn_float = false) {
+        if(!verify) {
+          return;
+        }
+        Facts& f = facts[Find(id)];
+        if(f.func_ip < 0) {
+          f.func_ip = ip;
+        }
+        // the callee runs with the closure as its instance, and the collector marks it
+        MarkRef(closure);
+        func_uses.push_back({ id, closure, ip, words, rtrn_words, rtrn_float });
+      }
+
+      void UseFunctionAs(int id, int closure, long ip, const std::wstring& type) {
+        long words;
+        int rtrn_words;
+        bool rtrn_float;
+        if(ParseFunctionType(type, words, rtrn_words, rtrn_float)) {
+          UseFunction(id, closure, ip, words, rtrn_words, rtrn_float);
+        }
+        else {
+          UseFunction(id, closure, ip);
+        }
+      }
+
+      // the method a function literal names: nullptr unless it is the tag, a class
+      // and a method of the program that has a body
+      StackMethod* FunctionOf(INT64_VALUE literal) {
+        if((literal & ~(INT64_VALUE)0xFFFFFFFFLL) != (INT64_VALUE)FUNC_VALUE_TAG) {
+          return nullptr;
+        }
+        StackClass* cls = prgm->GetClass((long)((literal >> 16) & 0xFFFF));
+        StackMethod* mthd = cls ? cls->GetMethod((long)(literal & 0xFFFF)) : nullptr;
+        return mthd && mthd->GetInstructionCount() > 0 ? mthd : nullptr;
+      }
+
+      bool CheckFunctions();
 
       int ClassFind(int v) {
         while(class_parent[v] != v) {
@@ -667,6 +766,11 @@
           facts.back().made = FactOf(k);
           class_parent.push_back(id);
           claims.push_back(ClassSet());
+          tag.push_back(k == RK_UNKNOWN || k == RK_LIT ? TAG_NONE : TAG_TYPED);
+          made_ip.push_back(-1);
+          ring.push_back(id);
+          spelled.push_back(nullptr);
+          func_load_slot.push_back(-1);
         }
         return id;
       }
@@ -691,6 +795,10 @@
           return;
         }
         parent[b] = a;
+        if(verify) {
+          // two rings become one
+          std::swap(ring[a], ring[b]);
+        }
         kind[a] = MergeKind(kind[a], kind[b]);
         use[a] = MergeKind(use[a], use[b]);
         elem[a] = MergeKind(elem[a], elem[b]);
@@ -715,6 +823,7 @@
           if(fa.word_ip < 0) fa.word_ip = fb.word_ip;
           fa.from_self = fa.from_self || fb.from_self;
           fa.consumed = fa.consumed || fb.consumed;
+          if(fa.func_ip < 0) fa.func_ip = fb.func_ip;
           if(fa.cls_made == NO_CLASS) {
             fa.cls_made = fb.cls_made;
           }
@@ -964,10 +1073,13 @@
                 sig.object_param.push_back(0);
                 sig.param_class.push_back(-1);
                 sig.param_class.push_back(-1);
+                sig.param_function.push_back(type);
+                sig.param_function.push_back(type);
               }
               else {
                 sig.object_param.push_back(NamesObject(type) ? 1 : 0);
                 sig.param_class.push_back(QualifiedClass(type));
+                sig.param_function.push_back(std::wstring());
               }
               start = i + 1;
             }
@@ -984,6 +1096,12 @@
         const int value = NewValue(slot.kind, slot.elem);
         if(verify) {
           facts[value].shape_made = slot.shape;
+          if(slot.part == 1) {
+            facts[value].made = F_FUNC;
+          }
+          else if(slot.part == 2) {
+            tag[value] = TAG_FUNC_WORD;
+          }
         }
         return value;
       }
@@ -1172,6 +1290,32 @@
         return true;
       }
 
+      // LOAD_FUNC_VAR and STOR_FUNC_VAR take two words of the frame: those of a local
+      // declared a function value, where the method declares the slot at all
+      bool FunctionLocal(long ip, long id) {
+        if(verify && id >= 0 && id < (long)locals.size() && !AndOrLocal(id) && locals[id].part != 1) {
+          return Fail(ip, L"a function value read from or stored to a local that is not one", true);
+        }
+        return true;
+      }
+
+      // A Float is not read from or stored to a local declared a reference or a
+      // function value (the collector reads those words as addresses), and a
+      // Float local is read and written as a Float. An Int local may hold one: the
+      // temporary of an inlined 'a ? b : c' over Floats is declared Int.
+      bool FloatLocal(long ip, long id, bool as_float) {
+        if(!verify || id < 0 || id >= (long)locals.size() || AndOrLocal(id)) {
+          return true;
+        }
+        if(as_float && (locals[id].kind == RK_REF || locals[id].part != 0)) {
+          return Fail(ip, L"a Float read from or stored to a local that holds a reference", true);
+        }
+        if(!as_float && locals[id].kind == RK_FLOAT) {
+          return Fail(ip, L"an integer or a reference read from or stored to a Float local", true);
+        }
+        return true;
+      }
+
       bool Step(long ip);
       void ResolveLinks();
       bool CheckFacts();
@@ -1246,6 +1390,10 @@
         if(instr->GetInt64Operand() != 0) {
           lit_ip[lit] = ip;
         }
+        if(verify) {
+          tag[lit] = TAG_LIT;
+          made_ip[lit] = ip;
+        }
         stack.push_back(lit);
       }
         break;
@@ -1271,7 +1419,7 @@
         break;
 
       case LOAD_LOCL_INT_VAR:
-        if(!LocalType(ip, op1, slot)) return false;
+        if(!LocalType(ip, op1, slot) || !FloatLocal(ip, op1, false)) return false;
         if(AndOrLocal(op1)) {
           stack.push_back(andor);
         }
@@ -1293,7 +1441,7 @@
 
       case STOR_LOCL_INT_VAR:
       case COPY_LOCL_INT_VAR:
-        if(!LocalType(ip, op1, slot)) return false;
+        if(!LocalType(ip, op1, slot) || !FloatLocal(ip, op1, false)) return false;
         if(instr->GetType() == STOR_LOCL_INT_VAR) {
           // (kept in a local, the instance is not read yet: the inliner parks a
           // function's caller's instance in one to hand it on)
@@ -1343,30 +1491,54 @@
         break;
 
       case LOAD_FLOAT_VAR:
+        if(op2 == LOCL && !FloatLocal(ip, op1, true)) return false;
         if(op2 != LOCL && !PopReceiver(stack, ip, op2, v)) return false;
         stack.push_back(NewValue(RK_FLOAT));
         break;
 
       case STOR_FLOAT_VAR:
+        if(op2 == LOCL && !FloatLocal(ip, op1, true)) return false;
         if(op2 != LOCL && !PopReceiver(stack, ip, op2, v)) return false;
         if(!PopKind(stack, ip, RK_FLOAT)) return false;
         break;
 
       case COPY_FLOAT_VAR:
+        if(op2 == LOCL && !FloatLocal(ip, op1, true)) return false;
         if(op2 != LOCL && !PopReceiver(stack, ip, op2, v)) return false;
         if(stack.empty()) return Fail(ip, L"the operand stack runs out", true);
         Constrain(stack.back(), RK_FLOAT);
         break;
 
-      case LOAD_FUNC_VAR:
+      case LOAD_FUNC_VAR: {
         if(op2 != LOCL && !PopReceiver(stack, ip, op2, v)) return false;
-        stack.push_back(NewValue(RK_REF));
-        stack.push_back(NewValue(RK_INT));
+        if(op2 == LOCL && !FunctionLocal(ip, op1)) return false;
+        const int closure = NewValue(RK_REF);
+        const int id = NewValue(RK_INT);
+        if(verify) {
+          tag[closure] = TAG_FUNC_WORD;
+          facts[id].made = F_FUNC;
+          if(op2 == LOCL) {
+            func_load_slot[id] = op1;
+          }
+        }
+        stack.push_back(closure);
+        stack.push_back(id);
+      }
         break;
 
-      case STOR_FUNC_VAR:
+      case STOR_FUNC_VAR: {
         if(op2 != LOCL && !PopReceiver(stack, ip, op2, v)) return false;
-        if(!PopKind(stack, ip, RK_INT) || !PopKind(stack, ip, RK_REF)) return false;
+        if(op2 == LOCL && !FunctionLocal(ip, op1)) return false;
+        int id;
+        int closure;
+        if(!Pop(stack, ip, id) || !Pop(stack, ip, closure)) return false;
+        Constrain(id, RK_INT);
+        Constrain(closure, RK_REF);
+        UseFunction(id, closure, ip);
+        if(verify && op2 == LOCL) {
+          func_stores.push_back({ op1, id });
+        }
+      }
         break;
 
       case LOAD_CLS_MEM:
@@ -1381,6 +1553,7 @@
       case LOAD_INST_MEM:
         v = NewValue(RK_REF, RK_UNKNOWN, ORIGIN_SELF);
         if(verify) {
+          tag[v] = TAG_SELF;
           facts[v].from_self = true;
           // (a lambda's instance is its closure)
           if(!method->IsLambda() && method->GetClass()) {
@@ -1524,9 +1697,23 @@
         std::vector<SlotType> params;
         ParamWords(callee, params);
         const VerifyContext::Signature* sig = (verify && context) ? &SignatureOf(callee) : nullptr;
+        int function_id = -1;
         for(size_t i = params.size(); i > 0; --i) {
           if(!Pop(stack, ip, v)) return false;
           ConstrainSlot(v, params[i - 1]);
+          // a function value: its id was on top, its closure is this word
+          if(verify && params[i - 1].part == 1) {
+            function_id = v;
+          }
+          else if(verify && params[i - 1].part == 2 && function_id >= 0) {
+            if(sig && i - 1 < sig->param_function.size() && !sig->param_function[i - 1].empty()) {
+              UseFunctionAs(function_id, v, ip, sig->param_function[i - 1]);
+            }
+            else {
+              UseFunction(function_id, v, ip);
+            }
+            function_id = -1;
+          }
           // the callee reads a class-typed or array parameter through
           if(sig && i - 1 < sig->object_param.size() && sig->object_param[i - 1]) {
             MarkRef(v);
@@ -1546,19 +1733,25 @@
         if(sig && rtrn.size() == 1 && sig->return_class >= 0) {
           Claim(stack.back(), sig->return_class);
         }
+        if(verify && rtrn.size() == 2 && rtrn[1].part == 1) {
+          spelled[stack.back()] = &callee->GetReturnName();
+        }
       }
         break;
 
       case DYN_MTHD_CALL:
       case DYN_MTHD_CALL_JIT: {
         // the func-ref's id on top, its closure below, then operand arguments
-        if(!PopKind(stack, ip, RK_INT) || !Pop(stack, ip, v)) return false;
+        int id;
+        if(!Pop(stack, ip, id) || !Pop(stack, ip, v)) return false;
+        Constrain(id, RK_INT);
         // the closure the callee runs with as its instance
         Constrain(v, RK_REF);
         MarkRef(v);
         if(!PopN(stack, ip, op1)) return false;
         std::vector<SlotType> rtrn;
         ReturnWords(L"", (MemoryType)op2, rtrn);
+        UseFunction(id, v, ip, op1, static_cast<int>(rtrn.size()), rtrn.size() == 1 && rtrn[0].kind == RK_FLOAT);
         PushWords(stack, rtrn);
       }
         break;
@@ -1599,6 +1792,9 @@
             for(size_t i = 0; i < rtrn.size(); ++i) {
               facts[Find(stack[stack.size() - rtrn.size() + i])].consumed = true;
             }
+          }
+          if(verify && rtrn.size() == 2 && rtrn[1].part == 1) {
+            UseFunctionAs(stack[stack.size() - 1], stack[stack.size() - 2], ip, method->GetReturnName());
           }
           if(verify && context && rtrn.size() == 1) {
             const VerifyContext::Signature& own = SignatureOf(method);
@@ -1651,6 +1847,8 @@
         v = NewValue(RK_REF);
         if(verify) {
           facts[v].cls_made = CLOSURE;
+          tag[v] = TAG_CLOSURE_NEW;
+          made_ip[v] = ip;
         }
         stack.push_back(v);
         break;
@@ -1858,14 +2056,17 @@
         }
         const Facts& f = facts[v];
         // arithmetic, a comparison or a float is not an address
-        if(deref[v] && (f.made & (F_INT | F_FLOAT))) {
+        if(deref[v] && (f.made & (F_INT | F_FLOAT | F_FUNC))) {
           return Fail(f.deref_ip, L"a number used as a reference", true);
+        }
+        if(f.func_ip >= 0 && (f.made & (F_INT | F_FLOAT | F_REF | F_CLS))) {
+          return Fail(f.func_ip, L"a number or a reference used as a function value", true);
         }
         if((f.made & F_FLOAT) && (f.used & (F_INT | F_REF))) {
           return Fail(f.word_ip, L"a float used as an integer or a reference", true);
         }
         // (an integer literal may be: the zero an inlined 'try' leaves for a Float)
-        if((f.made & (F_INT | F_REF | F_CLS)) && (f.used & F_FLOAT)) {
+        if((f.made & (F_INT | F_REF | F_CLS | F_FUNC)) && (f.used & F_FLOAT)) {
           return Fail(f.float_ip, L"an integer or a reference used as a float", true);
         }
         if((f.shape_made & SHAPE_OBJECT) && (f.shape_used & SHAPE_ARRAY)) {
@@ -1897,6 +2098,10 @@
         }
       }
 
+      if(!CheckFunctions()) {
+        return false;
+      }
+
       // a field's receiver is what its context says: class memory for CLS (class
       // memory read as an instance was refused above: the loader bounded the id
       // by the context)
@@ -1921,6 +2126,34 @@
           // value from anything else. (Any other reference may be an instance of
           // a class below its static type: see ClassSet.)
           long cls = f.cls_made;
+          if(cls == CLOSURE) {
+            // a new closure: no word past the bytes it was made with, and each
+            // capture as the lambda it was made for declares it
+            const InstructionType access = instrs[receivers[i].ip].GetType();
+            const bool as_float = access == LOAD_FLOAT_VAR || access == STOR_FLOAT_VAR || access == COPY_FLOAT_VAR;
+            const bool as_func = access == LOAD_FUNC_VAR || access == STOR_FUNC_VAR;
+            const long index = instrs[receivers[i].ip].GetOperand();
+            int member = r;
+            do {
+              if(tag[member] == TAG_CLOSURE_NEW && receivers[i].end * (long)sizeof(size_t) > instrs[made_ip[member]].GetOperand()) {
+                return Fail(receivers[i].ip, L"a captured variable beyond the closure", true);
+              }
+              member = ring[member];
+            } while(member != r);
+            std::unordered_map<int, StackMethod*>::iterator made_for = closure_lambda.find(r);
+            if(made_for != closure_lambda.end() && made_for->second && made_for->second->GetClass()) {
+              const std::pair<int, StackDclr**> captures =
+                made_for->second->GetClass()->GetClosureDeclarations(static_cast<int>(made_for->second->GetId()));
+              std::vector<SlotType> layout;
+              DclrLayout(captures.second, captures.first, layout);
+              if(index < 0 || receivers[i].end > (long)layout.size()) {
+                return Fail(receivers[i].ip, L"a captured variable beyond the lambda's closure", true);
+              }
+              if(as_float != (layout[index].kind == RK_FLOAT) || (as_func && layout[index].part != 1)) {
+                return Fail(receivers[i].ip, L"a captured variable stored as another kind than the lambda declares", true);
+              }
+            }
+          }
           if(cls == NO_CLASS && origin[r] == ORIGIN_SELF && !method->IsLambda() && method->GetClass()) {
             cls = method->GetClass()->GetId();
           }
@@ -2032,6 +2265,128 @@
           }
           if((lf.shape_made & SHAPE_ARRAY) && (facts[v].shape_used & SHAPE_OBJECT)) {
             return Fail(facts[v].object_ip, L"an array used as an object", true);
+          }
+        }
+      }
+      return true;
+    }
+
+    // Load-time verification: every use of two words as a function value against
+    // the methods its id may name. An id's sources are the literals it has met on
+    // the stack, a spelled function type (a parameter, a call's result), and, for
+    // a load of a local, what was stored to that local anywhere in the method (a
+    // function-typed variable has one declared type, so every store fits it).
+    inline bool Builder::CheckFunctions() {
+      if(func_uses.empty()) {
+        return true;
+      }
+      std::sort(func_stores.begin(), func_stores.end(),
+                [](const FuncStore& a, const FuncStore& b) { return a.slot < b.slot; });
+      std::vector<int> pending;
+      std::vector<long> slots_seen;
+      for(size_t u = 0; u < func_uses.size(); ++u) {
+        const FuncUse& use = func_uses[u];
+        // the lambda a new closure is paired with, where the id is one literal
+        StackMethod* paired = nullptr;
+        bool one_literal = true;
+        pending.assign(1, Find(use.id));
+        slots_seen.clear();
+        bool direct = true;
+        for(size_t next = 0; next < pending.size(); ++next) {
+          const int root = pending[next];
+          int member = root;
+          do {
+            if(tag[member] == TAG_LIT && made_ip[member] >= 0 && instrs[made_ip[member]].GetInt64Operand() != 0) {
+              // (the literal zero is the Nil function value: a call through it is
+              // the runtime's Nil error)
+              StackMethod* named = FunctionOf(instrs[made_ip[member]].GetInt64Operand());
+              if(!named) {
+                return Fail(made_ip[member], L"a function value that names no method", true);
+              }
+              if(use.words >= 0) {
+                std::vector<SlotType> rtrn;
+                ReturnWords(named->GetReturnName(), named->GetReturn(), rtrn);
+                if(named->GetParamCount() != use.words || static_cast<int>(rtrn.size()) != use.rtrn_words ||
+                   (rtrn.size() == 1 && (rtrn[0].kind == RK_FLOAT) != use.rtrn_float)) {
+                  return Fail(use.ip, L"a function value used with other parameters or another return than its method's", true);
+                }
+              }
+              if(direct) {
+                if(paired && paired != named) {
+                  one_literal = false;
+                }
+                paired = named;
+              }
+            }
+            else if(spelled[member] && use.words >= 0) {
+              long words;
+              int rtrn_words;
+              bool rtrn_float;
+              if(ParseFunctionType(*spelled[member], words, rtrn_words, rtrn_float) &&
+                 (words != use.words || rtrn_words != use.rtrn_words || (rtrn_words == 1 && rtrn_float != use.rtrn_float))) {
+                return Fail(use.ip, L"a function value used with other parameters or another return than its type's", true);
+              }
+            }
+            const long slot = func_load_slot[member];
+            if(slot >= 0 && std::find(slots_seen.begin(), slots_seen.end(), slot) == slots_seen.end()) {
+              slots_seen.push_back(slot);
+              FuncStore key = { slot, 0 };
+              for(std::vector<FuncStore>::const_iterator st = std::lower_bound(func_stores.begin(), func_stores.end(), key,
+                    [](const FuncStore& a, const FuncStore& b) { return a.slot < b.slot; });
+                  st != func_stores.end() && st->slot == slot; ++st) {
+                const int stored = Find(st->id);
+                if(std::find(pending.begin(), pending.end(), stored) == pending.end()) {
+                  pending.push_back(stored);
+                }
+              }
+            }
+            member = ring[member];
+          } while(member != root);
+          direct = false;
+        }
+
+        // A lambda reads its captures through the closure it is called with, and the
+        // collector walks that closure by the lambda's declarations: the closure is
+        // one made large enough for them (or one this method was handed whole).
+        if(paired && paired->IsLambda() && paired->GetClass()) {
+          const std::pair<int, StackDclr**> captures = paired->GetClass()->GetClosureDeclarations(static_cast<int>(paired->GetId()));
+          long capture_words = 0;
+          for(int i = 0; i < captures.first; ++i) {
+            capture_words += captures.second[i]->type == FUNC_PARM ? 2 : 1;
+          }
+          const int closure = Find(use.closure);
+          if(capture_words > 0) {
+            bool fits = false;
+            int member = closure;
+            do {
+              switch(tag[member]) {
+              case TAG_CLOSURE_NEW:
+                fits = fits || instrs[made_ip[member]].GetOperand() >= capture_words * (long)sizeof(size_t);
+                break;
+              case TAG_FUNC_WORD:
+              case TAG_NONE:
+                fits = true;
+                break;
+              case TAG_SELF:
+                fits = fits || method->IsLambda();
+                break;
+              default:
+                break;
+              }
+              member = ring[member];
+            } while(member != closure);
+            if(!fits) {
+              return Fail(use.ip, L"a lambda paired with a closure that was not made for its captures", true);
+            }
+          }
+          if(facts[closure].cls_made == CLOSURE) {
+            std::unordered_map<int, StackMethod*>::iterator known = closure_lambda.find(closure);
+            if(known == closure_lambda.end()) {
+              closure_lambda[closure] = one_literal ? paired : nullptr;
+            }
+            else if(known->second != paired || !one_literal) {
+              known->second = nullptr;
+            }
           }
         }
       }
@@ -2185,8 +2540,8 @@
       }
       for(long i = 0; i < num_dclrs; ++i) {
         if(dclrs[i]->type == FUNC_PARM) {
-          locals.push_back({ RK_INT, RK_UNKNOWN });
-          locals.push_back({ RK_REF, RK_UNKNOWN });
+          locals.push_back({ RK_INT, RK_UNKNOWN, SHAPE_NONE, 1 });
+          locals.push_back({ RK_REF, RK_UNKNOWN, SHAPE_NONE, 2 });
           local_is_andor.push_back(false);
           local_is_andor.push_back(false);
         }
@@ -2221,10 +2576,19 @@
         // the callers were held to the declarations (MTHD_CALL)
         if(verify) {
           Made(entry.back(), params[i].kind, params[i].shape);
+          if(params[i].part == 1) {
+            facts[entry.back()].made = F_FUNC;
+          }
+          else if(params[i].part == 2) {
+            tag[entry.back()] = TAG_FUNC_WORD;
+          }
           if(context) {
             const VerifyContext::Signature& own = SignatureOf(method);
             if(i < own.param_class.size()) {
               Claim(entry.back(), own.param_class[i]);
+            }
+            if(params[i].part == 1 && i < own.param_function.size() && !own.param_function[i].empty()) {
+              spelled[entry.back()] = &own.param_function[i];
             }
           }
         }
