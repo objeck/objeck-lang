@@ -30,9 +30,7 @@ class Pet {
   @name : String;
   @kind : String;
 
-  New(name : String, kind : String) {
-    @name := name;
-    @kind := kind;
+  New(@name : String, @kind : String) {
   }
 
   method : public : ToString() ~ String {
@@ -46,11 +44,7 @@ class Player {
   @scores : Int[];
   @pet : Pet;
 
-  New(name : String, level : Int, scores : Int[], pet : Pet) {
-    @name := name;
-    @level := level;
-    @scores := scores;
-    @pet := pet;
+  New(@name : String, @level : Int, @scores : Int[], @pet : Pet) {
   }
 
   method : public : ToString() ~ String {

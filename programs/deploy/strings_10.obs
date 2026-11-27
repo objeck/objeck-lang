@@ -55,8 +55,8 @@ class Strings {
     "substring: {$(text->SubString(at, 3))}"->PrintLine();
     # Split breaks a string into an array at every separator
     words := text->Split(" ");
-    each(i : words) {
-      "word: {$(words[i])}"->PrintLine();
+    each(word in words) {
+      "word: {$word}"->PrintLine();
     };
 
     # --- cleaning up and changing case ---
@@ -67,8 +67,8 @@ class Strings {
     "lower: {$(text->ToLower())}"->PrintLine();
 
     # --- testing and replacing ---
-    # (a '"' inside {$...} trips a known compiler defect, so a call that
-    # takes a string literal is stored in a local first)
+    # (a quote inside {$...} would end the string early, so a call that takes
+    # a string literal is stored in a local first)
     file_name := "report.txt";
     is_report := file_name->StartsWith("report");
     is_csv := file_name->EndsWith(".csv");

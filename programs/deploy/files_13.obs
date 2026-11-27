@@ -8,9 +8,11 @@
 # whether the file exists and how big it is, creates a folder, lists what is
 # inside it, and finally deletes everything it made. All of the work happens
 # in a new folder under the system's temporary directory
-# (Runtime->GetTempDir()), so running it leaves nothing behind. Always Close
-# a reader or writer when you are done: closing is what makes sure the data
-# really reaches the disk and frees the file for others.
+# (Runtime->GetTempDir()), so running it leaves nothing behind. A reader or
+# writer must be closed when you are done: closing is what makes sure the data
+# really reaches the disk and frees the file for others. using(w := ...) { }
+# does it for you: the file is closed when the block ends, however it ends
+# (the end of the block, a return, a break, or an error).
 #
 # output:
 #   wrote notes.txt
@@ -44,25 +46,25 @@ class Files {
 
     # --- write a file ---
     # creating a FileWriter creates the file (or empties an existing one)
-    writer := FileWriter->New(path);
-    writer->WriteString("apples\n");
-    writer->WriteString("bread\n");
-    writer->WriteString("milk\n");
-    writer->Close();
+    using(writer := FileWriter->New(path)) {
+      writer->WriteString("apples\n");
+      writer->WriteString("bread\n");
+      writer->WriteString("milk\n");
+    };
     "wrote notes.txt"->PrintLine();
 
     # --- read it back one line at a time ---
     # ReadLine returns the next line without its newline, and Nil once
     # there are no lines left
-    reader := FileReader->New(path);
-    number := 1;
-    line := reader->ReadLine();
-    while(line <> Nil) {
-      "line {$number}: {$line}"->PrintLine();
-      number += 1;
+    using(reader := FileReader->New(path)) {
+      number := 1;
       line := reader->ReadLine();
+      while(line <> Nil) {
+        "line {$number}: {$line}"->PrintLine();
+        number += 1;
+        line := reader->ReadLine();
+      };
     };
-    reader->Close();
 
     # --- read the whole file in one call ---
     # handy for small files; Lines() then splits the text into an array
@@ -71,9 +73,9 @@ class Files {
 
     # --- append to the end ---
     # passing true as the second argument appends instead of starting over
-    writer := FileWriter->New(path, true);
-    writer->WriteString("eggs\n");
-    writer->Close();
+    using(writer := FileWriter->New(path, true)) {
+      writer->WriteString("eggs\n");
+    };
     items := FileReader->ReadFile(path)->Lines();
     joined := String->Join(items, ", ");
     "after appending: {$joined}"->PrintLine();
@@ -102,7 +104,7 @@ class Files {
 
   # a simple insertion sort for an array of names, in place
   function : SortNames(names : String[]) ~ Nil {
-    for(i := 1; i < names->Size(); i += 1;) {
+    each(i : names) {
       current := names[i];
       j := i - 1;
       # shift every larger name one place right to make room for current

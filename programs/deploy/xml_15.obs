@@ -56,16 +56,16 @@ class Xml {
 
     # GetChildren(name) returns the child elements with that tag name
     sections := root->GetChildren("section");
-    for(i := 0; i < sections->Size(); i += 1;) {
-      ShowSection(sections->Get(i));
+    each(section in sections) {
+      ShowSection(section);
     };
 
     # --- find by path ---
     # a path names each level from the root down; every match is returned
     prices := parser->FindElements("/inventory/section/item/price");
     "all prices:"->Print();
-    for(i := 0; i < prices->Size(); i += 1;) {
-      " {$(prices->Get(i)->GetContent())}"->Print();
+    each(price in prices) {
+      " {$(price->GetContent())}"->Print();
     };
     ""->PrintLine();
 
@@ -86,8 +86,7 @@ class Xml {
     items := section->GetChildren("item");
     "section '{$name}' has {$(items->Size())} items"->PrintLine();
 
-    for(i := 0; i < items->Size(); i += 1;) {
-      item := items->Get(i);
+    each(item in items) {
       stock := item->GetAttribute("stock")->GetValue();
       # GetFirstChild finds the first child with a tag name;
       # GetDecodedContent turns &amp; and friends back into real characters
