@@ -1642,6 +1642,7 @@ jobs:
         run: |
           python3 tools/cicd/check_trap_handlers.py --test
           python3 tools/cicd/check_trap_handlers.py
+          python3 tools/cicd/gen_trap_signatures.py --check
 
       # What an opcode carries was written out by hand in the writer, both readers,
       # the label passes, the inliner and the loader's checks, and nothing compared

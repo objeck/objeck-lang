@@ -33,6 +33,7 @@
 #define __REF_MAP_H__
 
 #include "../common.h"
+#include "../../shared/trap_signatures.h"
 #include <vector>
 #include <string>
 #include <utility>
@@ -340,31 +341,10 @@
       struct LocalUse { long id; int value; long ip; };
       std::vector<LocalUse> local_loads;
       std::vector<LocalUse> local_stores;
-      // Returns and the height each was reached at. A trap pops and pushes what its
-      // own id says, which the model here does not know (it takes the instruction's
-      // count and one word back), so heights are exact only in a method whose traps
-      // are the literal copies the loader checked whole (Loader::CheckLiteralCopy).
+      // Returns and the height each was reached at: every instruction's effect on
+      // the stack is known, a trap's from its row (core/shared/trap_signatures.h)
       struct ReturnAt { long ip; long height; };
       std::vector<ReturnAt> returns;
-      bool exact_heights = true;
-
-      bool ExactTrap(long ip) {
-        if(ip < 1 || instrs[ip - 1].GetType() != LOAD_INT_LIT) {
-          return false;
-        }
-        switch(instrs[ip - 1].GetInt64Operand()) {
-        case instructions::CPY_CHAR_STR_ARY:
-        case instructions::CPY_CHAR_STR_ARYS:
-        case instructions::CPY_INT_STR_ARY:
-        case instructions::CPY_BOOL_STR_ARY:
-        case instructions::CPY_BYTE_STR_ARY:
-        case instructions::CPY_FLOAT_STR_ARY:
-          return instrs[ip].GetType() == TRAP_RTRN;
-
-        default:
-          return false;
-        }
-      }
 
       // field accesses: the receiver, and the context the instruction names
       struct ReceiverUse { int value; long context; long ip; long end; };
@@ -808,6 +788,135 @@
           return Fail(ip, L"a local beyond the method's declarations (id " + std::to_wstring(id) + L")");
         }
         out = locals[id];
+        return true;
+      }
+
+      // "A|B|C" holds 'name' (a trap's contexts: the methods it may stand in)
+      static bool ListHolds(const wchar_t* list, const std::wstring& name) {
+        const wchar_t* at = list;
+        while(*at) {
+          const wchar_t* end = at;
+          while(*end && *end != L'|') {
+            ++end;
+          }
+          if(static_cast<size_t>(end - at) == name.size() && name.compare(0, name.size(), at, name.size()) == 0) {
+            return true;
+          }
+          at = *end ? end + 1 : end;
+        }
+        return false;
+      }
+
+      // a word a trap takes: the kind its row names (core/shared/trap_signatures.h)
+      void ConstrainTrapWord(int v, const trap_signatures::Arg& arg) {
+        using namespace trap_signatures;
+        const unsigned char words = arg.words;
+        if(words == W_ANY) {
+          return;
+        }
+        const unsigned char arrays = W_BYTE_ARY | W_CHAR_ARY | W_INT_ARY | W_FLOAT_ARY | W_OBJ_ARY;
+        const bool reference = (words & (arrays | W_OBJ)) != 0;
+        if(words == W_FLOAT) {
+          Constrain(v, RK_FLOAT);
+        }
+        else if(words == W_INT) {
+          Constrain(v, RK_INT);
+        }
+        else if(reference && !(words & (W_INT | W_FLOAT))) {
+          // the handler reads through it
+          Constrain(v, RK_REF);
+          MarkRef(v);
+          if(!(words & W_OBJ)) {
+            UseArray(v);
+          }
+          else if(!(words & arrays)) {
+            UseObject(v);
+          }
+        }
+      }
+
+      // the word a trap leaves
+      int NewTrapResult(const trap_signatures::Arg& result) {
+        using namespace trap_signatures;
+        const int value = NewValue(RK_UNKNOWN);
+        const unsigned char words = result.words;
+        const unsigned char arrays = W_BYTE_ARY | W_CHAR_ARY | W_INT_ARY | W_FLOAT_ARY | W_OBJ_ARY;
+        if(words == W_ANY) {
+          return value;
+        }
+        if(words == W_FLOAT) {
+          Made(value, RK_FLOAT);
+        }
+        else if(words == W_INT) {
+          Made(value, RK_INT);
+        }
+        else if(!(words & (W_INT | W_FLOAT))) {
+          if(!(words & W_OBJ)) {
+            Made(value, RK_REF, SHAPE_ARRAY);
+          }
+          else if(!(words & arrays)) {
+            Made(value, RK_REF, SHAPE_OBJECT);
+          }
+        }
+        return value;
+      }
+
+      // Load-time verification of TRAP and TRAP_RTRN. A trap's handler pops what its
+      // own id says, whatever the instruction's count is, and pushes a result or
+      // not: the row is that declaration. The id is the literal just below (the
+      // loader checked it is one, and no jump lands between the two).
+      bool StepTrap(std::vector<int>& stack, long ip, bool rtrn, long count) {
+        const trap_signatures::Row* row = nullptr;
+        if(ip > 0 && instrs[ip - 1].GetType() == LOAD_INT_LIT) {
+          row = trap_signatures::Find(instrs[ip - 1].GetInt64Operand());
+        }
+        if(!row) {
+          return Fail(ip, L"a trap id the compiler does not write", true);
+        }
+        if(row->rtrn != rtrn) {
+          return Fail(ip, std::wstring(L"trap ") + row->name + (row->rtrn ? L" is written TRAP_RTRN" : L" is written TRAP"), true);
+        }
+        if(row->count >= 0 && row->count != count) {
+          return Fail(ip, std::wstring(L"trap ") + row->name + L" takes " + std::to_wstring(row->count) +
+                      L" words, not " + std::to_wstring(count), true);
+        }
+        // a handler that reads its caller's frame or instance is given them by the
+        // library method the directive was written in, and by no other
+        if(row->contexts && !ListHolds(row->contexts, method->GetName())) {
+          return Fail(ip, std::wstring(L"trap ") + row->name + L" outside the library method whose frame it reads", true);
+        }
+        int v;
+        // the id
+        if(!Pop(stack, ip, v)) return false;
+        if(row->count < 0) {
+          // a literal array of strings: one word for each element, then the array,
+          // which comes back (Loader::CheckLiteralCopy checked the shape whole)
+          int array = -1;
+          for(long i = 1; i < count; ++i) {
+            if(!Pop(stack, ip, v)) return false;
+            if(i == 1) {
+              array = v;
+            }
+          }
+          stack.push_back(array >= 0 ? array : NewTrapResult(row->result));
+          return true;
+        }
+        int first = -1;
+        for(long i = count - 2; i >= 0; --i) {
+          if(!Pop(stack, ip, v)) return false;
+          ConstrainTrapWord(v, row->args[i]);
+          if(i == 0) {
+            first = v;
+          }
+        }
+        if(row->pushes) {
+          // a literal copy hands back the array it filled
+          const long long id = row->id;
+          const bool copy = id == instructions::CPY_CHAR_STR_ARY || id == instructions::CPY_INT_STR_ARY ||
+                            id == instructions::CPY_BOOL_STR_ARY || id == instructions::CPY_BYTE_STR_ARY ||
+                            id == instructions::CPY_FLOAT_STR_ARY;
+          stack.push_back(copy && first >= 0 ? first : NewTrapResult(row->result));
+        }
         return true;
       }
 
@@ -1288,11 +1397,12 @@
         break;
 
       case TRAP: {
+        if(verify) {
+          if(!StepTrap(stack, ip, false, op1)) return false;
+          break;
+        }
         // the trap id and its arguments, none typed here
         if(!PopN(stack, ip, op1)) return false;
-        if(verify && !ExactTrap(ip)) {
-          exact_heights = false;
-        }
         // A TRAP pushes nothing, as the JIT models it, except where its result is
         // the method's: a trap right before the RTRN of a method that returns a
         // value (Deserializer->ReadInt is LOAD_INT_LIT id; TRAP args=1; RTRN, and
@@ -1310,11 +1420,12 @@
         break;
 
       case TRAP_RTRN:
+        if(verify) {
+          if(!StepTrap(stack, ip, true, op1)) return false;
+          break;
+        }
         // one word back, typed by its uses (the JIT models it the same way)
         if(!PopN(stack, ip, op1)) return false;
-        if(verify && !ExactTrap(ip)) {
-          exact_heights = false;
-        }
         stack.push_back(NewValue(RK_UNKNOWN));
         break;
 
@@ -1478,7 +1589,7 @@
       // (A body that is a lone RTRN is a compiler intrinsic's placeholder --
       // System.Base:Try -- which nothing calls: MTHD_CALL refuses a call to one,
       // and a virtual call cannot resolve to one, StackInterpreter::ResolveVirtualTarget.)
-      if(exact_heights && count > 1) {
+      if(count > 1) {
         std::vector<SlotType> rtrn;
         ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
         for(size_t i = 0; i < returns.size(); ++i) {
