@@ -8,7 +8,8 @@ own thread hears of it. It kept the time by adding up the stretches between poll
 start it again. Whatever passed between the stop and the next start was never counted. A thread that
 was descheduled there lost that whole pause, and a token that is polled in a loop lost a little on every
 poll, so IsCancelled() could answer false well after the wall-clock deadline. The loop's own clock was
-kept the same way. Both now compare the steady clock with a fixed point.
+kept the same way. Both now compare the runtime's monotonic clock (the runtime.uptime_ms property) with a
+fixed point.
 
 The forced case: a token is polled as fast as a thread can for the whole of a 400 ms deadline, a few
 million polls, each of which used to drop the time between its stop and its start. A timer that is

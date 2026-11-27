@@ -1436,7 +1436,7 @@ agent->SetCancel(cancel);
 		@reason : String;
 		@parent : AgentCancel;
 		@also : AgentCancel;
-		@deadline_at : Float;
+		@deadline_at : Int;
 		@timed : Bool;
 		@expired : Bool;
 
@@ -1558,7 +1558,9 @@ agent->SetCancel(cancel);
 			critical(@mutex) {
 				if(millis > 0) {
 					# a point on the clock, not a count of time waited: see Expire
-					@deadline_at := AgentTicks->Now() + millis->As(Float) / 1000.0;
+					# one more than asked: the clock counts whole milliseconds, and a deadline must not be
+					# reported before it has passed
+					@deadline_at := AgentTicks->Now() + millis + 1;
 					@timed := true;
 				}
 				else {
@@ -3134,27 +3136,28 @@ scope->GetStepsUsed()->PrintLine();
 		}
 	}
 
-	# The steady clock as a number. System.Time.Timer hands back the time between a start and a stop, and
-	# timing with it by stopping, reading and starting again loses what passes between each stop and the
-	# next start. A deadline has to be compared with the clock itself. A timer that is stopped without
-	# having been started reports the time since the clock's own zero, which is that number. This leans
-	# on how Timer is built (lang.obs: End() subtracts the start, and the start of a new timer is 0);
-	# agent_deadline_clock_test fails if that ever changes
+	# The steady clock as a number: milliseconds since the runtime started, from the runtime.uptime_ms
+	# property (the monotonic clock; docs/FEATURES.md, and Telemetry->NowMs() reads the same). A deadline has
+	# to be compared with the clock itself. System.Time.Timer only hands back the time between a start and
+	# a stop, and timing with it by stopping, reading and starting again loses what passes between each
+	# stop and the next start
 	class : private : AgentTicks {
 		#~
 		Reads the steady clock
-		@return seconds on the steady clock; only differences mean anything
+		@return whole milliseconds since the runtime started; 0 if the runtime does not report it
 		~#
-		function : Now() ~ Float {
-			timer := System.Time.Timer->New();
-			timer->End();
-			return timer->GetElapsedTime();
+		function : Now() ~ Int {
+			text := Runtime->GetProperty("runtime.uptime_ms");
+			if(text = Nil | text->IsEmpty()) {
+				return 0;
+			};
+			return text->ToInt();
 		}
 	}
 
 	# milliseconds since a run began; read by the loop thread only
 	class : private : AgentClock {
-		@began : Float;
+		@began : Int;
 
 		#~
 		Constructor; notes the time
@@ -3165,11 +3168,18 @@ scope->GetStepsUsed()->PrintLine();
 
 		#~
 		Reads the clock
-		@return milliseconds since the clock was created; the loop thread is the only reader
+		@return whole milliseconds that have certainly passed since the clock was created; the loop thread is the only reader
 		~#
 		method : public : Ms() ~ Int {
-			# the clock now less the clock then: nothing is lost between two readings (see AgentCancel->Expire)
-			return ((AgentTicks->Now() - @began) * 1000.0)->As(Int);
+			# The clock now less the clock then: nothing is lost between two readings (see
+			# AgentCancel->Expire). The clock counts whole milliseconds, so the difference can be up to one
+			# more than what has really passed; one is taken off, because a deadline must not be reported
+			# before it has passed
+			passed := AgentTicks->Now() - @began - 1;
+			if(passed < 0) {
+				passed := 0;
+			};
+			return passed;
 		}
 	}
 
