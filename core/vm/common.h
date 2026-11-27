@@ -526,6 +526,13 @@ class TlsLibraryUnlock {
 //
 // mbedTLS context wrappers for SSL/TLS connections
 //
+// A context is C heap that a socket object points to, and more than one thread can be using it when
+// the object is closed (see "TLS contexts and the threads that use them" in common.cpp, where the
+// counts below are kept, under one lock): it is freed when its last user lets go, not by Close.
+//
+struct SecureServerCtx;
+void TlsServerRelease(SecureServerCtx* srv);
+
 struct SecureSocketCtx {
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -549,6 +556,10 @@ struct SecureSocketCtx {
   // ReadBytes take it first). A Char[] read that completes its last character reads one byte at a time
   // and can find one that belongs to the next character; TLS cannot look at a byte without reading it.
   int pushback;
+  // an accepted connection: the server whose configuration (certificate, key, random generator) 'ssl'
+  // was set up with and reads for as long as it lives. A reference, given back when this is freed, so
+  // closing the listener does not free the configuration under the connections it accepted.
+  SecureServerCtx* server;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -562,7 +573,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false), pushback(-1) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false), pushback(-1), server(nullptr) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -579,6 +590,10 @@ struct SecureSocketCtx {
     mbedtls_x509_crt_free(&cacert);
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
+    // after mbedtls_ssl_free: the session no longer reads the server's configuration
+    if(server) {
+      TlsServerRelease(server);
+    }
   }
 };
 
@@ -681,8 +696,11 @@ struct SecureServerCtx {
   mbedtls_ctr_drbg_context ctr_drbg;
   mbedtls_net_context listen_fd;
   int last_error;
+  // who still needs this: the server object until it is closed (1), each Accept in flight and each
+  // accepted connection not yet freed. Under the lock in common.cpp; freed by TlsServerRelease at 0.
+  int refs;
 
-  SecureServerCtx() : last_error(0) {
+  SecureServerCtx() : last_error(0), refs(1) {
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
     mbedtls_pk_init(&pkey);

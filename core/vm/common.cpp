@@ -6071,6 +6071,79 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
   return true;
 }
 
+//
+// TLS contexts and the threads that use them
+//
+// A TLS server object and a TLS socket object each point (instance[0]) to a context on the C heap: the
+// mbedTLS state. Rooting the object keeps the object alive, not the context, and Close() deleted the
+// context whoever else was using it:
+//
+//  - a thread in TCPSecureSocketServer->Accept() while another closes the server (how a server is
+//    stopped): the accept returned into mbedtls_ssl_setup(&client->ssl, &srv->conf) on freed memory;
+//  - every connection the server had accepted: mbedTLS reads the configuration a session was set up
+//    with (srv->conf, and through it the certificate, the key and the random generator) on every
+//    record, so a connection still open when its listener closed ran on freed memory from then on;
+//  - a thread in a read, a write or ShutdownSend() on a TLS socket while another closes it (how a
+//    blocked reader is told to stop).
+//
+// So a context is counted, under one lock that also covers the pointer in the object: a trap takes
+// its reference in the same critical section in which it reads instance[0], and Close() clears
+// instance[0] in the same critical section in which it gives the object's reference up. Whoever lets go
+// last frees the context. The lock is a leaf: it is never held across an mbedTLS call or a wait.
+//
+static std::mutex tls_context_lock;
+
+void TlsServerRelease(SecureServerCtx* srv)
+{
+  bool last;
+  {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    last = --srv->refs == 0;
+  }
+  if(last) {
+    delete srv;
+  }
+}
+
+// A TLS server's context for as long as a trap uses it: a reference, and a copy of the listening
+// descriptor taken with it (Close() ends the descriptor in the context, under the lock).
+class TlsServerUse {
+  SecureServerCtx* srv;
+  mbedtls_net_context listener;
+
+ public:
+  explicit TlsServerUse(const size_t* instance) : srv(nullptr) {
+    mbedtls_net_init(&listener);
+    if(instance) {
+      std::lock_guard<std::mutex> guard(tls_context_lock);
+      srv = (SecureServerCtx*)instance[0];
+      if(srv) {
+        ++srv->refs;
+        listener = srv->listen_fd;
+      }
+    }
+  }
+
+  ~TlsServerUse() {
+    if(srv) {
+      TlsServerRelease(srv);
+    }
+  }
+
+  TlsServerUse(const TlsServerUse&) = delete;
+  TlsServerUse& operator=(const TlsServerUse&) = delete;
+
+  SecureServerCtx* Get() const { return srv; }
+  mbedtls_net_context* Listener() { return &listener; }
+
+  // hands this reference to an accepted connection (SecureSocketCtx::server), which gives it back
+  SecureServerCtx* Give() {
+    SecureServerCtx* given = srv;
+    srv = nullptr;
+    return given;
+  }
+};
+
 bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* pem_file_array = (size_t*)PopInt(op_stack, stack_pos);
@@ -6139,37 +6212,43 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
 // handing mbedtls_ssl_get_peer_cert a "ssl" that was really the server's
 // configuration: garbage, or a crash. A socket reports its peer's
 // certificate, a server its own, told apart by the instance's class.
-static const mbedtls_x509_name* TlsCertName(size_t* instance, bool subject)
+//
+// The name is written out here, while the context is held (TlsServerUse): the
+// certificate is part of it.
+static bool TlsCertNameText(size_t* instance, bool subject, std::wstring& text)
 {
   if(!instance || !instance[0]) {
-    return nullptr;
+    return false;
   }
 
-  const mbedtls_x509_crt* cert = nullptr;
+  char buffer[LARGE_BUFFER_MAX] = {0};
   StackClass* cls = MemoryManager::GetClass(instance);
   if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocketServer") {
+    TlsServerUse server(instance);
+    if(!server.Get()) {
+      return false;
+    }
     // set only once Listen has parsed the certificate
-    cert = &((SecureServerCtx*)instance[0])->srvcert;
+    const mbedtls_x509_crt* cert = &server.Get()->srvcert;
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, subject ? &cert->subject : &cert->issuer);
   }
   else {
-    cert = mbedtls_ssl_get_peer_cert(&((SecureSocketCtx*)instance[0])->ssl);
+    const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&((SecureSocketCtx*)instance[0])->ssl);
+    if(!cert) {
+      return false;
+    }
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, subject ? &cert->subject : &cert->issuer);
   }
 
-  if(!cert) {
-    return nullptr;
-  }
-
-  return subject ? &cert->subject : &cert->issuer;
+  text = BytesToUnicode(buffer);
+  return true;
 }
 
 bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  const mbedtls_x509_name* name = TlsCertName(instance, false);
-  if(name) {
-    char buffer[LARGE_BUFFER_MAX] = {0};
-    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
-    const std::wstring in = BytesToUnicode(buffer);
+  std::wstring in;
+  if(TlsCertNameText(instance, false, in)) {
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
@@ -6182,11 +6261,8 @@ bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  const mbedtls_x509_name* name = TlsCertName(instance, true);
-  if(name) {
-    char buffer[LARGE_BUFFER_MAX] = {0};
-    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
-    const std::wstring in = BytesToUnicode(buffer);
+  std::wstring in;
+  if(TlsCertNameText(instance, true, in)) {
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
@@ -6676,7 +6752,11 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    SecureServerCtx* srv = (SecureServerCtx*)instance[0];
+    // The server's context is held for the accept: another thread closing the server meanwhile (which
+    // is how an accept loop is stopped) ends the listening descriptor, so the accept below returns,
+    // but no longer frees the context this is about to hand to mbedtls_ssl_setup.
+    TlsServerUse server(instance);
+    SecureServerCtx* srv = server.Get();
 
     if(srv) {
       SecureSocketCtx* client = new SecureSocketCtx();
@@ -6696,9 +6776,12 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       // (status <= 0, recorded for GetLastError) rather than as a Nil from Accept.
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      int ret = mbedtls_net_accept(&srv->listen_fd, &client->net, nullptr, 0, nullptr);
+      int ret = mbedtls_net_accept(server.Listener(), &client->net, nullptr, 0, nullptr);
       if(ret == 0) {
-        // Setup SSL session for this client (uses server's config)
+        // Setup SSL session for this client (uses server's config). mbedTLS reads that configuration
+        // for as long as the session lives, so the session keeps the reference this accept held: the
+        // context outlives a closed listener until the connections it accepted are freed.
+        client->server = server.Give();
         TlsLibraryLock library_lock;
         ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
         if(ret == 0) {
@@ -6766,7 +6849,8 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureServerCtx* srv = (SecureServerCtx*)instance[0];
+  TlsServerUse server(instance);
+  SecureServerCtx* srv = server.Get();
   if(srv) {
     char buffer[LARGE_BUFFER_MAX] = {0};
     mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &srv->srvcert.issuer);
@@ -6821,10 +6905,21 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    SecureServerCtx* srv = (SecureServerCtx*)instance[0];
+    // The object lets go of its context and the listening descriptor ends here: shut down and closed
+    // (mbedtls_net_free does both), which is what wakes a thread blocked in Accept() on it. The context
+    // itself stays until the accepts in flight and the connections it accepted have let go as well:
+    // this deleted it, under both.
+    SecureServerCtx* srv;
+    {
+      std::lock_guard<std::mutex> guard(tls_context_lock);
+      srv = (SecureServerCtx*)instance[0];
+      if(srv) {
+        instance[0] = 0;
+        mbedtls_net_free(&srv->listen_fd);
+      }
+    }
     if(srv) {
-      instance[0] = 0;
-      delete srv;
+      TlsServerRelease(srv);
     }
   }
 
