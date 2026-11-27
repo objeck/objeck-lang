@@ -9,6 +9,13 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# A new push to a pull request cancels the run still going for its older commit (every merge of master into a
+# branch used to leave a full CI run behind it, which is what queued 70+ runs). Runs on master, tags and
+# schedules are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Every core/lib/*.obl built from source on one Linux job; the other jobs download them.
   libs:
