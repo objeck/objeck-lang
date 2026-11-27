@@ -2251,6 +2251,8 @@ scope->GetStepsUsed()->PrintLine();
 		@halt : String;
 		@held : Vector<AgentScopeLink>;
 		@entries : Int;
+		@pinned : Vector<AgentScopeLink>;
+		@pinned_cancel : AgentCancel;
 		@slots : static : Vector<AgentScopeSlot>;
 		@registry_lock : static : ThreadMutex;
 
@@ -2347,6 +2349,40 @@ scope->GetStepsUsed()->PrintLine();
 		~#
 		method : public : SetParent(parent : AgentScope) ~ Nil {
 			@fixed_parent := parent;
+		}
+
+		#~
+		Makes the child a worker thread of an agent will enter, and records now, on the thread that starts
+		the worker, every scope that limits this one and this scope's cancellation token. A child works
+		out what limits it when it is entered, and a worker thread may get there late: the run has timed
+		out, the scope bodies have returned and this scope has forgotten what it was inside, so the child
+		would find itself under this scope alone and with no token to stop it. Called by Agent.
+		@hidden
+		@return the child
+		~#
+		method : public : WorkerChild() ~ AgentScope {
+			Init();
+			child := Child();
+			links := Vector->New()<AgentScopeLink>;
+			critical(@registry_lock) {
+				seen := Vector->New()<AgentScope>;
+				Limits(seen, @self);
+				k := 0;
+				while(k < seen->Size()) {
+					links->AddBack(AgentScopeLink->New(seen->Get(k), seen->Get(k)->GetEntries()));
+					k += 1;
+				};
+			};
+			child->Pin(links, @cancel);
+			return child;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Pin(links : Vector<AgentScopeLink>, cancel : AgentCancel) ~ Nil {
+			@pinned := links;
+			@pinned_cancel := cancel;
 		}
 
 		#~
@@ -2521,7 +2557,23 @@ scope->GetStepsUsed()->PrintLine();
 
 				# nothing is published when the scope would come to limit itself, through either of the two
 				seen := Vector->New()<AgentScope>;
-				Limits(seen, above);
+				if(@pinned <> Nil) {
+					# a worker's child: what limited its parent when the worker was made, not what the
+					# parent is inside by the time the thread got here (see WorkerChild)
+					AddOnce(seen, above);
+					p := 0;
+					while(p < @pinned->Size()) {
+						link := @pinned->Get(p);
+						if(link->GetScope()->GetEntries() = link->GetEntry()) {
+							AddOnce(seen, link->GetScope());
+						};
+						p += 1;
+					};
+					Parents(seen);
+				}
+				else {
+					Limits(seen, above);
+				};
 				Limits(seen, side);
 				k := 0;
 				while(k < seen->Size() & <>cycle) {
@@ -2581,6 +2633,10 @@ scope->GetStepsUsed()->PrintLine();
 				if(@parent->IsActive()) {
 					parent_cancel := @parent->GetCancel();
 				};
+			};
+			# a worker's child follows the token its parent had when the worker was made (see WorkerChild)
+			if(@pinned_cancel <> Nil) {
+				parent_cancel := @pinned_cancel;
 			};
 			side_cancel : AgentCancel;
 			if(@also <> Nil) {
@@ -3180,6 +3236,18 @@ scope->GetStepsUsed()->PrintLine();
 			return flag;
 		}
 
+		# Says that the worker is about to run the call. False when the wait for it has already ended (the
+		# slot was abandoned): the worker then runs nothing. A thread can be slow to start, and by the time
+		# it does the run that asked for the call may have timed out, answered the model and returned; a
+		# tool that started then would act for a run that no longer exists
+		method : public : Claim() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				flag := <>@abandoned;
+			};
+			return flag;
+		}
+
 		#~
 		Cuts the worker loose so that its late result is dropped
 		@return true when the worker had not finished, false when it had
@@ -3232,6 +3300,8 @@ scope->GetStepsUsed()->PrintLine();
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
 		@scope : AgentScope;
+		@late_start_ms : static : Int;
+		@late_scope_ms : static : Int;
 
 		#~
 		Constructor
@@ -3240,6 +3310,12 @@ scope->GetStepsUsed()->PrintLine();
 		New(slot : AgentSlot) {
 			Parent("agent_worker");
 			@slot := slot;
+		}
+
+		# for tests: see Agent->SetWorkerTestDelays
+		function : SetTestDelays(start_ms : Int, scope_ms : Int) ~ Nil {
+			@late_start_ms := start_ms;
+			@late_scope_ms := scope_ms;
 		}
 
 		#~
@@ -3251,7 +3327,7 @@ scope->GetStepsUsed()->PrintLine();
 		~#
 		method : public : Under(scope : AgentScope) ~ AgentWorker {
 			if(scope <> Nil) {
-				@scope := scope->Child();
+				@scope := scope->WorkerChild();
 			};
 			return @self;
 		}
@@ -3299,6 +3375,19 @@ scope->GetStepsUsed()->PrintLine();
 			failure : String;
 			reply : AgentReply;
 			entered := false;
+			if(@late_start_ms > 0) {
+				Thread->Sleep(@late_start_ms);
+			};
+
+			# nothing of the caller's runs for a call nobody waits for any more
+			if(<>@slot->Claim()) {
+				@slot->Complete(Nil, Nil, Nil);
+				return;
+			};
+
+			if(@late_scope_ms > 0) {
+				Thread->Sleep(@late_scope_ms);
+			};
 			try {
 				if(@scope <> Nil) {
 					@scope->EnterWorker();
@@ -3473,6 +3562,18 @@ result->GetText()->PrintLine();
 		method : public : SetSystem(system : String) ~ Agent {
 			@conversation->SetSystem(system);
 			return @self;
+		}
+
+		#~
+		For tests only. Makes every worker thread (a BOUNDED_THREAD tool, a bounded model call) wait before
+		it does anything, and again before it enters its scope, so that a test can have the run that started
+		it time out and return first. A thread that is slow to start cannot be arranged any other way
+		@hidden
+		@param start_ms milliseconds a worker waits as its thread starts, 0 for none
+		@param scope_ms milliseconds it waits before it enters its scope, 0 for none
+		~#
+		function : SetWorkerTestDelays(start_ms : Int, scope_ms : Int) ~ Nil {
+			AgentWorker->SetTestDelays(start_ms, scope_ms);
 		}
 
 		#~
