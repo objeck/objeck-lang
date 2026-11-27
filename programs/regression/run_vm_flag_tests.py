@@ -246,7 +246,10 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     func-ref parameters (closure_nested_capture) and the collections library
     (collect_hash_open): every map builds, every thread's frames account for
     every word on its stack, no word typed as a reference points at nothing,
-    and no word typed Int or Float points at an object.
+    and no word typed Int or Float points at an object. get_class_height_test
+    has a thread inside Base->GetClass() while another collects: the map of
+    GetClass was one word too high after its trap (the one TRAP_RTRN that
+    pushes nothing), and a thread parked there was mismatched.
  25. A minor collection leaves an Int alone, whatever its value (#1452). The
     collector relocated every operand-stack word equal to a moved object's old
     address, so an Int holding GetInstanceID() changed under a collection. It now
@@ -1825,7 +1828,8 @@ def check_gc_roots_audit(obc, obr, env, bin_dir):
     # ---- 24. the operand-stack reference maps agree with the live stacks -----------
     audit_env = dict(env)
     audit_env["OBJECK_GC_ROOTS"] = "audit"
-    for name in ("gc_cond_value_root", "opt_inline_and_or_slots", "closure_nested_capture", "collect_hash_open"):
+    for name in ("gc_cond_value_root", "opt_inline_and_or_slots", "closure_nested_capture", "collect_hash_open",
+                 "get_class_height_test"):
         src = os.path.join(SCRIPT_DIR, name + ".obs")
         dest = os.path.join(SCRIPT_DIR, name + ".obe")
         rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)

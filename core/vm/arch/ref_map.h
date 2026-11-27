@@ -1377,6 +1377,19 @@
       // own id says, whatever the instruction's count is, and pushes a result or
       // not: the row is that declaration. The id is the literal just below (the
       // loader checked it is one, and no jump lands between the two).
+      // Whether the TRAP_RTRN at 'ip' leaves a word: every one does but a trap the
+      // table says pushes nothing. An id the table does not hold (or one that is not
+      // a literal) keeps the word, as before the table was read here.
+      bool TrapRtrnPushes(long ip) {
+        if(ip > 0 && instrs[ip - 1].GetType() == LOAD_INT_LIT) {
+          const trap_signatures::Row* row = trap_signatures::Find(instrs[ip - 1].GetInt64Operand());
+          if(row && row->rtrn && !row->pushes) {
+            return false;
+          }
+        }
+        return true;
+      }
+
       bool StepTrap(std::vector<int>& stack, long ip, bool rtrn, long count) {
         const trap_signatures::Row* row = nullptr;
         if(ip > 0 && instrs[ip - 1].GetType() == LOAD_INT_LIT) {
@@ -2148,7 +2161,13 @@
         }
         // one word back, typed by its uses (the JIT models it the same way)
         if(!PopN(stack, ip, op1)) return false;
-        stack.push_back(NewValue(RK_UNKNOWN));
+        // except the one trap written TRAP_RTRN whose handler pushes nothing
+        // (LOAD_CLS_BY_INST stores its result in the frame: trap_signatures.h, and
+        // StepTrap above). A word pushed for it here left every height after it in
+        // System.Base:GetClass one above the verifier's and the interpreter's.
+        if(TrapRtrnPushes(ip)) {
+          stack.push_back(NewValue(RK_UNKNOWN));
+        }
         break;
 
       case SWAP_INT: {
