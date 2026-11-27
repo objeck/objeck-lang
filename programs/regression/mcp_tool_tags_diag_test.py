@@ -13,14 +13,18 @@ Diagnostics (each source is compiled; obc must fail, name the problem and give t
   variable; '@param' naming no parameter; '@readonly' with '@destructive'; '@readonly' with text; a tool name
   with a character a tool name cannot have; two tools with one name; '@tool' twice; a name that collides with
   a function the compiler writes; a McpMain(args : String[]) that is a method, that is virtual, or that
-  returns a value (the entry 'obr --mcp' starts must be 'function : McpMain(args : String[]) ~ Nil').
+  returns a value (the entry 'obr --mcp' starts must be 'function : McpMain(args : String[]) ~ Nil'), in a
+  program that is an MCP server: the file has 'use API.MCP', or some class of the program, in this file or
+  another, has a tagged function.
 
 Left alone (each source must compile and, run, print what it should):
   '@tool' inside a string; in a '//' or '#' or '/* */' comment; in a '#~' comment that is not at the start of a
   line; '@tools' and '@tool_name'; a tagged comment followed by another comment before the function; a
   comment cut off by the end of the file (the same errors as before the feature); a CRLF file; a comment of a
   megabyte; non-ASCII text in the description and in a string default; a tool in a class with no 'use' lines;
-  methods named McpMain with another parameter list; the entry itself.
+  methods named McpMain with another parameter list; the entry itself; in a program that has nothing to do
+  with MCP (no 'use API.MCP', no tagged function, one file or two) a method, a virtual method and a function
+  that returns a value, each named McpMain(args : String[]).
 
 Several files (the tools are derived when every file has been read):
   a record declared in a later file than the function that takes it; a syntax error in one file does not hide
@@ -140,6 +144,11 @@ OK = [
     ("a doc comment in a method body", "class T {\n\tfunction : Main(args : String[]) ~ Nil {\n#~\n@tool\n~#\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
     ("a method named McpMain with another parameter list", "class T {\n\tNew() {}\n\tmethod : public : McpMain(n : Int) ~ Int {\n\t\treturn n + 1;\n\t}\n\tmethod : public : McpMain(a : String[], b : Int) ~ Int {\n\t\treturn b;\n\t}\n\tmethod : public : McpMain(a : String) ~ Int {\n\t\treturn 7;\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tt := T->New();\n\t\tx := t->McpMain(1) + t->McpMain(args, 3) + t->McpMain(\"s\");\n\t\t\"fine {$x}\"->PrintLine();\n\t}\n}\n", "fine 12"),
     ("the entry itself, function McpMain(args : String[]) ~ Nil", "class T {\n\tfunction : McpMain(args : String[]) ~ Nil {\n\t\t\"entry\"->PrintLine();\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tMcpMain(args);\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
+    # McpMain(args : String[]) is an ordinary name in a program that is not an MCP server
+    ("an instance method McpMain(args : String[]) ~ Int in a program with no MCP", "class T {\n\t@n : Int;\n\tNew() { @n := 3; }\n\tmethod : public : McpMain(args : String[]) ~ Int {\n\t\treturn @n + args->Size();\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tx := T->New()->McpMain(args);\n\t\t\"fine {$x}\"->PrintLine();\n\t}\n}\n", "fine 3"),
+    ("an instance method McpMain(args : String[]) ~ Nil in a program with no MCP", "class T {\n\t@n : Int;\n\tNew() { @n := 4; }\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"fine {$@n}\"->PrintLine();\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tT->New()->McpMain(args);\n\t}\n}\n", "fine 4"),
+    ("a virtual McpMain(args : String[]) in a program with no MCP", "class Served {\n\tNew() {}\n\tmethod : virtual : public : McpMain(args : String[]) ~ Nil;\n}\nclass T from Served {\n\tNew() { Parent(); }\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"fine virtual\"->PrintLine();\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tb : Served := T->New();\n\t\tb->McpMain(args);\n\t}\n}\n", "fine virtual"),
+    ("a function McpMain(args : String[]) ~ Int in a program with no MCP", "class T {\n\tfunction : McpMain(args : String[]) ~ Int {\n\t\treturn 8;\n\t}\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tx := McpMain(args);\n\t\t\"fine {$x}\"->PrintLine();\n\t}\n}\n", "fine 8"),
     ("nested markers", "class T {\n#~ outer #~ @tool ~# \n\tfunction : Main(args : String[]) ~ Nil {\n\t\t\"fine\"->PrintLine();\n\t}\n}\n", "fine"),
 ]
 
@@ -235,6 +244,30 @@ def main():
                 continue
             code, out = run([obr, obe], env, work)
             check("a record declared in %s than the tool works" % label, code == 0 and out.strip() == "7", out)
+
+        # McpMain(args : String[]) is the entry only in a program that is an MCP server. A file without
+        # 'use API.MCP' is one when some class of the program has a tagged function, wherever it is: the
+        # compiler writes an entry for that class and a McpMain the program wrote is started in its place.
+        method_src = "class App {\n\tNew() {}\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"app\"->PrintLine();\n\t}\n}\n"
+        tagged_src = "class Tagged {\n#~\n@tool\n~#\nfunction : F() ~ Int { return 1; }\n}\n"
+        main_src = "class Go {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tApp->New()->McpMain(args);\n\t}\n}\n"
+        code, out, obe = compile_text("entry_same", method_src + tagged_src + main_src)
+        check("a McpMain(args : String[]) that is a method, in a file with a tagged function and no 'use', is refused at line 3",
+              code != 0 and not os.path.exists(obe) and "'McpMain(args : String[])' is the function 'obr --mcp' starts" in out and "declared as a method" in out and ":(3," in out, out)
+        for label, files in (("an earlier", [tagged_src, method_src + main_src]), ("a later", [method_src + main_src, tagged_src])):
+            code, out, obe = compile_files("entry_" + label.split()[1], files)
+            at = [l for l in out.splitlines() if "is the function 'obr --mcp' starts" in l]
+            check("a McpMain(args : String[]) that is a method is refused when %s file has a tagged function, at its own file and line" % label,
+                  code != 0 and not os.path.exists(obe) and len(at) == 1 and "declared as a method" in at[0] and ":(3," in at[0] and
+                  ("entry_%s_%d.obs" % (label.split()[1], 1 if label == "an earlier" else 0)) in at[0], out)
+        code, out, obe = compile_files("entry_none", [method_src, main_src])
+        check("two files with no tagged function and no 'use API.MCP': the method named McpMain compiles", code == 0 and os.path.exists(obe), out)
+        if code == 0:
+            code, out = run([obr, obe], env, work)
+            check("  and runs", code == 0 and out.strip() == "app", out)
+        # the reason is not the name of a class: a class called Tagged, a string and a comment that say @tool
+        code, out, obe = compile_text("entry_words", "# @tool\n" + method_src + "class Tagged {\n\tfunction : F() ~ String { return \"@tool\"; }\n}\n" + main_src)
+        check("a program whose only '@tool' is in a string and a line comment is not a server", code == 0 and os.path.exists(obe), out)
 
         broken_src = "class Broken {\n\tfunction : Oops() ~ Int {\n\t\treturn 1 +;\n\t}\n}\n"
         bad_tag_src = HEAD + "class T {\n#~\n@tool\n@param nope the nope\n~#\nfunction : F(a : Int) ~ Int { return a; }\n\tfunction : Main(args : String[]) ~ Nil {}\n}\n"

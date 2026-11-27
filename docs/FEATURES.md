@@ -331,7 +331,10 @@ The subject is evaluated once and only the arm taken is evaluated, where the exp
 stands: inside `&`, `?` or a loop condition a `match` runs only when it is reached. It
 compiles to the `select` statement it stands for (a dense table stays a jump table).
 `match` is a keyword only before its subject, which starts with a name (`match kind {`,
-`match item->GetKind() {`); elsewhere it is an ordinary name. A method whose last
+`match item->GetKind() {`), a number, character or string (`match 1 {`) or a parenthesis
+whose `)` is followed by the `{` (`match (a + b) {`); elsewhere it is an ordinary name,
+so `match(x);` and `if(match(x)) {` call a method named `match`. A subject that starts
+with a parenthesis and goes on after it is written inside one pair (`match ((a) + b) {`). A method whose last
 statement is a `match` statement still needs `other` or a `return` after it, as after a
 `select`. Tests: `match_value`, `match_statement`, `select_value`, `bad_match_*`.
 
@@ -374,7 +377,8 @@ for a variable you already have, run a block that must end in `return`, `break`,
 or `Runtime->Exit(..)` (a block that can fall through would leave `x` Nil, so it is an error).
 It is only a spelling of `x := E;` followed by `if(x = Nil) { ... }`; the value form
 `a ?? b` is unchanged. The guard belongs to an assignment or declaration statement, not to an
-argument.
+argument. The target may be an array element, `cells[i] := E ?? return;`: the guard tests that
+element, and `E` and `i` are evaluated once.
 
 ```ruby
 # before
@@ -385,7 +389,7 @@ return x->Get();
 x := Find(v, i) ?? return -1;
 return x->Get();
 ```
-Test: `nil_guard`, `bad_nil_guard_*`.
+Test: `nil_guard`, `nil_guard_element`, `bad_nil_guard_*`.
 
 
 ### Nil Safety

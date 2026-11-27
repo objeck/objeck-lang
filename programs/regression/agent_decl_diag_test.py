@@ -198,6 +198,17 @@ OK = [
                   "class Go {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tscript := Vector->New()<AgentReply>;\n\t\tscript->AddBack(AgentReply->Say(\"no mcp\"));\n"
                   "\t\tClerk->Build(script)->Run(\"go\")->GetText()->PrintLine();\n\t}\n}\n"},
      "no mcp\n", "gen_collect,json,agent,net,cipher,misc", False),
+    # the ',' between type arguments is not the end of a list entry (it was: 'Expected expression, found '->'')
+    ("list entries with type arguments, nested ones, and a '<' that compares",
+     {"main.obs": "use API.MCP, API.Agent, Collection;\n\nclass Factory<K : Compare, V> {\n\tNew() {}\n\tmethod : public : MakeTool() ~ AgentTool {\n\t\treturn AgentTools->Calculator();\n\t}\n"
+                  "}\n\n"
+                  "agent One(script : Vector<AgentReply>) {\n" + OKB + "\ttools : Factory->New()<String, IntRef>->MakeTool();\n}\n\n"
+                  "agent Two(script : Vector<AgentReply>, n : Int) {\n" + OKB +
+                  "\ttools : Factory->New()<String, Vector<Pair<IntRef, String>>>->MakeTool(), Tools, Factory->New()<String, IntRef>->MakeTool();\n"
+                  "\tallow : n < 3 ? \"calculator\" : \"none\", Map->New()<String, IntRef>->Size() = 0 ? \"add\" : \"none\";\n}\n\n" + TOOLS +
+                  "\nclass Go {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tscript := Vector->New()<AgentReply>;\n\t\tscript->AddBack(AgentReply->Say(\"one\"));\n"
+                  "\t\tOne->Build(script)->Run(\"go\")->GetText()->PrintLine();\n" + SCRIPT + "\t\tresult := Two->Build(script, 1)->Run(\"go\");\n" + SHOW + "\t}\n}\n"},
+     "one\nadd=5\ndone\n", LIBS, False),
     ("'agent' as the name of a class, with a function called Build",
      {"main.obs": "class agent {\n\t@name : String;\n\tNew(name : String) {\n\t\t@name := name;\n\t}\n\tmethod : public : Name() ~ String {\n\t\treturn @name;\n\t}\n"
                   "\tfunction : Build(count : Int) ~ Int {\n\t\treturn count + 1;\n\t}\n}\n\n"
@@ -292,6 +303,57 @@ def main():
         code, out, obe = compile_files("few", {"main.obs": HEAD + "agent A(script : Vector<AgentReply>) {\n" + OKB + "\tbudget : 8;\n\tinstructions : \"a\";\n}\n"})
         errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
         check("a budget without braces is one error", len(errors) == 1, out)
+
+        # A value with more chained operators than a statement may have: the reading of the file is given up
+        # from inside the two scanners an agent is read with (the class written for it, and the piece of the
+        # user's text inside that class). It is one error, and the parser is put back as it was for the files
+        # read after it: the names the compiler uses for the pieces ('agent__x0') are ordinary names there, and
+        # a mistake in a later file is reported at its place. (Neither scanner swap was undone, so two scanners
+        # were never released and the parser was left pointing at the pieces of an agent that was gone: a
+        # sanitizer build of obc shows both, and in a release build the mistake in the later file went unsaid.)
+        long_sum = " + ".join(["1"] * 2100)
+        later_ok = "class Later {\n\tfunction : F() ~ Int {\n\t\tagent__x0 := 1;\n\t\tagent__x7 := 2;\n\t\treturn agent__x0 + agent__x7;\n\t}\n}\n"
+        later_bad = "class Later {\n\tfunction : F() ~ Int {\n\t\tagent__x0 := 1;\n\t\treturn agent__x0 +;\n\t}\n}\n"
+        for label, setting in (("backend", "\tbackend : ScriptedBackend->New(script)->Add(AgentReply->Say((%s)->ToString()));\n" % long_sum),
+                               ("instructions", OKB + "\tinstructions : (%s)->ToString();\n" % long_sum),
+                               ("an entry of tools", OKB + "\ttools : Tools, script->Size() = %s ? AgentTools->Calculator() : Nil;\n" % long_sum),
+                               ("a limit", OKB + "\tbudget { steps : %s; }\n" % long_sum)):
+            first = HEAD + "agent Deep(script : Vector<AgentReply>) {\n" + setting + "}\n"
+            for files, want in (({"a.obs": first}, 1), ({"a.obs": first, "b.obs": later_ok}, 1), ({"a.obs": first, "b.obs": later_bad}, 2)):
+                code, out, obe = compile_files("deep", files)
+                errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+                ok = code != 0 and not os.path.exists(obe) and len(errors) == want and "Expression is too long" in errors[0] and "deep_a.obs" in errors[0]
+                if want == 2:
+                    ok = ok and "deep_b.obs:(4,21): Expected expression" in errors[1]
+                check("%s with more than 2000 chained operators is one error%s" %
+                      (label, "" if len(files) == 1 else ", and a later file is read as any other (%d error(s) in all)" % want), ok, out[-900:])
+
+        # A ')' or ']' that closes nothing, where a setting starts or after 'budget': the declaration still ends
+        # at its own '}', so a mistake in the class after it is reported, at its place. (The stray token used
+        # to take the recovery's depth below zero; the agent's '}' was then skipped as nested, the rest of the
+        # file was read as part of the agent, and the later mistake was never reported.)
+        later = "\nclass Later {\n\tfunction : F() ~ Int {\n\t\treturn 1 +;\n\t}\n}\n"
+        for label, body, first in (
+                ("a stray ')' where a setting starts", "agent Broken { ); }\n", "Expected a setting of the agent 'Broken', found ')'"),
+                ("a stray ']' where a setting starts", "agent Broken { ]; }\n", "Expected a setting of the agent 'Broken', found ']'"),
+                ("a stray ')' with no ';' after it", "agent Broken {\n\t)\n}\n", "Expected a setting of the agent 'Broken', found ')'"),
+                ("a stray ')' after 'budget'", "agent Broken { budget ); }\n", "Expected '{' after 'budget'"),
+                ("a stray ']' after 'budget'", "agent Broken {\n\tbudget ] 8;\n}\n", "Expected '{' after 'budget'")):
+            text = HEAD + body + later
+            line, col = where(text, ";\n\t}\n}\n", len(HEAD))
+            code, out, obe = compile_files("stray", {"main.obs": text})
+            errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+            check("%s: the mistake in the class after the agent is still reported, at line %d, column %d" % (label, line, col),
+                  code != 0 and not os.path.exists(obe) and first in out and any("Expected expression" in l and ":(%d,%d):" % (line, col) in l for l in errors), out)
+            check("  and nothing else is: the agent's two errors and that one", len(errors) == 3 and "has no backend" in out, out)
+            # with nothing wrong after it, the agent's errors are the only ones
+            code, out, obe = compile_files("stray_alone", {"main.obs": HEAD + body})
+            errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+            check("%s: the rest of the file is read as before" % label, code != 0 and len(errors) == 2 and first in out and "has no backend" in out, out)
+        # brackets that do pair are still skipped whole: the ';' inside them does not end the setting
+        code, out, obe = compile_files("paired", {"main.obs": HEAD + "agent Broken { (a; b) [c; d] {e; f}; backend : API.Agent.ScriptedBackend->New(Nil); }\n" + later})
+        errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+        check("paired brackets where a setting starts are skipped whole", code != 0 and len(errors) == 2 and "found '('" in out and "Expected expression" in out, out)
 
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_decl_test.obs"), encoding="utf-8") as f:
             source = f.read()

@@ -1,0 +1,283 @@
+#~
+The nil guard of an assignment to an array element: 'cells[i] := E ?? return V;' leaves when
+the value that was assigned is Nil. The guard used to be made from the target's name alone,
+'if(cells = Nil)', which tested the array and never left. It is now 'if(cells[i] = Nil)', and an
+index that is not an integer literal is evaluated once: E once, then each index once, the order a
+plain 'cells[i] := E;' has. A local and a field are guarded as before.
+~#
+use Collection;
+
+class Cell {
+	@v : Int;
+	New(v : Int) { @v := v; }
+	method : public : Get() ~ Int { return @v; }
+}
+
+class NilGuardElement {
+	@cell : Cell;
+	@cells : Cell[];
+	@grid : Cell[,];
+	@@shared : static : Cell[];
+	@@finds : static : Int;
+	@@indices : static : Int;
+	@@order : static : String;
+	@@failed : static : Bool;
+
+	New() {
+		@cells := Cell->New[4];
+		@grid := Cell->New[3, 3];
+	}
+
+	function : Find(found : Bool) ~ Cell {
+		@@finds += 1;
+		@@order += "v";
+		if(found) { return Cell->New(7); };
+		return Nil;
+	}
+
+	function : At(i : Int) ~ Int {
+		@@indices += 1;
+		@@order += "i";
+		return i;
+	}
+
+	function : Reset() ~ Nil {
+		@@finds := 0;
+		@@indices := 0;
+		@@order := "";
+	}
+
+	function : Check(name : String, got : String, expected : String, finds : Int, indices : Int, order : String) ~ Nil {
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+		if(@@finds <> finds | @@indices <> indices) {
+			"  FAIL: {$name}: the value was evaluated {$@@finds} time(s) and an index {$@@indices} time(s), expected {$finds} and {$indices}"->PrintLine();
+			@@failed := true;
+		};
+		if(@@order->Equals(order) = false) {
+			"  FAIL: {$name}: evaluated in the order '{$@@order}', expected '{$order}'"->PrintLine();
+			@@failed := true;
+		};
+		Reset();
+	}
+
+	# an element of a local array, the index a call
+	function : Element(found : Bool) ~ String {
+		cells := Cell->New[4];
+		cells[At(2)] := Find(found) ?? return "left";
+		if(cells[2] = Nil) { return "kept, but Nil"; };
+		return "kept";
+	}
+
+	# what a plain assignment does, for the order
+	function : PlainElement(found : Bool) ~ String {
+		cells := Cell->New[4];
+		cells[At(2)] := Find(found);
+		return cells[2] = Nil ? "nil" : "kept";
+	}
+
+	# a literal index, a variable, an expression
+	function : Literal(found : Bool) ~ String {
+		cells := Cell->New[4];
+		cells[0] := Find(found) ?? return "left";
+		return "kept";
+	}
+
+	function : ByVariable(found : Bool, i : Int) ~ String {
+		cells := Cell->New[4];
+		cells[i] := Find(found) ?? return "left";
+		return cells[i]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	function : ByExpression(found : Bool, i : Int) ~ String {
+		cells := Cell->New[4];
+		cells[i * 2 + At(1)] := Find(found) ?? return "left";
+		return cells[3]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	# the element is the one tested: its neighbours being set or Nil changes nothing
+	function : Neighbours(found : Bool) ~ String {
+		cells := Cell->New[4];
+		cells[0] := Cell->New(1);
+		cells[1] := Find(found) ?? return "left";
+		cells := Cell->New[4];
+		cells[1] := Cell->New(1);
+		cells[0] := Find(found) ?? return "left";
+		return "kept";
+	}
+
+	# two dimensions, each index once
+	function : Grid(found : Bool) ~ String {
+		grid := Cell->New[3, 3];
+		grid[At(1), At(2)] := Find(found) ?? return "left";
+		return grid[1, 2]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	# the block form
+	function : Block(found : Bool) ~ String {
+		cells := Cell->New[4];
+		cells[At(1)] := Find(found) ?? {
+			@@order += "b";
+			return "left"
+		};
+		return "kept";
+	}
+
+	# break and continue: the loop goes on, or ends, on the element
+	function : Loop(pattern : Bool[]) ~ String {
+		cells := Cell->New[pattern->Size()];
+		seen := "";
+		each(i : pattern->Size()) {
+			cells[At(i)] := Find(pattern[i]) ?? continue;
+			seen += i->ToString();
+		};
+		seen += "|";
+		each(i : pattern->Size()) {
+			cells[i] := Find(pattern[i]) ?? break;
+			seen += i->ToString();
+		};
+		return seen;
+	}
+
+	# an element of a field, of a two-dimensional field and of a static
+	method : public : FieldElement(found : Bool) ~ String {
+		@cells[At(3)] := Find(found) ?? return "left";
+		return @cells[3]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	method : public : FieldGrid(found : Bool) ~ String {
+		@grid[At(0), 2] := Find(found) ?? return "left";
+		return @grid[0, 2]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	function : StaticElement(found : Bool) ~ String {
+		@@shared := Cell->New[2];
+		@@shared[At(1)] := Find(found) ?? return "left";
+		return "kept";
+	}
+
+	# a local and a field, as before
+	function : Local(found : Bool) ~ String {
+		cell := Find(found) ?? return "left";
+		return cell->Get() = 7 ? "kept" : "wrong";
+	}
+
+	method : public : Field(found : Bool) ~ String {
+		@cell := Find(found) ?? return "left";
+		return @cell->Get() = 7 ? "kept" : "wrong";
+	}
+
+	# a value that is more than a call
+	function : FromMap(key : String) ~ String {
+		map := Map->New()<String, Cell>;
+		map->Insert("a", Cell->New(7));
+		cells := Cell->New[2];
+		cells[At(1)] := map->Find(key) ?? return "left";
+		return cells[1]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	# an element of a jagged array's row, and of an array a call returns: the row, or the
+	# array, is read once into a hidden local of its own, and its element is the one tested
+	function : Jagged(found : Bool) ~ String {
+		rows := Cell[]->New[3];
+		rows[1] := Cell->New[4];
+		rows[At(1)][At(2)] := Find(found) ?? return "left";
+		return rows[1][2]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	function : PlainJagged(found : Bool) ~ String {
+		rows := Cell[]->New[3];
+		rows[1] := Cell->New[4];
+		rows[At(1)][At(2)] := Find(found);
+		return rows[1][2] = Nil ? "nil" : "kept";
+	}
+
+	function : Shared() ~ Cell[] {
+		@@order += "a";
+		return @@shared;
+	}
+
+	function : CallElement(found : Bool) ~ String {
+		@@shared := Cell->New[2];
+		Shared()[At(1)] := Find(found) ?? return "left";
+		return @@shared[1]->Get() = 7 ? "kept" : "wrong";
+	}
+
+	function : PlainCallElement(found : Bool) ~ String {
+		@@shared := Cell->New[2];
+		Shared()[At(1)] := Find(found);
+		return @@shared[1] = Nil ? "nil" : "kept";
+	}
+
+	# two guarded elements in one method: each has its own hidden locals
+	function : Two(first : Bool, second : Bool) ~ String {
+		cells := Cell->New[4];
+		cells[At(0)] := Find(first) ?? return "left first";
+		cells[At(1)] := Find(second) ?? return "left second";
+		return "kept";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Reset();
+		o := NilGuardElement->New();
+
+		Check("element, Nil", Element(false), "left", 1, 1, "vi");
+		Check("element, a value", Element(true), "kept", 1, 1, "vi");
+		Check("plain element, Nil", PlainElement(false), "nil", 1, 1, "vi");
+		Check("plain element, a value", PlainElement(true), "kept", 1, 1, "vi");
+		Check("literal index, Nil", Literal(false), "left", 1, 0, "v");
+		Check("literal index, a value", Literal(true), "kept", 1, 0, "v");
+		Check("variable index, Nil", ByVariable(false, 3), "left", 1, 0, "v");
+		Check("variable index, a value", ByVariable(true, 3), "kept", 1, 0, "v");
+		Check("expression index, Nil", ByExpression(false, 1), "left", 1, 1, "vi");
+		Check("expression index, a value", ByExpression(true, 1), "kept", 1, 1, "vi");
+		Check("neighbours, Nil", Neighbours(false), "left", 1, 0, "v");
+		Check("neighbours, a value", Neighbours(true), "kept", 2, 0, "vv");
+		Check("two dimensions, Nil", Grid(false), "left", 1, 2, "vii");
+		Check("two dimensions, a value", Grid(true), "kept", 1, 2, "vii");
+		Check("block, Nil", Block(false), "left", 1, 1, "vib");
+		Check("block, a value", Block(true), "kept", 1, 1, "vi");
+
+		pattern := Bool->New[4];
+		pattern[0] := true;
+		pattern[1] := false;
+		pattern[2] := true;
+		pattern[3] := true;
+		Check("continue and break", Loop(pattern), "023|0", 6, 4, "vivivivivv");
+
+		Check("field element, Nil", o->FieldElement(false), "left", 1, 1, "vi");
+		Check("field element, a value", o->FieldElement(true), "kept", 1, 1, "vi");
+		Check("field grid, Nil", o->FieldGrid(false), "left", 1, 1, "vi");
+		Check("field grid, a value", o->FieldGrid(true), "kept", 1, 1, "vi");
+		Check("static element, Nil", StaticElement(false), "left", 1, 1, "vi");
+		Check("static element, a value", StaticElement(true), "kept", 1, 1, "vi");
+		Check("local, Nil", Local(false), "left", 1, 0, "v");
+		Check("local, a value", Local(true), "kept", 1, 0, "v");
+		Check("field, Nil", o->Field(false), "left", 1, 0, "v");
+		Check("field, a value", o->Field(true), "kept", 1, 0, "v");
+		Check("a map lookup, Nil", FromMap("b"), "left", 0, 1, "i");
+		Check("a map lookup, a value", FromMap("a"), "kept", 0, 1, "i");
+		# the order is the one a plain assignment has, whatever that is
+		PlainJagged(true);
+		jagged_order := @@order;
+		Reset();
+		Check("jagged element, Nil", Jagged(false), "left", 1, 2, jagged_order);
+		Check("jagged element, a value", Jagged(true), "kept", 1, 2, jagged_order);
+		PlainCallElement(true);
+		call_order := @@order;
+		Reset();
+		Check("element of a call's array, Nil", CallElement(false), "left", 1, 1, call_order);
+		Check("element of a call's array, a value", CallElement(true), "kept", 1, 1, call_order);
+		Check("two guards, first Nil", Two(false, true), "left first", 1, 1, "vi");
+		Check("two guards, second Nil", Two(true, false), "left second", 2, 2, "vivi");
+		Check("two guards, values", Two(true, true), "kept", 2, 2, "vivi");
+
+		if(@@failed) {
+			"FAIL: nil guard of an array element"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: nil guard of an array element"->PrintLine();
+	}
+}

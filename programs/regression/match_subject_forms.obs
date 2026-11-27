@@ -1,0 +1,146 @@
+#~
+What 'match' may be followed by. It is a keyword only where a name could not be followed by
+what comes next: another name ('match color {'), a literal ('match 1 {'), or a parenthesis
+whose matching ')' is followed by '{' ('match (value) {'). The last two were not recognised:
+'match (value) { ... }' was read as a call of 'match' and refused with "Expected ';'".
+
+Everywhere else 'match' stays an ordinary name: a variable ('match := 1', 'match + 1',
+'a[match]'), and a function that is called ('match(x);', 'match(x)->PrintLine()',
+'if(match(x) = 2) {', 'while(match(y) < 6) {'). Both are used here next to the keyword.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+class MatchSubjectForms {
+	@@failed : static : Bool;
+
+	function : match(x : Int) ~ Int {
+		return x + 1;
+	}
+
+	function : IsTwo(x : Int) ~ Bool {
+		return x = 2;
+	}
+
+	function : Check(name : String, got : String, expected : String) ~ Nil {
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+	}
+
+	# a statement whose subject is in parentheses
+	function : Statement(value : Int) ~ String {
+		result := "";
+		match (value) {
+			1 => { result := "one"; }
+			2 | 3 => { result := "two or three"; }
+			other => { result := "other"; }
+		};
+		return result;
+	}
+
+	# a statement whose subject is a literal
+	function : LiteralStatement() ~ String {
+		result := "";
+		match 1 {
+			1 => { result := "one"; }
+			other => { result := "other"; }
+		};
+		match 'b' {
+			'a' => { result += " a"; }
+			'b' => { result += " b"; }
+			other => { result += " other"; }
+		};
+		match "two" {
+			"one" => { result += " one"; }
+			"two" => { result += " two"; }
+			other => { result += " other"; }
+		};
+		return result;
+	}
+
+	# the forms as values
+	function : Value(value : Int) ~ String {
+		return match (value) { 1 => "a", 2 => "b", other => "c" };
+	}
+
+	function : Nested(value : Int) ~ String {
+		return match ((value + 1) * 2) { 4 => "four", 6 => match (value) { 2 => "six from two", other => "six" }, other => "many" };
+	}
+
+	function : OfColor(c : Color) ~ String {
+		return match (c) { Color->Red => "red", Color->Green => "green", Color->Blue => "blue" };
+	}
+
+	function : OfCall(value : Int) ~ String {
+		# the subject is a call of the function named 'match'
+		return match (match(value)) { 3 => "three", other => "not three" };
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Check("statement, 1", Statement(1), "one");
+		Check("statement, 3", Statement(3), "two or three");
+		Check("statement, 9", Statement(9), "other");
+		Check("literal subjects", LiteralStatement(), "one b two");
+		Check("value, 2", Value(2), "b");
+		Check("value, 7", Value(7), "c");
+		Check("nested, 1", Nested(1), "four");
+		Check("nested, 2", Nested(2), "six from two");
+		Check("nested, 5", Nested(5), "many");
+		Check("enum", OfColor(Color->Green), "green");
+		Check("a call as the subject", OfCall(2), "three");
+
+		# a value where a statement starts, with a call on it
+		line := "";
+		line += match (2) { 2 => "x", other => "y" };
+		line += match 3 { 2 => "x", other => "y" };
+		line += match 2.0->As(Int) { 2 => "x", other => "y" };
+		Check("values in an expression", line, "xyx");
+		Check("a call on the value", match (5) { 5 => "five", other => "?" }->ToUpper(), "FIVE");
+
+		# 'match' as a function
+		y := match(3);
+		Check("a call", y->ToString(), "4");
+		Check("a call with a call on it", match(1)->ToString(), "2");
+		if(match(1) = 2) { y += 10; };
+		if(IsTwo(match(1))) { y += 100; };
+		while(match(y) < 120) { y += 1; };
+		match(1);
+		z := match(1) + match (2) * 2;
+		Check("calls in conditions", y->ToString(), "119");
+		Check("calls in an expression", z->ToString(), "8");
+
+		# 'match' as a variable
+		Check("a variable", Variable(), "2 3 6 5 in-if self self-statement");
+
+		if(@@failed) {
+			"FAIL: match subject forms"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: match subject forms"->PrintLine();
+	}
+
+	function : Variable() ~ String {
+		match := 1;
+		match += 1;
+		out := match->ToString();
+		x := match + 1;
+		out += " {$x}";
+		y := (match) * 3;
+		out += " {$y}";
+		a := Int->New[3];
+		a[match] := 5;
+		out += " {$a[2]}";
+		if(match = 2) { out += " in-if"; };
+		out += match (match) { 2 => " self", other => " ?" };
+		match match {
+			2 => { out += " self-statement"; }
+			other => { out += " ?"; }
+		};
+		return out;
+	}
+}
