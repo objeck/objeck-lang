@@ -324,6 +324,8 @@ std::vector<std::wstring> alt_error_method_names;
   bool TakeParamsAnalyzed(MethodCall* method_call);
   Class* diag_class = nullptr;
   LibraryClass* diag_lib_class = nullptr;
+  // the next call analyzed is the same call, tried on a parent of its class: keep the receiver
+  bool diag_parent_walk = false;
   int expression_depth;
   int nested_call_depth;
   std::set<std::wstring> range_names;

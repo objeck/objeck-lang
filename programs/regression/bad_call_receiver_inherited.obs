@@ -1,0 +1,30 @@
+# EXPECT_COMPILE_ERROR: Called as Square->Grow(String)
+# EXPECT_ERROR_COUNT: 1
+#~
+A method the class inherits is found on the way up: the report still names the class the call
+was made on, and lists the inherited method whose arguments did not fit.
+~#
+class Shape {
+	@size : Int;
+
+	New() {
+		@size := 1;
+	}
+
+	method : public : Grow(by : Int) ~ Nil {
+		@size += by;
+	}
+}
+
+class Square from Shape {
+	New() {
+		Parent();
+	}
+}
+
+class BadCallReceiverInherited {
+	function : Main(args : String[]) ~ Nil {
+		square := Square->New();
+		square->Grow("a lot");
+	}
+}

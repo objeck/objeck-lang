@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: Called as Helper->Nope(Int)
+# EXPECT_ERROR_COUNT: 1
+#~
+A call of a function another class does not have is reported against that class. The search
+for the method walks up to the parents of the class, and the message named the class the call
+stands in: "Called as BadCallReceiverStatic->Nope(Int)".
+~#
+class Helper {
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+}
+
+class BadCallReceiverStatic {
+	function : Main(args : String[]) ~ Nil {
+		Helper->Nope(1);
+	}
+}

@@ -700,10 +700,13 @@ std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
   // the overloads the receiver does have under that name
   std::vector<std::wstring> overloads;
   if(receiver_class) {
-    const std::vector<Method*> methods = receiver_class->GetMethods();
-    for(size_t i = 0; i < methods.size(); ++i) {
-      if(MethodNameOf(methods[i]->GetName()) == name) {
-        overloads.push_back(methods[i]->GetUserName());
+    // the receiver's own methods and those it inherits from the program's classes
+    for(Class* owner = receiver_class; owner; owner = owner->GetParent()) {
+      const std::vector<Method*> methods = owner->GetMethods();
+      for(size_t i = 0; i < methods.size(); ++i) {
+        if(MethodNameOf(methods[i]->GetName()) == name) {
+          overloads.push_back(methods[i]->GetUserName());
+        }
       }
     }
   }
@@ -6217,9 +6220,18 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, const int depth)
  {
-  diag_call = method_call;
-  diag_class = klass;
-  diag_lib_class = nullptr;
+  // The class a failed call is reported against is the one the call was made on. The search
+  // below walks up to the parents, and reported the last one it reached: 'Other->Nope()' was
+  // said to be called on the class the call stands in.
+  if(diag_parent_walk && diag_call == method_call) {
+    diag_parent_walk = false;
+  }
+  else {
+    diag_parent_walk = false;
+    diag_call = method_call;
+    diag_class = klass;
+    diag_lib_class = nullptr;
+  }
 
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L':' 
@@ -6361,6 +6373,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       method_call->SetOriginalClass(klass);
       std::wstring encoding;
       params_analyzed = method_call;
+      diag_parent_walk = true;
       AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
       return;
     }
@@ -6369,6 +6382,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       method_call->SetOriginalClass(klass);
       std::wstring encoding;
       params_analyzed = method_call;
+      diag_parent_walk = true;
       AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
     }
@@ -6974,9 +6988,15 @@ bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall*
 void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, 
                                         std::wstring &encoding, bool is_parent, const int depth)
 {
-  diag_call = method_call;
-  diag_class = nullptr;
-  diag_lib_class = klass;
+  if(diag_parent_walk && diag_call == method_call) {
+    diag_parent_walk = false;
+  }
+  else {
+    diag_parent_walk = false;
+    diag_call = method_call;
+    diag_class = nullptr;
+    diag_lib_class = klass;
+  }
 #ifdef _DEBUG
   GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << std::endl;
 #endif
