@@ -1,8 +1,8 @@
 # EXTRA_LIBS: mcp,net,net_server,cipher,misc
 #~
-The streamable HTTP transport with sessions off (McpService->SetSessions(false)): a client can cancel
-its own call, and one client cannot cancel, or take the place of, another client's call that is at work
-under the same request id (API.MCP). Loopback only, port 0.
+The streamable HTTP transport with sessions off (McpService->SetSessions(false)): no client can cancel,
+or take the place of, another client's call, and the server says that it does not cancel (API.MCP).
+Loopback only, port 0.
 
 A request id is unique within one client. With sessions the session is the connection, and ids, in-use
 checks and cancellations belong to it. With sessions off every message arrived under no connection at
@@ -10,15 +10,17 @@ all, so all clients shared one set of ids: with two clients each waiting for a c
 call took the first one's place among the calls in progress, and the first client's
 notifications/cancelled for "1" cancelled the second client's call.
 
-Now each message of a sessionless server is a connection by itself, so calls never take each other's
-place, and the address a message comes from is what tells clients apart (not the port: a cancellation is
-a POST of its own, from another port than the call it names). A cancellation stops the one call under
-that id from the same address. When two calls under that id from that address are at work, nothing says
-which is meant and neither is stopped. Every client here is on 127.0.0.1, which is exactly that case.
+Without a session nothing reliable names a client: a cancellation is a POST of its own, from another
+port than the call it names, and an address is shared by every program on a machine (every client in
+this test is 127.0.0.1) and every client behind a proxy. A sessionless server therefore does not guess.
+Each message is a connection by itself, a notifications/cancelled is answered 202 and ignored, and the
+initialize result carries "org.objeck/cancellation" under _meta, a text that begins "unsupported", so
+that a client can know. Cancellation is keyed by the session (mcp_stdio_test.py covers two sessions
+with the same request id).
 
-The cases: one client cancels its own call; two clients with a call numbered 1 each, and a cancellation
-for 1 (neither is cancelled, both are answered); two clients with different ids (the one named is
-cancelled, the other is not); a cancellation for an id that is not at work; the id free afterwards.
+The cases: the note in the initialize result; two clients with a call numbered 1 each and a cancellation
+for 1 (neither is cancelled, both are answered); one call at work and a cancellation for it (it is not
+cancelled either: that the server never guesses is the point); the id free afterwards.
 ~#
 use API.MCP, Data.JSON, Collection, System.Concurrency;
 
@@ -195,15 +197,19 @@ class McpHttpSessionlessCancelTest {
 		response := raw->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/list\"}"->ToByteArray(), "application/json");
 		Check("a request with no session is answered when sessions are off", response <> Nil & response->GetCode() = 200 & String->New(response->GetContent())->Has("hold"));
 
-		# one client cancels its own call
-		Reset();
-		first := Poster->New(url, "a", 1);
-		first->Execute(Nil);
-		Check("a client's call is at work", Wait(0));
-		Check("its cancellation is accepted with 202", Cancel(url, 1) = 202);
-		first->Join();
-		Check("and stops the call: the handler saw IsCancelled", @cancelled_a);
-		Check("a cancelled call is not answered (202, no body)", @code_a = 202 & @text_a->IsEmpty());
+		# the server says what it does not do
+		init := Web.HTTP.HttpClient->New();
+		response := init->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"1\"}}}"->ToByteArray(), "application/json");
+		note : String;
+		if(response <> Nil & response->GetCode() = 200) {
+			answer := JsonParser->TextToElement(String->New(response->GetContent()));
+			if(answer <> Nil & answer->Has("result") & answer->Get("result")->Has("_meta") & answer->Get("result")->Get("_meta")->Has("org.objeck/cancellation")) {
+				note := answer->Get("result")->Get("_meta")->Get("org.objeck/cancellation")->GetString();
+			};
+		};
+		Check("the initialize result says that cancellation is not supported without sessions", note <> Nil & note->StartsWith("unsupported"));
+		headers := init->GetResponseHeaders();
+		Check("and hands out no session", headers = Nil | headers->Find("mcp-session-id") = Nil);
 
 		# two clients, each with a call numbered 1 at work
 		Reset();
@@ -223,20 +229,16 @@ class McpHttpSessionlessCancelTest {
 		Check("the first client was answered", @code_a = 200 & @text_a->Has("finished a"));
 		Check("the second client was answered", @code_b = 200 & @text_b->Has("finished b"));
 
-		# two calls under different ids: the cancellation names one of them
+		# one call at work and a cancellation for it: the server does not guess whose it is
 		Reset();
 		first := Poster->New(url, "a", 1);
 		first->Execute(Nil);
-		Check("a call numbered 1 is at work", Wait(0));
-		second := Poster->New(url, "b", 2);
-		second->Execute(Nil);
-		Check("and a call numbered 2", Wait(1));
-		Check("a cancellation for an id that is not at work is accepted", Cancel(url, 3) = 202);
-		Check("and one for 2", Cancel(url, 2) = 202);
+		Check("a single call is at work", Wait(0));
+		Check("a cancellation for it is accepted with 202", Cancel(url, 1) = 202);
+		Check("and so is one for an id that is not at work", Cancel(url, 3) = 202);
 		first->Join();
-		second->Join();
-		Check("the call numbered 2 was cancelled and not answered", @cancelled_b & @code_b = 202);
-		Check("the call numbered 1 was not, and was answered", <>@cancelled_a & @code_a = 200 & @text_a->Has("finished a"));
+		Check("the call is not cancelled: without a session the server cannot know the sender is its owner", <>@cancelled_a);
+		Check("and it is answered", @code_a = 200 & @text_a->Has("finished a"));
 
 		# the same id again, one call after the other, as a single client does
 		Reset();

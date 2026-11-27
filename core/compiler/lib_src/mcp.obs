@@ -2101,7 +2101,7 @@ bundle API.MCP {
 		}
 
 		#~
-		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default). With sessions off the only thing that tells clients apart is the address a message comes from: a notifications/cancelled stops the one call under that request id that came from the same address, and stops nothing when two such calls are at work. Two clients on one address (two programs on one machine, clients behind one proxy) are one client to it, so use sessions when they must not be able to cancel each other
+		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default). Cancellation is keyed by the session: with sessions off nothing reliable tells one client from another, so a notifications/cancelled is accepted (202) and ignored, calls of different clients under one request id are kept apart, and the initialize result says so in _meta ("org.objeck/cancellation")
 		@param on true for sessions
 		~#
 		method : public : SetSessions(on : Bool) ~ Nil {
@@ -2473,52 +2473,6 @@ bundle API.MCP {
 					};
 				};
 			};
-		}
-
-		#~
-		Cancels the call a notifications/cancelled names when the calls of a connection are kept one name each (HTTP with sessions off, where the names of one peer's calls begin alike): the one call under that request id whose connection name begins with the prefix. With no such call nothing happens, and with two or more nothing says which is meant, so none is cancelled. Anything but a well-formed notifications/cancelled is left alone
-		@hidden
-		@param prefix what the connection names of the peer's calls begin with
-		@param root the message
-		@return true when a call was cancelled
-		~#
-		method : public : CancelFromPeer(prefix : String, root : JsonElement) ~ Bool {
-			if(root->GetType() <> JsonElement->JsonType->OBJECT | root->Get("id") <> Nil) {
-				return false;
-			};
-			rpc := McpMessage->Str(root, "method");
-			if(rpc = Nil | <>rpc->Equals("notifications/cancelled")) {
-				return false;
-			};
-			params := root->Get("params");
-			if(params = Nil | params->GetType() <> JsonElement->JsonType->OBJECT | <>McpMessage->IsId(params->Get("requestId"))) {
-				return false;
-			};
-
-			# a call's name is its connection, '#', its request id (Key); the connection names made for
-			# this peer hold no '#', so the id is everything after the first one
-			wanted := params->Get("requestId")->ToString();
-			done := false;
-			critical(@mutex) {
-				found : McpCall;
-				count := 0;
-				keys := @inflight->GetKeys()<String>;
-				each(key in keys) {
-					if(key->StartsWith(prefix)) {
-						mark := key->Find(prefix->Size(), '#');
-						if(mark > -1 & key->SubString(mark + 1, key->Size() - mark - 1)->Equals(wanted)) {
-							count += 1;
-							found := @inflight->Find(key);
-						};
-					};
-				};
-
-				if(count = 1 & found <> Nil) {
-					found->Cancel();
-					done := true;
-				};
-			};
-			return done;
 		}
 
 		#~
@@ -3348,22 +3302,15 @@ bundle API.MCP {
 				};
 			}
 			else if(<>@service->UsesSessions()) {
-				# With sessions off no header names the client, and request ids are each client's own.
-				# Every message is a connection by itself, so two clients that both have a call under
-				# id 1 at work do not take each other's place. What is left to tell clients apart is the
-				# address the message came from (not the port: a cancellation is a POST of its own and
-				# comes from another port than the call it names). A notifications/cancelled is given
-				# to the one call under that id that came from the same address; when two such calls
-				# are at work nothing says which is meant, and neither is stopped. When the server does
-				# not know the peer's address, a cancellation reaches no call at all
-				peer := request->GetRemoteAddress();
-				if(peer <> Nil & <>peer->IsEmpty()) {
-					scope := "http|{$peer}|{$System.Runtime->GetUuid()}";
-					@service->CancelFromPeer("http|{$peer}|", root);
-				}
-				else {
-					scope := "http-{$System.Runtime->GetUuid()}";
-				};
+				# With sessions off nothing names the client. A request id is unique within one client
+				# only, and what HTTP itself offers is not an identity: a cancellation is a POST of its
+				# own, so it comes from another port than the call it names, and an address is shared by
+				# every program on a machine and every client behind a proxy. Guessing would sooner or
+				# later stop the wrong client's call. So every message is a connection by itself: two
+				# clients that both have a call under id 1 at work do not take each other's place, and
+				# a notifications/cancelled reaches no call (202, ignored). Cancellation is keyed by the
+				# session; the initialize reply says so (see below)
+				scope := "http-{$System.Runtime->GetUuid()}";
 			};
 
 			reply := @service->HandleJson(root, Nil, scope);
@@ -3380,6 +3327,15 @@ bundle API.MCP {
 				if(code = McpProtocol->InvalidRequest() | code = McpProtocol->ParseError()) {
 					status := 400;
 				};
+			};
+
+			# A client cannot see from the outside that its cancellations will be ignored, so a sessionless
+			# server says it where a client looks first: in the _meta of the initialize result, the place
+			# the protocol keeps for what it does not define
+			if(is_initialize & err = Nil & <>@service->UsesSessions() & reply->Get("result") <> Nil) {
+				note := JsonElement->New(JsonElement->JsonType->OBJECT);
+				note->Insert("org.objeck/cancellation", "unsupported: this server runs without sessions, so notifications/cancelled is accepted and ignored");
+				reply->Get("result")->Insert("_meta", note);
 			};
 
 			# a session begins with an initialize that was answered, not with one that was refused
