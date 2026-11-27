@@ -995,6 +995,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_select_label_order.py "%BIN%"
 
+    - name: obc answers large generated programs within a ceiling (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_compile_time_ceiling.py "%BIN%"
+
     - name: obc and obr find their libraries from another working directory (Windows)
       working-directory: ./programs/regression
       shell: cmd
