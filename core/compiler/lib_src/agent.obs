@@ -1490,18 +1490,27 @@ agent->SetCancel(cancel);
 		@return true after Cancel
 		~#
 		method : public : IsCancelled() ~ Bool {
-			flag := false;
-			critical(@mutex) {
-				flag := @cancelled;
-			};
+			# A line of tokens with one parent each is walked as it is. Where a token has two (a scope's
+			# token, an agent's under a scope) the lines above it can meet again, and again above that: every
+			# token is then looked at once, not once for each way that leads to it
+			node := @self;
+			while(node <> Nil) {
+				if(node->IsSet()) {
+					return true;
+				};
 
-			if(<>flag & @parent <> Nil) {
-				flag := @parent->IsCancelled();
+				first := node->GetParent();
+				second := node->GetAlso();
+				if(first <> Nil & second <> Nil & first <> second) {
+					return AnySet(node);
+				};
+
+				if(first = Nil) {
+					first := second;
+				};
+				node := first;
 			};
-			if(<>flag & @also <> Nil) {
-				flag := @also->IsCancelled();
-			};
-			return flag;
+			return false;
 		}
 
 		#~
@@ -1509,18 +1518,87 @@ agent->SetCancel(cancel);
 		@return the reason, or Nil while it is not cancelled
 		~#
 		method : public : GetReason() ~ String {
+			# the token's own reason, else its parent's line, else its second parent's: the order a token is
+			# first reached in, each token read once
+			seen := Vector->New()<AgentCancel>;
+			todo := Vector->New()<AgentCancel>;
+			todo->AddBack(@self);
+			while(todo->Size() > 0) {
+				node := todo->RemoveBack();
+				if(<>Holds(seen, node)) {
+					seen->AddBack(node);
+					text := node->GetOwnReason();
+					if(text <> Nil) {
+						return text;
+					};
+
+					if(node->GetAlso() <> Nil) {
+						todo->AddBack(node->GetAlso());
+					};
+					if(node->GetParent() <> Nil) {
+						todo->AddBack(node->GetParent());
+					};
+				};
+			};
+			return Nil;
+		}
+
+		# true when this token itself was cancelled, whatever its parents say
+		method : IsSet() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				flag := @cancelled;
+			};
+			return flag;
+		}
+
+		method : GetOwnReason() ~ String {
 			text : String;
 			critical(@mutex) {
 				text := @reason;
 			};
-
-			if(text = Nil & @parent <> Nil) {
-				text := @parent->GetReason();
-			};
-			if(text = Nil & @also <> Nil) {
-				text := @also->GetReason();
-			};
 			return text;
+		}
+
+		method : GetParent() ~ AgentCancel {
+			return @parent;
+		}
+
+		method : GetAlso() ~ AgentCancel {
+			return @also;
+		}
+
+		# whether a token or any token above it is cancelled, each one looked at once
+		function : AnySet(start : AgentCancel) ~ Bool {
+			seen := Vector->New()<AgentCancel>;
+			seen->AddBack(start);
+			i := 0;
+			while(i < seen->Size()) {
+				node := seen->Get(i);
+				if(node->IsSet()) {
+					return true;
+				};
+
+				if(node->GetParent() <> Nil & <>Holds(seen, node->GetParent())) {
+					seen->AddBack(node->GetParent());
+				};
+				if(node->GetAlso() <> Nil & <>Holds(seen, node->GetAlso())) {
+					seen->AddBack(node->GetAlso());
+				};
+				i += 1;
+			};
+			return false;
+		}
+
+		function : Holds(all : Vector<AgentCancel>, token : AgentCancel) ~ Bool {
+			i := 0;
+			while(i < all->Size()) {
+				if(all->Get(i) = token) {
+					return true;
+				};
+				i += 1;
+			};
+			return false;
 		}
 	}
 
