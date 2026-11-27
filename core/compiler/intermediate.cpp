@@ -4515,7 +4515,12 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   const int break_label = ++conditional_label;
   break_labels.push(std::pair<int, int>(break_label, unconditional));
   break_critical_depth.push(active_criticals.size());
+  // a 'while' keeps its updates queued until the body has run (see
+  // EmitBranch), also when it is written inside an 'if' condition's lambda
+  const bool outer_branch_emits = branch_emits_post_statements;
+  branch_emits_post_statements = false;
   EmitBranch(while_stmt->GetExpression(), break_label, false);
+  branch_emits_post_statements = outer_branch_emits;
   
 
   // statements
@@ -4694,7 +4699,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     const long unconditional_continue = ++unconditional_label;
     break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
     break_critical_depth.push(active_criticals.size());
+    const bool outer_branch_emits = branch_emits_post_statements;
+    branch_emits_post_statements = false;
     EmitBranch(for_stmt->GetExpression(), break_label, false);
+    branch_emits_post_statements = outer_branch_emits;
 
     // statements
     std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
@@ -4738,13 +4746,22 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     // expression
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, LBL, (long)next_label));
     // the condition branches to the next arm (or the end) when false
+    //
+    // A postfix update in the condition runs before that branch, on the way to
+    // either side. It used to stay queued across the jump and was emitted by
+    // the first statement of the 'if' block, so it ran only when the condition
+    // held: 'if(i++ = 5) { .. } else { .. }' left i unchanged on the 'else'
+    // side, and after an 'else if' that tested 'i++' again.
     long conditional = ++conditional_label;
-    if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {      
+    const bool outer_branch_emits = branch_emits_post_statements;
+    branch_emits_post_statements = true;
+    if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {
       EmitBranch(if_stmt->GetExpression(), conditional, false);
     }
     else {
       EmitBranch(if_stmt->GetExpression(), end_label, false);
     }
+    branch_emits_post_statements = outer_branch_emits;
     
     // statements
     std::vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
@@ -6042,7 +6059,11 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   long end_label = ++unconditional_label;
   // if-expression
   long cond = ++conditional_label;
+  // the test's own updates stay the statement's (it is always evaluated)
+  const bool outer_branch_emits = branch_emits_post_statements;
+  branch_emits_post_statements = false;
   EmitBranch(conditional->GetCondExpression(), cond, false);
+  branch_emits_post_statements = outer_branch_emits;
   // each branch's postfix updates run with the branch (BeginConditionalOperand):
   // queued to the end of the statement, 't ? 7 : i++' incremented i for a true t
   std::queue<OperationAssignment*> outer_post_statements;
@@ -7020,6 +7041,20 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
   }
   // anything else: evaluate, then jump on the value
   EmitExpression(expression);
+  // An 'if' condition's postfix updates run here, between the test and the
+  // jump, so both sides of the branch have them -- and, for an operand of
+  // '&'/'|', only when that operand was evaluated. The tested value waits on
+  // the stack, as it does in EmitDoWhile.
+  //
+  // A 'while' and a 'for' do not: their updates stay queued and are emitted in
+  // the body (after its first statement, or at its end), so the body's first
+  // statement reads the value from before the update and leaving the loop
+  // skips it. Programs are written to that (core_do_while_post_op.obs pins the
+  // iteration count; 'while(i-- <> 0 & (c[i] % n) = 0);' in the examples reads
+  // c[i] before the decrement), so it is left as it is.
+  if(branch_emits_post_statements) {
+    EmitPostStatements();
+  }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
   // The jump consumed the value, and with it any string literal the test pushed
   // ('s = "hi"'). The count of literals waiting to be paired must not carry into
