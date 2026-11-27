@@ -1,0 +1,84 @@
+#~
+A conversion in a calculation is applied to the VALUE of an operand that is a
+call chain.
+
+'n * 2.5' with an Int 'n' makes the Int a Float first. When the Int came from
+the last call of a chain -- 'order->Line()->Count() * 2.5' -- the conversion
+was noted on the chain's FIRST call, and the emitter converts after the call
+that carries the note, by that call's return type. The first call returns an
+object, so nothing was converted and the Int's bits were multiplied as a
+Float: 4 * 2.5 was 4.94066e-323. One call ('order->Count() * 2.5') was right,
+because the first call is then the last.
+
+Covers Int and Float results, both sides of the operator, chains of two and
+three calls, a comparison, and an assignment (which was always right, and
+stays so). Each check adds to 'bad'; the test exits 1 when one fails.
+~#
+class Line {
+	@count : Int;
+	@price : Float;
+
+	New(count : Int, price : Float) {
+		@count := count;
+		@price := price;
+	}
+
+	method : public : Count() ~ Int { return @count; }
+	method : public : Price() ~ Float { return @price; }
+	method : public : Me() ~ Line { return @self; }
+}
+
+class Order {
+	@line : Line;
+
+	New() {
+		@line := Line->New(4, 2.5);
+	}
+
+	method : public : Line() ~ Line { return @line; }
+	method : public : Count() ~ Int { return @line->Count(); }
+}
+
+class CoreCalcChainConversion {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		order := Order->New();
+
+		bad += Check(order->Count() * 2.5 = 10.0, "one call: Int * Float");
+		bad += Check(order->Line()->Count() * 2.5 = 10.0, "two calls: Int * Float");
+		bad += Check(2.5 * order->Line()->Count() = 10.0, "two calls: Float * Int");
+		bad += Check(order->Line()->Me()->Count() * 2.5 = 10.0, "three calls: Int * Float");
+		bad += Check(order->Line()->Count() + 0.5 = 4.5, "two calls: Int + Float");
+		bad += Check(order->Line()->Count() / 8.0 = 0.5, "two calls: Int / Float");
+		bad += Check(order->Line()->Price() * order->Line()->Count() = 10.0, "two chains: Float * Int");
+		bad += Check(order->Line()->Count() * order->Line()->Price() = 10.0, "two chains: Int * Float");
+		bad += Check(order->Line()->Count() < 4.5 & order->Line()->Count() > 3.5, "two calls: Int compared with a Float");
+		bad += Check(order->Line()->Price() * 2 = 5.0, "two calls: Float * Int literal");
+		bad += Check(order->Line()->Count() * 2 = 8, "two calls: Int * Int needs no conversion");
+
+		total : Float := order->Line()->Count();
+		bad += Check(total = 4.0, "two calls: assigned to a Float");
+
+		sum := 0.0;
+		for(i := 0; i < 3; i += 1;) {
+			sum += order->Line()->Count() * 0.5;
+		};
+		bad += Check(sum = 6.0, "two calls: in a loop");
+
+		if(bad = 0) {
+			"PASS: conversion on a call chain's value"->PrintLine();
+		}
+		else {
+			"FAIL: conversion on a call chain's value ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  failed: {$what}"->ErrorLine();
+		return 1;
+	}
+}

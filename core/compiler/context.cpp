@@ -7755,7 +7755,15 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];    
     AnalyzeExpression(expression, depth + 1);
-    Type* eval_type = expression->GetEvalType();
+    // The index is the value the expression ends in: for a call chain, what
+    // its last call returns. Reading the first call's type refused
+    // 'a[order->Line()->Count()]' (an object is not an index) and accepted
+    // 'a[refs->Get(i)->Get()]' only by replacing the written 'Get()'.
+    Expression* index_value = expression;
+    while(index_value->GetMethodCall()) {
+      index_value = index_value->GetMethodCall();
+    }
+    Type* eval_type = index_value->GetEvalType();
     if(eval_type) {
       switch(eval_type->GetType()) {
       case BYTE_TYPE:
@@ -7769,7 +7777,25 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
           unboxed_expressions.push_back(expression);
         }
         else {
-          Expression* unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
+          // A holder (IntRef, ...) is unboxed where the chain ends. For a chain
+          // of calls the 'Get()' is added after the last one and only that call
+          // is analyzed: the index is still the whole chain.
+          Expression* unboxed_expresion = nullptr;
+          ResolveClassEnumType(eval_type);
+          if(index_value != expression) {
+            if(index_value->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(eval_type->GetName())) {
+              MethodCall* get_call = TreeFactory::Instance()->MakeMethodCall(index_value->GetFileName(), index_value->GetLineNumber(),
+                                                                             index_value->GetLinePosition(), -1, -1, -1, -1,
+                                                                             eval_type->GetName(), L"Get",
+                                                                             TreeFactory::Instance()->MakeExpressionList());
+              index_value->SetMethodCall(get_call);
+              AnalyzeExpressionMethodCall(index_value, depth + 1);
+              unboxed_expresion = expression;
+            }
+          }
+          else {
+            unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
+          }
           if(unboxed_expresion) {
             unboxed_expressions.push_back(unboxed_expresion);
           }
@@ -9187,6 +9213,21 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   Expression* left_expr = expression->GetLeft();
   Expression* right_expr = expression->GetRight();
 
+  // A conversion (an Int made a Float for 'n * 2.5') belongs to the value, and
+  // the value of an operand that is a call chain is what its LAST call returns.
+  // The emitter converts after the call that carries the cast, by that call's
+  // return type; on the first call of 'a->B()->Count() * 2.5' it was set on a
+  // call that returns an object, nothing was converted and the Int's bits were
+  // multiplied as a Float.
+  Expression* left_value = left_expr;
+  while(left_value && left_value->GetMethodCall()) {
+    left_value = left_value->GetMethodCall();
+  }
+  Expression* right_value = right_expr;
+  while(right_value && right_value->GetMethodCall()) {
+    right_value = right_value->GetMethodCall();
+  }
+
   Type* left = GetExpressionType(left_expr, depth + 1);
   Type* right = GetExpressionType(right_expr, depth + 1);
 
@@ -9338,13 +9379,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9384,13 +9425,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9430,13 +9471,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9476,13 +9517,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:
-        right_expr->SetCastType(left, true);
+        right_value->SetCastType(left, true);
         expression->SetEvalType(left, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9521,7 +9562,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case BYTE_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9532,7 +9573,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CHAR_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9543,7 +9584,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case INT_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9553,7 +9594,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case FLOAT_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9640,7 +9681,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
