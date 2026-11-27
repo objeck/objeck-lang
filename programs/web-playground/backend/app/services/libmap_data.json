@@ -117,7 +117,7 @@
   "lang": {
    "deps": [],
    "bundles": {
-    "System": ["ArraySort", "Base", "BaseArrayRef", "BasicCompare", "BoolArrayRef", "BoolRef", "ByteArrayRef", "ByteBuffer", "ByteRef", "CastError", "CharArrayRef", "CharRange", "CharRef", "Clone", "CommandOutput", "Compare", "CompareArrayRef", "DivideByZeroError", "Error", "FloatArrayRef", "FloatRange", "FloatRef", "Func2Ref", "Func3Ref", "Func4Ref", "FuncRef", "IndexError", "IntArrayRef", "IntRange", "IntRef", "NilError", "Number", "Primitive", "Range", "Runtime", "RuntimeError", "String", "StringArrayRef", "Stringify"],
+    "System": ["ArraySort", "AssertCheck", "Base", "BaseArrayRef", "BasicCompare", "BoolArrayRef", "BoolRef", "ByteArrayRef", "ByteBuffer", "ByteRef", "CastError", "CharArrayRef", "CharRange", "CharRef", "Clone", "CommandOutput", "Compare", "CompareArrayRef", "DivideByZeroError", "Error", "FloatArrayRef", "FloatRange", "FloatRef", "Func2Ref", "Func3Ref", "Func4Ref", "FuncRef", "IndexError", "IntArrayRef", "IntRange", "IntRef", "NilError", "Number", "Primitive", "Range", "Runtime", "RuntimeError", "String", "StringArrayRef", "Stringify"],
     "System.API": ["DllProxy"],
     "System.Concurrency": ["Condition", "Thread", "ThreadMutex"],
     "System.IO": ["Console", "ConsoleIO", "Deserializer", "InputStream", "OutputStream", "Pipe", "Serializer"],
