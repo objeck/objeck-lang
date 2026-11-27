@@ -1011,6 +1011,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_compile_time_ceiling.py "%BIN%"
 
+    - name: obc output is reproducible, with and without -debug (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_obc_debug_reproducible.py "%BIN%"
+
     - name: obc and obr find their libraries from another working directory (Windows)
       working-directory: ./programs/regression
       shell: cmd
