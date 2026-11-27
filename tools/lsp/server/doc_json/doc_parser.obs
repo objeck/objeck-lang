@@ -861,25 +861,27 @@ class BundleSnippet from Snippet {
 		@file := GetLibName(file);
 	}
 
+	# The library a source file is compiled to: 'lang.obs' is 'lang.obl', whatever
+	# directory it was named with and whichever separator the path uses. Only a
+	# backslash was looked for, so an index generated on Linux or macOS (paths with
+	# '/') had an empty file for every class, and the language server and the
+	# .obe corpus gate could not tell which library a class is in.
 	method : GetLibName(file : String) ~ String {
-		result : String;
-
-		file_index := file->FindLast('\\');
-		if(file_index > -1) {
-			file_index += 1;
-			result := file->SubString(file_index, file->Size() - file_index);
-		}
-		else {
-			result := "";
+		start := file->FindLast('\\');
+		slash := file->FindLast('/');
+		if(slash > start) {
+			start := slash;
 		};
+		start += 1;
 
+		result := file->SubString(start, file->Size() - start);
 		if(<>result->IsEmpty()) {
 			result->Set('l', result->Size() - 1);
 		};
-		
+
 		return result;
 	}
-	
+
 	method : public : IsParsed() ~ Bool {
 		return @parsed;
 	}

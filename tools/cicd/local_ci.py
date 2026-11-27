@@ -58,6 +58,10 @@ CHECKS = [
     ("The native write-barrier scan can still detect an unbarriered store",
      lambda: py("tools/cicd/test_check_native_write_barrier.py")),
     ("The API index check can still detect a stale index", lambda: py("tools/cicd/test_check_api_index.py")),
+    ("The committed API index: both copies agree, every class names its library, the version stamp is current",
+     lambda: py("tools/cicd/check_api_index.py")),
+    ("The playground's library map is current (gen_libmap.py --check)",
+     lambda: py("-I", "programs/web-playground/tools/gen_libmap.py", "--check")),
     ("Differential and verifier markers have a stated reason", lambda: py("tools/cicd/check_diff_markers.py")),
     ("Differential runner catches divergence", lambda: py("programs/regression/test_run_differential.py")),
     ("Shipped examples are all indexed", lambda: py("tools/cicd/check_examples_index.py")),
@@ -105,7 +109,7 @@ def self_test():
     wf = open(os.path.join(ROOT, ".github", "workflows", "ci-build.yml"), encoding="utf-8").read()
     listed = " ".join(" ".join(b()) for _, b in CHECKS).replace("\\", "/")
     # scripts that need a built toolchain or network are deliberately not here
-    needs_build = {"check_api_index.py", "check_openai_image_dispatch.py", "mock_inference_server.py",
+    needs_build = {"check_openai_image_dispatch.py", "mock_inference_server.py",
                    "test_inference_round_trip.py", "run_lsp_tests.py"}
     missing = []
     for script in sorted(set(re.findall(r"python3? (tools/(?:cicd/(?:check|test)_\w+|docs/(?:test|guides_to_html)\w*|release-stats/test_\w+)\.py)", wf))):
