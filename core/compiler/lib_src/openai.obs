@@ -1625,7 +1625,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param token API token
-		@return completion response
+		@return completion response, or Nil on an error (see GetLastError): no answer, an HTTP status that is not 2xx, an error body, or a body that is not a completion
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := BuildCompleteRequest(model, messages, max_tokens, temperature, top_p);
@@ -1638,16 +1638,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
-			if(response <> Nil) {
-				if(IsDebug()) {
-					"--- Called: name='/chat/completions' ---"->PrintLine();
-					ResponseText(response)->PrintLine();
-				};
-
-				return ParseCompletion(ResponseText(response));
-			};
-
-			return Nil;
+			return ReadCompletion(response);
 		}
 
 		#~
@@ -1709,6 +1700,15 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			return ReadCompletion(response);
+		}
+
+		# What every chat completions call (Complete, the image forms, CompleteWithTools) does with
+		# the reply to its request. No answer, and a status outside 2xx, are failures whatever the
+		# body holds: a rate limit or a gateway error is often JSON with no 'error' member, which
+		# ParseCompletion alone reads as a completion with no choices. A 2xx body then has to be a
+		# completion, an object with a 'choices' array. GetLastError() says which of these it was.
+		function : ReadCompletion(response : Web.HTTP.Response) ~ Completion {
 			if(NoReply(response)) {
 				return Nil;
 			};
@@ -1718,12 +1718,26 @@ choice->GetMessage()->GetSecond()->PrintLine();
 				ResponseText(response)->PrintLine();
 			};
 
-			# a rate limit or a gateway error is a failure even when its body is JSON that has no 'error' member
 			if(HttpFailed(response)) {
 				return Nil;
 			};
 
-			return ParseCompletion(ResponseText(response));
+			body_json := ParseBody(ResponseText(response));
+			if(body_json = Nil) {
+				return Nil;
+			};
+
+			is_completion := false;
+			choices_json := body_json->Get("choices");
+			if(choices_json <> Nil) {
+				is_completion := choices_json->GetType() = JsonElement->JsonType->ARRAY;
+			};
+			if(is_completion = false) {
+				SetLastError("Unexpected response: no 'choices' array");
+				return Nil;
+			};
+
+			return Completion->New(body_json);
 		}
 
 		#~
@@ -1792,7 +1806,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param token API token
-		@return completion response
+		@return completion response, or Nil on an error (see GetLastError): no answer, an HTTP status that is not 2xx, an error body, or a body that is not a completion
 		~#
 		function : CompleteImages(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1861,16 +1875,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
-			if(response <> Nil) {
-				if(IsDebug()) {
-					"--- Called: name='/chat/completions' ---"->PrintLine();
-					ResponseText(response)->PrintLine();
-				};
-
-				return ParseCompletion(ResponseText(response));
-			};
-
-			return Nil;
+			return ReadCompletion(response);
 		}
 	}
 
