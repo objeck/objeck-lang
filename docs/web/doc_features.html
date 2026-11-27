@@ -73,6 +73,19 @@
   <span class="t-kw">method</span> : <span class="t-mod">virtual</span> : <span class="t-mod">public</span> : <span class="t-fn">GetRgb</span>() <span class="t-op">~</span> <span class="t-type">Int</span>;
 }
 </code></pre>
+    <h3 id="field-accessors">Field Accessors</h3>
+    <p><code>@x : get : T</code> writes the getter and <code>@x : get set : T</code> the getter and the setter; <code>get</code> and <code>set</code> are contextual words (a type named <code>get</code> is still a type), and a comma list shares the modifier. The getter is <code>Get</code> plus the field in PascalCase (the 2,000 hand-written accessors in the libraries and examples follow this: <code>input_tokens</code> is <code>GetInputTokens</code>, <code>capacity</code> is <code>GetCapacity</code>); a <code>Bool</code> is <code>Is</code> plus the name, a leading <code>is_</code> or <code>has_</code> is the prefix itself (<code>is_error</code> is <code>IsError</code>, <code>has_uses</code> is <code>HasUses</code>); the setter is <code>Set</code> plus the name without <code>is_</code>/<code>has_</code>. A method of the same name written by hand wins. Instance fields of a class only.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+@input_tokens : <span class="t-type">Int</span>;
+<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetInputTokens</span>() <span class="t-op">~</span> <span class="t-type">Int</span> { <span class="t-kw">return</span> @input_tokens; }
+@model : <span class="t-type">String</span>;
+<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">GetModel</span>() <span class="t-op">~</span> <span class="t-type">String</span> { <span class="t-kw">return</span> @model; }
+<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">SetModel</span>(value : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> { @model <span class="t-op">:=</span> value; }
+<span class="t-com"># after</span>
+@input_tokens : get : <span class="t-type">Int</span>;
+@model : get set : <span class="t-type">String</span>;
+</code></pre>
+    <p>Test: <code>field_accessors</code>. The generated methods are made by the compiler, so the source-text doc tools (code_doc, <code>doc_coverage.py</code>) do not list them yet.</p>
     <h3 id="default-and-named-arguments">Default and Named Arguments</h3>
     <p>Trailing parameters can have default values. An argument can be passed by name, <code>name: value</code>, after any positional ones. Named arguments may come in any order, and they may skip any parameter that has a default, not just the trailing ones:</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Train</span>(data : <span class="t-type">Int</span>[], epochs : <span class="t-type">Int</span> <span class="t-op">:=</span> <span class="t-num">10</span>, rate : <span class="t-type">Float</span> <span class="t-op">:=</span> <span class="t-num">0.01</span>, verbose : <span class="t-type">Bool</span> <span class="t-op">:=</span> <span class="t-const">false</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> { ... }

@@ -1313,6 +1313,134 @@ void Parser::CalculateConst(Expression* expression, std::stack<INT64_VALUE>& val
 }
 
 /****************************
+ * `@x : get : T` / `@x : get set : T`: the getter and setter of the field,
+ * written as the methods a programmer would. The name is Get + the field name in
+ * PascalCase (input_tokens -> GetInputTokens); a Bool field is Is + the name, and
+ * a leading is_/has_ is the prefix itself (is_error -> IsError, has_uses -> HasUses);
+ * the setter is Set + the name without its is_/has_. A method of the same
+ * signature written by hand takes precedence.
+ ****************************/
+static std::wstring AccessorBaseName(std::wstring name, std::wstring& prefix, bool is_bool)
+{
+  if(!name.empty() && name[0] == L'@') {
+    name = name.substr(1);
+  }
+  prefix = is_bool ? L"Is" : L"Get";
+  if(name.compare(0, 3, L"is_") == 0 && name.size() > 3) {
+    name = name.substr(3);
+  }
+  else if(name.compare(0, 4, L"has_") == 0 && name.size() > 4) {
+    name = name.substr(4);
+    prefix = L"Has";
+  }
+
+  std::wstring result_name;
+  bool upper = true;
+  for(wchar_t c : name) {
+    if(c == L'_') {
+      upper = true;
+    }
+    else if(upper && c >= L'a' && c <= L'z') {
+      result_name += (wchar_t)(c - L'a' + L'A');
+      upper = false;
+    }
+    else {
+      result_name += c;
+      upper = false;
+    }
+  }
+  return result_name;
+}
+
+void Parser::GenerateFieldAccessors(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth)
+{
+  (void)depth;
+  Method* previous_method = current_method;
+  std::vector<Statement*> statements = klass->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(statements[i]->GetStatementType() != DECLARATION_STMT) {
+      continue;
+    }
+
+    std::vector<Declaration*> group;
+    for(Declaration* declaration = static_cast<Declaration*>(statements[i]); declaration; declaration = declaration->GetChild()) {
+      group.push_back(declaration);
+    }
+
+    for(size_t g = group.size(); g > 0; --g) {
+      Declaration* declaration = group[g - 1];
+      SymbolEntry* field_entry = declaration->GetEntry();
+      if(!declaration->HasGetter() || !field_entry || !field_entry->GetType()) {
+        continue;
+      }
+
+      std::wstring field_name = field_entry->GetName();
+      const size_t index = field_name.find_last_of(L':');
+      if(index != std::wstring::npos) {
+        field_name = field_name.substr(index + 1);
+      }
+
+      const bool is_bool = field_entry->GetType()->GetType() == BOOLEAN_TYPE && field_entry->GetType()->GetDimension() == 0;
+      std::wstring prefix;
+      const std::wstring base = AccessorBaseName(field_name, prefix, is_bool);
+
+      // getter
+      const std::wstring getter_name = klass->GetName() + L":" + prefix + base;
+      Method* getter = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, getter_name, PUBLIC_METHOD, false, false);
+      current_method = getter;
+      symbol_table->NewParseScope();
+      getter->SetDeclarations(TreeFactory::Instance()->MakeDeclarationList());
+      StatementList* getter_body = TreeFactory::Instance()->MakeStatementList();
+      getter_body->AddStatement(TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, line_num, line_pos,
+                                                                    TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name)));
+      getter->SetStatements(getter_body);
+      getter->SetReturn(TypeFactory::Instance()->MakeType(field_entry->GetType()));
+      getter->SetEndLineNumber(line_num);
+      getter->SetEndLinePosition(line_pos);
+      if(klass->AddMethod(getter)) {
+        symbol_table->PreviousParseScope(getter->GetParsedName());
+      }
+      else {
+        symbol_table->PreviousParseScope(getter->GetParsedName() + L" <accessor-generated>");
+      }
+
+      // setter
+      if(declaration->HasSetter()) {
+        std::wstring ignored;
+        const std::wstring setter_name = klass->GetName() + L":Set" + AccessorBaseName(field_name, ignored, false);
+        Method* setter = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, setter_name, PUBLIC_METHOD, false, false);
+        current_method = setter;
+        symbol_table->NewParseScope();
+
+        DeclarationList* declarations = TreeFactory::Instance()->MakeDeclarationList();
+        SymbolEntry* param_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(L"value"),
+                                                                            TypeFactory::Instance()->MakeType(field_entry->GetType()), false, true);
+        symbol_table->CurrentParseScope()->AddEntry(param_entry);
+        declarations->AddDeclaration(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, param_entry,
+                                                                              (Declaration*)nullptr));
+        setter->SetDeclarations(declarations);
+
+        StatementList* setter_body = TreeFactory::Instance()->MakeStatementList();
+        Variable* left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name);
+        Variable* right = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"value");
+        setter_body->AddStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, left, right));
+        setter->SetStatements(setter_body);
+        setter->SetReturn(TypeFactory::Instance()->MakeType(NIL_TYPE));
+        setter->SetEndLineNumber(line_num);
+        setter->SetEndLinePosition(line_pos);
+        if(klass->AddMethod(setter)) {
+          symbol_table->PreviousParseScope(setter->GetParsedName());
+        }
+        else {
+          symbol_table->PreviousParseScope(setter->GetParsedName() + L" <accessor-generated>");
+        }
+      }
+    }
+  }
+  current_method = previous_method;
+}
+
+/****************************
  * Parses a class.
  ****************************/
 Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
@@ -1521,6 +1649,8 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
   if(klass->IsRecord()) {
     GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
   }
+
+  GenerateFieldAccessors(klass, file_name, class_line_num, class_line_pos, depth + 1);
 
   // The tools are derived once every file has been read (GeneratePendingMcpTools): a parameter's record or
   // enum may be declared below this class, or in a later file.
@@ -5336,6 +5466,32 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
       NextToken();
     }
 
+    // accessors: `@x : get : T` or `@x : get set : T`. 'get' and 'set' are
+    // contextual: a modifier only when the word is followed by ':' (or by 'set'
+    // and ':'), so a type that happens to be named get is still a type.
+    bool want_get = false;
+    bool want_set = false;
+    if(Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"get" &&
+       (Match(TOKEN_COLON, SECOND_INDEX) ||
+        (Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken(SECOND_INDEX)->GetIdentifier() == L"set" && Match(TOKEN_COLON, THIRD_INDEX)))) {
+      if(!is_stmt || current_method) {
+        ProcessError(L"'get' and 'set' apply to a field of a class, not to a local variable");
+      }
+      if(is_static) {
+        ProcessError(L"'get' and 'set' apply to an instance field, not a static one");
+      }
+      want_get = true;
+      NextToken();
+      if(Match(TOKEN_IDENT)) {
+        want_set = true;
+        NextToken();
+      }
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+    }
+
     // type
     Type* type = ParseType(depth + 1);
 
@@ -5355,6 +5511,9 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
         Variable* left = ParseVariable(add_context, depth + 1);
         Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), left, temp->GetExpression());
         declaration->SetAssignment(assignment);
+      }
+      if(want_get) {
+        declaration->SetAccessors(want_get, want_set);
       }
     }
   }

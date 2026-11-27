@@ -310,6 +310,7 @@ class Parser {
   void ParseBundle(int depth);
   Class* ParseClass(const std::wstring& bundle_id, int depth);
   void GenerateRecordMethods(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
+  void GenerateFieldAccessors(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
   void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
   void GeneratePendingMcpTools();
