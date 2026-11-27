@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: Cannot reference an instance variable from this context
+# EXPECT_ERROR_COUNT: 1
+#~
+A lambda inside a lambda does not capture the instance (documented limit): line 10 (the inner lambda).
+~#
+class BadLambdaFieldNested {
+	@m : Int;
+	New() { @m := 1; }
+	method : Make() ~ FuncRef<IntRef> {
+		return \() => {
+			g : FuncRef<IntRef> := \() => IntRef->New(@m);
+			return g();
+		};
+	}
+	function : Main(args : String[]) ~ Nil {
+		BadLambdaFieldNested->New()->Make();
+	}
+}

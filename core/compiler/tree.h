@@ -1200,6 +1200,10 @@ namespace frontend {
     ~Variable() {
     }
 
+    // a field read or written inside a lambda: the closure copy of the instance
+    // that created the lambda (the field is loaded through it)
+    SymbolEntry* lambda_self = nullptr;
+
   public:
     const std::wstring GetName() const {
       return name;
@@ -1223,6 +1227,14 @@ namespace frontend {
 
     void SetEntry(SymbolEntry* e) {
       entry = e;
+    }
+
+    void SetLambdaSelf(SymbolEntry* e) {
+      lambda_self = e;
+    }
+
+    SymbolEntry* GetLambdaSelf() {
+      return lambda_self;
     }
 
     SymbolEntry* GetEntry() {

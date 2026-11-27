@@ -1350,14 +1350,18 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
         mem_context = INST;
       }
 
-      if(mem_context == INST) {
+      if(capture_entry->IsSelf()) {
+        // the instance the lambda is created in; there is no field to load from it
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_INST_MEM));
+      }
+      else if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_INST_MEM));
       }
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_CLS_MEM));
       }
 
-      switch(capture_entry->GetType()->GetType()) {
+      switch(capture_entry->IsSelf() ? frontend::VAR_TYPE : capture_entry->GetType()->GetType()) {
       case frontend::BOOLEAN_TYPE:
       case frontend::BYTE_TYPE:
       case frontend::CHAR_TYPE:
@@ -7303,6 +7307,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_CLS_MEM));
     }
@@ -7365,6 +7370,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_CLS_MEM));
     }
@@ -7533,6 +7539,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
     }
@@ -7569,6 +7576,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } 
     else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7591,6 +7599,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7611,6 +7620,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7631,6 +7641,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7651,6 +7662,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -9156,6 +9168,7 @@ void IntermediateEmitter::EmitOperatorVariable(Variable* variable, MemoryContext
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable,cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     }
     else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable,cur_line_num, LOAD_CLS_MEM));

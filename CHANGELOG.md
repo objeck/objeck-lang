@@ -9,6 +9,7 @@ Post-v2026.11.4. Language sugar, each a separate draft and not part of any relea
 ### Added
 
 - **Method references without ceremony**: `Class->Function` where a `FuncRef`, `Func2Ref`, `Func3Ref` or `Func4Ref` is expected (a call argument, a declaration or assignment target, a `return`, a collection element) is read as the full `Func2Ref->New(Class->Function(T) ~ R)<T, R>`; the signature comes from the function, and the compiled program is byte-identical to the long form. An overloaded name, a function over `Int` or an array, and an instance method are errors that say what to write. Test: `method_ref_sugar`, `bad_method_ref_*`.
+- **Lambdas may read and write `@fields` and name `@self`**: a lambda directly in an instance method captures the instance it was created in, so `\() => { @count += 1; return IntRef->New(@count); }` works and `@self->Bump()` calls an instance method. A field is read and written through the instance (a write is a write to the field, not to a copy), the lambda keeps the instance alive, and Int, Float, Bool, object and array fields all work in the interpreter and the JIT. A bare `Bump()` in a lambda is still an error, now with a hint to write `@self->Bump(..)`; a lambda inside a lambda, or in a function, still cannot use fields. Test: `lambda_self_fields`, `bad_lambda_field_*`.
 
 ## [v2026.11.4] - 2026-11-25
 
