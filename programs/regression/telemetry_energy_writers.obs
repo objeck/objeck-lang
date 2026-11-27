@@ -1,0 +1,233 @@
+# EXTRA_LIBS: telemetry,gen_collect,json
+#~
+System.Telemetry EnergyEstimator with several writers at once: three threads add samples in
+a tight loop while three more ask for energy the moment they are answered.
+
+A mutex does not favor the thread that waited longest, so the estimator has its readers
+stand aside for a writer that has said it is coming. That was one flag, set before the lock
+and cleared inside it: with two writers the first to finish cleared it while the second was
+still waiting, so the readers saw no writer and kept taking the lock ahead of it. It is now
+a count of the writers that have arrived and not left.
+
+What is checked is exact or is a hang turned into a message, never an upper bound on a
+time, so a busy machine cannot fail it:
+
+  * every sample from every writer is counted (no update is lost), the total energy is
+    exact and the peak is the largest sample
+  * the writers keep making progress: 20 s without one more sample from any of them is a
+    failure that says so (the readers starved them)
+  * the readers are not kept out for good either: each completes reads once the writers
+    are done, and a reader's wait for a writer is bounded (200 ms) while they run
+~#
+use System.Telemetry;
+use Collection;
+use System.Concurrency;
+
+class TelemetryEnergyWritersTest {
+	@failures : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		writers_count := 3;
+		readers_count := 3;
+		each_writes := 40000;
+
+		# every sample has the same time (equal times are allowed, and three threads cannot
+		# agree on an order without a lock of their own): 2 W, then one 3 W sample per writer
+		est := EnergyEstimator->New(1024);
+		est->AddSample(0.0, 2.0);
+		est->AddSample(1.0, 2.0);
+
+		writers := Vector->New()<SampleWriter>;
+		for(w := 0; w < writers_count; w += 1;) {
+			writers->AddBack(SampleWriter->New(est, each_writes));
+		};
+		readers := Vector->New()<EnergyAsker>;
+		for(r := 0; r < readers_count; r += 1;) {
+			readers->AddBack(EnergyAsker->New(est));
+		};
+
+		start := Telemetry->NowMs();
+		each(reader in readers) {
+			reader->Execute(Nil);
+		};
+		each(writer in writers) {
+			writer->Execute(Nil);
+		};
+
+		# the writers must keep moving: a hang is a failure with a message, not a timeout
+		want := writers_count * each_writes;
+		done := 0;
+		last_done := -1;
+		last_move := Telemetry->NowMs();
+		stalled := false;
+		while(done < want & stalled = false) {
+			done := 0;
+			each(writer in writers) {
+				done += writer->GetDone();
+			};
+			if(done <> last_done) {
+				last_done := done;
+				last_move := Telemetry->NowMs();
+			}
+			else if(Telemetry->NowMs() - last_move > 20000) {
+				stalled := true;
+			};
+			if(done < want) {
+				Thread->Sleep(1);
+			};
+		};
+		writers_ms := Telemetry->NowMs() - start;
+
+		reads_during := 0;
+		each(reader in readers) {
+			reads_during += reader->GetReads();
+		};
+
+		if(stalled) {
+			each(reader in readers) {
+				reader->Stop();
+			};
+			"  FAIL: the writers added no sample for 20 s ({$done} of {$want} written) while the energy was read: starved by the readers"->PrintLine();
+			"telemetry_energy_writers: 1 failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		each(writer in writers) {
+			writer->Join();
+		};
+
+		# with the writers gone every reader gets through: 50 more reads each, bounded so that a
+		# reader kept out is a message
+		floor := Int->New[readers_count];
+		each(r : readers) {
+			floor[r] := readers->Get(r)->GetReads();
+		};
+		kept_out := false;
+		waited := Telemetry->NowMs();
+		caught_up := false;
+		while(caught_up = false & kept_out = false) {
+			caught_up := true;
+			each(r : readers) {
+				if(readers->Get(r)->GetReads() - floor[r] < 50) {
+					caught_up := false;
+				};
+			};
+			if(caught_up = false) {
+				if(Telemetry->NowMs() - waited > 20000) {
+					kept_out := true;
+				}
+				else {
+					Thread->Sleep(1);
+				};
+			};
+		};
+		each(reader in readers) {
+			reader->Stop();
+		};
+		if(kept_out = false) {
+			each(reader in readers) {
+				reader->Join();
+			};
+		};
+
+		bad := 0;
+		reads := 0;
+		each(reader in readers) {
+			bad += reader->GetBad();
+			reads += reader->GetReads();
+		};
+
+		"  info: {$writers_count} writers and {$readers_count} readers: {$want} writes in {$writers_ms} ms, {$reads_during} reads while they wrote, {$reads} reads in all"->ErrorLine();
+		Check("the readers are let in once the writers are done", kept_out = false);
+		count := est->GetCount();
+		Check("every write is counted: {$count} of {$want} + 2", count = want + 2);
+		joules := est->GetJoules();
+		Check("the total is exact: 2 W for 1 s, then nothing (got {$joules} J)", joules = 2.0);
+		peak := est->GetPeakWatts();
+		Check("the peak is the largest sample (got {$peak} W)", peak = 3.0);
+		Check("no read saw a half-written estimator ({$bad} bad of {$reads})", bad = 0 & reads > 0);
+
+		if(@failures > 0) {
+			"telemetry_energy_writers: {$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"telemetry_energy_writers: ok"->PrintLine();
+	}
+}
+
+# adds 'count' samples at time 1 s as fast as it can; the last one is 3 W, the rest 2 W
+class SampleWriter from Thread {
+	@est : EnergyEstimator;
+	@count : Int;
+	@done : Int;
+
+	New(est : EnergyEstimator, count : Int) {
+		Parent();
+		@est := est;
+		@count := count;
+		@done := 0;
+	}
+
+	method : public : GetDone() ~ Int {
+		return @done;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		for(i := 0; i < @count; i += 1;) {
+			watts := 2.0;
+			if(i = @count - 1) {
+				watts := 3.0;
+			};
+			@est->AddSample(1.0, watts);
+			@done := i + 1;
+		};
+	}
+}
+
+# asks for the energy of the first second, 2 J whatever is being added at 1 s, again and again
+class EnergyAsker from Thread {
+	@est : EnergyEstimator;
+	@running : Bool;
+	@reads : Int;
+	@bad : Int;
+
+	New(est : EnergyEstimator) {
+		Parent();
+		@est := est;
+		@running := true;
+		@reads := 0;
+		@bad := 0;
+	}
+
+	method : public : Stop() ~ Nil {
+		@running := false;
+	}
+
+	method : public : GetReads() ~ Int {
+		return @reads;
+	}
+
+	method : public : GetBad() ~ Int {
+		return @bad;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(@running) {
+			mean := @est->GetMeanWatts();
+			if(mean <> 2.0) {
+				@bad += 1;
+			};
+			@reads += 1;
+		};
+	}
+}

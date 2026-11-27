@@ -466,14 +466,24 @@ class TelemetrySamplerTest {
 	# second, the ring full and wrapping: the energy of a window 100 samples back is 10 J, and a
 	# window of retained samples is never NaN (the gap limit is 1.5 s, so a reader that saw the
 	# ring half moved, two samples that are not neighbours, would answer NaN or something else).
+	#
+	# The reads have to happen for the check to mean anything, and they must not depend on luck.
+	# A reader stands aside for the writer for up to 200 ms, and only a window still retained
+	# when it is answered can be judged. A writer that never pauses and an 8192-sample ring left
+	# almost none: the writer lapped the ring in the time one reader waited, 13 reads in 392000
+	# samples on a 32-core machine and none at all on a 3-core one, which failed the test. So the
+	# ring holds 65536 samples (still wrapped five times over), and the writer adds them the way
+	# a sampler does, in bursts with a pause between: a reader gets in between two bursts, long
+	# before the 60000 samples that would cost it its window.
 	function : Concurrent() ~ Nil {
-		est := EnergyEstimator->New(8192);
+		ring := 65536;
+		est := EnergyEstimator->New(ring);
 		est->SetMaxGap(1.5);
-		for(t := 0; t < 8192; t += 1;) {
+		for(t := 0; t < ring; t += 1;) {
 			est->AddSample(t->As(Float), 1.0);
 		};
-		@fed := 8191;
-		writer := EnergyWriter->New(est, 8192, 400000);
+		@fed := ring - 1;
+		writer := EnergyWriter->New(est, ring, 400000);
 		# readers that ask again the moment they are answered: a mutex that does not favor the waiting
 		# writer (macOS, Linux) lets them keep it out, so the energy estimator has to stand them aside
 		pressure := Vector->New()<EnergyReader>;
@@ -501,7 +511,7 @@ class TelemetrySamplerTest {
 			j := est->JoulesBetween((head - 100)->As(Float), (head - 90)->As(Float));
 			# a reader the machine held back while the writer lapped the ring asked about samples that
 			# are gone, and NaN is the right answer then: only a window still retained counts
-			if(@fed - head < 8000) {
+			if(@fed - head < 60000) {
 				reads += 1;
 				if(j <> j | Float->Abs(j - 10.0) > 1.0e-6) {
 					bad += 1;
@@ -556,6 +566,10 @@ class EnergyWriter from Thread {
 		for(t := @first; t < @to; t += 1;) {
 			@est->AddSample(t->As(Float), 1.0);
 			TelemetrySamplerTest->SetFed(t);
+			# a burst of 2000 samples, then a pause in which the readers get the lock
+			if((t - @first) % 2000 = 1999) {
+				Thread->Sleep(1);
+			};
 		};
 	}
 }
