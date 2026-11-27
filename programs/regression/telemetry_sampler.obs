@@ -379,10 +379,29 @@ class TelemetrySamplerTest {
 		};
 		@fed := 8191;
 		writer := EnergyWriter->New(est, 8192, 400000);
+		# readers that ask again the moment they are answered: a mutex that does not favor the waiting
+		# writer (macOS, Linux) lets them keep it out, so the energy estimator has to stand them aside
+		pressure := Vector->New()<EnergyReader>;
+		for(r := 0; r < 3; r += 1;) {
+			reader := EnergyReader->New(est);
+			pressure->AddBack(reader);
+			reader->Execute(Nil);
+		};
 		writer->Execute(Nil);
 		bad := 0;
 		reads := 0;
-		while(@fed < 400000 - 1) {
+		stalled := false;
+		last_fed := @fed;
+		last_move := Telemetry->NowMs();
+		while(@fed < 400000 - 1 & stalled = false) {
+			# the sampler must keep moving: a hang is a failure with a message, not a timeout
+			if(@fed <> last_fed) {
+				last_fed := @fed;
+				last_move := Telemetry->NowMs();
+			}
+			else if(Telemetry->NowMs() - last_move > 20000) {
+				stalled := true;
+			};
 			head := @fed;
 			j := est->JoulesBetween((head - 100)->As(Float), (head - 90)->As(Float));
 			# a reader the machine held back while the writer lapped the ring asked about samples that
@@ -394,7 +413,18 @@ class TelemetrySamplerTest {
 				};
 			};
 		};
+		each(rd in pressure) {
+			rd->Stop();
+		};
+		if(stalled) {
+			"  FAIL: the sampler thread stopped adding samples for 20 s while the energy was read (starved by its readers)"->PrintLine();
+			@failures += 1;
+			return;
+		};
 		writer->Join();
+		each(rd in pressure) {
+			rd->Join();
+		};
 		"  info: {$reads} reads while the sampler wrote, {$bad} torn"->ErrorLine();
 		Check("energy read while samples are added is never torn", bad = 0 & reads > 0);
 		Near("and the total stayed exact", est->GetJoules(), 399999.0, 1.0e-6);
@@ -431,6 +461,27 @@ class EnergyWriter from Thread {
 		for(t := @first; t < @to; t += 1;) {
 			@est->AddSample(t->As(Float), 1.0);
 			TelemetrySamplerTest->SetFed(t);
+		};
+	}
+}
+
+class EnergyReader from Thread {
+	@est : EnergyEstimator;
+	@running : Bool;
+
+	New(est : EnergyEstimator) {
+		Parent();
+		@est := est;
+		@running := true;
+	}
+
+	method : public : Stop() ~ Nil {
+		@running := false;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(@running) {
+			@est->JoulesBetween(1000.0, 1050.0);
 		};
 	}
 }

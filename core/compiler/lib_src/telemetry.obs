@@ -2830,6 +2830,7 @@ bundle System.Telemetry {
 		@last_t : Float;
 		@last_w : Float;
 		@lock : ThreadMutex;
+		@writing : Bool;
 
 		New() {
 			Init(4096);
@@ -2861,6 +2862,19 @@ bundle System.Telemetry {
 			@last_t := 0.0;
 			@last_w := 0.0;
 			@lock := ThreadMutex->New("telemetry-energy-estimator");
+			@writing := false;
+		}
+
+		# A mutex does not hand over to the thread that waited longest (macOS and Linux pthread mutexes do not),
+		# so readers that unlock and lock again in a loop can keep the sampler out forever. The writer says it is
+		# coming; a reader that sees that stands aside, bounded so a flag that is never cleared cannot stop it.
+		# The flag only orders who goes first: the lock still makes every read and write whole.
+		method : StandAside() ~ Nil {
+			waits := 0;
+			while(@writing & waits < 200) {
+				Thread->Sleep(1);
+				waits += 1;
+			};
 		}
 
 		#~
@@ -2881,8 +2895,10 @@ bundle System.Telemetry {
 		~#
 		method : public : AddSample(seconds : Float, watts : Float) ~ Bool {
 			ok := false;
+			@writing := true;
 			critical(@lock) {
 				ok := AddSampleLocked(seconds, watts);
+				@writing := false;
 			};
 			return ok;
 		}
@@ -2960,6 +2976,7 @@ bundle System.Telemetry {
 		~#
 		method : public : GetMeanWatts() ~ Float {
 			mean := Float->NaN();
+			StandAside();
 			critical(@lock) {
 				if(@span > 0.0) {
 					mean := @total / @span;
@@ -3002,6 +3019,7 @@ bundle System.Telemetry {
 		~#
 		method : public : PowerAt(seconds : Float) ~ Float {
 			watts := Float->NaN();
+			StandAside();
 			critical(@lock) {
 				watts := PowerAtLocked(seconds);
 			};
@@ -3034,6 +3052,7 @@ bundle System.Telemetry {
 		~#
 		method : public : JoulesBetween(t_from : Float, t_to : Float) ~ Float {
 			joules := Float->NaN();
+			StandAside();
 			critical(@lock) {
 				joules := JoulesBetweenLocked(t_from, t_to);
 			};
