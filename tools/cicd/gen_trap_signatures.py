@@ -28,8 +28,9 @@ the same rule.
 
 The images are the whole-library programs tools/fuzz/adhoc/obe_corpus_gate.py
 compiles (<out>/cover) and the compiled tree (<out>/img). --check needs no build:
-it fails when a row's instruction or count is not what the compiler writes, or
-when the compiler writes a trap that has no row. --observed reads lines of
+it fails when a row's instruction or count is not what the compiler writes, when
+the compiler writes a trap that has no row (the array-literal copies included), or
+when a row does not say where a frame-reading trap may stand. --observed reads lines of
 "<trap id> <words the operand stack moved by, the id included> <times>", what a
 VM built to print them saw while the regression suite ran, and lists each trap
 whose row says otherwise (2026-11: 192 traps ran, 190 as the libraries imply; the
@@ -404,6 +405,16 @@ def check():
                             (trap, "TRAP_RTRN" if rows[trap][0] else "TRAP", rows[trap][1], shape["op"], shape["count"]))
     for trap in sorted(set(rows) - set(shapes) - set(LITERAL_COPIES) - {"CPY_CHAR_STR_ARYS"}):
         problems.append("%s: a row for a trap the compiler no longer writes" % trap)
+    # The literal copies are written by EmitStaticArray, not by a directive, so they
+    # are in no shape above: each is TRAP_RTRN, with the array, the table index and
+    # the id (3), or one word for each string (-1). Without its row the loader
+    # refuses every program that holds an array literal.
+    for trap, count in sorted([(t, 3) for t in LITERAL_COPIES] + [("CPY_CHAR_STR_ARYS", -1)]):
+        if trap not in rows:
+            problems.append("%s: an array literal is copied with it and trap_signatures.h has no row (run gen_trap_signatures.py)" % trap)
+        elif rows[trap] != (True, count):
+            problems.append("%s: trap_signatures.h says %s %d, an array literal is copied with TRAP_RTRN %d" %
+                            (trap, "TRAP_RTRN" if rows[trap][0] else "TRAP", rows[trap][1], count))
     # Where a trap may stand: the last two cells of its row. A trap whose handler
     # reads the frame or the instance names at least one method, and no other does.
     frames = frame_traps()

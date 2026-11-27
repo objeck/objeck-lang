@@ -11,7 +11,9 @@ when its corpus directory was misspelled or empty, and --check compared only the
 instruction and the count, so it called the result "ok".
 
 Nothing is built: the generator is run on directories that hold no usable image,
-and --check on copies of the committed header with one row changed. A check that
+and --check on copies of the committed header with one row changed or removed
+(a frame-reading trap's contexts; an array-literal copy's row, which no compiler
+directive stands behind and --check did not require). A check that
 rejects everything is worth no more than one that accepts everything, so the
 committed header itself must pass.
 
@@ -144,6 +146,25 @@ cases = [
     ("a context on a trap that reads the operand stack alone",
      row_edit("STD_OUT_INT", ', nullptr, false },', ', L"System.Int:Print:", false },'), "STD_OUT_INT"),
 ]
+
+
+def row_drop(trap):
+    return lambda text: re.sub(r'    \{ instructions::%s, [^\n]*\n' % trap, "", text, count=1)
+
+
+def row_cells(trap, old, new):
+    """Replaces the start of one trap's row (its instruction and count)."""
+    return lambda text: text.replace('{ instructions::%s, L"%s", %s,' % (trap, trap, old),
+                                     '{ instructions::%s, L"%s", %s,' % (trap, trap, new), 1)
+
+
+# the array-literal copies: written by EmitStaticArray, in no directive --check reads
+for trap in sorted(gen.LITERAL_COPIES) + ["CPY_CHAR_STR_ARYS"]:
+    cases.append(("the row of %s missing" % trap, row_drop(trap), trap))
+cases.append(("CPY_INT_STR_ARY with another count", row_cells("CPY_INT_STR_ARY", "true, 3", "true, 4"), "CPY_INT_STR_ARY"))
+cases.append(("CPY_CHAR_STR_ARYS with a fixed count", row_cells("CPY_CHAR_STR_ARYS", "true, -1", "true, 3"), "CPY_CHAR_STR_ARYS"))
+cases.append(("CPY_FLOAT_STR_ARY written TRAP", row_cells("CPY_FLOAT_STR_ARY", "true, 3", "false, 3"), "CPY_FLOAT_STR_ARY"))
+
 for name, change, trap in cases:
     changed, problems = check_copy(change)
     check("%s: the fixture differs from the committed header" % name, changed)
