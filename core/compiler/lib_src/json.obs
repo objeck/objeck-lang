@@ -408,6 +408,21 @@ if(doc <> Nil) {
 		@token_write_pos : Int;
 		@tokens_max : Int;
 
+		# A token without a value says only what kind it is, so one instance per kind
+		# serves the whole parse. They are made on first use: a comma and a colon come
+		# once per member, and the padding that fills the token buffer past the end of
+		# the input was 16 new tokens per document on average.
+		@obr_token : Token;
+		@cbr_token : Token;
+		@ocbr_token : Token;
+		@ccbr_token : Token;
+		@comma_token : Token;
+		@colon_token : Token;
+		@true_token : Token;
+		@false_token : Token;
+		@null_token : Token;
+		@other_token : Token;
+
 		@root : JsonElement;
 		@error_msg : String;
 		@depth : Int;
@@ -739,6 +754,9 @@ if(doc <> Nil) {
 		}
 
 		method : native : Scan() ~ Nil {			
+			# The digit and letter tests are written out rather than asked of Char->IsDigit
+			# and Char->IsChar: they are the same comparisons, and a call from compiled code
+			# costs about 130 instructions, several times per character of a number.
 			if(@input <> Nil) {
 				
 
@@ -766,7 +784,7 @@ if(doc <> Nil) {
 						# token
 						else {
 							# parse string
-							if(@input_index < @input->Size() & (@input[@input_index] = '"' | @input[@input_index]->IsChar())) {
+							if(@input_index < @input->Size() & (@input[@input_index] = '"' | ((@input[@input_index] >= 'a' & @input[@input_index] <= 'z') | (@input[@input_index] >= 'A' & @input[@input_index] <= 'Z')))) {
 								len : Int; offset : Int; quoted := false;
 								if(@input[@input_index] = '"') {
 									# A string token carries the DECODED text (RFC 8259 section 7):
@@ -839,20 +857,29 @@ if(doc <> Nil) {
 								}
 								else {
 									offset := @input_index;
-									while(@input_index < @input->Size() & (@input[@input_index]->IsChar() | @input[@input_index] = '_')) {
+									while(@input_index < @input->Size() & (((@input[@input_index] >= 'a' & @input[@input_index] <= 'z') | (@input[@input_index] >= 'A' & @input[@input_index] <= 'Z')) | @input[@input_index] = '_')) {
 										# update
 										@input_index += 1;
 									};
 									len := @input_index - offset;
 
 									if(len = 4 & offset + 3 < @input->Size() & @input[offset] = 't' & @input[offset + 1] = 'r' & @input[offset + 2] = 'u' & @input[offset + 3] = 'e') {
-										AddToken(Token->New(Token->Type->TRUE));
+										if(@true_token = Nil) {
+											@true_token := Token->New(Token->Type->TRUE);
+										};
+										AddToken(@true_token);
 									}
 									else if(len = 5 & offset + 4 < @input->Size() & @input[offset] = 'f' & @input[offset + 1] = 'a' & @input[offset + 2] = 'l' & @input[offset + 3] = 's' & @input[offset + 4] = 'e') {
-										AddToken(Token->New(Token->Type->FALSE));
+										if(@false_token = Nil) {
+											@false_token := Token->New(Token->Type->FALSE);
+										};
+										AddToken(@false_token);
 									}
 									else if(len = 4 & offset + 3 < @input->Size() & @input[offset] = 'n' & @input[offset + 1] = 'u' & @input[offset + 2] = 'l' & @input[offset + 3] = 'l') {
-										AddToken(Token->New(Token->Type->NULL));
+										if(@null_token = Nil) {
+											@null_token := Token->New(Token->Type->NULL);
+										};
+										AddToken(@null_token);
 									}
 									else if(len > 0) {
 										AddToken(Token->New(Token->Type->IDENT, String->New(@input, offset, len)));
@@ -863,7 +890,7 @@ if(doc <> Nil) {
 								};
 							}
 							# parse number
-							else if(@input_index < @input->Size() & (@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '.')) {
+							else if(@input_index < @input->Size() & ((@input[@input_index] >= '0' & @input[@input_index] <= '9') | @input[@input_index] = '-' | @input[@input_index] = '.')) {
 								# RFC 8259: -? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?
 								# This used to count '-' and '.' over a run of digits/-/./e/E, so
 								# "-1.5e-3" (two minus signs) failed the whole document, "2.5E+2"
@@ -882,8 +909,8 @@ if(doc <> Nil) {
 								if(@input_index < size & @input[@input_index] = '0') {
 									@input_index += 1;
 								}
-								else if(@input_index < size & @input[@input_index]->IsDigit()) {
-									while(@input_index < size & @input[@input_index]->IsDigit()) {
+								else if(@input_index < size & (@input[@input_index] >= '0' & @input[@input_index] <= '9')) {
+									while(@input_index < size & (@input[@input_index] >= '0' & @input[@input_index] <= '9')) {
 										@input_index += 1;
 									};
 								}
@@ -895,8 +922,8 @@ if(doc <> Nil) {
 								if(is_valid & @input_index < size & @input[@input_index] = '.') {
 									is_float := true;
 									@input_index += 1;
-									if(@input_index < size & @input[@input_index]->IsDigit()) {
-										while(@input_index < size & @input[@input_index]->IsDigit()) {
+									if(@input_index < size & (@input[@input_index] >= '0' & @input[@input_index] <= '9')) {
+										while(@input_index < size & (@input[@input_index] >= '0' & @input[@input_index] <= '9')) {
 											@input_index += 1;
 										};
 									}
@@ -912,8 +939,8 @@ if(doc <> Nil) {
 									if(@input_index < size & (@input[@input_index] = '+' | @input[@input_index] = '-')) {
 										@input_index += 1;
 									};
-									if(@input_index < size & @input[@input_index]->IsDigit()) {
-										while(@input_index < size & @input[@input_index]->IsDigit()) {
+									if(@input_index < size & (@input[@input_index] >= '0' & @input[@input_index] <= '9')) {
+										while(@input_index < size & (@input[@input_index] >= '0' & @input[@input_index] <= '9')) {
 											@input_index += 1;
 										};
 									}
@@ -924,7 +951,7 @@ if(doc <> Nil) {
 
 								# anything number-like left over ("01", "1-2", "1.2.3") makes the
 								# whole run one bad token rather than two good ones
-								while(@input_index < size & (@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '+' |
+								while(@input_index < size & ((@input[@input_index] >= '0' & @input[@input_index] <= '9') | @input[@input_index] = '-' | @input[@input_index] = '+' |
 										@input[@input_index] = '.' | @input[@input_index] = 'e' | @input[@input_index] = 'E')) {
 									is_valid := false;
 									@input_index += 1;
@@ -945,31 +972,52 @@ if(doc <> Nil) {
 							else if(@input_index < @input->Size()) {
 								select(@input[@input_index]) {
 									label '[': {
-										AddToken(Token->New(Token->Type->OBR));
+										if(@obr_token = Nil) {
+											@obr_token := Token->New(Token->Type->OBR);
+										};
+										AddToken(@obr_token);
 									}
 			
 									label ']': {
-										AddToken(Token->New(Token->Type->CBR));
+										if(@cbr_token = Nil) {
+											@cbr_token := Token->New(Token->Type->CBR);
+										};
+										AddToken(@cbr_token);
 									}
 
 									label '{': {
-										AddToken(Token->New(Token->Type->OCBR));
+										if(@ocbr_token = Nil) {
+											@ocbr_token := Token->New(Token->Type->OCBR);
+										};
+										AddToken(@ocbr_token);
 									}
 			
 									label '}': {
-										AddToken(Token->New(Token->Type->CCBR));
+										if(@ccbr_token = Nil) {
+											@ccbr_token := Token->New(Token->Type->CCBR);
+										};
+										AddToken(@ccbr_token);
 									}
 
 									label ',': {
-										AddToken(Token->New(Token->Type->COMMA));
+										if(@comma_token = Nil) {
+											@comma_token := Token->New(Token->Type->COMMA);
+										};
+										AddToken(@comma_token);
 									}
 
 									label ':': {
-										AddToken(Token->New(Token->Type->COLON));
+										if(@colon_token = Nil) {
+											@colon_token := Token->New(Token->Type->COLON);
+										};
+										AddToken(@colon_token);
 									}
 
 									other: {
-										AddToken(Token->New(Token->Type->OTHER));
+										if(@other_token = Nil) {
+											@other_token := Token->New(Token->Type->OTHER);
+										};
+										AddToken(@other_token);
 									}
 								};
 								# update
@@ -978,7 +1026,11 @@ if(doc <> Nil) {
 						};	
 					}
 					else {
-						AddToken(Token->New(Token->Type->OTHER));
+						# past the end of the input: the rest of the buffer
+						if(@other_token = Nil) {
+							@other_token := Token->New(Token->Type->OTHER);
+						};
+						AddToken(@other_token);
 					};				
 				};
 
@@ -1213,19 +1265,18 @@ obj->ToString()->PrintLine();
 		~#
 		New(type : JsonElement->JsonType) {
 			select(type) {
+				# the text of a true, false or null element is made when it is first
+				# asked for (LiteralValue): most never are
 				label JsonElement->JsonType->TRUE {
 					@type := type;	
-					@value := "true";
 				}
 
 				label JsonElement->JsonType->FALSE {
 					@type := type;	
-					@value := "false";
 				}
 
 				label JsonElement->JsonType->NULL {
 					@type := type;	
-					@value := "";
 				}
 
 				label JsonElement->JsonType->OBJECT {
@@ -1376,11 +1427,32 @@ obj->ToString()->PrintLine();
 		```
 		~#
 		method : public : GetString() ~ String {
+			if(@value = Nil) {
+				LiteralValue();
+			};
+
 			if(@value <> Nil) {
 				return @value;
 			};
 			
 			return "";
+		}
+
+		#
+		# Gives a true, false or null element its text ("true", "false", ""), once.
+		# The constructor used to make it for every such element; a string literal
+		# costs about 3,000 instructions and few of these are ever read as text.
+		#
+		method : LiteralValue() ~ Nil {
+			if(@type = JsonType->TRUE) {
+				@value := "true";
+			}
+			else if(@type = JsonType->FALSE) {
+				@value := "false";
+			}
+			else if(@type = JsonType->NULL) {
+				@value := "";
+			};
 		}
 
 		#~
@@ -1396,6 +1468,10 @@ obj->ToString()->PrintLine();
 		```
 		~#
 		method : public : GetInt() ~ Int {
+			if(@value = Nil) {
+				LiteralValue();
+			};
+
 			if(@value <> Nil) {
 				# a number written with a fraction or an exponent ("1e5", "2.5E+2")
 				# goes through the float parse and truncates toward zero; ToInt()
@@ -1422,6 +1498,10 @@ obj->ToString()->PrintLine();
 		```
 		~#
 		method : public : GetFloat() ~ Float {
+			if(@value = Nil) {
+				LiteralValue();
+			};
+
 			if(@value <> Nil) {
 				return @value->ToFloat();
 			};
@@ -1442,6 +1522,10 @@ obj->ToString()->PrintLine();
 		```
 		~#
 		method : public : GetBool() ~ Bool {
+			if(@value = Nil) {
+				LiteralValue();
+			};
+
 			if(@value <> Nil) {
 				return @value->ToBool();
 			};
@@ -2037,7 +2121,7 @@ obj->ToString()->PrintLine();
 						# is producing JSON, so it is the one that escapes. Do NOT pre-encode
 						# values handed to Insert() any more; they would be escaped twice.
 						output->Append('"');
-						output->Append(JsonElement->Encode(@value));
+						AppendEncoded(@value, output);
 						output->Append('"');
 					};
 				}
@@ -2048,16 +2132,29 @@ obj->ToString()->PrintLine();
 					};
 				}
 				
+				# true, false, null and the '":' after a key are appended a character at a
+				# time: a string literal is a new String each time it is evaluated, about
+				# 3,000 instructions against 180 for a character
 				label JsonElement->JsonType->TRUE: {
-					output->Append("true");
+					output->Append('t');
+					output->Append('r');
+					output->Append('u');
+					output->Append('e');
 				}
 
 				label JsonElement->JsonType->FALSE: {
-					output->Append("false");
+					output->Append('f');
+					output->Append('a');
+					output->Append('l');
+					output->Append('s');
+					output->Append('e');
 				}
 				
 				label JsonElement->JsonType->NULL: {
-					output->Append("null");
+					output->Append('n');
+					output->Append('u');
+					output->Append('l');
+					output->Append('l');
 				}
 
 				label JsonElement->JsonType->ARRAY: {
@@ -2098,20 +2195,22 @@ obj->ToString()->PrintLine();
 							FormatPadding(output, depth);
 						};
 
-						keys := @map_elems->GetKeys()<String>;
-						each(i : keys) {
-							key := keys->Get(i);
-							value := @map_elems->Find(key);	
+						# one walk of the map gives each key with its value, in key order; asking
+						# the map for every key again cost a search per member
+						members := @map_elems->GetKeyValues()<Collection.Pair<String, JsonElement>>;
+						each(i : members) {
+							member := members->Get(i);
 
 							output->Append('"');
-							output->Append(JsonElement->Encode(key));
-							output->Append("\":");
+							AppendEncoded(member->GetFirst(), output);
+							output->Append('"');
+							output->Append(':');
 							if(pretty) {
 								output->Append(' ');
 							};
 
-							value->As(JsonElement)->Format(output, pretty, depth);
-							if(i + 1 < @map_elems->Size()) {
+							member->GetSecond()->Format(output, pretty, depth);
+							if(i + 1 < members->Size()) {
 								output->Append(',');
 								if(pretty) {
 									output->Append('\n');
@@ -2130,6 +2229,27 @@ obj->ToString()->PrintLine();
 					};
 				}
 			};
+		}
+
+		#
+		# Appends 'str' as the content of a JSON string, escaped as Encode escapes it.
+		# Text with nothing to escape (plain ASCII without a quote, a backslash or a
+		# control character: most keys and most values) is appended in one piece.
+		# Encode builds its result a character at a time and the result was then
+		# copied into the output, about 540 instructions a character; this is one
+		# pass over the characters and one copy. Anything else goes through Encode.
+		#
+		function : native : AppendEncoded(str : String, output : String) ~ Nil {
+			chars := str->ToCharArray();
+			size := chars->Size();
+			for(i := 0; i < size; i += 1;) {
+				c := chars[i];
+				if(c < 0x20 | c > 127 | c = '"' | c = '\\') {
+					output->Append(JsonElement->Encode(str));
+					return;
+				};
+			};
+			output->Append(chars, 0, size);
 		}
 
 		method : FormatPadding(output : String, depth : Int) ~ Nil {
