@@ -1085,6 +1085,36 @@ Int->ToByte(300)->PrintLine();                # 44
 (b - 1 = -1)->PrintLine();                    # true: the arithmetic is Int-wide
 ```
 
+### Increment and decrement
+
+`++i` and `--i` change the variable before it is read. `i++` and `i--` are read first: the expression gets the value from before the change, and the change is made later. When "later" is depends on where the `i++` is written:
+
+| Where `i++` is written | When `i` changes |
+|---|---|
+| Anywhere not listed below | At the end of the statement, after everything in it has been evaluated: `k := i++ + i;` with `i` at 5 gives 10, then `i` is 6. `a[i++] := i;` stores the old `i` at the old index. Every update of a statement has run when the statement ends. |
+| An operand only one path evaluates: the default of `??`, a branch of `?:`, the second operand of `&` or <code>&#124;</code> in a value, an argument of a `?->` call | When that operand has been evaluated, and not at all when it is skipped. |
+| The subject of `match` or `select` | Before the arm is chosen, so every arm sees the new value; the arm is chosen by the old one. |
+| The condition of `if` or `else if` | Between the test and the branch, on both sides; the block sees the new value. An operand that `&` or <code>&#124;</code> skips does not change it. |
+| The condition of `do { } while(..)` | After each test, including the last one, which fails. |
+| The condition of `while` or `for` | **Not when the condition is tested.** See below. |
+
+**`while` and `for` conditions are different.** The change is made inside the loop body, at the end of the body's first statement (at the end of the body when it has no statement). So:
+
+- the first statement of the body still reads the old value, and every statement after it reads the new one;
+- when the condition is false and the loop is left, the change is not made;
+- the change is made once per round, even for an operand that `&` or <code>&#124;</code> skipped in that round.
+
+```ruby
+i := 3;
+while(i-- > 0) {
+  "first {$i}"->PrintLine();   # 3, then 2, then 1: the old value
+  "second {$i}"->PrintLine();  # 2, then 1, then 0: the new value
+};
+i->PrintLine();                # 0, not -1: the last, failing test did not change it
+```
+
+A loop that needs the value in its body is clearer with the update written as a statement: `while(i > 0) { i -= 1; ... };`.
+
 ---
 
 <a name="strings"></a>
