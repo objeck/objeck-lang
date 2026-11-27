@@ -1621,6 +1621,11 @@
             }
             local_loads.push_back({ op1, value, ip });
             Claim(value, ParamSlotClass(op1));
+            // A word of the frame no declaration covers is not a root: the collector
+            // never marks or moves what it holds, so it is not read through
+            if(op1 >= (long)locals.size()) {
+              facts[value].made = F_INT;
+            }
           }
           stack.push_back(value);
         }
