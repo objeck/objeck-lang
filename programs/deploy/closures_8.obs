@@ -29,9 +29,28 @@
 #   evens: 2 4 6
 #   doubled: 2 4 6 8 10 12
 #   sum: 21
+#   tally: 5 then 15, and the field says 15
 ~#
 
 use Collection;
+
+# A lambda written in a method keeps the object it was made in, so '@total'
+# inside it is the object's field itself, not a copy: the lambda's writes are
+# visible to the object, and the object's writes to the lambda. (This is
+# unlike a captured local, which is copied when the lambda is made.)
+class Tally {
+  @total : get : Int;
+
+  New() {
+  }
+
+  method : public : Adder() ~ (Int) ~ Int {
+    return \(Int) ~ Int : (amount) => {
+      @total += amount;
+      return @total;
+    };
+  }
+}
 
 class Closures {
   # an ordinary function, which we will use as a value
@@ -88,10 +107,7 @@ class Closures {
     "counter: {$first} {$second} {$third}"->PrintLine();
 
     # --- the short lambda form with the library's collections ---
-    numbers := Vector->New()<IntRef>;
-    for(i := 1; i <= 6; i += 1;) {
-      numbers->AddBack(IntRef->New(i));
-    };
+    numbers : Vector<IntRef> := [1, 2, 3, 4, 5, 6];
 
     # Filter keeps the elements the lambda says yes to. In \(n) => ...
     # the compiler already knows n is an IntRef, so no types are written.
@@ -115,5 +131,12 @@ class Closures {
     total := IntRef->New(0);
     numbers->Each(\(n) => total->Set(total->Get() + n->Get()));
     "sum: {$total}"->PrintLine();
+
+    # --- a lambda inside a method can use the object's own fields ---
+    tally := Tally->New();
+    add := tally->Adder();
+    after_five := add(5);
+    after_fifteen := add(10);
+    "tally: {$after_five} then {$after_fifteen}, and the field says {$(tally->GetTotal())}"->PrintLine();
   }
 }

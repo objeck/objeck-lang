@@ -3,8 +3,8 @@
 # run:     obr control_flow_2.obe
 #
 # Making decisions and repeating work. This program walks through every
-# control-flow statement in Objeck: if / else if / else, select (a multi-way
-# branch on a number or enum value), the while, do/while and for loops, the
+# control-flow statement in Objeck: if / else if / else, select and match (a
+# multi-way branch on a number or enum value), the while, do/while and for loops, the
 # each loop over arrays and collections, and break / continue to leave or
 # skip a loop pass early.
 #
@@ -22,6 +22,10 @@
 #   day 6: weekend
 #   day 7: weekend
 #   day 9: not a day of the week
+#   match: 0 is none
+#   match: 1 is one
+#   match: 3 is a few
+#   match: 40 is many
 #   while: 3
 #   ...
 #   do/while: try 2
@@ -75,6 +79,18 @@ class ControlFlow {
           "day {$day}: not a day of the week"->PrintLine();
         }
       };
+    };
+
+    # --- match: the same branching, written as an expression ---
+    # every arm is a value, so a whole match can be assigned or returned.
+    # '|' lets several patterns share an arm, and a number needs 'other'
+    # because the compiler cannot list them all
+    counts := [0, 1, 3, 40];
+    each(count in counts) {
+      word := match count {
+        0 => "none", 1 => "one", 2 | 3 => "a few", other => "many"
+      };
+      "match: {$count} is {$word}"->PrintLine();
     };
 
     # --- while: test first, then run the body (it may never run) ---

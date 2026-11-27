@@ -36,8 +36,8 @@ class Regex {
     # --- does a whole string fit the pattern? ---
     # four digits, a dash, two digits, a dash, two digits
     date := RegEx->New("\\d{4}-\\d{2}-\\d{2}");
-    # (a '"' inside {$...} trips a known compiler defect, so a call that
-    # takes a string literal is stored in a local first)
+    # (a quote inside {$...} would end the string early, so a call that takes
+    # a string literal is stored in a local first)
     good := date->MatchExact("2026-10-28");
     bad := date->MatchExact("28/10/2026");
     "2026-10-28 is a date: {$good}"->PrintLine();
@@ -55,9 +55,8 @@ class Regex {
     # Find returns a Vector of Result objects, one per match, in order
     found := date->Find(text);
     "dates found: {$(found->Size())}"->PrintLine();
-    for(i := 0; i < found->Size(); i += 1;) {
-      match := found->Get(i);
-      "  {$(match->GetValue())} at index {$(match->GetStart())}"->PrintLine();
+    each(hit in found) {
+      "  {$(hit->GetValue())} at index {$(hit->GetStart())}"->PrintLine();
     };
 
     # --- capture groups ---
@@ -65,13 +64,12 @@ class Regex {
     # group, GetGroup(2) the second, and GetGroup(0) the whole match
     parts := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})");
     found := parts->Find(text);
-    for(i := 0; i < found->Size(); i += 1;) {
-      match := found->Get(i);
+    each(hit in found) {
       # ToInt turns "03" into 3
-      year := match->GetGroup(1)->ToInt();
-      month := match->GetGroup(2)->ToInt();
-      day := match->GetGroup(3)->ToInt();
-      "date {$(match->GetValue())} -> day {$day} of month {$month}, year {$year}"->PrintLine();
+      year := hit->GetGroup(1)->ToInt();
+      month := hit->GetGroup(2)->ToInt();
+      day := hit->GetGroup(3)->ToInt();
+      "date {$(hit->GetValue())} -> day {$day} of month {$month}, year {$year}"->PrintLine();
     };
 
     # --- a practical pattern: email addresses ---
@@ -79,8 +77,8 @@ class Regex {
     email := RegEx->New("[\\w.]+@\\w+(\\.\\w+)+");
     found := email->Find(text);
     "emails:"->Print();
-    for(i := 0; i < found->Size(); i += 1;) {
-      " {$(found->Get(i)->GetValue())}"->Print();
+    each(hit in found) {
+      " {$(hit->GetValue())}"->Print();
     };
     ""->PrintLine();
 
@@ -95,8 +93,8 @@ class Regex {
     separator := RegEx->New("\\s*[,;]\\s*");
     pieces := Split(separator, "red , green;blue ;  yellow");
     "split:"->Print();
-    each(i : pieces) {
-      " [{$(pieces[i])}]"->Print();
+    each(piece in pieces) {
+      " [{$piece}]"->Print();
     };
     ""->PrintLine();
   }
@@ -108,10 +106,10 @@ class Regex {
     found := pattern->Find(text);
     pieces := String->New[found->Size() + 1];
     start := 0;
-    for(i := 0; i < found->Size(); i += 1;) {
-      match := found->Get(i);
-      pieces[i] := text->SubString(start, match->GetStart() - start);
-      start := match->GetStart() + match->GetLength();
+    each(i : found) {
+      hit := found->Get(i);
+      pieces[i] := text->SubString(start, hit->GetStart() - start);
+      start := hit->GetStart() + hit->GetLength();
     };
     # whatever follows the last match is the final piece
     pieces[found->Size()] := text->SubString(start, text->Size() - start);

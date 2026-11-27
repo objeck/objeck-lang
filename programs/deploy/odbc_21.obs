@@ -38,14 +38,20 @@ class OdbcExample {
     # the data source name can be given on the command line
     dsn := args->Size() > 0 ? args[0] : "objeck_sqlite";
 
-    # connect: data source, user name, password (SQLite needs neither)
-    conn := Connection->New(dsn, "", "");
-    if(<>conn->IsOpen()) {
-      Explain(dsn, conn->GetLastError());
-      return;
+    # connect: data source, user name, password (SQLite needs neither).
+    # using closes the connection when the block ends, however it ends: the
+    # normal end, the return below, or an error, so no path can forget to
+    using(conn := Connection->New(dsn, "", "")) {
+      if(<>conn->IsOpen()) {
+        Explain(dsn, conn->GetLastError());
+        return;
+      };
+      "connected to '{$dsn}'"->PrintLine();
+      Run(conn);
     };
-    "connected to '{$dsn}'"->PrintLine();
+  }
 
+  function : Run(conn : Connection) ~ Nil {
     # Update() runs a statement that returns no rows; start from a clean table
     conn->Update("DROP TABLE IF EXISTS students");
     conn->Update("CREATE TABLE students (id INTEGER, name VARCHAR(40), score REAL)");
@@ -54,45 +60,45 @@ class OdbcExample {
     # values to the ? placeholders, which are numbered from 1
     names := ["Ada", "Alan", "Grace", "Linus"];
     scores := [95.5, 72.25, 88.0, 61.0];
-    insert := conn->CreateParameterStatement("INSERT INTO students VALUES (?, ?, ?)");
-    each(i : names) {
-      insert->SetInt(1, i + 1);
-      insert->SetVarchar(2, names[i]);
-      insert->SetDouble(3, scores[i]);
-      insert->Update();
+    using(insert := conn->CreateParameterStatement("INSERT INTO students VALUES (?, ?, ?)")) {
+      each(i : names) {
+        insert->SetInt(1, i + 1);
+        insert->SetVarchar(2, names[i]);
+        insert->SetDouble(3, scores[i]);
+        insert->Update();
+      };
     };
-    insert->Close();
     "inserted {$(names->Size())} rows"->PrintLine();
 
     # Select() returns a ResultSet; Next() moves to each row in turn, and the
-    # Get calls read a column by its position (from 1) or by its name
-    rows := conn->Select("SELECT id, name, score FROM students WHERE score > 70 ORDER BY score DESC");
-    if(rows <> Nil) {
-      "id\tname\tscore"->PrintLine();
-      while(rows->Next()) {
-        id := rows->GetInt(1);
-        name := rows->GetVarchar("name");
-        score := Float->ToString(rows->GetDouble(3), 2);
-        "{$id}\t{$name}\t{$score}"->PrintLine();
+    # Get calls read a column by its position (from 1) or by its name. using
+    # skips the Close when the query failed and gave Nil
+    using(rows := conn->Select("SELECT id, name, score FROM students WHERE score > 70 ORDER BY score DESC")) {
+      if(rows <> Nil) {
+        "id\tname\tscore"->PrintLine();
+        while(rows->Next()) {
+          id := rows->GetInt(1);
+          name := rows->GetVarchar("name");
+          score := Float->ToString(rows->GetDouble(3), 2);
+          "{$id}\t{$name}\t{$score}"->PrintLine();
+        };
       };
-      rows->Close();
     };
 
     # a prepared statement works for queries too: here the bound value is a
     # threshold, and the database does the averaging
-    query := conn->CreateParameterStatement("SELECT AVG(score) FROM students WHERE score > ?");
-    query->SetDouble(1, 80.0);
-    rows := query->Select();
-    if(rows <> Nil & rows->Next()) {
-      average := Float->ToString(rows->GetDouble(1), 2);
-      "average of scores above 80: {$average}"->PrintLine();
-      rows->Close();
+    using(query := conn->CreateParameterStatement("SELECT AVG(score) FROM students WHERE score > ?")) {
+      query->SetDouble(1, 80.0);
+      using(rows := query->Select()) {
+        if(rows <> Nil & rows->Next()) {
+          average := Float->ToString(rows->GetDouble(1), 2);
+          "average of scores above 80: {$average}"->PrintLine();
+        };
+      };
     };
-    query->Close();
 
-    # tidy up and disconnect
+    # tidy up; the connection closes itself when Main leaves its block
     conn->Update("DROP TABLE students");
-    conn->Close();
   }
 
   # what to do when there is no database to talk to

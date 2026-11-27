@@ -1,0 +1,76 @@
+#~
+# compile: obc -src local_model_52.obs -lib agent,json,net,cipher,misc
+# run:     obr local_model_52.obe                  (a scripted model, no setup)
+#          obr local_model_52.obe ollama           (a model on this machine)
+#          obr local_model_52.obe ollama qwen3:8b http://192.168.1.66:11434
+#
+# The same agent can run on a model that lives on your own machine, or on
+# another machine of yours, with no API key and nothing sent to a cloud
+# service. OllamaBackend talks to an Ollama server (https://ollama.com):
+#
+#   ollama pull qwen3:8b        once, to download a model that supports tools
+#   OllamaBackend->New("qwen3:8b")                     http://localhost:11434
+#   OllamaBackend->New("qwen3:8b")->SetHost(address)   a server elsewhere
+#
+# The backend is the only line that changes: the tools, the budget and the way
+# the result is read are the ones every other example here uses. With no
+# argument the program runs a ScriptedBackend (fixed replies), so it prints
+# the same thing every time and needs nothing installed. A real model words
+# its answer differently each run; what stays the same is the tool call it
+# makes and the reason the run stopped.
+#
+# If the server is not running, the run ends with a stop reason of "error" and
+# a message, and the program says so and exits normally.
+#
+# output (scripted):
+#   model: scripted
+#   answer: 17 * 23 is 391.
+#   calculator({"expression":"17 * 23"}) -> 391
+#   stopped: completed, 2 model calls
+~#
+
+use API.Agent, Data.JSON, Collection;
+
+class LocalModel {
+  function : Main(args : String[]) ~ Nil {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+
+    backend : ChatBackend;
+    if(args->Size() > 0 & args[0]->Equals("ollama")) {
+      model := args->Size() > 1 ? args[1] : "qwen3:8b";
+      ollama := OllamaBackend->New(model);
+      if(args->Size() > 2) {
+        ollama->SetHost(args[2]);
+      };
+      backend := ollama;
+      "model: {$model} on Ollama"->PrintLine();
+    }
+    else {
+      script : Vector<AgentReply> := [
+        AgentReply->Ask("c1", "calculator", json {"expression": "17 * 23"}->ToString()),
+        AgentReply->Say("17 * 23 is 391.")];
+      backend := ScriptedBackend->New(script);
+      "model: scripted"->PrintLine();
+    };
+
+    agent := Agent->New(backend, registry);
+    # a local model can be slow: bound the steps, and the time, so a run that
+    # goes wrong stops by itself
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(4)->SetMaxWallMs(120000));
+    result := agent->Run("What is 17 * 23? Use the calculator.");
+
+    if(<>result->IsCompleted()) {
+      "the run did not finish: {$(result->GetStopReason())}: {$(result->GetError())}"->PrintLine();
+      return;
+    };
+
+    "answer: {$(result->GetText())}"->PrintLine();
+    each(step in result->GetSteps()) {
+      each(r in step->GetResults()) {
+        "{$(r->GetToolName())}({$(r->GetArguments())}) -> {$(r->GetContent())}"->PrintLine();
+      };
+    };
+    "stopped: {$(result->GetStopReason())}, {$(result->GetModelCalls())} model calls"->PrintLine();
+  }
+}

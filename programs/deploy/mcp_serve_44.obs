@@ -16,6 +16,11 @@
 #
 # To see the protocol by hand (the client sends one JSON message per line):
 #   echo {"jsonrpc":"2.0","id":1,"method":"tools/list"} | obr --mcp mcp_serve_44.obe
+#
+# output (without the flags):
+#   This program is an MCP server. Serve it with:
+#     obr --mcp mcp_serve_44.obe              (standard input and output)
+#     obr --mcp-http=8080 mcp_serve_44.obe    (HTTP on 127.0.0.1:8080)
 ~#
 use API.MCP, Data.JSON, Collection;
 

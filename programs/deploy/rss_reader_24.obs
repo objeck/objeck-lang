@@ -8,9 +8,8 @@
 # date. RSSReader fetches a feed over HTTP or HTTPS (or reads a local file),
 # parses the XML, and hands back the channel and the items as plain objects,
 # so printing the latest headlines takes a few lines. When the page is not
-# RSS, IsOk() is false. When the feed cannot be fetched at all, RSSReader
-# raises a NilError instead (a known defect), so the program catches that
-# too. Either way it says so politely.
+# RSS, or cannot be fetched at all (no network, a wrong address, a missing
+# file), IsOk() is false, and the program says so politely.
 #
 # output (the headlines change; without a network, a short message instead):
 #   BBC News
@@ -33,8 +32,8 @@ class RssReader {
     count := args->Size() > 1 ? args[1]->ToInt() : 5;
 
     # fetch and parse the feed in one step
-    reader := Fetch(feed);
-    if(reader = Nil) {
+    reader := RSSReader->New(feed);
+    if(<>reader->IsOk()) {
       "Could not read the feed at {$feed}."->PrintLine();
       "Check your network connection, or try another feed URL."->PrintLine();
       return;
@@ -67,20 +66,5 @@ class RssReader {
         "   {$date}"->PrintLine();
       };
     };
-  }
-
-  # Reads a feed, or returns Nil if it cannot be read. IsOk() is false for a
-  # page that is not RSS; when no answer comes back at all, RSSReader raises
-  # a NilError (a known defect), so the try catches that case too.
-  function : Fetch(feed : String) ~ RSSReader {
-    reader : RSSReader := Nil;
-    try {
-      reader := RSSReader->New(feed);
-    }
-    on(e : NilError) {
-      return Nil;
-    };
-
-    return reader->IsOk() ? reader : Nil;
   }
 }

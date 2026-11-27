@@ -1632,13 +1632,16 @@ jobs:
     # beside it. The table is what a reader copies, so a wrong column is a
     # broken first experience of the language -- and nothing checked it before:
     # check_examples_index.py verifies an example is LISTED, not that the
-    # listing works. Linux x64 only, since the examples are platform-neutral
-    # and the SDL/ODBC ones only need to link, not run.
+    # listing works. --run also runs every example that needs no display,
+    # database, key or network and compares what it prints with the 'output:'
+    # block in its own header, at -opt s0 and s3, so an example cannot say one
+    # thing and do another. Linux x64 only, since the examples are
+    # platform-neutral and the SDL/ODBC ones only need to link, not run.
     - name: Shipped examples compile with their documented libraries
       if: matrix.platform == 'linux-x64'
       env:
         OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
-      run: python3 programs/deploy/build_examples.py
+      run: python3 programs/deploy/build_examples.py --run --opt s0,s3
 
     # The samples on objeck.org (docs/site/examples) are compiled and run with the full deploy tree (the ml
     # sample loads libobjk_ml), and the MCP session the Agents page shows is played against `obr --mcp`.

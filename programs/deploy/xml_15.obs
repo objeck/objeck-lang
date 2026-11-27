@@ -19,7 +19,7 @@
 #     Blork & Freen Instameal: 4.95 (653 in stock)
 #     Grob winglets: 3.56 (44 in stock)
 #   all prices: 14.50 23.99 4.95 3.56
-#   first item in the last section: Blork &amp; Freen Instameal
+#   first item in the second section: Blork &amp; Freen Instameal
 #   built: <order id="1001"><customer>Ada</customer><line sku="123456789" qty="2"/></order>
 ~#
 
@@ -56,25 +56,24 @@ class Xml {
 
     # GetChildren(name) returns the child elements with that tag name
     sections := root->GetChildren("section");
-    for(i := 0; i < sections->Size(); i += 1;) {
-      ShowSection(sections->Get(i));
+    each(section in sections) {
+      ShowSection(section);
     };
 
     # --- find by path ---
     # a path names each level from the root down; every match is returned
     prices := parser->FindElements("/inventory/section/item/price");
     "all prices:"->Print();
-    for(i := 0; i < prices->Size(); i += 1;) {
-      " {$(prices->Get(i)->GetContent())}"->Print();
+    each(price in prices) {
+      " {$(price->GetContent())}"->Print();
     };
     ""->PrintLine();
 
-    # [last()] and [first()] keep only the last or first match at a level.
-    # They are used rather than a number: in this library [n] keeps the
-    # first n matches, not the nth one -- a known defect.
+    # [n] keeps the nth match at its level (counting from 1), and [first()] and
+    # [last()] the first and last; here, the second section's first item.
     # GetContent returns the text exactly as written, still escaped.
-    names := parser->FindElements("/inventory/section[last()]/item[first()]/name");
-    "first item in the last section: {$(names->Get(0)->GetContent())}"->PrintLine();
+    names := parser->FindElements("/inventory/section[2]/item[1]/name");
+    "first item in the second section: {$(names->Get(0)->GetContent())}"->PrintLine();
 
     # --- build a document ---
     BuildOrder();
@@ -86,8 +85,7 @@ class Xml {
     items := section->GetChildren("item");
     "section '{$name}' has {$(items->Size())} items"->PrintLine();
 
-    for(i := 0; i < items->Size(); i += 1;) {
-      item := items->Get(i);
+    each(item in items) {
       stock := item->GetAttribute("stock")->GetValue();
       # GetFirstChild finds the first child with a tag name;
       # GetDecodedContent turns &amp; and friends back into real characters

@@ -9,8 +9,19 @@ point: the table is executable documentation rather than a claim.
   python build_examples.py                 compile all, report
   python build_examples.py --keep          leave the .obe files behind
   python build_examples.py --only json     compile the examples matching a name
+  python build_examples.py --opt s0,s3     compile at each optimizer level
+  python build_examples.py --run           also run them and check what they print
 
-Exit code is 0 only when every example compiled.
+--run compares each program's output with the 'output:' block in the comment at
+the top of its own source (the text a reader sees first), so the documentation
+of what an example prints is the test of it. A line that is just '...' stands
+for any number of lines, and a '...' inside a line stands for any text in it,
+which is how the headers abridge long or varying output. The
+examples that need a display, a database, a key or the network are not run;
+the report says which and why.
+
+Exit code is 0 only when every example compiled (and, with --run, printed what
+its header says).
 """
 
 import argparse
@@ -24,6 +35,15 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 README = os.path.join(HERE, "README.md")
+
+# examples that cannot run where this script does, and why. They are still compiled.
+NOT_RUN = {
+    "game_31.obs": "needs a display",
+    "odbc_21.obs": "needs an ODBC data source",
+    "llm_29.obs": "needs a Gemini API key",
+    "http_client_22.obs": "needs the internet",
+    "rss_reader_24.obs": "needs the internet",
+}
 
 # | [`name.obs`](name.obs) | `-lib a,b` | description |
 ROW = re.compile(r"^\|\s*\[`(?P<name>[A-Za-z0-9_]+\.obs)`\][^|]*\|(?P<rest>[^|]*)\|")
@@ -67,6 +87,13 @@ def library_env(obc):
         lib = os.path.abspath(os.path.join(os.path.dirname(obc), "..", "lib"))
         if os.path.isdir(lib):
             env["OBJECK_LIB_PATH"] = lib
+
+    # the machine-learning examples load native libraries that sit in lib/native
+    # (--run starts programs, and the loader has to find them)
+    native = os.path.join(env.get("OBJECK_LIB_PATH", ""), "native")
+    if os.path.isdir(native):
+        var = "PATH" if os.name == "nt" else "LD_LIBRARY_PATH"
+        env[var] = native + os.pathsep + env.get(var, "")
     return env
 
 
@@ -94,28 +121,133 @@ def read_table():
     return entries
 
 
+def find_obr(obc):
+    """obr sits beside obc in every layout, so no second search is needed."""
+    exe = "obr.exe" if os.name == "nt" else "obr"
+    beside = os.path.join(os.path.dirname(obc), exe)
+    if os.path.isfile(beside):
+        return beside
+    found = shutil.which(exe)
+    if found:
+        return found
+    sys.exit("obr not found beside obc: --run needs it")
+
+
+def expected_output(path):
+    """(lines, varies) from the 'output' block of the file's opening comment, or None.
+
+    The block is the comment lines after '# output...:', each written '#   text'
+    (a '#' and three spaces; a bare '#' is an empty line), up to the first comment
+    line that is not indented that way or the closing '~#'. 'varies' is true when the
+    heading says the output differs from run to run, as in '(the port varies)'.
+    """
+    with open(path, encoding="utf-8-sig") as handle:
+        lines = handle.read().splitlines()
+    heading = None
+    block = []
+    for line in lines:
+        if line.strip() == "~#":
+            break
+        if heading is None:
+            if re.match(r"^#\s*output[^:]*:\s*$", line):
+                heading = line
+            continue
+        if line.startswith("#   "):
+            block.append(line[4:])
+        elif line.strip() == "#":
+            block.append("")
+        else:
+            break    # prose after the output (a comment line that is not indented)
+    if heading is None:
+        return None
+    return block, "vary" in heading
+
+
+def line_pattern(want):
+    """A compiled pattern for one expected line, or None for a plain comparison.
+
+    '...' inside a line stands for any text, so a header can cut a long or
+    varying line short ('{"time":"Wednesday, October 2 ...') or leave a piece
+    out of the middle."""
+    if "..." not in want:
+        return None
+    return re.compile(".*".join(re.escape(part) for part in want.split("...")), re.S)
+
+
+def fits(want, pattern, got):
+    return pattern.fullmatch(got) is not None if pattern else got == want
+
+
+def trim(lines):
+    """The lines without the blank ones at the end, which no header writes down."""
+    lines = list(lines)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return lines
+
+
+def matches(expected, actual):
+    """True when actual (a list of lines) fits expected; see the module comment for '...'."""
+    expected, actual = trim(expected), trim(actual)
+    skipping = False
+    at = 0
+    for want in expected:
+        if want == "...":
+            skipping = True
+            continue
+        pattern = line_pattern(want)
+        while True:
+            if at >= len(actual):
+                return False
+            got = actual[at]
+            at += 1
+            if fits(want, pattern, got):
+                skipping = False
+                break
+            if not skipping:
+                return False
+    return skipping or at == len(actual)
+
+
+def run_example(obr, obe, env):
+    """(exit code, output lines) of one run; a hang is a failure after two minutes."""
+    try:
+        proc = subprocess.run([obr, obe], capture_output=True, text=True, cwd=HERE,
+                              env=env, timeout=120)
+    except subprocess.TimeoutExpired:
+        return None, ["timed out after 120 seconds"]
+    return proc.returncode, [l.rstrip() for l in (proc.stdout or "").splitlines()]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep", action="store_true",
                     help="leave the compiled .obe files in place")
     ap.add_argument("--only", metavar="TEXT",
                     help="only examples whose name contains TEXT")
+    ap.add_argument("--opt", metavar="LEVELS", default="",
+                    help="compile at each of these optimizer levels, e.g. s0,s3 (default: obc's own)")
+    ap.add_argument("--run", action="store_true",
+                    help="also run each example and compare its output with its header")
     args = ap.parse_args()
 
     obc = find_obc()
+    obr = find_obr(obc) if args.run else None
     env = library_env(obc)
     entries = read_table()
     if args.only:
         entries = [e for e in entries if args.only in e[0]]
     if not entries:
         sys.exit("no examples matched")
+    levels = [l for l in args.opt.split(",") if l] or [None]
 
     out_dir = tempfile.mkdtemp(prefix="obc-examples-") if not args.keep else HERE
     print("obc     : %s" % obc)
     print("lib     : %s" % env.get("OBJECK_LIB_PATH", "(from the working directory)"))
-    print("examples: %d\n" % len(entries))
+    print("examples: %d%s\n" % (len(entries),
+          "  at -opt %s" % ",".join(l for l in levels if l) if levels != [None] else ""))
 
-    failed, missing = [], []
+    failed, missing, skipped, ran = [], [], [], 0
     for name, libs in entries:
         src = os.path.join(HERE, name)
         if not os.path.isfile(src):
@@ -125,34 +257,89 @@ def main():
             print("  MISSING  %-26s (in README.md, not on disk)" % name)
             continue
 
-        dest = os.path.join(out_dir, name[:-4] + ".obe")
-        cmd = [obc, "-src", src, "-dest", dest]
-        if libs:
-            cmd += ["-lib", ",".join(libs)]
+        for level in levels:
+            tag = "" if level is None else "-" + level
+            dest = os.path.join(out_dir, name[:-4] + tag + ".obe")
+            cmd = [obc, "-src", src, "-dest", dest]
+            if level is not None:
+                cmd += ["-opt", level]
+            if libs:
+                cmd += ["-lib", ",".join(libs)]
 
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=HERE, env=env)
-        out = (proc.stdout or "") + (proc.stderr or "")
-        if proc.returncode == 0 and "Wrote target" in out:
-            print("  ok       %-26s %s" % (name, ",".join(libs) or "(no libraries)"))
-        else:
-            failed.append(name)
-            first = next((l for l in out.splitlines()
-                          if "rror" in l or "nable" in l), out.strip().splitlines()[-1:] or [""])
-            print("  FAILED   %-26s %s" % (name, first if isinstance(first, str) else first[0]))
-            # the compiler names the library it wants; pass that straight through
-            for line in out.splitlines():
-                if "-lib" in line and "Add it with" in line:
-                    print("           %s" % line.strip())
+            proc = subprocess.run(cmd, capture_output=True, text=True, cwd=HERE, env=env)
+            out = (proc.stdout or "") + (proc.stderr or "")
+            label = "%s%s" % (name, " (%s)" % level if level else "")
+            if proc.returncode != 0 or "Wrote target" not in out:
+                failed.append(label)
+                first = next((l for l in out.splitlines()
+                              if "rror" in l or "nable" in l), out.strip().splitlines()[-1:] or [""])
+                print("  FAILED   %-26s %s" % (label, first if isinstance(first, str) else first[0]))
+                # the compiler names the library it wants; pass that straight through
+                for line in out.splitlines():
+                    if "-lib" in line and "Add it with" in line:
+                        print("           %s" % line.strip())
+                continue
+
+            status = "ok"
+            note = ",".join(libs) or "(no libraries)"
+            if args.run:
+                if name in NOT_RUN:
+                    skipped.append(name)
+                    status, note = "compiled", "not run: %s" % NOT_RUN[name]
+                else:
+                    want = expected_output(src)
+                    code, got = run_example(obr, dest, env)
+                    ran += 1
+                    if code != 0:
+                        failed.append(label)
+                        status, note = "FAILED", "exit %s: %s" % (code, " | ".join(got[-3:]))
+                    elif want is None:
+                        note = "ran, exit 0 (no output block in the header)"
+                    elif want[1]:
+                        note = "ran, exit 0 (its output varies; not compared)"
+                    elif not matches(want[0], got):
+                        failed.append(label)
+                        status, note = "FAILED", "output differs from the header: " + describe(want[0], got)
+                    else:
+                        note = "ran, output matches its header"
+            print("  %-8s %-26s %s" % (status, label, note))
 
     if not args.keep:
         shutil.rmtree(out_dir, ignore_errors=True)
 
-    print("\n%d compiled, %d failed, %d missing" %
-          (len(entries) - len(failed) - len(missing), len(failed), len(missing)))
+    print("\n%d builds ok, %d failed, %d missing" %
+          (len(entries) * len(levels) - len(failed) - len(missing), len(failed), len(missing)))
+    if args.run:
+        print("ran %d; not run (display, database, key or network): %s" %
+              (ran, ", ".join(sorted(set(skipped))) or "none"))
     if failed:
         print("failed: %s" % ", ".join(failed))
-        print("A failure usually means README.md's '-lib' column is wrong for that row.")
+        print("A compile failure usually means README.md's '-lib' column is wrong for that row.")
     return 1 if (failed or missing) else 0
+
+
+def describe(expected, actual):
+    """The first line where the two part, for the failure message."""
+    expected, actual = trim(expected), trim(actual)
+    skipping = False
+    at = 0
+    for want in expected:
+        if want == "...":
+            skipping = True
+            continue
+        pattern = line_pattern(want)
+        while at < len(actual):
+            got = actual[at]
+            if fits(want, pattern, got):
+                at += 1
+                skipping = False
+                break
+            if not skipping:
+                return "line %d is '%s', the header says '%s'" % (at + 1, got, want)
+            at += 1
+        else:
+            return "the output ended before '%s'" % want
+    return "the output has %d extra line(s) after the header's last" % (len(actual) - at)
 
 
 if __name__ == "__main__":

@@ -27,27 +27,6 @@ use Data.JSON;
 use System.Concurrency;
 use Collection;
 
-# a tool that answers at once
-class Quick implements AgentToolHandler {
-	New() {
-	}
-
-	method : public : Run(arguments : JsonElement) ~ String {
-		return "done";
-	}
-}
-
-# a tool that takes far longer than the loop is willing to wait
-class Slow implements AgentToolHandler {
-	New() {
-	}
-
-	method : public : Run(arguments : JsonElement) ~ String {
-		Thread->Sleep(1000);
-		return "too late";
-	}
-}
-
 # trips the cancel token after the first tool result
 class StopAfterFirst implements AgentObserver {
 	@token : AgentCancel;
@@ -66,32 +45,43 @@ class StopAfterFirst implements AgentObserver {
 
 class AgentControl {
 	function : Main(args : String[]) ~ Nil {
-		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
+		schema := json {"type": "object", "properties": {}};
 
 		# 1. a budget: the model asks for the tool forever; two tool calls are allowed
-		agent := Agent->New(Endless(), Registry(AgentTool->New("work", "Do some work", schema, Quick->New())));
+		agent := Agent->New(Endless(), Registry(AgentTool->New("work", "Do some work", schema, AgentControl->Quick)));
 		agent->SetBudget(AgentBudget->New()->SetMaxToolCalls(2));
 		result := agent->Run("keep working");
 		"budget:  {$(result->GetStopReason())} after {$(Ran(result))} tool calls ran"->PrintLine();
 
 		# 2. a cancel: an observer trips the token once the first tool has answered
 		token := AgentCancel->New();
-		agent := Agent->New(Endless(), Registry(AgentTool->New("work", "Do some work", schema, Quick->New())));
+		agent := Agent->New(Endless(), Registry(AgentTool->New("work", "Do some work", schema, AgentControl->Quick)));
 		agent->SetCancel(token);
 		agent->SetObserver(StopAfterFirst->New(token));
 		result := agent->Run("keep working");
 		"cancel:  {$(result->GetStopReason())} after {$(Ran(result))} tool calls ran"->PrintLine();
 
 		# 3. a hung tool: the worker is abandoned at 100 ms, and the model still gets an answer
-		script := Vector->New()<AgentReply>;
-		script->AddBack(AgentReply->Ask("c1", "slow", "{}"));
-		script->AddBack(AgentReply->Say("the tool did not answer, so I will go on without it"));
-		slow := AgentTool->New("slow", "A tool that hangs", schema, Slow->New());
+		script : Vector<AgentReply> := [
+			AgentReply->Ask("c1", "slow", "{}"),
+			AgentReply->Say("the tool did not answer, so I will go on without it")];
+		slow := AgentTool->New("slow", "A tool that hangs", schema, AgentControl->Slow);
 		slow->SetMode(AgentTool->Mode->BOUNDED_THREAD)->SetTimeout(100);
 		agent := Agent->New(ScriptedBackend->New(script), Registry(slow));
 		result := agent->Run("use the slow tool");
 		status := result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus();
 		"hung:    {$(result->GetStopReason())}, the slow tool was a {$status}"->PrintLine();
+	}
+
+	# a tool that answers at once
+	function : Quick(arguments : JsonElement) ~ String {
+		return "done";
+	}
+
+	# a tool that takes far longer than the loop is willing to wait
+	function : Slow(arguments : JsonElement) ~ String {
+		Thread->Sleep(1000);
+		return "too late";
 	}
 
 	# how many tool calls actually ran (the one over a budget is "skipped")

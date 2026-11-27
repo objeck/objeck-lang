@@ -1,0 +1,73 @@
+#~
+# compile: obc -src assert_50.obs
+# run:     obr assert_50.obe          (every check passes)
+#          obr assert_50.obe fail     (the last check fails, on purpose)
+#
+# assert states what must be true at a point in the program:
+#
+#   assert amount > 0 : "a withdrawal is a positive amount";
+#
+# When the condition holds, nothing happens. When it does not, the program
+# stops with exit code 1 and says where and what it saw:
+#
+#   FAIL: assert_50.obs:45: assert amount <= @balance : cannot withdraw 500 from 75
+#         left = 500, right = 75
+#
+# That is the file and line, the condition, your label, and the two sides of a
+# comparison, which is most of what a failing check is asked for. The label is
+# optional, and any String expression, including one with {$...} in it; it is
+# only worked out when the check fails. Use assert for things that can only be
+# false because of a bug (a precondition the caller broke, a result that
+# should be impossible). Input that may legitimately be wrong, a file that is
+# not there, is an error to raise or a Nil to check, not an assert.
+#
+# output:
+#   balance: 100
+#   after withdrawing 30: 70
+#   after depositing 5: 75
+#   every check passed
+~#
+
+class Account {
+  @balance : get : Int;
+
+  New(@balance : Int) {
+    assert @balance >= 0 : "an account starts with no debt";
+  }
+
+  method : public : Deposit(amount : Int) ~ Nil {
+    assert amount > 0 : "a deposit is a positive amount";
+    @balance += amount;
+  }
+
+  method : public : Withdraw(amount : Int) ~ Nil {
+    assert amount > 0 : "a withdrawal is a positive amount";
+    assert amount <= @balance : "cannot withdraw {$amount} from {$@balance}";
+    @balance -= amount;
+    # a check on the result: if a bug above lets this fail, it fails here
+    assert @balance >= 0 : "the balance never goes negative";
+  }
+}
+
+class AssertTour {
+  function : Main(args : String[]) ~ Nil {
+    account := Account->New(100);
+    "balance: {$(account->GetBalance())}"->PrintLine();
+
+    account->Withdraw(30);
+    "after withdrawing 30: {$(account->GetBalance())}"->PrintLine();
+    assert account->GetBalance() = 70 : "withdrawing 30 from 100 leaves 70";
+
+    account->Deposit(5);
+    "after depositing 5: {$(account->GetBalance())}"->PrintLine();
+    assert account->GetBalance() = 75;
+
+    "every check passed"->PrintLine();
+
+    # the failing run: asking for more than the account holds
+    if(args->Size() > 0 & args[0]->Equals("fail")) {
+      account->Withdraw(500);
+      "not reached"->PrintLine();
+    };
+  }
+}

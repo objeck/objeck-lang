@@ -159,7 +159,7 @@ The ONNX tests that run in CI live in `programs/regression/` (`onnx_*`, `nlp_onn
 
 **Location:** `programs/deploy/`
 **Purpose:** Demonstrate real-world language usage
-**Size:** 32 programs, shipped in every release's `examples/` directory and indexed in [deploy/README.md](deploy/README.md); `build_examples.py` compiles every one from that index
+**Size:** 53 programs, shipped in every release's `examples/` directory and indexed in [deploy/README.md](deploy/README.md); `build_examples.py` compiles every one from that index and, with `--run`, runs the ones that need no display, database, key or network and checks each against the `output:` block in its own header
 **CI Coverage:** 13 programs compile and run in GitHub Actions, each with the `-lib` line from its own header
 
 ### Tests in CI
@@ -183,7 +183,7 @@ These 9 also run on Linux x64:
 12. `nlp_28.obs` - Text processing
 13. `threads_12.obs` - Threading (one run with a 120 s timeout, no retry; it must print `shared total: 5000050000`, and a non-gating step measures its flake rate over 50 runs)
 
-The rest need a display, a data source, an API key, the network or files beside them, so CI compiles them through `build_examples.py` rather than running them. On Linux x64 the compile step also builds four network programs from `programs/tests/` (`prgm_http2`, `prgm_http3`, `http3_downgrade_test`, `http_header_echo_test`); they are run only by the non-gating network step.
+The rest need a display, a data source, an API key or the network (`game_31`, `odbc_21`, `llm_29`, `http_client_22`, `rss_reader_24`), so CI compiles them through `build_examples.py` rather than running them. Every other example is run by `build_examples.py --run` at `-opt s0` and `s3`, and must print what its header says. On Linux x64 the compile step also builds four network programs from `programs/tests/` (`prgm_http2`, `prgm_http3`, `http3_downgrade_test`, `http_header_echo_test`); they are run only by the non-gating network step.
 
 ---
 
