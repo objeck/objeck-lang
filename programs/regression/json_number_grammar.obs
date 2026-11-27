@@ -35,6 +35,7 @@ class JsonNumberGrammar {
 		RoundTrip();
 		Extremes();
 		ExactInt();
+		LongExponents();
 		Stream();
 
 		if(@failures = 0) {
@@ -243,6 +244,53 @@ class JsonNumberGrammar {
 		built := JsonElement->New(-7.25);
 		got := built->GetInt();
 		Check(got = -7, "JsonElement->New(-7.25)->GetInt() = {$got}, expected -7");
+	}
+
+	# 'count' zeros
+	method : Zeros(count : Int) ~ String {
+		zeros := "";
+		each(i : count) {
+			zeros->Append('0');
+		};
+		return zeros;
+	}
+
+	method : IntOf(text : String, want : Int, what : String) ~ Nil {
+		elem := JsonParser->TextToElement(text);
+		if(elem = Nil) {
+			Check(false, "{$what} did not parse");
+		}
+		else {
+			got := elem->GetInt();
+			Check(got = want, "{$what}: GetInt() = {$got}, expected {$want}");
+		};
+	}
+
+	# An exponent as large as the number is long. A long run of zeros after the point takes
+	# a large exponent back, and a long run before it takes back a large negative one, so
+	# the exponent cannot be cut off at any fixed size: GetInt() stopped reading it at
+	# 1000000 and dropped the digits after, which turned the first of these, exactly 1, into 0.
+	# (Each of the long numbers is ten megabytes of text, so there are only as many as it
+	# takes: the value on each side of both limits.)
+	method : LongExponents() ~ Nil {
+		zeros := Zeros(9999999);
+
+		# 0.<9999999 zeros>1 e10000000 = 1, and its neighbours
+		IntOf("0.{$zeros}1e10000000", 1, "0.(9999999 zeros)1e10000000");
+		IntOf("0.{$zeros}1e10000001", 10, "0.(9999999 zeros)1e10000001");
+		IntOf("0.{$zeros}9223372036854775807e10000018", 9223372036854775807, "0.(9999999 zeros)(largest Int)e10000018");
+		IntOf("0.{$zeros}9223372036854775808e10000018", 0, "0.(9999999 zeros)(largest Int + 1)e10000018");
+
+		# 1<9999999 zeros> e-9999999 = 1, and its neighbours
+		IntOf("1{$zeros}e-9999999", 1, "1(9999999 zeros)e-9999999");
+		IntOf("1{$zeros}e-10000000", 0, "1(9999999 zeros)e-10000000");
+
+		# an exponent far past what the digits can take back still decides at once
+		IntOf("0.{$zeros}1e99999999999999999999", 0, "0.(9999999 zeros)1e99999999999999999999");
+		IntOf("1{$zeros}e-99999999999999999999", 0, "1(9999999 zeros)e-99999999999999999999");
+		IntOf("1e00000000000000000000000000000000003", 1000, "1e(35 zeros)3");
+		IntOf("1000e-00000000000000000000000000000000003", 1, "1000e-(35 zeros)3");
+		IntOf("0e99999999999999999999", 0, "0e99999999999999999999");
 	}
 
 	# huge and tiny exponents parse and serialize. GetFloat() is not called on
