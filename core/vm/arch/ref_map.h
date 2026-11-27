@@ -798,9 +798,13 @@
         }
       }
 
+      // (an array of a known kind is an array: NEW_*_ARY did not say so before, and a
+      // new Char[] passed where String:New takes a String was read as an object)
       void MadeArrayKind(int v, uint8_t made) {
         if(verify && made) {
-          facts[Find(v)].ary_made |= made;
+          Facts& f = facts[Find(v)];
+          f.ary_made |= made;
+          f.shape_made |= SHAPE_ARRAY;
         }
       }
 
