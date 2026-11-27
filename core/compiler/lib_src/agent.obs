@@ -1436,9 +1436,8 @@ agent->SetCancel(cancel);
 		@reason : String;
 		@parent : AgentCancel;
 		@also : AgentCancel;
-		@limit_ms : Int;
-		@timer : System.Time.Timer;
-		@waited : Float;
+		@deadline_at : Float;
+		@timed : Bool;
 		@expired : Bool;
 
 		#~
@@ -1558,12 +1557,12 @@ agent->SetCancel(cancel);
 		method : public : SetDeadlineMs(millis : Int) ~ Nil {
 			critical(@mutex) {
 				if(millis > 0) {
-					@limit_ms := millis;
-					@waited := 0.0;
-					@timer := System.Time.Timer->New(true);
+					# a point on the clock, not a count of time waited: see Expire
+					@deadline_at := AgentTicks->Now() + millis->As(Float) / 1000.0;
+					@timed := true;
 				}
 				else {
-					@timer := Nil;
+					@timed := false;
 				};
 			};
 		}
@@ -1582,16 +1581,18 @@ agent->SetCancel(cancel);
 			return flag;
 		}
 
-		# cancels the token when its deadline has passed; the caller holds the mutex
+		# Cancels the token when its deadline has passed; the caller holds the mutex. The deadline is a
+		# point on the steady clock and every poll compares the clock with it. Adding up the time between
+		# polls (stop a timer, read it, start it again) loses whatever passes between the stop and the
+		# start: a thread that is descheduled there for 100 ms never counts them, and a token polled often
+		# runs late by the sum of those gaps, so it could answer "not cancelled" after the deadline
 		method : Expire() ~ Nil {
-			if(@timer <> Nil & <>@cancelled) {
-				@waited += @timer->GetElapsedTime();
-				@timer->Start();
-				if(@waited * 1000.0 >= @limit_ms->As(Float)) {
+			if(@timed & <>@cancelled) {
+				if(AgentTicks->Now() >= @deadline_at) {
 					@cancelled := true;
 					@expired := true;
 					@reason := "deadline";
-					@timer := Nil;
+					@timed := false;
 				};
 			};
 		}
@@ -3054,17 +3055,33 @@ scope->GetStepsUsed()->PrintLine();
 		}
 	}
 
+	# The steady clock as a number. System.Time.Timer hands back the time between a start and a stop, and
+	# timing with it by stopping, reading and starting again loses what passes between each stop and the
+	# next start. A deadline has to be compared with the clock itself. A timer that is stopped without
+	# having been started reports the time since the clock's own zero, which is that number. This leans
+	# on how Timer is built (lang.obs: End() subtracts the start, and the start of a new timer is 0);
+	# agent_deadline_clock_test fails if that ever changes
+	class : private : AgentTicks {
+		#~
+		Reads the steady clock
+		@return seconds on the steady clock; only differences mean anything
+		~#
+		function : Now() ~ Float {
+			timer := System.Time.Timer->New();
+			timer->End();
+			return timer->GetElapsedTime();
+		}
+	}
+
 	# milliseconds since a run began; read by the loop thread only
 	class : private : AgentClock {
-		@timer : System.Time.Timer;
-		@total : Float;
+		@began : Float;
 
 		#~
-		Constructor; starts the timer
+		Constructor; notes the time
 		~#
 		New() {
-			@timer := System.Time.Timer->New(true);
-			@total := 0.0;
+			@began := AgentTicks->Now();
 		}
 
 		#~
@@ -3072,9 +3089,8 @@ scope->GetStepsUsed()->PrintLine();
 		@return milliseconds since the clock was created; the loop thread is the only reader
 		~#
 		method : public : Ms() ~ Int {
-			@total += @timer->GetElapsedTime();
-			@timer->Start();
-			return (@total * 1000.0)->As(Int);
+			# the clock now less the clock then: nothing is lost between two readings (see AgentCancel->Expire)
+			return ((AgentTicks->Now() - @began) * 1000.0)->As(Int);
 		}
 	}
 
