@@ -219,6 +219,35 @@ status<span class="t-op">-&gt;</span>Find(<span class="t-num">404</span>)<span c
 @cache <span class="t-op">:=</span> {};                      <span class="t-com"># the empty map, of the field's type</span>
 </code></pre>
     <p>The targets are <code>Map</code>, <code>Hash</code>, <code>OrderedHash</code>, <code>MultiMap</code>, <code>MultiHash</code>, <code>BiMap</code> and <code>IntMap</code>. Each entry is an <code>Insert(key, value)</code> in the order written, so keys and values are checked and boxed as <code>Insert</code> does; an entry of the wrong type is an error at the entry (<code>An entry of this map literal is String: IntRef; this one is String: String</code>), and the same constant key twice is an error for a map that keeps one value per key. With no typed target (an inferred <code>m := {...}</code>, an argument, inside <code>?</code>) the literal has no type and the compiler says to declare one. Tests: <code>map_literal</code>, <code>bad_map_literal_*</code>.</p>
+    <h3 id="match-and-select-as-a-value">match, and select as a value</h3>
+    <p><code>match</code> picks an arm by the value of its subject. Used as a value, each arm is an expression; used as a statement, each arm is a block. Patterns are what <code>select</code> labels are (integers, characters, strings, enum items), <code>|</code> joins several, and <code>other</code> takes the rest:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">enum</span> <span class="t-cls">Color</span> { Red, Green, Blue }
+
+<span class="t-com"># before</span>
+<span class="t-kw">function</span> : <span class="t-fn">Name</span>(c : Color) <span class="t-op">~</span> <span class="t-type">String</span> {
+  <span class="t-kw">select</span>(c) {
+    <span class="t-kw">label</span> <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Red: { <span class="t-kw">return</span> <span class="t-str">"red"</span>; }
+    <span class="t-kw">label</span> <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Green: { <span class="t-kw">return</span> <span class="t-str">"green"</span>; }
+    <span class="t-kw">label</span> <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Blue: { <span class="t-kw">return</span> <span class="t-str">"blue"</span>; }
+  };
+  <span class="t-kw">return</span> <span class="t-str">""</span>;
+}
+
+<span class="t-com"># after</span>
+<span class="t-kw">function</span> : <span class="t-fn">Name</span>(c : Color) <span class="t-op">~</span> <span class="t-type">String</span> {
+  <span class="t-kw">return</span> <span class="t-kw">match</span> c { <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Red <span class="t-op">=&gt;</span> <span class="t-str">"red"</span>, <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Green <span class="t-op">=&gt;</span> <span class="t-str">"green"</span>, <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Blue <span class="t-op">=&gt;</span> <span class="t-str">"blue"</span> };
+}
+
+<span class="t-kw">match</span> c {                               <span class="t-com"># the statement form</span>
+  <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Red | <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Green <span class="t-op">=&gt;</span> { <span class="t-str">"warm"</span><span class="t-op">-&gt;</span>PrintLine(); }
+  <span class="t-cls">Color</span><span class="t-op">-&gt;</span>Blue <span class="t-op">=&gt;</span> { <span class="t-str">"cool"</span><span class="t-op">-&gt;</span>PrintLine(); }
+};
+</code></pre>
+    <p>On an enum, every pattern must be an item of that enum, and without <code>other</code> the patterns must name every item. Leaving <code>Green</code> and <code>Blue</code> out of the first example is a compile error at the <code>match</code>:</p>
+<pre class="plain">This 'match' does not cover every item of 'Color', missing: Green, Blue
+	Add an arm for each missing item, or an 'other' arm.</pre>
+    <p>so adding an item to an enum points at every <code>match</code> that has to change. A value form on an Int, Char or String needs <code>other</code>; its arms agree in type as the branches of <code>?</code> do (an Int arm and a Float arm are an error, not a conversion). <code>select</code> is a value too, with its own spelling: <code>select(n) { label 0: "none"  label 1: "one"  label 2, 3: "few" other: "many" }</code>.</p>
+    <p>The subject is evaluated once and only the arm taken is evaluated, where the expression stands: inside <code>&amp;</code>, <code>?</code> or a loop condition a <code>match</code> runs only when it is reached. It compiles to the <code>select</code> statement it stands for (a dense table stays a jump table). <code>match</code> is a keyword only before its subject, which starts with a name (<code>match kind {</code>, <code>match item-&gt;GetKind() {</code>); elsewhere it is an ordinary name. A method whose last statement is a <code>match</code> statement still needs <code>other</code> or a <code>return</code> after it, as after a <code>select</code>. Tests: <code>match_value</code>, <code>match_statement</code>, <code>select_value</code>, <code>bad_match_*</code>.</p>
     <h3 id="type-inference">Type Inference</h3>
 <pre class="line-numbers"><code class="language-objeck">value <span class="t-op">:=</span> <span class="t-str">"Hello World!"</span>;
 value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
@@ -544,7 +573,7 @@ true       use        virtual    while      xor</pre>
       <tr><td data-label="word"><code>reverse</code></td><td data-label="reserved for"><code>each(... reverse ...)</code></td><td data-label="commonly wanted as">a sort direction</td></tr>
      </tbody>
     </table>
-    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>is</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>json</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
+    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>is</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>json</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>match</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
     <hr class="section-end">
     <div class="raw"><a name="integers"></a>
     ## Integer Arithmetic</div>

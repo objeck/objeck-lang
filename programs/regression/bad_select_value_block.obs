@@ -1,0 +1,26 @@
+# EXPECT_COMPILE_ERROR: (21,13): A 'select' used as a value takes a value after each label, not a block
+# EXPECT_ERROR_COUNT: 1
+#~
+A 'select' where a value is wanted takes a value after each label, not a block.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadSelectValueBlock {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := select(n) {
+			label 1: { return; }
+			other: "b"
+		};
+		x->PrintLine();
+	}
+}

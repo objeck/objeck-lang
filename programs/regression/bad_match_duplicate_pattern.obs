@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: (20,32): Duplicate select value '1'
+# EXPECT_ERROR_COUNT: 1
+#~
+A pattern names one arm.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchDuplicatePattern {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := match n { 1 => "a", 2 | 1 => "b", other => "c" };
+		x->PrintLine();
+	}
+}

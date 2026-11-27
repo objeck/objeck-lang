@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: (20,20): Expected '=>' after a 'match' pattern
+# EXPECT_ERROR_COUNT: 1
+#~
+A pattern is followed by '=>'.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchMissingArrow {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := match n { 1 : "a", other => "b" };
+		x->PrintLine();
+	}
+}

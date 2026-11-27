@@ -1,0 +1,26 @@
+# EXPECT_COMPILE_ERROR: (20,8): This 'select' does not cover every item of 'Color', missing: Green
+# EXPECT_ERROR_COUNT: 1
+#~
+A 'select' used as a value on an enum, with no 'other', names every item.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadSelectValueMissingItems {
+	function : Main(args : String[]) ~ Nil {
+		c := Color->Red;
+		x := select(c) {
+			label Color->Red: 1
+			label Color->Blue: 2
+		};
+		x->PrintLine();
+	}
+}

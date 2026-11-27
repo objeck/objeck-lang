@@ -832,7 +832,14 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
       const std::wstring left = PlainTypeName(rest.substr(0, split));
       const std::wstring right = PlainTypeName(rest.substr(split + 5));
       std::wstring detail;
-      if(cast_kind == 1) {
+      // an arm of a 'match' or 'select' used as a value is assigned to a hidden
+      // local: the message is about the arms, not about a variable nobody wrote
+      const bool is_value_arm = cast_kind == 1 && (StartsWith(cast_subject, L"#match_") || StartsWith(cast_subject, L"#select_"));
+      if(is_value_arm) {
+        const std::wstring keyword = StartsWith(cast_subject, L"#match_") ? L"match" : L"select";
+        detail = L"The arms of a '" + keyword + L"' used as a value agree in type: this one is " + right + L", an earlier one is " + left;
+      }
+      else if(cast_kind == 1) {
         detail = L"\n\tCannot assign a value of type " + right + L" to '" + cast_subject + L"', which is " + left + L".";
       }
       else {
@@ -853,7 +860,7 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
         detail += L"\n\tConvert explicitly, as in value->As(" + left + L")";
       }
 
-      return msg + detail;
+      return is_value_arm ? detail : msg + detail;
     }
   }
 
@@ -8455,6 +8462,9 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   // same kind. Both stay false when the expression is neither (reported here).
   bool is_int_select = false;
   bool is_str_select = false;
+  // 'match', or a 'select' used as a value, on an enum: its labels are checked against the enum
+  Enum* subject_enum = nullptr;
+  LibraryEnum* subject_lib_enum = nullptr;
 
   // expression
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
@@ -8462,6 +8472,9 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     AnalyzeExpression(expression, depth + 1);
     const bool is_int_expr = IsIntegerExpression(expression);
     is_int_select = is_int_expr;
+    if(select_stmt->IsChecked() && is_int_expr) {
+      AnalyzeSelectSubjectEnum(expression, subject_enum, subject_lib_enum);
+    }
 
 #ifndef _SYSTEM
     const bool is_str_expr = IsStringExpression(expression);
@@ -8559,6 +8572,20 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     std::vector<Expression*> expression_list = expressions->GetExpressions();
     for(size_t i = 0; i < expression_list.size(); ++i) {
       Expression* expression = expression_list[i];
+      if(expression && (subject_enum || subject_lib_enum)) {
+        // an item of another enum, or a number, would be compared by value
+        MethodCall* item_call = expression->GetExpressionType() == METHOD_CALL_EXPR ? static_cast<MethodCall*>(expression) : nullptr;
+        if(item_call && item_call->GetMethodCall()) {
+          item_call = item_call->GetMethodCall();
+        }
+        const bool is_item = item_call && ((subject_enum && item_call->GetEnumItem() && item_call->GetEnumItem()->GetEnum() == subject_enum) ||
+                                           (subject_lib_enum && item_call->GetLibraryEnumItem() && item_call->GetLibraryEnumItem()->GetEnum() == subject_lib_enum));
+        if(!is_item) {
+          const std::wstring enum_name = FormatTypeString(subject_enum ? subject_enum->GetName() : subject_lib_enum->GetName());
+          ProcessError(expression, L"Expected an item of '" + enum_name + L"', the enum this '" + select_stmt->GetKeyword() + L"' is on");
+          continue;
+        }
+      }
       if(expression) {
         switch(expression->GetExpressionType()) {
         case CHAR_STR_EXPR: {
@@ -8636,10 +8663,193 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   }
   select_stmt->SetLabelStatements(label_statements);
 
+  if(select_stmt->IsChecked()) {
+    AnalyzeSelectCoverage(select_stmt, subject_enum, subject_lib_enum);
+  }
+
   // process statements (in parse order)
+  if(select_stmt->IsValue()) {
+    AnalyzeSelectValues(select_stmt, depth);
+  }
+  else {
+    std::vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
+    for(size_t i = 0; i < statement_lists.size(); ++i) {
+      AnalyzeStatements(statement_lists[i], depth + 1);
+    }
+  }
+}
+
+/****************************
+ * The enum a 'match' subject is, if it is one. A 'consts' group is a set of
+ * named integers, not a closed set of items, so it does not count.
+ ****************************/
+void ContextAnalyzer::AnalyzeSelectSubjectEnum(Expression* expression, Enum*& eenum, LibraryEnum*& lib_eenum)
+{
+  while(expression->GetMethodCall()) {
+    expression = expression->GetMethodCall();
+  }
+
+  Type* type = expression->GetCastType() ? expression->GetCastType() : expression->GetEvalType();
+  if(type && type->GetType() == CLASS_TYPE && type->GetDimension() == 0) {
+    eenum = SearchProgramEnums(type->GetName());
+    if(eenum && eenum->IsConsts()) {
+      eenum = nullptr;
+    }
+    else if(!eenum) {
+      lib_eenum = SearchLibraryEnums(type->GetName(), program->GetLibUses());
+      if(lib_eenum && lib_eenum->GetOffset() < 0) {
+        lib_eenum = nullptr;
+      }
+    }
+  }
+}
+
+/****************************
+ * A 'match' (or a 'select' used as a value) takes some arm for every value it
+ * can meet: with no 'other' arm, the labels of an enum subject name every item
+ * of the enum, and the error names the items that are missing. A value needs
+ * an arm for every subject, so one on anything but an enum needs 'other'.
+ ****************************/
+void ContextAnalyzer::AnalyzeSelectCoverage(Select* select_stmt, Enum* eenum, LibraryEnum* lib_eenum)
+{
+  if(select_stmt->GetOther()) {
+    return;
+  }
+
+  const std::wstring keyword = select_stmt->GetKeyword();
+  if(!eenum && !lib_eenum) {
+    if(select_stmt->IsValue()) {
+      ProcessError(select_stmt, L"A '" + keyword + L"' used as a value needs an 'other' arm, unless it is on an enum and names every item");
+    }
+    return;
+  }
+
+  // by value, in the order the items are numbered
+  std::map<INT64_VALUE, std::wstring> items;
+  if(eenum) {
+    std::map<const std::wstring, EnumItem*> enum_items = eenum->GetItems();
+    for(std::map<const std::wstring, EnumItem*>::iterator iter = enum_items.begin(); iter != enum_items.end(); ++iter) {
+      items.insert(std::pair<INT64_VALUE, std::wstring>(iter->second->GetId(), iter->first));
+    }
+  }
+  else {
+    std::map<const std::wstring, LibraryEnumItem*> enum_items = lib_eenum->GetItems();
+    for(std::map<const std::wstring, LibraryEnumItem*>::iterator iter = enum_items.begin(); iter != enum_items.end(); ++iter) {
+      items.insert(std::pair<INT64_VALUE, std::wstring>(iter->second->GetId(), iter->first));
+    }
+  }
+
+  const std::wstring enum_name = FormatTypeString(eenum ? eenum->GetName() : lib_eenum->GetName());
+  const std::map<INT64_VALUE, StatementList*> label_statements = select_stmt->GetLabelStatements();
+  std::wstring missing;
+  for(std::map<INT64_VALUE, std::wstring>::iterator iter = items.begin(); iter != items.end(); ++iter) {
+    if(label_statements.find(iter->first) == label_statements.end()) {
+      if(!missing.empty()) {
+        missing += L", ";
+      }
+      missing += iter->second;
+    }
+  }
+
+  if(!missing.empty()) {
+    ProcessError(select_stmt, L"This '" + keyword + L"' does not cover every item of '" + enum_name + L"', missing: " + missing +
+                 L"\n\tAdd an arm for each missing item, or an 'other' arm.");
+  }
+}
+
+/****************************
+ * The arms of a 'match' or 'select' used as a value. Each is one assignment to
+ * the hidden local the value is read from; the first gives the local its type
+ * and the rest must agree with it, as the two branches of '?' must. A Nil arm
+ * has no type of its own, so the typed arms go first. The arms hold no block,
+ * so none opens a scope.
+ ****************************/
+void ContextAnalyzer::AnalyzeSelectValues(Select* select_stmt, const int depth)
+{
+  const std::wstring keyword = select_stmt->GetKeyword();
+
+  std::vector<Assignment*> typed_arms;
+  std::vector<Assignment*> nil_arms;
   std::vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
   for(size_t i = 0; i < statement_lists.size(); ++i) {
-    AnalyzeStatements(statement_lists[i], depth + 1);
+    std::vector<Statement*> statements = statement_lists[i]->GetStatements();
+    if(!statements.empty()) {
+      Assignment* arm = static_cast<Assignment*>(statements.front());
+      Expression* value = arm->GetExpression();
+      if(value->GetExpressionType() == NIL_LIT_EXPR && !value->GetCastType() && !value->GetMethodCall()) {
+        nil_arms.push_back(arm);
+      }
+      else {
+        typed_arms.push_back(arm);
+      }
+    }
+  }
+
+  if(typed_arms.empty()) {
+    if(!nil_arms.empty()) {
+      ProcessError(select_stmt, L"Every arm of this '" + keyword + L"' is Nil, so its value has no type");
+      // one error: the value is given a type, so what uses it has nothing to add
+      Variable* value = nil_arms.front()->GetVariable();
+      AnalyzeVariable(value, depth + 1);
+      if(value->GetEntry()) {
+        Type* base_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base");
+        value->GetEntry()->SetType(base_type);
+        value->SetTypes(base_type);
+      }
+    }
+    return;
+  }
+
+  Type* value_type = nullptr;
+  for(size_t i = 0; i < typed_arms.size(); ++i) {
+    Assignment* arm = typed_arms[i];
+    // the casts the arm was written with: one more after the assignment is a
+    // conversion the assignment made to fit the arm to the value's type
+    Expression* head = arm->GetExpression();
+    Expression* tail = head;
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+    Type* head_cast = head->GetCastType();
+    Type* tail_cast = tail->GetCastType();
+
+    const size_t errors = diagnostics.ErrorCount();
+    AnalyzeStatement(arm, depth + 1);
+    if(diagnostics.ErrorCount() != errors) {
+      // the assignment has said what is wrong with this arm
+      continue;
+    }
+
+    Type* arm_type = GetExpressionType(arm->GetExpression(), depth + 1);
+    if(!arm_type || arm_type->GetType() == NIL_TYPE) {
+      continue;
+    }
+
+    if(!value_type) {
+      if(arm_type->GetType() == VAR_TYPE) {
+        ProcessError(arm->GetExpression(), L"An arm of a '" + keyword + L"' used as a value has no value");
+        return;
+      }
+      value_type = arm_type;
+      continue;
+    }
+
+    // An Int arm after a Float one (or a Char after an Int) would be converted
+    // without a word, and the value would depend on the order of the arms. Two
+    // classes are checked as a cast by the assignment.
+    Type* converted = head->GetCastType() != head_cast ? head->GetCastType() : (tail->GetCastType() != tail_cast ? tail->GetCastType() : nullptr);
+    // a literal takes the value's type without a cast ('a' then 66): its own type tells
+    Type* written = tail == head && !head_cast ? head->GetBaseType() : nullptr;
+    const bool retyped = written && written->GetType() != CLASS_TYPE && written->GetType() != NIL_TYPE &&
+      value_type->GetType() != CLASS_TYPE && written->GetType() != value_type->GetType();
+    if((converted && converted->GetType() != CLASS_TYPE) || retyped || arm_type->GetType() != value_type->GetType()) {
+      ProcessError(arm->GetExpression(), L"The arms of a '" + keyword + L"' used as a value differ in type: this one is not " + DescribeType(value_type) +
+                   L", as an earlier one is\n\tConvert it explicitly, as in value->As(" + DescribeType(value_type) + L")");
+    }
+  }
+
+  for(size_t i = 0; i < nil_arms.size(); ++i) {
+    AnalyzeStatement(nil_arms[i], depth + 1);
   }
 }
 

@@ -1091,6 +1091,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_map_literal_lowering.py "$BIN"
 
+    # A 'match' (or 'select') used as a value is the select statement it stands for, emitted
+    # where the expression is evaluated: no instruction of its own. The fixture pairs each value
+    # form with the same table written by hand and the two listings must be the same instruction
+    # for instruction, at -opt s0 and s3.
+    - name: a value match compiles to the select statement it stands for (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_match_lowering.py "$BIN"
+
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
     - name: obc and obr find their libraries from another working directory (POSIX)

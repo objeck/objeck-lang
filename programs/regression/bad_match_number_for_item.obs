@@ -1,0 +1,26 @@
+# EXPECT_COMPILE_ERROR: (22,4): Expected an item of 'Color', the enum this 'match' is on
+# EXPECT_ERROR_COUNT: 1
+#~
+A number is not an item of the enum the 'match' is on.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchNumberForItem {
+	function : Main(args : String[]) ~ Nil {
+		c := Color->Red;
+		match c {
+			Color->Red => { "r"->PrintLine(); }
+			2 => { "b"->PrintLine(); }
+			other => { "?"->PrintLine(); }
+		};
+	}
+}

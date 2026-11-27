@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (20,8): Every arm of this 'match' is Nil, so its value has no type
+# EXPECT_ERROR_COUNT: 1
+#~
+A value whose every arm is Nil has no type.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchAllNil {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := match n { 1 => Nil, other => Nil };
+	}
+}

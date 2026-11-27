@@ -50,6 +50,12 @@ class Highlight(unittest.TestCase):
         got = classes('request := json{"n": 1};\njson := 3;\njson += 1;\n')
         self.assertEqual(got.count(("kw", "json")), 1)
 
+    def test_contextual_keyword_match(self):
+        # 'match' is a keyword before its subject and a name everywhere else
+        got = classes("x := match c { Color->Red => 1, other => 2 };\nmatch := 3;\nmatch += 1;\n")
+        self.assertEqual(got.count(("kw", "match")), 1)
+        self.assertIn(("kw", "other"), got)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)

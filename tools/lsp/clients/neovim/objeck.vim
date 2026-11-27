@@ -43,6 +43,8 @@ syn keyword objeckKeyword from implements virtual
 syn match objeckKeyword "\<is\>\ze\s\+[A-Za-z_][A-Za-z0-9_.]*\s\+[A-Za-z_][A-Za-z0-9_]*\s*)"
 " contextual: 'json{ ... }', a JSON literal
 syn match objeckKeyword "\<json\>\ze\s*{"
+" contextual: 'match subject { pattern => ... }'
+syn match objeckKeyword "\<match\>\ze\s\+[A-Za-z_@]"
 
 " Builtins
 syn keyword objeckBuiltin New Parent Try Otherwise

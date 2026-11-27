@@ -1880,6 +1880,14 @@ namespace frontend {
     std::vector<StatementList*> statement_lists;
     std::map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
+    // 'match' and a 'select' used as a value: the labels of an enum subject are
+    // items of that enum, and without 'other' they name every item
+    bool is_checked = false;
+    // used as a value: each arm is one assignment to the hidden local the value is
+    // read from, so an arm opens no scope and some arm must always be taken
+    bool is_value = false;
+    // "match" or "select", for messages
+    std::wstring keyword = L"select";
 
     Select(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
            Assignment* e, std::map<ExpressionList*, StatementList*> &s, std::vector<StatementList*> &sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -1919,6 +1927,27 @@ namespace frontend {
 
     StatementList* GetOther() {
       return other;
+    }
+
+    void SetChecked(const std::wstring &k) {
+      is_checked = true;
+      keyword = k;
+    }
+
+    bool IsChecked() {
+      return is_checked;
+    }
+
+    void SetValue() {
+      is_value = true;
+    }
+
+    bool IsValue() {
+      return is_value;
+    }
+
+    const std::wstring& GetKeyword() {
+      return keyword;
     }
   };
 

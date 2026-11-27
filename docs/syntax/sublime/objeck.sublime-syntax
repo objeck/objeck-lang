@@ -35,6 +35,10 @@ contexts:
     - match: '\b(if|in|else|do|while|static|select|break|continue|other|for|each|reverse|label|return|critical)\b'
       scope: keyword.control.objeck-obs
 
+    # contextual: 'match subject { pattern => ... }'
+    - match: '\bmatch(?=\s+[A-Za-z_@])'
+      scope: keyword.control.objeck-obs
+
     # contextual: 'json{ ... }', a JSON literal
     - match: '\bjson(?=\s*\{)'
       scope: keyword.control.objeck-obs

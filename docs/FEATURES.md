@@ -276,6 +276,55 @@ entry (`An entry of this map literal is String: IntRef; this one is String: Stri
 and the same constant key twice is an error for a map that keeps one value per key. With
 no typed target (an inferred `m := {...}`, an argument, inside `?`) the literal has no
 type and the compiler says to declare one. Tests: `map_literal`, `bad_map_literal_*`.
+### match, and select as a value
+
+`match` picks an arm by the value of its subject. Used as a value, each arm is an
+expression; used as a statement, each arm is a block. Patterns are what `select` labels
+are (integers, characters, strings, enum items), `|` joins several, and `other` takes
+the rest:
+```ruby
+enum Color { Red, Green, Blue }
+
+# before
+function : Name(c : Color) ~ String {
+  select(c) {
+    label Color->Red: { return "red"; }
+    label Color->Green: { return "green"; }
+    label Color->Blue: { return "blue"; }
+  };
+  return "";
+}
+
+# after
+function : Name(c : Color) ~ String {
+  return match c { Color->Red => "red", Color->Green => "green", Color->Blue => "blue" };
+}
+
+match c {                               # the statement form
+  Color->Red | Color->Green => { "warm"->PrintLine(); }
+  Color->Blue => { "cool"->PrintLine(); }
+};
+```
+On an enum, every pattern must be an item of that enum, and without `other` the patterns
+must name every item. Leaving `Green` and `Blue` out of the first example is a compile
+error at the `match`:
+```
+This 'match' does not cover every item of 'Color', missing: Green, Blue
+	Add an arm for each missing item, or an 'other' arm.
+```
+so adding an item to an enum points at every `match` that has to change. A value form on
+an Int, Char or String needs `other`; its arms agree in type as the branches of `?` do
+(an Int arm and a Float arm are an error, not a conversion). `select` is a value too,
+with its own spelling: `select(n) { label 0: "none"  label 1: "one"  label 2, 3: "few"
+other: "many" }`.
+
+The subject is evaluated once and only the arm taken is evaluated, where the expression
+stands: inside `&`, `?` or a loop condition a `match` runs only when it is reached. It
+compiles to the `select` statement it stands for (a dense table stays a jump table).
+`match` is a keyword only before its subject, which starts with a name (`match kind {`,
+`match item->GetKind() {`); elsewhere it is an ordinary name. A method whose last
+statement is a `match` statement still needs `other` or a `return` after it, as after a
+`select`. Tests: `match_value`, `match_statement`, `select_value`, `bad_match_*`.
 
 ### Type Inference
 ```ruby
@@ -820,6 +869,7 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 keywords of the scanner too (`ident_map` in `scanner.cpp`), so they cannot name a
 variable either. `ref`, `try`, `on`, `finally`, `out` and `is` are **contextual**: a keyword
 variable either. `ref`, `try`, `on`, `finally`, `out` and `json` are **contextual**: a keyword
+variable either. `ref`, `try`, `on`, `finally`, `out` and `match` are **contextual**: a keyword
 only where the grammar expects it, so they remain usable as names.
 
 ---

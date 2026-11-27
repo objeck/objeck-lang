@@ -2459,6 +2459,25 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   else if(IsJsonLiteralStart()) {
     statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ParseSimpleExpression(depth + 1));
   }
+  // 'match subject {': a contextual keyword as well (see IsMatchStart)
+  else if(IsMatchStart()) {
+    std::wstring value_ident;
+    Select* select = ParseMatch(true, value_ident, depth + 1);
+    if(select->IsValue()) {
+      // a value with a call on it, as any expression statement is
+      Expression* expression = MakeValueSelect(select, value_ident, line_num, line_pos);
+      if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
+        ParseMethodCall(expression, depth + 1);
+      }
+      else {
+        ParseCastTypeOf(expression, depth + 1);
+      }
+      statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
+    }
+    else {
+      statement = select;
+    }
+  }
   // identifier
   else if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
@@ -6641,6 +6660,13 @@ Expression* Parser::ParseSimpleExpression(int depth)
     NextToken();
     expression = ParseJsonObject(depth + 1);
   }
+  // 'match subject { ... }' and 'select(subject) { ... }' as values
+  else if(IsMatchStart()) {
+    expression = ParseMatchExpression(depth + 1);
+  }
+  else if(Match(TOKEN_SELECT_ID)) {
+    expression = ParseSelectExpression(depth + 1);
+  }
   else if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
     bool pre_inc = false;
@@ -8973,6 +8999,303 @@ Select* Parser::ParseSelect(int depth)
   NextToken();
 
   return TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), eval_assignment, statement_map, statement_lists, other);
+}
+
+/****************************
+ * Whether 'match' starts here: the word, then the first name of its subject.
+ * Two names in a row start nothing else, so 'match' is a keyword only in this
+ * position and stays an ordinary name everywhere else.
+ ****************************/
+bool Parser::IsMatchStart()
+{
+  return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"match";
+}
+
+/****************************
+ * Parses 'match subject { pattern | pattern => arm, ..., other => arm }'.
+ * It is a 'select' on the subject whose labels are checked: for an enum
+ * subject they are items of that enum, and without 'other' they name every
+ * item. As a statement an arm is a block. As a value an arm is an expression,
+ * assigned to a hidden local that 'value_ident' then names. Where a statement
+ * starts the first arm decides which it is, so 'match c { A => "a", other =>
+ * "b" }->PrintLine();' is a value like any other expression statement.
+ ****************************/
+Select* Parser::ParseMatch(bool is_statement, std::wstring& value_ident, int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const std::wstring file_name = GetFileName();
+  bool is_value = !is_statement;
+  bool is_first = true;
+  if(is_value) {
+    AddHiddenLocal(L"match", value_ident, line_num, line_pos);
+  }
+
+#ifdef _DEBUG
+  Debug(L"Match", depth);
+#endif
+
+  NextToken();
+  Expression* eval_expression = ParseExpression(depth + 1);
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"#");
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, -1, -1, variable, eval_expression);
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  StatementList* other = nullptr;
+  std::vector<StatementList*> statement_lists;
+  std::map<ExpressionList*, StatementList*> statement_map;
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int arm_line_num = GetLineNumber();
+    const int arm_line_pos = GetLinePosition();
+
+    // patterns
+    bool is_other = false;
+    ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
+    if(Match(TOKEN_OTHER_ID)) {
+      is_other = true;
+      NextToken();
+    }
+    else {
+      labels->AddExpression(ParseSimpleExpression(depth + 1));
+      while(Match(TOKEN_OR)) {
+        NextToken();
+        labels->AddExpression(ParseSimpleExpression(depth + 1));
+      }
+    }
+
+    if(!Match(TOKEN_LAMBDA)) {
+      ProcessError(L"Expected '=>' after a 'match' pattern");
+    }
+    else {
+      NextToken();
+    }
+
+    // arm
+    if(is_first && is_statement && !Match(TOKEN_OPEN_BRACE)) {
+      is_value = true;
+      AddHiddenLocal(L"match", value_ident, line_num, line_pos);
+    }
+    is_first = false;
+
+    StatementList* statements;
+    if(is_value) {
+      statements = MakeValueArm(value_ident, ParseExpression(depth + 1), arm_line_num, arm_line_pos);
+    }
+    else if(Match(TOKEN_OPEN_BRACE)) {
+      symbol_table->CurrentParseScope()->NewParseScope();
+      statements = ParseStatementList(depth + 1);
+      symbol_table->CurrentParseScope()->PreviousParseScope();
+    }
+    else {
+      ProcessError(L"An arm of a 'match' statement is a block: 'pattern => { ... }'", TOKEN_CLOSED_BRACE);
+      statements = TreeFactory::Instance()->MakeStatementList();
+    }
+
+    if(is_other) {
+      if(other) {
+        ProcessError(L"Duplicate 'other' arm");
+      }
+      else {
+        other = statements;
+      }
+    }
+    else {
+      statement_map.insert(std::pair<ExpressionList*, StatementList*>(labels, statements));
+    }
+    // note: order matters during contextual analysis (see ParseSelect)
+    statement_lists.push_back(statements);
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(is_value && !Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or '}' after a 'match' arm");
+    }
+
+    // an arm that read nothing would be read again from the same token
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  if(statement_lists.empty()) {
+    ProcessError(L"A 'match' needs at least one arm: 'pattern => ...'");
+  }
+
+  Select* select = TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), eval_assignment, statement_map, statement_lists, other);
+  select->SetChecked(L"match");
+  if(is_value) {
+    select->SetValue();
+  }
+
+  return select;
+}
+
+/****************************
+ * Parses 'match' where a value is expected
+ ****************************/
+Expression* Parser::ParseMatchExpression(int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+  std::wstring value_ident;
+  Select* select = ParseMatch(false, value_ident, depth + 1);
+  return MakeValueSelect(select, value_ident, line_num, line_pos);
+}
+
+/****************************
+ * Parses 'select' where a value is expected: a table of values,
+ * 'select(subject) { label a, b: value  other: value }'. The arms are
+ * expressions; apart from the spelling it is 'match' used as a value.
+ ****************************/
+Expression* Parser::ParseSelectExpression(int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const std::wstring file_name = GetFileName();
+
+#ifdef _DEBUG
+  Debug(L"Select value", depth);
+#endif
+
+  std::wstring value_ident;
+  AddHiddenLocal(L"select", value_ident, line_num, line_pos);
+
+  NextToken();
+  if(!Match(TOKEN_OPEN_PAREN)) {
+    ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
+  }
+  NextToken();
+
+  Expression* eval_expression = ParseExpression(depth + 1);
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"#");
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, -1, -1, variable, eval_expression);
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  StatementList* other = nullptr;
+  std::vector<StatementList*> statement_lists;
+  std::map<ExpressionList*, StatementList*> statement_map;
+  while(Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) {
+    const int arm_line_num = GetLineNumber();
+    const int arm_line_pos = GetLinePosition();
+
+    // labels
+    bool is_other = false;
+    ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
+    while(Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) {
+      if(Match(TOKEN_LABEL_ID)) {
+        NextToken();
+        labels->AddExpression(ParseSimpleExpression(depth + 1));
+        while(Match(TOKEN_COMMA)) {
+          NextToken();
+          labels->AddExpression(ParseSimpleExpression(depth + 1));
+        }
+      }
+      else {
+        if(is_other) {
+          ProcessError(L"Duplicate 'other' label");
+        }
+        is_other = true;
+        NextToken();
+      }
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':' after the label of a 'select' value");
+      }
+      else {
+        NextToken();
+      }
+    }
+
+    // value
+    if(Match(TOKEN_OPEN_BRACE)) {
+      ProcessError(L"A 'select' used as a value takes a value after each label, not a block: 'label 1: \"one\"'", TOKEN_CLOSED_BRACE);
+    }
+    StatementList* statements = MakeValueArm(value_ident, ParseExpression(depth + 1), arm_line_num, arm_line_pos);
+    if(Match(TOKEN_SEMI_COLON) || Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+
+    if(is_other) {
+      if(other) {
+        ProcessError(L"Duplicate 'other' label");
+      }
+      else {
+        other = statements;
+      }
+    }
+    else {
+      statement_map.insert(std::pair<ExpressionList*, StatementList*>(labels, statements));
+    }
+    statement_lists.push_back(statements);
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  if(statement_lists.empty()) {
+    ProcessError(L"A 'select' used as a value needs at least one label: 'label 1: \"one\"'");
+  }
+
+  Select* select = TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), eval_assignment, statement_map, statement_lists, other);
+  select->SetChecked(L"select");
+  select->SetValue();
+
+  return MakeValueSelect(select, value_ident, line_num, line_pos);
+}
+
+/****************************
+ * One arm of a 'match' or 'select' used as a value: 'value_ident := value'
+ ****************************/
+StatementList* Parser::MakeValueArm(const std::wstring& value_ident, Expression* value, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  StatementList* statements = TreeFactory::Instance()->MakeStatementList();
+  if(value) {
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, value_ident);
+    statements->AddStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), target, value));
+  }
+
+  return statements;
+}
+
+/****************************
+ * The value of a 'match' or 'select': the select runs where the expression is
+ * evaluated, then the hidden local its arms assigned is read
+ ****************************/
+Expression* Parser::MakeValueSelect(Select* select, const std::wstring& value_ident, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  Variable* value = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, value_ident);
+  SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos, value);
+  sequence->AddStatement(select);
+
+  return sequence;
 }
 
 /****************************
