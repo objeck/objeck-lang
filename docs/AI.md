@@ -1080,7 +1080,7 @@ each(tensor in outputs) {
 };
 ```
 
-A failed call returns `Nil` and the reason is in `EndPoint->GetLastError()`.
+A failed call returns `Nil` and the reason is in `EndPoint->GetLastError()`. The HTTP status is judged before the body: only a 2xx reply is read as the endpoint's answer, and any other status is a failure whatever its body holds, with the server's own `{"error": ...}` message when there is one and `request failed (HTTP <status>)` otherwise (a gateway's `502 {"message":"Bad gateway"}` is not a model or a chat reply). A 2xx body must also have the endpoint's shape: a `message` object or a `response` string for chat and generate, a `models` array for the listings, and at least one documented field for `/api/show`.
 Servers report errors in a JSON body rather than only in the status line, so a
 body that will not parse means something else answered -- a proxy's error page,
 a truncated response -- and the body itself is reported.
