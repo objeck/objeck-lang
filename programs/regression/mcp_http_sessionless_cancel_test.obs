@@ -1,34 +1,41 @@
 # EXTRA_LIBS: mcp,net,net_server,cipher,misc
 #~
-The streamable HTTP transport with sessions off (McpService->SetSessions(false)): one client cannot
-cancel, or take the place of, another client's call (API.MCP). Loopback only, port 0.
+The streamable HTTP transport with sessions off (McpService->SetSessions(false)): a client can cancel
+its own call, and one client cannot cancel, or take the place of, another client's call that is at work
+under the same request id (API.MCP). Loopback only, port 0.
 
 A request id is unique within one client. With sessions the session is the connection, and ids, in-use
 checks and cancellations belong to it. With sessions off every message arrived under no connection at
 all, so all clients shared one set of ids: with two clients each waiting for a call numbered 1, the second
 call took the first one's place among the calls in progress, and the first client's
-notifications/cancelled for "1" cancelled the second client's call. Now each message of a sessionless
-server is a connection by itself: the calls do not meet, and a cancellation, which could only name
-"whoever has a call under this id", is accepted (202) and ignored. Cancellation needs sessions.
+notifications/cancelled for "1" cancelled the second client's call.
 
-Two threads each POST a tools/call numbered 1 to a tool that works for a second and a half unless it is
-cancelled; when both are at work the main thread POSTs a cancellation for 1. Neither call may be
-cancelled and both must be answered.
+Now each message of a sessionless server is a connection by itself, so calls never take each other's
+place, and the address a message comes from is what tells clients apart (not the port: a cancellation is
+a POST of its own, from another port than the call it names). A cancellation stops the one call under
+that id from the same address. When two calls under that id from that address are at work, nothing says
+which is meant and neither is stopped. Every client here is on 127.0.0.1, which is exactly that case.
+
+The cases: one client cancels its own call; two clients with a call numbered 1 each, and a cancellation
+for 1 (neither is cancelled, both are answered); two clients with different ids (the one named is
+cancelled, the other is not); a cancellation for an id that is not at work; the id free afterwards.
 ~#
 use API.MCP, Data.JSON, Collection, System.Concurrency;
 
 class Poster from Thread {
 	@url : String;
 	@tag : String;
+	@id : Int;
 
-	New(url : String, tag : String) {
+	New(url : String, tag : String, id : Int) {
 		Parent();
 		@url := url;
 		@tag := tag;
+		@id := id;
 	}
 
 	method : public : Run(arg : System.Base) ~ Nil {
-		body := "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"hold\",\"arguments\":{\"tag\":\"{$@tag}\"}}}";
+		body := "{\"jsonrpc\":\"2.0\",\"id\":{$@id},\"method\":\"tools/call\",\"params\":{\"name\":\"hold\",\"arguments\":{\"tag\":\"{$@tag}\"}}}";
 		client := Web.HTTP.HttpClient->New();
 		client->AddHeader("Accept", "application/json, text/event-stream");
 		response := client->Post(Web.HTTP.Url->New(@url), body->ToByteArray(), "application/json");
@@ -114,6 +121,27 @@ class McpHttpSessionlessCancelTest {
 		return McpToolResult->Text("finished {$tag}");
 	}
 
+	function : Reset() ~ Nil {
+		@started_a := false;
+		@started_b := false;
+		@cancelled_a := false;
+		@cancelled_b := false;
+		@code_a := 0;
+		@code_b := 0;
+		@text_a := "";
+		@text_b := "";
+	}
+
+	# POSTs notifications/cancelled for a request id, as a client does on a connection of its own
+	function : Cancel(url : String, id : Int) ~ Int {
+		client := Web.HTTP.HttpClient->New();
+		response := client->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":{$id}}}"->ToByteArray(), "application/json");
+		if(response = Nil) {
+			return 0;
+		};
+		return response->GetCode();
+	}
+
 	function : Wait(which : Int) ~ Bool {
 		waited := 0;
 		done := false;
@@ -167,29 +195,52 @@ class McpHttpSessionlessCancelTest {
 		response := raw->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/list\"}"->ToByteArray(), "application/json");
 		Check("a request with no session is answered when sessions are off", response <> Nil & response->GetCode() = 200 & String->New(response->GetContent())->Has("hold"));
 
+		# one client cancels its own call
+		Reset();
+		first := Poster->New(url, "a", 1);
+		first->Execute(Nil);
+		Check("a client's call is at work", Wait(0));
+		Check("its cancellation is accepted with 202", Cancel(url, 1) = 202);
+		first->Join();
+		Check("and stops the call: the handler saw IsCancelled", @cancelled_a);
+		Check("a cancelled call is not answered (202, no body)", @code_a = 202 & @text_a->IsEmpty());
+
 		# two clients, each with a call numbered 1 at work
-		first := Poster->New(url, "a");
+		Reset();
+		first := Poster->New(url, "a", 1);
 		first->Execute(Nil);
 		Check("the first client's call is at work", Wait(0));
-		second := Poster->New(url, "b");
+		second := Poster->New(url, "b", 1);
 		second->Execute(Nil);
 		Check("the second client's call, under the same id, is at work too", Wait(1));
 
 		# the first client gives up on "1"
-		canceller := Web.HTTP.HttpClient->New();
-		response := canceller->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":1}}"->ToByteArray(), "application/json");
-		Check("the cancellation is accepted with 202", response <> Nil & response->GetCode() = 202);
-
+		Check("the cancellation is accepted with 202", Cancel(url, 1) = 202);
 		first->Join();
 		second->Join();
 		Check("the second client's call was not cancelled by the first client's notification", <>@cancelled_b);
-		Check("nor was the first client's: without a session the server cannot tell whose it is", <>@cancelled_a);
+		Check("nor was the first client's: nothing says which of the two is meant", <>@cancelled_a);
 		Check("the first client was answered", @code_a = 200 & @text_a->Has("finished a"));
 		Check("the second client was answered", @code_b = 200 & @text_b->Has("finished b"));
 
+		# two calls under different ids: the cancellation names one of them
+		Reset();
+		first := Poster->New(url, "a", 1);
+		first->Execute(Nil);
+		Check("a call numbered 1 is at work", Wait(0));
+		second := Poster->New(url, "b", 2);
+		second->Execute(Nil);
+		Check("and a call numbered 2", Wait(1));
+		Check("a cancellation for an id that is not at work is accepted", Cancel(url, 3) = 202);
+		Check("and one for 2", Cancel(url, 2) = 202);
+		first->Join();
+		second->Join();
+		Check("the call numbered 2 was cancelled and not answered", @cancelled_b & @code_b = 202);
+		Check("the call numbered 1 was not, and was answered", <>@cancelled_a & @code_a = 200 & @text_a->Has("finished a"));
+
 		# the same id again, one call after the other, as a single client does
-		@started_a := false;
-		again := Poster->New(url, "a");
+		Reset();
+		again := Poster->New(url, "a", 1);
 		again->Execute(Nil);
 		again->Join();
 		Check("the id is free for the next call", @code_a = 200 & @text_a->Has("finished a"));
