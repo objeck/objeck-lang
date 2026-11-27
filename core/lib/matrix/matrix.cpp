@@ -54,7 +54,7 @@ void objk_cnn_shutdown(); // cnn_api.h
 
 //
 // Fixes the cache sizes Eigen cuts its matrix products into blocks by, so that a product gives
-// the same bits in every process on every CPU.
+// the same bits in every process, whichever core it starts on.
 //
 // Eigen blocks a matrix product (GEBP) to fit the caches, and the block depth decides in which
 // order the float products of one output element are added, so the low bits of the result. By
