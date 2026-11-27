@@ -1,0 +1,120 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+AgentTraceBuffer under threads (API.Agent).
+
+A scope with SetTrace(true) gives one buffer to every run under it, and those runs can be on two threads
+at once (a bounded worker that runs an inner agent, parallel Child() scopes). The buffer's Vector was not
+locked, so concurrent appends could lose entries or corrupt the vector. Here several threads append N
+events each, and a reader thread asks for Count, Kinds and First while they do. Required: no crash, every
+event kept (the total is exactly threads * N), and each thread's own events in the order it added them.
+~#
+use API.Agent;
+use Collection, System.Concurrency;
+
+class Appender from Thread {
+  @buffer : AgentTraceBuffer;
+  @kind : String;
+  @count : Int;
+
+  New(buffer : AgentTraceBuffer, kind : String, count : Int) {
+    Parent("trace_appender");
+    @buffer := buffer;
+    @kind := kind;
+    @count := count;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    for(i := 0; i < @count; i += 1;) {
+      @buffer->OnEvent(AgentEvent->New(i + 1, 0, @kind, i, Nil));
+    };
+  }
+}
+
+# reads while the appenders write: none of these may disturb the buffer or fail
+class Reader from Thread {
+  @buffer : AgentTraceBuffer;
+  @reads : Int;
+
+  New(buffer : AgentTraceBuffer) {
+    Parent("trace_reader");
+    @buffer := buffer;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    for(i := 0; i < 200; i += 1;) {
+      @buffer->Count("a");
+      @buffer->First("b");
+      @buffer->GetEvents()->Size();
+      @reads += 1;
+    };
+  }
+
+  method : public : GetReads() ~ Int {
+    return @reads;
+  }
+}
+
+class Test {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(<>ok) {
+      "FAIL: {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    n := 3000;
+    buffer := AgentTraceBuffer->New();
+    a := Appender->New(buffer, "a", n);
+    b := Appender->New(buffer, "b", n);
+    c := Appender->New(buffer, "c", n);
+    reader := Reader->New(buffer);
+    a->Execute(Nil);
+    b->Execute(Nil);
+    c->Execute(Nil);
+    reader->Execute(Nil);
+    a->Join();
+    b->Join();
+    c->Join();
+    reader->Join();
+
+    Check("no event was lost", buffer->GetEvents()->Size() = 3 * n);
+    Check("thread a kept all of its events", buffer->Count("a") = n);
+    Check("thread b kept all of its events", buffer->Count("b") = n);
+    Check("thread c kept all of its events", buffer->Count("c") = n);
+    Check("the reader finished", reader->GetReads() = 200);
+
+    # each thread's events are in the order that thread added them (seq counts up from 1)
+    events := buffer->GetEvents();
+    last_a := 0;
+    last_b := 0;
+    last_c := 0;
+    ordered := true;
+    each(i : events) {
+      e := events->Get(i);
+      k := e->GetKind();
+      if(k->Equals("a")) {
+        if(e->GetSeq() <> last_a + 1) { ordered := false; };
+        last_a := e->GetSeq();
+      }
+      else if(k->Equals("b")) {
+        if(e->GetSeq() <> last_b + 1) { ordered := false; };
+        last_b := e->GetSeq();
+      }
+      else if(k->Equals("c")) {
+        if(e->GetSeq() <> last_c + 1) { ordered := false; };
+        last_c := e->GetSeq();
+      };
+    };
+    Check("each thread's events are in its own order", ordered);
+    Check("the first 'b' is b's first", buffer->First("b")->GetSeq() = 1);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
