@@ -445,7 +445,8 @@ class MemoryManager {
   // Heap verifier (OBJECK_GC_VERIFY, see memory_verify.cpp). Both stay 0 unless the
   // variable is set, so each hook in the collector costs one predictable branch.
   friend class GcVerifier;
-  enum GcVerifyInject { GC_VERIFY_INJECT_NONE = 0, GC_VERIFY_INJECT_FIELD, GC_VERIFY_INJECT_BARRIER, GC_VERIFY_INJECT_MARK };
+  enum GcVerifyInject { GC_VERIFY_INJECT_NONE = 0, GC_VERIFY_INJECT_FIELD, GC_VERIFY_INJECT_BARRIER, GC_VERIFY_INJECT_MARK,
+                        GC_VERIFY_INJECT_TERMINATOR };
   static int gc_verify;
   static int gc_verify_inject;
   static void VerifyInitialize();

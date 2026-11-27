@@ -1369,7 +1369,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
               << char_array_size << L" ---" << std::endl;
 #endif
             char_array_size = char_array_size_dim = (INT_VALUE)out.size();
-            size_t* char_array = MemoryManager::AllocateArray(char_array_size +
+            // one spare element after the data, as every Char[] has (the terminator invariant, common.h)
+            size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
               ((char_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
             char_array[0] = char_array_size;
             char_array[1] = char_array_dim;
@@ -2301,11 +2302,15 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
         }
         else {
           const long dest_pos = (long)inst[1];
-          const long byte_array_dim_size = (long)src_array[2];
+          // the bytes left from dest_pos, not the array's whole size (see DeserializeObject below)
+          const long byte_array_dim_size = (long)src_array[2] - dest_pos;
           const char* byte_array_ptr = ((char*)(src_array + 3) + dest_pos);
 
           ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
           dest_array_ptr[i] = (size_t)deserializer.DeserializeObject();
+          if(!dest_array_ptr[i]) {
+            DeserializeFailed(inst);
+          }
           inst[1] = dest_pos + deserializer.GetOffset();
         }
         // Write barrier, as the object-array case above already does: an old
@@ -2564,11 +2569,21 @@ void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, size_t* &
   else {
     size_t* byte_array = (size_t*)inst[0];
     const long dest_pos = (long)inst[1];
-    const long byte_array_dim_size = (long)byte_array[2];
+    // The bytes LEFT from dest_pos, not the array's whole size. The reader starts at dest_pos, so with
+    // the whole size its bounds check let an object cut short read up to dest_pos bytes past the end of
+    // the array: an Int field missing its last bytes came back made of whatever followed the array, and
+    // the stream still read as sound. (dest_pos <= [2]: DeserializeByte checked it before advancing.)
+    const long byte_array_dim_size = (long)byte_array[2] - dest_pos;
     const char* byte_array_ptr = ((char*)(byte_array + 3) + dest_pos);
 
     ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
-    PushInt((size_t)deserializer.DeserializeObject(), op_stack, stack_pos);
+    size_t* instance = deserializer.DeserializeObject();
+    // marked as an object and not readable as one: the stream is damaged or cut short, which
+    // Deserializer->IsOk() reports
+    if(!instance) {
+      DeserializeFailed(inst);
+    }
+    PushInt((size_t)instance, op_stack, stack_pos);
     inst[1] = dest_pos + deserializer.GetOffset();
   }
 }
@@ -4069,15 +4084,10 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     size_t read = fread(byte_buffer, 1, num, stdin);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-#ifdef _WIN32
-      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
-#else
-      wcsncpy(buffer, in.c_str(), in.size());
-#endif
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -4143,15 +4153,7 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
 
     // copy to dest, bounded by its size: an unbounded copy of a long line ran
     // past the array
-    wchar_t* dest = (wchar_t*)(array + 3);
-    const size_t capacity = array[0];
-    const size_t count = wbuffer.size() < capacity ? wbuffer.size() : capacity;
-#ifdef _WIN32
-    wcsncpy_s(dest, capacity + 1, wbuffer.c_str(), count);
-#else
-    wcsncpy(dest, wbuffer.c_str(), count);
-    dest[count] = L'\0';
-#endif
+    StoreCharArrayText(array, 0, wbuffer);
     PushInt(at_eof ? 0 : 1, op_stack, stack_pos);
   }
   else {
@@ -4172,10 +4174,14 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
 #endif
 
   if(array && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    const char* buffer = (char*)(array + 3);
+    // The 'num' bytes that start at 'offset'. 'offset' was checked above and then not used, so a write of
+    // a range printed the start of the array; the embedded build decoded the array as a C string up to its
+    // first zero, ignoring 'num' as well, and pushed no result.
+    const char* buffer = (char*)(array + 3) + offset;
 #ifdef _MODULE_STDIO
-    const std::wstring wide_buffer(BytesToUnicode(buffer));
+    const std::wstring wide_buffer(BytesToUnicode(std::string(buffer, (size_t)num)));
     program->output_buffer.write(wide_buffer.c_str(), wide_buffer.size());
+    PushInt(num, op_stack, stack_pos);
 #else
     PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
 #endif
@@ -5779,12 +5785,8 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
-      wchar_t* out = (wchar_t*)(array + 3);
-#ifdef _WIN32
-      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
-#else
-      wcsncpy(out, in.c_str(), in.size());
-#endif
+      // bounded by the array, whatever its length (the library passes Char->New[8192])
+      StoreCharArrayText(array, 0, in);
     }
   }
 
@@ -5987,7 +5989,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
           end_line = true;
         }
       }
-      while(!end_line && index < capacity - 1);
+      while(!end_line && index + 1 < capacity);
       buffer[index] = '\0';
 
       // assume LF
@@ -5999,12 +6001,8 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
-      wchar_t* out = (wchar_t*)(array + 3);
-#ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), in.size());
-#else
-      wcsncpy(out, in.c_str(), in.size());
-#endif
+      // bounded by the array, whatever its length (the library passes Char->New[8192])
+      StoreCharArrayText(array, 0, in);
     }
   }
 
@@ -7670,7 +7668,6 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
-    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     // only terminate/decode when bytes were read
     if(read > -1) {
       byte_buffer[read] = '\0';
@@ -7682,11 +7679,7 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
       }
 
       // copy
-#ifdef _WIN32
-      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
-#else
-      wcsncpy(buffer, in.c_str(), in.size());
-#endif
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
     }
 
     // clean up
@@ -7710,8 +7703,10 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
 
   if(array && UdpSocketOpen(instance) && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     UdpEndpoint* ep = (UdpEndpoint*)instance[1];
-    const wchar_t* buffer = (wchar_t*)(array + 3);
-    const std::string buffer_out = UnicodeToBytes(buffer);
+    // The characters from 'offset', at most 'num' of them, up to the first zero. This converted the whole
+    // array as a C string: offset and num were checked and then ignored, so WriteBuffer(2, 3, chars) sent
+    // every character. A write of the whole array (offset 0, num = its size) sends what it always did.
+    const std::string buffer_out = UnicodeToBytes(CharArrayRangeText(array, (size_t)offset, (size_t)num));
 
     // buffer_out is C heap
     int error;
@@ -7797,12 +7792,8 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
       while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
         in.pop_back();
       }
-      wchar_t* out = (wchar_t*)(array + 3);
-#ifdef _WIN32
-      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
-#else
-      wcsncpy(out, in.c_str(), in.size());
-#endif
+      // bounded by the array, whatever its length (the library passes Char->New[8192])
+      StoreCharArrayText(array, 0, in);
     }
   }
 
@@ -8561,12 +8552,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       // otherwise trip MSVC's invalid-parameter handler (as in #1173)
       wchar_t* out = (wchar_t*)(array + 3);
       const size_t max = in.size() < array[0] ? in.size() : (array[0] > 0 ? array[0] - 1 : 0);
-#ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), max);
-#else
-      wcsncpy(out, in.c_str(), max);
-      out[max] = 0;
-#endif
+      StoreCharArrayText(out, in.c_str(), max);
 
       // Look ahead one byte, so end of file is known as soon as the last line
       // has been read. Without it IsEoF() stayed false after the final newline,
@@ -9561,7 +9547,6 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     size_t read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* out = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     // a failed POSIX recv() comes back as (size_t)-1, which indexed far past
     // the buffer here; read nothing instead
     if(read > (size_t)num) {
@@ -9576,11 +9561,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     }
 
     // copy
-#ifdef _WIN32
-    wcsncpy_s(out, array[0] - offset + 1, in.c_str(), in.size());
-#else
-    wcsncpy(out, in.c_str(), in.size());
-#endif
+    StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
 
     // clean up
     delete[] byte_buffer;
@@ -9681,12 +9662,8 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
       while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
         in.pop_back();
       }
-      wchar_t* out = (wchar_t*)(array + 3);
-#ifdef _WIN32
-      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
-#else
-      wcsncpy(out, in.c_str(), in.size());
-#endif
+      // bounded by the array, whatever its length (the library passes Char->New[8192])
+      StoreCharArrayText(array, 0, in);
     }
   }
   
@@ -9805,15 +9782,10 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
-    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-#ifdef _WIN32
-      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
-#else
-      wcsncpy(buffer, in.c_str(), in.size());
-#endif
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -9890,10 +9862,10 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
 
   if(array && instance && (long)instance[0] > -1 && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = (SOCKET)instance[0];
-    const wchar_t* buffer = (wchar_t*)(array + 3);
-    
-    // convert to bytes and write out (buffer_out is C heap, safe across a park)
-    std::string buffer_out = UnicodeToBytes(buffer);
+
+    // The characters from 'offset', at most 'num' of them, up to the first zero (see SockUdpOutCharAry:
+    // offset and num were ignored). Convert to bytes and write out (buffer_out is C heap, safe across a park)
+    std::string buffer_out = UnicodeToBytes(CharArrayRangeText(array, (size_t)offset, (size_t)num));
     int error;
     MemoryManager::BeginBlocking();
     const int sent = IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock, error);
@@ -10000,15 +9972,10 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-#ifdef _WIN32
-      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
-#else
-      wcsncpy(buffer, in.c_str(), in.size());
-#endif
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -11528,7 +11495,7 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
           end_line = true;
         }
       }
-      while(!end_line && index < capacity - 1);
+      while(!end_line && index + 1 < capacity);
       buffer[index] = '\0';
 
       // assume LF
@@ -11540,12 +11507,8 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
-      wchar_t* out = (wchar_t*)(array + 3);
-#ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), in.size());
-#else
-      wcsncpy(out, in.c_str(), in.size());
-#endif
+      // bounded by the array, whatever its length (the library passes Char->New[8192])
+      StoreCharArrayText(array, 0, in);
     }
   }
 
@@ -11981,15 +11944,10 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     int read = IPDtlsSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
-    wchar_t* buffer = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
-#ifdef _WIN32
-      wcsncpy_s(buffer, array[0] - offset + 1, in.c_str(), in.size());
-#else
-      wcsncpy(buffer, in.c_str(), in.size());
-#endif
+      StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -12106,14 +12064,13 @@ bool TrapProcessor::FileInByte(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
-    wchar_t* out = (wchar_t*)(array + 3) + offset;  // the caller's offset, in characters
 
     // read from file
     char* byte_buffer = new char[num * 2 + 1];
@@ -12130,11 +12087,10 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     }
 
     // copy
-#ifdef _WIN32
-    wcsncpy_s(out, array[0] - offset + 1, in.c_str(), in.size());
-#else
-    wcsncpy(out, in.c_str(), array[2] - offset);
-#endif
+    // The characters read, and a zero after them where the slice or the array's spare element has room
+    // for it (StoreCharArraySlice), as every other reader stores. POSIX used to zero-fill the array from
+    // here to its end (wcsncpy's padding), wiping what the caller kept there.
+    StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
 
     // clean up
     delete[] byte_buffer;

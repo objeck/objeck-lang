@@ -203,6 +203,18 @@ and `MakeByteArray` cover the cases. `APITools_CreateStringObject` builds a
 `System.String`; `APITools_CreateObject` builds an instance of any class by
 qualified name.
 
+**Lengths, not terminators.** A `Byte[]` holds data: take its length from
+`APITools_GetArraySize` and never from `strlen`, because a zero byte is a value
+like any other and nothing in the interface promises one after the data. A
+`Char[]` holding text (what `APITools_GetStringValue` returns) is a different
+case: the VM allocates every `Char[]` and `Byte[]` with one spare zero element
+after the last one, which a program cannot index, so the text always ends, even
+in an array filled to its last element. `MakeCharArray` and `MakeByteArray` add
+that element for you. Do not store into it: write at most
+`APITools_GetArraySize(array)` elements. With `OBJECK_GC_VERIFY` set the heap
+verifier fails a `Char[]` whose spare element is missing or not zero (the
+terminator invariant is written out in `core/vm/common.h`).
+
 ### Calling back into Objeck
 
 ```cpp

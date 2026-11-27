@@ -789,12 +789,14 @@ void StackInterpreter::Int2Str(size_t* &op_stack, size_t* &stack_pos)
       conv = formatter.str();
     }
 
-		const size_t max = conv.size() < 32 ? conv.size() : 32;
-#ifdef _WIN32
-		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
-#else
-		wcsncpy(str, conv.c_str(), max);
-#endif
+    // The buffer is the caller's Char[]: str_ptr[0] elements. The text is cut to it and
+    // ended with a zero, which for text exactly as long as the buffer is the array's
+    // spare element (common.h). The interpreter gave wcsncpy_s the element count as the
+    // size, so a value exactly as long as its buffer ("-128" into Char->New[4]) ended
+    // the process on Windows, and on POSIX it copied up to 32 characters whatever
+    // the buffer held; the JIT's copy was already bounded. One rule for both now.
+    const size_t capacity = str_ptr[0];
+    StoreCharArrayText(str, conv.c_str(), conv.size() < capacity ? conv.size() : capacity);
   }
 }
 
@@ -865,13 +867,10 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
       scientific << std::scientific << value;
       conv = scientific.str();
     }
+    // (a zero-length buffer takes the zero on its spare element: wcsncpy_s refused a size
+    // of 0 and ended the process)
     const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
-#ifdef _WIN32
-    wcsncpy_s(str, capacity, conv.c_str(), max);
-#else
-    wcsncpy(str, conv.c_str(), max);
-    str[max] = L'\0';
-#endif
+    StoreCharArrayText(str, conv.c_str(), max);
   }
 }
 
@@ -3996,7 +3995,9 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const std::wstring& value_
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)MemoryManager::AllocateArray(static_cast<size_t>(char_array_size) + 1 + ((static_cast<size_t>(char_array_dim) + 2) * sizeof(size_t)),
                                                              CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = static_cast<size_t>(char_array_size) + 1;
+  // the element count, not the count plus the spare element: every other allocation writes it so, and a
+  // count that takes in the spare lets a program store into the array's terminator (common.h)
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 

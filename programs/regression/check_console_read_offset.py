@@ -14,6 +14,12 @@ untouched. The Byte[] variant honoured the offset. The program below fills a
 Char[] with a sentinel, reads four bytes at offset 3, and prints every slot, so a
 misplaced write shows as a different layout. The regression
 runner cannot control a test's stdin, so this feeds it in.
+
+It also reads three bytes at offset 0 into a second sentinel-filled Char[]: the
+zero that ends what a read stores must stay inside the (offset, num) slice or on
+the array's spare element, so element 3, the caller's own, keeps its sentinel
+whether the read returns all three characters or fewer (see
+char_read_slice_terminator.obs, which covers the readers this runner can drive).
 """
 
 import os
@@ -36,6 +42,22 @@ PROGRAM = """class ConsoleReadOffset {
       out += chars[i];
     };
     "chars read={$got} [{$out}]"->PrintLine();
+
+    slice := Char->New[8];
+    each(i : slice) {
+      slice[i] := 'z';
+    };
+    got := System.IO.Console->ReadBuffer(0, 3, slice);
+    out := "";
+    each(i : slice) {
+      if(slice[i] = '\\0') {
+        out += '.';
+      }
+      else {
+        out += slice[i];
+      };
+    };
+    "slice read={$got} [{$out}]"->PrintLine();
   }
 }
 """
@@ -96,7 +118,18 @@ def main():
         if len(match) != 1 or not match[0].split("[", 1)[-1].startswith(PREFIX):
             fail("expected a Char[] starting %r, got %r" % (PREFIX, lines), out)
 
-    print("PASS: Console->ReadBuffer stores at the requested offset")
+        # The second read: up to three characters at offset 0. Elements 3 to 7 are outside the slice
+        # and keep their sentinel; a zero is allowed only inside the slice, after fewer than three
+        # characters. Before the fix a read of three zeroed element 3.
+        match = [l for l in lines if l.startswith("slice read=")]
+        layout = match[0].split("[", 1)[-1].rstrip("]") if len(match) == 1 else ""
+        count = match[0].split("=", 1)[1].split(" ", 1)[0] if len(match) == 1 else ""
+        if len(layout) != 8 or layout[3:] != "zzzzz":
+            fail("a read of (0, 3) changed an element after its slice: %r" % (match,), out)
+        if count == "3" and "." in layout[:3]:
+            fail("a read of three characters holds a zero: %r" % (match,), out)
+
+    print("PASS: Console->ReadBuffer stores at the requested offset and inside its slice")
 
 
 if __name__ == "__main__":

@@ -703,12 +703,14 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
         conv = formatter.str();
       }
 
-      const size_t max = str_ptr[0];
-#ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0] + 1, conv.c_str(), max);
-#else
-      wcsncpy(str, conv.c_str(), max);
-#endif
+      // The buffer is the caller's Char[]: str_ptr[0] elements. The text is cut to it and
+      // ended with a zero, which for text exactly as long as the buffer is the array's
+      // spare element (common.h). The interpreter gave wcsncpy_s the element count as the
+      // size, so a value exactly as long as its buffer ("-128" into Char->New[4]) ended
+      // the process on Windows, and on POSIX it copied up to 32 characters whatever
+      // the buffer held; the JIT's copy was already bounded. One rule for both now.
+      const size_t capacity = str_ptr[0];
+      StoreCharArrayText(str, conv.c_str(), conv.size() < capacity ? conv.size() : capacity);
     }
   }
     break;
@@ -779,13 +781,10 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
         scientific << std::scientific << value;
         conv = scientific.str();
       }
+      // (a zero-length buffer takes the zero on its spare element: wcsncpy_s refused a size
+      // of 0 and ended the process)
       const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
-#ifdef _WIN32
-      wcsncpy_s(str, capacity, conv.c_str(), max);
-#else
-      wcsncpy(str, conv.c_str(), max);
-      str[max] = L'\0';
-#endif
+      StoreCharArrayText(str, conv.c_str(), max);
     }
   }
     break;

@@ -1,0 +1,441 @@
+#~
+# ReadBuffer(offset, num, Char[]) never writes its zero on the element after a full slice
+#
+# A read into a Char[] ends the characters it stores with a zero. The array's elements outside the
+# (offset, num) slice the caller named are the caller's own, so the zero may land in two places only:
+#
+#   - inside the slice, when fewer than 'num' characters were read
+#   - on the array's spare element, when the characters end at the array's last element
+#
+# A slice filled to its last element that ends before the array does gets no zero. It did: three
+# characters read with ReadBuffer(0, 3, chars) into a Char[8] zeroed chars[3] (always on Windows, and
+# on POSIX once every reader stored a zero, with the NUL-termination audit of v2026.11.4).
+#
+# Every reader, the same on every platform: file, pipe, TCP, TLS, UDP and DTLS here, and the console in
+# check_console_read_offset.py (this runner cannot feed a test's standard input). Each is given "abc",
+# "def" and "gh" and reads them into arrays filled with 'X':
+#
+#   ReadBuffer(0, 3, Char[8]) of "abc"   abcXXXXX   a full slice, [3] untouched
+#   ReadBuffer(5, 3, Char[8]) of "def"   XXXXXdef   a full slice that ends the array: still text of 8
+#   ReadBuffer(1, 5, Char[8]) of "gh"    Xgh.XXXX   two of five: the zero inside the slice, [4] on untouched
+#
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# accepts one TCP connection, writes "abcdefgh" and closes, so the last read comes up short
+class TcpTextSender from Thread {
+	@server : TCPSocketServer;
+
+	New(server : TCPSocketServer) {
+		Parent("tcp-text-sender");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil & client->IsOpen()) {
+			client->WriteString("abcdefgh");
+			client->Close();
+		};
+	}
+}
+
+# the same over TLS
+class TlsTextSender from Thread {
+	@server : TCPSecureSocketServer;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-text-sender");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->WriteString("abcdefgh");
+			client->Close();
+		};
+	}
+}
+
+# accepts one DTLS client, waits for its first datagram and answers with three
+class DtlsTextSender from Thread {
+	@cert : String;
+	@key : String;
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+
+	New(cert : String, key : String) {
+		Parent("dtls-text-sender");
+		@cert := cert;
+		@key := key;
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		server := DTLSSocketServer->New(@cert, @key, "", 0);
+		if(server->Listen()) {
+			@port := server->GetPort();
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil) {
+				client->ReadLine();
+				client->WriteString("abc");
+				client->WriteString("def");
+				client->WriteString("gh");
+				# until the client has read them
+				client->ReadLine();
+				client->Close();
+			};
+			server->Close();
+		};
+		@finished := true;
+	}
+}
+
+# one ReadBuffer(offset, num, ...) of a UDP server, into a Char[] or (when there is none) a Byte[]
+class DatagramReader from Thread {
+	@server : UDPSocketServer;
+	@chars : Char[];
+	@bytes : Byte[];
+	@offset : Int;
+	@num : Int;
+	@read : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer, offset : Int, num : Int, chars : Char[], bytes : Byte[]) {
+		Parent("datagram-reader");
+		@server := server;
+		@offset := offset;
+		@num := num;
+		@chars := chars;
+		@bytes := bytes;
+		@read := -2;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		if(@chars <> Nil) {
+			@read := @server->ReadBuffer(@offset, @num, @chars);
+		}
+		else {
+			@read := @server->ReadBuffer(@offset, @num, @bytes);
+		};
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+}
+
+class PipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe { return @pipe; }
+}
+
+class CharReadSliceTerminator {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		# every stage, or the one named on the command line
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("file")) {
+			"stage: file"->ErrorLine();
+			CheckFile();
+		};
+		if(only->Size() = 0 | only->Equals("pipe")) {
+			"stage: pipe"->ErrorLine();
+			CheckPipe();
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp"->ErrorLine();
+			CheckTcp();
+		};
+		if(only->Size() = 0 | only->Equals("udp")) {
+			"stage: udp"->ErrorLine();
+			CheckUdp();
+		};
+		if(only->Size() = 0 | only->Equals("tls") | only->Equals("dtls")) {
+			cert := "slice-terminator-cert-{$(Runtime->GetProcessId())}.pem";
+			key := "slice-terminator-key-{$(Runtime->GetProcessId())}.pem";
+			if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+				"FAIL: openssl could not create the certificate -- is openssl on PATH?"->PrintLine();
+				Runtime->Exit(1);
+			};
+			if(<>only->Equals("dtls")) {
+				"stage: tls"->ErrorLine();
+				CheckTls(cert, key);
+			};
+			if(<>only->Equals("tls")) {
+				"stage: dtls"->ErrorLine();
+				CheckDtls(cert, key);
+			};
+			File->Delete(cert);
+			File->Delete(key);
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} slice terminator check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a Char[] read's zero stays inside its slice or on the array's spare element"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# every element, a zero as '.'
+	function : Show(chars : Char[]) ~ String {
+		out := "";
+		each(i : chars) {
+			if(chars[i] = '\0') {
+				out += '.';
+			}
+			else {
+				out += chars[i];
+			};
+		};
+		return out;
+	}
+
+	function : Marks() ~ Char[] {
+		marks := Char->New[8];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		return marks;
+	}
+
+	# the three reads of one reader, as the header lays them out
+	function : Verify(reader : String, full_count : Int, full : Char[], last_count : Int, last : Char[], short_count : Int, short : Char[]) ~ Nil {
+		Check("{$reader}: ReadBuffer(0, 3, Char[8]) of 'abc' leaves element 3 alone (got {$full_count}, '{$Show(full)}')",
+			full_count = 3 & Show(full)->Equals("abcXXXXX"));
+		text := String->New(last);
+		Check("{$reader}: ReadBuffer(5, 3, Char[8]) of 'def' fills to the last element and the array is still text of 8 (got {$last_count}, '{$Show(last)}', size {$text->Size()})",
+			last_count = 3 & Show(last)->Equals("XXXXXdef") & text->Size() = 8);
+		Check("{$reader}: ReadBuffer(1, 5, Char[8]) of 'gh' puts the zero inside the slice (got {$short_count}, '{$Show(short)}')",
+			short_count = 2 & Show(short)->Equals("Xgh.XXXX"));
+	}
+
+	function : CheckFile() ~ Nil {
+		name := "char_read_slice_terminator_{$Runtime->GetProcessId()}.tmp";
+		writer := FileWriter->New(name);
+		writer->WriteString("abcdefgh");
+		writer->Close();
+
+		full := Marks(); last := Marks(); short := Marks();
+		reader := FileReader->New(name);
+		full_count := reader->ReadBuffer(0, 3, full);
+		last_count := reader->ReadBuffer(5, 3, last);
+		short_count := reader->ReadBuffer(1, 5, short);
+		reader->Close();
+		File->Delete(name);
+		Verify("file", full_count, full, last_count, last, short_count, short);
+	}
+
+	function : CheckPipe() ~ Nil {
+		name := "objeck-pipe-slice-{$Int->Random(100000, 999999)}";
+		owner := PipeOwner->New(name);
+		owner->Execute(Nil);
+
+		client : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			client := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := client->IsOpen();
+		};
+		owner->Join();
+		server := owner->GetPipe();
+		if(<>opened | <>server->IsOpen()) {
+			Check("the pipe connects", false);
+			return;
+		};
+
+		# a pipe read returns what is there: all eight bytes are, before the first read
+		text := "abcdefgh"->ToByteArray();
+		client->WriteBuffer(0, text->Size(), text);
+
+		full := Marks(); last := Marks(); short := Marks();
+		full_count := server->ReadBuffer(0, 3, full);
+		last_count := server->ReadBuffer(5, 3, last);
+		short_count := server->ReadBuffer(1, 5, short);
+		client->Close();
+		server->Close();
+		Verify("pipe", full_count, full, last_count, last, short_count, short);
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		sender := TcpTextSender->New(server);
+		sender->Execute(Nil);
+
+		client := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(<>client->IsOpen()) {
+			Check("the TCP client connects", false);
+			return;
+		};
+		client->SetRecvTimeout(10000);
+
+		full := Marks(); last := Marks(); short := Marks();
+		full_count := client->ReadBuffer(0, 3, full);
+		last_count := client->ReadBuffer(5, 3, last);
+		# the sender has closed: two of the five arrive
+		short_count := client->ReadBuffer(1, 5, short);
+		client->Close();
+		sender->Join();
+		server->Close();
+		Verify("TCP", full_count, full, last_count, last, short_count, short);
+	}
+
+	# One datagram read with ReadBuffer(offset, num, chars) by a server of its own, and the count it
+	# returned. A datagram can be lost, on loopback too (the first to a new socket, on Windows), so it is
+	# sent until the read returns; a server per read, so a resent copy is never the next read's datagram.
+	function : UdpRead(payload : Byte[], offset : Int, num : Int, chars : Char[]) ~ Int {
+		server := UDPSocketServer->New(0);
+		if(<>server->IsBound()) {
+			return -3;
+		};
+		client := UDPSocket->New("127.0.0.1", server->GetPort());
+		reader := DatagramReader->New(server, offset, num, chars, Nil);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 15000; waited += 50;) {
+			client->WriteBuffer(0, payload->Size(), payload);
+			Thread->Sleep(50);
+		};
+		reader->Join();
+		client->Close();
+		server->Close();
+		return reader->GetRead();
+	}
+
+	function : CheckUdp() ~ Nil {
+		# one datagram per read
+		full := Marks(); last := Marks(); short := Marks();
+		full_count := UdpRead("abc"->ToByteArray(), 0, 3, full);
+		last_count := UdpRead("def"->ToByteArray(), 5, 3, last);
+		short_count := UdpRead("gh"->ToByteArray(), 1, 5, short);
+		Verify("UDP", full_count, full, last_count, last, short_count, short);
+	}
+
+	function : CheckTls(cert : String, key : String) ~ Nil {
+		server := TCPSecureSocketServer->New(cert, key, "", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("the TLS server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+		sender := TlsTextSender->New(server);
+		sender->Execute(Nil);
+
+		client := TCPSecureSocket->New("127.0.0.1", port, cert);
+		if(<>client->IsOpen()) {
+			Check("the TLS client connects ('{$(TCPSecureSocket->GetLastError())}')", false);
+			return;
+		};
+
+		full := Marks(); last := Marks(); short := Marks();
+		full_count := client->ReadBuffer(0, 3, full);
+		last_count := client->ReadBuffer(5, 3, last);
+		short_count := client->ReadBuffer(1, 5, short);
+		client->Close();
+		sender->Join();
+		server->Close();
+		Verify("TLS", full_count, full, last_count, last, short_count, short);
+	}
+
+	function : CheckDtls(cert : String, key : String) ~ Nil {
+		sender := DtlsTextSender->New(cert, key);
+		sender->Execute(Nil);
+		waited := 0;
+		while(<>sender->IsListening() & <>sender->IsFinished() & waited < 5000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(<>sender->IsListening()) {
+			Check("the DTLS server listens ('{$(DTLSSocketServer->GetLastError())}')", false);
+			return;
+		};
+
+		client := DTLSSocket->New("localhost", sender->GetPort(), cert, true);
+		if(<>client->IsOpen()) {
+			Check("the DTLS client connects ('{$(DTLSSocket->GetLastError())}')", false);
+			return;
+		};
+		client->WriteString("go\n");
+
+		full := Marks(); last := Marks(); short := Marks();
+		full_count := client->ReadBuffer(0, 3, full);
+		last_count := client->ReadBuffer(5, 3, last);
+		short_count := client->ReadBuffer(1, 5, short);
+		client->WriteString("done\n");
+		client->Close();
+		sender->Join();
+		Verify("DTLS", full_count, full, last_count, last, short_count, short);
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}

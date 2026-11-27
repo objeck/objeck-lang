@@ -58,13 +58,15 @@
 //   B2  typed references are 0 or live old-generation objects of the right TYPE
 //   B3  no typed reference points into the nursery after a collection
 //   B4  typed frame slots obey B2/B3
+//   B5  a Char[] has its spare element, and it is zero (the terminator invariant in
+//       common.h: natives read a Char[] holding text as a C string)
 //   C   fixup never meets a typed reference to a young object it cannot forward
 //
 // Cost tiers: T0 (every collection) checks the dirty list, the objects promoted
 // and dirtied by this collection, statics and frames; T1 (the first 8
 // collections, then every Nth) walks the whole old generation; T2 is A1.
 //
-// OBJECK_GC_VERIFY_INJECT=field|barrier|mark (honoured only with the verifier
+// OBJECK_GC_VERIFY_INJECT=field|barrier|mark|terminator (honoured only with the verifier
 // on) plants a fault so the verifier can be shown to catch one.
 //
 
@@ -82,6 +84,7 @@
 #define INJECT_FIELD MemoryManager::GC_VERIFY_INJECT_FIELD
 #define INJECT_BARRIER MemoryManager::GC_VERIFY_INJECT_BARRIER
 #define INJECT_MARK MemoryManager::GC_VERIFY_INJECT_MARK
+#define INJECT_TERMINATOR MemoryManager::GC_VERIFY_INJECT_TERMINATOR
 
 namespace {
   // stands in for a ParamType when an array element's type is unknown
@@ -143,6 +146,7 @@ public:
   // injection state
   static bool field_injected;
   static bool mark_injected;
+  static bool terminator_injected;
   static std::atomic<long> barrier_skip_epoch;
   static std::atomic<size_t*> barrier_skip_target;
   static std::atomic<bool> barrier_noted;
@@ -736,6 +740,22 @@ public:
            (dim + 2) * sizeof(size_t) + count * sizeof(wchar_t) > bytes) {
           Report(L"B1", origin, obj[0], L"character array extents run past the block");
         }
+        // B5: the spare element after the data, which natives that read a Char[] as a C string stop at
+        // (the terminator invariant, common.h). It is allocated by every Char[] allocation and is past
+        // what a program can index, so one that is missing or not zero means an allocation forgot it or
+        // a native wrote past the array's last element.
+        else {
+          const size_t data_end = (dim + 2) * sizeof(size_t) + count * sizeof(wchar_t);
+          if(data_end + sizeof(wchar_t) > bytes) {
+            Report(L"B5", origin, obj[0], L"character array has no spare element after its data");
+          }
+          else {
+            const wchar_t spare = ((const wchar_t*)(obj + 2 + dim))[count];
+            if(spare != L'\0') {
+              Report(L"B5", origin, (size_t)spare, L"character array's spare element is not zero");
+            }
+          }
+        }
       }
       break;
 
@@ -873,6 +893,21 @@ public:
     }
   }
 
+  // Stores a character in the spare element of a one-dimensional Char[]: what a native
+  // that wrote one element past the end of an array would leave behind (B5). False if
+  // 'obj' is not such an array.
+  static bool InjectTerminator(size_t* obj) {
+    if(obj[TYPE] != instructions::CHAR_ARY_TYPE || obj[SIZE_OR_CLS] < 3 * sizeof(size_t) || obj[1] != 1 ||
+       3 * sizeof(size_t) + (obj[0] + 1) * sizeof(wchar_t) > obj[SIZE_OR_CLS]) {
+      return false;
+    }
+    ((wchar_t*)(obj + 3))[obj[0]] = L'X';
+    terminator_injected = true;
+    std::wcerr << L"[gc-verify] inject=terminator: stored 'X' in the spare element of the Char[] "
+               << Hex((size_t)obj) << L" (" << obj[0] << L" elements)" << std::endl;
+    return true;
+  }
+
   // ORs the mark bit into a surviving young object's reference field: the word a
   // stale conservative root one word past that field would mark (#816's shape)
   static void InjectMark() {
@@ -951,6 +986,7 @@ std::chrono::steady_clock::time_point GcVerifier::window_start;
 double GcVerifier::window_verify_s = 0.0;
 bool GcVerifier::field_injected = false;
 bool GcVerifier::mark_injected = false;
+bool GcVerifier::terminator_injected = false;
 std::atomic<long> GcVerifier::barrier_skip_epoch(-1);
 std::atomic<size_t*> GcVerifier::barrier_skip_target(nullptr);
 std::atomic<bool> GcVerifier::barrier_noted(false);
@@ -993,8 +1029,11 @@ void MemoryManager::VerifyInitialize()
   else if(inject == "mark") {
     gc_verify_inject = INJECT_MARK;
   }
+  else if(inject == "terminator") {
+    gc_verify_inject = INJECT_TERMINATOR;
+  }
   else if(!inject.empty()) {
-    std::wcerr << L">>> OBJECK_GC_VERIFY_INJECT: expected 'field', 'barrier' or 'mark' <<<" << std::endl;
+    std::wcerr << L">>> OBJECK_GC_VERIFY_INJECT: expected 'field', 'barrier', 'mark' or 'terminator' <<<" << std::endl;
     VmExit(1);
   }
 
@@ -1137,6 +1176,15 @@ void MemoryManager::VerifyAfterCollection(bool minor)
   }
 
   const bool full = GcVerifier::IsFullCheck();
+
+  // only before a full walk, which is what looks at every array
+  if(gc_verify_inject == INJECT_TERMINATOR && full && !GcVerifier::terminator_injected) {
+    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+      if(GcVerifier::InjectTerminator(*iter)) {
+        break;
+      }
+    }
+  }
 
   // T0: what this collection promoted and what was dirty going in (a full walk
   // covers both)
