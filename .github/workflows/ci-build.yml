@@ -1236,6 +1236,16 @@ jobs:
         g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/size_class_test core/vm/arch/size_class_test.cpp
         /tmp/size_class_test
 
+    # Both JIT backends divide by a constant with a multiply by a "magic" pair
+    # (magic_div.h). A wrong pair is a wrong quotient in compiled code only, so
+    # the pair is checked against the machine's division for every divisor the
+    # method covers, INT64_MIN and INT64_MAX included.
+    - name: JIT constant-division unit tests
+      if: runner.os != 'Windows'
+      run: |
+        g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/magic_div_test core/vm/arch/jit/magic_div_test.cpp
+        /tmp/magic_div_test
+
     # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
     - name: Run ONNX sampling unit test (POSIX)
       if: matrix.platform == 'linux-x64'

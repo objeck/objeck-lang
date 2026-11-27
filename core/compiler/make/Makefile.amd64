@@ -20,6 +20,10 @@ sys.a:
 cfg_test: cfg_test.o $(filter-out posix_main.o,$(SRC)) $(OBJ_LIBS)
 	$(CXX) -m64 -flto=auto -o cfg_test cfg_test.o $(filter-out posix_main.o,$(SRC)) $(OBJ_LIBS) -lz
 
+# unit test for the library type-string parser: `make types_test && ./types_test`
+types_test: types_test.o $(filter-out posix_main.o,$(SRC)) $(OBJ_LIBS)
+	$(CXX) -m64 -flto=auto -o types_test types_test.o $(filter-out posix_main.o,$(SRC)) $(OBJ_LIBS) -lz
+
 # Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
 # never learned that the objects include ../shared/version.h and friends, so a
 # header edit silently relinked stale .o files -- 'make clean' was mandatory.
@@ -27,4 +31,4 @@ cfg_test: cfg_test.o $(filter-out posix_main.o,$(SRC)) $(OBJ_LIBS)
 
 clean:
 	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.amd64 clean
-	rm -f $(EXE) cfg_test *.o *.d *~
+	rm -f $(EXE) cfg_test types_test *.o *.d *~
