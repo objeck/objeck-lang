@@ -92,8 +92,30 @@
     struct Signature {
       std::vector<uint8_t> object_param;   // by parameter word, the first parameter first
       bool object_return = false;
+      // the class a parameter's or the return's name spells, -1 where it spells none
+      // or one that cannot be told from a generic's parameter (an unqualified name)
+      std::vector<long> param_class;
+      long return_class = -1;
     };
     std::unordered_map<StackMethod*, Signature> signatures;
+
+    // Whether a method uses the instance it is called with. A function (the
+    // language's static method) is called with whatever instance its caller has,
+    // so a receiver of another class is only wrong where the callee reads it: it
+    // loads a field through it, stores, passes or returns it, hands it to a trap
+    // or to a method that does one of those ('hands_self_to', met once every
+    // method has been walked).
+    struct MethodFacts {
+      bool reads_self = false;
+      std::vector<StackMethod*> hands_self_to;
+    };
+    std::unordered_map<StackMethod*, MethodFacts> methods;
+    // a call whose receiver is known to be an instance of 'cls', which is not the
+    // callee's class nor one that inherits from it
+    struct ReceiverCheck { StackMethod* caller; long ip; StackMethod* callee; long cls; };
+    std::vector<ReceiverCheck> receiver_checks;
+    // by class id: 1 for a class some class lists as an interface (filled on first use)
+    std::vector<char> is_interface;
   };
 
   class RefMap {
@@ -153,6 +175,8 @@
       // load-time verification only: what a reference is (SHAPE_NONE where the
       // declaration does not say)
       uint8_t shape;
+      // 1 for a function value's first word (its id), 2 for its second (its closure)
+      uint8_t part;
     };
 
     // An object and an array are both references, and the interpreter reads them
@@ -188,8 +212,8 @@
       out.clear();
       for(long i = 0; i < num; ++i) {
         if(dclrs[i]->type == FUNC_PARM) {
-          out.push_back({ RK_INT, RK_UNKNOWN });
-          out.push_back({ RK_REF, RK_UNKNOWN });
+          out.push_back({ RK_INT, RK_UNKNOWN, SHAPE_NONE, 1 });
+          out.push_back({ RK_REF, RK_UNKNOWN, SHAPE_NONE, 2 });
         }
         else {
           out.push_back(DclrType(dclrs[i]->type));
@@ -270,6 +294,64 @@
       }
     }
 
+    // 'cls' is 'ancestor', inherits from it, or implements it (an interface's own
+    // parents count). Every class is a System.Base.
+    inline bool ClassIsA(StackProgram* prgm, long cls, long ancestor) {
+      if(cls == ancestor) {
+        return true;
+      }
+      const long num = prgm->GetClassNumber();
+      if(cls < 0 || cls >= num || ancestor < 0 || ancestor >= num) {
+        return false;
+      }
+      long* hierarchy = prgm->GetHierarchy();
+      long** interfaces = prgm->GetInterfaces();
+      // the usual case: up the parents, and each one's interfaces
+      long at = cls;
+      for(long depth = 0; at >= 0 && at < num && depth <= num; ++depth) {
+        if(at == ancestor) {
+          return true;
+        }
+        if(interfaces && interfaces[at]) {
+          for(long* inf = interfaces[at]; *inf != INF_ENDING; ++inf) {
+            if(*inf == ancestor) {
+              return true;
+            }
+          }
+        }
+        at = hierarchy ? hierarchy[at] : -1;
+      }
+      StackClass* target = prgm->GetClass(ancestor);
+      if(target && target->GetName() == L"System.Base") {
+        return true;
+      }
+      // an interface that extends another
+      std::vector<char> seen(num, 0);
+      std::vector<long> work(1, cls);
+      seen[cls] = 1;
+      while(!work.empty()) {
+        at = work.back();
+        work.pop_back();
+        if(at == ancestor) {
+          return true;
+        }
+        const long parent = hierarchy ? hierarchy[at] : -1;
+        if(parent >= 0 && parent < num && !seen[parent]) {
+          seen[parent] = 1;
+          work.push_back(parent);
+        }
+        if(interfaces && interfaces[at]) {
+          for(long* inf = interfaces[at]; *inf != INF_ENDING; ++inf) {
+            if(*inf >= 0 && *inf < num && !seen[*inf]) {
+              seen[*inf] = 1;
+              work.push_back(*inf);
+            }
+          }
+        }
+      }
+      return false;
+    }
+
     class Builder {
       StackProgram* prgm;
       StackMethod* method;
@@ -329,6 +411,10 @@
         // the class NEW_OBJ_INST made it an instance of: NO_CLASS for none, MANY_CLASSES
         // where two meet
         long cls_made = NO_CLASS;
+        // the method's own instance (LOAD_INST_MEM), and whether anything took the
+        // value off the stack other than a call to a method that is not virtual
+        bool from_self = false;
+        bool consumed = false;
       };
       static const long NO_CLASS = -1;
       static const long MANY_CLASSES = -2;
@@ -336,6 +422,143 @@
       static const long CLOSURE = -3;
       std::vector<Facts> facts;
       long cur_ip = 0;
+
+      // Load-time verification: the class a reference has where it is used -- the
+      // static type of the expression that made it, as far as an image spells one:
+      // NEW_OBJ_INST, OBJ_INST_CAST, the method's own instance, a parameter or a
+      // call's result whose name spells a qualified class, a trap's result. Not
+      // more than that, deliberately. The compiler checks that a cast is between
+      // related classes and then, in a call chain, does not always write the cast
+      // ('worker->Call(Nil, 5000)->GetValue()->As(IntRef)->Get()' calls IntRef:Get
+      // on GetValue's System.Base with no OBJ_INST_CAST between), so a valid
+      // program may use a reference as any class RELATED to its static type, and
+      // only an unrelated class is a verdict (Related). For the same reason a
+      // claim is never carried through a local or a field (a variable's static
+      // type is its declaration's, which an image does not record: 'b : Base :=
+      // Dog->New()' then 'b->As(Cat)' behind a type test is valid) nor across a
+      // join ('c ? cat : dog' has their common type, not both): two different
+      // claims that meet are no claim. A parameter's slot is the exception: its
+      // declared class is in the method's name.
+      // Kept apart from the values above (a second union-find over the same ids)
+      // because a cast makes the same reference a new class.
+      struct ClassSet {
+        long ids[1];
+        uint8_t n = 0;
+        // values of different or unknown types met here: nothing is claimed
+        bool mixed = false;
+        void Add(long cls) {
+          if(mixed) {
+            return;
+          }
+          if(n == 0) {
+            ids[n++] = cls;
+          }
+          else if(ids[0] != cls) {
+            n = 0;
+            mixed = true;
+          }
+        }
+        void Meet(const ClassSet& other) {
+          if(mixed || other.mixed || n != other.n || (n == 1 && ids[0] != other.ids[0])) {
+            n = 0;
+            mixed = true;
+          }
+        }
+      };
+      std::vector<int> class_parent;
+      std::vector<ClassSet> claims;
+      enum ReqKind : uint8_t { REQ_ARGUMENT, REQ_RETURN, REQ_TRAP, REQ_STORE };
+      // 'value' must be an instance of 'cls', or of one of the classes 'any_of' names
+      struct ClassReq { int value; long cls; const wchar_t* any_of; long ip; uint8_t kind; };
+      std::vector<ClassReq> class_reqs;
+      std::unordered_map<long, std::vector<SlotType> > layouts;
+      bool frame_trap = false;
+
+      int ClassFind(int v) {
+        while(class_parent[v] != v) {
+          class_parent[v] = class_parent[class_parent[v]];
+          v = class_parent[v];
+        }
+        return v;
+      }
+
+      void ClassUnion(int a, int b) {
+        a = ClassFind(a);
+        b = ClassFind(b);
+        if(a != b) {
+          class_parent[b] = a;
+          claims[a].Meet(claims[b]);
+        }
+      }
+
+      void Claim(int v, long cls) {
+        if(verify && cls >= 0) {
+          claims[ClassFind(v)].Add(cls);
+        }
+      }
+
+      // an instance's fields as its class declares them, by word
+      const std::vector<SlotType>& LayoutOf(long cls_id) {
+        std::unordered_map<long, std::vector<SlotType> >::iterator found = layouts.find(cls_id);
+        if(found != layouts.end()) {
+          return found->second;
+        }
+        std::vector<SlotType>& layout = layouts[cls_id];
+        StackClass* cls = prgm->GetClass(cls_id);
+        if(cls) {
+          DclrLayout(cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), layout);
+        }
+        return layout;
+      }
+
+      void ClassesOf(int v, ClassSet& out) {
+        out = claims[ClassFind(v)];
+      }
+
+      // the class a parameter's slot is declared with (its name spells it), -1 for
+      // any other local
+      long ParamSlotClass(long id) {
+        if(!context) {
+          return -1;
+        }
+        const long word = id - (method->HasAndOr() ? 1 : 0);
+        if(word < 0 || word >= method->GetParamCount()) {
+          return -1;
+        }
+        const VerifyContext::Signature& own = SignatureOf(method);
+        return word < (long)own.param_class.size() ? own.param_class[word] : -1;
+      }
+
+      bool IsInterface(long cls) {
+        if(!context) {
+          return true;
+        }
+        if(context->is_interface.empty()) {
+          const long num = prgm->GetClassNumber();
+          context->is_interface.assign(num > 0 ? num : 1, 0);
+          long** interfaces = prgm->GetInterfaces();
+          for(long i = 0; interfaces && i < num; ++i) {
+            for(long* inf = interfaces[i]; inf && *inf != INF_ENDING; ++inf) {
+              if(*inf >= 0 && *inf < num) {
+                context->is_interface[*inf] = 1;
+              }
+            }
+          }
+        }
+        return cls < 0 || cls >= (long)context->is_interface.size() || context->is_interface[cls] != 0;
+      }
+
+      // Whether a reference of static class 'have' may be an instance of 'want': one
+      // inherits from the other (a cast up, or a cast down the compiler did not
+      // write), or either is an interface (any class's descendant may implement it)
+      bool Related(long have, long want) {
+        if(have == want || IsInterface(have) || IsInterface(want)) {
+          return true;
+        }
+        return IsA(have, want) || IsA(want, have);
+      }
+
+      bool CheckClasses();      
       // a local's loads and stores, met after the pass: a local is typed by its
       // declaration alone, so what was stored says what a load can be
       struct LocalUse { long id; int value; long ip; };
@@ -349,28 +572,11 @@
       // field accesses: the receiver, and the context the instruction names
       struct ReceiverUse { int value; long context; long ip; long end; };
       // calls, to compare a receiver's class with the callee's once values have met
-      struct CallUse { int receiver; long callee_cls; long ip; };
+      struct CallUse { int receiver; long callee_cls; long ip; StackMethod* callee; };
       std::vector<CallUse> calls;
 
-      // 'cls' is 'ancestor', inherits from it, or implements it
       bool IsA(long cls, long ancestor) {
-        long* hierarchy = prgm->GetHierarchy();
-        long** interfaces = prgm->GetInterfaces();
-        const long num = prgm->GetClassNumber();
-        for(long depth = 0; cls >= 0 && cls < num && depth <= num; ++depth) {
-          if(cls == ancestor) {
-            return true;
-          }
-          if(interfaces && interfaces[cls]) {
-            for(long* inf = interfaces[cls]; *inf != INF_ENDING; ++inf) {
-              if(*inf == ancestor) {
-                return true;
-              }
-            }
-          }
-          cls = hierarchy ? hierarchy[cls] : -1;
-        }
-        return false;
+        return ClassIsA(prgm, cls, ancestor);
       }
       std::vector<ReceiverUse> receivers;
 
@@ -438,7 +644,7 @@
       // 'load': the value comes from the element or field (it produces the value);
       // otherwise it goes there (a use of the value)
       struct ElemLink { int array; int value; bool load; };
-      struct FieldLink { int receiver; long index; int value; bool load; };
+      struct FieldLink { int receiver; long index; int value; bool load; long context; };
       std::vector<ElemLink> elem_links;
       std::vector<FieldLink> field_links;
       std::vector<SlotType> self_fields;
@@ -459,6 +665,8 @@
         if(verify) {
           facts.push_back(Facts());
           facts.back().made = FactOf(k);
+          class_parent.push_back(id);
+          claims.push_back(ClassSet());
         }
         return id;
       }
@@ -471,7 +679,12 @@
         return v;
       }
 
-      void Union(int a, int b) {
+      // 'classes' false joins two names of one reference that may be known as
+      // different classes (a cast's operand and its result)
+      void Union(int a, int b, bool classes = true) {
+        if(verify && classes) {
+          ClassUnion(a, b);
+        }
         a = Find(a);
         b = Find(b);
         if(a == b) {
@@ -500,6 +713,8 @@
           if(fa.array_ip < 0) fa.array_ip = fb.array_ip;
           if(fa.float_ip < 0) fa.float_ip = fb.float_ip;
           if(fa.word_ip < 0) fa.word_ip = fb.word_ip;
+          fa.from_self = fa.from_self || fb.from_self;
+          fa.consumed = fa.consumed || fb.consumed;
           if(fa.cls_made == NO_CLASS) {
             fa.cls_made = fb.cls_made;
           }
@@ -606,12 +821,15 @@
         return true;
       }
 
-      bool Pop(std::vector<int>& stack, long ip, int& v) {
+      bool Pop(std::vector<int>& stack, long ip, int& v, bool consume = true) {
         if(stack.empty()) {
           return Fail(ip, L"the operand stack runs out", true);
         }
         v = stack.back();
         stack.pop_back();
+        if(verify && consume) {
+          facts[Find(v)].consumed = true;
+        }
         if(stack.size() < min_height) {
           min_height = stack.size();
         }
@@ -699,6 +917,23 @@
         return type.size() > 2 && type[0] == L'o' && type[1] == L'.' && prgm->GetClass(type.substr(2)) != nullptr;
       }
 
+      // The class "o.System.String" or "o.Collection.Vector<T>" spells, -1 for none.
+      // Only a qualified name counts: "o.T" may be a generic's parameter and a
+      // program may have a class of that name too, and nothing in an image says
+      // which is meant. (An enum's name is not a class's, qualified or not.)
+      long QualifiedClass(const std::wstring& type) {
+        if(type.size() < 3 || type[0] != L'o' || type[1] != L'.' || type.back() == L'*') {
+          return -1;
+        }
+        const size_t generic = type.find(L'<');
+        const std::wstring name = type.substr(2, generic == std::wstring::npos ? generic : generic - 2);
+        if(name.find(L'.') == std::wstring::npos || name.find(L'#') != std::wstring::npos) {
+          return -1;
+        }
+        StackClass* cls = prgm->GetClass(name);
+        return cls ? cls->GetId() : -1;
+      }
+
       // which of a method's parameter words and whether its return hold objects,
       // read once from its name ("Class:Method:o.System.String*,i,m.(i,)~i,")
       const VerifyContext::Signature& SignatureOf(StackMethod* m) {
@@ -727,9 +962,12 @@
                 // a function value: its closure, then its id
                 sig.object_param.push_back(0);
                 sig.object_param.push_back(0);
+                sig.param_class.push_back(-1);
+                sig.param_class.push_back(-1);
               }
               else {
                 sig.object_param.push_back(NamesObject(type) ? 1 : 0);
+                sig.param_class.push_back(QualifiedClass(type));
               }
               start = i + 1;
             }
@@ -737,6 +975,7 @@
         }
         const std::wstring& rtrn = m->GetReturnName();
         sig.object_return = !(rtrn.size() > 1 && rtrn[0] == L'm' && rtrn[1] == L'.') && NamesObject(rtrn);
+        sig.return_class = QualifiedClass(rtrn);
         return sig;
       }
 
@@ -831,6 +1070,9 @@
           }
           else if(!(words & arrays)) {
             UseObject(v);
+            if(arg.classes) {
+              class_reqs.push_back({ v, -1, arg.classes, cur_ip, REQ_TRAP });
+            }
           }
         }
       }
@@ -856,6 +1098,13 @@
           }
           else if(!(words & arrays)) {
             Made(value, RK_REF, SHAPE_OBJECT);
+            // one class named: the result is an instance of it
+            if(result.classes && !wcschr(result.classes, L'|')) {
+              StackClass* cls = prgm->GetClass(result.classes);
+              if(cls) {
+                Claim(value, cls->GetId());
+              }
+            }
           }
         }
         return value;
@@ -882,6 +1131,9 @@
         }
         // a handler that reads its caller's frame or instance is given them by the
         // library method the directive was written in, and by no other
+        if(row->instance) {
+          frame_trap = true;
+        }
         if(row->contexts && !ListHolds(row->contexts, method->GetName())) {
           return Fail(ip, std::wstring(L"trap ") + row->name + L" outside the library method whose frame it reads", true);
         }
@@ -1033,6 +1285,7 @@
               facts[value].made = 0;
             }
             local_loads.push_back({ op1, value, ip });
+            Claim(value, ParamSlotClass(op1));
           }
           stack.push_back(value);
         }
@@ -1042,7 +1295,9 @@
       case COPY_LOCL_INT_VAR:
         if(!LocalType(ip, op1, slot)) return false;
         if(instr->GetType() == STOR_LOCL_INT_VAR) {
-          if(!Pop(stack, ip, v)) return false;
+          // (kept in a local, the instance is not read yet: the inliner parks a
+          // function's caller's instance in one to hand it on)
+          if(!Pop(stack, ip, v, false)) return false;
         }
         else {
           if(stack.empty()) return Fail(ip, L"the operand stack runs out", true);
@@ -1055,6 +1310,10 @@
           Constrain(v, slot.kind, slot.elem);
           if(verify) {
             local_stores.push_back({ op1, v, ip });
+            const long declared = ParamSlotClass(op1);
+            if(declared >= 0) {
+              class_reqs.push_back({ v, declared, nullptr, ip, REQ_STORE });
+            }
           }
         }
         break;
@@ -1063,7 +1322,7 @@
         int receiver;
         if(!PopReceiver(stack, ip, op2, receiver)) return false;
         const int value = NewValue(RK_UNKNOWN);
-        field_links.push_back({ receiver, op1, value, true });
+        field_links.push_back({ receiver, op1, value, true, op2 });
         stack.push_back(value);
       }
         break;
@@ -1071,7 +1330,7 @@
       case STOR_CLS_INST_INT_VAR: {
         int receiver;
         if(!PopReceiver(stack, ip, op2, receiver) || !Pop(stack, ip, v)) return false;
-        field_links.push_back({ receiver, op1, v, false });
+        field_links.push_back({ receiver, op1, v, false, op2 });
       }
         break;
 
@@ -1079,7 +1338,7 @@
         int receiver;
         if(!PopReceiver(stack, ip, op2, receiver)) return false;
         if(stack.empty()) return Fail(ip, L"the operand stack runs out", true);
-        field_links.push_back({ receiver, op1, stack.back(), false });
+        field_links.push_back({ receiver, op1, stack.back(), false, op2 });
       }
         break;
 
@@ -1120,7 +1379,15 @@
         break;
 
       case LOAD_INST_MEM:
-        stack.push_back(NewValue(RK_REF, RK_UNKNOWN, ORIGIN_SELF));
+        v = NewValue(RK_REF, RK_UNKNOWN, ORIGIN_SELF);
+        if(verify) {
+          facts[v].from_self = true;
+          // (a lambda's instance is its closure)
+          if(!method->IsLambda() && method->GetClass()) {
+            Claim(v, method->GetClass()->GetId());
+          }
+        }
+        stack.push_back(v);
         break;
 
       case LOAD_BYTE_ARY_ELM:
@@ -1245,12 +1512,14 @@
         }
         // the receiver on top, then the arguments, the last one nearest it
         int receiver_value;
-        if(!Pop(stack, ip, receiver_value)) return false;
+        // (handing the instance on to a method that is not virtual is not yet a use
+        // of it: a function is called with whatever instance its caller has)
+        if(!Pop(stack, ip, receiver_value, !verify || callee->IsVirtual())) return false;
         MarkRef(receiver_value);
         if(verify) {
           // (not marked as an object: a primitive array's helper function takes the
           // array as its receiver word, 'values->Size()' before it is inlined)
-          calls.push_back({ receiver_value, op1, ip });
+          calls.push_back({ receiver_value, op1, ip, callee });
         }
         std::vector<SlotType> params;
         ParamWords(callee, params);
@@ -1262,6 +1531,9 @@
           if(sig && i - 1 < sig->object_param.size() && sig->object_param[i - 1]) {
             MarkRef(v);
           }
+          if(sig && i - 1 < sig->param_class.size() && sig->param_class[i - 1] >= 0) {
+            class_reqs.push_back({ v, sig->param_class[i - 1], nullptr, ip, REQ_ARGUMENT });
+          }
         }
         std::vector<SlotType> rtrn;
         ReturnWords(callee->GetReturnName(), callee->GetReturn(), rtrn);
@@ -1271,6 +1543,9 @@
           return Fail(ip, L"a call to a method whose body returns no value where its type names one", true);
         }
         PushWords(stack, rtrn);
+        if(sig && rtrn.size() == 1 && sig->return_class >= 0) {
+          Claim(stack.back(), sig->return_class);
+        }
       }
         break;
 
@@ -1320,9 +1595,20 @@
           for(size_t i = 0; i < rtrn.size(); ++i) {
             ConstrainSlot(stack[stack.size() - rtrn.size() + i], rtrn[i]);
           }
-          // the caller reads a class-typed or array result through
-          if(verify && context && rtrn.size() == 1 && SignatureOf(method).object_return) {
-            MarkRef(stack.back());
+          if(verify) {
+            for(size_t i = 0; i < rtrn.size(); ++i) {
+              facts[Find(stack[stack.size() - rtrn.size() + i])].consumed = true;
+            }
+          }
+          if(verify && context && rtrn.size() == 1) {
+            const VerifyContext::Signature& own = SignatureOf(method);
+            // the caller reads a class-typed or array result through
+            if(own.object_return) {
+              MarkRef(stack.back());
+            }
+            if(own.return_class >= 0) {
+              class_reqs.push_back({ stack.back(), own.return_class, nullptr, ip, REQ_RETURN });
+            }
           }
         }
         falls_through = false;
@@ -1356,6 +1642,7 @@
         if(verify) {
           facts[v].shape_made = SHAPE_OBJECT;
           facts[v].cls_made = op1;
+          Claim(v, op1);
         }
         stack.push_back(v);
         break;
@@ -1385,7 +1672,17 @@
         Constrain(v, RK_REF);
         // the cast reads the object's class
         MarkRef(v);
-        stack.push_back(v);
+        if(verify) {
+          // the same reference, and from here an instance of the class the cast
+          // names: the interpreter and the compiled code stop the program otherwise
+          const int cast = NewValue(RK_UNKNOWN);
+          Union(v, cast, false);
+          Claim(cast, op1);
+          stack.push_back(cast);
+        }
+        else {
+          stack.push_back(v);
+        }
       }
         break;
 
@@ -1436,7 +1733,7 @@
         break;
 
       case POP_INT:
-        if(!Pop(stack, ip, v)) return false;
+        if(!Pop(stack, ip, v, false)) return false;
         break;
 
       case POP_FLOAT:
@@ -1611,21 +1908,37 @@
           }
         }
         else {
-          // an object of a known class holds that class's fields and no more (the
-          // loader bounded the id by the largest object of any class)
-          long cls = f.cls_made;
           const int r = Find(receivers[i].value);
           // a lambda's own instance is its closure: the captures and no more
-          if(cls == NO_CLASS && origin[r] == ORIGIN_SELF && method->IsLambda() &&
+          if(f.cls_made == NO_CLASS && origin[r] == ORIGIN_SELF && method->IsLambda() &&
              receivers[i].end > (long)closure_fields.size()) {
             return Fail(receivers[i].ip, L"a captured variable beyond the lambda's closure", true);
           }
+          // An object NEW_OBJ_INST just made, and the method's own instance, hold
+          // their class's fields and no more (the loader bounded the id by the
+          // largest object of any class), each of the kind the class declares: a
+          // Float is not read from an Int's or a reference's word, nor a function
+          // value from anything else. (Any other reference may be an instance of
+          // a class below its static type: see ClassSet.)
+          long cls = f.cls_made;
           if(cls == NO_CLASS && origin[r] == ORIGIN_SELF && !method->IsLambda() && method->GetClass()) {
             cls = method->GetClass()->GetId();
           }
           StackClass* known = cls >= 0 ? prgm->GetClass(cls) : nullptr;
-          if(known && receivers[i].end * (long)sizeof(size_t) > known->GetInstanceMemorySize()) {
-            return Fail(receivers[i].ip, L"an instance variable beyond the object's class", true);
+          if(known) {
+            if(receivers[i].end * (long)sizeof(size_t) > known->GetInstanceMemorySize()) {
+              return Fail(receivers[i].ip, L"an instance variable beyond the object's class", true);
+            }
+            const InstructionType access = instrs[receivers[i].ip].GetType();
+            const bool as_float = access == LOAD_FLOAT_VAR || access == STOR_FLOAT_VAR || access == COPY_FLOAT_VAR;
+            const bool as_func = access == LOAD_FUNC_VAR || access == STOR_FUNC_VAR;
+            const long index = instrs[receivers[i].ip].GetOperand();
+            const std::vector<SlotType>& layout = LayoutOf(cls);
+            if(index >= 0 && index < (long)layout.size()) {
+              if(as_float != (layout[index].kind == RK_FLOAT) || (as_func && layout[index].part != 1)) {
+                return Fail(receivers[i].ip, L"an instance variable read as another kind than its class declares", true);
+              }
+            }
           }
         }
       }
@@ -1640,6 +1953,9 @@
         if(f.cls_made == CLOSURE && f.made == F_REF) {
           return Fail(calls[i].ip, L"a method called on a closure", true);
         }
+      }
+      if(!CheckClasses()) {
+        return false;
       }
 
       // A local is typed by its declaration, so a load starts a new value: what
@@ -1722,6 +2038,134 @@
       return true;
     }
 
+    // Load-time verification: each reference whose class is known against the class
+    // its use needs. A receiver's is settled once every method has been walked
+    // (Loader::Verify): whether the callee reads its instance is the callee's fact.
+    inline bool Builder::CheckClasses() {
+      for(size_t i = 0; i < class_reqs.size(); ++i) {
+        const ClassReq& req = class_reqs[i];
+        ClassSet known;
+        ClassesOf(req.value, known);
+        for(uint8_t k = 0; k < known.n; ++k) {
+          bool fits = false;
+          if(req.any_of) {
+            // "A|B": the classes of the library methods the trap is written in
+            const wchar_t* at = req.any_of;
+            while(*at && !fits) {
+              const wchar_t* end = at;
+              while(*end && *end != L'|') {
+                ++end;
+              }
+              StackClass* cls = prgm->GetClass(std::wstring(at, end));
+              fits = cls && Related(known.ids[k], cls->GetId());
+              at = *end ? end + 1 : end;
+            }
+          }
+          else {
+            fits = Related(known.ids[k], req.cls);
+          }
+          if(!fits) {
+            switch(req.kind) {
+            case REQ_STORE:
+              return Fail(req.ip, L"an object stored to a parameter of another class", true);
+            case REQ_ARGUMENT:
+              return Fail(req.ip, L"an object passed where the parameter is of another class", true);
+            case REQ_RETURN:
+              return Fail(req.ip, L"an object returned where the method returns another class", true);
+            default:
+              return Fail(req.ip, L"a trap given an object of another class than it reads", true);
+            }
+          }
+        }
+      }
+
+      if(context) {
+        // The instance, and the loads of a local that holds nothing else. (The
+        // inliner parks a function's caller's instance in a local to hand it on,
+        // and may use that local again for an object it does read: a local with
+        // any other store is not taken for the instance, which only means fewer
+        // callers are held to the callee's class.)
+        size_t slots = locals.size();
+        for(size_t i = 0; i < local_stores.size(); ++i) {
+          if(local_stores[i].id >= (long)slots) {
+            slots = (size_t)local_stores[i].id + 1;
+          }
+        }
+        std::vector<char> holds_self(slots, 0);
+        std::vector<char> is_self(parent.size(), 0);
+        for(size_t v = 0; v < parent.size(); ++v) {
+          if(Find(static_cast<int>(v)) == static_cast<int>(v) && facts[v].from_self) {
+            is_self[v] = 1;
+          }
+        }
+        // the one local a value is a load of: -1 for none, -2 for more than one
+        std::vector<long> loaded_from(parent.size(), -1);
+        for(size_t i = 0; i < local_loads.size(); ++i) {
+          const int v = Find(local_loads[i].value);
+          const long id = local_loads[i].id;
+          if(id < 0 || id >= (long)slots) {
+            loaded_from[v] = -2;
+          }
+          else if(loaded_from[v] == -1) {
+            loaded_from[v] = id;
+          }
+          else if(loaded_from[v] != id) {
+            loaded_from[v] = -2;
+          }
+        }
+        for(size_t i = 0; i < local_stores.size(); ++i) {
+          if(local_stores[i].id >= 0) {
+            holds_self[local_stores[i].id] = 1;
+          }
+        }
+        for(bool changed = true; changed; ) {
+          changed = false;
+          // a local with a store of anything else no longer holds the instance
+          for(size_t i = 0; i < local_stores.size(); ++i) {
+            const LocalUse& st = local_stores[i];
+            if(st.id >= 0 && holds_self[st.id]) {
+              const int v = Find(st.value);
+              const bool self = facts[v].from_self || (loaded_from[v] >= 0 && holds_self[loaded_from[v]]);
+              if(!self) {
+                holds_self[st.id] = 0;
+                changed = true;
+              }
+            }
+          }
+        }
+        for(size_t i = 0; i < local_loads.size(); ++i) {
+          const LocalUse& ld = local_loads[i];
+          if(ld.id >= 0 && ld.id < (long)slots && holds_self[ld.id]) {
+            is_self[Find(ld.value)] = 1;
+          }
+        }
+        VerifyContext::MethodFacts& own = context->methods[method];
+        own.reads_self = frame_trap;
+        for(size_t v = 0; v < parent.size() && !own.reads_self; ++v) {
+          if(is_self[v] && facts[v].consumed) {
+            own.reads_self = true;
+          }
+        }
+        for(size_t i = 0; i < calls.size(); ++i) {
+          StackMethod* callee = calls[i].callee;
+          if(!callee || callee->IsVirtual() || !callee->GetClass()) {
+            continue;
+          }
+          if(is_self[Find(calls[i].receiver)]) {
+            own.hands_self_to.push_back(callee);
+          }
+          ClassSet known;
+          ClassesOf(calls[i].receiver, known);
+          for(uint8_t k = 0; k < known.n; ++k) {
+            if(!Related(known.ids[k], callee->GetClass()->GetId())) {
+              context->receiver_checks.push_back({ method, calls[i].ip, callee, known.ids[k] });
+            }
+          }
+        }
+      }
+      return true;
+    }
+
     inline void Builder::Run() {
       map->ok = true;
       map->height.assign(count, -1);
@@ -1777,6 +2221,12 @@
         // the callers were held to the declarations (MTHD_CALL)
         if(verify) {
           Made(entry.back(), params[i].kind, params[i].shape);
+          if(context) {
+            const VerifyContext::Signature& own = SignatureOf(method);
+            if(i < own.param_class.size()) {
+              Claim(entry.back(), own.param_class[i]);
+            }
+          }
         }
       }
       // The and/or slot holds what the frame was entered with, zero, until a path

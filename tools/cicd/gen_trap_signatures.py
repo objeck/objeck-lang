@@ -108,11 +108,12 @@ def frame_traps():
     bodies = {}
     for m in re.finditer(r"\nbool TrapProcessor::(\w+)\(StackProgram\* program, size_t\* inst,[^)]*\)\s*\{", text):
         bodies[m.group(1)] = text[m.end():text.index("\n}\n", m.end())]
-    out = set()
+    out = {}
     for trap, handler in handler_of.items():
         body = bodies.get(handler, "")
         if re.search(r"\bframe\b", body) or re.search(r"\binst\b", body):
-            out.add(trap)
+            # True where it is the instance the handler reads, not only the frame
+            out[trap] = bool(re.search(r"\binst\b", body))
     return out
 
 
@@ -300,10 +301,10 @@ def build_rows(seen, shapes, ids):
         rec = seen.get(trap)
         if trap in LITERAL_COPIES:
             kind = LITERAL_COPIES[trap]
-            rows.append((trap, True, 3, 1, (kind, set(), False), [(kind, set(), False), (W_INT, set(), False)], None))
+            rows.append((trap, True, 3, 1, (kind, set(), False), [(kind, set(), False), (W_INT, set(), False)], None, False))
             continue
         if trap == "CPY_CHAR_STR_ARYS":
-            rows.append((trap, True, -1, 1, (W_OBJ_ARY, set(), False), [], None))
+            rows.append((trap, True, -1, 1, (W_OBJ_ARY, set(), False), [], None, False))
             continue
         shape = shapes[trap]
         count = shape["count"]
@@ -331,7 +332,7 @@ def build_rows(seen, shapes, ids):
         contexts = None
         if trap in frames:
             contexts = sorted(rec.contexts) if rec else []
-        rows.append((trap, shape["op"] == "TRAP_RTRN", count, pushes, result, args, contexts))
+        rows.append((trap, shape["op"] == "TRAP_RTRN", count, pushes, result, args, contexts, frames.get(trap, False)))
     return rows, problems
 
 
@@ -351,15 +352,17 @@ def write_header(rows, images):
                "  static const int MAX_ARGS = %d;\n\n"
                "  // 'count' is the instruction's operand (the id and the arguments), -1 where it\n"
                "  // varies; 'contexts' names the methods a trap that reads its caller's frame or\n"
-               "  // instance may stand in, 'A|B', nullptr for a trap that reads the operand stack alone\n"
+               "  // instance may stand in, 'A|B', nullptr for a trap that reads the operand stack alone;\n"
+               "  // 'instance' is set where it is the method's instance the handler reads\n"
                "  struct Row {\n    long long id;\n    const wchar_t* name;\n    bool rtrn;\n    short count;\n    unsigned char pushes;\n"
-               "    Arg result;\n    Arg args[MAX_ARGS];\n    const wchar_t* contexts;\n  };\n\n"
+               "    Arg result;\n    Arg args[MAX_ARGS];\n    const wchar_t* contexts;\n    bool instance;\n  };\n\n"
                "  // sorted by id\n  static const Row rows[] = {\n" % (images, MAX_ARGS))
-    for (trap, rtrn, count, pushes, result, args, contexts) in rows:
+    for (trap, rtrn, count, pushes, result, args, contexts, instance) in rows:
         cells = ", ".join(arg_text(*a) for a in args) if args else ""
         ctx = "nullptr" if contexts is None else 'L"%s"' % "|".join(contexts)
-        out.append("    { instructions::%s, L\"%s\", %s, %d, %d, %s, { %s }, %s },\n" %
-                   (trap, trap, "true" if rtrn else "false", count, pushes, arg_text(*result), cells, ctx))
+        out.append("    { instructions::%s, L\"%s\", %s, %d, %d, %s, { %s }, %s, %s },\n" %
+                   (trap, trap, "true" if rtrn else "false", count, pushes, arg_text(*result), cells, ctx,
+                    "true" if instance else "false"))
     out.append("  };\n\n  static const int NUM_ROWS = sizeof(rows) / sizeof(rows[0]);\n\n"
                "  inline const Row* Find(long long id) {\n    int low = 0;\n    int high = NUM_ROWS - 1;\n"
                "    while(low <= high) {\n      const int mid = (low + high) / 2;\n      if(rows[mid].id == id) {\n        return &rows[mid];\n      }\n"

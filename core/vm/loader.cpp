@@ -1745,4 +1745,31 @@ void Loader::Verify()
       }
     }
   }
+
+  // A method that reads its instance is called on an instance of its class. Which
+  // methods do is known now: one that only hands the instance on reads it when
+  // the method it hands it to does.
+  for(bool changed = true; changed; ) {
+    changed = false;
+    for(std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator at = context.methods.begin(); at != context.methods.end(); ++at) {
+      if(at->second.reads_self) {
+        continue;
+      }
+      for(size_t i = 0; i < at->second.hands_self_to.size(); ++i) {
+        std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator to = context.methods.find(at->second.hands_self_to[i]);
+        if(to != context.methods.end() && to->second.reads_self) {
+          at->second.reads_self = true;
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+  for(size_t i = 0; i < context.receiver_checks.size(); ++i) {
+    const VerifyContext::ReceiverCheck& check = context.receiver_checks[i];
+    std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator callee = context.methods.find(check.callee);
+    if(callee != context.methods.end() && callee->second.reads_self) {
+      VerifyFailed(nullptr, check.caller, check.ip, L"a method called on an object of another class");
+    }
+  }
 }
