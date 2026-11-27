@@ -45,6 +45,7 @@ class FormatterRegressionTest {
 		TestCommentsAndBlankLines();
 		TestLineBreaksKept();
 		TestEveryCharacterIsRead();
+		TestFormatterReuse();
 
 		p := @passed;
 		f := @failed;
@@ -494,6 +495,32 @@ class FormatterRegressionTest {
 		Check("Numbers: a subtraction after ')' and ']'", result->Find("o := (a) - 1;") > -1 & result->Find("p := v[0] - 1;") > -1);
 		Check("Numbers: an operator and a sign stay two tokens", result->Find("q := a + -1;") > -1);
 		Check("Numbers: formatting the result again changes nothing", FormatsOnce(result));
+	}
+
+	# One CodeFormatter formatting two sources must give each the answer a fresh one
+	# gives it: the second call began with the first's output and its lookahead token.
+	function : TestFormatterReuse() ~ Nil {
+		"
+>> One formatter, several sources..."->PrintLine();
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		first := "class A{function:Main(args:String[])~Nil{a:=1;}}";
+		second := "class B{function:Run()~Nil{b:=2;c:=b+1;}}";
+
+		formatter := CodeFormatter->New(options);
+		one := formatter->Format(first);
+		two := formatter->Format(second);
+		again := formatter->Format(first);
+
+		Check("Reuse: the first call", one <> Nil & one->Equals(CodeFormatter->New(options)->Format(first)));
+		Check("Reuse: the second call equals a fresh formatter's", two <> Nil & two->Equals(CodeFormatter->New(options)->Format(second)));
+		Check("Reuse: the second call holds nothing of the first", two <> Nil & two->Find("class A") < 0 & two->StartsWith("class B"));
+		Check("Reuse: the first source again gives the first answer", again <> Nil & again->Equals(one));
+		Check("Reuse: an empty source after a source gives nothing", formatter->Format("")->IsEmpty());
 	}
 
 	# Every operator the compiler reads is read here, and none is made or broken
