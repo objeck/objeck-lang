@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: Expected '{'
+# EXPECT_ERROR_COUNT: 1
+#~
+A select label is one constant, not an expression: a concatenation is refused by
+the parser. This already held; the test keeps it so (the other bad_select_label_*
+tests cover the label forms that used to compile and match nothing).
+~#
+class BadSelectLabelConcatenation {
+	function : Main(args : String[]) ~ Nil {
+		v := "b";
+		n := 2;
+		r := "other";
+		select(v) {
+			label "a" + "b" { r := "concatenated"; }
+			label "c" { r := "c"; }
+			other { r := "other"; }
+		};
+		r->PrintLine();
+	}
+}
