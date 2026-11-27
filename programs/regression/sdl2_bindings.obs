@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: SDL video could not start with the dummy driver
 # EXTRA_LIBS: sdl2
 #~
 Regression test for the Game.SDL2 bindings added to close the 2026-10 gap

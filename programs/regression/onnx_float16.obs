@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # float16, bfloat16 and 8-bit element types in API.Onnx.
 #

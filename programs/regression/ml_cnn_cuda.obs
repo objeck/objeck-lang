@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no CUDA device
 # EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
 #~
 System.ML.Cnn on the GPU, the optional CUDA backend: unit tests.

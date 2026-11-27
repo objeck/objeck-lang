@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no objeck_sqlite_test data source
 #~
 # ODBC SQLite Integration Test
 # Tests live database operations against an in-memory SQLite database:

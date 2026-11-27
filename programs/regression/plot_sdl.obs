@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: SDL video could not start with the dummy driver
 # EXTRA_LIBS: plot_sdl,plot,sdl2,gen_collect
 #~
 System.Plot.SDL: the SDL2 backend, headless.

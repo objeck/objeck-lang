@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # A failed ONNX session is detectable, and inference refuses instead of aborting.
 #

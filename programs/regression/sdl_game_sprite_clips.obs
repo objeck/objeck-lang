@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: SDL video could not start with the dummy driver
 # EXTRA_LIBS: gen_collect,sdl2,sdl_game
 #~
 Game.Framework: AnimatedImageSprite->AddClips cuts frames of the requested height.

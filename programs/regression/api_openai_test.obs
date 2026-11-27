@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: No OpenAI API key
 # EXTRA_LIBS: openai,net,net_server,misc
 use API.OpenAI;
 

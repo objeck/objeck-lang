@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: runtime.process.handles is not available here
 use System.Concurrency;
 
 # Joining a thread must release it. On Windows every thread a program started kept a kernel

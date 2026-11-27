@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: Ollama not running
 # EXTRA_LIBS: ollama,net,json,cipher,misc
 use API.Ollama, Collection;
 

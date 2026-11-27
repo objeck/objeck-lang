@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_crypto is not deployed
 #~
 # Objects a native library returns must be RECLAIMED, not merely reachable.
 #

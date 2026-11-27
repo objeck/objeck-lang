@@ -21,9 +21,14 @@ this script is what makes "all green" mean "all tests ran": it fails unless, for
     log (regression_<pass>.log, which the runner writes a "Running: <test>..." line and one
     PASS/SKIP/FAIL line per test into) is read, so a shard that ran other tests, the same test
     twice, or nothing, does not pass on its counts alone, and
-  * a test is skipped only if its source says it can be: a test that prints "SKIP:" when the
-    machine lacks what it needs (an API key, an OpenGL context, a GPU, a model file) has that
-    string in it. Any other test skipped is a problem, and so is a pass in which no test passed.
+  * a test is skipped only if it declares that it can be: a "# SKIP_ALLOWED: <reason>" line in
+    its first lines, which a test that prints "SKIP:" when the machine lacks what it needs (an
+    API key, an OpenGL context, a GPU, a model file) carries. The directive is the declaration
+    and the reason is required; a "SKIP:" that appears only in a comment, or in a helper the
+    test calls, declares nothing. --lint-skips checks the declarations against the sources (a
+    test that prints "SKIP:" must declare it, a declaration needs a print to go with it), so a
+    stray or stale one fails in the pull request, not only in the Windows run. Any other test
+    skipped is a problem, and so is a pass in which no test passed.
 
 It writes a per-pass table to $GITHUB_STEP_SUMMARY when that is set.
 
@@ -54,14 +59,50 @@ def read_counts(path):
     return out
 
 
+SKIP_DIRECTIVE = re.compile(r"^#[ 	]*SKIP_ALLOWED:[ 	]*(\S.*?)[ 	]*$")
+HEADER_LINES = 20
+
+
+def skip_declaration(path):
+    """(reason or None, whether a line of code prints the runner's skip marker).
+
+    The reason is the one of a "# SKIP_ALLOWED: <reason>" line among the file's first lines.
+    A comment line does not print anything, so '"SKIP:' there is not a print."""
+    reason = None
+    prints = False
+    with open(path, encoding="utf-8-sig", errors="replace") as f:
+        for n, line in enumerate(f):
+            text = line.strip()
+            if n < HEADER_LINES and reason is None:
+                m = SKIP_DIRECTIVE.match(text)
+                if m:
+                    reason = m.group(1)
+            if '"SKIP:' in text and not text.startswith("#"):
+                prints = True
+    return reason, prints
+
+
 def may_skip(tests_dir):
-    """Names of the tests whose source can print the runner's skip marker."""
-    out = set()
+    """{name: reason} of the tests that declare they can skip."""
+    out = {}
     for path in glob.glob(os.path.join(tests_dir, "*.obs")):
-        with open(path, encoding="utf-8", errors="replace") as f:
-            if '"SKIP:' in f.read():
-                out.add(os.path.splitext(os.path.basename(path))[0])
+        reason, _ = skip_declaration(path)
+        if reason:
+            out[os.path.splitext(os.path.basename(path))[0]] = reason
     return out
+
+
+def lint_skips(tests_dir):
+    """Problems with the skip declarations in the sources themselves."""
+    problems = []
+    for path in sorted(glob.glob(os.path.join(tests_dir, "*.obs"))):
+        name = os.path.basename(path)
+        reason, prints = skip_declaration(path)
+        if prints and not reason:
+            problems.append("%s prints SKIP: but has no '# SKIP_ALLOWED: <reason>' in its first %d lines" % (name, HEADER_LINES))
+        if reason and not prints:
+            problems.append("%s declares SKIP_ALLOWED but no line of it prints SKIP:" % name)
+    return problems
 
 
 RUNNING = re.compile(r"^Running: (.+)\.\.\.$")
@@ -92,7 +133,7 @@ def read_log(path):
     return order, status
 
 
-def check(platform, shards, names, shards_dir, skippable=()):
+def check(platform, shards, names, shards_dir, skippable={}):
     """Return (markdown, problems). names: the tests in the suite, without .obs."""
     total = len(names)
     md = []
@@ -158,18 +199,29 @@ def check(platform, shards, names, shards_dir, skippable=()):
                 problems.append("%s pass: %s was skipped, and nothing in it says it can be" % (p, n))
         skipped = sorted(n for n, v in seen.items() if v[1] == "SKIP")
         if skipped:
-            md.append("Skipped (each can print SKIP: when the machine lacks something): " + ", ".join(skipped))
+            md.append("Skipped (each declares SKIP_ALLOWED): " + ", ".join("%s (%s)" % (n, skippable.get(n, "?")) for n in skipped))
             md.append("")
     return "\n".join(md), problems
 
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--platform", required=True)
-    ap.add_argument("--shards", type=int, required=True)
+    ap.add_argument("--platform", default="")
+    ap.add_argument("--lint-skips", action="store_true", help="only check the SKIP_ALLOWED declarations in --tests-dir")
+    ap.add_argument("--shards", type=int, default=0)
     ap.add_argument("--tests-dir", required=True)
-    ap.add_argument("--shards-dir", required=True)
+    ap.add_argument("--shards-dir", default="")
     a = ap.parse_args(argv)
+    if a.lint_skips:
+        bad = lint_skips(a.tests_dir)
+        for x in bad:
+            print("  - " + x)
+        if bad:
+            return 1
+        print("skip declarations agree with the %d test(s) that declare them" % len(may_skip(a.tests_dir)))
+        return 0
+    if not (a.platform and a.shards and a.shards_dir):
+        ap.error("--platform, --shards and --shards-dir are required")
 
     names = sorted(os.path.splitext(os.path.basename(x))[0] for x in glob.glob(os.path.join(a.tests_dir, "*.obs")))
     if not names:

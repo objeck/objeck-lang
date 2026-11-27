@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: a CUDA device is present, so the fallback is not exercised (see ml_cnn_cuda.obs)
 # EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
 #~
 System.ML.Cnn without a GPU: what a machine that has no CUDA library, no NVIDIA driver or no GPU must see.

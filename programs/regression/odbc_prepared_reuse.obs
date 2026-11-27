@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no objeck_sqlite_test data source
 #~
 # A Database.ODBC ParameterStatement runs as many times as its caller likes.
 #

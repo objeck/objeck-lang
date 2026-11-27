@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # IO binding on the GPU: the checks of onnx_iobinding.obs, repeated on ep=cuda and
 # ep=tensorrt, plus a comparison of each with the CPU's answer.

@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # BertEmbedder: sentence embeddings from a BERT-shaped ONNX model, checked
 # against the model's closed form.
