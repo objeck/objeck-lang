@@ -30,6 +30,17 @@ Each direction must:
   print the program's version and the runtime's version
   say "recompile"
 The control -- the unpatched .obe -- must still run.
+
+The magic number follows the version and names the file's layout (core/shared/
+version.in). It moves when a record gains a field, and two builds of one
+toolchain version can then disagree about it: a developer's .obe or .obl from
+before the change, read by a build from after it. Such a file is refused with
+a message of the same kind, by obr and by obc's linker:
+  exit non-zero, before a field of the file is taken for another
+  name the file
+  print the file's magic and the one this build reads
+  say to recompile (a program) or rebuild (a library)
+A magic that was never a program's or a library's is still an unknown file.
 """
 
 import os
@@ -132,17 +143,31 @@ def main():
             expected_direction = "older than this runtime" if delta < 0 else "older than the program"
             check("%s: the message says which side is stale" % tag, expected_direction in out, "out=%r" % out)
 
-        # The magic follows VER_NUM. Only the current values are accepted, so a file with a
-        # superseded magic (0xffbe was an .obe before Int[] and object arrays had distinct
-        # opcodes; 0xffb9 an .obl) is refused as not ours, on the normal fatal path.
+        # The magic follows VER_NUM. Only the current values are accepted. The layout
+        # before this one carried the magic one lower (version.in lists them), which is
+        # what a file left from an earlier build of this version has.
         magic = struct.unpack("<i", stream[4:8])[0]
-        for label, other in (("superseded program magic", 0xffbe), ("a library's magic", 0xffba)):
-            patched = os.path.join(work, "probe_magic_%x.obe" % other)
-            write_obe(patched, stream[:4] + struct.pack("<i", other) + stream[8:])
-            code, out = run([obr, patched], env, work)
-            tag = "%s (0x%x, this toolchain writes 0x%x)" % (label, other, magic)
-            check("%s: refused, non-zero exit" % tag, code != 0, "exit=%d out=%r" % (code, out))
-            check("%s: the program never ran" % tag, "PROBE RAN" not in out, "out=%r" % out)
+        superseded = magic - 1
+        patched = os.path.join(work, "probe_magic_%x.obe" % superseded)
+        write_obe(patched, stream[:4] + struct.pack("<i", superseded) + stream[8:])
+        code, out = run([obr, patched], env, work)
+        tag = "the layout before this one (0x%x, this toolchain writes 0x%x)" % (superseded, magic)
+        check("%s: refused, non-zero exit" % tag, code != 0, "exit=%d out=%r" % (code, out))
+        check("%s: the program never ran" % tag, "PROBE RAN" not in out, "out=%r" % out)
+        check("%s: the message names the file" % tag, os.path.basename(patched) in out, "out=%r" % out)
+        check("%s: the message says the layout differs, not that the file is unknown" % tag,
+              "File layout mismatch" in out and "Unknown file type" not in out, "out=%r" % out)
+        check("%s: the message names the file's magic and the runtime's" % tag,
+              "0x%x" % superseded in out and "0x%x" % magic in out, "out=%r" % out)
+        check("%s: the message says to recompile" % tag,
+              re.search(r"recompile", out, re.IGNORECASE) is not None, "out=%r" % out)
+
+        # a magic that was never a program's or a library's: an unknown file, as before
+        patched = os.path.join(work, "probe_magic_unknown.obe")
+        write_obe(patched, stream[:4] + struct.pack("<i", 0x1234) + stream[8:])
+        code, out = run([obr, patched], env, work)
+        check("a magic that is no layout of ours (0x1234): refused as an unknown file",
+              code != 0 and "Unknown file type" in out and "PROBE RAN" not in out, "exit=%d out=%r" % (code, out))
 
         lib_src = os.path.join(work, "probe_lib.obs")
         with open(lib_src, "w") as handle:
@@ -170,7 +195,17 @@ def main():
 
         lib_stream = read_obe(lib)
         lib_magic = struct.unpack("<i", lib_stream[4:8])[0]
-        for label, other in (("superseded library magic", 0xffb9), ("an executable's magic", 0xffbf)):
+        check("a library's magic is not a program's (0x%x, 0x%x)" % (lib_magic, magic), lib_magic != magic)
+
+        # a library given to obr is named as one (it carries the library magic this toolchain
+        # writes); under a program's name, since obr adds '.obe' to any other
+        lib_as_program = os.path.join(work, "probe_lib_as_program.obe")
+        shutil.copy(lib, lib_as_program)
+        code, out = run([obr, lib_as_program], env, work)
+        check("obr given a library says it is a library", code != 0 and "it is a library (.obl)" in out,
+              "exit=%d out=%r" % (code, out))
+
+        def link_with(label, other):
             patched = os.path.join(work, "probe_lib_%x.obl" % other)
             write_obe(patched, lib_stream[:4] + struct.pack("<i", other) + lib_stream[8:])
             shutil.copy(patched, os.path.join(probe_libs, "probe_lib.obl"))
@@ -179,6 +214,16 @@ def main():
             check("%s: refused, non-zero exit" % tag, code != 0, "exit=%d out=%r" % (code, out))
             check("%s: the message names the file" % tag, "probe_lib.obl" in out, "out=%r" % out)
             check("%s: the compiler says why, not just exits" % tag, "Unable to" in out, "out=%r" % out)
+            return tag, out
+
+        tag, out = link_with("the library layout before this one", lib_magic - 1)
+        check("%s: the message names the file's magic and the toolchain's" % tag,
+              "0x%x" % (lib_magic - 1) in out and "0x%x" % lib_magic in out, "out=%r" % out)
+        check("%s: the message says to rebuild the library" % tag,
+              re.search(r"rebuild", out, re.IGNORECASE) is not None, "out=%r" % out)
+        tag, out = link_with("an executable's magic", magic)
+        check("%s: the message says it is an executable" % tag, "executable" in out, "out=%r" % out)
+        link_with("a magic that is no layout of ours", 0x1234)
 
     print("\n%d failure(s)" % len(failures))
     return 1 if failures else 0

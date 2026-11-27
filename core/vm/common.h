@@ -1266,6 +1266,12 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   bool is_lambda;
+  // From the method's record, for 'obr --mcp' (Loader::SelectMcpEntry): whether the
+  // method is a function, which can be started without an instance, and whether it is
+  // the entry the compiler wrote for a class with tagged functions. Nothing that runs
+  // a method reads either.
+  bool is_function;
+  bool is_mcp_entry;
   StackInstr* instrs;
   int instr_count;
   long param_count;
@@ -1298,6 +1304,8 @@ class StackMethod {
     is_virtual = v;
     has_and_or = h;
     is_lambda = l;
+    is_function = false;
+    is_mcp_entry = false;
     native_code.store(nullptr, std::memory_order_relaxed);
     native_entry.store(nullptr, std::memory_order_relaxed);
     jit_call_count.store(0, std::memory_order_relaxed);
@@ -1346,6 +1354,20 @@ class StackMethod {
 
   inline bool HasAndOr() {
     return has_and_or;
+  }
+
+  inline bool IsFunction() const {
+    return is_function;
+  }
+
+  inline bool IsMcpEntry() const {
+    return is_mcp_entry;
+  }
+
+  // what the method's record says of it (Loader::LoadMethods)
+  void SetEntryKind(bool function, bool mcp_entry) {
+    is_function = function;
+    is_mcp_entry = mcp_entry;
   }
 
   inline bool IsLambda() {

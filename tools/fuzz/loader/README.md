@@ -75,7 +75,12 @@ a second per worker, which is where mutation pays.
 
 A refused load frees what it had read, so leak detection stays on (the
 commands above turn it off only to keep fork mode's jobs fast. Seeds carry the toolchain version they were compiled with; rebuild them
-after a version bump, or every input is refused at the version check.
+after a version bump, or every input is refused at the version check. The same goes for a change
+of the file's layout (the magic number, `core/shared/version.in`): rebuild the seeds, and
+regenerate the regression inputs below, which the test stamps with the current version and
+magic and would otherwise read with every field after the change taken for its neighbour.
+`obe_image.py` holds the layout of a method record's one-byte fields in one place
+(`METHOD_FLAGS`); add a new field there.
 
 ## Findings
 

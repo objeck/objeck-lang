@@ -104,7 +104,24 @@ void Loader::LoadImage()
     break;
 
   default:
-    error << L"Unknown file type for '" << filename << L"'." << std::endl;
+    // The version is this toolchain's and the magic is one a program or a library
+    // has carried, but not the one this runtime reads: the record layout changed
+    // between two builds of the same version (a development build; a release
+    // never changes the layout without the version). Reading on would take each
+    // field for its neighbour, so the file is refused, by name and with both
+    // numbers, as a file of another version is above.
+    if(IS_IMAGE_MAGIC(magic_num)) {
+      error << L"File layout mismatch reading " << filename << std::endl
+            << std::hex
+            << L"\tthe file's layout is        0x" << magic_num << std::endl
+            << L"\tthis runtime reads programs 0x" << MAGIC_NUM_EXE << std::endl
+            << std::dec
+            << L"\t-> the file was written by another build of toolchain " << VER_NUM << L". Recompile its" << std::endl
+            << L"\t   source with this toolchain's obc." << std::endl;
+    }
+    else {
+      error << L"Unknown file type for '" << filename << L"'." << std::endl;
+    }
     LoadFailed();
   }
 
@@ -643,94 +660,77 @@ bool Loader::ReadMcpLaunch()
   return true;
 }
 
-// True when 'entry' is the name the compiler gives the entry it writes for 'class_name':
-// "McpMain_" and the class's full name with every character that is not a letter or a digit
-// written as '_' (Parser::GenerateMcpTools). A character outside ASCII may stand as itself or as
-// '_': which of the two the compiler wrote depended on its locale.
-static bool IsGeneratedMcpEntryName(const std::wstring& entry, const std::wstring& class_name)
+// How a method's name ends when its one parameter is the argument array, as Main's is:
+// "Class:McpMain:o.System.String*,".
+static const std::wstring MCP_ENTRY_PARAMETERS = L":o.System.String*,";
+
+// True for the name of a method called McpMain that takes the argument array,
+// "Class:McpMain:o.System.String*,": the entry a program writes itself. The name is
+// the language's convention for it, as 'Main' is for the program's start; whether the
+// method can be started is in its record (SelectMcpEntry).
+static bool IsProgramMcpEntryName(const std::wstring& name)
 {
-  const std::wstring prefix = L"McpMain_";
-  if(entry.size() != prefix.size() + class_name.size() || entry.compare(0, prefix.size(), prefix) != 0) {
-    return false;
-  }
-  for(size_t i = 0; i < class_name.size(); ++i) {
-    const wchar_t have = entry[prefix.size() + i];
-    const wchar_t want = class_name[i];
-    const bool ascii_alnum = (want >= L'0' && want <= L'9') || (want >= L'A' && want <= L'Z') || (want >= L'a' && want <= L'z');
-    if(have != want && (ascii_alnum || have != L'_')) {
-      return false;
-    }
-  }
-  return true;
+  const size_t colon = name.find(L':');
+  return colon != std::wstring::npos && name.compare(colon + 1, std::wstring::npos, L"McpMain" + MCP_ENTRY_PARAMETERS) == 0;
 }
 
-// Starts the program at its McpMain(args : String[]) instead of its Main: the function the compiler writes
-// into a class that has an '@tool', '@resource' or '@prompt' function, or one the program defines itself
-// (which wins: it can register several classes). Exactly one must exist, because a second would be a
-// second server.
+// Starts the program at its MCP entry instead of its Main. Exactly one must be found,
+// because a second would be a second server:
 //
-// An entry is taken only when it is what the initialization code can call: a method with a body (not a
-// virtual declaration) that takes the argument array and returns Nil. The name alone used to decide, so
-// a virtual 'McpMain' with no body, or one that returns a value, was started. Whether it is a function or
-// an instance method is not in a program file (a method record carries no such flag), so that part is
-// the compiler's, and only in a program 'obr --mcp' can serve: obc refuses a McpMain(args : String[])
-// that is not 'function ... ~ Nil' when the declaring file has 'use API.MCP' or some class of the
-// program has an '@tool', '@resource' or '@prompt' function (Parser::RefuseMcpEntry,
-// Parser::ReportMcpEntries). In any other program such a method is an ordinary method and is
-// compiled as written. A file not written by obc can still name an instance method here; it is started
-// without an instance and its first use of one is the VM's Nil-dereference error.
+//   * 'function : McpMain(args : String[]) ~ Nil', the entry a program writes itself.
+//     It wins over the compiler's: it can register several classes.
+//   * otherwise the entry the compiler wrote into a class that has an '@tool',
+//     '@resource' or '@prompt' function (Parser::GenerateMcpTools), which the method's
+//     record marks as such (StackMethod::IsMcpEntry).
 //
-// A generated entry is told from a function the program wrote by all the compiler gives it: the name
-// "McpMain_<its own class>" and the McpTools(McpService) the compiler writes beside it. The prefix
-// "McpMain_" alone used to decide, so a program's own 'McpMain_Test(args : String[])' counted as a
-// second server and the program was refused.
+// Nothing here goes by the shape of a name. The compiler's entry used to be recognized
+// by its name, "McpMain_<its own class>", and by the McpTools(McpService) written beside
+// it, and a class the program wrote with those two names (a helper that registers tools
+// by hand) was counted as a second server: 'obr --mcp' refused a program that has one.
+// Before that the prefix "McpMain_" alone decided. A method the compiler did not write
+// carries no mark, whatever it is called.
+//
+// A McpMain(args : String[]) is started only when it is what the initialization code
+// can call: a function, with a body, that returns Nil. A method's record says each of
+// the three (it did not say function from method, and an instance method named McpMain
+// was started with no instance: its first use of '@self' was the VM's Nil-dereference
+// error). One that is not is named in the refusal, with the reason. obc refuses the
+// same three in a program it knows to be a server (the declaring file has 'use API.MCP'
+// or some class has a tagged function: Parser::RefuseMcpEntry, ReportMcpEntries), where the
+// line number is; this is what a program that is not one, or a file obc did not write,
+// is told.
 void Loader::SelectMcpEntry()
 {
   StackClass** classes = program->GetClasses();
   const int count = (int)program->GetClassNumber();
-  std::vector<std::pair<int, int> > own;        // a function the program wrote: McpMain
-  std::vector<std::pair<int, int> > generated;  // the compiler's: McpMain_<class>
+  std::vector<std::pair<int, int> > own;        // the program's McpMain
+  std::vector<std::pair<int, int> > generated;  // the compiler's, one for each class with tagged functions
   std::vector<std::wstring> own_where;
   std::vector<std::wstring> generated_where;
-  std::vector<std::wstring> unusable;           // named as an entry, but not one: where and why
-  const std::wstring params = L":o.System.String*,";
+  std::vector<std::wstring> unusable;           // a McpMain that cannot be started: where and why
   for(int i = 0; i < count; ++i) {
     StackClass* cls = classes[i];
     if(!cls) {
       continue;
     }
     StackMethod** methods = cls->GetMethods();
-    const std::wstring tools_name = cls->GetName() + L":McpTools:o.API.MCP.McpService,";
-    bool has_tools = false;
-    for(int j = 0; j < cls->GetMethodCount(); ++j) {
-      if(methods[j] && methods[j]->GetName() == tools_name) {
-        has_tools = true;
-        break;
-      }
-    }
     for(int j = 0; j < cls->GetMethodCount(); ++j) {
       StackMethod* method = methods[j];
       // a hole in the method table (never from a well-formed .obe) has no name or id to offer
       if(!method) {
         continue;
       }
-      const std::wstring& name = method->GetName();
-      // "Class:McpMain:o.System.String*," and "Class:McpMain_Class:o.System.String*,", a function taking the argument array
-      if(name.size() <= params.size() || name.compare(name.size() - params.size(), params.size(), params) != 0) {
+      const bool is_generated = method->IsMcpEntry();
+      if(!is_generated && !IsProgramMcpEntryName(method->GetName())) {
         continue;
       }
-      const size_t colon = name.find(L':');
-      if(colon == std::wstring::npos) {
-        continue;
-      }
-      const std::wstring entry = name.substr(colon + 1, name.size() - params.size() - colon - 1);
-      const bool is_own = entry == L"McpMain";
-      if(!is_own && !(has_tools && IsGeneratedMcpEntryName(entry, cls->GetName()))) {
-        continue;
-      }
+      // LoadMethods held a marked entry to all of these but the body, which it had not read
       const wchar_t* why = nullptr;
       if(method->IsVirtual() || method->GetInstructionCount() < 1) {
         why = L"has no body";
+      }
+      else if(!method->IsFunction()) {
+        why = L"is a method, which needs an instance";
       }
       else if(method->GetParamCount() != 1) {
         why = L"does not take the one argument array";
@@ -741,13 +741,13 @@ void Loader::SelectMcpEntry()
       if(why) {
         unusable.push_back(cls->GetName() + L" (it " + why + L")");
       }
-      else if(is_own) {
-        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
-        own_where.push_back(cls->GetName());
-      }
-      else {
+      else if(is_generated) {
         generated.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
         generated_where.push_back(cls->GetName());
+      }
+      else {
+        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
+        own_where.push_back(cls->GetName());
       }
     }
   }
@@ -827,6 +827,8 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 #endif
 
   StackMethod** methods = new StackMethod*[number]();
+  // whether a method of this class is marked as the compiler's MCP entry
+  bool has_mcp_entry = false;
   try {
     for(int i = 0; i < number; ++i) {
       // id
@@ -846,12 +848,45 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       const bool has_and_or = ReadByte() != 0;
       // is lambda expression
       const bool is_lambda = ReadByte() != 0;
+      // Is a function; is the 'obr --mcp' entry the compiler wrote for a class with
+      // tagged functions (IntermediateMethod::Write). SelectMcpEntry chooses what to
+      // start by these two, so each is 0 or 1 and nothing else: a value the compiler
+      // never writes is not given a meaning here.
+      const int function_flag = ReadByte();
+      const int mcp_entry_flag = ReadByte();
+      if((function_flag != 0 && function_flag != 1) || (mcp_entry_flag != 0 && mcp_entry_flag != 1)) {
+        error << L">>> Invalid bytecode: method flag out of range <<<" << std::endl;
+        LoadFailed();
+      }
+      const bool is_function = function_flag == 1;
+      const bool is_mcp_entry = mcp_entry_flag == 1;
       // name
       const std::wstring name = ReadString();
       // return
       const std::wstring rtrn_name = ReadString();
       // params
       const int params = static_cast<int>(ReadInt());
+      // The compiler's entry is the one shape the initialization code can call: a
+      // function that takes the argument array and returns Nil, one to a class
+      // (Parser::GenerateMcpTools). A record marked as an entry that is anything else
+      // was not written by the compiler; it is refused here, with or without --mcp,
+      // rather than started as a method with no instance or with a value left on the
+      // stack. (That it has a body is known once its instructions are read, and is
+      // checked when an entry is chosen.)
+      if(is_mcp_entry) {
+        const wchar_t* why = nullptr;
+        if(!is_function || is_virtual || is_lambda || params != 1 || rtrn_name != L"n" || !EndsWith(name, MCP_ENTRY_PARAMETERS)) {
+          why = L"marked as its class's MCP entry, but not a function that takes the argument array and returns Nil";
+        }
+        else if(has_mcp_entry) {
+          why = L"a second MCP entry in its class";
+        }
+        if(why) {
+          error << L">>> Invalid bytecode: " << name << L": " << why << L" <<<" << std::endl;
+          LoadFailed();
+        }
+        has_mcp_entry = true;
+      }
       // space
       const int mem_size = static_cast<int>(ReadInt());
       // read type parameters
@@ -940,6 +975,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       // stored before its statements load, so a failure there frees it too
       methods[id] = mthd;
       mthd->SetReturnName(rtrn_name);
+      mthd->SetEntryKind(is_function, is_mcp_entry);
       // load statements
 #ifdef _DEBUG
       std::wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='"

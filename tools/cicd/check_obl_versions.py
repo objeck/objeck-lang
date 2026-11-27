@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Every core/lib/*.obl in the tree must carry the toolchain version in version.h.
+"""Every core/lib/*.obl in the tree must carry the toolchain version and the library
+magic number in version.h.
 
 (In CI the tree's libraries are the `libs` job's source build, downloaded over core/lib; while
 they are still committed they are checked too. The same check runs inside that job.)
@@ -12,6 +13,11 @@ is "Toolchain version mismatch reading lang.obl" on the first program anyone
 compiles. This catches it in the
 `tools` job, without building anything.
 
+The magic number after the version names the file's layout (MAGIC_NUM_LIB; version.in
+lists what each value changed). A change to the layout that forgets to rebuild and
+commit the libraries ships the same broken tree with the version unchanged, so the
+magic is held to version.h too.
+
 File layout, as Library::LoadFileBuffer reads it:
 
   [uncompressed_size:int32 LE][zlib stream]     current format
@@ -23,8 +29,8 @@ case the size just happens to end in 0x78. The inflated payload starts with
 the version int32 (little endian), then the magic number.
 
 Fails (exit 1) on any file that is unreadable, will not inflate, is too short,
-or carries another version, and when there is no version.h VER_NUM or no
-library to check: nothing is skipped silently.
+or carries another version or another magic, and when version.h has no VER_NUM or
+no MAGIC_NUM_LIB or there is no library to check: nothing is skipped silently.
 
   python3 tools/cicd/check_obl_versions.py          check the tree
   python3 tools/cicd/check_obl_versions.py --test   negative controls
@@ -43,18 +49,26 @@ def repo_root():
 
 
 def read_ver_num(root):
+    return read_version_h(root)[0]
+
+
+def read_version_h(root):
+    """(VER_NUM, MAGIC_NUM_LIB) from the tree's version.h."""
     path = os.path.join(root, "core", "shared", "version.h")
     with open(path, encoding="utf-8", errors="replace") as f:
         text = f.read()
     m = re.search(r"^\s*#\s*define\s+VER_NUM\s+(\d+)\s*$", text, re.M)
     if not m:
         raise ValueError("no '#define VER_NUM <number>' in " + path)
-    return int(m.group(1))
+    magic = re.search(r"^\s*#\s*define\s+MAGIC_NUM_LIB\s+(0[xX][0-9a-fA-F]+)\s*$", text, re.M)
+    if not magic:
+        raise ValueError("no '#define MAGIC_NUM_LIB <hex number>' in " + path)
+    return int(m.group(1)), int(magic.group(1), 16)
 
 
-def library_version(data):
-    """The VER_NUM a library's bytes carry. Raises ValueError when they are not
-    a library at all."""
+def library_header(data):
+    """The (VER_NUM, magic number) a library's bytes carry. Raises ValueError when
+    they are not a library at all."""
     if len(data) < 6:
         raise ValueError("only %d bytes" % len(data))
     zlib_at_4 = data[4] == 0x78 and (0x78 * 256 + data[5]) % 31 == 0
@@ -65,14 +79,14 @@ def library_version(data):
         raise ValueError("will not inflate (%s)" % e)
     if len(payload) < 8:
         raise ValueError("inflates to only %d bytes" % len(payload))
-    return struct.unpack_from("<i", payload, 0)[0]
+    return struct.unpack_from("<ii", payload, 0)
 
 
 def problems(root):
     """One line per problem, for every core/lib/*.obl under root."""
     bad = []
     try:
-        want = read_ver_num(root)
+        want, want_magic = read_version_h(root)
     except (OSError, ValueError) as e:
         return ["cannot read the toolchain version: %s" % e]
     files = sorted(glob.glob(os.path.join(root, "core", "lib", "*.obl")))
@@ -83,12 +97,14 @@ def problems(root):
         try:
             with open(path, "rb") as f:
                 data = f.read()
-            got = library_version(data)
+            got, got_magic = library_header(data)
         except (OSError, ValueError) as e:
             bad.append("%s: unreadable: %s" % (name, e))
             continue
         if got != want:
             bad.append("%s: built by toolchain %d, version.h says %d" % (name, got, want))
+        elif got_magic != want_magic:
+            bad.append("%s: file layout 0x%x, version.h says 0x%x (MAGIC_NUM_LIB)" % (name, got_magic, want_magic))
     return bad
 
 
@@ -102,7 +118,7 @@ def main():
               "(see the version-bump checklist: lang.obl and the rest of core/lib).")
         return 1
     count = len(glob.glob(os.path.join(root, "core", "lib", "*.obl")))
-    print("ok: %d libraries carry toolchain %d" % (count, read_ver_num(root)))
+    print("ok: %d libraries carry toolchain %d and library magic 0x%x" % ((count,) + read_version_h(root)))
     return 0
 
 
@@ -116,7 +132,10 @@ def _blob(ver, size_header=True, magic=0xffb9, body=b"x" * 64):
     return (struct.pack("<I", len(payload)) + comp) if size_header else comp
 
 
-def _tree(files, version_h="#define VER_NUM 2026103\n"):
+_VERSION_H = "#define MAGIC_NUM_LIB 0xffb9\n#define VER_NUM 2026103\n"
+
+
+def _tree(files, version_h=_VERSION_H):
     import tempfile
     root = tempfile.mkdtemp(prefix="oblver-")
     os.makedirs(os.path.join(root, "core", "shared"))
@@ -135,7 +154,7 @@ def _test():
     good = 2026103
     failures = 0
 
-    def case(label, files, expect_fail, version_h="#define VER_NUM 2026103\n", needle=None):
+    def case(label, files, expect_fail, version_h=_VERSION_H, needle=None):
         nonlocal failures
         root = _tree(files, version_h)
         try:
@@ -168,6 +187,10 @@ def _test():
          True, needle="stale.obl: built by toolchain %d" % (good - 1))
     case("newer library fails", {"a.obl": _blob(good + 1)}, True, needle="built by toolchain")
     case("older-format stale library fails", {"a.obl": _blob(good - 1, size_header=False)}, True)
+    case("a library in another layout fails, and is named",
+         {"a.obl": _blob(good), "layout.obl": _blob(good, magic=0xffb8)},
+         True, needle="layout.obl: file layout 0xffb8, version.h says 0xffb9")
+    case("a program's magic on a library fails", {"a.obl": _blob(good, magic=0xffbf)}, True, needle="file layout 0xffbf")
     case("garbage fails", {"a.obl": b"this is not a library at all"}, True, needle="unreadable")
     case("truncated zlib stream fails", {"a.obl": _blob(good)[:-12]}, True, needle="unreadable")
     case("empty file fails", {"a.obl": b""}, True, needle="unreadable")
@@ -175,7 +198,9 @@ def _test():
          needle="unreadable")
     case("no libraries fails", {}, True, needle="no core/lib/*.obl")
     case("version.h without VER_NUM fails", {"a.obl": _blob(good)}, True,
-         version_h="#define VERSION_STRING L\"1\"\n", needle="cannot read the toolchain version")
+         version_h="#define MAGIC_NUM_LIB 0xffb9\n#define VERSION_STRING L\"1\"\n", needle="cannot read the toolchain version")
+    case("version.h without MAGIC_NUM_LIB fails", {"a.obl": _blob(good)}, True,
+         version_h="#define VER_NUM 2026103\n", needle="MAGIC_NUM_LIB")
     case("missing version.h fails", {"a.obl": _blob(good)}, True, version_h=None,
          needle="cannot read the toolchain version")
 

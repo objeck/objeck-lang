@@ -765,6 +765,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
                                       method->HasAndOr(), method->IsLambda(), method->GetEncodedReturn(),  
                                       method->GetMethodType(), method->IsNative(), method->IsStatic(), 
                                       space, num_params, entries, imm_klass);
+  imm_method->SetMcpEntry(method->IsMcpEntry());
 
   // the parameters' names as written, and which take a default (#1244)
   {

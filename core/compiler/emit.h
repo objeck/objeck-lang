@@ -514,6 +514,9 @@ namespace backend {
     // copy in the caller's frame from this (ItermediateOptimizer::InlineMethod).
     int and_or_temp_type;
     bool is_lambda;
+    // the 'obr --mcp' entry the compiler wrote for a class with tagged functions;
+    // written into the method's record, in a program and in a library
+    bool is_mcp_entry;
     int instr_count;
     std::vector<IntermediateBlock*> blocks;
     IntermediateDeclarations* entries;
@@ -544,6 +547,7 @@ namespace backend {
       klass = k;
       instr_count = 0;
       and_or_temp_type = AND_OR_TEMP_UNKNOWN;
+      is_mcp_entry = false;
     }
 
     IntermediateMethod(LibraryMethod* lib_method, IntermediateClass* k) {
@@ -564,6 +568,7 @@ namespace backend {
       instr_count = 0;
       // as the library's compiler recorded it; unknown from an older one
       and_or_temp_type = lib_method->GetAndOrTempType();
+      is_mcp_entry = lib_method->IsMcpEntry();
       klass = k;
       param_names = lib_method->GetParameterNames();
       param_defaults = lib_method->GetParameterDefaults();
@@ -585,6 +590,14 @@ namespace backend {
 
     void SetGenericMarks(const std::vector<std::pair<std::wstring, std::wstring> > &m) {
       generic_marks = m;
+    }
+
+    void SetMcpEntry(bool e) {
+      is_mcp_entry = e;
+    }
+
+    bool IsMcpEntry() {
+      return is_mcp_entry;
     }
 
     ~IntermediateMethod() {

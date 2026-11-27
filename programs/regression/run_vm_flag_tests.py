@@ -2131,6 +2131,10 @@ LOADER_INPUTS = [
     ("method_id_repeated.img", "duplicate method id", "an unset method slot read: SIGSEGV"),
     ("method_signature_bad.img", "Invalid method signature", "unset program fields freed on the way out"),
     ("instruction_unknown.img", "unknown instruction", "exit 1 without a word"),
+    # not findings: the two fields a method record gained for 'obr --mcp' (MAGIC_NUM_EXE
+    # 0xffc0), each held to what the compiler writes
+    ("method_flag_unknown.img", "method flag out of range", "a field the loader reads since 0xffc0"),
+    ("method_mcp_entry_not_function.img", "marked as its class's MCP entry", "a field the loader reads since 0xffc0"),
 ]
 
 
@@ -2213,7 +2217,7 @@ def verifier_cases(image):
     method_at = next(m[1] for c in classes for m in c["methods"])
     reader = obe_image.Reader(image, method_at)
     reader.int()
-    reader.skip(3)
+    obe_image.skip_method_flags(reader)
     reader.string()
     reader.string()
     # The operand stack (Loader::Verify walks every method with the reference-map builder).
@@ -2230,7 +2234,7 @@ def verifier_cases(image):
             n += 1
         r = obe_image.Reader(image, m[1])
         r.int()
-        r.skip(3)
+        obe_image.skip_method_flags(r)
         r.string()
         r.string()
         return n if n >= 1 and n == r.int() else 0
@@ -2347,7 +2351,7 @@ def changed_program_cases(image):
         c, start = record(name)
         r = obe_image.Reader(image, start)
         r.int()
-        r.skip(3)
+        obe_image.skip_method_flags(r)
         r.string()
         r.string()
         return start, r.pos, r.pos + 4

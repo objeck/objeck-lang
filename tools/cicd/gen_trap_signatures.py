@@ -206,8 +206,8 @@ def census(dirs, shapes, ids):
                     continue
                 r = oi.Reader(img, start)
                 r.int()
-                flags = img[r.pos:r.pos + 3]
-                r.skip(3)
+                flags = img[r.pos:r.pos + len(oi.METHOD_FLAGS)]
+                oi.skip_method_flags(r)
                 r.string()
                 rtrn = r.string()
                 params = r.int()
@@ -234,7 +234,7 @@ def census(dirs, shapes, ids):
                     rec.contexts.add(name)
                     shape = shapes.get(trap)
                     # the and/or slot shifts the locals: such a method is not a wrapper
-                    if not shape or flags[1]:
+                    if not shape or flags[oi.METHOD_FLAGS.index("and_or")]:
                         continue
                     k, words, ok = i - 2, [], True
                     for a in reversed(shape["args"]):
