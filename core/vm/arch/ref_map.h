@@ -2920,6 +2920,13 @@
         }
       }
 
+      // CONTRACT: a verifying build stops here. It has checked the method; it does
+      // NOT fill the per-instruction tables below ('height' stays -1 everywhere,
+      // 'offset', 'kinds' and 'andor' stay empty), because the loader reads none of
+      // them. A caller that needs a height or a kind must build without 'verify', as
+      // the collector, the JITs and Debugger::GotoTarget do. GotoTarget once built
+      // with 'verify' and compared heights: all -1, so every line looked like the
+      // start of a statement (programs/regression/dap_goto_test.py holds it).
       if(verify) {
         return;
       }
