@@ -36,6 +36,7 @@
 #include "../../shared/trap_signatures.h"
 #include <vector>
 #include <string>
+#include <cwchar>
 #include <utility>
 #include <algorithm>
 #include <unordered_map>
