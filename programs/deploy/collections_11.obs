@@ -44,10 +44,9 @@ class Collections {
 
   # a Vector is a growable array: fast to index and to add at the end
   function : Vectors() ~ Nil {
-    fruit := Vector->New()<String>;
-    fruit->AddBack("cherry");
-    fruit->AddBack("apple");
-    fruit->AddBack("banana");
+    # a [...] literal fills a Vector in one step; the variable's type says
+    # what it holds
+    fruit : Vector<String> := ["cherry", "apple", "banana"];
     "vector: {$fruit}, size {$(fruit->Size())}, item 1 is {$(fruit->Get(1))}"->PrintLine();
 
     # Sort takes a function that compares two items, returning <0, 0 or >0
@@ -65,21 +64,23 @@ class Collections {
 
     # Each calls a small function (a lambda) once for every item, in order
     "list:"->Print();
-    names->Each(\(name) => { " {$name}"->Print(); });
+    names->Each(\(name) => {
+      " {$name}"->Print();
+    });
     ""->PrintLine();
   }
 
   # Map and Hash both connect keys to values
   function : Maps() ~ Nil {
     # a Map keeps its keys sorted, so walking it gives a predictable order.
-    # Generic collections hold objects, so the values are IntRefs; the
-    # compiler wraps a plain number such as 40 into one for you.
-    ages := Map->New()<String, IntRef>;
-    ages->Insert("carol", 40);
-    ages->Insert("alice", 31);
-    ages->Insert("bob", 25);
+    # {key: value, ...} writes the whole map in one step. Generic collections
+    # hold objects, so the values are IntRefs; the compiler wraps a plain
+    # number such as 40 into one for you.
+    ages : Map<String, IntRef> := {"carol": 40, "alice": 31, "bob": 25};
     "map (sorted keys):"->Print();
-    ages->Each(\(name, age) => { " {$name}={$age}"->Print(); });
+    ages->Each(\(name, age) => {
+      " {$name}={$age}"->Print();
+    });
     ""->PrintLine();
     # Find returns the value for a key, or Nil when the key is missing
     bob_age := ages->Find("bob");
@@ -87,10 +88,7 @@ class Collections {
 
     # a Hash looks keys up faster but keeps no order; Has asks whether a key
     # is there without fetching its value
-    countries := Hash->New()<String, String>;
-    countries->Insert("fr", "France");
-    countries->Insert("gb", "United Kingdom");
-    countries->Insert("jp", "Japan");
+    countries : Hash<String, String> := {"fr": "France", "gb": "United Kingdom", "jp": "Japan"};
     if(countries->Has("gb")) {
       name := countries->Find("gb");
       "hash has {$(countries->Size())} entries; 'gb' is {$name}"->PrintLine();
@@ -132,14 +130,11 @@ class Collections {
   # the unboxed collections store plain Int or Float values directly
   function : Unboxed() ~ Nil {
     # IntVector: a growable Int array with Sum and Sort built in
-    numbers := IntVector->New([3, 5, 1, 4, 2]);
+    numbers : IntVector := [3, 5, 1, 4, 2];
     numbers->Sort();
     "int vector sum: {$(numbers->Sum())}, sorted: {$numbers}"->PrintLine();
 
-    floats := FloatVector->New();
-    floats->AddBack(1.5);
-    floats->AddBack(2.5);
-    floats->AddBack(3.0);
+    floats : FloatVector := [1.5, 2.5, 3.0];
     "float vector sum: {$(floats->Sum())}"->PrintLine();
 
     # IntMap: Int keys to Int values, with no IntRef wrappers

@@ -22,23 +22,19 @@
 
 use API.Agent, API.LlmUtil, API.AgentJson, Data.JSON, Collection;
 
-enum Sky { CLEAR, CLOUDY, RAIN }
+enum Sky {
+	CLEAR, CLOUDY, RAIN
+}
 
 class Weather : json(note) {
-	@city : String;
-	@temp_c : Float;
-	@sky : Sky;
-	@tags : Vector<String>;
-	@note : String;
+	@city : get : String;
+	@temp_c : get : Float;
+	@sky : get : Sky;
+	@tags : get : Vector<String>;
+	@note : get : String;
 
 	New() {
 	}
-
-	method : public : GetCity() ~ String { return @city; }
-	method : public : GetTemp() ~ Float { return @temp_c; }
-	method : public : GetSky() ~ Sky { return @sky; }
-	method : public : GetTags() ~ Vector<String> { return @tags; }
-	method : public : GetNote() ~ String { return @note; }
 }
 
 class JsonClassDemo {
@@ -46,7 +42,7 @@ class JsonClassDemo {
 		# the schema the compiler derived from the fields
 		required := Weather->JsonSchema()->Get("required");
 		names := "";
-		for(i := 0; i < required->Size(); i += 1;) {
+		each(i : required) {
 			if(i > 0) {
 				names += ",";
 			};
@@ -55,23 +51,21 @@ class JsonClassDemo {
 		"schema required: {$names}"->PrintLine();
 
 		# a model whose first answer is wrong and whose second is right
-		script := Vector->New()<AgentReply>;
-		script->AddBack(AgentReply->Say("{\"city\":\"Paris\",\"temp_c\":\"warm\",\"sky\":\"RAIN\",\"tags\":[\"wet\",\"mild\"]}"));
-		script->AddBack(AgentReply->Say("{\"city\":\"Paris\",\"temp_c\":18.5,\"sky\":\"RAIN\",\"tags\":[\"wet\",\"mild\"]}"));
+		script : Vector<AgentReply> := [
+			AgentReply->Say(json {"city": "Paris", "temp_c": "warm", "sky": "RAIN", "tags": ["wet", "mild"]}->ToString()),
+			AgentReply->Say(json {"city": "Paris", "temp_c": 18.5, "sky": "RAIN", "tags": ["wet", "mild"]}->ToString())];
 		backend := ScriptedBackend->New(script);
 		agent := Agent->New(backend, Nil);
 
 		w := Weather->Ask(agent, "What is the weather in Paris?");
-		note := w->GetNote();
-		if(note = Nil) {
-			note := "(none)";
-		};
-		"{$w->GetCity()}: {$w->GetTemp()} C, rain={$w->GetSky() = Sky->RAIN}, tags={$w->GetTags()->Size()}, note={$note}"->PrintLine();
+		# a field the model left out is Nil; '??' supplies a default for it
+		note := w->GetNote() ?? "(none)";
+		"{$w->GetCity()}: {$w->GetTempC()} C, rain={$w->GetSky() = Sky->RAIN}, tags={$w->GetTags()->Size()}, note={$note}"->PrintLine();
 		"model calls: {$backend->GetAskedCount()}"->PrintLine();
 
 		# FromJson on a value that does not fit says which field
 		try {
-			Weather->FromJson(JsonParser->TextToElement("{\"city\":\"Rome\",\"temp_c\":\"hot\",\"sky\":\"CLEAR\",\"tags\":[]}"));
+			Weather->FromJson(json {"city": "Rome", "temp_c": "hot", "sky": "CLEAR", "tags": []});
 		}
 		on(e : Error) {
 			"bad value: {$e->GetMessage()}"->PrintLine();

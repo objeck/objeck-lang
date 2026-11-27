@@ -213,6 +213,12 @@ protected:
                                 const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                 StackFrame** call_stack, long* call_stack_pos, const long ip);
 
+  // A Nil operand handed to a bridge callback (an array to clear or copy, a
+  // lock, a string to convert) while a handler is active: the guard stubs' own
+  // status for a Nil dereference, so the interpreter that owns the handler
+  // records it and recovers the same way.
+  static const int64_t JIT_STATUS_NIL_DEREFERENCE = -1;
+
   // An invalid object cast, reported by StackCallbackBody. The guard stubs own
   // -1 to -4; this is the first status raised by the bridge itself.
   static const int64_t JIT_STATUS_INVALID_CAST = -5;

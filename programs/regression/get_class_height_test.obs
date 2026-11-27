@@ -1,0 +1,176 @@
+#~
+# Base->GetClass() in loops and branches, and in one thread while another collects.
+#
+# GetClass is 'LOAD_CLS_BY_INST; TRAP_RTRN 1; LOAD cls; RTRN': the one trap written
+# TRAP_RTRN whose handler pushes nothing (it stores the Class in the method's local).
+# The reference map built for the collector, the JITs and the debugger pushed a word
+# for it all the same, so both heights after the trap were one above what the
+# loader's verifier and the interpreter have. A thread parked for another thread's
+# collection between those instructions then had a stack one word shorter than its
+# map: the collector could not account for it ("top segment 1 outside [2, 2]:
+# System.Base:GetClass: @3") and scanned that thread's stack untyped.
+#
+# The worker below calls GetClass in a loop while Main allocates, so collections
+# find it inside GetClass. run_vm_flag_tests.py section 24 runs this under
+# OBJECK_GC_ROOTS=audit and requires that no thread is mismatched (before the fix,
+# about one collection in twelve was); the suite's own runs check the values.
+~#
+
+use System.Concurrency;
+
+class ClassAsker from Thread {
+  @asked : Int;
+  @wrong : Int;
+
+  New() {
+    Parent();
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+    asked := 0;
+    wrong := 0;
+    for(i := 0; i < 60000; i += 1;) {
+      c := param->GetClass();
+      if(c = Nil) {
+        wrong += 1;
+      }
+      else {
+        asked += 1;
+      };
+    };
+    # once more, for the name: a Circle was passed
+    if(<>param->GetClass()->GetName()->Equals("Circle")) {
+      wrong += 1;
+    };
+    @asked := asked;
+    @wrong := wrong;
+  }
+
+  method : public : Asked() ~ Int {
+    return @asked;
+  }
+
+  method : public : Wrong() ~ Int {
+    return @wrong;
+  }
+}
+
+class Shape {
+  @name : String;
+
+  New(name : String) {
+    @name := name;
+  }
+
+  method : public : Name() ~ String {
+    return @name;
+  }
+}
+
+class Circle from Shape {
+  New() {
+    Parent("circle");
+  }
+}
+
+class Square from Shape {
+  New() {
+    Parent("square");
+  }
+}
+
+class GetClassHeightTest {
+  function : NameOf(s : Shape) ~ String {
+    return s->GetClass()->GetName();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+    circles := 0;
+    squares := 0;
+    kept := String->New[64];
+
+    for(i := 0; i < 3000; i += 1;) {
+      s : Shape;
+      if(i % 3 = 0) {
+        s := Circle->New();
+      }
+      else {
+        s := Square->New();
+      };
+
+      # in a branch of a loop, its result used at once and across a call
+      name : String;
+      if(i % 2 = 0) {
+        name := s->GetClass()->GetName();
+      }
+      else {
+        name := NameOf(s);
+      };
+
+      if(name->Equals("Circle")) {
+        circles += 1;
+        if(<>s->Name()->Equals("circle")) {
+          pass := false;
+        };
+      }
+      else if(name->Equals("Square")) {
+        squares += 1;
+        if(<>s->Name()->Equals("square")) {
+          pass := false;
+        };
+      }
+      else {
+        pass := false;
+        "  FAIL: iteration {$i}: class name '{$name}'"->PrintLine();
+      };
+
+      # live strings across the next call's collections
+      kept[i % 64] := name;
+
+      # as an operand, with values already on the stack
+      n := 7 + s->GetClass()->GetName()->Size() + i;
+      if(n <> 13 + i) {
+        pass := false;
+        "  FAIL: iteration {$i}: n = {$n}"->PrintLine();
+      };
+    };
+
+    each(k : kept) {
+      if(<>(kept[k]->Equals("Circle") | kept[k]->Equals("Square"))) {
+        pass := false;
+        "  FAIL: kept[{$k}]"->PrintLine();
+      };
+    };
+
+    if(circles <> 1000 | squares <> 2000) {
+      pass := false;
+      "  FAIL: {$circles} circles, {$squares} squares"->PrintLine();
+    };
+
+    # a worker inside GetClass while this thread's allocations collect
+    asker := ClassAsker->New();
+    asker->Execute(Circle->New());
+    total := 0;
+    for(i := 0; i < 12000; i += 1;) {
+      s := "garbage ";
+      s += i;
+      total += s->Size();
+    };
+    asker->Join();
+    if(asker->Asked() <> 60000 | asker->Wrong() <> 0 | total <> 144890) {
+      pass := false;
+      a := asker->Asked();
+      w := asker->Wrong();
+      "  FAIL: the worker asked {$a} times, {$w} wrong; total {$total}"->PrintLine();
+    };
+
+    if(pass) {
+      "PASS: GetClass heights"->PrintLine();
+    }
+    else {
+      "FAIL: GetClass heights"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}

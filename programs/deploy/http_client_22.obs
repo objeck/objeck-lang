@@ -61,8 +61,9 @@ class FetchJson {
       return;
     };
 
-    body := response->GetContent();
-    if(body = Nil) {
+    # '?? { ... }' runs its block when the left side is Nil, and the block
+    # must leave; otherwise body is the value, ready to use
+    body := response->GetContent() ?? {
       "The response had no body."->PrintLine();
       return;
     };

@@ -35,17 +35,17 @@ class AgentTour {
 		# the tools the model may use: the built-in calculator and one of our own
 		registry := ToolRegistry->New();
 		registry->Add(AgentTools->Calculator());
-		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
-		registry->Add(AgentTool->New("get_weather", "Get the weather for a city", schema,
-			Func2Ref->New(AgentTour->Weather(JsonElement) ~ String)<JsonElement, String>));
+		# the schema is a JSON literal; the tool's function is named by itself
+		schema := json {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]};
+		registry->Add(AgentTool->New("get_weather", "Get the weather for a city", schema, AgentTour->Weather));
 
 		# the script: first the model asks for two tools at once, then it answers
-		calls := Vector->New()<AgentToolCall>;
-		calls->AddBack(AgentToolCall->New("call_1", "calculator", JsonParser->TextToElement("{\"expression\":\"17 * 23\"}")));
-		calls->AddBack(AgentToolCall->New("call_2", "get_weather", JsonParser->TextToElement("{\"city\":\"Paris\"}")));
-		script := Vector->New()<AgentReply>;
-		script->AddBack(AgentReply->AskAll(calls));
-		script->AddBack(AgentReply->Say("17 * 23 is 391, and Paris is 18C and sunny."));
+		calls : Vector<AgentToolCall> := [
+			AgentToolCall->New("call_1", "calculator", json {"expression": "17 * 23"}),
+			AgentToolCall->New("call_2", "get_weather", json {"city": "Paris"})];
+		script : Vector<AgentReply> := [
+			AgentReply->AskAll(calls),
+			AgentReply->Say("17 * 23 is 391, and Paris is 18C and sunny.")];
 
 		agent := Agent->New(ScriptedBackend->New(script), registry);
 		agent->SetBudget(AgentBudget->New()->SetMaxSteps(5)->SetMaxToolCalls(10));
@@ -70,9 +70,8 @@ class AgentTour {
 
 	function : Weather(arguments : JsonElement) ~ String {
 		city := arguments->Get("city")->GetString();
-		if(city->Equals("Paris")) {
-			return "18C and sunny";
+		return match city {
+			"Paris" => "18C and sunny", other => "no data"
 		};
-		return "no data";
 	}
 }

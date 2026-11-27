@@ -64,6 +64,10 @@ install): two of them read files from `data/`, which ships alongside.
 | [`json_class_46.obs`](json_class_46.obs) | `-lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json` | class Weather : json: a model's answer as a typed object, with the schema and the reader written for you |
 | [`prompt_literal_47.obs`](prompt_literal_47.obs) | `-lib llm_util,json,regex,gen_collect` | prompt literals: holes the compiler checks, and values that cannot leave their slot |
 | [`agent_decl_48.obs`](agent_decl_48.obs) | `-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` | agent declarations: model, instructions, tools and budget stated in one place |
+| [`nil_safety_49.obs`](nil_safety_49.obs) | none | Nil safety: ??, ?->, ?? return and a recovered error, instead of a pyramid of if(x <> Nil) |
+| [`assert_50.obs`](assert_50.obs) | none | assert: a check that stops the program with the file, line and values when it fails |
+| [`using_51.obs`](using_51.obs) | none | using: a file, connection or your own class closed on every way out of a block |
+| [`local_model_52.obs`](local_model_52.obs) | `-lib agent,json,net,cipher,misc` | an agent on a model on your own machine (Ollama), with a scripted stand-in by default |
 
 ## Building all of them
 
@@ -74,12 +78,18 @@ compiles each example with exactly what it names:
 python build_examples.py              compile every example, report
 python build_examples.py --only json  just the ones whose name matches
 python build_examples.py --keep       leave the .obe files behind
+python build_examples.py --opt s0,s3  compile at each optimizer level
+python build_examples.py --run        also run them, and check each against the
+                                      'output:' block in its own header
 ```
 
 It finds `obc` in `../bin` (an install) or the repo's deploy tree, and exits
 non-zero if any example fails. CI runs it on every change, so the table above is
 verified rather than merely written down: a wrong entry in the Libraries column
-fails the build.
+fails the build. With `--run` it also runs the examples that need no display,
+database, key or network and compares what each prints with the `output:`
+block at the top of its source (`...` in that block stands for text left out),
+so what a header says an example prints is checked too.
 
 ## Building one
 
@@ -100,10 +110,12 @@ obr json_14.obe
 ## Notes
 
 - Read them in order: 0-13 teach the language, 14-21 work with data, 22-24
-  are networking, 25-30 are AI and machine learning, 31 is a game, and 32-39 are
+  are networking, 25-30 are AI and machine learning, 31 is a game, and 32-48 are
   AI engineering (MCP tools, agents, actors, retrieval, structured output,
-  telemetry, forecasting).
-- 32-39 run offline and print the same thing every time: a scripted model stands
+  telemetry, forecasting, typed results, prompt literals, agent declarations).
+  49-51 return to the language (Nil safety, assert, using) and 52 runs an
+  agent on a model on your own machine.
+- 32-52 run offline and print the same thing every time: a scripted model stands
   in for a real one, so they need no key. Swap in a real backend to use one.
 - Each program's header gives its compile and run lines and what it prints.
 - `obc` does not pull in a library's own dependencies, so some `-lib` lists name

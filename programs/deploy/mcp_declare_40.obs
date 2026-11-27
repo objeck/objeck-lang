@@ -60,10 +60,10 @@ class Tools {
 	@param style how to greet
 	~#
 	function : Greet(name : String, style : Style) ~ String {
-		if(style = Style->CASUAL) {
-			return "hi {$name}";
+		return match style {
+			Style->CASUAL => "hi {$name}",
+			Style->FORMAL => "Good day, {$name}"
 		};
-		return "Good day, {$name}";
 	}
 
 	#~
@@ -76,7 +76,7 @@ class Tools {
 		return "pretending to delete {$path}";
 	}
 
-	function : Show(client : McpClient, what : String, name : String, arguments : String) ~ Nil {
+	function : Show(client : McpClient, what : String, name : String, arguments : JsonElement) ~ Nil {
 		while(what->Size() < 28) {
 			what += " ";
 		};
@@ -126,12 +126,12 @@ class Tools {
 			"    schema: {$schema}"->PrintLine();
 		};
 
-		Show(client, "add(17, 25)", "add", "{\"a\":17,\"b\":25}");
-		Show(client, "greet(\"Ada\", FORMAL)", "greet", "{\"name\":\"Ada\",\"style\":\"FORMAL\"}");
-		Show(client, "greet(\"Ada\", CASUAL)", "greet", "{\"name\":\"Ada\",\"style\":\"CASUAL\"}");
-		Show(client, "add(1, \"two\")", "add", "{\"a\":1,\"b\":\"two\"}");
-		Show(client, "greet(\"Ada\", \"RUDE\")", "greet", "{\"name\":\"Ada\",\"style\":\"RUDE\"}");
-		Show(client, "add(1) with no b", "add", "{\"a\":1}");
+		Show(client, "add(17, 25)", "add", json {"a": 17, "b": 25});
+		Show(client, "greet(\"Ada\", FORMAL)", "greet", json {"name": "Ada", "style": "FORMAL"});
+		Show(client, "greet(\"Ada\", CASUAL)", "greet", json {"name": "Ada", "style": "CASUAL"});
+		Show(client, "add(1, \"two\")", "add", json {"a": 1, "b": "two"});
+		Show(client, "greet(\"Ada\", \"RUDE\")", "greet", json {"name": "Ada", "style": "RUDE"});
+		Show(client, "add(1) with no b", "add", json {"a": 1});
 		client->Close();
 	}
 }

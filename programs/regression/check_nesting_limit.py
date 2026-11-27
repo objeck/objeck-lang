@@ -4,14 +4,16 @@ Deeply nested source is compiled or refused, never a crash.
 
 Usage: check_nesting_limit.py <bin_dir>
 
-<bin_dir> holds obc; the libraries are read from the sibling lib/ directory.
+<bin_dir> holds obc and obr; the libraries are read from the sibling lib/ directory.
 
 The parser is recursive, and nesting past what the stack can hold used to end obc with a stack overflow
 (0xC00000FD on Windows, a segmentation fault elsewhere). It is now the error "Nesting is too deep". Where
 that error lands is not a fixed depth: the limit is a stack budget, so the level at which it trips moves
 with the platform, the compiler and the size of the parser's stack frames, which change whenever the parser
 does. This test therefore pins no level and no column. For each shape of nesting (parentheses, blocks,
-calls, array subscripts, unary operators, generic types) at 100, 250, 500 and 5000 levels it requires that
+calls, array subscripts, unary operators, generic types, array literals) at 100, 250, 500 and 5000 levels,
+and for array literals at 100,000 levels as well (each '[' of '[[[[...' is a call of the parser, and that
+function was the one without the check: obc ended with a segmentation fault), it requires that
 
   * obc answers within the time limit,
   * it either compiles the program or refuses it (an exit status obc gives on purpose; never a signal or
@@ -20,6 +22,10 @@ calls, array subscripts, unary operators, generic types) at 100, 250, 500 and 50
   * 100 levels of parentheses and of blocks compile (ordinary generated code nests that far),
   * an 'else if' ladder of 400 rungs compiles (it is not nesting, but each rung is a call of the parser),
   * and, for each shape, once a depth is refused every greater depth is refused too.
+
+An array literal that obc does compile is an array of as many dimensions as it has levels, and an array has
+at most 8: with 9, 100 and 500 levels obr must refuse the program when it loads it, saying so; with 8 the
+program runs. ('Type->New[...]' with more than 8 sizes is obc's own error, checked to be still that.)
 
 bad_nesting_too_deep.obs holds the same error in the regression suite for one shape; it also names no column.
 """
@@ -56,12 +62,18 @@ def unary(n):
     return "x := " + "-(" * n + "1" + ")" * n + ";\n\t\tx->PrintLine();", 3
 
 
+def literals(n):
+    return "x := " + "[" * n + "1" + "]" * n + ";\n\t\t(x = Nil)->PrintLine();", 3
+
+
 def generics(n):
     return "v : " + "Vector<" * n + "IntRef" + ">" * n + ";\n\t\t(v = Nil)->PrintLine();", 3
 
 
 SHAPES = [("parentheses", parentheses, True), ("blocks", blocks, True), ("calls", calls, False), ("array subscripts", subscripts, False),
-          ("unary operators", unary, False), ("generic types", generics, False)]
+          ("unary operators", unary, False), ("generic types", generics, False), ("array literals", literals, False)]
+# levels a shape is tried at beyond LEVELS
+DEEPER = {"array literals": [100000]}
 
 
 def program(body):
@@ -87,7 +99,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="nesting-") as work:
         for shape, build, shallow_compiles in SHAPES:
             refused_at = None
-            for levels in LEVELS:
+            for levels in LEVELS + DEEPER.get(shape, []):
                 body, line_in_main = build(levels)
                 src = os.path.join(work, "nest.obs")
                 with open(src, "w", encoding="utf-8") as f:
@@ -140,6 +152,47 @@ def main():
                   (p.stdout + p.stderr).decode("utf-8", "replace"))
         except subprocess.TimeoutExpired:
             check("an 'else if' ladder of %d rungs: answered within %d s" % (LADDER, TIME_LIMIT), False)
+
+        # An array literal nested N deep is an array of N dimensions, and an array has at most 8: the VM pops
+        # the sizes into a buffer of 8 without counting them. obc holds 'Type->New[...]' to 8 sizes but compiles
+        # a literal of any depth; obr used to run it over the buffer (9 levels: in silence; 100: "Array
+        # allocation size overflow"; 2,000: "the operand stack grows to 1999 words"). It is now refused when
+        # the program is loaded, by its cause, with the count, the limit and what to do. 8 levels still run.
+        obr = os.path.join(bin_dir, "obr" + EXE)
+
+        def dimensions(label, body):
+            src = os.path.join(work, "dims.obs")
+            with open(src, "w", encoding="utf-8") as f:
+                f.write(program(body + "\n\t\t(x <> Nil)->PrintLine();"))
+            obe = os.path.join(work, "dims.obe")
+            if os.path.exists(obe):
+                os.remove(obe)
+            try:
+                p = subprocess.run([obc, "-src", src, "-dest", obe, "-lib", "gen_collect"], cwd=work, env=env, capture_output=True, timeout=TIME_LIMIT)
+                if p.returncode != 0:
+                    return None, (p.stdout + p.stderr).decode("utf-8", "replace")
+                r = subprocess.run([obr, obe], cwd=work, env=env, capture_output=True, timeout=TIME_LIMIT)
+            except subprocess.TimeoutExpired:
+                check("%s: answered within %d s" % (label, TIME_LIMIT), False)
+                return None, ""
+            return r.returncode, (r.stdout + r.stderr).decode("utf-8", "replace")
+
+        for levels in (8, 9, 100, 500):
+            label = "an array literal %d levels deep" % levels
+            code, out = dimensions(label, "x := " + "[" * levels + "7" + "]" * levels + ";")
+            if levels == 8:
+                check("%s runs" % label, code == 0 and out.strip() == "true", out)
+            elif code is None:
+                # deeper than the parser reads on this platform: held by the shapes above
+                check("%s: obc compiles it or says '%s'" % (label, MESSAGE), MESSAGE in out, out)
+            else:
+                check("%s is refused by obr with the count, the limit and what to do" % label,
+                      code == 1 and ("an array of %d dimensions" % levels) in out and "at most 8" in out and
+                      "use fewer dimensions" in out and "overflow" not in out and "operand stack" not in out, out)
+        code, out = dimensions("8 sizes", "x := Int->New[" + ", ".join(["1"] * 8) + "];")
+        check("'Int->New[...]' with 8 sizes runs", code == 0 and out.strip() == "true", out)
+        code, out = dimensions("9 sizes", "x := Int->New[" + ", ".join(["1"] * 9) + "];")
+        check("'Int->New[...]' with 9 sizes is refused by obc, as before", code is None and "Array dimensions cannot exceed 8" in out, out)
 
     if failures:
         print("FAIL: %d check(s) failed" % len(failures))

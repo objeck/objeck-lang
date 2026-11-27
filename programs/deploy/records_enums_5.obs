@@ -15,12 +15,13 @@
 # An 'enum' is a set of named choices (Suit->Hearts, Suit->Spades, ...),
 # numbered in order from 0. 'consts' is a set of named numbers where you pick
 # each value yourself. Both read better than bare numbers, and both work in
-# a select statement.
+# select and in match, which is select written as an expression.
 #
 #   record Point { @x : Int; @y : Int; }
 #   record : readonly : Card { @rank : Int; @suit : Suit; }
 #   enum Suit { Hearts, Spades }
 #   consts Limits { MaxPlayers := 4 }
+#   name := match suit { Suit->Hearts => "red", Suit->Spades => "black" };
 #
 # output:
 #   Point(3, 4)
@@ -77,50 +78,31 @@ record : readonly : Card {
   @suit : Suit;
 
   method : public : IsRed() ~ Bool {
-    # select jumps to the label that matches the enum value
-    select(@suit) {
-      label Suit->Hearts:
-      label Suit->Diamonds: {
-        return true;
-      }
+    # match is select as an expression: each arm gives a value, '|' joins
+    # several patterns, and over an enum the compiler insists every item is
+    # covered, so adding a suit later points at every match that needs an arm
+    return match @suit {
+      Suit->Hearts | Suit->Diamonds => true,
+      Suit->Clubs | Suit->Spades => false
     };
-    return false;
   }
 
   method : public : Name() ~ String {
-    # consts work in a select just like enums and numbers
-    rank_name : String;
-    select(@rank) {
-      label Rank->Ace: {
-        rank_name := "Ace";
-      }
-
-      label Rank->Jack: {
-        rank_name := "Jack";
-      }
-
-      label Rank->Queen: {
-        rank_name := "Queen";
-      }
-
-      label Rank->King: {
-        rank_name := "King";
-      }
-
-      other: {
-        rank_name := @rank->ToString();
-      }
+    # consts work in a match just like enums and numbers; with plain numbers
+    # there is no way to list them all, so 'other' takes the rest
+    rank_name := match @rank {
+      Rank->Ace => "Ace",
+      Rank->Jack => "Jack",
+      Rank->Queen => "Queen",
+      Rank->King => "King",
+      other => @rank->ToString()
     };
 
-    suit_name := "Spades";
-    if(@suit = Suit->Hearts) {
-      suit_name := "Hearts";
-    }
-    else if(@suit = Suit->Diamonds) {
-      suit_name := "Diamonds";
-    }
-    else if(@suit = Suit->Clubs) {
-      suit_name := "Clubs";
+    suit_name := match @suit {
+      Suit->Hearts => "Hearts",
+      Suit->Diamonds => "Diamonds",
+      Suit->Clubs => "Clubs",
+      Suit->Spades => "Spades"
     };
 
     return "{$rank_name} of {$suit_name}";

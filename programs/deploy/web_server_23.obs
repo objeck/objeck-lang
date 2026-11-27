@@ -19,11 +19,12 @@
 # output (the port and time vary):
 #   server listening on port 57182
 #   GET /          -> 200 text/html: <html><body><h1>Hello from Objeck!</h1>< ...
-#   GET /api/time  -> 200 application/json: {"time":"Wednesday, October 28, 2026 4:3 ...
+#   GET /api/time  -> 200 application/json: {"requests":2,"time":"Wednesday, October 2 ...
 #   GET /missing   -> 404
 #   server stopped
 ~#
 
+use Data.JSON;
 use System.Concurrency;
 use Web.HTTP.Server;
 
@@ -52,8 +53,9 @@ class SiteHandler from HttpRequestHandler {
     else if(path->Equals("/api/time")) {
       requests := Count();
       now := System.Time.Date->New()->ToString();
-      json := "{\"time\":\"{$now}\",\"requests\":{$requests}}";
-      response->SetCodeTypeContent(200, "application/json", json);
+      # a json { ... } literal builds the reply; no quotes or braces to escape
+      body := json {"time": now, "requests": requests};
+      response->SetCodeTypeContent(200, "application/json", body->ToString());
     }
     else {
       response->SetCodeContent(404, "Not found");
@@ -97,18 +99,12 @@ class WebServerExample {
       return;
     };
 
-    # demo mode: Serve() blocks, so run it on a background thread
-    server := Thread->New() {
-      New() {
-        Parent();
-      }
-
-      method : public : Run(arg : System.Base) ~ Nil {
-        # port 0 lets the system pick a free port
-        WebServer->Serve(SiteHandler->New()->GetClass(), "127.0.0.1", 0);
-      }
+    # demo mode: Serve() blocks, so run it on a background thread. spawn
+    # starts the block on a new thread and gives that thread back
+    server := spawn {
+      # port 0 lets the system pick a free port
+      WebServer->Serve(SiteHandler->New()->GetClass(), "127.0.0.1", 0);
     };
-    server->Execute(Nil);
 
     # wait (up to 10 seconds) until the server is listening and knows its port
     waited := 0;
@@ -128,7 +124,9 @@ class WebServerExample {
     Visit(port, "/api/time");
     Visit(port, "/missing");
 
+    # Stop ends Serve, which ends the thread; Join waits until it has
     WebServer->Stop();
+    server->Join();
     "server stopped"->PrintLine();
   }
 

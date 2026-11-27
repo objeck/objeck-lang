@@ -7,7 +7,9 @@
 # (its methods). New(...) is the constructor that sets a new object up.
 #
 # Fields can only be reached from inside their class and its child classes;
-# methods are private unless marked 'public'. A class can extend another with
+# methods are private unless marked 'public'. Two modifiers save the usual
+# boilerplate: a constructor parameter written @name fills the field of that
+# name, and '@name : get : T' writes the getter (GetName) for you. A class can extend another with
 # 'from', reusing its fields and methods, and its constructor calls
 # Parent(...) to set up the inherited part. An 'interface' is a contract, a
 # list of methods a class promises to provide when it says 'implements'.
@@ -23,8 +25,10 @@
 #
 #   class Square from Rectangle { ... }    # inheritance
 #   class Shape implements Describable     # a promise to provide Describe
-#   shape->TypeOf(Circle)                  # true if shape is really a Circle
-#   shape->As(Circle)                      # use it as a Circle (checked)
+#   New(@radius : Float) { ... }           # the parameter fills the field @radius
+#   @radius : get : Float;                 # writes GetRadius() for you
+#   if(shape is Circle c) { ... }          # true if shape is really a Circle; c is it, as a Circle
+#   shape->TypeOf(Circle)                  # the same question, without a name for the object
 #
 # output:
 #   Circle area=12.566371
@@ -49,14 +53,10 @@ interface Describable {
 # each kind of shape supplies one (its own or one it inherits), and a Shape
 # can never be created by itself.
 class Shape implements Describable {
-  @name : String;
+  @name : get : String;
 
-  New(name : String) {
-    @name := name;
-  }
-
-  method : public : GetName() ~ String {
-    return @name;
+  # '@name' as a parameter means: store the argument in the field @name
+  New(@name : String) {
   }
 
   method : virtual : public : Area() ~ Float;
@@ -70,16 +70,11 @@ class Shape implements Describable {
 
 # implementing Stringify means "print me with my own ToString"
 class Circle from Shape implements Stringify {
-  @radius : Float;
+  @radius : get : Float;
 
-  New(radius : Float) {
-    # set up the inherited part first, then our own field
+  New(@radius : Float) {
+    # set up the inherited part first; our own field is already filled
     Parent("Circle");
-    @radius := radius;
-  }
-
-  method : public : GetRadius() ~ Float {
-    return @radius;
   }
 
   # the child's version of the parent's virtual method
@@ -96,17 +91,13 @@ class Rectangle from Shape implements Stringify {
   @width : Float;
   @height : Float;
 
-  New(width : Float, height : Float) {
+  New(@width : Float, @height : Float) {
     Parent("Rectangle");
-    @width := width;
-    @height := height;
   }
 
   # a second constructor, so a child class can pass its own name up
-  New(name : String, width : Float, height : Float) {
+  New(name : String, @width : Float, @height : Float) {
     Parent(name);
-    @width := width;
-    @height := height;
   }
 
   method : public : Area() ~ Float {
@@ -149,17 +140,15 @@ class Classes {
       "as text: {$shape}"->PrintLine();
     };
 
-    # TypeOf asks "is this object of that class, or a child of it?"
-    # As converts the reference so the child's own methods can be called.
-    first := shapes[0];
-    if(first->TypeOf(Circle)) {
-      circle := first->As(Circle);
+    # 'is' asks "is this object of that class, or a child of it?" and, when
+    # it is, names it as that class so the child's own methods can be called
+    if(shapes[0] is Circle circle) {
       "shapes[0] is a Circle with radius {$(circle->GetRadius())}"->PrintLine();
     };
 
-    # a Square is both a Square and a Rectangle
-    last := shapes[2];
-    if(last->TypeOf(Rectangle) & last->TypeOf(Square)) {
+    # TypeOf asks the same question without naming the object; a Square is
+    # both a Square and a Rectangle, so it passes both tests
+    if(shapes[2]->TypeOf(Rectangle) & shapes[2]->TypeOf(Square)) {
       "shapes[2] is a Rectangle and a Square"->PrintLine();
     };
 

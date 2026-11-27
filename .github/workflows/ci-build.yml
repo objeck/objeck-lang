@@ -889,6 +889,21 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obe_version_mismatch.py "$BIN"
 
+    # An image whose class count asks for more memory than there is must end obr with
+    # ">>> load error: std::bad_alloc <<<". Loader::LoadClasses' cleanup object read
+    # pointers it had not assigned when one of its three allocations threw, and obr
+    # ended with a segmentation fault. Run under a ladder of address-space limits
+    # (RLIMIT_AS), so each of the allocations fails in turn; Linux only (the test
+    # says SKIP where the limit is not enforced).
+    - name: obr reports an image it has no memory to load, never a crash (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_loader_alloc_failure.py "$BIN"
+
     # The library reader checks every read against the end of the inflated file; a damaged
     # .obl must end in an error message, never an out-of-bounds read or a crash.
     - name: obc refuses a truncated or corrupt library with a clear message (POSIX)
@@ -1617,13 +1632,16 @@ jobs:
     # beside it. The table is what a reader copies, so a wrong column is a
     # broken first experience of the language -- and nothing checked it before:
     # check_examples_index.py verifies an example is LISTED, not that the
-    # listing works. Linux x64 only, since the examples are platform-neutral
-    # and the SDL/ODBC ones only need to link, not run.
+    # listing works. --run also runs every example that needs no display,
+    # database, key or network and compares what it prints with the 'output:'
+    # block in its own header, at -opt s0 and s3, so an example cannot say one
+    # thing and do another. Linux x64 only, since the examples are
+    # platform-neutral and the SDL/ODBC ones only need to link, not run.
     - name: Shipped examples compile with their documented libraries
       if: matrix.platform == 'linux-x64'
       env:
         OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
-      run: python3 programs/deploy/build_examples.py
+      run: python3 programs/deploy/build_examples.py --run --opt s0,s3
 
     # The samples on objeck.org (docs/site/examples) are compiled and run with the full deploy tree (the ml
     # sample loads libobjk_ml), and the MCP session the Agents page shows is played against `obr --mcp`.
@@ -1876,6 +1894,7 @@ jobs:
           python3 tools/cicd/check_trap_handlers.py --test
           python3 tools/cicd/check_trap_handlers.py
           python3 tools/cicd/gen_trap_signatures.py --check
+          python3 tools/cicd/test_gen_trap_signatures.py
 
       # What an opcode carries was written out by hand in the writer, both readers,
       # the label passes, the inliner and the loader's checks, and nothing compared

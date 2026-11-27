@@ -637,6 +637,9 @@ bool Parser::Parse()
     }
   }
 
+  if(!mcp_entry_refusals.empty()) {
+    ReportMcpEntries();
+  }
   GeneratePendingMcpTools();
   // after the tools are derived: the check looks for the function they are registered by
   if(!agent_tool_classes.empty()) {
@@ -2156,6 +2159,48 @@ Lambda* Parser::ParseLambda(int depth, Type* block_type) {
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), type, alias_name, method, parameter_list);
 }
 
+// A McpMain(args : String[]) that 'obr --mcp' could not start (a method, a virtual one, one that
+// returns a value) is an error in a program that is an MCP server, and an ordinary method in any
+// other program: 'method : public : McpMain(args : String[]) ~ Int' in an application that has
+// nothing to do with MCP used to be refused for its name. A program is a server when 'obr --mcp'
+// has something to start in it:
+//   * the file that declares the method has 'use API.MCP' (a server written by hand registers its
+//     tools and calls McpServe->Run from its McpMain): reported here, where the method is; or
+//   * some class of the program has an '@tool', '@resource' or '@prompt' function (the compiler
+//     writes an entry for it, and a McpMain the program wrote is started instead of that one):
+//     known when every file has been read, so the error is kept until then (ReportMcpEntries).
+PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message)
+{
+  if(current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end()) {
+    diagnostics.Error(file_name, line_num, line_pos, message);
+    return;
+  }
+
+  McpEntryRefusal refusal;
+  refusal.file_name = file_name;
+  refusal.line = line_num;
+  refusal.pos = line_pos;
+  refusal.message = message;
+  mcp_entry_refusals.push_back(refusal);
+}
+
+// Every file has been read: the errors RefuseMcpEntry kept are reported when the program has a
+// tagged function, and dropped when it has none. Called before the tools are derived, which
+// empties the list of classes that have some.
+void Parser::ReportMcpEntries()
+{
+  bool tagged = false;
+  for(size_t i = 0; i < mcp_pending.size() && !tagged; ++i) {
+    tagged = !mcp_pending[i].tools.empty();
+  }
+  if(tagged) {
+    for(size_t i = 0; i < mcp_entry_refusals.size(); ++i) {
+      diagnostics.Error(mcp_entry_refusals[i].file_name, mcp_entry_refusals[i].line, mcp_entry_refusals[i].pos, mcp_entry_refusals[i].message);
+    }
+  }
+  mcp_entry_refusals.clear();
+}
+
 // True for a method named McpMain whose one parameter is a String[]: the name and
 // signature 'obr --mcp' looks for (Loader::SelectMcpEntry reads them from the method's
 // encoded name, which carries neither its kind nor its return type). An overload named
@@ -2417,9 +2462,10 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // McpMain(args : String[]) is what 'obr --mcp' starts in place of Main, and the VM picks it
   // by its name and parameter alone: a program file does not record whether a method is a
-  // function or what it returns. So the one shape it can call is the only one allowed to have
-  // that signature. An instance method would be started with no instance, a virtual one has
-  // no body and one that returns a value leaves it on the stack.
+  // function or what it returns. So in a program that 'obr --mcp' can serve (RefuseMcpEntry)
+  // the one shape it can call is the only one allowed to have that signature. An instance
+  // method would be started with no instance, a virtual one has no body and one that returns
+  // a value leaves it on the stack.
   if(HasMcpEntrySignature(method)) {
     const wchar_t* why = nullptr;
     if(!is_function) {
@@ -2432,7 +2478,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       why = L"it returns a value";
     }
     if(why) {
-      diagnostics.Error(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
+      RefuseMcpEntry(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
                         why + L". Declare it that way or give it another name");
     }
   }
@@ -5549,6 +5595,8 @@ PARSER_NO_INLINE Expression* Parser::ParseMapLiteral(int depth)
  * Parses a static array
  ****************************/
 StaticArray* Parser::ParseStaticArray(int depth) {
+  // each '[' of '[[[[...' is a call of this function
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -7827,15 +7875,15 @@ PARSER_NO_INLINE MethodCall* Parser::ParseSpawn(int depth)
           L"method : public : SpawnStart(body : () ~ Nil) ~ System.Concurrency.Thread { @body := body; Execute(Nil); return @self; } "
           L"method : public : Run(param : System.Base) ~ Nil { body := @body; body(); } }";
 
-  Scanner* saved = scanner;
+  ScannerScope spawn_scanner(scanner);
+  StateScope<bool> spawn_flag(spawn_class);
   scanner = new Scanner(file_name, alt_syntax, std::move(text));
   NextToken();
   spawn_class = true;
   Expression* thread = ParseSimpleExpression(depth + 1);
   spawn_class = false;
   const bool whole = Match(TOKEN_END_OF_STREAM);
-  delete scanner;
-  scanner = saved;
+  spawn_scanner.Restore();
 
   if(!thread || !whole || thread->GetExpressionType() != METHOD_CALL_EXPR) {
     diagnostics.Error(file_name, line_num, line_pos, L"Unable to build the thread for 'spawn'");
@@ -8141,6 +8189,56 @@ PARSER_NO_INLINE StatementList* Parser::ParseNilGuardBail(int depth)
 }
 
 /****************************
+ * What the guard of 'cells[i] := E ?? return' reads: the element that was
+ * assigned, 'cells[i]' again. An index that is not an integer literal is
+ * evaluated once: where the target evaluates it, it is left in a hidden local
+ * ('cells[#guard_N := i]'), and the guard reads that ('cells[#guard_N]'). The
+ * guard used to be made from the target's name alone, so it tested the array,
+ * which is not Nil, and never left.
+ ****************************/
+PARSER_NO_INLINE Variable* Parser::MakeNilGuardElement(Variable* target)
+{
+  const std::wstring file_name = GetFileName();
+  const int line_num = target->GetLineNumber();
+  const int line_pos = target->GetLinePosition();
+
+  ExpressionList* written = TreeFactory::Instance()->MakeExpressionList();
+  ExpressionList* read = TreeFactory::Instance()->MakeExpressionList();
+  const std::vector<Expression*> indices = target->GetIndices()->GetExpressions();
+  for(size_t i = 0; i < indices.size(); ++i) {
+    Expression* index = indices[i];
+    // an index that did not parse is null: its syntax error has been reported
+    if(!index) {
+      return nullptr;
+    }
+
+    if(index->GetExpressionType() == INT_LIT_EXPR && !index->GetMethodCall() && !index->GetCastType()) {
+      written->AddExpression(index);
+      read->AddExpression(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, static_cast<IntegerLiteral*>(index)->GetValue()));
+      continue;
+    }
+
+    std::wstring ident;
+    SymbolEntry* entry = AddHiddenLocal(L"guard", ident, line_num, line_pos);
+    if(!entry) {
+      return nullptr;
+    }
+    Variable* kept = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
+    Assignment* keep = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, kept, index);
+    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
+                                                                                TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, keep));
+    written->AddExpression(sequence);
+    read->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+  }
+  target->SetIndices(written);
+
+  Variable* element = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  element->SetIndices(read);
+  return element;
+}
+
+/****************************
  * if(target = Nil) { bail }
  ****************************/
 PARSER_NO_INLINE If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
@@ -8149,7 +8247,11 @@ PARSER_NO_INLINE If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
   const int line_num = target->GetLineNumber();
   const int line_pos = target->GetLinePosition();
 
-  Variable* subject = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  // a variable or a field is read again by its name; an element by its name and indices
+  Variable* subject = target->GetIndices() ? MakeNilGuardElement(target) : nullptr;
+  if(!subject) {
+    subject = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  }
   CalculatedExpression* test = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR));
   test->SetLeft(subject);
   test->SetRight(TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
@@ -8702,6 +8804,12 @@ PARSER_NO_INLINE Statement* Parser::ParseAssert(int depth)
  * keyword only where the parenthesis that follows is closed by a '{', which a
  * call never is. The resource's name lives in a scope of its own around the
  * body, so two blocks in a method may both name theirs 'f'.
+ *
+ * What is closed is the value E gave, which the body's first (hidden)
+ * statement keeps in '#using_res_N': the name is an ordinary variable and the
+ * body may assign to it. The close used to read the name when the body was
+ * left, so 'w := Nil;' in the body left the resource open and 'w := other;'
+ * closed 'other' in its place.
  ****************************/
 PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
 {
@@ -8737,7 +8845,8 @@ PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
   // scope of the resource: its declaration, the body, the close
   symbol_table->CurrentParseScope()->NewParseScope();
   // the error the body raised, held while the resource closes and raised again
-  const std::wstring raise_ident = L"#using_raise_" + std::to_wstring(hidden_local_id++);
+  const std::wstring hidden_id = std::to_wstring(hidden_local_id++);
+  const std::wstring raise_ident = L"#using_raise_" + hidden_id;
   SymbolEntry* raise_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(raise_ident),
                                                                       TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Error", file_name, line_num, line_pos),
                                                                       false, current_method != nullptr);
@@ -8751,19 +8860,29 @@ PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
   Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, initial);
   Statement* resource = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, assignment);
 
+  // the value to close: '#using_res_N := w', the first statement of the body
+  const std::wstring held_ident = L"#using_res_" + hidden_id;
+  SymbolEntry* held_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(held_ident),
+                                                                     TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(held_entry);
+  Assignment* hold = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos,
+                                                             TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, held_ident),
+                                                             TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name));
+
   symbol_table->CurrentParseScope()->NewParseScope();
   StatementList* body = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
+  body->InsertStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, held_entry, hold), 0);
 
-  // if(w <> Nil) { w->Close(); } -- a Nil resource has nothing to close
+  // if(#using_res_N <> Nil) { #using_res_N->Close(); } -- a Nil resource has nothing to close
   symbol_table->CurrentParseScope()->NewParseScope();   // the close list
   symbol_table->CurrentParseScope()->NewParseScope();   // the 'if' body
   StatementList* close_call = TreeFactory::Instance()->MakeStatementList();
   close_call->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, line_num, line_pos,
-                                                                   name, L"Close", TreeFactory::Instance()->MakeExpressionList()));
+                                                                   held_ident, L"Close", TreeFactory::Instance()->MakeExpressionList()));
   symbol_table->CurrentParseScope()->PreviousParseScope();
   Expression* not_nil = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR,
-                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name),
+                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, held_ident),
                                                                          TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
   StatementList* close = TreeFactory::Instance()->MakeStatementList();
   close->AddStatement(TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, line_num, line_pos, not_nil, close_call));
@@ -9318,13 +9437,38 @@ Select* Parser::ParseSelect(int depth)
 }
 
 /****************************
- * Whether 'match' starts here: the word, then the first name of its subject.
- * Two names in a row start nothing else, so 'match' is a keyword only in this
- * position and stays an ordinary name everywhere else.
+ * Whether 'match' starts here: the word, then the start of its subject. 'match'
+ * is a keyword only where what follows cannot follow a name, and stays an
+ * ordinary name everywhere else ('match := 1', 'match->Size()', 'match(x)',
+ * 'match[0]', 'match + 1'):
+ *   - a name: 'match color {'. Two names in a row start nothing else.
+ *   - a number, character or string: 'match 1 {'. Nor does a name and a literal.
+ *   - a '(' whose matching ')' is followed by '{': 'match (value) {'. A call is
+ *     never followed by a '{' (as for 'using'), so 'match(x);', 'if(match(x)) {'
+ *     and 'match(x)->Size()' are calls of a method named 'match', as before.
+ * A subject that starts with '(' and goes on after its ')' ('match (a) + b {')
+ * is not told from a call: write it inside one pair of parentheses.
  ****************************/
 PARSER_NO_INLINE bool Parser::IsMatchStart()
 {
-  return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"match";
+  if(!Match(TOKEN_IDENT)) {
+    return false;
+  }
+
+  switch(GetToken(SECOND_INDEX)) {
+  case TOKEN_IDENT:
+  case TOKEN_INT_LIT:
+  case TOKEN_FLOAT_LIT:
+  case TOKEN_CHAR_LIT:
+  case TOKEN_CHAR_STRING_LIT:
+    return scanner->GetToken()->GetIdentifier() == L"match";
+
+  case TOKEN_OPEN_PAREN:
+    return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekAfterParens(2) == TOKEN_OPEN_BRACE;
+
+  default:
+    return false;
+  }
 }
 
 /****************************
@@ -9917,8 +10061,18 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
     return nullptr;
   }
 
-  // Parse the expression
-  Expression* result = expr_parser.ParseExpression(0);
+  // Parse the expression. One with more chained operators than a statement may have is given
+  // up by an exception (CheckChain), which nothing between here and the compiler's last
+  // resort caught: obc ended with "internal error: unexpected exception during compilation"
+  // and this scanner was not released. The error has been reported to this parser, so the
+  // interpolation is refused below with it as the reason, like any other that does not parse.
+  Expression* result = nullptr;
+  try {
+    result = expr_parser.ParseExpression(0);
+  }
+  catch(const NestingTooDeep&) {
+    // reported to expr_parser where it was found; refused below
+  }
 
   // A token the scanner rejected is an error even where the parse recovered from it
   // (a malformed literal stands in as a literal): the interpolation is not valid.
@@ -10777,8 +10931,8 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   std::wstring text(line > 1 ? line - 1 : 0, L'\n');
   text += code;
 
-  Scanner* saved = scanner;
-  Method* previous_method = current_method;
+  ScannerScope function_scanner(scanner);
+  StateScope<Method*> function_method(current_method);
   scanner = new Scanner(klass->GetFileName(), alt_syntax, std::move(text));
   NextToken();
 
@@ -10794,9 +10948,8 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
     ProcessError(L"The code written for " + owner + L" has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
   }
 
-  delete scanner;
-  scanner = saved;
-  current_method = previous_method;
+  function_scanner.Restore();
+  current_method = function_method.saved;
 
   if(method && !klass->AddMethod(method)) {
     diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which " + owner + L" needs for itself");
@@ -11824,8 +11977,8 @@ Expression* Parser::ParseAgentSplice(DeclarationList** declarations, int depth)
   NextToken();
 
   // the user's text is read with no placeholders of its own: a name that looks like one is just a name
-  Scanner* saved_scanner = scanner;
-  std::vector<AgentSplice>* saved_splices = agent_splices;
+  ScannerScope piece_scanner(scanner);
+  StateScope<std::vector<AgentSplice>*> piece_splices(agent_splices);
   agent_splices = nullptr;
   scanner = new Scanner(splice.file_name, alt_syntax, splice.text);
   scanner->StartAt(splice.line, splice.pos);
@@ -11846,10 +11999,6 @@ Expression* Parser::ParseAgentSplice(DeclarationList** declarations, int depth)
   if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
     ProcessError(L"Unexpected " + scanner->DescribeToken(scanner->GetToken()) + L" in " + splice.what);
   }
-
-  delete scanner;
-  scanner = saved_scanner;
-  agent_splices = saved_splices;
 
   return expression;
 }
@@ -11878,8 +12027,28 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     ok = false;
   };
 
-  // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket when
-  // 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
+  // After an error where a setting starts: on to the next setting, past the ';' that ends this one, or to the
+  // '}' that closes the agent. What is inside parentheses, brackets or braces is skipped whole. A ')' or ']'
+  // that closes nothing is one more token to skip: counted, it took the depth below zero, the agent's own '}'
+  // was then read as nested, and the rest of the file was skipped as part of the agent with its errors unsaid.
+  auto next_setting = [&]() {
+    int nesting = 0;
+    while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+      if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+        ++nesting;
+      }
+      else if(nesting > 0 && (Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE))) {
+        --nesting;
+      }
+      NextToken();
+    }
+    if(Match(TOKEN_SEMI_COLON)) {
+      NextToken();
+    }
+  };
+
+  // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket and any
+  // type-argument list when 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
   // the piece too: the parenthesis is then reported as not closed, where it is. Leaves the scanner on the
   // token that ended the piece and returns the piece's index, or -1 when it is empty. 'shape' is told what
   // the piece is made of, and (first_line, first_pos) where it starts.
@@ -11888,6 +12057,13 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
                    int& first_line, int& first_pos) -> int {
     int braces = 0;
     int brackets = 0;
+    // Type arguments, 'Factory->New()<String, Int>->MakeTool()': the ',' between them is not the end of an entry.
+    // A '<' opens them where the expression parser reads it so (ParseVariable, ParseMethodCall): always after
+    // 'New(...)' and 'New[...]'; after a name or a call when a name and then '<', '>', ',' or '.' follow.
+    int angles = 0;
+    std::vector<bool> opened_by_new;   // for each open '(' or '[': whether 'New' is before it
+    bool closed_new = false;           // the token before this one closed the '(' or '[' of a 'New'
+    ScannerTokenType previous = TOKEN_END_OF_STREAM;
     size_t count = 0;
     bool names_only = true;         // IDENT ('.' IDENT)*
     bool function_only = false;     // the names, then '->' IDENT, then nothing
@@ -11899,9 +12075,11 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     first_pos = starts_with_string ? from_pos : GetLinePosition();
     while(!Match(TOKEN_END_OF_STREAM)) {
       const ScannerTokenType type = GetToken();
-      if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && type == TOKEN_COMMA))) {
+      if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && angles == 0 && type == TOKEN_COMMA))) {
         break;
       }
+      const bool after_new = closed_new;
+      closed_new = false;
       if(type == TOKEN_OPEN_BRACE) {
         ++braces;
       }
@@ -11910,10 +12088,44 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
       }
       else if(type == TOKEN_OPEN_PAREN || type == TOKEN_OPEN_BRACKET) {
         ++brackets;
+        opened_by_new.push_back(previous == TOKEN_NEW_ID);
       }
       else if((type == TOKEN_CLOSED_PAREN || type == TOKEN_CLOSED_BRACKET) && brackets > 0) {
         --brackets;
+        closed_new = opened_by_new.back();
+        opened_by_new.pop_back();
       }
+
+      if(angles > 0) {
+        // type arguments are names, '.', ',' and nested lists; anything else and this was not a list of them
+        switch(type) {
+        case TOKEN_LES:
+          ++angles;
+          break;
+        case TOKEN_GTR:
+          --angles;
+          break;
+        case TOKEN_SHR:
+          angles = angles > 2 ? angles - 2 : 0;
+          break;
+        case TOKEN_SHR_UNSIGNED:
+          angles = angles > 3 ? angles - 3 : 0;
+          break;
+        case TOKEN_IDENT:
+        case TOKEN_PERIOD:
+        case TOKEN_COMMA:
+          break;
+        default:
+          angles = 0;
+          break;
+        }
+      }
+      else if(type == TOKEN_LES &&
+              (after_new || ((previous == TOKEN_IDENT || previous == TOKEN_CLOSED_PAREN) && Match(TOKEN_IDENT, SECOND_INDEX) &&
+                             (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))))) {
+        angles = 1;
+      }
+      previous = type;
 
       if(names_only) {
         const bool want_name = count % 2 == 0;
@@ -12044,20 +12256,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     if(!Match(TOKEN_IDENT)) {
       fail(key_line, key_pos, L"Expected a setting of the agent '" + name + L"', found " + scanner->DescribeToken(scanner->GetToken()) +
            L"\n\tAn agent has " + settings + L", each written 'name : value;'");
-      // on to the next setting
-      int nesting = 0;
-      while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
-        if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
-          ++nesting;
-        }
-        else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
-          --nesting;
-        }
-        NextToken();
-      }
-      if(Match(TOKEN_SEMI_COLON)) {
-        NextToken();
-      }
+      next_setting();
       continue;
     }
     const std::wstring key = scanner->GetToken()->GetIdentifier();
@@ -12077,20 +12276,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     if(is_budget) {
       if(!Match(TOKEN_OPEN_BRACE)) {
         fail(GetLineNumber(), GetLinePosition(), L"Expected '{' after 'budget': the limits are written 'budget { steps : 8; tokens : 5000; }'");
-        // on to the next setting
-        int nesting = 0;
-        while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
-          if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
-            ++nesting;
-          }
-          else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
-            --nesting;
-          }
-          NextToken();
-        }
-        if(Match(TOKEN_SEMI_COLON)) {
-          NextToken();
-        }
+        next_setting();
         continue;
       }
       NextToken();
@@ -12322,8 +12508,10 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   }
   code.Add(L" return agent__a; } }");
 
-  Scanner* saved_scanner = scanner;
-  Method* saved_method = current_method;
+  // 'splices' is a local of this function: the parser is not left pointing at it
+  ScannerScope class_scanner(scanner);
+  StateScope<std::vector<AgentSplice>*> class_splices(agent_splices);
+  StateScope<Method*> class_method(current_method);
   scanner = new Scanner(file_name, alt_syntax, code.text);
   agent_splices = &splices;
   NextToken();
@@ -12335,11 +12523,6 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
     ProcessError(L"The code written for the agent '" + name + L"' has an extra " + scanner->DescribeToken(scanner->GetToken()));
   }
-
-  agent_splices = nullptr;
-  delete scanner;
-  scanner = saved_scanner;
-  current_method = saved_method;
 
   return klass;
 }

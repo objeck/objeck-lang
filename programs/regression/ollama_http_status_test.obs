@@ -1,0 +1,233 @@
+# EXTRA_LIBS: ollama,net,net_server,json,cipher,misc
+#~
+API.Ollama and the HTTP status of a reply, against a scripted server on loopback (no model,
+no network beyond 127.0.0.1). The server answers every /api path in one of several modes,
+set by the test before each round of calls.
+
+Before this the client read the body of any answered request and handed it to the
+endpoint's parser, whatever the status. A gateway's 502 {"message":"Bad gateway"} is an
+object with no 'error' member, so /api/show built a model out of it (the parser asked for
+nothing more) and /api/chat a reply (it has a 'message'); /api/tags refused the same body
+only because it has no 'models' array. A body the parser accepts was accepted under any
+status at all.
+
+  * ok          200 and the endpoint's documented body: every call succeeds
+  * gateway     502 {"message":"Bad gateway"}: every call fails with the status
+  * valid-502   502 and the endpoint's correct body: the status alone is a failure
+  * valid-401   401 and the endpoint's correct body
+  * error-404   404 {"error":"model 'gone' not found"}: the server's message is kept
+  * html-500    500 and an HTML page
+  * odd-200     200 {"message":"Bad gateway"}: not the shape of any endpoint's answer
+
+No mode answers 429 or 503: the HTTP client retries those three times with a doubling
+delay (seven seconds a call), which is its documented behavior and not what is tested here.
+~#
+use API.Ollama;
+use Data.JSON;
+use Collection;
+use Web.HTTP.Server;
+
+class ScriptedOllama from HttpRequestHandler {
+	New() { Parent(); }
+
+	# the documented answer of an endpoint
+	function : Good(path : String) ~ String {
+		if(path->Equals("/api/show")) {
+			return "{\"modelfile\":\"FROM x\",\"template\":\"{{ .Prompt }}\",\"details\":{\"format\":\"gguf\",\"family\":\"llama\",\"parameter_size\":\"8.0B\",\"quantization_level\":\"Q4_0\"},\"capabilities\":[\"completion\",\"tools\"]}";
+		};
+		if(path->Equals("/api/tags") | path->Equals("/api/ps")) {
+			return "{\"models\":[{\"name\":\"llama3:latest\",\"model\":\"llama3:latest\",\"size\":4661224676,\"digest\":\"abc\"}]}";
+		};
+		if(path->Equals("/api/version")) {
+			return "{\"version\":\"0.40.18\"}";
+		};
+		if(path->Equals("/api/generate")) {
+			return "{\"model\":\"llama3\",\"response\":\"hello\",\"done\":true}";
+		};
+		if(path->Equals("/api/chat")) {
+			return "{\"model\":\"llama3\",\"message\":{\"role\":\"assistant\",\"content\":\"hi there\"},\"done\":true}";
+		};
+		if(path->Equals("/api/embed")) {
+			return "{\"model\":\"llama3\",\"embeddings\":[[0.5,0.25,-0.125]]}";
+		};
+		if(path->Equals("/api/pull")) {
+			return "{\"status\":\"success\"}";
+		};
+		return "{\"error\":\"unknown path\"}";
+	}
+
+	method : Answer(path : String, response : Response) ~ Bool {
+		mode := OllamaHttpStatusTest->GetMode();
+		if(mode->Equals("ok")) {
+			response->SetCodeContent(200, Good(path));
+		}
+		else if(mode->Equals("gateway")) {
+			response->SetCodeContent(502, "{\"message\":\"Bad gateway\"}");
+		}
+		else if(mode->Equals("valid-502")) {
+			response->SetCodeContent(502, Good(path));
+		}
+		else if(mode->Equals("valid-401")) {
+			response->SetCodeContent(401, Good(path));
+		}
+		else if(mode->Equals("error-404")) {
+			response->SetCodeContent(404, "{\"error\":\"model 'gone' not found\"}");
+		}
+		else if(mode->Equals("html-500")) {
+			response->SetCodeContent(500, "<html><body><h1>500 Internal Server Error</h1></body></html>");
+		}
+		else {
+			response->SetCodeContent(200, "{\"message\":\"Bad gateway\"}");
+		};
+		return false;
+	}
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		return Answer(request->GetPath(), response);
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		return Answer(request->GetPath(), response);
+	}
+}
+
+class OllamaHttpStatusTest {
+	@failures : static : Int;
+	@mode : static : String;
+
+	function : GetMode() ~ String {
+		return @mode;
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# one call's outcome: it worked, or it failed with a reason holding 'expect'
+	function : Outcome(name : String, worked : Bool, succeeds : Bool, expect : String) ~ Nil {
+		error := EndPoint->GetLastError();
+		if(succeeds) {
+			Check("{$@mode}: {$name} succeeds", worked);
+			return;
+		};
+
+		Check("{$@mode}: {$name} fails", worked = false);
+		if(error = Nil) {
+			Check("{$@mode}: {$name} says why", false);
+		}
+		else {
+			Check("{$@mode}: {$name} says '{$expect}' (said '{$error}')", error->Find(expect) > -1);
+		};
+	}
+
+	# every endpoint once in the current mode
+	function : Round(mode : String, succeeds : Bool, expect : String) ~ Nil {
+		@mode := mode;
+		"-- {$mode}"->PrintLine();
+
+		model := Model->Show("llama3");
+		Outcome("/api/show", model <> Nil, succeeds, expect);
+		if(succeeds & model <> Nil) {
+			Check("ok: the show record is read", model->GetInfo() <> Nil & model->GetInfo()->HasCapability("tools") & model->GetDetails() <> Nil & model->GetDetails()->GetParameterSize()->Equals("8.0B"));
+		};
+
+		models := Model->List();
+		Outcome("/api/tags", models <> Nil, succeeds, expect);
+		if(succeeds & models <> Nil) {
+			Check("ok: one model is listed", models->Size() = 1);
+		};
+
+		running := Model->Running();
+		Outcome("/api/ps", running <> Nil, succeeds, expect);
+
+		version := Model->Version();
+		Outcome("/api/version", version <> Nil, succeeds, expect);
+
+		pulled := Model->Pull("llama3");
+		Outcome("/api/pull", pulled, succeeds, expect);
+
+		text := Completion->Generate("llama3", "hi");
+		Outcome("/api/generate", text <> Nil, succeeds, expect);
+		if(succeeds & text <> Nil) {
+			Check("ok: the generated text is read", text->Equals("hello"));
+		};
+
+		chat := Chat->New("llama3", false);
+		said := chat->Send("hi");
+		Outcome("/api/chat", said <> Nil, succeeds, expect);
+		if(succeeds & said <> Nil) {
+			Check("ok: the chat text is read", said->Equals("hi there"));
+		};
+
+		vector := Model->Embed("llama3", "hi");
+		Outcome("/api/embed", vector <> Nil, succeeds, expect);
+		if(succeeds & vector <> Nil) {
+			Check("ok: the embedding is read", vector->Size() = 3);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@mode := "ok";
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(ScriptedOllama->New()->GetClass(), 0, false);
+			}
+		};
+		server->Execute(Nil);
+
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		port := WebServer->GetBoundPort();
+		if(port = 0) {
+			"  [FAIL] the scripted server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+		EndPoint->SetHost("http://127.0.0.1:{$port}");
+
+		Round("ok", true, "");
+		Round("gateway", false, "HTTP 502");
+		Round("valid-502", false, "HTTP 502");
+		Round("valid-401", false, "HTTP 401");
+		Round("error-404", false, "model 'gone' not found");
+		Round("html-500", false, "HTTP 500");
+		Round("odd-200", false, "expected field");
+		# and the server is still answered correctly afterwards
+		Round("ok", true, "");
+
+		# the show parser on its own: an object with none of the documented fields is not a model
+		"-- /api/show bodies"->PrintLine();
+		EndPoint->SetLastError(Nil);
+		Check("a gateway's object is not a show record", Model->ParseShowResponse("{\"message\":\"Bad gateway\"}") = Nil & EndPoint->GetLastError() <> Nil);
+		Check("an empty object is not a show record", Model->ParseShowResponse("{}") = Nil);
+		Check("a listing is not a show record", Model->ParseShowResponse("{\"models\":[]}") = Nil);
+		Check("one documented field is enough", Model->ParseShowResponse("{\"capabilities\":[\"completion\"]}") <> Nil);
+		Check("a template alone is a show record", Model->ParseShowResponse("{\"template\":\"{{ .Prompt }}\"}") <> Nil);
+
+		"-- /api/chat and /api/generate bodies"->PrintLine();
+		Check("a 'message' that is text is not a reply", Reply->Parse("{\"message\":\"Bad gateway\"}") = Nil);
+		Check("a 'response' that is not text is not a reply", Reply->Parse("{\"response\":{\"detail\":\"x\"}}") = Nil);
+		Check("a chat reply parses", Reply->Parse(ScriptedOllama->Good("/api/chat")) <> Nil);
+		Check("a generate reply parses", Reply->Parse(ScriptedOllama->Good("/api/generate")) <> Nil);
+		Check("an empty generate response parses", Reply->Parse("{\"model\":\"m\",\"response\":\"\",\"done\":true}") <> Nil);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Ollama HTTP status"->PrintLine();
+		# Serve blocks in accept; end the process
+		Runtime->Exit(0);
+	}
+}

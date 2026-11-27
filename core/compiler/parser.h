@@ -168,6 +168,7 @@ class Parser {
   StatementList* nil_guard_bail = nullptr;
   StatementList* ParseNilGuardBail(int depth);
   If* MakeNilGuard(Variable* target, StatementList* bail);
+  Variable* MakeNilGuardElement(Variable* target);
   Method* prev_method;
   // true while the class of a 'spawn' is being parsed
   bool spawn_class;
@@ -233,6 +234,36 @@ class Parser {
     int saved;
     explicit ChainScope(int& r) : ref(r), saved(r) { ref = 0; }
     ~ChainScope() { ref = saved; }
+  };
+  // A piece of text read with a scanner of its own (the class written for an 'agent', a piece of
+  // the user's text inside it, a generated function, the class of a 'spawn'). Declared before the
+  // piece's scanner is made: that scanner is released and the parser's own put back when the
+  // reading ends (Restore, or the end of the scope), and also when it is given up, by the
+  // NestingTooDeep that an expression too long or too deep inside the piece throws. Done only by
+  // hand after the reading, that exception left the piece's scanner as the parser's, so the
+  // scanners under it were never released, and what the reading had set (StateScope) stayed set.
+  struct ScannerScope {
+    Scanner*& slot;
+    Scanner* saved;
+    explicit ScannerScope(Scanner*& s) : slot(s), saved(s) {}
+    ~ScannerScope() { Restore(); }
+    void Restore() {
+      if(slot != saved) {
+        delete slot;
+        slot = saved;
+      }
+    }
+    ScannerScope(const ScannerScope&) = delete;
+    ScannerScope& operator=(const ScannerScope&) = delete;
+  };
+  // parser state that is set for such a reading, put back when the scope ends
+  template<typename T> struct StateScope {
+    T& slot;
+    T saved;
+    explicit StateScope(T& s) : slot(s), saved(s) {}
+    ~StateScope() { slot = saved; }
+    StateScope(const StateScope&) = delete;
+    StateScope& operator=(const StateScope&) = delete;
   };
   void CheckDepth(int depth);
   // branches of ParseStatement and ParseIf kept out of their stack frames
@@ -369,6 +400,17 @@ class Parser {
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
   void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
   void GeneratePendingMcpTools();
+  // a McpMain(args : String[]) that 'obr --mcp' could not start, in a file without 'use API.MCP':
+  // an error only when the program has a tagged function (RefuseMcpEntry, ReportMcpEntries)
+  struct McpEntryRefusal {
+    std::wstring file_name;
+    int line = 0;
+    int pos = 0;
+    std::wstring message;
+  };
+  std::vector<McpEntryRefusal> mcp_entry_refusals;
+  void RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message);
+  void ReportMcpEntries();
   void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
   bool McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth);
   void GenerateJsonClass(Class* klass, int line, int depth);

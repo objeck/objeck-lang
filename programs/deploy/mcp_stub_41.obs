@@ -3,7 +3,7 @@
 # run:     obr mcp_stub_41.obe
 #
 # Call an MCP server through a typed client. A program that calls a server
-# with CallTool("price", "{\"item\":\"tea\"}") builds JSON by hand: a wrong
+# with CallTool("price", json {"item": "tea"}) builds JSON by hand: a wrong
 # argument name or type is found only when the call runs. mcp_stubs, a tool
 # that ships with Objeck, asks a server for its tool list and writes an
 # Objeck class with one method per tool, typed from the tool's schema, so the
@@ -54,10 +54,7 @@ class Shop {
 	@param rush rush delivery
 	~#
 	function : Restock(item : String, count : Int, rush : Bool := false) ~ String {
-		speed := "standard";
-		if(rush) {
-			speed := "rush";
-		};
+		speed := rush ? "rush" : "standard";
 		return "{$count} x {$item}, {$speed} delivery";
 	}
 
@@ -69,14 +66,8 @@ class Shop {
 	@param max_results most results to return
 	~#
 	function : Search(terms : String[], max_results : Int := 10) ~ JsonElement {
-		found := terms->Size();
-		if(found > max_results) {
-			found := max_results;
-		};
-		hit := JsonElement->New(JsonElement->JsonType->OBJECT);
-		hit->Insert("matches", found);
-		hit->Insert("exact", true);
-		return hit;
+		found := terms->Size() > max_results ? max_results : terms->Size();
+		return json {"matches": found, "exact": true};
 	}
 
 	function : Build() ~ McpService {
@@ -101,12 +92,9 @@ class ShopDemo {
 		order := shop->Restock("tea", 12, true);
 		"restock(\"tea\", 12, true)     -> {$order}"->PrintLine();
 
-		terms := String->New[2];
-		terms[0] := "green";
-		terms[1] := "tea";
-		hits := shop->SearchJson(terms);
+		hits := shop->SearchJson(["green", "tea"]);
 		matches := hits->Get("matches")->GetInt();
-		exact := hits->Get("exact")->GetType() = JsonElement->JsonType->TRUE;
+		exact := hits->Get("exact")->GetBool();
 		"searchJson([green, tea])     -> matches={$matches} exact={$exact}"->PrintLine();
 
 		missing := shop->Price("coffee");

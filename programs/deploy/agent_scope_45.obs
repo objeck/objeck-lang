@@ -28,15 +28,14 @@ class Demo {
 	@agent : static : Agent;
 
 	function : Main(args : String[]) ~ Nil {
-		script := Vector->New()<AgentReply>;
-		script->AddBack(Counted(AgentReply->Ask("t1", "clock", "{}"), 10, 10));
-		script->AddBack(Counted(AgentReply->Say("It is noon."), 5, 5));
-		script->AddBack(AgentReply->Say("never asked"));
+		script : Vector<AgentReply> := [
+			Counted(AgentReply->Ask("t1", "clock", "{}"), 10, 10),
+			Counted(AgentReply->Say("It is noon."), 5, 5),
+			AgentReply->Say("never asked")];
 
 		registry := ToolRegistry->New();
-		schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
-		registry->Add(AgentTool->New("clock", "Tells the time", schema,
-			Func2Ref->New(Demo->Clock(JsonElement) ~ String)<JsonElement, String>));
+		schema := json {"type": "object", "properties": {}};
+		registry->Add(AgentTool->New("clock", "Tells the time", schema, Demo->Clock));
 		@agent := Agent->New(ScriptedBackend->New(script), registry);
 
 		scope := AgentScope->New()->SetMaxSteps(2)->SetTrace(true)->SetPrintTrace(true);

@@ -1,0 +1,182 @@
+#~
+Clearing a Nil array from compiled code is a runtime error like any other use
+of Nil: a ?-> region recovers from it and, with thread-fault isolation on, a
+worker that hits it ends alone.
+
+Byte->Clear, Char->Clear, Int->Clear and Float->Clear are one instruction each
+(ZERO_*_ARY). The interpreter routed a Nil array through its error recovery.
+Compiled code hands the instruction to a runtime callback, and all four
+callbacks printed the error and ended the process, so the same program
+recovered under --jit=off and died once the helper had been called often
+enough to compile. The callbacks for the four array copies, Critical start and
+end, and the two string-to-number conversions ended the process the same way;
+they return the Nil-dereference status now, as the compiled guard for a Nil
+receiver always did.
+
+Each helper is called 60 times with a real array first, so it is compiled at
+the default threshold as well as under OBJECK_JIT_THRESHOLD=1, and is the
+interpreter's under --jit=off: the three must agree.
+~#
+use System.Concurrency;
+
+class Wiper {
+	New() {
+	}
+
+	# kinds 0-3 clear, 4-7 copy into a Nil destination, 8-11 copy from a Nil source
+	method : public : Wipe(kind : Int, b : Byte[], c : Char[], n : Int[], f : Float[]) ~ IntRef {
+		select(kind) {
+			label 0: {
+				Byte->Clear(b);
+			}
+
+			label 1: {
+				Char->Clear(c);
+			}
+
+			label 2: {
+				Int->Clear(n);
+			}
+
+			label 3: {
+				Float->Clear(f);
+			}
+
+			label 4: {
+				Runtime->Copy(b, 0, Byte->New[2], 0, 2);
+			}
+
+			label 5: {
+				Runtime->Copy(c, 0, Char->New[2], 0, 2);
+			}
+
+			label 6: {
+				Runtime->Copy(n, 0, Int->New[2], 0, 2);
+			}
+
+			label 7: {
+				Runtime->Copy(f, 0, Float->New[2], 0, 2);
+			}
+
+			label 8: {
+				Runtime->Copy(Byte->New[2], 0, b, 0, 2);
+			}
+
+			label 9: {
+				Runtime->Copy(Char->New[2], 0, c, 0, 2);
+			}
+
+			label 10: {
+				Runtime->Copy(Int->New[2], 0, n, 0, 2);
+			}
+
+			label 11: {
+				Runtime->Copy(Float->New[2], 0, f, 0, 2);
+			}
+		};
+
+		return IntRef->New(kind);
+	}
+
+	function : Warm(w : Wiper) ~ Nil {
+		b := Byte->New[4];
+		c := Char->New[4];
+		n := Int->New[4];
+		f := Float->New[4];
+		for(i := 0; i < 60; i += 1;) {
+			for(kind := 0; kind < 12; kind += 1;) {
+				w->Wipe(kind, b, c, n, f);
+			};
+		};
+	}
+}
+
+class ClearWorker from Thread {
+	@kind : Int;
+
+	New(kind : Int) {
+		Parent("clear");
+		@kind := kind;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		w := Wiper->New();
+		Wiper->Warm(w);
+		b : Byte[]; c : Char[]; n : Int[]; f : Float[];
+		w->Wipe(@kind, b, c, n, f);
+		kind := @kind;
+		"UNREACHABLE: the worker went on after kind {$kind}"->PrintLine();
+	}
+}
+
+class JitNilArrayClear {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		JitNilArrayClear->New()->Run();
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		w := Wiper->New();
+		Wiper->Warm(w);
+
+		# a real array is cleared
+		b := Byte->New[3]; b[1] := 7;
+		n := Int->New[3]; n[2] := 9;
+		c := Char->New[3]; c[0] := 'x';
+		f := Float->New[3]; f[1] := 2.5;
+		for(kind := 0; kind < 4; kind += 1;) {
+			w->Wipe(kind, b, c, n, f);
+		};
+		Check("the arrays are cleared", b[1] = 0 & n[2] = 0 & c[0] = '\0' & f[1] = 0.0);
+
+		# a Nil array is recovered from, every kind, twice over
+		nb : Byte[]; nc : Char[]; nn : Int[]; nf : Float[];
+		for(round := 0; round < 2; round += 1;) {
+			for(kind := 0; kind < 12; kind += 1;) {
+				r := w?->Wipe(kind, nb, nc, nn, nf);
+				Check("round {$round} kind {$kind}: recovered as a NilError",
+					r = Nil & Runtime->GetLastError() <> Nil & Runtime->GetLastError()->TypeOf(NilError));
+			};
+		};
+
+		# and the helper still works afterwards
+		r := w?->Wipe(0, b, c, n, f);
+		Check("the helper runs on after the recoveries", r <> Nil & r->Get() = 0);
+
+		# a worker that clears a Nil array ends alone
+		Runtime->SetProperty("runtime.threads.isolation", "isolate");
+		active := Runtime->GetProperty("runtime.threads.active")->ToInt();
+		faulted := Runtime->GetProperty("runtime.threads.faulted")->ToInt();
+		for(kind := 0; kind < 12; kind += 1;) {
+			t := ClearWorker->New(kind);
+			t->Execute(Nil);
+			t->Join();
+			Check("kind {$kind}: the worker's fault is reported at Join",
+				Runtime->GetProperty("runtime.thread.join.fault")->Find("Nil") >= 0);
+		};
+		Check("twelve faults counted", Runtime->GetProperty("runtime.threads.faulted")->ToInt() = faulted + 12);
+		Check("no mutator slot leaked", Runtime->GetProperty("runtime.threads.active")->ToInt() = active);
+
+		if(@failures > 0) {
+			failures := @failures;
+			"{$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"jit_nil_array_clear: all checks passed"->PrintLine();
+	}
+}
