@@ -112,10 +112,20 @@ done
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 "${DOCKER[@]}" version >/dev/null 2>&1 || die "docker is not usable as '${DOCKER[*]}' (set DOCKER=\"sudo docker\"?)"
 mkdir -p "$DEPS" "$OUT"
+# docker run -v treats a path with no slash ("out") as a named volume, not a
+# directory, and the host would then check an out/ the build never wrote to.
+# Mount absolute host paths only.
+DEPS="$(cd "$DEPS" && pwd -P)"
+OUT="$(cd "$OUT" && pwd -P)"
 
 IMAGE=objeck-portable-linux:el8
 echo "== build image $IMAGE"
 "${DOCKER[@]}" build -q -t "$IMAGE" "$REPO/tools/packaging/portable-linux"
+
+# Whatever archive is already there is from an earlier build; remove it so one
+# found afterwards can only be this build's.
+TGZ="$OUT/objeck-linux-${ARCH}_0.0.0.tgz"
+rm -f "$TGZ"
 
 echo "== build linux-$ARCH in $IMAGE"
 "${DOCKER[@]}" run --rm \
@@ -125,7 +135,6 @@ echo "== build linux-$ARCH in $IMAGE"
   -e GITHUB_ACTIONS="${GITHUB_ACTIONS:-}" -e VERBOSE="${VERBOSE:-}" \
   "$IMAGE" bash /src/tools/packaging/build_portable_linux.sh --in-container
 
-TGZ="$OUT/objeck-linux-${ARCH}_0.0.0.tgz"
 [ -f "$TGZ" ] || die "the build wrote no $TGZ"
 
 if [ "$GATE" = 1 ]; then
