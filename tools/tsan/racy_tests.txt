@@ -1,9 +1,9 @@
 # Regression tests that tools/tsan/run_tsan.sh leaves out, one name to a line.
 #
-# A test goes here only when a ThreadSanitizer run of it can say nothing but a
-# report that is already understood, that tsan.supp cannot express, and that
-# tsan_reports.py does not set aside. Each entry names what races. The tests
-# still run in every other suite.
+# A test goes here only when a ThreadSanitizer run of it can say nothing useful:
+# a report that is already understood, that tsan.supp cannot express and that
+# tsan_reports.py does not set aside, or a test the instrumented VM cannot pass.
+# Each entry says which. The tests still run in every other suite.
 #
 # NOT here: a program that only races on its own fields (a polled flag, a
 # counter, a library's lazily created static). tsan_reports.py recognises that
@@ -13,21 +13,15 @@
 # were agent_scope_outlived_parent_test, gc_cond_value_threads,
 # interact_spawn_lambda_self, ml_vector_parallel (every query on a shared
 # VectorIndex clears its @error), query_expr_concurrent, query_index_concurrent,
-# query_thread_errors, query_server_concurrent (Web.HTTP.Server.WebServer stores
-# its unchanged @connection_mutex on every accept), diag_concurrent_analysis and
-# onnx_concurrency.
+# query_thread_errors and query_server_concurrent (Web.HTTP.Server.WebServer
+# stores its unchanged @connection_mutex on every accept).
+#
+# No longer here (2026-11-27): diag_concurrent_analysis and onnx_concurrency (the
+# libraries now make their shared proxy and names under a lock) and
+# tls_close_races (the socket's connected word is read with its context, under
+# tls_context_lock).
 
-# --- a string one thread built and another passes to a native library ---
-diag_concurrent_analysis           # the diagnostics library creates its static DllProxy in whichever thread comes first
-                                   # and the others pick it up from the static with no lock: SharedLibraryCall then
-                                   # reads (wcslen) library-name characters another thread wrote (the string's memcpy),
-                                   # ordered by nothing the tool can see. The VM side is a trap, not a field instruction
-onnx_concurrency                   # the same shape in the onnx library's Session; libonnxruntime itself is in tsan.supp
-
-# --- a socket closed by one thread while another is using it (the test's subject) ---
-socket_server_stop_exit_time       # Close() on a listening TCPSocketServer under a thread blocked in Accept(): the two
-                                   # traps read and write the object's handle word. It also times its own exit, which
-                                   # the instrumented VM is too slow for (it fails there, reports or not)
-tls_close_races                    # Close() against ShutdownSend() on the same TCPSecureSocket: the context is counted
-                                   # and freed by its last user, but SockTcpShutdownSend reads the object's "connected"
-                                   # word outside tls_context_lock while SocketCtxDetach clears it
+# --- too slow under the instrumented VM ---
+socket_server_stop_exit_time       # times its own exit from outside (under a second); the instrumented VM takes longer,
+                                   # so it fails there whatever the VM does. What it races -- Close() on a listener
+                                   # under Accept() -- is run by socket_close_races, which has no clock in it

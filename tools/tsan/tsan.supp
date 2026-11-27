@@ -52,3 +52,32 @@ race:tzset_internal
 # reports is VM or Objeck library code.
 # Wrong if: a report names an Objeck frame as well; look at it without this entry.
 called_from_lib:libonnxruntime.so
+
+# --- 5. A descriptor closed under a thread that is using it ----------------------
+# The tool keeps a shadow word for every file descriptor: recv(), accept() and the
+# like read it, close() writes it. Closing a plain TCP socket from one thread is
+# how another thread's blocked Accept() or read is ended (TCPSocketServer and
+# TCPSocket have no other way), so IPSocket::Close on one thread against a call on
+# the same descriptor on another is that mechanism, reported
+# (socket_close_races, the HTTP server's Stop). The object's handle word is
+# atomic and Close() takes the descriptor exactly once (SocketWord,
+# TakeSocketHandle in common.cpp); what is left is that a thread which has
+# already loaded the descriptor can make its call after the number has been
+# released, and reused. The TLS and DTLS classes close that with a counted
+# context (ListenerUse, SocketCtxUse); a plain socket's word is only a number.
+# IPSocket::Close touches nothing else shared, so this hides nothing else.
+# Wrong if: plain sockets get a counted context too. Then remove this entry: a
+# report here would mean the count failed.
+race:IPSocket::Close
+
+# --- 6. libobjk_diags, when it is not built with the sanitizer -------------------
+# run_tsan.sh instruments obr only. The diagnostics library (the compiler's front
+# end as a shared library) keeps inflated .obl files in a cache of
+# std::shared_ptr: a thread compares against an entry it holds a reference to
+# (Library::LoadFileBuffer) and the last holder's release frees it. The reference
+# counts are atomics inside the uninstrumented library, so the tool sees the read
+# and the delete and nothing ordering them (diag_concurrent_analysis, now and
+# then).
+# Wrong if: run_tsan.sh starts building the native libraries with the sanitizer.
+# Then remove this entry and read what it reports.
+called_from_lib:libobjk_diags.so

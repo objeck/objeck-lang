@@ -15,8 +15,8 @@ It needs Linux x64 with GCC and python3, takes about five minutes on a quiet 32-
 |---|---|---|
 | `run_tsan.sh` | The build and the run. `--raw` ignores the two lists below. | |
 | `tsan_reports.py` | Sorts what is left into reports against the VM, which fail the run, and races between two of the program's own field accesses, which are listed and not counted. | |
-| `tsan.supp` | Reports that are understood and are not faults of the VM: the accepted call-site patching race, program threads nobody joined, glibc's and ONNX Runtime's internals. | Only with the reason in the file, and what would make the entry wrong. |
-| `racy_tests.txt` | Tests left out because all a run of them can say is a known report that neither of the above can express. | Only with what races named. |
+| `tsan.supp` | Reports that are understood and are not faults of the VM: the accepted call-site patching race, program threads nobody joined, a plain socket closed under its user, and the internals of libraries that are not instrumented (glibc, ONNX Runtime, the diagnostics library). | Only with the reason in the file, and what would make the entry wrong. |
+| `racy_tests.txt` | Tests a run can say nothing useful about. One today: it times its own exit. | Only with the reason. |
 
 A new report is first a question about the VM. The order to ask in:
 
@@ -44,5 +44,15 @@ A new report is first a question about the VM. The order to ask in:
 | `StackInstr::SetType` / `SetOperand3` | Accepted, `docs/design/JIT_CALL_SITE_PATCHING.md`; in `tsan.supp`. |
 | thread leak at `ProcessAsyncMethodCall` | Program threads never joined; in `tsan.supp`. |
 | `StorClsInstIntVar` against `LoadClsInstIntVar` / `StorClsInstIntVar` (10 tests) | Programs and libraries racing on their own fields: polled flags, lazily created statics, a redundant store of an unchanged mutex. Set aside by `tsan_reports.py`. |
-| `SharedLibraryCall` reading a library name; `SockTcpAccept` / `SockTcpClose`; `SocketCtxDetach` | A string published through an unsynchronized static, and sockets closed under their users: four tests in `racy_tests.txt`. |
+| `SharedLibraryCall` reading a library name; `SockTcpAccept` / `SockTcpClose`; `SocketCtxDetach` | Left out at first (four tests in `racy_tests.txt`), then fixed: see the second table. |
 | `tzset_internal`, `libonnxruntime` | Uninstrumented libraries; in `tsan.supp`. |
+
+Later the same day, with the three tests that had been left out for them:
+
+| Report | Verdict |
+|---|---|
+| `SockTcpAccept` / `SockTcpClose` on a socket's handle word; two `SockTcpClose` | The word is atomic; `Close()` takes the descriptor with one exchange (two closers could both close it: a real fault). Test `socket_close_races`. |
+| `SocketCtxDetach` against a TLS trap's read of the connected word | Read under `tls_context_lock` with the context. `tls_close_races` runs again. |
+| `SharedLibraryCall` reading a name; the diagnostics and onnx libraries' lazily made statics | The libraries make their proxy and names under a lock. `diag_concurrent_analysis` and `onnx_concurrency` run again. |
+| `IPSocket::Close` against `recv` / `accept` on the same descriptor | How a blocked call on a plain socket is ended; in `tsan.supp`, with what would retire the entry. |
+| `libobjk_diags.so`: a `shared_ptr` release against a read | The library is not instrumented; in `tsan.supp`. |
