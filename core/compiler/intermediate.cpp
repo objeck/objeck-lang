@@ -4269,6 +4269,28 @@ void IntermediateEmitter::EmitPostStatements()
 }
 
 /****************************
+ * Brackets an operand that only one path evaluates: the fallback of '??', an
+ * arm of '?:'. Its postfix updates belong to that path. Left queued they were
+ * emitted after the paths rejoin, at the end of the statement, and ran whether
+ * the operand had or not: `current ?? IntRef->New(i++)` incremented i for a
+ * non-Nil 'current'.
+ *
+ * Begin sets aside what the statement has queued so far (those run on every
+ * path, at its end); End emits what the operand queued, while the operand's
+ * value is on the stack, and puts the statement's own back.
+ ****************************/
+void IntermediateEmitter::BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements)
+{
+  outer_post_statements.swap(post_statements);
+}
+
+void IntermediateEmitter::EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements)
+{
+  EmitPostStatements();
+  post_statements.swap(outer_post_statements);
+}
+
+/****************************
  * Translates an 'select' statement
  ****************************/
 void IntermediateEmitter::EmitSelect(Select* select_stmt)
@@ -6176,8 +6198,13 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
       const std::vector<Expression*>& defaults = method_call->GetCallingParameters()->GetExpressions();
+      // the default's postfix updates run here, with the default (see
+      // BeginConditionalOperand)
+      std::queue<OperationAssignment*> outer_post_statements;
+      BeginConditionalOperand(outer_post_statements);
       EmitExpression(defaults[0]);
       EmitCast(method_call);
+      EndConditionalOperand(outer_post_statements);
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
       new_char_str_count = 0;
 
@@ -6328,8 +6355,13 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   // of a pair under the first). `("q" ?? "x")` got a SWAP_INT here that put the
   // word under the receiver's into the slot instead of the default.
   new_char_str_count = 0;
+  // the default's postfix updates run here, on the Nil path alone (see
+  // BeginConditionalOperand)
+  std::queue<OperationAssignment*> outer_post_statements;
+  BeginConditionalOperand(outer_post_statements);
   EmitExpression(args[0]);
   EmitCast(method_call);
+  EndConditionalOperand(outer_post_statements);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
   new_char_str_count = 0;

@@ -82,6 +82,8 @@ class IntermediateEmitter {
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;
   void EmitPostStatements();
+  void BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
+  void EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
   
   // emit operations
   void EmitStrings();
