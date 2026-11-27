@@ -6906,6 +6906,34 @@ static int PendingRefusal(SOCKET sock)
 #endif
 }
 
+// true when a connected socket's own address and port are its peer's: it is
+// connected to itself (see UdpOpen)
+static bool UdpConnectedToItself(SOCKET sock)
+{
+  struct sockaddr_storage local, peer;
+  socklen_t local_len = sizeof(local);
+  socklen_t peer_len = sizeof(peer);
+  memset(&local, 0, sizeof(local));
+  memset(&peer, 0, sizeof(peer));
+  if(getsockname(sock, (struct sockaddr*)&local, &local_len) != 0 || getpeername(sock, (struct sockaddr*)&peer, &peer_len) != 0) {
+    return false;
+  }
+  if(local.ss_family != peer.ss_family) {
+    return false;
+  }
+  if(local.ss_family == AF_INET) {
+    const struct sockaddr_in* a = (const struct sockaddr_in*)&local;
+    const struct sockaddr_in* b = (const struct sockaddr_in*)&peer;
+    return a->sin_port == b->sin_port && memcmp(&a->sin_addr, &b->sin_addr, sizeof(a->sin_addr)) == 0;
+  }
+  if(local.ss_family == AF_INET6) {
+    const struct sockaddr_in6* a = (const struct sockaddr_in6*)&local;
+    const struct sockaddr_in6* b = (const struct sockaddr_in6*)&peer;
+    return a->sin6_port == b->sin6_port && memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(a->sin6_addr)) == 0;
+  }
+  return false;
+}
+
 // connects the client to its next address that connects; false, and nothing
 // changed, when none is left
 static bool UdpAdvance(UdpEndpoint* ep, SocketError& error)
@@ -7075,6 +7103,31 @@ static UdpEndpoint* UdpOpen(const char* address, int port, SocketError& error)
     UdpCloseHandle(ep->sock);
     delete ep;
     return nullptr;
+  }
+
+  // The system may give a client the very port it is being sent to, when nobody
+  // holds that port any more (a client's port comes from the same range as a
+  // server's port of 0): the socket is then connected to itself and reads back
+  // what it sends, where it should hear that nobody is there. A second socket
+  // connected while the first still holds the port gets another, and takes its
+  // place. Nothing has seen the first one's handle yet.
+  if(UdpConnectedToItself(ep->sock)) {
+    SOCKET fresh = socket(ep->family, SOCK_DGRAM, IPPROTO_UDP);
+    if(UdpValid(fresh)) {
+      if(ep->family == AF_INET6) {
+        int v6_only = 0;
+        // best effort, as for the first socket
+        (void)setsockopt(fresh, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&v6_only, sizeof(v6_only));
+      }
+      const struct sockaddr* addr = (const struct sockaddr*)&ep->candidates[ep->current];
+      if(connect(fresh, addr, ep->candidate_lens[ep->current]) == 0) {
+        UdpCloseHandle(ep->sock);
+        ep->sock = fresh;
+      }
+      else {
+        UdpCloseHandle(fresh);
+      }
+    }
   }
 
   return ep;

@@ -464,6 +464,13 @@ public:
         }
       }
       sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
+      if(sock >= 0 && ConnectedToItself(sock)) {
+        // connect again while the first socket still holds that port, so the system
+        // must pick another: this one reaches the peer, or hears that there is none
+        const SOCKET itself = sock;
+        sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
+        close(itself);
+      }
       if(sock < 0) {
         const int rank = ConnectErrorRank(attempt_error);
         if(rank > kept_rank) {
@@ -918,6 +925,38 @@ public:
 private:
   // One connect attempt to one resolved address; -1 with the reason in error
   // when it fails, taken before the close() that cleans up.
+  // A socket connected to itself: its own address and port are the ones it connected
+  // to. The system picks a client's port from the same range a server's port of 0
+  // comes from, so a client sent to a port nobody holds any more can be given that
+  // very port. A UDP client then reads back the datagrams it sends, and a TCP client
+  // completes a connection with itself, where both should hear that nobody is there
+  // (100,000 UDP clients sent to a port just released on Linux: 5 read their own
+  // datagram).
+  static bool ConnectedToItself(SOCKET sock) {
+    struct sockaddr_storage local, peer;
+    socklen_t local_len = sizeof(local);
+    socklen_t peer_len = sizeof(peer);
+    memset(&local, 0, sizeof(local));
+    memset(&peer, 0, sizeof(peer));
+    if(getsockname(sock, (struct sockaddr*)&local, &local_len) != 0 || getpeername(sock, (struct sockaddr*)&peer, &peer_len) != 0) {
+      return false;
+    }
+    if(local.ss_family != peer.ss_family) {
+      return false;
+    }
+    if(local.ss_family == AF_INET) {
+      const struct sockaddr_in* a = (const struct sockaddr_in*)&local;
+      const struct sockaddr_in* b = (const struct sockaddr_in*)&peer;
+      return a->sin_port == b->sin_port && memcmp(&a->sin_addr, &b->sin_addr, sizeof(a->sin_addr)) == 0;
+    }
+    if(local.ss_family == AF_INET6) {
+      const struct sockaddr_in6* a = (const struct sockaddr_in6*)&local;
+      const struct sockaddr_in6* b = (const struct sockaddr_in6*)&peer;
+      return a->sin6_port == b->sin6_port && memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(a->sin6_addr)) == 0;
+    }
+    return false;
+  }
+
   static SOCKET ConnectAttempt(const struct addrinfo* addr, int timeout_ms, int& error) {
     SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
     if(sock < 0) {
