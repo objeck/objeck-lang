@@ -963,6 +963,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python json_class_diag_test.py "%BIN%"
 
+    - name: the prompt literal diagnostics hold (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python prompt_literal_diag_test.py "%BIN%"
+
     - name: obr --mcp serves a program's tools (Windows)
       working-directory: ./programs/regression
       shell: cmd

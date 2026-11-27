@@ -340,6 +340,12 @@ class Parser {
   Class* McpFindClass(const std::wstring& name);
   // a tagged doc comment before something that is not a function
   void RejectToolDoc(const wchar_t* what);
+  // 'prompt "..."' (docs/design/AGENT_SYNTAX.md): the word 'prompt' directly before a string literal
+  inline bool IsPromptLiteral() {
+    return Match(TOKEN_IDENT) && (Match(TOKEN_CHAR_STRING_LIT, 1) || Match(TOKEN_BAD_CHAR_STRING_LIT, 1)) &&
+           scanner->GetToken()->GetIdentifier() == L"prompt";
+  }
+  Expression* ParsePromptLiteral(int depth);
   Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth, Type* block_type = nullptr);

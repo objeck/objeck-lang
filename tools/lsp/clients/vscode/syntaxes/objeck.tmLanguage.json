@@ -6,6 +6,9 @@
 			"include": "#comments"
 		},
 		{
+			"include": "#prompt-literals"
+		},
+		{
 			"include": "#strings"
 		},
 		{
@@ -176,6 +179,56 @@
 				{
 					"name": "storage.modifier.objeck",
 					"match": "\\b(public|private|static|native|virtual)\\b"
+				}
+			]
+		},
+		"prompt-literals": {
+			"comment": "prompt \"...\": 'prompt' is a word only before a string; {name} and {name : Type} are holes, {{ and }} literal braces (docs/design/AGENT_SYNTAX.md)",
+			"begin": "\\b(prompt)(\\s*)(\")",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.prompt.objeck"
+				},
+				"3": {
+					"name": "string.quoted.double.objeck"
+				}
+			},
+			"end": "\"",
+			"endCaptures": {
+				"0": {
+					"name": "string.quoted.double.objeck"
+				}
+			},
+			"contentName": "string.quoted.double.objeck",
+			"patterns": [
+				{
+					"name": "constant.character.escape.objeck",
+					"match": "\\\\."
+				},
+				{
+					"name": "constant.character.escape.objeck",
+					"match": "\\{\\{|\\}\\}"
+				},
+				{
+					"name": "meta.interpolation.objeck",
+					"match": "\\{\\$[^}\"]*\\}"
+				},
+				{
+					"match": "(\\{)\\s*(@?[A-Za-z_][A-Za-z0-9_]*)\\s*(?:(:)\\s*(String|Int|Float|Bool|Char|Byte)\\s*)?(\\})",
+					"captures": {
+						"1": {
+							"name": "punctuation.section.embedded.begin.objeck"
+						},
+						"2": {
+							"name": "variable.parameter.prompt-hole.objeck"
+						},
+						"4": {
+							"name": "storage.type.objeck"
+						},
+						"5": {
+							"name": "punctuation.section.embedded.end.objeck"
+						}
+					}
 				}
 			]
 		},

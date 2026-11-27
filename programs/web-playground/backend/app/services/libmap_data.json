@@ -130,7 +130,7 @@
   "llm_util": {
    "deps": ["gen_collect", "json", "regex"],
    "bundles": {
-    "API.LlmUtil": ["ChatFn", "ContextWindow", "JsonExtractor", "JsonRepair", "JsonSchema", "JsonStrict", "LlmChars", "PromptBuilder", "PromptTemplate", "PromptTurn", "PromptVars", "SchemaError", "StructuredCall", "StructuredOutcome", "TemplateNode", "TokenCounter", "TokenEstimator"]
+    "API.LlmUtil": ["ChatFn", "ContextWindow", "JsonExtractor", "JsonRepair", "JsonSchema", "JsonStrict", "LlmChars", "Prompt", "PromptBuilder", "PromptTemplate", "PromptTurn", "PromptVars", "SchemaError", "StructuredCall", "StructuredOutcome", "TemplateNode", "TokenCounter", "TokenEstimator"]
    }
   },
   "math": {

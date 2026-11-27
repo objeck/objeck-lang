@@ -3419,6 +3419,9 @@ namespace frontend {
     // previous link returned. It has no name; the analyzer binds it to a hidden
     // local holding that value (#1184).
     bool is_curried_call = false;
+    // A hole of a prompt literal, 'Slot("name", name)': 0 for any other call, 1 for '{name}', and for
+    // '{name : Type}' 2 String, 3 Int, 4 Float, 5 Bool, 6 Char, 7 Byte (docs/design/AGENT_SYNTAX.md).
+    int prompt_hole = 0;
 
     MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num,
                const int end_line_pos, MethodCallType t, const std::wstring &v, ExpressionList* e);
@@ -3542,6 +3545,8 @@ namespace frontend {
     // 'F(a)(b)': this link applies the previous link's function-valued result
     bool IsCurriedCall() const { return is_curried_call; }
     void SetCurriedCall() { is_curried_call = true; }
+    int GetPromptHole() const { return prompt_hole; }
+    void SetPromptHole(int h) { prompt_hole = h; }
     bool IsOtherwiseIntrinsic() const { return is_otherwise_intrinsic; }
     void SetOtherwiseIntrinsic(bool v) { is_otherwise_intrinsic = v; }
 

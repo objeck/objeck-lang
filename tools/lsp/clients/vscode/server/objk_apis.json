@@ -1849,6 +1849,44 @@
 
 			}
 		},
+		"API.LlmUtil.Prompt": {
+			"description": "What a prompt literal makes: fixed text with named slots, each filled with a value of the program. The compiler writes the calls (Text for the text between the holes, Slot for each hole) and checks every hole when the program is compiled; this class holds the parts and renders them.\n\nA String value is fenced: it is written between an opening and a closing tag named for the hole, as in &lt;text&gt;...&lt;/text&gt;. The tag is chosen so that it does not occur in the value (text, text_1, text_2, ...), so a value cannot close its own slot and continue as if it were the prompt's text. Numbers, Bool and Char values cannot hold a tag and are written as they are. The fence marks where a value begins and ends; it does not stop a model from following instructions written inside a value.",
+			"functions": {
+				"EstimateTokens": {
+					"descriptions": ["**Estimates the tokens of the rendered prompt with a TokenEstimator at its defaults**\n\n```method : public : EstimateTokens() ~ Int```\n\n\n\nreturn: Int", "**Counts the tokens of the rendered prompt with a counter of your choice**\n\n```method : public : EstimateTokens(counter:TokenCounter) ~ Int```\n\n\n\ncounter: TokenCounter\n\nreturn: Int"]
+				},
+				"Get": {
+					"descriptions": ["**Gets a slot's value as it was given, without the fence**\n\n```method : public : Get(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetNames": {
+					"descriptions": ["**Gets the slot names in the order they appear; a name used twice is listed twice**\n\n```method : public : GetNames() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetNotice": {
+					"descriptions": ["**A sentence for a system prompt that names the tags this prompt's values are fenced with**\n\n```method : public : GetNotice() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTemplate": {
+					"descriptions": ["**Gets the prompt as PromptTemplate source: the text with a {{name}} placeholder for each slot**\n\n```method : public : GetTemplate() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetVars": {
+					"descriptions": ["**Gets the slot values as PromptVars, without fences, for use with GetTemplate and PromptTemplate**\n\n```method : public : GetVars() ~ PromptVars```\n\n\n\nreturn: PromptVars"]
+				},
+				"New": {
+					"descriptions": ["**Constructor: an empty prompt**\n\n```New()```\n\n"]
+				},
+				"Slot": {
+					"descriptions": ["**Adds a slot holding text, fenced when the prompt is rendered**\n\n```method : public : Slot(name:String, value:String) ~ Prompt```\n\n\n\nname: String\n\nvalue: String\n\nreturn: Prompt", "**Adds a slot holding an integer**\n\n```method : public : Slot(name:String, value:Int) ~ Prompt```\n\n\n\nname: String\n\nvalue: Int\n\nreturn: Prompt", "**Adds a slot holding a float**\n\n```method : public : Slot(name:String, value:Float) ~ Prompt```\n\n\n\nname: String\n\nvalue: Float\n\nreturn: Prompt", "**Adds a slot holding a Bool, written as true or false**\n\n```method : public : Slot(name:String, value:Bool) ~ Prompt```\n\n\n\nname: String\n\nvalue: Bool\n\nreturn: Prompt", "**Adds a slot holding one character**\n\n```method : public : Slot(name:String, value:Char) ~ Prompt```\n\n\n\nname: String\n\nvalue: Char\n\nreturn: Prompt", "**Adds a slot holding a byte, written as a number**\n\n```method : public : Slot(name:String, value:Byte) ~ Prompt```\n\n\n\nname: String\n\nvalue: Byte\n\nreturn: Prompt"]
+				},
+				"TagFor": {
+					"descriptions": ["**The tag that fences a value: the slot name, or the name with the first numeric suffix for which neither the opening nor the closing tag occurs in the value (compared without regard to case)**\n\n```function : TagFor(name:String, value:String) ~ String```\n\n\n\nname: String\n\nvalue: String\n\nreturn: String"]
+				},
+				"Text": {
+					"descriptions": ["**Adds literal text**\n\n```method : public : Text(text:String) ~ Prompt```\n\n\n\ntext: String\n\nreturn: Prompt"]
+				},
+				"ToString": {
+					"descriptions": ["**Renders the prompt: the text, with each slot's value in place and each String value fenced**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
 		"API.LlmUtil.PromptBuilder": {
 			"description": "A conversation under construction: an optional system prompt and a list of user and assistant turns. The builder is provider-neutral; the ToPairs and ToJsonMessages methods turn it into what a client takes.",
 			"functions": {
@@ -26442,6 +26480,12 @@
 			}
 		],
 		"LlmChars": [
+			{
+				"bundle": "API.LlmUtil",
+				"file": "llm_util.obl"
+			}
+		],
+		"Prompt": [
 			{
 				"bundle": "API.LlmUtil",
 				"file": "llm_util.obl"

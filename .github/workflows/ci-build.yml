@@ -955,6 +955,17 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 json_class_diag_test.py "$BIN"
 
+    # 'prompt "..."' (docs/design/AGENT_SYNTAX.md): each hole the compiler must refuse, with the line and column it
+    # reports, in LF and CRLF files, and 'prompt' left alone wherever it is an ordinary name.
+    - name: the prompt literal diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 prompt_literal_diag_test.py "$BIN"
+
     # 'obr --mcp' and 'obr --mcp-http' (docs/design/MCP_FIRST_CLASS.md, Stage 3): a program's tools, resources and prompts
     # served with no server code; stdio in three execution modes, hostile input, HTTP, the refusals.
     - name: obr --mcp serves a program's tools (POSIX)
@@ -1998,6 +2009,7 @@ jobs:
         run: |
           python3 tools/cicd/check_site_examples.py
           python3 tools/docs/test_objeck_highlight.py
+          python3 tools/docs/test_editor_grammars.py
 
       # Same class of guard, for both halves of what the benchmark harness does.
       # Every number on docs/performance.md was measured at the input printed

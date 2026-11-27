@@ -56,6 +56,11 @@ class Highlight(unittest.TestCase):
         self.assertEqual(got.count(("kw", "match")), 1)
         self.assertIn(("kw", "other"), got)
 
+    def test_prompt_is_a_keyword_only_before_a_string(self):
+        self.assertIn(("kw", "prompt"), classes('p := prompt "Summarise {text}.";'))
+        self.assertNotIn(("kw", "prompt"), classes('prompt := "a name"; prompt->PrintLine();'))
+        self.assertNotIn("prompt", h.KEYWORDS)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)

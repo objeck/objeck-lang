@@ -1,0 +1,13 @@
+# EXTRA_LIBS: llm_util,regex
+# EXPECT_COMPILE_ERROR: (10,27): An empty prompt hole '{}' names no variable
+# EXPECT_ERROR_COUNT: 1
+#~
+An empty hole in a prompt literal is a compile error at the hole; a literal brace is written
+doubled (docs/design/AGENT_SYNTAX.md).
+~#
+class BadPromptHoleEmpty {
+	function : Main(args : String[]) ~ Nil {
+		p := prompt "Reply with {} only.";
+		p->ToString()->PrintLine();
+	}
+}

@@ -83,6 +83,7 @@ CHECKS = [
     ("HPC scaling harness and report", lambda: py("tools/hpc/alderaan/tests/test_scaling.py")),
     ("Nightly workflow contract", lambda: py("tools/cicd/test_nightly_contract.py")),
     ("CI package installs retry a network failure", lambda: ["bash", "tools/cicd/test_apt_harden.sh"]),
+    ("Editor grammars know the contextual words", lambda: py("tools/docs/test_editor_grammars.py")),
 ]
 
 
