@@ -2012,6 +2012,11 @@ agent->SetBudget(budget);
 	  started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or
 	  `deadline`. The wall-clock limit counts the time spent inside agent runs. A model reply is checked after
 	  it arrives, so a run can pass a token limit by the size of one reply.
+	* Use is charged as it happens: a model reply when it arrives, a tool call when it starts. A run started
+	  from inside another run (a tool or an observer that runs an agent) is therefore admitted against what is
+	  left at that moment, and the outer run stops with the budget's stop reason when it finds the scope spent.
+	  A call that was answered as skipped did not run and is not charged. A run that ends by raising has still
+	  paid for what it did, and counts as a run halted with `error`.
 	* An agent's own budget still applies; the smaller limit wins. A scope never loosens anything.
 	* Nesting: a scope run inside another is limited by both (every limit in the chain is checked and charged),
 	  so an inner scope can only tighten. Its cancellation token is a child of the outer one.
@@ -2023,10 +2028,13 @@ agent->SetBudget(budget);
 	* Threads and actors: the scope applies to agent runs made on the thread that called Run, and to nothing
 	  else; a new thread or actor does not inherit it. To bring a worker under the limits, hand it
 	  `scope->Child()` and have it call `AgentScope->Run(child, ...)`: the child's runs are charged to the parent
-	  too. Parallel children can together pass the parent's limit by the runs already in flight. Call
+	  too. Parallel children can together pass the parent's limit by the model replies already in flight. Call
 	  `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.
+	  A child may also be entered on the parent's own thread; when it is left the thread is back in the scope
+	  it was in before.
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
-	  its counters from zero.
+	  its counters from zero. A scope may not be entered inside its own child either (it would be limited by
+	  itself): that raises, like entering it twice.
 
 	```
 scope := AgentScope->New()->SetMaxSteps(10)->SetMaxTokens(5000)->SetMaxToolCalls(20)->SetTrace(true);
@@ -2037,6 +2045,7 @@ scope->GetStepsUsed()->PrintLine();
 	class AgentScope {
 		@parent : AgentScope;
 		@fixed_parent : AgentScope;
+		@previous : AgentScope;
 		@max_steps : Int;
 		@max_tokens : Int;
 		@max_tool_calls : Int;
@@ -2265,18 +2274,15 @@ scope->GetStepsUsed()->PrintLine();
 				}
 				else {
 					@active := true;
-					@steps_used := 0;
-					@tokens_used := 0;
-					@tool_calls_used := 0;
-					@wall_used := 0;
-					@runs := 0;
-					@halt := Nil;
 				};
 			};
 			if(failed) {
 				Runtime->Raise(Error->New("an AgentScope can not be entered by two threads at once; use Child()"));
 			};
 
+			# Two things are kept apart: @previous is what this thread was inside (Leave puts it back), @parent
+			# is who is checked and charged along with this scope (the fixed parent of a Child(), else the same)
+			cycle := false;
 			critical(@registry_lock) {
 				outer : AgentScope;
 				slot : AgentScopeSlot;
@@ -2290,18 +2296,51 @@ scope->GetStepsUsed()->PrintLine();
 
 				if(slot <> Nil) {
 					outer := slot->GetScope();
-					slot->SetScope(@self);
-				}
-				else {
-					@slots->AddBack(AgentScopeSlot->New(id, @self));
 				};
 
-				if(@fixed_parent <> Nil) {
-					@parent := @fixed_parent;
-				}
-				else {
-					@parent := outer;
+				above := @fixed_parent;
+				if(above = Nil) {
+					above := outer;
 				};
+
+				# nothing is published when the scope would become its own ancestor: every walk up the chain
+				# (limits, charges) would then never end
+				walk := above;
+				while(walk <> Nil & <>cycle) {
+					if(walk = @self) {
+						cycle := true;
+					}
+					else {
+						walk := walk->GetOuter();
+					};
+				};
+
+				if(<>cycle) {
+					if(slot <> Nil) {
+						slot->SetScope(@self);
+					}
+					else {
+						@slots->AddBack(AgentScopeSlot->New(id, @self));
+					};
+					@previous := outer;
+					@parent := above;
+				};
+			};
+
+			if(cycle) {
+				critical(@lock) {
+					@active := false;
+				};
+				Runtime->Raise(Error->New("an AgentScope can not be entered inside a scope it is the parent of: it would be limited by itself"));
+			};
+
+			critical(@lock) {
+				@steps_used := 0;
+				@tokens_used := 0;
+				@tool_calls_used := 0;
+				@wall_used := 0;
+				@runs := 0;
+				@halt := Nil;
 			};
 
 			parent_cancel : AgentCancel;
@@ -2320,8 +2359,9 @@ scope->GetStepsUsed()->PrintLine();
 				i := 0;
 				while(i < @slots->Size()) {
 					if(@slots->Get(i)->GetId() = id) {
-						if(@parent <> Nil & @fixed_parent = Nil) {
-							@slots->Get(i)->SetScope(@parent);
+						# the thread is back inside whatever it was inside before, whoever this scope's parent is
+						if(@previous <> Nil) {
+							@slots->Get(i)->SetScope(@previous);
 						}
 						else {
 							@slots->Remove(i);
@@ -2330,6 +2370,8 @@ scope->GetStepsUsed()->PrintLine();
 					};
 					i += 1;
 				};
+				@previous := Nil;
+				@parent := Nil;
 			};
 
 			if(@print) {
@@ -2344,7 +2386,6 @@ scope->GetStepsUsed()->PrintLine();
 				summary->PrintLine();
 			};
 
-			@parent := Nil;
 			critical(@lock) {
 				@active := false;
 			};
@@ -2445,15 +2486,95 @@ scope->GetStepsUsed()->PrintLine();
 				else if(sink_list->Size() > 1) {
 					sink := AgentScopeTee->New(sink_list);
 				};
-				result := agent->RunScoped(effective, @cancel, sink, prompt);
+				# What the run uses is charged as it happens (Meter), not from the result: a run started from
+				# inside this one (a tool or an observer that runs another agent) then finds it already counted,
+				# and a run that ends by raising has still paid for what it did
+				stop := "error";
+				try {
+					result := agent->RunScoped(effective, @cancel, sink, @self, prompt);
+					stop := result->GetStopReason();
+				}
+				finally {
+					Finished(stop);
+				};
+				return result;
 			};
 
+			Finished(reason);
+			return result;
+		}
+
+		#~
+		Charges what a run has just used to this scope and every scope above it. Called by Agent.
+		@hidden
+		@param steps model replies
+		@param tokens tokens of those replies
+		@param tool_calls tool calls started (-1 takes back a call that was not run after all)
+		@param wall_ms milliseconds inside the run since the last charge
+		~#
+		method : public : Meter(steps : Int, tokens : Int, tool_calls : Int, wall_ms : Int) ~ Nil {
 			scope := @self;
 			while(scope <> Nil) {
-				scope->Charge(result);
+				scope->Add(steps, tokens, tool_calls, wall_ms);
 				scope := scope->GetOuter();
 			};
-			return result;
+		}
+
+		#~
+		Says whether this scope or one above it has no steps left. Called by Agent.
+		@hidden
+		@return true when a step limit is used up
+		~#
+		method : public : SpentSteps() ~ Bool {
+			scope := @self;
+			while(scope <> Nil) {
+				if(scope->LeftSteps() = 0) {
+					return true;
+				};
+				scope := scope->GetOuter();
+			};
+			return false;
+		}
+
+		#~
+		Says whether this scope or one above it has no tokens left. Called by Agent.
+		@hidden
+		@return true when a token limit is used up
+		~#
+		method : public : SpentTokens() ~ Bool {
+			scope := @self;
+			while(scope <> Nil) {
+				if(scope->LeftTokens() = 0) {
+					return true;
+				};
+				scope := scope->GetOuter();
+			};
+			return false;
+		}
+
+		#~
+		Says whether this scope or one above it has no tool calls left. Called by Agent.
+		@hidden
+		@return true when a tool call limit is used up
+		~#
+		method : public : SpentToolCalls() ~ Bool {
+			scope := @self;
+			while(scope <> Nil) {
+				if(scope->LeftToolCalls() = 0) {
+					return true;
+				};
+				scope := scope->GetOuter();
+			};
+			return false;
+		}
+
+		# counts a run that has ended (or was not started) in this scope and every scope above it
+		method : Finished(stop : String) ~ Nil {
+			scope := @self;
+			while(scope <> Nil) {
+				scope->Count(stop);
+				scope := scope->GetOuter();
+			};
 		}
 
 		method : LeftSteps() ~ Int {
@@ -2492,15 +2613,20 @@ scope->GetStepsUsed()->PrintLine();
 			return @parent;
 		}
 
-		method : Charge(result : AgentResult) ~ Nil {
+		method : Add(steps : Int, tokens : Int, tool_calls : Int, wall_ms : Int) ~ Nil {
+			critical(@lock) {
+				@steps_used += steps;
+				@tokens_used += tokens;
+				@tool_calls_used += tool_calls;
+				@wall_used += wall_ms;
+			};
+		}
+
+		method : Count(stop : String) ~ Nil {
 			critical(@lock) {
 				@runs += 1;
-				@steps_used += result->GetSteps()->Size();
-				@tokens_used += result->GetTotalTokens();
-				@tool_calls_used += result->GetToolCallCount();
-				@wall_used += result->GetElapsedMs();
-				if(@halt = Nil & <>result->GetStopReason()->Equals("completed")) {
-					@halt := result->GetStopReason();
+				if(@halt = Nil & <>stop->Equals("completed")) {
+					@halt := stop;
 				};
 			};
 		}
@@ -2569,6 +2695,7 @@ scope->GetStepsUsed()->PrintLine();
 		@cond : Condition;
 		@done : Bool;
 		@abandoned : Bool;
+		@finished : Bool;
 		@text : String;
 		@failure : String;
 		@reply : AgentReply;
@@ -2585,8 +2712,19 @@ scope->GetStepsUsed()->PrintLine();
 					@reply := reply;
 					@done := true;
 				};
+				@finished := true;
 				@cond->Signal();
 			};
+		}
+
+		# true once the worker has handed in (or dropped) its result: its thread is at its last statement and
+		# can be joined without a wait, abandoned or not
+		method : public : IsFinished() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				flag := @finished;
+			};
+			return flag;
 		}
 
 		method : public : WaitDone(millis : Int) ~ Bool {
@@ -2655,6 +2793,10 @@ scope->GetStepsUsed()->PrintLine();
 			@conversation := conversation;
 			@tools := tools;
 			return @self;
+		}
+
+		method : public : IsFinished() ~ Bool {
+			return @slot->IsFinished();
 		}
 
 		method : public : Run(param : System.Base) ~ Nil {
@@ -2733,6 +2875,10 @@ result->GetText()->PrintLine();
 		@event_seq : Int;
 		@tracing : Bool;
 		@last_error : String;
+		@scope : AgentScope;
+		@scope_spent : Bool;
+		@wall_charged : Int;
+		@orphans : Vector<AgentWorker>;
 
 		#~
 		Constructor
@@ -2961,9 +3107,25 @@ result->GetText()->PrintLine();
 		@return the transcript
 		~#
 		method : public : RunScoped(budget : AgentBudget, scope_cancel : AgentCancel, sink : AgentTraceSink, prompt : String) ~ AgentResult {
+			return RunScoped(budget, scope_cancel, sink, Nil, prompt);
+		}
+
+		#~
+		Runs one prompt with scope limits applied for that run only, and charges the scope for each model reply
+		and tool call as it happens. Called by AgentScope; use Run.
+		@hidden
+		@param budget the effective budget, or Nil to keep the agent's
+		@param scope_cancel the scope's token, or Nil
+		@param sink the trace sink to use, or Nil to keep the agent's
+		@param scope the scope to charge, or Nil
+		@param prompt what the user asks
+		@return the transcript
+		~#
+		method : public : RunScoped(budget : AgentBudget, scope_cancel : AgentCancel, sink : AgentTraceSink, scope : AgentScope, prompt : String) ~ AgentResult {
 			saved_budget := @budget;
 			saved_cancel := @cancel;
 			saved_trace := @trace;
+			saved_scope := @scope;
 			result : AgentResult;
 			try {
 				if(budget <> Nil) {
@@ -2975,12 +3137,19 @@ result->GetText()->PrintLine();
 				if(sink <> Nil) {
 					@trace := sink;
 				};
+				@scope := scope;
+				@clock := Nil;
 				result := RunLoop(prompt);
 			}
 			finally {
+				# a run that raised has not charged its last stretch of time
+				if(result = Nil & @clock <> Nil) {
+					ChargeWall(@clock->Ms());
+				};
 				@budget := saved_budget;
 				@cancel := saved_cancel;
 				@trace := saved_trace;
+				@scope := saved_scope;
 			};
 			return result;
 		}
@@ -2999,6 +3168,8 @@ result->GetText()->PrintLine();
 			@conversation->AddUser(prompt);
 
 			@clock := AgentClock->New();
+			@wall_charged := 0;
+			@scope_spent := false;
 			@token := AgentCancel->New(@cancel);
 			@halt := Nil;
 			@model_calls := 0;
@@ -3045,51 +3216,82 @@ result->GetText()->PrintLine();
 					}
 					else {
 						step_number += 1;
-						@tokens_used += reply->GetInputTokens() + reply->GetOutputTokens();
+						reply_tokens := reply->GetInputTokens() + reply->GetOutputTokens();
+						@tokens_used += reply_tokens;
 						if(@budget <> Nil) {
 							@cost_used += @budget->Cost(reply->GetInputTokens(), reply->GetOutputTokens());
+						};
+
+						# the scope is charged for the reply before anyone hears of it: a run that an observer or
+						# a tool starts from inside this one is then admitted against what is really left
+						if(@scope <> Nil) {
+							@scope->Meter(1, reply_tokens, 0, 0);
+							ChargeWall(@clock->Ms());
 						};
 
 						@conversation->AddAssistant(reply, @backend->GetName());
 						step := AgentStep->New(step_number, reply);
 						result->AddStep(step);
-						if(@observer <> Nil) {
-							@observer->OnReply(step_number, reply);
-						};
 
-						if(reply->HasToolCalls()) {
-							last_step := step_number >= @max_steps;
-							over := OverBudget();
-							if(over <> Nil & @halt = Nil) {
-								@halt := over;
-								EmitHalt(over, step_number);
+						# An observer, an approver or a trace sink may raise. The error goes on to the caller, but
+						# not before every call of this reply has an answer: a conversation that ends in an
+						# unanswered tool call is refused by the providers, so the agent could not run again.
+						settled := false;
+						try {
+							if(@observer <> Nil) {
+								@observer->OnReply(step_number, reply);
 							};
 
-							AnswerCalls(step, reply, last_step);
-							if(@halt <> Nil) {
-								Stop(result, @halt);
-								running := false;
+							if(reply->HasToolCalls()) {
+								last_step := step_number >= @max_steps;
+								over := OverBudget();
+								if(over = Nil) {
+									over := ScopeSpent(false);
+								};
+
+								if(over <> Nil & @halt = Nil) {
+									@halt := over;
+									EmitHalt(over, step_number);
+								};
+
+								AnswerCalls(step, reply, last_step);
+								if(@halt <> Nil) {
+									Stop(result, @halt);
+									running := false;
+								}
+								else if(last_step) {
+									result->Finish("", "max_steps", "the model was still asking for tools after {$@max_steps} steps");
+									running := false;
+								};
 							}
-							else if(last_step) {
-								result->Finish("", "max_steps", "the model was still asking for tools after {$@max_steps} steps");
+							else {
+								# A final answer is kept even when a cancel or the deadline arrived while the model
+								# was writing it: the work is done, as for the token and cost limits. A call that
+								# must not outlive a cancel runs on a worker (SetBoundedModelCalls) or on a
+								# deadline-aware backend, and those hand back no reply at all.
+								result->Finish(reply->GetText(), "completed", Nil);
+								if(reply->GetStopReason() <> Nil & reply->GetStopReason()->Equals("length")) {
+									result->Finish(reply->GetText(), "error", "the reply was cut off at the model's token limit");
+								}
+								else if(reply->GetStopReason() <> Nil & reply->GetStopReason()->Equals("filtered")) {
+									result->Finish(reply->GetText(), "error", "the reply was blocked by the provider's content filter");
+								};
 								running := false;
 							};
+							settled := true;
 						}
-						else {
-							result->Finish(reply->GetText(), "completed", Nil);
-							if(reply->GetStopReason() <> Nil & reply->GetStopReason()->Equals("length")) {
-								result->Finish(reply->GetText(), "error", "the reply was cut off at the model's token limit");
-							}
-							else if(reply->GetStopReason() <> Nil & reply->GetStopReason()->Equals("filtered")) {
-								result->Finish(reply->GetText(), "error", "the reply was blocked by the provider's content filter");
+						finally {
+							if(<>settled) {
+								SkipUnanswered(step, reply);
 							};
-							running := false;
 						};
 					};
 				};
 			};
 
+			Reap();
 			elapsed := @clock->Ms();
+			ChargeWall(elapsed);
 			result->SetStats(@model_calls, elapsed, @cost_used);
 			if(@tracing) {
 				data := AgentJs->Object();
@@ -3108,7 +3310,18 @@ result->GetText()->PrintLine();
 		# ends the result with a stop reason and a sentence for it
 		method : Stop(result : AgentResult, reason : String) ~ Nil {
 			message := reason;
-			if(reason->Equals("cancelled")) {
+			if(@scope_spent) {
+				# the limit that ran out is the scope's, used up by other runs as well as this one
+				what := "steps";
+				if(reason->Equals("budget_tokens")) {
+					what := "tokens";
+				}
+				else if(reason->Equals("budget_tool_calls")) {
+					what := "tool calls";
+				};
+				message := "the agent scope has no {$what} left";
+			}
+			else if(reason->Equals("cancelled")) {
 				message := "the run was cancelled";
 				why := @token->GetReason();
 				if(why <> Nil & <>why->Equals("cancelled")) {
@@ -3186,6 +3399,10 @@ result->GetText()->PrintLine();
 					reason := OverBudget();
 				};
 
+				if(reason = Nil) {
+					reason := ScopeSpent(true);
+				};
+
 				if(@tracing) {
 					data := AgentJs->Object();
 					data->Insert("steps", step_number);
@@ -3223,6 +3440,66 @@ result->GetText()->PrintLine();
 				return "budget_cost";
 			};
 			return Nil;
+		}
+
+		# The scope's own counters, read now. The budget of a scoped run was worked out when the run began;
+		# since then a run started from inside this one, or a Child() on another thread, may have used the rest.
+		method : ScopeSpent(steps : Bool) ~ String {
+			if(@scope = Nil) {
+				return Nil;
+			};
+
+			reason : String;
+			if(steps & @scope->SpentSteps()) {
+				reason := "budget_steps";
+			}
+			else if(@scope->SpentTokens()) {
+				reason := "budget_tokens";
+			};
+
+			if(reason <> Nil) {
+				@scope_spent := true;
+			};
+			return reason;
+		}
+
+		# charges the scope for the time since the last charge
+		method : ChargeWall(now : Int) ~ Nil {
+			if(@scope <> Nil & now > @wall_charged) {
+				@scope->Meter(0, 0, 0, now - @wall_charged);
+				@wall_charged := now;
+			};
+		}
+
+		# Joins the abandoned workers that have finished since: a thread that is never joined keeps its stack
+		# and its handle for the life of the process. One that never finishes stays on the list.
+		method : Reap() ~ Nil {
+			if(@orphans <> Nil) {
+				i := 0;
+				while(i < @orphans->Size()) {
+					worker := @orphans->Get(i);
+					if(worker->IsFinished()) {
+						worker->Join();
+						@orphans->Remove(i);
+					}
+					else {
+						i += 1;
+					};
+				};
+			};
+		}
+
+		# ends the wait for a worker: joined now when it has finished, else kept for Reap
+		method : Release(worker : AgentWorker) ~ Nil {
+			if(worker->IsFinished()) {
+				worker->Join();
+			}
+			else {
+				if(@orphans = Nil) {
+					@orphans := Vector->New()<AgentWorker>;
+				};
+				@orphans->AddBack(worker);
+			};
 		}
 
 		# milliseconds a model call may take, 0 for no limit
@@ -3269,9 +3546,11 @@ result->GetText()->PrintLine();
 
 				if(@bounded_model) {
 					slot := AgentSlot->New();
+					Reap();
 					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools);
 					worker->Execute(Nil);
 					how := Await(slot, limit);
+					Release(worker);
 					if(how->Equals("done")) {
 						reply := slot->GetReply();
 						@last_error := slot->GetFailure();
@@ -3449,6 +3728,12 @@ result->GetText()->PrintLine();
 						@halt := "budget_tool_calls";
 						EmitHalt(@halt, step->GetIndex());
 					};
+
+					if(@halt = Nil & @scope <> Nil & @scope->SpentToolCalls()) {
+						@halt := "budget_tool_calls";
+						@scope_spent := true;
+						EmitHalt(@halt, step->GetIndex());
+					};
 				};
 
 				outcome : AgentToolResult;
@@ -3460,8 +3745,24 @@ result->GetText()->PrintLine();
 					outcome := AgentToolResult->New(call->GetId(), call->GetName(), ArgumentText(call), "Error: the run was stopped ({$reason}), so this call was not run", "skipped", 0);
 				}
 				else {
-					outcome := Execute(call);
+					# counted before it runs, so a run the tool starts finds this call already charged; a call
+					# that turns out not to run (a cancel while it waited for approval) is taken back. A skipped
+					# call is in the transcript, but it is not a tool call for any budget.
 					@tool_calls += 1;
+					if(@scope <> Nil) {
+						@scope->Meter(0, 0, 1, 0);
+					};
+
+					outcome := Execute(call);
+					if(outcome->GetStatus()->Equals("skipped")) {
+						@tool_calls -= 1;
+						if(@scope <> Nil) {
+							@scope->Meter(0, 0, -1, 0);
+						};
+					};
+					if(@scope <> Nil) {
+						ChargeWall(@clock->Ms());
+					};
 				};
 
 				step->AddResult(outcome);
@@ -3469,6 +3770,20 @@ result->GetText()->PrintLine();
 				if(@observer <> Nil) {
 					@observer->OnToolResult(step->GetIndex(), outcome);
 				};
+				i += 1;
+			};
+		}
+
+		# after an error raised out of a step: the calls of the reply that have no result yet get one, so the
+		# conversation stays valid for the next Run. Nobody is told; the error is on its way to the caller.
+		method : SkipUnanswered(step : AgentStep, reply : AgentReply) ~ Nil {
+			calls := reply->GetToolCalls();
+			i := step->GetResults()->Size();
+			while(i < calls->Size()) {
+				call := calls->Get(i);
+				outcome := AgentToolResult->New(call->GetId(), call->GetName(), ArgumentText(call), "Error: the run ended with an error, so this call was not run", "skipped", 0);
+				step->AddResult(outcome);
+				@conversation->AddToolResult(call->GetId(), call->GetName(), outcome->GetContent(), true);
 				i += 1;
 			};
 		}
@@ -3511,6 +3826,13 @@ result->GetText()->PrintLine();
 
 				if(<>@approver->Approve(call, tool)) {
 					return AgentToolResult->New(id, name, arguments, "Error: the user declined to run '{$name}'", "refused", 0);
+				};
+
+				# an approver can take as long as a person does; a cancel or the deadline that arrived in the
+				# meantime stops the call here, before the handler starts
+				stopped := Checkpoint();
+				if(stopped <> Nil) {
+					return AgentToolResult->New(id, name, arguments, "Error: the run was stopped ({$stopped}), so this call was not run", "skipped", 0);
 				};
 			};
 
@@ -3576,10 +3898,12 @@ result->GetText()->PrintLine();
 			}
 			else {
 				slot := AgentSlot->New();
+				Reap();
 				worker := AgentWorker->New(slot);
 				worker->ForTool(tool, call->GetArguments(), @token);
 				worker->Execute(Nil);
 				how := Await(slot, limit);
+				Release(worker);
 				if(how->Equals("done")) {
 					failure := slot->GetFailure();
 					output := slot->GetText();
