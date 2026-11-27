@@ -266,6 +266,8 @@ function Get-ProbeProblem([string] $report, [int] $connections) {
     }
     $c = [int]$Matches[1]; $ok = [int]$Matches[2]; $st = [int]$Matches[3]; $er = [int]$Matches[4]; $sv = [int]$Matches[5]
     $found = @()
+    # zero connections make an all-zero report that every equality below would accept
+    if ($connections -lt 1) { $found += 'no connections were requested, so nothing was probed' }
     if ($c -ne $connections) { $found += ("{0} connects were made, {1} requested" -f $c, $connections) }
     if ($st -ne 0) { $found += ("{0} stalled" -f $st) }
     if ($er -ne 0) { $found += ("{0} failed with an error" -f $er) }
@@ -275,7 +277,38 @@ function Get-ProbeProblem([string] $report, [int] $connections) {
     return $null
 }
 
+# What is wrong with the arguments, or $null. A probe asked for no connections, no threads or
+# a stall time of zero has nothing to answer, and would report that as success.
+function Get-ArgumentProblem([int] $connections, [int] $threads, [int] $stallMs) {
+    $found = @()
+    if ($connections -lt 1) { $found += ("-Connections must be at least 1, not {0}" -f $connections) }
+    if ($threads -lt 1) { $found += ("-Threads must be at least 1, not {0}" -f $threads) }
+    if ($stallMs -lt 1) { $found += ("-StallMs must be at least 1, not {0}" -f $stallMs) }
+    if ($found.Count -gt 0) { return ($found -join '; ') }
+    return $null
+}
+
 if ($SelfTest) {
+    $argcases = @(
+        @{ name = 'defaults';            a = @(4000, 6, 1000); bad = $false },
+        @{ name = 'zero connections';    a = @(0, 6, 1000);    bad = $true },
+        @{ name = 'negative connections'; a = @(-5, 6, 1000);  bad = $true },
+        @{ name = 'zero threads';        a = @(10, 0, 1000);   bad = $true },
+        @{ name = 'zero stall time';     a = @(10, 6, 0);      bad = $true }
+    )
+    $argwrong = 0
+    foreach ($case in $argcases) {
+        $problem = Get-ArgumentProblem $case.a[0] $case.a[1] $case.a[2]
+        $verdict = 'ok  '
+        if (($null -ne $problem) -ne $case.bad) { $verdict = 'WRONG'; $argwrong++ }
+        $shown = 'accepted'
+        if ($problem) { $shown = $problem }
+        Write-Host ("  {0} arguments, {1}: {2}" -f $verdict, $case.name, $shown)
+    }
+    # the all-zero report a zero-connection run produces
+    if ($null -eq (Get-ProbeProblem 'x: connects=0 ok=0 stalled=0 errors=0 served=0' 0)) {
+        Write-Host '  WRONG the all-zero report of a zero-connection run passes'; $argwrong++
+    } else { Write-Host '  ok   an all-zero report is refused' }
     $cases = @(
         @{ name = 'all answered';          line = 'x: connects=100 ok=100 stalled=0 errors=0 served=100'; bad = $false },
         @{ name = 'every connect errored'; line = 'x: connects=100 ok=0 stalled=0 errors=100 served=0';   bad = $true },
@@ -285,7 +318,7 @@ if ($SelfTest) {
         @{ name = 'fewer connects made';   line = 'x: connects=50 ok=50 stalled=0 errors=0 served=50';   bad = $true },
         @{ name = 'unreadable';            line = 'no counts here';                                      bad = $true }
     )
-    $wrong = 0
+    $wrong = $argwrong
     foreach ($case in $cases) {
         $problem = Get-ProbeProblem $case.line 100
         $failed = $null -ne $problem
@@ -298,6 +331,12 @@ if ($SelfTest) {
     if ($wrong -gt 0) { Write-Host ("SELFTEST: {0} case(s) judged wrongly" -f $wrong); exit 1 }
     Write-Host 'SELFTEST: ok'
     exit 0
+}
+
+$argProblem = Get-ArgumentProblem $Connections $Threads $StallMs
+if ($argProblem) {
+    Write-Host ("loopback_connect_probe.ps1: {0}" -f $argProblem)
+    exit 2
 }
 
 Write-Host ''
