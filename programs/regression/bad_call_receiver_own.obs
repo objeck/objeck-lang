@@ -1,0 +1,10 @@
+# EXPECT_COMPILE_ERROR: Called as BadCallReceiverOwn->Nope(Int)
+# EXPECT_ERROR_COUNT: 1
+#~
+A call with no class before it is still reported against the class it stands in.
+~#
+class BadCallReceiverOwn {
+	function : Main(args : String[]) ~ Nil {
+		Nope(1);
+	}
+}

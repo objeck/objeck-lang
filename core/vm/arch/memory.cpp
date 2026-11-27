@@ -2046,7 +2046,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #ifdef _DEBUG_GC
           std::wcout << L"\t" << j << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
-          std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+          std::pair<int, StackDclr**> closure_dclrs = ClosureDeclarationsOf(prgm, virtual_cls_id, static_cast<int>(mthd_id));
           if(MarkClosureCaptures(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
@@ -2523,7 +2523,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 #ifdef _DEBUG_GC
       std::wcout << L"\t" << i << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
-      std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+      std::pair<int, StackDclr**> closure_dclrs = ClosureDeclarationsOf(prgm, virtual_cls_id, static_cast<int>(mthd_id));
       if(MarkClosureCaptures(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
@@ -2697,7 +2697,7 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
           const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
           const long mthd_id = mthd_cls_id & 0xFFFF;
           std::pair<int, StackDclr**> closure_dclrs =
-            prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+            ClosureDeclarationsOf(prgm, virtual_cls_id, static_cast<int>(mthd_id));
           CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
         }
         field_ptr += 2;
@@ -2777,7 +2777,7 @@ void MemoryManager::FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_
         const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
         const long mthd_id = mthd_cls_id & 0xFFFF;
         std::pair<int, StackDclr**> closure_dclrs =
-          prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+          ClosureDeclarationsOf(prgm, virtual_cls_id, static_cast<int>(mthd_id));
         FixupMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first);
       }
       mem += 2;
@@ -3037,7 +3037,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
             const long mthd_id = mthd_cls_id & 0xFFFF;
             std::pair<int, StackDclr**> closure_dclrs =
-              prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+              ClosureDeclarationsOf(prgm, virtual_cls_id, static_cast<int>(mthd_id));
             FixupMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first);
           }
           mem += 2;

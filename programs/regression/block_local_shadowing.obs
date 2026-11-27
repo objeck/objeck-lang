@@ -1,0 +1,196 @@
+#~
+A block may declare a name that an enclosing block (or the parameter list)
+already has: its own variable hides the outer one until the block ends, and
+the outer one is untouched. That was already so when the outer local was
+type-inferred (`n := 3`) and refused ("Variable already defined in this
+scope") when it was declared with a type (`n : Int := 3`), because the two are
+declared in different passes. Both are now allowed, and within one block a
+name is still declared once. Covers typed and inferred outer locals, loop
+variables that reuse an outer name (the three patterns the libraries use),
+nesting three deep, sibling blocks, parameters, different types in the same
+name (so the slots must be separate), closures over the inner and the outer
+variable, and a shadowed object local across collections.
+~#
+use Collection;
+
+class BlockLocalShadowing {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := BlockLocalShadowing->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	# a parameter hidden in a nested block, and back again after it
+	function : Param(n : Int, flag : Bool) ~ Int {
+		total := n;
+		if(flag) {
+			n : String := "four";
+			total += n->Size();
+		};
+
+		return total + n;
+	}
+
+	# ml_timeseries.obs: a typed local after an inferred one of the same name in an outer block
+	function : TypedAfterInferred(values : Int[]) ~ Int {
+		s := 0;
+		each(i : values) {
+			s += values[i];
+		};
+
+		result := 0;
+		if(s > 0) {
+			s : String;
+			s := "sum";
+			result := s->Size();
+		};
+
+		return result * 1000 + s;
+	}
+
+	# query.obs: a loop variable that reuses an inferred outer name
+	function : LoopReusesName(count : Int) ~ Int {
+		k := count - 1;
+		seen := 0;
+		each(k : count) {
+			seen += k;
+		};
+
+		return seen * 100 + k;
+	}
+
+	method : Run() ~ Nil {
+		# typed outer, typed inner of another type: separate slots
+		n : Int := 3;
+		inner_size := 0;
+		if(n = 3) {
+			n : String := "inner";
+			inner_size := n->Size();
+			n += "!";
+			inner_size += n->Size();
+		};
+		Check("typed outer", inner_size = 11 & n = 3);
+
+		# inferred outer, typed inner
+		m := 7;
+		if(m = 7) {
+			m : Float := 2.5;
+			m *= 2.0;
+			Check("inferred outer, inner value", m = 5.0);
+		};
+		Check("inferred outer", m = 7);
+
+		# the library patterns
+		Check("typed after inferred", TypedAfterInferred([1, 2, 3]) = 3006);
+		Check("loop reuses name", LoopReusesName(4) = 603);
+		Check("parameter", Param(10, true) = 24 & Param(10, false) = 20);
+
+		# a loop variable hiding a typed outer one, and nested loops reusing one name
+		i : Int := 100;
+		sum := 0;
+		each(i : 4) {
+			sum += i;
+		};
+		Check("loop over typed outer", sum = 6 & i = 100);
+
+		cells := 0;
+		each(j : 3) {
+			each(j : 2) {
+				cells += j + 1;
+			};
+			cells += j * 10;
+		};
+		Check("nested loops, one name", cells = 3 * 3 + 30);
+
+		# three deep, each its own variable, each restored on the way out
+		v : Int := 1;
+		trace := "";
+		if(v = 1) {
+			v : String := "two";
+			trace += v;
+			if(v->Size() = 3) {
+				v : Float := 3.5;
+				trace += v->ToString();
+				each(v : 2) {
+					trace += v->ToString();
+				};
+				Check("level three", v = 3.5);
+			};
+			Check("level two", v->Equals("two"));
+			trace += v;
+		};
+		Check("three deep", v = 1 & trace->StartsWith("two3.5") & trace->EndsWith("01two"));
+
+		# sibling blocks each declare the name; a later block after an inner one does too
+		kind := 0;
+		if(v = 1) {
+			x : Int := 5;
+			kind += x;
+		};
+		if(v = 1) {
+			x : String := "seven77";
+			kind += x->Size();
+		};
+		Check("siblings", kind = 12);
+
+		# closures: one made inside the block keeps the inner variable, one made
+		# outside keeps the outer
+		c : Int := 10;
+		outer_fn := \(Int) ~ Int : (a) => a + c;
+		inner_result := 0;
+		if(c = 10) {
+			c : Int := 1000;
+			inner_fn := \(Int) ~ Int : (a) => a + c;
+			inner_result := inner_fn(1);
+			Check("closure sees outer from outside", outer_fn(1) = 11);
+		};
+		Check("closures", inner_result = 1001 & outer_fn(2) = 12 & c = 10);
+
+		# inside a lambda body, a block hides the lambda's own local
+		pick := \(Int) ~ Int : (a) => {
+			r := a;
+			if(a > 0) {
+				r : String := "xyz";
+				return r->Size() + a;
+			};
+			return r;
+		};
+		Check("in a lambda", pick(4) = 7 & pick(-2) = -2);
+
+		# object locals: the outer one survives the inner one's garbage
+		held : Vector<String> := Vector->New()<String>;
+		held->AddBack("outer");
+		each(round : 300) {
+			if(round >= 0) {
+				held : Vector<String> := Vector->New()<String>;
+				each(q : 200) {
+					held->AddBack("inner " + q->ToString());
+				};
+				if(held->Size() <> 200 | <>held->Get(199)->Equals("inner 199")) {
+					@fails += 1;
+				};
+			};
+		};
+		Check("objects", held->Size() = 1 & held->Get(0)->Equals("outer"));
+
+		if(@fails = 0) {
+			"PASS: block local shadowing"->PrintLine();
+		}
+		else {
+			"FAIL: block local shadowing"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

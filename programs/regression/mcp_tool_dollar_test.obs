@@ -1,0 +1,69 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+A dollar sign in the doc comment of a function marked as a tool reaches the tool as written. The
+compiler writes the description into a string with the dollar escaped, and the escape was not
+read, so a model was sent a backslash before every dollar sign of a description, a parameter
+description and a String default.
+~#
+use API.MCP, Data.JSON, Collection;
+
+class McpToolDollarTest {
+  @failures : static : Int;
+
+  #~
+  Price of an item in $ (US dollars); a {$name} in braces stays text.
+  @tool
+  @param item the item; costs $5 or more
+  @param currency the currency sign
+  ~#
+  function : Price(item : String, currency : String := "$") ~ String {
+    return currency + "5 for " + item;
+  }
+
+  function : Codes(text : String) ~ String {
+    out := "";
+    if(text <> Nil) {
+      each(c in text) {
+        out += c->As(Int)->ToString() + " ";
+      };
+    };
+    return out;
+  }
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("shop", "1");
+    McpToolDollarTest->McpTools(server);
+    client := McpClient->InProcess(server);
+    client->Initialize("test", "1");
+    tool := client->ListTools()->Get(0);
+
+    # 36 is the dollar sign, 92 the backslash
+    description := Codes(tool->GetDescription());
+    Check("the description has its two dollar signs", description->Count("36 ") = 2);
+    Check("and no backslash", <>description->Has("92 "));
+    Check("it starts as written", description->StartsWith(Codes("Price of an item in ") + "36 "));
+
+    item := Codes(tool->GetInputSchema()->Get("properties")->Get("item")->Get("description")->GetString());
+    Check("a parameter description has its dollar sign", item->Count("36 ") = 1 & <>item->Has("92 "));
+
+    arguments := JsonParser->TextToElement("{\"item\":\"tea\"}");
+    reply := Codes(client->CallTool("price", arguments)->GetText());
+    Check("a String default with a dollar sign reaches the function", reply->Equals("36 " + Codes("5 for tea")));
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

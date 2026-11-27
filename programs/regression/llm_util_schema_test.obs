@@ -209,6 +209,16 @@ class LlmUtilSchemaTest {
     Case("uniqueItems ok", "{\"uniqueItems\":true}", "[1,2,3]", "");
     Case("uniqueItems duplicate", "{\"uniqueItems\":true}", "[1,2,1]", "/2:uniqueItems");
     Case("uniqueItems compares by content", "{\"uniqueItems\":true}", "[{\"a\":1},{\"a\":1.0}]", "/1:uniqueItems");
+    Case("uniqueItems keeps whole numbers past 2^53 apart", "{\"uniqueItems\":true}", "[9007199254740992,9007199254740993]", "");
+    Case("uniqueItems still finds equal big numbers", "{\"uniqueItems\":true}", "[9007199254740993,1,9007199254740993]", "/2:uniqueItems");
+    Case("const tells 2^53 from 2^53 + 1", "{\"const\":9007199254740992}", "9007199254740993", ":const");
+    Case("const accepts the same big number", "{\"const\":9007199254740993}", "9007199254740993", "");
+    Case("enum tells big numbers apart", "{\"enum\":[9007199254740992]}", "9007199254740993", ":enum");
+    Case("negative big numbers differ too", "{\"const\":-9007199254740993}", "-9007199254740992", ":const");
+    Case("1 equals 1.0", "{\"const\":1}", "1.0", "");
+    Case("100 equals 1e2", "{\"const\":100}", "1e2", "");
+    Case("0 equals -0", "{\"const\":0}", "-0", "");
+    Case("1.5 differs from 1", "{\"const\":1}", "1.5", ":const");
     Case("uniqueItems false allows duplicates", "{\"uniqueItems\":false}", "[1,1]", "");
     Case("tuple items", "{\"items\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "[\"a\",1]", "");
     Case("tuple items wrong", "{\"items\":[{\"type\":\"string\"},{\"type\":\"integer\"}]}", "[1,\"a\"]", "/0:type;/1:type");

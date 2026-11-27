@@ -1,0 +1,126 @@
+#~
+Thread-fault isolation: the fault of every ended, not yet joined thread is kept
+until its Join, however many there are.
+
+The VM records a faulted thread's error text so that the thread's Join can
+report it (Runtime->GetProperty("runtime.thread.join.fault")). The record was
+capped: when it held 4096 entries the next fault cleared all of them. A program
+that started more than 4096 workers and joined them afterwards, each of them
+faulted, read "no fault" for the first 4096.
+
+This test starts 4300 workers that each divide by zero, lets them all end, then
+joins them in the order they were started. Every Join must report a fault.
+Before the fix it reported 204 of 4300.
+
+A second round starts 4300 workers of which the odd ones fault, and joins them
+in reverse order: a fault is reported for exactly the odd ones.
+~#
+use System.Concurrency;
+
+class Faulty from Thread {
+	@divisor : Int;
+
+	New(divisor : Int) {
+		Parent("faulty");
+		@divisor := divisor;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		value := 100 / @divisor;
+		if(@divisor = 0) {
+			"UNREACHABLE: the faulting worker went on ({$value})"->PrintLine();
+		};
+	}
+}
+
+class ThreadFaultJoinMany {
+	function : Stat(key : String) ~ Int {
+		return Runtime->GetProperty(key)->ToInt();
+	}
+
+	# every started worker has ended: the faults are all recorded before a Join
+	function : Settle(active : Int) ~ Nil {
+		for(i := 0; i < 20000 & Stat("runtime.threads.active") > active; i += 1;) {
+			Thread->Sleep(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		count := 4300;
+		failures := 0;
+		Runtime->SetProperty("runtime.threads.isolation", "isolate");
+		active := Stat("runtime.threads.active");
+
+		# round 1: all fault, joined in start order
+		before := Stat("runtime.threads.faulted");
+		workers := Faulty->New[count];
+		for(i := 0; i < count; i += 1;) {
+			workers[i] := Faulty->New(0);
+			workers[i]->Execute(Nil);
+			if(i % 64 = 63) {
+				Thread->Sleep(1);
+			};
+		};
+		Settle(active);
+
+		reported := 0;
+		for(i := 0; i < count; i += 1;) {
+			workers[i]->Join();
+			if(Runtime->GetProperty("runtime.thread.join.fault")->Find("Divide by zero") >= 0) {
+				reported += 1;
+			};
+		};
+		if(reported = count) {
+			"PASS: {$count} faulted workers joined afterwards all reported"->PrintLine();
+		}
+		else {
+			"FAIL: {$reported} of {$count} faulted workers reported at Join"->PrintLine();
+			failures += 1;
+		};
+		counted := Stat("runtime.threads.faulted") - before;
+		if(counted = count) {
+			"PASS: and counted"->PrintLine();
+		}
+		else {
+			"FAIL: {$counted} of {$count} faults counted"->PrintLine();
+			failures += 1;
+		};
+
+		# round 2: odd workers fault, joined in reverse order
+		for(i := 0; i < count; i += 1;) {
+			workers[i] := Faulty->New(i % 2 = 1 ? 0 : 1);
+			workers[i]->Execute(Nil);
+			if(i % 64 = 63) {
+				Thread->Sleep(1);
+			};
+		};
+		Settle(active);
+
+		wrong := 0;
+		for(i := count - 1; i >= 0; i -= 1;) {
+			workers[i]->Join();
+			faulted := Runtime->GetProperty("runtime.thread.join.fault")->Size() > 0;
+			if(faulted <> (i % 2 = 1)) {
+				wrong += 1;
+			};
+		};
+		if(wrong = 0) {
+			"PASS: odd workers fault, even ones do not"->PrintLine();
+		}
+		else {
+			"FAIL: {$wrong} of {$count} Joins reported the wrong outcome"->PrintLine();
+			failures += 1;
+		};
+
+		if(Stat("runtime.threads.active") <> active) {
+			"FAIL: a mutator slot leaked"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			"{$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"thread_fault_join_many: all checks passed"->PrintLine();
+	}
+}

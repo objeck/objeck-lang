@@ -1,0 +1,59 @@
+# NONDETERMINISTIC_OUTPUT
+# reason: two threads print for as long as the VM waits for them at exit, so the
+# number of lines differs from run to run; the exit status is the assertion
+#~
+# Main may return while a thread is busy in compiled code.
+#
+# When Main returns the VM halts the other threads and waits up to two seconds for
+# them to finish. A thread running interpreted code sees the halt at its next
+# instruction. Compiled code does not look at the halt flag, so a thread in a
+# compiled loop runs on through the wait. The VM then returned from main anyway,
+# and exit() ran its teardown (static destructors, and the C runtime's own) under
+# that thread. With two threads printing from a compiled loop, as below, the
+# process ended with an access violation or the C runtime's fast-fail instead of
+# exit code 0: 69 and 58 runs in 100 on Windows x64 (default JIT, threshold 1).
+#
+# A thread that allocates steadily does not show it: its next collection waits for
+# the main thread to park, which never happens once Main has returned, so the
+# thread is stopped before the teardown starts. These threads therefore print and
+# compute and make no garbage worth a collection in two seconds.
+#
+# The VM now ends the process without teardown when a VM thread is still live at
+# that point, as it already did for a runtime error or Runtime->Exit with another
+# thread running (#877, exit_with_live_threads.obs).
+#
+# The assertion is the exit code: 0. One run is one sample of a race. The test
+# takes a little over two seconds, the length of the wait.
+~#
+
+use System.Concurrency;
+
+class CompiledPrinter from Thread {
+  New() {
+    Parent("compiled-printer");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    # a loop in the entry method is compiled when the thread starts
+    for(i := 0; i < 2000000000; i += 1;) {
+      acc := 0;
+      for(j := 0; j < 20000; j += 1;) {
+        acc += (i + j) % 7;
+      };
+      acc->PrintLine();
+    };
+  }
+}
+
+class ExitWithCompiledThreadRunning {
+  function : Main(args : String[]) ~ Nil {
+    printers := CompiledPrinter->New[2];
+    each(i : printers) {
+      printers[i] := CompiledPrinter->New();
+      printers[i]->Execute(Nil);
+    };
+
+    # let both get into their loops
+    Thread->Sleep(150);
+  }
+}

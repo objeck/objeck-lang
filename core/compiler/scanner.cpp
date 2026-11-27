@@ -460,6 +460,7 @@ void Scanner::LoadKeywords()
   ident_map[L"GC_TEST_ADDRESS"] = GC_TEST_ADDRESS;
   ident_map[L"UNCOMPRESS_ZLIB_TRY"] = UNCOMPRESS_ZLIB_TRY;
   ident_map[L"SOCK_TCP_SET_DEADLINE"] = SOCK_TCP_SET_DEADLINE;
+  ident_map[L"SOCK_TCP_SHUTDOWN_SEND"] = SOCK_TCP_SHUTDOWN_SEND;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;
@@ -1413,7 +1414,7 @@ void Scanner::NoteToolDoc(size_t start, size_t end, int line, int pos)
   doc.text.assign(buffer + start, end - start);
   doc.line = line;
   doc.pos = pos;
-  tool_docs.push_back(doc);
+  tool_docs.push_back(std::move(doc));
   pending_doc = (int)tool_docs.size() - 1;
 }
 
@@ -1438,6 +1439,15 @@ void Scanner::ParseToken(int index)
   // where this token starts, for the errors that belong at its first character
   tok_line = line_nbr;
   tok_pos = (int)line_pos - 1;
+
+  // Every token starts with that position. The paths below that know better set
+  // their own, but a character literal never set one: its Token kept the line of
+  // whatever that look-ahead slot held before, and in a Scanner made for the text
+  // of an interpolation ("{$'z'}") the slot was new and the line was whatever the
+  // allocator left there. That number goes into the debug image, so 'obc -debug'
+  // wrote a different file on every run.
+  tokens[index]->SetLineNbr(tok_line);
+  tokens[index]->SetLinePos(tok_pos);
 
   // character string
   if(cur_char == L'\"' || (cur_char == L'$' && nxt_char == L'\"')) {

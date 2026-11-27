@@ -114,6 +114,14 @@ class IntermediateEmitter {
   void EmitAppendCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitConditional(Cond* conditional);
   bool IsFloatConditional(Cond* conditional);
+  // What the and/or temporary holds, for the inliner (ClassifyAndOrTemp)
+  static const int AND_OR_STORE_NIL = -2;
+  int and_or_stores;
+  int and_or_type;
+  void EmitAndOrStore(Statement* statement, Expression* expression, instructions::InstructionType type, int kind);
+  int ConditionalTempKind(Cond* conditional);
+  int ReferenceTypeKind(Type* type);
+  void ClassifyAndOrTemp();
   void EmitTryIntrinsic(MethodCall* method_call, Expression* expression, bool is_nested);
   void EmitOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, bool value_resolved = false);
   void EmitAndOr(CalculatedExpression* expression);
@@ -142,6 +150,7 @@ class IntermediateEmitter {
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
   void EmitCallIndices(MethodCall* method_call);
   void EmitMethodCallStatement(MethodCall* method_call);
+  void EmitSimpleStatement(SimpleStatement* simple);
   void EmitSystemDirective(SystemStatement* statement);
   int CalculateEntrySpace(SymbolTable* table, int &index, IntermediateDeclarations* parameters, bool is_static);
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
@@ -250,6 +259,8 @@ class IntermediateEmitter {
     unconditional_label = (2 << 29) - 1;
     is_new_inst = false;
     new_char_str_count = 0;
+    and_or_stores = 0;
+    and_or_type = AND_OR_STORE_NIL;
     cur_line_num = -1;
     string_cls = nullptr;
     string_cls_id = -1;

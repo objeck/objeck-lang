@@ -1,0 +1,27 @@
+#~
+Startup fixture for the first agent run: one agent behind a ScriptedBackend (no key, no network), one
+tool call to the built-in calculator, one answer. agent_first [runs] repeats the run to separate the
+first-run cost from the steady state.
+~#
+use API.Agent, Data.JSON, Collection;
+
+class AgentFirst {
+	function : Main(args : String[]) ~ Nil {
+		runs := 1;
+		if(args->Size() > 0) {
+			runs := args[0]->ToInt();
+		};
+		total := 0;
+		for(i := 0; i < runs; i += 1;) {
+			script := Vector->New()<AgentReply>;
+			script->AddBack(AgentReply->Ask("c1", "calculator", "{\"expression\":\"6*7\"}"));
+			script->AddBack(AgentReply->Say("The answer is 42"));
+			registry := ToolRegistry->New();
+			registry->Add(AgentTools->Calculator());
+			agent := Agent->New(ScriptedBackend->New(script), registry);
+			result := agent->Run("what is six times seven?");
+			total += result->GetText()->Size();
+		};
+		"check={$total}"->PrintLine();
+	}
+}

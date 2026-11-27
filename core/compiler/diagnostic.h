@@ -125,6 +125,13 @@ namespace frontend {
     }
 
    public:
+    // Gives a file its place before anything is said about it, so the files print in the order they were
+    // given also when an earlier file's first diagnostic is raised after a later file's (a check made once
+    // every file has been read).
+    void NoteFile(const std::wstring& file) {
+      MakeKey(file, 1);
+    }
+
     void Error(const std::wstring& file, int line, int pos, const std::wstring& message) {
 #ifdef _DEBUG
       GetLogger() << L"\tError: " << file << L":(" << line << L',' << pos << L"): " << message << std::endl;

@@ -789,12 +789,14 @@ void StackInterpreter::Int2Str(size_t* &op_stack, size_t* &stack_pos)
       conv = formatter.str();
     }
 
-		const size_t max = conv.size() < 32 ? conv.size() : 32;
-#ifdef _WIN32
-		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
-#else
-		wcsncpy(str, conv.c_str(), max);
-#endif
+    // The buffer is the caller's Char[]: str_ptr[0] elements. The text is cut to it and
+    // ended with a zero, which for text exactly as long as the buffer is the array's
+    // spare element (common.h). The interpreter gave wcsncpy_s the element count as the
+    // size, so a value exactly as long as its buffer ("-128" into Char->New[4]) ended
+    // the process on Windows, and on POSIX it copied up to 32 characters whatever
+    // the buffer held; the JIT's copy was already bounded. One rule for both now.
+    const size_t capacity = str_ptr[0];
+    StoreCharArrayText(str, conv.c_str(), conv.size() < capacity ? conv.size() : capacity);
   }
 }
 
@@ -865,13 +867,10 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
       scientific << std::scientific << value;
       conv = scientific.str();
     }
+    // (a zero-length buffer takes the zero on its spare element: wcsncpy_s refused a size
+    // of 0 and ended the process)
     const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
-#ifdef _WIN32
-    wcsncpy_s(str, capacity, conv.c_str(), max);
-#else
-    wcsncpy(str, conv.c_str(), max);
-    str[max] = L'\0';
-#endif
+    StoreCharArrayText(str, conv.c_str(), max);
   }
 }
 
@@ -1493,9 +1492,30 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, size_t*& stack_pos)
   }
 }
 
+// A Nil array handed to one of the four clears below: the same runtime error as
+// any other use of Nil. They read the array's length with no check, so clearing a
+// Nil array ended the VM with a segmentation fault instead.
+void StackInterpreter::NilArrayCleared(size_t* &stack_pos)
+{
+  if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
+    return;
+  }
+  std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+#else
+  VmExit(1);
+#endif
+}
+
 void StackInterpreter::ZeroByteAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   char* buffer = (char*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(char));
@@ -1504,6 +1524,10 @@ void StackInterpreter::ZeroByteAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroCharAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   wchar_t* buffer = (wchar_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(wchar_t));
@@ -1512,6 +1536,10 @@ void StackInterpreter::ZeroCharAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroIntAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   size_t* buffer = (size_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(size_t));
@@ -1520,6 +1548,10 @@ void StackInterpreter::ZeroIntAry(size_t*& op_stack, size_t*& stack_pos)
 void StackInterpreter::ZeroFloatAry(size_t*& op_stack, size_t*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array_ptr) {
+    NilArrayCleared(stack_pos);
+    return;
+  }
   const size_t array_len = array_ptr[0];
   FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));
@@ -1527,24 +1559,16 @@ void StackInterpreter::ZeroFloatAry(size_t*& op_stack, size_t*& stack_pos)
 
 void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
 {
+  // Nil is of no type: the test is false. It used to end the program here
+  // (">>> TypeOf(..) check on Nil value <<<") while the JIT's callback for the
+  // same instruction answered false, so what 'x->TypeOf(T)' did with a Nil x
+  // depended on whether the method had been compiled yet.
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
-  if(mem) {
-    const size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
-    if(result) {
-      PushInt(1, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+  if(mem && MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces())) {
+    PushInt(1, op_stack, stack_pos);
   }
   else {
-    std::wcerr << L">>> TypeOf(..) check on Nil value <<<" << std::endl;
-#ifdef _NO_HALT
-    halt = true;
-    return;
-#else
-    VmExit(1);
-#endif
+    PushInt(0, op_stack, stack_pos);
   }
 }
 
@@ -2392,6 +2416,10 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   delete holder;
   holder = nullptr;
 
+  // the root a raise on this thread registered: now, not in a thread_local
+  // destructor that runs after ThreadFinished (see ReleaseRaisedError)
+  StackInterpreter::ReleaseRaisedError();
+
   // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
   ThreadFinished();
 
@@ -2463,6 +2491,10 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   MemoryManager::RemovePendingThreadRoot(&holder->param);
   delete holder;
   holder = nullptr;
+
+  // the root a raise on this thread registered: now, not in a thread_local
+  // destructor that runs after ThreadFinished (see ReleaseRaisedError)
+  StackInterpreter::ReleaseRaisedError();
 
   // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
   ThreadFinished();
@@ -2695,6 +2727,17 @@ StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMet
  * GetVirtualMethod is asked about next time -- where it used to go on the
  * class the walk ended at, so an inherited override missed on every call.
  ********************************/
+#ifdef _MSC_VER
+[[noreturn]] static __declspec(noinline) void UnresolvedVirtualCall(StackClass* concrete_class, StackMethod* concrete_call, const wchar_t* why)
+#else
+[[noreturn]] static void __attribute__((noinline, cold)) UnresolvedVirtualCall(StackClass* concrete_class, StackMethod* concrete_call, const wchar_t* why)
+#endif
+{
+  std::wcerr << L">>> Invalid virtual call: '" << concrete_call->GetName() << L"' on an instance of '"
+             << concrete_class->GetName() << L"': " << why << L" <<<" << std::endl;
+  VmExit(1);
+}
+
 StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, StackMethod* concrete_call, const long virtual_cls_id, const long virtual_mthd_id)
 {
   StackMethod* virtual_call = concrete_class->GetVirtualMethod(virtual_cls_id, virtual_mthd_id);
@@ -2707,10 +2750,32 @@ StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, 
     virtual_call = klass->GetMethod(method_name);
     while(!virtual_call) {
       klass = klass->GetParent();
+      // The receiver's class and its parents have no such method: the receiver is
+      // not what the call's declaration says. The compiler does not write that, so
+      // this is a changed program image; the walk used to run off the top of the
+      // hierarchy and read a null class. Checked here, on the miss, so a resolved
+      // call costs what it did.
+      if(!klass) {
+        UnresolvedVirtualCall(concrete_class, concrete_call, L"no such method in the receiver's class");
+      }
       method_name = klass->GetName() + method_ending;
       virtual_call = klass->GetMethod(method_name);
     }
-    concrete_class->AddVirutalMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
+    // The caller's stack was checked against the declaration (Loader::Verify): the
+    // override must take and leave the same words, and must have a body to run.
+    // A name ending carries the parameter types, so a compiled override always
+    // agrees; a changed image need not.
+    if(virtual_call->GetInstructionCount() < 1) {
+      UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to has no body");
+    }
+    if(virtual_call->GetParamCount() != concrete_call->GetParamCount() || virtual_call->GetReturn() != concrete_call->GetReturn()) {
+      UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to takes or returns different words");
+    }
+    if(virtual_call->GetReturn() != NIL_TYPE && virtual_call->GetInstructionCount() == 1 &&
+       virtual_call->GetInstruction(0)->GetType() == RTRN) {
+      UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to returns no value");
+    }
+    concrete_class->AddVirtualMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
   }
 #ifdef _DEBUG
   assert(virtual_call);
@@ -3505,7 +3570,10 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     ext_unload_def ext_unload = (ext_unload_def)GetProcAddress(dll_handle, "unload_lib");
     if(!ext_unload) {
       std::wcerr << L">>> Runtime error calling function: unload_lib <<<" << std::endl;
+      // released all the same; nothing may keep a pointer into it, or its handle
+      InvalidateSharedLibraryCache();
       FreeLibrary(dll_handle);
+      instance[1] = 0;
 #ifdef _NO_HALT
       return;
 #else
@@ -3518,6 +3586,11 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     InvalidateSharedLibraryCache();
     // free handle
     FreeLibrary(dll_handle);
+    // The handle is dead: a second Unload, or a call through this proxy, finds
+    // none instead of using it. Read again from the frame, as unload_lib is
+    // the library's code and may have called back into the program.
+    instance = (size_t*)(*stack_frame)->mem[0];
+    instance[1] = 0;
   }
 #else
   void* dll_handle = (void*)instance[1];
@@ -3529,6 +3602,13 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     char* error;
     if((error = dlerror()) != nullptr)  {
       std::wcerr << L">>> Runtime error calling function: " << error << L" <<<" << std::endl;
+      // The library has no unload_lib to call, and it is released all the same,
+      // as on Windows: it has just been taken off the list the exit path
+      // unloads, so a return here (_NO_HALT: the REPL, the debugger) left it
+      // loaded with nothing to release it.
+      InvalidateSharedLibraryCache();
+      dlclose(dll_handle);
+      instance[1] = 0;
 #ifdef _NO_HALT
       return;
 #else
@@ -3542,6 +3622,11 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     InvalidateSharedLibraryCache();
     // unload lib
     dlclose(dll_handle);
+    // The handle is dead: a second Unload, or a call through this proxy, finds
+    // none instead of using it. Read again from the frame, as unload_lib is
+    // the library's code and may have called back into the program.
+    instance = (size_t*)(*stack_frame)->mem[0];
+    instance[1] = 0;
   }
 #endif
 }
@@ -3996,7 +4081,9 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const std::wstring& value_
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)MemoryManager::AllocateArray(static_cast<size_t>(char_array_size) + 1 + ((static_cast<size_t>(char_array_dim) + 2) * sizeof(size_t)),
                                                              CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = static_cast<size_t>(char_array_size) + 1;
+  // the element count, not the count plus the spare element: every other allocation writes it so, and a
+  // count that takes in the spare lets a program store into the array's terminator (common.h)
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
@@ -4212,10 +4299,15 @@ size_t StackInterpreter::ThreadKey(pthread_t handle)
 void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message)
 {
   std::lock_guard<std::mutex> guard(thread_fault_lock);
-  // bounded: a program that never joins its faulted threads keeps the newest
-  if(ThreadFaults().size() >= 4096) {
-    ThreadFaults().clear();
-  }
+  // Not capped. An entry is the fault of a thread that ended and has not been
+  // joined, and Join may still come for any of them: the cap that was here
+  // (clear all at 4096) made a program that started 4097 workers and then
+  // joined them read "no fault" for the first 4096. An entry goes when its
+  // thread is joined (TakeThreadFault) or when a new thread is given its id
+  // (ForgetThreadFault), and the id is not given out again while the thread can
+  // still be joined, so the map holds at most one entry per ended, unjoined
+  // thread. Each of those already holds more than its entry until it is joined:
+  // its handle on Windows, its stack elsewhere.
   ThreadFaults()[key] = message;
   last_thread_fault = message;
   thread_fault_count.fetch_add(1, std::memory_order_relaxed);

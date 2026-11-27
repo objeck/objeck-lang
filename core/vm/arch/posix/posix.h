@@ -464,6 +464,13 @@ public:
         }
       }
       sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
+      if(sock >= 0 && ConnectedToItself(sock)) {
+        // connect again while the first socket still holds that port, so the system
+        // must pick another: this one reaches the peer, or hears that there is none
+        const SOCKET itself = sock;
+        sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
+        close(itself);
+      }
       if(sock < 0) {
         const int rank = ConnectErrorRank(attempt_error);
         if(rank > kept_rank) {
@@ -879,8 +886,34 @@ public:
     // bytes read. shutdown() hands the queued bytes off and sends FIN before the
     // descriptor goes away. Errors are ignored on purpose: the peer may already
     // have torn the connection down, and there is nothing useful to do here.
-    shutdown(sock, SHUT_WR);
+    //
+    // A listening socket is another matter: it has nothing to send, and a thread
+    // may be blocked in accept() on it. On Linux close() does not wake that
+    // thread -- the blocked call keeps the socket alive and goes on waiting for a
+    // client that can no longer be told the port -- and SHUT_WR does nothing to a
+    // listener. So a server's accept loop never saw its Stop(): the thread stayed
+    // parked until the process ended, and every program that ran a server waited
+    // out the VM's two-second thread drain on its way out and left with a thread
+    // still live. Shutting down the receiving side is what ends a blocked
+    // accept() on Linux (it returns EINVAL), so a listener gets that first.
+    // Connected sockets close exactly as before.
+    int listening = 0;
+    socklen_t listening_len = sizeof(listening);
+    if(getsockopt(sock, SOL_SOCKET, SO_ACCEPTCONN, &listening, &listening_len) == 0 && listening) {
+      shutdown(sock, SHUT_RDWR);
+    }
+    else {
+      shutdown(sock, SHUT_WR);
+    }
     close(sock);
+  }
+
+  // Ends this side's sending and leaves the socket open for reading: what was
+  // written is handed off and followed by FIN, so the peer reads it and then
+  // the end of the stream. Errors are ignored, as in Close: the peer may have
+  // torn the connection down already.
+  static void ShutdownSend(SOCKET sock) {
+    shutdown(sock, SHUT_WR);
   }
 
   static bool SetKeepAlive(SOCKET sock, bool enable) {
@@ -918,6 +951,38 @@ public:
 private:
   // One connect attempt to one resolved address; -1 with the reason in error
   // when it fails, taken before the close() that cleans up.
+  // A socket connected to itself: its own address and port are the ones it connected
+  // to. The system picks a client's port from the same range a server's port of 0
+  // comes from, so a client sent to a port nobody holds any more can be given that
+  // very port. A UDP client then reads back the datagrams it sends, and a TCP client
+  // completes a connection with itself, where both should hear that nobody is there
+  // (100,000 UDP clients sent to a port just released on Linux: 5 read their own
+  // datagram).
+  static bool ConnectedToItself(SOCKET sock) {
+    struct sockaddr_storage local, peer;
+    socklen_t local_len = sizeof(local);
+    socklen_t peer_len = sizeof(peer);
+    memset(&local, 0, sizeof(local));
+    memset(&peer, 0, sizeof(peer));
+    if(getsockname(sock, (struct sockaddr*)&local, &local_len) != 0 || getpeername(sock, (struct sockaddr*)&peer, &peer_len) != 0) {
+      return false;
+    }
+    if(local.ss_family != peer.ss_family) {
+      return false;
+    }
+    if(local.ss_family == AF_INET) {
+      const struct sockaddr_in* a = (const struct sockaddr_in*)&local;
+      const struct sockaddr_in* b = (const struct sockaddr_in*)&peer;
+      return a->sin_port == b->sin_port && memcmp(&a->sin_addr, &b->sin_addr, sizeof(a->sin_addr)) == 0;
+    }
+    if(local.ss_family == AF_INET6) {
+      const struct sockaddr_in6* a = (const struct sockaddr_in6*)&local;
+      const struct sockaddr_in6* b = (const struct sockaddr_in6*)&peer;
+      return a->sin6_port == b->sin6_port && memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(a->sin6_addr)) == 0;
+    }
+    return false;
+  }
+
   static SOCKET ConnectAttempt(const struct addrinfo* addr, int timeout_ms, int& error) {
     SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
     if(sock < 0) {
@@ -1409,8 +1474,23 @@ class IPSecureSocket {
   static void Close(SecureSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     if(sctx) {
-      mbedtls_ssl_close_notify(&sctx->ssl);
+      if(!sctx->send_closed) {
+        mbedtls_ssl_close_notify(&sctx->ssl);
+      }
       delete sctx;
+    }
+  }
+
+  // Ends this side's sending and leaves the session open for reading: the
+  // close_notify alert tells the peer no more data follows (its read ends
+  // cleanly rather than as a truncation), and the FIN after it ends the stream
+  // for a peer that does not look. Close then sends no second alert.
+  static void ShutdownSend(SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
+    if(sctx && !sctx->send_closed) {
+      mbedtls_ssl_close_notify(&sctx->ssl);
+      shutdown(sctx->net.fd, SHUT_WR);
+      sctx->send_closed = true;
     }
   }
 

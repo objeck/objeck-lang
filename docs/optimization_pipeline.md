@@ -182,6 +182,7 @@ Measured: building every shipped library with the `is_lib` early return removed 
 | `OBJECK_JIT_DISABLE=1` | Disable auto-JIT entirely, **including** `native` methods, which are interpreted too (`TryAutoJitCompile` refuses every compile when the threshold is the disabled sentinel, `jit_common.cpp`); `--jit=off` does the same |
 | `OBJECK_JIT_REPORT=1` | Name every method the JIT compiles, and every one it hands back to the interpreter with the reason |
 | `OBJECK_JIT_PIN_MAX=n`, `OBJECK_JIT_PIN_SKIP=<substring>` | AMD64: cap the loop locals pinned per loop (`0` turns pinning off), or exempt matching methods |
+| `OBJECK_JIT_ALLOC_REG=0` | AMD64: the inline allocator returns a new object's pointer through the operand stack, as before v2026.11.4, instead of in a register ([JIT_OPERAND_STACK_DESIGN.md](JIT_OPERAND_STACK_DESIGN.md)) |
 
 ## Source map
 

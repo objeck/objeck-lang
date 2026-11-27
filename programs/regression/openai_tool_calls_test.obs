@@ -39,6 +39,23 @@ class ToolCallsMock from HttpsRequestHandler {
 		};
 		OpenAIToolCallsTest->Record(body, request->GetHeader("Authorization"));
 
+		# an HTTP failure whose body is JSON without an 'error' member (a gateway, a rate limiter)
+		if(body->Find("m-rate") > -1) {
+			response->SetCodeContent(429, "{\"message\":\"rate limited\"}");
+			return false;
+		};
+		if(body->Find("m-gateway") > -1) {
+			response->SetCodeContent(502, "{\"detail\":\"bad gateway\",\"choices\":[]}");
+			return false;
+		};
+		if(body->Find("m-nobody") > -1) {
+			response->SetCodeContent(503, "");
+			return false;
+		};
+		if(body->Find("m-limit-error") > -1) {
+			response->SetCodeContent(429, "{\"error\":{\"message\":\"Rate limit reached for gpt\",\"type\":\"requests\"}}");
+			return false;
+		};
 		if(body->Find("m-error") > -1) {
 			response->SetCodeContent(401, "{\"error\":{\"message\":\"Incorrect API key provided\",\"type\":\"invalid_request_error\"}}");
 			return false;
@@ -296,6 +313,20 @@ class OpenAIToolCallsTest {
 		completion := Ask("m-error");
 		Check("an error object gives Nil", completion = Nil);
 		Check("with the server's message", EndPoint->GetLastError() <> Nil & EndPoint->GetLastError()->Find("Incorrect API key") > -1);
+
+		# an HTTP failure is an error whatever its body looks like (it used to be a completion with no choices)
+		completion := Ask("m-rate");
+		Check("a 429 with a message-only body gives Nil", completion = Nil);
+		Check("with the provider's message", Same(EndPoint->GetLastError(), "rate limited"));
+		completion := Ask("m-gateway");
+		Check("a 502 whose JSON has no error gives Nil", completion = Nil);
+		Check("with the status code as the message", Same(EndPoint->GetLastError(), "HTTP 502"));
+		completion := Ask("m-nobody");
+		Check("a 503 with no body gives Nil", completion = Nil);
+		Check("with the status code as the message", Same(EndPoint->GetLastError(), "HTTP 503"));
+		completion := Ask("m-limit-error");
+		Check("a 429 with an error object gives Nil", completion = Nil);
+		Check("with that message", Same(EndPoint->GetLastError(), "Rate limit reached for gpt"));
 
 		completion := Ask("m-string-message");
 		Check("a message that is not an object survives", completion <> Nil & completion->GetChoices()->Size() = 1);

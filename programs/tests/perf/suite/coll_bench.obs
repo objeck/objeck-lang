@@ -1,0 +1,452 @@
+#~
+String and collection microbenchmarks: coll_bench <test> <n> <repetitions>
+Each test does work proportional to n (n log n for the sorts and the tree map), <repetitions> times.
+The harness holds n * repetitions constant across sizes, so the time per element stays flat when a
+path is linear and grows with n when it is not. 0 repetitions runs only the fixed part. Prints a
+checksum so the work cannot be skipped and a change in behavior is seen.
+
+Every test body is a 'native' function: compiled at its first call, so the default mode measures
+compiled code at every size (a loop in Main is never compiled: Main is entered once and the VM does
+not replace a running frame), and --jit=off measures the interpreter on the same code.
+~#
+use Collection;
+
+class CollBench {
+	function : native : StrAppendChar(n : Int) ~ Int {
+		s := String->New();
+		for(i := 0; i < n; i += 1;) {
+			s->Append('x');
+		};
+		return s->Size();
+	}
+
+	function : native : StrAppendStr(n : Int) ~ Int {
+		s := String->New();
+		piece := "abcdefgh";
+		for(i := 0; i < n / 8; i += 1;) {
+			s->Append(piece);
+		};
+		return s->Size();
+	}
+
+	# pieces of 64 characters take the long-append path
+	function : native : StrAppendLong(n : Int) ~ Int {
+		s := String->New();
+		piece := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+		for(i := 0; i < n / 64; i += 1;) {
+			s->Append(piece);
+		};
+		return s->Size();
+	}
+
+	function : native : StrPlusEq(n : Int) ~ Int {
+		s := "";
+		piece := "abcdefgh";
+		for(i := 0; i < n / 8; i += 1;) {
+			s += piece;
+		};
+		return s->Size();
+	}
+
+	# s := s + t builds a new string each time: quadratic by definition, kept as a reference
+	function : native : StrConcatNew(n : Int) ~ Int {
+		s := "";
+		piece := "abcdefgh";
+		for(i := 0; i < n / 8; i += 1;) {
+			s := s + piece;
+		};
+		return s->Size();
+	}
+
+	function : native : StrLiteral(n : Int) ~ Int {
+		total := 0;
+		for(i := 0; i < n / 8; i += 1;) {
+			total += "abcdefgh"->Size();
+		};
+		return total;
+	}
+
+	function : native : StrInterp(n : Int) ~ Int {
+		total := 0;
+		for(i := 0; i < n / 8; i += 1;) {
+			s := "v={$i};";
+			total += s->Size();
+		};
+		return total;
+	}
+
+	function : native : IntToString(n : Int) ~ Int {
+		total := 0;
+		for(i := 0; i < n / 8; i += 1;) {
+			total += i->ToString()->Size();
+		};
+		return total;
+	}
+
+	function : native : StrToInt(n : Int) ~ Int {
+		total := 0;
+		text := "1234567";
+		for(i := 0; i < n / 8; i += 1;) {
+			total += text->ToInt() and 1;
+		};
+		return total;
+	}
+
+	function : native : StrSubString(n : Int, big : String) ~ Int {
+		total := 0;
+		for(i := 0; i + 16 <= n; i += 16;) {
+			total += big->SubString(i, 16)->Size();
+		};
+		return total;
+	}
+
+	function : native : StrGet(n : Int, big : String) ~ Int {
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			total += big->Get(i) and 1;
+		};
+		return total;
+	}
+
+	function : native : StrEquals(n : Int, big : String, same : String) ~ Int {
+		if(big->Equals(same)) {
+			return 1;
+		};
+		return 0;
+	}
+
+	function : native : StrCompare(n : Int, big : String, same : String) ~ Int {
+		return big->Compare(same) + 1;
+	}
+
+	function : native : StrSplitStr(csv : String) ~ Int {
+		return csv->Split(",")->Size();
+	}
+
+	function : native : StrSplitChar(csv : String) ~ Int {
+		return csv->Split(',')->Size();
+	}
+
+	function : native : VecAdd(n : Int, item : String) ~ Int {
+		v := Vector->New()<String>;
+		for(i := 0; i < n; i += 1;) {
+			v->AddBack(item);
+		};
+		return v->Size();
+	}
+
+	function : native : VecAddGet(n : Int) ~ Int {
+		v := Vector->New()<IntRef>;
+		for(i := 0; i < n; i += 1;) {
+			v->AddBack(IntRef->New(i));
+		};
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			total += v->Get(i)->Get() and 1;
+		};
+		return total;
+	}
+
+	function : native : VecSortInt(n : Int) ~ Int {
+		v := CompareVector->New()<IntRef>;
+		seed := 777;
+		for(i := 0; i < n; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 0x7fffffff;
+			v->AddBack(IntRef->New(seed));
+		};
+		v->Sort();
+		return v->Get(0)->Get() and 0xff;
+	}
+
+	function : native : VecSortStr(n : Int, keys : String[]) ~ Int {
+		v := CompareVector->New()<String>;
+		for(i := 0; i < n; i += 1;) {
+			v->AddBack(keys[i]);
+		};
+		v->Sort();
+		return v->Get(0)->Size();
+	}
+
+	function : native : ArrSortInt(n : Int) ~ Int {
+		a := Int->New[n];
+		seed := 777;
+		for(i := 0; i < n; i += 1;) {
+			seed := (seed * 1103515245 + 12345) and 0x7fffffff;
+			a[i] := seed;
+		};
+		b := a->Sort();
+		return b[0] and 0xff;
+	}
+
+	function : native : HashInt(n : Int) ~ Int {
+		h := Hash->New()<IntRef, IntRef>;
+		for(i := 0; i < n; i += 1;) {
+			k := IntRef->New(i * 7919);
+			h->Insert(k, k);
+		};
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(h->Has(IntRef->New(i * 7919))) {
+				total += 1;
+			};
+		};
+		return total;
+	}
+
+	function : native : HashStr(n : Int, keys : String[]) ~ Int {
+		h := Hash->New()<String, String>;
+		for(i := 0; i < n; i += 1;) {
+			h->Insert(keys[i], keys[i]);
+		};
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(h->Find(keys[i]) <> Nil) {
+				total += 1;
+			};
+		};
+		return total;
+	}
+
+	function : native : MapInt(n : Int) ~ Int {
+		m := Map->New()<IntRef, IntRef>;
+		for(i := 0; i < n; i += 1;) {
+			k := IntRef->New(i * 7919 % 1000003);
+			m->Insert(k, k);
+		};
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(m->Has(IntRef->New(i * 7919 % 1000003))) {
+				total += 1;
+			};
+		};
+		return total;
+	}
+
+	function : native : MapStr(n : Int, keys : String[]) ~ Int {
+		m := Map->New()<String, String>;
+		for(i := 0; i < n; i += 1;) {
+			m->Insert(keys[i], keys[i]);
+		};
+		total := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(m->Find(keys[i]) <> Nil) {
+				total += 1;
+			};
+		};
+		return total;
+	}
+
+	# many small maps, the shape of JSON objects: eight members each
+	function : native : MapSmall(n : Int, keys : String[]) ~ Int {
+		total := 0;
+		for(i := 0; i + 8 <= n; i += 8;) {
+			m := Map->New()<String, String>;
+			for(j := 0; j < 8; j += 1;) {
+				m->Insert(keys[i + j], keys[i + j]);
+			};
+			total += m->Size();
+		};
+		return total;
+	}
+
+	function : native : MapKeys(n : Int) ~ Int {
+		m := Map->New()<IntRef, IntRef>;
+		for(i := 0; i < n; i += 1;) {
+			k := IntRef->New(i);
+			m->Insert(k, k);
+		};
+		return m->GetKeys()->Size();
+	}
+
+	function : native : QueueOps(n : Int, item : String) ~ Int {
+		q := Queue->New()<String>;
+		for(i := 0; i < n; i += 1;) {
+			q->AddBack(item);
+		};
+		total := 0;
+		while(<>q->IsEmpty()) {
+			total += q->RemoveFront()->Size() and 1;
+		};
+		return total;
+	}
+
+	function : native : StackOps(n : Int, item : String) ~ Int {
+		s := Stack->New()<String>;
+		for(i := 0; i < n; i += 1;) {
+			s->Push(item);
+		};
+		total := 0;
+		while(<>s->IsEmpty()) {
+			total += s->Pop()->Size() and 1;
+		};
+		return total;
+	}
+
+	function : native : ListOps(n : Int, item : String) ~ Int {
+		l := List->New()<String>;
+		for(i := 0; i < n; i += 1;) {
+			l->AddBack(item);
+		};
+		return l->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 3) {
+			"usage: coll_bench <test> <n> <repetitions>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+		test := args[0];
+		n := args[1]->ToInt();
+		reps := args[2]->ToInt();
+		check := 0;
+
+		# inputs shared by several tests, built once
+		big := String->New();
+		same := String->New();
+		csv := String->New();
+		if(test->StartsWith("str_sub") | test->StartsWith("str_find") | test->StartsWith("str_upper") | test->StartsWith("str_hash") |
+				test->StartsWith("str_get") | test->StartsWith("str_equals") | test->StartsWith("str_compare")) {
+			for(i := 0; i < n; i += 1;) {
+				big->Append(('a' + i % 20)->As(Char));
+			};
+			same->Append(big);
+			big->Append("XYZ");
+			same->Append("XYZ");
+		};
+		if(test->StartsWith("str_replace") | test->StartsWith("str_split") | test->StartsWith("str_count")) {
+			for(i := 0; i < n / 8; i += 1;) {
+				csv->Append("abc,cat,");
+			};
+		};
+		keys := String->New[0];
+		if(test->StartsWith("hash_str") | test->StartsWith("map_str") | test->StartsWith("map_small") | test->StartsWith("vec_sort_str")) {
+			keys := String->New[n];
+			seed := 12345;
+			for(i := 0; i < n; i += 1;) {
+				seed := (seed * 1103515245 + 12345) and 0x7fffffff;
+				keys[i] := "k{$seed}_{$i}";
+			};
+		};
+
+		for(r := 0; r < reps; r += 1;) {
+			if(test->Equals("str_append_char")) {
+				check += StrAppendChar(n);
+			}
+			else if(test->Equals("str_append_str")) {
+				check += StrAppendStr(n);
+			}
+			else if(test->Equals("str_append_long")) {
+				check += StrAppendLong(n);
+			}
+			else if(test->Equals("str_plus_eq")) {
+				check += StrPlusEq(n);
+			}
+			else if(test->Equals("str_concat_new")) {
+				check += StrConcatNew(n);
+			}
+			else if(test->Equals("str_literal")) {
+				check += StrLiteral(n);
+			}
+			else if(test->Equals("str_interp")) {
+				check += StrInterp(n);
+			}
+			else if(test->Equals("int_to_string")) {
+				check += IntToString(n);
+			}
+			else if(test->Equals("str_to_int")) {
+				check += StrToInt(n);
+			}
+			else if(test->Equals("str_substring")) {
+				check += StrSubString(n, big);
+			}
+			else if(test->Equals("str_get")) {
+				check += StrGet(n, big);
+			}
+			else if(test->Equals("str_equals")) {
+				check += StrEquals(n, big, same);
+			}
+			else if(test->Equals("str_compare")) {
+				check += StrCompare(n, big, same);
+			}
+			else if(test->Equals("str_find_char")) {
+				check += big->Find('X');
+			}
+			else if(test->Equals("str_find_str")) {
+				check += big->Find("XYZ");
+			}
+			else if(test->Equals("str_find_str_common")) {
+				# the first character of the needle is everywhere
+				check += big->Find("abcdefghijX");
+			}
+			else if(test->Equals("str_upper")) {
+				check += big->ToUpper()->Size();
+			}
+			else if(test->Equals("str_hash")) {
+				check += big->HashID() and 0xff;
+			}
+			else if(test->Equals("str_replace_all")) {
+				check += csv->ReplaceAll("cat", "doggo")->Size();
+			}
+			else if(test->Equals("str_replace_char")) {
+				check += csv->ReplaceAll(',', ';')->Size();
+			}
+			else if(test->Equals("str_split_str")) {
+				check += StrSplitStr(csv);
+			}
+			else if(test->Equals("str_split_char")) {
+				check += StrSplitChar(csv);
+			}
+			else if(test->Equals("str_count")) {
+				check += csv->Count(',');
+			}
+			else if(test->Equals("vec_add")) {
+				check += VecAdd(n, test);
+			}
+			else if(test->Equals("vec_add_get")) {
+				check += VecAddGet(n);
+			}
+			else if(test->Equals("vec_sort_int")) {
+				check += VecSortInt(n);
+			}
+			else if(test->Equals("vec_sort_str")) {
+				check += VecSortStr(n, keys);
+			}
+			else if(test->Equals("arr_sort_int")) {
+				check += ArrSortInt(n);
+			}
+			else if(test->Equals("hash_int")) {
+				check += HashInt(n);
+			}
+			else if(test->Equals("hash_str")) {
+				check += HashStr(n, keys);
+			}
+			else if(test->Equals("map_int")) {
+				check += MapInt(n);
+			}
+			else if(test->Equals("map_str")) {
+				check += MapStr(n, keys);
+			}
+			else if(test->Equals("map_small")) {
+				check += MapSmall(n, keys);
+			}
+			else if(test->Equals("map_keys")) {
+				check += MapKeys(n);
+			}
+			else if(test->Equals("queue")) {
+				check += QueueOps(n, test);
+			}
+			else if(test->Equals("stack")) {
+				check += StackOps(n, test);
+			}
+			else if(test->Equals("list")) {
+				check += ListOps(n, test);
+			}
+			else {
+				"unknown test"->ErrorLine();
+				Runtime->Exit(2);
+			};
+		};
+
+		"check={$check}"->PrintLine();
+	}
+}

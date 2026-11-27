@@ -1,0 +1,179 @@
+#~
+System.IO.Filesystem.HardLink and SymbolicLink.
+
+HardLink->Create had no test and a "TODO: implement" over it in the VM. It
+did work, by two mistakes that cancelled: the link and target paths were
+popped into each other's names and then passed in the other order. A hard
+link is a second name for one file, so the checks are that both names read
+the same content, that a write through either is read through the other, that
+deleting one name leaves the content under the other, and that Create says
+false (and creates nothing) for a missing target, a name that is taken, a
+directory, and Nil.
+
+SymbolicLink beside it had three faults of its own. Location was declared to
+return Bool while the VM returned the String, so the path could not be read.
+Copy popped three values where the library pushes two, taking one off the
+caller's operand stack. Create tested the LINK's path, not the target's, for
+"is a directory", so a link to a directory was made as a file link (a link
+nothing can open on Windows). Symbolic links need a privilege on Windows that
+not every account has; where the first one cannot be made there, those checks
+are not run and the output says so.
+~#
+use System.IO.Filesystem;
+
+class FilesystemLinks {
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Read(path : String) ~ String {
+		text := FileReader->ReadFile(path);
+		if(text = Nil) {
+			return "(unreadable)";
+		};
+		return text;
+	}
+
+	function : HardLinks(dir : String) ~ Nil {
+		target := "{$dir}/target.txt";
+		link := "{$dir}/link.txt";
+		second := "{$dir}/second.txt";
+		missing := "{$dir}/missing.txt";
+
+		Check("the target is written", FileWriter->WriteFile(target, "first"));
+		Check("a hard link is created", HardLink->Create(link, target));
+		Check("the link exists", File->Exists(link));
+		Check("the target still exists", File->Exists(target));
+		Check("the link reads the target's content", Read(link)->Equals("first"));
+		Check("the two names have one size", File->Size(link) = File->Size(target) & File->Size(link) = 5);
+
+		# one file under two names: a write through either is read through the other
+		Check("a write through the link", FileWriter->WriteFile(link, "second write"));
+		Check("is read through the target", Read(target)->Equals("second write"));
+		Check("a write through the target", FileWriter->WriteFile(target, "third"));
+		Check("is read through the link", Read(link)->Equals("third"));
+
+		# a link to a link is a third name for the same file
+		Check("a second link, made from the first", HardLink->Create(second, link));
+		Check("reads the same content", Read(second)->Equals("third"));
+
+		# refused, and nothing is created
+		Check("a taken link name is refused", <>HardLink->Create(link, target));
+		Check("and the name keeps its content", Read(link)->Equals("third"));
+		Check("a missing target is refused", <>HardLink->Create("{$dir}/dangling.txt", missing));
+		Check("and no link is left behind", <>File->Exists("{$dir}/dangling.txt"));
+		Check("a directory target is refused", <>HardLink->Create("{$dir}/dir-link", dir));
+		Check("and no link is left behind", <>File->Exists("{$dir}/dir-link") & <>Directory->Exists("{$dir}/dir-link"));
+		Check("a link in a missing directory is refused", <>HardLink->Create("{$dir}/no-such-dir/link.txt", target));
+
+		no_path : String;
+		Check("a Nil link is refused", <>HardLink->Create(no_path, target));
+		Check("a Nil target is refused", <>HardLink->Create("{$dir}/nil-target.txt", no_path));
+		Check("deleting a Nil name is false", <>HardLink->Delete(no_path));
+
+		# the content stays until its last name goes
+		Check("the target's name is deleted", HardLink->Delete(target));
+		Check("the target's name is gone", <>File->Exists(target));
+		Check("the content stays under the link", Read(link)->Equals("third"));
+		Check("the link is deleted", HardLink->Delete(link));
+		Check("the content stays under the second link", Read(second)->Equals("third"));
+		Check("the second link is deleted", HardLink->Delete(second));
+		Check("deleting it again is false", <>HardLink->Delete(second));
+	}
+
+	function : SymbolicLinks(dir : String) ~ Nil {
+		target := "{$dir}/sym-target.txt";
+		link := "{$dir}/sym-link.txt";
+		copy := "{$dir}/sym-copy.txt";
+		sub := "{$dir}/sub";
+
+		Check("the symlink target is written", FileWriter->WriteFile(target, "through a symlink"));
+		if(<>SymbolicLink->Create(link, "sym-target.txt")) {
+			if(Runtime->GetPlatform()->Has("Windows")) {
+				"  note: this account cannot create symbolic links on Windows; the symbolic link checks were not run"->PrintLine();
+				File->Delete(target);
+				return;
+			};
+			Check("a symbolic link is created", false);
+			return;
+		};
+
+		Check("the link is a symbolic link", SymbolicLink->Exists(link));
+		Check("the target is not a symbolic link", <>SymbolicLink->Exists(target));
+		Check("the link reads the target's content", Read(link)->Equals("through a symlink"));
+
+		# Location returns the path the link holds, as it was given
+		where := SymbolicLink->Location(link);
+		Check("Location returns the target path", where <> Nil);
+		if(where <> Nil) {
+			Check("Location is the path the link was given", where->Equals("sym-target.txt"));
+		};
+		Check("Location of a regular file is Nil", SymbolicLink->Location(target) = Nil);
+
+		# Copy took a value off the caller's stack: 'before' and 'after' bracket it
+		before := 1234567;
+		copied := SymbolicLink->Copy(link, copy);
+		after := 7654321;
+		Check("the symbolic link is copied", copied);
+		Check("the values around the call are intact", before = 1234567 & after = 7654321);
+		Check("the copy is a symbolic link", SymbolicLink->Exists(copy));
+		copy_where := SymbolicLink->Location(copy);
+		Check("the copy holds the same path", copy_where <> Nil & copy_where->Equals("sym-target.txt"));
+		Check("the copy reads the target's content", Read(copy)->Equals("through a symlink"));
+		Check("an expression around a copy keeps its operands", 40 + (SymbolicLink->Copy(link, copy) ? 1 : 2) = 42);
+
+		# a link to a directory can be listed through
+		Check("a directory is created", Directory->Create(sub));
+		Check("a file inside it", FileWriter->WriteFile("{$sub}/inside.txt", "inside"));
+		Check("a symbolic link to the directory", SymbolicLink->Create("{$dir}/sub-link", "sub"));
+		Check("the file is read through the directory link", Read("{$dir}/sub-link/inside.txt")->Equals("inside"));
+		Check("the directory link is a symbolic link", SymbolicLink->Exists("{$dir}/sub-link"));
+
+		# refused
+		Check("a taken link name is refused", <>SymbolicLink->Create(link, "sym-target.txt"));
+		no_path : String;
+		Check("a Nil link is refused", <>SymbolicLink->Create(no_path, "sym-target.txt"));
+		Check("a Nil copy source is refused", <>SymbolicLink->Copy(no_path, "{$dir}/nil-copy"));
+
+		# deleting a link leaves its target
+		Check("the copy is deleted", SymbolicLink->Delete(copy));
+		Check("the link is deleted", SymbolicLink->Delete(link));
+		Check("the target is still there", Read(target)->Equals("through a symlink"));
+		Check("the directory link is deleted", SymbolicLink->Delete("{$dir}/sub-link"));
+		Check("the directory's file is still there", Read("{$sub}/inside.txt")->Equals("inside"));
+		File->Delete(target);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		dir := Runtime->GetTempDir()->ReplaceAll("\\", "/");
+		if(dir->EndsWith('/')) {
+			dir := dir->SubString(dir->Size() - 1);
+		};
+		dir := "{$dir}/objeck_links_{$Runtime->GetProcessId()}";
+
+		Directory->Delete(dir);
+		if(<>Directory->Create(dir)) {
+			"FAIL: could not create {$dir}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		HardLinks(dir);
+		SymbolicLinks(dir);
+
+		Directory->Delete(dir);
+		Check("the work directory is removed", <>Directory->Exists(dir));
+
+		if(@failed = 0) {
+			"PASS: hard and symbolic links"->PrintLine();
+		}
+		else {
+			"FAIL: {$@failed} link check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

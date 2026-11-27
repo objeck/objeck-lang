@@ -1,0 +1,409 @@
+#~
+# Char[] and Byte[] natives use the array's own length: exact-length arrays and offset/num ranges
+#
+# The Char[] / Byte[] NUL-termination audit (v2026.11.4). Every Char[] the VM allocates carries one spare zero
+# element after its data, so a native that reads one as a C string stops at the end of an array that is full
+# (an "exact-length" array). These are the natives that did not hold to the array's own length:
+#
+# - Number->IntToString into a buffer exactly as long as the digits ended the process on Windows when the
+#   interpreter ran it (MSVC's invalid-parameter handler: "-128" into Char[4]), and on POSIX copied up to 32
+#   characters whatever the buffer's size. The JIT's copy was bounded, so the two engines disagreed.
+# - Number->FloatToString into a zero-length buffer ended the process the same way, in the JIT as well.
+# - File->ReadBuffer(offset, num, Char[]) on POSIX cleared every element from the characters it read to the
+#   end of the array. Every reader now stores the characters and, where the slice it was given or the
+#   array's spare element has room for it, one zero after them (char_read_slice_terminator.obs).
+# - TCPSocket and UDPSocket WriteBuffer(offset, num, Char[]) ignored offset and num and sent the whole
+#   array up to its first zero.
+# - Deserializer->ReadObject checked its reads against the size of the whole Byte[] although it starts
+#   part of the way in, so an object cut short read past the end of the array: an Int field missing its
+#   last bytes came back made of whatever followed, and IsOk() stayed true.
+#
+# Console->WriteBuffer(offset, num, Byte[]) ignored its offset too; check_console_write_offset.py covers
+# it, because this runner cannot capture a test's own standard output.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Net, System.IO.Filesystem;
+
+class LineServer from Thread {
+	@server : TCPSocketServer;
+	@lines : String[];
+	@count : Int;
+	@finished : Bool;
+
+	New(server : TCPSocketServer, count : Int) {
+		Parent("line-server");
+		@server := server;
+		@lines := String->New[count];
+		@count := count;
+		@finished := false;
+	}
+
+	# one connection, one line each
+	method : public : Run(param : Base) ~ Nil {
+		for(i := 0; i < @count; i += 1;) {
+			client := @server->Accept();
+			if(client <> Nil & client->IsOpen()) {
+				@lines[i] := client->ReadLine();
+				client->WriteString("ok\n");
+				client->Close();
+			};
+		};
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetLine(i : Int) ~ String { return @lines[i]; }
+}
+
+class DatagramReader from Thread {
+	@server : UDPSocketServer;
+	@bytes : Byte[];
+	@read : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer) {
+		Parent("datagram-reader");
+		@server := server;
+		@bytes := Byte->New[64];
+		@read := -2;
+		@finished := false;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@read := @server->ReadBuffer(0, @bytes->Size(), @bytes);
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetText() ~ String {
+		if(@read < 0) {
+			return "<read failed>";
+		};
+		return String->New(@bytes, 0, @read);
+	}
+}
+
+class Pair {
+	@first : Int;
+	@second : Int;
+
+	New(first : Int, second : Int) {
+		@first := first;
+		@second := second;
+	}
+
+	method : public : GetFirst() ~ Int { return @first; }
+	method : public : GetSecond() ~ Int { return @second; }
+}
+
+class CharArrayExactLength {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		# every stage, or the one named on the command line (to see each failure of an unfixed VM, whose
+		# first stage ends the process)
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("number")) {
+			"stage: number to text"->ErrorLine();
+			CheckNumberText();
+		};
+		if(only->Size() = 0 | only->Equals("file")) {
+			"stage: file read"->ErrorLine();
+			CheckFileRead();
+		};
+		if(only->Size() = 0 | only->Equals("object")) {
+			"stage: truncated object"->ErrorLine();
+			CheckTruncatedObject();
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp write"->ErrorLine();
+			CheckTcpWrite();
+		};
+		if(only->Size() = 0 | only->Equals("udp")) {
+			"stage: udp write"->ErrorLine();
+			CheckUdpWrite();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} array length check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Char[] and Byte[] natives use the array's own length"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# the array's elements, a zero shown as '.'
+	function : Show(chars : Char[]) ~ String {
+		out := "";
+		each(i : chars) {
+			if(chars[i] = '\0') {
+				out += '.';
+			}
+			else {
+				out += chars[i];
+			};
+		};
+		return out;
+	}
+
+	function : Letters() ~ Char[] {
+		# ToCharArray returns an array exactly as long as the text
+		return "abcdefgh"->ToCharArray();
+	}
+
+	function : CheckNumberText() ~ Nil {
+		# a buffer exactly as long as the digits: no room for a terminator inside the array
+		exact := Char->New[4];
+		Number->IntToString(-128, 10, exact);
+		Check("IntToString fills an exact-length buffer", Show(exact)->Equals("-128"));
+
+		five := Char->New[5];
+		Number->IntToString(12345, 10, five);
+		Check("IntToString fills a five-character buffer", Show(five)->Equals("12345"));
+
+		# a buffer shorter than the digits takes what fits, in the interpreter as in the JIT
+		short := Char->New[3];
+		Number->IntToString(12345, 10, short);
+		Check("IntToString stops at the end of a short buffer", Show(short)->Equals("123"));
+		# nothing was stored past it: read as text (to the first zero) the buffer is still three characters
+		Check("IntToString stores nothing past a short buffer ({$short->ToBytes()->Size()} characters as text)",
+			short->ToBytes()->Size() = 3);
+		Check("an exact-length buffer reads as text of its own length", exact->ToBytes()->Size() = 4);
+
+		roomy := Char->New[8];
+		Number->IntToString(42, 10, roomy);
+		Check("IntToString leaves the rest of a larger buffer alone", Show(roomy)->Equals("42......"));
+
+		# Byte->ToString hands IntToString a four-character buffer
+		high : Byte := 255;
+		Check("Byte->ToString of its largest value", high->ToString()->Equals("255"));
+
+		none := Char->New[0];
+		Number->FloatToString(1.5, none);
+		Check("FloatToString into a zero-length buffer returns", none->Size() = 0);
+
+		one := Char->New[1];
+		Number->FloatToString(1.5, one);
+		Check("FloatToString into a one-character buffer keeps its terminator", Show(one)->Equals("."));
+	}
+
+	function : CheckFileRead() ~ Nil {
+		# a name of this process's own: two runs side by side in one directory (the stress probe) read and
+		# deleted each other's file
+		name := "char_array_exact_length_{$Runtime->GetProcessId()}.tmp";
+		writer := FileWriter->New(name);
+		writer->WriteString("abc");
+		writer->Close();
+
+		# three characters into the middle of a full array: the characters and nothing else, the slice
+		# being full (no zero on the caller's element after it: char_read_slice_terminator.obs)
+		marks := Char->New[10];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		reader := FileReader->New(name);
+		got := reader->ReadBuffer(2, 3, marks);
+		reader->Close();
+		Check("File->ReadBuffer(2, 3, Char[10]) stores three characters and nothing else (got '{$Show(marks)}')",
+			Show(marks)->Equals("XXabcXXXXX"));
+
+		# an array exactly as long as the data
+		exact := Char->New[3];
+		reader := FileReader->New(name);
+		got := reader->ReadBuffer(0, 3, exact);
+		reader->Close();
+		Check("File->ReadBuffer fills an exact-length array (got '{$Show(exact)}')", Show(exact)->Equals("abc"));
+		text := String->New(exact);
+		Check("a String made from the full array has its length", text->Size() = 3 & text->Equals("abc"));
+
+		# up to the last slot
+		marks := Char->New[10];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		reader := FileReader->New(name);
+		got := reader->ReadBuffer(7, 3, marks);
+		reader->Close();
+		Check("File->ReadBuffer(7, 3, Char[10]) ends at the last slot (got '{$Show(marks)}')",
+			Show(marks)->Equals("XXXXXXXabc"));
+
+		File->Delete(name);
+	}
+
+	# An object stream cut at every length, each in an array exactly as long as what is left of it. A field
+	# is its value, or zero where the stream ended before it, or the read fails: never anything else.
+	function : CheckTruncatedObject() ~ Nil {
+		# no byte of either value is zero, so a value made of some of its bytes is neither it nor zero
+		first := 1234605616436508552;
+		second := 72623859790382856;
+
+		serializer := System.IO.Serializer->New();
+		for(i := 0; i < 6; i += 1;) {
+			serializer->Write(1000 + i);
+		};
+		serializer->Write(Pair->New(first, second));
+		whole := serializer->Serialize()->UncompressZlib();
+
+		intact := false;
+		garbled := 0;
+		refused := 0;
+		silent := 0;
+		part : Byte[];
+		reader : System.IO.Deserializer;
+		read : Base;
+		pair : Pair;
+		for(cut := 0; cut < whole->Size(); cut += 1;) {
+			part := Byte->New[whole->Size() - cut];
+			Byte->Copy(part, 0, whole, 0, part->Size());
+			reader := System.IO.Deserializer->New(part->CompressZlib());
+			for(i := 0; i < 6; i += 1;) {
+				reader->ReadInt();
+			};
+			read := reader->ReadObject();
+			if(read <> Nil) {
+				pair := read->As(Pair);
+				if(cut = 0) {
+					intact := pair->GetFirst() = first & pair->GetSecond() = second;
+				};
+				if((pair->GetFirst() <> first & pair->GetFirst() <> 0) | (pair->GetSecond() <> second & pair->GetSecond() <> 0)) {
+					garbled += 1;
+				};
+			}
+			else if(reader->IsOk()) {
+				silent += 1;
+			}
+			else {
+				refused += 1;
+			};
+		};
+
+		Check("the whole object stream reads back", intact);
+		Check("no object cut short has a field read from past the array ({$garbled} did)", garbled = 0);
+		Check("an object that cannot be read leaves IsOk() false ({$silent} left it true)", silent = 0);
+		Check("streams cut inside the object are refused ({$refused} were)", refused >= 16);
+	}
+
+	function : SendLine(port : Int, offset : Int, num : Int, chars : Char[]) ~ Bool {
+		client := TCPSocket->New("127.0.0.1", port);
+		if(<>client->IsOpen()) {
+			return false;
+		};
+		if(offset < 0) {
+			client->WriteBuffer(chars);
+		}
+		else {
+			client->WriteBuffer(offset, num, chars);
+		};
+		client->WriteString("\n");
+		# the server answers once it has the line, so the write is not lost to a close
+		client->ReadLine();
+		client->Close();
+		return true;
+	}
+
+	function : CheckTcpWrite() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		port := server->GetPort();
+		lines := LineServer->New(server, 4);
+		lines->Execute(Nil);
+
+		padded := Char->New[16];
+		padded[0] := 'a'; padded[1] := 'b'; padded[2] := 'c';
+
+		sent := SendLine(port, 2, 3, Letters());
+		sent := sent & SendLine(port, -1, 0, Letters());
+		sent := sent & SendLine(port, -1, 0, padded);
+		sent := sent & SendLine(port, 5, 3, Letters());
+		Check("four TCP clients connect", sent);
+
+		for(waited := 0; <>lines->IsFinished() & waited < 10000; waited += 25;) {
+			Thread->Sleep(25);
+		};
+		if(<>lines->IsFinished()) {
+			Check("the TCP server reads four lines", false);
+			return;
+		};
+		lines->Join();
+		server->Close();
+
+		Check("TCP WriteBuffer(2, 3, Char[]) sends 'cde' (got '{$lines->GetLine(0)}')", Same(lines->GetLine(0), "cde"));
+		Check("TCP WriteBuffer(Char[]) sends a full array (got '{$lines->GetLine(1)}')", Same(lines->GetLine(1), "abcdefgh"));
+		Check("TCP WriteBuffer(Char[]) stops at the first zero of a padded array (got '{$lines->GetLine(2)}')", Same(lines->GetLine(2), "abc"));
+		Check("TCP WriteBuffer(5, 3, Char[]) sends the last three (got '{$lines->GetLine(3)}')", Same(lines->GetLine(3), "fgh"));
+	}
+
+	function : Same(line : String, text : String) ~ Bool {
+		return line <> Nil & line->Equals(text);
+	}
+
+	# the server reads one datagram while the client resends it (UDP may drop one)
+	function : Deliver(server : UDPSocketServer, client : UDPSocket, offset : Int, num : Int, chars : Char[]) ~ String {
+		reader := DatagramReader->New(server);
+		reader->Execute(Nil);
+		for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
+			if(offset < 0) {
+				client->WriteBuffer(chars);
+			}
+			else {
+				client->WriteBuffer(offset, num, chars);
+			};
+			Thread->Sleep(50);
+		};
+		if(<>reader->IsFinished()) {
+			# wake the reader so the VM can end
+			for(i := 0; <>reader->IsFinished() & i < 100; i += 1;) {
+				client->WriteByte(0);
+				Thread->Sleep(50);
+			};
+			reader->Join();
+			return "<nothing arrived>";
+		};
+		reader->Join();
+		return reader->GetText();
+	}
+
+	function : CheckUdpWrite() ~ Nil {
+		got : String;
+		# each delivery gets its own server, so a resent datagram cannot be read as the next one's
+		server := UDPSocketServer->New(0);
+		if(<>server->IsBound()) {
+			Check("the UDP server binds", false);
+			return;
+		};
+		client := UDPSocket->New("127.0.0.1", server->GetPort());
+		got := Deliver(server, client, 2, 3, Letters());
+		Check("UDP WriteBuffer(2, 3, Char[]) sends 'cde' (got '{$got}')", got->Equals("cde"));
+		client->Close();
+		server->Close();
+
+		server := UDPSocketServer->New(0);
+		if(<>server->IsBound()) {
+			Check("the second UDP server binds", false);
+			return;
+		};
+		client := UDPSocket->New("127.0.0.1", server->GetPort());
+		got := Deliver(server, client, -1, 0, Letters());
+		Check("UDP WriteBuffer(Char[]) sends a full array (got '{$got}')", got->Equals("abcdefgh"));
+		client->Close();
+		server->Close();
+	}
+}

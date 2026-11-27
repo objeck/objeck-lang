@@ -371,6 +371,11 @@ namespace instructions {
     // TCPSocket->SetDeadline(ms) and TCPSecureSocket->SetDeadline(ms): the
     // socket's reads fail once ms milliseconds, counted from the call, have
     // passed (0 clears it); the HTTP clients' total request deadline
-    SOCK_TCP_SET_DEADLINE
+    SOCK_TCP_SET_DEADLINE,
+    // TCPSocket->CloseGracefully() and TCPSecureSocket->CloseGracefully(): ends
+    // this side's sending (FIN, after a TLS close_notify) and leaves the socket
+    // open for reading, so a peer that reads until the connection ends sees the
+    // end at once instead of waiting for the close
+    SOCK_TCP_SHUTDOWN_SEND
   };
 }

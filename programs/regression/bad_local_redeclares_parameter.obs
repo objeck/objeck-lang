@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: (8,14): Variable already defined in this scope: 'n'
+# EXPECT_ERROR_COUNT: 1
+#~
+A method's parameters and the locals of its body are declared in one block: a local there cannot take a parameter's name.
+~#
+class BadLocalRedeclaresParameter {
+	function : Twice(n : Int) ~ Int {
+		n : String := "two";
+		return n->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Twice(1)->PrintLine();
+	}
+}

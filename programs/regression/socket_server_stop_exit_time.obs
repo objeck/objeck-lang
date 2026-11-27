@@ -1,0 +1,295 @@
+# EXTRA_LIBS: net,net_server
+#~
+Stopping a server ends its accept thread, so the program leaves at once
+
+Closing a listening socket did not wake a thread blocked in accept() on Linux: close()
+leaves a blocked accept() waiting, and the VM's shutdown of the sending side does nothing
+to a listener. A server's accept loop therefore never saw its Stop(). The thread stayed
+parked until the process ended, and every program that ran a server waited out the VM's
+two-second thread drain when Main returned, then left with a thread still live (the
+"threads not drained" way out, which frees nothing it cannot prove unused).
+
+Three checks:
+
+1. The exit time of a server program. This test runs itself again as a child (this .obe
+   with 'raw' or 'web'): the child starts a server on a thread, serves one request, stops
+   the server and returns from Main without joining anything. The child is timed from
+   outside, start to exit, several times; the fastest run must take under a second (a
+   second and a half for Web.HTTP.Server, whose clock thread wakes every half second),
+   where each took over two. The times are printed only when a check fails.
+
+2. A stopped accept loop can be joined: its Accept() returns once the socket is closed.
+
+3. Close racing Accept: many servers, each closed while its thread is somewhere between
+   two Accept() calls -- just after a connection, during one, or with none at all. Every
+   accept thread must end, and nothing may crash (Accept() on a socket closed a moment
+   earlier answers Nil, or a socket that is not open).
+~#
+use Collection, System.Concurrency, System.IO.Net, System.IO.Filesystem, Web.HTTP.Server;
+
+# a server loop on a thread: accepts until stopped, answers each client one line
+class AcceptLoop from Thread {
+	@server : TCPSocketServer;
+	@stop : Bool;
+	@finished : Bool;
+	@served : Int;
+
+	New(server : TCPSocketServer) {
+		Parent("accept_loop");
+		@server := server;
+	}
+
+	method : public : Stop() ~ Nil {
+		@stop := true;
+		@server->Close();
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetServed() ~ Int { return @served; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(<>@stop) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				if(<>@stop & client->IsOpen()) {
+					client->WriteString("hello\r\n");
+					@served += 1;
+				};
+				client->Close();
+			};
+		};
+		@finished := true;
+	}
+}
+
+class StopExitHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "hello"->ToByteArray());
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+class SocketServerStopExitTime {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# one line from a server on this machine, Nil if it did not answer
+	function : Ask(port : Int) ~ String {
+		sock := TCPSocket->New("127.0.0.1", port);
+		if(<>sock->IsOpen()) {
+			return Nil;
+		};
+		line := sock->ReadLine();
+		sock->Close();
+		return line;
+	}
+
+	# child: a raw server loop, one request, stop, and Main returns with nothing joined
+	function : ChildRaw() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(8)) {
+			"child: listen failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		loop := AcceptLoop->New(server);
+		loop->Execute(Nil);
+		line := Ask(server->GetPort());
+		if(line = Nil | <>line->Equals("hello")) {
+			"child: no answer"->PrintLine();
+			Runtime->Exit(1);
+		};
+		# the accept thread is back in Accept() when the server stops: the usual case
+		Thread->Sleep(100);
+		loop->Stop();
+		"child ok"->PrintLine();
+	}
+
+	# child: Web.HTTP.Server on a thread, one request, Stop(), and Main returns
+	function : ChildWeb() ~ Nil {
+		server_thread := Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(StopExitHandler->New()->GetClass(), 0, false);
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(10);
+			waited += 10;
+		};
+		port := WebServer->GetBoundPort();
+		response := Web.HTTP.HttpClient->New()->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}/"));
+		if(response = Nil | response->GetCode() <> 200) {
+			"child: no answer"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Thread->Sleep(100);
+		WebServer->Stop();
+		"child ok"->PrintLine();
+	}
+
+	function : SelfObe() ~ String {
+		obe := Runtime->GetEnvironmentVariable("OBJECK_TEST_OBE");
+		if(obe = Nil | obe->IsEmpty()) {
+			return "socket_server_stop_exit_time.obe";
+		};
+		return obe;
+	}
+
+	# a command line that runs this program again as a child, its output to a file
+	function : ChildCommand(kind : String, output : String) ~ String {
+		windows := Directory->GetSlash() = '\\';
+		vm := Runtime->GetInstallDir();
+		vm += windows ? "\\bin\\obr.exe" : "/bin/obr";
+		command := "\"{$vm}\" \"{$(SelfObe())}\" {$kind} > \"{$output}\" 2>&1";
+		if(windows) {
+			# cmd /c strips the first and last quote of a line that starts with one
+			command := "\"{$command}\"";
+		};
+		return command;
+	}
+
+	# the fastest of several runs of a child, start to exit, in milliseconds; -1 if one failed
+	function : FastestExit(kind : String, work : String) ~ Int {
+		best := -1;
+		each(i : 4) {
+			output := "{$work}/{$kind}_{$i}.txt";
+			timer := System.Time.Timer->New(true);
+			status := Runtime->Command(ChildCommand(kind, output));
+			timer->End();
+			ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+			text := FileReader->ReadFile(output);
+			if(status <> 0 | text = Nil | <>text->Has("child ok")) {
+				shown := text <> Nil ? text : "(no output)";
+				"    child '{$kind}' run {$i} exited {$status}: {$shown}"->PrintLine();
+				return -1;
+			};
+			if(best < 0 | ms < best) {
+				best := ms;
+			};
+		};
+		return best;
+	}
+
+	# waits for a loop's thread to end; false if it has not after 'limit' milliseconds
+	function : Ended(loop : AcceptLoop, limit : Int) ~ Bool {
+		waited := 0;
+		while(<>loop->IsFinished() & waited < limit) {
+			Thread->Sleep(2);
+			waited += 2;
+		};
+		return loop->IsFinished();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1 & args[0]->Equals("raw")) {
+			ChildRaw();
+			return;
+		};
+		if(args->Size() = 1 & args[0]->Equals("web")) {
+			ChildWeb();
+			return;
+		};
+
+		@failures := 0;
+		if(<>File->Exists(SelfObe())) {
+			"FAIL: run this test from the folder that holds socket_server_stop_exit_time.obe"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# 2. a stopped accept loop can be joined
+		server := TCPSocketServer->New(0);
+		Check("a server listens", server->Listen(8));
+		loop := AcceptLoop->New(server);
+		loop->Execute(Nil);
+		line := Ask(server->GetPort());
+		Check("its loop answers a client", line <> Nil & line->Equals("hello"));
+		Thread->Sleep(100);
+		loop->Stop();
+		ended := Ended(loop, 5000);
+		Check("closing the server ends a thread blocked in Accept()", ended);
+		if(ended) {
+			loop->Join();
+		};
+
+		# 3. Close racing Accept
+		rounds := 150;
+		stuck := 0;
+		each(i : rounds) {
+			raced := TCPSocketServer->New(0);
+			if(stuck >= 3) {
+				# each one costs a five-second wait: three are answer enough
+				raced->Close();
+			}
+			else if(raced->Listen(8)) {
+				racer := AcceptLoop->New(raced);
+				racer->Execute(Nil);
+				how := i % 3;
+				if(how = 0) {
+					# stop as the thread comes back from a connection
+					Ask(raced->GetPort());
+				}
+				else if(how = 1) {
+					# stop with a connection on its way in
+					sock := TCPSocket->New("127.0.0.1", raced->GetPort());
+					racer->Stop();
+					sock->Close();
+				};
+				# how = 2: stop as the thread starts, before or in its first Accept()
+				racer->Stop();
+				if(Ended(racer, 5000)) {
+					racer->Join();
+				}
+				else {
+					stuck += 1;
+				};
+			}
+			else {
+				stuck += 1;
+			};
+		};
+		Check("every accept thread ended when its server closed, {$rounds} servers ({$stuck} did not)", stuck = 0);
+
+		# 1. the exit time of a server program
+		pid := Runtime->GetProcessId();
+		work := "{$Runtime->GetTempDir()}/objeck_stop_exit_{$pid}";
+		Directory->Create(work);
+		raw_ms := FastestExit("raw", work);
+		web_ms := FastestExit("web", work);
+		Directory->Delete(work);
+		Check("a program with a raw server loop ran and stopped it", raw_ms >= 0);
+		Check("and left in under a second", raw_ms >= 0 & raw_ms < 1000);
+		Check("a program with Web.HTTP.Server ran and stopped it", web_ms >= 0);
+		# its clock thread wakes every half second to see that the server has stopped
+		Check("and left in under a second and a half", web_ms >= 0 & web_ms < 1500);
+		if(raw_ms >= 1000 | web_ms >= 1500) {
+			"    start to exit: raw {$raw_ms} ms, web {$web_ms} ms"->PrintLine();
+		};
+
+		if(@failures = 0) {
+			"PASS: a stopped server lets its program leave"->PrintLine();
+		}
+		else {
+			"FAIL: a stopped server lets its program leave ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -700,10 +700,13 @@ std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
   // the overloads the receiver does have under that name
   std::vector<std::wstring> overloads;
   if(receiver_class) {
-    const std::vector<Method*> methods = receiver_class->GetMethods();
-    for(size_t i = 0; i < methods.size(); ++i) {
-      if(MethodNameOf(methods[i]->GetName()) == name) {
-        overloads.push_back(methods[i]->GetUserName());
+    // the receiver's own methods and those it inherits from the program's classes
+    for(Class* owner = receiver_class; owner; owner = owner->GetParent()) {
+      const std::vector<Method*> methods = owner->GetMethods();
+      for(size_t i = 0; i < methods.size(); ++i) {
+        if(MethodNameOf(methods[i]->GetName()) == name) {
+          overloads.push_back(methods[i]->GetUserName());
+        }
       }
     }
   }
@@ -3482,6 +3485,49 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
 }
 
 /****************************
+ * The first index i for which 'prefix' + i names nothing in the scopes in view.
+ *
+ * An interpolated string and a '+' concatenation each take a hidden local named
+ * by the lowest index not in use, so that the name is fresh where two of them
+ * are live at once (#750). The names in view are therefore always 0..n-1 -- a
+ * scope sees its ancestors' and its own, and each new one extends the run -- so
+ * the first free index is found by doubling and then bisecting. Probing upward
+ * from 0 made the k-th one in a method cost k lookups: 4,000 interpolated
+ * strings in one method took 1.6 s to reach the "Local space has been exceeded"
+ * error. Should the run ever have a gap, the result is still a name nothing in
+ * view has.
+ ****************************/
+static int FirstFreeHiddenIndex(SymbolTable* table, const std::wstring& prefix)
+{
+  auto taken = [&](int index) {
+    return table->GetEntry(prefix + std::to_wstring(index)) != nullptr;
+  };
+
+  if(!taken(0)) {
+    return 0;
+  }
+
+  // taken(low) holds, taken(high) does not
+  int low = 0;
+  int high = 1;
+  while(taken(high)) {
+    low = high;
+    high <<= 1;
+  }
+  while(high - low > 1) {
+    const int middle = low + (high - low) / 2;
+    if(taken(middle)) {
+      low = middle;
+    }
+    else {
+      high = middle;
+    }
+  }
+
+  return high;
+}
+
+/****************************
  * Analyzes a character literal
  ****************************/
 void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth)
@@ -3573,12 +3619,8 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     // A fresh accumulator per interpolated string, for the reason spelled out at
     // the '+' concatenation site below: one slot per method breaks as soon as two
     // of these are live at once, e.g. "{$a}" + Id("{$b}") (#750).
-    std::wstring scope_name;
-    int concat_index = 0;
-    do {
-      scope_name = current_method->GetName() + L":#_var_concat_#" + std::to_wstring(concat_index++);
-    }
-    while(current_table->GetEntry(scope_name));
+    const std::wstring scope_prefix = current_method->GetName() + L":#_var_concat_#";
+    const std::wstring scope_name = scope_prefix + std::to_wstring(FirstFreeHiddenIndex(current_table, scope_prefix));
 
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
     current_table->AddEntry(entry, true);
@@ -6217,9 +6259,18 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, const int depth)
  {
-  diag_call = method_call;
-  diag_class = klass;
-  diag_lib_class = nullptr;
+  // The class a failed call is reported against is the one the call was made on. The search
+  // below walks up to the parents, and reported the last one it reached: 'Other->Nope()' was
+  // said to be called on the class the call stands in.
+  if(diag_parent_walk && diag_call == method_call) {
+    diag_parent_walk = false;
+  }
+  else {
+    diag_parent_walk = false;
+    diag_call = method_call;
+    diag_class = klass;
+    diag_lib_class = nullptr;
+  }
 
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L':' 
@@ -6361,6 +6412,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       method_call->SetOriginalClass(klass);
       std::wstring encoding;
       params_analyzed = method_call;
+      diag_parent_walk = true;
       AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
       return;
     }
@@ -6369,6 +6421,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       method_call->SetOriginalClass(klass);
       std::wstring encoding;
       params_analyzed = method_call;
+      diag_parent_walk = true;
       AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
     }
@@ -6974,9 +7027,15 @@ bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall*
 void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, 
                                         std::wstring &encoding, bool is_parent, const int depth)
 {
-  diag_call = method_call;
-  diag_class = nullptr;
-  diag_lib_class = klass;
+  if(diag_parent_walk && diag_call == method_call) {
+    diag_parent_walk = false;
+  }
+  else {
+    diag_parent_walk = false;
+    diag_call = method_call;
+    diag_class = nullptr;
+    diag_lib_class = klass;
+  }
 #ifdef _DEBUG
   GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << std::endl;
 #endif
@@ -7752,10 +7811,22 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
   std::vector<Expression*> unboxed_expressions;
   std::vector<Expression*> expressions = indices->GetExpressions();
 
+  // AnalyzeExpressions above has analyzed every index. Each was analyzed a second time
+  // here, so an index that is itself a subscript was analyzed four times, the one inside
+  // it eight: 'a[a[a[...]]]' took twice as long for every level (20 levels 1.7 s, 30
+  // about half an hour), and anything analysis does once per visit was done twice.
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];    
-    AnalyzeExpression(expression, depth + 1);
-    Type* eval_type = expression->GetEvalType();
+    // What the index pushes is the value the expression ends in: for a call chain, what
+    // its last call returns, not its head. Reading the first call's type refused
+    // 'a[order->Line()->Count()]' (an object is not an index), '"ab"->Size()' and
+    // '(s + t)->Size()' (Ints though they start with a String), and accepted
+    // 'a[refs->Get(i)->Get()]' only by replacing the written 'Get()'.
+    Expression* index_value = expression;
+    while(index_value->GetMethodCall()) {
+      index_value = index_value->GetMethodCall();
+    }
+    Type* eval_type = expression->GetEvalType() ? EffectiveStackType(expression) : nullptr;
     if(eval_type) {
       switch(eval_type->GetType()) {
       case BYTE_TYPE:
@@ -7769,7 +7840,25 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
           unboxed_expressions.push_back(expression);
         }
         else {
-          Expression* unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
+          // A holder (IntRef, ...) is unboxed where the chain ends. For a chain
+          // of calls the 'Get()' is added after the last one and only that call
+          // is analyzed: the index is still the whole chain.
+          Expression* unboxed_expresion = nullptr;
+          ResolveClassEnumType(eval_type);
+          if(index_value != expression) {
+            if(index_value->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(eval_type->GetName())) {
+              MethodCall* get_call = TreeFactory::Instance()->MakeMethodCall(index_value->GetFileName(), index_value->GetLineNumber(),
+                                                                             index_value->GetLinePosition(), -1, -1, -1, -1,
+                                                                             eval_type->GetName(), L"Get",
+                                                                             TreeFactory::Instance()->MakeExpressionList());
+              index_value->SetMethodCall(get_call);
+              AnalyzeExpressionMethodCall(index_value, depth + 1);
+              unboxed_expresion = expression;
+            }
+          }
+          else {
+            unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
+          }
           if(unboxed_expresion) {
             unboxed_expressions.push_back(unboxed_expresion);
           }
@@ -7829,6 +7918,15 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int 
     if(!expression->GetMethodCall()) {
       ProcessError(expression, L"Invalid statement");
     }
+    else {
+      // The statement's value is discarded, so the last call of its chain must
+      // pop what it returns. The call's own analysis marks it only at the top of
+      // an expression, and a parenthesised receiver is analysed a level down:
+      // `("a" + t)->Size();`, `(F(k))->Abs();` and `(t ?? "x")->Size();` each left
+      // their result on the operand stack, one word for every time the statement
+      // ran. Found by checking the operand stack's height at each return.
+      RogueReturn(expression->GetMethodCall());
+    }
   }
 }
 
@@ -7869,11 +7967,17 @@ void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 {
+  // What the select is on, for the labels below: a label is a constant of the
+  // same kind. Both stay false when the expression is neither (reported here).
+  bool is_int_select = false;
+  bool is_str_select = false;
+
   // expression
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
     const bool is_int_expr = IsIntegerExpression(expression);
+    is_int_select = is_int_expr;
 
 #ifndef _SYSTEM
     const bool is_str_expr = IsStringExpression(expression);
@@ -7881,6 +7985,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       ProcessError(expression, L"Expected integer or string expression");
     }
 
+    is_str_select = is_str_expr && !is_int_expr;
     if(is_str_expr) {
       if(expression->GetExpressionType() == VAR_EXPR && !expression->GetMethodCall()) {
         Variable* var_expr = static_cast<Variable*>(expression);
@@ -7974,6 +8079,16 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
         switch(expression->GetExpressionType()) {
         case CHAR_STR_EXPR: {
           const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
+          // A label is matched by the hash of its text, taken here. A label with
+          // something interpolated ("{$v}") or called on it ("B"->ToLower()) has
+          // no text until the program runs: its source text was hashed instead,
+          // and the label then matched nothing, or the wrong value, in silence.
+          if(!IsStringConstant(expression)) {
+            ProcessError(expression, L"A select label must be a constant: a string literal with nothing interpolated and nothing called on it");
+          }
+          else if(is_int_select) {
+            ProcessError(expression, L"String label in a select on an integer");
+          }
           value = HashString(char_str_expr->GetString().c_str());
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select hash value for '" + char_str_expr->GetString() + L'\'');
@@ -7982,6 +8097,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
           break;
 
         case CHAR_LIT_EXPR:
+          CheckSelectIntegerLabel(expression, is_str_select);
           value = static_cast<CharacterLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
@@ -7989,6 +8105,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
           break;
 
         case INT_LIT_EXPR:
+          CheckSelectIntegerLabel(expression, is_str_select);
           value = static_cast<IntegerLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
@@ -8002,6 +8119,9 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
             mthd_call = mthd_call->GetMethodCall();
           }
           // check type
+          if((mthd_call->GetEnumItem() || mthd_call->GetLibraryEnumItem()) && is_str_select) {
+            ProcessError(expression, L"Integer label in a select on a string");
+          }
           if(mthd_call->GetEnumItem()) {
             value = mthd_call->GetEnumItem()->GetId();
             if(DuplicateCaseItem(label_statements, value)) {
@@ -9156,6 +9276,21 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   Expression* left_expr = expression->GetLeft();
   Expression* right_expr = expression->GetRight();
 
+  // A conversion (an Int made a Float for 'n * 2.5') belongs to the value, and
+  // the value of an operand that is a call chain is what its LAST call returns.
+  // The emitter converts after the call that carries the cast, by that call's
+  // return type; on the first call of 'a->B()->Count() * 2.5' it was set on a
+  // call that returns an object, nothing was converted and the Int's bits were
+  // multiplied as a Float.
+  Expression* left_value = left_expr;
+  while(left_value && left_value->GetMethodCall()) {
+    left_value = left_value->GetMethodCall();
+  }
+  Expression* right_value = right_expr;
+  while(right_value && right_value->GetMethodCall()) {
+    right_value = right_value->GetMethodCall();
+  }
+
   Type* left = GetExpressionType(left_expr, depth + 1);
   Type* right = GetExpressionType(right_expr, depth + 1);
 
@@ -9307,13 +9442,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9353,13 +9488,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9399,13 +9534,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case FLOAT_TYPE:
-        left_expr->SetCastType(right, true);
+        left_value->SetCastType(right, true);
         expression->SetEvalType(right, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9445,13 +9580,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:
-        right_expr->SetCastType(left, true);
+        right_value->SetCastType(left, true);
         expression->SetEvalType(left, true);
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -9490,7 +9625,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case BYTE_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9501,7 +9636,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CHAR_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9512,7 +9647,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case INT_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9522,7 +9657,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case FLOAT_TYPE:
         if(HasProgramOrLibraryEnum(left->GetName())) {
-          left_expr->SetCastType(right, true);
+          left_value->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
@@ -9609,7 +9744,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          right_expr->SetCastType(left, true);
+          right_value->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
@@ -11271,6 +11406,19 @@ bool ContextAnalyzer::IsStringExpression(Expression* expression)
   return false;
 }
 
+// An integer or character literal used as a select label: nothing may be called
+// on it (the call was ignored and the literal's own value used), and it cannot
+// label a select on a string, whose labels are compared by hash.
+void ContextAnalyzer::CheckSelectIntegerLabel(Expression* expression, bool is_str_select)
+{
+  if(expression->GetMethodCall()) {
+    ProcessError(expression, L"A select label must be a constant: a literal with nothing called on it");
+  }
+  else if(is_str_select) {
+    ProcessError(expression, L"Integer label in a select on a string");
+  }
+}
+
 // A string literal whose text is all there is to it: nothing interpolated and
 // nothing called on it, so its hash is known while compiling.
 bool ContextAnalyzer::IsStringConstant(Expression* expression)
@@ -12318,12 +12466,8 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
         // into, and the outer then appends into the inner's object. That silently
         // duplicated values and could drop an operand outright -- issue #746's
         // sibling, #750. Probe for an unused name so every node gets a fresh slot.
-        std::wstring scope_name;
-        int concat_index = 0;
-        do {
-          scope_name = current_method->GetName() + L":#_add_concat_#" + std::to_wstring(concat_index++);
-        }
-        while(current_table->GetEntry(scope_name));
+        const std::wstring scope_prefix = current_method->GetName() + L":#_add_concat_#";
+        const std::wstring scope_name = scope_prefix + std::to_wstring(FirstFreeHiddenIndex(current_table, scope_prefix));
 
         SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
         current_table->AddEntry(entry, true);

@@ -1,0 +1,121 @@
+#~
+# The label forms a select accepts: each is a constant of the same kind as the value.
+#
+# The compiler now refuses a label that is not one (bad_select_label_*.obs): an
+# interpolated string, a literal with a call on it, a string label in a select on
+# an integer and the reverse. Those used to compile and match nothing. This test
+# is the other half: every constant form still compiles and selects its label,
+# including text that only looks like interpolation.
+~#
+
+class SelectLabelConstants {
+  consts Limit { LOW := 1, HIGH := 40 }
+  enum Color { RED, GREEN, BLUE }
+
+  function : Check(what : String, got : String, failed : Int) ~ Int {
+    if(got->Equals("hit")) {
+      return failed;
+    };
+
+    "FAIL: {$what}: took '{$got}'"->PrintLine();
+    return failed + 1;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    failed := 0;
+    r : String;
+
+    # string literals, several to a label
+    v := "b";
+    r := "none";
+    select(v) {
+      label "a", "b" { r := "hit"; }
+      label "c" { r := "c"; }
+      other { r := "other"; }
+    };
+    failed := Check("string labels", r, failed);
+
+    # braces and a dollar sign that are not an interpolation
+    plain := "{b} costs $5";
+    r := "none";
+    select(plain) {
+      label "{b} costs $5" { r := "hit"; }
+      label "{}" { r := "empty braces"; }
+      other { r := "other"; }
+    };
+    failed := Check("braces in a label", r, failed);
+
+    # the empty string
+    empty := "";
+    r := "none";
+    select(empty) {
+      label "" { r := "hit"; }
+      label "x" { r := "x"; }
+      other { r := "other"; }
+    };
+    failed := Check("empty label", r, failed);
+
+    # integers, a negative one among them
+    n := -2;
+    r := "none";
+    select(n) {
+      label -2 { r := "hit"; }
+      label 0, 2 { r := "zero or two"; }
+      other { r := "other"; }
+    };
+    failed := Check("integer labels", r, failed);
+
+    # characters
+    c := 'b';
+    r := "none";
+    select(c) {
+      label 'a' { r := "a"; }
+      label 'b' { r := "hit"; }
+      other { r := "other"; }
+    };
+    failed := Check("character labels", r, failed);
+
+    # constants
+    level := 40;
+    r := "none";
+    select(level) {
+      label Limit->LOW { r := "low"; }
+      label Limit->HIGH { r := "hit"; }
+      other { r := "other"; }
+    };
+    failed := Check("consts labels", r, failed);
+
+    # an enum
+    color := Color->GREEN;
+    r := "none";
+    select(color) {
+      label Color->RED { r := "red"; }
+      label Color->GREEN { r := "hit"; }
+      label Color->BLUE { r := "blue"; }
+    };
+    failed := Check("enum labels", r, failed);
+
+    # an integer literal labels a select on a character, and the reverse
+    r := "none";
+    select(c) {
+      label 98 { r := "hit"; }
+      other { r := "other"; }
+    };
+    failed := Check("integer label on a character", r, failed);
+
+    code := 98;
+    r := "none";
+    select(code) {
+      label 'b' { r := "hit"; }
+      other { r := "other"; }
+    };
+    failed := Check("character label on an integer", r, failed);
+
+    if(failed > 0) {
+      "FAIL: {$failed} select(s) chose the wrong label"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: select label constants (9 forms)"->PrintLine();
+  }
+}

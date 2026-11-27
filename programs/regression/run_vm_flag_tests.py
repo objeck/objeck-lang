@@ -102,7 +102,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
  11. The heap verifier. OBJECK_GC_VERIFY=1 checks the collector's invariants
     at every collection (core/vm/arch/memory_verify.cpp): the GC stress tests
     and four collection tests pass with the same output with it on, and each
-    OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark) in
+    OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark, terminator) in
     vm_gc_verify_inject.obs stops obr with the verifier's report -- a verifier
     nothing can trip would pass the first half just as well as a correct heap.
  12. Stack-trace method names read like the source. vm_trace_fn_param_format.obs
@@ -316,6 +316,24 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     frame, a call to a class or method that does not exist, an unknown trap
     id, a method that runs off its end, an unknown declaration type, a start
     method that does not exist -- each refused with the rule's message.
+ 34. The loader refuses a program whose code was changed after it was compiled,
+    in every JIT mode, where it used to load it and crash. The rules relate what
+    made each value to what it is used as (Loader::Verify, arch/ref_map.h): a
+    number read through as a reference, a float used as an integer, an object
+    used as an array, class memory in place of an instance, a return at the
+    wrong stack height, a literal copied from outside its constant table or
+    into too small an array, a method that does not begin by storing its
+    parameters or whose parameter count is not its signature's, a call on a new
+    object of another class, an instance variable beyond the object's class.
+    vm_flag_fixtures/loader_verify_control.obs is compiled at -opt s0 and s3;
+    each case changes one thing in it (found by pattern, not by position) and
+    must be refused with its rule's message and status 1 with the default JIT,
+    --jit=off and --jit=1. The unchanged program must run in all three, and
+    with OBJECK_VERIFY_ONLY=1 must load, print nothing and exit 0. A virtual
+    call whose override was renamed away stops with "Invalid virtual call"
+    instead of running the declaration's empty body. And a valid program that
+    clears a Nil array (vm_flag_fixtures/nil_array_clear.obs) gets the Nil
+    runtime error in all three modes, where it crashed the VM.
  31. A collection leaves an Int[] element alone when its value IS an object's
     address (GC roots phase 6, docs/GC_ROOTS_DESIGN.md section 10). An Int[]
     and an object array shared one heap tag, so the collector scanned every
@@ -348,6 +366,28 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (every library shipped today). native_callback/callback_lib.cpp is built four
     ways for this (no export, matching, newer ABI, other toolchain) and
     vm_native_abi.obs loads each.
+ 34. An exception that leaves the MAIN thread's interpreter while other threads
+    run ends the program by its status, never by a crash. Execute's catch used
+    to return at once, past the code that stops the program's threads when Main
+    returns: the loader freed the program under four interpreting workers and
+    8 runs in 300 of vm_error_exit_with_threads.obs under --jit=off ended with
+    an access violation on Windows x64. The failed run now takes the same way
+    out as a normal return (halt, wait, free the program only when the threads
+    have gone; with one still live, end the process without teardown). The
+    fixture runs 100 times under --jit=off and 25 by default and under --jit=1:
+    each run prints the internal-error line and exits with the plain failure
+    status.
+ 35. A memory limit that stops the VM from reserving the main thread's call and
+    operand stacks is an out-of-memory report, not an abort (POSIX only: an
+    address-space limit set with RLIMIT_AS; skipped with a line on macOS, where
+    the limit cannot be lowered, on Windows, and wherever a probe child cannot
+    be started under one). The reservation is made before the
+    program runs; it is now under Execute's own handler, where it used to leave
+    Execute and reach the entry point's backstop. Under limits from 96 MB to
+    1.5 GB with --call-depth at its maximum, every run either runs the program
+    or prints a line of the VM's own (out of memory, or the collector's when
+    the limit is below the nursery) and exits 1: no signal, no "terminate
+    called".
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -726,6 +766,7 @@ def main():
     check_gc_roots_audit(obc, obr, env, bin_dir)
 
     check_signal_dispatch(obc, obr, env, bin_dir)
+    check_file_fifo_gc_park(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
@@ -739,7 +780,11 @@ def main():
     check_address_int_pending(obc, obr, env, bin_dir)
 
     check_loader_rejects_malformed(obc, obr, env, bin_dir)
+    check_loader_refuses_changed(obc, obr, env, bin_dir)
     check_address_int_array(obc, obr, env, bin_dir)
+
+    check_error_exit_with_threads(obc, obr, env, bin_dir)
+    check_startup_memory_limit(obc, obr, env, bin_dir)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
@@ -2031,7 +2076,9 @@ def verifier_cases(image):
         return n if n >= 1 and n == r.int() else 0
 
     store_at = next(code[leading_stores(m, code) - 1][1] for m, (_, code) in codes if leading_stores(m, code))
-    cases.append(("a store that pops more than was pushed", "the operand stack runs out",
+    # (refused since by the rule that a method begins with one store for each parameter
+    # word; section 34 has a pop of an empty stack that only the stack rule catches)
+    cases.append(("a parameter store that pops more than was pushed", "does not begin by storing its parameters",
                   put(image, store_at, "<B", op["STOR_FUNC_VAR"])))
     # An array load given a second index nobody pushed.
     _, at = first(lambda o, a, c, k: o == op["LOAD_CHAR_ARY_ELM"])[:2]
@@ -2109,6 +2156,386 @@ def check_loader_rejects_malformed(obc, obr, env, bin_dir):
             text = err.decode(errors="replace")
             check(f"the loader's verification refuses {about}", loader_refused(rc, text, message),
                   f"rc={rc} err={text[-300:]!r}")
+
+
+def changed_program_cases(image):
+    """(about, message, image) for section 34: the control program with one thing changed.
+    Instructions are found by what they are, in the control's own methods."""
+    import struct
+    sys.path.insert(0, os.path.join(SCRIPT_DIR, "..", "..", "tools", "fuzz", "loader"))
+    import obe_image
+    op = obe_image.OP
+    locl, inst, cls_ctx = -3498, -3499, -3500  # instructions::LOCL, INST, CLS
+    literal_ids = dict(zip(("char", "chars", "int", "byte", "bool", "float"), range(-3994, -3988)))
+
+    _, classes, _ = obe_image.parse(image)
+    class_ids = {c["name"]: struct.unpack_from("<i", image, c["start"])[0] for c in classes}
+
+    def record(name):
+        """(class, method start) of the one method whose name begins with 'name'."""
+        found = [(c, m[1]) for c in classes for m in c["methods"] if m[0].startswith(name)]
+        if len(found) != 1:
+            raise RuntimeError(f"the control program has {len(found)} methods named {name}")
+        return found[0]
+
+    def code_of(name):
+        c, start = record(name)
+        return obe_image.method_code(image, start, c["debug"])[1]
+
+    def header(name):
+        """Offsets of the method's id, parameter count and frame size."""
+        c, start = record(name)
+        r = obe_image.Reader(image, start)
+        r.int()
+        r.skip(3)
+        r.string()
+        r.string()
+        return start, r.pos, r.pos + 4
+
+    def operand(at, n=0):
+        return struct.unpack_from("<i", image, at + 4 * n)[0]
+
+    def literal(at):
+        return struct.unpack_from("<q", image, at)[0]
+
+    def put(at, fmt, value, data=None):
+        data = image if data is None else data
+        return data[:at] + struct.pack(fmt, value) + data[at + struct.calcsize(fmt):]
+
+    def find(name, pred):
+        code = code_of(name)
+        for k in range(len(code)):
+            if pred(code, k):
+                return code, k
+        raise RuntimeError(f"the control program has no such instruction in {name}")
+
+    def is_op(code, k, name, *operands):
+        if k < 0 or k >= len(code) or code[k][0] != op[name]:
+            return False
+        return all(want is None or operand(code[k][2], n) == want for n, want in enumerate(operands))
+
+    cases = []
+
+    # --- what a value is made as, against what it is used as ---
+    code, k = find("LoaderVerifyControl:Mean", lambda c, k: is_op(c, k, "ADD_INT") and is_op(c, k + 1, "I2F"))
+    cases.append(("a sum read through as an array", "a number used as a reference",
+                  put(code[k + 1][1], "<B", op["LOAD_ARY_SIZE"])))
+    cases.append(("a sum used as a float", "an integer or a reference used as a float",
+                  put(code[k + 1][1], "<B", op["F2I"])))
+    code, k = find("LoaderVerifyControl:Half", lambda c, k: is_op(c, k, "DIV_FLOAT"))
+    cases.append(("floats used as integers", "a float used as an integer or a reference",
+                  put(code[k][1], "<B", op["ADD_INT"])))
+    # the array a loop reads an element of, replaced by the local the loop adds into
+    code, k = find("LoaderVerifyControl:Sum", lambda c, k: is_op(c, k, "LOAD_INT_VAR", None, locl) and is_op(c, k + 1, "LOAD_INT_ARY_ELM"))
+    _, j = find("LoaderVerifyControl:Sum", lambda c, k: is_op(c, k, "ADD_INT") and is_op(c, k + 1, "STOR_INT_VAR", None, locl))
+    counter = operand(code[j + 1][2])
+    cases.append(("a local that holds a sum read through as an array", "a number stored to a local that is used as a reference",
+                  put(code[k][2], "<i", counter)))
+
+    # --- objects and arrays ---
+    # Main: the Int[] literal's local and the new Square's local
+    main = code_of("LoaderVerifyControl:Main")
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["int"])
+    ints_local = operand(main[k + 1][2])
+    k = next(k for k in range(len(main)) if is_op(main, k, "NEW_OBJ_INST", class_ids["Square"]))
+    new_square = k
+    square_local = next(operand(main[j][2]) for j in range(k, len(main))
+                        if main[j][0] in (op["STOR_INT_VAR"], op["COPY_INT_VAR"]) and operand(main[j][2], 1) == locl)
+    k = next(k for k in range(len(main)) if is_op(main, k, "LOAD_INT_VAR", ints_local, locl))
+    cases.append(("an object passed as an Int[]", "an object used as an array", put(main[k][2], "<i", square_local)))
+    cases.append(("a constructor called on a new object of another class", "a method called on a new object of another class",
+                  put(main[new_square][2], "<i", class_ids["LoaderVerifyControl"])))
+
+    # --- instance and class memory ---
+    code, k = find("Shape:Count", lambda c, k: is_op(c, k, "LOAD_CLS_MEM"))
+    cases.append(("a class variable read from the instance", "a class variable read from something other than class memory",
+                  put(code[k][1], "<B", op["LOAD_INST_MEM"])))
+    code, k = find("Shape:GetId", lambda c, k: is_op(c, k, "LOAD_INST_MEM") and is_op(c, k + 1, "LOAD_INT_VAR", None, inst))
+    cases.append(("an instance variable read from class memory", "class memory used as an object or an array",
+                  put(code[k][1], "<B", op["LOAD_CLS_MEM"])))
+    # Square has one field more than Shape: its index is past a Shape
+    side = operand(find("Square:Area", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, inst))[0][1][2])
+    cases.append(("a subclass's field read in the parent class", "an instance variable beyond the object's class",
+                  put(code[k + 1][2], "<i", side)))
+
+    # --- the operand stack ---
+    code, k = find("Shape:GetId", lambda c, k: is_op(c, k, "LOAD_INST_MEM"))
+    cases.append(("a pop of a word nobody pushed", "the operand stack runs out", put(code[k][1], "<B", op["POP_INT"])))
+    code, k = find("Square:New", lambda c, k: is_op(c, k, "POP_INT"))
+    cases.append(("a method that returns with a word too many", "a return with 2 words on the operand stack where the method returns 1",
+                  put(code[k][1], "<B", op["TRY_END"])))
+
+    # --- literals copied from the constant tables ---
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["int"])
+    cases.append(("an Int[] literal from outside the table", "literal copy from an index outside the constant table",
+                  put(main[k - 2][2], "<q", 1000000)))
+    cases.append(("an Int[] literal larger than its constant", "literal copy larger than its literal",
+                  put(main[k - 4][2], "<q", 400)))
+    cases.append(("an Int[] literal copied into a Byte[]", "literal copy without its array allocation",
+                  put(main[k - 3][1], "<B", op["NEW_BYTE_ARY"])))
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["char"])
+    cases.append(("a string literal longer than its constant", "literal copy larger than its literal",
+                  put(main[k - 4][2], "<q", 100000)))
+    cases.append(("a string literal from a negative index", "literal copy from an index outside the constant table",
+                  put(main[k - 2][2], "<q", -1)))
+
+    # --- method records ---
+    code = code_of("Shape:Fill")
+    cases.append(("a method that loads where it stores its parameter", "does not begin by storing its parameters",
+                  put(code[0][1], "<B", op["LOAD_INT_VAR"])))
+    _, params_at, _ = header("Shape:Fill")
+    cases.append(("a parameter count that is not the signature's", "parameter count does not match the method's signature",
+                  put(params_at, "<i", 0)))
+    start, _, _ = header("LoaderVerifyControl:Twice")
+    cases.append(("a start method that takes three words", "the start method does not take one parameter",
+                  put(obe_image.start_ids_at(image) + 4, "<i", struct.unpack_from("<i", image, start)[0])))
+    code, k = find("LoaderVerifyControl:Twice", lambda c, k: is_op(c, k, "DYN_MTHD_CALL"))
+    cases.append(("a function call with an unknown return type", "function call with an unknown return type",
+                  put(code[k][2] + 4, "<i", 7)))
+
+    # --- traps: the instruction and count its id takes (core/shared/trap_signatures.h) ---
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["char"])
+    cases.append(("a trap id changed to one that takes other words", "takes 2 words, not 3",
+                  put(main[k - 1][2], "<q", literal_ids["char"] - 1)))
+    cases.append(("a literal copy written TRAP", "is written TRAP_RTRN", put(main[k][1], "<B", op["TRAP"])))
+
+    # --- a frame holds its declarations ---
+    _, _, frame_at = header("Shape:Fill")
+    cases.append(("a frame smaller than its declarations", "frame size below the method's declarations",
+                  put(frame_at, "<i", 0)))
+
+    # --- function values ---
+    def function_literal(c, k):
+        return is_op(c, k, "LOAD_INT_LIT") and literal(c[k][2]) > (1 << 32)
+    code, k = find("LoaderVerifyControl:AddThree", function_literal)
+    join, j = find("LoaderVerifyControl:Join", function_literal)
+    cases.append(("a function value that names a lambda of another type",
+                  "a function value used with other parameters or another return than its method's",
+                  put(code[k][2], "<q", literal(join[j][2]))))
+    cases.append(("a function value that names no method", "a function value that names no method",
+                  put(code[k][2], "<q", literal(code[k][2]) | 0xFFFF)))
+    code, k = find("LoaderVerifyControl:AddN", lambda c, k: is_op(c, k, "NEW_FUNC_INST"))
+    cases.append(("a closure smaller than its lambda's captures",
+                  "a lambda paired with a closure that was not made for its captures", put(code[k][2], "<i", 0)))
+
+    # --- a Float local is read as a Float ---
+    code, k = find("LoaderVerifyControl:Half", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, locl))
+    cases.append(("a Float local read as an integer", "an integer or a reference read from or stored to a Float local",
+                  put(code[k][1], "<B", op["LOAD_INT_VAR"])))
+
+    # --- a new array is an array: String's constructor from a String, given the Char[] ---
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["char"])
+    string_new = next(j for j in range(k, len(main)) if is_op(main, j, "MTHD_CALL", class_ids["System.String"]))
+    from_string = next(struct.unpack_from("<i", image, m[1])[0] for c in classes if c["name"] == "System.String"
+                       for m in c["methods"] if m[0] == "System.String:New:o.System.String,")
+    cases.append(("a new Char[] passed as a String", "an array used as an object",
+                  put(main[string_new][2] + 4, "<i", from_string)))
+
+    # --- class records ---
+    shape = next(c for c in classes if c["name"] == "Shape")
+    r = obe_image.Reader(image, shape["start"])
+    r.int()
+    r.string()
+    r.int()
+    r.string()
+    r.skip(4 * max(r.int(), 0))
+    r.byte()
+    if r.byte() != 0:
+        r.string()
+    cases.append(("an instance smaller than its declarations", "instance size below the class's instance declarations",
+                  put(r.pos + 4, "<i", 8)))
+
+    # --- the header ---
+    cases.append(("a String class id that names another class", "the String class id does not name System.String",
+                  put(8, "<i", class_ids["Shape"])))
+    return cases
+
+
+def check_loader_refuses_changed(obc, obr, env, bin_dir):
+    # ---- 34. the loader refuses a program changed after it was compiled, in every JIT mode ----
+    import struct
+    src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "loader_verify_control.obs")
+    expected = b"loaded 36 4.000000 3.000000 2.000000 20.000000"
+    modes = (("the default JIT", []), ("--jit=off", ["--jit=off"]), ("--jit=1", ["--jit=1"]))
+    with tempfile.TemporaryDirectory() as scratch:
+        for opt in ("s0", "s3"):
+            control = os.path.join(scratch, f"loader_verify_control_{opt}.obe")
+            rc, out, err = run([obc, "-src", src, "-opt", opt, "-dest", control], env=env, cwd=bin_dir)
+            check(f"loader_verify_control compiles at -opt {opt}", rc == 0 and os.path.exists(control),
+                  err.decode(errors="replace")[-300:])
+            if rc != 0:
+                continue
+            image = obe_image_of(control)
+
+            # the controls: the program as compiled, repacked by this check, runs in every mode
+            repacked = os.path.join(scratch, "repacked.obe")
+            with open(repacked, "wb") as f:
+                f.write(obe_file_of(image))
+            for label, flags in modes:
+                rc, out, err = run([obr] + flags + [repacked], env=env, cwd=bin_dir)
+                check(f"the unchanged control runs with {label} (-opt {opt})", rc == 0 and expected in out,
+                      f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+            verify_env = dict(env)
+            verify_env["OBJECK_VERIFY_ONLY"] = "1"
+            rc, out, err = run([obr, repacked], env=verify_env, cwd=bin_dir)
+            check(f"OBJECK_VERIFY_ONLY=1 loads the control and does not run it (-opt {opt})",
+                  rc == 0 and not out.strip() and not err.strip(), f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+
+            try:
+                cases = changed_program_cases(image)
+            except (RuntimeError, StopIteration, struct.error) as e:
+                check(f"the control program offers every shape the cases change (-opt {opt})", False, repr(e))
+                continue
+            for about, message, case in cases:
+                path = os.path.join(scratch, "changed.obe")
+                with open(path, "wb") as f:
+                    f.write(obe_file_of(case))
+                rc, out, err = run([obr, path], env=verify_env, cwd=bin_dir, timeout=60)
+                text = err.decode(errors="replace")
+                check(f"the loader refuses {about} (-opt {opt}, load only)", loader_refused(rc, text, message),
+                      f"rc={rc} err={text[-300:]!r}")
+                for label, flags in modes:
+                    rc, out, err = run([obr] + flags + [path], env=env, cwd=bin_dir, timeout=60)
+                    text = err.decode(errors="replace")
+                    check(f"the loader refuses {about} (-opt {opt}, {label})",
+                          loader_refused(rc, text, message) and expected not in out, f"rc={rc} err={text[-300:]!r}")
+
+            # A virtual call whose override is gone: the walk up the receiver's classes
+            # ends at the declaration, which has no body to run. Renaming Square's Area
+            # (one letter of its record's name) leaves Shape's declaration the only match.
+            name = b"Square:Area:"
+            at = image.find(name)
+            if at < 0 or image.find(name, at + 1) >= 0:
+                check(f"the control has one Square:Area record (-opt {opt})", False, "not found, or found twice")
+                continue
+            renamed = image[:at] + b"Square:Arez:" + image[at + len(name):]
+            path = os.path.join(scratch, "renamed.obe")
+            with open(path, "wb") as f:
+                f.write(obe_file_of(renamed))
+            for label, flags in modes:
+                rc, out, err = run([obr] + flags + [path], env=env, cwd=bin_dir, timeout=60)
+                text = err.decode(errors="replace")
+                check(f"a virtual call with no override stops with a message, not a crash (-opt {opt}, {label})",
+                      rc == 1 and "Invalid virtual call" in text and "has no body" in text and expected not in out,
+                      f"rc={rc} err={text[-300:]!r}")
+
+
+        # Clearing a Nil array: a runtime error with the usual message, where the four
+        # ZERO_*_ARY handlers (and the JIT's callback) read the array's length unchecked.
+        src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "nil_array_clear.obs")
+        dest = os.path.join(scratch, "nil_array_clear.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("nil_array_clear compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc == 0:
+            for label, flags in modes:
+                rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=60)
+                text = err.decode(errors="replace")
+                check(f"clearing a Nil array is a runtime error, not a crash ({label})",
+                      rc == 1 and b"cleared 0" in out and b"not reached" not in out and
+                      "Attempting to dereference a 'Nil' memory instance" in text,
+                      f"rc={rc} out={out[-100:]!r} err={text[-200:]!r}")
+
+
+def check_error_exit_with_threads(obc, obr, env, bin_dir):
+    # ---- 35. the main thread's exception with other threads running -------------------
+    src = os.path.join(SCRIPT_DIR, "vm_error_exit_with_threads.obs")
+    with tempfile.TemporaryDirectory() as scratch:
+        dest = os.path.join(scratch, "vm_error_exit_with_threads.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("error-with-threads fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        line = b">>> virtual machine: internal error: deliberate test exception with threads running <<<"
+        # more runs interpreted: that is where the exception reaches Execute's catch, and the
+        # crash it guards against showed in about one run in forty
+        for label, flags, runs in (("jit=off", ["--jit=off"], 100), ("default", [], 25), ("jit=1", ["--jit=1"], 25)):
+            wrong = []
+            for _ in range(runs):
+                rc, out, err = run([obr] + flags + [dest], env=env, cwd=bin_dir, timeout=120)
+                # Execute returns -1 on this path: 1 from the POSIX entry point, -1 on
+                # Windows; the JIT's bridge exits 1 on both. A crash is neither.
+                plain = rc == 1 or (os.name == "nt" and rc in (-1, 0xFFFFFFFF))
+                if not (plain and b"before" in out and b"after" not in out and line in err):
+                    wrong.append(f"rc={rc} out={out[-60:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+            check(f"an exception on the main thread with four threads running ends the program by "
+                  f"status, {runs} runs in {runs} ({label})", not wrong, f"{len(wrong)} run(s): {wrong[:2]}")
+
+
+def address_space_limit_usable():
+    """None when a child process can be started under a lowered RLIMIT_AS, else the reason it
+    cannot. Darwin refuses the call (setrlimit raises "current limit exceeds maximum limit"),
+    Windows has no such limit, and a container may forbid it. Asked once, of a throwaway child,
+    so that the check below is skipped with a line instead of ending the whole script."""
+    if os.name == "nt" or sys.platform == "darwin":
+        return "RLIMIT_AS not enforced on this platform"
+    try:
+        import resource
+
+        def apply():
+            resource.setrlimit(resource.RLIMIT_AS, (1 << 30, 1 << 30))
+        p = subprocess.run([sys.executable, "-c", "pass"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           timeout=60, preexec_fn=apply)
+    except (ImportError, AttributeError, ValueError, OSError, subprocess.SubprocessError) as e:
+        return f"RLIMIT_AS cannot be set here: {type(e).__name__}: {e}"
+    return None if p.returncode == 0 else f"a child under RLIMIT_AS did not start (exit {p.returncode})"
+
+
+def check_startup_memory_limit(obc, obr, env, bin_dir):
+    # ---- 36. the main thread's stacks under an address-space limit --------------------
+    reason = address_space_limit_usable()
+    if reason:
+        print(f"  [SKIP] startup under an address-space limit ({reason})")
+        return
+    import resource
+    with tempfile.TemporaryDirectory() as scratch:
+        src = os.path.join(scratch, "startup_limit.obs")
+        with open(src, "w") as f:
+            f.write('class StartupLimit { function : Main(args : String[]) ~ Nil { "started"->PrintLine(); } }\n')
+        dest = os.path.join(scratch, "startup_limit.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("startup-limit fixture compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        def limited(megabytes):
+            def apply():
+                resource.setrlimit(resource.RLIMIT_AS, (megabytes << 20, megabytes << 20))
+            try:
+                p = subprocess.run([obr, "--call-depth=1048576", dest], cwd=bin_dir, env=env, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, timeout=120, preexec_fn=apply)
+            except subprocess.TimeoutExpired:
+                return -999, b"", b"<timed out>"
+            except (ValueError, OSError, subprocess.SubprocessError) as e:
+                # the limit could not be applied to this child: not the VM's doing
+                return None, b"", f"{type(e).__name__}: {e}".encode()
+            return p.returncode, p.stdout, p.stderr
+
+        ran = refused = 0
+        wrong = []
+        for megabytes in range(96, 1537, 16):
+            rc, out, err = limited(megabytes)
+            if rc is None:
+                print(f"  [SKIP] startup under an address-space limit (the limit could not be applied at "
+                      f"{megabytes} MB: {err.decode(errors='replace')})")
+                return
+            if rc == 0 and out.strip() == b"started":
+                ran += 1
+            elif rc == 1 and err.startswith(b">>> ") and b"terminate called" not in err:
+                # the VM's own line: the stacks' "out of memory", or the collector's when
+                # the limit is below the nursery ("Failed to allocate young generation region")
+                refused += 1
+            else:
+                wrong.append(f"{megabytes} MB: rc={rc} out={out[-40:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+        check("under every address-space limit the VM runs the program or refuses with a line of its own and exits 1",
+              not wrong, f"{len(wrong)} limit(s): {wrong[:3]}")
+        # the sweep is only a test while it crosses the boundary: both outcomes must occur. A
+        # system that accepts the limit and does not enforce it starts every run: that is said,
+        # not counted as the VM's failure.
+        if not wrong and refused == 0 and not sys.platform.startswith("linux"):
+            print("  [SKIP] the limits swept refuse nothing (RLIMIT_AS not enforced on this platform)")
+        else:
+            check("the limits swept include ones too small to start and ones large enough to run",
+                  ran > 0 and refused > 0, f"ran={ran} refused={refused}")
 
 
 def check_address_int_array(obc, obr, env, bin_dir):
@@ -2446,7 +2873,12 @@ NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_st
                         # a conditional's object value pending across a
                         # collection point lives in the and/or slot, which interpreted
                         # and ARM64 JIT frames did not scan (#1429-#1431)
-                        "gc_cond_value_root")
+                        "gc_cond_value_root",
+                        # the same value in an INLINED helper's and/or temporary,
+                        # which the inliner declared Int in the caller's frame: the
+                        # word loaded from it was no root while it waited on the
+                        # operand stack
+                        "gc_inline_conditional_temp")
 NURSERY_STRESS_SIZES = ("128k", "256k")
 
 # Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).
@@ -2481,13 +2913,18 @@ VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress
                       # an and/or callee inlined into a caller without one: its locals
                       # must sit in the slots declared for them (B2, Fill:i, slot 7)
                       "gc_scoped_local_slot_types", "gc_zero_field_nursery_end",
-                      "opt_inline_and_or_slots")
+                      "opt_inline_and_or_slots",
+                      # an inlined and/or temporary declared as the object or array
+                      # it holds: a wrong declaration is a B2 wrong memory TYPE
+                      "gc_inline_conditional_temp")
 
 # Each injected fault and the report the verifier must stop the program with.
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),
                      ("barrier", b">>> gc-verify: A2 violation"),
                      # the marked word still points into the nursery range: B3
-                     ("mark", b">>> gc-verify: B3 violation"))
+                     ("mark", b">>> gc-verify: B3 violation"),
+                     # a character stored in a Char[]'s spare element: B5
+                     ("terminator", b">>> gc-verify: B5 violation"))
 
 
 def extra_libs(src):
@@ -2623,6 +3060,130 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
                   f"hung={hung} rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
             check(f"signal storm {jit}: handlers ran",
                   seen is not None and int(seen.group(1)) > 0, f"out={out[-200:]!r}")
+
+    # ---- the dispatcher is started once --------------------------------------------
+    # Eight threads register their first SIGINT and SIGTERM handlers at the same moment.
+    # Two that both found the dispatcher missing each made a wake-up pipe and a thread;
+    # the first pipe and its thread were left behind. The process must end up with one
+    # pipe (two descriptors) and one thread beyond main, every time. Linux only: the
+    # count is read from /proc. Standard streams are files here, so no pipe is theirs.
+    #
+    # The thread count is taken once the task list has settled. Thread->Join returns
+    # when the kernel wakes the joiner, which is before the joined thread's task leaves
+    # /proc/<pid>/task: about one attempt in a hundred the list still held a registrar
+    # that had already been joined (measured: state R or already gone when looked at,
+    # and out of the list within 2 ms; never a second task in the pipe read). A
+    # dispatcher never exits, so a second one is still there however long the wait, and
+    # the count stays as strict about it. OBJECK_SIGNAL_RACE_ATTEMPTS sets the number of
+    # attempts (40), for a soak.
+    if sys.platform.startswith("linux"):
+        worst_pipes, worst_threads, failed_runs = 0, 0, ""
+        for attempt in range(int(os.environ.get("OBJECK_SIGNAL_RACE_ATTEMPTS", "40"))):
+            with tempfile.TemporaryDirectory() as scratch:
+                ready = os.path.join(scratch, "ready")
+                with open(os.path.join(scratch, "out"), "wb") as out_file:
+                    proc = subprocess.Popen([obr, dest, "race", ready], env=env, cwd=SCRIPT_DIR,
+                                            stdin=subprocess.DEVNULL, stdout=out_file, stderr=subprocess.STDOUT)
+                    deadline = time.time() + 60
+                    while not os.path.exists(ready) and proc.poll() is None and time.time() < deadline:
+                        time.sleep(0.005)
+                    pipes, threads = -1, -1
+                    if os.path.exists(ready) and proc.poll() is None:
+                        fd_dir = f"/proc/{proc.pid}/fd"
+                        pipes = 0
+                        for fd in os.listdir(fd_dir):
+                            try:
+                                if os.readlink(os.path.join(fd_dir, fd)).startswith("pipe:"):
+                                    pipes += 1
+                            except OSError:
+                                pass
+                        threads = len(os.listdir(f"/proc/{proc.pid}/task"))
+                        settle = time.time() + 2.0
+                        while threads > 2 and time.time() < settle:
+                            time.sleep(0.005)
+                            threads = len(os.listdir(f"/proc/{proc.pid}/task"))
+                        os.remove(ready)
+                    try:
+                        proc.wait(timeout=60)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                with open(os.path.join(scratch, "out"), "rb") as out_file:
+                    text = out_file.read()
+                if proc.returncode != 0 or b"PASS: signal_dispatch race" not in text or pipes < 0:
+                    failed_runs = f"run {attempt}: rc={proc.returncode} pipes={pipes} out={text[-200:]!r}"
+                    break
+                worst_pipes = max(worst_pipes, pipes)
+                worst_threads = max(worst_threads, threads)
+        check("signal handlers registered by eight threads at once: every run finishes", not failed_runs, failed_runs)
+        check(f"signal handlers registered by eight threads at once: one wake-up pipe (most descriptors seen: {worst_pipes})",
+              not failed_runs and worst_pipes == 2)
+        check(f"signal handlers registered by eight threads at once: one dispatcher thread (most threads left once settled: {worst_threads})",
+              not failed_runs and worst_threads == 2)
+
+    # ---- no dispatcher, no handler ---------------------------------------------------
+    # OBJECK_SIGNAL_TEST_FAULT makes the wake-up, or the dispatcher thread, fail to
+    # start. SetSignal for SIGINT/SIGTERM then fails and says so; it used to go on and
+    # install a handler that ran the Objeck method inside the OS signal handler.
+    for stage in ("wake", "thread"):
+        fault_env = dict(env)
+        fault_env["OBJECK_SIGNAL_TEST_FAULT"] = stage
+        rc, out, err = run([obr, dest], env=fault_env, cwd=SCRIPT_DIR)
+        check(f"signal dispatcher cannot start ({stage}): SetSignal fails and says why",
+              rc != 0 and b"Unable to start the signal dispatcher" in err and b"PASS: signal_dispatch" not in out,
+              f"rc={rc} out={out[-200:]!r} err={err[-300:]!r}")
+
+
+def check_file_fifo_gc_park(obc, obr, env, bin_dir):
+    # ---- a FIFO read through the file API parks -------------------------------------
+    # file_fifo_gc_park.obs opens a FIFO with FileReader and reads it with
+    # ReadBuffer(Char[]) on one thread while main allocates through many collections.
+    # The open (which looks one byte ahead) and the read waited as a running mutator, so
+    # the first collection waited for them and main never finished allocating. This
+    # script holds the FIFO's write end. In "read" mode it writes one byte at the start,
+    # so the open returns and the thread waits in the read; in "open" mode it writes
+    # nothing, so the thread waits in the open. The rest is written only once the
+    # program reports that it has allocated its fill: a program that never reports is
+    # the failure (it is then released, so it can end). With OBJECK_GC_VERIFY the heap
+    # is checked at every collection, the reader's re-rooted array included.
+    if os.name == "nt" or not hasattr(os, "mkfifo"):
+        return
+    import tempfile
+    import time
+    dest = compile_fixture(obc, "file_fifo_gc_park", env, bin_dir)
+    if not dest:
+        return
+    verify_env = dict(env)
+    verify_env["OBJECK_GC_VERIFY"] = "1"
+    for mode, label, jit, run_env in (("read", "--jit=off", "--jit=off", env), ("read", "--jit=1", "--jit=1", env),
+                                      ("read", "--jit=1, OBJECK_GC_VERIFY", "--jit=1", verify_env),
+                                      ("open", "--jit=off", "--jit=off", env), ("open", "--jit=1", "--jit=1", env)):
+        with tempfile.TemporaryDirectory() as scratch:
+            fifo = os.path.join(scratch, "fifo")
+            collected = os.path.join(scratch, "collected")
+            os.mkfifo(fifo)
+            # read-write, so this open does not wait for the program's reader (Linux and macOS allow it)
+            write_end = os.open(fifo, os.O_RDWR)
+            if mode == "read":
+                os.write(write_end, b"h")
+            proc = subprocess.Popen([obr, jit, "--nursery=256k", dest, fifo, collected, mode], env=run_env, cwd=SCRIPT_DIR,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            deadline = time.time() + 30
+            while not os.path.exists(collected) and proc.poll() is None and time.time() < deadline:
+                time.sleep(0.01)
+            ran_on = os.path.exists(collected)
+            os.write(write_end, b"ello" if mode == "read" else b"hello")
+            try:
+                out, err = proc.communicate(timeout=60)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+            os.close(write_end)
+            check(f"FIFO {mode} through the file API {label}: collections run while it waits", ran_on,
+                  f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
+            check(f"FIFO {mode} through the file API {label}: the read returns its text after them",
+                  proc.returncode == 0 and b"PASS: file_fifo_gc_park read" in out,
+                  f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):

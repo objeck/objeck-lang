@@ -1041,6 +1041,11 @@ namespace frontend {
       return char_string;
     }
 
+    // a '$"..."' literal, whose text is taken as written (no escapes)
+    bool IsLiteral() const {
+      return is_lit;
+    }
+
     bool AddSegment(const std::wstring &orig);
 
     void AddSegment(SymbolEntry* e) {

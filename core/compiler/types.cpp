@@ -112,7 +112,14 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
       break;
 
     case 'o': {
+      // "o." then the class name. A string that ends inside the tag ("o", or
+      // "i,o") left index past the end, and the substr below threw
+      // std::out_of_range, which nothing catches: the compiler aborted on a
+      // library whose type string was cut short.
       index += 2;
+      if(index > param_str.size()) {
+        index = param_str.size();
+      }
       const size_t start = index;
       while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'<') {
         index++;
@@ -248,11 +255,15 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
       found = type_name.find(prefix, found + prefix.size());
     }
 
+    // index can reach size() here, when the string has fewer '~' than "m.("
+    // (a function type cut short). The read was defined all the same --
+    // operator[] at size() yields L'\0' on a const string -- but it is spelled
+    // out so the bound does not rest on that.
     while(nested_count--) {
       while(index < type_name.size() && type_name[index] != L'~') {
         index++;
       }
-      if(type_name[index] == L'~') {
+      if(index < type_name.size() && type_name[index] == L'~') {
         index++;
       }
     }
@@ -268,6 +279,11 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
     break;
 
   case L'o':
+    // "o." then the class name; a lone "o" has no name to take (and substr(2)
+    // on it threw std::out_of_range, see ParseParameters), so it is unparseable
+    if(type_name.size() < 2) {
+      break;
+    }
     index = 2;
     while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'<') {
       index++;

@@ -30,8 +30,14 @@
  ***************************************************************************/
 
 #include "jit_common.h"
+#include <atomic>
 #include <chrono>
+#include <cstdlib>
+#include <mutex>
 #include <thread>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #ifndef _NO_JIT
 #if defined(_M_ARM64)
@@ -45,9 +51,119 @@
 
 StackProgram* JitCompiler::program;
 
+// The call sites of the loaded program, by the method each names: what
+// PatchCallSites rewrites when that method's native code is published.
+//
+// PatchCallSites used to find them by walking every instruction of every
+// method of the program, once per compiled method. Starting a small MCP server
+// (a 641 KB image) compiles 53 methods before its first answer, and those 53
+// walks were 26 M of the run's 150 M instructions -- more than generating the
+// code. The walk that fills the table is made once, when the second method is
+// compiled, and each later call visits only its own sites. The first method
+// compiled is patched by a plain walk as before: a program that compiles one
+// method (hello world compiles String->Append and nothing else) would pay for a
+// table it never reads again.
+//
+// The table holds, for a (class id, method id) pair, the instructions the walk
+// would have matched, in the order it would have reached them: every MTHD_CALL
+// and DYN_MTHD_CALL (and their *_JIT forms) whose first two operands are that
+// pair. Nothing changes those operands after the program is loaded, and the
+// only change to such an instruction's type is the MTHD_CALL -> MTHD_CALL_JIT
+// rewrite below, which the walk treated as the same site; so the table built
+// once is the set any later walk would find. OBJECK_JIT_PATCH_VERIFY=1 checks
+// exactly that on every call: it makes the old walk as well and stops the VM
+// if the two differ.
+//
+// Threads: the table is built under call_site_mutex by whichever compiling
+// thread gets there first and published with a release store; it is never
+// changed afterwards, so readers need no lock. The build reads only an
+// instruction's type and first two operands. The operands never change; the
+// type can be rewritten under it by the one patch that runs without the table
+// (the first method's), from MTHD_CALL to MTHD_CALL_JIT, and the build takes
+// either as a call site, the same whole-word read the interpreter makes of a
+// site being patched (see StackInstr in common.h). Every other patch waits for
+// the build. Initialize (program start, and each debugger restart) drops the
+// table with the program it described; no method is being compiled then.
+namespace {
+  // the two operands exactly as the walk compared them
+  typedef std::pair<long, long> CallSiteKey;
+  struct CallSiteKeyHash {
+    size_t operator()(const CallSiteKey& key) const {
+      return std::hash<long>()(key.first) * 1000003u ^ std::hash<long>()(key.second);
+    }
+  };
+  typedef std::unordered_map<CallSiteKey, std::vector<StackInstr*>, CallSiteKeyHash> CallSiteTable;
+
+  std::mutex call_site_mutex;
+  std::atomic<const CallSiteTable*> call_site_table(nullptr);
+  // PatchCallSites calls since Initialize; the first is served by a walk
+  std::atomic<long> call_site_patches(0);
+
+  inline bool IsCallSite(const InstructionType type) {
+    // Only CALL instructions carry (class id, method id) in operand/operand2.
+    // This used to test the operands alone, so any other opcode whose first
+    // two operands happened to match -- a JMP_TABLE (base, range), say -- had
+    // its operand3 overwritten. For JMP_TABLE operand3 is default_ip: the
+    // default arm of a select was retargeted to instruction 1.
+    return type == MTHD_CALL || type == DYN_MTHD_CALL || type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT;
+  }
+
+  // every call site of the program, in class, method and instruction order
+  template<typename Visit> void WalkCallSites(StackProgram* prgm, Visit visit) {
+    const long cls_num = prgm->GetClassNumber();
+    StackClass** classes = prgm->GetClasses();
+    for(long c = 0; c < cls_num; ++c) {
+      StackClass* cls = classes[c];
+      if(!cls) continue;
+
+      const int mthd_num = cls->GetMethodCount();
+      StackMethod** methods = cls->GetMethods();
+      for(int m = 0; m < mthd_num; ++m) {
+        StackMethod* method = methods[m];
+        if(!method) continue;
+
+        const int instr_count = static_cast<int>(method->GetInstructionCount());
+        for(int i = 0; i < instr_count; ++i) {
+          StackInstr* instr = method->GetInstruction(i);
+          if(IsCallSite(instr->GetType())) {
+            visit(instr);
+          }
+        }
+      }
+    }
+  }
+
+  inline const CallSiteTable* GetCallSiteTable(StackProgram* prgm) {
+    const CallSiteTable* table = call_site_table.load(std::memory_order_acquire);
+    if(!table) {
+      std::lock_guard<std::mutex> lock(call_site_mutex);
+      table = call_site_table.load(std::memory_order_relaxed);
+      if(!table) {
+        CallSiteTable* built = new CallSiteTable;
+        WalkCallSites(prgm, [built](StackInstr* instr) {
+          (*built)[CallSiteKey(instr->GetOperand(), instr->GetOperand2())].push_back(instr);
+        });
+        call_site_table.store(built, std::memory_order_release);
+        table = built;
+      }
+    }
+
+    return table;
+  }
+
+  inline bool PatchVerifyEnabled() {
+    static const bool enabled = JitEnvFlag("OBJECK_JIT_PATCH_VERIFY");
+    return enabled;
+  }
+}
+
 void JitCompiler::Initialize(StackProgram* p)
 {
   program = p;
+  // the table describes one program's instructions
+  std::lock_guard<std::mutex> lock(call_site_mutex);
+  delete call_site_table.exchange(nullptr, std::memory_order_acq_rel);
+  call_site_patches.store(0, std::memory_order_release);
 }
 
 JitCompiler::JitCompiler()
@@ -174,47 +290,59 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
 {
   const long target_cls_id = callee->GetClass()->GetId();
   const long target_mthd_id = callee->GetId();
-  const long cls_num = program->GetClassNumber();
-  StackClass** classes = program->GetClasses();
 
-  for(long c = 0; c < cls_num; ++c) {
-    StackClass* cls = classes[c];
-    if(!cls) continue;
+  // the first method compiled: its sites straight from a walk (see the table's comment)
+  std::vector<StackInstr*> first_sites;
+  const bool first = call_site_patches.fetch_add(1, std::memory_order_acq_rel) == 0 &&
+                     !call_site_table.load(std::memory_order_acquire);
+  if(first) {
+    WalkCallSites(program, [&](StackInstr* instr) {
+      if(instr->GetOperand() == target_cls_id && instr->GetOperand2() == target_mthd_id) {
+        first_sites.push_back(instr);
+      }
+    });
+  }
 
-    const int mthd_num = cls->GetMethodCount();
-    StackMethod** methods = cls->GetMethods();
+  static const std::vector<StackInstr*> none;
+  const CallSiteTable* table = first && !PatchVerifyEnabled() ? nullptr : GetCallSiteTable(program);
+  const std::vector<StackInstr*>* indexed = &none;
+  if(table) {
+    const CallSiteTable::const_iterator found = table->find(CallSiteKey(target_cls_id, target_mthd_id));
+    if(found != table->end()) {
+      indexed = &found->second;
+    }
+  }
+  const std::vector<StackInstr*>& sites = table ? *indexed : first_sites;
 
-    for(int m = 0; m < mthd_num; ++m) {
-      StackMethod* method = methods[m];
-      if(!method) continue;
+  // OBJECK_JIT_PATCH_VERIFY=1: the walk this table replaced must find the same
+  // sites in the same order
+  if(PatchVerifyEnabled()) {
+    std::vector<StackInstr*> walked;
+    WalkCallSites(program, [&](StackInstr* instr) {
+      if(instr->GetOperand() == target_cls_id && instr->GetOperand2() == target_mthd_id) {
+        walked.push_back(instr);
+      }
+    });
+    if(walked != sites) {
+      std::wcerr << L">>> Internal error: call-site table and program walk differ for '" << callee->GetName()
+                 << L"': " << sites.size() << L" indexed, " << walked.size() << L" walked <<<" << std::endl;
+      VmExit(1);
+    }
+  }
 
-      const int instr_count = static_cast<int>(method->GetInstructionCount());
-      for(int i = 0; i < instr_count; ++i) {
-        StackInstr* instr = method->GetInstruction(i);
-        const InstructionType type = instr->GetType();
-        // Only CALL instructions carry (class id, method id) in operand/operand2.
-        // This used to test the operands alone, so any other opcode whose first
-        // two operands happened to match -- a JMP_TABLE (base, range), say -- had
-        // its operand3 overwritten. For JMP_TABLE operand3 is default_ip: the
-        // default arm of a select was retargeted to instruction 1.
-        const bool is_call = (type == MTHD_CALL || type == DYN_MTHD_CALL ||
-                              type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT);
-        if(is_call &&
-           instr->GetOperand() == target_cls_id &&
-           instr->GetOperand2() == target_mthd_id) {
-          if(patch_value > 0) {
-            // JIT success: rewrite opcode for zero-branch dispatch
-            if(type == MTHD_CALL) {
-              instr->SetType(MTHD_CALL_JIT);
-            }
-            else if(type == DYN_MTHD_CALL) {
-              instr->SetType(DYN_MTHD_CALL_JIT);
-            }
-          }
-          instr->SetOperand3(patch_value);
-        }
+  for(size_t i = 0; i < sites.size(); ++i) {
+    StackInstr* instr = sites[i];
+    if(patch_value > 0) {
+      // JIT success: rewrite opcode for zero-branch dispatch
+      const InstructionType type = instr->GetType();
+      if(type == MTHD_CALL) {
+        instr->SetType(MTHD_CALL_JIT);
+      }
+      else if(type == DYN_MTHD_CALL) {
+        instr->SetType(DYN_MTHD_CALL_JIT);
       }
     }
+    instr->SetOperand3(patch_value);
   }
 }
 #endif
@@ -511,7 +639,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       const size_t fref = op_stack[(*stack_pos) - 1];
       // 0 is an unassigned function variable (see FUNC_VALUE_TAG): no callee;
       // the interpreter below reports it, or recovers it under a Try() (#1183)
-      callee = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF))->GetMethod((long)(fref & 0xFFFF)) : nullptr;
+      // (a class id that names no class: no callee either, where this read a null class)
+      StackClass* fref_cls = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF)) : nullptr;
+      callee = fref_cls ? fref_cls->GetMethod((long)(fref & 0xFFFF)) : nullptr;
     }
     else {
       callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
@@ -703,12 +833,14 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
         conv = formatter.str();
       }
 
-      const size_t max = str_ptr[0];
-#ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0] + 1, conv.c_str(), max);
-#else
-      wcsncpy(str, conv.c_str(), max);
-#endif
+      // The buffer is the caller's Char[]: str_ptr[0] elements. The text is cut to it and
+      // ended with a zero, which for text exactly as long as the buffer is the array's
+      // spare element (common.h). The interpreter gave wcsncpy_s the element count as the
+      // size, so a value exactly as long as its buffer ("-128" into Char->New[4]) ended
+      // the process on Windows, and on POSIX it copied up to 32 characters whatever
+      // the buffer held; the JIT's copy was already bounded. One rule for both now.
+      const size_t capacity = str_ptr[0];
+      StoreCharArrayText(str, conv.c_str(), conv.size() < capacity ? conv.size() : capacity);
     }
   }
     break;
@@ -779,13 +911,10 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
         scientific << std::scientific << value;
         conv = scientific.str();
       }
+      // (a zero-length buffer takes the zero on its spare element: wcsncpy_s refused a size
+      // of 0 and ended the process)
       const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
-#ifdef _WIN32
-      wcsncpy_s(str, capacity, conv.c_str(), max);
-#else
-      wcsncpy(str, conv.c_str(), max);
-      str[max] = L'\0';
-#endif
+      StoreCharArrayText(str, conv.c_str(), max);
     }
   }
     break;
@@ -1153,6 +1282,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_BYTE_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     char* buffer = (char*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(char));
@@ -1161,6 +1296,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_CHAR_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     wchar_t* buffer = (wchar_t*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(wchar_t));
@@ -1169,6 +1310,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_INT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     size_t* buffer = (size_t*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(size_t));
@@ -1177,6 +1324,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_FLOAT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    // clearing a Nil array is a runtime error, as copying from one is above
+    if(!array_ptr) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      VmExit(1);
+    }
     const size_t array_len = array_ptr[0];
     FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
     memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));

@@ -1441,7 +1441,12 @@ formatter->Format(src, false)->PrintLine();
 						}
 
 						label System.Utility.Token->Type->NEW_ID {
-							PopBuffer();
+							# "->New": drop the space after the arrow. A constructor's
+							# "New" starts a line, and popping there took a character
+							# of its indentation.
+							if(@prev_token->GetType() = System.Utility.Token->Type->ASSESSOR) {
+								PopBuffer();
+							};
 							@skip_space := true;
 							AppendBuffer("New");
 						}
@@ -1751,13 +1756,64 @@ formatter->Format(src, false)->PrintLine();
 						}
 
 						label System.Utility.Token->Type->CCBRACE {
-							AppendBuffer('\n');
+							# an empty block closes on the line after its '{', with no
+							# line of indentation left between the two
+							if(@prev_token->GetType() = System.Utility.Token->Type->OCBRACE) {
+								TrimIndent();
+							}
+							else {
+								AppendBuffer('\n');
+							};
 							tab_space -= 1;
 							TabSpace(tab_space, @ident_space);
-							AppendBuffer('}'); # TODO: Fix me!
-
+							AppendBuffer('}');
+						
 							if(in_consts) {
 								in_consts := false;
+							};
+						
+							# What follows the brace. AppendBuffer joins the next token to
+							# a '}', which is right for the few that belong on its line and
+							# wrong for the rest: a constructor, field, enum, comment or
+							# statement with no blank line before it came out as "}New() {".
+							select(@next_token->GetType()) {
+								# stay on the brace's line
+								label System.Utility.Token->Type->SEMI
+								label System.Utility.Token->Type->CPREN
+								label System.Utility.Token->Type->CBRACE
+								label System.Utility.Token->Type->COMMA
+								label System.Utility.Token->Type->ASSESSOR
+								label System.Utility.Token->Type->WHILE_ID
+								# start a line of their own
+								label System.Utility.Token->Type->CCBRACE
+								label System.Utility.Token->Type->VTAB
+								label System.Utility.Token->Type->ELSE_ID
+								label System.Utility.Token->Type->CLASS_ID
+								label System.Utility.Token->Type->FUNCTION_ID
+								label System.Utility.Token->Type->METHOD_ID
+								label System.Utility.Token->Type->LABEL_ID
+								label System.Utility.Token->Type->OTHER_ID
+								# end of the source
+								label System.Utility.Token->Type->OTHER {
+								}
+						
+								# a constructor and the other declarations are set apart like a method
+								label System.Utility.Token->Type->NEW_ID
+								label System.Utility.Token->Type->ENUM_ID
+								label System.Utility.Token->Type->CONSTS_ID
+								label System.Utility.Token->Type->ALIAS_ID
+								label System.Utility.Token->Type->BUNDLE_ID
+								label System.Utility.Token->Type->INTERFACE_ID {
+									AppendBuffer("\n\n");
+									TabSpace(tab_space, @ident_space);
+									@skip_space := true;
+								}
+						
+								other {
+									AppendBuffer('\n');
+									TabSpace(tab_space, @ident_space);
+									@skip_space := true;
+								}
 							};
 						}
 
@@ -1814,10 +1870,20 @@ formatter->Format(src, false)->PrintLine();
 		}
 
 		method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
+			# the keyword that follows still takes its space: skipping it here
+			# joined the keyword to its name ("}" then "class B" gave "classB")
 			if(@prev_token->GetType() = System.Utility.Token->Type->CCBRACE) {
 				AppendBuffer("\n\n");
 				TabSpace(tab_space, @ident_space);
-				@skip_space := true;
+			};
+		}
+
+		# removes the indentation at the end of the buffer
+		method : TrimIndent() ~ Nil {
+			if(InRange()) {
+				while(@buffer->EndsWith(' ') | @buffer->EndsWith('\t')) {
+					@buffer->Pop();
+				};
 			};
 		}
 
@@ -2251,7 +2317,10 @@ formatter->Format(src, false)->PrintLine();
 
 						label '=' {
 							if(@next_char = '>') {
-								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NEQL, "neql"));
+								# "=>" is the lambda arrow. It was scanned as "<>" with its '>' left
+								# behind, so a formatted lambda read "(x) <> > {".
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LAMBDA, "lambda"));
+								NextChar();
 								NextChar();
 							}
 							else {
@@ -2266,7 +2335,9 @@ formatter->Format(src, false)->PrintLine();
 								NextChar();
 							}
 							else if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LAMBDA, "less_eql"));
+								# "<=" is less-or-equal. It was scanned as the lambda arrow, so
+								# formatting rewrote "a <= b" as "a => b".
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LESS_EQL, "less_eql"));
 								NextChar();
 							}
 							else {

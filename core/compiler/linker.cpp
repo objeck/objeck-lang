@@ -1447,7 +1447,9 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     int id = ReadInt();
     frontend::MethodType type = (frontend::MethodType)ReadInt();
     bool is_virtual = ReadByte() != 0;
-    bool has_and_or = ReadByte() != 0;
+    // 0, 1, or from 2 up what the and/or temporary holds (LibraryMethod::EncodeAndOr)
+    const int and_or = ReadByte();
+    bool has_and_or = and_or != 0;
     bool is_lambda = ReadByte() != 0;
     bool is_native = ReadByte() != 0;
     bool is_static = ReadByte() != 0;
@@ -1477,6 +1479,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
                                             is_native, is_static, is_lambda, params, mem_size, cls, entries);
+    mthd->SetAndOrTempType(LibraryMethod::DecodeAndOrTempType(and_or));
 
     // the parameters' names, and which take a default value (#1244)
     std::vector<std::wstring> param_names;

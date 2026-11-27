@@ -38,6 +38,27 @@
 // called exit(1) itself
 #define LOAD_ERROR 1
 
+// The VM's line for a C++ exception that left the interpreter, or its setup:
+// called from a catch, it rethrows to learn which. One copy, so the two places
+// in Execute cannot drift (a spawned thread's are in ExecuteThreadBody,
+// interpreter.cpp).
+static void ReportEscapedException()
+{
+  try {
+    throw;
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+  }
+  catch(...) {
+    std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+  }
+}
+
 // common execution point for all platforms
 #ifdef _WIN32
 int Execute(int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold)
@@ -69,6 +90,25 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       return USAGE_ERROR;
     }
 
+    // OBJECK_VERIFY_ONLY=1: load and verify the program, then stop without running
+    // it. For checking that a program is accepted (or refused) without its side
+    // effects: the loader's tests and the fuzz tools (docs/SECURITY_MODEL.md).
+    {
+#ifdef _WIN32
+      char* value = nullptr;
+      size_t length = 0;
+      const bool verify_only = _dupenv_s(&value, &length, "OBJECK_VERIFY_ONLY") == 0 && value && strcmp(value, "1") == 0;
+      free(value);
+#else
+      const char* value = getenv("OBJECK_VERIFY_ONLY");
+      const bool verify_only = value && strcmp(value, "1") == 0;
+#endif
+      if(verify_only) {
+        CleanUpCommandLine(argc, commands);
+        return SUCCESS;
+      }
+    }
+
     // execute
     size_t* stack_pos = new size_t;
     (*stack_pos) = 0;
@@ -80,31 +120,37 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 #ifdef _WIN32
     Runtime::StackInterpreter::SetBinaryStdio(is_stdio_binary);
 #endif
-    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram(), gc_threshold);
-    // reserved with the interpreter's call stack, which owns it (call_stack.h)
-    size_t* op_stack = intpr->GetOpStack();
+    // The interpreter's call stack and operand stack are reserved here
+    // (call_stack.h), and under a memory or address-space limit the reservation
+    // throws. It is reported as the same failure during the run is. No program
+    // thread exists yet, so there is nothing to stop before the loader frees the
+    // program.
+    Runtime::StackInterpreter* intpr = nullptr;
+    size_t* op_stack = nullptr;
+    try {
+      intpr = new Runtime::StackInterpreter(Loader::GetProgram(), gc_threshold);
+      // reserved with the interpreter's call stack, which owns it (call_stack.h)
+      op_stack = intpr->GetOpStack();
+    }
+    catch(...) {
+      ReportEscapedException();
+      delete stack_pos;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
     Runtime::StackInterpreter::AddThread(intpr);
+
+    // SUCCESS, or USAGE_ERROR when an exception left the interpreter. Either way
+    // the program is over and what follows is the one way out: the catch used to
+    // return on the spot, and `loader` then freed the program with every thread
+    // the program had started still running in it.
+    int status = SUCCESS;
     try {
       intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
     }
-    catch(const std::bad_alloc&) {
-      std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
-      delete stack_pos;
-      CleanUpCommandLine(argc, commands);
-      return USAGE_ERROR;
-    }
-    catch(const std::exception& e) {
-      const std::string msg(e.what());
-      std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
-      delete stack_pos;
-      CleanUpCommandLine(argc, commands);
-      return USAGE_ERROR;
-    }
     catch(...) {
-      std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
-      delete stack_pos;
-      CleanUpCommandLine(argc, commands);
-      return USAGE_ERROR;
+      ReportEscapedException();
+      status = USAGE_ERROR;
     }
 
     // Quiesce any still-running VM threads (e.g. web-server request workers)
@@ -115,7 +161,8 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     StackProgram::StopSignalDispatch();
     Runtime::StackInterpreter::HaltAllExcept(intpr);
     const bool threads_drained = Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000);
-    if(!StackProgram::WaitSignalDispatchIdle(2000) || !threads_drained) {
+    const bool vm_threads_stopped = StackProgram::WaitSignalDispatchIdle(2000) && threads_drained;
+    if(!vm_threads_stopped) {
       // A thread did not drain -- it is parked in a blocking syscall (a server
       // thread in accept(), a reader in recv()) where it cannot observe Halt, and
       // it is still live. Do not free the program out from under it: anything that
@@ -132,6 +179,21 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       UnloadNativeLibrariesAtExit();
     }
 
+    if(status != SUCCESS && !vm_threads_stopped) {
+      // The run failed and a VM thread is still live (compiled code does not
+      // observe Halt, nor does a thread parked in a syscall). Returning runs
+      // exit(), whose teardown would run under that thread: the rule VmExit
+      // follows for an error on any other path (#877) is to flush what the
+      // program wrote and end the process without teardown. The status is the
+      // one each entry point gives a failed run: 1 on POSIX (posix_main.cpp
+      // turns Execute's -1 into it), -1 on Windows.
+#ifdef _WIN32
+      MemoryManager::EndProcess(status, false);
+#else
+      MemoryManager::EndProcess(1, false);
+#endif
+    }
+
 #ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
     if((*stack_pos) > 0) {
@@ -140,6 +202,19 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       }
     }
 #endif
+
+    if(!vm_threads_stopped) {
+      // A VM thread is still live, and not only one parked in a syscall: compiled
+      // code does not observe Halt, so a thread in a compiled loop runs on through
+      // the wait above. Returning from here runs exit(), whose teardown (static
+      // destructors, the C runtime's own) would then run under that thread: two
+      // threads printing in a compiled loop when Main returned ended the process
+      // with an access violation, or the runtime's fast-fail, in about half the runs on
+      // Windows x64. It is the rule VmExit already follows for an error or
+      // Runtime->Exit with another thread registered (#877): flush what the
+      // program wrote and end the process without teardown.
+      MemoryManager::EndProcess(SUCCESS, false);
+    }
 
 #ifdef _SANITIZE
 #ifdef _DEBUG
@@ -175,9 +250,9 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 #endif
 
     CleanUpCommandLine(argc, commands);
-    
-    return SUCCESS;
-  } 
+
+    return status;
+  }
   else {
     return USAGE_ERROR;
   }

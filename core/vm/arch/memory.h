@@ -125,6 +125,16 @@ struct ClassMethodId {
 
 class RefMap;
 
+// The captures declared for the lambda a function value's id names, none for an
+// id that names no class. The collector reads the id from memory: a local or a
+// field declared as a function holds whatever the program stored, and an id of a
+// class that does not exist was a null class read during marking (found by the
+// mutation campaign).
+inline std::pair<int, StackDclr**> ClosureDeclarationsOf(StackProgram* prgm, long cls_id, int mthd_id) {
+  StackClass* cls = prgm->GetClass(cls_id);
+  return cls ? cls->GetClosureDeclarations(mthd_id) : std::pair<int, StackDclr**>(0, nullptr);
+}
+
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
@@ -445,7 +455,8 @@ class MemoryManager {
   // Heap verifier (OBJECK_GC_VERIFY, see memory_verify.cpp). Both stay 0 unless the
   // variable is set, so each hook in the collector costs one predictable branch.
   friend class GcVerifier;
-  enum GcVerifyInject { GC_VERIFY_INJECT_NONE = 0, GC_VERIFY_INJECT_FIELD, GC_VERIFY_INJECT_BARRIER, GC_VERIFY_INJECT_MARK };
+  enum GcVerifyInject { GC_VERIFY_INJECT_NONE = 0, GC_VERIFY_INJECT_FIELD, GC_VERIFY_INJECT_BARRIER, GC_VERIFY_INJECT_MARK,
+                        GC_VERIFY_INJECT_TERMINATOR };
   static int gc_verify;
   static int gc_verify_inject;
   static void VerifyInitialize();

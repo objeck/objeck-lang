@@ -1,0 +1,83 @@
+# EXTRA_LIBS: gen_collect
+#~
+An array index that is both a subscript and a call chain. Two fixes changed how the compiler
+reads an index: one stopped analyzing every index twice (nested subscripts took exponential
+time), the other reads the index's type from the end of a call chain and unboxes a holder
+there. This covers the two together: a chain inside a nested subscript, a holder at the end of
+a chain inside a nested subscript, a call with a side effect inside both (made once), and 30
+levels of nesting around a chain (which must compile at once). Each check adds to 'bad'; the
+test exits 1 when one fails.
+~#
+use Collection;
+
+class Hop {
+	@at : Int;
+	@calls : static : Int;
+
+	New(at : Int) {
+		@at := at;
+	}
+
+	method : public : At() ~ Int { return @at; }
+	method : public : Held() ~ IntRef { return IntRef->New(@at); }
+	method : public : Me() ~ Hop { return @self; }
+	method : public : Counted() ~ Hop { @calls += 1; return @self; }
+	function : Calls() ~ Int { return @calls; }
+}
+
+class ArrayIndexNestedCallChain {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		# a permutation: a[i] is the next index in a cycle of 5
+		a := [1, 2, 3, 4, 0];
+		hop := Hop->New(2);
+		refs := Vector->New()<IntRef>;
+		refs->AddBack(3);
+		text := "ab";
+
+		bad += Check(a[a[hop->Me()->At()]] = 4, "a chain inside a nested subscript");
+		bad += Check(a[a[a[hop->Me()->Me()->At()]]] = 0, "three calls, three levels");
+		bad += Check(a[a[hop->Me()->Held()]] = 4, "a holder at the end of a chain, nested");
+		bad += Check(a[a[hop->Me()->Held()->Get()]] = 4, "a written Get(), nested");
+		bad += Check(a[a[refs->Get(0)->Get()]] = 0, "a collection's holder, nested");
+		bad += Check(a[a[refs->Get(0)]] = 0, "a holder from one call, nested");
+		bad += Check(a[a[text->Size()]] = 4, "a call on a variable, nested");
+		bad += Check(a[a["ab"->Size()]] = 4, "a call on a literal, nested");
+		bad += Check(a[a[(text + text)->Size()]] = 1, "a call on a parenthesized expression, nested");
+		bad += Check(a[a[hop->Me()->At()] - hop->At()] = 2, "chains in a calculation between levels");
+
+		b := [0, 0, 0, 0, 0];
+		b[a[hop->Me()->At()]] := 7;
+		b[a[a[hop->Me()->Held()]]] += 9;
+		bad += Check(b[3] = 7 & b[4] = 9, "as an assignment target");
+
+		bad += Check(a[a[hop->Counted()->Me()->At()]] = 4, "a chain with a side effect, read");
+		b[a[hop->Counted()->Held()]] := 11;
+		bad += Check(b[3] = 11, "a chain with a side effect, write");
+		bad += Check(Hop->Calls() = 2, "each chain was called once");
+
+		grid := Int->New[5, 5];
+		grid[a[hop->Me()->At()], a[refs->Get(0)]] := 13;
+		bad += Check(grid[3, 4] = 13, "two indices, each a subscript of a chain");
+
+		# 30 levels around a chain: 2 -> 3 -> 4 -> 0 -> 1 -> 2 ..., 30 steps from 2 is 2
+		deep := a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[hop->Me()->At()]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
+		bad += Check(deep = 2, "thirty levels around a chain");
+
+		if(bad = 0) {
+			"PASS: nested subscripts with call chains"->PrintLine();
+		}
+		else {
+			"FAIL: nested subscripts with call chains ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  failed: {$what}"->ErrorLine();
+		return 1;
+	}
+}

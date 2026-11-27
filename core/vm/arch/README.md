@@ -114,9 +114,10 @@ A surviving young object is copied into a fresh old-gen allocation; a **forwardi
 | B2 | typed references are 0 or live old-generation objects of the right type |
 | B3 | no typed reference points into the nursery after a collection |
 | B4 | typed frame slots obey B2 and B3 |
+| B5 | a `Char[]` has one spare element after its data and it is zero: natives read text in a `Char[]` as a C string (the terminator invariant, `core/vm/common.h`) |
 | C | fixup never meets a typed reference to a young object it cannot forward |
 
-`OBJECK_GC_VERIFY_INJECT=field|barrier|mark` plants a fault (a corrupt promoted field, a skipped write barrier, a mark bit in a young field) so the verifier can be shown to catch one. Because `Int[]` and object arrays shared one heap tag until phase 6, an array element is only ever a warning for the verifier.
+`OBJECK_GC_VERIFY_INJECT=field|barrier|mark|terminator` plants a fault (a corrupt promoted field, a skipped write barrier, a mark bit in a young field, a character in a `Char[]`'s spare element) so the verifier can be shown to catch one. Because `Int[]` and object arrays shared one heap tag until phase 6, an array element is only ever a warning for the verifier.
 
 ### Limitations today
 - Operand-stack words the reference maps leave `unknown` (42 across the regression suite when last measured, `GC_ROOTS_DESIGN.md`) and the stack segments above the first compiled frame of a thread are still scanned conservatively.

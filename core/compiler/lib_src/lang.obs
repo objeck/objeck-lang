@@ -12298,21 +12298,28 @@ bundle System.IO.Filesystem {
 	}
 
 	#~
-	Provides hard link filesystem operations
+	Provides hard link filesystem operations. A hard link is a second name for
+	a file: both names reach the same content, a write through one is read
+	through the other, and the content stays until the last name is deleted.
+	```
+if(System.IO.Filesystem.HardLink->Create("report-latest.txt", "report-2026.txt")) {
+  System.IO.Filesystem.FileReader->ReadFile("report-latest.txt")->PrintLine();
+};
+	```
 	~#
 	class HardLink {
 		#~
-		Creates a hard link
-		@param l link path name
-		@param t target path name
-		@return true if hard link was created 
+		Creates a hard link: a second name for an existing file
+		@param l link path name, the name to create
+		@param t target path name, the existing file
+		@return true if hard link was created, false if the target does not exist or is a directory, the link name is already taken, the two are on different volumes, or the file system has no hard links
 		~#
 		function : Create(l : System.String, t : System.String) ~ Bool {
 			HARD_LINK_CREATE;
 		}
 
 		#~
-		Deletes the hard link
+		Deletes the hard link. The file's other names, and its content, stay.
 		@param n path to hard link
 		@return true if file was deleted, false otherwise
 		~#
@@ -12348,9 +12355,9 @@ bundle System.IO.Filesystem {
 		#~
 		Returns the path location that the symbolic link refers to
 		@param n symbolic link path
-		@return path the symbolic link refers to
+		@return path the symbolic link refers to, Nil if the path is not a symbolic link
 		~#
-		function : Location(n : System.String) ~ Bool {
+		function : Location(n : System.String) ~ System.String {
 			SYM_LINK_LOC;
 		}
 
@@ -12641,9 +12648,11 @@ bundle System.IO.Net {
 		behaviour, not something a socket option can turn off -- seven candidate fixes
 		were measured and none worked (`docs/windows_loopback_sockets.md`).
 
-		This reads and discards anything still arriving until the peer closes, which is
-		the point of the call, and then closes. Use it wherever a server writes a
-		response and is finished with the connection:
+		This first ends its own sending, so the peer reads what was written and then
+		the end of the stream: a peer that reads until the connection ends is not
+		kept waiting. It then reads and discards anything still arriving until the
+		peer closes, and closes. Use it wherever a server writes a response and is
+		finished with the connection:
 
 		Bounded on both sides, so it cannot park a thread: it gives up after
 		`timeout_ms` of silence, and after 16 reads of a peer that keeps sending
@@ -12662,6 +12671,12 @@ bundle System.IO.Net {
 		~#
 		method : public : CloseGracefully(timeout_ms : Int := 1000) ~ Nil {
 			if(IsOpen()) {
+				# This side has written all it will: say so before waiting for the
+				# peer. A peer that reads until the connection ends (an HTTP/1.0
+				# client, or any reader of a response that is not framed) is waiting
+				# for exactly this, and without it each side waited on the other
+				# until timeout_ms ran out, on every such connection.
+				ShutdownSend();
 				SetRecvTimeout(timeout_ms);
 
 				# ReadBuffer returns 0 once the peer closes and -1 when the receive
@@ -12676,6 +12691,11 @@ bundle System.IO.Net {
 			};
 
 			Close();
+		}
+
+		# ends this side's sending (FIN) and leaves the socket open for reading
+		method : private : ShutdownSend() ~ Nil {
+			SOCK_TCP_SHUTDOWN_SEND;
 		}
 
 		#~
@@ -13123,7 +13143,9 @@ bundle System.IO.Net {
 		zero bytes rather than a short read. The remedy is to not be the side that
 		closes first (`docs/windows_loopback_sockets.md`).
 
-		Reads and discards anything still arriving until the peer closes, then closes.
+		Ends its own sending first (a TLS close_notify, then the transport's), so a
+		peer that reads until the connection ends is not kept waiting; then reads and
+		discards anything still arriving until the peer closes, then closes.
 		Bounded on both sides so it cannot park a thread: `timeout_ms` of silence, or
 		16 reads of a peer that keeps sending instead of hanging up.
 
@@ -13131,6 +13153,9 @@ bundle System.IO.Net {
 		~#
 		method : public : CloseGracefully(timeout_ms : Int := 1000) ~ Nil {
 			if(IsOpen()) {
+				# as TCPSocket->CloseGracefully: tell the peer nothing more follows
+				# before waiting for it to close
+				ShutdownSend();
 				SetRecvTimeout(timeout_ms);
 
 				drain := Byte->New[4096];
@@ -13141,6 +13166,11 @@ bundle System.IO.Net {
 			};
 
 			Close();
+		}
+
+		# ends this side's sending (close_notify, then FIN) and leaves the socket open for reading
+		method : private : ShutdownSend() ~ Nil {
+			SOCK_TCP_SHUTDOWN_SEND;
 		}
 	}
 

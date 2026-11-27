@@ -105,9 +105,9 @@ void Loader::LoadImage()
 
   int i;
 
-  // obr --mcp / --mcp-http (vm_options.h set OBJECK_MCP): the transport goes in front of the program's
-  // arguments, for the McpMain the compiler wrote (or the program did) to read. Without the flag the
-  // variable is absent and nothing here runs beyond this one lookup.
+  // obr --mcp / --mcp-http (ApplyVmOptions gave this process's request to SetMcpLaunch): the transport
+  // goes in front of the program's arguments, for the McpMain the compiler wrote (or the program did)
+  // to read. Without the flag there is no request and nothing here runs beyond this one lookup.
   const bool mcp_launch = ReadMcpLaunch();
 
   //
@@ -120,6 +120,7 @@ void Loader::LoadImage()
   program->SetFloatStrings(float_strings, num_float_strings);
   for(i = 0; i < num_float_strings; ++i) {
     const int float_string_length = ReadCount();
+    verify.float_lengths.push_back(float_string_length);
     FLOAT_VALUE* float_string = float_strings[i] = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -144,6 +145,7 @@ void Loader::LoadImage()
   program->SetBoolStrings(bool_strings, num_bool_strings);
   for(i = 0; i < num_bool_strings; ++i) {
     const int bool_string_length = ReadCount();
+    verify.bool_lengths.push_back(bool_string_length);
     bool* bool_string = bool_strings[i] = new bool[bool_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -169,6 +171,7 @@ void Loader::LoadImage()
   program->SetByteStrings(byte_strings, num_byte_strings);
   for(i = 0; i < num_byte_strings; ++i) {
     const int byte_string_length = ReadCount();
+    verify.byte_lengths.push_back(byte_string_length);
     char* byte_string = byte_strings[i] = new char[byte_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -193,6 +196,7 @@ void Loader::LoadImage()
   program->SetIntStrings(int_strings, num_int_strings);
   for(i = 0; i < num_int_strings; ++i) {
     const int int_string_length = ReadCount();
+    verify.int_lengths.push_back(int_string_length);
     INT64_VALUE* int_string = int_strings[i] = new INT64_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -220,6 +224,7 @@ void Loader::LoadImage()
   program->SetCharStrings(char_strings, num_all_char_strings);
   for(i = 0; i < num_char_strings; ++i) {
     const std::wstring value = ReadString();
+    verify.char_lengths.push_back((long)value.size());
     wchar_t* char_string = char_strings[i] = new wchar_t[value.size() + 1];
     // copy string
 #ifdef _WIN32
@@ -572,23 +577,31 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
   return dclrs;
 }
 
-// The OBJECK_MCP launch request, "stdio" or "http <host> <port>": adds its words to the program's
-// arguments, first. True when there was one.
+// What 'obr --mcp' / '--mcp-http' asked of THIS process: "stdio" or "http <host> <port>", empty when
+// neither flag was given. ApplyVmOptions sets it (vm_options.h) and the loader reads it once.
+//
+// It used to travel in the environment variable OBJECK_MCP, which every process the program starts
+// inherits: an 'obr helper.obe' run by a served program (Runtime->Command, CommandOutput) read the
+// parent's request, put "stdio" in front of its own arguments and looked for a McpMain instead of
+// running its Main. A request is one invocation's, so it stays in the process that parsed the flag;
+// the variable is no longer written or read.
+static std::wstring& McpLaunchRequest()
+{
+  static std::wstring request;
+  return request;
+}
+
+namespace Runtime {
+  void SetMcpLaunch(const std::wstring& request)
+  {
+    McpLaunchRequest() = request;
+  }
+}
+
+// The launch request (above): adds its words to the program's arguments, first. True when there was one.
 bool Loader::ReadMcpLaunch()
 {
-  std::wstring request;
-#ifdef _WIN32
-  wchar_t buffer[512];
-  size_t length = 0;
-  if(_wgetenv_s(&length, buffer, 512, L"OBJECK_MCP") == 0 && length > 1) {
-    request = buffer;
-  }
-#else
-  const char* value = getenv("OBJECK_MCP");
-  if(value && *value) {
-    request = BytesToUnicode(value);
-  }
-#endif
+  const std::wstring& request = McpLaunchRequest();
   if(request.empty()) {
     return false;
   }
@@ -607,17 +620,53 @@ bool Loader::ReadMcpLaunch()
   return true;
 }
 
+// True when 'entry' is the name the compiler gives the entry it writes for 'class_name':
+// "McpMain_" and the class's full name with every character that is not a letter or a digit
+// written as '_' (Parser::GenerateMcpTools). A character outside ASCII may stand as itself or as
+// '_': which of the two the compiler wrote depended on its locale.
+static bool IsGeneratedMcpEntryName(const std::wstring& entry, const std::wstring& class_name)
+{
+  const std::wstring prefix = L"McpMain_";
+  if(entry.size() != prefix.size() + class_name.size() || entry.compare(0, prefix.size(), prefix) != 0) {
+    return false;
+  }
+  for(size_t i = 0; i < class_name.size(); ++i) {
+    const wchar_t have = entry[prefix.size() + i];
+    const wchar_t want = class_name[i];
+    const bool ascii_alnum = (want >= L'0' && want <= L'9') || (want >= L'A' && want <= L'Z') || (want >= L'a' && want <= L'z');
+    if(have != want && (ascii_alnum || have != L'_')) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Starts the program at its McpMain(args : String[]) instead of its Main: the function the compiler writes
 // into a class that has an '@tool', '@resource' or '@prompt' function, or one the program defines itself
 // (which wins: it can register several classes). Exactly one must exist, because a second would be a
 // second server.
+//
+// An entry is taken only when it is what the initialization code can call: a method with a body (not a
+// virtual declaration) that takes the argument array and returns Nil. The name alone used to decide, so
+// a virtual 'McpMain' with no body, or one that returns a value, was started. Whether it is a function or
+// an instance method is not in a program file (a method record carries no such flag), so that part is
+// the compiler's: obc refuses a McpMain(args : String[]) that is not 'function ... ~ Nil'
+// (Parser::ParseMethod). A file not written by obc can still name an instance method here; it is started
+// without an instance and its first use of one is the VM's Nil-dereference error.
+//
+// A generated entry is told from a function the program wrote by all the compiler gives it: the name
+// "McpMain_<its own class>" and the McpTools(McpService) the compiler writes beside it. The prefix
+// "McpMain_" alone used to decide, so a program's own 'McpMain_Test(args : String[])' counted as a
+// second server and the program was refused.
 void Loader::SelectMcpEntry()
 {
   StackClass** classes = program->GetClasses();
   const int count = (int)program->GetClassNumber();
   std::vector<std::pair<int, int> > own;        // a function the program wrote: McpMain
   std::vector<std::pair<int, int> > generated;  // the compiler's: McpMain_<class>
-  std::vector<std::wstring> where;
+  std::vector<std::wstring> own_where;
+  std::vector<std::wstring> generated_where;
+  std::vector<std::wstring> unusable;           // named as an entry, but not one: where and why
   const std::wstring params = L":o.System.String*,";
   for(int i = 0; i < count; ++i) {
     StackClass* cls = classes[i];
@@ -625,9 +674,21 @@ void Loader::SelectMcpEntry()
       continue;
     }
     StackMethod** methods = cls->GetMethods();
+    const std::wstring tools_name = cls->GetName() + L":McpTools:o.API.MCP.McpService,";
+    bool has_tools = false;
+    for(int j = 0; j < cls->GetMethodCount(); ++j) {
+      if(methods[j] && methods[j]->GetName() == tools_name) {
+        has_tools = true;
+        break;
+      }
+    }
     for(int j = 0; j < cls->GetMethodCount(); ++j) {
       StackMethod* method = methods[j];
-      const std::wstring& name = method ? method->GetName() : std::wstring();
+      // a hole in the method table (never from a well-formed .obe) has no name or id to offer
+      if(!method) {
+        continue;
+      }
+      const std::wstring& name = method->GetName();
       // "Class:McpMain:o.System.String*," and "Class:McpMain_Class:o.System.String*,", a function taking the argument array
       if(name.size() <= params.size() || name.compare(name.size() - params.size(), params.size(), params) != 0) {
         continue;
@@ -637,23 +698,48 @@ void Loader::SelectMcpEntry()
         continue;
       }
       const std::wstring entry = name.substr(colon + 1, name.size() - params.size() - colon - 1);
-      if(entry == L"McpMain") {
-        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
-        where.push_back(cls->GetName());
+      const bool is_own = entry == L"McpMain";
+      if(!is_own && !(has_tools && IsGeneratedMcpEntryName(entry, cls->GetName()))) {
+        continue;
       }
-      else if(entry.compare(0, 8, L"McpMain_") == 0) {
+      const wchar_t* why = nullptr;
+      if(method->IsVirtual() || method->GetInstructionCount() < 1) {
+        why = L"has no body";
+      }
+      else if(method->GetParamCount() != 1) {
+        why = L"does not take the one argument array";
+      }
+      else if(method->GetReturnName() != L"n") {
+        why = L"returns a value";
+      }
+      if(why) {
+        unusable.push_back(cls->GetName() + L" (it " + why + L")");
+      }
+      else if(is_own) {
+        own.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
+        own_where.push_back(cls->GetName());
+      }
+      else {
         generated.push_back(std::make_pair((int)cls->GetId(), (int)method->GetId()));
-        where.push_back(cls->GetName());
+        generated_where.push_back(cls->GetName());
       }
     }
   }
 
   // a McpMain the program wrote wins over the generated ones: it can register several classes
   std::vector<std::pair<int, int> >& found = own.empty() ? generated : own;
+  const std::vector<std::wstring>& where = own.empty() ? generated_where : own_where;
   if(found.empty()) {
     error << L"obr --mcp: " << filename << L" has nothing to serve." << std::endl
           << L"	Mark a function with '@tool', '@resource' or '@prompt' in its doc comment (and link -lib mcp)," << std::endl
           << L"	or write 'function : McpMain(args : String[]) ~ Nil' that registers and serves." << std::endl;
+    if(!unusable.empty()) {
+      error << L"	Not started, because it is not that function: the McpMain of";
+      for(size_t i = 0; i < unusable.size(); ++i) {
+        error << (i ? L"," : L"") << L" " << unusable[i];
+      }
+      error << std::endl;
+    }
     LoadFailed();
   }
   if(found.size() > 1) {
@@ -667,6 +753,43 @@ void Loader::SelectMcpEntry()
   }
   start_class_id = found[0].first;
   start_method_id = found[0].second;
+}
+
+// The parameter words a method's name spells, "Class:Method:o.System.String*,i,f,":
+// one for each comma-ended type after the second colon, two for a function type
+// ("m.(i,)~i,", whose own parameters are inside its parentheses). -1 when the name
+// has no signature part or an unfinished one (StackMethod's constructor refuses
+// such a name).
+static long SignatureWords(const std::wstring& name)
+{
+  const size_t first = name.find(L':');
+  const size_t second = first == std::wstring::npos ? first : name.find(L':', first + 1);
+  // each type ends with a comma, so a signature that does not is not one
+  if(second == std::wstring::npos || (second + 1 < name.size() && name.back() != L',')) {
+    return -1;
+  }
+
+  long words = 0;
+  long depth = 0;
+  bool at_start = true;
+  for(size_t i = second + 1; i < name.size(); ++i) {
+    const wchar_t c = name[i];
+    if(depth == 0 && at_start) {
+      words += (c == L'm' && i + 1 < name.size() && name[i + 1] == L'.') ? 2 : 1;
+      at_start = false;
+    }
+    if(c == L'(') {
+      ++depth;
+    }
+    else if(c == L')') {
+      --depth;
+    }
+    else if(c == L',' && depth == 0) {
+      at_start = true;
+    }
+  }
+
+  return words;
 }
 
 void Loader::LoadMethods(StackClass* cls, bool is_debug)
@@ -722,6 +845,24 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       if(params < 0 || params > declared_words) {
         DeleteDeclarations(dclrs, num_dclrs);
         error << L">>> Invalid bytecode: parameter count out of range <<<" << std::endl;
+        LoadFailed();
+      }
+      // The frame holds a word for each declared one: the collector walks a frame by
+      // the method's declarations, whatever the instructions use (found by the
+      // mutation campaign: a frame size changed from 40 to 8 and the collector read
+      // four words past the frame as locals).
+      if((INT64_VALUE)mem_size < (INT64_VALUE)declared_words * (INT64_VALUE)sizeof(size_t)) {
+        DeleteDeclarations(dclrs, num_dclrs);
+        error << L">>> Invalid bytecode: " << name << L": frame size below the method's declarations <<<" << std::endl;
+        LoadFailed();
+      }
+      // The count is also the words the method's name spells: every caller pushes
+      // them by it, and a virtual call's override is found by the name's ending
+      // alone, so two methods that end alike must take the same words.
+      const long signature_words = SignatureWords(name);
+      if(signature_words >= 0 && signature_words != params) {
+        DeleteDeclarations(dclrs, num_dclrs);
+        error << L">>> Invalid bytecode: " << name << L": parameter count does not match the method's signature <<<" << std::endl;
         LoadFailed();
       }
 
@@ -892,6 +1033,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
          !IsTrapId(mthd_instrs[i - 1].GetInt64Operand())) {
         VerifyFailed(cls, method, ip, L"trap without a known trap id");
       }
+      CheckLiteralCopy(method, mthd_instrs, ip, mthd_instrs[i - 1].GetInt64Operand(), num_args);
       mthd_instrs[i] = StackInstr(line_num, (InstructionType)type, num_args);
     }
       break;
@@ -1079,6 +1221,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case DYN_MTHD_CALL: {
       const long num_params = ReadInt();
       const long rtrn_type = ReadInt();
+      // the words the call pops, and what it leaves: a MemoryType
+      if(num_params < 0 || rtrn_type < NIL_TYPE || rtrn_type > INT_ARY_TYPE) {
+        VerifyFailed(cls, method, ip, L"function call with an unknown return type or a negative parameter count");
+      }
       mthd_instrs[i] = StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type);
     }
       break;
@@ -1113,6 +1259,11 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       const long label = CheckTarget(method, ip, ReadInt(), count);
       const long cond = ReadInt();
       mthd_instrs[i] = StackInstr(line_num, JMP, label, cond);
+      // unconditional, on false or on true: the interpreter and the JIT each read
+      // any other value their own way
+      if(cond < -1 || cond > 1) {
+        VerifyFailed(cls, method, ip, L"jump with an unknown condition");
+      }
     }
       break;
 
@@ -1287,6 +1438,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
   }
 
+  CheckParameterStores(method, mthd_instrs, count);
+
   // Control must not run past the last instruction: the interpreter would read
   // the word after the array.
   if(count > 0) {
@@ -1316,7 +1469,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 // LAST_TRAP would be refused here, so tools/cicd/check_trap_handlers.py fails
 // when LAST_TRAP is not the enum's last enumerator.
 static const INT64_VALUE FIRST_TRAP = instructions::LOAD_CLS_INST_ID;
-static const INT64_VALUE LAST_TRAP = instructions::SOCK_TCP_SET_DEADLINE;
+static const INT64_VALUE LAST_TRAP = instructions::SOCK_TCP_SHUTDOWN_SEND;
 
 // The ids a program may push ahead of TRAP or TRAP_RTRN: the Traps enum, and the
 // instruction ids the compiler writes as trap ids (check_trap_handlers.py keeps
@@ -1413,12 +1566,164 @@ long Loader::CheckClassId(StackMethod* mthd, long ip, long id)
   return id;
 }
 
+// A literal array is a new array filled from one of the constant tables by a
+// trap, which copies as many elements as the array holds from the table entry
+// its argument names, with no bound on either (TrapProcessor::CpyCharStrAry and
+// its kin). The compiler writes one shape, checked whole here: the dimensions
+// as literals, the allocation, the entry's index, the trap id, the trap. So the
+// entry exists and holds at least the elements the array asks for. (Found by
+// the mutation campaign: one changed literal read past a string's end, or
+// indexed the table of strings far outside it.)
+void Loader::CheckLiteralCopy(StackMethod* mthd, StackInstr* instrs, long ip, INT64_VALUE trap_id, long num_args)
+{
+  const std::vector<long>* lengths = nullptr;
+  InstructionType allocation = NEW_INT_ARY;
+  switch(trap_id) {
+  case instructions::CPY_CHAR_STR_ARY:
+    lengths = &verify.char_lengths;
+    allocation = NEW_CHAR_ARY;
+    break;
+
+  case instructions::CPY_INT_STR_ARY:
+    lengths = &verify.int_lengths;
+    allocation = NEW_INT_ARY;
+    break;
+
+  case instructions::CPY_BOOL_STR_ARY:
+    lengths = &verify.bool_lengths;
+    allocation = NEW_BYTE_ARY;
+    break;
+
+  case instructions::CPY_BYTE_STR_ARY:
+    lengths = &verify.byte_lengths;
+    allocation = NEW_BYTE_ARY;
+    break;
+
+  case instructions::CPY_FLOAT_STR_ARY:
+    lengths = &verify.float_lengths;
+    allocation = NEW_FLOAT_ARY;
+    break;
+
+  case instructions::CPY_CHAR_STR_ARYS:
+    // an array of strings: its elements are on the stack under the dimensions,
+    // one for each word the trap takes beyond the array and its own id
+    allocation = NEW_OBJ_ARY;
+    break;
+
+  default:
+    return;
+  }
+
+  // instrs[ip - 1] is the trap id; the table index (none for an array of strings)
+  // and the allocation stand before it
+  long at = ip - 2;
+  INT64_VALUE index = 0;
+  if(lengths) {
+    if(num_args != 3 || at < 0 || instrs[at].GetType() != LOAD_INT_LIT) {
+      VerifyFailed(nullptr, mthd, ip, L"literal copy without a literal's index");
+    }
+    index = instrs[at].GetInt64Operand();
+    if(index < 0 || index >= (INT64_VALUE)lengths->size()) {
+      VerifyFailed(nullptr, mthd, ip, L"literal copy from an index outside the constant table");
+    }
+    --at;
+  }
+  if(at < 0 || instrs[at].GetType() != allocation) {
+    VerifyFailed(nullptr, mthd, ip, L"literal copy without its array allocation");
+  }
+  const long dimensions = instrs[at].GetOperand();
+  if(dimensions < 1 || dimensions > at) {
+    VerifyFailed(nullptr, mthd, ip, L"literal copy without its array dimensions");
+  }
+  // the elements the array holds: the product of its dimensions
+  INT64_VALUE elements = 1;
+  for(long d = 1; d <= dimensions; ++d) {
+    const StackInstr& size = instrs[at - d];
+    if(size.GetType() != LOAD_INT_LIT || size.GetInt64Operand() < 0 || size.GetInt64Operand() > 0x7fffffff) {
+      VerifyFailed(nullptr, mthd, ip, L"literal copy without its array dimensions");
+    }
+    elements *= size.GetInt64Operand();
+    if(elements > 0x7fffffff) {
+      VerifyFailed(nullptr, mthd, ip, L"literal copy larger than its literal");
+    }
+  }
+  if(lengths) {
+    if(elements > (*lengths)[(size_t)index]) {
+      VerifyFailed(nullptr, mthd, ip, L"literal copy larger than its literal");
+    }
+  }
+  else if(elements != num_args - 2) {
+    VerifyFailed(nullptr, mthd, ip, L"string array literal whose size is not its element count");
+  }
+}
+
+// A method begins by storing its parameters, one instruction for each (a function
+// value's two words go with one STOR_FUNC_VAR). The JIT compiles that prologue
+// without looking at what the instructions are (JitAmd64::ProcessParameters), so
+// a method that begins another way was compiled into code that read registers it
+// had not loaded (found by the mutation campaign: a parameter count changed, or a
+// first store dropped).
+void Loader::CheckParameterStores(StackMethod* mthd, StackInstr* instrs, long count)
+{
+  if(count < 1) {
+    return;
+  }
+  const long params = mthd->GetParamCount();
+  long words = 0;
+  long ip = 0;
+  while(words < params) {
+    if(ip >= count) {
+      VerifyFailed(nullptr, mthd, ip - 1, L"the method does not begin by storing its parameters");
+    }
+    const StackInstr& store = instrs[ip];
+    switch(store.GetType()) {
+    case STOR_LOCL_INT_VAR:
+    case COPY_LOCL_INT_VAR:
+      ++words;
+      break;
+
+    case STOR_FLOAT_VAR:
+    case COPY_FLOAT_VAR:
+      if(store.GetOperand2() != LOCL) {
+        VerifyFailed(nullptr, mthd, ip, L"the method does not begin by storing its parameters");
+      }
+      ++words;
+      break;
+
+    case STOR_FUNC_VAR:
+      if(store.GetOperand2() != LOCL) {
+        VerifyFailed(nullptr, mthd, ip, L"the method does not begin by storing its parameters");
+      }
+      words += 2;
+      break;
+
+    default:
+      VerifyFailed(nullptr, mthd, ip, L"the method does not begin by storing its parameters");
+    }
+    ++ip;
+  }
+  if(words != params) {
+    VerifyFailed(nullptr, mthd, ip - 1, L"the method does not begin by storing its parameters");
+  }
+}
+
 long Loader::CheckTarget(StackMethod* mthd, long ip, long target, long count)
 {
   if(target < 0 || target >= count) {
     VerifyFailed(nullptr, mthd, ip, L"jump target outside the method");
   }
   return target;
+}
+
+void Loader::CheckDeclaredSize(StackClass* cls, StackDclr** dclrs, long count, INT64_VALUE bytes, const wchar_t* why)
+{
+  INT64_VALUE words = 0;
+  for(long i = 0; i < count; ++i) {
+    words += dclrs[i]->type == FUNC_PARM ? 2 : 1;
+  }
+  if(bytes < 0 || bytes < words * (INT64_VALUE)sizeof(size_t)) {
+    VerifyFailed(cls, nullptr, -1, why);
+  }
 }
 
 // The checks that need the whole program, run once every class has loaded;
@@ -1448,6 +1753,14 @@ void Loader::Verify()
     if(hierarchy[i] < -1 || hierarchy[i] >= num_classes) {
       VerifyFailed(cls, nullptr, -1, L"parent class id out of range");
     }
+    // An object is allocated with the size its class record gives, and the
+    // collector walks it by the class's instance declarations (a function value
+    // is two words): a size below them had it read past the object (found by the
+    // mutation campaign: an instance size changed to 0, or to -1).
+    CheckDeclaredSize(cls, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(),
+                      cls->GetInstanceMemorySize(), L"instance size below the class's instance declarations");
+    CheckDeclaredSize(cls, cls->GetClassDeclarations(), cls->GetNumberClassDeclarations(),
+                      class_spaces[i], L"class size below the class's declarations");
     if(interfaces[i]) {
       // -1 marks an interface that was not linked in
       for(long* inf = interfaces[i]; *inf != INF_ENDING; ++inf) {
@@ -1468,9 +1781,20 @@ void Loader::Verify()
   if(!start_cls || !start_cls->GetMethod(start_method_id)) {
     VerifyFailed(nullptr, nullptr, -1, L"the start method does not exist");
   }
+  // the initialization code passes it the argument array and nothing else
+  if(start_cls->GetMethod(start_method_id)->GetParamCount() != 1) {
+    VerifyFailed(nullptr, start_cls->GetMethod(start_method_id), -1, L"the start method does not take one parameter");
+  }
   StackClass* string_cls = program->GetClass(string_cls_id);
   if(!arguments.empty() && (!string_cls || string_cls->GetMethodCount() < 3)) {
     VerifyFailed(nullptr, nullptr, -1, L"the String class id is out of range");
+  }
+  // The VM makes its own strings (an error's text, a system property, an
+  // argument) as instances of this class, and fills them as a System.String is
+  // laid out: an id that names another class had it write past a smaller object
+  // (found by the mutation campaign: one byte of the header changed).
+  if(!string_cls || string_cls->GetName() != L"System.String") {
+    VerifyFailed(nullptr, nullptr, -1, L"the String class id does not name System.String");
   }
 
   // The operand stack, per method. Every instruction above checked its own operands;
@@ -1481,6 +1805,7 @@ void Loader::Verify()
   // pops what was never pushed reads below the operand stack (found by the loader
   // fuzzer: a STOR_FUNC_VAR, a conditional JMP and a two-index array load, each
   // with the one operand changed).
+  VerifyContext context;
   for(long i = 0; i < num_classes; ++i) {
     StackClass* cls = classes[i];
     for(long j = 0; j < cls->GetMethodCount(); ++j) {
@@ -1489,16 +1814,39 @@ void Loader::Verify()
       if(!mthd || mthd->GetInstructionCount() < 1) {
         continue;
       }
-      RefMap* map = RefMap::Build(program, mthd, true);
-      // only a failure that makes the method unsafe refuses the program; one that only
-      // means the map cannot be built (an instruction it does not model) is not a verdict
-      const bool refuse = !map->ok && map->refuse;
-      const std::wstring why = map->error;
-      const long where = map->error_ip;
-      delete map;
+      std::wstring why;
+      long where = -1;
+      const bool refuse = RefMap::Verify(program, mthd, &context, why, where);
       if(refuse) {
         VerifyFailed(cls, mthd, where, why.c_str());
       }
+    }
+  }
+
+  // A method that reads its instance is called on an instance of its class. Which
+  // methods do is known now: one that only hands the instance on reads it when
+  // the method it hands it to does.
+  for(bool changed = true; changed; ) {
+    changed = false;
+    for(std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator at = context.methods.begin(); at != context.methods.end(); ++at) {
+      if(at->second.reads_self) {
+        continue;
+      }
+      for(size_t i = 0; i < at->second.hands_self_to.size(); ++i) {
+        std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator to = context.methods.find(at->second.hands_self_to[i]);
+        if(to != context.methods.end() && to->second.reads_self) {
+          at->second.reads_self = true;
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+  for(size_t i = 0; i < context.receiver_checks.size(); ++i) {
+    const VerifyContext::ReceiverCheck& check = context.receiver_checks[i];
+    std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator callee = context.methods.find(check.callee);
+    if(callee != context.methods.end() && callee->second.reads_self) {
+      VerifyFailed(nullptr, check.caller, check.ip, L"a method called on an object of another class");
     }
   }
 }

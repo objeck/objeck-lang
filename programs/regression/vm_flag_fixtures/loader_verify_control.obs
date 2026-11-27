@@ -1,0 +1,130 @@
+#~
+The control program for run_vm_flag_tests.py's section on the loader's
+verification of changed images (check_loader_refuses_mutated). It loads and
+runs as written; the test then changes one instruction, operand or record
+field at a time and requires the loader to refuse each result.
+
+Its code is written to offer each shape the cases look for: instance and
+class variables, a virtual call, a constructor that calls its parent, Int and
+Float arithmetic, array elements and sizes, literal arrays and strings,
+function values (one that captures, two of different types) and a call through
+one, a Byte[], and two parameters of unrelated library classes. Keep a construct when editing: the
+test fails with "the control program has no such instruction" if one goes.
+~#
+
+class Shape {
+	@id : Int;
+	@name : String;
+	@scale : Float;
+	@values : Int[];
+	@count : static : Int;
+
+	New(id : Int, name : String) {
+		@id := id;
+		@name := name;
+		@scale := 1.5;
+		@values := Int->New[4];
+		@count += 1;
+	}
+
+	method : virtual : public : Area() ~ Float;
+
+	method : public : GetId() ~ Int {
+		return @id;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : Scale(f : Float) ~ Float {
+		return @scale * f;
+	}
+
+	method : public : Fill(v : Int) ~ Int {
+		each(i : @values->Size()) {
+			@values[i] := v + i;
+		};
+		return @values[3];
+	}
+
+	function : Count() ~ Int {
+		return @count;
+	}
+}
+
+class Square from Shape {
+	@side : Float;
+
+	New(id : Int, side : Float) {
+		Parent(id, "square");
+		@side := side;
+	}
+
+	method : public : Area() ~ Float {
+		return @side * @side;
+	}
+}
+
+class LoaderVerifyControl {
+	function : AddThree() ~ (Int) ~ Int {
+		return \(Int) ~ Int : (a) => a + 3;
+	}
+
+	function : AddN(n : Int) ~ (Int) ~ Int {
+		return \(Int) ~ Int : (a) => a + n;
+	}
+
+	function : Join() ~ (Int, Int) ~ Int {
+		return \(Int, Int) ~ Int : (a, b) => a + b;
+	}
+
+	function : Twice(f : (Int) ~ Int, v : Int) ~ Int {
+		return f(f(v));
+	}
+
+	function : Low(bytes : Byte[]) ~ Int {
+		return bytes[0];
+	}
+
+	function : Pair(text : System.String, ref : System.IntRef) ~ Int {
+		return text->Size() + ref->Get();
+	}
+
+	function : Sum(values : Int[]) ~ Int {
+		sum := 0;
+		each(i : values->Size()) {
+			sum += values[i];
+		};
+		return sum;
+	}
+
+	function : Half(value : Float) ~ Float {
+		return value / 2.0;
+	}
+
+	function : Mean(a : Int, b : Int) ~ Float {
+		return (a + b)->As(Float) / 2.0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		square := Square->New(7, 2.0);
+		shape : Shape := square;
+		area := shape->Area();
+		ints := [1, 2, 3, 4];
+		floats := [1.5, 2.5];
+		add := AddThree();
+		add_n := AddN(0);
+		join := Join();
+		bytes := Byte->New[2];
+		# every term is 0
+		extra := Twice(add_n, 0) + join(0, 0) + Low(bytes) + Pair("", IntRef->New(0));
+		# 10 + 7 + 7 + 5 + 1 + 6 = 36
+		total := Sum(ints) + Twice(add, 1) + square->GetId() + square->Fill(2) + Shape->Count() + square->GetName()->Size() + extra;
+		# 4.0, 3.0, 2.0 and 20.0
+		scaled := square->Scale(2.0);
+		half := Half(floats[0] + floats[1]);
+		mean := Mean(total, 4);
+		"loaded {$total} {$area} {$scaled} {$half} {$mean}"->PrintLine();
+	}
+}

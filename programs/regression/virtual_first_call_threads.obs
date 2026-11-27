@@ -1,0 +1,862 @@
+#~
+# Threads making the first virtual calls on a class at the same moment
+#
+# A class keeps, per virtual declaration, the override a receiver of that class reaches,
+# and fills the table in as calls resolve. Every thread making a virtual call read the
+# table and the first call through each declaration added to it, with no lock. An insert
+# that grew the table while another thread walked it sent that thread through freed
+# memory, and two inserts at once corrupted the table and the C heap: SIGSEGV in
+# StackClass::GetVirtualMethod or AddVirutalMethod, or glibc's "malloc(): unaligned
+# tcache chunk detected". Eight threads that each made their first agent run together
+# crashed about one run in ten under OBJECK_JIT_THRESHOLD=1; once any thread had made
+# the calls alone, the table was complete and nothing went wrong.
+#
+# Here 16 threads make the first calls of 10 virtual methods on each of 48 classes, one
+# class at a time: the main thread opens a gate per class, so the threads all reach a
+# class whose table is still empty together. That is 48 rounds of 10 concurrent inserts
+# into one table. Each thread adds up what the calls return, so a call that reached the
+# wrong override shows as a wrong sum.
+~#
+
+use System.Concurrency;
+
+class Unit {
+	New() {}
+
+	method : virtual : public : M0() ~ Int;
+	method : virtual : public : M1() ~ Int;
+	method : virtual : public : M2() ~ Int;
+	method : virtual : public : M3() ~ Int;
+	method : virtual : public : M4() ~ Int;
+	method : virtual : public : M5() ~ Int;
+	method : virtual : public : M6() ~ Int;
+	method : virtual : public : M7() ~ Int;
+	method : virtual : public : M8() ~ Int;
+	method : virtual : public : M9() ~ Int;
+}
+
+class U0 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 0; }
+	method : public : M1() ~ Int { return 1; }
+	method : public : M2() ~ Int { return 2; }
+	method : public : M3() ~ Int { return 3; }
+	method : public : M4() ~ Int { return 4; }
+	method : public : M5() ~ Int { return 5; }
+	method : public : M6() ~ Int { return 6; }
+	method : public : M7() ~ Int { return 7; }
+	method : public : M8() ~ Int { return 8; }
+	method : public : M9() ~ Int { return 9; }
+}
+
+class U1 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 100; }
+	method : public : M1() ~ Int { return 101; }
+	method : public : M2() ~ Int { return 102; }
+	method : public : M3() ~ Int { return 103; }
+	method : public : M4() ~ Int { return 104; }
+	method : public : M5() ~ Int { return 105; }
+	method : public : M6() ~ Int { return 106; }
+	method : public : M7() ~ Int { return 107; }
+	method : public : M8() ~ Int { return 108; }
+	method : public : M9() ~ Int { return 109; }
+}
+
+class U2 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 200; }
+	method : public : M1() ~ Int { return 201; }
+	method : public : M2() ~ Int { return 202; }
+	method : public : M3() ~ Int { return 203; }
+	method : public : M4() ~ Int { return 204; }
+	method : public : M5() ~ Int { return 205; }
+	method : public : M6() ~ Int { return 206; }
+	method : public : M7() ~ Int { return 207; }
+	method : public : M8() ~ Int { return 208; }
+	method : public : M9() ~ Int { return 209; }
+}
+
+class U3 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 300; }
+	method : public : M1() ~ Int { return 301; }
+	method : public : M2() ~ Int { return 302; }
+	method : public : M3() ~ Int { return 303; }
+	method : public : M4() ~ Int { return 304; }
+	method : public : M5() ~ Int { return 305; }
+	method : public : M6() ~ Int { return 306; }
+	method : public : M7() ~ Int { return 307; }
+	method : public : M8() ~ Int { return 308; }
+	method : public : M9() ~ Int { return 309; }
+}
+
+class U4 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 400; }
+	method : public : M1() ~ Int { return 401; }
+	method : public : M2() ~ Int { return 402; }
+	method : public : M3() ~ Int { return 403; }
+	method : public : M4() ~ Int { return 404; }
+	method : public : M5() ~ Int { return 405; }
+	method : public : M6() ~ Int { return 406; }
+	method : public : M7() ~ Int { return 407; }
+	method : public : M8() ~ Int { return 408; }
+	method : public : M9() ~ Int { return 409; }
+}
+
+class U5 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 500; }
+	method : public : M1() ~ Int { return 501; }
+	method : public : M2() ~ Int { return 502; }
+	method : public : M3() ~ Int { return 503; }
+	method : public : M4() ~ Int { return 504; }
+	method : public : M5() ~ Int { return 505; }
+	method : public : M6() ~ Int { return 506; }
+	method : public : M7() ~ Int { return 507; }
+	method : public : M8() ~ Int { return 508; }
+	method : public : M9() ~ Int { return 509; }
+}
+
+class U6 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 600; }
+	method : public : M1() ~ Int { return 601; }
+	method : public : M2() ~ Int { return 602; }
+	method : public : M3() ~ Int { return 603; }
+	method : public : M4() ~ Int { return 604; }
+	method : public : M5() ~ Int { return 605; }
+	method : public : M6() ~ Int { return 606; }
+	method : public : M7() ~ Int { return 607; }
+	method : public : M8() ~ Int { return 608; }
+	method : public : M9() ~ Int { return 609; }
+}
+
+class U7 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 700; }
+	method : public : M1() ~ Int { return 701; }
+	method : public : M2() ~ Int { return 702; }
+	method : public : M3() ~ Int { return 703; }
+	method : public : M4() ~ Int { return 704; }
+	method : public : M5() ~ Int { return 705; }
+	method : public : M6() ~ Int { return 706; }
+	method : public : M7() ~ Int { return 707; }
+	method : public : M8() ~ Int { return 708; }
+	method : public : M9() ~ Int { return 709; }
+}
+
+class U8 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 800; }
+	method : public : M1() ~ Int { return 801; }
+	method : public : M2() ~ Int { return 802; }
+	method : public : M3() ~ Int { return 803; }
+	method : public : M4() ~ Int { return 804; }
+	method : public : M5() ~ Int { return 805; }
+	method : public : M6() ~ Int { return 806; }
+	method : public : M7() ~ Int { return 807; }
+	method : public : M8() ~ Int { return 808; }
+	method : public : M9() ~ Int { return 809; }
+}
+
+class U9 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 900; }
+	method : public : M1() ~ Int { return 901; }
+	method : public : M2() ~ Int { return 902; }
+	method : public : M3() ~ Int { return 903; }
+	method : public : M4() ~ Int { return 904; }
+	method : public : M5() ~ Int { return 905; }
+	method : public : M6() ~ Int { return 906; }
+	method : public : M7() ~ Int { return 907; }
+	method : public : M8() ~ Int { return 908; }
+	method : public : M9() ~ Int { return 909; }
+}
+
+class U10 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1000; }
+	method : public : M1() ~ Int { return 1001; }
+	method : public : M2() ~ Int { return 1002; }
+	method : public : M3() ~ Int { return 1003; }
+	method : public : M4() ~ Int { return 1004; }
+	method : public : M5() ~ Int { return 1005; }
+	method : public : M6() ~ Int { return 1006; }
+	method : public : M7() ~ Int { return 1007; }
+	method : public : M8() ~ Int { return 1008; }
+	method : public : M9() ~ Int { return 1009; }
+}
+
+class U11 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1100; }
+	method : public : M1() ~ Int { return 1101; }
+	method : public : M2() ~ Int { return 1102; }
+	method : public : M3() ~ Int { return 1103; }
+	method : public : M4() ~ Int { return 1104; }
+	method : public : M5() ~ Int { return 1105; }
+	method : public : M6() ~ Int { return 1106; }
+	method : public : M7() ~ Int { return 1107; }
+	method : public : M8() ~ Int { return 1108; }
+	method : public : M9() ~ Int { return 1109; }
+}
+
+class U12 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1200; }
+	method : public : M1() ~ Int { return 1201; }
+	method : public : M2() ~ Int { return 1202; }
+	method : public : M3() ~ Int { return 1203; }
+	method : public : M4() ~ Int { return 1204; }
+	method : public : M5() ~ Int { return 1205; }
+	method : public : M6() ~ Int { return 1206; }
+	method : public : M7() ~ Int { return 1207; }
+	method : public : M8() ~ Int { return 1208; }
+	method : public : M9() ~ Int { return 1209; }
+}
+
+class U13 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1300; }
+	method : public : M1() ~ Int { return 1301; }
+	method : public : M2() ~ Int { return 1302; }
+	method : public : M3() ~ Int { return 1303; }
+	method : public : M4() ~ Int { return 1304; }
+	method : public : M5() ~ Int { return 1305; }
+	method : public : M6() ~ Int { return 1306; }
+	method : public : M7() ~ Int { return 1307; }
+	method : public : M8() ~ Int { return 1308; }
+	method : public : M9() ~ Int { return 1309; }
+}
+
+class U14 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1400; }
+	method : public : M1() ~ Int { return 1401; }
+	method : public : M2() ~ Int { return 1402; }
+	method : public : M3() ~ Int { return 1403; }
+	method : public : M4() ~ Int { return 1404; }
+	method : public : M5() ~ Int { return 1405; }
+	method : public : M6() ~ Int { return 1406; }
+	method : public : M7() ~ Int { return 1407; }
+	method : public : M8() ~ Int { return 1408; }
+	method : public : M9() ~ Int { return 1409; }
+}
+
+class U15 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1500; }
+	method : public : M1() ~ Int { return 1501; }
+	method : public : M2() ~ Int { return 1502; }
+	method : public : M3() ~ Int { return 1503; }
+	method : public : M4() ~ Int { return 1504; }
+	method : public : M5() ~ Int { return 1505; }
+	method : public : M6() ~ Int { return 1506; }
+	method : public : M7() ~ Int { return 1507; }
+	method : public : M8() ~ Int { return 1508; }
+	method : public : M9() ~ Int { return 1509; }
+}
+
+class U16 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1600; }
+	method : public : M1() ~ Int { return 1601; }
+	method : public : M2() ~ Int { return 1602; }
+	method : public : M3() ~ Int { return 1603; }
+	method : public : M4() ~ Int { return 1604; }
+	method : public : M5() ~ Int { return 1605; }
+	method : public : M6() ~ Int { return 1606; }
+	method : public : M7() ~ Int { return 1607; }
+	method : public : M8() ~ Int { return 1608; }
+	method : public : M9() ~ Int { return 1609; }
+}
+
+class U17 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1700; }
+	method : public : M1() ~ Int { return 1701; }
+	method : public : M2() ~ Int { return 1702; }
+	method : public : M3() ~ Int { return 1703; }
+	method : public : M4() ~ Int { return 1704; }
+	method : public : M5() ~ Int { return 1705; }
+	method : public : M6() ~ Int { return 1706; }
+	method : public : M7() ~ Int { return 1707; }
+	method : public : M8() ~ Int { return 1708; }
+	method : public : M9() ~ Int { return 1709; }
+}
+
+class U18 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1800; }
+	method : public : M1() ~ Int { return 1801; }
+	method : public : M2() ~ Int { return 1802; }
+	method : public : M3() ~ Int { return 1803; }
+	method : public : M4() ~ Int { return 1804; }
+	method : public : M5() ~ Int { return 1805; }
+	method : public : M6() ~ Int { return 1806; }
+	method : public : M7() ~ Int { return 1807; }
+	method : public : M8() ~ Int { return 1808; }
+	method : public : M9() ~ Int { return 1809; }
+}
+
+class U19 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 1900; }
+	method : public : M1() ~ Int { return 1901; }
+	method : public : M2() ~ Int { return 1902; }
+	method : public : M3() ~ Int { return 1903; }
+	method : public : M4() ~ Int { return 1904; }
+	method : public : M5() ~ Int { return 1905; }
+	method : public : M6() ~ Int { return 1906; }
+	method : public : M7() ~ Int { return 1907; }
+	method : public : M8() ~ Int { return 1908; }
+	method : public : M9() ~ Int { return 1909; }
+}
+
+class U20 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2000; }
+	method : public : M1() ~ Int { return 2001; }
+	method : public : M2() ~ Int { return 2002; }
+	method : public : M3() ~ Int { return 2003; }
+	method : public : M4() ~ Int { return 2004; }
+	method : public : M5() ~ Int { return 2005; }
+	method : public : M6() ~ Int { return 2006; }
+	method : public : M7() ~ Int { return 2007; }
+	method : public : M8() ~ Int { return 2008; }
+	method : public : M9() ~ Int { return 2009; }
+}
+
+class U21 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2100; }
+	method : public : M1() ~ Int { return 2101; }
+	method : public : M2() ~ Int { return 2102; }
+	method : public : M3() ~ Int { return 2103; }
+	method : public : M4() ~ Int { return 2104; }
+	method : public : M5() ~ Int { return 2105; }
+	method : public : M6() ~ Int { return 2106; }
+	method : public : M7() ~ Int { return 2107; }
+	method : public : M8() ~ Int { return 2108; }
+	method : public : M9() ~ Int { return 2109; }
+}
+
+class U22 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2200; }
+	method : public : M1() ~ Int { return 2201; }
+	method : public : M2() ~ Int { return 2202; }
+	method : public : M3() ~ Int { return 2203; }
+	method : public : M4() ~ Int { return 2204; }
+	method : public : M5() ~ Int { return 2205; }
+	method : public : M6() ~ Int { return 2206; }
+	method : public : M7() ~ Int { return 2207; }
+	method : public : M8() ~ Int { return 2208; }
+	method : public : M9() ~ Int { return 2209; }
+}
+
+class U23 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2300; }
+	method : public : M1() ~ Int { return 2301; }
+	method : public : M2() ~ Int { return 2302; }
+	method : public : M3() ~ Int { return 2303; }
+	method : public : M4() ~ Int { return 2304; }
+	method : public : M5() ~ Int { return 2305; }
+	method : public : M6() ~ Int { return 2306; }
+	method : public : M7() ~ Int { return 2307; }
+	method : public : M8() ~ Int { return 2308; }
+	method : public : M9() ~ Int { return 2309; }
+}
+
+class U24 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2400; }
+	method : public : M1() ~ Int { return 2401; }
+	method : public : M2() ~ Int { return 2402; }
+	method : public : M3() ~ Int { return 2403; }
+	method : public : M4() ~ Int { return 2404; }
+	method : public : M5() ~ Int { return 2405; }
+	method : public : M6() ~ Int { return 2406; }
+	method : public : M7() ~ Int { return 2407; }
+	method : public : M8() ~ Int { return 2408; }
+	method : public : M9() ~ Int { return 2409; }
+}
+
+class U25 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2500; }
+	method : public : M1() ~ Int { return 2501; }
+	method : public : M2() ~ Int { return 2502; }
+	method : public : M3() ~ Int { return 2503; }
+	method : public : M4() ~ Int { return 2504; }
+	method : public : M5() ~ Int { return 2505; }
+	method : public : M6() ~ Int { return 2506; }
+	method : public : M7() ~ Int { return 2507; }
+	method : public : M8() ~ Int { return 2508; }
+	method : public : M9() ~ Int { return 2509; }
+}
+
+class U26 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2600; }
+	method : public : M1() ~ Int { return 2601; }
+	method : public : M2() ~ Int { return 2602; }
+	method : public : M3() ~ Int { return 2603; }
+	method : public : M4() ~ Int { return 2604; }
+	method : public : M5() ~ Int { return 2605; }
+	method : public : M6() ~ Int { return 2606; }
+	method : public : M7() ~ Int { return 2607; }
+	method : public : M8() ~ Int { return 2608; }
+	method : public : M9() ~ Int { return 2609; }
+}
+
+class U27 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2700; }
+	method : public : M1() ~ Int { return 2701; }
+	method : public : M2() ~ Int { return 2702; }
+	method : public : M3() ~ Int { return 2703; }
+	method : public : M4() ~ Int { return 2704; }
+	method : public : M5() ~ Int { return 2705; }
+	method : public : M6() ~ Int { return 2706; }
+	method : public : M7() ~ Int { return 2707; }
+	method : public : M8() ~ Int { return 2708; }
+	method : public : M9() ~ Int { return 2709; }
+}
+
+class U28 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2800; }
+	method : public : M1() ~ Int { return 2801; }
+	method : public : M2() ~ Int { return 2802; }
+	method : public : M3() ~ Int { return 2803; }
+	method : public : M4() ~ Int { return 2804; }
+	method : public : M5() ~ Int { return 2805; }
+	method : public : M6() ~ Int { return 2806; }
+	method : public : M7() ~ Int { return 2807; }
+	method : public : M8() ~ Int { return 2808; }
+	method : public : M9() ~ Int { return 2809; }
+}
+
+class U29 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 2900; }
+	method : public : M1() ~ Int { return 2901; }
+	method : public : M2() ~ Int { return 2902; }
+	method : public : M3() ~ Int { return 2903; }
+	method : public : M4() ~ Int { return 2904; }
+	method : public : M5() ~ Int { return 2905; }
+	method : public : M6() ~ Int { return 2906; }
+	method : public : M7() ~ Int { return 2907; }
+	method : public : M8() ~ Int { return 2908; }
+	method : public : M9() ~ Int { return 2909; }
+}
+
+class U30 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3000; }
+	method : public : M1() ~ Int { return 3001; }
+	method : public : M2() ~ Int { return 3002; }
+	method : public : M3() ~ Int { return 3003; }
+	method : public : M4() ~ Int { return 3004; }
+	method : public : M5() ~ Int { return 3005; }
+	method : public : M6() ~ Int { return 3006; }
+	method : public : M7() ~ Int { return 3007; }
+	method : public : M8() ~ Int { return 3008; }
+	method : public : M9() ~ Int { return 3009; }
+}
+
+class U31 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3100; }
+	method : public : M1() ~ Int { return 3101; }
+	method : public : M2() ~ Int { return 3102; }
+	method : public : M3() ~ Int { return 3103; }
+	method : public : M4() ~ Int { return 3104; }
+	method : public : M5() ~ Int { return 3105; }
+	method : public : M6() ~ Int { return 3106; }
+	method : public : M7() ~ Int { return 3107; }
+	method : public : M8() ~ Int { return 3108; }
+	method : public : M9() ~ Int { return 3109; }
+}
+
+class U32 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3200; }
+	method : public : M1() ~ Int { return 3201; }
+	method : public : M2() ~ Int { return 3202; }
+	method : public : M3() ~ Int { return 3203; }
+	method : public : M4() ~ Int { return 3204; }
+	method : public : M5() ~ Int { return 3205; }
+	method : public : M6() ~ Int { return 3206; }
+	method : public : M7() ~ Int { return 3207; }
+	method : public : M8() ~ Int { return 3208; }
+	method : public : M9() ~ Int { return 3209; }
+}
+
+class U33 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3300; }
+	method : public : M1() ~ Int { return 3301; }
+	method : public : M2() ~ Int { return 3302; }
+	method : public : M3() ~ Int { return 3303; }
+	method : public : M4() ~ Int { return 3304; }
+	method : public : M5() ~ Int { return 3305; }
+	method : public : M6() ~ Int { return 3306; }
+	method : public : M7() ~ Int { return 3307; }
+	method : public : M8() ~ Int { return 3308; }
+	method : public : M9() ~ Int { return 3309; }
+}
+
+class U34 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3400; }
+	method : public : M1() ~ Int { return 3401; }
+	method : public : M2() ~ Int { return 3402; }
+	method : public : M3() ~ Int { return 3403; }
+	method : public : M4() ~ Int { return 3404; }
+	method : public : M5() ~ Int { return 3405; }
+	method : public : M6() ~ Int { return 3406; }
+	method : public : M7() ~ Int { return 3407; }
+	method : public : M8() ~ Int { return 3408; }
+	method : public : M9() ~ Int { return 3409; }
+}
+
+class U35 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3500; }
+	method : public : M1() ~ Int { return 3501; }
+	method : public : M2() ~ Int { return 3502; }
+	method : public : M3() ~ Int { return 3503; }
+	method : public : M4() ~ Int { return 3504; }
+	method : public : M5() ~ Int { return 3505; }
+	method : public : M6() ~ Int { return 3506; }
+	method : public : M7() ~ Int { return 3507; }
+	method : public : M8() ~ Int { return 3508; }
+	method : public : M9() ~ Int { return 3509; }
+}
+
+class U36 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3600; }
+	method : public : M1() ~ Int { return 3601; }
+	method : public : M2() ~ Int { return 3602; }
+	method : public : M3() ~ Int { return 3603; }
+	method : public : M4() ~ Int { return 3604; }
+	method : public : M5() ~ Int { return 3605; }
+	method : public : M6() ~ Int { return 3606; }
+	method : public : M7() ~ Int { return 3607; }
+	method : public : M8() ~ Int { return 3608; }
+	method : public : M9() ~ Int { return 3609; }
+}
+
+class U37 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3700; }
+	method : public : M1() ~ Int { return 3701; }
+	method : public : M2() ~ Int { return 3702; }
+	method : public : M3() ~ Int { return 3703; }
+	method : public : M4() ~ Int { return 3704; }
+	method : public : M5() ~ Int { return 3705; }
+	method : public : M6() ~ Int { return 3706; }
+	method : public : M7() ~ Int { return 3707; }
+	method : public : M8() ~ Int { return 3708; }
+	method : public : M9() ~ Int { return 3709; }
+}
+
+class U38 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3800; }
+	method : public : M1() ~ Int { return 3801; }
+	method : public : M2() ~ Int { return 3802; }
+	method : public : M3() ~ Int { return 3803; }
+	method : public : M4() ~ Int { return 3804; }
+	method : public : M5() ~ Int { return 3805; }
+	method : public : M6() ~ Int { return 3806; }
+	method : public : M7() ~ Int { return 3807; }
+	method : public : M8() ~ Int { return 3808; }
+	method : public : M9() ~ Int { return 3809; }
+}
+
+class U39 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 3900; }
+	method : public : M1() ~ Int { return 3901; }
+	method : public : M2() ~ Int { return 3902; }
+	method : public : M3() ~ Int { return 3903; }
+	method : public : M4() ~ Int { return 3904; }
+	method : public : M5() ~ Int { return 3905; }
+	method : public : M6() ~ Int { return 3906; }
+	method : public : M7() ~ Int { return 3907; }
+	method : public : M8() ~ Int { return 3908; }
+	method : public : M9() ~ Int { return 3909; }
+}
+
+class U40 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4000; }
+	method : public : M1() ~ Int { return 4001; }
+	method : public : M2() ~ Int { return 4002; }
+	method : public : M3() ~ Int { return 4003; }
+	method : public : M4() ~ Int { return 4004; }
+	method : public : M5() ~ Int { return 4005; }
+	method : public : M6() ~ Int { return 4006; }
+	method : public : M7() ~ Int { return 4007; }
+	method : public : M8() ~ Int { return 4008; }
+	method : public : M9() ~ Int { return 4009; }
+}
+
+class U41 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4100; }
+	method : public : M1() ~ Int { return 4101; }
+	method : public : M2() ~ Int { return 4102; }
+	method : public : M3() ~ Int { return 4103; }
+	method : public : M4() ~ Int { return 4104; }
+	method : public : M5() ~ Int { return 4105; }
+	method : public : M6() ~ Int { return 4106; }
+	method : public : M7() ~ Int { return 4107; }
+	method : public : M8() ~ Int { return 4108; }
+	method : public : M9() ~ Int { return 4109; }
+}
+
+class U42 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4200; }
+	method : public : M1() ~ Int { return 4201; }
+	method : public : M2() ~ Int { return 4202; }
+	method : public : M3() ~ Int { return 4203; }
+	method : public : M4() ~ Int { return 4204; }
+	method : public : M5() ~ Int { return 4205; }
+	method : public : M6() ~ Int { return 4206; }
+	method : public : M7() ~ Int { return 4207; }
+	method : public : M8() ~ Int { return 4208; }
+	method : public : M9() ~ Int { return 4209; }
+}
+
+class U43 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4300; }
+	method : public : M1() ~ Int { return 4301; }
+	method : public : M2() ~ Int { return 4302; }
+	method : public : M3() ~ Int { return 4303; }
+	method : public : M4() ~ Int { return 4304; }
+	method : public : M5() ~ Int { return 4305; }
+	method : public : M6() ~ Int { return 4306; }
+	method : public : M7() ~ Int { return 4307; }
+	method : public : M8() ~ Int { return 4308; }
+	method : public : M9() ~ Int { return 4309; }
+}
+
+class U44 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4400; }
+	method : public : M1() ~ Int { return 4401; }
+	method : public : M2() ~ Int { return 4402; }
+	method : public : M3() ~ Int { return 4403; }
+	method : public : M4() ~ Int { return 4404; }
+	method : public : M5() ~ Int { return 4405; }
+	method : public : M6() ~ Int { return 4406; }
+	method : public : M7() ~ Int { return 4407; }
+	method : public : M8() ~ Int { return 4408; }
+	method : public : M9() ~ Int { return 4409; }
+}
+
+class U45 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4500; }
+	method : public : M1() ~ Int { return 4501; }
+	method : public : M2() ~ Int { return 4502; }
+	method : public : M3() ~ Int { return 4503; }
+	method : public : M4() ~ Int { return 4504; }
+	method : public : M5() ~ Int { return 4505; }
+	method : public : M6() ~ Int { return 4506; }
+	method : public : M7() ~ Int { return 4507; }
+	method : public : M8() ~ Int { return 4508; }
+	method : public : M9() ~ Int { return 4509; }
+}
+
+class U46 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4600; }
+	method : public : M1() ~ Int { return 4601; }
+	method : public : M2() ~ Int { return 4602; }
+	method : public : M3() ~ Int { return 4603; }
+	method : public : M4() ~ Int { return 4604; }
+	method : public : M5() ~ Int { return 4605; }
+	method : public : M6() ~ Int { return 4606; }
+	method : public : M7() ~ Int { return 4607; }
+	method : public : M8() ~ Int { return 4608; }
+	method : public : M9() ~ Int { return 4609; }
+}
+
+class U47 from Unit {
+	New() { Parent(); }
+	method : public : M0() ~ Int { return 4700; }
+	method : public : M1() ~ Int { return 4701; }
+	method : public : M2() ~ Int { return 4702; }
+	method : public : M3() ~ Int { return 4703; }
+	method : public : M4() ~ Int { return 4704; }
+	method : public : M5() ~ Int { return 4705; }
+	method : public : M6() ~ Int { return 4706; }
+	method : public : M7() ~ Int { return 4707; }
+	method : public : M8() ~ Int { return 4708; }
+	method : public : M9() ~ Int { return 4709; }
+}
+
+class Caller from Thread {
+	@units : Unit[];
+	@sum : Int;
+	@finished : Bool;
+
+	New(units : Unit[]) {
+		Parent("caller");
+		@units := units;
+	}
+
+	method : public : GetSum() ~ Int { return @sum; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		sum := 0;
+		each(i : @units) {
+			# every thread arrives at class i before any of them calls it
+			while(VirtualFirstCallThreads->Gate() < i) {
+			};
+			unit := @units[i];
+			sum += unit->M0() + unit->M1() + unit->M2() + unit->M3() + unit->M4() + unit->M5() + unit->M6() + unit->M7() + unit->M8() + unit->M9();
+		};
+		@sum := sum;
+		@finished := true;
+	}
+}
+
+class VirtualFirstCallThreads {
+	@gate : static : Int;
+	@failures : static : Int;
+
+	function : Gate() ~ Int {
+		return @gate;
+	}
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@gate := -1;
+
+		units := Unit->New[48];
+		units[0] := U0->New();
+		units[1] := U1->New();
+		units[2] := U2->New();
+		units[3] := U3->New();
+		units[4] := U4->New();
+		units[5] := U5->New();
+		units[6] := U6->New();
+		units[7] := U7->New();
+		units[8] := U8->New();
+		units[9] := U9->New();
+		units[10] := U10->New();
+		units[11] := U11->New();
+		units[12] := U12->New();
+		units[13] := U13->New();
+		units[14] := U14->New();
+		units[15] := U15->New();
+		units[16] := U16->New();
+		units[17] := U17->New();
+		units[18] := U18->New();
+		units[19] := U19->New();
+		units[20] := U20->New();
+		units[21] := U21->New();
+		units[22] := U22->New();
+		units[23] := U23->New();
+		units[24] := U24->New();
+		units[25] := U25->New();
+		units[26] := U26->New();
+		units[27] := U27->New();
+		units[28] := U28->New();
+		units[29] := U29->New();
+		units[30] := U30->New();
+		units[31] := U31->New();
+		units[32] := U32->New();
+		units[33] := U33->New();
+		units[34] := U34->New();
+		units[35] := U35->New();
+		units[36] := U36->New();
+		units[37] := U37->New();
+		units[38] := U38->New();
+		units[39] := U39->New();
+		units[40] := U40->New();
+		units[41] := U41->New();
+		units[42] := U42->New();
+		units[43] := U43->New();
+		units[44] := U44->New();
+		units[45] := U45->New();
+		units[46] := U46->New();
+		units[47] := U47->New();
+
+		threads := 16;
+		callers := Caller->New[threads];
+		each(t : threads) {
+			callers[t] := Caller->New(units);
+		};
+		each(t : threads) {
+			callers[t]->Execute(Nil);
+		};
+
+		# let the threads reach the gate, then open one class at a time
+		Thread->Sleep(100);
+		each(i : units) {
+			@gate := i;
+			Thread->Sleep(2);
+		};
+
+		expected := 0;
+		each(i : units) {
+			each(k : 10) {
+				expected += i * 100 + k;
+			};
+		};
+
+		finished := 0;
+		wrong := 0;
+		each(t : threads) {
+			callers[t]->Join();
+			if(callers[t]->IsFinished()) {
+				finished += 1;
+			};
+			if(callers[t]->GetSum() <> expected) {
+				wrong += 1;
+			};
+		};
+		Check("every thread made its calls ({$finished} of {$threads})", finished = threads);
+		Check("every call reached its class's own method ({$wrong} threads added up something else)", wrong = 0);
+
+		# and again, now that every table is complete
+		again := 0;
+		each(i : units) {
+			unit := units[i];
+			again += unit->M0() + unit->M1() + unit->M2() + unit->M3() + unit->M4() + unit->M5() + unit->M6() + unit->M7() + unit->M8() + unit->M9();
+		};
+		Check("the same calls give the same answers afterwards", again = expected);
+
+		if(@failures = 0) {
+			"PASS: first virtual calls from several threads"->PrintLine();
+		}
+		else {
+			"FAIL: first virtual calls from several threads ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,174 @@
+#~
+# A read on an accepted TLS connection does not wait for a silent peer for good
+#
+# A connection accepted by TCPSocketServer starts with a 30 second receive
+# timeout. One accepted by TCPSecureSocketServer had none, and its TLS handshake
+# runs in its first read: a peer that connected and sent nothing held that read,
+# and the thread making it, for as long as it stayed connected. Web.HTTP.Server
+# set a timeout of its own on each connection; a program using the socket server
+# directly had to know to.
+#
+# An accepted TLS connection now starts with the same 30 seconds, and
+# SetRecvTimeout changes it.
+#
+# Two peers connect and say nothing (plain TCP: not even a ClientHello). The
+# server reads from the first after SetRecvTimeout(500), which must fail in
+# about half a second, and from the second as accepted, which must fail after
+# about 30 seconds: not sooner than 20, and not later than the 50 this test
+# waits, where it used to wait until the peer went away. The test takes those
+# 30 seconds.
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+# reads one byte from an accepted connection and notes how long the read took
+class SilentPeerReader from Thread {
+	@client : TCPSecureSocket;
+	@done : Bool;
+	@ms : Int;
+	@reason : String;
+
+	New(client : TCPSecureSocket) {
+		Parent("silent-peer-reader");
+		@client := client;
+	}
+
+	method : public : IsDone() ~ Bool { return @done; }
+	method : public : GetMs() ~ Int { return @ms; }
+	method : public : GetReason() ~ String { return @reason; }
+
+	method : public : Run(param : Base) ~ Nil {
+		timer := System.Time.Timer->New(true);
+		@client->ReadByte();
+		timer->End();
+		@ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+		@reason := TCPSecureSocket->GetLastError();
+		@client->Close();
+		@done := true;
+	}
+}
+
+class TlsAcceptRecvTimeout {
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	# a silent peer, and the server's end of it; Nil if either failed
+	function : AcceptSilent(server : TCPSecureSocketServer, port : Int, peers : Vector<TCPSocket>) ~ TCPSecureSocket {
+		peer := TCPSocket->New("127.0.0.1", port);
+		if(<>peer->IsOpen()) {
+			"  the peer's connect failed: '{$(TCPSocket->GetLastError())}'"->ErrorLine();
+			return Nil;
+		};
+		peers->AddBack(peer);
+		# only once the peer is in: an Accept with nobody on the way never returns
+		return server->Accept();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+		cert := "tls-accept-timeout-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "tls-accept-timeout-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			"FAIL: openssl could not create the certificate -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("the server listens", port > 0);
+
+		peers := Vector->New()<TCPSocket>;
+		short_reader : SilentPeerReader;
+		default_reader : SilentPeerReader;
+		if(port > 0) {
+			first := AcceptSilent(server, port, peers);
+			second := AcceptSilent(server, port, peers);
+			Check("two silent peers are accepted", first <> Nil & second <> Nil);
+			if(first <> Nil & second <> Nil) {
+				first->SetRecvTimeout(500);
+				short_reader := SilentPeerReader->New(first);
+				default_reader := SilentPeerReader->New(second);
+				short_reader->Execute(Nil);
+				default_reader->Execute(Nil);
+			};
+		};
+
+		if(default_reader <> Nil) {
+			waited := 0;
+			while(<>(short_reader->IsDone() & default_reader->IsDone()) & waited < 50000) {
+				Thread->Sleep(100);
+				waited += 100;
+			};
+
+			if(short_reader->IsDone()) {
+				"a read with a 500 ms timeout ended after {$(short_reader->GetMs())} ms: '{$(short_reader->GetReason())}'"->ErrorLine();
+			};
+			Check("a read with a timeout of its own ends on it", short_reader->IsDone() & short_reader->GetMs() < 10000);
+			Check("and GetLastError says why", short_reader->IsDone() & short_reader->GetReason() <> Nil);
+
+			if(default_reader->IsDone()) {
+				"a read as accepted ended after {$(default_reader->GetMs())} ms: '{$(default_reader->GetReason())}'"->ErrorLine();
+			};
+			Check("a read on a connection as accepted ends within 50 seconds of a silent peer", default_reader->IsDone());
+			Check("and not before the 30 second default is near", default_reader->IsDone() & default_reader->GetMs() >= 20000);
+			Check("and GetLastError says why", default_reader->IsDone() & default_reader->GetReason() <> Nil);
+		};
+
+		each(peer in peers) {
+			peer->Close();
+		};
+		server->Close();
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} accepted TLS receive timeout check(s) failed"->PrintLine();
+			# a reader may still be waiting on its peer: end the process
+			Runtime->Exit(1);
+		};
+		"PASS: an accepted TLS connection's read does not wait for a silent peer for good"->PrintLine();
+	}
+}

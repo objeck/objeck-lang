@@ -48,6 +48,16 @@ namespace Runtime {
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
 
+  // The most words of machine code a compiled method may have. B.cond, CBZ and
+  // CBNZ reach a signed 19-bit word displacement, -262144 .. +262143. A branch
+  // and its target both lie inside the method, so no displacement exceeds the
+  // method's length in words: at or under this bound every one of them fits,
+  // wherever the two ends are. That covers the guards (Nil, bounds, divide by
+  // zero, a bridge call's status), whose handlers and stubs sit at the end of
+  // the method, and the conditional jumps of the program itself. A method that
+  // comes out longer (1 MiB of code) is left to the interpreter; see Compile().
+#define MAX_CODE_WORDS 262143
+
 #define B_INSTR 0x14000000
   
   // register type
@@ -674,6 +684,12 @@ namespace Runtime {
         compile_fail_instr = instr_index - 1;
       }
       compile_success = false;
+    }
+
+    // the reason a method past MAX_CODE_WORDS is not compiled
+    std::wstring CodeTooLargeReason() const {
+      return L"more than " + std::to_wstring(MAX_CODE_WORDS) + L" words of machine code (" +
+             std::to_wstring(code_index) + L" so far), past the reach of a conditional branch";
     }
 
     // What holds the pool's registers, for an exhaustion report
