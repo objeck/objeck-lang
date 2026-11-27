@@ -132,7 +132,7 @@ set -o pipefail
 # A doc comment the parser rejects drops its member from the API reference, and
 # code_doc still exits 0 (issue #729). check_code_doc_log.py knows every failure
 # output ('ERROR:', '*** Unable to parse ...', '--- Unable ...'). Refuse to package.
-python3 "$(dirname "$0")/check_code_doc_log.py" code_doc.log
+python3 "$ROOT/tools/cicd/check_code_doc_log.py" code_doc.log
 
 # Move the generated tree to where the packaging step looks, and bring the
 # stylesheet and logos across as code_doc64.cmd does -- without style/ every
