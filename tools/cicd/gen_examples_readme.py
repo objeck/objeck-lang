@@ -77,8 +77,11 @@ def build():
         "verified rather than merely written down: a wrong entry in the Libraries column\n"
         "fails the build. With `--run` it also runs the examples that need no display,\n"
         "database, key or network and compares what each prints with the `output:`\n"
-        "block at the top of its source (`...` in that block stands for text left out),\n"
-        "so what a header says an example prints is checked too.\n"
+        "block at the top of its source, so what a header says an example prints is\n"
+        "checked too. In that block `...` stands for text left out, and where a value\n"
+        "differs every run `<int>` (a whole number) or `<any>` (some text) stands for just\n"
+        "that field; the rest of the line is compared exactly. An example that prints\n"
+        "nothing says `# output: none`, and one with no block fails.\n"
     )
     out.append(
         "\n## Building one\n"

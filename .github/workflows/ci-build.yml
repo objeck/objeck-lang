@@ -1998,6 +1998,12 @@ jobs:
       - name: Shipped examples are all indexed
         run: python3 tools/cicd/check_examples_index.py
 
+      # The examples harness (programs/deploy/build_examples.py --run) is what keeps an example's
+      # documented output true. A harness that skips a comparison, or commits to the wrong line at
+      # a '...', passes an example that is broken; these fixtures pin both.
+      - name: The examples harness compares every runnable example's output strictly
+        run: python3 tools/cicd/test_build_examples.py
+
       # programs/regression/checkers_engine.obs is generated: the regression runners
       # compile one file per test, and the checkers example is several, so the test is
       # those files joined. A stale copy would test yesterday's example.

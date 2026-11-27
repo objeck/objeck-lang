@@ -11,9 +11,9 @@
 # classes need no extra code: every field is saved, and an object a field
 # refers to is saved along with it.
 #
-# output (the folder and byte count vary):
-#   wrote 332 bytes to C:\Users\me\AppData\Local\Temp/serialize_20.dat
-#   read 332 bytes back
+# output (the byte count and the folder differ, so they are written <int> and <any>):
+#   wrote <int> bytes to <any>serialize_20.dat
+#   read <int> bytes back
 #   Ada, level 7, scores: 90 85 99, pet: Pip the owl
 #   map: 3 entries, language=Objeck
 #   weights: 3 values adding up to 1.00

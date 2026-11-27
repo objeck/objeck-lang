@@ -71,6 +71,8 @@ CHECKS = [
     ("Differential and verifier markers have a stated reason", lambda: py("tools/cicd/check_diff_markers.py")),
     ("Differential runner catches divergence", lambda: py("programs/regression/test_run_differential.py")),
     ("Shipped examples are all indexed", lambda: py("tools/cicd/check_examples_index.py")),
+    ("The examples harness compares every runnable example's output strictly",
+     lambda: py("tools/cicd/test_build_examples.py")),
     ("Site code samples are consistent", lambda: py("tools/cicd/check_site_examples.py")),
     ("Site highlighter produces the expected token classes", lambda: py("tools/docs/test_objeck_highlight.py")),
     ("Guides HTML is current", lambda: py("tools/docs/guides_to_html.py", "--check")),
