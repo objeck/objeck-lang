@@ -504,6 +504,8 @@
       std::vector<ClassReq> class_reqs;
       std::unordered_map<long, std::vector<SlotType> > layouts;
       bool frame_trap = false;
+      std::vector<long> param_slot_class;
+      bool param_slots_read = false;
 
       // Load-time verification of function values. One is two words: its id (the tag,
       // a class id and a method id packed in a literal) and its closure. Nothing at
@@ -643,15 +645,22 @@
       // the class a parameter's slot is declared with (its name spells it), -1 for
       // any other local
       long ParamSlotClass(long id) {
-        if(!context) {
-          return -1;
+        if(!param_slots_read) {
+          // once per method: this is asked at every load and store of a local
+          param_slots_read = true;
+          if(context) {
+            const VerifyContext::Signature& own = SignatureOf(method);
+            const size_t first = method->HasAndOr() ? 1 : 0;
+            const size_t words = method->GetParamCount() > 0 ? (size_t)method->GetParamCount() : 0;
+            for(size_t word = 0; word < words && word < own.param_class.size(); ++word) {
+              if(own.param_class[word] >= 0) {
+                param_slot_class.resize(first + word + 1, -1);
+                param_slot_class[first + word] = own.param_class[word];
+              }
+            }
+          }
         }
-        const long word = id - (method->HasAndOr() ? 1 : 0);
-        if(word < 0 || word >= method->GetParamCount()) {
-          return -1;
-        }
-        const VerifyContext::Signature& own = SignatureOf(method);
-        return word < (long)own.param_class.size() ? own.param_class[word] : -1;
+        return id >= 0 && id < (long)param_slot_class.size() ? param_slot_class[id] : -1;
       }
 
       bool IsInterface(long cls) {
