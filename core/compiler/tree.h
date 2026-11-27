@@ -1574,6 +1574,11 @@ namespace frontend {
       return value;
     }
 
+    // the analyzer's: a holder the statements left is read through its 'Get()'
+    void SetValue(Expression* v) {
+      value = v;
+    }
+
     bool IsAnalyzed() {
       return analyzed;
     }

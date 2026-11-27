@@ -9257,8 +9257,23 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
           // an IntRef, CharRef or ByteRef index is its value; a FloatRef or a
           // BoolRef is not an index, as a Float or a Bool is not
           bool unboxed = false;
-          Expression* unboxed_expresion = UnboxAs(TypeFactory::Instance()->MakeType(INT_TYPE), index_value, true, unboxed, depth);
-          if(unboxed) {
+          // The index of a guarded element assignment, 'cells[idx] := E ?? return;', is a
+          // sequence: the index is kept in a hidden local where the target evaluates it,
+          // and the guard reads the element through that local (Parser::MakeNilGuardElement).
+          // A holder is read where the sequence leaves its value, the hidden local; taken
+          // as a whole the sequence is neither a variable nor a call, so it was not
+          // unboxed, and the guarded form refused the 'IntRef' index that the plain
+          // 'cells[idx] := E;' accepts.
+          SequenceExpression* kept = index_value->GetExpressionType() == STMT_SEQ_EXPR ? static_cast<SequenceExpression*>(index_value) : nullptr;
+          Expression* unboxed_expresion = UnboxAs(TypeFactory::Instance()->MakeType(INT_TYPE), kept ? kept->GetValue() : index_value, true, unboxed, depth);
+          if(unboxed && kept) {
+            if(unboxed_expresion) {
+              kept->SetValue(unboxed_expresion);
+            }
+            kept->SetEvalType(kept->GetValue()->GetEvalType(), true);
+            unboxed_expressions.push_back(expression);
+          }
+          else if(unboxed) {
             unboxed_expressions.push_back(unboxed_expresion ? unboxed_expresion : expression);
           }
           else {

@@ -1,0 +1,338 @@
+#~
+The nil guard of an element assignment takes every index the plain assignment takes. In
+'cells[idx] := Find() ?? return;' the index is kept in a hidden local where the target
+evaluates it, so that the guard can read the same element without evaluating the index again.
+A holder index (an IntRef, a ByteRef, a CharRef: 'cells[idx] := Find();' reads its value) was
+kept as the holder and never unboxed, so the guarded form was refused with "Expected Byte, Char,
+Int or Enum class type" where the plain form compiles.
+
+Each shape is run in the plain and in the guarded form: the same element is assigned, the value
+and each index are evaluated once and in the same order, and the guard leaves exactly when the
+value is Nil. A postfix update in the index runs once.
+~#
+use Collection;
+
+enum Slot {
+	First,
+	Second,
+	Third
+}
+
+class Cell {
+	@v : Int;
+	New(v : Int) { @v := v; }
+	method : public : Get() ~ Int { return @v; }
+}
+
+class NilGuardBoxedIndex {
+	@cells : Cell[];
+	@@shared : static : Cell[];
+	@@order : static : String;
+	@@failed : static : Bool;
+
+	New() {
+		@cells := Cell->New[4];
+	}
+
+	function : Find(found : Bool) ~ Cell {
+		@@order += "v";
+		if(found) { return Cell->New(7); };
+		return Nil;
+	}
+
+	# an index that is a holder, from a call: counted
+	function : Box(i : Int) ~ IntRef {
+		@@order += "i";
+		return IntRef->New(i);
+	}
+
+	function : Shared() ~ Cell[] {
+		@@order += "a";
+		return @@shared;
+	}
+
+	function : Show(cells : Cell[]) ~ String {
+		out := "";
+		each(i : cells->Size()) {
+			out += cells[i] = Nil ? "." : "#";
+		};
+		return out;
+	}
+
+	# what a shape did: whether it left, which elements are set, what was evaluated and in what order
+	function : Same(name : String, plain : String, guarded : String, found : Bool) ~ Nil {
+		expected := found ? "kept {$plain}" : "left {$plain}";
+		if(guarded->Equals(expected) = false) {
+			"  FAIL: {$name}, {$found}: guarded '{$guarded}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+	}
+
+	# --- an IntRef in a local ---
+	function : PlainLocal(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		idx := IntRef->New(2);
+		cells[idx] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardLocal(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		idx := IntRef->New(2);
+		cells[idx] := Find(found) ?? return "left {$Show(cells)} {$@@order}";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	# --- an IntRef a call returns ---
+	function : PlainCall(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		cells[Box(1)] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardCall(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		cells[Box(1)] := Find(found) ?? return "left {$Show(cells)} {$@@order}";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	# --- an IntRef out of a collection: the holder is the end of a call chain ---
+	function : PlainVector(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		indices := Vector->New()<IntRef>;
+		indices->AddBack(3);
+		cells[indices->Get(0)] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardVector(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		indices := Vector->New()<IntRef>;
+		indices->AddBack(3);
+		cells[indices->Get(0)] := Find(found) ?? return "left {$Show(cells)} {$@@order}";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	# --- a ByteRef and a CharRef ---
+	function : PlainByteRef(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		idx := ByteRef->New(1);
+		cells[idx] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardByteRef(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		idx := ByteRef->New(1);
+		cells[idx] := Find(found) ?? return "left {$Show(cells)} {$@@order}";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	function : PlainCharRef(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		idx := CharRef->New('\u0003');
+		cells[idx] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardCharRef(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		idx := CharRef->New('\u0003');
+		cells[idx] := Find(found) ?? return "left {$Show(cells)} {$@@order}";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	# --- an enum item, a Byte and a Char: not holders, accepted before and still ---
+	function : PlainEnum(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		slot := Slot->Third;
+		cells[slot] := Find(found);
+		cells[Slot->Second] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardEnum(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		slot := Slot->Third;
+		cells[slot] := Find(found) ?? {
+			cells[Slot->Second] := Find(found);
+			return "left {$Show(cells)} {$@@order}";
+		};
+		cells[Slot->Second] := Find(found) ?? return "wrong";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	function : PlainByteChar(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		b : Byte := 1;
+		c : Char := '\u0002';
+		cells[b] := Find(found);
+		cells[c] := Find(found);
+		return "{$Show(cells)} {$@@order}";
+	}
+
+	function : GuardByteChar(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		b : Byte := 1;
+		c : Char := '\u0002';
+		cells[b] := Find(found) ?? {
+			cells[c] := Find(found);
+			return "left {$Show(cells)} {$@@order}";
+		};
+		cells[c] := Find(found) ?? return "wrong";
+		return "kept {$Show(cells)} {$@@order}";
+	}
+
+	# --- a field ---
+	method : public : PlainField(found : Bool) ~ String {
+		@@order := "";
+		@cells := Cell->New[4];
+		@cells[Box(2)] := Find(found);
+		return "{$Show(@cells)} {$@@order}";
+	}
+
+	method : public : GuardField(found : Bool) ~ String {
+		@@order := "";
+		@cells := Cell->New[4];
+		@cells[Box(2)] := Find(found) ?? return "left {$Show(@cells)} {$@@order}";
+		return "kept {$Show(@cells)} {$@@order}";
+	}
+
+	# --- two dimensions, one index a holder in a local and one from a call ---
+	function : PlainGrid(found : Bool) ~ String {
+		@@order := "";
+		grid := Cell->New[3, 3];
+		row := IntRef->New(1);
+		grid[row, Box(2)] := Find(found);
+		return "{$grid[1, 2] = Nil} {$@@order}";
+	}
+
+	function : GuardGrid(found : Bool) ~ String {
+		@@order := "";
+		grid := Cell->New[3, 3];
+		row := IntRef->New(1);
+		grid[row, Box(2)] := Find(found) ?? return "left {$grid[1, 2] = Nil} {$@@order}";
+		return "kept {$grid[1, 2] = Nil} {$@@order}";
+	}
+
+	# --- a jagged array's row: the row index and the element index are holders ---
+	function : PlainJagged(found : Bool) ~ String {
+		@@order := "";
+		rows := Cell[]->New[3];
+		rows[1] := Cell->New[4];
+		rows[Box(1)][Box(2)] := Find(found);
+		return "{$Show(rows[1])} {$@@order}";
+	}
+
+	function : GuardJagged(found : Bool) ~ String {
+		@@order := "";
+		rows := Cell[]->New[3];
+		rows[1] := Cell->New[4];
+		rows[Box(1)][Box(2)] := Find(found) ?? return "left {$Show(rows[1])} {$@@order}";
+		return "kept {$Show(rows[1])} {$@@order}";
+	}
+
+	# --- an array a call returns ---
+	function : PlainCallArray(found : Bool) ~ String {
+		@@order := "";
+		@@shared := Cell->New[4];
+		Shared()[Box(3)] := Find(found);
+		return "{$Show(@@shared)} {$@@order}";
+	}
+
+	function : GuardCallArray(found : Bool) ~ String {
+		@@order := "";
+		@@shared := Cell->New[4];
+		Shared()[Box(3)] := Find(found) ?? return "left {$Show(@@shared)} {$@@order}";
+		return "kept {$Show(@@shared)} {$@@order}";
+	}
+
+	# --- a postfix update in the index runs once, in both forms ---
+	function : PlainPostfix(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		i := 1;
+		cells[i++] := Find(found);
+		return "{$Show(cells)} {$@@order} {$i}";
+	}
+
+	function : GuardPostfix(found : Bool) ~ String {
+		@@order := "";
+		cells := Cell->New[4];
+		i := 1;
+		cells[i++] := Find(found) ?? return "left {$Show(cells)} {$@@order} {$i}";
+		return "kept {$Show(cells)} {$@@order} {$i}";
+	}
+
+	# --- in a loop: 'continue' and 'break' on the element a holder indexes ---
+	function : Loop(pattern : Bool[]) ~ String {
+		cells := Cell->New[pattern->Size()];
+		seen := "";
+		each(i : pattern->Size()) {
+			at := IntRef->New(i);
+			cells[at] := Find(pattern[i]) ?? continue;
+			seen += i->ToString();
+		};
+		seen += "|";
+		each(i : pattern->Size()) {
+			cells[Box(i)] := Find(pattern[i]) ?? break;
+			seen += i->ToString();
+		};
+		return seen;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		o := NilGuardBoxedIndex->New();
+		both := [true, false];
+		each(k : both->Size()) {
+			found := both[k];
+			Same("an IntRef in a local", PlainLocal(found), GuardLocal(found), found);
+			Same("an IntRef a call returns", PlainCall(found), GuardCall(found), found);
+			Same("an IntRef at the end of a call chain", PlainVector(found), GuardVector(found), found);
+			Same("a ByteRef", PlainByteRef(found), GuardByteRef(found), found);
+			Same("a CharRef", PlainCharRef(found), GuardCharRef(found), found);
+			Same("an enum item", PlainEnum(found), GuardEnum(found), found);
+			Same("a Byte and a Char", PlainByteChar(found), GuardByteChar(found), found);
+			Same("an element of a field", o->PlainField(found), o->GuardField(found), found);
+			Same("two dimensions", PlainGrid(found), GuardGrid(found), found);
+			Same("a jagged array's row", PlainJagged(found), GuardJagged(found), found);
+			Same("an array a call returns", PlainCallArray(found), GuardCallArray(found), found);
+			Same("a postfix update in the index", PlainPostfix(found), GuardPostfix(found), found);
+		};
+
+		# what the plain forms are expected to do, so that two wrong forms cannot agree
+		if(PlainLocal(true)->Equals("..#. v") = false | PlainCall(true)->Equals(".#.. vi") = false |
+			 PlainPostfix(true)->Equals(".#.. v 2") = false | PlainGrid(false)->Equals("true vi") = false |
+			 PlainCharRef(true)->Equals("...# v") = false | PlainByteRef(true)->Equals(".#.. v") = false) {
+			"  FAIL: a plain assignment: '{$PlainLocal(true)}', '{$PlainCall(true)}', '{$PlainPostfix(true)}', '{$PlainGrid(false)}', '{$PlainCharRef(true)}', '{$PlainByteRef(true)}'"->PrintLine();
+			@@failed := true;
+		};
+
+		pattern := [true, false, true, true];
+		loop := Loop(pattern);
+		if(loop->Equals("023|0") = false) {
+			"  FAIL: continue and break: '{$loop}', expected '023|0'"->PrintLine();
+			@@failed := true;
+		};
+
+		if(@@failed) {
+			"FAIL: nil guard of an element with a boxed index"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: nil guard of an element with a boxed index"->PrintLine();
+	}
+}
