@@ -81,10 +81,11 @@ class IntermediateEmitter {
   void EmitCriticalUnlocks(size_t keep_depth, Statement* statement);
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;
-  // set while an 'if' condition is emitted: EmitBranch then emits the queued
-  // updates before each conditional jump
+  // set while a statement's condition is emitted (EmitConditionBranch): EmitBranch then
+  // emits the queued updates before each conditional jump
   bool branch_emits_post_statements = false;
   void EmitPostStatements();
+  void EmitConditionBranch(Expression* expression, long target_label, bool jump_if_true);
   void BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
   void EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
   

@@ -739,25 +739,22 @@ b<span class="t-op">-&gt;</span>PrintLine();                               <span
       <tr><td data-label="Where i++ is written">Anywhere not listed below</td><td data-label="When i changes">At the end of the statement, after everything in it has been evaluated: <code>k := i++ + i;</code> with <code>i</code> at 5 gives 10, then <code>i</code> is 6. <code>a[i++] := i;</code> stores the old <code>i</code> at the old index. Every update of a statement has run when the statement ends.</td></tr>
       <tr><td data-label="Where i++ is written">An operand only one path evaluates: the default of <code>??</code>, a branch of <code>?:</code>, the second operand of <code>&amp;</code> or &lt;code&gt;&amp;#124;&lt;/code&gt; in a value, an argument of a <code>?-&gt;</code> call</td><td data-label="When i changes">When that operand has been evaluated, and not at all when it is skipped.</td></tr>
       <tr><td data-label="Where i++ is written">The subject of <code>match</code> or <code>select</code></td><td data-label="When i changes">Before the arm is chosen, so every arm sees the new value; the arm is chosen by the old one.</td></tr>
-      <tr><td data-label="Where i++ is written">The condition of <code>if</code> or <code>else if</code></td><td data-label="When i changes">Between the test and the branch, on both sides; the block sees the new value. An operand that <code>&amp;</code> or &lt;code&gt;&amp;#124;&lt;/code&gt; skips does not change it.</td></tr>
-      <tr><td data-label="Where i++ is written">The condition of <code>do { } while(..)</code></td><td data-label="When i changes">After each test, including the last one, which fails.</td></tr>
-      <tr><td data-label="Where i++ is written">The condition of <code>while</code> or <code>for</code></td><td data-label="When i changes"><strong>Not when the condition is tested.</strong> See below.</td></tr>
+      <tr><td data-label="Where i++ is written">The condition of <code>if</code>, <code>else if</code>, <code>while</code>, <code>for</code> or <code>do { } while(..)</code></td><td data-label="When i changes">Every time the condition is tested, between the test and the branch. The test uses the old value; the block or loop body, and the code after it, see the new one. An operand that <code>&amp;</code> or &lt;code&gt;&amp;#124;&lt;/code&gt; skips does not change it, and the second operand reads what the first one changed.</td></tr>
      </tbody>
     </table>
-    <p><strong><code>while</code> and <code>for</code> conditions are different.</strong> The change is made inside the loop body, at the end of the body's first statement (at the end of the body when it has no statement). So:</p>
-    <ul>
-     <li>the first statement of the body still reads the old value, and every statement after it reads the new one;</li>
-     <li>when the condition is false and the loop is left, the change is not made;</li>
-     <li>the change is made once per round, even for an operand that <code>&amp;</code> or &lt;code&gt;&amp;#124;&lt;/code&gt; skipped in that round.</li>
-    </ul>
+    <p><strong>In a loop condition the change is made at every test, including the last one, which fails.</strong> This is what C, Java and C# do.</p>
 <pre class="line-numbers"><code class="language-objeck">i <span class="t-op">:=</span> <span class="t-num">3</span>;
 <span class="t-kw">while</span>(i-- &gt; <span class="t-num">0</span>) {
-  <span class="t-str">"first {$i}"</span><span class="t-op">-&gt;</span>PrintLine();   <span class="t-com"># 3, then 2, then 1: the old value</span>
-  <span class="t-str">"second {$i}"</span><span class="t-op">-&gt;</span>PrintLine();  <span class="t-com"># 2, then 1, then 0: the new value</span>
+  <span class="t-str">"{$i}"</span><span class="t-op">-&gt;</span>PrintLine();         <span class="t-com"># 2, then 1, then 0: the new value, in every statement of the body</span>
 };
-i<span class="t-op">-&gt;</span>PrintLine();                <span class="t-com"># 0, not -1: the last, failing test did not change it</span>
+i<span class="t-op">-&gt;</span>PrintLine();                <span class="t-com"># -1: the failing test, 0 &gt; 0, also changed it</span>
+
+values <span class="t-op">:=</span> [<span class="t-num">7</span>, <span class="t-num">7</span>, <span class="t-num">0</span>];
+j <span class="t-op">:=</span> values<span class="t-op">-&gt;</span>Size();
+<span class="t-kw">while</span>(j-- &gt; <span class="t-num">0</span> &amp; values[j] <span class="t-op">&lt;&gt;</span> <span class="t-num">7</span>);   <span class="t-com"># values[j] is read with the new j</span>
+j<span class="t-op">-&gt;</span>PrintLine();                <span class="t-com"># 1: the index of the last 7</span>
 </code></pre>
-    <p>A loop that needs the value in its body is clearer with the update written as a statement: <code>while(i &gt; 0) { i -= 1; ... };</code>.</p>
+    <p>Before v2026.11.4 a <code>while</code> or <code>for</code> condition made the change inside the loop body, after its first statement: that statement read the old value, the failing test changed nothing (<code>i</code> ended at 0 above), and a skipped operand changed it anyway. A loop written to that rule needs its body or the test after the loop adjusted.</p>
     <hr class="section-end">
     <div class="raw"><a name="strings"></a>
     ## Strings & Formatting</div>
