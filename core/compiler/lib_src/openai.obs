@@ -1938,7 +1938,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		#~
-		Parses the arguments, which the model writes as text and may get wrong
+		Parses the arguments, which the model writes as text and may get wrong. The text has to be
+		one JSON object by the grammar of RFC 8259: a missing or trailing comma, a bare word, a
+		number such as 01 or 1., a raw control character in a string, anything after the closing
+		brace and nesting deeper than the JSON parser reads (64 levels) are all Nil.
 		@return arguments object, or Nil if the text is not exactly one valid JSON object
 		~#
 		method : public : GetArgumentsJson() ~ JsonElement {
@@ -1946,9 +1949,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 				return Nil;
 			};
 
-			# a function's arguments are one JSON object: not an array or a bare value, and nothing after it
-			# (the JSON reader stops after the first value and ignores the rest)
-			if(<>IsSingleObject(@arguments)) {
+			# a function's arguments are one JSON object: not an array or a bare value, and nothing after it.
+			# The JSON reader is forgiving -- it stops after the first value, and it takes members and
+			# elements with no comma between them or with one too many -- so the syntax is checked first.
+			if(<>IsStrictObject(@arguments)) {
 				return Nil;
 			};
 			root := JsonParser->TextToElement(@arguments);
@@ -1958,41 +1962,281 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			return root;
 		}
 
-		# true if the text is one {...} and only white space follows its closing brace
-		function : IsSingleObject(text : String) ~ Bool {
-			chars := text->Trim()->ToCharArray();
-			if(chars->Size() < 2 | chars[0] <> '{') {
+		# True if the text is exactly one JSON object by the grammar of RFC 8259, with only JSON
+		# white space around it. It checks syntax and builds nothing: members are separated by
+		# one comma each (none trailing), names are strings, strings hold only the escapes the
+		# grammar lists and no raw control character, numbers are -?(0|[1-9][0-9]*)(.[0-9]+)?
+		# ([eE][+-]?[0-9]+)? and the only bare words are true, false and null. A repeated member
+		# name is within the grammar. Open containers are kept in an array, not on the call
+		# stack, so the nesting depth of the text costs memory in proportion and nothing else.
+		function : IsStrictObject(text : String) ~ Bool {
+			chars := text->ToCharArray();
+			size := chars->Size();
+			i := SkipSpace(chars, 0);
+			if(i >= size) {
+				return false;
+			};
+			if(chars[i] <> '{') {
 				return false;
 			};
 
+			# one entry per kinds container: true for an object, false for an array
+			kinds := Bool->New[32];
 			depth := 0;
-			in_string := false;
-			i := 0;
-			while(i < chars->Size()) {
+			# what may come next. 0: a value; 1: a member name or the closing brace, straight
+			# after an opening brace; 2: a member name, after a comma; 3: a comma or the
+			# container's close, after a value; 4: a value or the closing bracket, straight
+			# after an opening bracket
+			expect := 0;
+			while(true) {
+				i := SkipSpace(chars, i);
+				if(i >= size) {
+					return false;
+				};
 				c := chars[i];
-				if(in_string) {
-					if(c->As(Int) = 92) {
+				closed := false;
+
+				if(expect = 3) {
+					if(c = ',') {
 						i += 1;
+						if(kinds[depth - 1]) {
+							expect := 2;
+						}
+						else {
+							expect := 0;
+						};
 					}
-					else if(c = '"') {
-						in_string := false;
+					else if(c = '}') {
+						if(kinds[depth - 1] = false) {
+							return false;
+						};
+						closed := true;
+					}
+					else if(c = ']') {
+						if(kinds[depth - 1]) {
+							return false;
+						};
+						closed := true;
+					}
+					else {
+						return false;
 					};
 				}
-				else if(c = '"') {
-					in_string := true;
+				else if(expect = 1 | expect = 2) {
+					if(c = '"') {
+						i := StringEnd(chars, i);
+						if(i < 0) {
+							return false;
+						};
+						i := SkipSpace(chars, i);
+						if(i >= size) {
+							return false;
+						};
+						if(chars[i] <> ':') {
+							return false;
+						};
+						i += 1;
+						expect := 0;
+					}
+					else if(c = '}') {
+						if(expect = 2) {
+							return false;
+						};
+						closed := true;
+					}
+					else {
+						return false;
+					};
+				}
+				else if(c = ']') {
+					if(expect <> 4) {
+						return false;
+					};
+					closed := true;
 				}
 				else if(c = '{' | c = '[') {
+					if(depth = kinds->Size()) {
+						larger := Bool->New[depth * 2];
+						each(k : depth) {
+							larger[k] := kinds[k];
+						};
+						kinds := larger;
+					};
+					kinds[depth] := c = '{';
 					depth += 1;
+					i += 1;
+					if(c = '{') {
+						expect := 1;
+					}
+					else {
+						expect := 4;
+					};
 				}
-				else if(c = '}' | c = ']') {
+				else {
+					if(c = '"') {
+						i := StringEnd(chars, i);
+					}
+					else if(c = '-' | (c >= '0' & c <= '9')) {
+						i := NumberEnd(chars, i);
+					}
+					else {
+						i := WordEnd(chars, i);
+					};
+
+					if(i < 0) {
+						return false;
+					};
+					expect := 3;
+				};
+
+				if(closed) {
+					i += 1;
 					depth -= 1;
 					if(depth = 0) {
-						return i = chars->Size() - 1;
+						return SkipSpace(chars, i) = size;
+					};
+					expect := 3;
+				};
+			};
+
+			return false;
+		}
+
+		# the index of the first character at or after 'i' that is not JSON white space
+		function : SkipSpace(chars : Char[], i : Int) ~ Int {
+			size := chars->Size();
+			while(i < size) {
+				v := chars[i]->As(Int);
+				if(v <> 32 & v <> 9 & v <> 10 & v <> 13) {
+					return i;
+				};
+				i += 1;
+			};
+			return i;
+		}
+
+		# 'i' is at a string's opening quote: the index after its closing quote, or -1
+		function : StringEnd(chars : Char[], i : Int) ~ Int {
+			size := chars->Size();
+			i += 1;
+			while(i < size) {
+				v := chars[i]->As(Int);
+				if(v = 34) {
+					return i + 1;
+				};
+				# a control character is written as an escape
+				if(v < 32) {
+					return -1;
+				};
+				# a backslash (92) starts an escape: a quote, a backslash, a slash, one of
+				# b f n r t, or u and four hex digits
+				if(v = 92) {
+					i += 1;
+					if(i >= size) {
+						return -1;
+					};
+					e := chars[i]->As(Int);
+					if(e = 117) {
+						if(i + 4 >= size) {
+							return -1;
+						};
+						for(k := 1; k <= 4; k += 1;) {
+							h := chars[i + k]->As(Int);
+							is_hex := (h >= 48 & h <= 57) | (h >= 65 & h <= 70) | (h >= 97 & h <= 102);
+							if(is_hex = false) {
+								return -1;
+							};
+						};
+						i += 4;
+					}
+					else if(e <> 34 & e <> 92 & e <> 47 & e <> 98 & e <> 102 & e <> 110 & e <> 114 & e <> 116) {
+						return -1;
 					};
 				};
 				i += 1;
 			};
-			return false;
+			return -1;
+		}
+
+		# 'i' is at a number's first character: the index after the number, or -1
+		function : NumberEnd(chars : Char[], i : Int) ~ Int {
+			size := chars->Size();
+			if(chars[i] = '-') {
+				i += 1;
+			};
+
+			# the integer part: a lone 0, or digits that do not start with 0
+			digits := DigitsEnd(chars, i);
+			if(digits = i) {
+				return -1;
+			};
+			if(chars[i] = '0') {
+				i += 1;
+			}
+			else {
+				i := digits;
+			};
+
+			if(i < size) {
+				if(chars[i] = '.') {
+					digits := DigitsEnd(chars, i + 1);
+					if(digits = i + 1) {
+						return -1;
+					};
+					i := digits;
+				};
+			};
+
+			if(i < size) {
+				if(chars[i] = 'e' | chars[i] = 'E') {
+					i += 1;
+					if(i < size) {
+						if(chars[i] = '+' | chars[i] = '-') {
+							i += 1;
+						};
+					};
+					digits := DigitsEnd(chars, i);
+					if(digits = i) {
+						return -1;
+					};
+					i := digits;
+				};
+			};
+
+			return i;
+		}
+
+		# the index after the run of decimal digits that starts at 'i' ('i' itself if there is none)
+		function : DigitsEnd(chars : Char[], i : Int) ~ Int {
+			size := chars->Size();
+			while(i < size) {
+				if(chars[i] < '0' | chars[i] > '9') {
+					return i;
+				};
+				i += 1;
+			};
+			return i;
+		}
+
+		# 'i' is at a bare word: the index after true, false or null, or -1
+		function : WordEnd(chars : Char[], i : Int) ~ Int {
+			words := ["true", "false", "null"];
+			each(w : words) {
+				word := words[w];
+				end := i + word->Size();
+				if(end <= chars->Size()) {
+					same := true;
+					each(k : word) {
+						if(chars[i + k] <> word->Get(k)) {
+							same := false;
+						};
+					};
+					if(same) {
+						return end;
+					};
+				};
+			};
+			return -1;
 		}
 	}
 
