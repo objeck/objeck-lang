@@ -159,6 +159,18 @@ class File {
       return -1;
     }
 
+    // _wstat64 reports a symbolic link's own size, which is 0, where POSIX stat
+    // reports the size of the file it names: FileReader->ReadFile sizes its
+    // buffer from this, so a file read through a link came back empty here.
+    // file_size follows the link; an empty file is 0 either way.
+    if(buf.st_size == 0 && (buf.st_mode & _S_IFREG)) {
+      std::error_code error_code;
+      const std::uintmax_t size = std::filesystem::file_size(name, error_code);
+      if(!error_code) {
+        return (int64_t)size;
+      }
+    }
+
     return buf.st_size;
   }
 

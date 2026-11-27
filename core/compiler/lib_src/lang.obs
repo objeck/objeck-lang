@@ -12298,21 +12298,28 @@ bundle System.IO.Filesystem {
 	}
 
 	#~
-	Provides hard link filesystem operations
+	Provides hard link filesystem operations. A hard link is a second name for
+	a file: both names reach the same content, a write through one is read
+	through the other, and the content stays until the last name is deleted.
+	```
+if(System.IO.Filesystem.HardLink->Create("report-latest.txt", "report-2026.txt")) {
+  System.IO.Filesystem.FileReader->ReadFile("report-latest.txt")->PrintLine();
+};
+	```
 	~#
 	class HardLink {
 		#~
-		Creates a hard link
-		@param l link path name
-		@param t target path name
-		@return true if hard link was created 
+		Creates a hard link: a second name for an existing file
+		@param l link path name, the name to create
+		@param t target path name, the existing file
+		@return true if hard link was created, false if the target does not exist or is a directory, the link name is already taken, the two are on different volumes, or the file system has no hard links
 		~#
 		function : Create(l : System.String, t : System.String) ~ Bool {
 			HARD_LINK_CREATE;
 		}
 
 		#~
-		Deletes the hard link
+		Deletes the hard link. The file's other names, and its content, stay.
 		@param n path to hard link
 		@return true if file was deleted, false otherwise
 		~#
@@ -12348,9 +12355,9 @@ bundle System.IO.Filesystem {
 		#~
 		Returns the path location that the symbolic link refers to
 		@param n symbolic link path
-		@return path the symbolic link refers to
+		@return path the symbolic link refers to, Nil if the path is not a symbolic link
 		~#
-		function : Location(n : System.String) ~ Bool {
+		function : Location(n : System.String) ~ System.String {
 			SYM_LINK_LOC;
 		}
 
