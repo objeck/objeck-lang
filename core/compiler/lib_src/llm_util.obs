@@ -63,7 +63,7 @@ bundle API.LlmUtil {
 		#~
 		Tests for a character that may appear in a variable name
 		@param c the character
-		@return true for a letter, a digit or one of _ . - @
+		@return true for a letter, a digit, an underscore, a dot, a hyphen or an at sign
 		~#
 		function : IsNameChar(c : Char) ~ Bool {
 			return IsLetter(c) | IsDigit(c) | c = '_' | c = '.' | c = '-' | c = '@';
@@ -499,7 +499,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 		#~
 		Checks a variable or list name
 		@param name the name
-		@return true if it is not empty and holds only name characters (letters, digits, _ . - @)
+		@return true if it is not empty and holds only name characters (letters, digits, underscore, dot, hyphen, at sign)
 		~#
 		method : ValidName(name : String) ~ Bool {
 			if(name = Nil | name->IsEmpty()) {
@@ -641,7 +641,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 		Parses one variable placeholder: an optional filter after a colon, a fallback after a bar and a trailing question mark for an optional variable
 		@param inner the text between the braces, trimmed
 		@param offset the character offset of the placeholder, for error messages
-		@param loops how many each blocks enclose the placeholder; this, @index and @number need at least one
+		@param loops how many each blocks enclose the placeholder; the loop variables (this, index, number) need at least one
 		@return the variable node, or Nil with the error set for an unknown filter, an invalid name or a loop variable outside a loop
 		~#
 		method : ParseVariable(inner : String, offset : Int, loops : Int) ~ TemplateNode {
@@ -690,7 +690,7 @@ tpl->Render(vars)->PrintLine();   # Hello Ada! #a #b
 		#~
 		Tells whether a name is one of the loop variables
 		@param name the name
-		@return true for this, @index or @number
+		@return true for the loop variables: this, and index and number written after an at sign
 		~#
 		method : IsSpecial(name : String) ~ Bool {
 			return name->Equals("this") | name->Equals("@index") | name->Equals("@number");

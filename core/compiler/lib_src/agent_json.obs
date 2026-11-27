@@ -19,23 +19,18 @@ The call goes to the agent's backend directly (the agent's system prompt is kept
 tool loop and it is not counted by an AgentScope.
 
 Compile with -lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json and `use API.AgentJson;`.
-
-```
-use API.Agent, API.LlmUtil, API.AgentJson, Data.JSON;
-
-class Weather : json(note) {
-  @city : String;
-  @temp_c : Float;
-  @note : String;
-  New() {}
-}
-
-agent := Agent->New(AnthropicBackend->New("claude-haiku-4-5", Nil), Nil);
-w := Weather->Ask(agent, "Weather in Paris today?");
-"{$w->GetCity()}"->PrintLine();
-```
+A complete program is programs/deploy/json_class_46.obs.
 ~#
 bundle API.AgentJson {
+	#~
+	Asks an agent's model for a JSON value that matches a schema; the call behind the Ask function of a json class
+
+	```
+	agent := Agent->New(AnthropicBackend->New("claude-haiku-4-5", Nil), Nil);
+	weather := Weather->Ask(agent, "Weather in Paris today?");
+	weather->GetCity()->PrintLine();
+	```
+	~#
 	class AgentAsk {
 		#~
 		Asks the agent's model for a JSON value that matches a schema
