@@ -9420,13 +9420,38 @@ Select* Parser::ParseSelect(int depth)
 }
 
 /****************************
- * Whether 'match' starts here: the word, then the first name of its subject.
- * Two names in a row start nothing else, so 'match' is a keyword only in this
- * position and stays an ordinary name everywhere else.
+ * Whether 'match' starts here: the word, then the start of its subject. 'match'
+ * is a keyword only where what follows cannot follow a name, and stays an
+ * ordinary name everywhere else ('match := 1', 'match->Size()', 'match(x)',
+ * 'match[0]', 'match + 1'):
+ *   - a name: 'match color {'. Two names in a row start nothing else.
+ *   - a number, character or string: 'match 1 {'. Nor does a name and a literal.
+ *   - a '(' whose matching ')' is followed by '{': 'match (value) {'. A call is
+ *     never followed by a '{' (as for 'using'), so 'match(x);', 'if(match(x)) {'
+ *     and 'match(x)->Size()' are calls of a method named 'match', as before.
+ * A subject that starts with '(' and goes on after its ')' ('match (a) + b {')
+ * is not told from a call: write it inside one pair of parentheses.
  ****************************/
 PARSER_NO_INLINE bool Parser::IsMatchStart()
 {
-  return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"match";
+  if(!Match(TOKEN_IDENT)) {
+    return false;
+  }
+
+  switch(GetToken(SECOND_INDEX)) {
+  case TOKEN_IDENT:
+  case TOKEN_INT_LIT:
+  case TOKEN_FLOAT_LIT:
+  case TOKEN_CHAR_LIT:
+  case TOKEN_CHAR_STRING_LIT:
+    return scanner->GetToken()->GetIdentifier() == L"match";
+
+  case TOKEN_OPEN_PAREN:
+    return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekAfterParens(2) == TOKEN_OPEN_BRACE;
+
+  default:
+    return false;
+  }
 }
 
 /****************************
