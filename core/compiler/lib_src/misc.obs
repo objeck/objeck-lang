@@ -1396,7 +1396,8 @@ formatter->Format(src, false)->PrintLine();
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
-							AppendBuffer("parent");
+							# the keyword is 'Parent'; written 'parent' it is a name
+							AppendBuffer("Parent");
 
 							if(is_color) {
 								AppendBuffer(ASCII_END);

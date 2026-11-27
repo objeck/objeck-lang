@@ -37,6 +37,7 @@ class FormatterRegressionTest {
 		TestAfterClosingBrace();
 		TestLineDepths();
 		TestDeclarationAfterBrace();
+		TestParentKeyword();
 
 		p := @passed;
 		f := @failed;
@@ -381,5 +382,33 @@ class FormatterRegressionTest {
 
 		tabs := CodeFormatter->New(Map->New()<String, String>);
 		Check("Indent: tabs without a width", tabs->IndentFor(2)->Equals("\t\t"));
+	}
+
+	# The keyword is 'Parent'. The formatter wrote it 'parent', which is a name:
+	# a constructor's "Parent();" came back as a call to nothing, and the class
+	# no longer compiled ("Parent call required").
+	function : TestParentKeyword() ~ Nil {
+		"\n>> 'Parent' keeps its capital..."->PrintLine();
+
+		src := "class Base{New(){}New(n:Int){}}class Kid from Base{New(){Parent();}New(n:Int){Parent(n);}method:public:Up()~Base{return Parent;}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+		Check("Parent: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Parent: the call with no arguments", result->Find("Parent();") > -1);
+		Check("Parent: the call with an argument", result->Find("Parent(n);") > -1);
+		Check("Parent: as a value", result->Find("return Parent;") > -1);
+		Check("Parent: never written in lower case", result->Find("parent") < 0);
+
+		again := CodeFormatter->New(options)->Format(result);
+		Check("Parent: formatting the result again changes nothing", again <> Nil & again->Equals(result));
 	}
 }

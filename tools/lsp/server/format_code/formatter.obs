@@ -426,8 +426,10 @@ class CodeFormatter {
 						AppendBuffer("reverse");
 					}
 
+					# the keyword is 'Parent'; written 'parent' it is a name, and a
+					# constructor's "Parent();" came back as a call to nothing
 					label Token->Type->PARENT_ID {
-						AppendBuffer("parent");
+						AppendBuffer("Parent");
 					}
 
 					label Token->Type->FROM_ID {
@@ -563,6 +565,7 @@ class CodeFormatter {
 								label Token->Type->FOR_ID
 								label Token->Type->EACH_ID
 								label Token->Type->SELECT_ID
+								label Token->Type->PARENT_ID
 								label Token->Type->WHILE_ID {
 									PopBuffer();
 								}
