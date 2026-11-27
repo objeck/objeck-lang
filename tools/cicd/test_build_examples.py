@@ -63,6 +63,39 @@ check("abridged middle of a line", m(["expected SELECT, ... found 'x'"], ["expec
 check("trailing blank lines ignored", m(["a"], ["a", "", " "]))
 check("the wrong line still fails", not m(["start", "...", "item wanted", "end"], ["start", "item ignored", "end"]))
 
+# ---- placeholders match only their own field
+check("<int> matches digits", m(["port <int> open"], ["port 4821 open"]))
+check("<int> refuses text", not m(["port <int> open"], ["port abc open"]))
+check("<any> matches one field", m(["wrote <any> bytes"], ["wrote /tmp/x.dat bytes"]))
+check("<any> is not empty", not m(["wrote <any> bytes"], ["wrote bytes"]))
+check("text around a placeholder is exact", not m(["GET /missing -> <int>"], ["GET /other -> 404"]))
+check("a fixed word beside a placeholder", not m(["GET /missing -> <int>"], ["GET /missing -> 404 extra"]))
+check("a placeholder does not span lines", not m(["a <any> b"], ["a x", "y b"]))
+
+# ---- what a header must say
+check("a block is read", block("one", "two") == ["one", "two"])
+check("no block is None", be.expected_output(__file__) is None)
+check("output: none is silent", block(heading="# output: none") == [])
+check("a heading with no lines is None", block() is None)
+check("a variable heading is still compared", block("port <int>", heading="# output (the port varies):") == ["port <int>"])
+
+ok, note = be.judge(None, 0, ["hello"])
+check("a runnable example with no block fails", not ok and "output:" in note)
+ok, note = be.judge([], 0, [])
+check("a silent example that is silent passes", ok)
+ok, note = be.judge([], 0, ["oops"])
+check("an example that says 'none' but prints fails", not ok)
+ok, note = be.judge(["server listening on port <int>", "GET /missing -> 404", "server stopped"], 0, [])
+check("an example that prints nothing fails", not ok)
+ok, note = be.judge(["server listening on port <int>", "GET /missing -> 404", "server stopped"], 0,
+                    ["server listening on port 4821", "GET /missing -> 404", "server stopped"])
+check("variable output passes", ok)
+ok, note = be.judge(["server listening on port <int>", "GET /missing -> 404", "server stopped"], 0,
+                    ["server listening on port 4821", "GET /missing -> 500", "server stopped"])
+check("altered fixed text in a variable example fails", not ok and "404" in note)
+ok, note = be.judge(["a"], 1, ["a"])
+check("a non-zero exit fails", not ok)
+
 if failures:
     print("%d failed" % len(failures))
     sys.exit(1)

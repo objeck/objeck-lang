@@ -12,6 +12,18 @@
 # in this folder must appear here, every file named here must exist, and the
 # library list of each row must be the one that actually compiles it. Add a row
 # when you add an example, or CI fails.
+#
+# output (the table in the middle is left out; build_examples.py --run checks the rest):
+#
+#   Objeck example programs
+#   =======================
+#
+#   Every file listed below is in this folder. Compile one, then run it:
+#   ...
+#   Notes
+#   -----
+#   ...
+#     The OpenGL examples, gl_fps among them, ship in the opengl folder beside this one.
 ~#
 
 class Welcome {

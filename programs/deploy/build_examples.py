@@ -15,9 +15,10 @@ point: the table is executable documentation rather than a claim.
 --run compares each program's output with the 'output:' block in the comment at
 the top of its own source (the text a reader sees first), so the documentation
 of what an example prints is the test of it. A line that is just '...' stands
-for any number of lines, and a '...' inside a line stands for any text in it,
-which is how the headers abridge long or varying output. The
-examples that need a display, a database, a key or the network are not run;
+for any number of lines, a '...' inside a line stands for any text in it, and <any>
+and <int> stand for one varying field (any text, a whole number); the rest of the
+line is compared exactly. A program that is run must have an output block, or
+'# output: none' if it prints nothing. The examples that need a display, a database, a key or the network are not run;
 the report says which and why.
 
 Exit code is 0 only when every example compiled (and, with --run, printed what
@@ -134,12 +135,18 @@ def find_obr(obc):
 
 
 def expected_output(path):
-    """(lines, varies) from the 'output' block of the file's opening comment, or None.
+    """The expected output lines from the 'output' block of the file's opening comment.
 
-    The block is the comment lines after '# output...:', each written '#   text'
-    (a '#' and three spaces; a bare '#' is an empty line), up to the first comment
-    line that is not indented that way or the closing '~#'. 'varies' is true when the
-    heading says the output differs from run to run, as in '(the port varies)'.
+    Returns None when the file declares no block, which --run treats as a failure: an
+    example that is run must say what it prints. The block is the comment lines after
+    '# output...:', each written '#   text' (a '#' and three spaces; a bare '#' is an
+    empty line), up to the first comment line that is not indented that way or the closing
+    '~#'. An example that prints nothing says so with '# output: none', which returns an
+    empty list (and then any output at all fails).
+
+    Output that differs from run to run is not a reason to skip the comparison: the fixed
+    text around it is still checked, and the variable fields are written as placeholders
+    (see line_pattern).
     """
     with open(path, encoding="utf-8-sig") as handle:
         lines = handle.read().splitlines()
@@ -149,8 +156,10 @@ def expected_output(path):
         if line.strip() == "~#":
             break
         if heading is None:
-            if re.match(r"^#\s*output[^:]*:\s*$", line):
+            if re.match(r"^#\s*output[^:]*:\s*$", line) or re.match(r"^#\s*output:\s*none\s*$", line):
                 heading = line
+                if "none" in line.split(":", 1)[1]:
+                    return []
             continue
         if line.startswith("#   "):
             block.append(line[4:])
@@ -158,20 +167,27 @@ def expected_output(path):
             block.append("")
         else:
             break    # prose after the output (a comment line that is not indented)
-    if heading is None:
+    if heading is None or not trim(block):
         return None
-    return block, "vary" in heading
+    return block
+
+
+# what a placeholder stands for. They are scoped to one field of one line: the text
+# around them is still compared exactly, so a placeholder cannot hide a wrong line.
+PLACEHOLDERS = {"<any>": ".+", "<int>": "-?[0-9]+", "...": ".*"}
+TOKEN = re.compile(r"(<any>|<int>|\.\.\.)")
 
 
 def line_pattern(want):
     """A compiled pattern for one expected line, or None for a plain comparison.
 
-    '...' inside a line stands for any text, so a header can cut a long or
-    varying line short ('{"time":"Wednesday, October 2 ...') or leave a piece
-    out of the middle."""
-    if "..." not in want:
+    Inside a line, <any> is one or more characters, <int> a whole number, and '...' any
+    text (including none), so a header can cut a long line short ('{"time":"Wednesday, ...')
+    or leave a piece out of the middle. Everything else must match exactly."""
+    parts = TOKEN.split(want)
+    if len(parts) == 1:
         return None
-    return re.compile(".*".join(re.escape(part) for part in want.split("...")), re.S)
+    return re.compile("".join(PLACEHOLDERS[p] if p in PLACEHOLDERS else re.escape(p) for p in parts), re.S)
 
 
 def fits(want, pattern, got):
@@ -205,6 +221,17 @@ def matches(expected, actual):
         if not positions:
             return False
     return len(actual) in positions
+
+
+def judge(want, code, got):
+    """(ok, note) for one run: exit code, then the output against the header's block."""
+    if code != 0:
+        return False, "exit %s: %s" % (code, " | ".join(got[-3:]))
+    if want is None:
+        return False, "no 'output:' block in the header (write one, or '# output: none' for a silent program)"
+    if not matches(want, got):
+        return False, "output differs from the header: " + describe(want, got)
+    return True, "ran, output matches its header"
 
 
 def run_example(obr, obe, env):
@@ -288,18 +315,10 @@ def main():
                     want = expected_output(src)
                     code, got = run_example(obr, dest, env)
                     ran += 1
-                    if code != 0:
+                    ok, note = judge(want, code, got)
+                    status = "ok" if ok else "FAILED"
+                    if not ok:
                         failed.append(label)
-                        status, note = "FAILED", "exit %s: %s" % (code, " | ".join(got[-3:]))
-                    elif want is None:
-                        note = "ran, exit 0 (no output block in the header)"
-                    elif want[1]:
-                        note = "ran, exit 0 (its output varies; not compared)"
-                    elif not matches(want[0], got):
-                        failed.append(label)
-                        status, note = "FAILED", "output differs from the header: " + describe(want[0], got)
-                    else:
-                        note = "ran, output matches its header"
             print("  %-8s %-26s %s" % (status, label, note))
 
     if not args.keep:
@@ -317,27 +336,15 @@ def main():
 
 
 def describe(expected, actual):
-    """The first line where the two part, for the failure message."""
+    """Where the output stops fitting, for the failure message: the longest prefix of the
+    expected lines that can still be matched, and the first expected line that cannot."""
     expected, actual = trim(expected), trim(actual)
-    skipping = False
-    at = 0
-    for want in expected:
-        if want == "...":
-            skipping = True
-            continue
-        pattern = line_pattern(want)
-        while at < len(actual):
-            got = actual[at]
-            if fits(want, pattern, got):
-                at += 1
-                skipping = False
-                break
-            if not skipping:
-                return "line %d is '%s', the header says '%s'" % (at + 1, got, want)
-            at += 1
-        else:
-            return "the output ended before '%s'" % want
-    return "the output has %d extra line(s) after the header's last" % (len(actual) - at)
+    for n in range(len(expected), 0, -1):
+        if matches(expected[:n] + ["..."], actual):
+            if n == len(expected):
+                return "the output has extra line(s) after the header's last"
+            return "the header's line %d, '%s', was not found where expected" % (n + 1, expected[n])
+    return "the first line is '%s', the header says '%s'" % (actual[0] if actual else "(nothing)", expected[0] if expected else "(nothing)")
 
 
 if __name__ == "__main__":
