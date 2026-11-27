@@ -5678,6 +5678,18 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
 
     PushInt((size_t)sock_obj, op_stack, stack_pos);
   }
+  else {
+    // The server socket is not open: Close() has run, or the bind failed. Accept()
+    // answers Nil, as the TLS and DTLS servers' Accept do. This branch used to push
+    // nothing, so the caller popped a result that was never there: with its operand
+    // stack empty that read the word below the stack and the process died of SIGSEGV
+    // (interpreter and compiled code alike). A server's accept loop reaches here
+    // whenever another thread closes the socket between the loop's "stopped?" test
+    // and its next Accept() -- WebServer->Stop() from the main thread, for one, while
+    // the accept thread is still on its way back from the last connection. The
+    // thread's last socket error is left as it is (see RecordSocketError).
+    PushInt(0, op_stack, stack_pos);
+  }
 
   return true;
 }
