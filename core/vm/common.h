@@ -787,6 +787,10 @@ struct DtlsServerCtx {
 #ifdef _WIN32
   // the clients sharing listen_fd, made by Listen
   DtlsPeerTable* peers;
+#else
+  // one Accept at a time waits on the listener and takes it for its client (DtlsAccept): two that
+  // waited together both saw the same ClientHello and both took the same socket
+  std::mutex accept_turn;
 #endif
 
   DtlsServerCtx() : last_error(0), port(0), bound_len(0), refs(1), accepting(0), closed(false)

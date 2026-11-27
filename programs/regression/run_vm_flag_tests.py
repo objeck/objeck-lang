@@ -801,6 +801,7 @@ def main():
     check_file_fifo_gc_park(obc, obr, env, bin_dir)
     check_fifo_line_ack(obc, obr, env, bin_dir)
     check_tls_byte_read_eof(obc, obr, env, bin_dir)
+    check_dtls_accept_handoff(obc, obr, env, bin_dir)
     check_tls_listen_close_race(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
@@ -3603,6 +3604,39 @@ def check_tls_listen_close_race(obc, obr, env, bin_dir):
                       "it has its context: Listen() returns and the port is left free",
                       rc == 0 and b"PASS: tls_listen_close_race run" in out,
                       f"rc={rc} out={out[-300:]!r} err={err[-600:]!r}")
+
+
+def check_dtls_accept_handoff(obc, obr, env, bin_dir):
+    # ---- a DTLS accept takes its listening socket for the client safely ---------------
+    # POSIX only (on Windows a DTLS server keeps one socket and hands none over).
+    # dtls_accept_handoff.obs, with Accept() held at a point by OBJECK_NATIVE_TEST_PAUSE:
+    #   reuse: held with the socket connected to a client and no new listener yet, while
+    #          the server is closed and a TCP server is opened, which is given the closed
+    #          listener's descriptor number. The accept used to go on with that number, fail
+    #          because the server was closed, and close it: the unrelated TCP server.
+    #   two:   held when a ClientHello has been seen. Two threads accepting on one server
+    #          both saw the one hello and both took the same socket.
+    if os.name == "nt":
+        return
+    dest = compile_fixture(obc, "dtls_accept_handoff", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] DTLS accept handoff: no openssl command to make a certificate")
+            return
+        cert, key = made
+        for mode, pause, what in (("reuse", "dtls-accept-before-handoff=900",
+                                   "a server closed under a paused accept does not cost another socket its descriptor"),
+                                  ("two", "dtls-accept-hello-seen=400",
+                                   "two accepts on one server: one takes the client, the other the next client")):
+            paused = dict(env)
+            paused["OBJECK_NATIVE_TEST_PAUSE"] = pause
+            rc, out, err = run([obr, dest, mode, cert, key], env=paused, cwd=SCRIPT_DIR)
+            check(f"DTLS accept ({mode}): {what}",
+                  rc == 0 and b"PASS: dtls_accept_handoff run" in out,
+                  f"rc={rc} out={out[-400:]!r} err={err[-400:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):

@@ -7086,6 +7086,15 @@ static SOCKET DtlsRebind(DtlsServerCtx* srv)
 static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* client_ip,
                       size_t buffer_size, size_t* ip_len)
 {
+#ifndef _WIN32
+  // One Accept at a time. The accept takes the listening socket itself for its client and binds a
+  // new listener, so two threads waiting on the same socket both saw the one ClientHello and both
+  // connected and took that socket: two sessions on one descriptor, closed twice. The second now
+  // waits here, parked, and then on the listener the first one left. (On Windows a client is claimed
+  // under the peer table's lock: see DtlsPeerAccept.)
+  std::lock_guard<std::mutex> turn(srv->accept_turn);
+#endif
+
   // the listener is in use until this returns (see ServerCtxClose)
   ListenerUse<DtlsServerCtx> listening(srv);
   const int fd = listening.Descriptor();
@@ -7111,6 +7120,15 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
   // served, landing after its own socket closed -- is discarded: connecting
   // to its sender made the next handshake wait out its timeout for a hello
   // that sender never sends, while the real next client went unheard.
+  //
+  // The wait is the only thing done to the listener without the context lock. Everything after it --
+  // dropping a datagram, connecting the socket to the client, handing it over -- is done under the
+  // lock and only once the listener is seen to be open and still this descriptor. Close() ends the
+  // listener under that lock, and when an accept does not leave within its grace it closes the
+  // descriptor regardless (ServerCtxClose). An accept that was slow between its wait and its handover
+  // then went on with a number that was no longer its listener's: it connected, and gave its client,
+  // whatever socket another thread had opened with that number meanwhile, and freeing the client,
+  // which had failed because the server was closed, closed that socket.
   struct sockaddr_storage client_addr;
   socklen_t addr_len;
   for(;;) {
@@ -7118,70 +7136,82 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
     addr_len = sizeof(client_addr);
     unsigned char peek[16] = {0};
     const int ret = (int)recvfrom(fd, (char*)peek, sizeof(peek), MSG_PEEK, (struct sockaddr*)&client_addr, &addr_len);
-    // a closed server's listener is shut down, which ends the wait above with nothing read
-    if(ret < 0 || listening.ServerClosed()) {
+    if(ret < 0) {
       return MBEDTLS_ERR_NET_ACCEPT_FAILED;
     }
 
     // DTLS record header: content type 22 (handshake), version, epoch 0, ...;
     // then the handshake message type, 1 (ClientHello), at offset 13
-    if(ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1) {
+    const bool hello = ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1;
+    if(hello) {
       // test point: a ClientHello has been seen and nothing has been done about it yet
       NativeTestPause("dtls-accept-hello-seen");
-      break;
     }
 
-    // not a hello: consume it and keep waiting (the loop reads again whatever this returns)
-    char discard[1];
-    (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    // a closed server's listener is shut down, which ends the wait above with nothing read; and a
+    // listener that is no longer this descriptor has been closed: the number is not ours to use
+    if(srv->closed || srv->listen_fd.fd != fd) {
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
+
+    if(!hello) {
+      // not a hello: consume it and keep waiting (the loop reads again whatever this returns)
+      char discard[1];
+      (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+      continue;
+    }
+
+    if(connect(fd, (struct sockaddr*)&client_addr, addr_len) != 0) {
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
+
+    // connect() filters what arrives from now on, but not what is already
+    // queued: a datagram another peer sent before it -- the close_notify of the
+    // client served last, landing after its socket closed -- would be read as
+    // this client's next handshake flight, failing it ("processing of the
+    // ClientHello failed"). Drop every queued datagram that is not this client's.
+    // (Nothing here waits: the lock is held for a few system calls.)
+    for(;;) {
+      fd_set readable;
+      FD_ZERO(&readable);
+      FD_SET(fd, &readable);
+      struct timeval no_wait = { 0, 0 };
+      if(select(fd + 1, &readable, nullptr, nullptr, &no_wait) <= 0) {
+        break;
+      }
+
+      struct sockaddr_storage from;
+      memset(&from, 0, sizeof(from));
+      socklen_t from_len = sizeof(from);
+      char head[1];
+      const int peeked = (int)recvfrom(fd, head, sizeof(head), MSG_PEEK, (struct sockaddr*)&from, &from_len);
+      if(peeked < 0) {
+        break;
+      }
+
+      if(from_len == addr_len && !memcmp(&from, &client_addr, addr_len)) {
+        // this client's: everything after it is filtered by connect()
+        break;
+      }
+
+      char discard[1];
+      (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+    }
+
+    // the connected socket is the client's now, and the server has no listener until one is bound
+    client->net.fd = fd;
+    srv->listen_fd.fd = -1;
+    break;
   }
 
-  if(connect(fd, (struct sockaddr*)&client_addr, addr_len) != 0) {
-    return MBEDTLS_ERR_NET_ACCEPT_FAILED;
-  }
-
-  // connect() filters what arrives from now on, but not what is already
-  // queued: a datagram another peer sent before it -- the close_notify of the
-  // client served last, landing after its socket closed -- would be read as
-  // this client's next handshake flight, failing it ("processing of the
-  // ClientHello failed"). Drop every queued datagram that is not this client's.
-  for(;;) {
-    fd_set readable;
-    FD_ZERO(&readable);
-    FD_SET(fd, &readable);
-    struct timeval no_wait = { 0, 0 };
-    if(select(fd + 1, &readable, nullptr, nullptr, &no_wait) <= 0) {
-      break;
-    }
-
-    struct sockaddr_storage from;
-    memset(&from, 0, sizeof(from));
-    socklen_t from_len = sizeof(from);
-    char head[1];
-    const int peeked = (int)recvfrom(fd, head, sizeof(head), MSG_PEEK, (struct sockaddr*)&from, &from_len);
-    if(peeked < 0) {
-      break;
-    }
-
-    if(from_len == addr_len && !memcmp(&from, &client_addr, addr_len)) {
-      // this client's: everything after it is filtered by connect()
-      break;
-    }
-
-    char discard[1];
-    (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
-  }
-
-  // test point: the listener is connected to the client and has not been handed over yet
+  // test point: the socket is the client's and there is no new listener yet
   NativeTestPause("dtls-accept-before-handoff");
 
-  // the connected socket is the client's now; listen again on a fresh one, unless the server was
-  // closed meanwhile: then nobody is left to accept on it, and the socket handed over was shut down
-  // with the listener it was (the client is freed by the caller, with it)
-  client->net.fd = fd;
+  // Listen again on a fresh socket, unless the server was closed meanwhile: then nobody is left to
+  // accept on it (the client is freed by the caller, and its socket with it: it is the client's own).
   {
     std::lock_guard<std::mutex> guard(tls_context_lock);
-    srv->listen_fd.fd = -1;
     if(srv->closed) {
       return MBEDTLS_ERR_NET_ACCEPT_FAILED;
     }
