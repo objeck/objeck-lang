@@ -10061,8 +10061,18 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
     return nullptr;
   }
 
-  // Parse the expression
-  Expression* result = expr_parser.ParseExpression(0);
+  // Parse the expression. One with more chained operators than a statement may have is given
+  // up by an exception (CheckChain), which nothing between here and the compiler's last
+  // resort caught: obc ended with "internal error: unexpected exception during compilation"
+  // and this scanner was not released. The error has been reported to this parser, so the
+  // interpolation is refused below with it as the reason, like any other that does not parse.
+  Expression* result = nullptr;
+  try {
+    result = expr_parser.ParseExpression(0);
+  }
+  catch(const NestingTooDeep&) {
+    result = nullptr;
+  }
 
   // A token the scanner rejected is an error even where the parse recovered from it
   // (a malformed literal stands in as a literal): the interpolation is not valid.
