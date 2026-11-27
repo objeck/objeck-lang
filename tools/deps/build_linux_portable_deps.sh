@@ -115,8 +115,13 @@ step "mbedTLS $MBEDTLS_VERSION (static, in-tree config)"
 tarball=$(fetch mbedtls "$MBEDTLS_URL" "$MBEDTLS_SHA256" | tail -1)
 tar xjf "$tarball" -C "$WORK"
 MBED_SRC="$WORK/mbedtls-$MBEDTLS_VERSION"
+# MBEDTLS_FATAL_WARNINGS=OFF: mbedTLS builds with -Werror by default, and GCC 14
+# on aarch64 reports -Warray-bounds in ctr_drbg.c for mbedtls_xor's byte-wise
+# tail loop, which a 48-byte input never reaches after the 16-byte NEON loop.
+# x86-64 does not warn, and neither does the clang the macOS package is built
+# with.
 cmake_configure mbedtls -S "$MBED_SRC" -B "$WORK/build-mbedtls" "${CMAKE_COMMON[@]}" \
-	-DCMAKE_INSTALL_PREFIX="$PREFIX" -DENABLE_TESTING=OFF -DENABLE_PROGRAMS=OFF \
+	-DCMAKE_INSTALL_PREFIX="$PREFIX" -DENABLE_TESTING=OFF -DENABLE_PROGRAMS=OFF -DMBEDTLS_FATAL_WARNINGS=OFF \
 	-DUSE_STATIC_MBEDTLS_LIBRARY=ON -DUSE_SHARED_MBEDTLS_LIBRARY=OFF -DGEN_FILES=OFF \
 	-DPython3_EXECUTABLE=/usr/bin/python3 -DMBEDTLS_CONFIG_FILE="$CONFIG_H"
 run mbedtls.build cmake --build "$WORK/build-mbedtls" -j"$JOBS"
