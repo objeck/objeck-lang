@@ -3354,6 +3354,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_SET_DEADLINE:
     return SockTcpSetDeadline(program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_TCP_SHUTDOWN_SEND:
+    return SockTcpShutdownSend(program, inst, op_stack, stack_pos, frame);
+
   case UNCOMPRESS_DEFLATE_LIMIT:
     return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
 
@@ -6645,6 +6648,35 @@ bool TrapProcessor::SockTcpSetDeadline(StackProgram* program, size_t* inst, size
     }
     else {
       instance[4] = (size_t)deadline_ms;
+    }
+  }
+  return true;
+}
+
+//
+// TCPSocket->CloseGracefully() and TCPSecureSocket->CloseGracefully(), before they wait
+// for the peer: this side has sent all it will, so say so (FIN; for TLS a close_notify
+// first) and keep the socket open for reading. A peer that reads until the connection
+// ends then sees the end at once. Without it both sides waited on each other -- the
+// peer for this side's close, this side for the peer's -- until the wait timed out.
+//
+bool TrapProcessor::SockTcpShutdownSend(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    StackClass* cls = MemoryManager::GetClass(instance);
+    if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocket") {
+      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+      if(sctx && instance[3]) {
+        // the close_notify alert is a write, which can block on a full send buffer;
+        // park for it (sctx is C heap)
+        MemoryManager::BeginBlocking();
+        IPSecureSocket::ShutdownSend(sctx);
+        MemoryManager::EndBlocking();
+      }
+    }
+    else if((long)instance[0] > -1) {
+      IPSocket::ShutdownSend((SOCKET)instance[0]);
     }
   }
   return true;

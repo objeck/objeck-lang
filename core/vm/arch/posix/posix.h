@@ -890,6 +890,14 @@ public:
     close(sock);
   }
 
+  // Ends this side's sending and leaves the socket open for reading: what was
+  // written is handed off and followed by FIN, so the peer reads it and then
+  // the end of the stream. Errors are ignored, as in Close: the peer may have
+  // torn the connection down already.
+  static void ShutdownSend(SOCKET sock) {
+    shutdown(sock, SHUT_WR);
+  }
+
   static bool SetKeepAlive(SOCKET sock, bool enable) {
     int val = enable ? 1 : 0;
     return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) == 0;
@@ -1448,8 +1456,23 @@ class IPSecureSocket {
   static void Close(SecureSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     if(sctx) {
-      mbedtls_ssl_close_notify(&sctx->ssl);
+      if(!sctx->send_closed) {
+        mbedtls_ssl_close_notify(&sctx->ssl);
+      }
       delete sctx;
+    }
+  }
+
+  // Ends this side's sending and leaves the session open for reading: the
+  // close_notify alert tells the peer no more data follows (its read ends
+  // cleanly rather than as a truncation), and the FIN after it ends the stream
+  // for a peer that does not look. Close then sends no second alert.
+  static void ShutdownSend(SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
+    if(sctx && !sctx->send_closed) {
+      mbedtls_ssl_close_notify(&sctx->ssl);
+      shutdown(sctx->net.fd, SHUT_WR);
+      sctx->send_closed = true;
     }
   }
 

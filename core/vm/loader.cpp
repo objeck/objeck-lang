@@ -1316,7 +1316,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 // LAST_TRAP would be refused here, so tools/cicd/check_trap_handlers.py fails
 // when LAST_TRAP is not the enum's last enumerator.
 static const INT64_VALUE FIRST_TRAP = instructions::LOAD_CLS_INST_ID;
-static const INT64_VALUE LAST_TRAP = instructions::SOCK_TCP_SET_DEADLINE;
+static const INT64_VALUE LAST_TRAP = instructions::SOCK_TCP_SHUTDOWN_SEND;
 
 // The ids a program may push ahead of TRAP or TRAP_RTRN: the Traps enum, and the
 // instruction ids the compiler writes as trap ids (check_trap_handlers.py keeps

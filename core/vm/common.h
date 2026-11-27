@@ -540,6 +540,10 @@ struct SecureSocketCtx {
   // Both are used by TlsBioRecv.
   long long deadline_ms;
   int read_ms;
+  // this side has ended its sending (IPSecureSocket::ShutdownSend): the
+  // close_notify has gone out and the socket takes no more writes, so Close
+  // does not send a second one into a socket that would refuse it
+  bool send_closed;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -553,7 +557,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -3048,6 +3052,7 @@ class TrapProcessor {
   static bool SockTcpSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetConnTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetDeadline(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpShutdownSend(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   // SSL socket options

@@ -459,6 +459,7 @@ enum ScannerTokenType {
   GC_TEST_ADDRESS,
   UNCOMPRESS_ZLIB_TRY,
   SOCK_TCP_SET_DEADLINE,
+  SOCK_TCP_SHUTDOWN_SEND,
   // serialization
   SERL_CHAR,
   SERL_INT,
