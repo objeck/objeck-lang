@@ -1229,6 +1229,26 @@ class StackMethod;
  * fill resolver reuses a key's record on a repeat and stops filling once
  * the records are used up, after which the site takes the bridge for good.
  * Owned by the caller's NativeCode.
+ *
+ * Who reads what, across threads:
+ *   - compiled code reads `current`, then the record it points at. The
+ *     record's three words are stored before `current` is (release), and a
+ *     record is never written again.
+ *   - a miss (JitResolveVirtualSite) looks through records[0, used) WITHOUT
+ *     the site's lock, to skip the resolve for a class it has seen. `used`
+ *     is therefore atomic: stored (release) only after the record it admits
+ *     is complete, loaded (acquire) before the scan, so a scan reads only
+ *     finished records. It was a plain int, read while a fill on another
+ *     thread incremented it: a formal data race (ThreadSanitizer, v2026.11.4
+ *     soak), harmless only because the fill looks the key up again under
+ *     the lock.
+ *   - the constructor's last act is a release store of `used`. The site
+ *     reaches other threads through the machine code that embeds its
+ *     address, published by StackMethod::SetNativeCode, and a compiled
+ *     caller can reach that code by loading native_entry itself, with no
+ *     acquire the C++ side (or a race detector) can see. The acquire load of
+ *     `used` that begins every miss orders the constructor's plain stores
+ *     (declaration, decl_cls_id, decl_mthd_id) before the miss reads them.
  ********************************/
 struct JitVirtualRecord {
   size_t key;             // the receiver class, or the func-ref word, this record answers for
@@ -1240,7 +1260,7 @@ struct JitVirtualSite {
   static const int RECORDS = 4;
   std::atomic<JitVirtualRecord*> current;   // read first by compiled code: keep first
   std::atomic<bool> filling;
-  int used;
+  std::atomic<int> used;                    // records[0, used) are complete; see above
   JitVirtualRecord records[RECORDS];
   StackMethod* declaration;                 // the `virtual` declaration the site names (null for a func-ref site)
   long decl_cls_id;
@@ -1251,6 +1271,8 @@ struct JitVirtualSite {
     for(int i = 0; i < RECORDS; ++i) {
       records[i] = JitVirtualRecord();
     }
+    // publish the fields above to the threads that will miss here (see the comment on the struct)
+    used.store(0, std::memory_order_release);
   }
 };
 

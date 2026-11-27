@@ -544,21 +544,27 @@ JitVirtualRecord* JitCompiler::FillSiteRecord(JitVirtualSite* site, size_t key, 
   while(site->filling.exchange(true, std::memory_order_acquire)) {
     ;
   }
+  // `used` changes only here, under the flag; it is atomic for the scan in
+  // JitResolveVirtualSite, which does not take it. Acquire, not relaxed: a
+  // func-ref miss comes straight here, and this load is then what orders the
+  // site's constructor (on the compiling thread) before the stores below.
+  const int used = site->used.load(std::memory_order_acquire);
   JitVirtualRecord* found = nullptr;
-  for(int i = 0; i < site->used; ++i) {
+  for(int i = 0; i < used; ++i) {
     if(site->records[i].key == key) {
       found = &site->records[i];
       break;
     }
   }
-  if(!found && site->used < JitVirtualSite::RECORDS) {
+  if(!found && used < JitVirtualSite::RECORDS) {
     void* entry = (!target || target->IsVirtual()) ? nullptr : target->GetNativeEntry();
     if(entry) {
-      JitVirtualRecord& record = site->records[site->used];
+      JitVirtualRecord& record = site->records[used];
       record.key = key;
       record.entry = entry;
       record.target = target;
-      site->used++;
+      // admit the record only now that it is whole (see JitVirtualSite)
+      site->used.store(used + 1, std::memory_order_release);
       found = &record;
     }
   }
@@ -575,8 +581,12 @@ JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_
   if(!cls) {
     return nullptr;
   }
-  // the record can answer without resolving again; resolve only for a new class
-  for(int i = 0; i < site->used; ++i) {
+  // the record can answer without resolving again; resolve only for a new class.
+  // No lock: the acquire load admits only records a fill has finished, and
+  // orders the site's constructor before the reads of its fields below (see
+  // JitVirtualSite). A record that appears after the load is found by the fill.
+  const int used = site->used.load(std::memory_order_acquire);
+  for(int i = 0; i < used; ++i) {
     if(site->records[i].key == (size_t)cls) {
       return FillSiteRecord(site, (size_t)cls, nullptr);
     }
