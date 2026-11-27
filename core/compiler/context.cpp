@@ -29,6 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#include <climits>
 #include "context.h"
 #include "linker.h"
 #include "parser.h"
@@ -4027,6 +4028,11 @@ static int FirstFreeHiddenIndex(SymbolTable* table, const std::wstring& prefix)
   int low = 0;
   int high = 1;
   while(taken(high)) {
+    // doubling past INT_MAX / 2 would overflow; a run that long cannot exist (the local space is exhausted
+    // long before), so the probe ends and the last index is reported as the one to use
+    if(high > INT_MAX / 2) {
+      return INT_MAX;
+    }
     low = high;
     high <<= 1;
   }
