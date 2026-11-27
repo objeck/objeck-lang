@@ -132,6 +132,9 @@
     std::vector<ReceiverCheck> receiver_checks;
     // by class id: 1 for a class some class lists as an interface (filled on first use)
     std::vector<char> is_interface;
+    // by class id: the largest instance among the class and those that inherit
+    // from it, in bytes (filled on first use)
+    std::vector<INT64_VALUE> family_size;
   };
 
   class RefMap {
@@ -699,6 +702,29 @@
           }
         }
         return cls < 0 || cls >= (long)context->is_interface.size() || context->is_interface[cls] != 0;
+      }
+
+      // The most memory an object of static class 'cls' can have: the object is an
+      // instance of that class or, behind a cast the compiler did not write, of
+      // one that inherits from it.
+      INT64_VALUE FamilySize(long cls) {
+        if(context->family_size.empty()) {
+          const long num = prgm->GetClassNumber();
+          context->family_size.assign(num > 0 ? num : 1, 0);
+          long* hierarchy = prgm->GetHierarchy();
+          for(long i = 0; i < num; ++i) {
+            StackClass* each = prgm->GetClass(i);
+            const INT64_VALUE size = each ? each->GetInstanceMemorySize() : 0;
+            long at = i;
+            for(long depth = 0; at >= 0 && at < num && depth <= num; ++depth) {
+              if(size > context->family_size[at]) {
+                context->family_size[at] = size;
+              }
+              at = hierarchy ? hierarchy[at] : -1;
+            }
+          }
+        }
+        return cls >= 0 && cls < (long)context->family_size.size() ? context->family_size[cls] : 0;
       }
 
       // Whether a reference of static class 'have' may be an instance of 'want': one
@@ -2356,6 +2382,16 @@
               if(as_float != (layout[index].kind == RK_FLOAT) || (as_func && layout[index].part != 1)) {
                 return Fail(receivers[i].ip, L"an instance variable read as another kind than its class declares", true);
               }
+            }
+          }
+          else if(context && cls != CLOSURE) {
+            // any other reference whose static class is spelled: no field past the
+            // largest object of that class's family
+            ClassSet claimed;
+            ClassesOf(receivers[i].value, claimed);
+            if(claimed.n == 1 && !IsInterface(claimed.ids[0]) &&
+               receivers[i].end * (INT64_VALUE)sizeof(size_t) > FamilySize(claimed.ids[0])) {
+              return Fail(receivers[i].ip, L"an instance variable beyond every class the object can be", true);
             }
           }
         }
