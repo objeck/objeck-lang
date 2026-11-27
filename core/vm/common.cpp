@@ -4182,9 +4182,37 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
 //
 static const size_t UTF8_TAIL_MAX = 3;
 
+// The values the byte at 'index' (1, 2 or 3) of a UTF-8 character may have, given its lead byte: a
+// continuation byte, 80..BF, except that the SECOND byte is held to less after four lead bytes. E0
+// needs A0..BF (below that the character has a two-byte form), ED needs 80..9F (above that it is a
+// surrogate), F0 needs 90..BF (below that it has a three-byte form) and F4 needs 80..8F (above that it
+// is past U+10FFFF). A byte outside the range does not continue the character: nothing that follows it
+// can make the bytes before it into one.
+static inline void Utf8ByteRange(unsigned char lead, size_t index, unsigned char& lo, unsigned char& hi)
+{
+  lo = 0x80;
+  hi = 0xBF;
+  if(index == 1) {
+    if(lead == 0xE0) {
+      lo = 0xA0;
+    }
+    else if(lead == 0xED) {
+      hi = 0x9F;
+    }
+    else if(lead == 0xF0) {
+      lo = 0x90;
+    }
+    else if(lead == 0xF4) {
+      hi = 0x8F;
+    }
+  }
+}
+
 // The bytes the UTF-8 character that ends [buf, buf + len) still lacks: 0 when the bytes end on a whole
-// character, or on bytes that do not start one. 'tail' is given how many bytes of that character are there.
-static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullptr)
+// character, on bytes that do not start one (a lone continuation byte, C0, C1, F5 and up), or on a
+// prefix that can no longer become one (E0 80: see Utf8ByteRange). 'tail' is given how many bytes of
+// that character are there, and 'lead' its first byte.
+static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullptr, unsigned char* lead = nullptr)
 {
   for(size_t back = 1; back <= 4 && back <= len; ++back) {
     const unsigned char c = (unsigned char)buf[len - back];
@@ -4193,8 +4221,19 @@ static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullpt
     }
     const size_t whole = (c >= 0xC2 && c <= 0xDF) ? 2 : (c >= 0xE0 && c <= 0xEF) ? 3 : (c >= 0xF0 && c <= 0xF4) ? 4 : 1;
     if(whole > back) {
+      if(back > 1) {
+        unsigned char lo, hi;
+        Utf8ByteRange(c, 1, lo, hi);
+        const unsigned char second = (unsigned char)buf[len - back + 1];
+        if(second < lo || second > hi) {
+          return 0;
+        }
+      }
       if(tail) {
         *tail = back;
+      }
+      if(lead) {
+        *lead = c;
       }
       return whole - back;
     }
@@ -4203,40 +4242,54 @@ static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullpt
   return 0;
 }
 
-static inline bool IsUtf8Continuation(int byte)
-{
-  return (byte & 0xC0) == 0x80;
-}
-
 // Completes the character that ends the 'len' bytes just read into 'buf' (room for UTF8_TAIL_MAX more).
-// Only continuation bytes are taken, one at a time: next_continuation(dest) answers true when the
-// stream's next byte is one, which it has then read into 'dest', and false when the stream has no more
-// or its next byte is anything else, which it must leave unread (a FILE gives the byte back with ungetc,
-// a socket looks before it reads, a TLS session keeps it for its next read). The bytes a lead byte
-// announces used to be read whatever they were: after F0 the next three were taken, so a one-byte read
-// of F0 41 42 43 swallowed "ABC" into a character that was never one, and the next read began after
-// them. Returns the new length. No VM heap is touched: callable while parked.
-template<typename NextContinuation>
-static size_t ReadUtf8Tail(char* buf, size_t len, NextContinuation next_continuation)
+// Only bytes that can still belong to that character are taken, one at a time: next_in_range(dest, lo,
+// hi) answers true when the stream's next byte is in [lo, hi], which it has then read into 'dest', and
+// false when the stream has no more or its next byte is anything else, which it must leave unread (a
+// FILE gives the byte back with ungetc, a socket looks before it reads, a TLS session keeps it for its
+// next read). The bytes a lead byte announces used to be read whatever they were: after F0 the next
+// three were taken, so a one-byte read of F0 41 42 43 swallowed "ABC" into a character that was never
+// one, and the next read began after them.
+//
+// The range is Utf8ByteRange's, not every continuation byte. With any continuation byte accepted, a
+// read of E0 took a following 80 and then waited for a third byte, though E0 80 can never be a
+// character: a peer that had written E0 80 and was waiting for its answer was never answered, and both
+// sides waited for good. The 80 is now left in the stream and the read returns (U+FFFD for the E0).
+//
+// What still waits, and has to: a prefix that CAN become a character, on a stream whose writer has
+// not sent the rest and has not closed. Returning half a character is what a read of characters
+// promises not to do; the wait ends when the rest arrives, the stream ends, or the read's own timeout
+// or deadline does.
+//
+// Returns the new length. No VM heap is touched: callable while parked.
+template<typename NextInRange>
+static size_t ReadUtf8Tail(char* buf, size_t len, NextInRange next_in_range)
 {
+  size_t have = 0;
+  unsigned char lead = 0;
   // never more than the room the caller left after 'len' (a lead byte lacks three bytes at most)
-  const size_t lacking = Utf8TailMissing(buf, len);
+  const size_t lacking = Utf8TailMissing(buf, len, &have, &lead);
   const size_t missing = lacking < UTF8_TAIL_MAX ? lacking : UTF8_TAIL_MAX;
   size_t added = 0;
-  while(added < missing && next_continuation(buf[len + added])) {
+  while(added < missing) {
+    unsigned char lo, hi;
+    Utf8ByteRange(lead, have + added, lo, hi);
+    if(!next_in_range(buf[len + added], lo, hi)) {
+      break;
+    }
     ++added;
   }
   return len + added;
 }
 
-// The next byte of a FILE (the console, a file, a FIFO) when it continues a character: see ReadUtf8Tail
-static bool FileNextContinuation(FILE* file, char& dest)
+// The next byte of a FILE (the console, a file, a FIFO) when it is in [lo, hi]: see ReadUtf8Tail
+static bool FileNextInRange(FILE* file, char& dest, unsigned char lo, unsigned char hi)
 {
   const int next = fgetc(file);
   if(next == EOF) {
     return false;
   }
-  if(!IsUtf8Continuation(next)) {
+  if(next < lo || next > hi) {
     ungetc(next, file);
     return false;
   }
@@ -4403,7 +4456,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     {
       read = fread(byte_buffer, 1, num, stdin);
       // never stop inside a character (see ReadUtf8Tail)
-      read = ReadUtf8Tail(byte_buffer, read, [](char& dest) { return FileNextContinuation(stdin, dest); });
+      read = ReadUtf8Tail(byte_buffer, read, [](char& dest, unsigned char lo, unsigned char hi) { return FileNextInRange(stdin, dest, lo, hi); });
       if(read) {
         wide_in = DecodeCharRead(byte_buffer, read, (size_t)num);
       }
@@ -10674,7 +10727,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
         read = 0;
       }
       // never stop inside a character (see ReadUtf8Tail); a failed read is no more bytes
-      read = ReadUtf8Tail(byte_buffer, read, [pipe](char& dest) { return Pipe::ReadContinuationByte(dest, pipe); });
+      read = ReadUtf8Tail(byte_buffer, read, [pipe](char& dest, unsigned char lo, unsigned char hi) { return Pipe::ReadByteInRange(dest, pipe, lo, hi); });
       in = DecodeCharRead(byte_buffer, read, (size_t)num);
 
       // copy and remove file BOM UTF (8, 16, 32)
@@ -10911,8 +10964,8 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     // Never stop inside a character (see ReadUtf8Tail). Only after a whole read: a short one means the
     // peer closed, or the read failed or timed out, and its reason is in 'error' already.
     if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char& dest) {
-        return IPSocket::ReadContinuationByte(dest, sock, error, limits.deadline_ms, limits.read_ms);
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char& dest, unsigned char lo, unsigned char hi) {
+        return IPSocket::ReadByteInRange(dest, sock, lo, hi, error, limits.deadline_ms, limits.read_ms);
       });
     }
     MemoryManager::EndBlocking();
@@ -11120,7 +11173,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     // never stop inside a character, after a whole read (see SockTcpInCharAry)
     if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest) {
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest, unsigned char lo, unsigned char hi) {
         // TLS has no way to look at a byte without reading it: one that does not continue the
         // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
         int status;
@@ -11128,7 +11181,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
         if(status <= 0) {
           return false;
         }
-        if(!IsUtf8Continuation(next)) {
+        if((unsigned char)next < lo || (unsigned char)next > hi) {
           // test point: a byte that belongs to the next read has been taken and not yet given back
           NativeTestPause("tls-char-before-pushback");
           sctx->pushback = (unsigned char)next;
@@ -13297,7 +13350,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     do {
       read = fread(byte_buffer, 1, num, file);
       // never stop inside a character (see ReadUtf8Tail)
-      read = ReadUtf8Tail(byte_buffer, read, [file](char& dest) { return FileNextContinuation(file, dest); });
+      read = ReadUtf8Tail(byte_buffer, read, [file](char& dest, unsigned char lo, unsigned char hi) { return FileNextInRange(file, dest, lo, hi); });
       in = DecodeCharRead(byte_buffer, read, (size_t)num);
 
       // remove file BOM UTF (8, 16, 32)
