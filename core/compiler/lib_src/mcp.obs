@@ -2101,7 +2101,7 @@ bundle API.MCP {
 		}
 
 		#~
-		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default). With sessions off the server cannot tell one client from another, so a notifications/cancelled is accepted and ignored: cancellation over HTTP needs sessions
+		Turns on or off the "Mcp-Session-Id" session the HTTP transport hands out at initialize and then requires (on by default). Cancellation is keyed by the session: with sessions off nothing reliable tells one client from another, so a notifications/cancelled is accepted (202) and ignored, calls of different clients under one request id are kept apart, and the initialize result says so in _meta ("org.objeck/cancellation")
 		@param on true for sessions
 		~#
 		method : public : SetSessions(on : Bool) ~ Nil {
@@ -3302,11 +3302,14 @@ bundle API.MCP {
 				};
 			}
 			else if(<>@service->UsesSessions()) {
-				# With sessions off nothing tells one client from another, and request ids are each
-				# client's own. Every message is then a connection by itself: two clients that both have
-				# a call under id 1 at work do not take each other's place, and a notifications/cancelled,
-				# which could only name "whoever has a call under this id", reaches no call (it is
-				# accepted with 202 and ignored). Cancellation needs sessions
+				# With sessions off nothing names the client. A request id is unique within one client
+				# only, and what HTTP itself offers is not an identity: a cancellation is a POST of its
+				# own, so it comes from another port than the call it names, and an address is shared by
+				# every program on a machine and every client behind a proxy. Guessing would sooner or
+				# later stop the wrong client's call. So every message is a connection by itself: two
+				# clients that both have a call under id 1 at work do not take each other's place, and
+				# a notifications/cancelled reaches no call (202, ignored). Cancellation is keyed by the
+				# session; the initialize reply says so (see below)
 				scope := "http-{$System.Runtime->GetUuid()}";
 			};
 
@@ -3324,6 +3327,15 @@ bundle API.MCP {
 				if(code = McpProtocol->InvalidRequest() | code = McpProtocol->ParseError()) {
 					status := 400;
 				};
+			};
+
+			# A client cannot see from the outside that its cancellations will be ignored, so a sessionless
+			# server says it where a client looks first: in the _meta of the initialize result, the place
+			# the protocol keeps for what it does not define
+			if(is_initialize & err = Nil & <>@service->UsesSessions() & reply->Get("result") <> Nil) {
+				note := JsonElement->New(JsonElement->JsonType->OBJECT);
+				note->Insert("org.objeck/cancellation", "unsupported: this server runs without sessions, so notifications/cancelled is accepted and ignored");
+				reply->Get("result")->Insert("_meta", note);
 			};
 
 			# a session begins with an initialize that was answered, not with one that was refused
