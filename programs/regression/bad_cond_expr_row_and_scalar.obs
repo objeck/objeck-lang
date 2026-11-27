@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: (14,8): '?' invalid type mismatch
+# EXPECT_ERROR_COUNT: 2
+#~
+A jagged array's row is an array, so it cannot be one branch of '?' when the
+other is a single value. Both were accepted: the row was taken for an element
+(a subscripted variable), and the conditional's value, declared an Int, held
+the row's address. A conditional over two rows is cond_expr_jagged_row.obs.
+~#
+class BadCondExprRowAndScalar {
+	function : Main(args : String[]) ~ Nil {
+		rows := Int[]->New[2];
+		rows[0] := [1, 2, 3];
+		t := args->Size() = 0;
+		x := t ? rows[0] : 5;
+		y := t ? rows[0][1] : rows[0];
+	}
+}

@@ -3949,15 +3949,21 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
   Type* else_type = GetExpressionType(else_conditional, depth + 1);
 
   // validate types
-  // The dimension of the value a branch yields. An indexed element (p[1]) is a
-  // scalar even though its variable's type carries the array's dimension; a call
-  // chain or a cast is already resolved into the branch's type.
-  auto value_dimension = [](Expression* branch, Type* branch_type) {
-    if(!branch->GetCastType() && !branch->GetMethodCall() && branch->GetExpressionType() == VAR_EXPR &&
-       static_cast<Variable*>(branch)->GetIndices()) {
-      return 0;
-    }
-    return branch_type->GetDimension();
+  // The dimension of the value a branch yields. An indexed element (p[1],
+  // Items()[1]) is a scalar even though its type carries the array's dimension;
+  // a call chain or a cast is already resolved into the branch's type.
+  //
+  // IsScalar knows which subscripted values are elements. This used to test for
+  // a subscripted variable alone, which got two cases wrong:
+  //  - a jagged array's row ('rows[i]' of an Int[][]) is subscripted and is an
+  //    array: its type is the row's, with the row's dimension
+  //    (AnalyzeJaggedAccess). Taken for an element it made
+  //    'c ? rows[0] : rows[1]' a scalar, and returning that from an Int[] method
+  //    was refused, "Dimension size mismatch".
+  //  - an element of a call's result ('c ? p->Items()[0] : 9') was taken for the
+  //    array and refused, "'?' invalid type mismatch".
+  auto value_dimension = [this](Expression* branch, Type* branch_type) {
+    return IsScalar(branch) ? 0 : branch_type->GetDimension();
   };
 
   if(if_type && else_type) {

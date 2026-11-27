@@ -1,0 +1,169 @@
+#~
+The branches of '?' keep the dimension of the value they yield when that value
+comes out of a subscript.
+
+  - A jagged array's row is an array: `return chooseFirst ? rows[0] : rows[1];`
+    in a method that returns Int[] was refused, "Dimension size mismatch". The
+    conditional took each subscripted branch for an element and made its value
+    a scalar.
+  - An element of a call's result is one value: `c ? p->Items()[0] : 9` was
+    refused, "'?' invalid type mismatch", because the element was taken for the
+    array the call returns.
+
+Rows of Int, Float and String are returned, assigned, passed and called on;
+the row chosen is checked by its size and its elements, on both branches. A row
+paired with a scalar is still refused: bad_cond_expr_row_and_scalar.obs. Exits
+1 on a mismatch.
+~#
+class Table {
+	@rows : Int[][];
+	@items : Int[];
+
+	New() {
+		@rows := Int[]->New[2];
+		@rows[0] := [1, 2, 3];
+		@rows[1] := [4, 5];
+		@items := [50, 60, 70];
+	}
+
+	method : public : Items() ~ Int[] {
+		return @items;
+	}
+
+	# a field's rows
+	method : public : Row(first : Bool) ~ Int[] {
+		return first ? @rows[0] : @rows[1];
+	}
+}
+
+class CondExprJaggedRow {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := CondExprJaggedRow->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	function : Row(rows : Int[][], chooseFirst : Bool) ~ Int[] {
+		return chooseFirst ? rows[0] : rows[1];
+	}
+
+	function : FloatRow(rows : Float[][], chooseFirst : Bool) ~ Float[] {
+		return chooseFirst ? rows[0] : rows[1];
+	}
+
+	function : TextRow(rows : String[][], chooseFirst : Bool) ~ String[] {
+		return chooseFirst ? rows[0] : rows[1];
+	}
+
+	function : Sum(values : Int[]) ~ Int {
+		total := 0;
+		each(i : values) {
+			total += values[i];
+		};
+		return total;
+	}
+
+	method : Run() ~ Nil {
+		rows := Int[]->New[2];
+		rows[0] := [1, 2, 3];
+		rows[1] := [4, 5];
+
+		a := Row(rows, true);
+		b := Row(rows, false);
+		Check("returned, first: size", a->Size(), 3);
+		Check("returned, first: element", a[2], 3);
+		Check("returned, second: size", b->Size(), 2);
+		Check("returned, second: element", b[1], 5);
+
+		# assigned
+		t := true;
+		f := false;
+		r := t ? rows[0] : rows[1];
+		Check("assigned, first", r->Size() * 10 + r[0], 31);
+		r := f ? rows[0] : rows[1];
+		Check("assigned, second", r->Size() * 10 + r[0], 24);
+
+		# declared
+		d : Int[] := f ? rows[0] : rows[1];
+		Check("declared", d[1], 5);
+
+		# passed, and called on
+		Check("argument, first", Sum(t ? rows[0] : rows[1]), 6);
+		Check("argument, second", Sum(f ? rows[0] : rows[1]), 9);
+		Check("receiver, first", (t ? rows[0] : rows[1])->Size(), 3);
+		Check("receiver, second", (f ? rows[0] : rows[1])->Size(), 2);
+
+		# a row or a whole array
+		whole := [7, 8, 9, 10];
+		m := t ? rows[1] : whole;
+		Check("row or array, row", m->Size(), 2);
+		m := f ? rows[1] : whole;
+		Check("row or array, array", m->Size(), 4);
+
+		table := Table->New();
+		Check("field rows, first", table->Row(true)->Size(), 3);
+		Check("field rows, second", table->Row(false)[0], 4);
+
+		floats := Float[]->New[2];
+		floats[0] := [1.5, 2.5];
+		floats[1] := [3.5];
+		fr := FloatRow(floats, true);
+		Check("Float row, first", fr->Size(), 2);
+		Check("Float row, first element", fr[1] = 2.5 ? 1 : 0, 1);
+		fr := FloatRow(floats, false);
+		Check("Float row, second", fr->Size(), 1);
+		Check("Float row, second element", fr[0] = 3.5 ? 1 : 0, 1);
+
+		texts := String[]->New[2];
+		texts[0] := ["a", "bc"];
+		texts[1] := ["def"];
+		tr := TextRow(texts, true);
+		Check("String row, first", tr->Size() * 10 + tr[1]->Size(), 22);
+		tr := TextRow(texts, false);
+		Check("String row, second", tr->Size() * 10 + tr[0]->Size(), 13);
+
+		# an element of a row is one value, as before
+		e := t ? rows[0][1] : rows[1][0];
+		Check("row element, first", e, 2);
+		e := f ? rows[0][1] : rows[1][0];
+		Check("row element, second", e, 4);
+
+		# an element of a call's result is one value
+		x := t ? table->Items()[0] : 9;
+		Check("call element or literal, element", x, 50);
+		x := f ? table->Items()[0] : 9;
+		Check("call element or literal, literal", x, 9);
+		x := t ? 9 : table->Items()[1];
+		Check("literal or call element, literal", x, 9);
+		x := f ? 9 : table->Items()[1];
+		Check("literal or call element, element", x, 60);
+		x := f ? table->Items()[2] : table->Items()[0];
+		Check("two call elements", x, 50);
+		Check("call elements in a sum", (t ? table->Items()[2] : table->Items()[0]) + 1, 71);
+
+		# in a loop, so the JIT compiles the functions
+		total := 0;
+		for(i := 0; i < 3000; i += 1;) {
+			total += Row(rows, i % 2 = 0)->Size();
+		};
+		Check("loop", total, 7500);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a conditional over jagged rows is an array, over call elements a value"->PrintLine();
+	}
+}
