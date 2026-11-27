@@ -65,9 +65,10 @@ standard input and output, which is what Claude Code and Claude Desktop launch (
 `{"mcpServers":{"demo":{"command":"obr","args":["--mcp","mcp_declare_40.obe"]}}}` in `.mcp.json`), and
 `obr --mcp-http=8080 prog.obe` serves the same over streamable HTTP (`--mcp-http-host=0.0.0.0` to listen beyond
 the loopback address; `--mcp-http=0` picks a free port and prints it on standard error). The VM starts the
-program at the `McpMain` the compiler wrote for the class instead of at `Main`; a program that has several
-tagged classes writes its own `McpMain(args : String[])` that registers them all and calls
-`McpServe->Run(server, args)`. On standard input and output the protocol owns standard output: anything the
+program at the entry the compiler wrote for the class instead of at `Main`; a program that has several
+tagged classes writes its own `function : McpMain(args : String[]) ~ Nil` that registers them all and calls
+`McpServe->Run(server, args)`. The compiler's entry is marked as such in the program file, so a class of
+your own is never taken for a server because of what its functions are called. On standard input and output the protocol owns standard output: anything the
 program prints there corrupts it, so log with `ErrorLine` (standard error). The program must still have a
 `Main` (it is what runs without the flag). Tested by `mcp_launch_test.py` (stdio in three execution modes,
 hostile input, HTTP, the refusals); the same client library that tests it is what the stub generator uses.

@@ -111,7 +111,7 @@ class Seed:
         """Offsets of a method record's parameter count and frame size."""
         r = obe_image.Reader(self.image, method[2])
         r.int()
-        r.skip(3)
+        obe_image.skip_method_flags(r)
         r.string()
         r.string()
         return r.pos, r.pos + 4

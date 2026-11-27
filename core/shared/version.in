@@ -48,8 +48,21 @@
 // with its bundle, as a class is ('Query.Structured.ColumnType'), in its own
 // entry and in every signature (0xffb9); and, since 0xffba, the same distinct
 // array opcodes as a program.
-#define MAGIC_NUM_EXE 0xffbf
-#define MAGIC_NUM_LIB 0xffba
+//
+// Since 0xffc0 (program) and 0xffbb (library) a method record says whether the
+// method is the entry the compiler wrote for a class with '@tool', '@resource'
+// or '@prompt' functions, and a program's record also says whether the method
+// is a function (a library's already did): 'obr --mcp' picks what to start from
+// these, where it used to go by the shape of a method's name (Loader::
+// SelectMcpEntry). The record layouts are in docs/ARCHITECTURE_MAP.md.
+#define MAGIC_NUM_EXE 0xffc0
+#define MAGIC_NUM_LIB 0xffbb
+// Every layout a program or a library has had since the magics above began is
+// 0xffXX. A file that carries this toolchain's VER_NUM and such a magic, but not
+// one of the two current ones, was written by another build of the same version
+// (a development build on either side of a layout change): the loader and the
+// linker say so and say to rebuild, instead of calling it an unknown file.
+#define IS_IMAGE_MAGIC(magic) (((magic) & ~0xff) == 0xff00)
 
 #define VER_NUM @VERSION_NUMBER@
 #define VERSION_STRING L"@VERSION@"

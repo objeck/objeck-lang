@@ -342,8 +342,13 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   
   if(emit_lib) {
     WriteByte(is_native, out_stream);
-    WriteByte(is_function, out_stream);
   }
+  // Whether the method is a function, and whether it is the 'obr --mcp' entry the
+  // compiler wrote for a class with tagged functions: 0 or 1 each, in a program
+  // and in a library. The VM starts a program at an entry by these and not by a
+  // name's shape (Loader::SelectMcpEntry), and refuses any other value.
+  WriteByte(is_function ? 1 : 0, out_stream);
+  WriteByte(is_mcp_entry ? 1 : 0, out_stream);
   
   WriteString(name, out_stream);
   WriteString(rtrn_name, out_stream);

@@ -2602,6 +2602,10 @@ namespace frontend {
     bool is_static;
     bool is_native;
     bool has_and_or;
+    // the entry of 'obr --mcp' the compiler wrote for a class with tagged functions
+    // (Parser::GenerateMcpTools): recorded in the method's record, which is how the VM
+    // tells it from a function the program wrote, whatever that one is named
+    bool is_mcp_entry;
     Method* original;
     std::vector<Declaration*> forwarded_declarations;
     std::vector<Assignment*> forwarded_defaults;
@@ -2643,6 +2647,7 @@ namespace frontend {
       declarations = nullptr;
       id = -1;
       has_and_or = false;
+      is_mcp_entry = false;
       original = nullptr;
       interp_temp = nullptr;
     }
@@ -2663,6 +2668,7 @@ namespace frontend {
       declarations = nullptr;
       id = -1;
       has_and_or = false;
+      is_mcp_entry = false;
       original = nullptr;
       interp_temp = nullptr;
     }
@@ -2712,6 +2718,14 @@ namespace frontend {
 
     bool IsLambda() {
       return is_lambda;
+    }
+
+    bool IsMcpEntry() {
+      return is_mcp_entry;
+    }
+
+    void SetMcpEntry(bool e) {
+      is_mcp_entry = e;
     }
 
     // the block of a 'spawn': a lambda that runs as a thread and returns nothing

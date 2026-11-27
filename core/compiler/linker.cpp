@@ -1202,6 +1202,19 @@ void Library::LoadFile(const std::wstring &file_name)
     if(magic_num == MAGIC_NUM_EXE) {
       throw CompilerFatal(L"Unable to use executable '" + file_name + L"' as linked library.");
     }
+    else if(magic_num != MAGIC_NUM_LIB && IS_IMAGE_MAGIC(magic_num)) {
+      // this toolchain's version, but a record layout this build does not read: a
+      // library left from another build of the same version (version.in)
+      std::wostringstream msg;
+      msg << L"Unable to link library '" << file_name << L"': its file layout is not the one this toolchain reads." << std::endl
+          << std::hex
+          << L"\tthe file's layout is           0x" << magic_num << std::endl
+          << L"\tthis toolchain reads libraries 0x" << MAGIC_NUM_LIB << std::endl
+          << std::dec
+          << L"\t-> the library was written by another build of toolchain " << VER_NUM << L". Rebuild it with this" << std::endl
+          << L"\t   toolchain's obc, or use the libraries that came with this toolchain.";
+      throw CompilerFatal(msg.str());
+    }
     else if(magic_num != MAGIC_NUM_LIB) {
       throw CompilerFatal(L"Unable to link invalid library file '" + file_name + L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain.\n\tIf it is a library built by an older layout of this toolchain, rebuild it with this toolchain.");
     }
@@ -1483,6 +1496,8 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     bool is_lambda = ReadByte() != 0;
     bool is_native = ReadByte() != 0;
     bool is_static = ReadByte() != 0;
+    // the 'obr --mcp' entry its compiler wrote (IntermediateMethod::Write)
+    const bool is_mcp_entry = ReadByte() != 0;
     const std::wstring &name = ReadString();
     const std::wstring &rtrn_name = ReadString();
     int params = ReadInt();
@@ -1510,6 +1525,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
                                             is_native, is_static, is_lambda, params, mem_size, cls, entries);
     mthd->SetAndOrTempType(LibraryMethod::DecodeAndOrTempType(and_or));
+    mthd->SetMcpEntry(is_mcp_entry);
 
     // the parameters' names, and which take a default value (#1244)
     std::vector<std::wstring> param_names;

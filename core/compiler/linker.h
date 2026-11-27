@@ -206,6 +206,9 @@ class LibraryMethod {
   bool is_static;
   bool is_virtual;
   bool has_and_or;
+  // the 'obr --mcp' entry the library's compiler wrote for a class with tagged
+  // functions; carried into the program that links the class
+  bool is_mcp_entry;
   // what the and/or temporary holds (IntermediateMethod::GetAndOrTempType); -1 unknown
   int and_or_temp_type;
   int num_params;
@@ -306,6 +309,7 @@ class LibraryMethod {
     is_virtual = v;
     has_and_or = h;
     and_or_temp_type = -1;
+    is_mcp_entry = false;
     is_native = nt;
     is_static = s;
     is_lambda = l;
@@ -349,6 +353,14 @@ class LibraryMethod {
 
   int GetAndOrTempType() {
     return and_or_temp_type;
+  }
+
+  bool IsMcpEntry() {
+    return is_mcp_entry;
+  }
+
+  void SetMcpEntry(bool e) {
+    is_mcp_entry = e;
   }
 
   void SetAndOrTempType(int t) {

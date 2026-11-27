@@ -65,6 +65,29 @@ for _names, _n in ((_ONE_INT, 1), (_TWO_INTS, 2), (_THREE_INTS, 3)):
             OPERAND_INTS[OP[_name]] = _n
 
 
+# The one-byte fields of a method record, in the order Loader::LoadMethods reads
+# them after the record's four-byte id. 'function' and 'mcp_entry' came with
+# MAGIC_NUM_EXE 0xffc0 (core/shared/version.in): whether the method is a function,
+# and whether it is the 'obr --mcp' entry the compiler wrote for its class. Every
+# reader of a record goes through the three helpers below, so the next field added
+# here is added once.
+METHOD_FLAGS = ("virtual", "and_or", "lambda", "function", "mcp_entry")
+
+
+def method_flag_at(start, flag):
+    """The offset of one flag byte in the method record at 'start'."""
+    return start + 4 + METHOD_FLAGS.index(flag)
+
+
+def method_name_at(start):
+    """Where the name (a length, then UTF-8) of the method record at 'start' begins."""
+    return start + 4 + len(METHOD_FLAGS)
+
+
+def skip_method_flags(r):
+    r.skip(len(METHOD_FLAGS))
+
+
 class Reader:
     def __init__(self, data, pos=0):
         self.data, self.pos = data, pos
@@ -136,7 +159,7 @@ def method_code(data, start, debug=False):
     (opcode, opcode offset, operands offset) per instruction."""
     r = Reader(data, start)
     r.int()  # id
-    r.skip(3)
+    skip_method_flags(r)
     r.string()  # name
     r.string()  # return
     r.int()  # params
@@ -169,7 +192,7 @@ def read_method(r, debug):
     """Returns (name, start, id_at, end)."""
     start = r.pos
     r.int()  # id
-    r.skip(3)
+    skip_method_flags(r)
     name = r.string()
     r.string()  # return
     r.int()  # params
