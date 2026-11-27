@@ -1033,8 +1033,7 @@ int IntermediateEmitter::ReferenceTypeKind(Type* type)
     if(SearchProgramClasses(name) || parsed_program->GetLinker()->SearchClassLibraries(name, parsed_program->GetLibUses())) {
       return is_array ? OBJ_ARY_PARM : OBJ_PARM;
     }
-    if(SearchProgramEnums(name) || (current_class && SearchProgramEnums(current_class->GetName() + L"#" + name)) ||
-       parsed_program->GetLinker()->SearchEnumLibraries(name, parsed_program->GetLibUses())) {
+    if(IsEnumType(type)) {
       return is_array ? INT_ARY_PARM : INT_PARM;
     }
     return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
@@ -1043,6 +1042,21 @@ int IntermediateEmitter::ReferenceTypeKind(Type* type)
   default:
     return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
   }
+}
+
+/****************************
+ * Whether a class type names an enum or a consts group, whose values are Ints,
+ * and not a class (the two share CLASS_TYPE)
+ ****************************/
+bool IntermediateEmitter::IsEnumType(Type* type)
+{
+  const std::wstring name = type->GetName();
+  if(SearchProgramClasses(name) || parsed_program->GetLinker()->SearchClassLibraries(name, parsed_program->GetLibUses())) {
+    return false;
+  }
+
+  return SearchProgramEnums(name) || (current_class && SearchProgramEnums(current_class->GetName() + L"#" + name)) ||
+    parsed_program->GetLinker()->SearchEnumLibraries(name, parsed_program->GetLibUses());
 }
 
 /****************************
@@ -1624,12 +1638,19 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
  * Translates a nested method 
  * call
  ****************************/
-// true if the call returns a scalar Bool, Byte, Char or Int: a value for which
-// 0 is a value, not a missing object (#1172)
-static bool ReturnsValueType(MethodCall* method_call)
+// What the last call of a '?->' chain leaves as the chain's value:
+//   GUARDED_REFERENCE  an object or an array, for which Nil (0) means "missing"
+//   GUARDED_VALUE      a Bool, Byte, Char, Int or enum value, for which 0 is a
+//                      value like any other (#1172)
+//   GUARDED_FLOAT      a Float, likewise (0.0), and not an integer word: it
+//                      needs a Float temporary to cross the region's labels in
+// Only the first two were told apart, and by the declared return type alone,
+// so a Float and an enum counted as references: `p?->Floats()[0] ?? -1.0`
+// gave -1.0 for an element of 0.0, and an enum's item 0 gave the default too.
+int IntermediateEmitter::GuardedResultKind(MethodCall* method_call)
 {
   if(!method_call) {
-    return false;
+    return GUARDED_REFERENCE;
   }
 
   Type* rtrn = nullptr;
@@ -1643,18 +1664,32 @@ static bool ReturnsValueType(MethodCall* method_call)
   // an array is a reference, unless the call's result is subscripted
   // ('p?->Items()[0]'): the value is then the element
   if(!rtrn || (rtrn->GetDimension() > 0 && !method_call->GetCallIndices())) {
-    return false;
+    return GUARDED_REFERENCE;
   }
 
+  // '->As(..)' on the call converts the word it left (EmitCast)
+  Type* cast_type = method_call->GetCastType();
+  const bool cast_is_scalar = cast_type && cast_type->GetDimension() == 0;
   switch(rtrn->GetType()) {
   case frontend::BOOLEAN_TYPE:
+    return GUARDED_VALUE;
+
   case frontend::BYTE_TYPE:
   case frontend::CHAR_TYPE:
   case frontend::INT_TYPE:
-    return true;
+    return cast_is_scalar && cast_type->GetType() == frontend::FLOAT_TYPE ? GUARDED_FLOAT : GUARDED_VALUE;
+
+  case frontend::FLOAT_TYPE:
+    return cast_is_scalar && cast_type->GetType() != frontend::CLASS_TYPE &&
+      cast_type->GetType() != frontend::FLOAT_TYPE ? GUARDED_VALUE : GUARDED_FLOAT;
+
+  case frontend::CLASS_TYPE:
+    // an enum or consts value is an Int; a class, or a name that cannot be
+    // told (a type parameter), is a reference
+    return IsEnumType(rtrn) ? GUARDED_VALUE : GUARDED_REFERENCE;
 
   default:
-    return false;
+    return GUARDED_REFERENCE;
   }
 }
 
@@ -1694,6 +1729,31 @@ static bool ChainEndsInTryResult(MethodCall* method_call)
   return ends_in_intrinsic_result;
 }
 
+// Whether the one word such a chain leaves (ChainEndsInTryResult) is a Float:
+// its Try() region's last call yields one, which the region keeps as a Float
+// with or without a default (EmitTryIntrinsic). A statement that discards the
+// word drops it as what it is.
+bool IntermediateEmitter::ChainTryResultIsFloat(MethodCall* method_call)
+{
+  bool in_region = false;
+  MethodCall* last_guarded_call = nullptr;
+  for(MethodCall* link = method_call; link; link = link->GetMethodCall()) {
+    if(link->IsTryIntrinsic()) {
+      in_region = true;
+      last_guarded_call = nullptr;
+    }
+    else if(link->IsOtherwiseIntrinsic()) {
+      // the default takes the place of the region's value, as the same kind
+      in_region = false;
+    }
+    else if(in_region) {
+      last_guarded_call = link;
+    }
+  }
+
+  return GuardedResultKind(last_guarded_call) == GUARDED_FLOAT;
+}
+
 /****************************
  * Translates an expression used as a statement: a receiver that is not a plain
  * call or variable -- a literal, a concatenation, anything in parentheses --
@@ -1726,7 +1786,8 @@ void IntermediateEmitter::EmitSimpleStatement(SimpleStatement* simple)
   // a Try() region, or an Otherwise() that ends the chain, leaves one word
   // whatever the last guarded call returns (Nil for one that returns nothing)
   if(ChainEndsInTryResult(expression->GetMethodCall())) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num,
+                                                                               ChainTryResultIsFloat(expression->GetMethodCall()) ? POP_FLOAT : POP_INT));
     return;
   }
 
@@ -1970,7 +2031,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       tail = tail->GetMethodCall();
     }
     if(ChainEndsInTryResult(method_call)) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num,
+                                                                                 ChainTryResultIsFloat(method_call) ? POP_FLOAT : POP_INT));
     }
     else {
       switch(tail->GetRougeReturn()) {
@@ -6379,13 +6441,25 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   method_call = method_call->GetMethodCall();
   MethodCall* last_call = nullptr;
   while(method_call) {
-    if(method_call->IsOtherwiseIntrinsic() && ReturnsValueType(last_call)) {
+    const int result_kind = method_call->IsOtherwiseIntrinsic() ? GuardedResultKind(last_call) : GUARDED_REFERENCE;
+    if(result_kind != GUARDED_REFERENCE) {
       // `s?->Size() ?? -1`: the guarded call yields a value type, which 0 cannot
       // stand in for -- Size() of "" IS 0 -- so the default replaces only a
       // failure, never a value. Testing the value against 0 made a real 0
       // indistinguishable from a recovered error (#1172). The handler takes the
       // default itself and the success path keeps the value as it is.
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      //
+      // A Float crosses the labels in a Float temporary of its own, not in the
+      // and/or slot as an integer word (see EmitConditional on why).
+      InstructionType stor_type = STOR_INT_VAR;
+      InstructionType load_type = LOAD_INT_VAR;
+      long result_id = 0;
+      if(result_kind == GUARDED_FLOAT) {
+        stor_type = STOR_FLOAT_VAR;
+        load_type = LOAD_FLOAT_VAR;
+        result_id = GuardedFloatTemp();
+      }
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, stor_type, result_id, LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
 
@@ -6398,11 +6472,11 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       EmitExpression(defaults[0]);
       EmitCast(method_call);
       DeferConditionalOperand(outer_post_statements, region_mark);
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, stor_type, result_id, LOCL));
       new_char_str_count = 0;
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, load_type, result_id, LOCL));
       // the rest of the chain, after the Otherwise(), with no Nil test
       EmitOtherwiseIntrinsic(method_call, expression, true);
       return;
@@ -6537,6 +6611,26 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   }
 
   // end of chain without Otherwise - store result and end try
+  //
+  // A Float result ('x := p?->Ratio();') is a Float on both paths: the value,
+  // or 0.0 where the others yield Nil. It went through the and/or slot as an
+  // integer word, and the Nil path's was an integer 0.
+  if(GuardedResultKind(last_call) == GUARDED_FLOAT) {
+    const long result_id = GuardedFloatTemp();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_FLOAT_VAR, result_id, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_FLOAT_VAR, result_id, LOCL));
+    new_char_str_count = 0;
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_FLOAT_VAR, result_id, LOCL));
+    return;
+  }
+
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
@@ -6550,6 +6644,20 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   // end
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+}
+
+/****************************
+ * The Float local a '?->' region's Float result waits in while the value path
+ * and the error path meet. One per method: a region reads it back before
+ * anything else can store to it, as the regions share the and/or slot.
+ ****************************/
+long IntermediateEmitter::GuardedFloatTemp()
+{
+  if(guarded_float_temp < 0) {
+    guarded_float_temp = NewHiddenLocal(FLOAT_PARM, L"#guarded_float#");
+  }
+
+  return guarded_float_temp;
 }
 
 /****************************
@@ -9542,6 +9650,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     free_post_flags.clear();
     held_post_flags.clear();
     open_conditional_operands = 0;
+    guarded_float_temp = -1;
   }
 
   return size;

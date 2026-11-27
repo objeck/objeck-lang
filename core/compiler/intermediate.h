@@ -114,6 +114,13 @@ class IntermediateEmitter {
   int open_conditional_operands = 0;
   void ReleasePostFlag(long flag_id);
   long NewHiddenLocal(instructions::ParamType kind, const std::wstring &label);
+  // the value of a '?->' chain (EmitTryIntrinsic)
+  enum { GUARDED_REFERENCE, GUARDED_VALUE, GUARDED_FLOAT };
+  int GuardedResultKind(MethodCall* method_call);
+  bool ChainTryResultIsFloat(MethodCall* method_call);
+  bool IsEnumType(Type* type);
+  long guarded_float_temp = -1;
+  long GuardedFloatTemp();
   
   // emit operations
   void EmitStrings();

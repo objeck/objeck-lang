@@ -434,9 +434,11 @@ A chain that ends in a value type needs `??` to supply the result, since an
 size := maybe?->ToUpper()->Size() ?? -1;
 ```
 
-For a guarded value -- `Bool`, `Byte`, `Char` or `Int` -- the default replaces
-only a failure: `size` above is `-1` when `maybe` is `Nil` and `0` when it is
-`""`. For a guarded object, `??` takes the default when the chain failed or
+For a guarded value -- `Bool`, `Byte`, `Char`, `Int`, `Float`, an enum or a
+`consts` value, or such an element of a call's result (`p?->Items()[0]`) -- the
+default replaces only a failure: `size` above is `-1` when `maybe` is `Nil` and
+`0` when it is `""`, and `p?->Ratio() ?? -1.0` is `0.0` when `Ratio()` returns
+`0.0`. For a guarded object, `??` takes the default when the chain failed or
 yielded `Nil`.
 
 Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
