@@ -42,6 +42,7 @@ def lib_sources():
 # (name, argv builder). Names follow the step names in ci-build.yml.
 CHECKS = [
     ("Library lists agree with lib_src", lambda: py("tools/cicd/check_doc_lists.py")),
+    ("The library's formatter is the language server's", lambda: py("tools/cicd/check_formatter_sync.py")),
     ("Doc comments end with their code fence", lambda: py("tools/cicd/check_doc_fences.py")),
     ("Code doc guard flags every failure output", lambda: py("tools/cicd/check_code_doc_log.py", "--self-test")),
     ("Regression tests can report failure", lambda: py("tools/cicd/check_test_exit_codes.py")),
