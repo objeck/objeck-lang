@@ -36,7 +36,7 @@ def offsets(image):
     r.string()  # parent name
     interfaces_at = r.pos
     method = next(m for m in first["methods"])
-    name_at = method[1] + 4 + 3
+    name_at = obe_image.method_name_at(method[1])
     r = obe_image.Reader(image, name_at)
     r.string()
     r.string()
@@ -50,6 +50,8 @@ def offsets(image):
         "interfaces": interfaces_at,
         "method_count": first["methods_at"],
         "second_method": first["methods"][1][1],
+        "method_function_flag": obe_image.method_flag_at(method[1], "function"),
+        "method_mcp_entry_flag": obe_image.method_flag_at(method[1], "mcp_entry"),
         "method_name": name_at,
         "instr_count": count_at,
         "first_opcode": count_at + 4,
@@ -72,6 +74,12 @@ def cases(image):
         "method_id_repeated.img": put_int(image, at["second_method"], 0),
         # StackMethod's constructor throws; ~StackProgram then freed unset pointers
         "method_signature_bad.img": bad_signature,
+        # Not findings: the two fields 'obr --mcp' picks its entry by (written since
+        # MAGIC_NUM_EXE 0xffc0). Each is 0 or 1, and a method marked as the compiler's
+        # MCP entry is a function.
+        "method_flag_unknown.img": image[:at["method_function_flag"]] + bytes([2]) + image[at["method_function_flag"] + 1:],
+        "method_mcp_entry_not_function.img": (image[:at["method_function_flag"]] + bytes([0, 1]) +
+                                              image[at["method_mcp_entry_flag"] + 1:]),
         # said nothing in a release build
         "instruction_unknown.img": image[:at["first_opcode"]] + bytes([250]) + image[at["first_opcode"] + 1:],
     }

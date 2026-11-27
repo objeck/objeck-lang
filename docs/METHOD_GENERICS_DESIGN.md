@@ -78,7 +78,7 @@ binary could not infer anything: a library generic returned its bound.
   and `.r` for a function type's return (`Type::GetMethodGenericMarks`). The linker applies
   them to the parsed types (`LibraryMethod::SetGenericMarks`). Paths rather than positions mean a
   mark can never land on the wrong part of a type. The library magic became `0xffb8` for this change, and a
-  `0xffb7` library is refused with a rebuild message (`Library::LoadFile`, `linker.cpp`). The magic has moved on since: `MAGIC_NUM_LIB` is now `0xffba`, and `core/shared/version.in` lists why each value changed.
+  `0xffb7` library is refused with a rebuild message (`Library::LoadFile`, `linker.cpp`). The magic has moved on since: `MAGIC_NUM_LIB` is now `0xffbb`, and `core/shared/version.in` lists why each value changed.
 - **Inference at a library call.** `InferLibraryMethodGenerics` mirrors the program path,
   and `UnifyMethodGeneric` now matches function types: `(A, ..) ~ R` against the argument's
   function type, parameters and return.

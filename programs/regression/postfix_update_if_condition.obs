@@ -12,8 +12,8 @@ both sides, by accident.
 The update is now emitted between the test and the jump. The block sees the
 updated value from its first statement on (it used to see the old value in its
 first statement and the new one in its second). An operand of '&' or '|' that
-is short-circuited does not run its update. 'while' and 'for' conditions are
-unchanged: their updates still run in the loop body. Exits 1 on a mismatch.
+is short-circuited does not run its update. 'while' and 'for' conditions
+follow the same rule (postfix_update_loop_condition.obs). Exits 1 on a mismatch.
 ~#
 class PostfixUpdateIfCondition {
 	@fails : Int;

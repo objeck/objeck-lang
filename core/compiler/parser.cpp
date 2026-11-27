@@ -2202,9 +2202,9 @@ void Parser::ReportMcpEntries()
 }
 
 // True for a method named McpMain whose one parameter is a String[]: the name and
-// signature 'obr --mcp' looks for (Loader::SelectMcpEntry reads them from the method's
-// encoded name, which carries neither its kind nor its return type). An overload named
-// McpMain with any other parameter list is an ordinary method.
+// signature of the entry a program writes for 'obr --mcp' (Loader::SelectMcpEntry reads
+// them from the method's encoded name, and its kind and return type from its record).
+// An overload named McpMain with any other parameter list is an ordinary method.
 static bool HasMcpEntrySignature(Method* method)
 {
   const std::wstring name = method->GetName();
@@ -2460,12 +2460,13 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   }
   method->SetReturn(return_type);
 
-  // McpMain(args : String[]) is what 'obr --mcp' starts in place of Main, and the VM picks it
-  // by its name and parameter alone: a program file does not record whether a method is a
-  // function or what it returns. So in a program that 'obr --mcp' can serve (RefuseMcpEntry)
-  // the one shape it can call is the only one allowed to have that signature. An instance
-  // method would be started with no instance, a virtual one has no body and one that returns
-  // a value leaves it on the stack.
+  // McpMain(args : String[]) is what 'obr --mcp' starts in place of Main. The VM starts it
+  // only when it is a function with a body that returns Nil (the method's record says which
+  // it is; Loader::SelectMcpEntry) and otherwise says the program has nothing to serve. In a
+  // program that 'obr --mcp' can serve (RefuseMcpEntry) that is known here, so it is an error
+  // here, where the line is, rather than a refusal when the server is started: an instance
+  // method has no instance to be started on, a virtual one has no body and one that returns
+  // a value would leave it on the stack.
   if(HasMcpEntrySignature(method)) {
     const wchar_t* why = nullptr;
     if(!is_function) {
@@ -10925,8 +10926,9 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
   return true;
 }
 
-// parses one generated function and adds it to the class
-void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by)
+// parses one generated function and adds it to the class; returns it, or nullptr when
+// the code did not parse or the class already has a function of that name
+Method* Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by)
 {
   std::wstring text(line > 1 ? line - 1 : 0, L'\n');
   text += code;
@@ -10953,7 +10955,10 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
 
   if(method && !klass->AddMethod(method)) {
     diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which " + owner + L" needs for itself");
+    return nullptr;
   }
+
+  return method;
 }
 
 // Derives the tools of every class that has some, and the members of every 'class : json', once every file
@@ -11464,15 +11469,22 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bo
     }
   }
   if(!has_entry) {
-    // named for the class so that the VM can tell it from one the program wrote
+    // Named for the class, so that it cannot be taken for a McpMain the program wrote and
+    // so that two classes' entries differ in a stack trace. The name is not how the VM
+    // knows it: the method is marked as the compiler's entry (Method::SetMcpEntry), the
+    // mark is written into its record, and a function the program gave the same shape of
+    // name has none (Loader::SelectMcpEntry).
     std::wstring entry_class = klass->GetName();
     for(size_t i = 0; i < entry_class.size(); ++i) {
       if(!iswalnum(entry_class[i])) {
         entry_class[i] = L'_';
       }
     }
-    McpAddFunction(klass, L"function : McpMain_" + entry_class + L"(mcp_args : String[]) ~ Nil { mcp_service := API.MCP.McpService->New(\"" + McpLit(klass->GetName()) + L"\", \"1.0\"); " +
+    Method* entry = McpAddFunction(klass, L"function : McpMain_" + entry_class + L"(mcp_args : String[]) ~ Nil { mcp_service := API.MCP.McpService->New(\"" + McpLit(klass->GetName()) + L"\", \"1.0\"); " +
                           helpers.cls + L"->McpTools(mcp_service); API.MCP.McpServe->Run(mcp_service, mcp_args); }", first_line, depth);
+    if(entry) {
+      entry->SetMcpEntry(true);
+    }
   }
 }
 

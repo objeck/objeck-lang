@@ -1,0 +1,630 @@
+#~
+A postfix update in a loop condition takes effect every time the condition is
+tested.
+
+`while(i++ < n) { .. }` and `for(..; i++ < n; ..) { .. }` queued the update
+while the condition was emitted, left it queued across the loop's conditional
+jump, and the first statement of the body emitted it. So:
+
+  - the first statement of the body read the value from before the update and
+    every later statement the value after it,
+  - the test that fails and ends the loop made no update (`while(j++ < 3);`
+    left j at 3),
+  - an operand that '&' or '|' skipped in a round still made its update, in
+    the body.
+
+The update is now emitted between the test and the jump, which is what 'if'
+already did and what C, Java and C# do: the body reads the updated value from
+its first statement on, the failing test updates too, and a skipped operand
+does not. The second operand of '&' and '|' reads what the first one updated
+(`while(i-- > 0 & a[i] <> 0)` indexes with the new i). A 'do/while' made its
+updates at every test already, but all of them after the whole condition, so
+there the second operand read the old value; it follows the same rule now.
+
+Each expected number below is worked out by hand in the comment above it.
+check_loop_condition_postfix.py runs this program at -opt s0..s3 under the
+interpreter and the JIT. Exits 1 on a mismatch.
+~#
+class PostfixUpdateLoopCondition {
+	@fails : Int;
+	@field : Int;
+	@ticks : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := PostfixUpdateLoopCondition->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@field := 0;
+		@ticks := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# --- while ---
+
+	# every statement of the body reads the updated value; 'after' is the value
+	# when the loop has been left
+	function : WhileDown(start : Int, after : IntRef) ~ Int {
+		i := start;
+		trace := 0;
+		while(i-- > 0) {
+			trace := trace * 10 + i;
+			trace := trace * 10 + i;
+		};
+		after->Set(i);
+		return trace;
+	}
+
+	function : WhileUp(limit : Int, after : IntRef) ~ Int {
+		c := 0;
+		rounds := 0;
+		while(c++ < limit) {
+			rounds += 1;
+		};
+		after->Set(c);
+		return rounds;
+	}
+
+	function : WhileEmptyBody(limit : Int) ~ Int {
+		j := 0;
+		while(j++ < limit);
+		return j;
+	}
+
+	# --- for ---
+
+	function : ForCondition(limit : Int, after : IntRef) ~ Int {
+		k := 0;
+		sum := 0;
+		q := 0;
+		for(q := 0; k++ < limit; q += 1;) {
+			sum += k;
+		};
+		after->Set(k * 100 + q);
+		return sum;
+	}
+
+	# an update in the condition and another as the loop's update statement
+	function : ForBoth(limit : Int, after : IntRef) ~ Int {
+		i := 0;
+		sum := 0;
+		for(i := 0; i++ < limit; i++;) {
+			sum := sum * 10 + i;
+		};
+		after->Set(i);
+		return sum;
+	}
+
+	# --- do/while ---
+
+	function : DoWhileDown(start : Int, after : IntRef) ~ Int {
+		a := start;
+		trace := 0;
+		do {
+			trace := trace * 10 + a;
+		}
+		while(a-- > 0);
+		after->Set(a);
+		return trace;
+	}
+
+	# --- break, continue, return ---
+
+	function : WhileBreak(after : IntRef) ~ Int {
+		i := 0;
+		sum := 0;
+		while(i++ < 10) {
+			if(i = 3) {
+				break;
+			};
+			sum += i;
+		};
+		after->Set(i);
+		return sum;
+	}
+
+	function : WhileContinue(after : IntRef) ~ Int {
+		i := 0;
+		sum := 0;
+		while(i++ < 5) {
+			if(i % 2 = 0) {
+				continue;
+			};
+			sum += i;
+		};
+		after->Set(i);
+		return sum;
+	}
+
+	function : ForContinue(after : IntRef) ~ Int {
+		i := 0;
+		sum := 0;
+		q := 0;
+		for(q := 0; i++ < 5; q += 10;) {
+			if(i = 2) {
+				continue;
+			};
+			sum += i;
+		};
+		after->Set(i * 100 + q);
+		return sum;
+	}
+
+	function : DoWhileContinue(after : IntRef) ~ Int {
+		a := 0;
+		sum := 0;
+		do {
+			if(a = 1) {
+				continue;
+			};
+			sum += 10;
+		}
+		while(a++ < 3);
+		after->Set(a);
+		return sum;
+	}
+
+	function : WhileReturn() ~ Int {
+		i := 0;
+		while(i++ < 10) {
+			if(i = 4) {
+				return i * 10;
+			};
+		};
+		return -1;
+	}
+
+	# --- nested ---
+
+	function : Nested(after : IntRef) ~ Int {
+		outer := 0;
+		inner := 0;
+		total := 0;
+		while(outer++ < 3) {
+			inner := 0;
+			while(inner++ < outer) {
+				total += inner;
+			};
+			total += inner * 100;
+		};
+		after->Set(outer);
+		return total;
+	}
+
+	function : NestedMixed(after : IntRef) ~ Int {
+		i := 0;
+		j := 0;
+		total := 0;
+		while(i++ < 3) {
+			j := 2;
+			do {
+				total += i * j;
+			}
+			while(j-- > 1);
+		};
+		after->Set(i * 100 + j + 50);
+		return total;
+	}
+
+	# --- '&' and '|' ---
+
+	# the update is the second operand: none when the first is false
+	function : AndSecond(first : Bool, after : IntRef) ~ Int {
+		i := 0;
+		rounds := 0;
+		while(first & i++ < 3) {
+			rounds += 1;
+		};
+		after->Set(i);
+		return rounds;
+	}
+
+	# the update is the first operand: made although the second ends the loop
+	function : AndFirst(after : IntRef) ~ Int {
+		i := 0;
+		rounds := 0;
+		while(i++ < 5 & rounds < 2) {
+			rounds += 1;
+		};
+		after->Set(i);
+		return rounds;
+	}
+
+	# the second operand reads what the first updated
+	function : AndIndexes(values : Int[], after : IntRef) ~ Int {
+		i := values->Size();
+		hits := 0;
+		while(i-- > 0 & values[i] <> 0) {
+			hits += 1;
+		};
+		after->Set(i);
+		return hits;
+	}
+
+	function : OrSecond(after : IntRef) ~ Int {
+		i := 0;
+		rounds := 0;
+		while(rounds < 2 | i++ < 4) {
+			rounds += 1;
+			if(rounds > 50) {
+				break;
+			};
+		};
+		after->Set(i);
+		return rounds;
+	}
+
+	function : TwoUpdates(after : IntRef) ~ Int {
+		i := 0;
+		j := 10;
+		rounds := 0;
+		while(i++ - j-- < -4 & rounds < 20) {
+			rounds += 1;
+		};
+		after->Set(i * 100 + j);
+		return rounds;
+	}
+
+	function : ForAnd(first : Bool, after : IntRef) ~ Int {
+		i := 0;
+		rounds := 0;
+		q := 0;
+		for(q := 0; first & i++ < 3; q += 1;) {
+			rounds += 1;
+		};
+		after->Set(i);
+		return rounds;
+	}
+
+	function : DoWhileAnd(first : Bool, after : IntRef) ~ Int {
+		i := 0;
+		rounds := 0;
+		do {
+			rounds += 1;
+		}
+		while(first & i++ < 3);
+		after->Set(i);
+		return rounds;
+	}
+
+	# the second operand reads what the first updated, in a 'do/while' too
+	function : DoWhileIndexes(values : Int[], after : IntRef) ~ Int {
+		i := values->Size();
+		hits := 0;
+		do {
+			hits += 1;
+		}
+		while(i-- > 1 & values[i] <> 0);
+		after->Set(i);
+		return hits;
+	}
+
+	function : DoWhileOr(after : IntRef) ~ Int {
+		i := 0;
+		rounds := 0;
+		do {
+			rounds += 1;
+			if(rounds > 50) {
+				break;
+			};
+		}
+		while(rounds < 2 | i++ < 4);
+		after->Set(i);
+		return rounds;
+	}
+
+	# --- targets other than a local ---
+
+	method : FieldTarget() ~ Int {
+		@field := 0;
+		trace := 0;
+		while(@field++ < 3) {
+			trace := trace * 10 + @field;
+		};
+		return trace;
+	}
+
+	function : ElementTarget(after : IntRef) ~ Int {
+		a := Int->New[2];
+		trace := 0;
+		while(a[1]++ < 3) {
+			trace := trace * 10 + a[1];
+		};
+		after->Set(a[1] * 10 + a[0]);
+		return trace;
+	}
+
+	# the update is of the index, not of the element
+	function : IndexTarget(values : Int[], after : IntRef) ~ Int {
+		j := 0;
+		sum := 0;
+		while(values[j++] <> 0) {
+			sum := sum * 10 + j;
+		};
+		after->Set(j);
+		return sum;
+	}
+
+	function : FloatTarget(after : IntRef) ~ Int {
+		f := 0.0;
+		rounds := 0;
+		while(f++ < 2.5) {
+			rounds += 1;
+		};
+		after->Set(f->As(Int));
+		return rounds;
+	}
+
+	function : Less(a : Int, b : Int) ~ Bool {
+		return a < b;
+	}
+
+	# the variable is an argument of the call that is the condition
+	function : CallArgument(after : IntRef) ~ Int {
+		i := 0;
+		trace := 0;
+		while(Less(i++, 3)) {
+			trace := trace * 10 + i;
+		};
+		after->Set(i);
+		return trace;
+	}
+
+	# --- what the optimizer and the JIT see ---
+
+	# a long loop (compiled by the JIT at its default threshold too)
+	function : Hot(limit : Int, after : IntRef) ~ Int {
+		i := 0;
+		sum := 0;
+		while(i++ < limit) {
+			sum += i;
+		};
+		after->Set(i);
+		return sum;
+	}
+
+	# the bound is the same in every round and can be moved out of the loop;
+	# the updated variable cannot
+	function : InvariantBound(n : Int, after : IntRef) ~ Int {
+		i := 0;
+		sum := 0;
+		while(i++ < n * 2) {
+			sum += n * 2 - i;
+		};
+		after->Set(i);
+		return sum;
+	}
+
+	method : Tick() ~ Bool {
+		@ticks += 1;
+		return @ticks < 1000;
+	}
+
+	# nothing reads k but the condition: its store is not a dead one
+	method : OnlyTheConditionReads(start : Int) ~ Int {
+		k := start;
+		@ticks := 0;
+		while(k-- > 0 & Tick());
+		return @ticks;
+	}
+
+	# the body always leaves: nothing reads i after its update
+	function : LeavesAtOnce(n : Int) ~ Int {
+		i := 0;
+		while(i++ < n) {
+			return 7;
+		};
+		return 9;
+	}
+
+	function : BreaksAtOnce(n : Int) ~ Int {
+		i := 0;
+		r := 0;
+		q := 0;
+		for(q := 0; i++ < n; q += 1;) {
+			r := 5;
+			break;
+		};
+		return r;
+	}
+
+	method : Run() ~ Nil {
+		after := IntRef->New(0);
+
+		# 3 > 0, i = 2; 2 > 0, i = 1; 1 > 0, i = 0; 0 > 0 fails, i = -1.
+		# The body appends i twice per round: 22, 11, 00.
+		k := WhileDown(3, after);
+		Check("while, down: body", k, 221100);
+		Check("while, down: after", after->Get(), -1);
+		# the first test fails: no round, one update
+		k := WhileDown(0, after);
+		Check("while, never entered: body", k, 0);
+		Check("while, never entered: after", after->Get(), -1);
+
+		# tests with c = 0, 1, 2 hold, with 3 fails: four updates
+		k := WhileUp(3, after);
+		Check("while, up: rounds", k, 3);
+		Check("while, up: after", after->Get(), 4);
+
+		Check("while, empty body", WhileEmptyBody(3), 4);
+		Check("while, empty body, never true", WhileEmptyBody(0), 1);
+
+		# k is 1..5 in the body (sum 15), 6 after the failing test; q counts the
+		# five rounds
+		k := ForCondition(5, after);
+		Check("for: body", k, 15);
+		Check("for: after", after->Get(), 605);
+
+		# test 0 < 6, i = 1, body 1, update i = 2; test 2 < 6, i = 3, body 3,
+		# update i = 4; test 4 < 6, i = 5, body 5, update i = 6; 6 < 6 fails, i = 7
+		k := ForBoth(6, after);
+		Check("for, both: body", k, 135);
+		Check("for, both: after", after->Get(), 7);
+
+		# body 3, test 3 > 0; body 2, test 2 > 0; body 1, test 1 > 0; body 0,
+		# test 0 > 0 fails; a = -1
+		k := DoWhileDown(3, after);
+		Check("do/while: body", k, 3210);
+		Check("do/while: after", after->Get(), -1);
+
+		# i = 1 (sum 1), i = 2 (sum 3), i = 3 breaks
+		k := WhileBreak(after);
+		Check("while, break: body", k, 3);
+		Check("while, break: after", after->Get(), 3);
+
+		# i = 1, 3, 5 are added, 2 and 4 skipped; 5 < 5 fails, i = 6
+		k := WhileContinue(after);
+		Check("while, continue: body", k, 9);
+		Check("while, continue: after", after->Get(), 6);
+
+		# i = 1, 3, 4, 5 are added; the skipped round still runs 'q += 10'
+		k := ForContinue(after);
+		Check("for, continue: body", k, 13);
+		Check("for, continue: after", after->Get(), 650);
+
+		# a = 0 adds; test 0 < 3, a = 1 skips to the test; 1 < 3, a = 2 adds;
+		# 2 < 3, a = 3 adds; 3 < 3 fails, a = 4
+		k := DoWhileContinue(after);
+		Check("do/while, continue: body", k, 30);
+		Check("do/while, continue: after", after->Get(), 4);
+
+		Check("while, return", WhileReturn(), 40);
+
+		# outer = 1: inner 1, then 1 < 1 fails with inner = 2: total 1 + 200.
+		# outer = 2: inner 1, 2, leaves at 3: + 3 + 300 = 504.
+		# outer = 3: inner 1, 2, 3, leaves at 4: + 6 + 400 = 910. outer ends at 4.
+		k := Nested(after);
+		Check("nested: body", k, 910);
+		Check("nested: after", after->Get(), 4);
+
+		# i = 1, 2, 3; each: j = 2 adds 2i, test 2 > 1, j = 1 adds i, test 1 > 1
+		# fails, j = 0. total 3 * (1 + 2 + 3) = 18; i ends at 4, j at 0
+		k := NestedMixed(after);
+		Check("nested, mixed: body", k, 18);
+		Check("nested, mixed: after", after->Get(), 450);
+
+		k := AndSecond(true, after);
+		Check("&, second: rounds", k, 3);
+		Check("&, second: after", after->Get(), 4);
+		k := AndSecond(false, after);
+		Check("&, second skipped: rounds", k, 0);
+		Check("&, second skipped: no update", after->Get(), 0);
+
+		# 0 < 5, i = 1, round 1; 1 < 5, i = 2, round 2; 2 < 5, i = 3, then
+		# 'rounds < 2' fails
+		k := AndFirst(after);
+		Check("&, first: rounds", k, 2);
+		Check("&, first: after", after->Get(), 3);
+
+		# i = 2: 7; i = 1: 7; i = 0: 0 ends the loop with i = 0
+		values := [0, 7, 7];
+		k := AndIndexes(values, after);
+		Check("&, second reads the update: hits", k, 2);
+		Check("&, second reads the update: after", after->Get(), 0);
+		# every element passes: the last test, 0 > 0, fails and leaves i = -1
+		values := [7, 7, 7];
+		k := AndIndexes(values, after);
+		Check("&, all pass: hits", k, 3);
+		Check("&, all pass: after", after->Get(), -1);
+
+		# rounds 0 and 1 hold without the second operand; then 0 < 4, 1 < 4,
+		# 2 < 4, 3 < 4 hold (rounds 3..6) and 4 < 4 fails with i = 5
+		k := OrSecond(after);
+		Check("|, second: rounds", k, 6);
+		Check("|, second: after", after->Get(), 5);
+
+		# 0 - 10, 1 - 9, 2 - 8 are below -4; 3 - 7 is not, and updates both
+		k := TwoUpdates(after);
+		Check("two updates: rounds", k, 3);
+		Check("two updates: after", after->Get(), 406);
+
+		k := ForAnd(true, after);
+		Check("for, &: rounds", k, 3);
+		Check("for, &: after", after->Get(), 4);
+		k := ForAnd(false, after);
+		Check("for, & skipped: rounds", k, 0);
+		Check("for, & skipped: no update", after->Get(), 0);
+
+		k := DoWhileAnd(true, after);
+		Check("do/while, &: rounds", k, 4);
+		Check("do/while, &: after", after->Get(), 4);
+		k := DoWhileAnd(false, after);
+		Check("do/while, & skipped: rounds", k, 1);
+		Check("do/while, & skipped: no update", after->Get(), 0);
+
+		# round 1, 3 > 1, i = 2: 7; round 2, 2 > 1, i = 1: 7; round 3, 1 > 1
+		# fails, i = 0
+		values := [0, 7, 7];
+		k := DoWhileIndexes(values, after);
+		Check("do/while, second reads the update: rounds", k, 3);
+		Check("do/while, second reads the update: after", after->Get(), 0);
+		# round 1, i = 2: 7; round 2, i = 1: 0 ends the loop
+		values := [7, 0, 7];
+		k := DoWhileIndexes(values, after);
+		Check("do/while, second ends: rounds", k, 2);
+		Check("do/while, second ends: after", after->Get(), 1);
+
+		# rounds 1 holds without the second operand; after rounds 2..5 the tests
+		# 0 < 4 .. 3 < 4 hold; after round 6, 4 < 4 fails with i = 5
+		k := DoWhileOr(after);
+		Check("do/while, |: rounds", k, 6);
+		Check("do/while, |: after", after->Get(), 5);
+
+		Check("field: body", FieldTarget(), 123);
+		Check("field: after", @field, 4);
+
+		k := ElementTarget(after);
+		Check("element: body", k, 123);
+		Check("element: after", after->Get(), 40);
+
+		# values[0], [1], [2] are not 0 (j = 1, 2, 3 in the body); values[3] is,
+		# and j = 4
+		values := [5, 6, 7, 0];
+		k := IndexTarget(values, after);
+		Check("index: body", k, 123);
+		Check("index: after", after->Get(), 4);
+
+		# 0.0, 1.0, 2.0 are below 2.5; 3.0 is not, and f = 4.0
+		k := FloatTarget(after);
+		Check("float: rounds", k, 3);
+		Check("float: after", after->Get(), 4);
+
+		k := CallArgument(after);
+		Check("call argument: body", k, 123);
+		Check("call argument: after", after->Get(), 4);
+
+		# 1 + 2 + .. + 100000
+		k := Hot(100000, after);
+		Check("hot: body", k, 5000050000);
+		Check("hot: after", after->Get(), 100001);
+
+		# i = 1..100: (100 - i) sums to 0 + 1 + .. + 99
+		k := InvariantBound(50, after);
+		Check("invariant bound: body", k, 4950);
+		Check("invariant bound: after", after->Get(), 101);
+
+		# four rounds, and Tick is not called by the fifth test: 4 > 0 .. 1 > 0
+		# hold, 0 > 0 fails first
+		Check("only the condition reads", OnlyTheConditionReads(4), 4);
+
+		Check("leaves at once, entered", LeavesAtOnce(3), 7);
+		Check("leaves at once, not entered", LeavesAtOnce(0), 9);
+		Check("breaks at once, entered", BreaksAtOnce(3), 5);
+		Check("breaks at once, not entered", BreaksAtOnce(0), 0);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: a postfix update in a loop condition takes effect at every test"->PrintLine();
+	}
+}

@@ -35,10 +35,12 @@ class AksTest {
     Coef(n);
     @c[0] += 1; @c[n] -= 1;
 
+    # i is decremented at each test, before @c[i] is read: every coefficient
+    # from @c[n - 1] down to @c[0] divides by n when the loop runs out (i = -1)
     i := n;
     while(i-- <> 0 & (@c[i] % n) = 0);
 
-    return i = 0;
+    return i < 0;
   }
 
   function : Show(n : Int) ~ Nil {

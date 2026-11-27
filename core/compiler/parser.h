@@ -411,7 +411,7 @@ class Parser {
   std::vector<McpEntryRefusal> mcp_entry_refusals;
   void RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message);
   void ReportMcpEntries();
-  void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
+  Method* McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
   bool McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth);
   void GenerateJsonClass(Class* klass, int line, int depth);
   bool McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth);

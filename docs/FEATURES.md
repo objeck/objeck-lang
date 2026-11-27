@@ -1098,26 +1098,24 @@ Int->ToByte(300)->PrintLine();                # 44
 | Anywhere not listed below | At the end of the statement, after everything in it has been evaluated: `k := i++ + i;` with `i` at 5 gives 10, then `i` is 6. `a[i++] := i;` stores the old `i` at the old index. Every update of a statement has run when the statement ends. |
 | An operand only one path evaluates: the default of `??`, a branch of `?:`, the second operand of `&` or <code>&#124;</code> in a value, an argument of a `?->` call | When that operand has been evaluated, and not at all when it is skipped. |
 | The subject of `match` or `select` | Before the arm is chosen, so every arm sees the new value; the arm is chosen by the old one. |
-| The condition of `if` or `else if` | Between the test and the branch, on both sides; the block sees the new value. An operand that `&` or <code>&#124;</code> skips does not change it. |
-| The condition of `do { } while(..)` | After each test, including the last one, which fails. |
-| The condition of `while` or `for` | **Not when the condition is tested.** See below. |
+| The condition of `if`, `else if`, `while`, `for` or `do { } while(..)` | Every time the condition is tested, between the test and the branch. The test uses the old value; the block or loop body, and the code after it, see the new one. An operand that `&` or <code>&#124;</code> skips does not change it, and the second operand reads what the first one changed. |
 
-**`while` and `for` conditions are different.** The change is made inside the loop body, at the end of the body's first statement (at the end of the body when it has no statement). So:
-
-- the first statement of the body still reads the old value, and every statement after it reads the new one;
-- when the condition is false and the loop is left, the change is not made;
-- the change is made once per round, even for an operand that `&` or <code>&#124;</code> skipped in that round.
+**In a loop condition the change is made at every test, including the last one, which fails.** This is what C, Java and C# do.
 
 ```ruby
 i := 3;
 while(i-- > 0) {
-  "first {$i}"->PrintLine();   # 3, then 2, then 1: the old value
-  "second {$i}"->PrintLine();  # 2, then 1, then 0: the new value
+  "{$i}"->PrintLine();         # 2, then 1, then 0: the new value, in every statement of the body
 };
-i->PrintLine();                # 0, not -1: the last, failing test did not change it
+i->PrintLine();                # -1: the failing test, 0 > 0, also changed it
+
+values := [7, 7, 0];
+j := values->Size();
+while(j-- > 0 & values[j] <> 7);   # values[j] is read with the new j
+j->PrintLine();                # 1: the index of the last 7
 ```
 
-A loop that needs the value in its body is clearer with the update written as a statement: `while(i > 0) { i -= 1; ... };`.
+Before v2026.11.4 a `while` or `for` condition made the change inside the loop body, after its first statement: that statement read the old value, the failing test changed nothing (`i` ended at 0 above), and a skipped operand changed it anyway. A loop written to that rule needs its body or the test after the loop adjusted.
 
 ---
 
