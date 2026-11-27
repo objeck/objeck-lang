@@ -38,6 +38,7 @@ class FormatterRegressionTest {
 		TestLineDepths();
 		TestDeclarationAfterBrace();
 		TestParentKeyword();
+		TestLambdasAndFunctionTypes();
 
 		p := @passed;
 		f := @failed;
@@ -410,5 +411,36 @@ class FormatterRegressionTest {
 
 		again := CodeFormatter->New(options)->Format(result);
 		Check("Parent: formatting the result again changes nothing", again <> Nil & again->Equals(result));
+	}
+
+	# The '\' that starts a lambda or a function type had no token: the scanner's
+	# case for it was written for a quote, which the character-literal case always
+	# takes first. The formatter printed "--- [Other ...] ---" and ended the
+	# process at the first backslash in a file.
+	function : TestLambdasAndFunctionTypes() ~ Nil {
+		"\n>> Lambdas and function types..."->PrintLine();
+
+		src := "class A {\nfunction : Main(args : String[]) ~ Nil {\nf := \\(Int) ~ Int : (x) => x + 1;\ng := Apply(\\(a, b) => a + b);\nh := \\() => {\nreturn 1;\n};\nk := \\() ~ Int : () => f(2);\n}\nfunction : Apply(f : (Int, Int) ~ Int) ~ Int {\nreturn f(1, 2);\n}\n}\n";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+		Check("Lambda: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Lambda: a typed lambda", result->Find("f := \\(Int) ~ Int : (x) => x + 1;") > -1);
+		Check("Lambda: a bare lambda as an argument", result->Find("g := Apply(\\(a, b) => a + b);") > -1);
+		Check("Lambda: a lambda with a block body", result->Find("h := \\() => {\n      return 1;\n    };") > -1);
+		Check("Lambda: no parameters, a call in the body", result->Find("k := \\() ~ Int : () => f(2);") > -1);
+		Check("Lambda: a function type as a parameter", result->Find("Apply(f : (Int, Int) ~ Int) ~ Int {") > -1);
+		Check("Lambda: the '\\' stays against what it starts", result->Find("\\ ") < 0);
+
+		again := CodeFormatter->New(options)->Format(result);
+		Check("Lambda: formatting the result again changes nothing", again <> Nil & again->Equals(result));
 	}
 }

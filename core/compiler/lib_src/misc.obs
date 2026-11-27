@@ -1559,6 +1559,9 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_END);
 							};
+
+							# the '\' of a function type or a lambda stays against what it starts
+							@skip_space := true;
 						}
 
 						label System.Utility.Token->Type->EQL{

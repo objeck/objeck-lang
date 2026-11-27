@@ -494,8 +494,10 @@ class CodeFormatter {
 						AppendBuffer('%');
 					}
 
+					# the '\' of a function type or a lambda stays against what it starts
 					label Token->Type->FWD_SLASH {
-						AppendBuffer('\'');
+						AppendBuffer('\\');
+						@skip_space := true;
 					}
 
 					label Token->Type->EQL {

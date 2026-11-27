@@ -416,8 +416,12 @@ class Scanner {
 						NextChar();
 					}
 
-					label '\'' {
-						@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "mod"));
+					# The '\' that starts a function type or a lambda ("\(Int) ~ Int : (x) => x + 1").
+					# The label here read '\'', a quote, which the character-literal case
+					# above always takes first, so a backslash had no token and the
+					# formatter stopped at the first one in a file.
+					label '\\' {
+						@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "back_slash"));
 						NextChar();
 					}
 
