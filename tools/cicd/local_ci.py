@@ -58,6 +58,8 @@ CHECKS = [
     ("The native write-barrier scan can still detect an unbarriered store",
      lambda: py("tools/cicd/test_check_native_write_barrier.py")),
     ("The API index check can still detect a stale index", lambda: py("tools/cicd/test_check_api_index.py")),
+    ("The portable-release gate refuses a core binary that is not an ELF file for the target",
+     lambda: py("tools/cicd/test_check_docs_deps.py")),
     ("The committed API index: both copies agree, every class names its library, the version stamp is current",
      lambda: py("tools/cicd/check_api_index.py")),
     ("The playground's library map is current (gen_libmap.py --check)",

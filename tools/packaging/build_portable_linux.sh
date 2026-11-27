@@ -37,7 +37,9 @@ if [ "${1:-}" = --in-container ]; then
   [ -f /etc/almalinux-release ] || die "--in-container is for the build image only"
   # The checkout, the output and the libraries belong to whoever started the
   # container, however this ends.
-  trap 'chown -R "$HOST_UID:$HOST_GID" /src /out /deps' EXIT
+  # /out is the caller's directory and may hold other releases and backups, so
+  # only what this build puts there is chowned, never the whole directory.
+  trap 'chown -R "$HOST_UID:$HOST_GID" /src /deps; chown "$HOST_UID:$HOST_GID" /out/objeck-linux-*_0.0.0.tgz 2>/dev/null || true' EXIT
   export OBJECK_DEPS=/deps
   bash /src/tools/deps/build_linux_portable_deps.sh "$OBJECK_DEPS"
 
@@ -61,13 +63,18 @@ Cflags: -I/src/core/lib/matrix/lib/eigen-3.4.0
 EOF
   export PKG_CONFIG_PATH="$PC:$OBJECK_DEPS/opencv/lib/pkgconfig:$OBJECK_DEPS/sdl2-link/lib/pkgconfig"
 
-  # deploy_posix.sh writes the tarball to ~/Desktop.
+  # deploy_posix.sh stages and tars in ~/Desktop, and empties ~/Desktop/objeck*
+  # before it does. That is a private directory here, not --out: --out may hold
+  # an older release or a backups folder, which that cleanup would delete. Only
+  # the finished tarball is moved to /out.
   export HOME=/home/build
-  mkdir -p "$HOME"
-  ln -sfn /out "$HOME/Desktop"
+  mkdir -p "$HOME/Desktop"
 
   cd /src/core/release
   ./deploy_posix.sh "$ARCH" deploy
+  TARBALL="$HOME/Desktop/objeck-linux-${ARCH}_0.0.0.tgz"
+  [ -f "$TARBALL" ] || die "deploy_posix.sh wrote no $TARBALL"
+  mv -f "$TARBALL" "/out/objeck-linux-${ARCH}_0.0.0.tgz"
 
   # A shared library links with symbols left undefined, and the loader only
   # looks for a function when it is first called. So a native library that
@@ -105,10 +112,20 @@ done
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 "${DOCKER[@]}" version >/dev/null 2>&1 || die "docker is not usable as '${DOCKER[*]}' (set DOCKER=\"sudo docker\"?)"
 mkdir -p "$DEPS" "$OUT"
+# docker run -v treats a path with no slash ("out") as a named volume, not a
+# directory, and the host would then check an out/ the build never wrote to.
+# Mount absolute host paths only.
+DEPS="$(cd "$DEPS" && pwd -P)"
+OUT="$(cd "$OUT" && pwd -P)"
 
 IMAGE=objeck-portable-linux:el8
 echo "== build image $IMAGE"
 "${DOCKER[@]}" build -q -t "$IMAGE" "$REPO/tools/packaging/portable-linux"
+
+# Whatever archive is already there is from an earlier build; remove it so one
+# found afterwards can only be this build's.
+TGZ="$OUT/objeck-linux-${ARCH}_0.0.0.tgz"
+rm -f "$TGZ"
 
 echo "== build linux-$ARCH in $IMAGE"
 "${DOCKER[@]}" run --rm \
@@ -118,7 +135,6 @@ echo "== build linux-$ARCH in $IMAGE"
   -e GITHUB_ACTIONS="${GITHUB_ACTIONS:-}" -e VERBOSE="${VERBOSE:-}" \
   "$IMAGE" bash /src/tools/packaging/build_portable_linux.sh --in-container
 
-TGZ="$OUT/objeck-linux-${ARCH}_0.0.0.tgz"
 [ -f "$TGZ" ] || die "the build wrote no $TGZ"
 
 if [ "$GATE" = 1 ]; then

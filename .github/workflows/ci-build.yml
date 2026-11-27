@@ -1918,6 +1918,10 @@ jobs:
       - name: The API index check can still detect a stale index
         run: python3 tools/cicd/test_check_api_index.py
 
+      # A text file at bin/obi once passed the portable gate, which checked the name only.
+      - name: The portable-release gate refuses a core binary that is not an ELF file for the target
+        run: python3 tools/cicd/test_check_docs_deps.py
+
       # The weekly traffic snapshot (tools/release-stats) merges GitHub's 14-day window into
       # a growing CSV; this checks the parsing and the merge without a network or a token.
       - name: Traffic snapshot merge logic
