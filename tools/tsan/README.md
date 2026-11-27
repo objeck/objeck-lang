@@ -7,20 +7,21 @@ tools/cicd/local_linux.sh --skip-regression --skip-libs     # or any tree deploy
 tools/tsan/run_tsan.sh ~/objeck-ci/<sha>
 ```
 
-It needs Linux x64 with GCC, about ten minutes on a quiet machine, and it fails if a test fails or a report is left. `logs/by_test.tsv` under the work directory names the test for every report. The header of the script has the options and the layout of what it writes.
+It needs Linux x64 with GCC and python3, takes about five minutes on a quiet 32-thread machine (half of it the build), and fails if a test fails or a report against the VM is left. `logs/by_test.tsv` under the work directory names the test for every report. The header of the script has the options and the layout of what it writes.
 
-## The three files
+## The four files
 
 | File | What it holds | When to add to it |
 |---|---|---|
+| `run_tsan.sh` | The build and the run. `--raw` ignores the two lists below. | |
+| `tsan_reports.py` | Sorts what is left into reports against the VM, which fail the run, and races between two of the program's own field accesses, which are listed and not counted. | |
 | `tsan.supp` | Reports that are understood and are not faults of the VM: the accepted call-site patching race, program threads nobody joined, glibc's and ONNX Runtime's internals. | Only with the reason in the file, and what would make the entry wrong. |
-| `racy_tests.txt` | Tests left out because the program, or a library it uses, races on its own fields by design. | Only with the field named. |
-| `run_tsan.sh` | The build and the run. `--raw` ignores both files above. | |
+| `racy_tests.txt` | Tests left out because all a run of them can say is a known report that neither of the above can express. | Only with what races named. |
 
 A new report is first a question about the VM. The order to ask in:
 
 1. Is it VM state (the collector's tables, a method's compile state, a socket context, a static in C++)? Then it is a fault until shown otherwise: fix it, or make the access what it really is (an atomic, a lock, a one-time initialization).
-2. Is it a word of an Objeck object or of class memory, read or written by `StackInterpreter::*ClsInst*Var` on behalf of the program? Then the program races on its own data. Name the field (a debug build that logs the storing and loading threads per class and field index does it in a few minutes) and decide whether the test should be changed or listed.
+2. Is it a word of an Objeck object or of class memory, with the interpreter's field instructions (`StackInterpreter::*ClsInst*Var`) on BOTH sides? Then the program, or a library written in Objeck, races on its own data, which the language allows. `tsan_reports.py` sets these aside by that shape. With a field instruction on one side only, the other side is the VM, and it is case 1. To name the field, a debug build that logs the storing and loading threads per class and field index does it in a few minutes.
 3. Is one side inside a library that is not built with the sanitizer? Its locks are invisible. Suppress the library, not the VM function that called it.
 
 ## What the tool cannot see
@@ -42,5 +43,6 @@ A new report is first a question about the VM. The order to ask in:
 | static destruction in `MemoryManager::Exit` against `RemovePendingThreadRoot` | A real fault (#877 with an ending thread): teardown waits for the spawned-thread count. |
 | `StackInstr::SetType` / `SetOperand3` | Accepted, `docs/design/JIT_CALL_SITE_PATCHING.md`; in `tsan.supp`. |
 | thread leak at `ProcessAsyncMethodCall` | Program threads never joined; in `tsan.supp`. |
-| `StorClsInstIntVar` / `LoadClsInstIntVar`, `SharedLibraryCall` reading a library name | Programs and libraries racing on their own fields; the tests are in `racy_tests.txt`. |
+| `StorClsInstIntVar` against `LoadClsInstIntVar` / `StorClsInstIntVar` (10 tests) | Programs and libraries racing on their own fields: polled flags, lazily created statics, a redundant store of an unchanged mutex. Set aside by `tsan_reports.py`. |
+| `SharedLibraryCall` reading a library name; `SockTcpAccept` / `SockTcpClose`; `SocketCtxDetach` | A string published through an unsynchronized static, and sockets closed under their users: four tests in `racy_tests.txt`. |
 | `tzset_internal`, `libonnxruntime` | Uninstrumented libraries; in `tsan.supp`. |

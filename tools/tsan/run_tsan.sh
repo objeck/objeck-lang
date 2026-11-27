@@ -16,17 +16,19 @@
 #                   the libraries are the normal ones
 #   programs/       a copy of TREE/programs; the tests run from here
 #   logs/<test>.<pid>     the reports, one file per VM process, named by test
-#   logs/by_test.tsv      test <tab> report summary, one line per distinct pair
+#   logs/by_test.tsv      kind <tab> test <tab> report summary, one line per distinct triple
 #   logs/summary.txt      what ran, what failed, the report classes
 #
 # Which tests: every programs/regression/*.obs that mentions Thread or
-# System.Concurrency, less the names in tools/tsan/racy_tests.txt (programs
-# that race on their own data on purpose; see that file). --only REGEX narrows
-# the set by test name.
+# System.Concurrency, less the names in tools/tsan/racy_tests.txt (see that
+# file). --only REGEX narrows the set by test name.
 #
-# Reports listed in tools/tsan/tsan.supp are suppressed; each entry there says
-# why. --raw runs without the suppressions and with the racy tests, to see
-# everything the tool can say.
+# Which reports count: tools/tsan/tsan.supp suppresses the ones that are
+# understood and are not faults, each entry saying why. Of what is left,
+# tools/tsan/tsan_reports.py sets aside a race between two of the PROGRAM's own
+# field accesses (kind "program": listed, not counted) and every other report is
+# against the VM (kind "vm") and fails the run. --raw runs without the
+# suppressions and with the left-out tests, to see everything the tool can say.
 #
 # A report does not change a test's exit code (exitcode=0), so a failed test
 # here is a test that fails, and the reports are counted separately.
@@ -119,23 +121,19 @@ done
 for p in "${pids[@]}"; do wait "$p"; done
 
 # --- the result ---
-for f in "$LOGS"/*.[0-9]*; do
-  [ -f "$f" ] || continue
-  t=$(basename "$f"); t="${t%.*}"
-  grep -h '^SUMMARY' "$f" | sed "s#$WORK/##; s#\.\./posix/\.\./\.\./##; s#^SUMMARY: ThreadSanitizer: ##" | sort -u | sed "s#^#$t\t#"
-done | sort -u > "$LOGS/by_test.tsv"
+# tsan_reports.py sorts the reports: a race between two of the program's own field
+# accesses is listed and not counted; anything else is a report against the VM.
 failed=$(awk '/^Running: /{n=$2} /\[FAIL\]/{print n}' "$LOGS"/regression_shard*.log | sort -u)
 {
-  echo "tests: $count (left out as racy: $skipped)"
-  awk '/Results:/ { p += $2; s += $4; f += $6 } END { printf "passed %d, skipped %d, failed %d\n", p, s, f }' "$LOGS"/regression_shard*.log
+  echo "tests: $count (left out, racy_tests.txt: $skipped)"
+  awk '/Results:/ { p += $2; s += $4; f += $6 } END { print "passed " p + 0 ", skipped " s + 0 ", failed " f + 0 }' "$LOGS"/regression_shard*.log
   [ -n "$failed" ] && echo "failed: $(echo $failed)"
-  echo "reports, by class (number of tests):"
-  cut -f2 "$LOGS/by_test.tsv" | sort | uniq -c | sort -rn
+  python3 "$HERE/tsan_reports.py" "$LOGS" --strip "$WORK/"
+  echo "reports rc=$?"
 } > "$LOGS/summary.txt"
 cat "$LOGS/summary.txt"
 
-reports=$(wc -l < "$LOGS/by_test.tsv")
-if [ -n "$failed" ] || [ "$reports" -gt 0 ]; then
+if [ -n "$failed" ] || ! grep -qx 'reports rc=0' "$LOGS/summary.txt"; then
   echo "== FAILED: see $LOGS (by_test.tsv names the test for each report)"
   exit 1
 fi
