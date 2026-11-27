@@ -23,8 +23,7 @@ class Test {
 
 	function : GetFiles(path : String, regex : RegEx, matches : Vector<String>) ~ Nil {
 		files := Directory->List(path);
-		each(i : files) {
-			file := files[i];
+		each(file in files) {
 			if(<>file->StartsWith('.')) {
 				dir_path := String->New(path);
 				dir_path += '/';

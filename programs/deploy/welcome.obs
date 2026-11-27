@@ -156,7 +156,7 @@ class Welcome {
 			file := files[i];
 			lib := libs[i];
 			desc := about[i];
-			if(lib->Size() = 0) {
+			if(lib->IsEmpty()) {
 				lib := "(none)";
 			};
 			# The indent is concatenated into a local BEFORE it is passed. Passing

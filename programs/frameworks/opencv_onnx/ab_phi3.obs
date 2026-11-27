@@ -189,8 +189,7 @@ class AbPhi3 {
 			return false;
 		};
 
-		each(i : values) {
-			v := values[i];
+		each(v in values) {
 			if(v <> v) {
 				return false;
 			};

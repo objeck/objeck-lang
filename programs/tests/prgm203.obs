@@ -11,8 +11,7 @@ class Test {
 			"lidc=\"b=OGST07:s=O:r=O:a=O:p=O:g=2469:u=1:x=1:i=1675894565:t=1675980965:v=2:sig=AQFDYntkJPhW6cZh2z7QaYUMBf4RR5EZ\"; Expires=Thu"
 		];
 
-		each(i : inputs) {
-			input := inputs[i];
+		each(input in inputs) {
 			input->PrintLine();
 
 			cookie := Cookie->New(input, true);
@@ -227,9 +226,7 @@ class Cookie {
 	@return true if added, false otherwise
 	~#
 	method : public : AddAttrib(name : String, value : String) ~ Bool {
-		if(@attribs = Nil) {
-			@attribs := Map->New()<String, String>;
-		};
+		@attribs := @attribs ?? Map->New()<String, String>;
 
 		if(@attribs->Has(name)) {
 			return false;
@@ -370,9 +367,7 @@ class Cookie {
 			@value := value;
 		}
 		else {
-			if(@attribs = Nil) {
-				@attribs := Map->New()<String, String>;
-			};
+			@attribs := @attribs ?? Map->New()<String, String>;
 			@attribs->Insert(name, value);
 		};
 

@@ -737,8 +737,7 @@ class CodeFormatter {
 		line := 1;
 		drift := 0;
 		tokens := scanner->GetTokens();
-		each(i : tokens) {
-			token := tokens->Get(i);
+		each(token in tokens) {
 			type := token->GetType();
 
 			# the blank-line marker shares a line with the token after it

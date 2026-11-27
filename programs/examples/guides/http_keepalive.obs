@@ -44,9 +44,7 @@ class CountingHandler from HttpRequestHandler {
     # /hello?name=Ada answers {"hello":"Ada"}
     if(request->GetPath()->Equals("/hello")) {
       name := request->GetParam("name");
-      if(name = Nil) {
-        name := "world";
-      };
+      name := name ?? "world";
       response->SetCodeTypeContent(200, "application/json", "{\"hello\":\"{$name}\"}");
     }
     else {

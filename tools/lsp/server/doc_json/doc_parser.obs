@@ -309,8 +309,7 @@ class SnippetParser {
 	~#
 	method : FindOwnerScope(index : Int) ~ ClassScope {
 		if(@class_scopes <> Nil) {
-			each(i : @class_scopes) {
-				scope := @class_scopes->Get(i);
+			each(scope in @class_scopes) {
 				if(scope->Holds(index)) {
 					return scope;
 				};
@@ -921,9 +920,7 @@ class BundleSnippet from Snippet {
 	}
 
 	method: public : GetScopedEnums() ~ Map<String, EnumConstSnippet> {
-		if(@scoped_enums = Nil) {
-			@scoped_enums := Map->New()<String, EnumConstSnippet>;
-		};
+		@scoped_enums := @scoped_enums ?? Map->New()<String, EnumConstSnippet>;
 		return @scoped_enums;
 	}
 
@@ -1110,7 +1107,7 @@ class EnumConstSnippet from Snippet {
 		if(type->Size() > 0) {
 			if(type->Equals("@class")) {
 				@klass := ParseIdent();
-				if(@klass->Size() = 0) {
+				if(@klass->IsEmpty()) {
 					return false;
 				};
 			};
@@ -1127,7 +1124,7 @@ class EnumConstSnippet from Snippet {
 
 		@name := ParseIdent();
 		@short_name := @name;
-		if(@name->Size() = 0) {
+		if(@name->IsEmpty()) {
 			return false;
 		};
 
@@ -1140,7 +1137,7 @@ class EnumConstSnippet from Snippet {
 		if(<>@is_consts & MatchChar(':')) {
 			if(MatchChar('=')) {
 				@id := ParseIdent();
-				if(@id->Size() = 0) {
+				if(@id->IsEmpty()) {
 					return false;
 				};
 			}
@@ -1173,7 +1170,7 @@ class EnumConstSnippet from Snippet {
 
 			item_name := ParseIdent();
 			plain_name := String->New(item_name);
-			if(item_name->Size() = 0) {
+			if(item_name->IsEmpty()) {
 				return false;
 			};
 
@@ -1188,7 +1185,7 @@ class EnumConstSnippet from Snippet {
 				};
 				value := ParseIdent();
 
-				if(value->Size() = 0) {
+				if(value->IsEmpty()) {
 					return false;
 				};
 				item_name += value->ToInt();
@@ -1245,9 +1242,7 @@ class ClassSnippet from Snippet {
 	}
 	
 	method : public : GetShortName() ~ String {
-		if(@short_name = Nil) {
-			@short_name := GetShortName(@name);
-		};
+		@short_name := @short_name ?? GetShortName(@name);
 
 		return @short_name;
 	}
@@ -1422,7 +1417,7 @@ class ClassSnippet from Snippet {
 		};
 		
 		@name := ParseName();
-		if(@name->Size() = 0) {
+		if(@name->IsEmpty()) {
 			return false;
 		};
 		
@@ -1433,7 +1428,7 @@ class ClassSnippet from Snippet {
 		ident := ParseIdent(); 
 		if(ident->Equals("from")) {
 			@from_class := ParseIdent();
-			if(@from_class->Size() = 0) {
+			if(@from_class->IsEmpty()) {
 				return false;
 			};
 
@@ -1628,12 +1623,12 @@ class FuncSnippet from Snippet {
 			if(type->Size() > 0) {
 				if(type->Equals("@param")) {
 					tag_name := ParseIdent();
-					if(tag_name->Size() = 0) {
+					if(tag_name->IsEmpty()) {
 						return false;
 					};
 
 					tag_desc := ParseDesc();
-					if(tag_desc->Size() = 0) {
+					if(tag_desc->IsEmpty()) {
 						return false;
 					};
 					tag := SnippetTag->New(tag_name, tag_desc, false);
@@ -1641,7 +1636,7 @@ class FuncSnippet from Snippet {
 				}
 				else if(type->Equals("@ignore-param")) {
 					tag_name := ParseIdent();
-					if(tag_name->Size() = 0) {
+					if(tag_name->IsEmpty()) {
 						return false;
 					};
 					tag := SnippetTag->New(tag_name, "", true);
@@ -1657,7 +1652,7 @@ class FuncSnippet from Snippet {
 				}
 				else if(type->Equals("@return")) {
 					tag_desc := ParseDesc();
-					if(tag_desc->Size() = 0) {
+					if(tag_desc->IsEmpty()) {
 						return false;
 					};
 					@return_tag := SnippetTag->New(tag_desc);
@@ -1759,7 +1754,7 @@ class FuncSnippet from Snippet {
 		# function parameters
 		while(@cur_char <> ')') {
 			param_name := ParseIdent();
-			if(param_name->Size() = 0) {
+			if(param_name->IsEmpty()) {
 				return false;
 			};
 		
@@ -1873,7 +1868,7 @@ class FuncSnippet from Snippet {
 		}
 		else {
 			ident := ParseName();
-			if(ident->Size() = 0) {
+			if(ident->IsEmpty()) {
 				return Nil;
 			};
 			type_name->Append(ident);
@@ -1911,7 +1906,7 @@ class FuncSnippet from Snippet {
 		type_name->Append('~');
 
 		ident := ParseName();
-		if(ident->Size() = 0) {
+		if(ident->IsEmpty()) {
 			return false;
 		};
 		type_name->Append(ident);

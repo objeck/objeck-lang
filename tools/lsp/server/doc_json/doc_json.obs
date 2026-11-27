@@ -49,8 +49,7 @@ class JsonMaker {
 		# version and tells the editor when they differ
 		buffer := "{\n\t\"version\": \"{$@version}\",\n\t\"class-details\": {\n\t";
 		emitted_bundle := false;
-		each(i : bundle_pairs) {
-			bundle_pair := bundle_pairs->Get(i);
+		each(bundle_pair in bundle_pairs) {
 			bundle_name := bundle_pair->GetFirst();
 			bundle_snippet := bundle_pair->GetSecond();
 
@@ -97,8 +96,7 @@ class JsonMaker {
 		# collide lands exactly where it did before (#1052).
 		grouped := Map->New()<String, Vector<Foo>>;
 		order := Vector->New()<String>;
-		each(i : classes_bundle) {
-			foo := classes_bundle->Get(i);
+		each(foo in classes_bundle) {
 			class_name := foo->GetClassName();
 
 			candidates := grouped->Find(class_name);
@@ -138,8 +136,7 @@ class JsonMaker {
 		# them -- the HTML reference has enum pages -- but nothing here wrote them
 		# out, so the editor had no documentation for any enum or its items.
 		enum_entries := Vector->New()<String>;
-		each(i : bundle_pairs) {
-			bundle_pair := bundle_pairs->Get(i);
+		each(bundle_pair in bundle_pairs) {
 			enums := bundle_pair->GetSecond()->GetScopedEnums();
 			enum_key_values := enums->GetKeyValues()<Pair<String, EnumConstSnippet>>;
 			each(j : enum_key_values) {
@@ -223,8 +220,7 @@ class JsonMaker {
 		# Render first, emit second. A function whose overloads are all @hidden
 		# produces no entry at all, and skipping one mid-loop would strand a comma.
 		entries := Vector->New()<String>;
-		each(i : function_names) {
-			function_name := function_names->Get(i);
+		each(function_name in function_names) {
 
 			descriptions := Vector->New()<String>;
 			functions := snippet->GetFunctions(function_name)<FuncSnippet>;

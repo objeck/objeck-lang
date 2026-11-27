@@ -143,8 +143,7 @@ class AoC {
 	}
 
 	function : PrintStackTops(stacks : CompareList[]<CharRef>) ~ Nil {
-		each(i : stacks) {
-			stack := stacks[i];
+		each(stack in stacks) {
 			if(<>stack->IsEmpty()) {
 				stack->Back()->Print();
 			};

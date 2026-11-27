@@ -73,8 +73,7 @@ class SvmLab {
 		"2. C (rbf, gamma = 'scale'); extra column: training accuracy and F1"->PrintLine();
 		LabData->PrintHeader("C");
 		cs := [0.01, 0.1, 1.0, 10.0, 100.0];
-		each(i : cs) {
-			c := cs[i];
+		each(c in cs) {
 			Run("C={$c}", KernelSVM->New(SvmKernel->RBF, c), x, y, tx, ty);
 		};
 
@@ -83,8 +82,7 @@ class SvmLab {
 		"3. gamma (rbf, C = 1)"->PrintLine();
 		LabData->PrintHeader("gamma");
 		gammas := [0.001, 0.01, 0.1, 1.0];
-		each(i : gammas) {
-			g := gammas[i];
+		each(g in gammas) {
 			Run("gamma={$g}", KernelSVM->New(SvmKernel->RBF, 1.0, g), x, y, tx, ty);
 		};
 	}

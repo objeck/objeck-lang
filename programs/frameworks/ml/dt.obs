@@ -29,8 +29,7 @@ bundle System.ML {
 
 			e : Float;
 			children := parent->GetChildren();
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				x := child->GetX();
 				y := child->GetY();
 				e += Entropy(x, y) * (x + y) / pxy;

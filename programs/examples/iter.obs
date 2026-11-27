@@ -8,8 +8,7 @@
 		keys := assoc_array->GetKeys();
 		values := assoc_array->GetValues();
 
-		each(i : keys) {
-			key := keys->Get(i);
+		each(key in keys) {
 			value := assoc_array->Find(key)->Get();
 			"key={$key}, value={$value}"->PrintLine();
 		};

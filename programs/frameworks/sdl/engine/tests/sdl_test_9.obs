@@ -1206,8 +1206,7 @@ class Level {
     }
 
 	method : public : Update()  ~ Nil {
-		each(i : @platforms) {
-			platform := @platforms->Get(i);
+		each(platform in @platforms) {
 			if(platform->TypeOf(MovingPlatform)) {
 				platform->As(MovingPlatform)->Update();
 			};

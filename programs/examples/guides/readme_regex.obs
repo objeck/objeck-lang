@@ -14,8 +14,7 @@ class Dates {
   function : Main(args : String[]) ~ Nil {
     text := "shipped 2026-10-31, patched 2026-11-02";
     found := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})")->Find(text);
-    each(i : found) {
-      date := found->Get(i);
+    each(date in found) {
       "{$(date->GetValue())} is month {$(date->GetGroup(2))}"->PrintLine();
     };
 

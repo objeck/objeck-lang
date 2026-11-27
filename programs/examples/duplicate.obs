@@ -6,8 +6,7 @@ class Duplicate {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			file_sets := SortDups(GetDups(args[0], args[1]->ToInt()));
-			each(i : file_sets) {
-				file_set := file_sets->Get(i);
+			each(file_set in file_sets) {
 				if(file_set->Size() > 1) {
 					"Duplicates:"->PrintLine();
 					"----"->PrintLine();
@@ -23,8 +22,7 @@ class Duplicate {
 	function : SortDups(unsorted : Vector<Vector<FileMeta> >) ~ Vector<Vector<FileMeta> > {
 		sorted := Map->New()<IntRef, Vector<FileMeta> >;
 
-		each(i : unsorted) {
-			value := unsorted->Get(i);
+		each(value in unsorted) {
 			key := value->Get(0)->GetSize();
 			sorted->Insert(key, value);
 		};

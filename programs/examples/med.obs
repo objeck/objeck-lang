@@ -19,7 +19,7 @@ bundle Default {
 		}
 
 		function : native : DoMedian(numbers : CompareVector<FloatRef>) ~ Float {
-			if(numbers->Size() = 0) {
+			if(numbers->IsEmpty()) {
 				return 0.0;
 			}
 			else if(numbers->Size() = 1) {

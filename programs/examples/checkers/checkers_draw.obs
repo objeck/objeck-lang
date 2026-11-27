@@ -113,7 +113,7 @@ class CkText {
   }
 
   method : public : DrawAlpha(text : String, x : Int, y : Int, size : Int, red : Int, green : Int, blue : Int, alpha : Int, align : Int) ~ Nil {
-    if(text->Size() = 0) {
+    if(text->IsEmpty()) {
       return;
     };
     e := Entry(text, size, red, green, blue);

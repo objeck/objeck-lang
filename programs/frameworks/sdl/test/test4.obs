@@ -500,8 +500,7 @@ class Player {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
 		};
 
-		each(i : @barriers) {
-			barrier := @barriers->Get(i);
+		each(barrier in @barriers) {
 			if(barrier->Collides(@rect)) {
 				# moving south
 				if(@vel_y->GetY() > 0) {
@@ -649,16 +648,14 @@ class Missle {
 	}
 
 	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
-		each(i : enemies) {
-			enemy := enemies->Get(i);
+		each(enemy in enemies) {
 			if(enemy->Collides(@rect)) {
 				enemy->Explode();
 				return true;
 			};
 		};
 
-		each(i : barriers) {
-			barrier := barriers->Get(i);
+		each(barrier in barriers) {
 			if(barrier->Collides(@rect)) {
 				return true;
 			};
@@ -703,8 +700,7 @@ class Level {
 	function : Collisions(player : Player, obstacles : Vector<Barrier>) ~ Vector<Barrier> {
 		collides := Vector->New()<Barrier>;
 
-		each(i : obstacles) {
-			obstacle := obstacles->Get(i);
+		each(obstacle in obstacles) {
 			if(obstacle->Collides(player->GetRect())) {
 				collides->AddBack(obstacle);
 			};
@@ -716,8 +712,7 @@ class Level {
 	function : Collisions(player : Player, enemies : Vector<Enemy>) ~ Vector<Enemy> {
 		collides := Vector->New()<Enemy>;
 
-		each(i : enemies) {
-			enemy := enemies->Get(i);
+		each(enemy in enemies) {
 			if(enemy->Collides(player->GetRect())) {
 				collides->AddBack(enemy);
 			};
@@ -753,8 +748,7 @@ class Level {
 	}
 
 	method : public : native : Update()  ~ Nil {
-		each(i : @barriers) {
-			barrier := @barriers->Get(i);
+		each(barrier in @barriers) {
 		};
 	}
 

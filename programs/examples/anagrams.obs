@@ -22,8 +22,7 @@ class Anagrams {
 			};
 
 			lists := anagrams->GetValues();
-			each(i : lists) {
-				list := lists->Get(i);
+			each(list in lists) {
 				if(list->Size() >= count) {
 					'['->Print();
 					each(j : list) {

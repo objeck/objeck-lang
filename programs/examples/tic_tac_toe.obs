@@ -117,7 +117,7 @@ class TicTacToe {
 			return Status->QUIT;
 		};
 
-		if(move->Size() = 0) {
+		if(move->IsEmpty()) {
 			return Status->INVALID_MOVE;
 		};
 

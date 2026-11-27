@@ -72,7 +72,7 @@ class AskModel {
 
     # a network failure, a bad key or a refused request gives no candidates;
     # GetLastError says what the service reported
-    if(candidates = Nil | candidates->Size() = 0) {
+    if(candidates = Nil | candidates->IsEmpty()) {
       error := EndPoint->GetLastError();
       "No reply from Gemini: {$error}"->ErrorLine();
       return;

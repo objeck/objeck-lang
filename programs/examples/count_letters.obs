@@ -14,8 +14,7 @@ class Test {
 		reader := FileReader->New(filename);
 		while(reader->IsEoF() <> true) {
 		line := reader->ReadLine()->ToUpper();
-			each(i : line) {
-				ch := line->Get(i);
+			each(ch in line) {
 				if(ch->IsChar()){
 					index := ch - 'A';
 					freqs[index] := freqs[index] + 1;

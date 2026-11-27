@@ -95,8 +95,7 @@ bundle Default {
 				parts := candidate->GetParts();
 				has_audio := false;
 
-				each(i : parts) {
-					part := parts->Get(i);
+				each(part in parts) {
 
 					if(part->TypeOf(TextPart)) {
 						text_part := part->As(TextPart);

@@ -17,8 +17,7 @@ bundle Default {
 			if(parser->Parse()) {
 				root := parser->GetRoot();
 				children := root->GetChildren("Student");
-				each(i : children) {
-					child := children->Get(i);
+				each(child in children) {
 					XmlElement->DecodeString(child->GetAttribute("Name")->GetValue())->PrintLine();
 				};
 			};

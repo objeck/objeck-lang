@@ -144,11 +144,10 @@ class VectorSearchExample {
 
 			"\nQ: {$questions[qi]}"->PrintLine();
 			hits := index->Search(q, k);
-			if(hits->Size() = 0) {
+			if(hits->IsEmpty()) {
 				"   no answer ({$index->GetError()})"->PrintLine();
 			};
-			each(h : hits) {
-				hit := hits->Get(h);
+			each(hit in hits) {
 				row := hit->GetId()->ToInt();
 				text := corpus[row];
 				score := hit->GetScore();
@@ -167,8 +166,7 @@ class VectorSearchExample {
 		out := Float->New[texts->Size(), dim];
 		each(t : texts) {
 			words := Words(texts[t]);
-			each(w : words) {
-				word := words->Get(w);
+			each(word in words) {
 				h := 5381;
 				each(c : word->Size()) {
 					h := (h * 33 + word->Get(c)->As(Int)) % 2147483629;

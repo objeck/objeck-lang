@@ -19,8 +19,7 @@ class LlmEvalReferencesB {
 		};
 
 		areas := Map->New()<String, IntRef>;
-		each(i : all) {
-			task := all->Get(i);
+		each(task in all) {
 			if(task->GetReference() = Nil | task->GetReference()->Size() = 0) {
 				"FAIL: {$task->GetId()} has no reference solution"->PrintLine();
 				failed += 1;
@@ -57,8 +56,7 @@ class LlmEvalReferencesB {
 		results := EvalRunner->New(ReferenceModel->New(tasks), tasks, 1, sandbox)->Run();
 
 		attempts := results->GetAttempts();
-		each(i : attempts) {
-			attempt := attempts->Get(i);
+		each(attempt in attempts) {
 			if(<>attempt->IsCorrect()) {
 				failed += 1;
 				"FAIL: {$attempt->GetTaskId()}: {$attempt->GetOutcome()} {$attempt->GetErrorLine()} {$attempt->GetOutput()}"->PrintLine();

@@ -13,8 +13,7 @@ class Capture {
       funcs->AddBack(FuncRef->New(\() ~ IntRef : () => i->Factorial() * funcs->Size())<IntRef>);
     };
 
-    each(i : funcs) {
-      value := funcs->Get(i);
+    each(value in funcs) {
       func := value->Get();
       func()->Get()->PrintLine();
     };

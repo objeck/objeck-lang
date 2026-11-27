@@ -2,8 +2,7 @@ bundle Default {
   class Test {
     function : Main(args : String[]) ~ Nil {
       words := ["racecar", "hello", "madam", "objeck", "level", "noon", "world"];
-      each(i : words) {
-        word := words[i];
+      each(word in words) {
         result := IsPalindrome(word);
         "  '{$word}' => {$result}"->PrintLine();
       };
