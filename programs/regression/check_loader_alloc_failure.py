@@ -24,9 +24,17 @@ three and those before and after them. At every limit obr must
   * end by itself: an exit status, never a signal (the crash was SIGSEGV), and
   * not run a line of the program.
 
-and at least one limit must produce the std::bad_alloc load error, so the ladder
-is known to have reached the allocations at all. The control -- the same limits'
-largest, on the unpatched program -- must still run.
+and EACH of the three allocations must be the one that failed, for at least one limit,
+with obr saying std::bad_alloc. obr does not say which allocation failed, and the three
+fail at the same message, so a gate that asks only for "a bad_alloc somewhere" is passed by
+a ladder in which every limit fails the same allocation. Which one it was is read from
+the process's peak resident set instead: each array is zero-filled (the "()" on the new),
+so every array that was allocated before the failing one is resident, 8 * COUNT bytes
+apiece, and the one that failed is not. The smallest peak of all the runs is the first
+allocation failing (nothing of the three beforehand; the ladder starts well above what
+inflating the image needs), a peak one array above it is the second, two above the third. The check fails, and says which site was never reached,
+when a band has no run; so the ladder cannot go quiet by all its limits landing in one.
+The control -- the largest limit, on the unpatched program -- must still run.
 
 RLIMIT_AS is what makes an allocation fail on demand. Windows has none, and
 macOS does not enforce it, so the test says SKIP there: the code is the same on
@@ -38,13 +46,16 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import zlib
 
 COUNT = 40 * 1000 * 1000
 MB = 1024 * 1024
 # 8 bytes a class in each of three arrays: 320 MB each. The ladder runs from below
 # the inflated image alone to above everything the load needs.
-LIMITS_MB = list(range(200, 1700, 100))
+# A step of 25 MB, a twelfth of an array, so every band between two arrays has runs in it.
+LIMITS_MB = list(range(150, 2000, 25))
+ARRAY_MB = 8.0 * COUNT / MB
 MARKER = "alloc-failure-control-ran"
 
 PROGRAM = """class AllocFailure {
@@ -86,11 +97,22 @@ def main():
                 print("         " + str(detail)[-400:])
 
     def run(image, limit_mb):
+        """(exit status, output, peak resident set in MB). The status is negative for a signal."""
         def limit():
             resource.setrlimit(resource.RLIMIT_AS, (limit_mb * MB, limit_mb * MB))
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        p = subprocess.run([obr, image], env=env, capture_output=True, timeout=300, preexec_fn=limit)
-        return p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")
+        p = subprocess.Popen([obr, image], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=limit)
+        timer = threading.Timer(300, p.kill)
+        timer.start()
+        try:
+            data = p.stdout.read()
+            _, status, usage = os.wait4(p.pid, 0)
+        finally:
+            timer.cancel()
+            p.stdout.close()
+            p.returncode = 0  # reaped by wait4 above; keeps Popen's own __del__ from waiting again
+        rc = os.waitstatus_to_exitcode(status)
+        return rc, data.decode("utf-8", "replace"), usage.ru_maxrss / 1024.0  # Linux: kilobytes
 
     with tempfile.TemporaryDirectory(prefix="alloc-failure-") as work:
         src = os.path.join(work, "alloc_failure.obs")
@@ -116,17 +138,28 @@ def main():
         with open(big, "wb") as f:
             f.write(struct.pack("<I", len(image)) + zlib.compress(bytes(image), 1))
 
-        rc, out = run(good, LIMITS_MB[-1])
+        rc, out, _ = run(good, LIMITS_MB[-1])
         check("control: the unpatched program runs under the largest limit", rc == 0 and MARKER in out, "exit %d: %s" % (rc, out))
 
-        reported = 0
+        runs = []
         for limit_mb in LIMITS_MB:
-            rc, out = run(big, limit_mb)
+            rc, out, rss = run(big, limit_mb)
             said = "bad_alloc" in out
-            reported += 1 if said else 0
-            check("%4d MB: obr ends by itself (exit %d%s)" % (limit_mb, rc, ", says std::bad_alloc" if said else ""),
+            runs.append((limit_mb, rc, said, rss))
+            check("%4d MB: obr ends by itself (exit %d, peak %4.0f MB%s)" % (limit_mb, rc, rss, ", says std::bad_alloc" if said else ""),
                   0 < rc < 128 and MARKER not in out, out)
-        check("some limit made an allocation of the load fail and obr said so (%d of %d did)" % (reported, len(LIMITS_MB)), reported > 0)
+
+        # which allocation failed, from what was resident (see the top of this file)
+        failed = [r for r in runs if r[2]]
+        check("some limit made an allocation of the load fail and obr said so (%d of %d did)" % (len(failed), len(runs)), len(failed) > 0)
+        if runs:
+            base = min(r[3] for r in runs)
+            check("the lowest peak (%.0f MB) is before the first array, not after it (an array is %.0f MB)" % (base, ARRAY_MB),
+                  base < 0.75 * ARRAY_MB)
+            for site in range(3):
+                got = [r[0] for r in failed if int((r[3] - base) / ARRAY_MB + 0.5) == site]
+                check("allocation %d of 3 failed, with bad_alloc, under at least one limit (%s)"
+                      % (site + 1, ("%d run(s), %d..%d MB" % (len(got), min(got), max(got))) if got else "none"), bool(got))
 
     if failures:
         print("\nFAIL: %d check(s): %s" % (len(failures), "; ".join(failures)))
