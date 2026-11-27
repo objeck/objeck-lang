@@ -12354,6 +12354,10 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
     std::error_code error_code;
     PushInt(std::filesystem::remove(name.c_str(), error_code), op_stack, stack_pos);
   }
+  else {
+    // a Nil name deletes nothing; without a result the caller's operand stack was one short
+    PushInt(0, op_stack, stack_pos);
+  }
 
   return true;
 }
@@ -12893,8 +12897,14 @@ bool TrapProcessor::DirDelete([[maybe_unused]] StackProgram* program, [[maybe_un
 
 bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
-  size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
+  // Create(l, t) pushes the link's path, then the target's: the target is on top.
+  // The two were popped into each other's names. The create calls came out right
+  // all the same, because they were handed the names swapped again, but the
+  // directory test asked about the LINK's path, which does not exist yet, so a
+  // link to a directory was made as a file link: on Windows that is a link
+  // nothing can open (POSIX has one kind of link, so it did not show there).
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
 
   if(target_obj && link_obj) {
     target_obj = (size_t*)target_obj[0];
@@ -12905,11 +12915,14 @@ bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[mayb
 
     std::error_code error_code;
     std::error_code kind_error;
-    if(std::filesystem::is_directory(target_str, kind_error)) {
-      std::filesystem::create_directory_symlink(link_str, target_str, error_code);
+    // a relative target is relative to the link's directory, as the link itself reads it
+    const std::filesystem::path target_path(target_str);
+    const std::filesystem::path seen_from_link = target_path.is_absolute() ? target_path : std::filesystem::path(link_str).parent_path() / target_path;
+    if(std::filesystem::is_directory(seen_from_link, kind_error)) {
+      std::filesystem::create_directory_symlink(target_str, link_str, error_code);
     }
     else {
-      std::filesystem::create_symlink(link_str, target_str, error_code);
+      std::filesystem::create_symlink(target_str, link_str, error_code);
     }
 
     if(error_code) {
@@ -12928,7 +12941,9 @@ bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[mayb
 
 bool TrapProcessor::SymLinkCopy([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
-  [[maybe_unused]] const bool recursive = PopInt(op_stack, stack_pos);
+  // Copy(s, d) pushes two values. This popped three -- a 'recursive' flag the
+  // library has not passed since the call lost that parameter -- so every copy
+  // took a value off the caller's side of the operand stack with it.
   size_t* to = (size_t*)PopInt(op_stack, stack_pos);
   size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -12994,13 +13009,18 @@ bool TrapProcessor::SymLinkExists([[maybe_unused]] StackProgram* program, [[mayb
   return true;
 }
 
-//
-// TODO: implement
-//
+// HardLink->Create(l, t): a second name, l, for the file t names. It is
+// std::filesystem::create_hard_link, which is link() on POSIX and
+// CreateHardLinkW on Windows, so it fails (false) when the target does not
+// exist or is a directory, when the link's name is taken, when the two are on
+// different volumes, and on a file system with no hard links. (This carried a
+// "TODO: implement" over a body that worked only because the two paths were
+// popped into each other's names and then passed in the other order.)
 bool TrapProcessor::HardLinkCreate([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
-  size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
+  // the link's path is pushed first and the target's second: the target is on top
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
 
   if(target_obj && link_obj) {
     target_obj = (size_t*)target_obj[0];
@@ -13010,7 +13030,7 @@ bool TrapProcessor::HardLinkCreate([[maybe_unused]] StackProgram* program, [[may
     const NativePath link_str = ToNativePath((wchar_t*)(link_obj + 3));
 
     std::error_code error_code;
-    std::filesystem::create_hard_link(link_str, target_str, error_code);
+    std::filesystem::create_hard_link(target_str, link_str, error_code);
 
     if(error_code) {
       PushInt(0, op_stack, stack_pos);
