@@ -182,6 +182,48 @@ def run(cmd):
     return subprocess.run(cmd, capture_output=True, text=True).stdout
 
 
+class ToolFailed(Exception):
+    """An inspection tool (readelf) did not run, or said it could not read the file."""
+
+
+def run_checked(cmd):
+    """Like run, but a tool that is missing or exits non-zero is an error, not empty output.
+
+    An empty answer reads as "nothing found" to every check that follows, so a file readelf
+    could not read would have passed them all."""
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as e:
+        raise ToolFailed(f"{cmd[0]} could not run: {e}")
+    if r.returncode != 0:
+        raise ToolFailed(f"{' '.join(cmd[:-1])} exited {r.returncode}: {(r.stderr or '').strip()[:200]}")
+    return r.stdout
+
+
+# e_machine of an ELF header, by the architecture names runtime_deps.json uses
+ELF_MACHINE = {"x64": (62, "x86-64"), "arm64": (183, "AArch64")}
+
+
+def core_binary_problem(path, arch):
+    """Why `path` is not an executable ELF file for `arch`, or None. A text file or a script
+    left at bin/obi has the right name and nothing else."""
+    if not os.path.isfile(path):
+        return "is missing"
+    with open(path, "rb") as f:
+        head = f.read(20)
+    if head[:4] != b"\x7fELF":
+        return "is not an ELF file (it starts with %r)" % head[:16]
+    if len(head) < 20 or head[4] != 2 or head[5] != 1:
+        return "is not a 64-bit little-endian ELF file"
+    machine = int.from_bytes(head[18:20], "little")
+    want = ELF_MACHINE.get(arch)
+    if want and machine != want[0]:
+        return "is an ELF file for machine %d, not %s (%d)" % (machine, want[1], want[0])
+    if not os.access(path, os.X_OK):
+        return "is not executable"
+    return None
+
+
 def check_linux_artifacts(tree, arch, manifest):
     linux = manifest["linux"]
     toolchain = set(linux["toolchain_sonames"])
@@ -262,8 +304,9 @@ def check_linux_portable(tree, arch, manifest):
         findings += 1
 
     for name in core:
-        if not os.path.isfile(os.path.join(tree, "bin", name)):
-            fail(f"bin/{name} is missing")
+        problem = core_binary_problem(os.path.join(tree, "bin", name), arch)
+        if problem:
+            fail(f"bin/{name} {problem}")
     for name in sorted(self_contained):
         if not os.path.isfile(os.path.join(tree, "lib", "native", name)):
             fail(f"lib/native/{name} is missing")
@@ -275,7 +318,13 @@ def check_linux_portable(tree, arch, manifest):
         rel = os.path.relpath(p, tree).replace(os.sep, "/")
         # 1. symbol versions: the highest of each family this file asks the system for
         highest = {}
-        for fam, ver in re.findall(r"Name: (" + families + r")_([0-9]+(?:\.[0-9]+)*)\b", run(["readelf", "-V", "-W", p])):
+        try:
+            versions = run_checked(["readelf", "-V", "-W", p])
+            dynamic = run_checked(["readelf", "-d", "-W", p])
+        except ToolFailed as e:
+            fail(f"{rel} could not be inspected: {e}")
+            continue
+        for fam, ver in re.findall(r"Name: (" + families + r")_([0-9]+(?:\.[0-9]+)*)\b", versions):
             if fam not in highest or version_key(ver) > version_key(highest[fam]):
                 highest[fam] = ver
         for fam, ver in sorted(highest.items()):
@@ -283,7 +332,6 @@ def check_linux_portable(tree, arch, manifest):
                 fail(f"{rel} needs {fam}_{ver}; the release floor is {fam}_{floors[fam]}")
 
         # 2. what it links outside the tree and the C/C++ runtime
-        dynamic = run(["readelf", "-d", "-W", p])
         needed = set(re.findall(r"\(NEEDED\)\s+Shared library: \[([^\]]+)\]", dynamic))
         outside = {s for s in needed if s not in toolchain and s not in in_tree}
         core_linked |= needed & set(release["core_sonames"])
@@ -298,8 +346,12 @@ def check_linux_portable(tree, arch, manifest):
 
         # 3. hardening of the executables
         if is_core:
-            header = run(["readelf", "-h", "-W", p])
-            segments = run(["readelf", "-l", "-W", p])
+            try:
+                header = run_checked(["readelf", "-h", "-W", p])
+                segments = run_checked(["readelf", "-l", "-W", p])
+            except ToolFailed as e:
+                fail(f"{rel} could not be inspected: {e}")
+                continue
             if not re.search(r"Type:\s+DYN", header):
                 fail(f"{rel} is not position-independent (PIE)")
             if "GNU_RELRO" not in segments:

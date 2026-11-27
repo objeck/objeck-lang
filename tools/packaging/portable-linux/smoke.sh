@@ -25,25 +25,48 @@ unset LD_LIBRARY_PATH
 mkdir -p /tmp/smoke && cd /tmp/smoke || exit 1
 
 step "1. every tool starts"
+# Each tool must be a dynamic executable of this machine (ldd exits 0), resolve every
+# library, and RUN: a text file named bin/obi has the right name, and ldd says "not a
+# dynamic executable" for it, which a grep for "not found" does not see. So the exit
+# status of ldd is read, and each tool is started with an argument that makes it print
+# and exit without doing anything: the status it exits with, and the text it prints, are
+# what is held to. obc, obu and obi have a version or help option; obr, obd and obb
+# print their usage and exit 1 when named no program.
 for tool in obc obr obd obi obu obb; do
-  missing=$(ldd "$OBJECK/bin/$tool" 2>&1 | grep -E "not found|No such file")
-  if [ -n "$missing" ]; then
-    bad "bin/$tool cannot resolve: $(echo "$missing" | tr -s ' \t\n' ' ')"
+  if [ ! -f "$OBJECK/bin/$tool" ] || [ ! -x "$OBJECK/bin/$tool" ]; then
+    bad "bin/$tool is missing or not executable"; continue
+  fi
+  linked=$(ldd "$OBJECK/bin/$tool" 2>&1); rc=$?
+  missing=$(echo "$linked" | grep -E "not found|No such file|not a dynamic executable")
+  if [ $rc -ne 0 ] || [ -n "$missing" ]; then
+    bad "bin/$tool is not a dynamic executable that resolves its libraries (ldd exit $rc): $(echo "$linked" | tr -s ' \t\n' ' ')"
   else
     ok "bin/$tool resolves every library it links"
   fi
 done
-for tool in obc obr obu; do
-  # obr has no version option; its usage text, printed when no program is named, ends with it
-  case "$tool" in
-    obu) out=$("$tool" version 2>&1) ;;
-    obr) out=$("$tool" 2>&1) ;;
-    *)   out=$("$tool" --version 2>&1) ;;
-  esac
+# tool, arguments, the exit status of the run, and what it prints
+tool_runs() {
+  echo "obc --version 0 [0-9]{4}\.[0-9]+\.[0-9]+"
+  echo "obr - 1 Usage: obr"
+  echo "obu version 0 [0-9]{4}\.[0-9]+\.[0-9]+"
+  echo "obi --help 0 Usage: obi"
+  echo "obd - 1 Usage: obd"
+  echo "obb - 1 Usage: obb"
+}
+tool_runs | while read -r tool arg want_rc pattern; do
+  if [ "$arg" = "-" ]; then out=$(timeout 30 "$tool" 2>&1 </dev/null); else out=$(timeout 30 "$tool" "$arg" 2>&1 </dev/null); fi
   rc=$?
-  ver=$(echo "$out" | grep -oE '[0-9]{4}\.[0-9]+\.[0-9]+' | head -n 1)
-  if [ -n "$ver" ] && [ $rc -lt 126 ]; then ok "$tool reports $ver"; else bad "$tool did not report a version (exit $rc): $out"; fi
+  if [ "$rc" -eq "$want_rc" ] && echo "$out" | grep -qE "$pattern"; then
+    echo "  ok: $tool ${arg#-} exits $rc and prints: $(echo "$out" | head -n 1 | cut -c 1-60)"
+  else
+    echo "  FAIL: $tool ${arg#-} exited $rc (wanted $want_rc) and printed: $(echo "$out" | head -n 2 | tr '\n' ' ' | cut -c 1-120)"
+    echo X >> /tmp/smoke/tool_failed
+  fi
 done
+if [ -e /tmp/smoke/tool_failed ]; then bad "a tool did not start and answer as it should"; fi
+# the release the tools report
+ver=$(obc --version 2>&1 | grep -oE '[0-9]{4}\.[0-9]+\.[0-9]+' | head -n 1)
+[ -n "$ver" ] && ok "this is release $ver" || bad "obc reported no version"
 
 step "2. compile and run"
 cat > hello.obs <<'EOF'
