@@ -89,7 +89,20 @@
   // the program or an array -- a word that is then a reference or Nil, never a
   // number. A method's name spells its parameter types, and an enum's name is not
   // a class's: `Paint(c : Color)` takes an Int, `Print(s : String)` an object.
+  namespace ref_map_detail {
+    class Builder;
+  }
+  class RefMap;
+
   struct VerifyContext {
+    VerifyContext() : builder(nullptr), map(nullptr) {}
+    ~VerifyContext();
+    // One builder and one map serve every method of a program (RefMap::Verify):
+    // their tables keep their storage from one method to the next, where a builder
+    // per method allocated and freed some forty vectors each time.
+    ref_map_detail::Builder* builder;
+    RefMap* map;
+
     struct Signature {
       std::vector<uint8_t> object_param;   // by parameter word, the first parameter first
       bool object_return = false;
@@ -151,6 +164,11 @@
     // the loader checks is what keeps it safe), and a non-zero integer literal read
     // through as an array or object is a failure.
     static RefMap* Build(StackProgram* prgm, StackMethod* method, bool verify = false, VerifyContext* context = nullptr);
+
+    // Load-time verification of one method with the context's builder: true when
+    // the method must be refused, with the rule it broke and where. The map
+    // itself is not kept.
+    static bool Verify(StackProgram* prgm, StackMethod* method, VerifyContext* context, std::wstring& why, long& where);
   };
 
   namespace ref_map_detail {
@@ -771,7 +789,16 @@
       }
 
       // entry state per instruction
-      std::vector<std::vector<int> > state;
+      // (one arena for every instruction's entry stack: 'state_at' and 'state_size'
+      // find an instruction's; a vector per instruction was an allocation each)
+      std::vector<int> arena;
+      std::vector<uint32_t> state_at;
+      std::vector<uint32_t> state_size;
+      // reused by every step and call rather than built and freed in each
+      std::vector<int> work;
+      std::vector<int> entry_stack;
+      std::vector<SlotType> scratch_params;
+      std::vector<SlotType> scratch_rtrn;
       std::vector<int> andor_state;
       // Load-time verification only: the and/or slot is reused for unrelated
       // temporaries (a select's selector, a lambda's closure), so its value meets at a
@@ -959,18 +986,21 @@
         }
         if(!seen[to]) {
           seen[to] = true;
-          state[to] = stack;
+          state_at[to] = static_cast<uint32_t>(arena.size());
+          state_size[to] = static_cast<uint32_t>(stack.size());
+          arena.insert(arena.end(), stack.begin(), stack.end());
           andor_state[to] = andor;
           worklist.push_back(to);
           return true;
         }
-        std::vector<int>& known = state[to];
-        if(known.size() != stack.size()) {
+        const size_t known_size = state_size[to];
+        const size_t known_at = state_at[to];
+        if(known_size != stack.size()) {
           return Fail(to, L"stack heights differ where control flow joins (" +
-                      std::to_wstring(known.size()) + L" and " + std::to_wstring(stack.size()) + L")", true);
+                      std::to_wstring(known_size) + L" and " + std::to_wstring(stack.size()) + L")", true);
         }
         for(size_t i = 0; i < stack.size(); ++i) {
-          Union(known[i], stack[i]);
+          Union(arena[known_at + i], stack[i]);
         }
         // every path carries the slot's value (Run starts it as the zero the frame
         // is entered with), so it meets like a stack word
@@ -1440,11 +1470,70 @@
         count = m->GetInstructionCount();
       }
 
+      // The same builder for another method: every table emptied, its storage kept.
+      // ('layouts' is a class's declarations and stays.) A member added to this
+      // class is added here, or one method's facts reach the next.
+      void Reset(StackMethod* m, RefMap* r) {
+        method = m;
+        map = r;
+        instrs = m->GetInstructions();
+        count = m->GetInstructionCount();
+        cur_ip = 0;
+        frame_trap = false;
+        param_slots_read = false;
+        min_height = 0;
+        parent.clear();
+        kind.clear();
+        use.clear();
+        elem.clear();
+        origin.clear();
+        deref.clear();
+        lit_ip.clear();
+        facts.clear();
+        class_parent.clear();
+        claims.clear();
+        class_reqs.clear();
+        param_slot_class.clear();
+        tag.clear();
+        made_ip.clear();
+        ring.clear();
+        spelled.clear();
+        func_load_slot.clear();
+        func_uses.clear();
+        func_stores.clear();
+        closure_lambda.clear();
+        local_loads.clear();
+        local_stores.clear();
+        returns.clear();
+        calls.clear();
+        receivers.clear();
+        arena.clear();
+        state_at.clear();
+        state_size.clear();
+        work.clear();
+        entry_stack.clear();
+        scratch_params.clear();
+        scratch_rtrn.clear();
+        andor_state.clear();
+        andor_joins.clear();
+        edges.clear();
+        seen.clear();
+        worklist.clear();
+        locals.clear();
+        local_is_andor.clear();
+        elem_links.clear();
+        field_links.clear();
+        self_fields.clear();
+        class_fields.clear();
+        closure_fields.clear();
+      }
+
       void Run();
     };
 
     inline bool Builder::Step(long ip) {
-      std::vector<int> stack = state[ip];
+      std::vector<int>& stack = work;
+      stack.assign(arena.begin() + state_at[ip], arena.begin() + state_at[ip] + state_size[ip]);
       int andor = andor_state[ip];
       StackInstr* instr = &instrs[ip];
       const long op1 = instr->GetOperand();
@@ -1771,7 +1860,7 @@
           // array as its receiver word, 'values->Size()' before it is inlined)
           calls.push_back({ receiver_value, op1, ip, callee });
         }
-        std::vector<SlotType> params;
+        std::vector<SlotType>& params = scratch_params;
         ParamWords(callee, params);
         const VerifyContext::Signature* sig = (verify && context) ? &SignatureOf(callee) : nullptr;
         int function_id = -1;
@@ -1799,7 +1888,7 @@
             class_reqs.push_back({ v, sig->param_class[i - 1], nullptr, ip, REQ_ARGUMENT });
           }
         }
-        std::vector<SlotType> rtrn;
+        std::vector<SlotType>& rtrn = scratch_rtrn;
         ReturnWords(callee->GetReturnName(), callee->GetReturn(), rtrn);
         // a placeholder body returns without the value its type names, and the
         // caller would go on to read a word nobody pushed
@@ -1826,7 +1915,7 @@
         Constrain(v, RK_REF);
         MarkRef(v);
         if(!PopN(stack, ip, op1)) return false;
-        std::vector<SlotType> rtrn;
+        std::vector<SlotType>& rtrn = scratch_rtrn;
         ReturnWords(L"", (MemoryType)op2, rtrn);
         UseFunction(id, v, ip, op1, static_cast<int>(rtrn.size()), rtrn.size() == 1 && rtrn[0].kind == RK_FLOAT);
         PushWords(stack, rtrn);
@@ -1856,7 +1945,7 @@
         break;
 
       case RTRN: {
-        std::vector<SlotType> rtrn;
+        std::vector<SlotType>& rtrn = scratch_rtrn;
         ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
         if(verify) {
           returns.push_back({ ip, (long)stack.size() });
@@ -1993,7 +2082,7 @@
         // nothing to return. The census of the suite's traps (#1457) found every
         // value-pushing TRAP in this position and none elsewhere.
         if(ip + 1 < count && instrs[ip + 1].GetType() == RTRN) {
-          std::vector<SlotType> rtrn;
+          std::vector<SlotType>& rtrn = scratch_rtrn;
           ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
           while(stack.size() < rtrn.size()) {
             stack.push_back(NewValue(RK_UNKNOWN));
@@ -2623,7 +2712,9 @@
       map->pops.assign(count, -1);
       map->offset.assign(count, 0);
       map->andor.assign(count, RK_UNKNOWN);
-      state.assign(count, std::vector<int>());
+      arena.clear();
+      state_at.assign(count, 0);
+      state_size.assign(count, 0);
       andor_state.assign(count, -1);
       seen.assign(count, false);
       if(verify) {
@@ -2684,8 +2775,9 @@
 
       // An interpreted call leaves the arguments on the operand stack, and the
       // method's first instructions store them (the receiver went to mem[0])
-      std::vector<int> entry;
-      std::vector<SlotType> params;
+      std::vector<int>& entry = entry_stack;
+      entry.clear();
+      std::vector<SlotType>& params = scratch_params;
       ParamWords(method, params);
       for(size_t i = 0; i < params.size(); ++i) {
         entry.push_back(NewValue(RK_UNKNOWN));
@@ -2754,8 +2846,8 @@
       if(verify) {
         size_t deepest = 0;
         for(long ip = 0; ip < count; ++ip) {
-          if(seen[ip] && state[ip].size() > deepest) {
-            deepest = state[ip].size();
+          if(seen[ip] && state_size[ip] > deepest) {
+            deepest = state_size[ip];
           }
         }
         if(deepest > entry.size() + MAX_OPERAND_GROWTH) {
@@ -2765,15 +2857,18 @@
         }
       }
 
+      if(verify) {
+        return;
+      }
+
       for(long ip = 0; ip < count; ++ip) {
         if(!seen[ip]) {
           continue;
         }
-        const std::vector<int>& stack = state[ip];
-        map->height[ip] = static_cast<int>(stack.size());
+        map->height[ip] = static_cast<int>(state_size[ip]);
         map->offset[ip] = static_cast<uint32_t>(map->kinds.size());
-        for(size_t i = 0; i < stack.size(); ++i) {
-          map->kinds.push_back(Effective(stack[i]));
+        for(size_t i = 0; i < state_size[ip]; ++i) {
+          map->kinds.push_back(Effective(arena[state_at[ip] + i]));
         }
         if(andor_state[ip] >= 0) {
           map->andor[ip] = Effective(andor_state[ip]);
@@ -2787,6 +2882,38 @@
     ref_map_detail::Builder builder(prgm, method, map, verify, context);
     builder.Run();
     return map;
+  }
+
+  inline bool RefMap::Verify(StackProgram* prgm, StackMethod* method, VerifyContext* context, std::wstring& why, long& where) {
+    if(!context->map) {
+      context->map = new RefMap;
+    }
+    RefMap* map = context->map;
+    map->ok = false;
+    map->refuse = false;
+    map->error.clear();
+    map->error_ip = -1;
+    map->kinds.clear();
+    if(!context->builder) {
+      context->builder = new ref_map_detail::Builder(prgm, method, map, true, context);
+    }
+    else {
+      context->builder->Reset(method, map);
+    }
+    context->builder->Run();
+    // only a failure that makes the method unsafe refuses the program; one that only
+    // means the map cannot be built (an instruction it does not model) is not a verdict
+    if(!map->ok && map->refuse) {
+      why = map->error;
+      where = map->error_ip;
+      return true;
+    }
+    return false;
+  }
+
+  inline VerifyContext::~VerifyContext() {
+    delete builder;
+    delete map;
   }
 
 #endif

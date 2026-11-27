@@ -1733,13 +1733,9 @@ void Loader::Verify()
       if(!mthd || mthd->GetInstructionCount() < 1) {
         continue;
       }
-      RefMap* map = RefMap::Build(program, mthd, true, &context);
-      // only a failure that makes the method unsafe refuses the program; one that only
-      // means the map cannot be built (an instruction it does not model) is not a verdict
-      const bool refuse = !map->ok && map->refuse;
-      const std::wstring why = map->error;
-      const long where = map->error_ip;
-      delete map;
+      std::wstring why;
+      long where = -1;
+      const bool refuse = RefMap::Verify(program, mthd, &context, why, where);
       if(refuse) {
         VerifyFailed(cls, mthd, where, why.c_str());
       }
