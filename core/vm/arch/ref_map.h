@@ -179,7 +179,18 @@
       uint8_t shape;
       // 1 for a function value's first word (its id), 2 for its second (its closure)
       uint8_t part;
+      // which array a declaration names (ArrayKind bits), 0 where it names none
+      uint8_t ary;
     };
+
+    // Load-time verification: an array's elements are one, four (or two) or eight
+    // bytes wide and Ints, Floats or references, and the interpreter reads them as
+    // whatever the instruction says. A Byte[] indexed as an Int[] is read eight
+    // times past its end. An Int[] and an object array are not told apart: both
+    // are read with the same instructions, and an array of an enum is declared
+    // one and allocated as the other ('ColumnType->New[0]' is NEW_OBJ_ARY, and
+    // the parameter that takes it an INT_ARY_PARM).
+    enum ArrayKind : uint8_t { AK_BYTE = 1, AK_CHAR = 2, AK_WORD = 4, AK_FLOAT = 8, AK_ANY = 15 };
 
     // An object and an array are both references, and the interpreter reads them
     // differently: an array's size and dimensions sit in its first words, where an
@@ -194,15 +205,17 @@
       case FLOAT_PARM:
         return { RK_FLOAT, RK_UNKNOWN };
       case BYTE_ARY_PARM:
+        return { RK_REF, RK_INT, SHAPE_ARRAY, 0, AK_BYTE };
       case CHAR_ARY_PARM:
+        return { RK_REF, RK_INT, SHAPE_ARRAY, 0, AK_CHAR };
       case INT_ARY_PARM:
-        return { RK_REF, RK_INT, SHAPE_ARRAY };
+        return { RK_REF, RK_INT, SHAPE_ARRAY, 0, AK_WORD };
       case FLOAT_ARY_PARM:
-        return { RK_REF, RK_FLOAT, SHAPE_ARRAY };
+        return { RK_REF, RK_FLOAT, SHAPE_ARRAY, 0, AK_FLOAT };
       case OBJ_PARM:
         return { RK_REF, RK_UNKNOWN, SHAPE_OBJECT };
       case OBJ_ARY_PARM:
-        return { RK_REF, RK_REF, SHAPE_ARRAY };
+        return { RK_REF, RK_REF, SHAPE_ARRAY, 0, AK_WORD };
       default:
         return { RK_UNKNOWN, RK_UNKNOWN };
       }
@@ -288,7 +301,15 @@
         out.push_back({ base, RK_UNKNOWN, static_cast<uint8_t>(base == RK_REF ? SHAPE_OBJECT : SHAPE_NONE) });
       }
       else if(stars == 1) {
-        out.push_back({ RK_REF, base, SHAPE_ARRAY });
+        uint8_t ary = 0;
+        switch(c) {
+        case L'b': case L'l': ary = AK_BYTE; break;
+        case L'c': ary = AK_CHAR; break;
+        case L'i': case L'o': ary = AK_WORD; break;
+        case L'f': ary = AK_FLOAT; break;
+        default: break;
+        }
+        out.push_back({ RK_REF, base, SHAPE_ARRAY, 0, ary });
       }
       else {
         // Int[,] and Int[][] are spelled alike here: leave the elements to the uses
@@ -420,6 +441,11 @@
         bool consumed = false;
         // where the value was first used as a function value's id word, -1 for never
         long func_ip = -1;
+        // the arrays it was made as (ArrayKind bits), those every use of it allows,
+        // and the first use that allows fewer than all
+        uint8_t ary_made = 0;
+        uint8_t ary_used = AK_ANY;
+        long ary_ip = -1;
       };
       static const long NO_CLASS = -1;
       static const long MANY_CLASSES = -2;
@@ -718,6 +744,22 @@
         }
       }
 
+      void MadeArrayKind(int v, uint8_t made) {
+        if(verify && made) {
+          facts[Find(v)].ary_made |= made;
+        }
+      }
+
+      void UseArrayKind(int v, uint8_t allowed) {
+        if(verify && allowed && allowed != AK_ANY) {
+          Facts& f = facts[Find(v)];
+          f.ary_used &= allowed;
+          if(f.ary_ip < 0) {
+            f.ary_ip = cur_ip;
+          }
+        }
+      }
+
       // entry state per instruction
       std::vector<std::vector<int> > state;
       std::vector<int> andor_state;
@@ -824,6 +866,9 @@
           fa.from_self = fa.from_self || fb.from_self;
           fa.consumed = fa.consumed || fb.consumed;
           if(fa.func_ip < 0) fa.func_ip = fb.func_ip;
+          fa.ary_made |= fb.ary_made;
+          fa.ary_used &= fb.ary_used;
+          if(fa.ary_ip < 0) fa.ary_ip = fb.ary_ip;
           if(fa.cls_made == NO_CLASS) {
             fa.cls_made = fb.cls_made;
           }
@@ -958,7 +1003,7 @@
       // integer literal reaching it is refused. A reference-typed local, a return or a
       // parameter may hold an Int the program calls an object (an enum is one), so only
       // a use that reads memory through it counts.
-      bool PopRef(std::vector<int>& stack, long ip, uint8_t e = RK_UNKNOWN) {
+      bool PopRef(std::vector<int>& stack, long ip, uint8_t e = RK_UNKNOWN, uint8_t allowed = AK_ANY) {
         int v;
         if(!Pop(stack, ip, v)) {
           return false;
@@ -966,11 +1011,12 @@
         Constrain(v, RK_REF, e);
         MarkRef(v);
         UseArray(v);
+        UseArrayKind(v, allowed);
         return true;
       }
 
       // an array an instruction copies from, copies to or clears
-      bool PopArray(std::vector<int>& stack, long ip) {
+      bool PopArray(std::vector<int>& stack, long ip, uint8_t allowed = AK_ANY) {
         int v;
         if(!Pop(stack, ip, v)) {
           return false;
@@ -978,6 +1024,7 @@
         Constrain(v, RK_REF);
         MarkRef(v);
         UseArray(v);
+        UseArrayKind(v, allowed);
         return true;
       }
 
@@ -1096,6 +1143,7 @@
         const int value = NewValue(slot.kind, slot.elem);
         if(verify) {
           facts[value].shape_made = slot.shape;
+          facts[value].ary_made = slot.ary;
           if(slot.part == 1) {
             facts[value].made = F_FUNC;
           }
@@ -1114,6 +1162,7 @@
         }
         else if(slot.shape == SHAPE_ARRAY) {
           UseArray(v);
+          UseArrayKind(v, slot.ary);
         }
       }
 
@@ -1164,6 +1213,13 @@
         return false;
       }
 
+      // the arrays a trap's word may be, as ArrayKind bits
+      static uint8_t TrapArrays(unsigned char words) {
+        using namespace trap_signatures;
+        return static_cast<uint8_t>(((words & W_BYTE_ARY) ? AK_BYTE : 0) | ((words & W_CHAR_ARY) ? AK_CHAR : 0) |
+                                    ((words & (W_INT_ARY | W_OBJ_ARY)) ? AK_WORD : 0) | ((words & W_FLOAT_ARY) ? AK_FLOAT : 0));
+      }
+
       // a word a trap takes: the kind its row names (core/shared/trap_signatures.h)
       void ConstrainTrapWord(int v, const trap_signatures::Arg& arg) {
         using namespace trap_signatures;
@@ -1185,6 +1241,7 @@
           MarkRef(v);
           if(!(words & W_OBJ)) {
             UseArray(v);
+            UseArrayKind(v, TrapArrays(words));
           }
           else if(!(words & arrays)) {
             UseObject(v);
@@ -1213,6 +1270,11 @@
         else if(!(words & (W_INT | W_FLOAT))) {
           if(!(words & W_OBJ)) {
             Made(value, RK_REF, SHAPE_ARRAY);
+            // one array named: the result is that one
+            const uint8_t made = TrapArrays(words);
+            if(made == AK_BYTE || made == AK_CHAR || made == AK_WORD || made == AK_FLOAT) {
+              MadeArrayKind(value, made);
+            }
           }
           else if(!(words & arrays)) {
             Made(value, RK_REF, SHAPE_OBJECT);
@@ -1456,6 +1518,7 @@
         }
         else {
           Constrain(v, slot.kind, slot.elem);
+          UseArrayKind(v, slot.ary);
           if(verify) {
             local_stores.push_back({ op1, v, ip });
             const long declared = ParamSlotClass(op1);
@@ -1565,12 +1628,13 @@
 
       case LOAD_BYTE_ARY_ELM:
       case LOAD_CHAR_ARY_ELM:
-        if(!PopRef(stack, ip) || !PopN(stack, ip, op1, RK_INT)) return false;
+        if(!PopRef(stack, ip, RK_UNKNOWN, instr->GetType() == LOAD_BYTE_ARY_ELM ? AK_BYTE : AK_CHAR) ||
+           !PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_INT));
         break;
 
       case LOAD_FLOAT_ARY_ELM:
-        if(!PopRef(stack, ip, RK_FLOAT) || !PopN(stack, ip, op1, RK_INT)) return false;
+        if(!PopRef(stack, ip, RK_FLOAT, AK_FLOAT) || !PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_FLOAT));
         break;
 
@@ -1580,6 +1644,7 @@
         Constrain(array, RK_REF);
         MarkRef(array);
         UseArray(array);
+        UseArrayKind(array, AK_WORD);
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         const int value = NewValue(RK_UNKNOWN);
         elem_links.push_back({ array, value, true });
@@ -1589,11 +1654,12 @@
 
       case STOR_BYTE_ARY_ELM:
       case STOR_CHAR_ARY_ELM:
-        if(!PopRef(stack, ip) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_INT)) return false;
+        if(!PopRef(stack, ip, RK_UNKNOWN, instr->GetType() == STOR_BYTE_ARY_ELM ? AK_BYTE : AK_CHAR) ||
+           !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_INT)) return false;
         break;
 
       case STOR_FLOAT_ARY_ELM:
-        if(!PopRef(stack, ip, RK_FLOAT) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_FLOAT)) return false;
+        if(!PopRef(stack, ip, RK_FLOAT, AK_FLOAT) || !PopN(stack, ip, op1, RK_INT) || !PopKind(stack, ip, RK_FLOAT)) return false;
         break;
 
       case STOR_INT_ARY_ELM: {
@@ -1602,6 +1668,7 @@
         Constrain(array, RK_REF);
         MarkRef(array);
         UseArray(array);
+        UseArrayKind(array, AK_WORD);
         if(!PopN(stack, ip, op1, RK_INT) || !Pop(stack, ip, v)) return false;
         elem_links.push_back({ array, v, false });
       }
@@ -1659,21 +1726,21 @@
         break;
 
       case S2I:
-        if(!PopArray(stack, ip) || !PopKind(stack, ip, RK_INT)) return false;
+        if(!PopArray(stack, ip, AK_CHAR) || !PopKind(stack, ip, RK_INT)) return false;
         stack.push_back(NewValue(RK_INT));
         break;
 
       case S2F:
-        if(!PopArray(stack, ip)) return false;
+        if(!PopArray(stack, ip, AK_CHAR)) return false;
         stack.push_back(NewValue(RK_FLOAT));
         break;
 
       case I2S:
-        if(!PopArray(stack, ip) || !PopKind(stack, ip, RK_INT) || !PopKind(stack, ip, RK_INT)) return false;
+        if(!PopArray(stack, ip, AK_CHAR) || !PopKind(stack, ip, RK_INT) || !PopKind(stack, ip, RK_INT)) return false;
         break;
 
       case F2S:
-        if(!PopArray(stack, ip) || !PopKind(stack, ip, RK_FLOAT)) return false;
+        if(!PopArray(stack, ip, AK_CHAR) || !PopKind(stack, ip, RK_FLOAT)) return false;
         break;
 
       case MTHD_CALL:
@@ -1815,22 +1882,26 @@
       case NEW_CHAR_ARY:
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_REF, RK_INT));
+        MadeArrayKind(stack.back(), instr->GetType() == NEW_BYTE_ARY ? AK_BYTE : AK_CHAR);
         break;
 
       case NEW_INT_ARY:
         // an Int[] (GC roots phase 6): its elements are Ints
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_REF, RK_INT));
+        MadeArrayKind(stack.back(), AK_WORD);
         break;
 
       case NEW_OBJ_ARY:
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_REF));
+        MadeArrayKind(stack.back(), AK_WORD);
         break;
 
       case NEW_FLOAT_ARY:
         if(!PopN(stack, ip, op1, RK_INT)) return false;
         stack.push_back(NewValue(RK_REF, RK_FLOAT));
+        MadeArrayKind(stack.back(), AK_FLOAT);
         break;
 
       case NEW_OBJ_INST:
@@ -1853,15 +1924,22 @@
         stack.push_back(v);
         break;
 
-      case CPY_BYTE_ARY: case CPY_CHAR_ARY: case CPY_INT_ARY: case CPY_FLOAT_ARY:
+      case CPY_BYTE_ARY: case CPY_CHAR_ARY: case CPY_INT_ARY: case CPY_FLOAT_ARY: {
+        const InstructionType copy = instr->GetType();
+        const uint8_t allowed = copy == CPY_BYTE_ARY ? AK_BYTE : copy == CPY_CHAR_ARY ? AK_CHAR :
+                                copy == CPY_FLOAT_ARY ? AK_FLOAT : AK_WORD;
         // length, source offset, source, destination offset, destination
-        if(!PopKind(stack, ip, RK_INT) || !PopKind(stack, ip, RK_INT) || !PopArray(stack, ip) ||
-           !PopKind(stack, ip, RK_INT) || !PopArray(stack, ip)) return false;
+        if(!PopKind(stack, ip, RK_INT) || !PopKind(stack, ip, RK_INT) || !PopArray(stack, ip, allowed) ||
+           !PopKind(stack, ip, RK_INT) || !PopArray(stack, ip, allowed)) return false;
         stack.push_back(NewValue(RK_INT));
+      }
         break;
 
-      case ZERO_BYTE_ARY: case ZERO_CHAR_ARY: case ZERO_INT_ARY: case ZERO_FLOAT_ARY:
-        if(!PopArray(stack, ip)) return false;
+      case ZERO_BYTE_ARY: case ZERO_CHAR_ARY: case ZERO_INT_ARY: case ZERO_FLOAT_ARY: {
+        const InstructionType zero = instr->GetType();
+        if(!PopArray(stack, ip, zero == ZERO_BYTE_ARY ? AK_BYTE : zero == ZERO_CHAR_ARY ? AK_CHAR :
+                                zero == ZERO_FLOAT_ARY ? AK_FLOAT : AK_WORD)) return false;
+      }
         break;
 
       case OBJ_INST_CAST: {
@@ -2000,10 +2078,14 @@
               Produce(value, (*fields)[link.index].kind, (*fields)[link.index].elem);
               if(verify && fields == &self_fields) {
                 Made(value, (*fields)[link.index].kind, (*fields)[link.index].shape);
+                MadeArrayKind(value, (*fields)[link.index].ary);
               }
             }
             else {
               Constrain(value, (*fields)[link.index].kind, (*fields)[link.index].elem);
+              if(fields == &self_fields) {
+                UseArrayKind(value, (*fields)[link.index].ary);
+              }
             }
             const int now = Find(value);
             changed |= kind[now] != before_kind || use[now] != before_use || elem[now] != before_elem;
@@ -2045,6 +2127,7 @@
           const FieldLink& link = field_links[i];
           if(link.load && origin[Find(link.receiver)] == ORIGIN_SELF && link.index >= 0 && link.index < (long)closure_fields.size()) {
             Made(link.value, closure_fields[link.index].kind, closure_fields[link.index].shape);
+            MadeArrayKind(link.value, closure_fields[link.index].ary);
           }
         }
       }
@@ -2074,6 +2157,9 @@
         }
         if((f.shape_made & SHAPE_ARRAY) && (f.shape_used & SHAPE_OBJECT)) {
           return Fail(f.object_ip, L"an array used as an object", true);
+        }
+        if(f.ary_made & ~f.ary_used) {
+          return Fail(f.ary_ip, L"an array of one element type used as an array of another", true);
         }
         if((f.made & F_CLS) && (f.shape_used || (f.used & F_REF))) {
           return Fail(f.array_ip >= 0 ? f.array_ip : (f.object_ip >= 0 ? f.object_ip : f.word_ip),
@@ -2576,6 +2662,7 @@
         // the callers were held to the declarations (MTHD_CALL)
         if(verify) {
           Made(entry.back(), params[i].kind, params[i].shape);
+          MadeArrayKind(entry.back(), params[i].ary);
           if(params[i].part == 1) {
             facts[entry.back()].made = F_FUNC;
           }
