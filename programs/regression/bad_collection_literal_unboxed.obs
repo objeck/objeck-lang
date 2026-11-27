@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: (13,25): The elements of a collection literal are not boxed: this one is Int, and a Vector<IntRef> holds IntRef
+# EXPECT_ERROR_COUNT: 1
+#~
+A collection literal is the array its Vector is constructed from, and the elements of an
+array are not boxed one by one: numbers for a Vector<IntRef> are refused at the first
+number, with the ways to write it (the holders, an IntVector, or AddBack, which boxes).
+One error, not the constructor's error about an Int[].
+~#
+use Collection;
+
+class BadCollectionLiteralUnboxed {
+	function : Main(args : String[]) ~ Nil {
+		v : Vector<IntRef> := [1, 2, 3];
+		v->Size()->PrintLine();
+	}
+}

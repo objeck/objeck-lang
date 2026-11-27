@@ -6,7 +6,8 @@ Method references, 'using', the nil-guard, 'spawn' and 'match' in one flow:
   - each function value captured by a 'spawn' block that opens a resource with 'using'
     on its own thread and reports through a 'match' value; every resource is closed
 (An array literal is not typed element by element, so a method reference is not written
-inside '[ ]': it is added with AddBack, where the parameter gives it its type.)
+inside '[ ]': it is added with AddBack, where the parameter gives it its type;
+bad_collection_literal_method_ref is the error for the other spelling.)
 ~#
 use Collection;
 use System.Concurrency;

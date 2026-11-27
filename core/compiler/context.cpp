@@ -2535,6 +2535,103 @@ Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type*
     return expression;
   }
 
+  // Two things the elements of a literal are not, said here: left to the constructor
+  // call the literal stands for, each is that call's error about an array and says
+  // nothing of the element that was written. The literal is replaced by Nil so that
+  // the one error is all there is.
+  if(generic) {
+    Type* element_type = TypeFactory::Instance()->MakeType(generics[0]);
+    EntryType held = NIL_TYPE;
+    const bool holds_primitive = HolderPrimitive(element_type, held);
+    const std::wstring& element_name = element_type->GetName();
+    const bool holds_function = element_name == L"System.FuncRef" || element_name == L"FuncRef" ||
+      element_name == L"System.Func2Ref" || element_name == L"Func2Ref" ||
+      element_name == L"System.Func3Ref" || element_name == L"Func3Ref" ||
+      element_name == L"System.Func4Ref" || element_name == L"Func4Ref";
+    ExpressionList* element_list = static_cast<StaticArray*>(expression)->GetElements();
+    const std::vector<Expression*> elements = element_list ? element_list->GetExpressions() : std::vector<Expression*>();
+    for(size_t i = 0; (holds_primitive || holds_function) && i < elements.size(); ++i) {
+      Expression* element = elements[i];
+      if(!element || element->GetMethodCall() || element->GetCastType()) {
+        continue;
+      }
+
+      if(holds_primitive) {
+        // a number, character or boolean: a literal, or a variable declared as one
+        Type* primitive = nullptr;
+        switch(element->GetExpressionType()) {
+        case INT_LIT_EXPR:
+          primitive = TypeFactory::Instance()->MakeType(INT_TYPE);
+          break;
+
+        case FLOAT_LIT_EXPR:
+          primitive = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+          break;
+
+        case CHAR_LIT_EXPR:
+          primitive = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+          break;
+
+        case BOOLEAN_LIT_EXPR:
+          primitive = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+          break;
+
+        case VAR_EXPR:
+          if(!static_cast<Variable*>(element)->GetIndices()) {
+            SymbolEntry* entry = GetEntry(static_cast<Variable*>(element)->GetName());
+            if(entry && entry->GetType() && entry->GetType()->GetDimension() == 0) {
+              switch(entry->GetType()->GetType()) {
+              case BOOLEAN_TYPE:
+              case BYTE_TYPE:
+              case CHAR_TYPE:
+              case INT_TYPE:
+              case FLOAT_TYPE:
+                primitive = entry->GetType();
+                break;
+
+              default:
+                break;
+              }
+            }
+          }
+          break;
+
+        default:
+          break;
+        }
+
+        if(primitive) {
+          const std::wstring holder = DescribeType(element_type);
+          std::wstring plain;
+          if(held == INT_TYPE) {
+            plain = L", declare the variable as an IntVector, which holds plain Ints";
+          }
+          else if(held == FLOAT_TYPE) {
+            plain = L", declare the variable as a FloatVector, which holds plain Floats";
+          }
+          ProcessError(element, L"The elements of a collection literal are not boxed: this one is " + DescribeType(primitive) +
+                       L", and a " + bare + L"<" + holder + L"> holds " + holder +
+                       L"\n\tWrite the holder ('" + holder + L"->New(..)')" + plain +
+                       L", or add the values with AddBack(..), which boxes each one");
+          return TreeFactory::Instance()->MakeNilLiteral(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition());
+        }
+      }
+      else if(element->GetExpressionType() == METHOD_CALL_EXPR) {
+        // 'Class->Function' with no argument list: a method reference (WrapMethodReferenceInFuncRef)
+        MethodCall* ref = static_cast<MethodCall*>(element);
+        if(ref->GetCallType() == ENUM_CALL && !ref->GetCallingParameters() && !ref->IsFunctionDefinition() &&
+           !ref->GetVariable() && !ref->GetTypeOf() && !ref->GetMethodName().empty() && !ref->GetVariableName().empty()) {
+          const std::wstring written = ref->GetVariableName() + L"->" + ref->GetMethodName();
+          ProcessError(element, L"A method reference is not typed inside a collection literal: '" + written +
+                       L"' takes its type from a parameter, a declared variable or a return, not from its place in '[ ]'"
+                       L"\n\tAdd it with AddBack(" + written + L"), or write the full reference: " + DescribeType(element_type) +
+                       L"->New(" + written + L"(<types>) ~ <type>)<<types>>");
+          return TreeFactory::Instance()->MakeNilLiteral(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition());
+        }
+      }
+    }
+  }
+
   ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
   args->AddExpression(expression);
   MethodCall* wrap = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
@@ -2632,6 +2729,41 @@ void ContextAnalyzer::TypeMapLiteral(Expression* expression, Type* expected)
     concrete.push_back(TypeFactory::Instance()->MakeType(generics[0]));
     concrete.push_back(TypeFactory::Instance()->MakeType(generics[1]));
     constructor->SetConcreteTypes(concrete);
+  }
+
+  // A constructor call with no type arguments and no arguments, as the value of an entry
+  // ('{"k": Vector->New()}'): an entry is an argument of Insert, which gives a constructor
+  // call nothing to infer from. Said here, at the value, and the type arguments the map
+  // wants are filled in so that this is the only error.
+  if(generic && generics[1]->HasGenerics()) {
+    const std::vector<Statement*>& entries = static_cast<SequenceExpression*>(expression)->GetStatements();
+    for(size_t i = 1; i < entries.size(); ++i) {
+      if(entries[i]->GetStatementType() != METHOD_CALL_STMT) {
+        continue;
+      }
+      ExpressionList* entry_args = static_cast<MethodCall*>(entries[i])->GetCallingParameters();
+      if(!entry_args || entry_args->GetExpressions().size() != 2 || entry_args->GetExpressions()[1]->GetExpressionType() != METHOD_CALL_EXPR) {
+        continue;
+      }
+
+      MethodCall* value = static_cast<MethodCall*>(entry_args->GetExpressions()[1]);
+      if(value->GetCallType() != NEW_INST_CALL || !value->GetConcreteTypes().empty() || value->GetMethodCall() || value->GetCastType() ||
+         (value->GetCallingParameters() && !value->GetCallingParameters()->GetExpressions().empty())) {
+        continue;
+      }
+
+      std::wstring written;
+      std::vector<Type*> value_concrete;
+      const std::vector<Type*> value_generics = generics[1]->GetGenerics();
+      for(size_t j = 0; j < value_generics.size(); ++j) {
+        written += (j > 0 ? L", " : L"") + DescribeType(value_generics[j]);
+        value_concrete.push_back(TypeFactory::Instance()->MakeType(value_generics[j]));
+      }
+      ProcessError(static_cast<Expression*>(value), L"A constructor call in an entry of a map literal is not given the map's value type, so its type arguments cannot be left out"
+                   L"\n\tWrite them: '" + value->GetVariableName() + L"->New()<" + written +
+                   L">', or assign the object to a declared variable and put the variable in the entry");
+      value->SetConcreteTypes(value_concrete);
+    }
   }
 
   // the same constant key twice: the second would replace the first without a word
@@ -8088,6 +8220,22 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
     if(klass->GetUnqualifiedMethods(L"New").empty()) {
       ProcessError(static_cast<Expression*>(method_call), L"Class '" + klass->GetName() +
                    L"' declares no constructor; constructors are not inherited");
+    }
+    else if(IsHolderType(klass->GetName()) && method_call->GetCallingParameters() &&
+            method_call->GetCallingParameters()->GetExpressions().size() == 1 &&
+            method_call->GetCallingParameters()->GetExpressions()[0]->GetExpressionType() == STAT_ARY_EXPR) {
+      // A whole array literal where holders are wanted ('v : Vector<IntRef> := [n->Size()];',
+      // 'Vector->New([1, 2])<IntRef>'): the holder's constructor was tried on the array,
+      // and "IntRef->New(Int[])" says nothing of the elements that were written.
+      Expression* literal = method_call->GetCallingParameters()->GetExpressions()[0];
+      Type* literal_type = literal->GetEvalType() ? TypeFactory::Instance()->MakeType(literal->GetEvalType()) : nullptr;
+      if(literal_type) {
+        literal_type->SetDimension(0);
+      }
+      const std::wstring holder = PlainTypeName(FormatTypeString(klass->GetName()));
+      ProcessError(literal, L"The elements of an array literal are not boxed: these are " + DescribeType(literal_type) +
+                   L", where " + holder + L" is wanted for each\n\tWrite the holder for each element ('" + holder +
+                   L"->New(..)'), or add the values with AddBack(..), which boxes each one");
     }
     else {
       std::wstring message = L"Undefined function/method call: 'New(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";

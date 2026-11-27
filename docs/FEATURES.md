@@ -166,7 +166,11 @@ nums : IntVector := [4, 5, 6];
 ```
 
 It is exactly `Vector->New([..])<IntRef>`; elements of the wrong type give that
-call's error. The literal is not typed by a call argument (overloads are chosen
+call's error. Two things an element is not: numbers are not boxed one by one
+(`v : Vector<IntRef> := [1, 2];` is refused at the first number: write the holders,
+declare an `IntVector`, or add the values with `AddBack`, which boxes each), and a
+method reference is not typed inside `[ ]` (`[Text->Upper]` is refused by name: add it
+with `AddBack(Text->Upper)`). The literal is not typed by a call argument (overloads are chosen
 before a target is known): assign it to a typed variable first. A map has its own
 literal, `{key: value, ...}` (see Map literals). Test: `collection_literals`.
 
@@ -275,8 +279,10 @@ The targets are `Map`, `Hash`, `OrderedHash`, `MultiMap`, `MultiHash`, `BiMap` a
 are checked and boxed as `Insert` does; an entry of the wrong type is an error at the
 entry (`An entry of this map literal is String: IntRef; this one is String: String`),
 and the same constant key twice is an error for a map that keeps one value per key. With
-no typed target (an inferred `m := {...}`, an argument, inside `?`) the literal has no
-type and the compiler says to declare one. Tests: `map_literal`, `bad_map_literal_*`.
+no typed target (an inferred `m := {...}`, an argument, inside `?` or after `??`) the
+literal has no type and the compiler says to declare one. A constructor call that is an
+entry's value is an argument of `Insert`, so its type arguments are written
+(`{"odds": Vector->New()<IntRef>}`; left out, the compiler says so at the value). Tests: `map_literal`, `bad_map_literal_*`.
 ### match, and select as a value
 
 `match` picks an arm by the value of its subject. Used as a value, each arm is an

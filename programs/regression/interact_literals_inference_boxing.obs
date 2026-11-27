@@ -11,7 +11,9 @@ statements, each checked with 'assert' (whose operands are unboxed too):
     with its type arguments written (a constructor call in an entry is an argument,
     which is not inferred)
 An array literal is not boxed element by element: 'v : Vector<IntRef> := [1, 2];' is
-the error of 'Vector->New([1, 2])<IntRef>' (bad_collection_literal_type).
+refused at the first number (bad_collection_literal_unboxed), and a constructor call
+with no type arguments as an entry's value is refused at the value
+(bad_map_literal_constructor_value).
 ~#
 use Collection;
 
