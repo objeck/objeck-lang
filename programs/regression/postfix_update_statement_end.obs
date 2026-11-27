@@ -146,7 +146,8 @@ class PostfixUpdateStatementEnd {
 		Check("do/while: rounds", rounds, 4);
 		Check("do/while: updates", i * 100 + j, 406);
 
-		# two updates in a while condition: both, once per round entered
+		# two updates in a while condition: both, once per test (the last test,
+		# 3 - 7 < -4, fails and still makes them)
 		i := 0;
 		j := 10;
 		rounds := 0;
@@ -154,7 +155,7 @@ class PostfixUpdateStatementEnd {
 			rounds += 1;
 		};
 		Check("while: rounds", rounds, 3);
-		Check("while: updates", i * 100 + j, 307);
+		Check("while: updates", i * 100 + j, 406);
 
 		if(@fails > 0) {
 			"FAIL: {$@fails} check(s)"->PrintLine();

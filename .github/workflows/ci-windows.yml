@@ -1116,6 +1116,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_dead_store_chain.py "%BIN%"
 
+    - name: a postfix update in a loop condition runs at every test (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_loop_condition_postfix.py "%BIN%"
+
     - name: a library's generic methods infer their type arguments (Windows)
       working-directory: ./programs/regression
       shell: cmd

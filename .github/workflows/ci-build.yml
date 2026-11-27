@@ -1189,6 +1189,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_dead_store_chain.py "$BIN"
 
+    # A postfix update in a loop condition ('while(i++ < n)') is made at every
+    # test, between the test and the branch. Runs the fixture whose numbers are
+    # by hand and 1,944 generated loops against the rule written in Python, at
+    # -opt s0..s3 under the interpreter and the JIT.
+    - name: a postfix update in a loop condition runs at every test (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_loop_condition_postfix.py "$BIN"
+
     # A library records where its methods' own type parameters stand, so a call
     # into it infers them: a library generic function returns its caller's type,
     # not its bound (#1242, phase 2). This builds such a library.

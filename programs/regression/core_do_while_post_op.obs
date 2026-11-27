@@ -17,6 +17,9 @@
 # programs/web-playground/demos/math/primes.obs, whose Show() uses this shape
 # and which produced 29 MB of one repeated line before it was noticed.
 #
+# The last check is a plain `while`, which the hang never touched; it pins the
+# rule the two loops share (the update is made at every test).
+#
 # Every loop here is bounded by an iteration cap, because the failure mode is a
 # HANG -- an unbounded fixture would take the suite down with it rather than
 # reporting. Exits 1 on a mismatch.
@@ -50,12 +53,14 @@ class DoWhilePostOp {
       bad += 1;
     };
 
-    # a plain `while` drains the queue after the body and was never affected;
-    # pinned here so a future change to EmitWhile cannot pass unnoticed
+    # a plain `while` follows the same rule since v2026.11.4: the update is made
+    # at every test, the failing one included (it used to be made in the body,
+    # so the loop was left with d = 0); postfix_update_loop_condition.obs has
+    # the rest of that rule
     d := 3; m := 0;
     while(d-- > 0) { m += 1; if(m > 20) { break; }; };
-    if(m <> 3) {
-      "FAIL: while(d-- > 0) ran {$m} iteration(s), expected 3"->PrintLine();
+    if(d <> -1 | m <> 3) {
+      "FAIL: while(d-- > 0) left d={$d} after {$m} iteration(s), expected d=-1 after 3"->PrintLine();
       bad += 1;
     };
 
