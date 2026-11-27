@@ -2243,6 +2243,13 @@ if(ws->Connect()) {
 						@socket->Close();
 						return Nil;
 					};
+					# a control frame carries at most 125 bytes (RFC 6455 section 5.5), so
+					# 126 and 127 are not the extended-length markers here
+					if(payload_length > 125) {
+						@status_msg := "WebSocket frame refused: a control frame longer than 125 bytes";
+						@socket->Close();
+						return Nil;
+					};
 					buffer := Byte->New[payload_length];
 					if(payload_length > 0) {
 						if(<>ReadExact(payload_length, buffer)) {
@@ -2254,8 +2261,12 @@ if(ws->Connect()) {
 						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
 					};
 
-					@socket->WriteByte(0x8a);
-					@socket->WriteBuffer(buffer);
+					# The Pong is a frame like any other a client sends (section 5.5.3):
+					# FIN and opcode 0xA, the mask bit and the length, a masking key, and
+					# the Ping's payload masked with it. This wrote the opcode byte and
+					# then the payload bare, so the payload's first bytes were read by
+					# the server as an unmasked length and whatever followed as a frame.
+					WriteFrame(buffer, 0, payload_length, 0xa, false);
 
 					# read header
 					if(<>ReadExact(2, @header)) {

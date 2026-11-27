@@ -25,6 +25,11 @@ and 8-byte extended lengths, inside a ping's payload, inside a payload) and
 /eof-after-message closes after one whole message. The client ignored how many
 bytes each read returned, so it delivered the bytes the peer never sent as
 zeros, or read the previous frame's header a second time.
+
+The Pong a client sends for a Ping is a masked frame with the Ping's payload
+(RFC 6455 section 5.5.3): the /ping-* cases have the server send a Ping and
+read the reply off the wire a byte at a time. The client used to write the
+opcode byte and then the payload bare, with no length and no mask.
 ~#
 use Collection, System.IO.Net, Web.HTTP, Cipher;
 
@@ -177,6 +182,46 @@ class ScriptedServer {
 		};
 		client->WriteBuffer(bytes);
 		# hold the connection until the client has acted on what it was sent
+		client->ReadByte();
+	}
+
+	# Sends a Ping with 'size' payload bytes and reads the client's Pong off the wire: FIN and
+	# opcode 0xA, the mask bit with the length, four mask bytes, the Ping's payload masked.
+	# What it found goes back to the client as a text frame, "pong ok" or what was wrong; the
+	# first two bytes are judged before any more are read, so a bare payload is not waited on.
+	method : PingPong(client : TCPSocket, size : Int) ~ Nil {
+		payload := Byte->New[size];
+		each(i : size) {
+			payload[i] := (0x68 + i % 23)->As(Byte);
+		};
+		WriteFrame(client, 9, payload);
+
+		verdict := "pong ok";
+		hdr := Byte->New[2];
+		ReadN(client, hdr, 2);
+		first := (hdr[0] and 0xff)->As(Int);
+		second := (hdr[1] and 0xff)->As(Int);
+		expected := 0x80 + size;
+		if(first <> 0x8a) {
+			verdict := "first byte {$first}, expected 138 (FIN + opcode 0xA)";
+		}
+		else if(second <> expected) {
+			verdict := "second byte {$second}, expected {$expected} (mask bit + length {$size})";
+		}
+		else {
+			mask := Byte->New[4];
+			ReadN(client, mask, 4);
+			body := Byte->New[size];
+			ReadN(client, body, size);
+			each(i : size) {
+				if((body[i] xor mask[i % 4])->As(Byte) <> payload[i]) {
+					verdict := "the unmasked payload differs from the Ping's at byte {$i}";
+				};
+			};
+		};
+
+		WriteFrame(client, 1, verdict->ToByteArray());
+		# hold the connection until the client has read the verdict
 		client->ReadByte();
 	}
 
@@ -381,6 +426,24 @@ class ScriptedServer {
 			}
 			else if(path->Equals("/eof-at-once")) {
 				client->WriteString("{$ok}\r\n");
+			}
+			# a Ping, whose Pong the server checks byte by byte
+			else if(path->Equals("/ping-hi")) {
+				client->WriteString("{$ok}\r\n");
+				PingPong(client, 2);
+			}
+			else if(path->Equals("/ping-125")) {
+				client->WriteString("{$ok}\r\n");
+				PingPong(client, 125);
+			}
+			else if(path->Equals("/ping-empty")) {
+				client->WriteString("{$ok}\r\n");
+				PingPong(client, 0);
+			}
+			# a control frame cannot use the extended length
+			else if(path->Equals("/ping-126")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x89, 0x7e, 0x00, 0x7e]);
 			};
 
 			client->Close();
@@ -538,6 +601,25 @@ class WebSocketHandshakeTest {
 
 		if(ws->PingSocket()) {
 			Fail("{$path}: PingSocket succeeded on the lost connection");
+		};
+
+		ws->CloseSocket();
+	}
+
+	# the server pings, reads the Pong and says what it read
+	function : Pong(path : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		verdict := ws->ReadSocketText();
+		if(verdict = Nil) {
+			Fail("{$path}: no frame after the Ping");
+		}
+		else if(<>verdict->Equals("pong ok")) {
+			Fail("{$path}: the server read the Pong as: {$verdict}");
 		};
 
 		ws->CloseSocket();
@@ -760,6 +842,11 @@ class WebSocketHandshakeTest {
 		CutFrame("/short-ping");
 		CutFrame("/short-close");
 		EndAfterMessage();
+
+		Pong("/ping-hi");
+		Pong("/ping-125");
+		Pong("/ping-empty");
+		RefusedFrame("/ping-126", 0, "a control frame longer than 125 bytes");
 
 		# a correct server still connects after all of the above, and the server stops
 		Accepted("/quit");
