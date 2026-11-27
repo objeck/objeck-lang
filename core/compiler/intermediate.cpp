@@ -114,7 +114,8 @@ void SelectArrayTree::Emit()
   emitter->cur_line_num = select->GetLineNumber();
       
   emitter->EmitExpression(select->GetAssignment()->GetExpression());
-  emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, STOR_INT_VAR, 0, LOCL));
+  // the selector, an Int, Char or enum, waits in the and/or temporary
+  emitter->EmitAndOrStore(select, nullptr, STOR_INT_VAR, INT_PARM);
 
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
@@ -713,6 +714,8 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   current_method = method;
   current_table = current_method->GetSymbolTable();
   active_criticals.clear();
+  and_or_stores = 0;
+  and_or_type = AND_OR_STORE_NIL;
 
   // gather information
   IntermediateDeclarations* entries = new IntermediateDeclarations;
@@ -899,14 +902,231 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
           EmitStatement(leavings[i]);
         }
       }
+      // A method that returns a value and does not end in 'return' ends in a statement
+      // every path of which returns, so this return is never reached -- except through
+      // a 'try' whose handlers did not match: its end re-raises the error, and the
+      // instruction after that is this one. Run or not, it returned with nothing on
+      // the operand stack where the caller takes a word, which the loader refuses
+      // (docs/SECURITY_MODEL.md). So it returns the type's zero: Nil, 0 or 0.0.
+      // (A constructor returns its instance, a forwarder its callee's value, and a
+      // library method that ends in a system directive what the directive left.)
+      const bool own_value = !method->IsAlt() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
+        method->GetMethodType() != NEW_PRIVATE_METHOD && method->GetReturn() &&
+        method->GetReturn()->GetType() != frontend::NIL_TYPE && statement_list &&
+        statement_list->GetStatements().size() > 0 &&
+        statement_list->GetStatements().back()->GetStatementType() != SYSTEM_STMT;
+      if(own_value) {
+        frontend::Type* rtrn_type = method->GetReturn();
+        if(rtrn_type->GetDimension() == 0 && rtrn_type->GetType() == frontend::FLOAT_TYPE) {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(nullptr), cur_line_num, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+        }
+        else if(rtrn_type->GetDimension() == 0 && rtrn_type->GetType() == frontend::FUNC_TYPE) {
+          // a function value is two words: its closure, then its id
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+        }
+        else {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+        }
+      }
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
     }
   }
   
+  ClassifyAndOrTemp();
+
   current_method = nullptr;
   current_table = nullptr;
 
   return imm_method;
+}
+
+/****************************
+ * A store to the and/or temporary (local id 0 of a method that has one) of a
+ * value whose kind the emitter knows: INT_PARM for a value that is never a
+ * reference (a Bool, Int, Char, Byte, enum, or the raw bits of a Float), a
+ * reference ParamType for an object or array, AND_OR_STORE_NIL for a Nil, and
+ * AND_OR_TEMP_UNKNOWN when it cannot say. Every store that goes through here is
+ * counted; ClassifyAndOrTemp compares the count with the stores the method
+ * actually holds, so a site that writes the temporary without telling leaves
+ * the method unclassified rather than wrongly classified.
+ ****************************/
+void IntermediateEmitter::EmitAndOrStore(Statement* statement, Expression* expression, InstructionType type, int kind)
+{
+  if(expression) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, expression, cur_line_num, type, 0, LOCL));
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, type, 0, LOCL));
+  }
+
+  and_or_stores++;
+  if(kind == AND_OR_STORE_NIL || and_or_type == IntermediateMethod::AND_OR_TEMP_UNKNOWN) {
+    // Nil is the zero every kind can hold; unknown stays unknown
+  }
+  else if(and_or_type == AND_OR_STORE_NIL) {
+    and_or_type = kind;
+  }
+  else if(and_or_type != kind) {
+    // an Int here and an object there, or two kinds of reference: no single
+    // declaration fits the temporary
+    and_or_type = IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+  }
+}
+
+/****************************
+ * The declaration a value of this type takes in the and/or temporary: INT_PARM
+ * for a value that is not a reference, a reference ParamType, AND_OR_STORE_NIL
+ * for Nil, or AND_OR_TEMP_UNKNOWN. A class type counts as an object only when
+ * the name is found as a class: an enum (an Int) and a class share CLASS_TYPE,
+ * and a name that is neither -- a generic's type parameter -- is left unknown
+ * rather than guessed.
+ ****************************/
+int IntermediateEmitter::ReferenceTypeKind(Type* type)
+{
+  if(!type) {
+    return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+  }
+
+  const bool is_array = type->GetDimension() > 0;
+  switch(type->GetType()) {
+  case frontend::NIL_TYPE:
+    return AND_OR_STORE_NIL;
+
+  case frontend::BOOLEAN_TYPE:
+  case frontend::BYTE_TYPE:
+    return is_array ? BYTE_ARY_PARM : INT_PARM;
+
+  case frontend::CHAR_TYPE:
+    return is_array ? CHAR_ARY_PARM : INT_PARM;
+
+  case frontend::INT_TYPE:
+    return is_array ? INT_ARY_PARM : INT_PARM;
+
+  case frontend::FLOAT_TYPE:
+    // a Float's bits in the temporary are not a reference
+    return is_array ? FLOAT_ARY_PARM : INT_PARM;
+
+  case frontend::CLASS_TYPE: {
+    const std::wstring name = type->GetName();
+    if(SearchProgramClasses(name) || parsed_program->GetLinker()->SearchClassLibraries(name, parsed_program->GetLibUses())) {
+      return is_array ? OBJ_ARY_PARM : OBJ_PARM;
+    }
+    if(SearchProgramEnums(name) || (current_class && SearchProgramEnums(current_class->GetName() + L"#" + name)) ||
+       parsed_program->GetLinker()->SearchEnumLibraries(name, parsed_program->GetLibUses())) {
+      return is_array ? INT_ARY_PARM : INT_PARM;
+    }
+    return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+  }
+
+  default:
+    return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+  }
+}
+
+/****************************
+ * What a conditional's branches leave in the and/or temporary (see
+ * EmitAndOrStore). The base type is the one AnalyzeConditional computed, with
+ * the dimension of the value the branches yield; a cast that would change a
+ * value into a reference or back is left unknown.
+ ****************************/
+int IntermediateEmitter::ConditionalTempKind(Cond* conditional)
+{
+  if(IsFloatConditional(conditional)) {
+    return INT_PARM;
+  }
+
+  const int kind = ReferenceTypeKind(conditional->GetBaseType());
+  if(kind == IntermediateMethod::AND_OR_TEMP_UNKNOWN) {
+    return kind;
+  }
+
+  Type* cast_type = conditional->GetCastType();
+  if(cast_type && kind != AND_OR_STORE_NIL) {
+    const bool is_value = kind == INT_PARM;
+    switch(cast_type->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::FLOAT_TYPE:
+      if(!is_value && cast_type->GetDimension() == 0) {
+        return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+      }
+      break;
+
+    case frontend::CLASS_TYPE: {
+      const int cast_kind = ReferenceTypeKind(cast_type);
+      if(cast_kind == IntermediateMethod::AND_OR_TEMP_UNKNOWN || (cast_kind == INT_PARM) != is_value) {
+        return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+      }
+    }
+      break;
+
+    default:
+      return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+    }
+  }
+
+  return kind;
+}
+
+/****************************
+ * Records on the method what its and/or temporary holds, for the inliner.
+ *
+ * The temporary has no declaration: in the method's own frame the collector
+ * reads it conservatively (the interpreter) or through a typed spill slot (the
+ * JIT). Inlined, it becomes a declared local of the caller, and a declaration
+ * has one type. Declared Int -- as every inlined temporary was -- an object a
+ * conditional left there was no root: the reference maps typed the word the
+ * join loads from it an Int, and a collection while it waited on the operand
+ * stack neither marked nor relocated it (gc_inline_conditional_temp.obs).
+ *
+ * Counted against the stores the method really holds, before any optimization:
+ * the Try(), Otherwise() and closure sites write the temporary without saying
+ * what they store, and so might a site added later. Any such store leaves the
+ * method unknown, which the inliner reads as "do not inline".
+ ****************************/
+void IntermediateEmitter::ClassifyAndOrTemp()
+{
+  if(!imm_method || !current_method->HasAndOr()) {
+    return;
+  }
+
+  int stores = 0;
+  std::vector<IntermediateBlock*> blocks = imm_method->GetBlocks();
+  for(size_t i = 0; i < blocks.size(); ++i) {
+    std::vector<IntermediateInstruction*> instrs = blocks[i]->GetInstructions();
+    for(size_t j = 0; j < instrs.size(); ++j) {
+      IntermediateInstruction* instr = instrs[j];
+      switch(instr->GetType()) {
+      case STOR_INT_VAR:
+      case COPY_INT_VAR:
+      case STOR_FLOAT_VAR:
+      case COPY_FLOAT_VAR:
+      case STOR_FUNC_VAR:
+      case COPY_FUNC_VAR:
+        if(instr->GetOperand() == 0 && instr->GetOperand2() == LOCL) {
+          stores++;
+        }
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  if(stores != and_or_stores || and_or_type == IntermediateMethod::AND_OR_TEMP_UNKNOWN) {
+    imm_method->SetAndOrTempType(IntermediateMethod::AND_OR_TEMP_UNKNOWN);
+  }
+  else if(and_or_type == AND_OR_STORE_NIL) {
+    // never written, or only ever Nil
+    imm_method->SetAndOrTempType(INT_PARM);
+  }
+  else {
+    imm_method->SetAndOrTempType(and_or_type);
+  }
 }
 
 /****************************
@@ -1270,7 +1490,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
     
   case SIMPLE_STMT:
-    EmitExpression(static_cast<SimpleStatement*>(statement)->GetExpression());
+    EmitSimpleStatement(static_cast<SimpleStatement*>(statement));
     break;
     
   case RETURN_STMT: {
@@ -1443,6 +1663,61 @@ static bool ChainEndsInTryResult(MethodCall* method_call)
   }
 
   return ends_in_intrinsic_result;
+}
+
+/****************************
+ * Translates an expression used as a statement: a receiver that is not a plain
+ * call or variable -- a literal, a concatenation, anything in parentheses --
+ * with a call chain, `("[" + t + "]")->Size();`. Its value is discarded.
+ *
+ * The expression emitters drop a discarded value only on some of their paths
+ * (a literal receiver's chain did; a parenthesised call's, `(F(k))->Abs();`, and
+ * a parenthesised '??', `(t ?? "x")->Size();`, did not, and left the word on the
+ * operand stack each time the statement ran). So the value is dropped here,
+ * once, and the mark that makes those paths drop it is lifted while the
+ * expression is emitted.
+ ****************************/
+void IntermediateEmitter::EmitSimpleStatement(SimpleStatement* simple)
+{
+  Expression* expression = simple->GetExpression();
+  MethodCall* tail = expression->GetMethodCall();
+  while(tail && tail->GetMethodCall()) {
+    tail = tail->GetMethodCall();
+  }
+  if(!tail) {
+    EmitExpression(expression);
+    return;
+  }
+
+  const instructions::MemoryType discarded = tail->GetRougeReturn();
+  tail->SetRougeReturn(instructions::NIL_TYPE);
+  EmitExpression(expression);
+  tail->SetRougeReturn(discarded);
+
+  // a Try() region, or an Otherwise() that ends the chain, leaves one word
+  // whatever the last guarded call returns (Nil for one that returns nothing)
+  if(ChainEndsInTryResult(expression->GetMethodCall())) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    return;
+  }
+
+  switch(discarded) {
+  case instructions::INT_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    break;
+
+  case instructions::FLOAT_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_FLOAT));
+    break;
+
+  case instructions::FUNC_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    break;
+
+  default:
+    break;
+  }
 }
 
 void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
@@ -2987,6 +3262,12 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
+  case instructions::SOCK_TCP_SHUTDOWN_SEND:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_TCP_SHUTDOWN_SEND));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
+    break;
+
   case instructions::SOCK_TCP_SET_RCVBUF:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
@@ -4125,6 +4406,8 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
     post_statements.pop();
   }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
+  // the jump consumed the condition's string literal (see EmitBranch)
+  new_char_str_count = 0;
   
   std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
@@ -5564,6 +5847,11 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
     load_type = LOAD_FLOAT_VAR;
   }
 
+  // what the and/or temporary gets from this conditional, for the inliner; a
+  // function reference has a typed local of its own and is not counted
+  const bool in_and_or = !conditional->GetFuncTemp();
+  const int temp_kind = in_and_or ? ConditionalTempKind(conditional) : IntermediateMethod::AND_OR_TEMP_UNKNOWN;
+
   // conditional
   long end_label = ++unconditional_label;
   // if-expression
@@ -5571,14 +5859,24 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   EmitBranch(conditional->GetCondExpression(), cond, false);
   EmitExpression(conditional->GetExpression());
   EmitCast(conditional);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, stor_type, temp_id, LOCL));
+  if(in_and_or) {
+    EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, stor_type, temp_id, LOCL));
+  }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, JMP, end_label, -1));
   new_char_str_count = 0;
   // else-expression
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, cond));
   EmitExpression(conditional->GetElseExpression());
   EmitCast(conditional);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, stor_type, temp_id, LOCL));
+  if(in_and_or) {
+    EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, stor_type, temp_id, LOCL));
+  }
   new_char_str_count = 0;
   // expression end
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, end_label));
@@ -5822,6 +6120,11 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
 
   // Nil path: evaluate default expression
   const std::vector<Expression*>& args = method_call->GetCallingParameters()->GetExpressions();
+  // The default is a whole expression of its own: a string literal in it must not
+  // pair with one the receiver left counted (EmitCharacterString swaps the second
+  // of a pair under the first). `("q" ?? "x")` got a SWAP_INT here that put the
+  // word under the receiver's into the slot instead of the default.
+  new_char_str_count = 0;
   EmitExpression(args[0]);
   EmitCast(method_call);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
@@ -6462,6 +6765,11 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
   // anything else: evaluate, then jump on the value
   EmitExpression(expression);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
+  // The jump consumed the value, and with it any string literal the test pushed
+  // ('s = "hi"'). The count of literals waiting to be paired must not carry into
+  // what follows: the first literal of the branch's body counted as a second one
+  // and got a SWAP_INT over a stack of one, which the load-time verifier refuses.
+  new_char_str_count = 0;
 }
 
 /****************************
@@ -6483,13 +6791,13 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     // AND jump
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, label, 1L));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+    EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
     // emit left
     EmitExpression(expression->GetLeft());
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+    EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
     break;
@@ -6501,13 +6809,13 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     // OR jump
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, label, 0L));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 1L));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+    EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
     // emit left
     EmitExpression(expression->GetLeft());
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+    EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
     break;
@@ -7763,19 +8071,23 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
 }
 
 /****************************
- * True when a call is inside a Try() region: a Try() precedes it in its chain
- * with no Otherwise() in between. EmitTryIntrinsic emits such a call's
- * arguments INSIDE the region, after the receiver; see there.
+ * True when a Try() or an Otherwise() precedes a call in its chain. The
+ * intrinsic emits the rest of the chain itself, each call's arguments with it:
+ * EmitTryIntrinsic INSIDE its region, after the receiver, and
+ * EmitOtherwiseIntrinsic once the value the call is made on is on the stack.
+ *
+ * Only a call after a Try() was held back here, so one after an Otherwise()
+ * had its arguments emitted twice wherever a caller rewinds the chain to emit
+ * arguments first (a variable receiver): `Use("m", (p ?? "x")->Equals("abc"))`
+ * left the first "abc" on the stack under the call, and Use received it in
+ * place of "m". Found by checking the operand stack's height at each return.
  ****************************/
-static bool IsTryGuarded(MethodCall* method_call)
+static bool FollowsTryOrOtherwise(MethodCall* method_call)
 {
   Expression* prev = method_call->GetPreviousExpression();
   while(prev && prev->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* prev_call = static_cast<MethodCall*>(prev);
-    if(prev_call->IsOtherwiseIntrinsic()) {
-      return false;
-    }
-    if(prev_call->IsTryIntrinsic()) {
+    if(prev_call->IsOtherwiseIntrinsic() || prev_call->IsTryIntrinsic()) {
       return true;
     }
     prev = prev_call->GetPreviousExpression();
@@ -7792,8 +8104,8 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   if(!emitting_deferred_params && ReceiverIsFirstParameter(method_call)) {
     return;
   }
-  // a call guarded by Try() gets its arguments inside the region (EmitTryIntrinsic)
-  if(!emitting_deferred_params && IsTryGuarded(method_call)) {
+  // a call after a Try() or an Otherwise() gets its arguments from the intrinsic
+  if(!emitting_deferred_params && FollowsTryOrOtherwise(method_call)) {
     return;
   }
 

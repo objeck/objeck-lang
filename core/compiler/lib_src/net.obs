@@ -1957,39 +1957,57 @@ if(ws->Connect()) {
 					socket->WriteString(oper);
 					
 					status_line := socket->ReadLine();
-					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
-						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
-					};
+					@status_code := Web.HTTP.WebSocketHandshake->StatusCode(status_line);
+					@status_msg := Nil;
 
-					if(status_line <> Nil & status_line->StartsWith("101 Switching")) {
-						# get request headers
+					# The reply headers, read only for a 101: anything else is refused on
+					# its status line. Header names are matched without regard to case
+					# (RFC 9110 5.1) and a line with no name is skipped. The count is
+					# capped so a peer cannot hold the client here forever.
+					header_max := 256;
+					header_count := 0;
+					if(@status_code = 101) {
 						do {
 							line := socket->ReadLine();
 							if(line <> Nil & line->Size() > 0) {
+								header_count += 1;
 								index := line->Find(':');
-								name := line->SubString(index);
-								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+								if(index > 0) {
+									name := line->SubString(index)->Trim()->ToLower();
+									value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 
-								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-								if(@cookies_enabled & name->Equals("Set-Cookie")) {
-									@cookies->AddBack(Cookie->New(value));
-									# IO.Console->Print("cookie=")->PrintLine(value);
-								}
-								else {
-									@response_headers->Insert(name->ToLower(), value);
+									# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+									if(@cookies_enabled & name->Equals("set-cookie")) {
+										@cookies->AddBack(Cookie->New(value));
+										# IO.Console->Print("cookie=")->PrintLine(value);
+									}
+									else {
+										@response_headers->Insert(name, value);
+									};
 								};
 							};
 						}
-						while(line <> Nil & line->Size() > 0);
-						
-						nonce_hash := @response_headers->Find("sec-websocket-accept");
-						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
-						if(nonce_hash <> Nil) {
-							@socket := socket;
-							@header := Byte->New[2];
-							return true;
-						}
+						while(line <> Nil & line->Size() > 0 & header_count < header_max);
 					};
+
+					# RFC 6455 section 4.1: the client fails the connection unless the reply
+					# is a 101 that upgrades to websocket and its Sec-WebSocket-Accept is the
+					# value derived from the key sent above. Why it was refused is left in
+					# GetStatusMessage().
+					if(header_count < header_max) {
+						@status_msg := Web.HTTP.WebSocketHandshake->Check(status_line, @response_headers, @request_headers, key);
+					}
+					else {
+						@status_msg := "WebSocket handshake refused: the reply has too many headers";
+					};
+
+					if(@status_msg = Nil) {
+						@socket := socket;
+						@header := Byte->New[2];
+						return true;
+					};
+
+					socket->Close();
 				}
 			};	
 
@@ -2011,6 +2029,9 @@ if(ws->Connect()) {
 		~#
 		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
+			if(data = Nil) {
+				return false;
+			};
 			data_size := data->Size();
 
 			if(fragment & data_size > chunk_size) {
@@ -2019,14 +2040,20 @@ if(ws->Connect()) {
 				if(@is_debug) {
 					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
 				};
-				WriteFrame(data, i, chunk_size, 2, true);
+				# a frame that could not be written ends the message: the peer cannot
+				# use the fragments that follow it
+				if(<>WriteFrame(data, i, chunk_size, 2, true)) {
+					return false;
+				};
 
 				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
 					if(@is_debug) {
 						"1: write - off={$i}, len={$chunk_size}"->PrintLine();
 					};
 
-					WriteFrame(data, i, chunk_size, 0, true);
+					if(<>WriteFrame(data, i, chunk_size, 0, true)) {
+						return false;
+					};
 				};
 
 				# finish frame
@@ -2036,7 +2063,7 @@ if(ws->Connect()) {
 						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
 
-					WriteFrame(data, i, rest, 0, false);
+					return WriteFrame(data, i, rest, 0, false);
 				};
 
 				return true;
@@ -2062,6 +2089,9 @@ if(ws->Connect()) {
 		~#
 		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
+			if(message = Nil) {
+				return false;
+			};
 
 			data := message->ToByteArray();
 			data_size := data->Size();
@@ -2072,14 +2102,20 @@ if(ws->Connect()) {
 				if(@is_debug) {
 					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
 				};
-				WriteFrame(data, i, chunk_size, 1, true);
+				# a frame that could not be written ends the message: the peer cannot
+				# use the fragments that follow it
+				if(<>WriteFrame(data, i, chunk_size, 1, true)) {
+					return false;
+				};
 
 				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
 					if(@is_debug) {
 						"1: write - off={$i}, len={$chunk_size}"->PrintLine();
 					};
 
-					WriteFrame(data, i, chunk_size, 0, true);
+					if(<>WriteFrame(data, i, chunk_size, 0, true)) {
+						return false;
+					};
 				};
 
 				# finish frame
@@ -2089,7 +2125,7 @@ if(ws->Connect()) {
 						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
 
-					WriteFrame(data, i, rest, 0, false);
+					return WriteFrame(data, i, rest, 0, false);
 				};
 
 				return true;
@@ -2150,6 +2186,12 @@ if(ws->Connect()) {
 				# ping
 				if(opcode = 0x89) {
 					payload_length : Int := @header[1];
+					# masked by the server, see below
+					if((payload_length and 0x80) <> 0) {
+						@status_msg := "WebSocket frame refused: masked by the server";
+						@socket->Close();
+						return Nil;
+					};
 					buffer := Byte->New[payload_length];
 					if(payload_length > 0) {
 						@socket->ReadBuffer(0, payload_length, buffer);
@@ -2173,6 +2215,16 @@ if(ws->Connect()) {
 
 				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
 					payload_length : Int := @header[1];
+					# A server never masks (RFC 6455 section 5.1: the client fails the
+					# connection if it does). The mask bit is the length byte's top
+					# bit, so a masked frame also read as a negative length for the
+					# allocation below.
+					if((payload_length and 0x80) <> 0) {
+						@status_msg := "WebSocket frame refused: masked by the server";
+						@socket->Close();
+						return Nil;
+					};
+
 					if(payload_length = 126) {
 						@socket->ReadBuffer(0, 2, @header);
 
@@ -2197,8 +2249,10 @@ if(ws->Connect()) {
 						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 					};
 
-					# cap max at 4GB
-					if(payload_length < 4294967296) {
+					# The 8-byte length is the peer's to choose: one with the top bit set
+					# decodes negative, and the read below counts in a 32-bit int, so
+					# the cap is 2 GiB (it was 4 GiB, with no lower bound).
+					if(payload_length >= 0 & payload_length <= 2147483647) {
 						# read payload
 						buffer := Byte->New[payload_length];
 						if(payload_length > 0) {
@@ -2206,8 +2260,27 @@ if(ws->Connect()) {
 						};
 
 						if(opcode = 0x88) {
-							@status_code := DecodeInt(@header, 0, 2);
-							@status_msg := String->New(buffer, 2, buffer->Size() - 2);
+							# the status code is the first two bytes of the close frame's
+							# payload, and both it and the reason are optional (RFC 6455
+							# section 5.5.1); 1005 is "no status code was present"
+							if(buffer->Size() >= 2) {
+								@status_code := DecodeInt(buffer, 0, 2);
+								# the reason is UTF-8 on its own: decoded together with
+								# the two code bytes in front of it, it came out garbled
+								# whenever those bytes were not text (1001 is 0x03 0xE9)
+								@status_msg := "";
+								if(buffer->Size() > 2) {
+									reason := Byte->New[buffer->Size() - 2];
+									each(k : reason) {
+										reason[k] := buffer[k + 2];
+									};
+									@status_msg := String->New(reason);
+								};
+							}
+							else {
+								@status_code := 1005;
+								@status_msg := "";
+							};
 							@socket->Close();
 
 							return Nil;
@@ -2226,8 +2299,20 @@ if(ws->Connect()) {
 		}
 
 		method : WriteFrame(data : Byte[], offset : Int, length : Int, mode : Int, fragment : Bool) ~ Bool {
-			# cap max at 4GB
-			if(@socket <> Nil & data <> Nil & length < 4294967296) { # TODO: bounds check
+			# The range must lie inside the data: a negative or oversized offset or
+			# length is refused here instead of faulting in the copy loop below (or,
+			# for a negative length, in the frame's allocation). The frame is one
+			# array handed to one native write, and that write counts in a 32-bit
+			# int, so the payload is capped at 2 GiB less the 14-byte header rather
+			# than the 4 GiB this once allowed (such a frame was built, then not sent).
+			in_bounds := false;
+			if(@socket <> Nil & data <> Nil) {
+				if(offset >= 0 & length >= 0 & length <= 2147483633) {
+					in_bounds := offset <= data->Size() - length;
+				};
+			};
+
+			if(in_bounds) {
 				frame_offset : Int;
 				
 				# create frame
@@ -2426,6 +2511,12 @@ if(ws->Connect()) {
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
 				payload_length : Int := @header[1];
+				# masked by the server, see ReadFrame
+				if((payload_length and 0x80) <> 0) {
+					@status_msg := "WebSocket frame refused: masked by the server";
+					@socket->Close();
+					return false;
+				};
 				buffer := Byte->New[payload_length];
 				if(payload_length > 0) {
 					@socket->ReadBuffer(0, payload_length, buffer);

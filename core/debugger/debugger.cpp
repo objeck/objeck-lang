@@ -545,11 +545,20 @@ bool Runtime::Debugger::GotoTarget(int id, bool frame_is_top, int& new_line, std
 
   // The jump leaves the operand stack as it is, so it is safe only between two
   // places where the stack holds what the method was entered with: the start of
-  // a statement. The reference map the loader's verifier builds has the height
-  // of the stack on entry to every instruction; a statement boundary is where it
-  // equals the height at the method's first instruction.
-  RefMap* map = RefMap::Build(cur_program, cur_method, true);
-  const bool known = map->ok && !map->height.empty() && (long)map->height.size() > cur_ip && (long)map->height.size() > site.ip;
+  // a statement. The reference map has the height of the stack on entry to every
+  // instruction; a statement boundary is where it equals the height at the
+  // method's first instruction.
+  //
+  // The map is built as the collector and the JIT build it, not in the loader's
+  // verifying mode: a verifying build checks the method and returns before it
+  // fills the per-instruction table (the loader does not read it), which left
+  // every height at -1 here, so every line compared equal to the entry and a
+  // jump into the middle of an expression was accepted. The program was
+  // verified when it was loaded. A height of -1 (not reached) at the entry or
+  // at the stopped instruction is 'could not be analyzed', never a match.
+  RefMap* map = RefMap::Build(cur_program, cur_method);
+  const bool known = map->ok && !map->height.empty() && (long)map->height.size() > cur_ip && (long)map->height.size() > site.ip &&
+                     map->height[0] >= 0 && map->height[cur_ip] >= 0;
   const int entry = known ? map->height[0] : -1;
   const int here = known ? map->height[cur_ip] : -1;
   const int there = known ? map->height[site.ip] : -1;

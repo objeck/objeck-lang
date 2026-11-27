@@ -117,7 +117,7 @@ The VM uses a generational mark-and-sweep collector:
 
 **Limitations today:** arrays are never allocated in the nursery and never move; an `Int[]` that a native library or a trap allocates (rather than the compiler's `NEW_INT_ARY`) is still scanned conservatively; operand-stack words above the first compiled frame on a thread are still scanned conservatively. See [GC roots](../../docs/GC_ROOTS_DESIGN.md) for the exact residue.
 
-**How to check:** `OBJECK_GC_STATS=1 obr prog.obe` prints a summary at exit (minor and major counts, pause, promoted bytes); `OBJECK_GC_VERIFY=1 obr prog.obe` runs the heap verifier every collection (`checkmark` adds a mark-completeness check; `OBJECK_GC_VERIFY_INJECT=field|barrier|mark` plants a fault to show the verifier catches it); `OBJECK_GC_ROOTS=audit` checks the reference maps against the live stacks, and `OBJECK_GC_ROOTS=conservative` restores the old scan as a negative control; `--nursery=64k` makes collections frequent.
+**How to check:** `OBJECK_GC_STATS=1 obr prog.obe` prints a summary at exit (minor and major counts, pause, promoted bytes); `OBJECK_GC_VERIFY=1 obr prog.obe` runs the heap verifier every collection (`checkmark` adds a mark-completeness check; `OBJECK_GC_VERIFY_INJECT=field|barrier|mark|terminator` plants a fault to show the verifier catches it); `OBJECK_GC_ROOTS=audit` checks the reference maps against the live stacks, and `OBJECK_GC_ROOTS=conservative` restores the old scan as a negative control; `--nursery=64k` makes collections frequent.
 
 ### Object Layout
 

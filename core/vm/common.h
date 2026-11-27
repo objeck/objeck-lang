@@ -60,6 +60,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 #include <climits>
 #include <string.h>
@@ -540,6 +541,10 @@ struct SecureSocketCtx {
   // Both are used by TlsBioRecv.
   long long deadline_ms;
   int read_ms;
+  // this side has ended its sending (IPSecureSocket::ShutdownSend): the
+  // close_notify has gone out and the socket takes no more writes, so Close
+  // does not send a second one into a socket that would refuse it
+  bool send_closed;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -553,7 +558,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -581,7 +586,8 @@ struct SecureSocketCtx {
 extern thread_local int dtls_last_error;
 
 //
-// TLS record I/O for mbedtls_ssl_set_bio, whose context is the SecureSocketCtx:
+// TLS record I/O for mbedtls_ssl_set_bio, whose context is the SecureSocketCtx (a
+// connecting socket and an accepted one alike, so SetDeadline holds on both):
 // TlsBioRecv waits for the peer no longer than the socket's deadline and read
 // timeout allow, and reports a read that timed out as MBEDTLS_ERR_SSL_TIMEOUT,
 // whether the deadline or SO_RCVTIMEO ended it. (defined in common.cpp)
@@ -591,7 +597,7 @@ int TlsBioRecv(void* ctx, unsigned char* buf, size_t len);
 
 //
 // mbedtls_net_send and mbedtls_net_recv for mbedtls_ssl_set_bio, whose context is the
-// mbedtls_net_context (an accepted TLS connection, an HTTP/2 client): the same calls,
+// mbedtls_net_context (an HTTP/2 client, which has no deadline): the same calls,
 // made without holding the TLS library (see TlsLibraryLock). (defined in common.cpp)
 //
 int TlsNetSend(void* ctx, const unsigned char* buf, size_t len);
@@ -1534,7 +1540,25 @@ class StackClass {
       return x >= y ? x * x + x + y : y * y + x;
     }
   };
-  std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> virtual_methods;
+  // The override each virtual declaration reaches for a receiver of this class, filled
+  // in as calls resolve (ResolveVirtualTarget). Every thread making a virtual call reads
+  // it and the first call through each declaration adds to it, with no lock: an insert
+  // that rehashed the table while another thread walked a bucket sent that thread
+  // through freed nodes, and two inserts at once corrupted the table and the C heap.
+  // Eight threads making their first calls together crashed about one run in ten under
+  // OBJECK_JIT_THRESHOLD=1 (SIGSEGV in GetVirtualMethod or AddVirtualMethod, or glibc's
+  // "malloc(): unaligned tcache chunk detected").
+  //
+  // Readers stay lock-free, as a virtual call is too hot for a lock: the table is
+  // published as an immutable snapshot through an atomic pointer, and an insert copies
+  // it, adds its entry and publishes the copy, one insert at a time. A snapshot that
+  // has been replaced may still be in a reader's hands, so it is kept until the class
+  // goes. Inserts are rare (one per declaration and receiver class) and the tables
+  // small, so the copies cost nothing that shows.
+  typedef std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> VirtualMethodMap;
+  std::atomic<const VirtualMethodMap*> virtual_methods{nullptr};
+  std::mutex virtual_methods_lock;
+  std::vector<const VirtualMethodMap*> retired_virtual_methods;
   
   long InitializeClassMemory(long size) {
     if(size > 0) {
@@ -1570,6 +1594,13 @@ class StackClass {
 
   ~StackClass() {
     // clean up
+    delete virtual_methods.load(std::memory_order_acquire);
+    virtual_methods.store(nullptr, std::memory_order_release);
+    for(size_t i = 0; i < retired_virtual_methods.size(); ++i) {
+      delete retired_virtual_methods[i];
+    }
+    retired_virtual_methods.clear();
+
     if(cls_dclrs) {
       for(int i = 0; i < cls_num_dclrs; ++i) {
         StackDclr* tmp = cls_dclrs[i];
@@ -1836,20 +1867,36 @@ class StackClass {
   }
 #endif
 
+  // lock-free: see virtual_methods
   StackMethod* GetVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id) {
-    const auto virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    const auto result = virtual_methods.find(virtual_key);
-    if(result != virtual_methods.end()) {
-      return result->second;
+    const VirtualMethodMap* snapshot = virtual_methods.load(std::memory_order_acquire);
+    if(snapshot) {
+      const auto result = snapshot->find(std::make_pair(virtual_cls_id, virtual_mthd_id));
+      if(result != snapshot->end()) {
+        return result->second;
+      }
     }
 
     return nullptr;
   }
 
-  void AddVirutalMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
-    // TODO: thread safe?
+  // Safe to call from several threads at once, for the same key or different ones: the
+  // first entry for a key stays (two threads that resolved it found the same method).
+  void AddVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
     const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    virtual_methods.insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+    std::lock_guard<std::mutex> guard(virtual_methods_lock);
+    const VirtualMethodMap* current = virtual_methods.load(std::memory_order_acquire);
+    if(current && current->find(virtual_key) != current->end()) {
+      return;
+    }
+
+    VirtualMethodMap* next = current ? new VirtualMethodMap(*current) : new VirtualMethodMap;
+    next->insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+    if(current) {
+      // a reader may still hold it: freed with the class
+      retired_virtual_methods.push_back(current);
+    }
+    virtual_methods.store(next, std::memory_order_release);
   }
 };
 
@@ -2618,6 +2665,107 @@ class ObjectDeserializer
 };
 
 /********************************
+ * The array terminator invariant
+ *
+ * A Char[] or Byte[] is [0] element count, [1] dimensions, [2..] one extent per
+ * dimension, then the elements: at array + 3 for the one-dimensional arrays the
+ * native methods take. Every allocation asks for ONE MORE element than [0]
+ * counts (NEW_BYTE_ARY, NEW_CHAR_ARY, the deserializers, CreateStringObject, the
+ * APITools_Make*Array calls native libraries use), and MemoryManager hands out
+ * zeroed memory. A program cannot index that spare element: [0] bounds every
+ * load, store, copy and fill. So the element after the last one is always zero.
+ *
+ * What rests on it:
+ *  - A native that takes TEXT in a Char[] (a String's backing array, a path, a
+ *    host name, a command) reads it as a C string: (wchar_t*)(array + 3). The
+ *    text ends at its first zero, which for an array filled to its last element
+ *    (an "exact-length" array, as String->ToCharArray() returns) is the spare.
+ *    System.String keeps a zero after its characters whenever it shrinks.
+ *  - A native that stores text into a Char[] may write one zero after the
+ *    characters, at most at index [0]: StoreCharArrayText below. One that was
+ *    given a slice (offset, num) writes it only inside the slice or at index
+ *    [0], never on the caller's element after a full slice: StoreCharArraySlice.
+ *
+ * What must NOT rest on it: anything given a length. A native that takes
+ * (offset, num) or works on a Byte[] uses those numbers and [0], never a search
+ * for the zero: a Byte[] holds data, where a zero is a value like any other.
+ *
+ * Checked, not assumed: with OBJECK_GC_VERIFY set the heap verifier fails a
+ * Char[] whose block has no room for the spare element or whose spare element
+ * is not zero (invariant B5, arch/memory_verify.cpp). A Byte[] shares its heap
+ * type with closure capture blocks, so the verifier cannot tell one from the
+ * other; no native reads a Byte[] to its zero any more, which is what the
+ * check would have protected.
+ ********************************/
+
+/********************************
+ * Stores 'count' characters in a Char[] at 'dest' and ends them with a zero. The
+ * caller bounds 'count' by the elements left in the array from 'dest'; the zero
+ * then lands inside the array or on its spare element (see above).
+ *
+ * Used where wcsncpy_s / wcsncpy were: the first ends the process (MSVC's
+ * invalid-parameter handler) when the text is exactly as long as the size it is
+ * given and, in a debug CRT, fills the rest of the destination with 0xFE; the
+ * second zero-fills up to its count and writes no terminator at all when the
+ * text is that long. Windows and POSIX now store the same elements.
+ ********************************/
+inline void StoreCharArrayText(wchar_t* dest, const wchar_t* src, size_t count)
+{
+  if(count > 0) {
+    wmemcpy(dest, src, count);
+  }
+  dest[count] = L'\0';
+}
+
+/********************************
+ * The same for decoded text going into a one-dimensional Char[] from element
+ * 'offset' on (the caller has checked offset <= [0]): what does not fit in the
+ * elements that are left is dropped.
+ ********************************/
+inline void StoreCharArrayText(size_t* array, size_t offset, const std::wstring& text)
+{
+  const size_t room = array[0] - offset;
+  StoreCharArrayText((wchar_t*)(array + 3) + offset, text.c_str(), text.size() < room ? text.size() : room);
+}
+
+/********************************
+ * The same for a read of (offset, num) into a one-dimensional Char[], where the
+ * caller named a slice and the elements after it are the caller's own (the
+ * caller has checked offset + num <= [0]). At most 'num' characters are stored.
+ * The zero after them is written only where it cannot land on an element the
+ * caller did not hand over: inside the slice, when fewer than 'num' characters
+ * were stored, or on the array's spare element, when the characters end at the
+ * array's last element. A slice filled to its last element that ends before the
+ * array does gets no zero: the plain StoreCharArrayText put one on the element
+ * just past the slice (a read of 3 at offset 0 of an 8-element array wrote [3]).
+ * The same elements on Windows and POSIX. Returns the characters stored.
+ ********************************/
+inline size_t StoreCharArraySlice(size_t* array, size_t offset, size_t num, const std::wstring& text)
+{
+  wchar_t* dest = (wchar_t*)(array + 3) + offset;
+  const size_t count = text.size() < num ? text.size() : num;
+  if(count > 0) {
+    wmemcpy(dest, text.c_str(), count);
+  }
+  if(count < num || offset + count == array[0]) {
+    dest[count] = L'\0';
+  }
+  return count;
+}
+
+/********************************
+ * The text in elements [offset, offset + num) of a one-dimensional Char[] (the
+ * caller has checked the range against [0]): up to the first zero in that range
+ * and never past its end.
+ ********************************/
+inline std::wstring CharArrayRangeText(const size_t* array, size_t offset, size_t num)
+{
+  const wchar_t* start = (const wchar_t*)(array + 3) + offset;
+  const wchar_t* zero = num > 0 ? wmemchr(start, L'\0', num) : nullptr;
+  return std::wstring(start, zero ? (size_t)(zero - start) : num);
+}
+
+/********************************
  *  TrapManager class
  ********************************/
 enum TimeInterval {
@@ -3048,6 +3196,7 @@ class TrapProcessor {
   static bool SockTcpSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetConnTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetDeadline(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpShutdownSend(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   // SSL socket options

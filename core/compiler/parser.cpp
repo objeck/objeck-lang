@@ -627,6 +627,8 @@ bool Parser::Parse()
     }
   }
 
+  GeneratePendingMcpTools();
+
   return CheckErrors();
 }
 
@@ -636,6 +638,8 @@ bool Parser::Parse()
 void Parser::ParseFile(const std::wstring &file_name)
 {
   ResetErrorState();
+  const size_t errors_before = diagnostics.ErrorCount();
+  diagnostics.NoteFile(file_name);
   scanner = new Scanner(file_name, alt_syntax);
   NextToken();
   char stack_mark = 0;
@@ -647,6 +651,9 @@ void Parser::ParseFile(const std::wstring &file_name)
     // reported where it was found; the rest of the file is not read
   }
   stack_base = nullptr;
+  if(diagnostics.ErrorCount() != errors_before) {
+    mcp_broken_files.insert(file_name);
+  }
   // clean up
   delete scanner;
   scanner = nullptr;
@@ -658,6 +665,8 @@ void Parser::ParseFile(const std::wstring &file_name)
 void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
 {
   ResetErrorState();
+  const size_t errors_before = diagnostics.ErrorCount();
+  diagnostics.NoteFile(progam.first);
   scanner = new Scanner(progam.first, alt_syntax, progam.second);
   NextToken();
   char stack_mark = 0;
@@ -669,6 +678,9 @@ void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
     // reported where it was found; the rest of the text is not read
   }
   stack_base = nullptr;
+  if(diagnostics.ErrorCount() != errors_before) {
+    mcp_broken_files.insert(progam.first);
+  }
   // clean up
   delete scanner;
   scanner = nullptr;
@@ -1453,7 +1465,7 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
       }
       else if(tool_doc) {
         candidate.method = method;
-        mcp_tools.push_back(candidate);
+        mcp_tools.push_back(std::move(candidate));
       }
     }
     else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
@@ -1510,9 +1522,15 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
     GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
   }
 
-  // a function that did not parse (a syntax error above) has no types to derive from: the syntax error is the answer
-  if(!mcp_tools.empty() && !diagnostics.HasErrors()) {
-    GenerateMcpTools(klass, mcp_tools, depth + 1);
+  // The tools are derived once every file has been read (GeneratePendingMcpTools): a parameter's record or
+  // enum may be declared below this class, or in a later file.
+  if(!mcp_tools.empty()) {
+    McpPending pending;
+    pending.klass = klass;
+    pending.bundle = current_bundle;
+    pending.tools = mcp_tools;
+    pending.uses_mcp = current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end();
+    mcp_pending.push_back(pending);
   }
 
   symbol_table->PreviousParseScope(current_class->GetName());
@@ -1922,6 +1940,33 @@ Lambda* Parser::ParseLambda(int depth) {
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), type, alias_name, method, parameter_list);
 }
 
+// True for a method named McpMain whose one parameter is a String[]: the name and
+// signature 'obr --mcp' looks for (Loader::SelectMcpEntry reads them from the method's
+// encoded name, which carries neither its kind nor its return type). An overload named
+// McpMain with any other parameter list is an ordinary method.
+static bool HasMcpEntrySignature(Method* method)
+{
+  const std::wstring name = method->GetName();
+  const size_t colon = name.find_last_of(L':');
+  if((colon == std::wstring::npos ? name : name.substr(colon + 1)) != L"McpMain" || !method->GetDeclarations()) {
+    return false;
+  }
+
+  Type* only = nullptr;
+  int count = 0;
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    // 'a, b : T' is one declaration with children
+    for(Declaration* declaration = declarations[i]; declaration; declaration = declaration->GetChild()) {
+      ++count;
+      only = declaration->GetEntry() ? declaration->GetEntry()->GetType() : nullptr;
+    }
+  }
+
+  return count == 1 && only && only->GetType() == CLASS_TYPE && only->GetDimension() == 1 &&
+         (only->GetName() == L"String" || only->GetName() == L"System.String");
+}
+
 /****************************
  * Parses a method.
  ****************************/
@@ -2150,6 +2195,28 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     return_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, current_class->GetName(), file_name, line_num, line_pos);
   }
   method->SetReturn(return_type);
+
+  // McpMain(args : String[]) is what 'obr --mcp' starts in place of Main, and the VM picks it
+  // by its name and parameter alone: a program file does not record whether a method is a
+  // function or what it returns. So the one shape it can call is the only one allowed to have
+  // that signature. An instance method would be started with no instance, a virtual one has
+  // no body and one that returns a value leaves it on the stack.
+  if(HasMcpEntrySignature(method)) {
+    const wchar_t* why = nullptr;
+    if(!is_function) {
+      why = L"it is declared as a method, which needs an instance";
+    }
+    else if(is_virtual) {
+      why = L"it is virtual, so it has no body";
+    }
+    else if(!return_type || return_type->GetType() != NIL_TYPE || return_type->GetDimension() > 0) {
+      why = L"it returns a value";
+    }
+    if(why) {
+      diagnostics.Error(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
+                        why + L". Declare it that way or give it another name");
+    }
+  }
 
   // statements
   if(is_virtual) {
@@ -4082,6 +4149,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case SOCK_TCP_SET_DEADLINE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SET_DEADLINE);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SHUTDOWN_SEND:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SHUTDOWN_SEND);
       NextToken();
       break;
 
@@ -8140,11 +8213,21 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
 
   // A token the scanner rejected is an error even where the parse recovered from it
   // (a malformed literal stands in as a literal): the interpolation is not valid.
-  if(expr_parser.lexical_error_seen) {
+  // So is a syntax error the parser reported and stepped over: '{$n->Size()?}' reads as
+  // a conditional with no branches, and the tree it leaves has a part missing. That
+  // tree used to be handed to the analyzer, which ended the compiler with an access
+  // violation on the missing part.
+  if(expr_parser.lexical_error_seen || expr_parser.diagnostics.HasErrors()) {
     if(reason) {
       const std::vector<Diagnostic> errors = expr_parser.diagnostics.UniqueErrors();
       if(!errors.empty()) {
         *reason = errors[0].message;
+        // the text the scanner was given is the interpolation, not the file
+        const std::wstring end_of_file = L"end of file";
+        const size_t at = reason->find(end_of_file);
+        if(at != std::wstring::npos) {
+          reason->replace(at, end_of_file.size(), L"the end of the interpolation");
+        }
       }
     }
     delete expr_scanner;
@@ -8180,9 +8263,9 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
  * MCP tools.
  *
  * A function whose doc comment ('#~ ... ~#') has a line starting with '@tool' is an MCP tool
- * (docs/design/MCP_FIRST_CLASS.md). At the end of its class the parser writes two kinds of ordinary
- * static functions into the class, as source text parsed by this same parser, exactly as the code a person
- * would write:
+ * (docs/design/MCP_FIRST_CLASS.md). Once every file has been read (so that a record or an enum declared after
+ * the class, or in a later file, is known) the parser writes two kinds of ordinary static functions into the
+ * class, as source text parsed by this same parser, exactly as the code a person would write:
  *
  *   McpTools(mcp_service : McpService) ~ Nil        declares every tool of the class (schema, hints)
  *   McpTool_<name>(mcp_call : McpCall) ~ McpToolResult   reads the typed arguments, calls the function
@@ -8434,19 +8517,34 @@ namespace {
     switch(t.kind) {
     case MK_INT:
       value = j + L"->GetInt()";
-      return t.boxed ? L"IntRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"IntRef->New(" + value + L")";
+      }
+      return value;
     case MK_FLOAT:
       value = j + L"->GetFloat()";
-      return t.boxed ? L"FloatRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"FloatRef->New(" + value + L")";
+      }
+      return value;
     case MK_BOOL:
       value = L"(" + j + L"->GetType() = Data.JSON.JsonElement->JsonType->TRUE)";
-      return t.boxed ? L"BoolRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"BoolRef->New(" + value + L")";
+      }
+      return value;
     case MK_BYTE:
       value = j + L"->GetInt()->As(Byte)";
-      return t.boxed ? L"ByteRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"ByteRef->New(" + value + L")";
+      }
+      return value;
     case MK_CHAR:
       value = j + L"->GetString()->Get(0)";
-      return t.boxed ? L"CharRef->New(" + value + L")" : value;
+      if(t.boxed) {
+        return L"CharRef->New(" + value + L")";
+      }
+      return value;
     case MK_STRING:
       return j + L"->GetString()";
     case MK_JSON:
@@ -8662,6 +8760,22 @@ Class* Parser::McpFindClass(const std::wstring& name)
   return nullptr;
 }
 
+// A type's name as it is written in source. An enum declared in a class, 'Palette->Color', is held as
+// 'Palette#Color'; written back that way, the '#' would start a comment in the code generated below.
+static std::wstring McpSourceName(const std::wstring& name)
+{
+  std::wstring out;
+  for(size_t i = 0; i < name.size(); ++i) {
+    if(name[i] == L'#') {
+      out += L"->";
+    }
+    else {
+      out += name[i];
+    }
+  }
+  return out;
+}
+
 // the type as source text: Int, String, Vector<String>, Point[]
 static std::wstring McpTypeText(Type* type)
 {
@@ -8683,7 +8797,7 @@ static std::wstring McpTypeText(Type* type)
     text = L"Char";
     break;
   default:
-    text = type->GetName();
+    text = McpSourceName(type->GetName());
     break;
   }
 
@@ -8748,7 +8862,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
   if(!known) {
     const std::wstring name = type->GetName();
     const std::vector<Type*> generics = type->GetGenerics();
-    element.name = name;
+    element.name = McpSourceName(name);
     if(McpIsName(name, L"String", L"System.String")) {
       element.kind = MK_STRING;
     }
@@ -8788,7 +8902,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       if(!McpAnalyze(generics[0], kid, why, true, depth + 1)) {
         return false;
       }
-      element.kids.push_back(kid);
+      element.kids.push_back(std::move(kid));
     }
     else if(McpIsName(name, L"Map", L"Collection.Map")) {
       if(generics.size() != 2 || !McpIsName(generics[0]->GetName(), L"String", L"System.String")) {
@@ -8800,7 +8914,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       if(!McpAnalyze(generics[1], kid, why, true, depth + 1)) {
         return false;
       }
-      element.kids.push_back(kid);
+      element.kids.push_back(std::move(kid));
     }
     else if(Enum* eenum = McpFindEnum(name)) {
       element.kind = MK_ENUM;
@@ -8819,6 +8933,11 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       }
     }
     else if(Class* record = McpFindClass(name)) {
+      if(mcp_broken_files.find(record->GetFileName()) != mcp_broken_files.end()) {
+        // its file has a syntax error, which is the answer: the class may be half built
+        why.clear();
+        return false;
+      }
       if(!record->IsRecord()) {
         why = L"the class '" + name + L"' cannot be a tool parameter: declare it as a record, or take a JsonElement";
         return false;
@@ -8847,21 +8966,26 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
           McpTy kid;
           std::wstring kid_why;
           if(!McpAnalyze(entry->GetType(), kid, kid_why, false, depth + 1)) {
-            why = L"the field '" + field + L"' of the record '" + name + L"': " + kid_why;
+            why = kid_why.empty() ? kid_why : L"the field '" + field + L"' of the record '" + name + L"': " + kid_why;
             return false;
           }
           if(kid.kind == MK_CALL) {
             why = L"the field '" + field + L"' of the record '" + name + L"' cannot be a McpCall";
             return false;
           }
-          element.items.push_back(field);
-          element.kids.push_back(kid);
+          element.items.push_back(std::move(field));
+          element.kids.push_back(std::move(kid));
         }
       }
       if(element.items.empty()) {
         why = L"the record '" + name + L"' has no fields";
         return false;
       }
+    }
+    else if(!mcp_broken_files.empty()) {
+      // the type may be declared in a file that did not parse: that file's syntax error is the answer
+      why.clear();
+      return false;
     }
     else {
       why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those";
@@ -8876,7 +9000,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
     }
     out.kind = MK_ARRAY;
     out.text = element.text + L"[]";
-    out.kids.push_back(element);
+    out.kids.push_back(std::move(element));
     return true;
   }
 
@@ -8884,7 +9008,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
     why = L"an enum cannot be the element of a Vector or Map; use String";
     return false;
   }
-  out = element;
+  out = std::move(element);
   return true;
 }
 
@@ -8896,7 +9020,7 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
 
   Scanner* saved = scanner;
   Method* previous_method = current_method;
-  scanner = new Scanner(klass->GetFileName(), alt_syntax, text);
+  scanner = new Scanner(klass->GetFileName(), alt_syntax, std::move(text));
   NextToken();
 
   Method* method = nullptr;
@@ -8916,14 +9040,43 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   }
 }
 
-void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, int depth)
+// Derives the tools of every class that has some, once every file has been read: a parameter's record or
+// enum may be declared below the class that takes it, or in a later file. A file with a syntax error is left
+// alone (its functions may be half built, and the syntax error is the answer); the other files are not.
+void Parser::GeneratePendingMcpTools()
+{
+  ParsedBundle* previous_bundle = current_bundle;
+  SymbolTableManager* previous_table = symbol_table;
+  for(size_t i = 0; i < mcp_pending.size(); ++i) {
+    McpPending& pending = mcp_pending[i];
+    if(mcp_broken_files.find(pending.klass->GetFileName()) != mcp_broken_files.end()) {
+      continue;
+    }
+
+    current_bundle = pending.bundle;
+    symbol_table = pending.bundle->GetSymbolTableManager();
+    current_class = pending.klass;
+    try {
+      GenerateMcpTools(pending.klass, pending.tools, pending.uses_mcp, 1);
+    }
+    catch(const NestingTooDeep&) {
+      // reported where it was found
+    }
+    current_class = nullptr;
+  }
+  mcp_pending.clear();
+  current_bundle = previous_bundle;
+  symbol_table = previous_table;
+}
+
+void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth)
 {
   McpHelpers helpers;
   helpers.cls = klass->GetName();
   const std::wstring file_name = klass->GetFileName();
 
   // the code written below names API.MCP classes, whose generic arguments resolve by their short names: the file must use the bundle
-  if(!current_lib_uses || std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) == current_lib_uses->end()) {
+  if(!uses_mcp) {
     diagnostics.Error(file_name, tools[0].method->GetLineNumber(), tools[0].method->GetLinePosition(),
                       L"a file with an '@tool' function needs 'use API.MCP;' (and -lib mcp): the tool is registered with that library's classes");
     return;
@@ -9030,7 +9183,9 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
 
         std::wstring why;
         if(!McpAnalyze(entry->GetType(), param.ty, why, false, 0)) {
-          diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(), L"the parameter '" + param.name + L"' of the tool '" + doc.name + L"': " + why);
+          if(!why.empty()) {
+            diagnostics.Error(file_name, parameter->GetLineNumber(), parameter->GetLinePosition(), L"the parameter '" + param.name + L"' of the tool '" + doc.name + L"': " + why);
+          }
           ok = false;
           break;
         }
@@ -9056,7 +9211,7 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
             break;
           }
         }
-        params.push_back(param);
+        params.push_back(std::move(param));
       }
     }
     if(!ok) {
@@ -9256,16 +9411,12 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
           }
           case CHAR_STR_EXPR: {
             CharacterString* text = static_cast<CharacterString*>(expression);
-            // a string with nothing interpolated holds its text itself; one with a '{$...}' in it is not a literal
-            std::vector<CharacterStringSegment*> segments = text->GetSegments();
-            bool plain = true;
-            for(size_t k = 0; k < segments.size(); ++k) {
-              if(segments[k]->GetType() != STRING) {
-                plain = false;
-              }
-            }
-            if(plain) {
-              literal = L"\"" + McpLit(text->GetString()) + L"\"";
+            // The node holds the literal as it is spelled in the source, escapes and all, so it is written
+            // back as it stands and read once more by the same scanner. One with a '{$...}' in it is not a
+            // literal (the segments that say so are filled in later, by the analyzer, from this same text).
+            const std::wstring spelling = text->GetString();
+            if(spelling.find(L"{$") == std::wstring::npos) {
+              literal = (text->IsLiteral() ? L"$\"" : L"\"") + spelling + L"\"";
             }
             break;
           }
@@ -9318,7 +9469,7 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
       spec = prompt_var + L" := API.MCP.McpPrompt->New(\"" + McpLit(doc.name) + L"\", \"" + McpLit(doc.description) + L"\", Func2Ref->New(" + helpers.cls + L"->" + adapter_name +
              L"(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>); " + prompt_args + L"mcp_service->AddPrompt(" + prompt_var + L");";
     }
-    registrations.push_back(spec);
+    registrations.push_back(std::move(spec));
 
     const std::wstring invoke = helpers.cls + L"->" + function_name + L"(" + call_args + L")";
     if(doc.kind == 1) {
@@ -9377,10 +9528,13 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, in
 
   // The entry point of 'obr --mcp' / 'obr --mcp-http': a server of this class's tools, resources and prompts.
   // A McpMain the program wrote itself wins (it can register several classes, which a generated one cannot).
+  // Only the entry itself counts, McpMain(args : String[]), which ParseMethod has already held to
+  // 'function ... ~ Nil': the name alone used to decide, so a class with any other method named McpMain
+  // (another parameter list) got no entry at all and 'obr --mcp' found nothing to serve.
   bool has_entry = false;
   std::vector<Method*> existing = klass->GetMethods();
   for(size_t i = 0; i < existing.size(); ++i) {
-    if(McpAfterColon(existing[i]->GetName()) == L"McpMain") {
+    if(HasMcpEntrySignature(existing[i])) {
       has_entry = true;
     }
   }

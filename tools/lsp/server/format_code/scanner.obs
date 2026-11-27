@@ -422,8 +422,11 @@ class Scanner {
 					}
 
 					label '=' {
+						# '=>' (a lambda's body, a 'match' arm) is one token. It was scanned
+						# as '<>' with the '>' left behind, so formatting wrote '<> >'.
 						if(@next_char = '>') {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->NEQL, "neql"));
+							@tokens->AddBack(Token->New(@line_num, Token->Type->LAMBDA, "lambda"));
+							NextChar();
 							NextChar();
 						}
 						else {
@@ -438,7 +441,8 @@ class Scanner {
 							NextChar();
 						}
 						else if(@next_char = '=') {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->LAMBDA, "less_eql"));
+							# '<=' was given the lambda's token, and formatting wrote '=>'
+							@tokens->AddBack(Token->New(@line_num, Token->Type->LESS_EQL, "less_eql"));
 							NextChar();
 						}
 						else {

@@ -987,6 +987,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_label_fatal.py "%BIN%"
 
+    - name: obc compiles or refuses deep nesting, never crashes (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_nesting_limit.py "%BIN%"
+
     - name: select statements emit the same jump labels on every compiler (Windows)
       working-directory: ./programs/regression
       shell: cmd
@@ -994,6 +1002,22 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_select_label_order.py "%BIN%"
+
+    - name: obc answers large generated programs within a ceiling (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_compile_time_ceiling.py "%BIN%"
+
+    - name: obc output is reproducible, with and without -debug (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_obc_debug_reproducible.py "%BIN%"
 
     - name: obc and obr find their libraries from another working directory (Windows)
       working-directory: ./programs/regression
@@ -1058,6 +1082,14 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_console_read_offset.py "%BIN%"
+
+    - name: Console WriteBuffer honours the offset (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_console_write_offset.py "%BIN%"
 
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,

@@ -247,6 +247,26 @@ namespace Runtime {
       return state;
     }
 
+    //
+    // Called by a spawned thread as it ends, before it reports itself finished
+    // (AsyncMethodCall): the root is given back while the collector's tables are
+    // certain to exist. Left to ~RaisedErrorState it was removed by a thread_local
+    // destructor, which runs after the thread's entry function has returned --
+    // after ThreadFinished(), the point from which the VM takes every thread to be
+    // gone. Main's drain could see the count reach zero, return, and have exit()
+    // destroy pending_thread_roots while that thread was still on its way to
+    // erasing from it. The destructor stays for a thread that does not end through
+    // AsyncMethodCall; after this call it finds nothing registered.
+    //
+    static void ReleaseRaisedError() {
+      RaisedErrorState& state = RaisedError();
+      if(state.registered) {
+        MemoryManager::RemovePendingThreadRoot(&state.object);
+        state.registered = false;
+      }
+      state.object = nullptr;
+    }
+
     static void SetRaisedErrorObject(size_t* object) {
       RaisedErrorState& state = RaisedError();
       if(!state.registered) {
@@ -780,6 +800,7 @@ namespace Runtime {
     void CpyCharAry(size_t* &op_stack, size_t* &stack_pos);
     void CpyIntAry(size_t* &op_stack, size_t* &stack_pos);
     void CpyFloatAry(size_t* &op_stack, size_t* &stack_pos);
+    void NilArrayCleared(size_t* &stack_pos);
     void ZeroByteAry(size_t*& op_stack, size_t*& stack_pos);
     void ZeroCharAry(size_t*& op_stack, size_t*& stack_pos);
     void ZeroIntAry(size_t*& op_stack, size_t*& stack_pos);

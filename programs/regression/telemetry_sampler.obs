@@ -51,6 +51,11 @@ class ScriptedGpu implements ResourceSampler {
 
 class TelemetrySamplerTest {
 	@failures : static : Int;
+	@fed : static : Int;
+
+	function : SetFed(t : Int) ~ Nil {
+		@fed := t;
+	}
 
 	function : Main(args : String[]) ~ Nil {
 		@failures := 0;
@@ -60,6 +65,7 @@ class TelemetrySamplerTest {
 		Energy();
 		Loop();
 		Wiring();
+		Concurrent();
 		if(@failures > 0) {
 			"telemetry_sampler: {$@failures} failure(s)"->PrintLine();
 			Runtime->Exit(1);
@@ -231,6 +237,19 @@ class TelemetrySamplerTest {
 		h->AddSample(1.0, 100.0);
 		Near("held tail: 0.5 to 1.5 at 100 W is 100 J", h->JoulesBetween(0.5, 1.5), 100.0, 1.0e-9);
 
+		# a held tail is measured from the last sample, not from where the query starts: a reading
+		# taken at t = 0 says nothing about 100 s later, however short the query window is
+		stale := EnergyEstimator->New();
+		stale->SetMaxGap(2.0);
+		stale->AddSample(0.0, 10.0);
+		Check("a 1 s window 100 s after the only sample has no estimate", stale->JoulesBetween(100.0, 101.0) <> stale->JoulesBetween(100.0, 101.0));
+		Near("a window right after it is held: 10 W for 1 s", stale->JoulesBetween(0.5, 1.5), 10.0, 1.0e-9);
+		Near("held up to the maximum gap: 10 W for 2 s", stale->JoulesBetween(1.0, 2.0), 10.0, 1.0e-9);
+		Check("a window that ends past the maximum gap has no estimate", stale->JoulesBetween(1.0, 2.5) <> stale->JoulesBetween(1.0, 2.5));
+		stale->AddSample(1.0, 10.0);
+		Near("after a second sample the hold counts from it: 1 to 2.5", stale->JoulesBetween(1.0, 2.5), 15.0, 1.0e-9);
+		Check("and not from the query's start: 50 to 51 is stale", stale->JoulesBetween(50.0, 51.0) <> stale->JoulesBetween(50.0, 51.0));
+
 		# refused samples change nothing
 		r := EnergyEstimator->New();
 		r->AddSample(1.0, 50.0);
@@ -348,6 +367,69 @@ class TelemetrySamplerTest {
 		Check("after JSON: energy, GPU and host memory", bq <> Nil & Float->Abs(bq->GetJoulesPerRun() - 6.0) < 1.0e-12 & bq->GetGpuMemory() = 300.0 & bq->GetHostMemory() = 5.0e8);
 	}
 
+	# A sampler thread adds samples while a call asks for its energy. A 1 W source sampled every
+	# second, the ring full and wrapping: the energy of a window 100 samples back is 10 J, and a
+	# window of retained samples is never NaN (the gap limit is 1.5 s, so a reader that saw the
+	# ring half moved, two samples that are not neighbours, would answer NaN or something else).
+	function : Concurrent() ~ Nil {
+		est := EnergyEstimator->New(8192);
+		est->SetMaxGap(1.5);
+		for(t := 0; t < 8192; t += 1;) {
+			est->AddSample(t->As(Float), 1.0);
+		};
+		@fed := 8191;
+		writer := EnergyWriter->New(est, 8192, 400000);
+		# readers that ask again the moment they are answered: a mutex that does not favor the waiting
+		# writer (macOS, Linux) lets them keep it out, so the energy estimator has to stand them aside
+		pressure := Vector->New()<EnergyReader>;
+		for(r := 0; r < 3; r += 1;) {
+			reader := EnergyReader->New(est);
+			pressure->AddBack(reader);
+			reader->Execute(Nil);
+		};
+		writer->Execute(Nil);
+		bad := 0;
+		reads := 0;
+		stalled := false;
+		last_fed := @fed;
+		last_move := Telemetry->NowMs();
+		while(@fed < 400000 - 1 & stalled = false) {
+			# the sampler must keep moving: a hang is a failure with a message, not a timeout
+			if(@fed <> last_fed) {
+				last_fed := @fed;
+				last_move := Telemetry->NowMs();
+			}
+			else if(Telemetry->NowMs() - last_move > 20000) {
+				stalled := true;
+			};
+			head := @fed;
+			j := est->JoulesBetween((head - 100)->As(Float), (head - 90)->As(Float));
+			# a reader the machine held back while the writer lapped the ring asked about samples that
+			# are gone, and NaN is the right answer then: only a window still retained counts
+			if(@fed - head < 8000) {
+				reads += 1;
+				if(j <> j | Float->Abs(j - 10.0) > 1.0e-6) {
+					bad += 1;
+				};
+			};
+		};
+		each(rd in pressure) {
+			rd->Stop();
+		};
+		if(stalled) {
+			"  FAIL: the sampler thread stopped adding samples for 20 s while the energy was read (starved by its readers)"->PrintLine();
+			@failures += 1;
+			return;
+		};
+		writer->Join();
+		each(rd in pressure) {
+			rd->Join();
+		};
+		"  info: {$reads} reads while the sampler wrote, {$bad} torn"->ErrorLine();
+		Check("energy read while samples are added is never torn", bad = 0 & reads > 0);
+		Near("and the total stayed exact", est->GetJoules(), 399999.0, 1.0e-6);
+	}
+
 	function : Near(name : String, got : Float, want : Float, tol : Float) ~ Nil {
 		Check("{$name} (got {$got}, want {$want})", got = got & Float->Abs(got - want) <= tol);
 	}
@@ -359,6 +441,47 @@ class TelemetrySamplerTest {
 		else {
 			"  FAIL: {$name}"->PrintLine();
 			@failures += 1;
+		};
+	}
+}
+
+class EnergyWriter from Thread {
+	@est : EnergyEstimator;
+	@first : Int;
+	@to : Int;
+
+	New(est : EnergyEstimator, first : Int, to : Int) {
+		Parent();
+		@est := est;
+		@first := first;
+		@to := to;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		for(t := @first; t < @to; t += 1;) {
+			@est->AddSample(t->As(Float), 1.0);
+			TelemetrySamplerTest->SetFed(t);
+		};
+	}
+}
+
+class EnergyReader from Thread {
+	@est : EnergyEstimator;
+	@running : Bool;
+
+	New(est : EnergyEstimator) {
+		Parent();
+		@est := est;
+		@running := true;
+	}
+
+	method : public : Stop() ~ Nil {
+		@running := false;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(@running) {
+			@est->JoulesBetween(1000.0, 1050.0);
 		};
 	}
 }

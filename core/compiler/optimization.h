@@ -152,6 +152,7 @@ class ItermediateOptimizer {
   IntermediateBlock* LICM(IntermediateBlock* input);
   bool HoistFromLoop(const Cfg& cfg, size_t loop_index, std::vector<IntermediateInstruction*>& instrs);
 
+  int InlinedAndOrType(IntermediateMethod* mthd_called);
   bool CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*> &inlined_mthds, std::set<int> &lbl_jmp_offsets);
   
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);

@@ -360,6 +360,26 @@ class OllamaApiTest {
       Check("new show reply fields", model->GetInfo()->HasCapability("tools") & model->GetInfo()->GetLicense()->Equals("MIT"));
     };
 
+    # each endpoint decides which kind of record it parses; a field's presence does not
+    body := "{\"modelfile\":\"FROM x\",\"name\":\"llama3.2:latest\",\"digest\":\"abc\",\"capabilities\":[\"completion\"],\"details\":{\"family\":\"llama\"}}";
+    model := Model->ParseShowResponse(body);
+    Check("a show reply that carries a name is still a show record", model <> Nil & model->GetInfo() <> Nil & model->GetPulled() = Nil);
+    if(model <> Nil & model->GetInfo() <> Nil) {
+      Check("with its fields read", model->GetInfo()->GetModelFile()->Equals("FROM x") & model->GetInfo()->HasCapability("completion"));
+    };
+    body := "{\"models\":[{\"model\":\"qwen3:8b\",\"capabilities\":[\"completion\",\"tools\"],\"size\":7,\"details\":{\"family\":\"qwen3\"}}]}";
+    models := Model->ParseModelList(body);
+    Check("a listing row with model and capabilities only parses", models <> Nil & models->Size() = 1);
+    if(models <> Nil & models->Size() = 1) {
+      Check("it is a listing entry, not show metadata", models->Get(0)->GetPulled() <> Nil & models->Get(0)->GetInfo() = Nil);
+      if(models->Get(0)->GetPulled() <> Nil) {
+        Check("with its model, size and capabilities", models->Get(0)->GetPulled()->GetModel()->Equals("qwen3:8b") & models->Get(0)->GetPulled()->GetSize() = 7 & models->Get(0)->GetPulled()->GetCapabilities()->Size() = 2);
+      };
+    };
+    models := Model->ParseModelList("{\"models\":[{\"size\":1},{\"name\":\"a\"},{\"template\":\"x\"}]}");
+    Check("a listing row naming no model is skipped", models <> Nil & models->Size() = 1 & models->Get(0)->GetPulled()->GetName()->Equals("a"));
+    Check("the one-argument constructor keeps its guess", Model->New(JsonParser->TextToElement("{\"modelfile\":\"x\"}"))->GetInfo() <> Nil & Model->New(JsonParser->TextToElement("{\"name\":\"x\"}"))->GetPulled() <> Nil);
+
     Check("version", Model->ParseVersionResponse("{\"version\":\"0.12.6\"}")->Equals("0.12.6"));
     Check("pull success status", Model->ParseStatusResponse("{\"status\":\"success\"}"));
   }

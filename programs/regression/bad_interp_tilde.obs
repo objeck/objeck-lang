@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Invalid expression in string interpolation
+# EXPECT_ERROR_COUNT: 1
+#~
+A stray tilde after a call inside an interpolation is read as the start of a function type
+that never comes: the same crash, now the error of the interpolation.
+~#
+class BadInterpTilde {
+	function : Main(args : String[]) ~ Nil {
+		text := "abc";
+		"size {$text->Size()~->ToString()} done"->PrintLine();
+	}
+}

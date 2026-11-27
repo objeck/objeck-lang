@@ -4,7 +4,12 @@ AgentScope (API.Agent): limits for every agent run inside a block, against a scr
 no network). Totals across runs (steps, tokens, tool calls), a run that is not started when nothing is left,
 the agent's own budget still applying, nesting (inner can only tighten), cancellation, cleanup on a normal
 exit, an early return and an exception, the trace, threads (no inheritance, Child() charges the parent),
-entering a scope twice, and reuse.
+entering a scope twice, and reuse. Then the cases an independent review found: a Child() entered on its
+parent's own thread, a run started from inside another run (an observer, a tool that runs an agent), an
+observer that raises, calls that were skipped, and a parent entered from inside its own child. Then a
+Child() entered inside a scope that is not its parent (limited by both, each charged once, either one's
+cancel stops it, no loop through the second edge) and a Child() whose parent is not entered (the parent's
+left-over cancel token is not inherited, the parent's counters still add up).
 ~#
 use API.Agent;
 use Data.JSON;
@@ -64,8 +69,74 @@ class ChildWorker from Thread {
   }
 }
 
+# starts a second run when the first reply of a run arrives
+class NestOnReply implements AgentObserver {
+  New() {
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+    if(step_index = 1) {
+      AgentScopeTest->Second();
+    };
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+  }
+}
+
+# a tool that runs an agent: directly, or under a scope of its own
+class SubAgentHandler implements AgentToolHandler {
+  @scoped : Bool;
+
+  New(scoped : Bool) {
+    @scoped := scoped;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    if(@scoped) {
+      AgentScope->Run(AgentScopeTest->GetInner(), AgentScopeTest->Second() ~ Nil);
+    }
+    else {
+      AgentScopeTest->Second();
+    };
+    return "the sub agent ran";
+  }
+}
+
+# raises out of the first reply it hears, or out of the first tool result
+class RaiseOnce implements AgentObserver {
+  @on_reply : Bool;
+  @armed : Bool;
+
+  New(on_reply : Bool) {
+    @on_reply := on_reply;
+    @armed := true;
+  }
+
+  method : public : OnReply(step_index : Int, reply : AgentReply) ~ Nil {
+    if(@on_reply & @armed) {
+      @armed := false;
+      Runtime->Raise(Error->New("the observer raised"));
+    };
+  }
+
+  method : public : OnToolResult(step_index : Int, result : AgentToolResult) ~ Nil {
+    if(<>@on_reply & @armed) {
+      @armed := false;
+      Runtime->Raise(Error->New("the observer raised"));
+    };
+  }
+}
+
 class AgentScopeTest {
   @failures : static : Int;
+  @outer : static : AgentScope;
+  @seen : static : AgentScope;
+  @raised : static : String;
+  @second : static : AgentResult;
+  @mid_steps : static : Int;
+  @mid_tools : static : Int;
+  @backend2 : static : ScriptedBackend;
   @agent : static : Agent;
   @agent2 : static : Agent;
   @results : static : Vector<AgentResult>;
@@ -382,6 +453,404 @@ class AgentScopeTest {
     Check("and a rerun starts from zero", scope->GetRuns() = 1 & scope->GetStepsUsed() = 2);
   }
 
+  # ---- a Child() entered on the thread that is inside its parent
+
+  function : GetInner() ~ AgentScope {
+    return @inner;
+  }
+
+  function : Second() ~ Nil {
+    @second := @agent2->Run("a run from inside a run");
+  }
+
+  function : ChildThenMore() ~ Nil {
+    AgentScope->Run(@child, One() ~ Nil);
+    @seen := AgentScope->Current();
+    @results->AddBack(@agent->Run("after the child"));
+  }
+
+  function : ChildThenCancel() ~ Nil {
+    AgentScope->Run(@child, One() ~ Nil);
+    @outer->Cancel("the parent was cancelled");
+    @results->AddBack(@agent->Run("after the child"));
+  }
+
+  function : TestChildOnSameThread() ~ Nil {
+    "a child on its parent's thread:"->PrintLine();
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(2);
+    @child := @outer->Child();
+    AgentScope->Run(@outer, ChildThenMore() ~ Nil);
+    Check("the child's run was charged to both", @child->GetStepsUsed() = 2 & @results->Get(0)->IsCompleted());
+    Check("leaving the child puts the thread back in the parent", @seen = @outer);
+    Check("the parent's limit holds for the run after the child", Same(@results->Get(1)->GetStopReason(), "budget_steps") & @results->Get(1)->GetSteps()->Size() = 0 & @backend->GetAskedCount() = 2);
+    Check("the parent counted both runs", @outer->GetRuns() = 2 & @outer->GetStepsUsed() = 2);
+    Check("Current is Nil after the parent's block", AgentScope->Current() = Nil);
+
+    # the parent's cancel still reaches a run after the child
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New();
+    @child := @outer->Child();
+    AgentScope->Run(@outer, ChildThenCancel() ~ Nil);
+    Check("the parent's cancel holds for the run after the child", Same(@results->Get(1)->GetStopReason(), "cancelled") & @backend->GetAskedCount() = 2);
+
+    # a child of some other scope, entered inside an unrelated one: the unrelated scope comes back
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(10);
+    elsewhere := AgentScope->New()->SetMaxSteps(10);
+    @child := elsewhere->Child();
+    AgentScope->Run(@outer, ChildThenMore() ~ Nil);
+    Check("a child of another scope leaves the enclosing scope in place", @seen = @outer & @results->Get(1)->IsCompleted());
+    Check("that child charged its own parent", elsewhere->GetStepsUsed() = 2 & AgentScope->Current() = Nil);
+  }
+
+  # ---- a run started from inside another run
+
+  function : Counted2(first : Int, second : Int) ~ Vector<AgentReply> {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Counted(AgentReply->Ask("n1", "count", "{}"), first, 0));
+    script->AddBack(Counted(AgentReply->Say("inner done"), second, 0));
+    return script;
+  }
+
+  # an agent whose one tool runs @agent2
+  function : Delegating(scoped : Bool, tokens : Int) ~ Agent {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("delegate", "runs another agent", Json("{\"type\":\"object\",\"properties\":{}}"), SubAgentHandler->New(scoped)));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Counted(AgentReply->Ask("d1", "delegate", "{}"), tokens, 0));
+    script->AddBack(Counted(AgentReply->Say("outer done"), tokens, 0));
+    @backend := ScriptedBackend->New(script);
+    return Agent->New(@backend, registry);
+  }
+
+  function : Inner(first : Int, second : Int) ~ Agent {
+    @backend2 := ScriptedBackend->New(Counted2(first, second));
+    return Agent->New(@backend2, Registry());
+  }
+
+  function : TestNestedRuns() ~ Nil {
+    "a run inside a run:"->PrintLine();
+    # from an observer: the first run's reply is already counted when the second run is admitted
+    @agent := NewAgent(1);
+    @agent->SetObserver(NestOnReply->New());
+    asked := @backend;
+    @agent2 := Inner(10, 10);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetMaxSteps(2);
+    AgentScope->Run(scope, One() ~ Nil);
+    Check("observer: the model was asked twice in all, the limit", asked->GetAskedCount() + @backend2->GetAskedCount() = 2 & scope->GetStepsUsed() = 2);
+    Check("observer: the inner run got the one step that was left", Same(@second->GetStopReason(), "budget_steps") & @second->GetSteps()->Size() = 1);
+    Check("observer: the outer run stops when it finds the scope spent", Same(@results->Get(0)->GetStopReason(), "budget_steps") & @results->Get(0)->GetSteps()->Size() = 1 & @results->Get(0)->GetError()->Find("agent scope") > -1);
+    Check("observer: both runs were counted", scope->GetRuns() = 2);
+
+    # from a tool (an agent as a tool)
+    CountHandler->Reset();
+    @agent := Delegating(false, 10);
+    @agent2 := Inner(10, 10);
+    @results := Vector->New()<AgentResult>;
+    scope2 := AgentScope->New()->SetMaxSteps(3);
+    AgentScope->Run(scope2, One() ~ Nil);
+    Check("tool: the inner run completes in the two steps left", @second->IsCompleted() & @second->GetSteps()->Size() = 2);
+    Check("tool: the outer run finds no step left for its answer", Same(@results->Get(0)->GetStopReason(), "budget_steps") & @results->Get(0)->GetSteps()->Size() = 1);
+    Check("tool: three replies in all, the limit", scope2->GetStepsUsed() = 3 & @backend->GetAskedCount() + @backend2->GetAskedCount() = 3);
+    Check("tool: the outer call's result is in the transcript", Same(@results->Get(0)->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus(), "ok"));
+
+    # room for both: nothing changes
+    @agent := Delegating(false, 10);
+    @agent2 := Inner(10, 10);
+    @results := Vector->New()<AgentResult>;
+    scope3 := AgentScope->New()->SetMaxSteps(4)->SetMaxToolCalls(2)->SetMaxTokens(1000);
+    AgentScope->Run(scope3, One() ~ Nil);
+    Check("tool: with room for both, both complete", @second->IsCompleted() & @results->Get(0)->IsCompleted());
+    Check("tool: every reply, call and token is counted once", scope3->GetStepsUsed() = 4 & scope3->GetToolCallsUsed() = 2 & scope3->GetTokensUsed() = 40 & scope3->GetRuns() = 2);
+
+    # tool calls: the call that is running is already counted
+    CountHandler->Reset();
+    @agent := Delegating(false, 10);
+    @agent2 := Inner(10, 10);
+    @results := Vector->New()<AgentResult>;
+    scope4 := AgentScope->New()->SetMaxToolCalls(1);
+    AgentScope->Run(scope4, One() ~ Nil);
+    Check("tool calls: the inner run is not started", Same(@second->GetStopReason(), "budget_tool_calls") & @second->GetSteps()->Size() = 0 & @backend2->GetAskedCount() = 0);
+    Check("tool calls: one call, the limit", scope4->GetToolCallsUsed() = 1 & CountHandler->GetCount() = 0 & @results->Get(0)->IsCompleted());
+
+    # tokens: the outer reply's tokens are counted when the inner run starts
+    @agent := Delegating(false, 20);
+    @agent2 := Inner(20, 20);
+    @results := Vector->New()<AgentResult>;
+    scope5 := AgentScope->New()->SetMaxTokens(25);
+    AgentScope->Run(scope5, One() ~ Nil);
+    Check("tokens: the inner run stops after one reply", Same(@second->GetStopReason(), "budget_tokens") & @second->GetSteps()->Size() = 1);
+    Check("tokens: the outer run stops too", Same(@results->Get(0)->GetStopReason(), "budget_tokens") & @results->Get(0)->GetSteps()->Size() = 1);
+    Check("tokens: over by one reply at most", scope5->GetTokensUsed() = 40);
+
+    # the tool enters a scope of its own: both scopes are charged, the outer limit holds
+    @agent := Delegating(true, 10);
+    @agent2 := Inner(10, 10);
+    @results := Vector->New()<AgentResult>;
+    @inner := AgentScope->New()->SetMaxSteps(100);
+    scope6 := AgentScope->New()->SetMaxSteps(2);
+    AgentScope->Run(scope6, One() ~ Nil);
+    Check("inner scope: its run gets the outer scope's last step", Same(@second->GetStopReason(), "budget_steps") & @second->GetSteps()->Size() = 1 & @inner->GetStepsUsed() = 1);
+    Check("inner scope: the outer limit holds", scope6->GetStepsUsed() = 2 & Same(@results->Get(0)->GetStopReason(), "budget_steps"));
+    Check("inner scope: the thread is back in no scope", AgentScope->Current() = Nil);
+  }
+
+  # ---- an observer that raises
+
+  function : RaiseThenRun() ~ Nil {
+    try {
+      @results->AddBack(@agent->Run("one"));
+    }
+    on(e : Error) {
+      @raised := e->GetMessage();
+    };
+    @mid_steps := AgentScope->Current()->GetStepsUsed();
+    @mid_tools := AgentScope->Current()->GetToolCallsUsed();
+    @results->AddBack(@agent->Run("two"));
+  }
+
+  function : TestObserverRaises() ~ Nil {
+    "an observer that raises:"->PrintLine();
+    @agent := NewAgent(2);
+    @agent->SetObserver(RaiseOnce->New(true));
+    @results := Vector->New()<AgentResult>;
+    @raised := Nil;
+    scope := AgentScope->New()->SetMaxSteps(10);
+    AgentScope->Run(scope, RaiseThenRun() ~ Nil);
+    Check("the error reaches the caller", Same(@raised, "the observer raised") & @results->Size() = 1);
+    Check("the reply the run had was charged", @mid_steps = 1 & @mid_tools = 0);
+    Check("the run is counted and is the scope's halt", scope->GetRuns() = 2 & Same(scope->GetHalt(), "error"));
+    entries := @agent->GetConversation()->GetEntries();
+    Check("the unanswered call was answered as not run", entries->Size() = 5 & Same(entries->Get(2)->GetRole(), "tool") & entries->Get(2)->IsError() & Same(entries->Get(2)->GetCallId(), "c0"));
+    Check("the agent runs again in the same scope", @results->Get(0)->GetSteps()->Size() = 1 & scope->GetStepsUsed() = 2);
+    Check("the agent's budget and token are put back", @agent->GetBudget() = Nil & @agent->GetCancel() = Nil);
+
+    # raised from a tool result: the call that ran keeps its result, the rest are answered
+    CountHandler->Reset();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("a", "count", Json("{}")));
+    calls->AddBack(AgentToolCall->New("b", "count", Json("{}")));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->AskAll(calls));
+    script->AddBack(AgentReply->Say("carried on"));
+    @backend := ScriptedBackend->New(script);
+    @agent := Agent->New(@backend, Registry());
+    @agent->SetObserver(RaiseOnce->New(false));
+    @results := Vector->New()<AgentResult>;
+    @raised := Nil;
+    scope2 := AgentScope->New()->SetMaxToolCalls(10);
+    AgentScope->Run(scope2, RaiseThenRun() ~ Nil);
+    entries2 := @agent->GetConversation()->GetEntries();
+    Check("tool result: the error reaches the caller after one call ran", Same(@raised, "the observer raised") & CountHandler->GetCount() = 1 & @mid_tools = 1);
+    Check("tool result: both calls have an answer", entries2->Size() = 6 & <>entries2->Get(2)->IsError() & entries2->Get(3)->IsError() & Same(entries2->Get(3)->GetCallId(), "b"));
+    Check("tool result: the next run completes", @results->Get(0)->IsCompleted() & Same(@results->Get(0)->GetText(), "carried on"));
+  }
+
+  # ---- skipped calls are not tool calls for the scope
+
+  function : SkippedThenRun() ~ Nil {
+    @results->AddBack(@agent->Run("one"));
+    @mid_tools := AgentScope->Current()->GetToolCallsUsed();
+    @agent->SetMaxSteps(5);
+    @results->AddBack(@agent->Run("two"));
+  }
+
+  function : TestSkippedCalls() ~ Nil {
+    "skipped calls:"->PrintLine();
+    CountHandler->Reset();
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("a", "count", Json("{}")));
+    calls->AddBack(AgentToolCall->New("b", "count", Json("{}")));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->AskAll(calls));
+    script->AddBack(AgentReply->Ask("c", "count", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    @backend := ScriptedBackend->New(script);
+    @agent := Agent->New(@backend, Registry());
+    @agent->SetMaxSteps(1);
+    @results := Vector->New()<AgentResult>;
+    scope := AgentScope->New()->SetMaxToolCalls(2);
+    AgentScope->Run(scope, SkippedThenRun() ~ Nil);
+    first := @results->Get(0);
+    Check("the step limit skipped both calls; the transcript still lists them", first->GetToolCallCount() = 2 & Same(first->GetSteps()->Get(0)->GetResults()->Get(1)->GetStatus(), "skipped"));
+    Check("calls that did not run are not charged to the scope", @mid_tools = 0);
+    Check("the next run has the whole tool budget", @results->Get(1)->IsCompleted() & CountHandler->GetCount() = 1 & scope->GetToolCallsUsed() = 1);
+  }
+
+  # ---- a parent entered from inside its own child
+
+  function : EnterParent() ~ Nil {
+    try {
+      AgentScope->Run(@outer, One() ~ Nil);
+    }
+    on(e : Error) {
+      @raised := e->GetMessage();
+    };
+    @seen := AgentScope->Current();
+    @results->AddBack(@agent->Run("in the child"));
+  }
+
+  function : TestParentInsideChild() ~ Nil {
+    "a parent entered inside its child:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @raised := Nil;
+    @outer := AgentScope->New()->SetMaxSteps(5);
+    @child := @outer->Child();
+    AgentScope->Run(@child, EnterParent() ~ Nil);
+    Check("entering the parent raises instead of looping", @raised <> Nil & @raised->Find("parent of") > -1);
+    Check("the thread is still inside the child", @seen = @child);
+    Check("the child's run is still limited by and charged to the parent", @results->Size() = 1 & @results->Get(0)->IsCompleted() & @outer->GetStepsUsed() = 2 & @child->GetStepsUsed() = 2);
+    Check("the scope was left", AgentScope->Current() = Nil);
+
+    @results := Vector->New()<AgentResult>;
+    AgentScope->Run(@outer, One() ~ Nil);
+    Check("the parent can be entered afterwards", @outer->GetRuns() = 1 & @results->Get(0)->IsCompleted() & AgentScope->Current() = Nil);
+  }
+
+  # ---- a Child() entered inside a scope that is not its parent
+
+  function : ChildTwo() ~ Nil {
+    AgentScope->Run(@child, Two() ~ Nil);
+    @seen := AgentScope->Current();
+  }
+
+  function : CancelAroundThenOne() ~ Nil {
+    @outer->Cancel("the scope around the child was cancelled");
+    @results->AddBack(@agent->Run("after the cancel"));
+  }
+
+  function : ChildCancelAround() ~ Nil {
+    AgentScope->Run(@child, CancelAroundThenOne() ~ Nil);
+  }
+
+  function : EnterOuterAgain() ~ Nil {
+    try {
+      AgentScope->Run(@inner, One() ~ Nil);
+    }
+    on(e : Error) {
+      @raised := e->GetMessage();
+    };
+    @seen := AgentScope->Current();
+    @results->AddBack(@agent->Run("in the child"));
+  }
+
+  function : ChildThenOuterAgain() ~ Nil {
+    AgentScope->Run(@child, EnterOuterAgain() ~ Nil);
+  }
+
+  function : TestChildInsideUnrelated() ~ Nil {
+    "a child inside a scope that is not its parent:"->PrintLine();
+    # the scope around is the tighter one
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(2);
+    parent := AgentScope->New()->SetMaxSteps(10);
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("the scope around the child limits it", @results->Size() = 2 & @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps"));
+    Check("the refused run asked the model nothing", @backend->GetAskedCount() = 2);
+    Check("the scope around was charged once", @outer->GetStepsUsed() = 2 & @outer->GetRuns() = 2);
+    Check("the parent was charged once", parent->GetStepsUsed() = 2 & parent->GetRuns() = 2);
+    Check("the child was charged once", @child->GetStepsUsed() = 2 & @child->GetRuns() = 2);
+    Check("the thread was back in the scope around", @seen = @outer);
+    Check("and is in none afterwards", AgentScope->Current() = Nil);
+
+    # the parent is the tighter one
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(10);
+    parent := AgentScope->New()->SetMaxSteps(2);
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("the parent still limits it", @results->Size() = 2 & @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps"));
+    Check("both were charged once", @outer->GetStepsUsed() = 2 & parent->GetStepsUsed() = 2);
+
+    # the limit of the scope around runs out in the middle of a run
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(3)->SetMaxToolCalls(5);
+    parent := AgentScope->New()->SetMaxToolCalls(5);
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("a run stops when the scope around runs out", @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps") & @outer->GetStepsUsed() = 3);
+    Check("tool calls are charged to both, once", @outer->GetToolCallsUsed() = 2 & parent->GetToolCallsUsed() = 2 & @child->GetToolCallsUsed() = 2);
+
+    # a child of the scope around itself is not charged twice
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(10);
+    @child := @outer->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("a child inside its own parent charges it once", @outer->GetStepsUsed() = 4 & @child->GetStepsUsed() = 4);
+
+    # cancelling the scope around stops the child's runs
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New();
+    parent := AgentScope->New();
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildCancelAround() ~ Nil);
+    Check("cancelling the scope around stops the child's run", @results->Size() = 1 & Same(@results->Get(0)->GetStopReason(), "cancelled") & @backend->GetAskedCount() = 0);
+
+    # X is a child of Y; Z (a child of an unrelated scope) is entered inside X; Y entered inside Z would be
+    # limited by itself through the scope around Z
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @raised := Nil;
+    @inner := AgentScope->New()->SetMaxSteps(10);
+    @outer := @inner->Child();
+    parent := AgentScope->New();
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildThenOuterAgain() ~ Nil);
+    Check("a loop through the scope around raises", @raised <> Nil & @raised->Find("parent of") > -1);
+    Check("the thread is still inside the child", @seen = @child);
+    Check("and the run after it is charged to all three, once", @results->Size() = 1 & @results->Get(0)->IsCompleted() & @inner->GetStepsUsed() = 2 & @outer->GetStepsUsed() = 2 & parent->GetStepsUsed() = 2);
+    Check("the scopes were left", AgentScope->Current() = Nil);
+  }
+
+  # ---- a Child() whose parent is not entered
+
+  function : CancelSelf() ~ Nil {
+    AgentScope->Current()->Cancel("cancelled while it was entered");
+  }
+
+  function : TestParentNotEntered() ~ Nil {
+    "a child whose parent is not entered:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    parent := AgentScope->New();
+    AgentScope->Run(parent, CancelSelf() ~ Nil);
+    Check("the parent's last token is cancelled", parent->GetCancel() <> Nil & parent->GetCancel()->IsCancelled());
+    @child := parent->Child();
+    AgentScope->Run(@child, One() ~ Nil);
+    Check("the child does not inherit the left-over token", @results->Size() = 1 & @results->Get(0)->IsCompleted());
+    Check("and its own token is clean", <>@child->GetCancel()->IsCancelled());
+
+    # a parent that is never entered is a shared budget for its children
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    parent := AgentScope->New()->SetMaxSteps(2);
+    @child := parent->Child();
+    AgentScope->Run(@child, One() ~ Nil);
+    @child := parent->Child();
+    AgentScope->Run(@child, One() ~ Nil);
+    Check("children share a parent that is not entered", @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps") & parent->GetStepsUsed() = 2);
+
+    # an entered parent still cancels its child (on the same thread)
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New();
+    @child := @outer->Child();
+    AgentScope->Run(@outer, ChildCancelAround() ~ Nil);
+    Check("an entered parent still cancels its child", Same(@results->Get(0)->GetStopReason(), "cancelled"));
+  }
+
   function : Main(args : String[]) ~ Nil {
     @failures := 0;
     TestNoScope();
@@ -393,6 +862,13 @@ class AgentScopeTest {
     TestTrace();
     TestThreads();
     TestReenter();
+    TestChildOnSameThread();
+    TestNestedRuns();
+    TestObserverRaises();
+    TestSkippedCalls();
+    TestParentInsideChild();
+    TestChildInsideUnrelated();
+    TestParentNotEntered();
 
     if(@failures > 0) {
       "FAIL: {$@failures} check(s)"->PrintLine();

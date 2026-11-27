@@ -990,6 +990,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_label_fatal.py "$BIN"
 
+    # Deeply nested source (parentheses, blocks, calls, subscripts, unary operators, generic types at 100, 250,
+    # 500 and 5000 levels) is compiled or refused with "Nesting is too deep", never a crash or a hang. The
+    # level the limit trips at is a stack budget and moves with the parser's frames, so no level or column
+    # is pinned. 100 nested subscripts never finished compiling before the index analysis was made linear.
+    - name: obc compiles or refuses deep nesting, never crashes (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_nesting_limit.py "$BIN"
+
     # Select statements hand out jump label ids in a fixed order. They used to take three
     # `++conditional_label` from one argument list, whose evaluation order C++ leaves open: g++
     # went right to left, Apple clang left to right, so the same source compiled to different
@@ -1004,6 +1017,29 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_select_label_order.py "$BIN"
+
+    # Large generated programs (thousands of classes, methods, statements, literals, interpolated
+    # strings) are answered within a generous ceiling: a change that makes a shape of source
+    # quadratic shows up as minutes here. 16,000 interpolated strings in one method took 73 s.
+    - name: obc answers large generated programs within a ceiling (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_compile_time_ceiling.py "$BIN"
+
+    # The same source gives the same file, with -debug as without: a character literal inside an
+    # interpolation carried an uninitialized line number into the debug image.
+    - name: obc output is reproducible, with and without -debug (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_obc_debug_reproducible.py "$BIN"
 
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
@@ -1110,6 +1146,18 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_console_read_offset.py "$BIN"
 
+    # Console->WriteBuffer of a Byte[] wrote from the start of the array and ignored
+    # the offset (found by the Char[] / Byte[] length audit). The runner cannot
+    # capture a test's own standard output, so this reads it.
+    - name: Console WriteBuffer honours the offset (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_console_write_offset.py "$BIN"
+
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection
@@ -1198,6 +1246,16 @@ jobs:
       run: |
         g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/size_class_test core/vm/arch/size_class_test.cpp
         /tmp/size_class_test
+
+    # Both JIT backends divide by a constant with a multiply by a "magic" pair
+    # (magic_div.h). A wrong pair is a wrong quotient in compiled code only, so
+    # the pair is checked against the machine's division for every divisor the
+    # method covers, INT64_MIN and INT64_MAX included.
+    - name: JIT constant-division unit tests
+      if: runner.os != 'Windows'
+      run: |
+        g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/magic_div_test core/vm/arch/jit/magic_div_test.cpp
+        /tmp/magic_div_test
 
     # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
     - name: Run ONNX sampling unit test (POSIX)
@@ -1649,6 +1707,7 @@ jobs:
         run: |
           python3 tools/cicd/check_trap_handlers.py --test
           python3 tools/cicd/check_trap_handlers.py
+          python3 tools/cicd/gen_trap_signatures.py --check
 
       # What an opcode carries was written out by hand in the writer, both readers,
       # the label passes, the inliner and the loader's checks, and nothing compared

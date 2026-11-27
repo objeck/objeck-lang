@@ -1,0 +1,656 @@
+#~
+Virtual calls from several threads at once resolve to the right override.
+
+A class caches the override each virtual declaration reaches for its
+instances, keyed by (declaring class, method), and the first call through a
+pair adds the entry. That cache was a plain hash map shared by every thread
+with no lock (the code asked "thread safe?"; it was not): two threads making
+first calls on the same class inserted at the same time, and an insert that
+grows the map frees the buckets a lookup on another thread is reading. The
+result was a wrong method, a Nil dereference, or a crash, but only when two
+first calls met, so almost never.
+
+This is the widest that window gets: 40 classes with 8 virtual methods each,
+none of them called before 8 threads are released together to call all of
+them. Every thread must compute the same total as the arithmetic says.
+~#
+use System.Concurrency;
+
+class Shape {
+	New() {}
+
+	method : virtual : public : F0(x : Int) ~ Int;
+	method : virtual : public : F1(x : Int) ~ Int;
+	method : virtual : public : F2(x : Int) ~ Int;
+	method : virtual : public : F3(x : Int) ~ Int;
+	method : virtual : public : F4(x : Int) ~ Int;
+	method : virtual : public : F5(x : Int) ~ Int;
+	method : virtual : public : F6(x : Int) ~ Int;
+	method : virtual : public : F7(x : Int) ~ Int;
+}
+
+class S0 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 0; }
+	method : public : F1(x : Int) ~ Int { return x + 1; }
+	method : public : F2(x : Int) ~ Int { return x + 2; }
+	method : public : F3(x : Int) ~ Int { return x + 3; }
+	method : public : F4(x : Int) ~ Int { return x + 4; }
+	method : public : F5(x : Int) ~ Int { return x + 5; }
+	method : public : F6(x : Int) ~ Int { return x + 6; }
+	method : public : F7(x : Int) ~ Int { return x + 7; }
+}
+
+class S1 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 100; }
+	method : public : F1(x : Int) ~ Int { return x + 101; }
+	method : public : F2(x : Int) ~ Int { return x + 102; }
+	method : public : F3(x : Int) ~ Int { return x + 103; }
+	method : public : F4(x : Int) ~ Int { return x + 104; }
+	method : public : F5(x : Int) ~ Int { return x + 105; }
+	method : public : F6(x : Int) ~ Int { return x + 106; }
+	method : public : F7(x : Int) ~ Int { return x + 107; }
+}
+
+class S2 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 200; }
+	method : public : F1(x : Int) ~ Int { return x + 201; }
+	method : public : F2(x : Int) ~ Int { return x + 202; }
+	method : public : F3(x : Int) ~ Int { return x + 203; }
+	method : public : F4(x : Int) ~ Int { return x + 204; }
+	method : public : F5(x : Int) ~ Int { return x + 205; }
+	method : public : F6(x : Int) ~ Int { return x + 206; }
+	method : public : F7(x : Int) ~ Int { return x + 207; }
+}
+
+class S3 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 300; }
+	method : public : F1(x : Int) ~ Int { return x + 301; }
+	method : public : F2(x : Int) ~ Int { return x + 302; }
+	method : public : F3(x : Int) ~ Int { return x + 303; }
+	method : public : F4(x : Int) ~ Int { return x + 304; }
+	method : public : F5(x : Int) ~ Int { return x + 305; }
+	method : public : F6(x : Int) ~ Int { return x + 306; }
+	method : public : F7(x : Int) ~ Int { return x + 307; }
+}
+
+class S4 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 400; }
+	method : public : F1(x : Int) ~ Int { return x + 401; }
+	method : public : F2(x : Int) ~ Int { return x + 402; }
+	method : public : F3(x : Int) ~ Int { return x + 403; }
+	method : public : F4(x : Int) ~ Int { return x + 404; }
+	method : public : F5(x : Int) ~ Int { return x + 405; }
+	method : public : F6(x : Int) ~ Int { return x + 406; }
+	method : public : F7(x : Int) ~ Int { return x + 407; }
+}
+
+class S5 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 500; }
+	method : public : F1(x : Int) ~ Int { return x + 501; }
+	method : public : F2(x : Int) ~ Int { return x + 502; }
+	method : public : F3(x : Int) ~ Int { return x + 503; }
+	method : public : F4(x : Int) ~ Int { return x + 504; }
+	method : public : F5(x : Int) ~ Int { return x + 505; }
+	method : public : F6(x : Int) ~ Int { return x + 506; }
+	method : public : F7(x : Int) ~ Int { return x + 507; }
+}
+
+class S6 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 600; }
+	method : public : F1(x : Int) ~ Int { return x + 601; }
+	method : public : F2(x : Int) ~ Int { return x + 602; }
+	method : public : F3(x : Int) ~ Int { return x + 603; }
+	method : public : F4(x : Int) ~ Int { return x + 604; }
+	method : public : F5(x : Int) ~ Int { return x + 605; }
+	method : public : F6(x : Int) ~ Int { return x + 606; }
+	method : public : F7(x : Int) ~ Int { return x + 607; }
+}
+
+class S7 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 700; }
+	method : public : F1(x : Int) ~ Int { return x + 701; }
+	method : public : F2(x : Int) ~ Int { return x + 702; }
+	method : public : F3(x : Int) ~ Int { return x + 703; }
+	method : public : F4(x : Int) ~ Int { return x + 704; }
+	method : public : F5(x : Int) ~ Int { return x + 705; }
+	method : public : F6(x : Int) ~ Int { return x + 706; }
+	method : public : F7(x : Int) ~ Int { return x + 707; }
+}
+
+class S8 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 800; }
+	method : public : F1(x : Int) ~ Int { return x + 801; }
+	method : public : F2(x : Int) ~ Int { return x + 802; }
+	method : public : F3(x : Int) ~ Int { return x + 803; }
+	method : public : F4(x : Int) ~ Int { return x + 804; }
+	method : public : F5(x : Int) ~ Int { return x + 805; }
+	method : public : F6(x : Int) ~ Int { return x + 806; }
+	method : public : F7(x : Int) ~ Int { return x + 807; }
+}
+
+class S9 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 900; }
+	method : public : F1(x : Int) ~ Int { return x + 901; }
+	method : public : F2(x : Int) ~ Int { return x + 902; }
+	method : public : F3(x : Int) ~ Int { return x + 903; }
+	method : public : F4(x : Int) ~ Int { return x + 904; }
+	method : public : F5(x : Int) ~ Int { return x + 905; }
+	method : public : F6(x : Int) ~ Int { return x + 906; }
+	method : public : F7(x : Int) ~ Int { return x + 907; }
+}
+
+class S10 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1000; }
+	method : public : F1(x : Int) ~ Int { return x + 1001; }
+	method : public : F2(x : Int) ~ Int { return x + 1002; }
+	method : public : F3(x : Int) ~ Int { return x + 1003; }
+	method : public : F4(x : Int) ~ Int { return x + 1004; }
+	method : public : F5(x : Int) ~ Int { return x + 1005; }
+	method : public : F6(x : Int) ~ Int { return x + 1006; }
+	method : public : F7(x : Int) ~ Int { return x + 1007; }
+}
+
+class S11 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1100; }
+	method : public : F1(x : Int) ~ Int { return x + 1101; }
+	method : public : F2(x : Int) ~ Int { return x + 1102; }
+	method : public : F3(x : Int) ~ Int { return x + 1103; }
+	method : public : F4(x : Int) ~ Int { return x + 1104; }
+	method : public : F5(x : Int) ~ Int { return x + 1105; }
+	method : public : F6(x : Int) ~ Int { return x + 1106; }
+	method : public : F7(x : Int) ~ Int { return x + 1107; }
+}
+
+class S12 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1200; }
+	method : public : F1(x : Int) ~ Int { return x + 1201; }
+	method : public : F2(x : Int) ~ Int { return x + 1202; }
+	method : public : F3(x : Int) ~ Int { return x + 1203; }
+	method : public : F4(x : Int) ~ Int { return x + 1204; }
+	method : public : F5(x : Int) ~ Int { return x + 1205; }
+	method : public : F6(x : Int) ~ Int { return x + 1206; }
+	method : public : F7(x : Int) ~ Int { return x + 1207; }
+}
+
+class S13 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1300; }
+	method : public : F1(x : Int) ~ Int { return x + 1301; }
+	method : public : F2(x : Int) ~ Int { return x + 1302; }
+	method : public : F3(x : Int) ~ Int { return x + 1303; }
+	method : public : F4(x : Int) ~ Int { return x + 1304; }
+	method : public : F5(x : Int) ~ Int { return x + 1305; }
+	method : public : F6(x : Int) ~ Int { return x + 1306; }
+	method : public : F7(x : Int) ~ Int { return x + 1307; }
+}
+
+class S14 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1400; }
+	method : public : F1(x : Int) ~ Int { return x + 1401; }
+	method : public : F2(x : Int) ~ Int { return x + 1402; }
+	method : public : F3(x : Int) ~ Int { return x + 1403; }
+	method : public : F4(x : Int) ~ Int { return x + 1404; }
+	method : public : F5(x : Int) ~ Int { return x + 1405; }
+	method : public : F6(x : Int) ~ Int { return x + 1406; }
+	method : public : F7(x : Int) ~ Int { return x + 1407; }
+}
+
+class S15 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1500; }
+	method : public : F1(x : Int) ~ Int { return x + 1501; }
+	method : public : F2(x : Int) ~ Int { return x + 1502; }
+	method : public : F3(x : Int) ~ Int { return x + 1503; }
+	method : public : F4(x : Int) ~ Int { return x + 1504; }
+	method : public : F5(x : Int) ~ Int { return x + 1505; }
+	method : public : F6(x : Int) ~ Int { return x + 1506; }
+	method : public : F7(x : Int) ~ Int { return x + 1507; }
+}
+
+class S16 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1600; }
+	method : public : F1(x : Int) ~ Int { return x + 1601; }
+	method : public : F2(x : Int) ~ Int { return x + 1602; }
+	method : public : F3(x : Int) ~ Int { return x + 1603; }
+	method : public : F4(x : Int) ~ Int { return x + 1604; }
+	method : public : F5(x : Int) ~ Int { return x + 1605; }
+	method : public : F6(x : Int) ~ Int { return x + 1606; }
+	method : public : F7(x : Int) ~ Int { return x + 1607; }
+}
+
+class S17 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1700; }
+	method : public : F1(x : Int) ~ Int { return x + 1701; }
+	method : public : F2(x : Int) ~ Int { return x + 1702; }
+	method : public : F3(x : Int) ~ Int { return x + 1703; }
+	method : public : F4(x : Int) ~ Int { return x + 1704; }
+	method : public : F5(x : Int) ~ Int { return x + 1705; }
+	method : public : F6(x : Int) ~ Int { return x + 1706; }
+	method : public : F7(x : Int) ~ Int { return x + 1707; }
+}
+
+class S18 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1800; }
+	method : public : F1(x : Int) ~ Int { return x + 1801; }
+	method : public : F2(x : Int) ~ Int { return x + 1802; }
+	method : public : F3(x : Int) ~ Int { return x + 1803; }
+	method : public : F4(x : Int) ~ Int { return x + 1804; }
+	method : public : F5(x : Int) ~ Int { return x + 1805; }
+	method : public : F6(x : Int) ~ Int { return x + 1806; }
+	method : public : F7(x : Int) ~ Int { return x + 1807; }
+}
+
+class S19 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 1900; }
+	method : public : F1(x : Int) ~ Int { return x + 1901; }
+	method : public : F2(x : Int) ~ Int { return x + 1902; }
+	method : public : F3(x : Int) ~ Int { return x + 1903; }
+	method : public : F4(x : Int) ~ Int { return x + 1904; }
+	method : public : F5(x : Int) ~ Int { return x + 1905; }
+	method : public : F6(x : Int) ~ Int { return x + 1906; }
+	method : public : F7(x : Int) ~ Int { return x + 1907; }
+}
+
+class S20 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2000; }
+	method : public : F1(x : Int) ~ Int { return x + 2001; }
+	method : public : F2(x : Int) ~ Int { return x + 2002; }
+	method : public : F3(x : Int) ~ Int { return x + 2003; }
+	method : public : F4(x : Int) ~ Int { return x + 2004; }
+	method : public : F5(x : Int) ~ Int { return x + 2005; }
+	method : public : F6(x : Int) ~ Int { return x + 2006; }
+	method : public : F7(x : Int) ~ Int { return x + 2007; }
+}
+
+class S21 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2100; }
+	method : public : F1(x : Int) ~ Int { return x + 2101; }
+	method : public : F2(x : Int) ~ Int { return x + 2102; }
+	method : public : F3(x : Int) ~ Int { return x + 2103; }
+	method : public : F4(x : Int) ~ Int { return x + 2104; }
+	method : public : F5(x : Int) ~ Int { return x + 2105; }
+	method : public : F6(x : Int) ~ Int { return x + 2106; }
+	method : public : F7(x : Int) ~ Int { return x + 2107; }
+}
+
+class S22 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2200; }
+	method : public : F1(x : Int) ~ Int { return x + 2201; }
+	method : public : F2(x : Int) ~ Int { return x + 2202; }
+	method : public : F3(x : Int) ~ Int { return x + 2203; }
+	method : public : F4(x : Int) ~ Int { return x + 2204; }
+	method : public : F5(x : Int) ~ Int { return x + 2205; }
+	method : public : F6(x : Int) ~ Int { return x + 2206; }
+	method : public : F7(x : Int) ~ Int { return x + 2207; }
+}
+
+class S23 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2300; }
+	method : public : F1(x : Int) ~ Int { return x + 2301; }
+	method : public : F2(x : Int) ~ Int { return x + 2302; }
+	method : public : F3(x : Int) ~ Int { return x + 2303; }
+	method : public : F4(x : Int) ~ Int { return x + 2304; }
+	method : public : F5(x : Int) ~ Int { return x + 2305; }
+	method : public : F6(x : Int) ~ Int { return x + 2306; }
+	method : public : F7(x : Int) ~ Int { return x + 2307; }
+}
+
+class S24 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2400; }
+	method : public : F1(x : Int) ~ Int { return x + 2401; }
+	method : public : F2(x : Int) ~ Int { return x + 2402; }
+	method : public : F3(x : Int) ~ Int { return x + 2403; }
+	method : public : F4(x : Int) ~ Int { return x + 2404; }
+	method : public : F5(x : Int) ~ Int { return x + 2405; }
+	method : public : F6(x : Int) ~ Int { return x + 2406; }
+	method : public : F7(x : Int) ~ Int { return x + 2407; }
+}
+
+class S25 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2500; }
+	method : public : F1(x : Int) ~ Int { return x + 2501; }
+	method : public : F2(x : Int) ~ Int { return x + 2502; }
+	method : public : F3(x : Int) ~ Int { return x + 2503; }
+	method : public : F4(x : Int) ~ Int { return x + 2504; }
+	method : public : F5(x : Int) ~ Int { return x + 2505; }
+	method : public : F6(x : Int) ~ Int { return x + 2506; }
+	method : public : F7(x : Int) ~ Int { return x + 2507; }
+}
+
+class S26 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2600; }
+	method : public : F1(x : Int) ~ Int { return x + 2601; }
+	method : public : F2(x : Int) ~ Int { return x + 2602; }
+	method : public : F3(x : Int) ~ Int { return x + 2603; }
+	method : public : F4(x : Int) ~ Int { return x + 2604; }
+	method : public : F5(x : Int) ~ Int { return x + 2605; }
+	method : public : F6(x : Int) ~ Int { return x + 2606; }
+	method : public : F7(x : Int) ~ Int { return x + 2607; }
+}
+
+class S27 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2700; }
+	method : public : F1(x : Int) ~ Int { return x + 2701; }
+	method : public : F2(x : Int) ~ Int { return x + 2702; }
+	method : public : F3(x : Int) ~ Int { return x + 2703; }
+	method : public : F4(x : Int) ~ Int { return x + 2704; }
+	method : public : F5(x : Int) ~ Int { return x + 2705; }
+	method : public : F6(x : Int) ~ Int { return x + 2706; }
+	method : public : F7(x : Int) ~ Int { return x + 2707; }
+}
+
+class S28 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2800; }
+	method : public : F1(x : Int) ~ Int { return x + 2801; }
+	method : public : F2(x : Int) ~ Int { return x + 2802; }
+	method : public : F3(x : Int) ~ Int { return x + 2803; }
+	method : public : F4(x : Int) ~ Int { return x + 2804; }
+	method : public : F5(x : Int) ~ Int { return x + 2805; }
+	method : public : F6(x : Int) ~ Int { return x + 2806; }
+	method : public : F7(x : Int) ~ Int { return x + 2807; }
+}
+
+class S29 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 2900; }
+	method : public : F1(x : Int) ~ Int { return x + 2901; }
+	method : public : F2(x : Int) ~ Int { return x + 2902; }
+	method : public : F3(x : Int) ~ Int { return x + 2903; }
+	method : public : F4(x : Int) ~ Int { return x + 2904; }
+	method : public : F5(x : Int) ~ Int { return x + 2905; }
+	method : public : F6(x : Int) ~ Int { return x + 2906; }
+	method : public : F7(x : Int) ~ Int { return x + 2907; }
+}
+
+class S30 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3000; }
+	method : public : F1(x : Int) ~ Int { return x + 3001; }
+	method : public : F2(x : Int) ~ Int { return x + 3002; }
+	method : public : F3(x : Int) ~ Int { return x + 3003; }
+	method : public : F4(x : Int) ~ Int { return x + 3004; }
+	method : public : F5(x : Int) ~ Int { return x + 3005; }
+	method : public : F6(x : Int) ~ Int { return x + 3006; }
+	method : public : F7(x : Int) ~ Int { return x + 3007; }
+}
+
+class S31 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3100; }
+	method : public : F1(x : Int) ~ Int { return x + 3101; }
+	method : public : F2(x : Int) ~ Int { return x + 3102; }
+	method : public : F3(x : Int) ~ Int { return x + 3103; }
+	method : public : F4(x : Int) ~ Int { return x + 3104; }
+	method : public : F5(x : Int) ~ Int { return x + 3105; }
+	method : public : F6(x : Int) ~ Int { return x + 3106; }
+	method : public : F7(x : Int) ~ Int { return x + 3107; }
+}
+
+class S32 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3200; }
+	method : public : F1(x : Int) ~ Int { return x + 3201; }
+	method : public : F2(x : Int) ~ Int { return x + 3202; }
+	method : public : F3(x : Int) ~ Int { return x + 3203; }
+	method : public : F4(x : Int) ~ Int { return x + 3204; }
+	method : public : F5(x : Int) ~ Int { return x + 3205; }
+	method : public : F6(x : Int) ~ Int { return x + 3206; }
+	method : public : F7(x : Int) ~ Int { return x + 3207; }
+}
+
+class S33 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3300; }
+	method : public : F1(x : Int) ~ Int { return x + 3301; }
+	method : public : F2(x : Int) ~ Int { return x + 3302; }
+	method : public : F3(x : Int) ~ Int { return x + 3303; }
+	method : public : F4(x : Int) ~ Int { return x + 3304; }
+	method : public : F5(x : Int) ~ Int { return x + 3305; }
+	method : public : F6(x : Int) ~ Int { return x + 3306; }
+	method : public : F7(x : Int) ~ Int { return x + 3307; }
+}
+
+class S34 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3400; }
+	method : public : F1(x : Int) ~ Int { return x + 3401; }
+	method : public : F2(x : Int) ~ Int { return x + 3402; }
+	method : public : F3(x : Int) ~ Int { return x + 3403; }
+	method : public : F4(x : Int) ~ Int { return x + 3404; }
+	method : public : F5(x : Int) ~ Int { return x + 3405; }
+	method : public : F6(x : Int) ~ Int { return x + 3406; }
+	method : public : F7(x : Int) ~ Int { return x + 3407; }
+}
+
+class S35 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3500; }
+	method : public : F1(x : Int) ~ Int { return x + 3501; }
+	method : public : F2(x : Int) ~ Int { return x + 3502; }
+	method : public : F3(x : Int) ~ Int { return x + 3503; }
+	method : public : F4(x : Int) ~ Int { return x + 3504; }
+	method : public : F5(x : Int) ~ Int { return x + 3505; }
+	method : public : F6(x : Int) ~ Int { return x + 3506; }
+	method : public : F7(x : Int) ~ Int { return x + 3507; }
+}
+
+class S36 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3600; }
+	method : public : F1(x : Int) ~ Int { return x + 3601; }
+	method : public : F2(x : Int) ~ Int { return x + 3602; }
+	method : public : F3(x : Int) ~ Int { return x + 3603; }
+	method : public : F4(x : Int) ~ Int { return x + 3604; }
+	method : public : F5(x : Int) ~ Int { return x + 3605; }
+	method : public : F6(x : Int) ~ Int { return x + 3606; }
+	method : public : F7(x : Int) ~ Int { return x + 3607; }
+}
+
+class S37 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3700; }
+	method : public : F1(x : Int) ~ Int { return x + 3701; }
+	method : public : F2(x : Int) ~ Int { return x + 3702; }
+	method : public : F3(x : Int) ~ Int { return x + 3703; }
+	method : public : F4(x : Int) ~ Int { return x + 3704; }
+	method : public : F5(x : Int) ~ Int { return x + 3705; }
+	method : public : F6(x : Int) ~ Int { return x + 3706; }
+	method : public : F7(x : Int) ~ Int { return x + 3707; }
+}
+
+class S38 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3800; }
+	method : public : F1(x : Int) ~ Int { return x + 3801; }
+	method : public : F2(x : Int) ~ Int { return x + 3802; }
+	method : public : F3(x : Int) ~ Int { return x + 3803; }
+	method : public : F4(x : Int) ~ Int { return x + 3804; }
+	method : public : F5(x : Int) ~ Int { return x + 3805; }
+	method : public : F6(x : Int) ~ Int { return x + 3806; }
+	method : public : F7(x : Int) ~ Int { return x + 3807; }
+}
+
+class S39 from Shape {
+	New() { Parent(); }
+	method : public : F0(x : Int) ~ Int { return x + 3900; }
+	method : public : F1(x : Int) ~ Int { return x + 3901; }
+	method : public : F2(x : Int) ~ Int { return x + 3902; }
+	method : public : F3(x : Int) ~ Int { return x + 3903; }
+	method : public : F4(x : Int) ~ Int { return x + 3904; }
+	method : public : F5(x : Int) ~ Int { return x + 3905; }
+	method : public : F6(x : Int) ~ Int { return x + 3906; }
+	method : public : F7(x : Int) ~ Int { return x + 3907; }
+}
+
+class Gate {
+	@open : Bool;
+	@ready : Int;
+	@mutex : ThreadMutex;
+
+	New() {
+		@mutex := ThreadMutex->New("gate");
+	}
+
+	method : public : Arrive() ~ Nil {
+		critical(@mutex) {
+			@ready += 1;
+		};
+	}
+
+	method : public : Ready() ~ Int {
+		count : Int;
+		critical(@mutex) {
+			count := @ready;
+		};
+		return count;
+	}
+
+	method : public : Open() ~ Nil {
+		@open := true;
+	}
+
+	method : public : IsOpen() ~ Bool {
+		return @open;
+	}
+}
+
+class Caller from Thread {
+	@shapes : Shape[];
+	@total : Int;
+
+	New(shapes : Shape[]) {
+		Parent("caller");
+		@shapes := shapes;
+	}
+
+	method : public : GetTotal() ~ Int {
+		return @total;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		gate := param->As(Gate);
+		gate->Arrive();
+		# spin, so every thread is running when the gate opens
+		while(<>gate->IsOpen()) {
+		};
+
+		total := 0;
+		each(i : @shapes) {
+			shape := @shapes[i];
+			total += shape->F0(1);
+			total += shape->F1(1);
+			total += shape->F2(1);
+			total += shape->F3(1);
+			total += shape->F4(1);
+			total += shape->F5(1);
+			total += shape->F6(1);
+			total += shape->F7(1);
+		};
+		@total := total;
+	}
+}
+
+class VirtualDispatchThreads {
+	function : Main(args : String[]) ~ Nil {
+		shapes := Shape->New[40];
+		shapes[0] := S0->New();
+		shapes[1] := S1->New();
+		shapes[2] := S2->New();
+		shapes[3] := S3->New();
+		shapes[4] := S4->New();
+		shapes[5] := S5->New();
+		shapes[6] := S6->New();
+		shapes[7] := S7->New();
+		shapes[8] := S8->New();
+		shapes[9] := S9->New();
+		shapes[10] := S10->New();
+		shapes[11] := S11->New();
+		shapes[12] := S12->New();
+		shapes[13] := S13->New();
+		shapes[14] := S14->New();
+		shapes[15] := S15->New();
+		shapes[16] := S16->New();
+		shapes[17] := S17->New();
+		shapes[18] := S18->New();
+		shapes[19] := S19->New();
+		shapes[20] := S20->New();
+		shapes[21] := S21->New();
+		shapes[22] := S22->New();
+		shapes[23] := S23->New();
+		shapes[24] := S24->New();
+		shapes[25] := S25->New();
+		shapes[26] := S26->New();
+		shapes[27] := S27->New();
+		shapes[28] := S28->New();
+		shapes[29] := S29->New();
+		shapes[30] := S30->New();
+		shapes[31] := S31->New();
+		shapes[32] := S32->New();
+		shapes[33] := S33->New();
+		shapes[34] := S34->New();
+		shapes[35] := S35->New();
+		shapes[36] := S36->New();
+		shapes[37] := S37->New();
+		shapes[38] := S38->New();
+		shapes[39] := S39->New();
+
+		gate := Gate->New();
+		callers := Caller->New[8];
+		each(i : callers) {
+			callers[i] := Caller->New(shapes);
+			callers[i]->Execute(gate);
+		};
+
+		waited := 0;
+		while(gate->Ready() < callers->Size() & waited < 20000) {
+			Thread->Sleep(1);
+			waited += 1;
+		};
+		gate->Open();
+
+		failed := 0;
+		each(i : callers) {
+			callers[i]->Join();
+			total := callers[i]->GetTotal();
+			if(total <> 625440) {
+				"  FAIL: thread {$i} computed {$total}, expected 625440"->PrintLine();
+				failed += 1;
+			};
+		};
+
+		if(failed = 0) {
+			"PASS: virtual calls from 8 threads"->PrintLine();
+		}
+		else {
+			"FAIL: {$failed} thread(s) reached a wrong override"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

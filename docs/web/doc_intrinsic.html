@@ -119,6 +119,8 @@
      </tbody>
     </table>
     <p>The most expensive entry used to be an edit in the wrong place. <code>Parser</code> once carried a second copy of the whole intrinsic switch, <code>Parser::ParseSystemStatement</code>, about 1,900 lines that nothing called. The live cases are the inline <code>#ifdef _SYSTEM</code> run inside <code>ParseStatement</code>; a patch to the dead copy compiled, changed nothing, and printed no error. It was deleted when this page was written. If you find a second copy of any of these lists, assume one of them is dead and prove which before editing.</p>
+    <h2 id="the-loaders-table-trap_signaturesh">The loader's table: <code>trap_signatures.h</code></h2>
+    <p>The loader refuses a trap that is not written as its row in <code>core/shared/trap_signatures.h</code> says (the instruction, the count, the kind of each word), so a new or changed trap needs its row, or every program that uses it is refused at load with "a trap id the compiler does not write". The header is generated: build the toolchain and the libraries, compile the corpus (<code>python3 tools/fuzz/adhoc/obe_corpus_gate.py &lt;tree&gt; &lt;deploy&gt; &lt;out&gt;</code>), and run <code>python3 tools/cicd/gen_trap_signatures.py &lt;out&gt;/cover &lt;out&gt;/img</code>. It types a trap's words from the library method the directive is written in, so the library has to hold the new directive first. <code>gen_trap_signatures.py --check</code> runs in CI beside <code>check_trap_handlers.py</code> and fails when a row's instruction or count is not what <code>EmitSystemDirective</code> writes, or a trap has no row. A trap whose handler pushes a result its wrapper does not return, or reads its caller's frame, is the case to look at by hand (<code>OVERRIDES</code> in the generator).</p>
     <h2 id="what-check_trap_handlerspy-does-and-does-not-cover">What <code>check_trap_handlers.py</code> does and does not cover</h2>
     <p>It parses <code>traps.h</code>, <code>scanner.cpp</code>, <code>ParseStatement</code>, <code>EmitSystemDirective</code> and <code>ProcessTrap</code> and fails when:</p>
     <ul>
@@ -135,7 +137,7 @@
    </div>
    <nav class="toc" aria-label="On this page">
     <p class="nav-title">On this page</p>
-    <ul><li><a href="#the-sites">The sites</a></li><li><a href="#what-goes-wrong-when-a-site-is-forgotten">What goes wrong when a site is forgotten</a></li><li><a href="#what-check_trap_handlerspy-does-and-does-not-cover">What <code>check_trap_handlers.py</code> does and does not cover</a></li><li><a href="#a-new-vm-instruction-is-a-different-larger-job">A new VM <em>instruction</em> is a different, larger job</a></li></ul>
+    <ul><li><a href="#the-sites">The sites</a></li><li><a href="#what-goes-wrong-when-a-site-is-forgotten">What goes wrong when a site is forgotten</a></li><li><a href="#the-loaders-table-trap_signaturesh">The loader's table: <code>trap_signatures.h</code></a></li><li><a href="#what-check_trap_handlerspy-does-and-does-not-cover">What <code>check_trap_handlers.py</code> does and does not cover</a></li><li><a href="#a-new-vm-instruction-is-a-different-larger-job">A new VM <em>instruction</em> is a different, larger job</a></li></ul>
    </nav>
   </div>
   </main>

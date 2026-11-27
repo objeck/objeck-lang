@@ -1,0 +1,79 @@
+# EXTRA_LIBS: gen_collect
+#~
+An array index that is a call chain is the value its LAST call returns.
+
+The index's type was read from the chain's first call, so
+'slots[order->Line()->Count()]' was refused -- "Expected Byte, Char, Int or
+Enum class type", for an expression that is an Int -- while
+'slots[refs->Get(i)->Get()]' compiled only because the written 'Get()' was
+replaced by a generated one. Covers an Int, a Char and a Byte at the end of a
+chain of two and three calls, a holder at the end (unboxed), a written
+'Get()', and both a read and a write. Each check adds to 'bad'; the test
+exits 1 when one fails.
+~#
+use Collection;
+
+class Spot {
+	@at : Int;
+
+	New(at : Int) {
+		@at := at;
+	}
+
+	method : public : At() ~ Int { return @at; }
+	method : public : Letter() ~ Char { return 'b'; }
+	method : public : Small() ~ Byte { return 3->As(Byte); }
+	method : public : Held() ~ IntRef { return IntRef->New(@at); }
+	method : public : Me() ~ Spot { return @self; }
+}
+
+class CoreIndexCallChain {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		spot := Spot->New(2);
+		slots := Int->New[128];
+		refs := Vector->New()<IntRef>;
+		refs->AddBack(5);
+
+		slots[spot->At()] := 1;
+		slots[spot->Me()->At() + 1] := 2;
+		bad += Check(slots[2] = 1 & slots[3] = 2, "one call, and a chain in a calculation");
+
+		slots[spot->Me()->At()] := 10;
+		bad += Check(slots[2] = 10, "two calls: write");
+		bad += Check(slots[spot->Me()->Me()->At()] = 10, "three calls: read");
+
+		slots[spot->Me()->Letter()] := 11;
+		bad += Check(slots[98] = 11, "a Char at the end of a chain");
+
+		slots[spot->Me()->Small()] := 12;
+		bad += Check(slots[3] = 12, "a Byte at the end of a chain");
+
+		slots[spot->Me()->Held()] := 13;
+		bad += Check(slots[2] = 13, "a holder at the end of a chain is unboxed");
+
+		slots[spot->Me()->Held()->Get()] := 14;
+		slots[refs->Get(0)->Get()] := 15;
+		bad += Check(slots[2] = 14 & slots[5] = 15, "a written Get() is kept");
+
+		grid := Int->New[4, 4];
+		grid[spot->Me()->At(), refs->Get(0) - 4] := 16;
+		bad += Check(grid[2, 1] = 16, "two indices");
+
+		if(bad = 0) {
+			"PASS: a call chain as an array index"->PrintLine();
+		}
+		else {
+			"FAIL: a call chain as an array index ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  failed: {$what}"->ErrorLine();
+		return 1;
+	}
+}

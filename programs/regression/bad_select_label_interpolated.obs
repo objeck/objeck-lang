@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: A select label must be a constant: a string literal with nothing interpolated and nothing called on it
+# EXPECT_ERROR_COUNT: 1
+#~
+A select label is matched by the hash of its text, which the compiler takes. A
+label with a value interpolated into it has no text until the program runs: the
+source text '{$v}' was hashed instead, so this compiled and took 'other' in silence.
+~#
+class BadSelectLabelInterpolated {
+	function : Main(args : String[]) ~ Nil {
+		v := "b";
+		n := 2;
+		r := "other";
+		select(v) {
+			label "{$v}" { r := "interpolated"; }
+			label "c" { r := "c"; }
+			other { r := "other"; }
+		};
+		r->PrintLine();
+	}
+}

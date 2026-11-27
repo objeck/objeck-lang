@@ -1,0 +1,59 @@
+#~
+JSON throughput: json_bench <parse|ser|round> <file> <iterations>
+  parse   parse the text <iterations> times
+  ser     parse once, serialize the tree <iterations> times
+  round   parse and serialize <iterations> times
+With 0 iterations only the fixed part runs (start, read the file, and for ser the one parse), so the
+harness subtracts it. Prints a checksum so the work cannot be skipped and a change in output is seen.
+~#
+use Data.JSON, System.IO.Filesystem;
+
+class JsonBench {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 3) {
+			"usage: json_bench <parse|ser|round> <file> <iterations>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+		mode := args[0];
+		text := FileReader->ReadFile(args[1]);
+		if(text = Nil) {
+			"cannot read the file"->ErrorLine();
+			Runtime->Exit(2);
+		};
+		iterations := args[2]->ToInt();
+		check := text->Size();
+
+		if(mode->Equals("parse")) {
+			for(i := 0; i < iterations; i += 1;) {
+				root := JsonParser->TextToElement(text);
+				if(root = Nil) {
+					"parse failed"->ErrorLine();
+					Runtime->Exit(1);
+				};
+				check += root->Size();
+			};
+		}
+		else if(mode->Equals("ser")) {
+			root := JsonParser->TextToElement(text);
+			if(root = Nil) {
+				"parse failed"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			for(i := 0; i < iterations; i += 1;) {
+				check += root->ToString()->Size();
+			};
+		}
+		else {
+			for(i := 0; i < iterations; i += 1;) {
+				root := JsonParser->TextToElement(text);
+				if(root = Nil) {
+					"parse failed"->ErrorLine();
+					Runtime->Exit(1);
+				};
+				check += root->ToString()->Size();
+			};
+		};
+
+		"check={$check}"->PrintLine();
+	}
+}

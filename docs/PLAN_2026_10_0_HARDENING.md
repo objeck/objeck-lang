@@ -146,16 +146,17 @@ Invariants:
 - **B2 typed edges:** each typed slot is 0 or an `old_generation` member of the matching `TYPE`, descending into closure captures through the holder's declarations. This is the check that catches #816 (`@right = 1`). After a major GC, scoped to reachable objects.
 - **B3:** no typed reference (heap, class statics, typed frame slots, captures) points into the raw nursery range `[young_region, young_region + young_region_size)`. `IsYoung` cannot be used, because `young_offset` is 0 after collection.
 - **B4:** typed frame slots are 0 or old-gen members (frames are zeroed at entry on the interpreter and both JITs).
+- **B5 (added in v2026.11.4):** a `Char[]` block has room for one spare element after its data, and that element is zero. Natives that take text in a `Char[]` read it as a C string and stop there; every allocation adds the element and a program cannot index it (the terminator invariant, documented in `core/vm/common.h`). A `Byte[]` shares its heap type with closure capture blocks, so it is not checked; no native reads a `Byte[]` up to its zero.
 - **C (inside fixup):** a young object start with a valid class that `ForwardedAddr` cannot forward is a missed root; abort.
 - **Blind spot, documented:** an object reference kept in an `INT_PARM` field, and fixup rewriting an Int array element that happens to equal a promoted object's address (`memory.cpp:2069-2077`).
 
 Cost tiers:
 - **T0**, every collection when verify is on: A2 over `dirty_list`; B2/B3 over promoted objects, dirty objects, statics and typed roots. O(promoted + dirty + roots).
-- **T1**, `OBJECK_GC_VERIFY=N`: the first 8 collections, then every Nth, the full B1-B4 walk. If verification exceeds ~20% of wall time, N doubles and says so.
+- **T1**, `OBJECK_GC_VERIFY=N`: the first 8 collections, then every Nth, the full B1-B5 walk. If verification exceeds ~20% of wall time, N doubles and says so.
 - **T2**, `OBJECK_GC_VERIFY=checkmark`: A1, in stress fixtures and the GC fuzz mode only.
 
 Proof it works, on the release binary:
-- **Runtime fault injection** (`OBJECK_GC_VERIFY_INJECT=field|barrier|mark`, active only with verify on): OR 1 into a promoted object's field, skip one `WriteBarrier`, OR the mark bit into an interior nursery word. Each must abort on all five legs.
+- **Runtime fault injection** (`OBJECK_GC_VERIFY_INJECT=field|barrier|mark|terminator`, active only with verify on): OR 1 into a promoted object's field, skip one `WriteBarrier`, OR the mark bit into an interior nursery word, store a character in a `Char[]`'s spare element (B5, added in v2026.11.4). Each must abort on all five legs.
 - **Replay G12**, the live closure bug: a deterministic x64 fixture with a small nursery. A1 fires before the fix and passes after it.
 - **Replay #816:** on the verifier branch, reverse-apply only 5bf8bb286b's three `CheckObject` hunks, and run `map_insert_stress_816_mt` (branch `probe/816-p3`) with `OBJECK_JIT_THRESHOLD=1 --gc-threshold=64k` ~100 times on the ARM64 legs. B2 aborts before `Map:Find` crashes. ARM64-only; x64 was 0/100.
 - **Replay a removed barrier** (`interpreter.cpp:533`): A1 and A2 fire. **Replay the #574 STW revert** (`0a12e591d`) under `core_thread_gc_stress`: A1 fires.

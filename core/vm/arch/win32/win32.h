@@ -159,6 +159,18 @@ class File {
       return -1;
     }
 
+    // _wstat64 reports a symbolic link's own size, which is 0, where POSIX stat
+    // reports the size of the file it names: FileReader->ReadFile sizes its
+    // buffer from this, so a file read through a link came back empty here.
+    // file_size follows the link; an empty file is 0 either way.
+    if(buf.st_size == 0 && (buf.st_mode & _S_IFREG)) {
+      std::error_code error_code;
+      const std::uintmax_t size = std::filesystem::file_size(name, error_code);
+      if(!error_code) {
+        return (int64_t)size;
+      }
+    }
+
     return buf.st_size;
   }
 
@@ -663,6 +675,14 @@ class IPSocket {
     closesocket(sock);
   }
 
+  // Ends this side's sending and leaves the socket open for reading: what was
+  // written is handed off and followed by FIN, so the peer reads it and then
+  // the end of the stream. Errors are ignored, as in Close: the peer may have
+  // torn the connection down already.
+  static void ShutdownSend(SOCKET sock) {
+    shutdown(sock, 1 /* SD_SEND */);
+  }
+
   static bool SetKeepAlive(SOCKET sock, bool enable) {
     BOOL val = enable ? TRUE : FALSE;
     return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (const char*)&val, sizeof(val)) == 0;
@@ -1127,8 +1147,23 @@ class IPSecureSocket {
   static void Close(SecureSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     if(sctx) {
-      mbedtls_ssl_close_notify(&sctx->ssl);
+      if(!sctx->send_closed) {
+        mbedtls_ssl_close_notify(&sctx->ssl);
+      }
       delete sctx;
+    }
+  }
+
+  // Ends this side's sending and leaves the session open for reading: the
+  // close_notify alert tells the peer no more data follows (its read ends
+  // cleanly rather than as a truncation), and the FIN after it ends the stream
+  // for a peer that does not look. Close then sends no second alert.
+  static void ShutdownSend(SecureSocketCtx* sctx) {
+    TlsLibraryLock library_lock;
+    if(sctx && !sctx->send_closed) {
+      mbedtls_ssl_close_notify(&sctx->ssl);
+      shutdown((SOCKET)sctx->net.fd, 1 /* SD_SEND */);
+      sctx->send_closed = true;
     }
   }
 

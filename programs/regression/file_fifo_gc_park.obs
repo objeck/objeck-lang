@@ -1,0 +1,98 @@
+#~
+A read of a FIFO through the file API parks, so a collection elsewhere does not wait for it.
+
+Driven by run_vm_flag_tests.py (check_file_fifo_gc_park), POSIX only: the driver makes
+the FIFO, holds its write end open and writes to it when told.
+
+What FileReader opens need not be a file on disk. A FIFO (or a terminal) waits for its
+writer as a pipe does, and two calls made that wait as a running mutator, so that a
+collection started by any other thread waited too and the whole program stood still
+until the writer wrote: FileReader->New, which opens the file and looks one byte ahead,
+and FileReader->ReadBuffer(offset, num, Char[]), in fread. Both park now, as a pipe or
+socket read does, the read with its array re-rooted so that the collections that run
+meanwhile can move it.
+
+  (no argument)             print PASS, so the regression runner can run this file
+  <fifo> <collected> read   the driver has written one byte, so the open returns; a
+                            thread then reads five characters from <fifo> into a young
+                            array and waits in the read for the other four
+  <fifo> <collected> open   the driver has written nothing: the thread waits in the open
+
+Either way main then allocates until many collections have run, writes <collected>, and
+waits for the reader. The driver writes the rest of "hello" only once <collected>
+exists: a wait that is not parked never lets main get that far.
+~#
+use System.Concurrency, System.IO.Filesystem;
+
+class FifoReader from Thread {
+  @path : String;
+  @opened : Bool;
+  @got : Int;
+  @text : String;
+
+  New(path : String) {
+    Parent("fifo-reader");
+    @path := path;
+    @got := -2;
+  }
+
+  method : public : IsOpened() ~ Bool { return @opened; }
+  method : public : GetGot() ~ Int { return @got; }
+  method : public : GetText() ~ String { return @text; }
+
+  method : public : Run(param : Base) ~ Nil {
+    reader := FileReader->New(@path);
+    @opened := true;
+    chars := Char->New[16];
+    @got := reader->ReadBuffer(0, 5, chars);
+    @text := String->New(chars);
+    reader->Close();
+  }
+}
+
+class FileFifoGcPark {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 3) {
+      "PASS: file_fifo_gc_park"->PrintLine();
+      return;
+    };
+
+    reader := FifoReader->New(args[0]);
+    reader->Execute(Nil);
+    if(args[2]->Equals("read")) {
+      waited := 0;
+      while(<>reader->IsOpened() & waited < 10000) {
+        Thread->Sleep(10);
+        waited += 10;
+      };
+    };
+    # the reader is in its read (or its open) by now
+    Thread->Sleep(300);
+
+    # far more than the nursery holds, so collections run while the reader waits
+    chars := 0;
+    held : Int[] := Nil;
+    for(i := 0; i < 400000; i += 1;) {
+      text := i->ToString();
+      chars += text->Size();
+      if(i % 100 = 0) {
+        held := Int->New[64];
+        held[0] := i;
+      };
+    };
+
+    writer := FileWriter->New(args[1]);
+    writer->WriteString("collected");
+    writer->Close();
+
+    reader->Join();
+    "allocated chars={$chars} got={$(reader->GetGot())} text='{$(reader->GetText())}'"->PrintLine();
+    if(reader->GetGot() = 5 & reader->GetText()->Equals("hello")) {
+      "PASS: file_fifo_gc_park read"->PrintLine();
+    }
+    else {
+      "FAIL: the FIFO read returned the wrong text"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}

@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Expected ':', found ')'
+# EXPECT_ERROR_COUNT: 1
+#~
+A conditional with one branch inside an interpolation: the same crash, from a tree whose
+second branch is missing. The message names what is missing.
+~#
+class BadInterpConditionalHalf {
+	function : Main(args : String[]) ~ Nil {
+		count := 3;
+		"count {$(count > 1 ? count)} done"->PrintLine();
+	}
+}

@@ -1693,7 +1693,11 @@ extern "C" {
 
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     const char* value = (const char*)APITools_GetArray(byte_array);
-    const size_t value_size = value ? strlen(value) : 0;
+    // The text ends at its first zero byte or at the end of the array, whichever comes first: a search
+    // for the zero alone (strlen) rests on the spare byte after a Byte[]'s data and reads on without it.
+    const size_t array_size = APITools_GetArraySize(byte_array);
+    const void* first_zero = value && array_size > 0 ? memchr(value, 0, array_size) : nullptr;
+    const size_t value_size = first_zero ? (size_t)((const char*)first_zero - value) : array_size;
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 

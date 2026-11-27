@@ -68,12 +68,24 @@ flowchart LR
         INTERP --> TRAPS
     end
 
-    subgraph LIBS["Libraries · 56 sources, .obl"]
+    subgraph LIBS["Libraries · 63 .obl"]
         direction TB
         CORE["lang · collections · concurrency<br/>regex · math · misc"]
         DOMAIN["Data · Networking · Web<br/>AI and ML · Media"]
         NATIVE["Native modules<br/>.dll · .so · .dylib<br/>(see the library stack below)"]
         DOMAIN --> NATIVE
+    end
+
+    subgraph AGENTS["Agents and MCP"]
+        direction TB
+        MCPRUN["obr --mcp / --mcp-http<br/>serves @tool, @resource,<br/>@prompt functions"]
+        MCPSRV["API.MCP server<br/>McpService"]
+        MCPCLI["API.MCP client<br/>McpClient · McpToolBridge<br/>mcp_stubs --manifest / --check"]
+        AGENT["API.Agent<br/>ToolRegistry · budgets, cancel,<br/>approval hints, trace · AgentScope"]
+        MODELS["Model backends<br/>Claude · OpenAI · Gemini<br/>Ollama (local)"]
+        MCPRUN --> MCPSRV
+        MCPCLI -->|"tools"| AGENT
+        AGENT <-->|"chat"| MODELS
     end
 
     subgraph TOOLS["Command-line tools"]
@@ -104,6 +116,9 @@ flowchart LR
     OUT --> LOAD
     CORE --> LINK
     DOMAIN --> LINK
+    AGENTS --> LINK
+    MCPRUN --> INTERP
+    FRONT -.->|"@tool doc comments"| MCPSRV
     NATIVE -->|"loaded at run time"| TRAPS
     OBI --> FRONT
     OBI --> INTERP
@@ -185,7 +200,9 @@ flowchart TB
 - **Memory:** generational, multithreaded garbage collection; C++ code that stores into an old object takes a write barrier.
 - **Language server:** written in Objeck (`tools/lsp`), analyzing with the compiler's own front end through `libobjk_diags`, so editor diagnostics match `obc`.
 - **Tools:** `obi` (REPL and full-screen editor), `obd` (debugger, also a Debug Adapter Protocol server), `obu` (updater that verifies signed manifests), `obb` (builds a native launcher for a program).
-- **Libraries:** 56 library sources; native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.
+- **Agents and MCP:** `API.Agent` runs a provider-neutral tool-use loop (`ToolRegistry` with allow and deny lists; run control with budgets, cancellation, approval hints and a trace; `AgentScope` limits every run in a block) over a `ChatBackend` for Claude, OpenAI, Gemini or a local Ollama model. `API.MCP` is a Model Context Protocol server (`McpService`, stdio or streamable HTTP) and client (`McpClient`, `McpToolBridge`); `mcp_stubs --manifest` and `--check` generate typed client stubs and fail the build when they drift. The scanner keeps `@tool`, `@resource` and `@prompt` doc-comment tags, the context analyzer derives the JSON Schema and writes the registration, and `obr --mcp prog.obe` (or `--mcp-http=<port>`) serves the functions with no server code.
+- **VM safety:** a load-time stack verifier refuses a malformed `.obe`; `--thread-faults=isolate` ends only the thread that raised an uncaught error; native libraries are unloaded at exit.
+- **Libraries:** 63 compiled libraries (`.obl`); native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.
 - **CI and release:** five platform legs on every pull request, the regression suite in three JIT modes, LSP, DAP and debugger tests, and a release gate that verifies all five platforms at one commit before tagging.
 
 ---

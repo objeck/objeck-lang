@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: String label in a select on an integer
+# EXPECT_ERROR_COUNT: 1
+#~
+A string label in a select on an integer compared the integer with the hash of the
+label's text: it compiled and could only match by accident.
+~#
+class BadSelectLabelStringOnInteger {
+	function : Main(args : String[]) ~ Nil {
+		v := "b";
+		n := 2;
+		r := "other";
+		select(n) {
+			label "2" { r := "string"; }
+			label 3 { r := "three"; }
+			other { r := "other"; }
+		};
+		r->PrintLine();
+	}
+}

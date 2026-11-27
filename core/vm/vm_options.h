@@ -428,6 +428,9 @@ namespace Runtime {
   void SetMaxCallDepth(long depth);
   // Defined in interpreter.cpp; read when a spawned thread starts.
   void SetThreadFaults(bool isolate);
+  // Defined in loader.cpp; read once, when the program loads. "stdio" or
+  // "http <host> <port>": the --mcp / --mcp-http request of this process.
+  void SetMcpLaunch(const std::wstring& request);
 
   // Applies the options that must be in place before the program loads: the
   // library directory (the loader reads OBJECK_LIB_PATH, so the flag sets the
@@ -456,18 +459,16 @@ namespace Runtime {
       SetThreadFaults(opts.thread_faults == 1);
     }
     // The loader reads this: it adds the transport to the program's arguments and
-    // starts the program's McpMain instead of its Main (loader.cpp). Nothing else
-    // reads it, so a run without the flag is not touched.
+    // starts the program's McpMain instead of its Main (loader.cpp). Handed over
+    // in-process, not through the environment: a variable is inherited by every
+    // process the program starts, and an obr among them then served MCP instead
+    // of running its own Main. A run without the flag is not touched.
     if(opts.mcp_mode != 0) {
       std::wstring value = L"stdio";
       if(opts.mcp_mode == 2) {
         value = L"http " + (opts.mcp_host.empty() ? std::wstring(L"127.0.0.1") : opts.mcp_host) + L" " + std::to_wstring(opts.mcp_port);
       }
-#ifdef _WIN32
-      _wputenv_s(L"OBJECK_MCP", value.c_str());
-#else
-      setenv("OBJECK_MCP", UnicodeToBytes(value).c_str(), 1);
-#endif
+      SetMcpLaunch(value);
     }
   }
 

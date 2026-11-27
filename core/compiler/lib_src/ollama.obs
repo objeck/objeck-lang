@@ -1726,9 +1726,24 @@ if(models <> Nil) {
 
 			# A listing entry (/api/tags, /api/ps) names the model and carries its digest; a
 			# /api/show reply has neither. 'capabilities' cannot tell them apart: current
-			# servers put it on both.
+			# servers put it on both. The endpoint parsers (ParseModelList, ParseShowResponse) do not
+			# guess: they know which endpoint answered and call New(model_json, show).
 			is_listing := model_json->Has("name") | model_json->Has("digest");
-			if(<>is_listing & (model_json->Has("modelfile") | model_json->Has("capabilities") | model_json->Has("model_info") | model_json->Has("template"))) {
+			Init(model_json, <>is_listing & (model_json->Has("modelfile") | model_json->Has("capabilities") | model_json->Has("model_info") | model_json->Has("template")));
+		}
+
+		#~
+		Constructor for a reply whose endpoint is known
+		@param model_json a listing entry or a show reply
+		@param show true for a /api/show reply (GetInfo), false for a listing entry (GetPulled)
+		~#
+		New(model_json : JsonElement, show : Bool) {
+			Parent();
+			Init(model_json, show);
+		}
+
+		method : Init(model_json : JsonElement, show : Bool) ~ Nil {
+			if(show) {
 				@model_info := ModelInfo->New(model_json);
 			}
 			else {
@@ -1813,8 +1828,9 @@ if(models <> Nil) {
 			models := Vector->New()<Model>;
 			each(i : models_json) {
 				model_json := models_json->Get(i);
-				if(model_json->GetType() = JsonElement->JsonType->OBJECT) {
-					models->AddBack(Model->New(model_json));
+				# a listing row names its model; an object with neither field is not a model entry
+				if(model_json->GetType() = JsonElement->JsonType->OBJECT & (model_json->Has("name") | model_json->Has("model"))) {
+					models->AddBack(Model->New(model_json, false));
 				};
 			};
 
@@ -1837,7 +1853,7 @@ if(models <> Nil) {
 				return Nil;
 			};
 
-			return Model->New(json);
+			return Model->New(json, true);
 		}
 
 		#~

@@ -142,6 +142,22 @@ lines that nothing called. The live cases are the inline `#ifdef _SYSTEM` run in
 error. It was deleted when this page was written. If you find a second copy of any of
 these lists, assume one of them is dead and prove which before editing.
 
+## The loader's table: `trap_signatures.h`
+
+The loader refuses a trap that is not written as its row in
+`core/shared/trap_signatures.h` says (the instruction, the count, the kind of
+each word), so a new or changed trap needs its row, or every program that uses
+it is refused at load with "a trap id the compiler does not write". The header
+is generated: build the toolchain and the libraries, compile the corpus
+(`python3 tools/fuzz/adhoc/obe_corpus_gate.py <tree> <deploy> <out>`), and run
+`python3 tools/cicd/gen_trap_signatures.py <out>/cover <out>/img`. It types a
+trap's words from the library method the directive is written in, so the
+library has to hold the new directive first. `gen_trap_signatures.py --check`
+runs in CI beside `check_trap_handlers.py` and fails when a row's instruction
+or count is not what `EmitSystemDirective` writes, or a trap has no row. A trap
+whose handler pushes a result its wrapper does not return, or reads its
+caller's frame, is the case to look at by hand (`OVERRIDES` in the generator).
+
 ## What `check_trap_handlers.py` does and does not cover
 
 It parses `traps.h`, `scanner.cpp`, `ParseStatement`, `EmitSystemDirective` and

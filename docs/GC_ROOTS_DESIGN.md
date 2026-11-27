@@ -265,6 +265,53 @@ locals, and the collector walks only `org_local_space`. But that code never runs
 The latent hazard is real: re-enabling `ProcessInlineMethod` would reintroduce exactly this defect.
 Phase 5 deletes it. Any future JIT inliner must give inlined locals declared, walked slots.
 
+### 3.2.1 The and/or temporary of a callee the COMPILER inlines (found 2026-11-26)
+
+The third bullet above holds for a callee's declared locals. It did not hold for the callee's and/or
+temporary. In its own frame that slot (local id 0) has no declaration and the collector handles it
+specially (§5.1). When `obc -opt s3` pastes the callee into a caller, the temporary becomes one more
+declared local of the caller, and `ItermediateOptimizer::InlineMethod` declared it `INT_PARM`
+whatever it held. It holds a reference whenever the callee has `c ? a : b` over objects or arrays,
+an `Otherwise()` (`a ?? b`) receiver, or a capturing lambda's closure block.
+
+What goes wrong with a reference in a slot declared `Int`:
+
+- `RefMap` types the word a `LOAD_INT_VAR` of that slot pushes `Int` (the kind comes from the
+  declaration), unless a later use constrains it to a reference. A comparison does not. So in
+  `Keep(a) <> Pick(c, a, Nil)`, with `Pick` inlined, the value of the conditional waits on the
+  operand stack as an `Int` while `Keep` allocates; a minor collection promotes `a`, relocates the
+  typed local and leaves the pending word naming the old nursery address, and the comparison of an
+  object with itself answers "different". Measured on the unfixed compiler, Windows x64: wrong in
+  the interpreter and in the JIT at the default nursery and at 128k/256k, right at `-opt s0`.
+  An object reachable only through such a word is not marked either.
+- The slot itself is not marked or relocated. Single-threaded nothing collects between the store
+  and the load after the join (they are two or three instructions apart, none of which allocates),
+  but an interpreted thread polls for a safepoint between any two instructions.
+
+The fix is in the compiler, not the collector. The emitter records on each method what its and/or
+temporary holds (`IntermediateEmitter::ClassifyAndOrTemp`): `Int` for values, one reference
+`ParamType` when every store is a reference of that kind, unknown otherwise. It counts the stores
+it classified against the stores the method actually contains, so a site that writes the temporary
+without saying what it stores (`Try()`, `Otherwise()`, a closure, anything added later) leaves the
+method unknown instead of wrongly classified. The inliner (`InlinedAndOrType`) declares the inlined
+temporary from that record and refuses to inline a method whose temporary is unknown or mixed and
+is actually written. A method that sets the and/or flag but never writes the slot, which is the
+usual case because `&` and `|` in a condition compile to branches, is inlined as before.
+
+Library methods are inlined into programs at link time, so the record travels in the `.obl`: the
+method's and/or byte is 0 (no temporary), 1 (unknown, all an older compiler wrote) or 2 to 8 (what
+it holds, `LibraryMethod::EncodeAndOr`). Every reader tests that byte against 0, so older
+toolchains read newer libraries unchanged; a library built by an older compiler reads as unknown
+and its methods that write the temporary are not inlined. Executables keep the plain 0/1.
+
+Test: `gc_inline_conditional_temp.obs` (regression suite at the default nursery; `run_vm_flag_tests.py`
+at 128k and 256k in both JIT modes and under `OBJECK_GC_VERIFY`).
+
+Not done: `Otherwise()` and closure-creating helpers could be typed the same way and inlined again;
+today they stay calls. A conditional could also be given a typed hidden local of its own in every
+method (as a function-reference conditional already has), which would make the and/or slot hold
+values only; that changes every method's frame and was not needed to close this.
+
 ### 3.3 Integers rewritten by fixup (new; interpreter and JIT)
 
 `FixupRoots` runs `FixupSlot` over every operand-stack word and every window word. The comment there

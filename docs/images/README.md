@@ -17,7 +17,7 @@ Historical architecture diagrams (still useful for visual reference):
 
 | File | Description | Format | Status |
 |------|-------------|--------|--------|
-| **objeck-architecture.svg** | Whole toolchain on one page | SVG | Current |
+| **objeck-architecture.svg** | Whole toolchain on one page (v2026.11.4, with Agents and MCP) | SVG | Current |
 | **design3.svg** | Runtime components focus | Visio SVG | Legacy |
 | **design2.svg** | Compiler pipeline focus | Visio SVG | Legacy |
 | **design.png** | Original architecture (v1) | PNG | Historical |

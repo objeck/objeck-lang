@@ -3060,6 +3060,9 @@
 		"API.Ollama.ModelPulled": {
 			"description": "Ollama model listing entry, from Model->List (/api/tags) or Model->Running (/api/ps)",
 			"functions": {
+				"GetCapabilities": {
+					"descriptions": ["**Get the model's capabilities (e.g. \"completion\", \"tools\", \"thinking\"), as reported by newer servers**\n\n```method : public : GetCapabilities() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
 				"GetDigest": {
 					"descriptions": ["**Get the model digest**\n\n```method : public : GetDigest() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -25138,6 +25141,23 @@
 				}
 			}
 		},
+		"Web.HTTP.WebSocketHandshake": {
+			"description": "The WebSocket opening handshake (RFC 6455 section 4), shared by WebSocket and SecureWebSocket.\n\nA client that does not check the reply to its upgrade request will talk WebSocket frames to anything that answers \"101\": a cache or proxy replaying a stored reply, or a server that never understood the request. The Sec-WebSocket-Accept value is the proof that the peer read THIS request's Sec-WebSocket-Key, so section 4.1 has the client fail the connection unless it matches.",
+			"functions": {
+				"Check": {
+					"descriptions": ["**Checks a server's reply to the opening handshake against RFC 6455 section 4.1: the status is 101, Upgrade is \"websocket\", Connection holds \"Upgrade\", Sec-WebSocket-Accept is the value computed from the key that was sent, and the server selected no extension or subprotocol the request did not offer.**\n\n```function : Check(status_line:String, response_headers:Hash&lt;String,String&gt;, request_headers:Hash&lt;String,String&gt;, key:String) ~ String```\n\n\n\nstatus_line: String\n\nresponse_headers: Hash&lt;String,String&gt;\n\nrequest_headers: Hash&lt;String,String&gt;\n\nkey: String\n\nreturn: String"]
+				},
+				"ComputeAccept": {
+					"descriptions": ["**Computes the Sec-WebSocket-Accept value for a Sec-WebSocket-Key: the base64 of the SHA-1 of the key followed by the protocol's fixed GUID (RFC 6455 section 4.2.2). A server sends this value; a client compares it with what the server sent.**\n\n```function : ComputeAccept(key:String) ~ String```\n\n\n\nkey: String\n\nreturn: String\n\n```\naccept := Web.HTTP.WebSocketHandshake->ComputeAccept(\"dGhlIHNhbXBsZSBub25jZQ==\");\naccept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\n```"]
+				},
+				"HasToken": {
+					"descriptions": ["**Whether a comma separated header value holds a token.**\n\n```function : HasToken(list:String, token:String, ignore_case:Bool) ~ Bool```\n\n\n\nlist: String\n\ntoken: String\n\nignore_case: Bool\n\nreturn: Bool"]
+				},
+				"StatusCode": {
+					"descriptions": ["**Reads the status code out of an HTTP/1.x status line.**\n\n```function : StatusCode(status_line:String) ~ Int```\n\n\n\nstatus_line: String\n\nreturn: Int"]
+				}
+			}
+		},
 		"Web.HTTP.Server.HttpRequestHandler": {
 			"description": "Request handler for HTTP GET and POST requests",
 			"functions": {
@@ -30396,6 +30416,12 @@
 			}
 		],
 		"WebSocket": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"WebSocketHandshake": [
 			{
 				"bundle": "Web.HTTP",
 				"file": "net_common.obl"

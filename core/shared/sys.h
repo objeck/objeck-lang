@@ -447,7 +447,14 @@ public:
   ~OutputStream() {
   }
 
-  bool WriteFile() {
+  // 'level' is the zlib level the image is deflated at. A library is written once
+  // and shipped, so it takes Z_BEST_COMPRESSION; an executable is written by every
+  // compile, where level 9 was more than half of the whole run for a small program
+  // (hello: 47 ms of 85 ms; a 640 KB image, 209 ms) for a file about 7% smaller
+  // than Z_DEFAULT_COMPRESSION gives in 6 ms and 18 ms. The image inside is the
+  // same bytes at any level, and the readers (Loader::Load, the linker's
+  // InflateLibrary) take any zlib header.
+  bool WriteFile(int level = Z_BEST_COMPRESSION) {
     std::ofstream file_out(ToFsPath(file_name).c_str(), std::ofstream::binary);
     if(!file_out.is_open()) {
       std::wcerr << L"Unable to write file: '" << file_name << L"'" << std::endl;
@@ -455,7 +462,7 @@ public:
     }
 
     unsigned long dest_len;
-    char* compressed = CompressZlib(out_buffer.data(), (unsigned long)out_buffer.size(), dest_len);
+    char* compressed = CompressZlib(out_buffer.data(), (unsigned long)out_buffer.size(), dest_len, level);
     if(!compressed) {
       std::wcerr << L"Unable to compress file: '" << file_name << L"'" << std::endl;
       file_out.close();

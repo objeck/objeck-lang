@@ -18,6 +18,12 @@ Checks:
   options     --mcp-http=abc, --mcp with --mcp-http, --mcp-http-host alone, a program with nothing to serve and a
               program with two servers are refused with a message that names the problem
   unchanged   without the flags a tagged program runs its own Main
+  child       an obr the served program starts (Runtime->Command) runs its own Main: the request is this
+              process's, not the environment's; OBJECK_MCP in the environment asks for nothing
+  entry       a McpMain with no body, or one that returns a value, is not started and the refusal says
+              why (the compiler refuses both, so the two programs are made from a compiled image); a
+              function the program named McpMain_<something> is not a second server; a class whose McpMain
+              has another parameter list still gets the compiler's entry
 """
 import json, os, subprocess, sys, tempfile, threading, time, urllib.request
 
@@ -146,6 +152,125 @@ class B {
 }
 '''
 
+# An ordinary program: what an obr started by a served program must still run.
+CHILD = r"""
+class Child {
+	function : Main(args : String[]) ~ Nil {
+		count := args->Size();
+		"the child ran its own Main with {$count} argument(s)"->ErrorLine();
+	}
+}
+"""
+
+# A McpMain the program wrote that starts another obr with the environment it was given. OBR and CHILD_OBE
+# are filled in below.
+LAUNCHER = r"""
+class Launcher {
+	function : McpMain(args : String[]) ~ Nil {
+		code := Runtime->Command("OBR CHILD_OBE");
+		"the child exited {$code}"->ErrorLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"the launcher ran its own Main"->PrintLine();
+	}
+}
+"""
+
+# A McpMain the program wrote. The compiler refuses one that is not 'function ... ~ Nil'
+# (mcp_tool_tags_diag_test.py), so the two files the VM must still refuse, one whose entry has no body and
+# one whose entry returns a value, are made from this program's compiled image (changed_entry below).
+ENTRY = r"""
+class Entry {
+	function : McpMain(args : String[]) ~ Nil {
+		"the entry was started"->ErrorLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"main"->PrintLine();
+	}
+}
+"""
+
+# A class with a tagged function and a method named McpMain that is not the entry (another parameter list):
+# the compiler still writes the class its entry.
+OVERLOAD = r"""
+use API.MCP;
+
+class Shop {
+	#~
+	Add two integers.
+	@tool
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : McpMain(count : Int) ~ Int {
+		return count + 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		McpMain(1)->PrintLine();
+	}
+}
+"""
+
+# One server, and two functions of the program's own whose names begin as a generated entry's does: one in
+# another class, one named for its own class in a class the compiler wrote nothing for.
+HELPER = r"""
+use API.MCP;
+
+class Shop {
+	#~
+	Add two integers.
+	@tool
+	~#
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"main"->PrintLine();
+	}
+}
+
+class Other {
+	function : McpMain_Test(args : String[]) ~ Nil {
+		"a helper was started"->ErrorLine();
+	}
+
+	function : McpMain_Other(args : String[]) ~ Nil {
+		"a helper was started"->ErrorLine();
+	}
+}
+"""
+
+
+def changed_entry(obe, dest, change):
+    """Writes 'dest': the program 'obe' with its McpMain record changed, "virtual" (the flag that says a
+    method has no body) or "returns" (its return type made Int). A program obc cannot be made to write."""
+    import struct, zlib
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools", "fuzz", "loader"))
+    import obe_image
+    with open(obe, "rb") as f:
+        image = bytearray(zlib.decompress(f.read()[4:]))
+    _, classes, _ = obe_image.parse(bytes(image))
+    for cls in classes:
+        for name, start, _ in cls["methods"]:
+            if name.endswith(":McpMain:o.System.String*,"):
+                if change == "virtual":
+                    image[start + 4] = 1
+                else:
+                    # [id:4][virtual, and/or, lambda][name][return]: the return type's one letter
+                    at = start + 7 + 4 + len(name.encode("utf-8")) + 4
+                    assert image[at:at + 1] == b"n", image[at - 4:at + 1]
+                    image[at:at + 1] = b"i"
+                with open(dest, "wb") as f:
+                    f.write(struct.pack("<I", len(image)) + zlib.compress(bytes(image), 9))
+                return dest
+    return None
+
 
 def msg(id_, method, params=None):
     m = {"jsonrpc": "2.0", "method": method}
@@ -198,7 +323,15 @@ def main():
         nothing = build("nothing", NOTHING)
         two = build("two", TWO)
         own = build("own", OWN)
-        if not all((shop, nothing, two, own)):
+        child = build("child", CHILD)
+        # forward slashes: the path is inside an Objeck string literal, and both shells take them
+        launcher = build("launcher", LAUNCHER.replace("OBR", obr.replace("\\", "/")).replace("CHILD_OBE", "child.obe"))
+        entry = build("entry", ENTRY)
+        no_body = entry and changed_entry(entry, os.path.join(work, "no_body.obe"), "virtual")
+        returns = entry and changed_entry(entry, os.path.join(work, "returns.obe"), "returns")
+        helper = build("helper", HELPER)
+        overload = build("overload", OVERLOAD)
+        if not all((shop, nothing, two, own, child, launcher, entry, no_body, returns, helper, overload)):
             check("the test programs compile", False)
             return 1
 
@@ -320,6 +453,41 @@ def main():
         check("a program with two servers says which and how to serve both", code != 0 and "2 servers" in err and "McpMain(args : String[])" in err, out + err)
         code, out, err = run(["--mcp", own], ("\n".join([INIT, INITIALIZED, msg(2, "tools/list")]) + "\n").encode())
         check("a McpMain the program wrote serves both classes", code == 0 and '"one"' in out and '"two"' in out and "both" in out, out + err)
+
+        # ---- the request belongs to the process that was given the flag ----
+        # It used to be handed to the loader in the environment variable OBJECK_MCP, which the child
+        # inherited: the child put "stdio" in front of its arguments and was refused for having nothing to
+        # serve (or, with a McpMain of its own, served instead of running).
+        code, out, err = run(["--mcp", launcher])
+        check("an obr started by a served program runs its own Main, with its own arguments",
+              code == 0 and "the child ran its own Main with 0 argument(s)" in err and "the child exited 0" in err
+              and "nothing to serve" not in err, "rc=%s out=%s err=%s" % (code, out, err))
+        code, out, err = run([child], extra_env={"OBJECK_MCP": "stdio"})
+        check("OBJECK_MCP in the environment asks for nothing: only the flag does",
+              code == 0 and "the child ran its own Main with 0 argument(s)" in err, "rc=%s out=%s err=%s" % (code, out, err))
+
+        # ---- what is started is a function with a body that returns Nil ----
+        code, out, err = run(["--mcp", entry])
+        check("the unchanged entry is started", code == 0 and "the entry was started" in err, "rc=%s out=%s err=%s" % (code, out, err))
+        for label, flags, extra in modes:
+            code, out, err = run(flags + ["--mcp", no_body], extra_env=extra)
+            check("a McpMain with no body is not started, and the refusal says why (%s)" % label,
+                  code == 1 and "has nothing to serve" in err and "Entry (it has no body)" in err and "was started" not in err
+                  and "dereference" not in err, "rc=%s out=%s err=%s" % (code, out, err))
+            code, out, err = run(flags + ["--mcp", returns], extra_env=extra)
+            check("a McpMain that returns a value is not started, and the refusal says why (%s)" % label,
+                  code == 1 and "Entry (it returns a value)" in err and "was started" not in err,
+                  "rc=%s out=%s err=%s" % (code, out, err))
+        code, out, err = run(["--mcp", helper], ("\n".join([INIT, INITIALIZED, msg(2, "tools/list")]) + "\n").encode())
+        check("a function the program named McpMain_<something> is not a second server",
+              code == 0 and '"add"' in out and "servers" not in err and "a helper was started" not in err,
+              "rc=%s out=%s err=%s" % (code, out, err))
+
+        code, out, err = run(["--mcp", overload], ("\n".join([INIT, INITIALIZED, msg(2, "tools/list")]) + "\n").encode())
+        check("a class whose McpMain is not the entry (another parameter list) still gets the compiler's entry",
+              code == 0 and '"add"' in out and '"Shop"' in out, "rc=%s out=%s err=%s" % (code, out, err))
+        code, out, err = run([overload])
+        check("and that McpMain is an ordinary function", code == 0 and out.strip() == "2", "rc=%s out=%s err=%s" % (code, out, err))
 
         # ---- nothing changes without the flags ----
         code, out, err = run([shop])

@@ -1,0 +1,126 @@
+#~
+`value->TypeOf(Type)` on a Nil value is false, in the interpreter and under the
+JIT alike. The interpreter used to end the program with ">>> TypeOf(..) check
+on Nil value <<<" while the JIT's callback for the same instruction answered
+false, so the same line aborted or carried on depending on whether its method
+had been compiled yet. Nil is of no type: the test is false, and the program
+goes on. Each check runs cold (interpreted at the default threshold) and then
+in a loop long enough to be compiled, and both must agree.
+~#
+use Collection;
+
+interface Named {
+	method : virtual : public : Name() ~ String;
+}
+
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part implements Named {
+	New() {
+		Parent();
+	}
+
+	method : public : Name() ~ String {
+		return "text";
+	}
+}
+
+class TypeOfNilIsFalse {
+	@held : Part;
+
+	New() {
+	}
+
+	function : IsText(part : Part) ~ Bool {
+		return part->TypeOf(TextPart);
+	}
+
+	function : IsNamed(value : Base) ~ Bool {
+		return value->TypeOf(Named);
+	}
+
+	function : IsString(value : Base) ~ Bool {
+		return value->TypeOf(String);
+	}
+
+	function : Find(parts : Vector<Part>, index : Int) ~ Part {
+		if(index < parts->Size()) {
+			return parts->Get(index);
+		};
+
+		return Nil;
+	}
+
+	method : HeldIsText() ~ Bool {
+		return @held->TypeOf(TextPart);
+	}
+
+	function : Count(parts : Vector<Part>, rounds : Int) ~ Int {
+		texts := 0;
+		limit := parts->Size() + 2;
+		each(round : rounds) {
+			each(i : limit) {
+				part := Find(parts, i);
+				if(part->TypeOf(TextPart)) {
+					texts += 1;
+				};
+			};
+		};
+
+		return texts;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		fails := 0;
+		none : Part;
+		text : Part := TextPart->New();
+		plain : Part := Part->New();
+
+		# cold: a local, a parameter, a literal Nil, a call's result, a field, an interface
+		if(none->TypeOf(TextPart)) { "FAIL local"->PrintLine(); fails += 1; };
+		if(IsText(none) | IsText(Nil)) { "FAIL parameter"->PrintLine(); fails += 1; };
+		if(IsNamed(Nil) | IsString(Nil)) { "FAIL interface or library class"->PrintLine(); fails += 1; };
+		parts := Vector->New()<Part>;
+		parts->AddBack(text);
+		parts->AddBack(plain);
+		if(Find(parts, 9)->TypeOf(TextPart)) { "FAIL call result"->PrintLine(); fails += 1; };
+		holder := TypeOfNilIsFalse->New();
+		if(holder->HeldIsText()) { "FAIL field"->PrintLine(); fails += 1; };
+
+		# what was already defined stays as it was
+		if(<>IsText(text) | IsText(plain) | <>IsNamed(text) | IsNamed(plain) | <>IsString("s")) {
+			"FAIL objects"->PrintLine();
+			fails += 1;
+		};
+
+		# used in a condition with other tests
+		if(none->TypeOf(TextPart) | <>(text->TypeOf(TextPart) & <>none->TypeOf(Part))) {
+			"FAIL condition"->PrintLine();
+			fails += 1;
+		};
+
+		# hot: the same answers once the methods are compiled
+		if(Count(parts, 20000) <> 20000) { "FAIL loop"->PrintLine(); fails += 1; };
+		hot_fails := 0;
+		each(i : 20000) {
+			if(IsText(Nil) | IsNamed(Nil) | <>IsText(text) | none->TypeOf(TextPart)) {
+				hot_fails += 1;
+			};
+		};
+		if(hot_fails <> 0) { "FAIL hot: {$hot_fails}"->PrintLine(); fails += 1; };
+
+		# a cast of Nil is still Nil
+		if(none->As(TextPart) <> Nil) { "FAIL cast"->PrintLine(); fails += 1; };
+
+		if(fails = 0) {
+			"PASS: typeof nil is false"->PrintLine();
+		}
+		else {
+			"FAIL: typeof nil is false"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

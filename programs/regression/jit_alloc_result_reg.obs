@@ -1,0 +1,273 @@
+#~
+# NEW_OBJ_INST in compiled code, in every shape the AMD64 inline allocator
+# takes since v2026.11.4 (docs/JIT_OPERAND_STACK_DESIGN.md): the new pointer
+# ends in a register picked before either path is emitted, the inline path no
+# longer goes through the operand stack, and RAX-RDX are saved around it only
+# when they hold a pending value. What can go wrong is a pending value lost or
+# swapped across the allocation, or the pointer landing in the wrong register,
+# so each kernel allocates with a different number of values pending:
+#
+#   Ints0..Ints6   that many computed Int values live in registers at the `New`
+#                  (a product is in a register; a bare local would still name
+#                  its slot). The compiler evaluates a sum's right operand
+#                  first, so the allocation is the leftmost term; Ints1 and
+#                  Ints2 also hold it on the right, where nothing is pending
+#   Refs2..Refs7   a constructor call whose arguments are themselves `New`s: the
+#                  k-th allocation has k - 1 references pending, and the outer
+#                  object's allocation has all of them. Refs7 leaves one free
+#                  register in an eight-register pool, which keeps the old
+#                  operand-stack sequence, so both sequences run here
+#   Empty, Wide    a class with no fields (one pad word) and one past the
+#                  inline allocator's unroll limit (callback only)
+#
+# Main runs each kernel about two million times: enough allocation to overflow
+# the nursery several times at its default size, so the callback path (the
+# inline path's overflow exit) and the collections it starts run with those
+# values pending too; a reference spilled across that call must come back
+# relocated. Every result is checked against a closed form; exits 1 on a
+# mismatch. The other back-end has no inline allocator and runs the same
+# kernels through its callback.
+~#
+class Cell {
+  @v : Int;
+  @n : Cell;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  New(v : Int, n : Cell) {
+    @v := v;
+    @n := n;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+
+  method : public : Sum() ~ Int {
+    s := 0;
+    c := @self;
+    while(c <> Nil) {
+      s += c->Get();
+      c := c->Next();
+    };
+    return s;
+  }
+
+  method : public : Next() ~ Cell {
+    return @n;
+  }
+}
+
+class Empty {
+  New() {
+  }
+
+  method : public : Seven() ~ Int {
+    return 7;
+  }
+}
+
+class Wide {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @a8 : Int; @a9 : Int; @a10 : Int; @a11 : Int; @a12 : Int; @a13 : Int; @a14 : Int; @a15 : Int;
+  @a16 : Int; @a17 : Int; @a18 : Int; @a19 : Int; @a20 : Int; @a21 : Int; @a22 : Int; @a23 : Int;
+  @a24 : Int; @a25 : Int; @a26 : Int; @a27 : Int; @a28 : Int; @a29 : Int; @a30 : Int; @a31 : Int;
+
+  New(v : Int) {
+    @a0 := v;
+    @a31 := v * 2;
+  }
+
+  method : public : Ends() ~ Int {
+    return @a0 + @a31 + @a15;
+  }
+}
+
+class Bag {
+  @c0 : Cell; @c1 : Cell; @c2 : Cell; @c3 : Cell; @c4 : Cell; @c5 : Cell; @c6 : Cell;
+
+  New(c0 : Cell, c1 : Cell) {
+    @c0 := c0; @c1 := c1;
+  }
+
+  New(c0 : Cell, c1 : Cell, c2 : Cell) {
+    @c0 := c0; @c1 := c1; @c2 := c2;
+  }
+
+  New(c0 : Cell, c1 : Cell, c2 : Cell, c3 : Cell) {
+    @c0 := c0; @c1 := c1; @c2 := c2; @c3 := c3;
+  }
+
+  New(c0 : Cell, c1 : Cell, c2 : Cell, c3 : Cell, c4 : Cell) {
+    @c0 := c0; @c1 := c1; @c2 := c2; @c3 := c3; @c4 := c4;
+  }
+
+  New(c0 : Cell, c1 : Cell, c2 : Cell, c3 : Cell, c4 : Cell, c5 : Cell) {
+    @c0 := c0; @c1 := c1; @c2 := c2; @c3 := c3; @c4 := c4; @c5 := c5;
+  }
+
+  New(c0 : Cell, c1 : Cell, c2 : Cell, c3 : Cell, c4 : Cell, c5 : Cell, c6 : Cell) {
+    @c0 := c0; @c1 := c1; @c2 := c2; @c3 := c3; @c4 := c4; @c5 := c5; @c6 := c6;
+  }
+
+  # positional, so two arguments swapped across an allocation change the sum
+  method : public : Weigh() ~ Int {
+    s := @c0->Get() + @c1->Get() * 10;
+    if(@c2 <> Nil) { s += @c2->Get() * 100; };
+    if(@c3 <> Nil) { s += @c3->Get() * 1000; };
+    if(@c4 <> Nil) { s += @c4->Get() * 10000; };
+    if(@c5 <> Nil) { s += @c5->Get() * 100000; };
+    if(@c6 <> Nil) { s += @c6->Get() * 1000000; };
+    return s;
+  }
+}
+
+class AllocResultReg {
+  # no value pending
+  function : Ints0(x : Int) ~ Int {
+    return Cell->New(x)->Get();
+  }
+
+  # the allocation on the right of a product (evaluated first, nothing pending),
+  # then on the left of one to six of them
+  function : Ints1(x : Int) ~ Int {
+    a := (x * 3) + Cell->New(x)->Get();
+    b := Cell->New(x)->Get() + (x * 5);
+    return a + b;
+  }
+
+  function : Ints2(x : Int) ~ Int {
+    a := (x * 3) + ((x * 5) + Cell->New(x)->Get());
+    b := (Cell->New(x)->Get() + (x * 7)) + (x * 9);
+    return a + b;
+  }
+
+  function : Ints3(x : Int) ~ Int {
+    return Cell->New(x)->Get() + (x * 3) + (x * 5) + (x * 7);
+  }
+
+  function : Ints4(x : Int) ~ Int {
+    return Cell->New(x)->Get() + (x * 3) + (x * 5) + (x * 7) + (x * 9);
+  }
+
+  function : Ints5(x : Int) ~ Int {
+    return Cell->New(x)->Get() + (x * 3) + (x * 5) + (x * 7) + (x * 9) + (x * 11);
+  }
+
+  function : Ints6(x : Int) ~ Int {
+    return Cell->New(x)->Get() + (x * 3) + (x * 5) + (x * 7) + (x * 9) + (x * 11) + (x * 13);
+  }
+
+  # a list built inside one expression: every link allocates with the tail pending
+  function : Chain(x : Int) ~ Int {
+    return Cell->New(x, Cell->New(x + 1, Cell->New(x + 2, Cell->New(x + 3))))->Sum();
+  }
+
+  function : Refs2(x : Int) ~ Int {
+    return Bag->New(Cell->New(x), Cell->New(x + 1))->Weigh();
+  }
+
+  function : Refs3(x : Int) ~ Int {
+    return Bag->New(Cell->New(x), Cell->New(x + 1), Cell->New(x + 2))->Weigh();
+  }
+
+  function : Refs4(x : Int) ~ Int {
+    return Bag->New(Cell->New(x), Cell->New(x + 1), Cell->New(x + 2), Cell->New(x + 3))->Weigh();
+  }
+
+  function : Refs5(x : Int) ~ Int {
+    return Bag->New(Cell->New(x), Cell->New(x + 1), Cell->New(x + 2), Cell->New(x + 3), Cell->New(x + 4))->Weigh();
+  }
+
+  function : Refs6(x : Int) ~ Int {
+    return Bag->New(Cell->New(x), Cell->New(x + 1), Cell->New(x + 2), Cell->New(x + 3), Cell->New(x + 4), Cell->New(x + 5))->Weigh();
+  }
+
+  function : Refs7(x : Int) ~ Int {
+    return Bag->New(Cell->New(x), Cell->New(x + 1), Cell->New(x + 2), Cell->New(x + 3), Cell->New(x + 4), Cell->New(x + 5), Cell->New(x + 6))->Weigh();
+  }
+
+  # Int and reference values pending together
+  function : Mixed(x : Int) ~ Int {
+    return (x * 3) + Bag->New(Cell->New(x), Cell->New(x + 1), Cell->New(x + 2))->Weigh() + (x * 5);
+  }
+
+  function : NoFields(x : Int) ~ Int {
+    return (x * 3) + Empty->New()->Seven();
+  }
+
+  function : Big(x : Int) ~ Int {
+    return (x * 3) + Wide->New(x)->Ends();
+  }
+
+  function : Check(name : String, got : Int, want : Int) ~ Int {
+    if(got <> want) {
+      "FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+    rounds := 120000;
+    if(args->Size() > 0) {
+      rounds := args[0]->ToInt();
+    };
+
+    t0 := 0; t1 := 0; t2 := 0; t3 := 0; t4 := 0; t5 := 0; t6 := 0;
+    ch := 0; r2 := 0; r3 := 0; r4 := 0; r5 := 0; r6 := 0; r7 := 0;
+    mx := 0; nf := 0; bg := 0;
+    for(i := 0; i < rounds; i += 1;) {
+      x := i % 9;
+      t0 += Ints0(x);
+      t1 += Ints1(x);
+      t2 += Ints2(x);
+      t3 += Ints3(x);
+      t4 += Ints4(x);
+      t5 += Ints5(x);
+      t6 += Ints6(x);
+      ch += Chain(x);
+      r2 += Refs2(x);
+      r3 += Refs3(x);
+      r4 += Refs4(x);
+      r5 += Refs5(x);
+      r6 += Refs6(x);
+      r7 += Refs7(x);
+      mx += Mixed(x);
+      nf += NoFields(x);
+      bg += Big(x);
+    };
+
+    # sx = the sum of i % 9 over the rounds; every kernel is linear in x
+    sx := 0;
+    for(i := 0; i < rounds; i += 1;) {
+      sx += i % 9;
+    };
+    n := rounds;
+    bad += Check("ints0", t0, sx);
+    bad += Check("ints1", t1, 10 * sx);
+    bad += Check("ints2", t2, 26 * sx);
+    bad += Check("ints3", t3, 16 * sx);
+    bad += Check("ints4", t4, 25 * sx);
+    bad += Check("ints5", t5, 36 * sx);
+    bad += Check("ints6", t6, 49 * sx);
+    bad += Check("chain", ch, 4 * sx + 6 * n);
+    bad += Check("refs2", r2, 11 * sx + 10 * n);
+    bad += Check("refs3", r3, 111 * sx + 210 * n);
+    bad += Check("refs4", r4, 1111 * sx + 3210 * n);
+    bad += Check("refs5", r5, 11111 * sx + 43210 * n);
+    bad += Check("refs6", r6, 111111 * sx + 543210 * n);
+    bad += Check("refs7", r7, 1111111 * sx + 6543210 * n);
+    bad += Check("mixed", mx, 119 * sx + 210 * n);
+    bad += Check("nofields", nf, 3 * sx + 7 * n);
+    bad += Check("big", bg, 6 * sx);
+
+    if(bad > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS: alloc result register ({$n} rounds)"->PrintLine();
+  }
+}

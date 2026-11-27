@@ -14,6 +14,15 @@
 #
 # UDP may drop a datagram (on some hosts the first one sent to a new socket),
 # so reads run on threads while the writer resends, as net_io_gc_park does.
+#
+# "A port with nobody on it" is a port a server bound and released, and nothing
+# reserves it: the system may hand it to the next socket that asks for any port.
+# That can be another program's server (the suite runs several tests at once),
+# which may answer, and it could be the client itself, which then read back its
+# own six bytes (macOS CI: "it fails with the refusal (6, 'Nil')"; the socket
+# layer no longer lets a client connect to itself). A datagram arriving from the
+# port proves somebody holds it, so the refusal is then asked of a new port, and
+# stderr says so; the check is that a port nobody holds refuses.
 # EXTRA_LIBS: net
 ~#
 
@@ -192,35 +201,53 @@ class UdpDepartedClient {
 	}
 
 	function : CheckClientRefused() ~ Nil {
-		# a port with nobody on it: bound and closed again
-		server := Bind();
-		Check("client: a port to free", server <> Nil);
-		if(server = Nil) {
-			return;
-		};
-		port := @port;
-		server->Close();
+		reader : ClientReader;
+		client : UDPSocket;
+		sent := false;
+		answered := true;
+		# a port somebody answers from is not a free one: ask of another, a few times
+		for(attempt := 0; answered & attempt < 5; attempt += 1;) {
+			# a port with nobody on it: bound and closed again
+			server := Bind();
+			if(server = Nil) {
+				Check("client: a port to free", false);
+				return;
+			};
+			port := @port;
+			server->Close();
 
-		client := UDPSocket->New("127.0.0.1", port);
-		Check("client: the datagram is sent", client->WriteBuffer("anyone"->ToByteArray()) = 6);
+			client := UDPSocket->New("127.0.0.1", port);
+			sent := client->WriteBuffer("anyone"->ToByteArray()) = 6;
 
-		# the network refuses it; a read finds out rather than waiting for ever
-		reader := ClientReader->New(client);
-		reader->Execute(Nil);
-		for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
-			Thread->Sleep(50);
+			# the network refuses it; a read finds out rather than waiting for ever
+			reader := ClientReader->New(client);
+			reader->Execute(Nil);
+			for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 50;) {
+				Thread->Sleep(50);
+			};
+			if(<>reader->IsFinished()) {
+				Check("client: a read after the refusal returns", false);
+				"FAIL: a UDP client read waited for ever on a refused peer"->PrintLine();
+				Runtime->Exit(1);
+			};
+			reader->Join();
+			answered := reader->GetRead() >= 0;
+			if(answered) {
+				"  note: port {$port} answered with {$(reader->GetRead())} bytes, so somebody took it: trying another"->ErrorLine();
+				client->Close();
+			};
 		};
-		finished := reader->IsFinished();
-		Check("client: a read after the refusal returns", finished);
-		if(<>finished) {
-			"FAIL: a UDP client read waited for ever on a refused peer"->PrintLine();
-			Runtime->Exit(1);
-		};
-		reader->Join();
+
+		Check("client: a port to free", <>answered);
+		Check("client: the datagram is sent", sent);
+		Check("client: a read after the refusal returns", true);
 		error := reader->GetError();
-		Check("client: it fails with the refusal ({$reader->GetRead()}, '{$error}')",
+		"  info: the read returned {$(reader->GetRead())}, '{$error}'"->ErrorLine();
+		Check("client: it fails with the refusal",
 			reader->GetRead() < 0 & error <> Nil & (error->ToLower()->Has("refused") | error->ToLower()->Has("forcibly closed")));
-		client->Close();
+		if(<>answered) {
+			client->Close();
+		};
 	}
 
 }
