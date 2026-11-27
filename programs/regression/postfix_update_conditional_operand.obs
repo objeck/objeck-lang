@@ -13,9 +13,10 @@ is after the paths have rejoined, so the update ran either way:
     neither the call nor its argument was evaluated
 
 (The default of '??' is the same construct: nil_coalesce_default_postfix.obs.)
-Each operand's updates are now emitted on its own path. An update outside such
-an operand still runs at the end of the statement, on every path, and both are
-checked together. Exits 1 on a mismatch.
+Each operand's updates are now made only when its path ran (at the end of the
+statement: postfix_update_conditional_statement_end.obs). An update outside
+such an operand still runs at the end of the statement, on every path, and
+both are checked together. Exits 1 on a mismatch.
 ~#
 class Taker {
 	@taken : Int;

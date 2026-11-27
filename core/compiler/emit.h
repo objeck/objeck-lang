@@ -447,6 +447,14 @@ namespace backend {
       instructions = std::move(i);
     }
 
+    // puts instructions before the one at 'position' (a count of instructions
+    // taken earlier with GetSize)
+    void InsertInstructions(size_t position, const std::vector<IntermediateInstruction*> &i) {
+      if(position <= instructions.size()) {
+        instructions.insert(instructions.begin() + position, i.begin(), i.end());
+      }
+    }
+
     void Remove(std::pair<size_t, size_t> &range) {
       const size_t start_edit = range.first;
       const size_t end_edit = range.second;
