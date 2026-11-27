@@ -2564,7 +2564,8 @@ Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type*
       const size_t errors_before = diagnostics.ErrorCount();
       for(size_t i = 0; i < elements.size(); ++i) {
         Expression* reference = WrapMethodReferenceInFuncRef(elements[i], element_type, depth);
-        if(reference != elements[i]) {
+        // elements is empty when element_list is null, so the loop never runs without a list
+        if(element_list && reference != elements[i]) {
           element_list->SetExpression(reference, (int)i);
         }
       }
