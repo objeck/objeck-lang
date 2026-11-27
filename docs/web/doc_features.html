@@ -119,6 +119,22 @@ triangle <span class="t-op">:=</span> [[<span class="t-num">1</span>], [<span cl
 <pre class="line-numbers"><code class="language-objeck">value <span class="t-op">:=</span> <span class="t-str">"Hello World!"</span>;
 value<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();
 </code></pre>
+    <h3 id="variable-scope">Variable Scope</h3>
+    <p>A local belongs to the block it is declared in, from its declaration to the end of that block. Within one block a name is declared once; the parameters of a method and the locals of its body are one block. A nested block (the body of an <code>if</code>, a loop, a <code>select</code> label, a lambda) may declare a name that an enclosing block already has: the block's own variable hides the outer one until the block ends, and the outer one is unchanged. A loop variable is a declaration in the loop's block:</p>
+<pre class="line-numbers"><code class="language-objeck">k <span class="t-op">:=</span> items<span class="t-op">-&gt;</span>Size() - <span class="t-num">1</span>;      <span class="t-com"># an Int</span>
+<span class="t-kw">each</span>(k : names) {            <span class="t-com"># the loop's own k, 0 to names-&gt;Size() - 1</span>
+  names[k]<span class="t-op">-&gt;</span>PrintLine();
+};
+k<span class="t-op">-&gt;</span>PrintLine();              <span class="t-com"># still items-&gt;Size() - 1</span>
+
+n : <span class="t-type">Int</span> <span class="t-op">:=</span> <span class="t-num">3</span>;
+<span class="t-kw">if</span>(n = <span class="t-num">3</span>) {
+  n : <span class="t-type">String</span> <span class="t-op">:=</span> <span class="t-str">"three"</span>;     <span class="t-com"># hides the Int for this block</span>
+  n<span class="t-op">-&gt;</span>Size()<span class="t-op">-&gt;</span>PrintLine();    <span class="t-com"># 5</span>
+};
+n<span class="t-op">-&gt;</span>PrintLine();              <span class="t-com"># 3</span>
+</code></pre>
+    <p><code>x := value</code> declares <code>x</code> only when no enclosing block has one; otherwise it assigns to the nearest. To hide an outer name, declare the inner one with its type. Declaring a name twice in one block is the error <code>Variable already defined in this scope</code>. Tests: <code>block_local_shadowing</code>, <code>bad_local_redeclared_in_block</code>, <code>bad_local_redeclares_parameter</code>.</p>
     <h3 id="nil-safety">Nil Safety</h3>
     <p><code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> instead of faulting. <code>??</code> supplies a value when the left side is <code>Nil</code>.</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-com"># without them</span>

@@ -117,6 +117,32 @@ value := "Hello World!";
 value->Size()->PrintLine();
 ```
 
+### Variable Scope
+A local belongs to the block it is declared in, from its declaration to the end of
+that block. Within one block a name is declared once; the parameters of a method and
+the locals of its body are one block. A nested block (the body of an `if`, a loop, a
+`select` label, a lambda) may declare a name that an enclosing block already has: the
+block's own variable hides the outer one until the block ends, and the outer one is
+unchanged. A loop variable is a declaration in the loop's block:
+```ruby
+k := items->Size() - 1;      # an Int
+each(k : names) {            # the loop's own k, 0 to names->Size() - 1
+  names[k]->PrintLine();
+};
+k->PrintLine();              # still items->Size() - 1
+
+n : Int := 3;
+if(n = 3) {
+  n : String := "three";     # hides the Int for this block
+  n->Size()->PrintLine();    # 5
+};
+n->PrintLine();              # 3
+```
+`x := value` declares `x` only when no enclosing block has one; otherwise it assigns to
+the nearest. To hide an outer name, declare the inner one with its type. Declaring a
+name twice in one block is the error `Variable already defined in this scope`. Tests:
+`block_local_shadowing`, `bad_local_redeclared_in_block`, `bad_local_redeclares_parameter`.
+
 ### Nil Safety
 `?->` calls a method only when the receiver is non-`Nil`, yielding `Nil` instead
 of faulting. `??` supplies a value when the left side is `Nil`.
