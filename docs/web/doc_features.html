@@ -175,6 +175,17 @@ n : <span class="t-type">Int</span> <span class="t-op">:=</span> <span class="t-
 n<span class="t-op">-&gt;</span>PrintLine();              <span class="t-com"># 3</span>
 </code></pre>
     <p><code>x := value</code> declares <code>x</code> only when no enclosing block has one; otherwise it assigns to the nearest. To hide an outer name, declare the inner one with its type. Declaring a name twice in one block is the error <code>Variable already defined in this scope</code>. Tests: <code>block_local_shadowing</code>, <code>bad_local_redeclared_in_block</code>, <code>bad_local_redeclares_parameter</code>.</p>
+    <h3 id="nil-guard-and-bail">Nil-guard and bail</h3>
+    <p><code>x := E ?? return V;</code> (also <code>?? break;</code> and <code>?? continue;</code>) leaves when <code>E</code> is <code>Nil</code>, and otherwise binds <code>x</code> to the value. The block form <code>x := E ?? { ...; return V };</code>, and <code>x ?? { ...; return };</code> for a variable you already have, run a block that must end in <code>return</code>, <code>break</code>, <code>continue</code> or <code>Runtime-&gt;Exit(..)</code> (a block that can fall through would leave <code>x</code> Nil, so it is an error). It is only a spelling of <code>x := E;</code> followed by <code>if(x = Nil) { ... }</code>; the value form <code>a ?? b</code> is unchanged. The guard belongs to an assignment or declaration statement, not to an argument.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+x <span class="t-op">:=</span> Find(v, i);
+<span class="t-kw">if</span>(x = <span class="t-const">Nil</span>) { <span class="t-kw">return</span> -<span class="t-num">1</span>; };
+<span class="t-kw">return</span> x<span class="t-op">-&gt;</span>Get();
+<span class="t-com"># after</span>
+x <span class="t-op">:=</span> Find(v, i) ?? <span class="t-kw">return</span> -<span class="t-num">1</span>;
+<span class="t-kw">return</span> x<span class="t-op">-&gt;</span>Get();
+</code></pre>
+    <p>Test: <code>nil_guard</code>, <code>bad_nil_guard_*</code>.</p>
     <h3 id="nil-safety">Nil Safety</h3>
     <p><code>value-&gt;TypeOf(Type)</code> is false when the value is <code>Nil</code> (Nil is of no type), and <code>Nil-&gt;As(Type)</code> is <code>Nil</code>.</p>
     <p><code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> instead of faulting. <code>??</code> supplies a value when the left side is <code>Nil</code>.</p>

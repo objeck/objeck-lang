@@ -128,6 +128,11 @@ class Parser {
   // constructor parameters written '@name' that fill the field of that name (field promotion)
   std::vector<std::wstring> promoted_fields;
   bool ClassDeclaresField(const std::wstring& name);
+  // 'x := E ?? return V;' / 'x := E ?? { ...; return };': the statements that run when E is Nil,
+  // taken by the assignment that owns the expression (see ParseNilGuardBail, ParseAssignment)
+  StatementList* nil_guard_bail = nullptr;
+  StatementList* ParseNilGuardBail(int depth);
+  If* MakeNilGuard(Variable* target, StatementList* bail);
   Method* prev_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;

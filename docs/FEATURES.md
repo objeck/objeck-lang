@@ -215,6 +215,27 @@ n->PrintLine();              # 3
 the nearest. To hide an outer name, declare the inner one with its type. Declaring a
 name twice in one block is the error `Variable already defined in this scope`. Tests:
 `block_local_shadowing`, `bad_local_redeclared_in_block`, `bad_local_redeclares_parameter`.
+### Nil-guard and bail
+
+`x := E ?? return V;` (also `?? break;` and `?? continue;`) leaves when `E` is `Nil`, and
+otherwise binds `x` to the value. The block form `x := E ?? { ...; return V };`, and `x ?? { ...; return };`
+for a variable you already have, run a block that must end in `return`, `break`, `continue`
+or `Runtime->Exit(..)` (a block that can fall through would leave `x` Nil, so it is an error).
+It is only a spelling of `x := E;` followed by `if(x = Nil) { ... }`; the value form
+`a ?? b` is unchanged. The guard belongs to an assignment or declaration statement, not to an
+argument.
+
+```ruby
+# before
+x := Find(v, i);
+if(x = Nil) { return -1; };
+return x->Get();
+# after
+x := Find(v, i) ?? return -1;
+return x->Get();
+```
+Test: `nil_guard`, `bad_nil_guard_*`.
+
 
 ### Nil Safety
 `value->TypeOf(Type)` is false when the value is `Nil` (Nil is of no type), and
