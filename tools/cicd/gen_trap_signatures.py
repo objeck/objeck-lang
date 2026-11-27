@@ -35,6 +35,15 @@ when a row does not say where a frame-reading trap may stand. --observed reads l
 VM built to print them saw while the regression suite ran, and lists each trap
 whose row says otherwise (2026-11: 192 traps ran, 190 as the libraries imply; the
 two others are OVERRIDES below).
+
+The library sources are the authority for two things a corpus can get wrong
+without looking wrong (library_traps): every directive is a statement of one
+library method, so core/compiler/lib_src says which methods hold each trap. A
+corpus that lacks one of them (System.Time.Date:New:l, of SYS_TIME's two) used
+to produce a row with a shorter, non-empty list, which --check accepted and the
+loader then held valid programs to. The generator stops unless the contexts it
+found are exactly the methods the sources hold the directive in, and --check
+compares the committed rows with the sources the same way.
 """
 import collections
 import glob
@@ -51,6 +60,9 @@ sys.path.insert(0, os.path.join(TREE, "tools", "fuzz", "loader"))
 import trap_shapes  # noqa: E402
 
 HEADER = os.path.join(TREE, "core", "shared", "trap_signatures.h")
+LIB_SRC = os.path.join(TREE, "core", "compiler", "lib_src")
+# a directive the compiler writes as another trap (EmitSystemDirective): source name -> trap
+DIRECTIVE_TRAP = {"LOAD_INST_UID": "INST_STABLE_ID"}
 W_INT, W_FLOAT, W_BYTE_ARY, W_CHAR_ARY, W_INT_ARY, W_FLOAT_ARY, W_OBJ_ARY, W_OBJ = 1, 2, 4, 8, 16, 32, 64, 128
 W_ANY = 255
 WORD_NAMES = [(W_INT, "W_INT"), (W_FLOAT, "W_FLOAT"), (W_BYTE_ARY, "W_BYTE_ARY"), (W_CHAR_ARY, "W_CHAR_ARY"),
@@ -126,6 +138,141 @@ def frame_traps():
             # True where it is the instance the handler reads, not only the frame
             out[trap] = bool(re.search(r"\binst\b", body))
     return out
+
+
+def code_tokens(text):
+    """An Objeck source as (word | '{' | '}' | '(' | ')' | '~' | ';'), without its
+    comments, strings and character literals: a brace in a string is not a block."""
+    out = []
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "#":
+            if text.startswith("#~", i):
+                end = text.find("~#", i + 2)
+                i = n if end < 0 else end + 2
+            else:
+                end = text.find("\n", i)
+                i = n if end < 0 else end
+        elif ch == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+            i += 1
+        elif ch == "'":
+            # 'x', or an escape up to its closing quote
+            end = i + 2 if text[i + 1:i + 2] != "\\" else text.find("'", i + 2)
+            i = (end if end > 0 else i) + 1
+        elif ch.isalpha() or ch in "_@":
+            end = i + 1
+            while end < n and (text[end].isalnum() or text[end] in "_."):
+                end += 1
+            out.append(text[i:end])
+            i = end
+        else:
+            if ch in "{}();~":
+                out.append(ch)
+            i += 1
+    return out
+
+
+def library_traps(traps, lib_src=None):
+    """Where the library sources hold each directive: trap -> [(Bundle.Class:Method,
+    tail)], one for each statement. 'tail' is True where the directive is the last
+    statement of a method that returns a value, which is where a TRAP leaves that
+    value on the stack for the method's RTRN.
+
+    A directive is written only in a library (the compiler reads one nowhere else),
+    so this list is complete where a corpus of images may not be. Checked against
+    the committed table when written: all 29 frame-reading traps' contexts and all
+    TRAP result counts agree with it."""
+    out = collections.defaultdict(list)
+    for path in sorted(glob.glob(os.path.join(lib_src or LIB_SRC, "*.obs"))):
+        with open(path, encoding="utf-8", errors="replace") as f:
+            toks = code_tokens(f.read())
+        depth = 0
+        bundle = []        # (name, the depth of its body), innermost last
+        classes = []
+        method = None      # (name, returns a value, the depth of its body)
+        pending = None     # a declaration read, waiting for its '{'
+        k = 0
+        while k < len(toks):
+            tok = toks[k]
+            if tok == "{":
+                depth += 1
+                if pending:
+                    kind, name, value = pending
+                    if kind == "bundle":
+                        bundle.append((name, depth))
+                    elif kind == "class":
+                        classes.append((name, depth))
+                    else:
+                        method = (name, value, depth)
+                    pending = None
+            elif tok == "}":
+                if method and method[2] == depth:
+                    method = None
+                if classes and classes[-1][1] == depth:
+                    classes.pop()
+                if bundle and bundle[-1][1] == depth:
+                    bundle.pop()
+                depth -= 1
+            elif tok == "bundle" and k + 1 < len(toks):
+                pending = ("bundle", toks[k + 1], None)
+            elif tok in ("class", "interface") and not method:
+                # 'class Name', 'class : public : Name'
+                j = k + 1
+                while j < len(toks) and toks[j] in ("public", "private", "native"):
+                    j += 1
+                if j < len(toks) and toks[j][0].isalpha():
+                    pending = ("class", toks[j], None)
+            elif tok in ("method", "function", "New") and not method and classes and classes[-1][1] == depth:
+                # 'method : public : Name(...) ~ Type {' or 'New(...) {'
+                j = k
+                while j < len(toks) and toks[j] != "(":
+                    j += 1
+                name = "New" if tok == "New" else toks[j - 1]
+                level = 0
+                while j < len(toks):
+                    level += toks[j] == "("
+                    level -= toks[j] == ")"
+                    if level == 0:
+                        break
+                    j += 1
+                value = tok != "New" and toks[j + 1:j + 2] == ["~"] and toks[j + 2:j + 3] != ["Nil"]
+                # a virtual or interface declaration has no body: it ends with ';'
+                m = j + 1
+                while m < len(toks) and toks[m] not in ("{", ";"):
+                    m += 1
+                if toks[m:m + 1] == ["{"]:
+                    pending = ("method", name, value)
+                    k = m - 1
+            elif method and DIRECTIVE_TRAP.get(tok, tok) in traps and toks[k + 1:k + 2] == [";"]:
+                tail = bool(method[1]) and depth == method[2] and toks[k + 2:k + 3] == ["}"]
+                where = "%s.%s:%s" % (bundle[-1][0] if bundle else "", classes[-1][0], method[0])
+                out[DIRECTIVE_TRAP.get(tok, tok)].append((where, tail))
+            k += 1
+    return out
+
+
+def context_method(context):
+    """'System.Time.Date:New:l,' -> 'System.Time.Date:New', as library_traps names it."""
+    return ":".join(context.split(":")[:2])
+
+
+def context_problems(trap, contexts, library):
+    """What is wrong with a frame-reading trap's contexts, held to the methods the
+    library sources hold its directive in ('' when nothing is)."""
+    want = collections.Counter(where for where, _ in library.get(trap, []))
+    have = collections.Counter(context_method(c) for c in contexts)
+    missing = sorted((want - have).elements())
+    extra = sorted((have - want).elements())
+    said = []
+    if missing:
+        said.append("no context for %s, which the library sources hold it in (a corpus without that method's image?)" % ", ".join(missing))
+    if extra:
+        said.append("a context in %s, where the library sources do not hold it" % ", ".join(extra))
+    return "; ".join(said)
 
 
 def split_params(name):
@@ -307,6 +454,7 @@ def arg_text(mask, classes, unnamed):
 def build_rows(seen, shapes, ids):
     """The rows, the notes, and the errors: with an error the header is not written."""
     frames = frame_traps()
+    library = library_traps(set(shapes))
     rows, problems, errors = [], [], []
     for trap in sorted(set(shapes) | set(LITERAL_COPIES) | {"CPY_CHAR_STR_ARYS"}, key=lambda t: ids.get(t, 0)):
         if trap not in ids:
@@ -351,6 +499,11 @@ def build_rows(seen, shapes, ids):
             if not contexts:
                 errors.append("%s: its handler reads the caller's frame or instance, and no image holds it: the row would "
                               "name no method it may stand in, and every program that uses it would be refused" % trap)
+            else:
+                # a list that is not empty can still lack a method: the loader refuses the trap there
+                wrong = context_problems(trap, contexts, library)
+                if wrong:
+                    errors.append("%s: %s" % (trap, wrong))
         rows.append((trap, shape["op"] == "TRAP_RTRN", count, pushes, result, args, contexts, frames.get(trap, False)))
     return rows, problems, errors
 
@@ -418,8 +571,10 @@ def check():
             problems.append("%s: trap_signatures.h says %s %d, an array literal is copied with TRAP_RTRN %d" %
                             (trap, "TRAP_RTRN" if rows[trap][0] else "TRAP", rows[trap][1], count))
     # Where a trap may stand: the last two cells of its row. A trap whose handler
-    # reads the frame or the instance names at least one method, and no other does.
+    # reads the frame or the instance names exactly the methods the library sources
+    # hold its directive in, and no other trap names any.
     frames = frame_traps()
+    library = library_traps(set(shapes))
     tails = {m.group(1): (m.group(2), m.group(3) == "true")
              for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", [^\n]*, (nullptr|L"[^"\n]*"), (true|false) \},\n', text)}
     for trap in sorted(rows):
@@ -431,6 +586,10 @@ def check():
             if ctx == "nullptr" or not [c for c in ctx[2:-1].split("|") if c]:
                 problems.append("%s: its handler reads the caller's frame or instance and trap_signatures.h names no method "
                                 "it may stand in (generated from an empty or partial corpus?)" % trap)
+            else:
+                wrong = context_problems(trap, ctx[2:-1].split("|"), library)
+                if wrong:
+                    problems.append("%s: trap_signatures.h has %s" % (trap, wrong))
             if instance != frames[trap]:
                 problems.append("%s: trap_signatures.h says instance=%s, the handler %s the instance" %
                                 (trap, "true" if instance else "false", "reads" if frames[trap] else "does not read"))

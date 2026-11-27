@@ -129,6 +129,57 @@ finally:
     gen.OVERRIDES.clear()
     gen.OVERRIDES.update(saved)
 
+# ------------------------------------- a corpus that lacks one valid context ----
+# SYS_TIME stands in two constructors of System.Time.Date. A corpus without the image
+# of one of them used to give a row that named only the other: not empty, so it was
+# written and --check passed it, and the loader then refused Date->New(Bool) in every
+# valid program. The library sources say where each directive is; the corpus is held
+# to them.
+print("generator: a corpus that lacks one of a trap's contexts")
+
+
+def committed_contexts():
+    """trap -> the contexts of its committed row, for every frame-reading trap."""
+    with open(HEADER, encoding="utf-8") as f:
+        text = f.read()
+    found = {}
+    for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", [^\n]*, L"([^"\n]*)", (true|false) \},\n', text):
+        found[m.group(1)] = m.group(2).split("|")
+    return found
+
+
+def corpus_with(contexts):
+    """What census() returns for images holding each trap in exactly these methods."""
+    seen = {}
+    for trap, names in contexts.items():
+        rec = gen.Seen()
+        rec.contexts = set(names)
+        seen[trap] = rec
+    return seen
+
+
+library = gen.library_traps(set(shapes))
+whole = committed_contexts()
+check("the library sources hold SYS_TIME in both Date constructors",
+      sorted(where for where, _ in library.get("SYS_TIME", [])) == ["System.Time.Date:New", "System.Time.Date:New"], library.get("SYS_TIME"))
+check("the committed row of SYS_TIME names both", sorted(whole.get("SYS_TIME", [])) == ["System.Time.Date:New:", "System.Time.Date:New:l,"],
+      whole.get("SYS_TIME"))
+check("the library sources and the committed rows name the same methods, for all %d frame-reading traps" % len(whole),
+      all(not gen.context_problems(trap, whole[trap], library) for trap in whole) and set(whole) == set(t for t in frames if t in shapes))
+
+rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
+check("a corpus with every context: no error", not errors, errors[:3])
+
+partial = dict(whole, SYS_TIME=["System.Time.Date:New:"])
+rows, notes, errors = gen.build_rows(corpus_with(partial), shapes, ids)
+check("a corpus without System.Time.Date:New(Bool): an error for SYS_TIME, and only for it",
+      len(errors) == 1 and errors[0].startswith("SYS_TIME:") and "System.Time.Date:New" in errors[0], errors[:3])
+
+stray = dict(whole, GMT_TIME=whole["GMT_TIME"] + ["Stray.Class:Method:"])
+rows, notes, errors = gen.build_rows(corpus_with(stray), shapes, ids)
+check("a context in a method the library sources do not hold the directive in: an error",
+      len(errors) == 1 and errors[0].startswith("GMT_TIME:") and "Stray.Class:Method" in errors[0], errors[:3])
+
 # ------------------------------------------------------------------ --check ----
 print("--check: the committed header and what it must not accept")
 rc, out = run("--check")
@@ -145,6 +196,11 @@ cases = [
     ("the instance flag dropped", row_edit("LOAD_CLS_BY_INST", GETCLASS_TAIL, ', L"System.Base:GetClass:", false },'), "LOAD_CLS_BY_INST"),
     ("a context on a trap that reads the operand stack alone",
      row_edit("STD_OUT_INT", ', nullptr, false },', ', L"System.Int:Print:", false },'), "STD_OUT_INT"),
+    # not empty, and one valid caller short: what a partial corpus wrote
+    ("SYS_TIME without Date->New(Bool)",
+     row_edit("SYS_TIME", ', L"System.Time.Date:New:|System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:", false },'), "SYS_TIME"),
+    ("GMT_TIME in a method the library does not write it in",
+     row_edit("GMT_TIME", ', L"System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:l,|Stray.Class:Method:", false },'), "GMT_TIME"),
 ]
 
 
