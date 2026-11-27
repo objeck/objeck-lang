@@ -2012,7 +2012,8 @@ agent->SetBudget(budget);
 	  started: it returns a result halted with `budget_steps`, `budget_tokens`, `budget_tool_calls` or
 	  `deadline`. The wall-clock limit counts the time spent inside agent runs. A model reply is checked after
 	  it arrives, so a run can pass a token limit by the size of one reply.
-	* Use is charged as it happens: a model reply when it arrives, a tool call when it starts. A run started
+	* Use is charged as it happens: a step is taken from the scope before the model is asked (and given back
+	  when no reply arrives), a tool call before it starts, the tokens of a reply when it arrives. A run started
 	  from inside another run (a tool or an observer that runs an agent) is therefore admitted against what is
 	  left at that moment, and the outer run stops with the budget's stop reason when it finds the scope spent.
 	  A call that was answered as skipped did not run and is not charged. A run that ends by raising has still
@@ -2028,10 +2029,18 @@ agent->SetBudget(budget);
 	* Threads and actors: the scope applies to agent runs made on the thread that called Run, and to nothing
 	  else; a new thread or actor does not inherit it. To bring a worker under the limits, hand it
 	  `scope->Child()` and have it call `AgentScope->Run(child, ...)`: the child's runs are charged to the parent
-	  too. Parallel children can together pass the parent's limit by the model replies already in flight. Call
+	  too. A step or a tool call is checked and taken in one move, so parallel children never pass the parent's
+	  step or tool call limit; they can pass its token limit by the model replies already in flight. Call
 	  `AgentScope->Init()` once before starting threads that may enter their first scope at the same time.
 	  A child may also be entered on the parent's own thread; when it is left the thread is back in the scope
 	  it was in before.
+	* A child entered inside a scope that is not its parent is limited by both: its parent (and what the
+	  parent is inside) and the scope around it (and what that is inside). Each scope is checked and charged
+	  once, and cancelling any of them stops the child's runs.
+	* A child's parent need not be entered: its counters then simply add up over the children (they start
+	  from zero only when the parent is entered). The child is tied to the parent's cancellation only when
+	  the parent is entered at the moment the child is; a token left over from an earlier entry of the parent
+	  is never used.
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
 	  its counters from zero. A scope may not be entered inside its own child either (it would be limited by
 	  itself): that raises, like entering it twice.
@@ -2045,6 +2054,7 @@ scope->GetStepsUsed()->PrintLine();
 	class AgentScope {
 		@parent : AgentScope;
 		@fixed_parent : AgentScope;
+		@also : AgentScope;
 		@previous : AgentScope;
 		@max_steps : Int;
 		@max_tokens : Int;
@@ -2080,6 +2090,7 @@ scope->GetStepsUsed()->PrintLine();
 				@slots := Vector->New()<AgentScopeSlot>;
 				@registry_lock := ThreadMutex->New("agent_scope_registry");
 			};
+			Redactor->Init();
 		}
 
 		#~
@@ -2281,8 +2292,10 @@ scope->GetStepsUsed()->PrintLine();
 			};
 
 			# Two things are kept apart: @previous is what this thread was inside (Leave puts it back), @parent
-			# is who is checked and charged along with this scope (the fixed parent of a Child(), else the same)
+			# is who is checked and charged along with this scope (the fixed parent of a Child(), else the same).
+			# A Child() entered inside a scope other than its parent is limited by that one as well (@also).
 			cycle := false;
+			side : AgentScope;
 			critical(@registry_lock) {
 				outer : AgentScope;
 				slot : AgentScopeSlot;
@@ -2301,18 +2314,22 @@ scope->GetStepsUsed()->PrintLine();
 				above := @fixed_parent;
 				if(above = Nil) {
 					above := outer;
+				}
+				else if(outer <> above) {
+					side := outer;
 				};
 
-				# nothing is published when the scope would become its own ancestor: every walk up the chain
-				# (limits, charges) would then never end
-				walk := above;
-				while(walk <> Nil & <>cycle) {
-					if(walk = @self) {
+				# nothing is published when the scope would come to limit itself, through either of the two
+				seen := Vector->New()<AgentScope>;
+				AddOnce(seen, above);
+				AddOnce(seen, side);
+				Expand(seen);
+				k := 0;
+				while(k < seen->Size() & <>cycle) {
+					if(seen->Get(k) = @self) {
 						cycle := true;
-					}
-					else {
-						walk := walk->GetOuter();
 					};
+					k += 1;
 				};
 
 				if(<>cycle) {
@@ -2324,6 +2341,7 @@ scope->GetStepsUsed()->PrintLine();
 					};
 					@previous := outer;
 					@parent := above;
+					@also := side;
 				};
 			};
 
@@ -2343,11 +2361,19 @@ scope->GetStepsUsed()->PrintLine();
 				@halt := Nil;
 			};
 
+			# a parent that is not entered has no token of its own now: the one it still holds is left over from
+			# its last entry and may be cancelled already
 			parent_cancel : AgentCancel;
 			if(@parent <> Nil) {
-				parent_cancel := @parent->GetCancel();
+				if(@parent->IsActive()) {
+					parent_cancel := @parent->GetCancel();
+				};
 			};
-			@cancel := AgentCancel->New(parent_cancel);
+			side_cancel : AgentCancel;
+			if(@also <> Nil) {
+				side_cancel := @also->GetCancel();
+			};
+			@cancel := AgentCancel->New(parent_cancel, side_cancel);
 			if(@trace_on) {
 				@buffer := AgentTraceBuffer->New();
 			};
@@ -2372,6 +2398,7 @@ scope->GetStepsUsed()->PrintLine();
 				};
 				@previous := Nil;
 				@parent := Nil;
+				@also := Nil;
 			};
 
 			if(@print) {
@@ -2424,6 +2451,52 @@ scope->GetStepsUsed()->PrintLine();
 			return left;
 		}
 
+		function : AddOnce(all : Vector<AgentScope>, scope : AgentScope) ~ Nil {
+			if(scope = Nil) {
+				return;
+			};
+
+			i := 0;
+			while(i < all->Size()) {
+				if(all->Get(i) = scope) {
+					return;
+				};
+				i += 1;
+			};
+			all->AddBack(scope);
+		}
+
+		# adds every scope the listed ones are limited by, each once; the caller holds the registry lock
+		function : Expand(all : Vector<AgentScope>) ~ Nil {
+			i := 0;
+			while(i < all->Size()) {
+				scope := all->Get(i);
+				AddOnce(all, scope->GetOuter());
+				AddOnce(all, scope->GetAlso());
+				i += 1;
+			};
+		}
+
+		# this scope and every scope that limits it, each once: the parent's chain and, for a Child() entered
+		# inside a scope other than its parent, that scope's chain too
+		method : Chain() ~ Vector<AgentScope> {
+			Init();
+			all := Vector->New()<AgentScope>;
+			all->AddBack(@self);
+			critical(@registry_lock) {
+				Expand(all);
+			};
+			return all;
+		}
+
+		method : IsActive() ~ Bool {
+			flag := false;
+			critical(@lock) {
+				flag := @active;
+			};
+			return flag;
+		}
+
 		#~
 		@hidden
 		~#
@@ -2438,8 +2511,10 @@ scope->GetStepsUsed()->PrintLine();
 				sink_list->AddBack(own);
 			};
 
-			scope := @self;
-			while(scope <> Nil) {
+			chain := Chain();
+			c := 0;
+			while(c < chain->Size()) {
+				scope := chain->Get(c);
 				steps := Smaller(steps, scope->LeftSteps());
 				tokens := Smaller(tokens, scope->LeftTokens());
 				tools := Smaller(tools, scope->LeftToolCalls());
@@ -2447,7 +2522,7 @@ scope->GetStepsUsed()->PrintLine();
 				if(scope->GetTrace() <> Nil) {
 					sink_list->AddBack(scope->GetTrace());
 				};
-				scope := scope->GetOuter();
+				c += 1;
 			};
 
 			reason : String;
@@ -2507,16 +2582,17 @@ scope->GetStepsUsed()->PrintLine();
 		#~
 		Charges what a run has just used to this scope and every scope above it. Called by Agent.
 		@hidden
-		@param steps model replies
+		@param steps model replies (-1 gives back a step that was taken and brought no reply)
 		@param tokens tokens of those replies
 		@param tool_calls tool calls started (-1 takes back a call that was not run after all)
 		@param wall_ms milliseconds inside the run since the last charge
 		~#
 		method : public : Meter(steps : Int, tokens : Int, tool_calls : Int, wall_ms : Int) ~ Nil {
-			scope := @self;
-			while(scope <> Nil) {
-				scope->Add(steps, tokens, tool_calls, wall_ms);
-				scope := scope->GetOuter();
+			chain := Chain();
+			c := 0;
+			while(c < chain->Size()) {
+				chain->Get(c)->Add(steps, tokens, tool_calls, wall_ms);
+				c += 1;
 			};
 		}
 
@@ -2526,12 +2602,13 @@ scope->GetStepsUsed()->PrintLine();
 		@return true when a step limit is used up
 		~#
 		method : public : SpentSteps() ~ Bool {
-			scope := @self;
-			while(scope <> Nil) {
-				if(scope->LeftSteps() = 0) {
+			chain := Chain();
+			c := 0;
+			while(c < chain->Size()) {
+				if(chain->Get(c)->LeftSteps() = 0) {
 					return true;
 				};
-				scope := scope->GetOuter();
+				c += 1;
 			};
 			return false;
 		}
@@ -2542,38 +2619,85 @@ scope->GetStepsUsed()->PrintLine();
 		@return true when a token limit is used up
 		~#
 		method : public : SpentTokens() ~ Bool {
-			scope := @self;
-			while(scope <> Nil) {
-				if(scope->LeftTokens() = 0) {
+			chain := Chain();
+			c := 0;
+			while(c < chain->Size()) {
+				if(chain->Get(c)->LeftTokens() = 0) {
 					return true;
 				};
-				scope := scope->GetOuter();
+				c += 1;
 			};
 			return false;
 		}
 
 		#~
-		Says whether this scope or one above it has no tool calls left. Called by Agent.
+		Takes one step (a model reply about to be asked for) from this scope and every scope that limits it,
+		or nothing at all when one of them has none left. Called by Agent.
 		@hidden
-		@return true when a tool call limit is used up
+		@return true when the step was taken
 		~#
-		method : public : SpentToolCalls() ~ Bool {
-			scope := @self;
-			while(scope <> Nil) {
-				if(scope->LeftToolCalls() = 0) {
-					return true;
+		method : public : TakeStep() ~ Bool {
+			return Take(true);
+		}
+
+		#~
+		Takes one tool call from this scope and every scope that limits it, or nothing at all when one of
+		them has none left. Called by Agent.
+		@hidden
+		@return true when the call was taken
+		~#
+		method : public : TakeToolCall() ~ Bool {
+			return Take(false);
+		}
+
+		# The check and the charge are one move under the registry lock, and every step and tool call is
+		# taken this way: scopes entered on several threads that share a parent can not all find the last
+		# one free.
+		method : Take(step : Bool) ~ Bool {
+			Init();
+			taken := true;
+			critical(@registry_lock) {
+				all := Vector->New()<AgentScope>;
+				all->AddBack(@self);
+				Expand(all);
+				c := 0;
+				while(c < all->Size() & taken) {
+					left := 0;
+					if(step) {
+						left := all->Get(c)->LeftSteps();
+					}
+					else {
+						left := all->Get(c)->LeftToolCalls();
+					};
+					if(left = 0) {
+						taken := false;
+					};
+					c += 1;
 				};
-				scope := scope->GetOuter();
+
+				if(taken) {
+					c := 0;
+					while(c < all->Size()) {
+						if(step) {
+							all->Get(c)->Add(1, 0, 0, 0);
+						}
+						else {
+							all->Get(c)->Add(0, 0, 1, 0);
+						};
+						c += 1;
+					};
+				};
 			};
-			return false;
+			return taken;
 		}
 
 		# counts a run that has ended (or was not started) in this scope and every scope above it
 		method : Finished(stop : String) ~ Nil {
-			scope := @self;
-			while(scope <> Nil) {
-				scope->Count(stop);
-				scope := scope->GetOuter();
+			chain := Chain();
+			c := 0;
+			while(c < chain->Size()) {
+				chain->Get(c)->Count(stop);
+				c += 1;
 			};
 		}
 
@@ -2611,6 +2735,10 @@ scope->GetStepsUsed()->PrintLine();
 
 		method : GetOuter() ~ AgentScope {
 			return @parent;
+		}
+
+		method : GetAlso() ~ AgentScope {
+			return @also;
 		}
 
 		method : Add(steps : Int, tokens : Int, tool_calls : Int, wall_ms : Int) ~ Nil {
@@ -3200,7 +3328,29 @@ result->GetText()->PrintLine();
 					running := false;
 				}
 				else {
-					reply := ModelCall(tools, step_number + 1);
+					# Under a scope the step is taken before the model is asked, check and charge in one move, so
+					# runs on other threads that share the scope can not all take the last one. A call that brings
+					# no reply (an error, an abandoned call, a raise) gives the step back.
+					reply : AgentReply;
+					if(@scope = Nil) {
+						reply := ModelCall(tools, step_number + 1);
+					}
+					else if(@scope->TakeStep()) {
+						try {
+							reply := ModelCall(tools, step_number + 1);
+						}
+						finally {
+							if(reply = Nil) {
+								@scope->Meter(-1, 0, 0, 0);
+							};
+						};
+					}
+					else {
+						@halt := "budget_steps";
+						@scope_spent := true;
+						EmitHalt(@halt, step_number);
+					};
+
 					if(reply = Nil) {
 						if(@halt <> Nil) {
 							Stop(result, @halt);
@@ -3222,10 +3372,11 @@ result->GetText()->PrintLine();
 							@cost_used += @budget->Cost(reply->GetInputTokens(), reply->GetOutputTokens());
 						};
 
-						# the scope is charged for the reply before anyone hears of it: a run that an observer or
-						# a tool starts from inside this one is then admitted against what is really left
+						# the scope is charged for the reply (its step was taken above) before anyone hears of it: a
+						# run that an observer or a tool starts from inside this one is then admitted against what is
+						# really left
 						if(@scope <> Nil) {
-							@scope->Meter(1, reply_tokens, 0, 0);
+							@scope->Meter(0, reply_tokens, 0, 0);
 							ChargeWall(@clock->Ms());
 						};
 
@@ -3729,10 +3880,13 @@ result->GetText()->PrintLine();
 						EmitHalt(@halt, step->GetIndex());
 					};
 
-					if(@halt = Nil & @scope <> Nil & @scope->SpentToolCalls()) {
-						@halt := "budget_tool_calls";
-						@scope_spent := true;
-						EmitHalt(@halt, step->GetIndex());
+					# the scope's tool call is taken here, check and charge in one move (see TakeStep)
+					if(@halt = Nil & @scope <> Nil) {
+						if(<>@scope->TakeToolCall()) {
+							@halt := "budget_tool_calls";
+							@scope_spent := true;
+							EmitHalt(@halt, step->GetIndex());
+						};
 					};
 				};
 
@@ -3745,13 +3899,11 @@ result->GetText()->PrintLine();
 					outcome := AgentToolResult->New(call->GetId(), call->GetName(), ArgumentText(call), "Error: the run was stopped ({$reason}), so this call was not run", "skipped", 0);
 				}
 				else {
-					# counted before it runs, so a run the tool starts finds this call already charged; a call
-					# that turns out not to run (a cancel while it waited for approval) is taken back. A skipped
-					# call is in the transcript, but it is not a tool call for any budget.
+					# counted before it runs (the scope was charged just above), so a run the tool starts finds
+					# this call already charged; a call that turns out not to run (a cancel while it waited for
+					# approval) is taken back. A skipped call is in the transcript, but it is not a tool call for
+					# any budget.
 					@tool_calls += 1;
-					if(@scope <> Nil) {
-						@scope->Meter(0, 0, 1, 0);
-					};
 
 					outcome := Execute(call);
 					if(outcome->GetStatus()->Equals("skipped")) {
@@ -4277,9 +4429,23 @@ result->GetText()->PrintLine();
 	#~
 	Removes API keys from text before it is logged, shown or kept in an error. Keys are found by value
 	(every key a backend has used is registered) and by shape (sk-..., AIza..., and the token after Bearer).
+	Add and Scrub may be called from any thread: the list of keys is never changed in place (Add puts a new
+	list in its place under a lock), so Scrub always reads a complete one. The lock is made on first use;
+	call `Redactor->Init()` (or `AgentScope->Init()`) once at start up when the very first keys may be
+	registered by several threads at the same moment.
 	~#
 	class Redactor {
 		@secrets : static : Vector<String>;
+		@lock : static : ThreadMutex;
+
+		#~
+		Creates the lock now; call once at start up when threads may register their first keys together
+		~#
+		function : Init() ~ Nil {
+			if(@lock = Nil) {
+				@lock := ThreadMutex->New("agent_redactor");
+			};
+		}
 
 		#~
 		Registers a secret so it is masked wherever it appears
@@ -4290,18 +4456,40 @@ result->GetText()->PrintLine();
 				return;
 			};
 
-			if(@secrets = Nil) {
-				@secrets := Vector->New()<String>;
-			};
-
-			i := 0;
-			while(i < @secrets->Size()) {
-				if(@secrets->Get(i)->Equals(secret)) {
-					return;
+			Init();
+			critical(@lock) {
+				# a new list replaces the old one, which a Scrub on another thread may be reading
+				old := @secrets;
+				known := false;
+				next := Vector->New()<String>;
+				if(old <> Nil) {
+					i := 0;
+					while(i < old->Size()) {
+						if(old->Get(i)->Equals(secret)) {
+							known := true;
+						};
+						next->AddBack(old->Get(i));
+						i += 1;
+					};
 				};
-				i += 1;
+
+				if(<>known) {
+					next->AddBack(secret);
+					@secrets := next;
+				};
 			};
-			@secrets->AddBack(secret);
+		}
+
+		#~
+		Gets how many keys are registered
+		@return the number of keys
+		~#
+		function : Size() ~ Int {
+			secrets := @secrets;
+			if(secrets = Nil) {
+				return 0;
+			};
+			return secrets->Size();
 		}
 
 		#~
@@ -4315,10 +4503,11 @@ result->GetText()->PrintLine();
 			};
 
 			result := text;
-			if(@secrets <> Nil) {
+			secrets := @secrets;
+			if(secrets <> Nil) {
 				i := 0;
-				while(i < @secrets->Size()) {
-					result := result->ReplaceAll(@secrets->Get(i), "[REDACTED]");
+				while(i < secrets->Size()) {
+					result := result->ReplaceAll(secrets->Get(i), "[REDACTED]");
 					i += 1;
 				};
 			};
