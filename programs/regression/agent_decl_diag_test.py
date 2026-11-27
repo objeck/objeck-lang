@@ -18,6 +18,9 @@ problem and point at the line and column of the text that is wrong):
   value; a parenthesis that is not closed; two values where one is expected; a parameter of an unknown type,
   also when the declaration is the first line of the file; a mistake in the second setting of a line that
   holds two.
+  a damaged declaration, before a class with a mistake of its own that must still be reported: a ')' or ']' that
+  closes nothing; a '(', '[' or '{' that nothing closes, where a setting starts, after 'budget', where a limit
+  starts, in a value and in the parameter list; closers of the wrong kind; no closing '}' at all.
 
 At run time (the program compiles; it must stop with the message and a non-zero exit):
   a tool that is Nil, an MCP server that is Nil.
@@ -137,6 +140,11 @@ BAD = [
      ["Invalid cast with classes: API.Agent.AgentTraceSink and Int"], "script->Size();"),
     ("an undefined name on the second line of a value", "agent A(script : Vector<AgentReply>) {\n" + OKB + "\tinstructions : \"a\" +\n\t\t\tundefined_name;\n}\n",
      ["Undefined variable: 'undefined_name'"], "undefined_name;"),
+    # a word that starts a declaration is not the end of the agent when no name follows it: it is the value's mistake
+    ("a declaration's keyword used as a name in a value", "agent A(script : Vector<AgentReply>) {\n\tbackend : ScriptedBackend->New(record);\n\ttools : Tools;\n}\n",
+     ["Expected expression, found keyword 'record'"], "record);"),
+    ("a declaration's keyword used as a limit", "agent A(script : Vector<AgentReply>) {\n" + OKB + "\tbudget { steps : class; }\n\ttools : Tools;\n}\n",
+     ["Expected expression, found keyword 'class'"], "class;"),
     ("a parenthesis that is not closed", "agent A(script : Vector<AgentReply>) {\n\tbackend : ScriptedBackend->New(script;\n\tinstructions : \"a\";\n}\n",
      ["found ';'"], ";\n\tinstructions"),
     ("two values where one is expected", "agent A(script : Vector<AgentReply>, extra : String) {\n" + OKB + "\tinstructions : extra extra;\n}\n",
@@ -354,6 +362,43 @@ def main():
         code, out, obe = compile_files("paired", {"main.obs": HEAD + "agent Broken { (a; b) [c; d] {e; f}; backend : API.Agent.ScriptedBackend->New(Nil); }\n" + later})
         errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
         check("paired brackets where a setting starts are skipped whole", code != 0 and len(errors) == 2 and "found '('" in out and "Expected expression" in out, out)
+
+        # An opener that nothing closes, or that the wrong kind of closer follows. The recovery counted '(',
+        # '[' and '{' as one depth, so in 'agent Broken { ( }' the agent's own '}' closed the '(': it was
+        # skipped, the class after the agent was read as part of it, and that class's mistake was never
+        # reported. A closer now closes only its own kind ('}' also what is left open inside its braces), a '}'
+        # with no '{' open is the agent's, and a declaration that was never closed ends in front of the next
+        # 'class' rather than at the end of the file. Each shape: the agent's first error, the mistake in the
+        # class after it at its place, and no more errors than listed.
+        for label, body, first, count in (
+                ("an unclosed '(' where a setting starts", "agent Broken { ( }\n", "Expected a setting of the agent 'Broken', found '('", 3),
+                ("an unclosed '[' where a setting starts", "agent Broken { [ }\n", "Expected a setting of the agent 'Broken', found '['", 3),
+                ("an unclosed '{' where a setting starts", "agent Broken { { }\n", "The agent 'Broken' is not closed", 3),
+                ("an unclosed '(', a ';' and a setting", "agent Broken { ( ; backend : Nil; }\n", "Expected a setting of the agent 'Broken', found '('", 3),
+                ("a '(' closed by ']'", "agent Broken { ( ] }\n", "Expected a setting of the agent 'Broken', found '('", 3),
+                ("a '[' closed by ')'", "agent Broken { [ ) }\n", "Expected a setting of the agent 'Broken', found '['", 3),
+                ("an unclosed '(' inside braces", "agent Broken { { ( } }\n", "Expected a setting of the agent 'Broken', found '{'", 3),
+                ("a '{' inside an unclosed '('", "agent Broken { ( { } }\n", "Expected a setting of the agent 'Broken', found '('", 3),
+                ("a '(' and a '{' closed in the wrong order", "agent Broken { ( { ) } }\n", "Expected a setting of the agent 'Broken', found '('", 3),
+                ("an unclosed '(' after 'budget'", "agent Broken { budget ( }\n", "Expected '{' after 'budget'", 3),
+                ("an unclosed '[' after 'budget'", "agent Broken { budget [ }\n", "Expected '{' after 'budget'", 3),
+                ("an unclosed '(' where a limit starts", "agent Broken { budget { ( } }\n", "Expected a limit of the budget, found '('", 4),
+                ("an unclosed '(' where a limit starts, the budget's '}' missing", "agent Broken { budget { ( }\n", "Expected a limit of the budget, found '('", 4),
+                ("an unclosed '(' in a limit's value", "agent Broken { budget { steps : ( ; } }\n", "has no backend", 2),
+                ("an unclosed '{' in a limit's value", "agent Broken { budget { steps : { ; } }\n", "Expected ';' after the limit 'steps'", 3),
+                ("an unclosed '(' in a value", "agent Broken { backend : Later( }\n", "Expected ';' after 'backend' of the agent 'Broken', found '}'", 2),
+                ("an unclosed '{' in a value", "agent Broken { backend : Later({ ; }\n", "The agent 'Broken' is not closed", 3),
+                ("an unclosed '[' in a list", "agent Broken { tools : Tools[ , Later }\n", "Expected ';' after 'tools' of the agent 'Broken', found '}'", 3),
+                ("an unclosed parameter list", "agent Broken(count : Int { backend : Nil; }\n", "The parameter list of the agent 'Broken' is not closed", 2),
+                ("a declaration with no '}' at all", "agent Broken { backend : Nil;\n", "The agent 'Broken' is not closed", 2)):
+            text = HEAD + body + later
+            line, col = where(text, ";\n\t}\n}\n", len(HEAD))
+            for crlf in (False, True):
+                code, out, obe = compile_files("damaged", {"main.obs": text}, crlf=crlf)
+                errors = [l for l in out.splitlines() if ".obs:(" in l and "Warning:" not in l]
+                check("%s%s: the mistake in the class after the agent is still reported, at line %d, column %d" % (label, " (CRLF)" if crlf else "", line, col),
+                      code != 0 and not os.path.exists(obe) and first in out and any("Expected expression" in l and ":(%d,%d):" % (line, col) in l for l in errors), out)
+                check("  and the agent's errors are the only others (%d in all)" % count, len(errors) == count, out)
 
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_decl_test.obs"), encoding="utf-8") as f:
             source = f.read()

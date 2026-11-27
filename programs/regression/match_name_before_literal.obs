@@ -1,0 +1,129 @@
+#~
+'match' before a literal is the keyword only when the '{' of the arms follows before the statement
+ends. A statement may end at the end of its line (the ';' between statements is optional), so in
+
+	copy := match
+	"done"->PrintLine();
+
+the string starts the next statement and 'match' is the variable it has always been. The lookahead
+took any literal after the word for a subject, read the two lines as 'match "done"->PrintLine() {',
+and refused the program with "Expected '{'": a program that compiled before 'match' was added. The
+same holds for a number and a character. A literal subject, alone or with more of an expression
+after it ('match "ab"->Size() {', 'match 2 + n {'), is still a 'match'.
+~#
+class MatchNameBeforeLiteral {
+	@@failed : static : Bool;
+	@@log : static : String;
+
+	function : Check(name : String, got : String, expected : String) ~ Nil {
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+	}
+
+	function : Note(text : String) ~ String {
+		@@log += text;
+		return text;
+	}
+
+	function : Twice(n : Int) ~ Int {
+		return n * 2;
+	}
+
+	# the variable at the end of a line, a string literal starting the next statement
+	function : BeforeString() ~ String {
+		match := "saved";
+		copy := match
+		"done"->Size();
+		return copy;
+	}
+
+	# the same with a number, a character and a float, and with the variable as a whole statement's value
+	function : BeforeOthers() ~ String {
+		match := 7;
+		a := match
+		3->Abs();
+		b := match
+		'c'->ToUpper();
+		c := match
+		2.5->Floor();
+		d := a + match
+		1->Abs();
+		return "{$a} {$b} {$c} {$d}";
+	}
+
+	# inside an 'if' block and a loop: the next statement's literal is followed by a ';' and then a '}'
+	function : InBlocks(flag : Bool) ~ Int {
+		match := 2;
+		out := 0;
+		if(flag) {
+			out := match + 1
+			"x"->Size();
+		};
+		while(out < 6) {
+			out += match
+			1->Abs();
+		};
+		return out;
+	}
+
+	# a call on the literal, with arguments: the ')' and the ';' come before any '{'
+	function : BeforeCallWithArguments() ~ String {
+		match := "kept";
+		copy := match
+		"ab"->Compare(Note("cd"));
+		return copy;
+	}
+
+	# literal subjects, as before
+	function : Literals(n : Int) ~ String {
+		out := match 1 { 1 => "one", other => "many" };
+		out += match "ab"->Size() + n { 5 => " five", other => " not five" };
+		out += match 'x' { 'x' => " ex", other => " ?" };
+		out += match 2 + n { 5 => " five", other => " ?" };
+		out += match 2.0->As(Int) { 2 => " two", other => " ?" };
+		match 3 {
+			3 => { out += " three"; }
+			other => { out += " ?"; }
+		};
+		match "k" {
+			"k" => { out += " k"; }
+			other => { out += " ?"; }
+		};
+		return out;
+	}
+
+	# a literal subject with a call that takes a match of its own as an argument
+	function : Nested(n : Int) ~ String {
+		return match 1 + Twice(match 2 { 2 => n, other => 0 }) { 7 => "seven", other => "other" };
+	}
+
+	# both in one method: the variable, then the keyword
+	function : Both() ~ String {
+		match := "v";
+		copy := match
+		"skipped"->Size();
+		chosen := match 2 { 2 => "two", other => "?" };
+		return "{$copy} {$chosen} {$match}";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@@log := "";
+		Check("a variable before a string", BeforeString(), "saved");
+		Check("a variable before a number, a character and a float", BeforeOthers(), "7 7 7 14");
+		Check("in an if block and a loop", InBlocks(true)->ToString(), "7");
+		Check("in a loop only", InBlocks(false)->ToString(), "6");
+		Check("before a call with arguments", BeforeCallWithArguments(), "kept");
+		Check("the call after the variable ran", @@log, "cd");
+		Check("literal subjects", Literals(3), "one five ex five two three k");
+		Check("a nested literal subject", Nested(3), "seven");
+		Check("the variable and the keyword in one method", Both(), "v two v");
+
+		if(@@failed) {
+			"FAIL: 'match' as a name before a literal"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: 'match' as a name before a literal"->PrintLine();
+	}
+}

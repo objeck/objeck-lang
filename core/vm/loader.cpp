@@ -695,8 +695,8 @@ static bool IsProgramMcpEntryName(const std::wstring& name)
 // the three (it did not say function from method, and an instance method named McpMain
 // was started with no instance: its first use of '@self' was the VM's Nil-dereference
 // error). One that is not is named in the refusal, with the reason. obc refuses the
-// same three in a program it knows to be a server (the declaring file has 'use API.MCP'
-// or some class has a tagged function: Parser::RefuseMcpEntry, ReportMcpEntries), where the
+// same three in a program it knows to be a server (a function in a file with 'use API.MCP',
+// or any tagged function in the program: Parser::RefuseMcpEntry, ReportMcpEntries), where the
 // line number is; this is what a program that is not one, or a file obc did not write,
 // is told.
 void Loader::SelectMcpEntry()

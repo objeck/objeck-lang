@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: A '{$' inside '{$...}': the interpolation before it is not closed
+# EXPECT_ERROR_COUNT: 1
+#~
+An interpolation ends at its first '}', so it cannot hold another: a '{$' met while one is open
+means the first was never closed. The string below used to compile. The analyzer started the
+expression again at the second '{$' and kept the text before it a second time, so it printed
+"cost: cost: {$ then 5". A string of N such openers held N copies of its beginning (5,000 of
+them a 25 million character literal). Two interpolations side by side, and text with a '{' or a
+'$' in it, are not this and still compile (core_string_interp_*).
+~#
+class BadInterpOpenTwice {
+	function : Main(args : String[]) ~ Nil {
+		price := 5;
+		"cost: {$ then {$price}"->PrintLine();
+	}
+}

@@ -1,0 +1,21 @@
+# EXPECT_COMPILE_ERROR: bad_nil_guard_index_position.obs:(15,9): Expected Byte, Char, Int or Enum class type
+# EXPECT_ERROR_COUNT: 1
+#~
+An index that cannot be one, in a guarded element assignment, is reported where the index is
+written, once, as in a plain assignment. The guard keeps the index in a hidden local, and what
+stood for the index was placed at the start of the statement: the error pointed there (column 3),
+and a second one named the hidden local ("Note: Variable '#guard_0' is bound to array elements
+using ':='"), which the program never wrote.
+~#
+class BadNilGuardIndexPosition {
+	function : Find() ~ String { return "x"; }
+	function : Run() ~ Int {
+		cells := String->New[3];
+		rate := 1.5;
+		cells[rate] := Find() ?? return 1;
+		return 0;
+	}
+	function : Main(args : String[]) ~ Nil {
+		Run()->PrintLine();
+	}
+}

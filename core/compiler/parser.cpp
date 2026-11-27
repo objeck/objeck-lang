@@ -2009,14 +2009,28 @@ static bool HasLambdaInInterpolation(const std::wstring& str)
 }
 
 /****************************
- * True when a string literal ends inside a `{$ ... }` interpolation that is
- * never closed. The scanner ends a string at the first unescaped quote, so a
+ * How a string literal leaves a `{$ ... }` interpolation open, if it does.
+ *
+ * At its end: the scanner ends a string at the first unescaped quote, so a
  * quoted argument inside an interpolation -- "x: {$(Join(items, ", "))}" --
  * cuts the string at its first quote and leaves the '{$' open. Reporting that
  * names the real mistake; the parse otherwise fails tokens later on whatever
  * the rest of the line reads as.
+ *
+ * At another '{$': "cost: {$ then {$price}". An interpolation ends at the
+ * first '}', so it cannot hold another, and the first of the two is never
+ * closed. This used to compile: the analyzer started the expression again at
+ * the second '{$' and kept the text before it a second time, so the program
+ * printed "cost: cost: {$ then 5" (and a string of N such openers was N
+ * copies of its own beginning: 5,000 made a 25 million character literal).
  ****************************/
-static bool HasUnclosedInterpolation(const std::wstring& str)
+enum class OpenInterpolation {
+  NONE,
+  AT_END,
+  AT_ANOTHER
+};
+
+static OpenInterpolation FindOpenInterpolation(const std::wstring& str)
 {
   bool in_interpolation = false;
   for(size_t i = 0; i < str.size(); ++i) {
@@ -2025,6 +2039,9 @@ static bool HasUnclosedInterpolation(const std::wstring& str)
       ++i;
     }
     else if(i + 1 < str.size() && str[i] == L'{' && str[i + 1] == L'$') {
+      if(in_interpolation) {
+        return OpenInterpolation::AT_ANOTHER;
+      }
       in_interpolation = true;
       ++i;
     }
@@ -2033,7 +2050,16 @@ static bool HasUnclosedInterpolation(const std::wstring& str)
     }
   }
 
-  return in_interpolation;
+  return in_interpolation ? OpenInterpolation::AT_END : OpenInterpolation::NONE;
+}
+
+// the error for a string literal that leaves an interpolation open
+static const wchar_t* OpenInterpolationError(OpenInterpolation open)
+{
+  return open == OpenInterpolation::AT_ANOTHER
+    ? L"A '{$' inside '{$...}': the interpolation before it is not closed. An interpolation ends at its first '}' and cannot hold another; "
+      L"close the first one, or compute the inner string into a local first and interpolate the local"
+    : L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local";
 }
 
 /****************************
@@ -2164,14 +2190,19 @@ Lambda* Parser::ParseLambda(int depth, Type* block_type) {
 // other program: 'method : public : McpMain(args : String[]) ~ Int' in an application that has
 // nothing to do with MCP used to be refused for its name. A program is a server when 'obr --mcp'
 // has something to start in it:
-//   * the file that declares the method has 'use API.MCP' (a server written by hand registers its
-//     tools and calls McpServe->Run from its McpMain): reported here, where the method is; or
 //   * some class of the program has an '@tool', '@resource' or '@prompt' function (the compiler
 //     writes an entry for it, and a McpMain the program wrote is started instead of that one):
-//     known when every file has been read, so the error is kept until then (ReportMcpEntries).
-PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message)
+//     known when every file has been read, so the error is kept until then (ReportMcpEntries); or
+//   * the method is a function, in a file that has 'use API.MCP': the entry of a server written
+//     by hand (it registers its tools and calls McpServe->Run), declared with a return value or
+//     without a body. Reported here, where the function is.
+// 'use API.MCP' alone does not make a server. A client imports it too, and its
+// 'method : public : McpMain(args : String[]) ~ Int', called on an object, was refused for the
+// import: an instance method is nothing 'obr --mcp' could have been meant to start, so with no
+// tagged function in the program it is an ordinary method.
+PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message, bool is_function)
 {
-  if(current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end()) {
+  if(is_function && current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end()) {
     diagnostics.Error(file_name, line_num, line_pos, message);
     return;
   }
@@ -2480,7 +2511,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     if(why) {
       RefuseMcpEntry(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
-                        why + L". Declare it that way or give it another name");
+                        why + L". Declare it that way or give it another name", is_function);
     }
   }
 
@@ -5710,11 +5741,13 @@ StaticArray* Parser::ParseStaticArray(int depth) {
         case TOKEN_CHAR_STRING_LIT: {
           const std::wstring ident = scanner->GetToken()->GetIdentifier();
           const bool is_lit = scanner->GetToken()->GetByteLit();
-          if(!is_lit && HasUnclosedInterpolation(ident)) {
-            ProcessError(L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local", TOKEN_SEMI_COLON);
+          const OpenInterpolation open = is_lit ? OpenInterpolation::NONE : FindOpenInterpolation(ident);
+          if(open != OpenInterpolation::NONE) {
+            ProcessError(OpenInterpolationError(open), TOKEN_SEMI_COLON);
             break;
           }
           expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
+          static_cast<CharacterString*>(expression)->SetTextStart(scanner->GetToken()->GetTextLine(), scanner->GetToken()->GetTextPosition());
           NextToken();
         }
                                     break;
@@ -7204,11 +7237,13 @@ Expression* Parser::ParseSimpleExpression(int depth)
     case TOKEN_CHAR_STRING_LIT: {
       const std::wstring ident = scanner->GetToken()->GetIdentifier();
       const bool is_lit = scanner->GetToken()->GetByteLit();
-      if(!is_lit && HasUnclosedInterpolation(ident)) {
-        ProcessError(L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local", TOKEN_SEMI_COLON);
+      const OpenInterpolation open = is_lit ? OpenInterpolation::NONE : FindOpenInterpolation(ident);
+      if(open != OpenInterpolation::NONE) {
+        ProcessError(OpenInterpolationError(open), TOKEN_SEMI_COLON);
         break;
       }
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
+      static_cast<CharacterString*>(expression)->SetTextStart(scanner->GetToken()->GetTextLine(), scanner->GetToken()->GetTextPosition());
       NextToken();
     }
       break;
@@ -8224,13 +8259,18 @@ PARSER_NO_INLINE Variable* Parser::MakeNilGuardElement(Variable* target)
     if(!entry) {
       return nullptr;
     }
-    Variable* kept = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
-    Assignment* keep = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, kept, index);
-    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
-                                                                                TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
-    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, keep));
+    // What stands for the index is placed where the index is written, so that an error in
+    // it ('cells[rate] := E ?? return;' with a Float) points at the index as it does in a
+    // plain assignment. Placed at the target, the error pointed at the start of the statement.
+    const int index_line = index->GetLineNumber();
+    const int index_pos = index->GetLinePosition();
+    Variable* kept = TreeFactory::Instance()->MakeVariable(file_name, index_line, index_pos, ident);
+    Assignment* keep = TreeFactory::Instance()->MakeAssignment(file_name, index_line, index_pos, index_line, index_pos, kept, index);
+    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, index_line, index_pos,
+                                                                                TreeFactory::Instance()->MakeVariable(file_name, index_line, index_pos, ident));
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, index_line, index_pos, index_line, index_pos, entry, keep));
     written->AddExpression(sequence);
-    read->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+    read->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, index_line, index_pos, ident));
   }
   target->SetIndices(written);
 
@@ -9443,7 +9483,20 @@ Select* Parser::ParseSelect(int depth)
  * ordinary name everywhere else ('match := 1', 'match->Size()', 'match(x)',
  * 'match[0]', 'match + 1'):
  *   - a name: 'match color {'. Two names in a row start nothing else.
- *   - a number, character or string: 'match 1 {'. Nor does a name and a literal.
+ *   - a number, character or string that the '{' of the arms follows before the
+ *     statement ends: 'match 1 {', 'match "ab"->Size() {'. A literal alone did
+ *     not decide it: a statement may end at the end of its line, so in
+ *       copy := match
+ *       "done"->PrintLine();
+ *     the literal starts the next statement and 'match' is the variable it
+ *     was before 'match' meant anything. Read as a subject, that program was
+ *     refused with "Expected '{'".
+ *   - a '-' that the '{' of the arms follows before the statement ends: the
+ *     subject is negative, 'match -1 {', 'match -offset {'. A '-' after a name
+ *     is otherwise a subtraction, and 'match - 1;', 'f(match - 1)' and
+ *     'while(i < match - 1) {' (whose ')' ends the look before its '{') stay
+ *     one. 'match -1 { -1 => ..' was read as the subtraction and refused with
+ *     "Expected ';'", though 'match (-1) {' and a '-1' pattern were accepted.
  *   - a '(' whose matching ')' is followed by '{': 'match (value) {'. A call is
  *     never followed by a '{' (as for 'using'), so 'match(x);', 'if(match(x)) {'
  *     and 'match(x)->Size()' are calls of a method named 'match', as before.
@@ -9458,11 +9511,14 @@ PARSER_NO_INLINE bool Parser::IsMatchStart()
 
   switch(GetToken(SECOND_INDEX)) {
   case TOKEN_IDENT:
+    return scanner->GetToken()->GetIdentifier() == L"match";
+
   case TOKEN_INT_LIT:
   case TOKEN_FLOAT_LIT:
   case TOKEN_CHAR_LIT:
   case TOKEN_CHAR_STRING_LIT:
-    return scanner->GetToken()->GetIdentifier() == L"match";
+  case TOKEN_SUB:
+    return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekBlockAhead(THIRD_INDEX);
 
   case TOKEN_OPEN_PAREN:
     return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekAfterParens(2) == TOKEN_OPEN_BRACE;
@@ -10035,11 +10091,16 @@ Type* Parser::ParseType(int depth)
  * Parses an expression from a text string.
  * Used for string interpolation expressions.
  ****************************/
-Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class,
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class,
                                         std::wstring* reason)
 {
   // Create scanner on the expression text
   Scanner* expr_scanner = new Scanner(filename, false, text);
+  // The text was cut out of a string at (line_num, line_pos): its tokens, and the nodes made
+  // of them, are placed there. They were placed in the text itself, so what the analyzer
+  // said about an interpolated expression pointed at line 1 of the file ("(1,5): Undefined
+  // variable"), whatever line the string was on, and a debug image had line 1 for its calls.
+  expr_scanner->PlaceAt(line_num, line_pos);
 
   // Create minimal Parser instance
   std::vector<std::pair<std::wstring, std::wstring>> empty_programs;
@@ -10067,7 +10128,15 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
   // resort caught: obc ended with "internal error: unexpected exception during compilation"
   // and this scanner was not released. The error has been reported to this parser, so the
   // interpolation is refused below with it as the reason, like any other that does not parse.
+  //
+  // The same exception is how nesting too deep for the stack is refused (CheckDepth), and that
+  // check measures from stack_base. This parser never had one: it is not started by ParseFile
+  // or ParseText, which set it. So '{$((((...1))))}' was read to any depth, and a few thousand
+  // levels of calls ended obc with a stack overflow instead of the error. The mark is this
+  // frame: the interpolation gets the stack a file gets, counted from where its parse begins.
   Expression* result = nullptr;
+  char stack_mark = 0;
+  expr_parser.stack_base = &stack_mark;
   try {
     result = expr_parser.ParseExpression(0);
   }
@@ -10969,6 +11038,12 @@ void Parser::GeneratePendingMcpTools()
 {
   ParsedBundle* previous_bundle = current_bundle;
   SymbolTableManager* previous_table = symbol_table;
+  // The functions are written as text and parsed here, after the files: outside ParseFile and
+  // ParseText, which set the mark the nesting check measures from and clear it when they end.
+  // Without one of its own the check does nothing in this parse (as it did nothing in a string
+  // interpolation's), and what is caught below could never be thrown.
+  char stack_mark = 0;
+  stack_base = &stack_mark;
   for(size_t i = 0; i < mcp_pending.size(); ++i) {
     McpPending& pending = mcp_pending[i];
     if(mcp_broken_files.find(pending.klass->GetFileName()) != mcp_broken_files.end()) {
@@ -10994,6 +11069,7 @@ void Parser::GeneratePendingMcpTools()
     current_lib_uses = previous_uses;
     current_class = nullptr;
   }
+  stack_base = nullptr;
   mcp_pending.clear();
   current_bundle = previous_bundle;
   symbol_table = previous_table;
@@ -11718,7 +11794,7 @@ PARSER_NO_INLINE Expression* Parser::ParsePromptLiteral(int depth)
     if(piece.empty()) {
       return;
     }
-    if(HasUnclosedInterpolation(piece)) {
+    if(FindOpenInterpolation(piece) != OpenInterpolation::NONE) {
       diagnostics.Error(file_name, piece_line, piece_pos, L"A '{$' interpolation in a prompt literal is not closed: expected '}'");
     }
     ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
@@ -12039,18 +12115,73 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     ok = false;
   };
 
+  // The start of a declaration, 'class Name' and the like: no setting, limit or value of an agent holds one.
+  // Where one is met the agent was not closed, and what follows is not the agent's: the reading of the agent
+  // stops in front of it, so that the declaration is parsed, and diagnosed, as itself. The word alone is not
+  // taken for one: used as a name in a value ('New(record)') it is that value's mistake, reported there.
+  auto at_declaration = [&]() -> bool {
+    switch(GetToken()) {
+    case TOKEN_CLASS_ID:
+    case TOKEN_RECORD_ID:
+    case TOKEN_INTERFACE_ID:
+    case TOKEN_ENUM_ID:
+    case TOKEN_CONSTS_ID:
+    case TOKEN_ALIAS_ID:
+    case TOKEN_BUNDLE_ID:
+      return Match(TOKEN_IDENT, SECOND_INDEX);
+
+    default:
+      return false;
+    }
+  };
+
   // After an error where a setting starts: on to the next setting, past the ';' that ends this one, or to the
-  // '}' that closes the agent. What is inside parentheses, brackets or braces is skipped whole. A ')' or ']'
-  // that closes nothing is one more token to skip: counted, it took the depth below zero, the agent's own '}'
-  // was then read as nested, and the rest of the file was skipped as part of the agent with its errors unsaid.
+  // '}' that closes the agent, which is left for the caller. What is inside parentheses, brackets or braces
+  // is skipped whole, a ';' included.
+  //
+  // Each closer is matched to its own kind of opener. The three kinds were counted as one depth, so in
+  // 'agent Broken { ( }' the agent's '}' closed the '(': it was skipped, and the classes after the agent were
+  // read as part of it, with their errors unsaid. A '}' closes the innermost open '{', and with it the
+  // parentheses and brackets left open inside; with no '{' open it is the agent's own, whatever parenthesis
+  // is still open. A ')' or ']' closes its own opener, and one that closes nothing is one more token to skip.
   auto next_setting = [&]() {
-    int nesting = 0;
-    while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
-      if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
-        ++nesting;
+    std::vector<ScannerTokenType> owed;   // the closer of each opener still open, innermost last
+    while(!Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
+      const ScannerTokenType type = GetToken();
+      const bool in_braces = std::find(owed.begin(), owed.end(), TOKEN_CLOSED_BRACE) != owed.end();
+      if((type == TOKEN_SEMI_COLON && owed.empty()) || (type == TOKEN_CLOSED_BRACE && !in_braces)) {
+        break;
       }
-      else if(nesting > 0 && (Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE))) {
-        --nesting;
+
+      switch(type) {
+      case TOKEN_OPEN_PAREN:
+        owed.push_back(TOKEN_CLOSED_PAREN);
+        break;
+
+      case TOKEN_OPEN_BRACKET:
+        owed.push_back(TOKEN_CLOSED_BRACKET);
+        break;
+
+      case TOKEN_OPEN_BRACE:
+        owed.push_back(TOKEN_CLOSED_BRACE);
+        break;
+
+      case TOKEN_CLOSED_BRACE:
+        while(owed.back() != TOKEN_CLOSED_BRACE) {
+          owed.pop_back();
+        }
+        owed.pop_back();
+        break;
+
+      case TOKEN_CLOSED_PAREN:
+      case TOKEN_CLOSED_BRACKET:
+        if(!owed.empty() && owed.back() == type) {
+          owed.pop_back();
+        }
+        break;
+
+      default:
+        break;
       }
       NextToken();
     }
@@ -12085,7 +12216,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     const bool starts_with_string = Match(TOKEN_CHAR_STRING_LIT) || Match(TOKEN_BAD_CHAR_STRING_LIT);
     first_line = starts_with_string ? from_line : GetLineNumber();
     first_pos = starts_with_string ? from_pos : GetLinePosition();
-    while(!Match(TOKEN_END_OF_STREAM)) {
+    while(!Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
       const ScannerTokenType type = GetToken();
       if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && angles == 0 && type == TOKEN_COMMA))) {
         break;
@@ -12178,7 +12309,8 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
 
     AgentSplice splice;
     splice.file_name = file_name;
-    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + (Match(TOKEN_END_OF_STREAM) ? 0 : 1));
+    // with the ';', ',' or '}' that ended the piece; not with the first letter of a declaration it ran into
+    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + (Match(TOKEN_END_OF_STREAM) || at_declaration() ? 0 : 1));
     splice.line = from_line;
     splice.pos = from_pos;
     splice.what = what;
@@ -12210,7 +12342,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     NextToken();
     int nesting = 1;
     bool at_start = true;
-    while(nesting > 0 && !Match(TOKEN_END_OF_STREAM)) {
+    while(nesting > 0 && !Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
       const ScannerTokenType type = GetToken();
       if(type == TOKEN_OPEN_PAREN) {
         ++nesting;
@@ -12262,7 +12394,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   // the settings
   const std::wstring settings = L"backend, instructions, tools, mcp, allow, deny, budget and trace";
   std::vector<std::wstring> seen;
-  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
     const int key_line = GetLineNumber();
     const int key_pos = GetLinePosition();
     if(!Match(TOKEN_IDENT)) {
@@ -12294,7 +12426,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
       NextToken();
       std::vector<std::wstring> limits_seen;
       size_t limits = 0;
-      while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+      while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
         const int limit_line = GetLineNumber();
         const int limit_pos = GetLinePosition();
         std::wstring limit = Match(TOKEN_IDENT) ? scanner->GetToken()->GetIdentifier() : L"";

@@ -88,8 +88,11 @@ non-zero if any example fails. CI runs it on every change, so the table above is
 verified rather than merely written down: a wrong entry in the Libraries column
 fails the build. With `--run` it also runs the examples that need no display,
 database, key or network and compares what each prints with the `output:`
-block at the top of its source (`...` in that block stands for text left out),
-so what a header says an example prints is checked too.
+block at the top of its source, so what a header says an example prints is
+checked too. In that block `...` stands for text left out, and where a value
+differs every run `<int>` (a whole number) or `<any>` (some text) stands for just
+that field; the rest of the line is compared exactly. An example that prints
+nothing says `# output: none`, and one with no block fails.
 
 ## Building one
 

@@ -1,0 +1,151 @@
+#~
+The subject of 'select' and 'match' is typed by its value: what the whole expression pushes,
+the end of its call chain. It was typed by the head of the chain. A chain that starts with a
+String and ends in an Int or a Char ('"ab"->Size()', 'Name()->Size()', '"ab"->Get(0)',
+'"a{$t}"->Size()') was therefore taken for a string as well, the HashID() meant for a string
+subject was added after it, and the program was refused with "Undefined function/method call:
+'HashID(..)'". (2026.11.3 compiled such a select and ran it wrongly: the subject was replaced,
+call and all, by the hash of the literal it starts with, so it always took 'other'.) A
+concatenation ('select(first + last)', 'match ((a + b)->Size())') was refused as neither an
+integer nor a string, because the '+' it is written as is not the node that has its value.
+
+Each subject is used in a 'select' and in a 'match', with a subject that hits a label and one
+that falls to 'other': literals, variables, calls, interpolated literals and concatenations,
+ending in a String, an Int, a Char and an enum item.
+~#
+enum Kind {
+	Small,
+	Large
+}
+
+class Named {
+	@name : String;
+	New(name : String) { @name := name; }
+	method : public : Name() ~ String { return @name; }
+	method : public : Kind() ~ Kind { return @name->Size() > 2 ? Kind->Large : Kind->Small; }
+	method : public : Self() ~ Named { return @self; }
+}
+
+class SelectSubjectCallChain {
+	@@failed : static : Bool;
+
+	function : Check(name : String, got : String, expected : String) ~ Nil {
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+	}
+
+	function : Name() ~ String {
+		return "ab";
+	}
+
+	# --- an Int at the end of a chain that starts with a String ---
+	function : IntSelect(s : String, t : String) ~ String {
+		out := "";
+		select("ab"->Size()) { label 2 { out += "a"; } other { out += "-"; } };
+		select("abc"->Size()) { label 2 { out += "b"; } other { out += "-"; } };
+		select(s->Size()) { label 2 { out += "c"; } other { out += "-"; } };
+		select(Name()->Size()) { label 2 { out += "d"; } other { out += "-"; } };
+		select(Name()->ToUpper()->Size()) { label 2 { out += "e"; } other { out += "-"; } };
+		select("a{$t}"->Size()) { label 2 { out += "f"; } other { out += "-"; } };
+		select((s + t)->Size()) { label 3 { out += "g"; } other { out += "-"; } };
+		select("ab"->Equals(s)->As(Int)) { label 1 { out += "h"; } other { out += "-"; } };
+		return out;
+	}
+
+	function : IntMatch(s : String, t : String) ~ String {
+		out := match "ab"->Size() { 2 => "a", other => "-" };
+		out += match "abc"->Size() { 2 => "b", other => "-" };
+		out += match s->Size() { 2 => "c", other => "-" };
+		out += match Name()->Size() { 2 => "d", other => "-" };
+		out += match Name()->ToUpper()->Size() { 2 => "e", other => "-" };
+		out += match "a{$t}"->Size() { 2 => "f", other => "-" };
+		out += match ((s + t)->Size()) { 3 => "g", other => "-" };
+		out += match "ab"->Equals(s)->As(Int) { 1 => "h", other => "-" };
+		return out;
+	}
+
+	# --- a Char ---
+	function : CharSelect(s : String) ~ String {
+		out := "";
+		select("ab"->Get(0)) { label 'a' { out += "a"; } other { out += "-"; } };
+		select(s->Get(1)) { label 'b' { out += "b"; } other { out += "-"; } };
+		select(Name()->Get(1)) { label 'a' { out += "c"; } other { out += "-"; } };
+		return out;
+	}
+
+	function : CharMatch(s : String) ~ String {
+		out := match "ab"->Get(0) { 'a' => "a", other => "-" };
+		out += match s->Get(1) { 'b' => "b", other => "-" };
+		out += match Name()->Get(1) { 'a' => "c", other => "-" };
+		return out;
+	}
+
+	# --- a String: hashed where the program runs, whatever it starts with ---
+	function : StringSelect(s : String, t : String) ~ String {
+		out := "";
+		select("ab") { label "ab" { out += "a"; } other { out += "-"; } };
+		select(s) { label "ab" { out += "b"; } other { out += "-"; } };
+		select("ab"->ToUpper()) { label "AB" { out += "c"; } other { out += "-"; } };
+		select(s->ToUpper()) { label "AB" { out += "d"; } other { out += "-"; } };
+		select(Name()->ToUpper()) { label "AB" { out += "e"; } other { out += "-"; } };
+		select("a{$t}") { label "ab" { out += "f"; } other { out += "-"; } };
+		select(s + t) { label "abc" { out += "g"; } other { out += "-"; } };
+		select((s + "-" + t)->ToUpper()) { label "AB-C" { out += "h"; } other { out += "-"; } };
+		select(s->Size()->ToString()) { label "2" { out += "i"; } other { out += "-"; } };
+		return out;
+	}
+
+	function : StringMatch(s : String, t : String) ~ String {
+		out := match "ab" { "ab" => "a", other => "-" };
+		out += match s { "ab" => "b", other => "-" };
+		out += match "ab"->ToUpper() { "AB" => "c", other => "-" };
+		out += match s->ToUpper() { "AB" => "d", other => "-" };
+		out += match Name()->ToUpper() { "AB" => "e", other => "-" };
+		out += match "a{$t}" { "ab" => "f", other => "-" };
+		out += match s + t { "abc" => "g", other => "-" };
+		out += match ((s + "-" + t)->ToUpper()) { "AB-C" => "h", other => "-" };
+		out += match s->Size()->ToString() { "2" => "i", other => "-" };
+		return out;
+	}
+
+	# --- an enum item at the end of a chain ---
+	function : EnumSelect(n : Named) ~ String {
+		out := "";
+		select(n->Kind()) { label Kind->Small { out += "small"; } label Kind->Large { out += "large"; } };
+		select(n->Self()->Kind()) { label Kind->Small { out += " small"; } other { out += " not small"; } };
+		return out;
+	}
+
+	function : EnumMatch(n : Named) ~ String {
+		out := match n->Kind() { Kind->Small => "small", Kind->Large => "large" };
+		out += match n->Self()->Kind() { Kind->Small => " small", Kind->Large => " large" };
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Check("Int, select, hits", IntSelect("ab", "c"), "a-cdefgh");
+		Check("Int, select, misses", IntSelect("xyz", "b"), "a--def--");
+		Check("Int, match, hits", IntMatch("ab", "c"), "a-cdefgh");
+		Check("Int, match, misses", IntMatch("xyz", "b"), "a--def--");
+		Check("Char, select", CharSelect("ab"), "ab-");
+		Check("Char, select, misses", CharSelect("xy"), "a--");
+		Check("Char, match", CharMatch("ab"), "ab-");
+		Check("Char, match, misses", CharMatch("xy"), "a--");
+		Check("String, select, hits", StringSelect("ab", "c"), "abcde-ghi");
+		Check("String, select, misses", StringSelect("xy", "b"), "a-c-ef--i");
+		Check("String, match, hits", StringMatch("ab", "c"), "abcde-ghi");
+		Check("String, match, misses", StringMatch("xy", "b"), "a-c-ef--i");
+		Check("enum, select, small", EnumSelect(Named->New("ab")), "small small");
+		Check("enum, select, large", EnumSelect(Named->New("abc")), "large not small");
+		Check("enum, match, small", EnumMatch(Named->New("ab")), "small small");
+		Check("enum, match, large", EnumMatch(Named->New("abc")), "large large");
+
+		if(@@failed) {
+			"FAIL: select and match subjects that are call chains"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: select and match subjects that are call chains"->PrintLine();
+	}
+}

@@ -1020,10 +1020,16 @@ namespace frontend {
     SymbolEntry* nil_temp;
     int nil_string_id;
     bool is_lit;
+    // where the first character of the text is in the source (Token::SetTextStart); the
+    // node's own position until the parser says, which is right for a one-line string
+    int text_line;
+    int text_pos;
 
     CharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &c, const bool l) :
         Expression(file_name, line_num, line_pos, Type::CharStringType()) {
       char_string = c;
+      text_line = line_num;
+      text_pos = line_pos;
       is_processed = false;
       concat = nullptr;
       nil_temp = nullptr;
@@ -1042,6 +1048,21 @@ namespace frontend {
     }
 
   public:
+    void SetTextStart(int line, int pos) {
+      if(line > 0 && pos > 0) {
+        text_line = line;
+        text_pos = pos;
+      }
+    }
+
+    int GetTextLine() {
+      return text_line;
+    }
+
+    int GetTextPosition() {
+      return text_pos;
+    }
+
     void SetProcessed() {
       is_processed = true;
     }
@@ -1572,6 +1593,11 @@ namespace frontend {
 
     Expression* GetValue() {
       return value;
+    }
+
+    // the analyzer's: a holder the statements left is read through its 'Get()'
+    void SetValue(Expression* v) {
+      value = v;
     }
 
     bool IsAnalyzed() {

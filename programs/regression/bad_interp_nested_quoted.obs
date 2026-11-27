@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: A '{$' inside '{$...}': the interpolation before it is not closed
+# EXPECT_ERROR_COUNT: 1
+#~
+A string with an interpolation of its own, written inside an interpolation with escaped quotes.
+An interpolation ends at its first '}', so the inner one cannot be held: this compiled, and
+printed "outer outer {$Id("inner 5")}", its own beginning twice and the call as text. It is now
+the error that says so and what to do (compute the inner string into a local first).
+~#
+class BadInterpNestedQuoted {
+	function : Id(s : String) ~ String { return s; }
+	function : Main(args : String[]) ~ Nil {
+		price := 5;
+		"outer {$Id(\"inner {$price}\")}"->PrintLine();
+	}
+}

@@ -16,10 +16,10 @@
 # and stops the server. Run it with 'serve' to keep it running on port 8080
 # instead, then open http://localhost:8080/ in a browser; Ctrl+C stops it.
 #
-# output (the port and time vary):
-#   server listening on port 57182
+# output (the port and the time differ every run, so they are written <int> and <any>):
+#   server listening on port <int>
 #   GET /          -> 200 text/html: <html><body><h1>Hello from Objeck!</h1>< ...
-#   GET /api/time  -> 200 application/json: {"requests":2,"time":"Wednesday, October 2 ...
+#   GET /api/time  -> 200 application/json: {"requests":2,"time":"<any> ...
 #   GET /missing   -> 404
 #   server stopped
 ~#
