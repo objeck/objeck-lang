@@ -392,6 +392,30 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
         walked.push_back(instr);
       }
     });
+    // and no dynamic call site has been written since the program was loaded:
+    // its operands name no method, so neither a patch nor the auto-JIT's
+    // "refused" mark belongs on it (operand3 is 0 as the loader left it)
+    long dynamic_written = 0;
+    const long cls_num = program->GetClassNumber();
+    for(long c = 0; c < cls_num; ++c) {
+      StackClass* cls = program->GetClasses()[c];
+      for(int m = 0; cls && m < cls->GetMethodCount(); ++m) {
+        StackMethod* method = cls->GetMethods()[m];
+        for(long i = 0; method && i < method->GetInstructionCount(); ++i) {
+          StackInstr* instr = method->GetInstruction(i);
+          if(instr->GetType() == DYN_MTHD_CALL && instr->GetOperand3() != 0) {
+            ++dynamic_written;
+          }
+        }
+      }
+    }
+    if(dynamic_written) {
+      lock.unlock();
+      std::wcerr << L">>> Internal error: " << dynamic_written << L" dynamic call site(s) were written to; found while patching '"
+                 << callee->GetName() << L"' <<<" << std::endl;
+      VmExit(1);
+    }
+
     if(walked != sites) {
       // not held through the exit, which destroys the mutex
       lock.unlock();

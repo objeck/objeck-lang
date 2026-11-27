@@ -445,6 +445,14 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     says how to make one) this section also fails on any data race report
     between PatchCallSites and a compiling backend: there was one per pair,
     24 in every run, until a compile held the call-site lock shared.
+ 40. A dynamic call site is never written to. Two threads call functions the
+    JIT refuses through one site (jit_dynamic_call_shared_site.obs); the
+    auto-JIT's "refused" mark used to be stored into the shared instruction
+    by both. Under OBJECK_JIT_PATCH_VERIFY=1, which now stops the VM when it
+    finds a dynamic call with a non-zero third operand, the program must pass
+    at the default threshold and with --jit=1, and its compilable function
+    must still be reported compiled after the refused ones went through the
+    site.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -819,6 +827,7 @@ def main():
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
     check_dynamic_call_threshold(obc, obr, env, bin_dir)
     check_jit_compile_race(obc, obr, env, bin_dir)
+    check_dynamic_site_unwritten(obc, obr, env, bin_dir)
     check_virtual_table_memory(obc, obr, env, bin_dir)
 
     check_compiler_fatal(obc, obr, env, bin_dir)
@@ -2112,6 +2121,33 @@ def check_jit_compile_race(obc, obr, env, bin_dir):
                       f"reports={len(reports)}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def check_dynamic_site_unwritten(obc, obr, env, bin_dir):
+    # ---- 40. a dynamic call site is never written to ----------------------------------
+    dest = compile_fixture(obc, "jit_dynamic_call_shared_site", env, bin_dir)
+    if not dest:
+        return
+    verify_env = dict(env)
+    for name in ("OBJECK_JIT_DISABLE", "OBJECK_JIT_THRESHOLD"):
+        verify_env.pop(name, None)
+    verify_env["OBJECK_JIT_PATCH_VERIFY"] = "1"
+    verify_env["OBJECK_JIT_REPORT"] = "1"
+    for label, flags in (("default", []), ("--jit=1", ["--jit=1"])):
+        rc, out, err = run([obr] + flags + [dest], env=verify_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        check(f"two threads through one dynamic site leave it unwritten (OBJECK_JIT_PATCH_VERIFY=1, {label})",
+              rc == 0 and b"PASS: two threads through one dynamic call site" in out and "Internal error" not in text,
+              f"rc={rc} out={out[-200:]!r} stderr={[l for l in text.splitlines() if 'Internal error' in l]!r}")
+        # The controls, from a run with the threads one after the other (two threads printing
+        # the report at once run their lines together): all sixteen callees were refused and
+        # the compilable one was compiled.
+        rc, out, err = run([obr] + flags + [dest, "serial"], env=verify_env, cwd=bin_dir)
+        lines = err.decode(errors="replace").splitlines()
+        refused = [l for l in lines if re.match(r"\[jit\] Site:[RS]\d:i,: not compiled", l)]
+        check(f"sixteen functions are refused and the compilable one is compiled ({label})",
+              rc == 0 and len(refused) == 16 and "[jit] Site:Often:i,: compiled" in lines,
+              f"rc={rc} refused={len(refused)} often={[l for l in lines if 'Often' in l][:3]!r}")
 
 
 def check_compiler_fatal(obc, obr, env, bin_dir):

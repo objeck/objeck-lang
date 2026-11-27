@@ -10,10 +10,10 @@ A `StackInstr` (`core/vm/common.h`) has an opcode (`type`, a 4-byte enum), three
 |---|---|---|
 | `type`: `MTHD_CALL` to `MTHD_CALL_JIT` | `PatchCallSites` | once per call site, when the callee's native code has been published |
 | `operand3` = 1 | `PatchCallSites` | with the above |
-| `operand3` = -1 | `StackInterpreter::CheckAutoJit` | when the JIT definitively refused the callee |
+| `operand3` = -1 | `StackInterpreter::CheckAutoJit`, at a direct call site only | when the JIT definitively refused the callee |
 | `operand3` = frame offset, of a variable-access instruction | the backends' `ProcessIndices` | while compiling the method the instruction belongs to |
 
-Nothing stores into `operand` or `operand2` after load. A `DYN_MTHD_CALL` is never patched (it was until v2026.11.4; its operands are an argument word count and a return type, not a method).
+Nothing stores into `operand` or `operand2` after load. A `DYN_MTHD_CALL` is never written at all: its operands are an argument word count and a return type, not a method, so neither a patch (it was patched until v2026.11.4) nor the "refused" mark belongs on it. The interpreter counts a dynamic call's callee with `CheckAutoJitDynamic`, which takes no instruction; it used `CheckAutoJit`, and two threads calling different refused functions through one site stored -1 into the same word unsynchronised (R3-D-5).
 
 The readers of an instruction another thread may be patching are:
 
@@ -63,6 +63,6 @@ Revisit the decision, and the measurement, if a reader ever needs two fields of 
 ## Checks
 
 - ThreadSanitizer. Build `obr` with `make CXX="g++ -fsanitize=thread -g -fno-omit-frame-pointer"` (compile and link both need the flag) and run `python3 programs/regression/run_vm_flag_tests.py <bin> --only jit_compile_race` with `TSAN_OPTIONS=exitcode=0`: section 39 generates 24 caller/callee pairs, has one thread compile each caller while another compiles and patches its callee, and fails on any report whose two access stacks are `PatchCallSites` and a backend or `HasLoop`. Before the shared lock: 24 such reports in each of three runs; after: none. Reports that pair `PatchCallSites` or `CheckAutoJit` with `ProcessMethodCall` or the dispatch loop are the accepted race above.
-- `OBJECK_JIT_PATCH_VERIFY=1` makes every `PatchCallSites` call walk the program as well and stop the VM if the table and the walk disagree. The regression suite runs under it, at the default threshold and at `OBJECK_JIT_THRESHOLD=1`, before a release.
+- `OBJECK_JIT_PATCH_VERIFY=1` makes every `PatchCallSites` call walk the program as well and stop the VM if the table and the walk disagree, or if any `DYN_MTHD_CALL` has a non-zero `operand3` (a dynamic call site was written to; `jit_dynamic_call_shared_site.obs` is the test that makes two threads try). The regression suite runs under it, at the default threshold and at `OBJECK_JIT_THRESHOLD=1`, before a release.
 - `virtual_first_call_threads.obs`, `virtual_dispatch_threads.obs` and `query_url_cache_processes.obs` start many threads that compile and call the same methods at once.
 - ARM64 is the weakly ordered target: the regression suite at `OBJECK_JIT_THRESHOLD=1` on macOS and Windows ARM64 is the run that exercises point 4.

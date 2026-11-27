@@ -2532,16 +2532,16 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
  * Auto-JIT: check if a method should be JIT-compiled.
  * Kept out-of-line to avoid icache bloat in the dispatch loop.
  ********************************/
-#ifdef _MSC_VER
-__declspec(noinline) void StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
-#else
-void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
-#endif
+// One call of `called` from interpreted code, counted toward the auto-JIT
+// threshold, with the compile when the count gets there. False when the JIT
+// has definitively refused the callee; what that means for the call site is
+// the caller's business (a direct call site is marked, a dynamic one is not).
+static inline bool CountAutoJitCall(StackMethod* called)
 {
   // Already compiled elsewhere: nothing to count (the *_JIT opcode / operand3
   // patch drives dispatch from here on).
   if(called->GetNativeCode()) {
-    return;
+    return true;
   }
 
   // A callee with a loop is compiled on its first call, not its tenth. Main is
@@ -2552,31 +2552,51 @@ void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* calle
   // Straight-line methods keep the counted threshold; a raised threshold turns
   // this off (JitEagerLoops), and a callee the JIT rejects is marked as before.
   if(called->GetJitCallCount() == 0 && JitEagerLoops() && JitCompiler::HasLoop(called)) {
-    if(!JitCompiler::TryAutoJitCompile(called)) {
-      instr->SetOperand3(-1);
-    }
-    return;
+    return JitCompiler::TryAutoJitCompile(called);
   }
 
   // Once the threshold is reached we stop bumping the counter (no unbounded
   // growth / overflow) and just consult the shared compile state.
   if(called->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
-    if(!JitCompiler::TryAutoJitCompile(called)) {
-      instr->SetOperand3(-1);   // definitively failed: interpret this site
-    }
-    return;
+    return JitCompiler::TryAutoJitCompile(called);
   }
 
   // fetch_add returns the previous value, so exactly one thread observes the
   // increment that crosses the threshold and triggers the (compile-once) compile.
   const long prev = called->IncrementJitCallCount();
   if(prev + 1 == JIT_AUTO_THRESHOLD) {
-    if(!JitCompiler::TryAutoJitCompile(called)) {
-      // JIT failed: mark this call site so we skip auto-JIT on future calls
-      instr->SetOperand3(-1);
-    }
     // success: PatchCallSites already set operand3=1 on all call sites
+    return JitCompiler::TryAutoJitCompile(called);
   }
+  return true;
+}
+
+// A direct call site (MTHD_CALL): the instruction names the callee, so a callee
+// the JIT refused is marked on it and the site is interpreted from then on
+// without asking again.
+#ifdef _MSC_VER
+__declspec(noinline) void StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
+#else
+void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
+#endif
+{
+  if(!CountAutoJitCall(called)) {
+    instr->SetOperand3(-1);
+  }
+}
+
+// A dynamic call site (DYN_MTHD_CALL): the instruction names no callee, every
+// thread calling a function value through it shares it, and nothing reads its
+// operand3. The site is given nothing. This path used CheckAutoJit, whose
+// "refused" mark two threads calling different refused functions stored into
+// the same instruction, unsynchronised (jit_dynamic_call_shared_site.obs).
+#ifdef _MSC_VER
+__declspec(noinline) void StackInterpreter::CheckAutoJitDynamic(StackMethod* called)
+#else
+void __attribute__((noinline)) StackInterpreter::CheckAutoJitDynamic(StackMethod* called)
+#endif
+{
+  CountAutoJitCall(called);
 }
 #endif
 
@@ -2643,7 +2663,7 @@ void __attribute__((noinline, cold)) StackInterpreter::UnresolvedMethodCall(
 #endif
 }
 
-void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ProcessDynamicMethodCall([[maybe_unused]] StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   if(NilFunctionValue(op_stack, stack_pos)) {
     return;
@@ -2700,9 +2720,10 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
   // CheckAutoJit set to -1 when one callee failed to compile; either way every
   // other function called through the site was compiled on its first call
   // there, bypassing the auto-JIT threshold. A callee that failed to compile
-  // is not counted again; one with native code runs it.
+  // is not counted again; one with native code runs it. Nothing is stored into
+  // the instruction either (CheckAutoJitDynamic).
   if(!called->GetNativeCode() && called->GetJitState() != StackMethod::JIT_FAILED) {
-    CheckAutoJit(called, instr);
+    CheckAutoJitDynamic(called);
   }
   if(called->GetNativeCode()) {
     ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
