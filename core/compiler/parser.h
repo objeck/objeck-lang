@@ -370,6 +370,17 @@ class Parser {
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
   void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
   void GeneratePendingMcpTools();
+  // a McpMain(args : String[]) that 'obr --mcp' could not start, in a file without 'use API.MCP':
+  // an error only when the program has a tagged function (RefuseMcpEntry, ReportMcpEntries)
+  struct McpEntryRefusal {
+    std::wstring file_name;
+    int line = 0;
+    int pos = 0;
+    std::wstring message;
+  };
+  std::vector<McpEntryRefusal> mcp_entry_refusals;
+  void RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message);
+  void ReportMcpEntries();
   void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
   bool McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth);
   void GenerateJsonClass(Class* klass, int line, int depth);

@@ -637,6 +637,9 @@ bool Parser::Parse()
     }
   }
 
+  if(!mcp_entry_refusals.empty()) {
+    ReportMcpEntries();
+  }
   GeneratePendingMcpTools();
   // after the tools are derived: the check looks for the function they are registered by
   if(!agent_tool_classes.empty()) {
@@ -2156,6 +2159,48 @@ Lambda* Parser::ParseLambda(int depth, Type* block_type) {
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), type, alias_name, method, parameter_list);
 }
 
+// A McpMain(args : String[]) that 'obr --mcp' could not start (a method, a virtual one, one that
+// returns a value) is an error in a program that is an MCP server, and an ordinary method in any
+// other program: 'method : public : McpMain(args : String[]) ~ Int' in an application that has
+// nothing to do with MCP used to be refused for its name. A program is a server when 'obr --mcp'
+// has something to start in it:
+//   * the file that declares the method has 'use API.MCP' (a server written by hand registers its
+//     tools and calls McpServe->Run from its McpMain): reported here, where the method is; or
+//   * some class of the program has an '@tool', '@resource' or '@prompt' function (the compiler
+//     writes an entry for it, and a McpMain the program wrote is started instead of that one):
+//     known when every file has been read, so the error is kept until then (ReportMcpEntries).
+PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message)
+{
+  if(current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end()) {
+    diagnostics.Error(file_name, line_num, line_pos, message);
+    return;
+  }
+
+  McpEntryRefusal refusal;
+  refusal.file_name = file_name;
+  refusal.line = line_num;
+  refusal.pos = line_pos;
+  refusal.message = message;
+  mcp_entry_refusals.push_back(refusal);
+}
+
+// Every file has been read: the errors RefuseMcpEntry kept are reported when the program has a
+// tagged function, and dropped when it has none. Called before the tools are derived, which
+// empties the list of classes that have some.
+void Parser::ReportMcpEntries()
+{
+  bool tagged = false;
+  for(size_t i = 0; i < mcp_pending.size() && !tagged; ++i) {
+    tagged = !mcp_pending[i].tools.empty();
+  }
+  if(tagged) {
+    for(size_t i = 0; i < mcp_entry_refusals.size(); ++i) {
+      diagnostics.Error(mcp_entry_refusals[i].file_name, mcp_entry_refusals[i].line, mcp_entry_refusals[i].pos, mcp_entry_refusals[i].message);
+    }
+  }
+  mcp_entry_refusals.clear();
+}
+
 // True for a method named McpMain whose one parameter is a String[]: the name and
 // signature 'obr --mcp' looks for (Loader::SelectMcpEntry reads them from the method's
 // encoded name, which carries neither its kind nor its return type). An overload named
@@ -2417,9 +2462,10 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // McpMain(args : String[]) is what 'obr --mcp' starts in place of Main, and the VM picks it
   // by its name and parameter alone: a program file does not record whether a method is a
-  // function or what it returns. So the one shape it can call is the only one allowed to have
-  // that signature. An instance method would be started with no instance, a virtual one has
-  // no body and one that returns a value leaves it on the stack.
+  // function or what it returns. So in a program that 'obr --mcp' can serve (RefuseMcpEntry)
+  // the one shape it can call is the only one allowed to have that signature. An instance
+  // method would be started with no instance, a virtual one has no body and one that returns
+  // a value leaves it on the stack.
   if(HasMcpEntrySignature(method)) {
     const wchar_t* why = nullptr;
     if(!is_function) {
@@ -2432,7 +2478,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       why = L"it returns a value";
     }
     if(why) {
-      diagnostics.Error(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
+      RefuseMcpEntry(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
                         why + L". Declare it that way or give it another name");
     }
   }
