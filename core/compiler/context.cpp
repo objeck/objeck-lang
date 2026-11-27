@@ -13382,9 +13382,14 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
 
 /****************************
  * True for an expression whose value is a whole array: a variable or a call's
- * result that has a dimension and no subscript, a jagged array's row, or an
- * array literal. An element ('a[i]', 'Items()[i]') and anything computed from
- * one are a single value, although their type still carries the dimension.
+ * result that has a dimension and no subscript, a jagged array's row, an
+ * array literal, or a '?:' or a 'match'/'select' value that yields one of
+ * these. An element ('a[i]', 'Items()[i]') and anything computed from one are
+ * a single value, although their type still carries the dimension.
+ *
+ * Every kind of expression that can yield an array has to be named here: one
+ * that is not is taken for a value, and `values[t ? left : right]` with two
+ * Int[] compiled, the chosen array's address used as the index.
  ****************************/
 bool ContextAnalyzer::IsWholeArray(Expression* expression)
 {
@@ -13403,6 +13408,17 @@ bool ContextAnalyzer::IsWholeArray(Expression* expression)
 
   case STAT_ARY_EXPR:
     return true;
+
+  case COND_EXPR: {
+    // AnalyzeConditional gives the conditional the dimension of the value its
+    // branches yield: none for 't ? a[0] : b[1]', the arrays' for 't ? a : b'
+    Type* eval_type = expression->GetEvalType();
+    return eval_type && eval_type->GetDimension() > 0;
+  }
+
+  case STMT_SEQ_EXPR:
+    // a 'match' or 'select' used as a value: what its arms left
+    return IsWholeArray(static_cast<SequenceExpression*>(expression)->GetValue());
 
   default:
     return false;
