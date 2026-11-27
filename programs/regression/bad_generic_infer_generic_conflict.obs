@@ -1,0 +1,39 @@
+# EXTRA_LIBS: gen_collect
+# EXPECT_COMPILE_ERROR: (37,13): Cannot infer the type arguments of 'Either': its constructors make type parameter 'T' both 'Widget' and 'System.String'
+# EXPECT_ERROR_COUNT: 1
+#~
+Two constructors take two arguments, and these arguments can be passed to
+both, type arguments included: a Widget is a T or a Base, and a Vector<String>
+is a Vector<String> or a Vector<T>. The first makes T a Widget, the second a
+String. Neither is preferred; the call is refused until the type argument is
+written. (A constructor whose generic parameter the argument cannot be passed
+to is not asked: generic_inference_generic_arguments.obs.)
+~#
+use Collection;
+
+class Widget {
+	New() {
+	}
+}
+
+class Either<T> {
+	@which : Int;
+
+	New(left : T, right : Vector<String>) {
+		@which := 1;
+	}
+
+	New(left : Base, right : Vector<T>) {
+		@which := 2;
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+}
+
+class BadGenericInferGenericConflict {
+	function : Main(args : String[]) ~ Nil {
+		either := Either->New(Widget->New(), Vector->New()<String>);
+	}
+}

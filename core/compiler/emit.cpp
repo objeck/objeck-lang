@@ -1161,6 +1161,8 @@ void IntermediateEnumItem::Write(OutputStream& out_stream) {
 void IntermediateEnum::Write(OutputStream& out_stream) {
   WriteString(name, out_stream);
   WriteInt64(offset, out_stream);
+  // 0 for an 'enum', 1 for a 'consts' group; the linker refuses any other value
+  WriteByte(is_consts ? 1 : 0, out_stream);
   // write items
   WriteInt((int)items.size(), out_stream);
   for(size_t i = 0; i < items.size(); ++i) {

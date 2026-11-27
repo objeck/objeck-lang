@@ -1,0 +1,253 @@
+#~
+A postfix update in the subscript of a '?->' call's result is made only when
+the subscript was evaluated.
+
+`value := provider?->Items()[i++] ?? -1;` with a Nil provider and i = 0 gave -1
+and left i at 1: the call and its subscript were skipped, but the subscript's
+update had been queued for the end of the statement, which every path reaches.
+The arguments of the guarded call already made no update on that path; the
+subscript after it was emitted outside their bracket.
+
+Checked for a Nil and a non-Nil receiver, with and without '??', for Int,
+Float, Bool, Char, String and object elements, an update in the arguments and
+in the subscript of one call (each made once, at the end of the statement, in
+the order written), a subscript that is itself a guarded chain, a chain of two
+subscripted calls, a subscript that is out of bounds (the error is recovered
+and the update, whose operand was evaluated, is kept), in a loop and in a
+method the JIT compiles. Exits 1 on a mismatch.
+~#
+class Shelf {
+	@items : Int[];
+	@floats : Float[];
+	@flags : Bool[];
+	@letters : Char[];
+	@names : String[];
+	@kids : Shelf[];
+	@base : Int;
+
+	New(base : Int) {
+		@base := base;
+		@items := Int->New[3];
+		@items[0] := base;
+		@items[1] := base + 1;
+		@items[2] := base + 2;
+		@floats := Float->New[2];
+		@floats[0] := 0.5;
+		@floats[1] := 1.5;
+		@flags := Bool->New[2];
+		@flags[1] := true;
+		@letters := Char->New[2];
+		@letters[0] := 'x';
+		@letters[1] := 'y';
+		@names := String->New[2];
+		@names[0] := "first";
+		@names[1] := "second";
+	}
+
+	method : public : MakeKids() ~ Nil {
+		@kids := Shelf->New[2];
+		@kids[0] := Shelf->New(100);
+		@kids[1] := Shelf->New(200);
+	}
+
+	method : public : Items() ~ Int[] {
+		return @items;
+	}
+
+	method : public : ItemsFrom(skip : Int) ~ Int[] {
+		rest := Int->New[3];
+		each(i : 3) {
+			rest[i] := @base + skip * 10 + i;
+		};
+		return rest;
+	}
+
+	method : public : Floats() ~ Float[] {
+		return @floats;
+	}
+
+	method : public : Flags() ~ Bool[] {
+		return @flags;
+	}
+
+	method : public : Letters() ~ Char[] {
+		return @letters;
+	}
+
+	method : public : Names() ~ String[] {
+		return @names;
+	}
+
+	method : public : Kids() ~ Shelf[] {
+		return @kids;
+	}
+
+	method : public : Base() ~ Int {
+		return @base;
+	}
+}
+
+class NilSafeCallIndexPostfix {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := NilSafeCallIndexPostfix->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	function : Element(shelf : Shelf, i : Int, after : IntRef) ~ Int {
+		value := shelf?->Items()[i++] ?? -1;
+		after->Set(i);
+		return value;
+	}
+
+	function : ElementNoDefault(shelf : Shelf, i : Int, after : IntRef) ~ Int {
+		value := shelf?->Items()[i++];
+		after->Set(i);
+		return value;
+	}
+
+	# an update in the arguments and one in the subscript
+	function : Both(shelf : Shelf, after : IntRef) ~ Int {
+		i := 1;
+		j := 0;
+		value := shelf?->ItemsFrom(i++)[j++] ?? -1;
+		after->Set(i * 10 + j);
+		return value;
+	}
+
+	# the same variable in both: each reads the value from before the statement
+	function : Same(shelf : Shelf, after : IntRef) ~ Int {
+		i := 1;
+		value := shelf?->ItemsFrom(i++)[i++] ?? -1;
+		after->Set(i);
+		return value;
+	}
+
+	method : Run() ~ Nil {
+		none : Shelf;
+		shelf := Shelf->New(7);
+		shelf->MakeKids();
+		after := IntRef->New(0);
+
+		# Int elements
+		Check("Nil receiver: value", Element(none, 0, after), -1);
+		Check("Nil receiver: i", after->Get(), 0);
+		Check("receiver: value", Element(shelf, 0, after), 7);
+		Check("receiver: i", after->Get(), 1);
+		Check("receiver, second element: value", Element(shelf, 1, after), 8);
+		Check("receiver, second element: i", after->Get(), 2);
+		Check("no default, Nil receiver: value", ElementNoDefault(none, 1, after), 0);
+		Check("no default, Nil receiver: i", after->Get(), 1);
+		Check("no default, receiver: value", ElementNoDefault(shelf, 1, after), 8);
+		Check("no default, receiver: i", after->Get(), 2);
+
+		# out of bounds: the subscript was evaluated, the element load failed
+		Check("out of bounds: value", Element(shelf, 5, after), -1);
+		Check("out of bounds: i", after->Get(), 6);
+
+		# arguments and subscript
+		Check("arguments and subscript, Nil: value", Both(none, after), -1);
+		Check("arguments and subscript, Nil: updates", after->Get(), 10);
+		Check("arguments and subscript: value", Both(shelf, after), 17);
+		Check("arguments and subscript: updates", after->Get(), 21);
+		Check("one variable in both, Nil: value", Same(none, after), -1);
+		Check("one variable in both, Nil: update", after->Get(), 1);
+		Check("one variable in both: value", Same(shelf, after), 18);
+		Check("one variable in both: updates", after->Get(), 3);
+
+		# other element types
+		i := 0;
+		x := shelf?->Floats()[i++] ?? -1.0;
+		Check("Float element: value", (x * 10.0)->As(Int), 5);
+		Check("Float element: i", i, 1);
+		x := none?->Floats()[i++] ?? -1.0;
+		Check("Float element, Nil: value", (x * 10.0)->As(Int), -10);
+		Check("Float element, Nil: i", i, 1);
+
+		flag := shelf?->Flags()[i++] ?? false;
+		Check("Bool element: value", flag ? 1 : 0, 1);
+		Check("Bool element: i", i, 2);
+		flag := none?->Flags()[i++] ?? false;
+		Check("Bool element, Nil: i", i, 2);
+
+		i := 0;
+		letter := shelf?->Letters()[i++] ?? '?';
+		Check("Char element: value", letter->As(Int), 'x'->As(Int));
+		Check("Char element: i", i, 1);
+		letter := none?->Letters()[i++] ?? '?';
+		Check("Char element, Nil: value", letter->As(Int), '?'->As(Int));
+		Check("Char element, Nil: i", i, 1);
+
+		name := shelf?->Names()[i++] ?? "none";
+		Check("String element: value", name->Equals("second") ? 1 : 0, 1);
+		Check("String element: i", i, 2);
+		name := none?->Names()[i++] ?? "none";
+		Check("String element, Nil: value", name->Equals("none") ? 1 : 0, 1);
+		Check("String element, Nil: i", i, 2);
+
+		i := 0;
+		kid := shelf?->Kids()[i++];
+		Check("object element: value", kid->Base(), 100);
+		Check("object element: i", i, 1);
+		kid := none?->Kids()[i++];
+		Check("object element, Nil: value", (kid = Nil) ? 1 : 0, 1);
+		Check("object element, Nil: i", i, 1);
+
+		# a chain of two subscripted calls
+		i := 1;
+		j := 2;
+		value := shelf?->Kids()[i++]->Items()[j++] ?? -1;
+		Check("two subscripts: value", value, 202);
+		Check("two subscripts: updates", i * 10 + j, 23);
+		value := none?->Kids()[i++]->Items()[j++] ?? -1;
+		Check("two subscripts, Nil: value", value, -1);
+		Check("two subscripts, Nil: updates", i * 10 + j, 23);
+
+		# a subscript that is itself a guarded chain
+		i := 0;
+		j := 0;
+		value := shelf?->Items()[shelf?->Items()[i++] - 7 + j++] ?? -1;
+		Check("guarded subscript: value", value, 7);
+		Check("guarded subscript: updates", i * 10 + j, 11);
+		value := none?->Items()[shelf?->Items()[i++] - 7 + j++] ?? -1;
+		Check("guarded subscript, Nil: value", value, -1);
+		Check("guarded subscript, Nil: updates", i * 10 + j, 11);
+
+		# the statement's own update beside a skipped one
+		i := 0;
+		j := 5;
+		value := j++ + (none?->Items()[i++] ?? -1);
+		Check("own update, subscript skipped: value", value, 4);
+		Check("own update, subscript skipped: updates", i * 10 + j, 6);
+
+		# a loop, and compiled by the JIT at its default threshold
+		total := 0;
+		updates := 0;
+		for(pass := 0; pass < 30000; pass += 1;) {
+			total += Element(pass % 3 = 0 ? none : shelf, pass % 3, after);
+			updates += after->Get();
+		};
+		# pass % 3: 0 -> Nil (-1, i 0), 1 -> 8 (i 2), 2 -> 9 (i 3)
+		Check("hot: values", total, 10000 * (-1 + 8 + 9));
+		Check("hot: updates", updates, 10000 * (0 + 2 + 3));
+
+		if(@fails = 0) {
+			"PASS: a subscript's postfix update is made only when a '?->' call's result was subscripted"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

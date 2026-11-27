@@ -1,0 +1,62 @@
+# EXPECT_COMPILE_ERROR: (48,15): An array is not an index: expected a Byte, Char, Int or Enum value
+# EXPECT_ERROR_COUNT: 12
+#~
+An index is one value, whatever kind of expression yields it.
+
+bad_index_whole_array.obs refuses a whole array written as a variable, a call's
+result, a jagged row or an array literal. The check looked at those kinds of
+expression only, so an array that came out of any other was taken for a value:
+`values[takeLeft ? left : right]` with two Int[] compiled, and the chosen
+array's address was used as the index ("Index out of bounds: 94026140104496,4"
+at run time). A 'match' used as a value did the same.
+
+Each of these is refused, once, where the index is written: a '?:' of two
+variables, of a call's result, of Char and of enum arrays, in parentheses and
+nested; a 'match' value; the result of '??' and of a '?->' call (which were
+refused already); as the index of a variable and of a call's result. The same
+kinds of expression that yield ONE value are still indexes:
+array_index_expression_values.obs.
+~#
+enum Slot {
+	First,
+	Second
+}
+
+class Shelf {
+	@idx : Int[];
+
+	New() {
+		@idx := Int->New[2];
+	}
+
+	method : public : Indices() ~ Int[] {
+		return @idx;
+	}
+}
+
+class BadIndexWholeArrayExpression {
+	function : Main(args : String[]) ~ Nil {
+		values := Int->New[4];
+		left := Int->New[2];
+		right := Int->New[2];
+		chars := Char->New[2];
+		slots := Slot->New[2];
+		none : Int[];
+		shelf := Shelf->New();
+		takeLeft := true;
+		k := 0;
+		v := values[takeLeft ? left : right];
+		v += values[(takeLeft ? left : right)];
+		v += values[takeLeft ? shelf->Indices() : right];
+		v += values[takeLeft ? chars : chars];
+		v += values[takeLeft ? slots : slots];
+		v += values[takeLeft ? (k = 0 ? left : right) : right];
+		v += values[match k { 0 => left, other => right }];
+		v += values[none ?? right];
+		v += values[shelf?->Indices()];
+		v += values[shelf?->Indices() ?? right];
+		v += shelf->Indices()[takeLeft ? left : right];
+		v += shelf->Indices()[match k { 0 => left, other => right }];
+		v->PrintLine();
+	}
+}

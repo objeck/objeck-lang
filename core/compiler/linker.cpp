@@ -64,34 +64,6 @@
 
 using namespace instructions;
 
-/****************************
- * True for a 'consts' group read back from a library (see linker.h)
- ****************************/
-bool LibraryEnum::IsConsts()
-{
-  if(offset >= 0) {
-    return false;
-  }
-
-  std::set<INT64_VALUE> ids;
-  for(auto& pair : items) {
-    ids.insert(pair.second->GetId());
-  }
-
-  if(ids.size() != items.size()) {
-    return true;
-  }
-
-  INT64_VALUE expected = offset;
-  for(const INT64_VALUE id : ids) {
-    if(id != expected++) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 #ifdef _DIAG_LIB
 /****************************
  * Library loading in the language server (#1236, phase 1 of
@@ -1386,7 +1358,12 @@ void Library::LoadEnums()
     Linker::Debug(msg, 0, 1);
 #endif
     const INT64_VALUE enum_offset = ReadInt64();
-    LibraryEnum* eenum = new LibraryEnum(enum_name, enum_offset);
+    // 'enum' or 'consts' (IntermediateEnum::Write): 0 or 1, nothing else
+    const int enum_kind = ReadByte();
+    if(enum_kind != 0 && enum_kind != 1) {
+      Corrupt(L"an enum record that is neither an 'enum' nor a 'consts' group");
+    }
+    LibraryEnum* eenum = new LibraryEnum(enum_name, enum_offset, enum_kind == 1);
 
     // read enum items
     const INT_VALUE num_items = ReadInt();

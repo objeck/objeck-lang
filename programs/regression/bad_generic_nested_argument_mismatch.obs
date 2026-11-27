@@ -1,0 +1,71 @@
+# EXTRA_LIBS: gen_collect
+# EXPECT_COMPILE_ERROR: (34,10): Incompatible generic type arguments: 'Collection.Map<System.String, Collection.Vector<System.IntRef>>' and 'Collection.Map<System.String, Collection.Vector<System.String>>'
+# EXPECT_ERROR_COUNT: 5
+#~
+The type arguments of a generic are compared at every depth, wherever one
+generic is given for another: an argument, an assignment, a return.
+
+A Vector<String> was never a Vector<IntRef>. One level down it was: a
+Map<String, Vector<String>> was passed for a Map<String, Vector<IntRef>>
+parameter, assigned to a variable of that type and returned as it, and the
+IntRef read out of the result was a String. The comparison of two type
+arguments that have type arguments of their own gave the second the first
+one's, so that a parameter still written 'Vector<T>' fits, and that made any
+two alike.
+
+Refused, each once: the return (line 34), the argument (the call finds no
+method), the assignment, a mismatch two levels down, and a Vector of Vectors.
+Accepted, on the lines before them: the same types, a parameter that names the
+class's type parameter ('Vector<T>'), and a method's own ('Vector<V>').
+~#
+use Collection;
+
+class Shelf<T> {
+	New() {
+	}
+
+	method : public : Count(rows : Map<String, Vector<T>>) ~ Int {
+		return rows->Size();
+	}
+}
+
+class BadGenericNestedArgumentMismatch {
+	function : Give(m : Map<String, Vector<String>>) ~ Map<String, Vector<IntRef>> {
+		return m;
+	}
+
+	function : Same(m : Map<String, Vector<String>>) ~ Map<String, Vector<String>> {
+		return m;
+	}
+
+	function : Nested(m : Map<String, Vector<IntRef>>) ~ Int {
+		return m->Size();
+	}
+
+	function : First<V : Stringify>(m : Map<String, Vector<V>>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		names := Map->New()<String, Vector<String>>;
+		counts := Map->New()<String, Vector<IntRef>>;
+
+		# accepted
+		total := Nested(counts);
+		total += Same(names)->Size();
+		same : Map<String, Vector<String>> := names;
+		total += same->Size();
+		shelf := Shelf->New()<String>;
+		total += shelf->Count(names);
+		total += First(names);
+
+		# refused
+		total += Nested(names);
+		wrong : Map<String, Vector<IntRef>> := names;
+		deep := Map->New()<String, Map<String, Vector<String>>>;
+		deeper : Map<String, Map<String, Vector<IntRef>>> := deep;
+		rows := Vector->New()<Vector<String>>;
+		int_rows : Vector<Vector<IntRef>> := rows;
+		total->PrintLine();
+	}
+}

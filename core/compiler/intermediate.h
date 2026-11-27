@@ -80,14 +80,47 @@ class IntermediateEmitter {
   std::stack<size_t> break_critical_depth;
   void EmitCriticalUnlocks(size_t keep_depth, Statement* statement);
   bool is_str_array;
-  std::queue<OperationAssignment*>post_statements;
+  // A postfix update ('i++') waiting for the end of its statement: either one
+  // update, or the updates of an operand that only one path evaluates (an arm of
+  // '?:', the default of '??', ..), which run only if 'flag_id', a hidden local
+  // set on that path, says the operand was evaluated (DeferConditionalOperand).
+  struct PostUpdate {
+    OperationAssignment* update = nullptr;
+    long flag_id = -1;
+    std::vector<PostUpdate> guarded;
+  };
+  typedef std::queue<PostUpdate> PostUpdateQueue;
+  PostUpdateQueue post_statements;
   // set while a statement's condition is emitted (EmitConditionBranch): EmitBranch then
   // emits the queued updates before each conditional jump
   bool branch_emits_post_statements = false;
   void EmitPostStatements();
+  void EmitPostUpdate(PostUpdate &post_update);
   void EmitConditionBranch(Expression* expression, long target_label, bool jump_if_true);
-  void BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
-  void EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
+  // "at the end of the operand": where DeferConditionalOperand sets the flag by default
+  static const size_t END_OF_OPERAND = (size_t)-1;
+  void BeginConditionalOperand(PostUpdateQueue &outer_post_statements);
+  void DeferConditionalOperand(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark = END_OF_OPERAND);
+  void DeferPostStatements(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark);
+  // Locals the emitter adds to the method it is emitting, after the declared
+  // ones: the flags of deferred postfix updates (reused once their updates are
+  // emitted) and typed temporaries
+  int next_local_id = 0;
+  int hidden_local_count = 0;
+  std::vector<long> free_post_flags;
+  // flags whose updates were emitted while a conditional operand was open: not
+  // reused until the outermost one closes (ReleasePostFlag)
+  std::vector<long> held_post_flags;
+  int open_conditional_operands = 0;
+  void ReleasePostFlag(long flag_id);
+  long NewHiddenLocal(instructions::ParamType kind, const std::wstring &label);
+  // the value of a '?->' chain (EmitTryIntrinsic)
+  enum { GUARDED_REFERENCE, GUARDED_VALUE, GUARDED_FLOAT };
+  int GuardedResultKind(MethodCall* method_call);
+  bool ChainTryResultIsFloat(MethodCall* method_call);
+  bool IsEnumType(Type* type);
+  long guarded_float_temp = -1;
+  long GuardedFloatTemp();
   
   // emit operations
   void EmitStrings();
@@ -158,7 +191,7 @@ class IntermediateEmitter {
   void EmitCallArgument(MethodCall* method_call, const size_t i);
   void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false, bool is_closure = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
-  void EmitCallIndices(MethodCall* method_call);
+  void EmitCallIndices(MethodCall* method_call, size_t* subscript_mark = nullptr);
   void EmitMethodCallStatement(MethodCall* method_call);
   void EmitSimpleStatement(SimpleStatement* simple);
   void EmitSystemDirective(SystemStatement* statement);

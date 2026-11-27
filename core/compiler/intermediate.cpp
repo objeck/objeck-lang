@@ -615,7 +615,7 @@ IntermediateEnum* IntermediateEmitter::EmitEnum(Enum* eenum)
 {
   cur_line_num = eenum->GetLineNumber();
   
-  IntermediateEnum* imm_eenum = new IntermediateEnum(eenum->GetName(), eenum->GetOffset());
+  IntermediateEnum* imm_eenum = new IntermediateEnum(eenum->GetName(), eenum->GetOffset(), eenum->IsConsts());
   std::map<const std::wstring, EnumItem*>items =  eenum->GetItems();
   // copy items
   std::map<const std::wstring, EnumItem*>::iterator iter;
@@ -1033,8 +1033,7 @@ int IntermediateEmitter::ReferenceTypeKind(Type* type)
     if(SearchProgramClasses(name) || parsed_program->GetLinker()->SearchClassLibraries(name, parsed_program->GetLibUses())) {
       return is_array ? OBJ_ARY_PARM : OBJ_PARM;
     }
-    if(SearchProgramEnums(name) || (current_class && SearchProgramEnums(current_class->GetName() + L"#" + name)) ||
-       parsed_program->GetLinker()->SearchEnumLibraries(name, parsed_program->GetLibUses())) {
+    if(IsEnumType(type)) {
       return is_array ? INT_ARY_PARM : INT_PARM;
     }
     return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
@@ -1043,6 +1042,21 @@ int IntermediateEmitter::ReferenceTypeKind(Type* type)
   default:
     return IntermediateMethod::AND_OR_TEMP_UNKNOWN;
   }
+}
+
+/****************************
+ * Whether a class type names an enum or a consts group, whose values are Ints,
+ * and not a class (the two share CLASS_TYPE)
+ ****************************/
+bool IntermediateEmitter::IsEnumType(Type* type)
+{
+  const std::wstring name = type->GetName();
+  if(SearchProgramClasses(name) || parsed_program->GetLinker()->SearchClassLibraries(name, parsed_program->GetLibUses())) {
+    return false;
+  }
+
+  return SearchProgramEnums(name) || (current_class && SearchProgramEnums(current_class->GetName() + L"#" + name)) ||
+    parsed_program->GetLinker()->SearchEnumLibraries(name, parsed_program->GetLibUses());
 }
 
 /****************************
@@ -1624,12 +1638,19 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
  * Translates a nested method 
  * call
  ****************************/
-// true if the call returns a scalar Bool, Byte, Char or Int: a value for which
-// 0 is a value, not a missing object (#1172)
-static bool ReturnsValueType(MethodCall* method_call)
+// What the last call of a '?->' chain leaves as the chain's value:
+//   GUARDED_REFERENCE  an object or an array, for which Nil (0) means "missing"
+//   GUARDED_VALUE      a Bool, Byte, Char, Int or enum value, for which 0 is a
+//                      value like any other (#1172)
+//   GUARDED_FLOAT      a Float, likewise (0.0), and not an integer word: it
+//                      needs a Float temporary to cross the region's labels in
+// Only the first two were told apart, and by the declared return type alone,
+// so a Float and an enum counted as references: `p?->Floats()[0] ?? -1.0`
+// gave -1.0 for an element of 0.0, and an enum's item 0 gave the default too.
+int IntermediateEmitter::GuardedResultKind(MethodCall* method_call)
 {
   if(!method_call) {
-    return false;
+    return GUARDED_REFERENCE;
   }
 
   Type* rtrn = nullptr;
@@ -1643,18 +1664,32 @@ static bool ReturnsValueType(MethodCall* method_call)
   // an array is a reference, unless the call's result is subscripted
   // ('p?->Items()[0]'): the value is then the element
   if(!rtrn || (rtrn->GetDimension() > 0 && !method_call->GetCallIndices())) {
-    return false;
+    return GUARDED_REFERENCE;
   }
 
+  // '->As(..)' on the call converts the word it left (EmitCast)
+  Type* cast_type = method_call->GetCastType();
+  const bool cast_is_scalar = cast_type && cast_type->GetDimension() == 0;
   switch(rtrn->GetType()) {
   case frontend::BOOLEAN_TYPE:
+    return GUARDED_VALUE;
+
   case frontend::BYTE_TYPE:
   case frontend::CHAR_TYPE:
   case frontend::INT_TYPE:
-    return true;
+    return cast_is_scalar && cast_type->GetType() == frontend::FLOAT_TYPE ? GUARDED_FLOAT : GUARDED_VALUE;
+
+  case frontend::FLOAT_TYPE:
+    return cast_is_scalar && cast_type->GetType() != frontend::CLASS_TYPE &&
+      cast_type->GetType() != frontend::FLOAT_TYPE ? GUARDED_VALUE : GUARDED_FLOAT;
+
+  case frontend::CLASS_TYPE:
+    // an enum or consts value is an Int; a class, or a name that cannot be
+    // told (a type parameter), is a reference
+    return IsEnumType(rtrn) ? GUARDED_VALUE : GUARDED_REFERENCE;
 
   default:
-    return false;
+    return GUARDED_REFERENCE;
   }
 }
 
@@ -1694,6 +1729,31 @@ static bool ChainEndsInTryResult(MethodCall* method_call)
   return ends_in_intrinsic_result;
 }
 
+// Whether the one word such a chain leaves (ChainEndsInTryResult) is a Float:
+// its Try() region's last call yields one, which the region keeps as a Float
+// with or without a default (EmitTryIntrinsic). A statement that discards the
+// word drops it as what it is.
+bool IntermediateEmitter::ChainTryResultIsFloat(MethodCall* method_call)
+{
+  bool in_region = false;
+  MethodCall* last_guarded_call = nullptr;
+  for(MethodCall* link = method_call; link; link = link->GetMethodCall()) {
+    if(link->IsTryIntrinsic()) {
+      in_region = true;
+      last_guarded_call = nullptr;
+    }
+    else if(link->IsOtherwiseIntrinsic()) {
+      // the default takes the place of the region's value, as the same kind
+      in_region = false;
+    }
+    else if(in_region) {
+      last_guarded_call = link;
+    }
+  }
+
+  return GuardedResultKind(last_guarded_call) == GUARDED_FLOAT;
+}
+
 /****************************
  * Translates an expression used as a statement: a receiver that is not a plain
  * call or variable -- a literal, a concatenation, anything in parentheses --
@@ -1726,7 +1786,8 @@ void IntermediateEmitter::EmitSimpleStatement(SimpleStatement* simple)
   // a Try() region, or an Otherwise() that ends the chain, leaves one word
   // whatever the last guarded call returns (Nil for one that returns nothing)
   if(ChainEndsInTryResult(expression->GetMethodCall())) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num, POP_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(simple, cur_line_num,
+                                                                               ChainTryResultIsFloat(expression->GetMethodCall()) ? POP_FLOAT : POP_INT));
     return;
   }
 
@@ -1970,7 +2031,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       tail = tail->GetMethodCall();
     }
     if(ChainEndsInTryResult(method_call)) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num,
+                                                                                 ChainTryResultIsFloat(method_call) ? POP_FLOAT : POP_INT));
     }
     else {
       switch(tail->GetRougeReturn()) {
@@ -4252,10 +4314,11 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
  * An update is queued when its variable is read and emitted later, so the
  * expression it is written in sees the value from before it. 'Later' has to be
  * a point the program reaches whenever it read the variable: a subject that is
- * dispatched on, or an operand that is evaluated only on one path, emits its
- * updates here, before control divides or rejoins. Left in the queue, an update
- * went into whichever branch was emitted next and ran only when that branch did
- * (`match i++ { 0 => .., 1 => .. }` incremented for 0 and for no other value).
+ * dispatched on emits its updates here, before control divides. Left in the
+ * queue, an update went into whichever branch was emitted next and ran only
+ * when that branch did (`match i++ { 0 => .., 1 => .. }` incremented for 0 and
+ * for no other value). An update written in an operand that only one path
+ * evaluates waits behind a flag instead (DeferConditionalOperand).
  *
  * The updates are assignments: they leave the operand stack as they found it,
  * so a value the expression has already pushed stays where it is.
@@ -4263,32 +4326,164 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 void IntermediateEmitter::EmitPostStatements()
 {
   while(!post_statements.empty()) {
-    OperationAssignment* post_statement = post_statements.front();
+    PostUpdate post_update = post_statements.front();
     post_statements.pop();
-    EmitAssignment(post_statement);
+    EmitPostUpdate(post_update);
+  }
+}
+
+void IntermediateEmitter::EmitPostUpdate(PostUpdate &post_update)
+{
+  if(post_update.update) {
+    EmitAssignment(post_update.update);
+    return;
+  }
+
+  // the updates of an operand one path evaluates: skipped unless it was
+  const long skip_label = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, LOAD_INT_VAR, post_update.flag_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, JMP, skip_label, 0L));
+  // An update can queue one of its own (the 'k++' of 'a[k++]++'). It belongs
+  // to the same operand, so it is emitted before the skip label, not left for
+  // the statement's queue.
+  PostUpdateQueue outer_post_statements;
+  outer_post_statements.swap(post_statements);
+  for(size_t i = 0; i < post_update.guarded.size(); ++i) {
+    EmitPostUpdate(post_update.guarded[i]);
+  }
+  EmitPostStatements();
+  post_statements.swap(outer_post_statements);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, LBL, skip_label));
+  ReleasePostFlag(post_update.flag_id);
+}
+
+/****************************
+ * Gives back the flag of a deferred update that has been emitted: nothing
+ * reads it after that, and the next operand that needs a flag takes it, so a
+ * method needs as many as it has pending at once, not one per operand.
+ *
+ * Not while a conditional operand is open, though. An operand whose flag is set
+ * where it STARTS (DeferConditionalOperand's 'evaluated_mark') learns that it
+ * needs one only when it ends, and must not take a flag that something inside
+ * it used meanwhile: in `(a & ((match (t ? i++ : 5) { .. }) + j++ > 0)) ? ..`
+ * the second operand of '&' took the flag the match's subject had just given
+ * back, and the subject's own clearing of it, which runs after the operand has
+ * set it, made the operand's j++ depend on t. Such flags wait until the
+ * outermost operand has closed and chosen its own.
+ ****************************/
+void IntermediateEmitter::ReleasePostFlag(long flag_id)
+{
+  if(open_conditional_operands > 0) {
+    held_post_flags.push_back(flag_id);
+  }
+  else {
+    free_post_flags.push_back(flag_id);
   }
 }
 
 /****************************
- * Brackets an operand that only one path evaluates: the fallback of '??', an
- * arm of '?:'. Its postfix updates belong to that path. Left queued they were
- * emitted after the paths rejoin, at the end of the statement, and ran whether
- * the operand had or not: `current ?? IntRef->New(i++)` incremented i for a
- * non-Nil 'current'.
+ * Brackets an operand that only one path evaluates: an arm of '?:', the
+ * default of '??', the second operand of '&' or '|', the arguments and the
+ * subscript of a '?->' call. Its postfix updates belong to that path. Left in
+ * the statement's queue they ran at the end of the statement whether the
+ * operand had been evaluated or not: `current ?? IntRef->New(i++)` incremented
+ * i for a non-Nil 'current'.
  *
  * Begin sets aside what the statement has queued so far (those run on every
- * path, at its end); End emits what the operand queued, while the operand's
- * value is on the stack, and puts the statement's own back.
+ * path, at its end). DeferConditionalOperand puts the statement's own back and
+ * queues the operand's behind them, as one entry that runs only if the operand
+ * was evaluated.
+ *
+ * So an update still takes effect at the END of its statement, as one written
+ * outside such an operand does. Emitting it with the operand instead (as
+ * v2026.11.4 did for a while before its release) changed what the rest of the
+ * statement saw: `i := take ? i++ : 0` assigned the old i over the update and
+ * lost it, and `r?->Take(@i++)` ran Take with @i already updated, where
+ * `r->Take(@i++)` runs it with the old one.
+ *
+ * Whether the operand was evaluated is kept in a hidden Int local: cleared at
+ * 'split_mark', a point every path through the statement passes before the
+ * paths divide, and set at 'evaluated_mark' -- by default here, the end of the
+ * operand; a caller whose operand ends in a jump gives its start. Both are
+ * instruction counts (imm_block->GetSize()) taken as the code was emitted: the
+ * stores are inserted there afterwards, because only now is it known that the
+ * operand queued an update at all, and an operand that queues none (nearly
+ * every one) must cost nothing.
  ****************************/
-void IntermediateEmitter::BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements)
+void IntermediateEmitter::BeginConditionalOperand(PostUpdateQueue &outer_post_statements)
 {
   outer_post_statements.swap(post_statements);
+  open_conditional_operands++;
 }
 
-void IntermediateEmitter::EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements)
+void IntermediateEmitter::DeferConditionalOperand(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark)
 {
-  EmitPostStatements();
+  open_conditional_operands--;
+  if(post_statements.empty()) {
+    post_statements.swap(outer_post_statements);
+  }
+  else {
+    DeferPostStatements(outer_post_statements, split_mark, evaluated_mark);
+  }
+
+  // the flags given back inside the outermost operand can be taken again
+  // (ReleasePostFlag)
+  if(open_conditional_operands == 0) {
+    free_post_flags.insert(free_post_flags.end(), held_post_flags.begin(), held_post_flags.end());
+    held_post_flags.clear();
+  }
+}
+
+void IntermediateEmitter::DeferPostStatements(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark)
+{
+  PostUpdate deferred;
+  if(free_post_flags.empty()) {
+    deferred.flag_id = NewHiddenLocal(INT_PARM, L"#post_update#");
+  }
+  else {
+    deferred.flag_id = free_post_flags.back();
+    free_post_flags.pop_back();
+  }
+  while(!post_statements.empty()) {
+    deferred.guarded.push_back(post_statements.front());
+    post_statements.pop();
+  }
+
+  // evaluated: the later position first, so that the earlier one stays valid
+  std::vector<IntermediateInstruction*> evaluated;
+  evaluated.push_back(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, cur_line_num, 1L));
+  evaluated.push_back(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, STOR_INT_VAR, deferred.flag_id, LOCL));
+  imm_block->InsertInstructions(evaluated_mark == END_OF_OPERAND ? (size_t)imm_block->GetSize() : evaluated_mark, evaluated);
+
+  std::vector<IntermediateInstruction*> not_evaluated;
+  not_evaluated.push_back(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, cur_line_num, 0L));
+  not_evaluated.push_back(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, STOR_INT_VAR, deferred.flag_id, LOCL));
+  imm_block->InsertInstructions(split_mark, not_evaluated);
+
   post_statements.swap(outer_post_statements);
+  post_statements.push(deferred);
+}
+
+/****************************
+ * Adds a local to the method being emitted, after the ones its symbol table
+ * declares, and returns its id. For what only the emitter knows it needs: the
+ * analyzer has numbered and sized the declared locals already (EmitMethod).
+ ****************************/
+long IntermediateEmitter::NewHiddenLocal(instructions::ParamType kind, const std::wstring &label)
+{
+  const int words = kind == FUNC_PARM ? 2 : 1;
+  const int space = imm_method->GetSpace() + words * (int)sizeof(INT64_VALUE);
+  if(space > LOCAL_SIZE) {
+    throw CompilerFatal(current_method->GetFileName() + L':' + ToString(current_method->GetLineNumber()) +
+                        L": Local space has been exceeded by " + ToString(space - LOCAL_SIZE) + L" bytes.");
+  }
+  imm_method->SetSpace(space);
+  imm_method->GetEntries()->AddParameter(new IntermediateDeclaration(current_method->GetName() + L':' + label +
+                                                                     ToString(hidden_local_count++), kind));
+  const long id = next_local_id;
+  next_local_id += words;
+
+  return id;
 }
 
 /****************************
@@ -6092,17 +6287,20 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   // if-expression
   long cond = ++conditional_label;
   // the test's own updates stay the statement's (it is always evaluated)
+  const size_t split_mark = imm_block->GetSize();
   const bool outer_branch_emits = branch_emits_post_statements;
   branch_emits_post_statements = false;
   EmitBranch(conditional->GetCondExpression(), cond, false);
   branch_emits_post_statements = outer_branch_emits;
-  // each branch's postfix updates run with the branch (BeginConditionalOperand):
-  // queued to the end of the statement, 't ? 7 : i++' incremented i for a true t
-  std::queue<OperationAssignment*> outer_post_statements;
+  // Each branch's postfix updates are the branch's (DeferConditionalOperand):
+  // left in the statement's queue, 't ? 7 : i++' incremented i for a true t.
+  // They wait for the end of the statement all the same: 'i := t ? i++ : 0'
+  // ends with the update made, as 'i := i++' does.
+  PostUpdateQueue outer_post_statements;
   BeginConditionalOperand(outer_post_statements);
   EmitExpression(conditional->GetExpression());
   EmitCast(conditional);
-  EndConditionalOperand(outer_post_statements);
+  DeferConditionalOperand(outer_post_statements, split_mark);
   if(in_and_or) {
     EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
   }
@@ -6116,7 +6314,7 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   BeginConditionalOperand(outer_post_statements);
   EmitExpression(conditional->GetElseExpression());
   EmitCast(conditional);
-  EndConditionalOperand(outer_post_statements);
+  DeferConditionalOperand(outer_post_statements, split_mark);
   if(in_and_or) {
     EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
   }
@@ -6139,7 +6337,7 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
 void IntermediateEmitter::EmitSequence(SequenceExpression* sequence)
 {
   Statement* outer_statement = current_statement;
-  std::queue<OperationAssignment*> outer_post_statements;
+  PostUpdateQueue outer_post_statements;
   outer_post_statements.swap(post_statements);
   const int outer_char_str_count = new_char_str_count;
   new_char_str_count = 0;
@@ -6208,6 +6406,9 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
 {
   long handler_label = ++unconditional_label;
   long end_label = ++unconditional_label;
+  // before the Nil test and the region: every path passes here, whichever of
+  // the guarded operands it goes on to evaluate (DeferConditionalOperand)
+  const size_t region_mark = imm_block->GetSize();
 
   // Nothing the region consumes may be on the stack when it opens. TRY_START
   // records the operand stack position, and recovery unwinds DOWN to it
@@ -6240,30 +6441,47 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   method_call = method_call->GetMethodCall();
   MethodCall* last_call = nullptr;
   while(method_call) {
-    if(method_call->IsOtherwiseIntrinsic() && ReturnsValueType(last_call)) {
+    const int result_kind = method_call->IsOtherwiseIntrinsic() ? GuardedResultKind(last_call) : GUARDED_REFERENCE;
+    if(result_kind != GUARDED_REFERENCE) {
       // `s?->Size() ?? -1`: the guarded call yields a value type, which 0 cannot
       // stand in for -- Size() of "" IS 0 -- so the default replaces only a
       // failure, never a value. Testing the value against 0 made a real 0
       // indistinguishable from a recovered error (#1172). The handler takes the
       // default itself and the success path keeps the value as it is.
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      //
+      // A Float crosses the labels in a Float temporary of its own, not in the
+      // and/or slot as an integer word (see EmitConditional on why).
+      InstructionType stor_type = STOR_INT_VAR;
+      InstructionType load_type = LOAD_INT_VAR;
+      long result_id = 0;
+      if(result_kind == GUARDED_FLOAT) {
+        stor_type = STOR_FLOAT_VAR;
+        load_type = LOAD_FLOAT_VAR;
+        result_id = GuardedFloatTemp();
+      }
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, stor_type, result_id, LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
       const std::vector<Expression*>& defaults = method_call->GetCallingParameters()->GetExpressions();
-      // the default's postfix updates run here, with the default (see
-      // BeginConditionalOperand)
-      std::queue<OperationAssignment*> outer_post_statements;
+      // the default's postfix updates are made only when the default is taken
+      // (DeferConditionalOperand)
+      PostUpdateQueue outer_post_statements;
       BeginConditionalOperand(outer_post_statements);
       EmitExpression(defaults[0]);
-      EmitCast(method_call);
-      EndConditionalOperand(outer_post_statements);
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      DeferConditionalOperand(outer_post_statements, region_mark);
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, stor_type, result_id, LOCL));
       new_char_str_count = 0;
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, load_type, result_id, LOCL));
+      // A conversion of the '??' result -- `(p?->Ratio() ?? -1.5)->As(Int)`,
+      // `f : Float := p?->Count() ?? -1` -- is of whichever value was taken,
+      // so it is made here, once the two paths have met. It was made on the
+      // default alone: the call's own value went on unconverted, a Float where
+      // an Int was declared, and the loader refused the program.
+      EmitCast(method_call);
       // the rest of the chain, after the Otherwise(), with no Nil test
       EmitOtherwiseIntrinsic(method_call, expression, true);
       return;
@@ -6295,11 +6513,16 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     // EmitMethodCall instead), as in EmitExpression's chain
     //
     // The arguments are evaluated only for a receiver that is not Nil, so their
-    // postfix updates run here, once they are on the stack and before the call
-    // (BeginConditionalOperand): 'none?->Take(i++)' incremented i though the
-    // call, and its argument, were skipped.
-    std::queue<OperationAssignment*> outer_post_statements;
+    // postfix updates are made only then (DeferConditionalOperand):
+    // 'none?->Take(i++)' incremented i though the call, and its argument, were
+    // skipped. They are made at the end of the statement, after the call, as
+    // an unguarded call's are: 'r?->Take(@i++)' ran Take with @i already
+    // updated while they were emitted here, before the call. The flag is set
+    // once the arguments are on the stack, so a call that then raises an error
+    // (recovered below) keeps its arguments' updates.
+    PostUpdateQueue outer_post_statements;
     BeginConditionalOperand(outer_post_statements);
+    const size_t arguments_mark = imm_block->GetSize();
     bool arguments_emitted = false;
     if(!ReceiverIsFirstParameter(method_call) && method_call->GetCallingParameters()) {
       const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
@@ -6314,17 +6537,31 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
         }
       }
       new_char_str_count = 0;
-      EndConditionalOperand(outer_post_statements);
+      DeferConditionalOperand(outer_post_statements, region_mark);
       arguments_emitted = true;
     }
     EmitMethodCall(method_call, is_nested);
     if(!arguments_emitted) {
-      EndConditionalOperand(outer_post_statements);
+      // EmitMethodCall emitted the arguments itself, and the call after them:
+      // the flag is set where they start
+      DeferConditionalOperand(outer_post_statements, region_mark, arguments_mark);
     }
     // subscript on the call result: 'provider?->Items()[0]'. The chain loops in
     // EmitExpression emit it; this one did not, so the array itself was left
     // where its element was expected.
-    EmitCallIndices(method_call);
+    //
+    // The subscript is evaluated only when the call before it returned, so its
+    // postfix updates are the guarded path's, like the arguments' above. The
+    // arguments' bracket is closed by now, and the updates went to the
+    // statement's queue: `none?->Items()[i++] ?? -1` incremented i though
+    // neither the call nor the subscript ran. The flag is set once the
+    // subscript is on the stack, before the element is read: a subscript that
+    // is out of bounds (an error, recovered below) keeps its updates, as a
+    // call that raises keeps its arguments'.
+    BeginConditionalOperand(outer_post_statements);
+    size_t subscript_mark = END_OF_OPERAND;
+    EmitCallIndices(method_call, &subscript_mark);
+    DeferConditionalOperand(outer_post_statements, region_mark, subscript_mark);
     EmitCast(method_call);
     if(CastsCallResult(method_call)) {
       EmitClassCast(method_call);
@@ -6379,6 +6616,26 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   }
 
   // end of chain without Otherwise - store result and end try
+  //
+  // A Float result ('x := p?->Ratio();') is a Float on both paths: the value,
+  // or 0.0 where the others yield Nil. It went through the and/or slot as an
+  // integer word, and the Nil path's was an integer 0.
+  if(GuardedResultKind(last_call) == GUARDED_FLOAT) {
+    const long result_id = GuardedFloatTemp();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_FLOAT_VAR, result_id, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_FLOAT_VAR, result_id, LOCL));
+    new_char_str_count = 0;
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_FLOAT_VAR, result_id, LOCL));
+    return;
+  }
+
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
@@ -6395,6 +6652,20 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
 }
 
 /****************************
+ * The Float local a '?->' region's Float result waits in while the value path
+ * and the error path meet. One per method: a region reads it back before
+ * anything else can store to it, as the regions share the and/or slot.
+ ****************************/
+long IntermediateEmitter::GuardedFloatTemp()
+{
+  if(guarded_float_temp < 0) {
+    guarded_float_temp = NewHiddenLocal(FLOAT_PARM, L"#guarded_float#");
+  }
+
+  return guarded_float_temp;
+}
+
+/****************************
  * Translates an 'Otherwise()'
  * intrinsic in a method call
  * chain. Receiver value is
@@ -6406,6 +6677,8 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   // default (#1172); only the chain after the Otherwise() is left to emit
   if(!value_resolved) {
   long end_label = ++unconditional_label;
+  // before the Nil test (DeferConditionalOperand)
+  const size_t split_mark = imm_block->GetSize();
 
   // save receiver to var 0
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
@@ -6426,13 +6699,12 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   // of a pair under the first). `("q" ?? "x")` got a SWAP_INT here that put the
   // word under the receiver's into the slot instead of the default.
   new_char_str_count = 0;
-  // the default's postfix updates run here, on the Nil path alone (see
-  // BeginConditionalOperand)
-  std::queue<OperationAssignment*> outer_post_statements;
+  // the default's postfix updates are made on the Nil path alone
+  // (DeferConditionalOperand)
+  PostUpdateQueue outer_post_statements;
   BeginConditionalOperand(outer_post_statements);
   EmitExpression(args[0]);
-  EmitCast(method_call);
-  EndConditionalOperand(outer_post_statements);
+  DeferConditionalOperand(outer_post_statements, split_mark);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
   new_char_str_count = 0;
@@ -6441,6 +6713,9 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  // a conversion of the result is of whichever value was taken (see the
+  // value default in EmitTryIntrinsic)
+  EmitCast(method_call);
   }
 
   // Emit the rest of the chain, the way EmitTryIntrinsic does. Both callers
@@ -7046,14 +7321,28 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
     // is true. When the jump's sense matches that, both sides jump straight to
     // the target; otherwise the first side skips past the second side's test.
     const bool is_and = (type == AND_EXPR);
+    // In a statement's condition each operand's postfix updates are emitted
+    // before its own jump (below). In the test of '?:' they wait for the end
+    // of the enclosing statement, and the second operand's must then wait
+    // behind a flag (DeferConditionalOperand): `(a & (i++ > 0)) ? 1 : 2`
+    // incremented i for a false a, which never evaluated 'i++ > 0'. The
+    // operand ends in a jump, so the flag is set where it starts.
+    const size_t split_mark = imm_block->GetSize();
+    PostUpdateQueue outer_post_statements;
     if(is_and != jump_if_true) {
       EmitBranch(first, target_label, jump_if_true);
+      const size_t second_mark = imm_block->GetSize();
+      BeginConditionalOperand(outer_post_statements);
       EmitBranch(second, target_label, jump_if_true);
+      DeferConditionalOperand(outer_post_statements, split_mark, second_mark);
     }
     else {
       const long skip_label = ++conditional_label;
       EmitBranch(first, skip_label, !jump_if_true);
+      const size_t second_mark = imm_block->GetSize();
+      BeginConditionalOperand(outer_post_statements);
       EmitBranch(second, target_label, jump_if_true);
+      DeferConditionalOperand(outer_post_statements, split_mark, second_mark);
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
     }
     return;
@@ -7105,6 +7394,7 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     // right operand runs only when the left was true. The value must reach
     // the join through slot 0 (the JIT needs an empty working stack at a
     // label); in a condition EmitBranch avoids the temporary altogether.
+    const size_t split_mark = imm_block->GetSize();
     EmitExpression(expression->GetRight());
     long label = ++conditional_label;
     // AND jump
@@ -7115,12 +7405,12 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
     // emit left: the operand the short circuit skips, so its postfix updates
-    // run here, with it (BeginConditionalOperand): 'false & (i++ > 0)'
-    // incremented i
-    std::queue<OperationAssignment*> outer_post_statements;
+    // are made only when it is evaluated (DeferConditionalOperand):
+    // 'false & (i++ > 0)' incremented i
+    PostUpdateQueue outer_post_statements;
     BeginConditionalOperand(outer_post_statements);
     EmitExpression(expression->GetLeft());
-    EndConditionalOperand(outer_post_statements);
+    DeferConditionalOperand(outer_post_statements, split_mark);
     EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
@@ -7128,6 +7418,7 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
 
   case OR_EXPR: {
     // emit right
+    const size_t split_mark = imm_block->GetSize();
     EmitExpression(expression->GetRight());
     long label = ++conditional_label;
     // OR jump
@@ -7138,10 +7429,10 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
     // emit left: skipped when the first operand is true (see AND_EXPR)
-    std::queue<OperationAssignment*> outer_post_statements;
+    PostUpdateQueue outer_post_statements;
     BeginConditionalOperand(outer_post_statements);
     EmitExpression(expression->GetLeft());
-    EndConditionalOperand(outer_post_statements);
+    DeferConditionalOperand(outer_post_statements, split_mark);
     EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
@@ -7760,7 +8051,9 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   // set post statement
   OperationAssignment* post_stmt = variable->GetPostStatement();
   if(post_stmt) {
-    post_statements.push(post_stmt);
+    PostUpdate post_update;
+    post_update.update = post_stmt;
+    post_statements.push(post_update);
     variable->SetPostStatement(nullptr);
   }
 }
@@ -8593,8 +8886,11 @@ void IntermediateEmitter::EmitCallArgument(MethodCall* method_call, const size_t
  *
  * Only a single dimension is supported; the context analyzer rejects anything
  * else, so reaching here with more is a compiler bug rather than user error.
+ *
+ * 'subscript_mark', when given, receives the instruction count after the
+ * subscript and before the element is read (see EmitTryIntrinsic).
  ****************************/
-void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
+void IntermediateEmitter::EmitCallIndices(MethodCall* method_call, size_t* subscript_mark)
 {
   ExpressionList* indices = method_call->GetCallIndices();
   if(!indices) {
@@ -8607,6 +8903,9 @@ void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
   }
 
   EmitExpression(index_exprs[0]);
+  if(subscript_mark) {
+    *subscript_mark = imm_block->GetSize();
+  }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, SWAP_INT));
 
   Type* type = static_cast<Expression*>(method_call)->GetEvalType();
@@ -9352,6 +9651,13 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
       index = 1;
     }
     size = CalculateEntrySpace(current_table, index, declarations, false);
+    // where the emitter's own locals start (NewHiddenLocal)
+    next_local_id = index;
+    hidden_local_count = 0;
+    free_post_flags.clear();
+    held_post_flags.clear();
+    open_conditional_operands = 0;
+    guarded_float_temp = -1;
   }
 
   return size;
