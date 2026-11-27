@@ -884,7 +884,8 @@ namespace Runtime {
     void ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
 
     void SharedLibraryLoad(StackInstr* instr);
-    void SharedLibraryUnload(StackInstr* instr);
+    void SharedLibraryUnload(StackInstr* instr, size_t* &stack_pos);
+    void SharedLibraryNilInstance(size_t* &stack_pos);
     void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void SharedLibraryCallbackFailure(size_t* &stack_pos);
     // Drops every thread's cache of resolved native entry points. Called

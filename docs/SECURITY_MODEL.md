@@ -139,6 +139,15 @@ no body or with other parameter or return words than its declaration, stops with
 checked when a class's override is first looked up, not on each call). The
 collector treats a function value whose id names no class as having no captures,
 and clearing a Nil array is the Nil runtime error it should always have been.
+So is a library method whose body is a trap when it is called on Nil
+(`NilInstanceError`, `core/vm/common.cpp`; `SharedLibraryNilInstance`,
+`core/vm/interpreter.cpp`). Such a method is not virtual, so the call never
+looked at the receiver and 30 handlers read through it: `select` on a Nil
+`String`, `Serializer->Write`, `Deserializer->Read*`, `Timer->Start`,
+`FileReader->ReadByte`, `TCPSecureSocket->Close` and `DllProxy->Unload` ended
+the VM with a segmentation fault from valid source.
+`programs/regression/check_nil_trap_probe.py` calls every public trap-bodied
+method of `lang.obs` on a Nil receiver, and with each reference argument Nil.
 
 `OBJECK_VERIFY_ONLY=1` makes `obr` load and verify a program and exit 0 without
 running it, or refuse it as above: for checking a file, and what the tests and
@@ -152,7 +161,12 @@ at the byte level as `obe_mutfuzz.py` does) and runs each result with the defaul
 JIT, `--jit=off` and `OBJECK_JIT_THRESHOLD=1`. On 30,000 changes of 285 compiled regression programs, 582 crashed the VM before the rules from "a number is not
 read through" down were added (75 distinct faulting sites) and 45 with them; on 100,000 changes, 145 did (43 sites).
 The trap table and the function-value rules were then measured on one set of 30,000 changes of
-278 programs: 45 crashed before them and 11 with them (5 sites). What the remaining ones are, and why the loader
+278 programs: 45 crashed before them and 11 with them (5 sites).
+
+The current figure is from a later run on more programs, so its changed
+programs are other ones and it does not continue that series: of 30,000 changes
+of 344 programs, 19 crash the VM (9 faulting sites), and 18 once a trap-bodied
+method checks its receiver. What the remaining ones are, and why the loader
 cannot refuse them yet, is in [design/OBE_TYPE_VERIFIER.md](design/OBE_TYPE_VERIFIER.md).
 
 No valid program is refused: every `.obs` in the repository that compiles on its
@@ -190,6 +204,13 @@ compiler does in valid programs (the design page says what).
   traps nothing calls) are typed by count only.
 - **Values nothing types.** An array element, a field of another object and an
   untyped trap's result may be read through unchecked.
+- **Instructions no path reaches.** The verifier walks the paths of a method;
+  the JIT compiles its instructions in order, the unreachable ones too, and one
+  that pops an empty stack stops the compile with a null dereference.
+- **The dimensions of an array in compiled code.** The interpreter checks that
+  an array indexed with several indices has that many dimensions; the compiled
+  array access does not, and an `Int[]` can be returned where a `String[,]` is
+  spelled (Int and object arrays are one kind to the verifier).
 - **The bundled-executable path** (`buffer_end = nullptr`) is verified but not
   bounds-checked while it is read.
 

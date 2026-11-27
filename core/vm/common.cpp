@@ -2739,6 +2739,17 @@ static bool TrapError(long kind, const std::wstring& message)
   return false;
 }
 
+// A trap that reads the instance of the method it stands in, or the receiver it
+// pops, was given Nil. Library methods whose body is a trap are not virtual, so
+// the call itself never looks at the receiver: a valid program reaches the
+// handler with Nil ('s : String; select(s) {...}', 'w : Serializer; w->Write(1);')
+// and it read address 0. This is the Nil runtime error every other use of Nil
+// gets: recovered under a handler, printed and status 1 otherwise.
+static bool NilInstanceError()
+{
+  return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+}
+
 bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
                                 size_t* &op_stack, size_t* &stack_pos, StackFrame* frame) {
   const INT64_VALUE id = (INT64_VALUE)PopInt(op_stack, stack_pos);
@@ -3577,6 +3588,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 bool TrapProcessor::HashStringId(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* str_obj = (size_t*)PopInt(op_stack, stack_pos);
+  // 'select' on a String calls HashID() on it, inlined, so a Nil String reaches here
+  if(!str_obj || !str_obj[0]) {
+    return NilInstanceError();
+  }
 
   size_t* char_ary_obj = (size_t*)str_obj[0];
   const wchar_t* char_ary = (wchar_t*)(char_ary_obj + 3);
@@ -4933,8 +4948,9 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
     }
   }
 
+  // a Nil command is no command: the method returns Nil, as it does for one with no text
   size_t* command_obj = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* str_array = (size_t*)command_obj[0];
+  size_t* str_array = command_obj ? (size_t*)command_obj[0] : nullptr;
   if(str_array) {
     const std::string cmd = UnicodeToBytes((wchar_t*)(str_array + 3));
 
@@ -5143,6 +5159,10 @@ bool TrapProcessor::DateFromLocalTime(StackProgram* program, size_t* inst, size_
 
 bool TrapProcessor::TimerStart(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Timer, which ProcessTimerStart pops and reads through
+  if(!op_stack[(*stack_pos) - 1]) {
+    return NilInstanceError();
+  }
   ProcessTimerStart(op_stack, stack_pos);
 
   return true;
@@ -5150,6 +5170,10 @@ bool TrapProcessor::TimerStart(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::TimerEnd(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Timer, which ProcessTimerEnd pops and reads through
+  if(!op_stack[(*stack_pos) - 1]) {
+    return NilInstanceError();
+  }
   ProcessTimerEnd(op_stack, stack_pos);
 
   return true;
@@ -5157,6 +5181,10 @@ bool TrapProcessor::TimerEnd(StackProgram* program, size_t* inst, size_t* &op_st
 
 bool TrapProcessor::TimerElapsed(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Timer, which ProcessTimerElapsed pops and reads through
+  if(!op_stack[(*stack_pos) - 1]) {
+    return NilInstanceError();
+  }
   ProcessTimerElapsed(op_stack, stack_pos);
 
   return true;
@@ -5658,8 +5686,11 @@ bool TrapProcessor::SetSysEnv(StackProgram* program, size_t* inst, size_t*& op_s
 
 bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // a Nil name resolves to nothing: the method returns Nil
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  array = (size_t*)array[0];
+  if(array) {
+    array = (size_t*)array[0];
+  }
   if(array) {
     const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     // DNS resolution can block for seconds; park for it (name is C heap)
@@ -6977,6 +7008,9 @@ bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(!instance) {
+    return NilInstanceError();
+  }
   // the object has no context from here on (see SocketCtxDetach); the context is freed below, or by
   // the last thread still inside a read or a write on it
   SecureSocketCtx* sctx = SocketCtxDetach<SecureSocketCtx>(instance);
@@ -9016,6 +9050,10 @@ bool TrapProcessor::SockUdpError(StackProgram* program, size_t* inst, size_t*& o
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# serializing char #" << std::endl;
 #endif
@@ -9026,6 +9064,10 @@ bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_st
 
 bool TrapProcessor::SerlInt(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# serializing int #" << std::endl;
 #endif
@@ -9036,6 +9078,10 @@ bool TrapProcessor::SerlInt(StackProgram* program, size_t* inst, size_t* &op_sta
 
 bool TrapProcessor::SerlFloat(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# serializing float #" << std::endl;
 #endif
@@ -9049,6 +9095,10 @@ bool TrapProcessor::SerlFloat(StackProgram* program, size_t* inst, size_t* &op_s
 
 bool TrapProcessor::SerlObjInst(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   SerializeObject(inst, frame, op_stack, stack_pos);
 
   return true;
@@ -9056,6 +9106,10 @@ bool TrapProcessor::SerlObjInst(StackProgram* program, size_t* inst, size_t* &op
 
 bool TrapProcessor::SerlByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   SerializeInt(BYTE_ARY_PARM, inst, op_stack, stack_pos);
   SerializeArray((size_t*)frame->mem[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
 
@@ -9064,6 +9118,10 @@ bool TrapProcessor::SerlByteAry(StackProgram* program, size_t* inst, size_t* &op
 
 bool TrapProcessor::SerlCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   SerializeInt(CHAR_ARY_PARM, inst, op_stack, stack_pos);
   SerializeArray((size_t*)frame->mem[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
 
@@ -9072,6 +9130,10 @@ bool TrapProcessor::SerlCharAry(StackProgram* program, size_t* inst, size_t* &op
 
 bool TrapProcessor::SerlIntAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
   SerializeArray((size_t*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
 
@@ -9080,6 +9142,10 @@ bool TrapProcessor::SerlIntAry(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::SerlObjAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   SerializeInt(OBJ_ARY_PARM, inst, op_stack, stack_pos);
   SerializeArray((size_t*)frame->mem[1], OBJ_ARY_PARM, inst, op_stack, stack_pos);
 
@@ -9088,6 +9154,10 @@ bool TrapProcessor::SerlObjAry(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::SerlFloatAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Serializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
   SerializeArray((size_t*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
 
@@ -9096,6 +9166,10 @@ bool TrapProcessor::SerlFloatAry(StackProgram* program, size_t* inst, size_t* &o
 
 bool TrapProcessor::DeserlChar(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing char #" << std::endl;
 #endif
@@ -9112,6 +9186,10 @@ bool TrapProcessor::DeserlChar(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::DeserlInt(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing int #" << std::endl;
 #endif
@@ -9128,6 +9206,10 @@ bool TrapProcessor::DeserlInt(StackProgram* program, size_t* inst, size_t* &op_s
 
 bool TrapProcessor::DeserlFloat(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing float #" << std::endl;
 #endif
@@ -9144,6 +9226,10 @@ bool TrapProcessor::DeserlFloat(StackProgram* program, size_t* inst, size_t* &op
 
 bool TrapProcessor::DeserlObjInst(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   DeserializeObject(inst, op_stack, stack_pos);
 
   return true;
@@ -9151,6 +9237,10 @@ bool TrapProcessor::DeserlObjInst(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing byte array #" << std::endl;
 #endif
@@ -9176,6 +9266,10 @@ bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &
 // consumed and dropped, so the values after it stay aligned.
 bool TrapProcessor::DeserlBoolAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
   const ParamType tag = (ParamType)DeserializeInt(inst);
   if(tag == BYTE_ARY_PARM) {
     PushInt((size_t)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
@@ -9206,6 +9300,10 @@ bool TrapProcessor::DeserlBoolAry(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::DeserlCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing char array #" << std::endl;
 #endif
@@ -9222,6 +9320,10 @@ bool TrapProcessor::DeserlCharAry(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::DeserlIntAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing int array #" << std::endl;
 #endif
@@ -9238,6 +9340,10 @@ bool TrapProcessor::DeserlIntAry(StackProgram* program, size_t* inst, size_t* &o
 
 bool TrapProcessor::DeserlObjAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing an object array #" << std::endl;
 #endif
@@ -9254,6 +9360,10 @@ bool TrapProcessor::DeserlObjAry(StackProgram* program, size_t* inst, size_t* &o
 
 bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  // the Deserializer's buffer and position are read through the method's instance (see NilInstanceError)
+  if(!inst) {
+    return NilInstanceError();
+  }
 #ifdef _DEBUG
   std::wcout << L"# deserializing float array #" << std::endl;
 #endif
@@ -11696,7 +11806,8 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
     ctx->request_headers = *extra_headers;
   }
 
-  if(!ctx || !ctx->session) {
+  // a Nil verb or path is a failed request (both are read through below), as the WinHTTP backend of Http3Request has it
+  if(!ctx || !ctx->session || !method_array || !path_array) {
     PushInt(0, op_stack, stack_pos);
     return true;
   }
@@ -12405,7 +12516,8 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
     ctx->request_headers = *extra_headers;
   }
 
-  if(!ctx || !ctx->conn || !ctx->h3conn) {
+  // a Nil verb or path is a failed request (both are read through below), as the WinHTTP backend of Http3Request has it
+  if(!ctx || !ctx->conn || !ctx->h3conn || !method_array || !path_array) {
     PushInt(0, op_stack, stack_pos); return true;
   }
 
@@ -13465,6 +13577,9 @@ bool TrapProcessor::SockDtlsOutCharAry(StackProgram* program, size_t* inst, size
 bool TrapProcessor::FileInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(!instance) {
+    return NilInstanceError();
+  }
   if((FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
     int value;
@@ -13818,6 +13933,11 @@ bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &o
     else {
       PushInt(0, op_stack, stack_pos);
     }
+  }
+  else {
+    // A Nil name has no path. Nothing was pushed for it, so the method returned
+    // the word beneath its argument as a String.
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;

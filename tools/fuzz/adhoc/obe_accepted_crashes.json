@@ -1,6 +1,6 @@
 {
  "format": 1,
- "comment": "Crash signatures the loader campaign accepts, derived with obe_campaign.py --replay from the 19 crashing images of the 30,000-mutant run below. Each entry: the faulting function (interpreter frame under --jit=off; '(jit code)' for generated code), the assessment's class numbers, a reason, and the witness mutants. Update when the Nil-receiver trap fix (class 1) or the verifier class-rule change (CLASS_RULES) lands: remove the entries that no longer appear (a run reports them as 'not seen').",
+ "comment": "Crash signatures the loader campaign accepts, derived with obe_campaign.py --replay from the crashing images of the 30,000-mutant run below (19 at ed24d1edb2). Each entry: the faulting function (interpreter frame under --jit=off; '(jit code)' for generated code), the assessment's class numbers, a reason, and the witness mutants. Removed since: TrapProcessor::SerializeObject (class 1, witness gc_bool_array_declaration_2_3755), because the trap handlers check a Nil receiver and that mutant now ends with the Nil runtime error. Update when the verifier class-rule change (CLASS_RULES) lands: remove the entries and witnesses that no longer appear (a run reports a signature as 'not seen').",
  "inputs": {
   "seed": 2,
   "count": 30000,
@@ -10,16 +10,6 @@
   "structured": 0.7
  },
  "entries": [
-  {
-   "signature": "TrapProcessor::SerializeObject",
-   "classes": [
-    1
-   ],
-   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 1: Nil receiver of a trap-bodied library method; fixed by the Nil-receiver trap checks (P1), remove this entry when that lands.",
-   "witnesses": [
-    "gc_bool_array_declaration_2_3755"
-   ]
-  },
   {
    "signature": "Runtime::StackInterpreter::LoadClsInstIntVar",
    "classes": [
@@ -49,11 +39,11 @@
    ]
   },
   {
-   "signature": "MemoryManager::GetClass",
+   "signature": "Runtime::StackInterpreter::ObjInstCast",
    "classes": [
     3
    ],
-   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 3b/3d: a cast applied to a number read through an object field or interface-typed parameter whose class the image does not record.",
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 3b/3d: a cast applied to a number read through an object field or interface-typed parameter whose class the image does not record. (Signature re-derived with the Nil-receiver checks in: the fault is where it was, but the optimizer now leaves this function out of line and gdb names it; at ed24d1edb2 the same two mutants were reported under MemoryManager::GetClass.)",
    "witnesses": [
     "core_array_element_interface_return_2_25347",
     "core_generic_fbound_2_23821"
@@ -72,11 +62,11 @@
    ]
   },
   {
-   "signature": "Handle_LOAD_INT_ARY_ELM",
+   "signature": "Runtime::StackInterpreter::ProcessLoadIntArrayElement",
    "classes": [
     5
    ],
-   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 5: an Int[] element read through as an array (the assessment lists boxing_before_after under 3b; its measured fault site is this one).",
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 5: an Int[] element read through as an array (the assessment lists boxing_before_after under 3b; its measured fault site is this one). (Signature re-derived with the Nil-receiver checks in: the fault is where it was, but the optimizer now leaves this function out of line and gdb names it; at ed24d1edb2 the same two mutants were reported under Handle_LOAD_INT_ARY_ELM.)",
    "witnesses": [
     "array_index_nested_2_17487",
     "boxing_before_after_2_1989"

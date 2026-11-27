@@ -817,7 +817,7 @@ static DispatchResult Handle_EXT_LIB_LOAD(DispatchContext& ctx) {
 }
 
 static DispatchResult Handle_EXT_LIB_UNLOAD(DispatchContext& ctx) {
-  ctx.interp->SharedLibraryUnload(ctx.instr);
+  ctx.interp->SharedLibraryUnload(ctx.instr, ctx.stack_pos);
   return DispatchResult::CONTINUE;
 }
 

@@ -341,6 +341,21 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     passed: a function given 400,000 pushes is refused at the 1,001st word, where
     the walk used to keep a state for every one of them first (gigabytes) and
     compare afterwards; 1,000 words load and run.
+ 41. A library method whose body is a trap does not crash the VM when a valid
+    program gives it Nil. Such a method is not virtual, so the call never looks
+    at the receiver, and 30 handlers read through a Nil one: 'select' on a Nil
+    String, Serializer->Write, Deserializer->Read*, Timer->Start and End,
+    FileReader->ReadByte, TCPSecureSocket->Close, DllProxy->Unload and
+    CallFunction each ended the VM with a segmentation fault in every JIT mode.
+    Three functions did the same for a Nil argument (File->GetFullName,
+    TCPSocket->Resolve, Runtime->CommandOutput). vm_flag_fixtures/
+    nil_trap_receiver.obs makes eleven of the receiver calls with nothing
+    guarding them: each must end with status 1 and the Nil runtime error, in
+    all three modes, and the three functions must return Nil. Then
+    check_nil_trap_probe.py reads lang.obs and calls EVERY public trap-bodied
+    method on a Nil receiver, and with each reference argument Nil, in all three
+    modes: none may end by a signal or hang. (Recovery under ?-> and try is
+    nil_trap_receiver_recovery.obs, in the regression suite.)
  31. A collection leaves an Int[] element alone when its value IS an object's
     address (GC roots phase 6, docs/GC_ROOTS_DESIGN.md section 10). An Int[]
     and an object array shared one heap tag, so the collector scanned every
@@ -867,6 +882,7 @@ def main():
 
     check_loader_rejects_malformed(obc, obr, env, bin_dir)
     check_loader_refuses_changed(obc, obr, env, bin_dir)
+    check_nil_trap_receiver(obc, obr, env, bin_dir)
     check_loader_depth_limit(obc, obr, env, bin_dir)
     check_address_int_array(obc, obr, env, bin_dir)
 
@@ -2923,6 +2939,44 @@ def check_loader_refuses_changed(obc, obr, env, bin_dir):
                       rc == 1 and b"cleared 0" in out and b"not reached" not in out and
                       "Attempting to dereference a 'Nil' memory instance" in text,
                       f"rc={rc} out={out[-100:]!r} err={text[-200:]!r}")
+
+
+def check_nil_trap_receiver(obc, obr, env, bin_dir):
+    # ---- 41. a trap-bodied library method given Nil is a runtime error, not a crash ----
+    modes = (("the default JIT", []), ("--jit=off", ["--jit=off"]), ("--jit=1", ["--jit=1"]))
+    receivers = ("select", "hash", "serialize", "serialize_object", "deserialize", "deserialize_array",
+                 "timer", "file", "tls", "library_unload", "library_call")
+    arguments = ("argument_full_name", "argument_resolve", "argument_command")
+    with tempfile.TemporaryDirectory() as scratch:
+        src = os.path.join(SCRIPT_DIR, "vm_flag_fixtures", "nil_trap_receiver.obs")
+        dest = os.path.join(scratch, "nil_trap_receiver.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("nil_trap_receiver compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc == 0:
+            for label, flags in modes:
+                rc, out, err = run([obr] + flags + [dest, "control"], env=env, cwd=bin_dir, timeout=60)
+                check(f"nil_trap_receiver: the same calls on real objects run ({label})",
+                      rc == 0 and b"abc" in out and b"control done" in out,
+                      f"rc={rc} out={out[-100:]!r} err={err[-200:]!r}")
+                for case in receivers:
+                    rc, out, err = run([obr] + flags + [dest, case], env=env, cwd=bin_dir, timeout=60)
+                    text = err.decode(errors="replace")
+                    check(f"a trap method on a Nil receiver is a runtime error, not a crash ({case}, {label})",
+                          rc == 1 and b"before " + case.encode() in out and b"not reached" not in out and
+                          "Attempting to dereference a 'Nil' memory instance" in text,
+                          f"rc={rc} out={out[-100:]!r} err={text[-200:]!r}")
+                for case in arguments:
+                    rc, out, err = run([obr] + flags + [dest, case], env=env, cwd=bin_dir, timeout=60)
+                    check(f"a trap function given a Nil argument returns Nil, not a crash ({case}, {label})",
+                          rc == 0 and b"before " + case.encode() in out and b"returned Nil" in out,
+                          f"rc={rc} out={out[-100:]!r} err={err[-200:]!r}")
+
+    # every public trap-bodied method of lang.obs, on a Nil receiver and with each
+    # reference argument Nil: see check_nil_trap_probe.py, which also runs alone
+    import check_nil_trap_probe
+    failures, summary = check_nil_trap_probe.probe(obc, obr, env, bin_dir)
+    check("no trap-bodied library method crashes or hangs when given Nil" + (f" ({summary})" if summary else ""),
+          not failures, f"{len(failures)} failure(s): " + "; ".join(failures[:8]))
 
 
 def check_error_exit_with_threads(obc, obr, env, bin_dir):
