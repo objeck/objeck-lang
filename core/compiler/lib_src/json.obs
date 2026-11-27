@@ -1467,7 +1467,9 @@ obj->ToString()->PrintLine();
 		}
 
 		#~
-		Gets the integer value. A number written with a fraction or an exponent (2.5, 1e5) is truncated toward zero.
+		Gets the integer value. A number written with a fraction or an exponent (2.5, 1e5) is truncated toward zero,
+		from its digits as written and not through a Float: 9007199254740993.0 is 9007199254740993 and 1.9 is 1.
+		A value that does not fit a 64-bit integer (1e19, 1e400) is 0, as it is for a number written without them.
 		@return integer value
 
 		```
@@ -1485,15 +1487,156 @@ obj->ToString()->PrintLine();
 
 			if(@value <> Nil) {
 				# a number written with a fraction or an exponent ("1e5", "2.5E+2")
-				# goes through the float parse and truncates toward zero; ToInt()
-				# stopped at the 'e' and gave 1 for 1e5
+				# is truncated toward zero; ToInt() stopped at the 'e' and gave 1
+				# for 1e5. The digits are shifted by the exponent and read as an
+				# integer: through a Float, as this was, an integer past 2^53 came
+				# back rounded (9007199254740993.0 as ...992) and one past 2^63 as
+				# whatever the processor's conversion leaves. Text that is not a
+				# JSON number (an element built by hand) keeps the float parse.
 				if(@type = JsonType->NUMBER & (@value->Has('.') | @value->Has('e') | @value->Has('E'))) {
+					exact := Int->New[1];
+					if(TruncateNumber(@value, exact)) {
+						return exact[0];
+					};
 					return @value->ToFloat()->As(Int);
 				};
 				return @value->ToInt();
 			};
 
 			return 0;
+		}
+
+		# Truncates a number spelled -?digits(.digits)?([eE][+-]?digits)? toward zero without
+		# leaving integer arithmetic. The result goes in result[0]; it is 0 when the value does
+		# not fit 64 bits, which is what String->ToInt() answers for an integer spelling. False,
+		# and nothing stored, when the text is not such a number.
+		function : TruncateNumber(text : String, result : Int[]) ~ Bool {
+			chars := text->ToCharArray();
+			size := chars->Size();
+			i := 0;
+
+			negative := false;
+			if(i < size) {
+				if(chars[i] = '-') {
+					negative := true;
+					i += 1;
+				};
+			};
+
+			# the digits of the integer part and of the fraction, in order; 'point' is how many
+			# of them stand before the decimal point
+			digits := Char->New[size + 1];
+			count := 0;
+			start := i;
+			while(IsDigit(chars, i)) {
+				digits[count] := chars[i];
+				count += 1;
+				i += 1;
+			};
+			if(i = start) {
+				return false;
+			};
+			point := count;
+
+			if(i < size) {
+				if(chars[i] = '.') {
+					i += 1;
+					start := i;
+					while(IsDigit(chars, i)) {
+						digits[count] := chars[i];
+						count += 1;
+						i += 1;
+					};
+					if(i = start) {
+						return false;
+					};
+				};
+			};
+
+			# the exponent, held to a size that cannot overflow: past a few dozen it only
+			# decides between zero and "does not fit"
+			exponent := 0;
+			if(i < size) {
+				if(chars[i] = 'e' | chars[i] = 'E') {
+					i += 1;
+					exponent_negative := false;
+					if(i < size) {
+						if(chars[i] = '+' | chars[i] = '-') {
+							exponent_negative := chars[i] = '-';
+							i += 1;
+						};
+					};
+					start := i;
+					while(IsDigit(chars, i)) {
+						if(exponent < 1000000) {
+							exponent := exponent * 10 + (chars[i] - '0');
+						};
+						i += 1;
+					};
+					if(i = start) {
+						return false;
+					};
+					if(exponent_negative) {
+						exponent := exponent * -1;
+					};
+				};
+			};
+
+			if(i <> size) {
+				return false;
+			};
+
+			# leading zeros carry no value: 0e99999 and 0.000 are zero whatever the exponent
+			first := 0;
+			while(first < count & digits[first] = '0') {
+				first += 1;
+			};
+			result[0] := 0;
+			if(first = count) {
+				return true;
+			};
+
+			# how many digits, from the first one that is not zero, stand before the point once
+			# the exponent has moved it; digits past the ones written are zeros
+			whole := point + exponent - first;
+			if(whole <= 0 | whole > 19) {
+				return true;
+			};
+
+			# built as a negative number, whose range is one wider than the positive one
+			lowest := -9223372036854775807 - 1;
+			value := 0;
+			for(k := 0; k < whole; k += 1;) {
+				digit := 0;
+				if(first + k < count) {
+					digit := digits[first + k] - '0';
+				};
+				if(value < -922337203685477580) {
+					return true;
+				};
+				value := value * 10;
+				if(value < lowest + digit) {
+					return true;
+				};
+				value -= digit;
+			};
+
+			if(negative) {
+				result[0] := value;
+			}
+			else if(value <> lowest) {
+				result[0] := value * -1;
+			};
+
+			return true;
+		}
+
+		# true if there is a character at 'i' and it is a decimal digit
+		function : IsDigit(chars : Char[], i : Int) ~ Bool {
+			if(i >= chars->Size()) {
+				return false;
+			};
+			return chars[i] >= '0' & chars[i] <= '9';
 		}
 
 		#~
