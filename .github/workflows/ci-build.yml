@@ -889,6 +889,21 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obe_version_mismatch.py "$BIN"
 
+    # An image whose class count asks for more memory than there is must end obr with
+    # ">>> load error: std::bad_alloc <<<". Loader::LoadClasses' cleanup object read
+    # pointers it had not assigned when one of its three allocations threw, and obr
+    # ended with a segmentation fault. Run under a ladder of address-space limits
+    # (RLIMIT_AS), so each of the allocations fails in turn; Linux only (the test
+    # says SKIP where the limit is not enforced).
+    - name: obr reports an image it has no memory to load, never a crash (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_loader_alloc_failure.py "$BIN"
+
     # The library reader checks every read against the end of the inflated file; a damaged
     # .obl must end in an error message, never an out-of-bounds read or a crash.
     - name: obc refuses a truncated or corrupt library with a clear message (POSIX)

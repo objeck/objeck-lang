@@ -379,11 +379,17 @@ static void DeleteDeclarations(StackDclr** dclrs, const int num_dclrs)
 // them, so a load that stops part way frees what it read rather than leaking
 // it (a refused .obe in an embedding host, and the fuzz target, which loads
 // millions of them in one process).
+//
+// Every member starts null: LoadClasses makes the three arrays one after the
+// other, and when one of those allocations threw, the destructor read the
+// pointers not yet assigned (found by review; an image whose class count asks
+// for more memory than there is ended obr with a segmentation fault instead of
+// "load error: std::bad_alloc").
 struct PartialClasses {
-  int num;
-  long* hierarchy;
-  long** interfaces;
-  StackClass** classes;
+  int num = 0;
+  long* hierarchy = nullptr;
+  long** interfaces = nullptr;
+  StackClass** classes = nullptr;
 
   ~PartialClasses() {
     if(classes) {
