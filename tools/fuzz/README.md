@@ -262,4 +262,5 @@ every `.obs` of the tree compiled at `-opt s0`, `s1`, `s2` and `s3` (a quarter w
 documented class so the whole library links, each loaded with
 `OBJECK_VERIFY_ONLY=1`. Nothing it compiles is run. It exits 1 if the loader
 refuses any image: a rule that refuses what `obc` writes is wrong, or has found a
-compiler bug.
+compiler bug. It also exits 1 when no library class linked whole (an API index that
+names no library file leaves that half with nothing to load).

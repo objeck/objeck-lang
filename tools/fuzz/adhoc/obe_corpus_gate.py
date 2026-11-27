@@ -128,6 +128,12 @@ for lib, names in sorted(by_file.items()):
         have = {c["name"] for c in obe_image.parse(image)[1]}
         linked += sum(1 for n in keep if n.split("<")[0] in have)
 print("library classes documented %d, linked whole %d" % (documented, linked))
+# The whole-library half can stop running without a refusal to show for it: an API index
+# whose classes name no library file puts every class in one program, which does not compile.
+cover_failed = documented > 0 and linked == 0
+if cover_failed:
+    print("  NO LIBRARY LINKED WHOLE: the index names %d library file(s) for %d classes; "
+          "the libraries' own code was not loaded" % (len([f for f in by_file if f]), documented))
 
 # ---- load every image ----
 files = []
@@ -157,4 +163,4 @@ with ThreadPoolExecutor(jobs) as ex:
 print("images loaded %d, refused or failing %d" % (len(files), refused))
 for rule, n in rules.most_common():
     print("%6d  %s" % (n, rule))
-sys.exit(1 if refused else 0)
+sys.exit(1 if refused or cover_failed else 0)
