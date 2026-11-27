@@ -10066,7 +10066,15 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
   // resort caught: obc ended with "internal error: unexpected exception during compilation"
   // and this scanner was not released. The error has been reported to this parser, so the
   // interpolation is refused below with it as the reason, like any other that does not parse.
+  //
+  // The same exception is how nesting too deep for the stack is refused (CheckDepth), and that
+  // check measures from stack_base. This parser never had one: it is not started by ParseFile
+  // or ParseText, which set it. So '{$((((...1))))}' was read to any depth, and a few thousand
+  // levels of calls ended obc with a stack overflow instead of the error. The mark is this
+  // frame: the interpolation gets the stack a file gets, counted from where its parse begins.
   Expression* result = nullptr;
+  char stack_mark = 0;
+  expr_parser.stack_base = &stack_mark;
   try {
     result = expr_parser.ParseExpression(0);
   }
