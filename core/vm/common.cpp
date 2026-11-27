@@ -9519,6 +9519,24 @@ class FileReadPark {
   bool IsParked() const { return parked; }
 };
 
+// Looks one byte ahead, so that IsEoF() is true as soon as the last byte has been read rather than
+// after a read that finds nothing (#1180): for a file on disk only. On a handle that can wait (a FIFO,
+// a terminal: see FileMayBlock) the byte looked for is the writer's NEXT message, and waiting for it
+// stops a conversation: a FIFO writer that sent a line and waits for an acknowledgment before it
+// writes again never got one, because the reader, with its line complete, was waiting in this look
+// ahead and had not returned it. There the end is found by the read that meets it (ReadLine returns
+// Nil), as on a pipe or a socket.
+static void FileLookAhead(FILE* file)
+{
+  if(FileMayBlock(file)) {
+    return;
+  }
+  const int next = fgetc(file);
+  if(next != EOF) {
+    ungetc(next, file);
+  }
+}
+
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -9526,25 +9544,21 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   if(array && instance) {
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
-    // The name need not be a file on disk. Opening a FIFO waits for its writer, and the
-    // look-ahead below then waits for its first byte, with no bound on either: park for
-    // both (the name is C heap by now), with the instance re-rooted on the op_stack, or
-    // a collection on any other thread waits as long.
+    // The name need not be a file on disk. Opening a FIFO waits for its writer, with no
+    // bound: park for it (the name is C heap by now), with the instance re-rooted on the
+    // op_stack, or a collection on any other thread waits as long.
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     FILE* file = File::FileOpen(filename.c_str(), "rb");
     const int open_error = errno;
+    NoteFileOpened(file);
     // look ahead one byte, as FileInString does after each line: an empty file
     // is then at end of file from the start, and ReadLine returns Nil rather
-    // than one empty line (#1180)
+    // than one empty line (#1180). Not on a handle that can wait (see FileLookAhead).
     if(file) {
-      const int next = fgetc(file);
-      if(next != EOF) {
-        ungetc(next, file);
-      }
+      FileLookAhead(file);
     }
     MemoryManager::EndBlocking();
-    NoteFileOpened(file);
     instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!file) {
       SetFileError(instance, open_error);
@@ -9680,23 +9694,20 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
   if(array && instance && instance[0]) {
     FILE* file = (FILE*)instance[0];
     char buffer[MID_BUFFER_MAX] = {0};
-    // The line, and the byte looked at after it, with the thread parked when the file can wait (see
-    // FileMayBlock); the array is re-rooted on the op_stack for that and re-read after. The look ahead
-    // is made here, before the line is stored, so that one park covers both waits.
+    // The line, with the thread parked when the file can wait (see FileMayBlock); the array is
+    // re-rooted on the op_stack for that and re-read after.
     //
-    // Look ahead one byte, so end of file is known as soon as the last line
-    // has been read. Without it IsEoF() stayed false after the final newline,
-    // and the documented `while(line <> Nil)` loop got one extra "" (#1180).
+    // Then, for a file on disk, a look one byte ahead, so end of file is known as soon as the last
+    // line has been read. Without it IsEoF() stayed false after the final newline, and the
+    // documented `while(line <> Nil)` loop got one extra "" (#1180). See FileLookAhead for why not
+    // on a handle that can wait.
     bool has_line;
     PushInt((size_t)array, op_stack, stack_pos);
     {
       FileReadPark park(file);
       has_line = fgets(buffer, MID_BUFFER_MAX - 1, file) != nullptr;
       if(has_line) {
-        const int next = fgetc(file);
-        if(next != EOF) {
-          ungetc(next, file);
-        }
+        FileLookAhead(file);
       }
     }
     array = (size_t*)PopInt(op_stack, stack_pos);
@@ -9907,10 +9918,10 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
     return true;
   }
 
-  // The line, and the byte looked at after it, with the thread parked when the file can wait (see
-  // FileMayBlock): only C++ locals are touched meanwhile. The look ahead is made here, before the line
-  // is decoded, so that one park covers both waits: it tells IsEoF() the file has ended as soon as
-  // the last line is read.
+  // The line, with the thread parked when the file can wait (see FileMayBlock): only C++ locals are
+  // touched meanwhile. Then, for a file on disk, the look one byte ahead that tells IsEoF() the file
+  // has ended as soon as the last line is read (see FileLookAhead for why not on a handle that can
+  // wait).
   std::string line;
   bool read_any = false;
   {
@@ -9924,10 +9935,7 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
       line.push_back((char)c);
     }
     if(read_any) {
-      const int next = fgetc(file);
-      if(next != EOF) {
-        ungetc(next, file);
-      }
+      FileLookAhead(file);
     }
   }
 

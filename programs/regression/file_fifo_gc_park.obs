@@ -7,7 +7,7 @@ the FIFO, holds its write end open and writes to it when told.
 What FileReader opens need not be a file on disk. A FIFO (or a terminal) waits for its
 writer as a pipe does, and two calls made that wait as a running mutator, so that a
 collection started by any other thread waited too and the whole program stood still
-until the writer wrote: FileReader->New, which opens the file and looks one byte ahead,
+until the writer wrote: FileReader->New, which opened the file and looked one byte ahead,
 and FileReader->ReadBuffer(offset, num, Char[]), in fread. Both park now, as a pipe or
 socket read does, the read with its array re-rooted so that the collections that run
 meanwhile can move it.
@@ -16,7 +16,9 @@ meanwhile can move it.
   <fifo> <collected> read   the driver has written one byte, so the open returns; a
                             thread then reads five characters from <fifo> into a young
                             array and waits in the read for the other four
-  <fifo> <collected> open   the driver has written nothing: the thread waits in the open
+  <fifo> <collected> open   the driver has written nothing: the thread waited in the open, for
+                            the byte it looked ahead at; a FIFO is no longer looked ahead at
+                            (fifo_line_ack.obs), so it waits in its read, for all five
 
 The other reads of a FileReader waited the same way (Codex review round 2, slice 5,
 finding 6) and park now too, when what was opened is not a file on disk. As "read", with

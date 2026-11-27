@@ -799,6 +799,7 @@ def main():
 
     check_signal_dispatch(obc, obr, env, bin_dir)
     check_file_fifo_gc_park(obc, obr, env, bin_dir)
+    check_fifo_line_ack(obc, obr, env, bin_dir)
     check_tls_byte_read_eof(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
@@ -3370,7 +3371,8 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
     # the first collection waited for them and main never finished allocating. This
     # script holds the FIFO's write end. In "read" mode it writes one byte at the start,
     # so the open returns and the thread waits in the read; in "open" mode it writes
-    # nothing, so the thread waits in the open. The rest is written only once the
+    # nothing, so the thread waited in the open (a FIFO is no longer looked ahead at:
+    # check_fifo_line_ack; it now waits in the read). The rest is written only once the
     # program reports that it has allocated its fill: a program that never reports is
     # the failure (it is then released, so it can end). With OBJECK_GC_VERIFY the heap
     # is checked at every collection, the reader's re-rooted array included.
@@ -3425,6 +3427,71 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
             check(f"FIFO {mode} through the file API {label}: the read returns its text after them",
                   proc.returncode == 0 and b"PASS: file_fifo_gc_park read" in out,
                   f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
+
+
+def check_fifo_line_ack(obc, obr, env, bin_dir):
+    # ---- a line read from a FIFO returns when the line is complete --------------------
+    # fifo_line_ack.obs reads lines from one FIFO and answers on another. This script is
+    # the writer: it sends "ready", keeps the FIFO open and waits for the program's "ack"
+    # before it sends "done". A FileReader looked one byte ahead after each line (and
+    # after opening), which on a FIFO is a wait for the writer's NEXT message: the program
+    # had its line and could not return from ReadLine to acknowledge it, so the writer
+    # waited for an answer that the reader was waiting to be allowed to give. In "open"
+    # mode nothing is written until the program has said "hello", which it can only do
+    # if opening the FIFO did not wait for a first byte. Whatever happens the rest is
+    # written in the end, so the program can finish and the failure is a failed check.
+    if os.name == "nt" or not hasattr(os, "mkfifo"):
+        return
+    import time
+    dest = compile_fixture(obc, "fifo_line_ack", env, bin_dir)
+    if not dest:
+        return
+    for mode in ("line", "open"):
+        for jit in ("--jit=off", "--jit=1"):
+            with tempfile.TemporaryDirectory() as scratch:
+                data, ack = os.path.join(scratch, "data"), os.path.join(scratch, "ack")
+                os.mkfifo(data)
+                os.mkfifo(ack)
+                # read-write, so neither open waits for the program's (Linux and macOS allow it)
+                data_end = os.open(data, os.O_RDWR)
+                ack_end = os.open(ack, os.O_RDWR | os.O_NONBLOCK)
+                heard = b""
+
+                def answered(text, seconds):
+                    nonlocal heard
+                    deadline = time.time() + seconds
+                    while text not in heard and time.time() < deadline:
+                        try:
+                            heard += os.read(ack_end, 64)
+                        except BlockingIOError:
+                            time.sleep(0.01)
+                    return text in heard
+
+                if mode == "line":
+                    os.write(data_end, b"ready\n")
+                proc = subprocess.Popen([obr, jit, dest, data, ack, mode], env=env, cwd=SCRIPT_DIR,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                greeted = True
+                if mode == "open":
+                    greeted = answered(b"hello\n", 10)
+                    os.write(data_end, b"ready\n")
+                acknowledged = answered(b"ack\n", 10)
+                os.write(data_end, b"done\n")
+                os.close(data_end)
+                try:
+                    out, err = proc.communicate(timeout=30)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    out, err = proc.communicate()
+                os.close(ack_end)
+                detail = f"rc={proc.returncode} heard={heard!r} out={out[-200:]!r} err={err[-300:]!r}"
+                if mode == "open":
+                    check(f"FIFO line protocol {jit}: opening a FIFO nothing has been written to does not wait for a byte",
+                          greeted, detail)
+                check(f"FIFO line protocol ({mode}) {jit}: the first line is acknowledged before the writer sends the next",
+                      acknowledged, detail)
+                check(f"FIFO line protocol ({mode}) {jit}: both lines and the end of the FIFO are read",
+                      proc.returncode == 0 and b"PASS: fifo_line_ack protocol" in out, detail)
 
 
 def make_loopback_tls_cert(scratch):
