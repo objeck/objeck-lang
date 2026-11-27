@@ -899,6 +899,33 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
           EmitStatement(leavings[i]);
         }
       }
+      // A method that returns a value and does not end in 'return' ends in a statement
+      // every path of which returns, so this return is never reached -- except through
+      // a 'try' whose handlers did not match: its end re-raises the error, and the
+      // instruction after that is this one. Run or not, it returned with nothing on
+      // the operand stack where the caller takes a word, which the loader refuses
+      // (docs/SECURITY_MODEL.md). So it returns the type's zero: Nil, 0 or 0.0.
+      // (A constructor returns its instance, a forwarder its callee's value, and a
+      // library method that ends in a system directive what the directive left.)
+      const bool own_value = !method->IsAlt() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
+        method->GetMethodType() != NEW_PRIVATE_METHOD && method->GetReturn() &&
+        method->GetReturn()->GetType() != frontend::NIL_TYPE && statement_list &&
+        statement_list->GetStatements().size() > 0 &&
+        statement_list->GetStatements().back()->GetStatementType() != SYSTEM_STMT;
+      if(own_value) {
+        frontend::Type* rtrn_type = method->GetReturn();
+        if(rtrn_type->GetDimension() == 0 && rtrn_type->GetType() == frontend::FLOAT_TYPE) {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(nullptr), cur_line_num, LOAD_FLOAT_LIT, (FLOAT_VALUE)0.0));
+        }
+        else if(rtrn_type->GetDimension() == 0 && rtrn_type->GetType() == frontend::FUNC_TYPE) {
+          // a function value is two words: its closure, then its id
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+        }
+        else {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, 0));
+        }
+      }
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
     }
   }
