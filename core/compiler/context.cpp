@@ -7277,10 +7277,19 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         Type* method_type = SubstituteMethodGenerics(ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false), bindings);
 
         // a primitive its holder cannot take (an Int for a BoolRef) is not
-        // boxed: this method does not fit, and another may
+        // boxed: this method does not fit, and another may.
+        //
+        // Boxing is tried only where the rank says the holder takes the value.
+        // It builds and analyzes 'IntRef->New(arg)', and that analysis reports
+        // an error of its own when the constructor does not fit, which stays
+        // reported whichever method is chosen. It was tried for rank 0 too:
+        // with Pick(Int[], Float) and Pick(IntRef, Float), 'Pick(values, 1)'
+        // on an Int[] was refused for the candidate that was not chosen
+        // ("IntRef->New(Int[])"), and 'Take(5)' for Take(IntRef[]) compiled,
+        // passing one holder as the array.
         const int box_rank = BoxingRank(method_type, expr_param, depth);
-        Expression* boxed_param = box_rank < 0 ? nullptr : BoxExpression(method_type, expr_param, depth);
-        box_ranks.push_back(boxed_param ? (box_rank > 0 ? box_rank : 2) : 0);
+        Expression* boxed_param = box_rank > 0 ? BoxExpression(method_type, expr_param, depth) : nullptr;
+        box_ranks.push_back(boxed_param ? box_rank : 0);
         if(boxed_param) {
           any_boxed = true;
           boxed_resolved_params.push_back(boxed_param);
@@ -7795,8 +7804,8 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
         // see the program-class path
         const int box_rank = BoxingRank(method_type, expr_param, depth);
-        Expression* boxed_param = box_rank < 0 ? nullptr : BoxExpression(method_type, expr_param, depth);
-        box_ranks.push_back(boxed_param ? (box_rank > 0 ? box_rank : 2) : 0);
+        Expression* boxed_param = box_rank > 0 ? BoxExpression(method_type, expr_param, depth) : nullptr;
+        box_ranks.push_back(boxed_param ? box_rank : 0);
         if(boxed_param) {
           any_boxed = true;
           boxed_resolved_params.push_back(boxed_param);
@@ -12218,6 +12227,13 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
   }
 
   const bool is_enum = from_expr->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(from_expr)->GetEnumItem();
+  // a holder is made from one value. An array's type is its element's with a
+  // dimension, so an Int[] passed the test below as an Int and the constructor
+  // call built for it, 'IntRef->New(values)', was reported as undefined.
+  if(!is_enum && !IsScalar(from_expr)) {
+    return nullptr;
+  }
+
   if(to_type->GetType() == CLASS_TYPE && (is_enum ||
      from_type->GetType() == BOOLEAN_TYPE || 
      from_type->GetType() == BYTE_TYPE || 
