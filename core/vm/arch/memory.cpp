@@ -743,8 +743,11 @@ FLOAT_VALUE MemoryManager::GetRandomValue() {
 inline bool MemoryManager::MarkMemory(size_t* mem)
 {
   if(mem) {
-    // check if memory has been marked (bit 0)
-    if(mem[MARKED_FLAG] & GC_MARK_BIT) {
+    // check if memory has been marked (bit 0). A fast path only: another mark
+    // thread may be setting the bit right now, so a clear bit read here decides
+    // nothing -- the compare-and-swap below does. Within a collection the bit only
+    // goes from 0 to 1, so a set bit read here is final.
+    if(LoadFlags(mem) & GC_MARK_BIT) {
       return false;
     }
 
@@ -752,7 +755,7 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 #ifndef _GC_SERIAL
     size_t old_val, new_val;
     do {
-      old_val = mem[MARKED_FLAG];
+      old_val = LoadFlags(mem);
       if(old_val & GC_MARK_BIT) return false;
       new_val = old_val | GC_MARK_BIT;
 #ifdef _WIN32
@@ -782,7 +785,7 @@ inline bool MemoryManager::MarkClosureCaptures(size_t* mem)
 #ifndef _GC_SERIAL
   size_t old_val, new_val;
   do {
-    old_val = mem[MARKED_FLAG];
+    old_val = LoadFlags(mem);
     if(old_val & GC_TRACED_BIT) return false;
     new_val = old_val | GC_TRACED_BIT;
 #ifdef _WIN32

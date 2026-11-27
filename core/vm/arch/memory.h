@@ -433,6 +433,22 @@ class MemoryManager {
     return mem && (mem[MARKED_FLAG] & GC_OLD_BIT);
   }
 
+  // An object's flag word, read while another thread may be storing into it: the
+  // mark threads set GC_MARK_BIT and GC_TRACED_BIT in the same objects with a
+  // compare-and-swap (MarkMemory, MarkClosureCaptures). A relaxed atomic load is
+  // the one instruction a plain read is, and says what the read is: the value is
+  // either the word before a concurrent store or after it, and every caller
+  // re-checks under its compare-and-swap. As a plain read it was a data race by
+  // the C++ rules (ThreadSanitizer, v2026.11.4 soak). _MSC_VER, not _WIN32: see
+  // WriteBarrier.
+  static inline size_t LoadFlags(const size_t* mem) {
+#if defined(_MSC_VER)
+    return (size_t)ReadNoFence64((const volatile LONG64*)&mem[MARKED_FLAG]);
+#else
+    return __atomic_load_n(&mem[MARKED_FLAG], __ATOMIC_RELAXED);
+#endif
+  }
+
   // Generational GC fixup helper. Given a slot value, returns the relocated old-gen
   // address if the slot points to a promoted young object, else 0. Conservative scans
   // (operand stacks, JIT temps) pass untyped words here: a non-pointer value that
