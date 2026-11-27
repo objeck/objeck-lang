@@ -1,0 +1,208 @@
+#~
+'using', 'assert' and try/finally in the same methods. A log records the order of the
+closes, the handlers and the finally blocks, and is compared after each case:
+  - a 'using' inside a try with a finally: body, close, finally, in that order, on a
+    normal end, on a return from the body and when the body raises
+  - a try/finally inside a 'using': the finally runs before the close
+  - an assertion that holds inside both, with operands that are calls on the resource
+  - an assertion that FAILS inside a 'using' (under AssertCheck->KeepGoing): the program
+    goes on, the resource is closed, and the failure is counted
+  - a value-returning method that ends in a 'using' whose body ends in a try
+  - break and continue out of a 'using' in a loop whose body has a try/finally
+  - a 'using' in a handler and in a finally block
+~#
+class Res {
+	@name : String;
+	@@log : static : String;
+
+	New(name : String) {
+		@name := name;
+		Res->Note("open {$name}");
+	}
+
+	method : public : Close() ~ Nil {
+		Res->Note("close {$@name}");
+	}
+
+	method : public : Size() ~ Int {
+		return @name->Size();
+	}
+
+	method : public : Fail() ~ Int {
+		values := Int->New[2];
+		at := 5;
+		return values[at];
+	}
+
+	function : Note(text : String) ~ Nil {
+		if(@@log = Nil) {
+			@@log := "";
+		};
+		@@log += text;
+		@@log += ";";
+	}
+
+	function : Take() ~ String {
+		log := @@log;
+		@@log := "";
+		return log;
+	}
+}
+
+class InteractUsingAssertTry {
+	function : Normal() ~ Int {
+		n := 0;
+		try {
+			using(r := Res->New("a")) {
+				assert r->Size() = 1 : "inside using, inside try";
+				n := r->Size();
+			};
+			Res->Note("after");
+		}
+		finally {
+			Res->Note("finally");
+		};
+		return n;
+	}
+
+	function : Returns() ~ Int {
+		try {
+			using(r := Res->New("bb")) {
+				return r->Size();
+			};
+		}
+		finally {
+			Res->Note("finally");
+		};
+		return -1;
+	}
+
+	function : Raises() ~ Int {
+		try {
+			using(r := Res->New("c")) {
+				r->Fail();
+				Res->Note("not reached");
+			};
+		}
+		on(e : System.IndexError) {
+			Res->Note("handler");
+			using(h := Res->New("h")) {
+				assert h->Size() = 1;
+			};
+		}
+		finally {
+			using(f := Res->New("f")) {
+				Res->Note("finally");
+			};
+		};
+		return 3;
+	}
+
+	function : TryInside() ~ Int {
+		using(r := Res->New("d")) {
+			try {
+				assert r->Size() < 2 : "inside try, inside using";
+				r->Fail();
+			}
+			on(e : System.IndexError) {
+				Res->Note("handler");
+			}
+			finally {
+				Res->Note("finally");
+			};
+		};
+		return 4;
+	}
+
+	# ends in a using whose body ends in a try: every path returns
+	function : EndsInUsing(raise : Bool) ~ Int {
+		using(r := Res->New("e")) {
+			try {
+				if(raise) {
+					r->Fail();
+				};
+				return 5;
+			}
+			on(e : System.IndexError) {
+				return 6;
+			};
+		};
+	}
+
+	function : Loop() ~ Int {
+		count := 0;
+		for(i := 0; i < 5; i += 1;) {
+			using(r := Res->New("{$i}")) {
+				try {
+					if(i = 1) {
+						continue;
+					};
+					if(i = 3) {
+						break;
+					};
+					count += 1;
+				}
+				finally {
+					Res->Note("f{$i}");
+				};
+			};
+		};
+		return count;
+	}
+
+	function : FailingAssert() ~ Int {
+		using(r := Res->New("g")) {
+			assert r->Size() = 99 : "this one is meant to fail";
+			Res->Note("went on");
+		};
+		return System.AssertCheck->Failures();
+	}
+
+	function : Same(name : String, got : String, expected : String) ~ Bool {
+		if(got->Equals(expected)) {
+			return true;
+		};
+		"MISMATCH {$name}: '{$got}', expected '{$expected}'"->PrintLine();
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		if((Normal() = 1) = false) { ok := false; };
+		if((Same("normal", Res->Take(), "open a;close a;after;finally;")) = false) { ok := false; };
+
+		if((Returns() = 2) = false) { ok := false; };
+		if((Same("return from the body", Res->Take(), "open bb;close bb;finally;")) = false) { ok := false; };
+
+		if((Raises() = 3) = false) { ok := false; };
+		if((Same("the body raises", Res->Take(), "open c;close c;handler;open h;close h;open f;finally;close f;")) = false) { ok := false; };
+
+		if((TryInside() = 4) = false) { ok := false; };
+		if((Same("a try inside", Res->Take(), "open d;handler;finally;close d;")) = false) { ok := false; };
+
+		if((EndsInUsing(false) = 5) = false) { ok := false; };
+		if((Same("ends in a using", Res->Take(), "open e;close e;")) = false) { ok := false; };
+		if((EndsInUsing(true) = 6) = false) { ok := false; };
+		if((Same("ends in a using, raised", Res->Take(), "open e;close e;")) = false) { ok := false; };
+
+		if((Loop() = 2) = false) { ok := false; };
+		if((Same("break and continue", Res->Take(), "open 0;f0;close 0;open 1;f1;close 1;open 2;f2;close 2;open 3;f3;close 3;")) = false) { ok := false; };
+
+		# one assertion that fails on purpose: it prints its FAIL line, the program goes on
+		"(the next line is an assertion that is meant to fail)"->PrintLine();
+		System.AssertCheck->KeepGoing(true);
+		failures := FailingAssert();
+		System.AssertCheck->KeepGoing(false);
+		if((failures = 1) = false) { ok := false; };
+		if((Same("a failed assertion in a using", Res->Take(), "open g;went on;close g;")) = false) { ok := false; };
+
+		if(ok) {
+			"PASS: using, assert and try/finally"->PrintLine();
+		}
+		else {
+			"NOT PASSED: using, assert and try/finally"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
