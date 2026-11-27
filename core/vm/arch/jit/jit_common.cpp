@@ -34,6 +34,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -90,6 +91,19 @@ StackProgram* JitCompiler::program;
 // debugger restart) drops the table with the program it described; no method
 // is being compiled then.
 //
+// The lock is a reader-writer lock, and PatchCallSites is its only writer.
+// The readers are the code that reads opcodes of methods it is not patching:
+// a backend compiling a method (TryAutoJitCompile holds the lock, shared,
+// around Compile) and HasLoop. A backend reads every opcode of the method it
+// compiles, several times, and that method's call sites belong to callees
+// that another thread may finish compiling at any moment: the callee's patch
+// stored the caller's opcode while the caller's backend was reading it. Both
+// opcodes compile to the same call, so no wrong code came of it, but it was a
+// data race in every pair of threads that compiled a caller and its callee
+// together (ThreadSanitizer: one report per pair). Compiles still run side by
+// side; a patch waits for the compiles in flight, which are milliseconds, and
+// is itself a handful of stores.
+//
 // What the lock does not cover, and need not: the interpreter executing a
 // call site while it is patched. See PatchCallSites and
 // docs/design/JIT_CALL_SITE_PATCHING.md.
@@ -103,7 +117,7 @@ namespace {
   };
   typedef std::unordered_map<CallSiteKey, std::vector<StackInstr*>, CallSiteKeyHash> CallSiteTable;
 
-  std::mutex call_site_mutex;
+  std::shared_mutex call_site_mutex;
   std::atomic<const CallSiteTable*> call_site_table(nullptr);
   // PatchCallSites calls since Initialize; the first is served by a walk
   std::atomic<long> call_site_patches(0);
@@ -179,9 +193,34 @@ void JitCompiler::Initialize(StackProgram* p)
 {
   program = p;
   // the table describes one program's instructions
-  std::lock_guard<std::mutex> lock(call_site_mutex);
+  std::lock_guard<std::shared_mutex> lock(call_site_mutex);
   delete call_site_table.exchange(nullptr, std::memory_order_acq_rel);
   call_site_patches.store(0, std::memory_order_release);
+}
+
+/**
+ * Whether the method holds a back-edge (see the header). Kept out of line: its
+ * one hot caller is the interpreter's CheckAutoJit, which runs for every
+ * interpreted call of an unpatched site and reaches this only on a callee's
+ * first call. Inlined there (by link-time optimisation), the lock's registers
+ * were saved and restored on every one of those calls: four instructions on
+ * each interpreted call under --jit=off, +0.46% on binarytrees.
+ */
+#ifdef _MSC_VER
+__declspec(noinline) bool JitCompiler::HasLoop(StackMethod* mthd)
+#else
+bool __attribute__((noinline)) JitCompiler::HasLoop(StackMethod* mthd)
+#endif
+{
+  // the method's call sites may be patched meanwhile: read as a compile does
+  std::shared_lock<std::shared_mutex> reading(call_site_mutex);
+  for(long i = 0; i < mthd->GetInstructionCount(); ++i) {
+    StackInstr* instr = mthd->GetInstruction(i);
+    if(instr->GetType() == JMP && instr->GetOperand() <= i) {
+      return true;
+    }
+  }
+  return false;
 }
 
 JitCompiler::JitCompiler()
@@ -282,7 +321,16 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
   Runtime::JitArm64 jit_compiler;
 #endif
 
-  if(jit_compiler.Compile(callee)) {
+  // The backend reads the method's opcodes with no patch in progress (see the
+  // call-site table's comment). Released before PatchCallSites, which takes
+  // the lock exclusively: Compile calls neither it nor this function.
+  bool compiled;
+  {
+    std::shared_lock<std::shared_mutex> reading(call_site_mutex);
+    compiled = jit_compiler.Compile(callee);
+  }
+
+  if(compiled) {
     // Compile() published native_code (release). Patch all call sites AFTER that
     // so any thread observing a *_JIT opcode / operand3>0 also sees native_code;
     // the interpreter's JIT paths additionally re-check GetNativeCode() and fall
@@ -310,7 +358,7 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
   const long target_mthd_id = callee->GetId();
 
   // one walk, table build or patch at a time (see the table's comment)
-  std::unique_lock<std::mutex> lock(call_site_mutex);
+  std::unique_lock<std::shared_mutex> lock(call_site_mutex);
 
   // the first method compiled: its sites straight from a walk (see the table's comment)
   std::vector<StackInstr*> first_sites;

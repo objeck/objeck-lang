@@ -15,13 +15,24 @@ A `StackInstr` (`core/vm/common.h`) has an opcode (`type`, a 4-byte enum), three
 
 Nothing stores into `operand` or `operand2` after load. A `DYN_MTHD_CALL` is never patched (it was until v2026.11.4; its operands are an argument word count and a return type, not a method).
 
-The readers are the interpreters of every thread executing those instructions, and `PatchCallSites` itself: its walk of the program, and the build of the call-site table, read every instruction's `type`.
+The readers of an instruction another thread may be patching are:
 
-## The race that was removed
+| Reader | What it reads | Synchronised with a patch? |
+|---|---|---|
+| `PatchCallSites` itself: its walk of the program and the build of the call-site table | every instruction's `type` | yes: it holds `call_site_mutex` exclusively from its first read to its last store |
+| a backend compiling a method (`JitAmd64::Compile`, `JitArm64::Compile`) | every `type` of that method, several times: the pre-scan, the reference map, the emitter and its look-aheads | yes: `TryAutoJitCompile` holds `call_site_mutex` shared around `Compile` |
+| `JitCompiler::HasLoop`, which the interpreter calls before it asks for a compile | every `type` of the method | yes: it takes `call_site_mutex` shared |
+| the interpreters of every thread executing those instructions | the `type` they dispatch on and, at a direct call site, `operand3` | no: see "The race that remains" |
 
-The table is built by the second method compiled; the first method's sites come from a plain walk. Until this change only the table build held `call_site_mutex`. The first method's patch could therefore store an instruction's `type` while another compiling thread's walk or build was reading it. The build accepts either opcode as a call site, so no wrong table could result on any machine this runs on, but the two were unsynchronised.
+## The races that were removed
 
-`PatchCallSites` now holds `call_site_mutex` from its first read of the program to its last store. One thread at a time walks, builds or patches. The cost is one lock per compiled method, uncontended unless two threads finish compiles together.
+`call_site_mutex` is a reader-writer lock (`std::shared_mutex`) and `PatchCallSites` is its only writer.
+
+**A walk or table build against a patch (R2-S4-4).** The table is built by the second method compiled; the first method's sites come from a plain walk. Only the table build used to hold the lock, so the first method's patch could store an instruction's `type` while another compiling thread's walk or build was reading it. The build accepts either opcode as a call site, so no wrong table could result on any machine this runs on, but the two were unsynchronised. `PatchCallSites` now holds the lock, exclusively, from its first read of the program to its last store.
+
+**A backend's compile against a patch (R3-D-4).** A method's call sites belong to its callees. While thread A compiled a caller, thread B could finish compiling one of its callees and patch the caller's call site: B stored the opcode A's backend was reading. `MTHD_CALL` and `MTHD_CALL_JIT` compile to the same call on both backends, so no wrong code came of it, but it was a data race whenever two threads compiled a caller and its callee together. A compile now runs with the lock held shared, and so does `HasLoop`. Compiles still run side by side; a patch waits for the compiles in flight (milliseconds) and is a handful of stores. The backends themselves are unchanged: the lock is taken in `TryAutoJitCompile`, the one place a compile is started, and neither `Compile` nor `HasLoop` is entered with it held.
+
+The cost is one shared lock per compile and per `HasLoop`, and one exclusive lock per compiled method.
 
 ## The race that remains, and why it is accepted
 
@@ -51,6 +62,7 @@ Revisit the decision, and the measurement, if a reader ever needs two fields of 
 
 ## Checks
 
+- ThreadSanitizer. Build `obr` with `make CXX="g++ -fsanitize=thread -g -fno-omit-frame-pointer"` (compile and link both need the flag) and run `python3 programs/regression/run_vm_flag_tests.py <bin> --only jit_compile_race` with `TSAN_OPTIONS=exitcode=0`: section 39 generates 24 caller/callee pairs, has one thread compile each caller while another compiles and patches its callee, and fails on any report whose two access stacks are `PatchCallSites` and a backend or `HasLoop`. Before the shared lock: 24 such reports in each of three runs; after: none. Reports that pair `PatchCallSites` or `CheckAutoJit` with `ProcessMethodCall` or the dispatch loop are the accepted race above.
 - `OBJECK_JIT_PATCH_VERIFY=1` makes every `PatchCallSites` call walk the program as well and stop the VM if the table and the walk disagree. The regression suite runs under it, at the default threshold and at `OBJECK_JIT_THRESHOLD=1`, before a release.
 - `virtual_first_call_threads.obs`, `virtual_dispatch_threads.obs` and `query_url_cache_processes.obs` start many threads that compile and call the same methods at once.
 - ARM64 is the weakly ordered target: the regression suite at `OBJECK_JIT_THRESHOLD=1` on macOS and Windows ARM64 is the run that exercises point 4.

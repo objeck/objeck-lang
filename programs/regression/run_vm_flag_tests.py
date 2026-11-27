@@ -434,6 +434,17 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     memory each over 500 (9 to 13 KB on Linux x64, all of it the unjoined
     thread's own stack, which this does not change: the bound is a ceiling,
     the registry line is the measurement).
+ 39. A caller and its callee compiled at the same moment by two threads give
+    the right code. A generated program has 24 pairs: a long `Caller`, compiled
+    on its first call, that holds a call of a `native` `Leaf` its first call
+    does not take. The main thread announces each caller and calls it; a
+    second thread waits for the announcement and calls the leaf, so the leaf's
+    compile patches the caller's call site while the caller's backend is still
+    reading the caller's opcodes. The values must be right in each JIT mode.
+    Under a ThreadSanitizer build of obr (docs/design/JIT_CALL_SITE_PATCHING.md
+    says how to make one) this section also fails on any data race report
+    between PatchCallSites and a compiling backend: there was one per pair,
+    24 in every run, until a compile held the call-site lock shared.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -807,6 +818,7 @@ def main():
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
     check_dynamic_call_threshold(obc, obr, env, bin_dir)
+    check_jit_compile_race(obc, obr, env, bin_dir)
     check_virtual_table_memory(obc, obr, env, bin_dir)
 
     check_compiler_fatal(obc, obr, env, bin_dir)
@@ -2001,6 +2013,105 @@ def check_thread_fault_registry(obc, obr, env, bin_dir):
             if left is not None:
                 check(f"and leaves nothing in the registry ({label}: records={left[0]} handles={left[1]})",
                       left == (0, 0), f"left={left}")
+
+
+def jit_compile_race_source(pairs, body):
+    out = ["use System.Concurrency;", "", "class Pairs {"]
+    for i in range(pairs):
+        # the callee: `native`, so obc does not fold it into its caller and the JIT
+        # compiles it on its first call
+        out.append(f"\tfunction : native : Leaf{i}(v : Int) ~ Int {{")
+        out.append("\t\tt := v;")
+        out.append("\t\tfor(k := 0; k < 3; k += 1;) {")
+        out += [f"\t\t\tt := (t * 17 + {j + i}) % 1000003;" for j in range(16)]
+        out += ["\t\t};", "\t\treturn t;", "\t}"]
+        # the caller: a loop (compiled on its first call), a long body (the compile takes
+        # a while), and a call of the callee that its first call does not take
+        out.append(f"\tfunction : Caller{i}(v : Int) ~ Int {{")
+        out.append("\t\tt := v;")
+        out.append("\t\tfor(k := 0; k < 2; k += 1;) {")
+        out += [f"\t\t\tt := (t * 31 + {j + i}) % 1000003;" for j in range(body)]
+        out += ["\t\t};", f"\t\tif(v > 0) {{ t += Leaf{i}(v); }};", "\t\treturn t;", "\t}"]
+    out.append("}")
+    # the second thread compiles Leaf i as soon as the main thread has said it is about to
+    # call, and so compile, Caller i
+    out += ["class Side from Thread {", "\t@at : Int[];", "\t@total : Int;", "\tNew(at : Int[]) {",
+            "\t\tParent(\"side\");", "\t\t@at := at;", "\t\t@total := 0;", "\t}",
+            "\tmethod : public : Total() ~ Int {", "\t\treturn @total;", "\t}",
+            "\tmethod : public : Run(param : System.Base) ~ Nil {", "\t\tat := @at;", "\t\ttotal := 0;"]
+    for i in range(pairs):
+        out.append(f"\t\twhile(at[0] < {i + 1}) {{ }};")
+        out.append(f"\t\ttotal := (total + Pairs->Leaf{i}(1)) % 1000003;")
+    out += ["\t\t@total := total;", "\t}", "}"]
+    out += ["class CompileRace {", "\tfunction : Main(args : String[]) ~ Nil {",
+            "\t\tat := Int->New[1];", "\t\tside := Side->New(at);", "\t\tside->Execute(Nil);",
+            "\t\tThread->Sleep(20);", "\t\tfirst := 0;"]
+    for i in range(pairs):
+        out.append(f"\t\tat[0] := {i + 1};")
+        out.append(f"\t\tfirst := (first + Pairs->Caller{i}(0)) % 1000003;")
+    out += ["\t\tside->Join();", "\t\tsecond := 0;"]
+    out += [f"\t\tsecond := (second + Pairs->Caller{i}(1)) % 1000003;" for i in range(pairs)]
+    out += ["\t\tleaves := side->Total();",
+            '\t\t"PASS: first={$first} second={$second} leaves={$leaves}"->PrintLine();', "\t}", "}"]
+    return "\n".join(out) + "\n"
+
+
+def check_jit_compile_race(obc, obr, env, bin_dir):
+    # ---- 39. a caller and its callee compiled at once by two threads -------------------
+    pairs, body, mod = 24, 1500, 1000003
+
+    def leaf(i, v):
+        t = v
+        for _ in range(3):
+            for j in range(16):
+                t = (t * 17 + j + i) % mod
+        return t
+
+    def caller(i, v):
+        t = v
+        for _ in range(2):
+            for j in range(body):
+                t = (t * 31 + j + i) % mod
+        return t + (leaf(i, v) if v > 0 else 0)
+
+    expected = "PASS: first={} second={} leaves={}".format(
+        sum(caller(i, 0) for i in range(pairs)) % mod, sum(caller(i, 1) for i in range(pairs)) % mod,
+        sum(leaf(i, 1) for i in range(pairs)) % mod).encode()
+
+    race_env = dict(env)
+    for name in ("OBJECK_JIT_DISABLE", "OBJECK_JIT_THRESHOLD"):
+        race_env.pop(name, None)
+    work = tempfile.mkdtemp(prefix="objk-race-")
+    try:
+        src = os.path.join(work, "compile_race.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(jit_compile_race_source(pairs, body))
+        dest = os.path.join(work, "compile_race.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir, timeout=300)
+        check("the caller/callee compile race program compiles", rc == 0 and os.path.exists(dest),
+              err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        for label, flags in (("default", []), ("--jit=1", ["--jit=1"]), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=race_env, cwd=bin_dir, timeout=600)
+            check(f"callers and callees compiled together compute the right values ({label})",
+                  expected in out and (rc == 0 or b"ThreadSanitizer" in err),
+                  f"rc={rc} out={out[-200:]!r} expected={expected!r}")
+            # only a ThreadSanitizer build prints these; the two access stacks are the first
+            # two blocks of a report
+            text = err.decode(errors="replace")
+            reports = re.findall(r"WARNING: ThreadSanitizer: data race.*?SUMMARY: ThreadSanitizer[^\n]*", text, re.S)
+            unsynchronised = 0
+            for report in reports:
+                stacks = "\n".join(b for b in report.split("\n\n") if re.search(r"^\s*(Previous )?(read|write|Read|Write) of size", b, re.M))
+                if "PatchCallSites" in stacks and re.search(r"Jit(Amd64|Arm64)::|JitCompiler::HasLoop|RefMap|ref_map_detail", stacks):
+                    unsynchronised += 1
+            if reports or label == "default":
+                check(f"no call-site patch races a compiling backend ({label}: {len(reports)} ThreadSanitizer report(s), "
+                      f"{unsynchronised} of them between PatchCallSites and a compile)", unsynchronised == 0,
+                      f"reports={len(reports)}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def check_compiler_fatal(obc, obr, env, bin_dir):
