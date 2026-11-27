@@ -1691,13 +1691,17 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   // handle value itself never moves, so reading it first is enough.
   JoinedThreadFault().clear();
 #ifdef _WIN32
-  HANDLE vm_thread = (HANDLE)instance[0];
+  // Taken out of the Thread object before the wait, in one step with its key
+  // (TakeThreadHandle). This path used to leave the handle in the object while
+  // it waited and clear the slot afterwards, whatever it then held: a Thread
+  // started again in the meantime had its new handle wiped, and the next Join
+  // returned at once without waiting for that thread or reporting its fault.
+  size_t fault_key = 0;
+  HANDLE vm_thread = (HANDLE)TakeThreadHandle(instance, fault_key);
   if(!vm_thread) {
-    // already joined: its handle was closed and cleared below
+    // already joined, or being joined: that Join took the handle
     return;
   }
-  // before the wait, while the handle is this thread's alone (see ClaimThreadFaultKey)
-  const size_t fault_key = ClaimThreadFaultKey((size_t)vm_thread);
 
   // Joining blocks in a syscall — count this thread as parked so a collection on
   // another thread doesn't wait forever for it to reach a safepoint.
@@ -1719,16 +1723,15 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   }
 #else
   void* status;
-  pthread_t vm_thread = (pthread_t)instance[0];
+  // taken out of the Thread object now, while 'instance' is the live object and
+  // in one step with its key (TakeThreadHandle): a second Join finds the slot
+  // empty instead of joining a thread that no longer exists
+  size_t fault_key = 0;
+  pthread_t vm_thread = (pthread_t)TakeThreadHandle(instance, fault_key);
   if(!vm_thread) {
-    // already joined: the slot was cleared by that join (as on Windows)
+    // already joined, or being joined: that Join took the handle
     return;
   }
-  // cleared now, while 'instance' is the live object: a second Join finds it empty
-  // instead of joining a thread that no longer exists
-  instance[0] = 0;
-  // before the join, while the handle is this thread's alone (see ClaimThreadFaultKey)
-  const size_t fault_key = ClaimThreadFaultKey((size_t)vm_thread);
 
   // see the note above: the handle is read before this thread parks
   MemoryManager::BeginBlocking();
@@ -1757,15 +1760,10 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #ifdef _WIN32
   TakeThreadFault(fault_key);
   // The thread has finished and been joined. Close its handle, which nothing did: each
-  // thread a program started kept a kernel object for the life of the process. The Thread
-  // object is read again from the frame, because a collection may have moved it while this
-  // thread was parked (the note above), and its handle slot cleared so that a second Join
-  // returns instead of waiting on, or closing, a handle the system may have reused.
+  // thread a program started kept a kernel object for the life of the process. The
+  // Thread object is not touched again: its slot was emptied before the wait, and may
+  // hold the handle of a thread started since.
   CloseHandle(vm_thread);
-  size_t* joined = (size_t*)(*stack_frame)->mem[0];
-  if(joined) {
-    joined[0] = 0;
-  }
 #endif
 }
 
@@ -2280,14 +2278,11 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
     VmExit(-1);
   }
 
-  // A Thread started again before it was joined: the earlier thread's handle is
-  // overwritten here and can never be joined, so what was kept for its Join goes.
-  if(instance[0]) {
-    ForgetThreadFault(instance[0]);
-  }
-  // bound before the handle is published: a Join that finds the handle finds the key
-  BindThreadFaultKey((size_t)vm_thread, fault_key);
-  instance[0] = (size_t)vm_thread;
+  // The key is bound and the handle stored in one step, so a Join that finds
+  // the handle finds the key. A Thread started again before it was joined: the
+  // earlier thread's handle is overwritten here and can never be joined, so
+  // what was kept for its Join goes.
+  PublishThreadHandle(instance, (size_t)vm_thread, fault_key);
 #ifdef _DEBUG
   std::wcout << L"*** New Thread ID: " << vm_thread  << L": " << instance << L" ***" << std::endl;
 #endif
@@ -4302,9 +4297,18 @@ void StackInterpreter::FinishThreadFault()
 // of a faulted thread 157 reported no fault and 368 another thread's.
 //
 // Join finds the key by the handle it holds: bound when the thread is started,
-// before the handle is published in the Thread object, and claimed -- looked up
+// as the handle is published in the Thread object, and claimed -- looked up
 // and unbound -- BEFORE Join waits, while the handle can only name that thread.
 // A handle value is not given out again before its Join closes or joins it.
+//
+// The Thread object's handle slot is read and written under the same lock as
+// the bindings (PublishThreadHandle, TakeThreadHandle). Execute and Join of one
+// object from two threads each read the slot and then stored into it, with
+// nothing between them: a Join could empty a slot that an Execute had just
+// filled (on Windows the interpreter's Join did so after its wait, so any
+// restart during the wait was wiped), and the thread whose handle was lost was
+// never joined and its fault never read (thread_restart_join.obs). No thread
+// parks while it holds the lock, so the object cannot move under it.
 static std::mutex thread_fault_lock;
 static std::unordered_map<size_t, std::wstring>& ThreadFaults()
 {
@@ -4325,32 +4329,36 @@ size_t StackInterpreter::NewThreadFaultKey()
   return thread_fault_next_key.fetch_add(1, std::memory_order_relaxed);
 }
 
-void StackInterpreter::BindThreadFaultKey(size_t handle, size_t key)
+void StackInterpreter::PublishThreadHandle(size_t* slot, size_t handle, size_t fault_key)
 {
   std::lock_guard<std::mutex> guard(thread_fault_lock);
-  ThreadFaultKeys()[handle] = key;
+  const size_t replaced = *slot;
+  if(replaced) {
+    // never to be joined: its binding and what was recorded under it go
+    const auto found = ThreadFaultKeys().find(replaced);
+    if(found != ThreadFaultKeys().end()) {
+      ThreadFaults().erase(found->second);
+      ThreadFaultKeys().erase(found);
+    }
+  }
+  ThreadFaultKeys()[handle] = fault_key;
+  *slot = handle;
 }
 
-size_t StackInterpreter::ClaimThreadFaultKey(size_t handle)
+size_t StackInterpreter::TakeThreadHandle(size_t* slot, size_t& fault_key)
 {
   std::lock_guard<std::mutex> guard(thread_fault_lock);
-  const auto found = ThreadFaultKeys().find(handle);
-  if(found == ThreadFaultKeys().end()) {
-    return 0;
+  const size_t handle = *slot;
+  *slot = 0;
+  fault_key = 0;
+  if(handle) {
+    const auto found = ThreadFaultKeys().find(handle);
+    if(found != ThreadFaultKeys().end()) {
+      fault_key = found->second;
+      ThreadFaultKeys().erase(found);
+    }
   }
-  const size_t key = found->second;
-  ThreadFaultKeys().erase(found);
-  return key;
-}
-
-void StackInterpreter::ForgetThreadFault(size_t handle)
-{
-  std::lock_guard<std::mutex> guard(thread_fault_lock);
-  const auto found = ThreadFaultKeys().find(handle);
-  if(found != ThreadFaultKeys().end()) {
-    ThreadFaults().erase(found->second);
-    ThreadFaultKeys().erase(found);
-  }
+  return handle;
 }
 
 void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message)
@@ -4361,7 +4369,7 @@ void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message
   // (clear all at 4096) made a program that started 4097 workers and then
   // joined them read "no fault" for the first 4096. An entry goes when its
   // thread is joined (TakeThreadFault) or when its Thread object is started
-  // again unjoined (ForgetThreadFault), so the map holds at most one entry per
+  // again unjoined (PublishThreadHandle), so the map holds at most one entry per
   // ended, unjoined thread. Each of those already holds more than its entry
   // until it is joined: its handle on Windows, its stack elsewhere.
   ThreadFaults()[key] = message;

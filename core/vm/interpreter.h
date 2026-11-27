@@ -490,14 +490,19 @@ namespace Runtime {
     static bool ThreadEndedInFault(std::wstring& message);
     // The registry Thread->Join reads: threads that ended in a fault. A thread
     // is known in it by a key the VM gives it when it is started, never by an
-    // id of the system's: NewThreadFaultKey for the thread, BindThreadFaultKey
-    // once its handle exists, ClaimThreadFaultKey by the Join that holds that
-    // handle, before it waits (0: no key, nothing to report).
+    // id of the system's (NewThreadFaultKey).
     static size_t NewThreadFaultKey();
-    static void BindThreadFaultKey(size_t handle, size_t key);
-    static size_t ClaimThreadFaultKey(size_t handle);
-    // a handle that will never be joined: its key and what was recorded under it go
-    static void ForgetThreadFault(size_t handle);
+    // A Thread object's handle slot (its first word) changes hands in one step,
+    // under the registry's lock, so an Execute and a Join of the same object on
+    // two threads cannot undo each other:
+    // PublishThreadHandle, by Execute: binds the new thread's key to its handle
+    // and stores the handle; a handle already there can never be joined again,
+    // so what was kept for its Join goes.
+    // TakeThreadHandle, by Join before it waits: returns the handle and leaves
+    // the slot empty (0: nothing to join), with the key bound to the handle
+    // (0: nothing to report).
+    static void PublishThreadHandle(size_t* slot, size_t handle, size_t fault_key);
+    static size_t TakeThreadHandle(size_t* slot, size_t& fault_key);
     static void RecordThreadFault(size_t key, const std::wstring& message);
     static void TakeThreadFault(size_t key);
     static size_t ThreadFaultCount();

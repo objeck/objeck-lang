@@ -1115,21 +1115,21 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     // can promote this Thread object and leave the local 'instance' pointing into the
     // recycled nursery, so instance[0] would be whatever reused that memory (#874).
 #ifdef _WIN32
-    HANDLE vm_thread = (HANDLE)instance[0];
+    // The handle is taken out of the object NOW, while 'instance' is still the live
+    // object: after the wait it may have been moved, and no frame of this callback
+    // reliably holds the Thread (a bound call reaches here without a frame of its own, so
+    // the frame below is the caller's -- writing through it cleared a field of the
+    // caller's object and broke TaskScope under --jit=1). A second Join of the thread then
+    // finds the slot empty and returns, instead of waiting on, or closing, a handle the
+    // system may have reused. Taken in one step with its key, under the registry's lock
+    // (TakeThreadHandle): an Execute of the same object on another thread stores a new
+    // handle either before this, and is joined here, or after, and is left alone.
+    size_t fault_key = 0;
+    HANDLE vm_thread = (HANDLE)Runtime::StackInterpreter::TakeThreadHandle(instance, fault_key);
     if(!vm_thread) {
-      // already joined: its handle was taken, and is closed below
+      // already joined, or being joined: that Join took the handle
       break;
     }
-
-    // The slot is cleared NOW, while 'instance' is still the live object: after the wait
-    // it may have been moved, and no frame of this callback reliably holds the Thread
-    // (a bound call reaches here without a frame of its own, so the frame below is the
-    // caller's -- writing through it cleared a field of the caller's object and broke
-    // TaskScope under --jit=1). A second Join of the thread then finds the slot empty and
-    // returns, instead of waiting on, or closing, a handle the system may have reused.
-    instance[0] = 0;
-    // before the wait, while the handle is this thread's alone (see ClaimThreadFaultKey)
-    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
@@ -1148,14 +1148,13 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     }
 #else
     void* status;
-    pthread_t vm_thread = (pthread_t)instance[0];
+    // as above: out of the object and with its key in one step
+    size_t fault_key = 0;
+    pthread_t vm_thread = (pthread_t)Runtime::StackInterpreter::TakeThreadHandle(instance, fault_key);
     if(!vm_thread) {
-      // already joined: the slot was cleared by that join (as on Windows)
+      // already joined, or being joined: that Join took the handle
       break;
     }
-    instance[0] = 0;
-    // before the join, while the handle is this thread's alone (see ClaimThreadFaultKey)
-    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // see the note above: the handle is read before this thread parks
     MemoryManager::BeginBlocking();
