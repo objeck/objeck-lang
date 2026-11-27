@@ -7951,7 +7951,9 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
     array = (size_t*)PopInt(op_stack, stack_pos);
     RecordSocketError(error);
     // the characters stored, as every Char[] read returns (this returned the datagram's bytes), or -1
-    INT64_VALUE stored = read < 0 ? -1 : 0;
+    // for a read that failed: pushed as the -1 every other failed read pushes, not through a signed
+    // count (Coverity CID 1689685)
+    size_t stored = 0;
     // only terminate/decode when bytes were read
     if(read > -1) {
       std::wstring in(DecodeCharRead(byte_buffer, (size_t)read, (size_t)num));
@@ -7963,14 +7965,19 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
 
       // copy
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
-      stored = (INT64_VALUE)in.size();
+      stored = in.size();
     }
 
     // clean up
     delete[] byte_buffer;
     byte_buffer = nullptr;
 
-    PushInt(stored, op_stack, stack_pos);
+    if(read < 0) {
+      PushInt(-1, op_stack, stack_pos);
+    }
+    else {
+      PushInt(stored, op_stack, stack_pos);
+    }
   }
   else {
     PushInt(-1, op_stack, stack_pos);
