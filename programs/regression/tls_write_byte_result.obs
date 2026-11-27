@@ -182,16 +182,16 @@ class TlsWriteByteResult {
 		socket := TCPSecureSocket->New("127.0.0.1", port, @cert);
 		Check("tls: the client connects", socket->IsOpen());
 		if(<>socket->IsOpen()) {
-			"  reason: '{$(TCPSecureSocket->GetLastError())}'"->PrintLine();
+			"  reason: '{$(TCPSecureSocket->GetLastError())}'"->ErrorLine();
 			return;
 		};
 
 		Check("tls: a write that works answers true", socket->WriteByte('a'));
 		reason := TCPSecureSocket->GetLastError();
-		Check("tls: and leaves no error ('{$reason}')", reason = Nil);
+		Check("tls: and leaves no error", reason = Nil);
 
 		# the peer has read the byte and closed before a write is expected to fail
-		"tls: the server hung up after {$(HangUp(hang_up))} ms"->PrintLine();
+		"tls: the server hung up after {$(HangUp(hang_up))} ms"->ErrorLine();
 
 		written := true;
 		for(i := 0; written & i < 300; i += 1;) {
@@ -200,7 +200,8 @@ class TlsWriteByteResult {
 		};
 		Check("tls: a write after the peer hung up answers false", <>written);
 		reason := TCPSecureSocket->GetLastError();
-		Check("tls: and GetLastError says why ('{$reason}')", reason <> Nil & reason->Size() > 0);
+		"  reason: '{$reason}'"->ErrorLine();
+		Check("tls: and GetLastError says why", reason <> Nil & reason->Size() > 0);
 		socket->Close();
 
 		Check("tls: a closed socket's write answers false", <>socket->WriteByte('c'));
@@ -222,17 +223,17 @@ class TlsWriteByteResult {
 		socket := DTLSSocket->New("127.0.0.1", port, @cert);
 		Check("dtls: the client connects", socket->IsOpen());
 		if(<>socket->IsOpen()) {
-			"  reason: '{$(DTLSSocket->GetLastError())}'"->PrintLine();
+			"  reason: '{$(DTLSSocket->GetLastError())}'"->ErrorLine();
 			return;
 		};
 
 		Check("dtls: a write that works answers true", socket->WriteByte('a'));
 		reason := DTLSSocket->GetLastError();
-		Check("dtls: and leaves no error ('{$reason}')", reason = Nil);
+		Check("dtls: and leaves no error", reason = Nil);
 
 		# the peer has read the byte and closed its session and port before a
 		# write is expected to fail
-		"dtls: the server hung up after {$(HangUp(hang_up))} ms"->PrintLine();
+		"dtls: the server hung up after {$(HangUp(hang_up))} ms"->ErrorLine();
 
 		# The server reads that byte, then closes its session (close_notify) and
 		# its port. The next write finds the session over and fails; if the
@@ -247,7 +248,8 @@ class TlsWriteByteResult {
 		};
 		Check("dtls: a write after the server closed its port answers false", <>written);
 		reason := DTLSSocket->GetLastError();
-		Check("dtls: and GetLastError says the session is over ('{$reason}')", PeerGone(reason));
+		"  reason: '{$reason}'"->ErrorLine();
+		Check("dtls: and GetLastError says the session is over", PeerGone(reason));
 
 		sent := 0;
 		buffer := "more"->ToByteArray();
@@ -255,9 +257,10 @@ class TlsWriteByteResult {
 			Thread->Sleep(10);
 			sent := socket->WriteBuffer(0, buffer->Size(), buffer);
 		};
-		Check("dtls: a buffer write after it answers -1 ({$sent})", sent < 0);
+		Check("dtls: a buffer write after it answers -1", sent < 0);
 		reason := DTLSSocket->GetLastError();
-		Check("dtls: and GetLastError says why ('{$reason}')", PeerGone(reason));
+		"  reason: '{$reason}'"->ErrorLine();
+		Check("dtls: and GetLastError says why", PeerGone(reason));
 		socket->Close();
 
 		Check("dtls: a closed socket's write answers false", <>socket->WriteByte('c'));
