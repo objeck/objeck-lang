@@ -31,7 +31,7 @@ Tools, agents, MCP and local models are built in. Object-oriented, functional an
 A function is a tool, a program is an MCP server, and an agent is a loop with limits. A doc comment with `@tool` is the whole declaration; the schema comes from the types.
 
 <!-- agent-hero:start -->
-```objeck
+```ruby
 use API.MCP, Data.JSON;
 
 class Tools {

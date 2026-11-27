@@ -1026,7 +1026,11 @@ def readme_hero():
     """README.md with the tested hero sample (docs/site/examples/tool) written between its markers."""
     path = os.path.join(ROOT, "README.md")
     text = read(path)
-    return fill(text, "agent-hero", "\n" + example_md("tool") + "\n")
+    # GitHub colors a fence only for a language it knows, and it does not know objeck. The block
+    # is tagged ruby here, the nearest grammar GitHub has (the other README samples use it too),
+    # so the sample is highlighted on the repository page. The site pages keep objeck.
+    sample = example_md("tool").replace("```objeck\n", "```ruby\n", 1)
+    return fill(text, "agent-hero", "\n" + sample + "\n")
 
 
 def main():
