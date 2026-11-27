@@ -1,10 +1,4 @@
 # EXTRA_LIBS: ml_cnn,ml,ml_lab,opencv,csv,gen_collect
-# NONDETERMINISTIC_OUTPUT
-# reason: the two 'training loss falls (a -> b)' lines print b to six decimals, and b has two
-# values that differ in the fifth (0.138337 or 0.138356, 0.003536 or 0.003533): always the first
-# when the test runs alone, the second in 2 to 11 of 16 runs started together (2026-11-27, Linux
-# x64, interpreter and JIT, 1, 2 or 8 layer threads, prefetch on or off). The checks themselves
-# (loss falls, accuracy >= 0.95) hold either way, so the exit status is the assertion.
 #~
 System.ML.Cnn learns: the baseline architecture (three Conv 3x3 + ReLU + MaxPool blocks with 16, 32
 and 64 filters, Dense 128, dropout 0.1, Adam at 1e-4, batch 32) trained for 10 epochs on the
@@ -16,18 +10,66 @@ The two classes differ only in spatial frequency (1 to 3 cycles across the image
 so chance is 50% and the task needs the convolutions: a model that has learned nothing scores 0.5.
 A second run with the learning rate 1e-3 and a third with augmentation switched off check that the
 result does not depend on one setting.
+
+Training is also required to REPEAT BIT FOR BIT: at one seed and one layer-thread count every loss
+is the same double on every run, so every loss is printed with all its digits (the shortest text
+that reads back as the same value) and a differential runner can compare this output exactly. The
+thread count is set to 4 because the default follows the machine (the CPUs the process may use, at
+most 8) and the count decides the order the per-thread gradient sums are added in. Repeats() trains
+the same model twice in this process, the second time with busy threads competing for the CPUs, and
+compares the whole history with =.
+
+What Repeats() cannot see is a cause that is fixed when the process starts: Eigen used to size the
+blocks of a matrix product from the cache sizes of whichever core ran the first product, so on a
+CPU with two kinds of core two PROCESSES printed different losses while two runs in one process
+always agreed. libobjk_ml now sets those sizes itself (FixEigenCacheSizes in
+core/lib/matrix/matrix.cpp); tools/ml/cnn_repeat.sh is the check across processes, pinned to each
+kind of core and under load.
 ~#
 
 use System.ML.Cnn;
+use System.Concurrency;
+
+#~
+Keeps one CPU busy until Stop(): scheduling pressure for the layer threads.
+~#
+class BusyThread from Thread {
+	@stop : Bool;
+	@spins : Int;
+
+	New() {
+		Parent("busy");
+		@stop := false;
+		@spins := 0;
+	}
+
+	method : public : Stop() ~ Nil {
+		@stop := true;
+	}
+
+	method : IsStopped() ~ Bool {
+		return @stop;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(<>IsStopped()) {
+			each(i : 10000) {
+				@spins += i % 7;
+			};
+		};
+	}
+}
 
 class MlCnnTrain {
 	@fail : static : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		@fail := false;
+		CnnRuntime->SetThreads(4);
 		Run("baseline (lr 1e-4, augmented)", 0.0001, true, 10);
 		Run("lr 1e-3, augmented", 0.001, true, 6);
 		Run("lr 1e-3, no augmentation", 0.001, false, 6);
+		Repeats();
 
 		if(@fail) {
 			Runtime->Exit(1);
@@ -69,10 +111,83 @@ class MlCnnTrain {
 		first := history->GetTrainLoss(0);
 		last := history->GetTrainLoss(epochs - 1);
 		Report("the training loss falls ({$first} -> {$last})", last < first * 0.8);
+		PrintHistory(history);
 		Report("the validation accuracy reaches 0.95 ({$history->GetValidationAccuracy(epochs - 1)})", history->GetValidationAccuracy(epochs - 1) >= 0.95);
 		test := trainer->Evaluate(splits[2]);
 		Report("test accuracy {$test->GetAccuracy()} >= 0.95, precision {$test->GetPrecision()}, recall {$test->GetRecall()}, F1 {$test->GetF1()}", test <> Nil & test->GetAccuracy() >= 0.95);
 		Report("the model has {$model->GetParameterCount()} parameters (wall-clock time is not printed: it differs between runs)", model->GetParameterCount() = 318753);
 		model->Close();
+	}
+
+	# every loss of every epoch, all digits: this is what an exact comparison of two runs compares
+	function : PrintHistory(history : TrainingHistory) ~ Nil {
+		each(epoch : history->GetEpochs()) {
+			train := Float->ToShortString(history->GetTrainLoss(epoch));
+			validation := Float->ToShortString(history->GetValidationLoss(epoch));
+			"    epoch {$(epoch + 1)}: loss {$train}, validation loss {$validation}"->PrintLine();
+		};
+	}
+
+	# the augmented baseline at lr 1e-3 for a few epochs, from a fresh dataset and model
+	function : Train(epochs : Int) ~ TrainingHistory {
+		data := ImageDataset->Synthetic(64, 200, 42);
+		splits := data->Split(0.7, 0.15, 42);
+		aug := Augmentation->New();
+		aug->SetSeed(42);
+		aug->SetFlip(0.5);
+		aug->SetRotation(0.3, 10.0);
+		aug->SetBrightness(0.3, 0.8, 1.2);
+		splits[0]->SetAugmentation(aug);
+
+		model := CnnModel->Baseline(64, 3, 0.1, 128, 0.001, 42);
+		trainer := CnnTrainer->New(model, splits[0], splits[1], 32, 42);
+		history := trainer->Fit(epochs);
+		model->Close();
+
+		return history;
+	}
+
+	function : Repeats() ~ Nil {
+		"repeatability (same seed, same thread count)"->PrintLine();
+		epochs := 3;
+		quiet := Train(epochs);
+
+		# twice as many busy threads as layer threads, so the layer threads are descheduled mid-batch
+		busy := BusyThread->New[2 * CnnRuntime->GetThreads()];
+		each(i : busy->Size()) {
+			busy[i] := BusyThread->New();
+			busy[i]->Execute(Nil);
+		};
+		loaded := Train(epochs);
+		each(i : busy->Size()) {
+			busy[i]->Stop();
+		};
+		each(i : busy->Size()) {
+			busy[i]->Join();
+		};
+
+		ran := quiet <> Nil & loaded <> Nil;
+		if(ran) {
+			ran := quiet->GetEpochs() = epochs & loaded->GetEpochs() = epochs;
+		};
+		Report("both runs trained {$epochs} epochs", ran);
+		if(<>ran) {
+			return;
+		};
+
+		same := true;
+		each(epoch : epochs) {
+			if(quiet->GetTrainLoss(epoch) <> loaded->GetTrainLoss(epoch) |
+					quiet->GetTrainAccuracy(epoch) <> loaded->GetTrainAccuracy(epoch) |
+					quiet->GetValidationLoss(epoch) <> loaded->GetValidationLoss(epoch) |
+					quiet->GetValidationAccuracy(epoch) <> loaded->GetValidationAccuracy(epoch)) {
+				same := false;
+				a := Float->ToShortString(quiet->GetTrainLoss(epoch));
+				b := Float->ToShortString(loaded->GetTrainLoss(epoch));
+				"    epoch {$(epoch + 1)} differs: loss {$a} alone, {$b} under load"->PrintLine();
+			};
+		};
+		Report("a run under CPU load repeats the quiet run bit for bit", same);
+		PrintHistory(loaded);
 	}
 }

@@ -526,6 +526,24 @@ class TlsLibraryUnlock {
 //
 // mbedTLS context wrappers for SSL/TLS connections
 //
+// A context is C heap that a socket object points to, and more than one thread can be using it when
+// the object is closed (see "TLS contexts and the threads that use them" in common.cpp, where the
+// counts below are kept, under one lock): it is freed when its last user lets go, not by Close.
+//
+struct SecureServerCtx;
+void TlsServerRelease(SecureServerCtx* srv);
+struct DtlsServerCtx;
+void DtlsServerRelease(DtlsServerCtx* srv);
+#ifdef _WIN32
+// Windows: the clients of a DTLS server and their queued datagrams (see "A DTLS server's clients on
+// Windows" in common.cpp)
+struct DtlsPeer;
+struct DtlsPeerTable;
+void DtlsPeerForget(DtlsServerCtx* srv, DtlsPeer* peer);
+int DtlsPeerReadable(DtlsServerCtx* srv, DtlsPeer* peer);
+void DtlsPeerTableFree(DtlsPeerTable* table);
+#endif
+
 struct SecureSocketCtx {
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -545,6 +563,18 @@ struct SecureSocketCtx {
   // close_notify has gone out and the socket takes no more writes, so Close
   // does not send a second one into a socket that would refuse it
   bool send_closed;
+  // a byte read from the session and given back, or -1: the next byte a read returns (ReadByte and
+  // ReadBytes take it first). A Char[] read that completes its last character reads one byte at a time
+  // and can find one that belongs to the next character; TLS cannot look at a byte without reading it.
+  int pushback;
+  // an accepted connection: the server whose configuration (certificate, key, random generator) 'ssl'
+  // was set up with and reads for as long as it lives. A reference, given back when this is freed, so
+  // closing the listener does not free the configuration under the connections it accepted.
+  SecureServerCtx* server;
+  // the traps using this context now (TlsSocketUse), and whether its socket object has been closed:
+  // freed when it is closed and nobody is using it. Under the lock in common.cpp.
+  int users;
+  bool closed;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -558,7 +588,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false), pushback(-1), server(nullptr), users(0), closed(false) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -575,6 +605,10 @@ struct SecureSocketCtx {
     mbedtls_x509_crt_free(&cacert);
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
+    // after mbedtls_ssl_free: the session no longer reads the server's configuration
+    if(server) {
+      TlsServerRelease(server);
+    }
   }
 };
 
@@ -634,6 +668,16 @@ struct DtlsSocketCtx {
   // the OS reason behind the last failed record send or receive (DtlsBioSend,
   // DtlsBioRecv), taken by the next SetError
   SocketError net_reason;
+  // as SecureSocketCtx's: the server whose configuration an accepted connection reads (a reference),
+  // the traps using this context now, and whether its socket object has been closed
+  DtlsServerCtx* server;
+  int users;
+  bool closed;
+#ifdef _WIN32
+  // a connection a server accepted has no socket of its own on Windows (net.fd is -1): it is this
+  // client of the server's one socket
+  DtlsPeer* peer;
+#endif
 
   void SetError(int error) {
     const SocketError reason = net_reason;
@@ -649,7 +693,11 @@ struct DtlsSocketCtx {
     dtls_socket_error = reason;
   }
 
-  DtlsSocketCtx() : last_error(0), net_reason{ 0, false } {
+  DtlsSocketCtx() : last_error(0), net_reason{ 0, false }, server(nullptr), users(0), closed(false)
+#ifdef _WIN32
+    , peer(nullptr)
+#endif
+  {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -666,6 +714,15 @@ struct DtlsSocketCtx {
     mbedtls_x509_crt_free(&cacert);
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
+    // after mbedtls_ssl_free: the session no longer reads the server's configuration
+    if(server) {
+#ifdef _WIN32
+      if(peer) {
+        DtlsPeerForget(server, peer);
+      }
+#endif
+      DtlsServerRelease(server);
+    }
   }
 };
 
@@ -677,8 +734,15 @@ struct SecureServerCtx {
   mbedtls_ctr_drbg_context ctr_drbg;
   mbedtls_net_context listen_fd;
   int last_error;
+  // who still needs this: the server object until it is closed (1), each Accept in flight and each
+  // accepted connection not yet freed. Under the lock in common.cpp; freed by TlsServerRelease at 0.
+  int refs;
+  // the Accept calls inside the listening descriptor now, and whether the server has been closed: a
+  // closed server's descriptor is closed once those calls have left it (ServerCtxClose in common.cpp)
+  int accepting;
+  bool closed;
 
-  SecureServerCtx() : last_error(0) {
+  SecureServerCtx() : last_error(0), refs(1), accepting(0), closed(false) {
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
     mbedtls_pk_init(&pkey);
@@ -715,8 +779,21 @@ struct DtlsServerCtx {
   // included here on every platform.
   alignas(8) unsigned char bound_addr[128];
   int bound_len;
+  // as SecureServerCtx's: who still needs this, the Accept calls inside the listening descriptor,
+  // and whether the server has been closed
+  int refs;
+  int accepting;
+  bool closed;
+#ifdef _WIN32
+  // the clients sharing listen_fd, made by Listen
+  DtlsPeerTable* peers;
+#endif
 
-  DtlsServerCtx() : last_error(0), port(0), bound_len(0) {
+  DtlsServerCtx() : last_error(0), port(0), bound_len(0), refs(1), accepting(0), closed(false)
+#ifdef _WIN32
+    , peers(nullptr)
+#endif
+  {
     memset(&bound_addr, 0, sizeof(bound_addr));
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
@@ -736,6 +813,9 @@ struct DtlsServerCtx {
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
     mbedtls_net_free(&listen_fd);
+#ifdef _WIN32
+    DtlsPeerTableFree(peers);
+#endif
   }
 };
 
@@ -2906,7 +2986,7 @@ class TrapProcessor {
       // For reads, check if mbedTLS has buffered decrypted data.
       if(!is_write) {
          size_t pending = mbedtls_ssl_get_bytes_avail(&ctx->ssl);
-         if(pending > 0) {
+         if(pending > 0 || ctx->pushback >= 0) {   // or a read gave a byte back
             return 1;
          }
       }
@@ -2985,6 +3065,13 @@ class TrapProcessor {
             return 1;
          }
       }
+
+#ifdef _WIN32
+      // a connection a server accepted: its datagrams are queued for it, and a send never waits
+      if(ctx->peer) {
+         return is_write ? 1 : DtlsPeerReadable(ctx->server, ctx->peer);
+      }
+#endif
 
       // Get the underlying socket file descriptor.
       int fd = ctx->net.fd;

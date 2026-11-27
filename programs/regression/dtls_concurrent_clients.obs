@@ -1,0 +1,219 @@
+#~
+# A DTLS server serves a second client while its first is still connected
+#
+# One DTLSSocketServer, one accept loop that keeps every connection it accepts open. A first client
+# connects and exchanges a byte each way; then a second client connects, with the first still open,
+# and does the same; then the first exchanges again, and both close.
+#
+# On Linux and macOS the server gives each client the socket its first datagram arrived on, connected
+# to that client, and binds a new listener to the same port for the next one: the system hands a
+# datagram to the socket connected to its sender, and everything else to the listener. Windows does
+# not. It gives every datagram for a port to the socket bound to it first, which is the first client's
+# and drops anyone else's, so the new listener heard nothing while an earlier connection was open: the
+# second client's connect below never completed (Windows only; this test passes on Linux before and
+# after). On Windows the server now keeps its one socket and sorts the datagrams by sender itself.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# accepts until the server is closed (the handshake runs inside Accept) and keeps every connection open
+class KeepingAcceptor from Thread {
+	@server : DTLSSocketServer;
+	@kept : DTLSSocket[];
+	@served : Int;
+	@stop : Bool;
+	@finished : Bool;
+
+	New(server : DTLSSocketServer) {
+		Parent("keeping-acceptor");
+		@server := server;
+		@kept := DTLSSocket->New[4];
+	}
+
+	method : public : GetKept(i : Int) ~ DTLSSocket { return @kept[i]; }
+	method : public : GetServed() ~ Int { return @served; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : Stop() ~ Nil { @stop := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		done := false;
+		while(<>done) {
+			socket := @server->Accept();
+			if(socket = Nil) {
+				done := @stop;
+			}
+			else {
+				if(@served < @kept->Size()) {
+					@kept[@served] := socket;
+				};
+				@served += 1;
+			};
+		};
+		@finished := true;
+	}
+}
+
+# connects on a thread, so that a connect that never completes is a failed check and not a hung test
+class Connector from Thread {
+	@port : Int;
+	@cert : String;
+	@socket : DTLSSocket;
+	@finished : Bool;
+
+	New(port : Int, cert : String) {
+		Parent("connector");
+		@port := port;
+		@cert := cert;
+	}
+
+	method : public : GetSocket() ~ DTLSSocket { return @socket; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		@socket := DTLSSocket->New("127.0.0.1", @port, @cert, true);
+		@finished := true;
+	}
+}
+
+class DtlsConcurrentClients {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		cert := "dtls-concurrent-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "dtls-concurrent-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+		}
+		else {
+			Run(cert, key);
+		};
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} concurrent DTLS client check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a DTLS server serves a second client while its first is connected"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# a client connected within ten seconds, or Nil
+	function : Connect(port : Int, cert : String) ~ DTLSSocket {
+		connector := Connector->New(port, cert);
+		connector->Execute(Nil);
+		for(waited := 0; <>connector->IsFinished() & waited < 10000; waited += 10;) {
+			Thread->Sleep(10);
+		};
+		if(connector->IsFinished()) {
+			socket := connector->GetSocket();
+			if(socket <> Nil & socket->IsOpen()) {
+				return socket;
+			};
+		};
+		return Nil;
+	}
+
+	# a byte from the client to the server's end of its connection, and one back
+	function : Exchange(client : DTLSSocket, kept : DTLSSocket, value : Int) ~ Bool {
+		sent := Byte->New[1];
+		sent[0] := value;
+		client->WriteBuffer(0, 1, sent);
+		arrived := Byte->New[4];
+		if(kept->ReadBuffer(0, 4, arrived) <> 1 | arrived[0] <> value) {
+			return false;
+		};
+		sent[0] := value + 1;
+		kept->WriteBuffer(0, 1, sent);
+		answer := Byte->New[4];
+		return client->ReadBuffer(0, 4, answer) = 1 & answer[0] = value + 1;
+	}
+
+	function : Run(cert : String, key : String) ~ Nil {
+		server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Check("the DTLS server listens", false);
+			return;
+		};
+		port := server->GetPort();
+		acceptor := KeepingAcceptor->New(server);
+		acceptor->Execute(Nil);
+
+		first := Connect(port, cert);
+		Check("the first client connects", first <> Nil);
+		if(first <> Nil) {
+			for(waited := 0; acceptor->GetServed() < 1 & waited < 5000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			Check("the first client and the server exchange a byte each way", acceptor->GetKept(0) <> Nil & Exchange(first, acceptor->GetKept(0), 0x41));
+
+			# the first connection stays open
+			second := Connect(port, cert);
+			Check("a second client connects while the first is still connected", second <> Nil);
+			if(second <> Nil) {
+				for(waited := 0; acceptor->GetServed() < 2 & waited < 5000; waited += 5;) {
+					Thread->Sleep(5);
+				};
+				Check("the second client and the server exchange a byte each way", acceptor->GetKept(1) <> Nil & Exchange(second, acceptor->GetKept(1), 0x51));
+				Check("and the first connection still carries data, each way", Exchange(first, acceptor->GetKept(0), 0x61));
+				second->Close();
+			};
+			first->Close();
+		};
+
+		acceptor->Stop();
+		server->Close();
+		for(waited := 0; <>acceptor->IsFinished() & waited < 5000; waited += 5;) {
+			Thread->Sleep(5);
+		};
+		Check("the accept loop ended", acceptor->IsFinished());
+		for(i := 0; i < 4; i += 1;) {
+			kept := acceptor->GetKept(i);
+			if(kept <> Nil) {
+				kept->Close();
+			};
+		};
+	}
+
+	# as dtls_socket_test.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}

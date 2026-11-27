@@ -1,0 +1,163 @@
+#~
+# A TLS Byte[] read that ends early returns the bytes it has, as a TCP read does
+#
+# TCPSecureSocket->ReadBuffer(offset, num, Byte[]) reads a byte at a time. When a read failed after
+# some bytes had arrived it returned -1 and dropped them, though they had been taken from the stream:
+#
+# - the peer wrote three bytes and closed. A read of eight got the three, then the peer's close_notify
+#   alert, which is a failed read: -1, and "abc" was gone. This is any reader that asks for more than
+#   the peer happened to send before it closed.
+# - the peer wrote three bytes and went quiet. A read of eight with a receive timeout got the three,
+#   then the timeout: -1, and "abc" was gone.
+#
+# A plain TCPSocket returns 3 in both cases (and so does this socket's Char[] read). The Byte[] read
+# now does too, and stores the bytes; the read after it reports the end or the timeout.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# writes "abc" to the one connection it accepts, then closes it at once or when it is told to
+class ThreeByteSender from Thread {
+	@server : TCPSecureSocketServer;
+	@close_at_once : Bool;
+	@release : Bool;
+
+	New(server : TCPSecureSocketServer, close_at_once : Bool) {
+		Parent("three-byte-sender");
+		@server := server;
+		@close_at_once := close_at_once;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			bytes := Byte->New[3];
+			bytes[0] := 0x61; bytes[1] := 0x62; bytes[2] := 0x63;
+			client->WriteBuffer(0, 3, bytes);
+			waited := 0;
+			while(<>@close_at_once & <>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+class TlsByteReadPartial {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		cert := "tls-partial-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "tls-partial-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+		}
+		else {
+			CheckRead(cert, key, true);
+			CheckRead(cert, key, false);
+		};
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} TLS partial read check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a TLS Byte[] read that ends early returns the bytes it has"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Show(buffer : Byte[]) ~ String {
+		shown := "";
+		each(i : buffer) {
+			shown += buffer[i]->As(Int)->ToHexString();
+			shown += ' ';
+		};
+		return shown;
+	}
+
+	# a read of eight bytes at offset 2 from a peer that sends three and then closes, or goes quiet
+	function : CheckRead(cert : String, key : String, peer_closes : Bool) ~ Nil {
+		what := "the read timed out";
+		timeout := 500;
+		if(peer_closes) {
+			what := "the peer closed";
+			timeout := 10000;
+		};
+
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Check("the TLS server listens", false);
+			return;
+		};
+		sender := ThreeByteSender->New(server, peer_closes);
+		sender->Execute(Nil);
+
+		client := TCPSecureSocket->New("127.0.0.1", server->GetPort(), cert);
+		if(client->IsOpen()) {
+			client->SetRecvTimeout(timeout);
+			buffer := Byte->New[12];
+			each(i : buffer) {
+				buffer[i] := 0x58;
+			};
+			first := client->ReadBuffer(2, 8, buffer);
+			Check("a read of 8 after which {$what} returns the 3 bytes that arrived (got {$first}, buffer {$Show(buffer)})",
+				first = 3 & buffer[1] = 0x58 & buffer[2] = 0x61 & buffer[3] = 0x62 & buffer[4] = 0x63 & buffer[5] = 0x58);
+			second := client->ReadBuffer(5, 4, buffer);
+			Check("and the read after it has nothing: it stores nothing and does not return a count (got {$second}, buffer {$Show(buffer)})",
+				second <= 0 & buffer[5] = 0x58);
+			client->Close();
+		}
+		else {
+			Check("the TLS client connects ('{$(TCPSecureSocket->GetLastError())}')", false);
+		};
+		sender->Release();
+		sender->Join();
+		server->Close();
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}

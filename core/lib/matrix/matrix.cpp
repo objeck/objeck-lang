@@ -33,6 +33,8 @@
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 
+#include <mutex>
+
 #ifdef _WIN32
 // MSYS2
 #ifdef _MSYS2 
@@ -49,6 +51,31 @@
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ObjkMatrix;
 
 void objk_cnn_shutdown(); // cnn_api.h
+
+//
+// Fixes the cache sizes Eigen cuts its matrix products into blocks by, so that a product gives
+// the same bits in every process, whichever core it starts on.
+//
+// Eigen blocks a matrix product (GEBP) to fit the caches, and the block depth decides in which
+// order the float products of one output element are added, so the low bits of the result. By
+// default it asks the CPU for the sizes (cpuid), once per process, on whichever core happens to run
+// the first product. On a CPU whose cores differ (Intel performance and efficiency cores: 48 KiB
+// against 32 KiB of L1) that answer depends on where the scheduler put the thread, so a seeded CNN
+// training run printed one of two loss curves, the rarer one mostly on a loaded machine. Constants
+// remove the question. These are Eigen's own fallback for an x86 CPU that does not answer cpuid;
+// measured on an i9-14900HX (cnn_speed.obs, 64 to 224 pixels) they train and predict as fast as
+// the sizes cpuid reports there.
+//
+// Called from load_lib, so before any product. call_once: were the library loaded a second time,
+// the sizes must not be written while a layer thread of the first load reads them.
+//
+static void FixEigenCacheSizes() {
+  static std::once_flag once;
+  std::call_once(once, [] {
+    const std::ptrdiff_t l1 = 32 * 1024, l2 = 256 * 1024, l3 = 2 * 1024 * 1024;
+    Eigen::setCpuCacheSizes(l1, l2, l3);
+  });
+}
 static Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr);
 static size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext& context);
 
@@ -60,6 +87,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void load_lib(VMContext& context) {
+    FixEigenCacheSizes();
   }
 
   //

@@ -459,6 +459,28 @@ public:
     return 0;
   }
 
+  // The pipe's next byte when it continues a UTF-8 character (10xxxxxx), read into 'value': true then.
+  // Any other byte is looked at and left where it is (PeekNamedPipe), for the read that follows; false
+  // for it, and when the pipe has ended or failed. PeekNamedPipe does not wait, so a pipe with nothing
+  // in it yet is asked again a millisecond later: this is reached only by a Char[] read whose last
+  // character was cut by the count, whose other bytes the writer has usually sent already.
+  static bool ReadContinuationByte(char &value, HANDLE pipe) {
+    while(true) {
+      char next = 0;
+      DWORD peeked = 0;
+      if(!PeekNamedPipe(pipe, &next, 1, &peeked, nullptr, nullptr) && GetLastError() != ERROR_MORE_DATA) {
+        return false;
+      }
+      if(peeked == 1) {
+        if(((unsigned char)next & 0xC0) != 0x80) {
+          return false;
+        }
+        return ReadByte(value, pipe);
+      }
+      Sleep(1);
+    }
+  }
+
   static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, HANDLE pipe) {
     DWORD written = 0;
     if(Transfer(pipe, false, (void*)(buffer + offset), (DWORD)num, written)) {
@@ -640,6 +662,28 @@ class IPSocket {
 
     error = 0;
     return value;
+  }
+
+  // The socket's next byte when it continues a UTF-8 character (10xxxxxx), read into 'value': true
+  // then. Any other byte is looked at and left where it is (MSG_PEEK), for the read that follows;
+  // false for it, and when the peer has closed or the wait failed or timed out, with the reason in
+  // error as a read leaves it.
+  static bool ReadContinuationByte(char& value, SOCKET sock, int& error, long long deadline_ms = 0, int read_ms = 0) {
+    error = 0;
+    if(!WaitReadable(sock, deadline_ms, read_ms, error)) {
+      return false;
+    }
+    char next;
+    const int status = recv(sock, &next, 1, 2 /* MSG_PEEK; winsock2.h is not in this header's include set */);
+    if(status == SOCKET_ERROR) {
+      error = WSAGetLastError();
+      return false;
+    }
+    if(status != 1 || ((unsigned char)next & 0xC0) != 0x80) {
+      return false;
+    }
+
+    return recv(sock, &value, 1, 0) == 1;
   }
 
   // a failure part way still returns what was read, with the reason in error
@@ -1112,6 +1156,13 @@ class IPSecureSocket {
   static char ReadByte(SecureSocketCtx* sctx, int &status) {
     TlsLibraryLock library_lock;
     unsigned char value;
+    // a byte a read gave back comes first (SecureSocketCtx::pushback)
+    if(sctx->pushback >= 0) {
+      value = (unsigned char)sctx->pushback;
+      sctx->pushback = -1;
+      status = 1;
+      return (char)value;
+    }
     do {
       status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
     } while(status == MBEDTLS_ERR_SSL_WANT_READ || status == MBEDTLS_ERR_SSL_WANT_WRITE);
@@ -1127,6 +1178,11 @@ class IPSecureSocket {
   static int ReadBytes(char* values, int len, SecureSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     int total = 0;
+    // a byte a read gave back comes first (SecureSocketCtx::pushback)
+    if(len > 0 && sctx->pushback >= 0) {
+      values[total++] = (char)sctx->pushback;
+      sctx->pushback = -1;
+    }
     while(total < len) {
       int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
       if(status < 0) {
@@ -1144,15 +1200,8 @@ class IPSecureSocket {
     return total;
   }
 
-  static void Close(SecureSocketCtx* sctx) {
-    TlsLibraryLock library_lock;
-    if(sctx) {
-      if(!sctx->send_closed) {
-        mbedtls_ssl_close_notify(&sctx->ssl);
-      }
-      delete sctx;
-    }
-  }
+  // Closing is the trap's (SocketCtxDetach and SocketCtxFinish in common.cpp): a context is freed by
+  // its last user, which a Close(sctx) here that deleted it could not know.
 
   // Ends this side's sending and leaves the session open for reading: the
   // close_notify alert tells the peer no more data follows (its read ends
@@ -1415,6 +1464,9 @@ class IPDtlsSocket {
     return status;
   }
 
+  // For a context no socket object points to yet (an accept whose handshake failed). A socket's
+  // Close() is the trap's (SocketCtxDetach and SocketCtxFinish in common.cpp), which frees a context
+  // only when its last user has let go.
   static void Close(DtlsSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     if(sctx) {
