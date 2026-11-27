@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Invalid expression in string interpolation
+# EXPECT_ERROR_COUNT: 1
+#~
+A question mark left at the end of an interpolated expression starts a conditional with no
+branches. The parser reported that and stepped over it, the report was dropped, and the tree
+with its missing part went to the analyzer: the compiler ended with an access violation. It
+is now the error of the interpolation, with the reason.
+~#
+class BadInterpConditionalOpen {
+	function : Main(args : String[]) ~ Nil {
+		text := "abc";
+		"size {$text->Size()?} done"->PrintLine();
+	}
+}
