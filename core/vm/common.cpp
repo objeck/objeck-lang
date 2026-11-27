@@ -6958,21 +6958,25 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       // GC promotion fixup relocates it, then re-read after the wait.
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      do {
-        value = IPSecureSocket::ReadByte(sctx, status);
-        if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
-          buffer[index++] = value;
+      {
+        // one read of the session at a time, for the whole line (see SecureSocketCtx::read_lock)
+        std::lock_guard<std::mutex> reading(sctx->read_lock);
+        do {
+          value = IPSecureSocket::ReadByte(sctx, status);
+          if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
+            buffer[index++] = value;
+          }
+          else {
+            end_line = true;
+          }
         }
-        else {
-          end_line = true;
-        }
-      }
-      while(!end_line && index + 1 < capacity);
-      buffer[index] = '\0';
+        while(!end_line && index + 1 < capacity);
+        buffer[index] = '\0';
 
-      // assume LF
-      if(value == '\r') {
-        IPSecureSocket::ReadByte(sctx, status);
+        // assume LF
+        if(value == '\r') {
+          IPSecureSocket::ReadByte(sctx, status);
+        }
       }
       MemoryManager::EndBlocking();
       array = (size_t*)PopInt(op_stack, stack_pos);
@@ -11133,8 +11137,13 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
     ClearTlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
+    char value;
     MemoryManager::BeginBlocking();
-    const char value = IPSecureSocket::ReadByte(sctx, status);
+    {
+      // one read of the session at a time (see SecureSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      value = IPSecureSocket::ReadByte(sctx, status);
+    }
     MemoryManager::EndBlocking();
     PushInt(value, op_stack, stack_pos);
   }
@@ -11170,14 +11179,18 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
     // A byte is stored and counted only when one arrived (status > 0). The end of the stream (status 0:
     // the peer closed without a close_notify) was counted as a byte: ReadByte answers '\0' for it, so a
     // read at the end of the stream returned 1 and wrote that zero over the caller's element at 'offset'.
-    while(!done && read < num) {
-      const char value = IPSecureSocket::ReadByte(sctx, status);
-      if(status > 0) {
-        temp[read++] = value;
-      }
-      else {
-        done = true;
-        failed = status < 0;
+    {
+      // one read of the session at a time, for all the bytes (see SecureSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      while(!done && read < num) {
+        const char value = IPSecureSocket::ReadByte(sctx, status);
+        if(status > 0) {
+          temp[read++] = value;
+        }
+        else {
+          done = true;
+          failed = status < 0;
+        }
       }
     }
     MemoryManager::EndBlocking();
@@ -11224,26 +11237,34 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     // op_stack so GC promotion fixup relocates it while we wait.
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
-    // never stop inside a character, after a whole read (see SockTcpInCharAry)
-    if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest, unsigned char lo, unsigned char hi) {
-        // TLS has no way to look at a byte without reading it: one that does not continue the
-        // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
-        int status;
-        const char next = IPSecureSocket::ReadByte(sctx, status);
-        if(status <= 0) {
-          return false;
-        }
-        if((unsigned char)next < lo || (unsigned char)next > hi) {
-          // test point: a byte that belongs to the next read has been taken and not yet given back
-          NativeTestPause("tls-char-before-pushback");
-          sctx->pushback = (unsigned char)next;
-          return false;
-        }
-        dest = next;
-        return true;
-      });
+    int read;
+    {
+      // One read of the session at a time, from its bytes to the byte it may give back. A second
+      // thread reading meanwhile took the byte AFTER the one this read had looked at and not yet
+      // given back, so the two bytes changed places: of F0 41 42, read as one character here and by
+      // ReadByte there, the other thread got 42 and the next read 41.
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+      // never stop inside a character, after a whole read (see SockTcpInCharAry)
+      if(read > 0 && read == num) {
+        read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest, unsigned char lo, unsigned char hi) {
+          // TLS has no way to look at a byte without reading it: one that does not continue the
+          // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
+          int status;
+          const char next = IPSecureSocket::ReadByte(sctx, status);
+          if(status <= 0) {
+            return false;
+          }
+          if((unsigned char)next < lo || (unsigned char)next > hi) {
+            // test point: a byte that belongs to the next read has been taken and not yet given back
+            NativeTestPause("tls-char-before-pushback");
+            sctx->pushback = (unsigned char)next;
+            return false;
+          }
+          dest = next;
+          return true;
+        });
+      }
     }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);

@@ -567,6 +567,12 @@ struct SecureSocketCtx {
   // ReadBytes take it first). A Char[] read that completes its last character reads one byte at a time
   // and can find one that belongs to the next character; TLS cannot look at a byte without reading it.
   int pushback;
+  // Held by a read of this session from its first byte to its last, the look ahead that completes a
+  // character and the push back of a byte that was not part of it included (the TCPSecureSocket read
+  // traps in common.cpp). Two threads reading one session otherwise took bytes in between each
+  // other's steps, and 'pushback' was written by one while the other read it. A wait for this lock
+  // is made parked. Close() never takes it: it ends a read by shutting the connection down.
+  std::mutex read_lock;
   // an accepted connection: the server whose configuration (certificate, key, random generator) 'ssl'
   // was set up with and reads for as long as it lives. A reference, given back when this is freed, so
   // closing the listener does not free the configuration under the connections it accepted.

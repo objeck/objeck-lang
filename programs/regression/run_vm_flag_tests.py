@@ -801,6 +801,7 @@ def main():
     check_file_fifo_gc_park(obc, obr, env, bin_dir)
     check_fifo_line_ack(obc, obr, env, bin_dir)
     check_tls_byte_read_eof(obc, obr, env, bin_dir)
+    check_tls_read_order(obc, obr, env, bin_dir)
     check_dtls_accept_handoff(obc, obr, env, bin_dir)
     check_tls_listen_close_race(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
@@ -3637,6 +3638,32 @@ def check_dtls_accept_handoff(obc, obr, env, bin_dir):
             check(f"DTLS accept ({mode}): {what}",
                   rc == 0 and b"PASS: dtls_accept_handoff run" in out,
                   f"rc={rc} out={out[-400:]!r} err={err[-400:]!r}")
+
+
+def check_tls_read_order(obc, obr, env, bin_dir):
+    # ---- two threads reading one TLS socket get its bytes in order -------------------
+    # tls_read_order.obs: the peer sends F0 41 42. One thread reads one character, which
+    # takes F0 and then 41 while looking for the rest of the character; 41 is not part of
+    # it and is given back to the session. OBJECK_NATIVE_TEST_PAUSE holds that read for
+    # 600 ms between taking 41 and giving it back, and a second thread calls ReadByte()
+    # in the middle. Reads of a session were not serialized, so the second thread got 42
+    # and the read after it 41. It must get 41, then 42.
+    dest = compile_fixture(obc, "tls_read_order", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] TLS read order: no openssl command to make a certificate")
+            return
+        cert, key = made
+        paused = dict(env)
+        paused["OBJECK_NATIVE_TEST_PAUSE"] = "tls-char-before-pushback=600"
+        for jit in ("--jit=off", "--jit=1"):
+            rc, out, err = run([obr, jit, dest, cert, key], env=paused, cwd=SCRIPT_DIR)
+            check(f"TLS reads from two threads {jit}: the byte one read gives back is the next read's, before the byte after it",
+                  rc == 0 and b"PASS: tls_read_order run" in out,
+                  f"rc={rc} out={out[-300:]!r} err={err[-300:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):
