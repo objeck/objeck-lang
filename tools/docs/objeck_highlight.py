@@ -100,6 +100,12 @@ def highlight_objeck(text):
             elif tok == "prompt" and re.match(r'\s*"', text[last:last + 16]):
                 # a prompt literal: 'prompt' is a keyword only directly before a string
                 out.append(_span("kw", tok))
+            elif (tok == "agent" and re.match(r"\s+[A-Za-z_]\w*\s*[({]", text[last:last + 120]) and
+                  re.search(r"(^|\n)[ \t]*$", text[:m.start()])):
+                # an agent declaration: 'agent' is a keyword only at the start of one; the name after it is a class
+                out.append(_span("kw", tok))
+                prev = "class"
+                continue
             elif prev in DECL or (tok[:1].isupper() and re.match(r"\s*(->|\.)", text[last:last + 4])):
                 out.append(_span("cls", tok))
             elif (prev in MODIFIERS or prev in ("method", "function")) and re.match(r"\s*\(", text[last:last + 4]):

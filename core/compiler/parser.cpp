@@ -638,6 +638,10 @@ bool Parser::Parse()
   }
 
   GeneratePendingMcpTools();
+  // after the tools are derived: the check looks for the function they are registered by
+  if(!agent_tool_classes.empty()) {
+    CheckAgentToolClasses();
+  }
 
   return CheckErrors();
 }
@@ -899,6 +903,14 @@ void Parser::ParseBundle(int depth)
             break;
 
           default:
+            // 'agent Name {': a contextual keyword, so 'agent' stays an ordinary name
+            if(IsAgentDeclaration()) {
+              Class* agent_class = ParseAgent(bundle_name, depth + 1);
+              if(agent_class) {
+                bundle->AddClass(agent_class);
+              }
+              break;
+            }
             ProcessTopLevelError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
             NextToken();
             break;
@@ -923,7 +935,8 @@ void Parser::ParseBundle(int depth)
       program->AddUses(lib_uses, static_uses, file_name);
     }
     // parse class
-    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_RECORD_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
+    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_RECORD_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID) ||
+            IsAgentDeclaration()) {
       if(scanner->GetToken()->GetDocId() >= 0) {
         RejectToolDoc(L"a class, enum or other declaration");
       }
@@ -969,6 +982,14 @@ void Parser::ParseBundle(int depth)
           break;
 
         default:
+          // 'agent Name {': a contextual keyword, so 'agent' stays an ordinary name
+          if(IsAgentDeclaration()) {
+            Class* agent_class = ParseAgent(bundle_name, depth + 1);
+            if(agent_class) {
+              bundle->AddClass(agent_class);
+            }
+            break;
+          }
           ProcessTopLevelError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
           NextToken();
           break;
@@ -2536,6 +2557,10 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   // 'spawn {': a contextual keyword, so 'spawn' stays an ordinary name
   else if(IsSpawn()) {
     statement = ParseSpawn(depth + 1);
+  }
+  // a class named in an 'agent' declaration's tools, at the start of the statement written for it
+  else if(IsAgentSplice()) {
+    statement = ParseAgentName(depth);
   }
   // identifier
   else if(Match(TOKEN_IDENT) && !IsPromptLiteral()) {
@@ -6012,6 +6037,13 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
   Debug(L"Declaration Parameters", depth);
 #endif
 
+  // a placeholder in the class written for an 'agent' declaration: the user's own parameter list is read in its place
+  if(IsAgentSplice()) {
+    DeclarationList* spliced = nullptr;
+    ParseAgentSplice(&spliced, depth);
+    return spliced;
+  }
+
   if(!Match(TOKEN_OPEN_PAREN)) {
     ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
   }
@@ -6711,6 +6743,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #ifdef _DEBUG
   Debug(L"Simple expression", depth);
 #endif
+
+  // a placeholder in the class written for an 'agent' declaration: the user's own expression is read in its place
+  if(IsAgentSplice()) {
+    return ParseAgentSplice(nullptr, depth + 1);
+  }
 
   Expression* expression = nullptr;
 
@@ -11507,4 +11544,679 @@ Expression* Parser::ParsePromptLiteral(int depth)
   flush();
 
   return head;
+}
+
+/****************************************************************************
+ * Agent declarations (docs/design/AGENT_SYNTAX.md, section 3).
+ *
+ *   agent Helper(script : Vector<AgentReply>) {
+ *     backend : ScriptedBackend->New(script);
+ *     instructions : "Answer in one sentence.";
+ *     tools : Tools, AgentTools->Calculator();
+ *     budget { steps : 8; }
+ *   }
+ *
+ * 'agent' is a word only as the first token of a declaration at class level, before a name and '(' or '{'.
+ * The declaration becomes the class a person would write, parsed by this same parser as the '@tool' code is:
+ *
+ *   class Helper { function : Build(script : Vector<AgentReply>) ~ API.Agent.Agent { ... return agent__a; } }
+ *
+ * The user's own text (the parameter list, each expression) is not copied into that source. The written class
+ * has a placeholder name where a piece belongs, and when the parser meets one it reads the piece with a second
+ * scanner over the original characters, started at the piece's own line and column (Scanner::StartAt). An error
+ * in 'backend : ...' is therefore reported exactly where it was written, and the expression is parsed inside
+ * 'Build', where its parameters and lambdas mean what they should.
+ ****************************************************************************/
+namespace {
+  // one setting or list entry of a declaration, as the first pass found it
+  struct AgentItem {
+    std::wstring key;           // backend, instructions, trace, tools, mcp, allow, deny, or a budget limit
+    bool is_limit = false;      // a limit of the 'budget' block
+    bool is_class = false;      // a 'tools' entry that names a class of '@tool' functions
+    std::wstring class_name;
+    int line = 0;               // where the setting's name is (for a later entry of a list: the entry)
+    int pos = 0;
+    int splice = -1;            // index of the entry's expression, or of a class entry's name, in the splices
+    int name_splice = -1;       // index of the name declared for the value, placed where the value starts
+  };
+
+  // the name a placeholder starts with, followed by the index of its piece
+  const std::wstring AGENT_SPLICE_PREFIX = L"agent__x";
+
+  // the budget limits and the AgentBudget method each one sets; 'cost' is a Float, the others an Int
+  const wchar_t* const AGENT_LIMITS[][2] = {
+    { L"steps", L"SetMaxSteps" }, { L"tokens", L"SetMaxTokens" }, { L"tool_calls", L"SetMaxToolCalls" },
+    { L"model_calls", L"SetMaxModelCalls" }, { L"wall_ms", L"SetMaxWallMs" }, { L"model_call_ms", L"SetModelCallMs" },
+    { L"cost", L"SetMaxCost" }
+  };
+
+  const wchar_t* AgentLimitSetter(const std::wstring& name)
+  {
+    for(size_t i = 0; i < sizeof(AGENT_LIMITS) / sizeof(AGENT_LIMITS[0]); ++i) {
+      if(name == AGENT_LIMITS[i][0]) {
+        return AGENT_LIMITS[i][1];
+      }
+    }
+    return nullptr;
+  }
+
+  // source text laid out so that a piece lands on a line and column of the user's file
+  struct AgentText {
+    std::wstring text;
+    int line = 1;
+    int pos = 1;
+
+    void Add(const std::wstring& code) {
+      text += code;
+      pos += (int)code.size();
+    }
+
+    // moves to (to_line, to_pos) when that is still ahead, else adds one space
+    void At(int to_line, int to_pos) {
+      if(to_line > line) {
+        text.append(to_line - line, L'\n');
+        line = to_line;
+        pos = 1;
+      }
+      if(to_line == line && to_pos >= pos) {
+        text.append(to_pos - pos, L' ');
+        pos = to_pos;
+      }
+      else {
+        Add(L" ");
+      }
+    }
+  };
+}
+
+bool Parser::IsAgentSpliceName()
+{
+  return Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier().compare(0, AGENT_SPLICE_PREFIX.size(), AGENT_SPLICE_PREFIX) == 0;
+}
+
+/****************************
+ * After every file is parsed: a class of the program that an agent's 'tools' names must have an '@tool'
+ * function. A name that is no class of the program is left to the analyzer (a library's class, or none).
+ ****************************/
+void Parser::CheckAgentToolClasses()
+{
+  for(size_t i = 0; i < agent_tool_classes.size(); ++i) {
+    const AgentToolClass& named = agent_tool_classes[i];
+    bool is_class = false;
+    bool has_tools = false;
+    const std::vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t b = 0; b < bundles.size(); ++b) {
+      const std::vector<Class*> classes = bundles[b]->GetClasses();
+      for(size_t c = 0; c < classes.size(); ++c) {
+        const std::wstring& full_name = classes[c]->GetName();
+        const bool same = full_name == named.class_name ||
+          (full_name.size() > named.class_name.size() && full_name[full_name.size() - named.class_name.size() - 1] == L'.' &&
+           full_name.compare(full_name.size() - named.class_name.size(), named.class_name.size(), named.class_name) == 0);
+        if(!same) {
+          continue;
+        }
+        is_class = true;
+        if(mcp_broken_files.find(classes[c]->GetFileName()) != mcp_broken_files.end()) {
+          // its file has a syntax error, which is the answer: its tools were not derived
+          has_tools = true;
+        }
+        const std::vector<Method*> methods = classes[c]->GetMethods();
+        for(size_t m = 0; m < methods.size(); ++m) {
+          if(McpAfterColon(methods[m]->GetName()) == L"McpTools") {
+            has_tools = true;
+          }
+        }
+      }
+    }
+    if(is_class && !has_tools) {
+      diagnostics.Error(named.file_name, named.line, named.pos, L"The class '" + named.class_name + L"', named in 'tools' of the agent '" + named.agent_name +
+                        L"', has no '@tool' function\n\tAn agent's tools are the functions of the class whose doc comment has an '@tool' line; a value that is"
+                        L" an AgentTool, such as AgentTools->Calculator(), can be listed as well");
+    }
+  }
+  agent_tool_classes.clear();
+}
+
+/****************************
+ * A class named in an agent's 'tools': the statement written for it starts with a placeholder, and
+ * the name is given the place it has in the user's file.
+ ****************************/
+Statement* Parser::ParseAgentName(int depth)
+{
+  const std::wstring ident = scanner->GetToken()->GetIdentifier();
+  const AgentSplice& splice = (*agent_splices)[(size_t)std::stoi(ident.substr(AGENT_SPLICE_PREFIX.size()))];
+  NextToken();
+
+  return ParseIdentifierStatement(splice.name, splice.line, splice.pos, splice.file_name, depth);
+}
+
+/****************************
+ * Reads the piece a placeholder stands for, in place. 'declarations' is set for the
+ * parameter list, and the piece is then read as one; otherwise it is an expression.
+ ****************************/
+Expression* Parser::ParseAgentSplice(DeclarationList** declarations, int depth)
+{
+  const std::wstring ident = scanner->GetToken()->GetIdentifier();
+  const AgentSplice& splice = (*agent_splices)[(size_t)std::stoi(ident.substr(AGENT_SPLICE_PREFIX.size()))];
+  NextToken();
+
+  // the user's text is read with no placeholders of its own: a name that looks like one is just a name
+  Scanner* saved_scanner = scanner;
+  std::vector<AgentSplice>* saved_splices = agent_splices;
+  agent_splices = nullptr;
+  scanner = new Scanner(splice.file_name, alt_syntax, splice.text);
+  scanner->StartAt(splice.line, splice.pos);
+  NextToken();
+
+  Expression* expression = nullptr;
+  if(declarations) {
+    *declarations = ParseDecelerationList(depth + 1);
+  }
+  else {
+    expression = ParseExpression(depth + 1);
+    // the ';', ',' or '}' that ended the piece is part of its text, so that an expression cut short is
+    // reported against the token the user wrote, not against an end of file that is not there
+    if((Match(TOKEN_SEMI_COLON) || Match(TOKEN_COMMA) || Match(TOKEN_CLOSED_BRACE)) && Match(TOKEN_END_OF_STREAM, SECOND_INDEX)) {
+      NextToken();
+    }
+  }
+  if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
+    ProcessError(L"Unexpected " + scanner->DescribeToken(scanner->GetToken()) + L" in " + splice.what);
+  }
+
+  delete scanner;
+  scanner = saved_scanner;
+  agent_splices = saved_splices;
+
+  return expression;
+}
+
+Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int agent_line = GetLineNumber();
+  const int agent_pos = GetLinePosition();
+  NextToken();
+
+  const std::wstring name = scanner->GetToken()->GetIdentifier();
+  const int name_line = GetLineNumber();
+  const int name_pos = GetLinePosition();
+  NextToken();
+
+  std::vector<AgentSplice> splices;
+  std::vector<AgentItem> items;
+  std::vector<std::wstring> parameters;
+  bool ok = true;
+
+  // reports an error of the declaration itself; the class is then not written
+  auto fail = [&](int line, int pos, const std::wstring& message) {
+    diagnostics.Error(file_name, line, pos, message);
+    ok = false;
+  };
+
+  // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket when
+  // 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
+  // the piece too: the parenthesis is then reported as not closed, where it is. Leaves the scanner on the
+  // token that ended the piece and returns the piece's index, or -1 when it is empty. 'shape' is told what
+  // the piece is made of, and (first_line, first_pos) where it starts.
+  enum Shape { SHAPE_OTHER, SHAPE_NAME, SHAPE_FUNCTION };
+  auto piece = [&](int from_line, int from_pos, bool in_list, const std::wstring& what, Shape& shape, std::wstring& shape_name,
+                   int& first_line, int& first_pos) -> int {
+    int braces = 0;
+    int brackets = 0;
+    size_t count = 0;
+    bool names_only = true;         // IDENT ('.' IDENT)*
+    bool function_only = false;     // the names, then '->' IDENT, then nothing
+    size_t after_accessor = 0;
+    shape_name.clear();
+    // a string's token is placed inside the string, and on its last line: the place after the separator serves
+    const bool starts_with_string = Match(TOKEN_CHAR_STRING_LIT) || Match(TOKEN_BAD_CHAR_STRING_LIT);
+    first_line = starts_with_string ? from_line : GetLineNumber();
+    first_pos = starts_with_string ? from_pos : GetLinePosition();
+    while(!Match(TOKEN_END_OF_STREAM)) {
+      const ScannerTokenType type = GetToken();
+      if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && type == TOKEN_COMMA))) {
+        break;
+      }
+      if(type == TOKEN_OPEN_BRACE) {
+        ++braces;
+      }
+      else if(type == TOKEN_CLOSED_BRACE) {
+        --braces;
+      }
+      else if(type == TOKEN_OPEN_PAREN || type == TOKEN_OPEN_BRACKET) {
+        ++brackets;
+      }
+      else if((type == TOKEN_CLOSED_PAREN || type == TOKEN_CLOSED_BRACKET) && brackets > 0) {
+        --brackets;
+      }
+
+      if(names_only) {
+        const bool want_name = count % 2 == 0;
+        if(want_name && type == TOKEN_IDENT) {
+          shape_name += scanner->GetToken()->GetIdentifier();
+        }
+        else if(!want_name && type == TOKEN_PERIOD) {
+          shape_name += L'.';
+        }
+        else {
+          names_only = false;
+          function_only = !want_name && type == TOKEN_ASSESSOR;
+          after_accessor = 0;
+        }
+      }
+      else if(function_only) {
+        ++after_accessor;
+        if(after_accessor > 1 || type != TOKEN_IDENT) {
+          function_only = false;
+        }
+      }
+      ++count;
+      NextToken();
+    }
+
+    shape = SHAPE_OTHER;
+    if(count > 0 && names_only && count % 2 == 1) {
+      shape = SHAPE_NAME;
+    }
+    else if(count > 0 && !names_only && function_only && after_accessor == 1) {
+      shape = SHAPE_FUNCTION;
+    }
+
+    if(count == 0) {
+      fail(GetLineNumber(), GetLinePosition(), L"Expected a value for " + what);
+      return -1;
+    }
+
+    AgentSplice splice;
+    splice.file_name = file_name;
+    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + (Match(TOKEN_END_OF_STREAM) ? 0 : 1));
+    splice.line = from_line;
+    splice.pos = from_pos;
+    splice.what = what;
+    splices.push_back(splice);
+    return (int)splices.size() - 1;
+  };
+
+  // a name the compiler declares for a value, to be placed where the value starts: what the analyzer says about
+  // the declaration is then said at the value
+  auto declared = [&](const std::wstring& declared_name, int line, int pos) -> int {
+    AgentSplice splice;
+    splice.file_name = file_name;
+    splice.name = declared_name;
+    splice.line = line;
+    splice.pos = pos;
+    splices.push_back(splice);
+    return (int)splices.size() - 1;
+  };
+
+  if(name.find(L'.') != std::wstring::npos) {
+    fail(name_line, name_pos, L"An agent's name is one word; put the declaration in a 'bundle' to give it a bundle's name");
+  }
+
+  // the parameter list: kept as written, its names noted
+  int parameters_splice = -1;
+  if(Match(TOKEN_OPEN_PAREN)) {
+    const int open_line = GetLineNumber();
+    const int open_pos = GetLinePosition();
+    NextToken();
+    int nesting = 1;
+    bool at_start = true;
+    while(nesting > 0 && !Match(TOKEN_END_OF_STREAM)) {
+      const ScannerTokenType type = GetToken();
+      if(type == TOKEN_OPEN_PAREN) {
+        ++nesting;
+      }
+      else if(type == TOKEN_CLOSED_PAREN) {
+        --nesting;
+        if(nesting == 0) {
+          break;
+        }
+      }
+      else if(nesting == 1 && at_start && type == TOKEN_IDENT) {
+        const std::wstring parameter = scanner->GetToken()->GetIdentifier();
+        // 'ref name : Type'
+        if(!(parameter == L"ref" && Match(TOKEN_IDENT, SECOND_INDEX))) {
+          parameters.push_back(parameter);
+          if(parameter.compare(0, 7, L"agent__") == 0) {
+            fail(GetLineNumber(), GetLinePosition(), L"A parameter of an agent may not start with 'agent__': the names the compiler writes for the agent do");
+          }
+          at_start = false;
+        }
+      }
+      if(type != TOKEN_IDENT) {
+        at_start = nesting == 1 && type == TOKEN_COMMA;
+      }
+      NextToken();
+    }
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      fail(open_line, open_pos, L"The parameter list of the agent '" + name + L"' is not closed: expected ')'");
+      return nullptr;
+    }
+
+    AgentSplice splice;
+    splice.file_name = file_name;
+    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + 1);
+    splice.line = open_line;
+    splice.pos = open_pos;
+    splice.what = L"the parameters of the agent '" + name + L"'";
+    splices.push_back(splice);
+    parameters_splice = (int)splices.size() - 1;
+    NextToken();
+  }
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+    return nullptr;
+  }
+  NextToken();
+
+  // the settings
+  const std::wstring settings = L"backend, instructions, tools, mcp, allow, deny, budget and trace";
+  std::vector<std::wstring> seen;
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const int key_line = GetLineNumber();
+    const int key_pos = GetLinePosition();
+    if(!Match(TOKEN_IDENT)) {
+      fail(key_line, key_pos, L"Expected a setting of the agent '" + name + L"', found " + scanner->DescribeToken(scanner->GetToken()) +
+           L"\n\tAn agent has " + settings + L", each written 'name : value;'");
+      // on to the next setting
+      int nesting = 0;
+      while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+        if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+          ++nesting;
+        }
+        else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
+          --nesting;
+        }
+        NextToken();
+      }
+      if(Match(TOKEN_SEMI_COLON)) {
+        NextToken();
+      }
+      continue;
+    }
+    const std::wstring key = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    const bool is_list = key == L"tools" || key == L"mcp" || key == L"allow" || key == L"deny";
+    const bool is_single = key == L"backend" || key == L"instructions" || key == L"trace";
+    const bool is_budget = key == L"budget";
+    if(!is_list && !is_single && !is_budget) {
+      fail(key_line, key_pos, L"Unknown setting '" + key + L"' in the agent '" + name + L"': an agent has " + settings);
+    }
+    else if(std::find(seen.begin(), seen.end(), key) != seen.end()) {
+      fail(key_line, key_pos, L"The agent '" + name + L"' has '" + key + L"' twice; give all of it in one place");
+    }
+    seen.push_back(key);
+
+    if(is_budget) {
+      if(!Match(TOKEN_OPEN_BRACE)) {
+        fail(GetLineNumber(), GetLinePosition(), L"Expected '{' after 'budget': the limits are written 'budget { steps : 8; tokens : 5000; }'");
+        // on to the next setting
+        int nesting = 0;
+        while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+          if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+            ++nesting;
+          }
+          else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
+            --nesting;
+          }
+          NextToken();
+        }
+        if(Match(TOKEN_SEMI_COLON)) {
+          NextToken();
+        }
+        continue;
+      }
+      NextToken();
+      std::vector<std::wstring> limits_seen;
+      size_t limits = 0;
+      while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+        const int limit_line = GetLineNumber();
+        const int limit_pos = GetLinePosition();
+        std::wstring limit = Match(TOKEN_IDENT) ? scanner->GetToken()->GetIdentifier() : L"";
+        if(limit.empty()) {
+          fail(limit_line, limit_pos, L"Expected a limit of the budget, found " + scanner->DescribeToken(scanner->GetToken()) +
+               L"\n\tA budget has steps, tokens, tool_calls, model_calls, wall_ms, model_call_ms and cost, each written 'name : value;'");
+        }
+        else {
+          NextToken();
+          if(!AgentLimitSetter(limit)) {
+            fail(limit_line, limit_pos, L"Unknown limit '" + limit + L"' in the budget of the agent '" + name +
+                 L"': a budget has steps, tokens, tool_calls, model_calls, wall_ms, model_call_ms and cost");
+          }
+          else if(std::find(limits_seen.begin(), limits_seen.end(), limit) != limits_seen.end()) {
+            fail(limit_line, limit_pos, L"The budget of the agent '" + name + L"' has '" + limit + L"' twice");
+          }
+          limits_seen.push_back(limit);
+        }
+
+        int colon_line = GetLineNumber();
+        int colon_pos = GetLinePosition();
+        if(Match(TOKEN_COLON)) {
+          NextToken();
+        }
+        else {
+          fail(colon_line, colon_pos, L"Expected ':' after the limit '" + limit + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+          colon_pos -= 1;
+        }
+
+        Shape shape; std::wstring shape_name; int first_line, first_pos;
+        AgentItem item;
+        item.key = limit;
+        item.is_limit = true;
+        item.line = limit_line;
+        item.pos = limit_pos;
+        item.splice = piece(colon_line, colon_pos + 1, false, L"the limit '" + limit + L"' of the agent '" + name + L"'", shape, shape_name, first_line, first_pos);
+        if(item.splice >= 0 && AgentLimitSetter(limit)) {
+          item.name_splice = declared(L"agent__l" + std::to_wstring(items.size()), first_line, first_pos);
+          items.push_back(item);
+        }
+        ++limits;
+
+        if(Match(TOKEN_SEMI_COLON)) {
+          NextToken();
+        }
+        else if(ok) {
+          fail(GetLineNumber(), GetLinePosition(), L"Expected ';' after the limit '" + limit + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+        }
+      }
+      if(!Match(TOKEN_CLOSED_BRACE)) {
+        fail(key_line, key_pos, L"The budget of the agent '" + name + L"' is not closed: expected '}'");
+        return nullptr;
+      }
+      NextToken();
+      if(limits == 0) {
+        fail(key_line, key_pos, L"The budget of the agent '" + name + L"' is empty; give a limit, as in 'budget { steps : 8; }', or leave the budget out");
+      }
+      // a ';' after the block is allowed
+      if(Match(TOKEN_SEMI_COLON)) {
+        NextToken();
+      }
+      continue;
+    }
+
+    int sep_line = GetLineNumber();
+    int sep_pos = GetLinePosition();
+    if(Match(TOKEN_COLON)) {
+      NextToken();
+    }
+    else {
+      fail(sep_line, sep_pos, L"Expected ':' after '" + key + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+      sep_pos -= 1;
+    }
+
+    // one value, or the entries of a list
+    bool more = true;
+    bool first = true;
+    while(more) {
+      const std::wstring what = (is_list ? L"an entry of '" : L"'") + key + L"' of the agent '" + name + L"'";
+      Shape shape; std::wstring shape_name; int first_line, first_pos;
+      AgentItem item;
+      item.key = key;
+      item.line = first ? key_line : sep_line;
+      item.pos = first ? key_pos : sep_pos;
+      item.splice = piece(sep_line, sep_pos + 1, is_list, what, shape, shape_name, first_line, first_pos);
+      if(item.splice >= 0) {
+        if(key == L"tools" && shape == SHAPE_NAME && std::find(parameters.begin(), parameters.end(), shape_name) == parameters.end()) {
+          // the name is the piece: it is put back at its own place when the class is parsed
+          item.is_class = true;
+          item.class_name = shape_name;
+          splices[item.splice].name = shape_name;
+          splices[item.splice].line = first_line;
+          splices[item.splice].pos = first_pos;
+          AgentToolClass tool_class;
+          tool_class.file_name = file_name;
+          tool_class.class_name = shape_name;
+          tool_class.agent_name = name;
+          tool_class.line = first_line;
+          tool_class.pos = first_pos;
+          agent_tool_classes.push_back(tool_class);
+          if(shape_name.compare(0, 7, L"agent__") == 0) {
+            fail(first_line, first_pos, L"A class named in 'tools' may not start with 'agent__': the names the compiler writes for the agent do");
+          }
+        }
+        else if(key == L"tools" && shape == SHAPE_FUNCTION) {
+          fail(first_line, first_pos, L"A tool of an agent is a class, not one function: name the class and the agent gets each of its '@tool' functions"
+               L"\n\tTo let the agent use only some of them, name the class here and list the tool names in 'allow' or 'deny'");
+        }
+        if(is_list || is_single) {
+          if(!item.is_class) {
+            const std::wstring declared_name = key == L"backend" ? L"agent__b" : key == L"instructions" ? L"agent__i" : key == L"trace" ? L"agent__t" :
+              (key == L"tools" ? L"agent__t" : key == L"mcp" ? L"agent__m" : L"agent__n") + std::to_wstring(items.size());
+            item.name_splice = declared(declared_name, first_line, first_pos);
+          }
+          items.push_back(item);
+        }
+      }
+
+      more = is_list && Match(TOKEN_COMMA);
+      if(more) {
+        sep_line = GetLineNumber();
+        sep_pos = GetLinePosition();
+        NextToken();
+        first = false;
+      }
+    }
+
+    if(Match(TOKEN_SEMI_COLON)) {
+      NextToken();
+    }
+    else if(ok) {
+      fail(GetLineNumber(), GetLinePosition(), L"Expected ';' after '" + key + L"' of the agent '" + name + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+    }
+  }
+
+  const int end_line = GetLineNumber();
+  const int end_pos = GetLinePosition();
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    fail(agent_line, agent_pos, L"The agent '" + name + L"' is not closed: expected '}'");
+    return nullptr;
+  }
+  NextToken();
+
+  if(std::find(seen.begin(), seen.end(), std::wstring(L"backend")) == seen.end()) {
+    fail(name_line, name_pos, L"The agent '" + name + L"' has no backend: say which model it talks to, as in 'backend : AnthropicBackend->New(model, Nil);'");
+  }
+  if(!ok) {
+    return nullptr;
+  }
+
+  // the class, written so that each statement starts where the setting it comes from does
+  const std::wstring quoted = L"\"" + name + L"\"";
+  bool has_budget = false;
+  bool has_instructions = false;
+  bool has_trace = false;
+  for(size_t i = 0; i < items.size(); ++i) {
+    has_budget = has_budget || items[i].is_limit;
+    has_instructions = has_instructions || items[i].key == L"instructions";
+    has_trace = has_trace || items[i].key == L"trace";
+  }
+
+  AgentText code;
+  code.At(agent_line, agent_pos);
+  code.Add(L"class");
+  code.At(name_line, name_pos);
+  code.Add(name + L" { function : Build" +
+           (parameters_splice >= 0 ? L" " + AGENT_SPLICE_PREFIX + std::to_wstring(parameters_splice) + L" " : std::wstring(L"()")) +
+           L" ~ API.Agent.Agent { agent__r := API.Agent.ToolRegistry->New();");
+  if(has_budget) {
+    code.Add(L" agent__g := API.Agent.AgentBudget->New();");
+  }
+
+  for(size_t i = 0; i < items.size(); ++i) {
+    const AgentItem& item = items[i];
+    const std::wstring n = std::to_wstring(i);
+    const std::wstring value = AGENT_SPLICE_PREFIX + std::to_wstring(item.splice);
+    if(item.is_class) {
+      code.At(item.line, item.pos);
+      code.Add(L"agent__s" + n + L" := API.MCP.McpService->New(\"" + item.class_name + L"\", \"1.0\"); " + value + L"->McpTools(agent__s" + n + L"); agent__c" + n + L" := API.MCP.McpClient->InProcess(agent__s" + n + L"); agent__c" + n +
+               L"->Initialize(" + quoted + L", \"1.0\"); if(API.MCP.McpAgentTools->AddAll(agent__r, agent__c" + n +
+               L") < 0) { Runtime->Raise(Error->New(\"agent '" + name + L"': the tools of the class '" + item.class_name + L"' could not be listed\")); };");
+      continue;
+    }
+
+    code.At(item.line, item.pos);
+    const std::wstring placed = AGENT_SPLICE_PREFIX + std::to_wstring(item.name_splice);
+    if(item.is_limit) {
+      code.Add(placed + (item.key == L"cost" ? L" : Float := " : L" : Int := ") + value + L"; agent__g->" + AgentLimitSetter(item.key) + L"(agent__l" + n + L");");
+    }
+    else if(item.key == L"backend") {
+      code.Add(placed + L" : API.Agent.ChatBackend := " + value + L";");
+    }
+    else if(item.key == L"instructions") {
+      code.Add(placed + L" : String := " + value + L";");
+    }
+    else if(item.key == L"trace") {
+      code.Add(placed + L" : API.Agent.AgentTraceSink := " + value + L";");
+    }
+    else if(item.key == L"tools") {
+      code.Add(placed + L" : API.Agent.AgentTool := " + value + L"; if(agent__t" + n + L" = Nil) { Runtime->Raise(Error->New(\"agent '" + name +
+               L"': a tool is Nil\")); }; agent__r->Add(agent__t" + n + L");");
+    }
+    else if(item.key == L"mcp") {
+      code.Add(placed + L" : API.MCP.McpClient := " + value + L"; if(agent__m" + n + L" = Nil) { Runtime->Raise(Error->New(\"agent '" + name +
+               L"': an 'mcp' server is Nil\")); }; if(API.MCP.McpAgentTools->AddAll(agent__r, agent__m" + n +
+               L") < 0) { Runtime->Raise(Error->New(\"agent '" + name + L"': the tools of an 'mcp' server could not be listed\")); };");
+    }
+    else {
+      code.Add(placed + L" : String := " + value + L"; agent__r->" + (item.key == L"allow" ? L"Allow" : L"Deny") + L"(agent__n" + n + L");");
+    }
+  }
+
+  code.At(end_line, end_pos);
+  code.Add(L"agent__a := API.Agent.Agent->New(agent__b, agent__r);");
+  if(has_instructions) {
+    code.Add(L" agent__a->SetSystem(agent__i);");
+  }
+  if(has_budget) {
+    code.Add(L" agent__a->SetBudget(agent__g);");
+  }
+  if(has_trace) {
+    code.Add(L" agent__a->SetTrace(agent__t);");
+  }
+  code.Add(L" return agent__a; } }");
+
+  Scanner* saved_scanner = scanner;
+  Method* saved_method = current_method;
+  scanner = new Scanner(file_name, alt_syntax, code.text);
+  agent_splices = &splices;
+  NextToken();
+
+  Class* klass = nullptr;
+  if(Match(TOKEN_CLASS_ID)) {
+    klass = ParseClass(bundle_name, depth + 1);
+  }
+  if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
+    ProcessError(L"The code written for the agent '" + name + L"' has an extra " + scanner->DescribeToken(scanner->GetToken()));
+  }
+
+  agent_splices = nullptr;
+  delete scanner;
+  scanner = saved_scanner;
+  current_method = saved_method;
+
+  return klass;
 }

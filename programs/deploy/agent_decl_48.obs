@@ -1,0 +1,126 @@
+#~
+# compile: obc -src agent_decl_48.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
+# run:     obr agent_decl_48.obe
+#
+# An agent is a model, its instructions, the tools it may use and the limits
+# on a run. Written by hand that is a registry, a server for the tool
+# functions, a client, a budget and a trace, wired together in the right
+# order (see mcp_agent_42). An agent declaration states the same thing in one
+# place:
+#
+#   agent Name(parameters) {
+#     backend : the model;                 required
+#     instructions : the system prompt;
+#     tools : classes of @tool functions, or AgentTool values;
+#     mcp : MCP clients, for the tools of a server;
+#     allow : tool names;   deny : tool names;
+#     budget { steps : n; tokens : n; tool_calls : n; wall_ms : n; cost : x; }
+#     trace : where the events go;
+#   }
+#
+# It declares a class with one function: Name->Build(arguments) makes a new
+# Agent each time. Every setting is an ordinary expression, checked by the
+# compiler where you wrote it, and may use the parameters. "agent" is a word
+# only at the start of a declaration; a variable called agent is untouched.
+#
+# The three functions of Desk are marked @tool, as in mcp_declare_40; the agent
+# gets all three, and "deny" takes one away again. The budget allows four
+# steps: enough for the first task, and the second is cut short.
+#
+# The model is a ScriptedBackend (fixed replies, no key, no network). For a
+# real one, change one line: backend : AnthropicBackend->New("claude-sonnet-5-5", Nil);
+#
+# output:
+#   instructions: You are a clerk at the front desk. Be brief.
+#   budget: 4 steps, 20 tool calls
+#   lookup_room: ok - Ada Lovelace is in room 12
+#   add_charge: ok - charged 30 to room 12
+#   close_account: denied - Error: the tool 'close_account' is not permitted here
+#   answer: Ada is in room 12 and has been charged 30.
+#   why it stopped: completed (4 steps)
+#   trace: 18 events, 2 tool calls started
+#   --- the same declaration, a second agent, a longer task
+#   why it stopped: budget_steps (4 steps)
+~#
+
+use API.MCP, API.Agent, Collection;
+
+class Desk {
+	#~
+	Find a guest's room.
+	@tool
+	@readonly
+	@param guest the guest's name
+	~#
+	function : LookupRoom(guest : String) ~ String {
+		return "{$guest} is in room 12";
+	}
+
+	#~
+	Add a charge to a room.
+	@tool
+	@param room the room number
+	@param amount the amount to charge
+	~#
+	function : AddCharge(room : Int, amount : Int) ~ String {
+		return "charged {$amount} to room {$room}";
+	}
+
+	#~
+	Close a guest's account.
+	@tool
+	@destructive
+	~#
+	function : CloseAccount(room : Int) ~ String {
+		return "closed the account of room {$room}";
+	}
+}
+
+agent Clerk(script : Vector<AgentReply>, place : String) {
+	backend : ScriptedBackend->New(script);
+	instructions : "You are a clerk at {$place}. Be brief.";
+	tools : Desk;
+	deny : "close_account";
+	budget { steps : 4; tool_calls : 20; }
+	trace : AgentTraceBuffer->New();
+}
+
+class Front {
+	function : Main(args : String[]) ~ Nil {
+		# what the "model" does: two tool calls, a call it may not make, then an answer
+		script := Vector->New()<AgentReply>;
+		script->AddBack(AgentReply->Ask("1", "lookup_room", "{\"guest\":\"Ada Lovelace\"}"));
+		script->AddBack(AgentReply->Ask("2", "add_charge", "{\"room\":12,\"amount\":30}"));
+		calls := Vector->New()<AgentToolCall>;
+		calls->AddBack(AgentToolCall->New("3", "close_account", Data.JSON.JsonParser->TextToElement("{\"room\":12}")));
+		script->AddBack(AgentReply->AskAll(calls));
+		script->AddBack(AgentReply->Say("Ada is in room 12 and has been charged 30."));
+
+		clerk := Clerk->Build(script, "the front desk");
+		"instructions: {$clerk->GetConversation()->GetSystem()}"->PrintLine();
+		"budget: {$clerk->GetBudget()->GetMaxSteps()} steps, {$clerk->GetBudget()->GetMaxToolCalls()} tool calls"->PrintLine();
+
+		result := clerk->Run("Which room is Ada Lovelace in? Charge her 30, then close her account.");
+		Show(result);
+		"answer: {$result->GetText()}"->PrintLine();
+		"why it stopped: {$result->GetStopReason()} ({$result->GetSteps()->Size()} steps)"->PrintLine();
+		trace := clerk->GetTrace()->As(AgentTraceBuffer);
+		"trace: {$trace->GetEvents()->Size()} events, {$trace->Count(\"tool_start\")} tool calls started"->PrintLine();
+
+		"--- the same declaration, a second agent, a longer task"->PrintLine();
+		long := Vector->New()<AgentReply>;
+		for(i := 0; i < 10; i += 1;) {
+			long->AddBack(AgentReply->Ask("{$i}", "lookup_room", "{\"guest\":\"guest {$i}\"}"));
+		};
+		tired := Clerk->Build(long, "the night desk")->Run("Find every guest.");
+		"why it stopped: {$tired->GetStopReason()} ({$tired->GetSteps()->Size()} steps)"->PrintLine();
+	}
+
+	function : Show(result : AgentResult) ~ Nil {
+		each(step in result->GetSteps()) {
+			each(r in step->GetResults()) {
+				"{$r->GetToolName()}: {$r->GetStatus()} - {$r->GetContent()}"->PrintLine();
+			};
+		};
+	}
+}

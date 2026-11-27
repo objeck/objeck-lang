@@ -116,6 +116,28 @@ struct McpPending {
 };
 
 
+// One piece of the user's own text in an 'agent' declaration (docs/design/AGENT_SYNTAX.md): the parameter list
+// or an expression, read in place by a second scanner started at (line, pos) of 'text'; or, with 'name' set, a
+// class named in 'tools', which is put at (line, pos).
+struct AgentSplice {
+  std::wstring file_name;
+  std::wstring text;
+  std::wstring name;
+  std::wstring what;
+  int line = 0;
+  int pos = 0;
+};
+
+// a class named in 'tools' of an 'agent' declaration, checked when every file has been parsed
+struct AgentToolClass {
+  std::wstring file_name;
+  std::wstring class_name;
+  std::wstring agent_name;
+  int line = 0;
+  int pos = 0;
+};
+
+
 class Parser {
   bool alt_syntax;
   ParsedProgram* program;
@@ -346,6 +368,25 @@ class Parser {
            scanner->GetToken()->GetIdentifier() == L"prompt";
   }
   Expression* ParsePromptLiteral(int depth);
+  // 'agent Name {' or 'agent Name(' where a class may be declared (docs/design/AGENT_SYNTAX.md)
+  inline bool IsAgentDeclaration() {
+    return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, 1) && (Match(TOKEN_OPEN_BRACE, 2) || Match(TOKEN_OPEN_PAREN, 2)) &&
+           scanner->GetToken()->GetIdentifier() == L"agent";
+  }
+  // the pieces of the 'agent' declaration being parsed; null at any other time
+  std::vector<AgentSplice>* agent_splices = nullptr;
+  // a placeholder for one of those pieces, in the class written for the declaration
+  inline bool IsAgentSplice() {
+    return agent_splices && IsAgentSpliceName();
+  }
+  // Out of line on purpose: the token's text is a copy, and inline the copy would sit in the frame of each
+  // caller, which are the functions that recurse once per nesting level (the nesting limit is a stack budget).
+  bool IsAgentSpliceName();
+  Class* ParseAgent(const std::wstring& bundle_name, int depth);
+  Expression* ParseAgentSplice(DeclarationList** declarations, int depth);
+  Statement* ParseAgentName(int depth);
+  std::vector<AgentToolClass> agent_tool_classes;
+  void CheckAgentToolClasses();
   Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth, Type* block_type = nullptr);

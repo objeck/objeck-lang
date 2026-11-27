@@ -1252,6 +1252,8 @@ class Live {
 
 `programs/examples/agent_demo.obs` takes a provider, a model and a question and runs against the scripted model when it gets none.
 
+**Declaring an agent.** `agent Name(parameters) { backend : ...; instructions : ...; tools : ...; mcp : ...; allow : ...; deny : ...; budget { steps : 8; tokens : 5000; } trace : ...; }` stands where a class does and states the model, the instructions, the tools and the limits in one place. It declares a class with one function: `Name->Build(arguments)` makes a new `Agent` each time, with the settings evaluated in the order written. An entry of `tools` is a class (every `@tool` function of it, with the derived schema) or an `AgentTool` value; `mcp` takes initialized `McpClient`s; `budget` sets an `AgentBudget`; only `backend` is required. Each value is an ordinary expression that may use the parameters and is checked by the compiler where it is written; an unknown setting or limit, a setting twice, no backend and a class with no `@tool` function are compile errors with the line and column. `agent` is a keyword only at the start of a declaration. Section "Declaring an agent" of [ai_sections/agent.md](ai_sections/agent.md) has a program with its output; `programs/deploy/agent_decl_48.obs` is a runnable example.
+
 **Run control (cancel, budgets, isolated tools, trace).** By default a run cannot be stopped from outside, a tool's time limit is reported only after the handler returns, and nothing bounds a run in time, tokens or money. Four opt-in pieces add that; an agent that sets none of them behaves as before. The full reference is the "Agent run control" section of `docs/ai_sections/agent_control.md`.
 
 | You want | You use |
@@ -3515,7 +3517,7 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Decomposition | `PCA` | `ml` | None |
 | Neural network | `NeuralNetwork` | `ml` | None |
 | Classifier head over embeddings | `EmbeddingClassifier` | `ml` | None |
-| Tool-use loop over any chat model | `Agent`, `ToolRegistry`, `AgentTool` | `agent` + `net`, `json`, `cipher`, `misc` | The provider's, or None for Ollama and the scripted backend |
+| Tool-use loop over any chat model; `agent Name { ... }` declarations | `Agent`, `ToolRegistry`, `AgentTool` | `agent` + `net`, `json`, `cipher`, `misc` | The provider's, or None for Ollama and the scripted backend |
 | MCP server, client and tool bridge | `McpService`, `McpClient`, `McpToolBridge` | `mcp` + `gen_collect`, `json`, `net`, `net_server`, `cipher`, `misc` | None |
 | Retrieval-augmented generation | `RagPipeline`, `RagIndex`, `RagChunker` | `rag` + `ml_vector` | None (offline); the adapters use their provider's |
 | Gradient boosted trees (experimental) | `GradientBoostingRegressor`, `GradientBoostingClassifier` | `ml_boost` + `ml` | None |

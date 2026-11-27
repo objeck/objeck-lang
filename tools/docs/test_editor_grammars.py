@@ -3,7 +3,8 @@
 (python tools/docs/test_editor_grammars.py).
 
 'prompt' is a keyword directly before a string and nowhere else, so the grammars must colour 'prompt "..."' and
-its holes and must leave a variable, a parameter or a method called 'prompt' alone. The rules' regular
+its holes and must leave a variable, a parameter or a method called 'prompt' alone. 'agent' is a keyword at the
+start of a declaration, and 'backend', 'budget', 'steps' and the other setting names are words inside one. The rules' regular
 expressions are run here as Python regular expressions, which agree with the editors' engines for these patterns.
 Checked: tools/lsp/clients/vscode/syntaxes/objeck.tmLanguage.json (also the source of the site highlighter's word
 lists) and tools/lsp/clients/sublime/objeck.sublime-syntax.
@@ -57,6 +58,20 @@ def prompt_checks(label, begin, hole):
     check("%s: two words are not a hole" % label, hole.search("{user name}") is None)
 
 
+def agent_checks(label, head, settings, limits, budget):
+    found = head.search("agent Helper(script : Vector<AgentReply>) {")
+    check("%s: an agent declaration" % label, found is not None and found.group(1) == "agent" and found.group(2) == "Helper")
+    check("%s: an agent declaration without parameters, indented" % label, head.search("  agent Plain {") is not None)
+    check("%s: a variable called agent is left alone" % label, head.search("    agent := 3;") is None and head.search('agent->Run("x");') is None)
+    check("%s: a call of a function called agent is left alone" % label, head.search("    agent(budget, tools)->PrintLine();") is None)
+    check("%s: 'agent' in the middle of a line is left alone" % label, head.search("x := agent Helper {") is None)
+    check("%s: a setting name before ':'" % label, settings.search("  backend : ScriptedBackend->New(script);") is not None and
+          settings.search("  tools : Tools;") is not None)
+    check("%s: a setting name that is assigned is a variable" % label, settings.search("  tools := 3;") is None)
+    check("%s: a limit name before ':'" % label, limits.search("budget { steps : 8; }") is not None and limits.search("tool_calls : 20;") is not None)
+    check("%s: 'budget' before '{'" % label, budget.search("  budget { steps : 8; }") is not None and budget.search("  budget := 3;") is None)
+
+
 def main():
     with io.open(VSCODE, encoding="utf-8") as f:
         grammar = json.load(f)
@@ -81,9 +96,27 @@ def main():
                 words.update(listed.group(1).split("|"))
     check("VS Code: 'prompt' and 'agent' are in no plain keyword list", "prompt" not in words and "agent" not in words)
 
+    declaration = repo.get("agent-declarations", {})
+    braces = [re.compile(p["match"]) for p in repo.get("agent-braces", {}).get("patterns", []) if "match" in p]
+    if declaration.get("begin") and len(braces) == 3:
+        agent_checks("VS Code", re.compile(declaration["begin"]), braces[0], braces[2], braces[1])
+        check("VS Code: agent declarations are tried before the general rules",
+              "#agent-declarations" in order and order.index("#agent-declarations") < order.index("#entities"))
+    else:
+        check("VS Code: the agent declaration rules exist", False)
+
     with io.open(SUBLIME, encoding="utf-8") as f:
         sublime = f.read()
     main_rules = sublime_rules(sublime, "main")
+    heads = [r for r in main_rules if "(agent)" in r.pattern]
+    body = sublime_rules(sublime, "agent_body")
+    named = [r for r in body if "backend|instructions" in r.pattern]
+    limited = [r for r in body if "steps|tokens" in r.pattern]
+    budgeted = [r for r in body if "(budget)" in r.pattern]
+    if heads and named and limited and budgeted:
+        agent_checks("Sublime", heads[0], named[0], limited[0], budgeted[0])
+    else:
+        check("Sublime: the agent declaration rules exist", False)
     begins = [r for r in main_rules if r.pattern.startswith(r"\b(prompt)")]
     string_rules = sublime_rules(sublime, "prompt_string")
     holes = [r for r in string_rules if "String|Int|Float|Bool|Char|Byte" in r.pattern]

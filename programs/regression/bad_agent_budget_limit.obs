@@ -1,0 +1,22 @@
+# EXTRA_LIBS: agent,net,cipher,misc
+# EXPECT_COMPILE_ERROR: (14,3): Unknown limit 'turns' in the budget of the agent 'Helper'
+# EXPECT_ERROR_COUNT: 1
+#~
+A limit a budget does not have is a compile error at the limit, and the message lists the
+limits there are (docs/design/AGENT_SYNTAX.md).
+~#
+use API.Agent;
+
+agent Helper {
+	backend : ScriptedBackend->New(Nil);
+	budget {
+		steps : 4;
+		turns : 9;
+	}
+}
+
+class BadAgentBudgetLimit {
+	function : Main(args : String[]) ~ Nil {
+		Helper->Build()->Run("hello")->GetText()->PrintLine();
+	}
+}

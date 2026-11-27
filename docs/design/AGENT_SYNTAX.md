@@ -1,6 +1,6 @@
 # Agent syntax: typed results, prompt literals, agent declarations, scoped limits
 
-Release scope (2026-11-26, after the maintainer asked for everything that was designed to be built): typed results (section 1, `class Name : json`, PR #1841), scoped limits (section 4, `AgentScope`, merged in #1837) and `prompt` literals (section 2) are implemented and in v2026.11.4; `agent` declarations (section 3) are designed here and implemented in the pull request that follows the one for prompt literals.
+Release scope (2026-11-26, after the maintainer asked for everything that was designed to be built): typed results (section 1, `class Name : json`, PR #1841), scoped limits (section 4, `AgentScope`, merged in #1837) and `prompt` literals (section 2) are implemented and in v2026.11.4; `agent` declarations (section 3) are implemented and in v2026.11.4 as well.
 
 Decisions: (1) typed results use the opt-in `class Name : json` modifier, no call-site type arguments; (2) a hole of a `prompt` literal binds a variable in scope and is checked at compile time, and a reusable template is a function; (3) an `agent` declaration is a class with one `Build` function that returns an `Agent`; (4) scoped limits are a LIBRARY call, `AgentScope`. All compose with the MCP stack (#1819-#1822, `docs/design/MCP_FIRST_CLASS.md`) and do not redo `@tool`.
 Rule for all four: pure source-to-source lowering to existing constructs (no VM, JIT or opcode change), and
@@ -134,7 +134,7 @@ literal was a syntax error in every position before, so no program changes meani
 **Not done, on purpose:** hole expressions (`{user->GetName()}`): a hole is one name so that what reaches the
 model is visible at the hole; format specifiers; a hole for a list (use `{$...}` or build a `String`).
 
-## 3. `agent` declarations (designed; implemented in the pull request after prompt literals)
+## 3. `agent` declarations (IMPLEMENTED, v2026.11.4)
 
 ```
 agent Helper(script : Vector<AgentReply>, remote : McpClient) {
@@ -191,9 +191,12 @@ are written.
   limited by both its `budget` and the scope; the smaller limit wins (tested).
 
 **Compile-time checks, each at the line and column of the setting or entry:** an unknown setting or limit name
-(the valid ones are listed), a setting given twice, no `backend`, an empty list, a missing `;`, a parameter
-named `agent__...`, `Class->Function` as a tool, and, from the analyzer at the position of the user's own
-expression, a value of the wrong type (`backend : "text"`), an undefined name, a class with no `@tool` function.
+(the valid ones are listed), a setting given twice, no `backend`, an empty list, a missing `;` or `:`, an
+empty budget, a parameter named `agent__...`, `Class->Function` as a tool, a class of the program with no
+`@tool` function (checked when every file has been parsed, so the class may be declared later or in another
+file), and, from the analyzer at the position of the user's own text, a value of the wrong type
+(`backend : "text"`), an undefined name or class, a parameter of an unknown type. At run time `Build` raises an
+error for a tool or MCP server that is `Nil`, and for a server whose tools cannot be listed.
 
 **Lowering** (parser, `ParseAgent`). The declaration is skimmed once for its shape, then written as the class
 a person would write and parsed by the same parser, as the MCP stack does for `@tool`:
@@ -203,19 +206,22 @@ class Helper { function : Build(script : Vector<AgentReply>, remote : McpClient)
   agent__r := API.Agent.ToolRegistry->New();
   agent__b : API.Agent.ChatBackend := ScriptedBackend->New(script);
   agent__i : String := "Answer in one sentence.";
-  agent__s0 := API.MCP.McpService->New("Tools", "1.0"); Tools->McpTools(agent__s0);
-  agent__c0 := API.MCP.McpClient->InProcess(agent__s0); agent__c0->Initialize("Helper", "1.0");
-  if(API.MCP.McpAgentTools->AddAll(agent__r, agent__c0) < 0) { Runtime->Raise(Error->New("...")); };
-  agent__t1 : API.Agent.AgentTool := AgentTools->Calculator(); agent__r->Add(agent__t1);
+  agent__s2 := API.MCP.McpService->New("Tools", "1.0"); Tools->McpTools(agent__s2);
+  agent__c2 := API.MCP.McpClient->InProcess(agent__s2); agent__c2->Initialize("Helper", "1.0");
+  if(API.MCP.McpAgentTools->AddAll(agent__r, agent__c2) < 0) { Runtime->Raise(Error->New("...")); };
+  agent__t3 : API.Agent.AgentTool := AgentTools->Calculator();
+  if(agent__t3 = Nil) { Runtime->Raise(Error->New("...")); }; agent__r->Add(agent__t3);
   ...
   agent__a := API.Agent.Agent->New(agent__b, agent__r); agent__a->SetSystem(agent__i); ...
   return agent__a; } }
 ```
 
 The user's own text (the parameter list and each expression) is not copied into that source. Each piece is
-scanned by its own scanner over the original characters, padded so that every token keeps its line and column,
-and spliced in where the written class has a placeholder name (`Parser::agent_splices`, null except while a
-declaration is being parsed: one pointer test in `ParseSimpleExpression` and one in `ParseDecelerationList`).
+read by a second scanner over the original characters, started at the piece's own line and column
+(`Scanner::GetSourceBefore`, `Scanner::StartAt`), and spliced in where the written class has a placeholder name
+(`Parser::agent_splices`, null except while a declaration is being parsed: one pointer test each in
+`ParseSimpleExpression`, `ParseStatement` and `ParseDecelerationList`). The names the compiler declares for the
+values (`agent__b`, ...) and the class names of `tools` are placed the same way, at the value they belong to.
 So an error inside `backend : ...` is reported exactly where the user wrote it, and the expression is parsed
 inside `Build`, where lambdas and parameters mean what they should. `class` and `agent` have the same length,
 so the class name also keeps its column.
@@ -226,8 +232,8 @@ by a name and `(` or `{`; an identifier there was a syntax error before. The set
 `agent`, `budget`, `tools`, `trace` ... as variables, parameters, methods and classes compile as before (tested).
 
 **Needs** `-lib agent,json,net,cipher,misc` (+ `gen_collect`), and `mcp,net_server,mcp_agent` when `tools`
-names a class or `mcp` is used; the file needs `use API.MCP;` in that case for the same reason an `@tool`
-function does.
+names a class or `mcp` is used. The declaration's own file needs no `use` for it (the written class names the
+library classes in full); the user's expressions resolve names with the file's `use` lines as anywhere else.
 
 **Not done, on purpose:** one function as a tool (above); `model : "..."` shorthand choosing a provider from a
 model name (the mapping would live in the compiler and age badly; `backend` names the model in one expression);
@@ -269,4 +275,9 @@ conflict files: `scanner.cpp` (keyword tables), `parser.cpp` (class member loop,
 Where sections 2 and 3 touch the compiler, for whoever merges other grammar work: no keyword is added to the
 scanner's tables. `prompt` literals are `Parser::ParsePromptLiteral` at the end of `parser.cpp`, one test
 (`IsPromptLiteral`) in `ParseSimpleExpression` and one in `ParseStatement`, `ContextAnalyzer::AnalyzePromptHole`
-with one test in `AnalyzeExpressionMethodCall`, and one integer in `MethodCall` (`tree.h`).
+with one test in `AnalyzeExpressionMethodCall`, and one integer in `MethodCall` (`tree.h`). `agent`
+declarations are `Parser::ParseAgent`, `ParseAgentSplice`, `ParseAgentName` and `CheckAgentToolClasses` at the end
+of `parser.cpp`, one test (`IsAgentDeclaration`) at each of the two places `ParseBundle` reads a class, one test
+(`IsAgentSplice`, a null pointer except while a declaration is parsed) in `ParseSimpleExpression`,
+`ParseStatement` and `ParseDecelerationList`, and two scanner functions (`GetSourceBefore`, `StartAt`) that no
+other code calls. The analyzer, the emitter, the VM and the libraries are untouched by section 3.

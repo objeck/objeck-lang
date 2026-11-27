@@ -835,6 +835,15 @@ class Scanner {
   // line is not known.
   std::wstring Excerpt(int line, int pos) const;
 
+  // The source before a 1-based (line, column): the text a second scanner is given to
+  // read one piece of this source in place, with StartAt (an 'agent' declaration's
+  // parameters and expressions, docs/design/AGENT_SYNTAX.md).
+  std::wstring GetSourceBefore(int line, int pos) const;
+
+  // Before the first token is read: start at a 1-based (line, column) of the text
+  // instead of its beginning, so every token keeps the place it has in the source.
+  void StartAt(int line, int pos);
+
   // whether the source file was read, and how many characters it holds
   bool HasSource() const { return buffer != nullptr; }
   size_t SourceSize() const { return buffer ? buffer_size : 0; }
