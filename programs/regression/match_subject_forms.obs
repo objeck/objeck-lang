@@ -7,6 +7,12 @@ whose matching ')' is followed by '{' ('match (value) {'). The last two were not
 Everywhere else 'match' stays an ordinary name: a variable ('match := 1', 'match + 1',
 'a[match]'), and a function that is called ('match(x);', 'match(x)->PrintLine()',
 'if(match(x) = 2) {', 'while(match(y) < 6) {'). Both are used here next to the keyword.
+
+A subject may be negative: 'match -1 {', 'match -offset {'. The '-' after the word was read as a
+subtraction from a variable named 'match', so 'match -1 { -1 => "negative", other => "other" }'
+was refused with "Expected ';'" though 'match (-1) {' and the '-1' pattern were accepted. It is the
+keyword when the '{' of the arms follows before the statement ends; 'match - 1;', 'f(match - 1)',
+'a[match - 1]' and 'while(i < match - 1) {' are still subtractions.
 ~#
 enum Color {
 	Red,
@@ -81,7 +87,46 @@ class MatchSubjectForms {
 		return match (match(value)) { 3 => "three", other => "not three" };
 	}
 
+	# a negative subject: a literal, a name, a parenthesised expression, a call, more after it
+	function : Negative(n : Int) ~ String {
+		out := match -1 { -1 => "negative", other => "other" };
+		out += match -n { -4 => " minus four", 4 => " four", other => " other" };
+		out += match -(n + 1) { -5 => " minus five", other => " other" };
+		out += match -match(n) + 1 { -4 => " minus four", other => " other" };
+		out += match -2.5->As(Int) { -2 => " minus two", other => " other" };
+		match -n {
+			-4 => { out += " statement"; }
+			other => { out += " ?"; }
+		};
+		return out;
+	}
+
+	# a '-' after the variable 'match' is a subtraction wherever no arms follow
+	function : Subtraction() ~ String {
+		match := 5;
+		d := match - 1;
+		e := match -1;
+		f := match(match - 1);
+		i := 0;
+		while(i < match - 1) { i += 1; };
+		a := Int->New[5];
+		a[match - 1] := 9;
+		out := "{$d} {$e} {$f} {$i} {$a[4]}";
+		if(match - 5 = 0) { out += " zero"; };
+		match -= 1;
+		out += " {$match}";
+		# at the end of a line the '-' goes on with the expression, as it always has
+		g := match
+		-1->Abs();
+		out += " {$g}";
+		# and the keyword next to the variable: the subject is '-match'
+		out += match -match { -4 => " keyword", other => " ?" };
+		return out;
+	}
+
 	function : Main(args : String[]) ~ Nil {
+		Check("a negative subject", Negative(4), "negative minus four minus five minus four minus two statement");
+		Check("a subtraction from a variable named match", Subtraction(), "4 4 5 4 9 zero 4 3 keyword");
 		Check("statement, 1", Statement(1), "one");
 		Check("statement, 3", Statement(3), "two or three");
 		Check("statement, 9", Statement(9), "other");

@@ -400,8 +400,9 @@ class Parser {
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
   void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
   void GeneratePendingMcpTools();
-  // a McpMain(args : String[]) that 'obr --mcp' could not start, in a file without 'use API.MCP':
-  // an error only when the program has a tagged function (RefuseMcpEntry, ReportMcpEntries)
+  // a McpMain(args : String[]) that 'obr --mcp' could not start and that is not an error where it
+  // is declared (a method, or a file without 'use API.MCP'): an error only when the program has a
+  // tagged function (RefuseMcpEntry, ReportMcpEntries)
   struct McpEntryRefusal {
     std::wstring file_name;
     int line = 0;
@@ -409,7 +410,7 @@ class Parser {
     std::wstring message;
   };
   std::vector<McpEntryRefusal> mcp_entry_refusals;
-  void RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message);
+  void RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message, bool is_function);
   void ReportMcpEntries();
   Method* McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
   bool McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth);

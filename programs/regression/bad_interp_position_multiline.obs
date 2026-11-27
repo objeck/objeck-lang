@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: bad_interp_position_multiline.obs:(19,16): Undefined variable: 'missing'
+# EXPECT_ERROR_COUNT: 4
+#~
+An error about an interpolated expression is placed where the expression is: on its own line of
+a string of several lines, at its own column, also inside a nested call. The expression is read
+by a scanner of its own, which counted from line 1, column 1 of the expression's text, so the
+undefined variable below was reported at "(2,16)" of the file, line 2 of an expression that is
+on lines 18 and 19; and the error about the interpolation as a whole was placed at the string
+literal, which for a string of several lines is its last line, column 0 ("(20,0)"). The
+variable is now at (19,16) and the interpolation at (18,15), where its expression starts. (The
+other two errors follow from the first: the '+' and the call that take the undefined value.)
+~#
+class BadInterpPositionMultiline {
+	function : Twice(n : Int) ~ Int { return n * 2; }
+	function : Main(args : String[]) ~ Nil {
+		n := 1;
+		s := "first {$n}
+		   second {$Twice(n) + Twice(n +
+		             missing)} end
+		third {$n}";
+		s->PrintLine();
+	}
+}

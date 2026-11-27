@@ -324,6 +324,14 @@ class MethodCallSelector {
 /****************************
  * Trees to decorated trees
  ****************************/
+// Where the expression of a string interpolation, "{$expression}", starts in the source: the
+// line and column of the character after '{$'. Its tokens and the errors about it are placed
+// from here (Scanner::PlaceAt).
+struct InterpolationPlace {
+  int line;
+  int pos;
+};
+
 class ContextAnalyzer {
   ParsedProgram* program;
   ParsedBundle* bundle;
@@ -461,7 +469,6 @@ std::vector<std::wstring> alt_error_method_names;
   bool IsIntegerExpression(Expression* expression);
 
   // returns true if expression is a character string
-  bool IsStringExpression(Expression* expression);
 
   // returns true if expression is a string literal with nothing interpolated or called on it
   bool IsStringConstant(Expression* expression);
@@ -539,16 +546,17 @@ std::vector<std::wstring> alt_error_method_names;
   Enum* GetExpressionEnum(Type* type, Expression* expression, int depth);
   
   // validate character string
-  void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth);
+  void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, const InterpolationPlace& at, int depth);
 
   // validate character string expression (for interpolated method calls, array access, etc.)
-  void AnalyzeCharacterStringExpression(const std::wstring& expr_text, CharacterString* char_str, int depth);
+  void AnalyzeCharacterStringExpression(const std::wstring& expr_text, CharacterString* char_str, const InterpolationPlace& at, int depth);
 
   // validate a single interpolation token: dispatches to format-spec, expression, or variable
-  void AnalyzeInterpolatedToken(const std::wstring& token, CharacterString* char_str, int depth);
+  void AnalyzeInterpolatedToken(const std::wstring& token, CharacterString* char_str, const InterpolationPlace& at, int depth);
 
   // validate an interpolation token carrying a format specifier, e.g. "pi:.2"
-  void AnalyzeCharacterStringFormat(const std::wstring& expr_text, const std::wstring& spec_text, CharacterString* char_str, int depth);
+  void AnalyzeCharacterStringFormat(const std::wstring& expr_text, const std::wstring& spec_text, CharacterString* char_str, const InterpolationPlace& at, int depth);
+  void ProcessError(CharacterString* char_str, const InterpolationPlace& at, const std::wstring& msg);
 
   // split an interpolation token into expression / format-spec at a top-level ':'
   // (ignores ':' inside parens/brackets/quotes and ternary '?:'); returns true if a spec was found

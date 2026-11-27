@@ -550,6 +550,12 @@ class Token {
   std::wstring error_msg;
   int error_line = 0;
   int error_pos = 0;
+  // For a string literal: the line and column of the first character of its text, the one
+  // after the opening quote. The token's own position is on the line the string ENDS on,
+  // which says nothing of where a multi-line string began; an interpolation inside it is
+  // located from here. 0 for every other token.
+  int text_line = 0;
+  int text_pos = 0;
   // index of the Scanner's tool doc comment that directly precedes this token, -1 for none (nearly always)
   int doc_id = -1;
 
@@ -580,6 +586,8 @@ class Token {
     error_msg = token->error_msg;
     error_line = token->error_line;
     error_pos = token->error_pos;
+    text_line = token->text_line;
+    text_pos = token->text_pos;
     doc_id = token->doc_id;
   }
 
@@ -599,6 +607,19 @@ class Token {
 
   inline const std::wstring& GetError() {
     return error_msg;
+  }
+
+  inline void SetTextStart(int line, int pos) {
+    text_line = line;
+    text_pos = pos;
+  }
+
+  inline int GetTextLine() const {
+    return text_line;
+  }
+
+  inline int GetTextPosition() const {
+    return text_pos;
   }
 
   inline int GetErrorLine() {
@@ -822,6 +843,11 @@ class Scanner {
   // pass, however long the list
   ScannerTokenType PeekAfterParens(int index);
 
+  // whether, from tokens[index] on, a '{' is met before the statement ends (a ';', a ','
+  // or a closing ')', ']' or '}' of something opened earlier); what parentheses and
+  // brackets opened on the way hold is skipped
+  bool PeekBlockAhead(int index);
+
   // gets the file name
   std::wstring GetFileName() {
     return filename;
@@ -843,6 +869,13 @@ class Scanner {
   // Before the first token is read: start at a 1-based (line, column) of the text
   // instead of its beginning, so every token keeps the place it has in the source.
   void StartAt(int line, int pos);
+
+  // Before the first token is read: the text is a piece cut out of a source (the expression
+  // of a string interpolation), and its first character stands at this 1-based (line, column)
+  // there. Tokens are then placed where they are in that source rather than on line 1 of the
+  // piece. Columns on later lines of the piece are the piece's own, which are the source's
+  // when the piece was cut after a line break.
+  void PlaceAt(int line, int pos);
 
   // whether the source file was read, and how many characters it holds
   bool HasSource() const { return buffer != nullptr; }
