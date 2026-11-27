@@ -3151,6 +3151,12 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
     # program reports that it has allocated its fill: a program that never reports is
     # the failure (it is then released, so it can end). With OBJECK_GC_VERIFY the heap
     # is checked at every collection, the reader's re-rooted array included.
+    #
+    # "bytes", "byte" and "line" are the reader's other reads, which waited the same way:
+    # ReadBuffer(Byte[]) in fread, ReadByte in fgetc, ReadLine in its fgetc loop. As
+    # "read": one byte first, the rest (with a newline, which ends the line read) once
+    # the program has allocated its fill. The write end is closed as soon as the rest is
+    # written, so the byte ReadLine looks at after its line is the end of the file.
     if os.name == "nt" or not hasattr(os, "mkfifo"):
         return
     import tempfile
@@ -3160,16 +3166,20 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
         return
     verify_env = dict(env)
     verify_env["OBJECK_GC_VERIFY"] = "1"
-    for mode, label, jit, run_env in (("read", "--jit=off", "--jit=off", env), ("read", "--jit=1", "--jit=1", env),
-                                      ("read", "--jit=1, OBJECK_GC_VERIFY", "--jit=1", verify_env),
-                                      ("open", "--jit=off", "--jit=off", env), ("open", "--jit=1", "--jit=1", env)):
+    runs = [("read", "--jit=off", "--jit=off", env), ("read", "--jit=1", "--jit=1", env),
+            ("read", "--jit=1, OBJECK_GC_VERIFY", "--jit=1", verify_env),
+            ("open", "--jit=off", "--jit=off", env), ("open", "--jit=1", "--jit=1", env)]
+    for other in ("bytes", "byte", "line"):
+        runs += [(other, "--jit=off", "--jit=off", env), (other, "--jit=1", "--jit=1", env),
+                 (other, "--jit=1, OBJECK_GC_VERIFY", "--jit=1", verify_env)]
+    for mode, label, jit, run_env in runs:
         with tempfile.TemporaryDirectory() as scratch:
             fifo = os.path.join(scratch, "fifo")
             collected = os.path.join(scratch, "collected")
             os.mkfifo(fifo)
             # read-write, so this open does not wait for the program's reader (Linux and macOS allow it)
             write_end = os.open(fifo, os.O_RDWR)
-            if mode == "read":
+            if mode != "open":
                 os.write(write_end, b"h")
             proc = subprocess.Popen([obr, jit, "--nursery=256k", dest, fifo, collected, mode], env=run_env, cwd=SCRIPT_DIR,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -3177,13 +3187,16 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
             while not os.path.exists(collected) and proc.poll() is None and time.time() < deadline:
                 time.sleep(0.01)
             ran_on = os.path.exists(collected)
-            os.write(write_end, b"ello" if mode == "read" else b"hello")
+            os.write(write_end, {"read": b"ello", "open": b"hello"}.get(mode, b"ello\n"))
+            if mode in ("bytes", "byte", "line"):
+                os.close(write_end)
             try:
                 out, err = proc.communicate(timeout=60)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 out, err = proc.communicate()
-            os.close(write_end)
+            if mode in ("read", "open"):
+                os.close(write_end)
             check(f"FIFO {mode} through the file API {label}: collections run while it waits", ran_on,
                   f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
             check(f"FIFO {mode} through the file API {label}: the read returns its text after them",

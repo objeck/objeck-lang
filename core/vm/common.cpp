@@ -8669,6 +8669,89 @@ static void SetFileError(size_t* instance, int error)
   }
 }
 
+//
+// Files whose reads can wait
+//
+// What the file API opens need not be a file on disk: a FIFO, a terminal or (on Windows) a named pipe
+// waits for its writer, with no bound. A read that waits as a running mutator holds up every collection
+// until the writer writes, and when the writer is a thread of this program that is waiting for that
+// collection, the two wait for ever. Such a read has to park (MemoryManager::BeginBlocking) and so
+// keep its hands off the VM heap while it waits; a read of a file on disk must not pay for that (the
+// Byte[] read goes straight into the array, and ReadByte is a few nanoseconds).
+//
+// So the handles that can wait are remembered when they are opened for reading (one fstat per open)
+// and forgotten when they are closed, and a read asks FileMayBlock: one atomic load while no such file
+// is open, which is nearly always.
+//
+static std::atomic<size_t> blocking_file_count{0};
+static std::mutex blocking_file_lock;
+static std::unordered_set<FILE*> blocking_files;
+
+static void NoteFileOpened(FILE* file)
+{
+  if(!file) {
+    return;
+  }
+#ifdef _WIN32
+  const intptr_t handle = _get_osfhandle(_fileno(file));
+  const bool may_block = handle != -1 && handle != -2 && GetFileType((HANDLE)handle) != FILE_TYPE_DISK;
+#else
+  struct stat info;
+  const bool may_block = fstat(fileno(file), &info) == 0 && (S_ISFIFO(info.st_mode) || S_ISCHR(info.st_mode) || S_ISSOCK(info.st_mode));
+#endif
+  if(may_block) {
+    std::lock_guard<std::mutex> guard(blocking_file_lock);
+    if(blocking_files.insert(file).second) {
+      blocking_file_count.fetch_add(1);
+    }
+  }
+}
+
+// before fclose: the address can be a new file's as soon as this one is closed
+static void NoteFileClosed(FILE* file)
+{
+  if(blocking_file_count.load() == 0) {
+    return;
+  }
+  std::lock_guard<std::mutex> guard(blocking_file_lock);
+  if(blocking_files.erase(file) > 0) {
+    blocking_file_count.fetch_sub(1);
+  }
+}
+
+static inline bool FileMayBlock(FILE* file)
+{
+  if(blocking_file_count.load(std::memory_order_relaxed) == 0) {
+    return false;
+  }
+  std::lock_guard<std::mutex> guard(blocking_file_lock);
+  return blocking_files.find(file) != blocking_files.end();
+}
+
+// Parks the thread for a read of a file that can wait, and only of one. While it is in scope the
+// thread must not touch the VM heap: a reference it still needs is on the op_stack and re-read after.
+class FileReadPark {
+  const bool parked;
+
+ public:
+  FileReadPark(FILE* file) : parked(FileMayBlock(file)) {
+    if(parked) {
+      MemoryManager::BeginBlocking();
+    }
+  }
+
+  ~FileReadPark() {
+    if(parked) {
+      MemoryManager::EndBlocking();
+    }
+  }
+
+  FileReadPark(const FileReadPark&) = delete;
+  FileReadPark& operator=(const FileReadPark&) = delete;
+
+  bool IsParked() const { return parked; }
+};
+
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -8694,6 +8777,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
       }
     }
     MemoryManager::EndBlocking();
+    NoteFileOpened(file);
     instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!file) {
       SetFileError(instance, open_error);
@@ -8761,6 +8845,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
     if(!file) {
       SetFileError(instance, errno);
     }
+    NoteFileOpened(file);
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
@@ -8781,6 +8866,7 @@ bool TrapProcessor::FileClose(StackProgram* program, size_t* inst, size_t* &op_s
     std::wcout << L"# file close: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = 0;
+    NoteFileClosed(file);
     // fclose writes out what is buffered: a failure here is the usual way a lost
     // write is discovered. ferror catches a failed earlier write whose own result
     // was a short count that the program ignored.
@@ -8822,12 +8908,32 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
 
 bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && instance[0]) {
     FILE* file = (FILE*)instance[0];
     char buffer[MID_BUFFER_MAX] = {0};
-    if(file && fgets(buffer, MID_BUFFER_MAX - 1, file)) {
+    // The line, and the byte looked at after it, with the thread parked when the file can wait (see
+    // FileMayBlock); the array is re-rooted on the op_stack for that and re-read after. The look ahead
+    // is made here, before the line is stored, so that one park covers both waits.
+    //
+    // Look ahead one byte, so end of file is known as soon as the last line
+    // has been read. Without it IsEoF() stayed false after the final newline,
+    // and the documented `while(line <> Nil)` loop got one extra "" (#1180).
+    bool has_line;
+    PushInt((size_t)array, op_stack, stack_pos);
+    {
+      FileReadPark park(file);
+      has_line = fgets(buffer, MID_BUFFER_MAX - 1, file) != nullptr;
+      if(has_line) {
+        const int next = fgetc(file);
+        if(next != EOF) {
+          ungetc(next, file);
+        }
+      }
+    }
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    if(has_line) {
       long end_index = (long)strlen(buffer) - 1;
       if(end_index > -1) {
         if(buffer[end_index] == '\n' || buffer[end_index] == '\r') {
@@ -8853,14 +8959,6 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       wchar_t* out = (wchar_t*)(array + 3);
       const size_t max = in.size() < array[0] ? in.size() : (array[0] > 0 ? array[0] - 1 : 0);
       StoreCharArrayText(out, in.c_str(), max);
-
-      // Look ahead one byte, so end of file is known as soon as the last line
-      // has been read. Without it IsEoF() stayed false after the final newline,
-      // and the documented `while(line <> Nil)` loop got one extra "" (#1180).
-      const int next = fgetc(file);
-      if(next != EOF) {
-        ungetc(next, file);
-      }
     }
   }
 
@@ -9042,15 +9140,28 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
     return true;
   }
 
+  // The line, and the byte looked at after it, with the thread parked when the file can wait (see
+  // FileMayBlock): only C++ locals are touched meanwhile. The look ahead is made here, before the line
+  // is decoded, so that one park covers both waits: it tells IsEoF() the file has ended as soon as
+  // the last line is read.
   std::string line;
   bool read_any = false;
-  int c;
-  while((c = fgetc(file)) != EOF) {
-    read_any = true;
-    if(c == '\n') {
-      break;
+  {
+    FileReadPark park(file);
+    int c;
+    while((c = fgetc(file)) != EOF) {
+      read_any = true;
+      if(c == '\n') {
+        break;
+      }
+      line.push_back((char)c);
     }
-    line.push_back((char)c);
+    if(read_any) {
+      const int next = fgetc(file);
+      if(next != EOF) {
+        ungetc(next, file);
+      }
+    }
   }
 
   if(!read_any) {
@@ -9067,12 +9178,6 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
   std::wstring in = BytesToUnicode(line);
   if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE)) {
     in.erase(in.begin(), in.begin() + 1);
-  }
-
-  // look ahead one byte, so IsEoF() is true as soon as the last line is read
-  const int next = fgetc(file);
-  if(next != EOF) {
-    ungetc(next, file);
   }
 
   PushInt((size_t)NewCharArray(in, op_stack, stack_pos), op_stack, stack_pos);
@@ -12389,7 +12494,12 @@ bool TrapProcessor::FileInByte(StackProgram* program, size_t* inst, size_t* &op_
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if((FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
-    const int value = fgetc(file);
+    int value;
+    {
+      // parked when the file can wait (a FIFO, a terminal): see FileMayBlock
+      FileReadPark park(file);
+      value = fgetc(file);
+    }
     PushInt(value < 0 ? 0 : value, op_stack, stack_pos);
   }
   else {
@@ -12464,15 +12574,36 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     FILE* file = (FILE*)instance[0];
-    char* buffer = (char*)(array + 3);
-    const size_t read = fread(buffer + offset, 1, num, file);
+    size_t read;
+    if(FileMayBlock(file)) {
+      // A FIFO or a terminal waits for its writer, as the Char[] read does (FileInCharAry), and this
+      // read waited in fread as a running mutator: a reader waiting for the second byte of two and a
+      // writer whose allocation started a collection before it wrote that byte waited on each other
+      // for ever. Park for the read. The bytes land in a C buffer (the collector can move a parked
+      // thread's young array) and the array ref is re-rooted on the op_stack, then re-read.
+      char* temp = new char[num > 0 ? num : 1];
+      PushInt((size_t)array, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
+      read = fread(temp, 1, num, file);
+      MemoryManager::EndBlocking();
+      array = (size_t*)PopInt(op_stack, stack_pos);
+      if(read > 0) {
+        memcpy((char*)(array + 3) + offset, temp, read);
+      }
+      delete[] temp;
+    }
+    else {
+      // a file on disk: straight into the array, as before
+      char* buffer = (char*)(array + 3);
+      read = fread(buffer + offset, 1, num, file);
+    }
     PushInt(read, op_stack, stack_pos);
   }
   else {
