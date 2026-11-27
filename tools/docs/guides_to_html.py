@@ -1029,7 +1029,9 @@ def readme_hero():
     # GitHub colors a fence only for a language it knows, and it does not know objeck. The block
     # is tagged ruby here, the nearest grammar GitHub has (the other README samples use it too),
     # so the sample is highlighted on the repository page. The site pages keep objeck.
-    sample = example_md("tool").replace("```objeck\n", "```ruby\n", 1)
+    # The command and its output are a shell session, so that block is tagged console: GitHub then
+    # colors the prompt and the command and leaves the output plain.
+    sample = example_md("tool").replace("```objeck\n", "```ruby\n", 1).replace("```text\n", "```console\n", 1)
     return fill(text, "agent-hero", "\n" + sample + "\n")
 
 

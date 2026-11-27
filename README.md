@@ -60,7 +60,7 @@ class Tools {
 }
 ```
 
-```text
+```console
 $ obc -src tool.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
 $ obr tool.obe
 greet: Greet a person.
