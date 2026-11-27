@@ -12051,18 +12051,73 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     ok = false;
   };
 
+  // The start of a declaration, 'class Name' and the like: no setting, limit or value of an agent holds one.
+  // Where one is met the agent was not closed, and what follows is not the agent's: the reading of the agent
+  // stops in front of it, so that the declaration is parsed, and diagnosed, as itself. The word alone is not
+  // taken for one: used as a name in a value ('New(record)') it is that value's mistake, reported there.
+  auto at_declaration = [&]() -> bool {
+    switch(GetToken()) {
+    case TOKEN_CLASS_ID:
+    case TOKEN_RECORD_ID:
+    case TOKEN_INTERFACE_ID:
+    case TOKEN_ENUM_ID:
+    case TOKEN_CONSTS_ID:
+    case TOKEN_ALIAS_ID:
+    case TOKEN_BUNDLE_ID:
+      return Match(TOKEN_IDENT, SECOND_INDEX);
+
+    default:
+      return false;
+    }
+  };
+
   // After an error where a setting starts: on to the next setting, past the ';' that ends this one, or to the
-  // '}' that closes the agent. What is inside parentheses, brackets or braces is skipped whole. A ')' or ']'
-  // that closes nothing is one more token to skip: counted, it took the depth below zero, the agent's own '}'
-  // was then read as nested, and the rest of the file was skipped as part of the agent with its errors unsaid.
+  // '}' that closes the agent, which is left for the caller. What is inside parentheses, brackets or braces
+  // is skipped whole, a ';' included.
+  //
+  // Each closer is matched to its own kind of opener. The three kinds were counted as one depth, so in
+  // 'agent Broken { ( }' the agent's '}' closed the '(': it was skipped, and the classes after the agent were
+  // read as part of it, with their errors unsaid. A '}' closes the innermost open '{', and with it the
+  // parentheses and brackets left open inside; with no '{' open it is the agent's own, whatever parenthesis
+  // is still open. A ')' or ']' closes its own opener, and one that closes nothing is one more token to skip.
   auto next_setting = [&]() {
-    int nesting = 0;
-    while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
-      if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
-        ++nesting;
+    std::vector<ScannerTokenType> owed;   // the closer of each opener still open, innermost last
+    while(!Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
+      const ScannerTokenType type = GetToken();
+      const bool in_braces = std::find(owed.begin(), owed.end(), TOKEN_CLOSED_BRACE) != owed.end();
+      if((type == TOKEN_SEMI_COLON && owed.empty()) || (type == TOKEN_CLOSED_BRACE && !in_braces)) {
+        break;
       }
-      else if(nesting > 0 && (Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE))) {
-        --nesting;
+
+      switch(type) {
+      case TOKEN_OPEN_PAREN:
+        owed.push_back(TOKEN_CLOSED_PAREN);
+        break;
+
+      case TOKEN_OPEN_BRACKET:
+        owed.push_back(TOKEN_CLOSED_BRACKET);
+        break;
+
+      case TOKEN_OPEN_BRACE:
+        owed.push_back(TOKEN_CLOSED_BRACE);
+        break;
+
+      case TOKEN_CLOSED_BRACE:
+        while(owed.back() != TOKEN_CLOSED_BRACE) {
+          owed.pop_back();
+        }
+        owed.pop_back();
+        break;
+
+      case TOKEN_CLOSED_PAREN:
+      case TOKEN_CLOSED_BRACKET:
+        if(!owed.empty() && owed.back() == type) {
+          owed.pop_back();
+        }
+        break;
+
+      default:
+        break;
       }
       NextToken();
     }
@@ -12097,7 +12152,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     const bool starts_with_string = Match(TOKEN_CHAR_STRING_LIT) || Match(TOKEN_BAD_CHAR_STRING_LIT);
     first_line = starts_with_string ? from_line : GetLineNumber();
     first_pos = starts_with_string ? from_pos : GetLinePosition();
-    while(!Match(TOKEN_END_OF_STREAM)) {
+    while(!Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
       const ScannerTokenType type = GetToken();
       if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && angles == 0 && type == TOKEN_COMMA))) {
         break;
@@ -12190,7 +12245,8 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
 
     AgentSplice splice;
     splice.file_name = file_name;
-    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + (Match(TOKEN_END_OF_STREAM) ? 0 : 1));
+    // with the ';', ',' or '}' that ended the piece; not with the first letter of a declaration it ran into
+    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + (Match(TOKEN_END_OF_STREAM) || at_declaration() ? 0 : 1));
     splice.line = from_line;
     splice.pos = from_pos;
     splice.what = what;
@@ -12222,7 +12278,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     NextToken();
     int nesting = 1;
     bool at_start = true;
-    while(nesting > 0 && !Match(TOKEN_END_OF_STREAM)) {
+    while(nesting > 0 && !Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
       const ScannerTokenType type = GetToken();
       if(type == TOKEN_OPEN_PAREN) {
         ++nesting;
@@ -12274,7 +12330,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
   // the settings
   const std::wstring settings = L"backend, instructions, tools, mcp, allow, deny, budget and trace";
   std::vector<std::wstring> seen;
-  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
     const int key_line = GetLineNumber();
     const int key_pos = GetLinePosition();
     if(!Match(TOKEN_IDENT)) {
@@ -12306,7 +12362,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
       NextToken();
       std::vector<std::wstring> limits_seen;
       size_t limits = 0;
-      while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+      while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM) && !at_declaration()) {
         const int limit_line = GetLineNumber();
         const int limit_pos = GetLinePosition();
         std::wstring limit = Match(TOKEN_IDENT) ? scanner->GetToken()->GetIdentifier() : L"";
