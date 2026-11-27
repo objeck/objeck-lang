@@ -116,7 +116,7 @@ The file is still named `objeck-ubuntu24.04-<arch>_<version>.deb`. `obu`, the in
 
 ## ARM64
 
-The arm64 leg is the same script on the `ubuntu-24.04-arm` runner; `almalinux:8.10` is a multi-architecture image, and the image, the static libraries and the tree are built natively. The CPU baseline is unchanged (`-march=armv8-a -moutline-atomics`, issue #893). The wrapper uses `-mbranch-protection=standard` where x64 uses `-fcf-protection`, as Ubuntu does.
+The arm64 leg is the same script on the `ubuntu-24.04-arm` runner; `almalinux:8.10` is a multi-architecture image, and the image, the static libraries and the tree are built natively. The arm64 tarball is run on the same images except Arch, which publishes no arm64 image (`x64_only_images` in the manifest). The CPU baseline is unchanged (`-march=armv8-a -moutline-atomics`, issue #893). The wrapper uses `-mbranch-protection=standard` where x64 uses `-fcf-protection`, as Ubuntu does.
 
 ## Cost
 

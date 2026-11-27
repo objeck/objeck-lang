@@ -51,7 +51,8 @@
         "tested_images is what tools/packaging/test_portable_linux.sh runs the tarball on;",
         "its --natives mode leaves out natives_untested, where the optional bindings are not",
         "promised: AlmaLinux 8's own repositories have no SDL2_image, SDL2_mixer or SDL2_ttf,",
-        "and its SDL2 2.0.10 is older than libobjk_sdl needs."
+        "and its SDL2 2.0.10 is older than libobjk_sdl needs. x64_only_images have no arm64",
+        "image to run: Arch Linux is an x86-64 distribution (Arch Linux ARM is a separate project)."
       ],
       "max_symbol_versions": { "GLIBC": "2.28", "GLIBCXX": "3.4.25", "CXXABI": "1.3.11", "GCC": "7.0.0", "ZLIB": "1.2.11" },
       "core_sonames": ["libz.so.1"],
@@ -60,6 +61,7 @@
       "readline_dlopen": ["libreadline.so.8", "libreadline.so.7", "libreadline.so.6"],
       "tested_images": ["ubuntu:22.04", "ubuntu:24.04", "ubuntu:26.04", "debian:12", "debian:13", "fedora:latest", "archlinux:latest", "almalinux:8"],
       "natives_untested": ["almalinux:8"],
+      "x64_only_images": ["archlinux:latest"],
       "sonames": {
         "x64": [
           "libodbc.so.2", "libmp3lame.so.0",

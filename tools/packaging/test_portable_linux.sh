@@ -25,7 +25,8 @@
 # network on: the tarball's install_deps.sh must find a package for every system
 # library the optional bindings use, after which every native library must
 # resolve to the last symbol and the OpenCV, LAME and ONNX bindings must run.
-# Its default images leave out linux.release.natives_untested.
+# Its default images leave out linux.release.natives_untested, and on arm64
+# both modes leave out x64_only_images.
 #
 # DOCKER="sudo docker" where docker needs root. Exit 0 only if every image passed.
 
@@ -45,9 +46,11 @@ else
   mapfile -t IMAGES < <(python3 -c '
 import json, sys
 release = json.load(open(sys.argv[1]))["linux"]["release"]
-skip = release["natives_untested"] if sys.argv[2] == "natives" else []
+skip = list(release["natives_untested"]) if sys.argv[2] == "natives" else []
+if sys.argv[3] != "x86_64":
+    skip += release["x64_only_images"]
 print("\n".join(i for i in release["tested_images"] if i not in skip))' \
-    "$REPO/core/release/runtime_deps.json" "$MODE")
+    "$REPO/core/release/runtime_deps.json" "$MODE" "$(uname -m)")
 fi
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 "${DOCKER[@]}" version >/dev/null 2>&1 || die "docker is not usable as '${DOCKER[*]}' (set DOCKER=\"sudo docker\"?)"
