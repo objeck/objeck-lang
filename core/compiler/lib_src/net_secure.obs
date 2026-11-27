@@ -1734,12 +1734,18 @@ if(client->Connect()) {
 					# The reply headers, read only for a 101: anything else is refused on
 					# its status line. Header names are matched without regard to case
 					# (RFC 9110 5.1) and a line with no name is skipped. The count is
-					# capped so a peer cannot hold the client here forever.
+					# capped so a peer cannot hold the client here forever. The block ends at
+					# a blank line and only there: a reply that stops before it (the peer
+					# closed, or a read failed) is not a handshake, whatever it held so far.
 					header_max := 256;
 					header_count := 0;
+					header_end := false;
 					if(@status_code = 101) {
 						do {
-							line := socket->ReadLine();
+							line := ReadReplyLine(socket);
+							if(line <> Nil & line->Size() = 0) {
+								header_end := true;
+							};
 							if(line <> Nil & line->Size() > 0) {
 								header_count += 1;
 								index := line->Find(':');
@@ -1758,14 +1764,17 @@ if(client->Connect()) {
 								};
 							};
 						}
-						while(line <> Nil & line->Size() > 0 & header_count < header_max);
+						while(line <> Nil & header_end = false & header_count < header_max);
 					};
 
 					# RFC 6455 section 4.1: the client fails the connection unless the reply
 					# is a 101 that upgrades to websocket and its Sec-WebSocket-Accept is the
 					# value derived from the key sent above. Why it was refused is left in
 					# GetStatusMessage().
-					if(header_count < header_max) {
+					if(@status_code = 101 & header_end = false & header_count < header_max) {
+						@status_msg := "WebSocket handshake refused: the reply ended before the blank line that ends its headers";
+					}
+					else if(header_count < header_max) {
 						@status_msg := Web.HTTP.WebSocketHandshake->Check(status_line, @response_headers, @request_headers, key);
 					}
 					else {
@@ -1932,6 +1941,48 @@ if(client->Connect()) {
 			};
 
 			return Nil;
+		}
+
+		# One line of the handshake reply without its line ending, or Nil if the peer
+		# stopped before the line ended: the stream closed, a read failed or timed
+		# out, or a NUL arrived. The socket's ReadLine() cannot be used for this: it
+		# answers "" for a closed connection exactly as for a blank line, so a reply
+		# cut off after its last header read as a complete one. A line longer than
+		# the buffer comes back in pieces, as ReadLine() gives it.
+		method : ReadReplyLine(socket : TCPSecureSocket) ~ String {
+			one := Byte->New[1];
+			text := Byte->New[8192];
+			size := 0;
+			while(size < 8191) {
+				if(socket->ReadBuffer(0, 1, one) <> 1) {
+					return Nil;
+				};
+
+				value := one[0]->As(Int);
+				if(value = 0) {
+					return Nil;
+				};
+
+				# CR is taken with the byte after it (LF), which must arrive too
+				if(value = 13) {
+					if(socket->ReadBuffer(0, 1, one) <> 1) {
+						return Nil;
+					};
+					value := 10;
+				};
+
+				if(value = 10) {
+					if(size = 0) {
+						return "";
+					};
+					return String->New(text, 0, size);
+				};
+
+				text[size] := one[0];
+				size += 1;
+			};
+
+			return String->New(text, 0, size);
 		}
 
 		method : ReadFrame() ~ Byte[] {

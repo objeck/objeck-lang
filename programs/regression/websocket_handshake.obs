@@ -12,6 +12,12 @@ in any single respect is refused and says why in GetStatusMessage().
 The frame cases cover what the same audit found in the read and write paths:
 a masked or oversized frame from the server, the close frame's status code,
 Nil data handed to WriteSocket, and a fragmented message arriving whole.
+
+A reply that is cut off is not a handshake: the /cut-* cases send a 101 with
+every header a correct reply has and close before the blank line that ends the
+header block (after the last header's line, in the middle of it, and between
+the CR and the LF of the blank line). The client used to read the closed
+connection as that blank line and report a connection.
 ~#
 use Collection, System.IO.Net, Web.HTTP, Cipher;
 
@@ -272,6 +278,16 @@ class ScriptedServer {
 			}
 			else if(path->Equals("/truncated")) {
 				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n");
+			}
+			# every header of a correct reply, and then the connection closes: no blank line
+			else if(path->Equals("/cut-before-blank")) {
+				client->WriteString(ok);
+			}
+			else if(path->Equals("/cut-mid-line")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}");
+			}
+			else if(path->Equals("/cut-after-cr")) {
+				client->WriteString("{$ok}\r");
 			}
 			else if(path->Equals("/flood")) {
 				flood := "HTTP/1.1 101 Switching Protocols\r\n";
@@ -592,7 +608,10 @@ class WebSocketHandshakeTest {
 		Refused("/not-http", "expected HTTP status 101");
 		Refused("/extension", "an extension that was not offered");
 		Refused("/protocol", "a subprotocol that was not requested");
-		Refused("/truncated", "no Connection header");
+		Refused("/truncated", "ended before the blank line");
+		Refused("/cut-before-blank", "ended before the blank line");
+		Refused("/cut-mid-line", "ended before the blank line");
+		Refused("/cut-after-cr", "ended before the blank line");
 		Refused("/flood", "too many headers");
 
 		Frames();
