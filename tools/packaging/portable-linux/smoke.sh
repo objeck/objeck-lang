@@ -56,16 +56,28 @@ tool_runs() {
 tool_runs | while read -r tool arg want_rc pattern; do
   if [ "$arg" = "-" ]; then out=$(timeout 30 "$tool" 2>&1 </dev/null); else out=$(timeout 30 "$tool" "$arg" 2>&1 </dev/null); fi
   rc=$?
+  # kept for the version check below: asking a tool that may hang a second time,
+  # without the timeout, is how a hung obc once stopped this script before its verdict
+  echo "$out" > "/tmp/smoke/run_$tool.out"
   if [ "$rc" -eq "$want_rc" ] && echo "$out" | grep -qE "$pattern"; then
     echo "  ok: $tool ${arg#-} exits $rc and prints: $(echo "$out" | head -n 1 | cut -c 1-60)"
   else
     echo "  FAIL: $tool ${arg#-} exited $rc (wanted $want_rc) and printed: $(echo "$out" | head -n 2 | tr '\n' ' ' | cut -c 1-120)"
-    echo X >> /tmp/smoke/tool_failed
+    echo "$tool" >> /tmp/smoke/tool_failed
   fi
 done
-if [ -e /tmp/smoke/tool_failed ]; then bad "a tool did not start and answer as it should"; fi
-# the release the tools report
-ver=$(obc --version 2>&1 | grep -oE '[0-9]{4}\.[0-9]+\.[0-9]+' | head -n 1)
+if [ -e /tmp/smoke/tool_failed ]; then
+  bad "a tool did not start and answer as it should: $(tr '\n' ' ' < /tmp/smoke/tool_failed)"
+  # Nothing below can run without a compiler and a VM that answer, and a hung one would
+  # hold every later step to its own timeout (or, with none, forever): the verdict is here.
+  if grep -qxE 'obc|obr' /tmp/smoke/tool_failed; then
+    echo
+    echo "$fails check(s) failed on ${PRETTY_NAME:-this system}; the toolchain does not start, so the other steps were not run"
+    exit 1
+  fi
+fi
+# the release the tools report, from the bounded run above
+ver=$(grep -oE '[0-9]{4}\.[0-9]+\.[0-9]+' /tmp/smoke/run_obc.out 2>/dev/null | head -n 1)
 [ -n "$ver" ] && ok "this is release $ver" || bad "obc reported no version"
 
 step "2. compile and run"
