@@ -1,0 +1,144 @@
+# EXTRA_LIBS: json
+#~
+JSON serializing and scanning give the same text whichever path produces it.
+
+The serializer appends a string with nothing to escape in one piece and sends anything else through
+JsonElement->Encode; it walks an object's members once; it writes true, false and null and the '":' after a
+key a character at a time. The scanner shares one token for each kind that has no value, tests digits and
+letters inline, and an element parsed from true, false or null gets its text only when asked for it. None
+of that may change a byte of output or an answer from a getter, so this holds the outputs: strings on both
+sides of every escape rule and of the 32-character boundary String->Append has, keys that need escaping,
+key order, nesting, pretty printing, the literals read every way, numbers of every form, and a document
+longer than one scanner batch of 32 tokens.
+~#
+use Data.JSON, Collection;
+
+class JsonSerializePaths {
+	@failures : static : Int;
+
+	function : Check(name : String, got : String, want : String) ~ Nil {
+		if(got = Nil | <>got->Equals(want)) {
+			@failures += 1;
+			"  FAIL: {$name}"->PrintLine();
+			"    got:  {$got}"->PrintLine();
+			"    want: {$want}"->PrintLine();
+		};
+	}
+
+	function : CheckTrue(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$name}"->PrintLine();
+		};
+	}
+
+	function : Round(name : String, text : String, want : String) ~ Nil {
+		root := JsonParser->TextToElement(text);
+		if(root = Nil) {
+			@failures += 1;
+			"  FAIL: {$name}: did not parse"->PrintLine();
+			return;
+		};
+		Check(name, root->ToString(), want);
+		# and once more from the text just written
+		again := JsonParser->TextToElement(root->ToString());
+		if(again = Nil) {
+			@failures += 1;
+			"  FAIL: {$name}: its own output did not parse"->PrintLine();
+			return;
+		};
+		Check("{$name}, second trip", again->ToString(), want);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# plain strings, at and around the 32-character boundary
+		Round("empty string", "[\"\"]", "[\"\"]");
+		Round("one character", "[\"a\"]", "[\"a\"]");
+		Round("31 characters", "[\"abcdefghijklmnopqrstuvwxyz01234\"]", "[\"abcdefghijklmnopqrstuvwxyz01234\"]");
+		Round("32 characters", "[\"abcdefghijklmnopqrstuvwxyz012345\"]", "[\"abcdefghijklmnopqrstuvwxyz012345\"]");
+		Round("33 characters", "[\"abcdefghijklmnopqrstuvwxyz0123456\"]", "[\"abcdefghijklmnopqrstuvwxyz0123456\"]");
+		Round("a slash is not escaped", "[\"a/b\"]", "[\"a/b\"]");
+		Round("a space and punctuation", "[\"a b, c: d; {e} [f]\"]", "[\"a b, c: d; {e} [f]\"]");
+
+		# every escape
+		Round("quote", "[\"a\\\"b\"]", "[\"a\\\"b\"]");
+		Round("backslash", "[\"a\\\\b\"]", "[\"a\\\\b\"]");
+		Round("newline, return, tab", "[\"a\\nb\\rc\\td\"]", "[\"a\\nb\\rc\\td\"]");
+		Round("backspace, form feed", "[\"a\\bb\\fc\"]", "[\"a\\bb\\fc\"]");
+		Round("a control character", "[\"a\\u0001b\"]", "[\"a\\u0001b\"]");
+		Round("DEL is plain, U+0080 is not", "[\"\\u007f\\u0080\"]", "[\"\u007f\\u0080\"]");
+		Round("Latin and the euro sign", "[\"caf\\u00e9 \\u20ac\"]", "[\"caf\\u00e9 \\u20ac\"]");
+		Round("a surrogate pair", "[\"\\ud83d\\ude00\"]", "[\"\\ud83d\\ude00\"]");
+		Round("an escape at the very end of a long string", "[\"abcdefghijklmnopqrstuvwxyz0123456789\\n\"]", "[\"abcdefghijklmnopqrstuvwxyz0123456789\\n\"]");
+		Round("an escape at the very start", "[\"\\tabcdefghijklmnopqrstuvwxyz0123456789\"]", "[\"\\tabcdefghijklmnopqrstuvwxyz0123456789\"]");
+
+		# objects: keys in key order, keys escaped, nesting
+		Round("keys come out in order", "{\"b\":1,\"a\":2,\"c\":3,\"B\":4,\"aa\":5,\"\":6}", "{\"\":6,\"B\":4,\"a\":2,\"aa\":5,\"b\":1,\"c\":3}");
+		Round("keys are escaped", "{\"k\\\"q\":1,\"k\\n\":2,\"plain\":3}", "{\"k\\n\":2,\"k\\\"q\":1,\"plain\":3}");
+		Round("a repeated key keeps the last", "{\"dup\":1,\"dup\":2}", "{\"dup\":2}");
+		Round("nesting", "{\"a\":{\"b\":[1,{\"c\":[]},{}]},\"d\":[[],[[]]]}", "{\"a\":{\"b\":[1,{\"c\":[]},{}]},\"d\":[[],[[]]]}");
+		Round("empty containers", "[{},[],{\"a\":{}},{\"b\":[]}]", "[{},[],{\"a\":{}},{\"b\":[]}]");
+
+		# literals and numbers
+		Round("literals", "[true,false,null,true,true,false,null,null]", "[true,false,null,true,true,false,null,null]");
+		Round("literals as members", "{\"t\":true,\"f\":false,\"n\":null}", "{\"f\":false,\"n\":null,\"t\":true}");
+		Round("numbers", "[0,-0,1,-1,10,1.5,-1.5,1e3,1E3,1e+3,1e-3,1.25e-10,123456789012345678,0.000001]",
+			"[0,-0,1,-1,10,1.5,-1.5,1e3,1E3,1e+3,1e-3,1.25e-10,123456789012345678,0.000001]");
+		Round("whitespace between tokens", " [ 1 , \"a\" ,\n\ttrue , { \"k\" : null } ] ", "[1,\"a\",true,{\"k\":null}]");
+
+		# more tokens than one scanner batch holds (32), ending on each kind of token
+		Round("40 numbers", "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]",
+			"[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]");
+		Round("20 literals", "[true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false]",
+			"[true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false]");
+		Round("exactly 32 tokens", "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]", "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]");
+		Round("exactly 31 tokens", "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,\"x\"]", "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,\"x\"]");
+		Round("exactly 33 tokens", "[[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]]", "[[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]]");
+
+		# pretty printing takes the same paths
+		pretty := JsonParser->TextToElement("{\"b\":[true,null],\"a\":\"x\\ny\"}");
+		Check("pretty", pretty->ToFormattedString(), "{\n\t\"a\": \"x\\ny\",\n\t\"b\": [\n\t\ttrue,\n\t\tfalse\n\t]\n}"->ReplaceAll("false", "null"));
+
+		# a literal element read every way, parsed and built
+		list := JsonParser->TextToElement("[true,false,null]");
+		t := list->Get(0);
+		f := list->Get(1);
+		n := list->Get(2);
+		Check("true as a string", t->GetString(), "true");
+		Check("true as a value", t->GetValue(), "true");
+		Check("false as a string", f->GetString(), "false");
+		Check("null as a string", n->GetString(), "");
+		CheckTrue("true as a Bool", t->GetBool());
+		CheckTrue("false as a Bool", <>f->GetBool());
+		CheckTrue("null as a Bool", <>n->GetBool());
+		CheckTrue("true as an Int is 0", t->GetInt() = 0);
+		CheckTrue("null as an Int is 0", n->GetInt() = 0);
+		CheckTrue("true as a Float is 0", t->GetFloat() = 0.0);
+		CheckTrue("the same string each time", t->GetString() = t->GetString());
+		CheckTrue("types", t->GetType() = JsonElement->JsonType->TRUE & f->GetType() = JsonElement->JsonType->FALSE & n->GetType() = JsonElement->JsonType->NULL);
+		CheckTrue("IsNull", n->IsNull() & <>t->IsNull());
+
+		built := JsonElement->New(JsonElement->JsonType->OBJECT);
+		built->Insert("yes", true);
+		built->Insert("no", false);
+		built->Insert("none", JsonElement->New(JsonElement->JsonType->NULL));
+		built->Insert("text", "say \"hi\"\n");
+		built->Insert("count", 3);
+		Check("built", built->ToString(), "{\"count\":3,\"no\":false,\"none\":null,\"text\":\"say \\\"hi\\\"\\n\",\"yes\":true}");
+		Check("built true as a string", built->Get("yes")->GetString(), "true");
+		CheckTrue("built true as a Bool", built->Get("yes")->GetBool());
+		Check("an object has no text", built->GetString(), "");
+
+		# Encode itself is unchanged
+		Check("Encode, nothing to escape", JsonElement->Encode("plain text"), "plain text");
+		Check("Encode, escapes", JsonElement->Encode("a\"b\\c\n"), "a\\\"b\\\\c\\n");
+
+		if(@failures = 0) {
+			"PASS: JSON serialize and scan paths"->PrintLine();
+		}
+		else {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
