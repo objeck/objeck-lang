@@ -1,0 +1,49 @@
+#~
+The escape \$ in a string is a dollar sign. The scanner accepted it and the escape was not
+read, so the backslash stayed in the text; it is the way to write an opening brace followed by
+a dollar sign as text, which unescaped starts an interpolation. Every check compares character
+codes, so no check depends on an escape to say what it expects.
+~#
+class StringDollarEscape {
+  @failures : static : Int;
+
+  function : Codes(text : String) ~ String {
+    out := "";
+    each(c in text) {
+      out += c->As(Int)->ToString() + " ";
+    };
+    return out;
+  }
+
+  function : Same(name : String, got : String, expected : String) ~ Nil {
+    if(Codes(got)->Equals(expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}: got {$Codes(got)}, expected {$expected}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    x := 7;
+
+    # 36 is the dollar sign, 92 the backslash, 123 and 125 the braces
+    Same("an escaped dollar is a dollar", "\$", "36 ");
+    Same("in the middle of text", "a\$5b", "97 36 53 98 ");
+    Same("two in a row", "\$\$", "36 36 ");
+    Same("after a brace it is text, not an interpolation", "{\$x}", "123 36 120 125 ");
+    Same("beside a real interpolation", "{\$x}={$x}", "123 36 120 125 61 55 ");
+    Same("an escaped backslash, then a dollar", "\\$", "92 36 ");
+    Same("an escaped backslash, then an escaped dollar", "\\\$", "92 36 ");
+    Same("a plain dollar is unchanged", "a$b", "97 36 98 ");
+    Same("in a concatenation", "a\$" + "\$b", "97 36 36 98 ");
+    Same("the other escapes still read", "\t\n\"\\", "9 10 34 92 ");
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
