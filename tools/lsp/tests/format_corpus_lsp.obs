@@ -1,0 +1,16 @@
+use Collection;
+
+# format_corpus.py: formats the file named by the first argument with the language server's formatter, into the second
+class FormatCorpusLsp {
+	function : Main(args : String[]) ~ Nil {
+		src := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+		out := CodeFormatter->New(options)->Format(src);
+		if(out = Nil) {
+			Runtime->Exit(3);
+		};
+		System.IO.Filesystem.FileWriter->WriteFile(args[1], out);
+	}
+}

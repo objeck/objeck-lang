@@ -1815,6 +1815,15 @@ jobs:
       - name: Library lists agree with lib_src
         run: python3 tools/cicd/check_doc_lists.py
 
+      # System.Utility.CodeFormatter (misc.obs) is written from the language
+      # server's formatter (tools/lsp/server/format_code). It began as a copy,
+      # the two were changed apart, and the library's went on returning a
+      # different program from the one it was given for most inputs. A change to
+      # the formatter that is not carried into misc.obs fails here; the fix is
+      # the command the check prints.
+      - name: The library's formatter is the language server's
+        run: python3 tools/cicd/check_formatter_sync.py
+
       # Same family, found the same way -- by noticing something documented was
       # not in the reference. doc_parser.obs parses a doc comment's code fence
       # last and then requires the comment to end, so anything written after the

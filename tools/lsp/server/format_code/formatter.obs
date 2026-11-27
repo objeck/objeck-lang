@@ -15,6 +15,8 @@ class CodeFormatter {
 	@end_range : Int;
 
 	@trim_trailing : Bool;
+	@braces : String;
+	@hold_space : Bool;
 
 	New(options : Map<String, String>) {
 		# get options
@@ -50,8 +52,41 @@ class CodeFormatter {
 	}
 
 	method : AppendBuffer(str : String) ~ Nil {
+		if(InRange() & str->Size() > 0) {
+			if(@hold_space) {
+				@hold_space := false;
+			}
+			else if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+				@buffer->Pop();
+			};
+
+			KeepApart(str->Get(0));
+			@buffer += str;
+		};
+	}
+
+	method : AppendBuffer(char : Char) ~ Nil {
 		if(InRange()) {
-			if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+			if(@hold_space) {
+				@hold_space := false;
+			}
+			else if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+				@buffer->Pop();
+			};
+
+			KeepApart(char);
+			@buffer += char;
+		};
+	}
+
+	# Text that is written exactly as given: a literal or a comment, whose first
+	# and last characters are its own and are never joined to or parted from.
+	method : AppendVerbatim(str : String) ~ Nil {
+		if(InRange()) {
+			if(@hold_space) {
+				@hold_space := false;
+			}
+			else if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
 				@buffer->Pop();
 			};
 
@@ -59,20 +94,163 @@ class CodeFormatter {
 		};
 	}
 
-	method : AppendBuffer(char : Char) ~ Nil {
-		if(InRange()) {
-			if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
-				@buffer->Pop();
-			};
+	# Two tokens written with nothing between them must still read as two. The
+	# layout rules below remove the space before or after a token in many
+	# places, and each one that did so without looking joined something:
+	# "classB", "a<" then ">b" as "a<>b", ":" then "=" as ":=". Wherever the
+	# end of the text and the start of what is added would read as one token, a
+	# space goes between them, so no rule can change what a program means by
+	# closing a gap.
+	method : KeepApart(first : Char) ~ Nil {
+		size := @buffer->Size();
+		if(size = 0) {
+			return;
+		};
 
-			@buffer += char;
+		last := @buffer->Get(size - 1);
+		if(IsWordChar(last) & IsWordChar(first)) {
+			@buffer += ' ';
+			return;
+		};
+
+		joins := false;
+		select(last) {
+			label ':' { joins := first = '='; }
+			label '-' { joins := first = '>' | first = '=' | first = '-'; }
+			label '+' { joins := first = '=' | first = '+'; }
+			label '*' { joins := first = '='; }
+			label '/' { joins := first = '='; }
+			label '<' { joins := first = '>' | first = '=' | first = '<'; }
+			label '>' { joins := first = '=' | first = '>'; }
+			label '=' { joins := first = '>' | first = '='; }
+			label '!' { joins := first = '='; }
+			label '&' { joins := first = '&'; }
+			label '|' { joins := first = '|'; }
+			label '#' { joins := first = '~'; }
+			# "??"; a '?' followed by "->" is the Nil-safe call "?->", which is
+			# read as those two tokens and written back joined
+			label '?' { joins := first = '?'; }
+			# a digit after a '.' would make the '.' part of a number
+			label '.' { joins := first->IsDigit(); }
+		};
+
+		if(joins) {
+			@buffer += ' ';
 		};
 	}
 
+	method : IsWordChar(c : Char) ~ Bool {
+		return c->IsChar() | c->IsDigit() | c = '_' | c = '@' | c = '$' | c = '.' | c->As(Int) > 127;
+	}
+
+	# Removes the space the loop writes after each token, where a rule wants the
+	# next token against the one before it. Only that space: this popped whatever
+	# character came last, so where no space had been written (after '(' or '[',
+	# at the start of a line) it took the last character of the token before it,
+	# or a character of the line's indentation.
 	method : PopBuffer() ~ Nil {
 		if(InRange()) {
-			@buffer->Pop();
+			size := @buffer->Size();
+			if(size > 1) {
+				if(@buffer->Get(size - 1) = ' ') {
+					before := @buffer->Get(size - 2);
+					if(before <> ' ' & before <> '\t' & before <> '\n') {
+						@buffer->Pop();
+					};
+				};
+			};
 		};
+	}
+
+	# Starts a line at this depth, unless the text is already at the start of
+	# one: a comment ends its own line, and a second newline after it left a
+	# line of nothing but indentation behind.
+	method : StartLine(tab_space : Int) ~ Nil {
+		TrimIndent();
+		if(InRange() & @buffer->Size() > 0 & <>@buffer->EndsWith('\n')) {
+			AppendVerbatim("\n");
+		};
+		TabSpace(tab_space, @ident_space);
+	}
+
+	# Whether the '{' at 'at' opens a map or JSON literal: its first entry is a
+	# string key and a ':', or it is empty and stands where a value does.
+	method : IsLiteralBrace(tokens : Vector<Token>, at : Int) ~ Bool {
+		if(at + 2 < tokens->Size()) {
+			if(tokens->Get(at + 1)->GetType() = Token->Type->STRING_LIT & tokens->Get(at + 2)->GetType() = Token->Type->COLON) {
+				return true;
+			};
+		};
+
+		if(at + 1 < tokens->Size() & at > 0) {
+			if(tokens->Get(at + 1)->GetType() = Token->Type->CCBRACE) {
+				select(tokens->Get(at - 1)->GetType()) {
+					label Token->Type->ASGN
+					label Token->Type->COMMA
+					label Token->Type->OPREN
+					label Token->Type->OBRACE
+					label Token->Type->RETURN_ID {
+						return true;
+					}
+
+					# an entry's value, inside a literal
+					label Token->Type->COLON {
+						return @braces->EndsWith('L');
+					}
+				};
+			};
+		};
+
+		return false;
+	}
+
+	# Whether a token that starts a line in the source, inside a statement,
+	# starts one here. The ones that do not have rules of their own for where
+	# they go, as does anything after a brace or a comment.
+	method : KeepsLineBreak(token : Token, before : Token) ~ Bool {
+		select(token->GetType()) {
+			label Token->Type->OCBRACE
+			label Token->Type->CCBRACE
+			label Token->Type->SEMI
+			label Token->Type->ELSE_ID
+			label Token->Type->VTAB
+			label Token->Type->LINE_COMMENT
+			label Token->Type->TRAIL_COMMENT
+			label Token->Type->MULTI_COMMENT
+			label Token->Type->INLINE_COMMENT {
+				return false;
+			}
+		};
+
+		select(before->GetType()) {
+			label Token->Type->OCBRACE
+			label Token->Type->CCBRACE
+			label Token->Type->SEMI
+			label Token->Type->VTAB
+			label Token->Type->LINE_COMMENT
+			label Token->Type->TRAIL_COMMENT
+			label Token->Type->MULTI_COMMENT {
+				return false;
+			}
+		};
+
+		return true;
+	}
+
+	# whether nothing but indentation has been written on the current line
+	method : AtLineStart() ~ Bool {
+		for(k := @buffer->Size() - 1; k > -1; k -= 1;) {
+			c := @buffer->Get(k);
+			if(c = '\n') {
+				return true;
+			};
+
+			if(c <> ' ' & c <> '\t') {
+				return false;
+			};
+		};
+
+		return true;
 	}
 
 	# removes the indentation at the end of the buffer
@@ -98,7 +276,12 @@ class CodeFormatter {
 			in_label := false;
 			in_for := false;
 			in_consts := false;
-			in_new := false;
+			generic_depth := 0;
+			# how many '(', '[' and literal '{' are open, and for each open '{'
+			# whether it is a block ('B') or a map or JSON literal ('L')
+			open_depth := 0;
+			@braces := "";
+			@hold_space := false;
 
 			@prev_token := Token->New(-1, Token->Type->OTHER, "other");
 
@@ -128,6 +311,22 @@ class CodeFormatter {
 					@next_token := Token->New(-1, Token->Type->OTHER, "other");
 				};
 				
+				# A line break inside a statement is the author's and is kept: the
+				# arguments of a long call, the entries of a literal, the arms of a
+				# match. (Everything between two ';' used to be joined into one
+				# line.) The tokens that place themselves, and whatever follows a
+				# brace, are left to their own rules.
+				if(@prev_token->GetLine() > -1 & @token->GetLine() > @prev_token->GetLine()) {
+					if(KeepsLineBreak(@token, @prev_token) & <>AtLineStart()) {
+						if(open_depth = 0 & @prev_token->GetType() = Token->Type->COMMA) {
+							StartLine(tab_space);
+						}
+						else {
+							StartLine(tab_space + 1);
+						};
+					};
+				};
+
 				select(@token->GetType()) {
 					label Token->Type->CLASS_ID {
 						VerticalSpace(@prev_token, tab_space, @ident_space);
@@ -161,8 +360,7 @@ class CodeFormatter {
 					}
 
 					label Token->Type->ELSE_ID {
-						AppendBuffer('\n');
-						TabSpace(tab_space, @ident_space);
+						StartLine(tab_space);
 						AppendBuffer("else");
 					}					
 
@@ -249,19 +447,56 @@ class CodeFormatter {
 					label Token->Type->ASSESSOR {
 						PopBuffer();
 						AppendBuffer("->");
+						@skip_space := true;
 					}
 
+					# a comment on a line of its own keeps one, also after a '(' or '['
 					label Token->Type->LINE_COMMENT {
-						AppendBuffer('#');
-						AppendBuffer(@token->GetValue());
-						AppendBuffer('\n');
+						if(<>AtLineStart()) {
+							StartLine(tab_space);
+						};
+						comment := "#";
+						comment += @token->GetValue();
+						comment += '\n';
+						AppendVerbatim(comment);
 						@skip_space := insert_tabs := true;
 					}
 
+					# A comment after code on its line stays on that line. The rule for
+					# the token before it may already have ended the line (a ';', a
+					# '{'); that is taken back, and the line ends after the comment.
+					label Token->Type->TRAIL_COMMENT {
+						TrimIndent();
+						if(@buffer->EndsWith('\n') & <>@buffer->EndsWith("\n\n")) {
+							@buffer->Pop();
+						};
+						comment := " #";
+						comment += @token->GetValue();
+						comment += '\n';
+						AppendVerbatim(comment);
+						@skip_space := insert_tabs := true;
+					}
+
+					# A block comment on lines of its own keeps them: what follows it
+					# starts a new line. (It did not, and a file's header comment came
+					# back with the first 'use' on its last line.) One written inside a
+					# line of code stays inside it.
 					label Token->Type->MULTI_COMMENT {
-						AppendBuffer("#~");
-						AppendBuffer(@token->GetValue());
-						AppendBuffer("~#");
+						if(<>AtLineStart()) {
+							StartLine(tab_space);
+						};
+						comment := "#~";
+						comment += @token->GetValue();
+						comment += "~#\n";
+						AppendVerbatim(comment);
+						@skip_space := insert_tabs := true;
+					}
+
+					label Token->Type->INLINE_COMMENT {
+						comment := "#~";
+						comment += @token->GetValue();
+						comment += "~#";
+						AppendVerbatim(comment);
 					}
 
 					label Token->Type->SEMI {
@@ -270,27 +505,63 @@ class CodeFormatter {
 
 						if(@next_token->GetType() <> Token->Type->CCBRACE & @next_token->GetType() <> Token->Type->VTAB & <>in_for) {
 							AppendBuffer('\n');
-							
+
 							@skip_space := true;
 							if(<>in_for) {
 								insert_tabs := true;
 							};
 						};
 
-						in_new := false;
+						# "for(i := 0; i < n; i += 1;)": the parts are set apart, but
+						# nothing stands between the last ';' and the ')'
+						if(in_for) {
+							if(@next_token->GetType() = Token->Type->CPREN) {
+								@skip_space := true;
+							}
+							else {
+								@hold_space := true;
+							};
+						};
+
 					}
 
+					# A '<' that opens type arguments ("Vector<String>", "New()<Int>",
+					# "class Box<T : Stringify>") sits against the name before it and
+					# the type after it; a comparison is spaced like any operator. It
+					# was neither: every '<' lost the space after it and kept the one
+					# before, "a <b" and "Vector <String >".
 					label Token->Type->LESS {
-						AppendBuffer('<');
-						@skip_space := true;
+						if(IsTypeArguments(tokens, i)) {
+							PopBuffer();
+							AppendBuffer('<');
+							@skip_space := true;
+							generic_depth += 1;
+						}
+						else {
+							AppendBuffer('<');
+						};
 					}
 
 					label Token->Type->GTR {
-						if(in_new) {
+						if(generic_depth > 0) {
 							PopBuffer();
 						};
 
-						AppendBuffer('>');
+						# ">>" and ">>>" are written back unbroken: see the scanner
+						if(@buffer->EndsWith('>') & @prev_token->GetType() = Token->Type->GTR & @prev_token->GetValue()->Equals("joined")) {
+							AppendVerbatim(">");
+						}
+						else {
+							AppendBuffer('>');
+						};
+
+						if(generic_depth > 0) {
+							generic_depth -= 1;
+						};
+
+						if(@token->GetValue()->Equals("joined")) {
+							@skip_space := true;
+						};
 					}
 
 					label Token->Type->COMMA {
@@ -303,8 +574,10 @@ class CodeFormatter {
 						};
 					}
 
+					# "a <> b" is a comparison; "<>done" is 'not', against its operand
 					label Token->Type->NEQL {
 						AppendBuffer("<>");
+						@skip_space := <>EndsOperand(@prev_token);
 					}
 
 					label Token->Type->AND {
@@ -315,7 +588,13 @@ class CodeFormatter {
 						AppendBuffer('|');
 					}
 
+					# "a ? b : c" is spaced; the '?' of the Nil-safe call "a?->F()" sits
+					# against what it guards, and the "->" against it
 					label Token->Type->QUESTION {
+						if(@next_token->GetType() = Token->Type->ASSESSOR) {
+							PopBuffer();
+							@skip_space := true;
+						};
 						AppendBuffer('?');
 					}
 
@@ -333,16 +612,22 @@ class CodeFormatter {
 						AppendBuffer("{$value}");
 					}
 
+					# A literal is written in one piece. Written as a quote, the text and
+					# a quote, the text went through the rule that drops the space after
+					# a ';' or '}': a string that ended "; " or "} " lost its last space,
+					# and the program printed something else.
 					label Token->Type->STRING_LIT {
-						AppendBuffer('"');
-						AppendBuffer(@token->GetValue());
-						AppendBuffer('"');
+						literal := "\"";
+						literal += @token->GetValue();
+						literal += '"';
+						AppendVerbatim(literal);
 					}
 
 					label Token->Type->CHAR_LIT {
-						AppendBuffer('\'');
-						AppendBuffer(@token->GetValue());
-						AppendBuffer('\'');
+						literal := "'";
+						literal += @token->GetValue();
+						literal += '\'';
+						AppendVerbatim(literal);
 					}
 
 					label Token->Type->NUM_LIT {
@@ -426,8 +711,10 @@ class CodeFormatter {
 						AppendBuffer("reverse");
 					}
 
+					# the keyword is 'Parent'; written 'parent' it is a name, and a
+					# constructor's "Parent();" came back as a call to nothing
 					label Token->Type->PARENT_ID {
-						AppendBuffer("parent");
+						AppendBuffer("Parent");
 					}
 
 					label Token->Type->FROM_ID {
@@ -450,7 +737,7 @@ class CodeFormatter {
 							PopBuffer();
 						};
 						AppendBuffer("New");
-						@skip_space := in_new := true;
+						@skip_space := true;
 					}
 
 					label Token->Type->AS_ID {
@@ -466,18 +753,24 @@ class CodeFormatter {
 					}
 
 					label Token->Type->COLON {
-						if(in_label) {
+						# "label 1:" and a literal's "key": value
+						if(in_label | @braces->EndsWith('L')) {
 							PopBuffer();
 						};
 						AppendBuffer(':');
 					}
 
+					# A '+' or '-' with no operand before it is a sign and stays against
+					# its operand ("x := -1", "F(-n)"); between two operands it is spaced
+					# like any other operator.
 					label Token->Type->ADD {
 						AppendBuffer('+');
+						@skip_space := IsSign();
 					}
 
 					label Token->Type->SUB {
 						AppendBuffer('-');
+						@skip_space := IsSign();
 					}
 
 					label Token->Type->MUL {
@@ -492,8 +785,27 @@ class CodeFormatter {
 						AppendBuffer('%');
 					}
 
+					# the '\' of a function type or a lambda stays against what it starts
 					label Token->Type->FWD_SLASH {
-						AppendBuffer('\'');
+						AppendBuffer('\\');
+						@skip_space := true;
+					}
+
+					# a token with no rule of its own is written as it was read
+					label Token->Type->SYMBOL {
+						symbol := @token->GetValue();
+						if(symbol->Equals("^") & @prev_token->GetType() = Token->Type->FWD_SLASH) {
+							# "\^(a : Int) ~ Int => ..."
+							AppendBuffer(symbol);
+							@skip_space := true;
+						}
+						else if(symbol->Equals("!")) {
+							AppendBuffer(symbol);
+							@skip_space := true;
+						}
+						else {
+							AppendBuffer(symbol);
+						};
 					}
 
 					label Token->Type->EQL {
@@ -516,11 +828,24 @@ class CodeFormatter {
 						AppendBuffer("-=");
 					}
 
+					# "i++" and "++i": against the operand on whichever side has one
 					label Token->Type->ADD_ADD {
+						if(EndsOperand(@prev_token)) {
+							PopBuffer();
+						}
+						else {
+							@skip_space := true;
+						};
 						AppendBuffer("++");
 					}
 
 					label Token->Type->SUB_SUB {
+						if(EndsOperand(@prev_token)) {
+							PopBuffer();
+						}
+						else {
+							@skip_space := true;
+						};
 						AppendBuffer("--");
 					}
 
@@ -541,11 +866,13 @@ class CodeFormatter {
 					}
 
 					label Token->Type->OBRACE {
-						if(@prev_token->GetType() = Token->Type->IDENT) {
+						# "values[i]" and "String[]": against a name or a type
+						if(@prev_token->GetType() = Token->Type->IDENT | IsTypeName(@prev_token)) {
 							PopBuffer();
 						};
 						AppendBuffer('[');
 						@skip_space := true;
+						open_depth += 1;
 					}
 
 					label Token->Type->CBRACE {
@@ -553,6 +880,9 @@ class CodeFormatter {
 							PopBuffer();
 						};
 						AppendBuffer(']');
+						if(open_depth > 0) {
+							open_depth -= 1;
+						};
 					}
 
 					label Token->Type->OPREN {
@@ -563,6 +893,12 @@ class CodeFormatter {
 								label Token->Type->FOR_ID
 								label Token->Type->EACH_ID
 								label Token->Type->SELECT_ID
+								label Token->Type->PARENT_ID
+								label Token->Type->CRITICAL_ID
+								label Token->Type->AS_ID
+								label Token->Type->TYPE_OF_ID
+								label Token->Type->REVERSE_ID
+								label Token->Type->CPREN
 								label Token->Type->WHILE_ID {
 									PopBuffer();
 								}
@@ -571,6 +907,7 @@ class CodeFormatter {
 
 						AppendBuffer('(');
 						@skip_space := true;
+						open_depth += 1;
 					}
 
 					label Token->Type->CPREN {
@@ -583,13 +920,28 @@ class CodeFormatter {
 						};
 
 						AppendBuffer(')');
+						if(open_depth > 0) {
+							open_depth -= 1;
+						};
 					}
 
+					# A '{' opens a block, which gets lines of its own, or a map or JSON
+					# literal ({"name": "x", "n": 1}, {}), which is an expression and
+					# stays in its line like a '[' does.
 					label Token->Type->OCBRACE {
-						AppendBuffer("{\n");
-						@skip_space := true;
-						tab_space += 1;
-						insert_tabs := true;
+						if(IsLiteralBrace(tokens, i)) {
+							AppendBuffer('{');
+							@skip_space := true;
+							open_depth += 1;
+							@braces += 'L';
+						}
+						else {
+							AppendBuffer("{\n");
+							@skip_space := true;
+							tab_space += 1;
+							insert_tabs := true;
+							@braces += 'B';
+						};
 
 						if(in_label) {
 							in_label := false;
@@ -597,16 +949,25 @@ class CodeFormatter {
 					}
 
 					label Token->Type->CCBRACE {
-						# an empty block closes on the line after its '{', with no
-						# line of indentation left between the two
-						if(@prev_token->GetType() = Token->Type->OCBRACE) {
-							TrimIndent();
+						closes_literal := @braces->EndsWith('L');
+						if(@braces->Size() > 0) {
+							@braces->Pop();
+						};
+
+						if(closes_literal) {
+							if(@prev_token->GetType() <> Token->Type->OCBRACE) {
+								PopBuffer();
+							};
+							AppendBuffer('}');
+							if(open_depth > 0) {
+								open_depth -= 1;
+							};
 						}
 						else {
-							AppendBuffer('\n');
-						};
+						# an empty block closes on the line after its '{', with no
+						# line of indentation left between the two
 						tab_space -= 1;
-						TabSpace(tab_space, @ident_space);
+						StartLine(tab_space);
 						AppendBuffer('}');
 					
 						if(in_consts) {
@@ -620,6 +981,7 @@ class CodeFormatter {
 						# and "}# note".
 						select(@next_token->GetType()) {
 							# stay on the brace's line
+							label Token->Type->TRAIL_COMMENT
 							label Token->Type->SEMI
 							label Token->Type->CPREN
 							label Token->Type->CBRACE
@@ -657,23 +1019,42 @@ class CodeFormatter {
 								@skip_space := true;
 							}
 						};
-					}
-
-					label Token->Type->VTAB {
-						if(@next_token->GetType() <> Token->Type->CCBRACE) {
-							AppendBuffer("\n\n");
-							TabSpace(tab_space, @ident_space);
-							@skip_space := true;
 						};
 					}
 
+					# A blank line in the source is one blank line here, however many
+					# there were and whatever came before: the line that is ended has
+					# no indentation left on it, and the blank one is empty. Written as
+					# "\n\n" after whatever was there, a blank line after a '{' or a
+					# comment left a line of tabs behind and came back as two on the
+					# next pass, three on the one after.
+					label Token->Type->VTAB {
+						if(@next_token->GetType() <> Token->Type->CCBRACE & @next_token->GetType() <> Token->Type->VTAB) {
+							TrimIndent();
+							if(@buffer->EndsWith("\n\n")) {
+								# already one blank line
+							}
+							else if(@buffer->EndsWith('\n')) {
+								AppendVerbatim("\n");
+							}
+							else {
+								AppendVerbatim("\n\n");
+							};
+							TabSpace(tab_space, @ident_space);
+						};
+						@skip_space := true;
+					}
+
+					# no rule: written as it was read, never dropped
 					other {
-						"--- OTHER ---"->ErrorLine();
+						AppendBuffer(@token->GetValue());
 					}
 				};
 
 				if(<>@skip_space) {
-					AppendBuffer(' ');
+					if(InRange()) {
+						@buffer += ' ';
+					};
 				}
 				else {
 					@skip_space := false;
@@ -748,7 +1129,7 @@ class CodeFormatter {
 			token_line := token->GetLine() + drift;
 			start_line := token_line;
 			comment_end := token_line;
-			if(type = Token->Type->MULTI_COMMENT) {
+			if(type = Token->Type->MULTI_COMMENT | type = Token->Type->INLINE_COMMENT) {
 				comment := token->GetValue();
 				each(j : comment) {
 					if(comment->Get(j) = '\n') {
@@ -788,11 +1169,12 @@ class CodeFormatter {
 					};
 				}
 
-				label Token->Type->LINE_COMMENT {
-					drift += 1;
+				label Token->Type->LINE_COMMENT
+				label Token->Type->TRAIL_COMMENT {
 				}
 
-				label Token->Type->MULTI_COMMENT {
+				label Token->Type->MULTI_COMMENT
+				label Token->Type->INLINE_COMMENT {
 					while(line <= comment_end & line <= line_count) {
 						depths[line] := -1;
 						line += 1;
@@ -810,6 +1192,81 @@ class CodeFormatter {
 		};
 
 		return depths;
+	}
+
+	method : IsTypeName(token : Token) ~ Bool {
+		type := token->GetType();
+		return type = Token->Type->STRING_ID | type = Token->Type->INT_ID | type = Token->Type->FLOAT_ID |
+			type = Token->Type->CHAR_ID | type = Token->Type->BOOL_ID | type = Token->Type->BYTE_ID;
+	}
+
+	# Whether the '<' at 'at' opens type arguments: from it to the '>' that closes
+	# it there are only type names, commas, a bound's ':' and what a function
+	# type is written with. A comparison has an operand, an operator or a ';'
+	# before any '>' closes it.
+	method : IsTypeArguments(tokens : Vector<Token>, at : Int) ~ Bool {
+		depth := 0;
+		for(k := at; k < tokens->Size(); k += 1;) {
+			select(tokens->Get(k)->GetType()) {
+				label Token->Type->LESS {
+					depth += 1;
+				}
+
+				label Token->Type->GTR {
+					depth -= 1;
+					if(depth = 0) {
+						return k > at + 1;
+					};
+				}
+
+				label Token->Type->IDENT
+				label Token->Type->STRING_ID
+				label Token->Type->INT_ID
+				label Token->Type->FLOAT_ID
+				label Token->Type->CHAR_ID
+				label Token->Type->BOOL_ID
+				label Token->Type->BYTE_ID
+				label Token->Type->NIL_ID
+				label Token->Type->COMMA
+				label Token->Type->COLON
+				label Token->Type->OBRACE
+				label Token->Type->CBRACE
+				label Token->Type->FWD_SLASH
+				label Token->Type->TILDE
+				label Token->Type->OPREN
+				label Token->Type->CPREN {
+				}
+
+				other {
+					return false;
+				}
+			};
+		};
+
+		return false;
+	}
+
+	# whether the '+' or '-' being written is a sign: nothing that can end an operand comes before it
+	method : IsSign() ~ Bool {
+		return <>EndsOperand(@prev_token);
+	}
+
+	method : EndsOperand(token : Token) ~ Bool {
+		select(token->GetType()) {
+			label Token->Type->IDENT
+			label Token->Type->NUM_LIT
+			label Token->Type->STRING_LIT
+			label Token->Type->CHAR_LIT
+			label Token->Type->CPREN
+			label Token->Type->CBRACE
+			label Token->Type->TRUE_ID
+			label Token->Type->FALSE_ID
+			label Token->Type->NIL_ID {
+				return true;
+			}
+		};
+
+		return false;
 	}
 
 	# the whitespace the formatter writes before a line at this depth
