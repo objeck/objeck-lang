@@ -10561,7 +10561,12 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
 
-    if(failed) {
+    // A read that failed after bytes had arrived returns those bytes, as a plain TCP read does
+    // (IPSocket::ReadBytes) and as the Char[] read of this socket does: they have been taken from the
+    // stream, and this answered -1 and dropped them. A peer that wrote three bytes and closed, to a read
+    // of eight, is the usual case: the close_notify alert is a "failure" (status < 0) of the fourth
+    // read. The reason stays recorded for GetLastError, and the next read reports it (-1).
+    if(failed && read == 0) {
       PushInt(-1, op_stack, stack_pos);
     }
     else {
