@@ -154,7 +154,8 @@ bundle API.MCP {
 		}
 
 		# Parses a message, Nil for text that is not JSON. The parser reads a bare word as a string and
-		# ignores what follows the first value, so the first and last characters are checked as well
+		# ignores what follows the first value, so the first and last characters are checked as well, and
+		# an object, array or string must end where the text does: one message, nothing after it
 		function : Parse(text : String) ~ JsonElement {
 			if(text = Nil) {
 				return Nil;
@@ -173,6 +174,9 @@ bundle API.MCP {
 			if(first = '[' & last <> ']') {
 				return Nil;
 			};
+			if((first = '{' | first = '[' | first = '"') & <>IsOneValue(trimmed)) {
+				return Nil;
+			};
 
 			root := JsonParser->TextToElement(trimmed);
 			if(root = Nil) {
@@ -183,6 +187,46 @@ bundle API.MCP {
 				return Nil;
 			};
 			return root;
+		}
+
+		# Tells whether the object, array or string that opens the text closes on its last character. Two
+		# messages in one frame, or a message with something after it, do not: the parser would answer
+		# the first and drop the rest without a word
+		function : IsOneValue(text : String) ~ Bool {
+			size := text->Size();
+			depth := 0;
+			in_string := false;
+			escaped := false;
+			for(i := 0; i < size; i += 1;) {
+				c := text->Get(i);
+				if(in_string) {
+					if(escaped) {
+						escaped := false;
+					}
+					else if(c = '\\') {
+						escaped := true;
+					}
+					else if(c = '"') {
+						in_string := false;
+						if(depth = 0) {
+							return i = size - 1;
+						};
+					};
+				}
+				else if(c = '"') {
+					in_string := true;
+				}
+				else if(c = '{' | c = '[') {
+					depth += 1;
+				}
+				else if(c = '}' | c = ']') {
+					depth -= 1;
+					if(depth <= 0) {
+						return depth = 0 & i = size - 1;
+					};
+				};
+			};
+			return false;
 		}
 
 		# the text from an offset to its end
@@ -273,7 +317,7 @@ bundle API.MCP {
 	}
 
 	#~
-	Reads newline-delimited messages from standard input, a byte at a time, so a message may be of any length up to the limit. A longer line is read to its end and answered as a parse error, so the next message is read intact. On Windows the console default delivers standard input as UTF-16 (two bytes a character) unless the VM runs with OBJECK_STDIO=binary; the first two bytes tell the two apart (JSON starts with an ASCII character, so a zero second byte is UTF-16) and the reader decodes either
+	Reads newline-delimited messages from standard input, a byte at a time, so a message may be of any length up to the limit. A longer line is read to its end and answered as a parse error, so the next message is read intact; so is a UTF-16 line that the end of input cuts in the middle of a character. On Windows the console default delivers standard input as UTF-16 (two bytes a character) unless the VM runs with OBJECK_STDIO=binary; the first two bytes tell the two apart (JSON starts with an ASCII character, so a zero second byte is UTF-16) and the reader decodes either
 	~#
 	class McpStdio {
 		@limit : static : Int;
@@ -428,6 +472,7 @@ bundle API.MCP {
 			length := 0;
 			too_long := false;
 			seen := false;
+			broken := false;
 
 			while(true) {
 				low := NextByte();
@@ -441,6 +486,8 @@ bundle API.MCP {
 
 				high := NextByte();
 				if(high < 0) {
+					# the input ended inside a character: the line is not what was sent
+					broken := true;
 					break;
 				};
 
@@ -462,7 +509,8 @@ bundle API.MCP {
 				length += 1;
 			};
 
-			if(too_long) {
+			if(too_long | broken) {
+				# answered as a parse error, never dispatched
 				return "{";
 			};
 			return text->Trim();
@@ -1365,7 +1413,7 @@ bundle API.MCP {
 
 		#~
 		Constructor for a resource whose content comes from a function
-		@param uri resource URI; with a "{name}" in it, a template: a read matches by the text before the first "{"
+		@param uri resource URI; with a "{name}" in it, a template. A read goes to the resource registered under exactly that URI if there is one, else to the first template the URI fits (McpUriTemplate), else to the first template whose text before the first "{" the URI starts with
 		@param name resource name
 		@param description what it is
 		@param mime_type media type
@@ -1436,7 +1484,7 @@ bundle API.MCP {
 		}
 
 		#~
-		Tells whether a URI names this resource
+		Tells whether a URI names this resource: the same URI, or for a template a URI that starts with the text before its first "{" (McpUriTemplate tells whether it fits the whole template)
 		@param uri URI asked for
 		@return true if it matches
 		~#
@@ -1726,47 +1774,58 @@ bundle API.MCP {
 		}
 	}
 
-	# A call that runs on a thread of its own, so the reader keeps reading and can hear a cancellation
+	# A tools/call read from standard input, run off the reading thread so the reader keeps reading and can
+	# hear a cancellation. The reader parsed it and reserved its request id before it handed the job over
 	class : private : McpJob {
 		@service : McpService;
-		@text : String;
+		@root : JsonElement;
 		@sink : McpSink;
+		@scope : String;
+		@slot : McpCall;
 
-		New(service : McpService, text : String, sink : McpSink) {
+		New(service : McpService, root : JsonElement, sink : McpSink, scope : String, slot : McpCall) {
 			@service := service;
-			@text := text;
+			@root := root;
 			@sink := sink;
+			@scope := scope;
+			@slot := slot;
 		}
 
 		method : public : Run() ~ Nil {
 			try {
-				reply := @service->Handle(@text, @sink);
+				reply := @service->HandleReserved(@root, @sink, @scope, @slot);
 				if(reply <> Nil) {
-					@sink->Send(reply);
+					@sink->Send(reply->ToString());
 				};
 			}
 			on(e : Error) {
 				failure := e->GetMessage();
 				"MCP call failed: {$failure}"->ErrorLine();
 			};
-			@service->JobDone();
+			@service->Release(@scope, @root->Get("id"), @slot);
 		}
 	}
 
-	# The thread that runs a McpJob
+	# A thread that runs a McpJob, then the jobs that queued up behind it, and ends when there are none
 	class : private : McpWorker from Thread {
-		New() {
+		@service : McpService;
+
+		New(service : McpService) {
 			Parent();
+			@service := service;
 		}
 
 		method : public : Run(arg : System.Base) ~ Nil {
 			job := arg->As(McpJob);
-			job->Run();
+			while(job <> Nil) {
+				job->Run();
+				job := @service->NextJob(@self);
+			};
 		}
 	}
 
 	#~
-	An MCP server. Register tools, resources and prompts, then serve: ServeStdio() answers on standard input and output until it ends, ServeHttp(port) listens for the streamable HTTP transport, and Handle(message, sink) answers one message for any other transport. A tool call runs on a thread of its own, so the server hears a cancellation while it works
+	An MCP server. Register tools, resources and prompts, then serve: ServeStdio() answers on standard input and output until it ends, ServeHttp(port) listens for the streamable HTTP transport, and Handle(message, sink) answers one message for any other transport. On standard input and output a tool call runs off the reading thread, so the server hears a cancellation while it works; up to SetMaxWorkers() calls run at once and the rest wait their turn. A request id names one call at a time on a connection (standard input and output, an HTTP session, an in-process client): a second tools/call under an id still at work is refused as an invalid request, and a cancellation reaches only the call of the connection it arrived on
 	```
 	use API.MCP, Data.JSON, System.IO;
 
@@ -1796,6 +1855,10 @@ bundle API.MCP {
 		@inflight : Hash<String, McpCall>;
 		@mutex : ThreadMutex;
 		@active : Int;
+		@max_workers : Int;
+		@queue : Vector<McpJob>;
+		@queue_head : Int;
+		@finished : Vector<McpWorker>;
 		@sessions : Hash<String, String>;
 		@use_sessions : Bool;
 		@origins : Vector<String>;
@@ -1819,6 +1882,9 @@ bundle API.MCP {
 			@origins := Vector->New()<String>;
 			@use_sessions := true;
 			@mutex := ThreadMutex->New("mcp_service");
+			@max_workers := 16;
+			@queue := Vector->New()<McpJob>;
+			@finished := Vector->New()<McpWorker>;
 		}
 
 		#~
@@ -1946,42 +2012,186 @@ bundle API.MCP {
 		~#
 		method : public : ServeStdio() ~ Nil {
 			sink := McpStdoutSink->New();
+			scope := "stdio";
 			while(true) {
 				line := McpStdio->ReadMessage();
 				if(line = Nil) {
 					break;
 				};
 
-				if(line->Find("\"tools/call\"") > -1) {
-					critical(@mutex) {
-						@active += 1;
+				# parsed here, once, on the reading thread: only a tools/call request goes to a worker
+				root := McpMessage->Parse(line);
+				if(root = Nil) {
+					sink->Send(McpMessage->Error(Nil, McpProtocol->ParseError(), "Parse error")->ToString());
+				}
+				else if(IsToolCall(root)) {
+					# the id is reserved before the worker starts, so that a cancellation on the very next
+					# line finds the call it names
+					id := root->Get("id");
+					slot := Reserve(scope, id);
+					if(slot = Nil) {
+						sink->Send(InUse(id)->ToString());
+					}
+					else {
+						Schedule(McpJob->New(@self, root, sink, scope, slot));
 					};
-					worker := McpWorker->New();
-					worker->Execute(McpJob->New(@self, line, sink));
 				}
 				else {
-					reply := Handle(line, sink);
+					reply := HandleReserved(root, sink, scope, Nil);
 					if(reply <> Nil) {
-						sink->Send(reply);
+						sink->Send(reply->ToString());
 					};
 				};
 			};
 
-			# standard input is closed: let the calls in progress finish and answer
+			# standard input is closed: let the calls in progress, and those waiting, finish and answer
 			waited := 0;
-			while(@active > 0 & waited < 600000) {
+			while(Busy() & waited < 600000) {
 				Thread->Sleep(5);
 				waited += 5;
+			};
+			Reap();
+		}
+
+		#~
+		Sets how many tool calls the stdio transport runs at once (16 unless set); further calls wait in the order they arrived, and a cancellation still reaches a call that is waiting. Call it before ServeStdio()
+		@param count calls at once, from 1 to 256
+		~#
+		method : public : SetMaxWorkers(count : Int) ~ Nil {
+			if(count >= 1 & count <= 256) {
+				@max_workers := count;
+			};
+		}
+
+		#~
+		Gets how many tool calls the stdio transport runs at once
+		@return calls at once
+		~#
+		method : public : GetMaxWorkers() ~ Int {
+			return @max_workers;
+		}
+
+		# a request (it has a usable id) for tools/call
+		method : IsToolCall(root : JsonElement) ~ Bool {
+			if(root->GetType() <> JsonElement->JsonType->OBJECT | <>McpMessage->IsId(root->Get("id"))) {
+				return false;
+			};
+			rpc := McpMessage->Str(root, "method");
+			return rpc <> Nil & rpc->Equals("tools/call");
+		}
+
+		# the name a call in progress is kept under: the connection it arrived on and its request id. Nil is a
+		# caller that names no connection (Handle and HandleJson, HTTP without sessions)
+		method : Key(scope : String, id : JsonElement) ~ String {
+			text := id->ToString();
+			if(scope = Nil) {
+				return "#{$text}";
+			};
+			return "{$scope}#{$text}";
+		}
+
+		method : InUse(id : JsonElement) ~ JsonElement {
+			return McpMessage->Error(id, McpProtocol->InvalidRequest(), "Invalid Request: the request id is in use by a call that has not finished");
+		}
+
+		# Holds a request id for a call that is about to start. Nil when a call under that id is still at work
+		method : Reserve(scope : String, id : JsonElement) ~ McpCall {
+			slot : McpCall;
+			key := Key(scope, id);
+			critical(@mutex) {
+				if(<>@inflight->Has(key)) {
+					slot := McpCall->New("", Nil, id, Nil, Nil);
+					@inflight->Insert(key, slot);
+				};
+			};
+			return slot;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Release(scope : String, id : JsonElement, call : McpCall) ~ Nil {
+			if(id = Nil | call = Nil) {
+				return;
+			};
+
+			# only its own entry: by now the id may name a newer call
+			key := Key(scope, id);
+			critical(@mutex) {
+				if(@inflight->Find(key) = call) {
+					@inflight->Remove(key);
+				};
+			};
+		}
+
+		# starts a worker for the job, or queues it when as many as allowed are at work
+		method : Schedule(job : McpJob) ~ Nil {
+			start := false;
+			critical(@mutex) {
+				if(@active < @max_workers) {
+					@active += 1;
+					start := true;
+				}
+				else {
+					@queue->AddBack(job);
+				};
+			};
+
+			if(start) {
+				# the threads that have ended are joined first: a thread that is never joined keeps its
+				# handle (Windows) or its stack (POSIX) until the process ends
+				Reap();
+				worker := McpWorker->New(@self);
+				worker->Execute(job);
 			};
 		}
 
 		#~
 		@hidden
 		~#
-		method : public : JobDone() ~ Nil {
+		method : public : NextJob(worker : McpWorker) ~ McpJob {
+			job : McpJob;
 			critical(@mutex) {
-				@active -= 1;
+				if(@queue_head < @queue->Size()) {
+					job := @queue->Get(@queue_head);
+					@queue_head += 1;
+					if(@queue_head = @queue->Size()) {
+						@queue := Vector->New()<McpJob>;
+						@queue_head := 0;
+					};
+				}
+				else {
+					# nothing waits: this worker ends, and the reader joins it
+					@active -= 1;
+					@finished->AddBack(worker);
+				};
 			};
+			return job;
+		}
+
+		# joins the workers that have ended
+		method : Reap() ~ Nil {
+			ended : Vector<McpWorker>;
+			critical(@mutex) {
+				if(@finished->Size() > 0) {
+					ended := @finished;
+					@finished := Vector->New()<McpWorker>;
+				};
+			};
+
+			if(ended <> Nil) {
+				each(worker in ended) {
+					worker->Join();
+				};
+			};
+		}
+
+		method : Busy() ~ Bool {
+			busy := false;
+			critical(@mutex) {
+				busy := @active > 0;
+			};
+			return busy;
 		}
 
 		#~
@@ -2024,7 +2234,27 @@ bundle API.MCP {
 				return McpMessage->Error(Nil, McpProtocol->ParseError(), "Parse error")->ToString();
 			};
 
-			reply := HandleJson(root, sink);
+			reply := HandleReserved(root, sink, Nil, Nil);
+			if(reply = Nil) {
+				return Nil;
+			};
+			return reply->ToString();
+		}
+
+		#~
+		Answers one message that arrived on a named connection. Request ids belong to the connection: a tools/call under an id that is still at work on the same connection is refused, and a cancellation reaches only that connection's call
+		@param text one JSON-RPC message
+		@param sink where progress notifications go, Nil to drop them
+		@param scope a name for the connection or session, the same for each of its messages; Nil for none
+		@return the reply as one line of JSON, Nil if there is none
+		~#
+		method : public : Handle(text : String, sink : McpSink, scope : String) ~ String {
+			root := McpMessage->Parse(text);
+			if(root = Nil) {
+				return McpMessage->Error(Nil, McpProtocol->ParseError(), "Parse error")->ToString();
+			};
+
+			reply := HandleReserved(root, sink, scope, Nil);
 			if(reply = Nil) {
 				return Nil;
 			};
@@ -2038,6 +2268,24 @@ bundle API.MCP {
 		@return the reply, Nil if there is none
 		~#
 		method : public : HandleJson(root : JsonElement, sink : McpSink) ~ JsonElement {
+			return HandleReserved(root, sink, Nil, Nil);
+		}
+
+		#~
+		Answers one parsed message that arrived on a named connection; see Handle(text, sink, scope)
+		@param root the message
+		@param sink where progress notifications go, Nil to drop them
+		@param scope a name for the connection or session, Nil for none
+		@return the reply, Nil if there is none
+		~#
+		method : public : HandleJson(root : JsonElement, sink : McpSink, scope : String) ~ JsonElement {
+			return HandleReserved(root, sink, scope, Nil);
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : HandleReserved(root : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			if(root->GetType() = JsonElement->JsonType->ARRAY) {
 				return McpMessage->Error(Nil, McpProtocol->InvalidRequest(), "Invalid Request: batches are not supported");
 			};
@@ -2083,10 +2331,10 @@ bundle API.MCP {
 			reply : JsonElement;
 			try {
 				if(<>has_id) {
-					Notify(rpc, params);
+					Notify(rpc, params, scope);
 				}
 				else {
-					reply := Dispatch(id, rpc, params, sink);
+					reply := Dispatch(id, rpc, params, sink, scope, slot);
 				};
 			}
 			on(e : Error) {
@@ -2099,11 +2347,12 @@ bundle API.MCP {
 		}
 
 		# a notification: nothing is answered, whatever it is
-		method : Notify(rpc : String, params : JsonElement) ~ Nil {
+		method : Notify(rpc : String, params : JsonElement, scope : String) ~ Nil {
 			if(rpc->Equals("notifications/cancelled")) {
 				request_id := params->Get("requestId");
-				if(request_id <> Nil) {
-					key := request_id->ToString();
+				if(McpMessage->IsId(request_id)) {
+					# the call of this connection: another client's request with the same id is not ours to stop
+					key := Key(scope, request_id);
 					critical(@mutex) {
 						call := @inflight->Find(key);
 						if(call <> Nil) {
@@ -2114,7 +2363,7 @@ bundle API.MCP {
 			};
 		}
 
-		method : Dispatch(id : JsonElement, rpc : String, params : JsonElement, sink : McpSink) ~ JsonElement {
+		method : Dispatch(id : JsonElement, rpc : String, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			if(rpc->Equals("initialize")) {
 				return Initialize(id, params);
 			}
@@ -2131,7 +2380,7 @@ bundle API.MCP {
 				return McpMessage->Result(id, result);
 			}
 			else if(rpc->Equals("tools/call")) {
-				return CallTool(id, params, sink);
+				return CallTool(id, params, sink, scope, slot);
 			}
 			else if(rpc->Equals("resources/list")) {
 				resources := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -2226,7 +2475,7 @@ bundle API.MCP {
 			return McpMessage->Result(id, result);
 		}
 
-		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink) ~ JsonElement {
+		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			name := McpMessage->Str(params, "name");
 			if(name = Nil) {
 				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: name is required");
@@ -2265,10 +2514,39 @@ bundle API.MCP {
 				token := meta->Get("progressToken");
 			};
 
+			# The call takes its place among those in progress, under its connection and its id. A slot the
+			# reader reserved is replaced, and a cancellation that reached the slot first is carried over.
+			# With no slot, an id still at work on a named connection is refused; a caller that names no
+			# connection cannot be told from another, so there the newer call takes the name
 			call := McpCall->New(name, arguments, id, token, sink);
-			key := id->ToString();
+			key := Key(scope, id);
+			in_use := false;
 			critical(@mutex) {
-				@inflight->Insert(key, call);
+				prior := @inflight->Find(key);
+				if(prior <> Nil & prior <> slot & scope <> Nil) {
+					in_use := true;
+				}
+				else {
+					if(prior <> Nil) {
+						@inflight->Remove(key);
+					};
+					if(slot <> Nil & slot->IsCancelled()) {
+						call->Cancel();
+					};
+					@inflight->Insert(key, call);
+				};
+			};
+			if(in_use) {
+				return InUse(id);
+			};
+
+			# cancelled before it began: it is not run and not answered
+			if(call->IsCancelled()) {
+				Release(scope, id, call);
+				if(@stats_on) {
+					Count(name, 3, 0.0);
+				};
+				return Nil;
 			};
 
 			timer : System.Time.Timer;
@@ -2286,9 +2564,7 @@ bundle API.MCP {
 				result := McpToolResult->Error("Tool {$name} failed: {$reason}");
 			};
 
-			critical(@mutex) {
-				@inflight->Remove(key);
-			};
+			Release(scope, id, call);
 
 			# the client gave up on the request: no reply is sent
 			if(call->IsCancelled()) {
@@ -2318,10 +2594,27 @@ bundle API.MCP {
 				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: uri is required");
 			};
 
+			# the resource registered under exactly this URI, whatever was registered before it; then the first
+			# template the URI fits from end to end; then, as ever, the first template whose leading text it
+			# starts with (a handler that reads the URI its own way)
 			resource : McpResource;
 			each(candidate in @resources) {
-				if(resource = Nil & candidate->Matches(uri)) {
+				if(resource = Nil & <>candidate->IsTemplate() & candidate->Matches(uri)) {
 					resource := candidate;
+				};
+			};
+			if(resource = Nil) {
+				each(candidate in @resources) {
+					if(resource = Nil & candidate->IsTemplate() & McpUriTemplate->Match(candidate->GetUri(), uri) <> Nil) {
+						resource := candidate;
+					};
+				};
+			};
+			if(resource = Nil) {
+				each(candidate in @resources) {
+					if(resource = Nil & candidate->Matches(uri)) {
+						resource := candidate;
+					};
 				};
 			};
 
@@ -2532,7 +2825,9 @@ bundle API.MCP {
 		}
 	}
 
-	# Checks arguments against the part of a JSON Schema that matters to a model: required names and property types
+	# Checks arguments against the part of a JSON Schema that matters to a model: required names, property types,
+	# and the limits the schemas this library writes carry ("enum", "minimum" and "maximum" for a Byte, "minLength"
+	# and "maxLength" for a Char, the "items" of an array). What a schema advertises is what a handler may rely on
 	class : private : McpSchema {
 		# Nil when the arguments fit, else what is wrong
 		function : Check(schema : JsonElement, args : JsonElement) ~ String {
@@ -2564,7 +2859,7 @@ bundle API.MCP {
 						return "argument '{$name}' must be of type {$kind}";
 					};
 
-					# a list of allowed values, and the type of an array's items
+					# a list of allowed values, the bounds of a number, the length of a string, an array's items
 					rule := Constraint(props->Get(name), value);
 					if(rule <> Nil) {
 						return "argument '{$name}' {$rule}";
@@ -2574,15 +2869,20 @@ bundle API.MCP {
 			return Nil;
 		}
 
-		# Nil when the value meets the property's "enum" and array "items" type, else what is wrong
+		# Nil when the value meets the property's "enum", "minimum" and "maximum", "minLength" and "maxLength" and
+		# array "items", else what is wrong
 		function : Constraint(prop : JsonElement, value : JsonElement) ~ String {
-			# only a string can break an enum and only an array has items, so a number or a boolean costs nothing here
-			vtype := value->GetType();
-			if(vtype <> JsonElement->JsonType->STRING & vtype <> JsonElement->JsonType->ARRAY) {
+			if(prop = Nil | prop->GetType() <> JsonElement->JsonType->OBJECT) {
 				return Nil;
 			};
 
-			if(prop = Nil | prop->GetType() <> JsonElement->JsonType->OBJECT) {
+			vtype := value->GetType();
+			if(vtype = JsonElement->JsonType->NUMBER) {
+				return Bounds(prop, value);
+			};
+
+			# only a string can break an enum or a length and only an array has items, so a boolean costs nothing here
+			if(vtype <> JsonElement->JsonType->STRING & vtype <> JsonElement->JsonType->ARRAY) {
 				return Nil;
 			};
 
@@ -2608,16 +2908,52 @@ bundle API.MCP {
 				};
 			};
 
+			if(vtype = JsonElement->JsonType->STRING) {
+				length := value->GetString()->Size();
+				shortest := prop->Get("minLength");
+				if(shortest <> Nil & shortest->GetType() = JsonElement->JsonType->NUMBER & length < shortest->GetInt()) {
+					least := shortest->GetInt();
+					return "must be at least {$least} character(s) long";
+				};
+				longest := prop->Get("maxLength");
+				if(longest <> Nil & longest->GetType() = JsonElement->JsonType->NUMBER & length > longest->GetInt()) {
+					most := longest->GetInt();
+					return "must be at most {$most} character(s) long";
+				};
+				return Nil;
+			};
+
 			items := prop->Get("items");
-			if(items <> Nil & value->GetType() = JsonElement->JsonType->ARRAY) {
+			if(items <> Nil & items->GetType() = JsonElement->JsonType->OBJECT) {
 				kind := McpMessage->Str(items, "type");
-				if(kind <> Nil) {
-					for(i := 0; i < value->Size(); i += 1;) {
-						if(<>Fits(kind, value->Get(i))) {
-							return "must be an array of {$kind}, item {$i} is not";
-						};
+				for(i := 0; i < value->Size(); i += 1;) {
+					item := value->Get(i);
+					if(kind <> Nil & <>Fits(kind, item)) {
+						return "must be an array of {$kind}, item {$i} is not";
+					};
+
+					# the items' own limits: the bytes of a Byte[], the rows of an Int[,]
+					rule := Constraint(items, item);
+					if(rule <> Nil) {
+						return "item {$i} {$rule}";
 					};
 				};
+			};
+			return Nil;
+		}
+
+		# Nil when a number is within the property's "minimum" and "maximum", else what is wrong
+		function : Bounds(prop : JsonElement, value : JsonElement) ~ String {
+			lowest := prop->Get("minimum");
+			if(lowest <> Nil & lowest->GetType() = JsonElement->JsonType->NUMBER & value->GetFloat() < lowest->GetFloat()) {
+				least := lowest->GetValue();
+				return "must be at least {$least}";
+			};
+
+			highest := prop->Get("maximum");
+			if(highest <> Nil & highest->GetType() = JsonElement->JsonType->NUMBER & value->GetFloat() > highest->GetFloat()) {
+				most := highest->GetValue();
+				return "must be at most {$most}";
 			};
 			return Nil;
 		}
@@ -2723,8 +3059,11 @@ bundle API.MCP {
 			rpc := McpMessage->Str(root, "method");
 			is_initialize := rpc <> Nil & rpc->Equals("initialize");
 
+			# request ids are the session's: one client's cancellation, or its reuse of an id, is not another's
+			scope : String;
 			if(@service->UsesSessions() & <>is_initialize) {
 				session := request->GetHeader("mcp-session-id");
+				scope := session;
 				if(session = Nil) {
 					response->SetCodeTypeContent(400, "application/json", McpMessage->Error(root->Get("id"), McpProtocol->InvalidRequest(), "Missing Mcp-Session-Id header")->ToString());
 					return false;
@@ -2736,7 +3075,7 @@ bundle API.MCP {
 				};
 			};
 
-			reply := @service->HandleJson(root, Nil);
+			reply := @service->HandleJson(root, Nil, scope);
 			if(reply = Nil) {
 				response->SetCodeContent(202, "");
 				return false;
@@ -2752,7 +3091,8 @@ bundle API.MCP {
 				};
 			};
 
-			if(is_initialize & status = 200 & @service->UsesSessions()) {
+			# a session begins with an initialize that was answered, not with one that was refused
+			if(is_initialize & err = Nil & status = 200 & @service->UsesSessions()) {
 				response->SetHeader("Mcp-Session-Id", @service->NewSession());
 			};
 
@@ -2806,6 +3146,7 @@ bundle API.MCP {
 	class McpLoopback from McpTransport {
 		@service : McpService;
 		@sink : McpCollector;
+		@scope : String;
 
 		#~
 		Constructor
@@ -2815,14 +3156,16 @@ bundle API.MCP {
 			Parent();
 			@service := service;
 			@sink := McpCollector->New();
+			# request ids are this client's own: another client of the same server may use the same ones
+			@scope := "in-process-{$System.Runtime->GetUuid()}";
 		}
 
 		method : public : Request(message : String, id : String) ~ String {
-			return @service->Handle(message, @sink);
+			return @service->Handle(message, @sink, @scope);
 		}
 
 		method : public : Notify(message : String) ~ Nil {
-			@service->Handle(message, @sink);
+			@service->Handle(message, @sink, @scope);
 		}
 
 		method : public : SetProtocolVersion(version : String) ~ Nil {
@@ -3471,7 +3814,24 @@ bundle API.MCP {
 				return Nil;
 			};
 
+			# the reply is JSON-RPC 2.0 and answers this request: a transport that hands back one reply (HTTP with
+			# a plain JSON body, a server in the same process) has not looked. An error the server could not tie
+			# to a request (a parse error, an invalid request) carries a null id and is taken as the answer
 			err := reply->Get("error");
+			reply_version := McpMessage->Str(reply, "jsonrpc");
+			if(reply_version = Nil | <>reply_version->Equals("2.0")) {
+				Fail(McpProtocol->InvalidRequest(), "the reply to {$rpc} is not a JSON-RPC 2.0 message");
+				return Nil;
+			};
+
+			reply_id := reply->Get("id");
+			answers := reply_id <> Nil & reply_id->GetType() = JsonElement->JsonType->NUMBER & reply_id->ToString()->Equals(id->ToString());
+			unplaced := err <> Nil & (reply_id = Nil | reply_id->GetType() = JsonElement->JsonType->NULL);
+			if(<>answers & <>unplaced) {
+				Fail(McpProtocol->InvalidRequest(), "the reply to {$rpc} answers another request, not request {$id}");
+				return Nil;
+			};
+
 			if(err <> Nil) {
 				code := McpProtocol->InternalError();
 				code_json := err->Get("code");
