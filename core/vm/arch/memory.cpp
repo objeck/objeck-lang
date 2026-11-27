@@ -69,9 +69,21 @@ static bool GcTraceEnabled() {
 // which teardown is safe, so flush what the program wrote and end the process
 // without it: std::_Exit, as FatalCollectorOutOfMemory already does. With no other
 // thread, exit() runs as before, atexit handlers included.
+//
+// "No other thread" is two counts, not one. A spawned thread is a mutator only
+// between RegisterMutator and UnregisterMutator, and it touches the collector's
+// tables on both sides of that: once it has unregistered it still removes its
+// monitor and its pending roots (AsyncMethodCall's clean up), and a thread just
+// created has not registered yet. mutator_count alone said "one thread" in both
+// windows, and a Runtime->Exit on the main thread then ran the static destructors
+// under a thread that was erasing from pending_thread_roots (ThreadSanitizer,
+// v2026.11.4 soak, dual_stack_servers: the same fault as #877 with a thread that
+// is ending rather than busy). spawned_threads covers a thread from before it
+// exists until its last act, so teardown runs only when it is zero as well. A
+// spawned thread that itself ends the process counts itself, and takes _Exit.
 void MemoryManager::Exit(int status)
 {
-  EndProcess(status, mutator_count.load(std::memory_order_acquire) <= 1);
+  EndProcess(status, mutator_count.load(std::memory_order_acquire) <= 1 && SpawnedThreads() == 0);
 }
 
 // The one place the VM ends the process. Every VM-initiated exit (a trap's error, a
@@ -241,6 +253,7 @@ std::atomic<size_t> MemoryManager::dirty_count;
 
 std::atomic<bool> MemoryManager::minor_gc_mode;
 std::atomic<long> MemoryManager::mutator_count(1);   // main thread is mutator #1
+std::atomic<long> MemoryManager::spawned_threads(0);
 std::atomic<long> MemoryManager::parked_count(0);
 std::atomic<bool> MemoryManager::stw_active(false);
 #ifdef _WIN32

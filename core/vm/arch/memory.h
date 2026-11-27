@@ -221,6 +221,14 @@ class MemoryManager {
   // points (dispatch loop + allocation) and park while a collection runs, so the
   // marker sees a complete, stable root set. Single-threaded programs never park.
   static std::atomic<long> mutator_count;   // registered mutator threads (incl. main)
+  // Threads the program has spawned that have not finished: counted by the parent
+  // before the native thread exists and given back as the child's last act, after
+  // it has released everything it owns (StackInterpreter::ThreadSpawned /
+  // ThreadFinished). Wider than mutator_count at both ends: a child is not a
+  // mutator until it registers, and it stops being one (UnregisterMutator) before
+  // it removes its roots from the collector's tables. Exit() and the drain at the
+  // end of Main read it.
+  static std::atomic<long> spawned_threads;
   static std::atomic<long> parked_count;    // mutators currently parked at a safepoint
   static std::atomic<bool> stw_active;      // a collection is in progress
 #ifdef _WIN32
@@ -623,6 +631,18 @@ class MemoryManager {
   static void Initialize(StackProgram* p, size_t m);
   // VmExit (common.h): end the process with 'status' from any VM thread.
   [[noreturn]] static void Exit(int status);
+
+  static void ThreadSpawned() {
+    spawned_threads.fetch_add(1, std::memory_order_acq_rel);
+  }
+
+  static void ThreadFinished() {
+    spawned_threads.fetch_sub(1, std::memory_order_acq_rel);
+  }
+
+  static long SpawnedThreads() {
+    return spawned_threads.load(std::memory_order_acquire);
+  }
   // test hook: the collector's fatal out-of-memory exit (see memory.cpp)
   [[noreturn]] static void TestCollectorOutOfMemory();
   // The one place the process ends (see memory.cpp): flushes every stream, then exit()

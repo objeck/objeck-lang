@@ -90,7 +90,6 @@ using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
 std::set<StackInterpreter*> StackInterpreter::intpr_threads;
-std::atomic<long> StackInterpreter::spawned_threads(0);
 std::atomic<bool> StackInterpreter::halting_threads(false);
 
 #ifdef _WIN32
