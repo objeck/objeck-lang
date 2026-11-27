@@ -1,0 +1,216 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+A bounded worker is not lost when the wait for it ends in an error (API.Agent), against a scripted fake
+model (no key, no network).
+
+A tool in BOUNDED_THREAD mode, and a model call under SetBoundedModelCalls, run on a worker thread while
+the loop waits. A cancel during the wait is noticed by the loop, which sends a halt event to the trace
+sink; a sink (or an observer that takes events) may raise. The error then left the wait before the worker
+was handed to the list of workers to join, so when the worker finished nobody joined it: its thread kept
+its stack (POSIX) or its handle (Windows) until the process ended, one per such run.
+
+Here a sink cancels the run's token when a tool (or a model call) starts and raises on the halt event that
+follows. The same agent does that 60 times for a tool and 60 times for a model call. Each run must end with the sink's error, the conversation
+must stay valid, and the memory mappings of the process must not grow with the runs (each unjoined thread
+keeps at least one). The mapping count is read from /proc/self/maps, so that check is Linux only;
+elsewhere the runs are made and the check is skipped.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency, System.IO.Filesystem;
+
+# takes a little while, as a tool on a worker does
+class SlowHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(60);
+    return "ok";
+  }
+}
+
+# cancels the token when a worker is about to start, and raises on the halt event that follows
+class RaisingSink implements AgentTraceSink {
+  @token : AgentCancel;
+  @trigger : String;
+  @halts : Int;
+
+  New(trigger : String) {
+    @trigger := trigger;
+  }
+
+  method : public : Arm(token : AgentCancel) ~ Nil {
+    @token := token;
+  }
+
+  method : public : GetHalts() ~ Int {
+    return @halts;
+  }
+
+  method : public : OnEvent(event : AgentEvent) ~ Nil {
+    if(@token <> Nil) {
+      if(event->GetKind()->Equals(@trigger)) {
+        @token->Cancel("stopped by the sink");
+      }
+      else if(event->GetKind()->Equals("halt")) {
+        @halts += 1;
+        Runtime->Raise(Error->New("the sink raised on halt"));
+      };
+    };
+  }
+}
+
+class AgentWorkerReleaseTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # memory mappings of this process, or 0 where there is no /proc/self/maps
+  function : Mappings() ~ Int {
+    lines := 0;
+    reader := FileReader->New("/proc/self/maps");
+    if(reader->IsOpen()) {
+      line := reader->ReadLine();
+      while(line <> Nil) {
+        lines += 1;
+        line := reader->ReadLine();
+      };
+      reader->Close();
+    };
+    return lines;
+  }
+
+  function : Registry() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("slow", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), SlowHandler->New()));
+    return registry;
+  }
+
+  # runs the agent `runs` times, each one cancelled by the sink as its worker starts; returns how many
+  # ended with the sink's error
+  function : Raise(agent : Agent, sink : RaisingSink, runs : Int) ~ Int {
+    raised := 0;
+    for(i := 0; i < runs; i += 1;) {
+      token := AgentCancel->New();
+      agent->SetCancel(token);
+      sink->Arm(token);
+      try {
+        agent->Run("go {$i}");
+      }
+      on(e : Error) {
+        if(e->GetMessage() <> Nil & e->GetMessage()->Has("the sink raised on halt")) {
+          raised += 1;
+        };
+      };
+      # the worker that was left behind finishes; the agent's next call on a worker joins it
+      Thread->Sleep(90);
+    };
+    return raised;
+  }
+
+  function : Tool(runs : Int) ~ Nil {
+    "a tool on a worker, cancelled {$runs} times with a sink that raises:"->PrintLine();
+    script := Vector->New()<AgentReply>;
+    for(i := 0; i < runs + 10; i += 1;) {
+      script->AddBack(AgentReply->Ask("c{$i}", "slow", "{}"));
+    };
+    script->AddBack(AgentReply->Say("done"));
+    backend := ScriptedBackend->New(script);
+    agent := Agent->New(backend, Registry());
+    agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    sink := RaisingSink->New("tool_start");
+    agent->SetTrace(sink);
+
+    # a warm-up, so that what the first runs map (code, the heap) is not counted
+    warm := Raise(agent, sink, 10);
+    before := Mappings();
+    raised := Raise(agent, sink, runs);
+    after := Mappings();
+    Check("every run ended with the sink's error", warm = 10 & raised = runs & sink->GetHalts() = runs + 10);
+
+    if(before = 0) {
+      "  SKIP: no /proc/self/maps on this platform, the threads are not counted"->PrintLine();
+    }
+    else {
+      grown := after - before;
+      if(grown >= runs / 2) {
+        "  the process has {$grown} more memory mappings after {$runs} runs"->PrintLine();
+      };
+      Check("the workers were joined: the mappings did not grow with the runs", grown < runs / 2);
+    };
+
+    # the conversation is valid and the agent still works: every call of every reply has an answer
+    sink->Arm(Nil);
+    agent->SetCancel(Nil);
+    agent->SetToolMode(AgentTool->Mode->IN_THREAD);
+    result := agent->Run("and now to the end");
+    Check("the same agent then runs to its answer", result->IsCompleted());
+    entries := backend->GetLastConversation()->GetEntries();
+    Check("and the conversation it sent holds every run", entries->Size() > runs);
+  }
+
+  function : Model(runs : Int) ~ Nil {
+    "a model call on a worker, cancelled {$runs} times with a sink that raises:"->PrintLine();
+    script := Vector->New()<AgentReply>;
+    for(i := 0; i < runs + 40; i += 1;) {
+      script->AddBack(AgentReply->Say("reply {$i}"));
+    };
+    backend := ScriptedBackend->New(script);
+    backend->SetDelayMs(60);
+    agent := Agent->New(backend, Registry());
+    agent->SetBoundedModelCalls(true);
+    sink := RaisingSink->New("model_start");
+    agent->SetTrace(sink);
+
+    warm := Raise(agent, sink, 10);
+    before := Mappings();
+    raised := Raise(agent, sink, runs);
+    after := Mappings();
+    if(warm <> 10 | raised <> runs) {
+      "  {$warm} of 10 and {$raised} of {$runs} runs ended with the sink's error"->PrintLine();
+    };
+    Check("every run ended with the sink's error", warm = 10 & raised = runs);
+
+    if(before = 0) {
+      "  SKIP: no /proc/self/maps on this platform, the threads are not counted"->PrintLine();
+    }
+    else {
+      grown := after - before;
+      if(grown >= runs / 2) {
+        "  the process has {$grown} more memory mappings after {$runs} runs"->PrintLine();
+      };
+      Check("the workers were joined: the mappings did not grow with the runs", grown < runs / 2);
+    };
+
+    sink->Arm(Nil);
+    agent->SetCancel(Nil);
+    result := agent->Run("and now to the end");
+    Check("the same agent then runs to its answer", result->IsCompleted());
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    runs := 60;
+    if(args->Size() > 0) {
+      runs := args[0]->ToInt();
+    };
+
+    Tool(runs);
+    Model(runs);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

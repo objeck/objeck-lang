@@ -43,15 +43,20 @@ REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 if [ $# -gt 0 ]; then
   IMAGES=("$@")
 else
-  mapfile -t IMAGES < <(python3 -c '
+  # Not `mapfile < <(python3 ...)`: a process substitution's exit status is lost, so a
+  # selector that crashed gave an empty list and a PASS on no distributions.
+  selected=$(python3 -c '
 import json, sys
 release = json.load(open(sys.argv[1]))["linux"]["release"]
 skip = list(release["natives_untested"]) if sys.argv[2] == "natives" else []
 if sys.argv[3] != "x86_64":
     skip += release["x64_only_images"]
 print("\n".join(i for i in release["tested_images"] if i not in skip))' \
-    "$REPO/core/release/runtime_deps.json" "$MODE" "$(uname -m)")
+    "$REPO/core/release/runtime_deps.json" "$MODE" "$(uname -m)") || die "could not read the image list from core/release/runtime_deps.json"
+  IMAGES=()
+  while IFS= read -r image; do [ -z "$image" ] || IMAGES+=("$image"); done <<< "$selected"
 fi
+[ ${#IMAGES[@]} -gt 0 ] || die "no distributions selected ($MODE mode on $(uname -m)); refusing to report a pass on none"
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 "${DOCKER[@]}" version >/dev/null 2>&1 || die "docker is not usable as '${DOCKER[*]}' (set DOCKER=\"sudo docker\"?)"
 command -v openssl >/dev/null || die "needs openssl, for the test certificate"

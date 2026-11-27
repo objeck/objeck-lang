@@ -8437,7 +8437,9 @@ static bool JitReportEnabled() {
 static const std::string& JitDumpDir() {
   static const std::string dir = []() {
     std::string value;
-    JitEnvFlag("OBJECK_JIT_DUMP", &value);
+    if(!JitEnvFlag("OBJECK_JIT_DUMP", &value)) {
+      value.clear();  // unset: no dump directory
+    }
     return value;
   }();
   return dir;

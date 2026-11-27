@@ -1,0 +1,291 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+An AgentScope reaches the worker thread of a bounded tool or model call (API.Agent), against scripted fake
+models (no key, no network).
+
+A run started from inside another run, a tool that runs a second agent, is admitted against what the
+scope has left at that moment. That held when the tool ran on the loop's thread (IN_THREAD). A tool in
+BOUNDED_THREAD mode runs on a worker thread the agent starts, and a thread does not inherit a scope: the
+second agent found no scope at all, so it ran without the limits and nothing it used was charged. The
+worker now runs inside a Child() of the run's scope.
+
+Every case is made twice, once in each tool mode, and must end the same way: the second agent refused
+when the scope has no step (or tool call) left, both agents counted when there is room, cancellation of
+the scope reaching the second agent. Then a model call on a worker (SetBoundedModelCalls) whose backend
+runs an agent, a handler that raises on a worker, and that no thread started afterwards finds itself in
+a scope it never entered.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+class CountHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return "ok";
+  }
+}
+
+# a tool that runs the second agent
+class SubAgentHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    AgentScopeBoundedWorkerTest->Second();
+    return "the sub agent ran";
+  }
+}
+
+# a tool that raises
+class RaisingHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    AgentScopeBoundedWorkerTest->Note();
+    Runtime->Raise(Error->New("the tool raised"));
+    return "never";
+  }
+}
+
+# a model that asks a second agent before it answers
+class RelayBackend implements ChatBackend {
+  New() {
+  }
+
+  method : public : GetName() ~ String {
+    return "relay";
+  }
+
+  method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
+    AgentScopeBoundedWorkerTest->Second();
+    return AgentReply->Say("relayed");
+  }
+
+  method : public : GetLastError() ~ String {
+    return Nil;
+  }
+}
+
+# a plain thread: says whether it finds itself inside a scope
+class Bystander from Thread {
+  @inside : static : Int;
+
+  New() {
+    Parent("bystander");
+  }
+
+  function : Reset() ~ Nil {
+    @inside := 0;
+  }
+
+  function : GetInside() ~ Int {
+    return @inside;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    if(AgentScope->Current() <> Nil) {
+      @inside += 1;
+    };
+  }
+}
+
+class AgentScopeBoundedWorkerTest {
+  @failures : static : Int;
+  @agent : static : Agent;
+  @agent2 : static : Agent;
+  @backend : static : ScriptedBackend;
+  @backend2 : static : ScriptedBackend;
+  @result : static : AgentResult;
+  @second : static : AgentResult;
+  @saw_scope : static : Bool;
+  @still : static : Bool;
+  @cancel_first : static : Bool;
+  @scope : static : AgentScope;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  function : Counted(reply : AgentReply, input : Int, output : Int) ~ AgentReply {
+    return AgentReply->New(reply->GetText(), reply->GetToolCalls(), reply->GetStopReason(), input, output);
+  }
+
+  # called by the tool (or the relay model): on the loop's thread or on a worker
+  function : Second() ~ Nil {
+    @saw_scope := AgentScope->Current() <> Nil;
+    if(@cancel_first) {
+      @scope->Cancel("stopped from outside");
+    };
+    @second := @agent2->Run("inner");
+  }
+
+  function : Note() ~ Nil {
+    @saw_scope := AgentScope->Current() <> Nil;
+  }
+
+  # an agent whose one tool is `handler`: it asks for the tool, then answers; 10 tokens a reply
+  function : Outer(handler : AgentToolHandler, mode : AgentTool->Mode) ~ Agent {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("delegate", "runs another agent", Json("{\"type\":\"object\",\"properties\":{}}"), handler));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Counted(AgentReply->Ask("d1", "delegate", "{}"), 10, 0));
+    script->AddBack(Counted(AgentReply->Say("outer done"), 10, 0));
+    @backend := ScriptedBackend->New(script);
+    agent := Agent->New(@backend, registry);
+    agent->SetToolMode(mode);
+    return agent;
+  }
+
+  # the second agent: one tool call, then an answer; 10 tokens a reply
+  function : Inner() ~ Agent {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("count", "a test tool", Json("{\"type\":\"object\",\"properties\":{}}"), CountHandler->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(Counted(AgentReply->Ask("n1", "count", "{}"), 10, 0));
+    script->AddBack(Counted(AgentReply->Say("inner done"), 10, 0));
+    @backend2 := ScriptedBackend->New(script);
+    return Agent->New(@backend2, registry);
+  }
+
+  function : One() ~ Nil {
+    @result := @agent->Run("outer");
+    @still := AgentScope->Current() = @scope;
+    # a worker the loop stopped waiting for (the cancelled case) is a moment behind
+    waited := 0;
+    while(@second = Nil & waited < 5000) {
+      Thread->Sleep(5);
+      waited += 5;
+    };
+  }
+
+  function : Plain() ~ Nil {
+    @result := @agent->Run("outer");
+  }
+
+  function : Setup(handler : AgentToolHandler, mode : AgentTool->Mode, scope : AgentScope) ~ Nil {
+    @agent := Outer(handler, mode);
+    @agent2 := Inner();
+    @result := Nil;
+    @second := Nil;
+    @saw_scope := false;
+    @still := false;
+    @cancel_first := false;
+    @scope := scope;
+  }
+
+  function : Modes(mode : AgentTool->Mode, name : String) ~ Nil {
+    "a tool that runs an agent, {$name}:"->PrintLine();
+
+    # the outer reply took the scope's one step: the second agent is not started
+    Setup(SubAgentHandler->New(), mode, AgentScope->New()->SetMaxSteps(1));
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("{$name}: the tool finds itself inside a scope", @saw_scope);
+    Check("{$name}: one step, spent: the second agent is refused with budget_steps", @second <> Nil & Same(@second->GetStopReason(), "budget_steps") & @second->GetSteps()->Size() = 0);
+    Check("{$name}: its model was never asked", @backend2->GetAskedCount() = 0);
+    Check("{$name}: the scope counts one step and both runs", @scope->GetStepsUsed() = 1 & @scope->GetRuns() = 2 & @backend->GetAskedCount() = 1);
+    Check("{$name}: the outer run stops for the scope's steps too", Same(@result->GetStopReason(), "budget_steps"));
+    Check("{$name}: the loop's thread is still in the scope afterwards, and in none after it", @still & AgentScope->Current() = Nil);
+
+    # room for both: every reply, call and token is counted once
+    Setup(SubAgentHandler->New(), mode, AgentScope->New()->SetMaxSteps(4)->SetMaxToolCalls(2)->SetMaxTokens(1000));
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("{$name}: with room for both, both complete", @second <> Nil & @second->IsCompleted() & @result->IsCompleted());
+    Check("{$name}: every reply, call and token is counted once", @scope->GetStepsUsed() = 4 & @scope->GetToolCallsUsed() = 2 & @scope->GetTokensUsed() = 40 & @scope->GetRuns() = 2);
+
+    # three steps: the second agent gets two, the outer agent finds none for its answer
+    Setup(SubAgentHandler->New(), mode, AgentScope->New()->SetMaxSteps(3));
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("{$name}: three steps: the second agent completes, the outer one stops", @second->IsCompleted() & Same(@result->GetStopReason(), "budget_steps") & @scope->GetStepsUsed() = 3 & @backend->GetAskedCount() + @backend2->GetAskedCount() = 3);
+
+    # tool calls: the call that is running is already counted
+    Setup(SubAgentHandler->New(), mode, AgentScope->New()->SetMaxToolCalls(1));
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("{$name}: one tool call, running: the second agent is refused with budget_tool_calls", Same(@second->GetStopReason(), "budget_tool_calls") & @backend2->GetAskedCount() = 0 & @scope->GetToolCallsUsed() = 1);
+
+    # tokens: the outer reply's are counted when the second agent starts
+    Setup(SubAgentHandler->New(), mode, AgentScope->New()->SetMaxTokens(15));
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("{$name}: tokens: the second agent stops after one reply", Same(@second->GetStopReason(), "budget_tokens") & @second->GetSteps()->Size() = 1 & @scope->GetTokensUsed() = 20);
+
+    # the scope is cancelled while the tool runs: the second agent does not start
+    Setup(SubAgentHandler->New(), mode, AgentScope->New()->SetMaxSteps(10));
+    @cancel_first := true;
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("{$name}: a cancelled scope stops the second agent", Same(@second->GetStopReason(), "cancelled") & @backend2->GetAskedCount() = 0);
+    Check("{$name}: and the outer run", Same(@result->GetStopReason(), "cancelled"));
+  }
+
+  function : NoScope() ~ Nil {
+    "no scope:"->PrintLine();
+    Setup(SubAgentHandler->New(), AgentTool->Mode->BOUNDED_THREAD, Nil);
+    @result := @agent->Run("outer");
+    Check("with no scope the worker is in none, and both agents complete", <>@saw_scope & @second->IsCompleted() & @result->IsCompleted());
+  }
+
+  function : Model() ~ Nil {
+    "a model call on a worker whose backend runs an agent:"->PrintLine();
+    @agent := Agent->New(RelayBackend->New(), ToolRegistry->New());
+    @agent->SetBoundedModelCalls(true);
+    @agent2 := Inner();
+    @second := Nil;
+    @saw_scope := false;
+    @cancel_first := false;
+    @scope := AgentScope->New()->SetMaxSteps(1);
+    AgentScope->Run(@scope, One() ~ Nil);
+    Check("the backend finds itself inside a scope", @saw_scope);
+    Check("the step is taken before the model is asked: the agent it runs is refused", @second <> Nil & Same(@second->GetStopReason(), "budget_steps") & @backend2->GetAskedCount() = 0);
+    Check("the outer run completes with its one step", @result->IsCompleted() & @scope->GetStepsUsed() = 1);
+  }
+
+  function : Raises() ~ Nil {
+    "a handler that raises on a worker:"->PrintLine();
+    Setup(RaisingHandler->New(), AgentTool->Mode->BOUNDED_THREAD, AgentScope->New()->SetMaxSteps(5));
+    AgentScope->Run(@scope, Plain() ~ Nil);
+    status := @result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus();
+    Check("the error is the call's result and the run completes", @saw_scope & Same(status, "error") & @result->IsCompleted());
+
+    # a worker that did not leave its scope would leave its thread's entry behind, and a later thread
+    # that is given the same id would find itself inside that scope
+    Bystander->Reset();
+    for(i := 0; i < 40; i += 1;) {
+      thread := Bystander->New();
+      thread->Execute(Nil);
+      thread->Join();
+    };
+    Check("no later thread finds itself in a scope", Bystander->GetInside() = 0 & AgentScope->Current() = Nil);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    AgentScope->Init();
+    Modes(AgentTool->Mode->IN_THREAD, "IN_THREAD");
+    Modes(AgentTool->Mode->BOUNDED_THREAD, "BOUNDED_THREAD");
+    NoScope();
+    Model();
+    Raises();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

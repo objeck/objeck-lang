@@ -29,6 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#include <climits>
 #include "context.h"
 #include "linker.h"
 #include "parser.h"
@@ -869,7 +870,10 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
         detail += L"\n\tConvert explicitly, as in value->As(" + left + L")";
       }
 
-      return is_value_arm ? detail : msg + detail;
+      if(is_value_arm) {
+        return detail;
+      }
+      return msg + detail;
     }
   }
 
@@ -2560,7 +2564,8 @@ Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type*
       const size_t errors_before = diagnostics.ErrorCount();
       for(size_t i = 0; i < elements.size(); ++i) {
         Expression* reference = WrapMethodReferenceInFuncRef(elements[i], element_type, depth);
-        if(reference != elements[i]) {
+        // elements is empty when element_list is null, so the loop never runs without a list
+        if(element_list && reference != elements[i]) {
           element_list->SetExpression(reference, (int)i);
         }
       }
@@ -4024,6 +4029,11 @@ static int FirstFreeHiddenIndex(SymbolTable* table, const std::wstring& prefix)
   int low = 0;
   int high = 1;
   while(taken(high)) {
+    // doubling past INT_MAX / 2 would overflow; a run that long cannot exist (the local space is exhausted
+    // long before), so the probe ends and the last index is reported as the one to use
+    if(high > INT_MAX / 2) {
+      return INT_MAX;
+    }
     low = high;
     high <<= 1;
   }
@@ -7122,7 +7132,7 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
         for(size_t j = 0; j < declarations.size(); ++j) {
           params.push_back(declarations[j]->GetEntry() ? declarations[j]->GetEntry()->GetType() : nullptr);
         }
-        candidates.push_back(params);
+        candidates.push_back(std::move(params));
       }
     }
   }
@@ -7131,7 +7141,7 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
     for(size_t i = 0; i < constructors.size(); ++i) {
       std::vector<Type*> params = constructors[i]->GetDeclarationTypes();
       if(params.size() == arguments.size()) {
-        candidates.push_back(params);
+        candidates.push_back(std::move(params));
       }
     }
   }
@@ -7172,13 +7182,13 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
 
     if(!settled) {
       if(first_error.empty()) {
-        first_error = error;
+        first_error = std::move(error);
       }
       continue;
     }
 
     if(bindings.empty()) {
-      bindings = candidate_bindings;
+      bindings = std::move(candidate_bindings);
       continue;
     }
 
@@ -7566,8 +7576,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       }
     }
 
-    // public/private check
-    if(method->GetClass() != current_method->GetClass()) {
+    // public/private check (a statement is analyzed inside a method: AnalyzeDeclaration refuses a value at
+    // class scope without analyzing it, so current_method is set here; the test keeps the checks below
+    // consistent with the lambda test further down, which already allowed for none)
+    if(current_method && method->GetClass() != current_method->GetClass()) {
       const bool check_call_access = method->IsStatic() && method->GetMethodType() == PRIVATE_METHOD;
       if(check_call_access || (!method->IsStatic() && (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD))) {
         bool found = false;

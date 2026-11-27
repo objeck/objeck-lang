@@ -267,6 +267,12 @@ class CodeFormatter {
 	}	
 
 	method : public : Format(source : String) ~ String {
+		# one formatter can format several sources: nothing of the last run (its output,
+		# or the token it had read ahead) belongs to this one
+		@buffer := "";
+		@token := Nil;
+		@next_token := Nil;
+		@prev_token := Nil;
 		scanner := Scanner->New(source);
 		if(scanner->Scan()) {
 			tab_space := 0;
