@@ -459,12 +459,13 @@ public:
     return 0;
   }
 
-  // The pipe's next byte when it continues a UTF-8 character (10xxxxxx), read into 'value': true then.
-  // Any other byte is looked at and left where it is (PeekNamedPipe), for the read that follows; false
-  // for it, and when the pipe has ended or failed. PeekNamedPipe does not wait, so a pipe with nothing
-  // in it yet is asked again a millisecond later: this is reached only by a Char[] read whose last
-  // character was cut by the count, whose other bytes the writer has usually sent already.
-  static bool ReadContinuationByte(char &value, HANDLE pipe) {
+  // The pipe's next byte when it is in [lo, hi] (the values that still continue a UTF-8 character: see
+  // ReadUtf8Tail), read into 'value': true then. Any other byte is looked at and left where it is
+  // (PeekNamedPipe), for the read that follows; false for it, and when the pipe has ended or failed.
+  // PeekNamedPipe does not wait, so a pipe with nothing in it yet is asked again a millisecond later:
+  // this is reached only by a Char[] read whose last character was cut by the count, whose other
+  // bytes the writer has usually sent already.
+  static bool ReadByteInRange(char &value, HANDLE pipe, unsigned char lo, unsigned char hi) {
     while(true) {
       char next = 0;
       DWORD peeked = 0;
@@ -472,7 +473,7 @@ public:
         return false;
       }
       if(peeked == 1) {
-        if(((unsigned char)next & 0xC0) != 0x80) {
+        if((unsigned char)next < lo || (unsigned char)next > hi) {
           return false;
         }
         return ReadByte(value, pipe);
@@ -664,11 +665,11 @@ class IPSocket {
     return value;
   }
 
-  // The socket's next byte when it continues a UTF-8 character (10xxxxxx), read into 'value': true
-  // then. Any other byte is looked at and left where it is (MSG_PEEK), for the read that follows;
-  // false for it, and when the peer has closed or the wait failed or timed out, with the reason in
-  // error as a read leaves it.
-  static bool ReadContinuationByte(char& value, SOCKET sock, int& error, long long deadline_ms = 0, int read_ms = 0) {
+  // The socket's next byte when it is in [lo, hi] (the values that still continue a UTF-8 character:
+  // see ReadUtf8Tail), read into 'value': true then. Any other byte is looked at and left where it is
+  // (MSG_PEEK), for the read that follows; false for it, and when the peer has closed or the wait
+  // failed or timed out, with the reason in error as a read leaves it.
+  static bool ReadByteInRange(char& value, SOCKET sock, unsigned char lo, unsigned char hi, int& error, long long deadline_ms = 0, int read_ms = 0) {
     error = 0;
     if(!WaitReadable(sock, deadline_ms, read_ms, error)) {
       return false;
@@ -679,7 +680,7 @@ class IPSocket {
       error = WSAGetLastError();
       return false;
     }
-    if(status != 1 || ((unsigned char)next & 0xC0) != 0x80) {
+    if(status != 1 || (unsigned char)next < lo || (unsigned char)next > hi) {
       return false;
     }
 

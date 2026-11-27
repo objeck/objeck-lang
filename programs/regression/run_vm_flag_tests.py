@@ -799,7 +799,11 @@ def main():
 
     check_signal_dispatch(obc, obr, env, bin_dir)
     check_file_fifo_gc_park(obc, obr, env, bin_dir)
+    check_fifo_line_ack(obc, obr, env, bin_dir)
     check_tls_byte_read_eof(obc, obr, env, bin_dir)
+    check_tls_read_order(obc, obr, env, bin_dir)
+    check_dtls_accept_handoff(obc, obr, env, bin_dir)
+    check_tls_listen_close_race(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
@@ -3374,7 +3378,8 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
     # the first collection waited for them and main never finished allocating. This
     # script holds the FIFO's write end. In "read" mode it writes one byte at the start,
     # so the open returns and the thread waits in the read; in "open" mode it writes
-    # nothing, so the thread waits in the open. The rest is written only once the
+    # nothing, so the thread waited in the open (a FIFO is no longer looked ahead at:
+    # check_fifo_line_ack; it now waits in the read). The rest is written only once the
     # program reports that it has allocated its fill: a program that never reports is
     # the failure (it is then released, so it can end). With OBJECK_GC_VERIFY the heap
     # is checked at every collection, the reader's re-rooted array included.
@@ -3429,6 +3434,71 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
             check(f"FIFO {mode} through the file API {label}: the read returns its text after them",
                   proc.returncode == 0 and b"PASS: file_fifo_gc_park read" in out,
                   f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
+
+
+def check_fifo_line_ack(obc, obr, env, bin_dir):
+    # ---- a line read from a FIFO returns when the line is complete --------------------
+    # fifo_line_ack.obs reads lines from one FIFO and answers on another. This script is
+    # the writer: it sends "ready", keeps the FIFO open and waits for the program's "ack"
+    # before it sends "done". A FileReader looked one byte ahead after each line (and
+    # after opening), which on a FIFO is a wait for the writer's NEXT message: the program
+    # had its line and could not return from ReadLine to acknowledge it, so the writer
+    # waited for an answer that the reader was waiting to be allowed to give. In "open"
+    # mode nothing is written until the program has said "hello", which it can only do
+    # if opening the FIFO did not wait for a first byte. Whatever happens the rest is
+    # written in the end, so the program can finish and the failure is a failed check.
+    if os.name == "nt" or not hasattr(os, "mkfifo"):
+        return
+    import time
+    dest = compile_fixture(obc, "fifo_line_ack", env, bin_dir)
+    if not dest:
+        return
+    for mode in ("line", "open"):
+        for jit in ("--jit=off", "--jit=1"):
+            with tempfile.TemporaryDirectory() as scratch:
+                data, ack = os.path.join(scratch, "data"), os.path.join(scratch, "ack")
+                os.mkfifo(data)
+                os.mkfifo(ack)
+                # read-write, so neither open waits for the program's (Linux and macOS allow it)
+                data_end = os.open(data, os.O_RDWR)
+                ack_end = os.open(ack, os.O_RDWR | os.O_NONBLOCK)
+                heard = b""
+
+                def answered(text, seconds):
+                    nonlocal heard
+                    deadline = time.time() + seconds
+                    while text not in heard and time.time() < deadline:
+                        try:
+                            heard += os.read(ack_end, 64)
+                        except BlockingIOError:
+                            time.sleep(0.01)
+                    return text in heard
+
+                if mode == "line":
+                    os.write(data_end, b"ready\n")
+                proc = subprocess.Popen([obr, jit, dest, data, ack, mode], env=env, cwd=SCRIPT_DIR,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                greeted = True
+                if mode == "open":
+                    greeted = answered(b"hello\n", 10)
+                    os.write(data_end, b"ready\n")
+                acknowledged = answered(b"ack\n", 10)
+                os.write(data_end, b"done\n")
+                os.close(data_end)
+                try:
+                    out, err = proc.communicate(timeout=30)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    out, err = proc.communicate()
+                os.close(ack_end)
+                detail = f"rc={proc.returncode} heard={heard!r} out={out[-200:]!r} err={err[-300:]!r}"
+                if mode == "open":
+                    check(f"FIFO line protocol {jit}: opening a FIFO nothing has been written to does not wait for a byte",
+                          greeted, detail)
+                check(f"FIFO line protocol ({mode}) {jit}: the first line is acknowledged before the writer sends the next",
+                      acknowledged, detail)
+                check(f"FIFO line protocol ({mode}) {jit}: both lines and the end of the FIFO are read",
+                      proc.returncode == 0 and b"PASS: fifo_line_ack protocol" in out, detail)
 
 
 def make_loopback_tls_cert(scratch):
@@ -3510,6 +3580,94 @@ def check_tls_byte_read_eof(obc, obr, env, bin_dir):
             check(f"TLS Byte[] read at the end of the stream {jit}: returns 0 and stores nothing",
                   rc == 0 and b"PASS: tls_byte_read_eof read" in out,
                   f"rc={rc} server={served} out={out[-300:]!r} err={err[-300:]!r}")
+
+
+def check_tls_listen_close_race(obc, obr, env, bin_dir):
+    # ---- Close() while another thread is inside Listen() -----------------------------
+    # tls_listen_close_race.obs closes a TLS (and a DTLS) server 250 ms into a Listen()
+    # that OBJECK_NATIVE_TEST_PAUSE holds for 600 ms at one of two points: just after the
+    # server object has been given its native context, and just before. Listen() used to
+    # store the context and then read the bound port through it (a DTLS server wrote to it
+    # too); a Close() in between freed it. The program checks what a program can see: the
+    # Listen() returns, a second Close() leaves the port free. The use of freed memory
+    # itself is what an AddressSanitizer build of obr reports here before the change.
+    dest = compile_fixture(obc, "tls_listen_close_race", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] Close() during Listen(): no openssl command to make a certificate")
+            return
+        cert, key = made
+        for kind in ("tls", "dtls"):
+            for point in ("published", "publishing"):
+                paused = dict(env)
+                paused["OBJECK_NATIVE_TEST_PAUSE"] = f"{kind}-listen-{point}=600"
+                rc, out, err = run([obr, dest, kind, cert, key], env=paused, cwd=SCRIPT_DIR)
+                check(f"{kind} server closed while Listen() is paused just {'after' if point == 'published' else 'before'} "
+                      "it has its context: Listen() returns and the port is left free",
+                      rc == 0 and b"PASS: tls_listen_close_race run" in out,
+                      f"rc={rc} out={out[-300:]!r} err={err[-600:]!r}")
+
+
+def check_dtls_accept_handoff(obc, obr, env, bin_dir):
+    # ---- a DTLS accept takes its listening socket for the client safely ---------------
+    # POSIX only (on Windows a DTLS server keeps one socket and hands none over).
+    # dtls_accept_handoff.obs, with Accept() held at a point by OBJECK_NATIVE_TEST_PAUSE:
+    #   reuse: held with the socket connected to a client and no new listener yet, while
+    #          the server is closed and a TCP server is opened, which is given the closed
+    #          listener's descriptor number. The accept used to go on with that number, fail
+    #          because the server was closed, and close it: the unrelated TCP server.
+    #   two:   held when a ClientHello has been seen. Two threads accepting on one server
+    #          both saw the one hello and both took the same socket.
+    if os.name == "nt":
+        return
+    dest = compile_fixture(obc, "dtls_accept_handoff", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] DTLS accept handoff: no openssl command to make a certificate")
+            return
+        cert, key = made
+        for mode, pause, what in (("reuse", "dtls-accept-before-handoff=900",
+                                   "a server closed under a paused accept does not cost another socket its descriptor"),
+                                  ("two", "dtls-accept-hello-seen=400",
+                                   "two accepts on one server: one takes the client, the other the next client")):
+            paused = dict(env)
+            paused["OBJECK_NATIVE_TEST_PAUSE"] = pause
+            rc, out, err = run([obr, dest, mode, cert, key], env=paused, cwd=SCRIPT_DIR)
+            check(f"DTLS accept ({mode}): {what}",
+                  rc == 0 and b"PASS: dtls_accept_handoff run" in out,
+                  f"rc={rc} out={out[-400:]!r} err={err[-400:]!r}")
+
+
+def check_tls_read_order(obc, obr, env, bin_dir):
+    # ---- two threads reading one TLS socket get its bytes in order -------------------
+    # tls_read_order.obs: the peer sends F0 41 42. One thread reads one character, which
+    # takes F0 and then 41 while looking for the rest of the character; 41 is not part of
+    # it and is given back to the session. OBJECK_NATIVE_TEST_PAUSE holds that read for
+    # 600 ms between taking 41 and giving it back, and a second thread calls ReadByte()
+    # in the middle. Reads of a session were not serialized, so the second thread got 42
+    # and the read after it 41. It must get 41, then 42.
+    dest = compile_fixture(obc, "tls_read_order", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] TLS read order: no openssl command to make a certificate")
+            return
+        cert, key = made
+        paused = dict(env)
+        paused["OBJECK_NATIVE_TEST_PAUSE"] = "tls-char-before-pushback=600"
+        for jit in ("--jit=off", "--jit=1"):
+            rc, out, err = run([obr, jit, dest, cert, key], env=paused, cwd=SCRIPT_DIR)
+            check(f"TLS reads from two threads {jit}: the byte one read gives back is the next read's, before the byte after it",
+                  rc == 0 and b"PASS: tls_read_order run" in out,
+                  f"rc={rc} out={out[-300:]!r} err={err[-300:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):

@@ -1,0 +1,198 @@
+#~
+A DTLS server's Accept() takes its listening socket for the client safely.
+
+Driven by run_vm_flag_tests.py (check_dtls_accept_handoff), POSIX only, which makes the
+certificate and sets OBJECK_NATIVE_TEST_PAUSE to stop Accept() at a point. On Linux and macOS
+an accept connects the listening socket to the client, hands it to the client and binds a new
+listener (Codex review round 3, slice E, finding 2).
+
+  reuse <cert> <key>    with dtls-accept-before-handoff=900: Accept() stops when the socket is
+      connected to a client and the new listener is not bound yet. The server is closed
+      meanwhile. Close() waits a short grace for the accept to leave the listener and then
+      closes the descriptor; this program then opens a TCP server, which is given the number
+      the listener had. The accept, resuming, used that number as its client's socket, found
+      the server closed and failed, and freeing the failed client closed the socket that now
+      had the number: the unrelated TCP server. It must still accept a connection afterwards.
+
+  two <cert> <key>      with dtls-accept-hello-seen=400: Accept() stops when it has seen a
+      ClientHello and done nothing about it. Two threads accept on one server and one client
+      connects: both saw the one hello and both took the listening socket for "their" client.
+      Exactly one Accept() must return for one client, the connection must work, and the
+      other Accept() must serve the second client.
+
+  (no argument)         print PASS, so the regression runner can run this file
+~#
+use System.Concurrency, System.IO.Net;
+
+# one Accept(), and what it returned
+class OneAccept from Thread {
+  @server : DTLSSocketServer;
+  @socket : DTLSSocket;
+  @finished : Bool;
+
+  New(server : DTLSSocketServer) {
+    Parent("one-accept");
+    @server := server;
+  }
+
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : GetSocket() ~ DTLSSocket { return @socket; }
+
+  method : public : Run(param : Base) ~ Nil {
+    @socket := @server->Accept();
+    @finished := true;
+  }
+}
+
+# connects on a thread: a connect nobody answers takes a minute to give up
+class DtlsConnector from Thread {
+  @port : Int;
+  @cert : String;
+  @socket : DTLSSocket;
+  @finished : Bool;
+
+  New(port : Int, cert : String) {
+    Parent("dtls-connector");
+    @port := port;
+    @cert := cert;
+  }
+
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : GetSocket() ~ DTLSSocket { return @socket; }
+
+  method : public : Run(param : Base) ~ Nil {
+    @socket := DTLSSocket->New("127.0.0.1", @port, @cert, true);
+    @finished := true;
+  }
+}
+
+class DtlsAcceptHandoff {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 3) {
+      "PASS: dtls_accept_handoff"->PrintLine();
+      return;
+    };
+
+    ok := false;
+    if(args[0]->Equals("reuse")) {
+      ok := Reuse(args[1], args[2]);
+    }
+    else {
+      ok := Two(args[1], args[2]);
+    };
+
+    if(ok) {
+      "PASS: dtls_accept_handoff run"->PrintLine();
+      # threads may still be inside a connect that nobody will answer
+      Runtime->Exit(0);
+    }
+    else {
+      "FAIL: dtls_accept_handoff {$(args[0])}"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Reuse(cert : String, key : String) ~ Bool {
+    server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
+    if(<>server->Listen()) {
+      "the DTLS server does not listen"->PrintLine();
+      return false;
+    };
+    accept := OneAccept->New(server);
+    accept->Execute(Nil);
+    Thread->Sleep(100);
+
+    # its ClientHello takes the accept to the point where it stops, holding the connected socket
+    connector := DtlsConnector->New(server->GetPort(), cert);
+    connector->Execute(Nil);
+    Thread->Sleep(250);
+
+    # closes the listener: at once, or after its grace when the accept is still counted inside it
+    server->Close();
+
+    # the next socket this process opens is given the lowest free number: the listener's
+    victim := TCPSocketServer->New("127.0.0.1", 0);
+    listening := victim->Listen(4);
+
+    for(waited := 0; <>accept->IsFinished() & waited < 5000; waited += 5;) {
+      Thread->Sleep(5);
+    };
+    Thread->Sleep(100);
+
+    # the unrelated server must still be there
+    probe := TCPSocket->New("127.0.0.1", victim->GetPort());
+    alive := probe->IsOpen();
+    probe->Close();
+    victim->Close();
+
+    accepted := accept->GetSocket() <> Nil;
+    "reuse: accept finished={$(accept->IsFinished())} returned a socket={$accepted} unrelated server listening={$listening} still reachable={$alive}"->PrintLine();
+    return accept->IsFinished() & <>accepted & listening & alive;
+  }
+
+  function : Two(cert : String, key : String) ~ Bool {
+    server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
+    if(<>server->Listen()) {
+      "the DTLS server does not listen"->PrintLine();
+      return false;
+    };
+    port := server->GetPort();
+    first_accept := OneAccept->New(server);
+    second_accept := OneAccept->New(server);
+    first_accept->Execute(Nil);
+    second_accept->Execute(Nil);
+    Thread->Sleep(150);
+
+    first := DtlsConnector->New(port, cert);
+    first->Execute(Nil);
+    for(waited := 0; <>first->IsFinished() & waited < 8000; waited += 10;) {
+      Thread->Sleep(10);
+    };
+    # long enough for a second accept that took the same hello to come back as well
+    Thread->Sleep(1200);
+
+    returned := 0;
+    kept : DTLSSocket;
+    if(first_accept->IsFinished()) {
+      returned += 1;
+      kept := first_accept->GetSocket();
+    };
+    if(second_accept->IsFinished()) {
+      returned += 1;
+      if(kept = Nil) {
+        kept := second_accept->GetSocket();
+      };
+    };
+    connected := first->IsFinished() & first->GetSocket() <> Nil & first->GetSocket()->IsOpen();
+
+    # a byte each way through the one connection
+    carried := false;
+    if(connected & returned = 1 & kept <> Nil) {
+      sent := Byte->New[1];
+      sent[0] := 0x51;
+      first->GetSocket()->WriteBuffer(0, 1, sent);
+      arrived := Byte->New[4];
+      if(kept->ReadBuffer(0, 4, arrived) = 1 & arrived[0] = 0x51) {
+        sent[0] := 0x52;
+        kept->WriteBuffer(0, 1, sent);
+        answer := Byte->New[4];
+        carried := first->GetSocket()->ReadBuffer(0, 4, answer) = 1 & answer[0] = 0x52;
+      };
+    };
+
+    # the accept that waited serves the next client
+    second_served := false;
+    if(carried) {
+      second := DtlsConnector->New(port, cert);
+      second->Execute(Nil);
+      for(waited := 0; (<>second->IsFinished() | <>first_accept->IsFinished() | <>second_accept->IsFinished()) & waited < 8000; waited += 10;) {
+        Thread->Sleep(10);
+      };
+      second_served := second->IsFinished() & second->GetSocket() <> Nil & second->GetSocket()->IsOpen() &
+        first_accept->IsFinished() & second_accept->IsFinished() & first_accept->GetSocket() <> Nil & second_accept->GetSocket() <> Nil;
+    };
+
+    "two: first client connected={$connected} accepts that returned for it={$returned} byte each way={$carried} second client served by the other accept={$second_served}"->PrintLine();
+    return connected & returned = 1 & carried & second_served;
+  }
+}

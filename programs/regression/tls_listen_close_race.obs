@@ -1,0 +1,126 @@
+#~
+Closing a TLS or DTLS server while another thread is inside its Listen().
+
+Driven by run_vm_flag_tests.py (check_tls_listen_close_race), which makes the certificate
+and sets OBJECK_NATIVE_TEST_PAUSE so that Listen() stops for a while at one of two points:
+
+  just after the server object has been given its native context ("...-listen-published").
+      Listen() stored the context in the object and only then asked it for the port it had
+      bound (a DTLS server also wrote the port into it). A Close() on another thread in
+      between found the context, dropped the only reference and freed it; Listen() went on
+      through the freed pointer (Codex review round 3, slice E, finding 1). The context is
+      now complete before the object has it, and Listen() does not touch it afterwards.
+
+  just before ("...-listen-publishing").
+      The Close() finds a server that is not listening yet and does nothing; the Listen()
+      then completes, and the server is listening until it is closed again.
+
+This program closes the server 250 ms into a Listen() that is paused for 600 ms, waits for
+the Listen() to return, closes the server again, and then checks that the port is free: a
+second server can listen on it. What it cannot show without help is the use of freed
+memory, which is what an AddressSanitizer build of the VM reports for the first point
+before the change.
+
+  (no argument)              print PASS, so the regression runner can run this file
+  <tls|dtls> <cert> <key>    as above
+~#
+use System.Concurrency, System.IO.Net;
+
+class TlsListener from Thread {
+  @server : TCPSecureSocketServer;
+  @listening : Bool;
+  @finished : Bool;
+
+  New(server : TCPSecureSocketServer) {
+    Parent("tls-listener");
+    @server := server;
+  }
+
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : IsListening() ~ Bool { return @listening; }
+
+  method : public : Run(param : Base) ~ Nil {
+    @listening := @server->Listen();
+    @finished := true;
+  }
+}
+
+class DtlsListener from Thread {
+  @server : DTLSSocketServer;
+  @listening : Bool;
+  @finished : Bool;
+
+  New(server : DTLSSocketServer) {
+    Parent("dtls-listener");
+    @server := server;
+  }
+
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : IsListening() ~ Bool { return @listening; }
+
+  method : public : Run(param : Base) ~ Nil {
+    @listening := @server->Listen();
+    @finished := true;
+  }
+}
+
+class TlsListenCloseRace {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 3) {
+      "PASS: tls_listen_close_race"->PrintLine();
+      return;
+    };
+
+    finished := false;
+    listening := false;
+    port := 0;
+    free := false;
+    if(args[0]->Equals("dtls")) {
+      server := DTLSSocketServer->New(args[1], args[2], "", "127.0.0.1", 0);
+      listener := DtlsListener->New(server);
+      listener->Execute(Nil);
+      Thread->Sleep(250);
+      server->Close();
+      for(waited := 0; <>listener->IsFinished() & waited < 5000; waited += 5;) {
+        Thread->Sleep(5);
+      };
+      finished := listener->IsFinished();
+      listening := listener->IsListening();
+      port := server->GetPort();
+      server->Close();
+      if(port > 0) {
+        again := DTLSSocketServer->New(args[1], args[2], "", "127.0.0.1", port);
+        free := again->Listen();
+        again->Close();
+      };
+    }
+    else {
+      server := TCPSecureSocketServer->New(args[1], args[2], "", "127.0.0.1", 0);
+      listener := TlsListener->New(server);
+      listener->Execute(Nil);
+      Thread->Sleep(250);
+      server->Close();
+      for(waited := 0; <>listener->IsFinished() & waited < 5000; waited += 5;) {
+        Thread->Sleep(5);
+      };
+      finished := listener->IsFinished();
+      listening := listener->IsListening();
+      port := server->GetPort();
+      server->Close();
+      if(port > 0) {
+        again := TCPSecureSocketServer->New(args[1], args[2], "", "127.0.0.1", port);
+        free := again->Listen();
+        again->Close();
+      };
+    };
+
+    "finished={$finished} listening={$listening} port={$port} free={$free}"->PrintLine();
+    if(finished & listening & port > 0 & free) {
+      "PASS: tls_listen_close_race run"->PrintLine();
+    }
+    else {
+      "FAIL: Listen() did not survive a Close() made while it was running, or left its port bound"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}

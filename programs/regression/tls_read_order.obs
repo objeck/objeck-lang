@@ -1,0 +1,125 @@
+#~
+Two threads reading one TLS socket get its bytes in the order they were sent.
+
+Driven by run_vm_flag_tests.py (check_tls_read_order), which makes the certificate and sets
+OBJECK_NATIVE_TEST_PAUSE=tls-char-before-pushback=600: a Char[] read stops for that long
+after it has taken a byte that turned out to belong to the next read and before it has
+given the byte back.
+
+The peer sends F0 41 42. One thread asks for one character: it reads F0, a lead byte, and
+then reads on to complete the character. The next byte, 41, does not continue it, so it is
+kept in the session for the next read. Reads of a session were not serialized: a second
+thread that called ReadByte() between the first one taking 41 and giving it back was handed
+42, and the read after that got 41, so the two bytes changed places (Codex review round 3,
+slice E, finding 3). A read now holds the session's read lock from its first byte to the
+byte it gives back.
+
+Here the second read is made 200 ms into the first one's pause. It must wait for the first
+read and get 41; the read after it gets 42.
+
+  (no argument)    print PASS, so the regression runner can run this file
+  <cert> <key>     as above
+~#
+use System.Concurrency, System.IO.Net;
+
+# writes F0 41 42 to the one connection it accepts, then waits to be told to close
+class OrderSender from Thread {
+  @server : TCPSecureSocketServer;
+  @release : Bool;
+
+  New(server : TCPSecureSocketServer) {
+    Parent("order-sender");
+    @server := server;
+  }
+
+  method : public : Release() ~ Nil { @release := true; }
+
+  method : public : Run(param : Base) ~ Nil {
+    client := @server->Accept();
+    if(client <> Nil) {
+      bytes := Byte->New[3];
+      bytes[0] := 0xF0; bytes[1] := 0x41; bytes[2] := 0x42;
+      client->WriteBuffer(0, 3, bytes);
+      waited := 0;
+      while(<>@release & waited < 20000) {
+        Thread->Sleep(10);
+        waited += 10;
+      };
+      client->Close();
+    };
+  }
+}
+
+# one ReadBuffer(0, 1, Char[])
+class OneCharReader from Thread {
+  @socket : TCPSecureSocket;
+  @chars : Char[];
+  @got : Int;
+  @finished : Bool;
+
+  New(socket : TCPSecureSocket) {
+    Parent("one-char-reader");
+    @socket := socket;
+    @chars := Char->New[4];
+    @got := -2;
+  }
+
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : GetGot() ~ Int { return @got; }
+  method : public : GetChar() ~ Int { return @chars[0]->As(Int); }
+
+  method : public : Run(param : Base) ~ Nil {
+    @got := @socket->ReadBuffer(0, 1, @chars);
+    @finished := true;
+  }
+}
+
+class TlsReadOrder {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 2) {
+      "PASS: tls_read_order"->PrintLine();
+      return;
+    };
+
+    server := TCPSecureSocketServer->New(args[0], args[1], "", "127.0.0.1", 0);
+    if(<>server->Listen()) {
+      "FAIL: the TLS server does not listen"->PrintLine();
+      Runtime->Exit(1);
+    };
+    sender := OrderSender->New(server);
+    sender->Execute(Nil);
+
+    client := TCPSecureSocket->New("127.0.0.1", server->GetPort(), args[0]);
+    if(<>client->IsOpen()) {
+      "FAIL: the TLS client did not connect: {$(TCPSecureSocket->GetLastError())}"->PrintLine();
+      Runtime->Exit(1);
+    };
+    client->SetRecvTimeout(10000);
+
+    # the first read: one character, which stops inside its look ahead
+    reader := OneCharReader->New(client);
+    reader->Execute(Nil);
+    Thread->Sleep(200);
+
+    # the second read, made while the first holds the byte it will give back
+    first_byte := client->ReadByte()->As(Int);
+    for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 5;) {
+      Thread->Sleep(5);
+    };
+    second_byte := client->ReadByte()->As(Int);
+
+    sender->Release();
+    client->Close();
+    sender->Join();
+    server->Close();
+
+    "char read: got={$(reader->GetGot())} char={$(reader->GetChar())} then bytes {$first_byte} {$second_byte}"->PrintLine();
+    if(reader->IsFinished() & reader->GetGot() = 1 & reader->GetChar() = 0xFFFD & first_byte = 0x41 & second_byte = 0x42) {
+      "PASS: tls_read_order run"->PrintLine();
+    }
+    else {
+      "FAIL: the bytes after the character were not read in the order they were sent (41 then 42)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
