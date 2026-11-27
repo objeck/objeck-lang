@@ -18,6 +18,13 @@ every header a correct reply has and close before the blank line that ends the
 header block (after the last header's line, in the middle of it, and between
 the CR and the LF of the blank line). The client used to read the closed
 connection as that blank line and report a connection.
+
+A frame that is cut off is not a message: the /short-* cases close the
+connection part way through a frame (after one header byte, inside the 2-byte
+and 8-byte extended lengths, inside a ping's payload, inside a payload) and
+/eof-after-message closes after one whole message. The client ignored how many
+bytes each read returned, so it delivered the bytes the peer never sent as
+zeros, or read the previous frame's header a second time.
 ~#
 use Collection, System.IO.Net, Web.HTTP, Cipher;
 
@@ -173,6 +180,15 @@ class ScriptedServer {
 		client->ReadByte();
 	}
 
+	# sends the bytes and returns: the caller closes the connection straight after
+	method : SendOnly(client : TCPSocket, raw : Int[]) ~ Nil {
+		bytes := Byte->New[raw->Size()];
+		each(i : raw) {
+			bytes[i] := raw[i]->As(Byte);
+		};
+		client->WriteBuffer(bytes);
+	}
+
 	# serves connections one at a time until one asks for /quit
 	method : public : Serve() ~ Nil {
 		running := true;
@@ -325,6 +341,46 @@ class ScriptedServer {
 			else if(path->Equals("/close-empty")) {
 				client->WriteString("{$ok}\r\n");
 				Send(client, [0x88, 0x00]);
+			}
+			# frames cut off by the end of the connection
+			else if(path->Equals("/short-header")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82]);
+			}
+			else if(path->Equals("/short-length-16")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82, 0x7e, 0x00]);
+			}
+			else if(path->Equals("/short-length-64")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82, 0x7f, 0, 0, 0]);
+			}
+			else if(path->Equals("/short-payload")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82, 0x05, 0x61, 0x62]);
+			}
+			else if(path->Equals("/short-text")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x81, 0x05, 0x61, 0x62]);
+			}
+			else if(path->Equals("/short-long-payload")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82, 0x7e, 0x01, 0x00, 1, 2, 3]);
+			}
+			else if(path->Equals("/short-ping")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x89, 0x02, 0x68]);
+			}
+			else if(path->Equals("/short-close")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x88, 0x02, 0x03]);
+			}
+			else if(path->Equals("/eof-after-message")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x81, 0x02, 0x68, 0x69]);
+			}
+			else if(path->Equals("/eof-at-once")) {
+				client->WriteString("{$ok}\r\n");
 			};
 
 			client->Close();
@@ -450,6 +506,77 @@ class WebSocketHandshakeTest {
 			};
 		};
 
+		ws->CloseSocket();
+	}
+
+	# after a correct handshake the server sends part of a frame and closes: nothing is delivered
+	function : CutFrame(path : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		data := ws->ReadSocketBinary();
+		if(data <> Nil) {
+			size := data->Size();
+			Fail("{$path}: a frame the server never finished was delivered as {$size} byte(s)");
+		};
+
+		msg := ws->GetStatusMessage();
+		if(msg = Nil) {
+			Fail("{$path}: no status message for the lost connection");
+		}
+		else if(msg->Find("before a whole frame arrived") < 0) {
+			Fail("{$path}: status message '{$msg}'");
+		};
+
+		# and the connection is over: nothing more is read, written or pinged
+		if(ws->ReadSocketText() <> Nil) {
+			Fail("{$path}: a second read returned data");
+		};
+
+		if(ws->PingSocket()) {
+			Fail("{$path}: PingSocket succeeded on the lost connection");
+		};
+
+		ws->CloseSocket();
+	}
+
+	# one whole message, then the connection closes without a close frame
+	function : EndAfterMessage() ~ Nil {
+		ws := Open("/eof-after-message");
+		if(<>ws->Connect()) {
+			Fail("/eof-after-message: the handshake was refused");
+			return;
+		};
+
+		text := ws->ReadSocketText();
+		if(text = Nil) {
+			Fail("/eof-after-message: the whole message was not delivered");
+		}
+		else if(<>text->Equals("hi")) {
+			Fail("/eof-after-message: the message was '{$text}'");
+		};
+
+		again := ws->ReadSocketBinary();
+		if(again <> Nil) {
+			size := again->Size();
+			Fail("/eof-after-message: a second message of {$size} byte(s) was delivered after the connection closed");
+		};
+
+		ws->CloseSocket();
+
+		# a ping on a connection the server closed straight after the handshake
+		ws := Open("/eof-at-once");
+		if(<>ws->Connect()) {
+			Fail("/eof-at-once: the handshake was refused");
+			return;
+		};
+
+		if(ws->PingSocket()) {
+			Fail("/eof-at-once: PingSocket succeeded on a closed connection");
+		};
 		ws->CloseSocket();
 	}
 
@@ -623,6 +750,16 @@ class WebSocketHandshakeTest {
 		RefusedFrame("/close-reason", 1001, "bye");
 		RefusedFrame("/close-code-only", 1000, "");
 		RefusedFrame("/close-empty", 1005, "");
+
+		CutFrame("/short-header");
+		CutFrame("/short-length-16");
+		CutFrame("/short-length-64");
+		CutFrame("/short-payload");
+		CutFrame("/short-text");
+		CutFrame("/short-long-payload");
+		CutFrame("/short-ping");
+		CutFrame("/short-close");
+		EndAfterMessage();
 
 		# a correct server still connects after all of the above, and the server stops
 		Accepted("/quit");

@@ -2206,10 +2206,28 @@ if(ws->Connect()) {
 			return String->New(text, 0, size);
 		}
 
+		# Reads exactly 'num' bytes of a frame into 'buffer'. ReadBuffer() answers with
+		# the number of bytes that arrived, which is fewer when the peer closes, the
+		# read fails or it times out part way; the callers ignored that number, so a
+		# frame cut short was delivered as a whole one (its missing bytes zero, or
+		# whatever the last frame left in the header). A short read ends the
+		# connection: what follows on the stream can no longer be told apart.
+		method : ReadExact(num : Int, buffer : Byte[]) ~ Bool {
+			if(@socket->ReadBuffer(0, num, buffer) = num) {
+				return true;
+			};
+
+			@status_msg := "WebSocket connection lost: the peer closed or a read failed before a whole frame arrived";
+			@socket->Close();
+			return false;
+		}
+
 		method : ReadFrame() ~ Byte[] {
 			if(@socket <> Nil) {
 				# read header
-				@socket->ReadBuffer(0, 2, @header);
+				if(<>ReadExact(2, @header)) {
+					return Nil;
+				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 
 				if(@is_debug){
@@ -2227,7 +2245,9 @@ if(ws->Connect()) {
 					};
 					buffer := Byte->New[payload_length];
 					if(payload_length > 0) {
-						@socket->ReadBuffer(0, payload_length, buffer);
+						if(<>ReadExact(payload_length, buffer)) {
+							return Nil;
+						};
 					};
 
 					if(@is_debug){
@@ -2238,7 +2258,9 @@ if(ws->Connect()) {
 					@socket->WriteBuffer(buffer);
 
 					# read header
-					@socket->ReadBuffer(0, 2, @header);
+					if(<>ReadExact(2, @header)) {
+						return Nil;
+					};
 					opcode := (@header[0] and 0xff)->As(Byte);
 
 					if(@is_debug){
@@ -2259,7 +2281,9 @@ if(ws->Connect()) {
 					};
 
 					if(payload_length = 126) {
-						@socket->ReadBuffer(0, 2, @header);
+						if(<>ReadExact(2, @header)) {
+							return Nil;
+						};
 
 						if(@is_debug){
 							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
@@ -2269,7 +2293,9 @@ if(ws->Connect()) {
 					}
 					else if(payload_length = 127) {
 						buffer := Byte->New[8];
-						@socket->ReadBuffer(0, 8, buffer);
+						if(<>ReadExact(8, buffer)) {
+							return Nil;
+						};
 
 						if(@is_debug){
 							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
@@ -2289,7 +2315,9 @@ if(ws->Connect()) {
 						# read payload
 						buffer := Byte->New[payload_length];
 						if(payload_length > 0) {
-							@socket->ReadBuffer(0, payload_length, buffer);
+							if(<>ReadExact(payload_length, buffer)) {
+								return Nil;
+							};
 						};
 
 						if(opcode = 0x88) {
@@ -2539,7 +2567,9 @@ if(ws->Connect()) {
 				@socket->WriteBuffer(frame);
 
 				# read header
-				@socket->ReadBuffer(0, 2, @header);
+				if(<>ReadExact(2, @header)) {
+					return false;
+				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
@@ -2552,7 +2582,9 @@ if(ws->Connect()) {
 				};
 				buffer := Byte->New[payload_length];
 				if(payload_length > 0) {
-					@socket->ReadBuffer(0, payload_length, buffer);
+					if(<>ReadExact(payload_length, buffer)) {
+						return false;
+					};
 				};
 
 				if(@is_debug){
