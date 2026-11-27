@@ -331,9 +331,11 @@ The subject is evaluated once and only the arm taken is evaluated, where the exp
 stands: inside `&`, `?` or a loop condition a `match` runs only when it is reached. It
 compiles to the `select` statement it stands for (a dense table stays a jump table).
 `match` is a keyword only before its subject, which starts with a name (`match kind {`,
-`match item->GetKind() {`), a number, character or string (`match 1 {`) or a parenthesis
-whose `)` is followed by the `{` (`match (a + b) {`); elsewhere it is an ordinary name,
-so `match(x);` and `if(match(x)) {` call a method named `match`. A subject that starts
+`match item->GetKind() {`), a number, character, string or `-` that the `{` of the arms
+follows before the statement ends (`match 1 {`, `match "ab"->Size() {`, `match -1 {`) or a
+parenthesis whose `)` is followed by the `{` (`match (a + b) {`); elsewhere it is an ordinary
+name, so `match(x);` and `if(match(x)) {` call a method named `match`, `match - 1` subtracts
+from a variable of that name, and a `match` that ends a line is that variable. A subject that starts
 with a parenthesis and goes on after it is written inside one pair (`match ((a) + b) {`). A method whose last
 statement is a `match` statement still needs `other` or a `return` after it, as after a
 `select`. Tests: `match_value`, `match_statement`, `select_value`, `bad_match_*`.
