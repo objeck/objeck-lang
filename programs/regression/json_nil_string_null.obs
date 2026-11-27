@@ -1,0 +1,79 @@
+#~
+A Nil String given to JsonElement is JSON's null. `obj->Insert("name", text)`
+with `text` Nil made a STRING element with no text, and the serializer wrote
+nothing for it: `{"name":}` and `[,"v"]`, which no JSON parser reads back
+(JsonParser returned Nil for the element's own output). A Nil value now makes
+a NULL element, in an object, in an array and on its own, and what is written
+parses back to the same structure. Strings that are merely empty stay strings.
+~#
+use Data.JSON;
+
+class JsonNilStringNull {
+	function : Main(args : String[]) ~ Nil {
+		fails := 0;
+		none : String;
+
+		# a member
+		obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+		obj->Insert("none", none);
+		obj->Insert("empty", "");
+		obj->Insert("text", "v");
+		text := obj->ToString();
+		if(<>text->Equals("{\"empty\":\"\",\"none\":null,\"text\":\"v\"}")) {
+			"FAIL member: {$text}"->PrintLine();
+			fails += 1;
+		};
+		if(obj->Get("none")->GetType() <> JsonElement->JsonType->NULL | obj->Get("empty")->GetType() <> JsonElement->JsonType->STRING) {
+			"FAIL member types"->PrintLine();
+			fails += 1;
+		};
+
+		# an element of an array
+		array := JsonElement->New(JsonElement->JsonType->ARRAY);
+		array->Add(none);
+		array->Add("v");
+		text := array->ToString();
+		if(<>text->Equals("[null,\"v\"]")) {
+			"FAIL element: {$text}"->PrintLine();
+			fails += 1;
+		};
+
+		# on its own, through both constructors
+		text := JsonElement->New(none)->ToString();
+		if(<>text->Equals("null")) {
+			"FAIL value: {$text}"->PrintLine();
+			fails += 1;
+		};
+		typed := JsonElement->New(JsonElement->JsonType->STRING, none);
+		number := JsonElement->New(JsonElement->JsonType->NUMBER, none);
+		if(<>typed->ToString()->Equals("null") | <>number->ToString()->Equals("null") | typed->GetType() <> JsonElement->JsonType->NULL) {
+			"FAIL typed constructors"->PrintLine();
+			fails += 1;
+		};
+
+		# what is written reads back
+		parsed := JsonParser->TextToElement(obj->ToString());
+		if(parsed = Nil) {
+			"FAIL does not parse back"->PrintLine();
+			fails += 1;
+		}
+		else if(parsed->Get("none")->GetType() <> JsonElement->JsonType->NULL | <>parsed->Get("text")->GetString()->Equals("v") |
+				<>parsed->ToString()->Equals(obj->ToString())) {
+			"FAIL parsed back differently: {$parsed->ToString()}"->PrintLine();
+			fails += 1;
+		};
+		formatted := JsonParser->TextToElement(obj->ToFormattedString());
+		if(formatted = Nil | <>formatted->ToString()->Equals(obj->ToString())) {
+			"FAIL formatted text does not parse back"->PrintLine();
+			fails += 1;
+		};
+
+		if(fails = 0) {
+			"PASS: json nil string null"->PrintLine();
+		}
+		else {
+			"FAIL: json nil string null"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
