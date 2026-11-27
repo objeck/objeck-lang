@@ -1025,6 +1025,15 @@
           return Fail(from, L"a jump outside the method", true);
         }
         if(verify) {
+          // The depth limit (see Run), before this state is kept: a copy of the stack
+          // is kept for every instruction, so a method that only pushes cost memory
+          // with the square of its length before the walk ended and the check after
+          // it ran: 42 GB to refuse 50,000 pushes (a String literal, as obc 2026.11.3
+          // compiled one), and a crafted image is as long as its author likes.
+          if(stack.size() > entry_stack.size() + MAX_OPERAND_GROWTH) {
+            return Fail(to, L"the operand stack grows to " + std::to_wstring(stack.size() - entry_stack.size()) +
+                        L" words past the arguments, more than a call's room", true);
+          }
           edges.push_back({ from, to });
         }
         if(!seen[to]) {
