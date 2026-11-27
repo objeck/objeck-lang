@@ -33,8 +33,18 @@ inside a string interpolation, in an instance method with parameters (the limit 
 and in a library ('-tar lib', where calls are still written by name): the library that needs 1,001 words
 is refused when it is compiled, and the one that needs 1,000 links into a program that loads and runs.
 
-Last, the cost: the count is one pass over the code, so a method of 20,000 statements with a deep
-expression in it compiles within the time limit.
+The cost: the count is one pass over the code, so a method of 20,000 statements with a deep expression
+in it compiles within the time limit.
+
+Last, the one construct whose form the count decides. A String literal of up to six strings is copied from
+the operand stack (a word for each string and one more), and under some 996 waiting arguments that alone
+took a method past the limit: a program that fits the stack's 1,024 words, compiled, and was refused by the
+loader. Where a method is over the limit obc now compiles again with that method's String literals built an
+element at a time (two words), and reports the expression only if it is still over. For 1 to 6 strings under
+992 to 1,000 waiting Ints, at -opt s0 and s3, and for some of them in a lambda and in a library: the stack
+form is kept where it fits, the element form is used where it does not, the program loads, obc and obr count
+it alike, every element and the sum of every waiting argument are right interpreted and under the JIT, a
+literal in the method beside it keeps its stack form, and only what fits in neither form is refused, once.
 
 tools/fuzz/adhoc/obe_corpus_gate.py holds the same equality of the two counts over every program of the
 tree and every library.
@@ -167,6 +177,50 @@ def library(n):
 
 
 LIBRARY_USER = "use Depth.Test;\n\nclass User {\n  function : Main(args : String[]) ~ Nil {\n    Deep->Run()->PrintLine();\n  }\n}\n"
+
+
+LITERAL_ARGS = 31
+LITERAL_LEVELS = 32
+
+
+def literal_program(pads, strings, where="main"):
+    """A String literal of 'strings' elements under 31 * 32 + pads waiting Int arguments.
+
+    Returns the program, the literal's text and the lines the program prints: the literal's size, every
+    element, and the sum of what every level was passed (a waiting word that was overwritten shows there).
+    """
+    literal = "[" + ", ".join('"e%d-%d"' % (strings, i) for i in range(strings)) + "]"
+    src = literal
+    total = 0
+    for i in range(pads):
+        src = "Q(%d, %s)" % (i + 2, src)
+        total += i + 2
+    for level in range(LITERAL_LEVELS):
+        values = [level * LITERAL_ARGS + k + 1 for k in range(LITERAL_ARGS)]
+        src = "Pass(" + ", ".join(str(v) for v in values) + ", " + src + ")"
+        total += sum(values)
+    params = ", ".join("p%d : Int" % i for i in range(LITERAL_ARGS))
+    summed = " + ".join("p%d" % i for i in range(LITERAL_ARGS))
+    helpers = ("  @sum : static : Int;\n  @kept : static : String[];\n"
+               "  function : Keep(a : String[]) ~ Int {\n    @kept := a;\n    return a->Size();\n  }\n"
+               "  function : Pass(%s, a : String[]) ~ String[] {\n    @sum += %s;\n    return a;\n  }\n"
+               "  function : Q(x : Int, a : String[]) ~ String[] {\n    @sum += x;\n    return a;\n  }\n"
+               # a literal of six strings in another method: it keeps the stack form (eight words)
+               "  function : Other() ~ String[] {\n    return [\"o0\", \"o1\", \"o2\", \"o3\", \"o4\", \"o5\"];\n  }\n"
+               "  function : Show(a : String[]) ~ Nil {\n    a->Size()->PrintLine();\n    each(i : a) {\n      a[i]->PrintLine();\n    };\n"
+               "    @sum->PrintLine();\n    Other()->Size()->PrintLine();\n  }\n" % (params, summed))
+    printed = [str(strings)] + ["e%d-%d" % (strings, i) for i in range(strings)] + [str(total), "6"]
+    if where == "lambda":
+        body = "    f := \\() ~ Int : () =>\n      Keep(%s);\n    f();\n    Show(@kept);\n" % src
+    else:
+        body = "    a := %s;\n    Show(a);\n" % src
+    if where == "library":
+        return ("bundle Depth.Test {\n  class Lit {\n" + helpers +
+                "    function : public : Run() ~ Nil {\n" + body + "    }\n  }\n}\n"), literal, printed
+    return ("class Lit {\n" + helpers + "  function : Main(args : String[]) ~ Nil {\n" + body + "  }\n}\n"), literal, printed
+
+
+LITERAL_USER = "use Depth.Test;\n\nclass User {\n  function : Main(args : String[]) ~ Nil {\n    Lit->Run();\n  }\n}\n"
 
 
 def long_method(n):
@@ -341,6 +395,89 @@ def main():
         boundary("in an instance method with parameters", in_method)
         boundary("in a library", library, ["-tar", "lib"], lib_user=LIBRARY_USER)
         boundary("a method of 20,000 statements", long_method, limit_seconds=60)
+
+        # ---- a short String literal under waiting arguments ----
+        # Up to six strings are copied from the operand stack: a word for each and one more on top of the
+        # words counted here as waiting (the arguments and the call's own two), where the element form adds
+        # two. With 996 words waiting, six strings in the stack form make 1,003, a program that fits the
+        # stack and that the loader refused. obc counts the method
+        # and compiles it again with the element form where the stack form is over the limit. So, for 1 to
+        # 6 strings under 992 to 1,000 waiting Ints, at -opt s0 and s3 (in Main; a method without arguments
+        # counts a word more for each form):
+        #   * the stack form is kept where it fits (waiting + strings + 1 words at most 1,000),
+        #   * the element form is used where it does not and that form fits (waiting + 2 at most 1,000),
+        #   * the program then loads, is counted alike by obc and obr, and prints every element and the sum
+        #     of every waiting argument, interpreted and compiled by the JIT,
+        #   * and only an expression that fits in neither form (999 waiting words or more) is refused,
+        #     with the message, once.
+        # The same in a lambda (its literal is analyzed under the method it is written in, which is the
+        # case the third attempt of the compilation is for) and in a library.
+        def literal_case(label, pads, strings, flags, where="main"):
+            waiting = LITERAL_ARGS * LITERAL_LEVELS + pads
+            # The limit is above the method's arguments, which it pops as it starts: Main has one, so
+            # it holds a word more than a function or a lambda without any.
+            stack_form = waiting + strings + (1 if where == "main" else 2)
+            element_form = waiting + (2 if where == "main" else 3)
+            text, literal, printed = literal_program(pads, strings, where)
+            is_lib = where == "library"
+            dest = os.path.join(private_lib, "deep.obl") if is_lib else os.path.join(work, "deep.obe")
+            method = "Depth.Test.Lit:Run:" if is_lib else "Lit:Main:"
+            try:
+                code, out, errors, counted, _ = compile_program(text, flags + (["-tar", "lib"] if is_lib else []), dest)
+                if element_form > LIMIT:
+                    said = [l for l in errors if MESSAGE.search(l)]
+                    return check("%s: refused by obc, once (it fits in neither form)" % label,
+                                 1 <= code <= 9 and len(said) == 1 and len(errors) == 1 and not os.path.exists(dest), out)
+                if code != 0 or not os.path.exists(dest):
+                    return check("%s: compiles" % label, False, out)
+                depth = dict(l.rsplit("\t", 1) for l in counted or [])
+                found = [int(v) for k, v in depth.items() if k.startswith(method) and v.isdigit()]
+                if where == "lambda":
+                    # (the literal is in the lambda's own method)
+                    found = [max(int(v) for k, v in depth.items() if k.startswith("Lit:") and v.isdigit())]
+                want = stack_form if stack_form <= LIMIT else element_form
+                form = "the stack form" if stack_form <= LIMIT else "the element form"
+                ok = found == [want]
+                # the literal of the method beside it is not touched by what this one needed
+                if where == "main":
+                    ok = ok and depth.get("Lit:Other:") == "8"
+                detail = "depth %s, wanted %d; Other %s" % (found, want, depth.get("Lit:Other:"))
+                image = dest
+                if is_lib:
+                    image = os.path.join(work, "user.obe")
+                    code, out, errors, counted, _ = compile_program(LITERAL_USER, ["-lib", "deep"] + flags, image)
+                    if code != 0:
+                        return check("%s: a program that uses the library compiles" % label, False, out)
+                loaded = image + ".rdepth"
+                if os.path.exists(loaded):
+                    os.remove(loaded)
+                p = subprocess.run([obr, image], cwd=work, env=dict(env, OBJECK_VERIFY_ONLY="1", OBJECK_STACK_DEPTH_OUT=loaded),
+                                   capture_output=True, timeout=TIME_LIMIT, stdin=subprocess.DEVNULL)
+                ran = depths(loaded)
+                if p.returncode != 0 or sorted(counted or []) != (ran or []) or [l for l in counted if l.endswith("\t?")]:
+                    ok = False
+                    detail += "; load status %d %s; counts differ: %s" % (
+                        p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")[-200:], sorted(set(counted or []) ^ set(ran or []))[:4])
+                for mode, args, extra in (("interpreted", ["--jit=off"], {}), ("JIT", [], {"OBJECK_JIT_THRESHOLD": "1"})):
+                    p = subprocess.run([obr] + args + [image], cwd=work, env=dict(env, **extra), capture_output=True,
+                                       timeout=TIME_LIMIT, stdin=subprocess.DEVNULL)
+                    lines = (p.stdout + p.stderr).decode("utf-8", "replace").split()
+                    if p.returncode != 0 or lines != printed:
+                        ok = False
+                        detail += "; %s: status %d, printed %s" % (mode, p.returncode, lines[-9:])
+                return check("%s: %s (%d words), loads, counted alike, every element and waiting word right" % (label, form, want), ok, detail)
+            except subprocess.TimeoutExpired:
+                return check("%s: answered within %d s" % (label, TIME_LIMIT), False)
+
+        for opt in ("s0", "s3"):
+            for strings in range(1, 7):
+                for pads in range(0, 9):
+                    literal_case("%d string(s) under %d waiting words, -opt %s" % (strings, LITERAL_ARGS * LITERAL_LEVELS + pads, opt),
+                                 pads, strings, ["-opt", opt])
+        for where in ("lambda", "library"):
+            for strings, pads in ((6, 0), (6, 1), (6, 2), (6, 4), (6, 6), (3, 5), (1, 6), (6, 7)):
+                literal_case("%d string(s) under %d waiting words, in a %s" % (strings, LITERAL_ARGS * LITERAL_LEVELS + pads, where),
+                             pads, strings, [], where)
 
     if failures:
         print("\n%d check(s) failed" % len(failures))

@@ -51,8 +51,11 @@
 /****************************
  * Starts the compilation process
  ****************************/
-int Compile(const std::wstring& src_files, const std::wstring& opt, const std::wstring& dest_file, std::vector<std::pair<std::wstring, std::wstring> > &programs, const std::wstring &sys_lib_path, std::wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
-  try {
+// One attempt of a compilation (backend::StackDepth::Attempts says why there can be
+// more than one): 'again' is set when it is to be made again, and nothing has been
+// reported or written then.
+static int CompileAttempt(const std::wstring& src_files, const std::wstring& opt, const std::wstring& dest_file, std::vector<std::pair<std::wstring, std::wstring> > &programs, const std::wstring &sys_lib_path, std::wstring &target, bool alt_syntax, bool is_debug, bool show_asm, backend::StackDepth::Attempts& attempts, bool& again) {
+  {
     // parse source code
     Parser parser(src_files, alt_syntax, programs);
     if(!parser.Parse()) {
@@ -63,6 +66,7 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
 
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
+    attempts.Apply(program);
     ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
     if(!analyzer.Analyze(is_lib)) {
       return CONTEXT_ERROR;
@@ -77,12 +81,19 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
     // The loader refuses a method whose operand stack outgrows a call's room; the
     // same count over the finished code names the expression here, while there is
     // a source line to name (stack_depth.h). Nothing is written when one is found.
+    // A short String literal's stack form can be what took a method over, so the
+    // compilation is first made again with the element form where it was.
     std::vector<frontend::Diagnostic> depth_errors;
-    if(!backend::StackDepth::Check(optimizer.GetProgram(), program->GetLinker(), is_lib, depth_errors)) {
+    std::set<std::wstring> over;
+    if(!backend::StackDepth::Check(optimizer.GetProgram(), program->GetLinker(), is_lib, depth_errors, over)) {
+      IntermediateProgram::Release();
+      if(attempts.Again(over)) {
+        again = true;
+        return CONTEXT_ERROR;
+      }
       for(size_t i = 0; i < depth_errors.size(); ++i) {
         std::wcerr << depth_errors[i].Format() << std::endl;
       }
-      IntermediateProgram::Release();
       return CONTEXT_ERROR;
     }
     // emit target code
@@ -90,6 +101,19 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
     target.Emit();
 
     return SUCCESS;
+  }
+}
+
+int Compile(const std::wstring& src_files, const std::wstring& opt, const std::wstring& dest_file, std::vector<std::pair<std::wstring, std::wstring> > &programs, const std::wstring &sys_lib_path, std::wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
+  try {
+    backend::StackDepth::Attempts attempts;
+    for(;;) {
+      bool again = false;
+      const int status = CompileAttempt(src_files, opt, dest_file, programs, sys_lib_path, target, alt_syntax, is_debug, show_asm, attempts, again);
+      if(!again) {
+        return status;
+      }
+    }
   }
   // must precede the std::exception handler: CompilerFatal is one
   catch(const CompilerFatal& fatal) {

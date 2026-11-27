@@ -33,6 +33,7 @@
 #define __MODULE_H__
 
 #include "../compiler/compiler.h"
+#include "../compiler/stack_depth.h"
 #include "../compiler/types.h"
 #include "../vm/vm.h"
 #include "../shared/logger.h"
@@ -46,7 +47,8 @@ class ObjeckLang {
   std::vector<std::wstring> errors;
   char* code;
 
-  bool CompileSource(std::vector<std::pair<std::wstring, std::wstring>>& file_source, const std::wstring opt_level);
+  bool CompileSource(std::vector<std::pair<std::wstring, std::wstring>>& file_source, const std::wstring opt_level,
+                     backend::StackDepth::Attempts& attempts, bool& again);
 
 public:
   ObjeckLang(const std::wstring &lib_uses);

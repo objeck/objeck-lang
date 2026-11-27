@@ -38,6 +38,8 @@
 #include "../shared/trap_signatures.h"
 #include <cstdlib>
 #include <fstream>
+#include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -569,19 +571,63 @@ namespace backend {
       return depth;
     }
 
+    //
+    // ONE COMPILATION, UP TO THREE ATTEMPTS
+    // -------------------------------------
+    // A String literal of a few elements is copied from the operand stack, a word
+    // for each element and two more on top of whatever waits there
+    // (STRING_LITERAL_STACK_MAX, context.h); built an element at a time it adds
+    // three. The first is the smaller and faster code, and it is what took a
+    // method with some 996 words of arguments waiting past the limit: a program
+    // that fits the stack and that the loader refused. Which form a literal needs
+    // is not known until the method is finished and counted, so the driver
+    // compiles, counts, and where a method is over compiles again with the
+    // literals of the methods that were over in the element form, and, if one
+    // still is (a literal in a lambda is analyzed under its enclosing method),
+    // once more with every literal in that form. Only what is still over then is
+    // reported: an expression that does not fit however its literals are built.
+    // A program no method of which is over the limit is compiled once, as before,
+    // to the same bytes.
+    //
+    struct Attempts {
+      int attempt;                       // 0: as written; 1: the methods below; 2: every method
+      std::set<std::wstring> methods;    // encoded names of the methods found over the limit
+
+      Attempts() : attempt(0) {
+      }
+
+      // before the analysis of an attempt
+      void Apply(frontend::ParsedProgram* parsed) const {
+        if(attempt > 0) {
+          parsed->SetElementwiseStringLiterals(methods, attempt > 1);
+        }
+      }
+
+      // after a count that found 'over': true when the compilation is to be made again
+      bool Again(const std::set<std::wstring>& over) {
+        if(attempt > 1) {
+          return false;
+        }
+        methods.insert(over.begin(), over.end());
+        ++attempt;
+        return true;
+      }
+    };
+
     // Measures every method of the program. A method that needs more than the
     // loader allows is an error at the expression that needs it, and the program
-    // is not written when there is one. true when there is none.
+    // is not written when there is one: 'over' names those methods. true when
+    // there is none.
     //
     // OBJECK_STACK_DEPTH_OUT=<file> appends "<method>\t<depth>" for every method
-    // ('?' for no verdict): the lines obr writes under the same variable.
-    static bool Check(IntermediateProgram* program, Linker* linker, bool is_lib, std::vector<frontend::Diagnostic>& errors) {
+    // ('?' for no verdict) of a program that is written: the lines obr writes
+    // under the same variable when it loads it.
+    static bool Check(IntermediateProgram* program, Linker* linker, bool is_lib, std::vector<frontend::Diagnostic>& errors,
+                      std::set<std::wstring>& over) {
       const long limit = static_cast<long>(instructions::OPERAND_STACK_MAX_GROWTH);
-      std::ofstream dump;
       const std::string dump_path = DumpPath();
-      if(!dump_path.empty()) {
-        dump.open(dump_path.c_str(), std::ios::app | std::ios::binary);
-      }
+      const bool dumps = !dump_path.empty();
+      std::ostringstream dump;
 
       StackDepth walker(program, linker, !is_lib);
       std::vector<IntermediateInstruction*> instrs;
@@ -607,7 +653,7 @@ namespace backend {
           }
 
           const Depth depth = walker.Measure(method, instrs);
-          if(dump.is_open()) {
+          if(dumps) {
             dump << UnicodeToBytes(method->GetName()) << '\t';
             if(depth.known) {
               dump << depth.growth;
@@ -621,6 +667,7 @@ namespace backend {
             continue;
           }
 
+          over.insert(method->GetName());
           const std::wstring needs = L"needs an operand stack of " + std::to_wstring(depth.growth) +
             L" words, more than the limit of " + std::to_wstring(limit);
           std::wstring file;
@@ -637,6 +684,11 @@ namespace backend {
               L": split its expressions into statements or use fewer arguments"));
           }
         }
+      }
+
+      if(dumps && errors.empty()) {
+        std::ofstream out(dump_path.c_str(), std::ios::app | std::ios::binary);
+        out << dump.str();
       }
 
       return errors.empty();

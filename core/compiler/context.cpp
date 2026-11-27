@@ -1059,8 +1059,9 @@ bool ContextAnalyzer::CheckErrorsWarnings()
   }
 
 #ifndef _MODULE
-  // check and process warnings
-  if(diagnostics.HasWarnings()) {
+  // check and process warnings (once: a compilation made again for its String
+  // literals, ParsedProgram::IsStringLiteralRetry, showed them the first time)
+  if(diagnostics.HasWarnings() && !program->IsStringLiteralRetry()) {
     const std::vector<Diagnostic> unique_warnings = diagnostics.UniqueWarnings();
     for(size_t i = 0; i < unique_warnings.size(); ++i) {
 #ifdef _DIAG_LIB
@@ -4764,7 +4765,14 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     // local instead, an element at a time, as a literal with a variable in it is
     // (AnalyzeDynamicArray): the stack holds one string however long the literal
     // is and whatever waits under it.
-    if(all_elements.size() > STRING_LITERAL_STACK_MAX && current_method && current_table) {
+    //
+    // The shortest are too, in a method the stack form took past the limit: up to
+    // 8 words on top of 996 waiting arguments was a program that fits the stack's
+    // 1,024 words and that the loader refused. The compiler counts the finished
+    // method's depth (stack_depth.h) and, where it is over, compiles again with
+    // that method's literals in the element form, which adds 3 words.
+    if(current_method && current_table && (all_elements.size() > STRING_LITERAL_STACK_MAX ||
+       program->ElementwiseStringLiterals(current_method->GetEncodedName()))) {
       Type* tmp_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
       tmp_type->SetDimension(array->GetDimension());
       static int static_array_id = 0;
