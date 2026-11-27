@@ -560,8 +560,10 @@ class Token {
   } kind;
 
  public:
-   Token() {
-
+   // every field starts defined: a token is reused from a look-ahead slot and a
+   // path that forgot one field used to read what the allocator left there
+   Token() : token_type(TOKEN_UNKNOWN), line_nbr(0), line_pos(0) {
+     kind.int64_lit = 0;
    }
 
   inline void Copy(Token* token) {

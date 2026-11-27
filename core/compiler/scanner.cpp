@@ -1439,6 +1439,15 @@ void Scanner::ParseToken(int index)
   tok_line = line_nbr;
   tok_pos = (int)line_pos - 1;
 
+  // Every token starts with that position. The paths below that know better set
+  // their own, but a character literal never set one: its Token kept the line of
+  // whatever that look-ahead slot held before, and in a Scanner made for the text
+  // of an interpolation ("{$'z'}") the slot was new and the line was whatever the
+  // allocator left there. That number goes into the debug image, so 'obc -debug'
+  // wrote a different file on every run.
+  tokens[index]->SetLineNbr(tok_line);
+  tokens[index]->SetLinePos(tok_pos);
+
   // character string
   if(cur_char == L'\"' || (cur_char == L'$' && nxt_char == L'\"')) {
     bool is_lit = false;
