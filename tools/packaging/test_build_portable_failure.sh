@@ -44,7 +44,8 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir -p "$WORK/src" "$DEPS"
-( cd "$REPO" && git ls-files -z | xargs -0 tar cf - ) | tar xf - -C "$WORK/src"
+# a copy of the tree, without a .git or what an earlier build left in deploy/
+tar cf - --exclude=.git --exclude=./core/release/deploy -C "$REPO" . | tar xf - -C "$WORK/src"
 [ -n "$OUT" ] || OUT="$WORK/out"
 mkdir -p "$OUT"
 
