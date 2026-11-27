@@ -168,6 +168,7 @@ class Parser {
   StatementList* nil_guard_bail = nullptr;
   StatementList* ParseNilGuardBail(int depth);
   If* MakeNilGuard(Variable* target, StatementList* bail);
+  Variable* MakeNilGuardElement(Variable* target);
   Method* prev_method;
   // true while the class of a 'spawn' is being parsed
   bool spawn_class;

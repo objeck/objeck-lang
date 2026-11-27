@@ -8143,6 +8143,56 @@ PARSER_NO_INLINE StatementList* Parser::ParseNilGuardBail(int depth)
 }
 
 /****************************
+ * What the guard of 'cells[i] := E ?? return' reads: the element that was
+ * assigned, 'cells[i]' again. An index that is not an integer literal is
+ * evaluated once: where the target evaluates it, it is left in a hidden local
+ * ('cells[#guard_N := i]'), and the guard reads that ('cells[#guard_N]'). The
+ * guard used to be made from the target's name alone, so it tested the array,
+ * which is not Nil, and never left.
+ ****************************/
+PARSER_NO_INLINE Variable* Parser::MakeNilGuardElement(Variable* target)
+{
+  const std::wstring file_name = GetFileName();
+  const int line_num = target->GetLineNumber();
+  const int line_pos = target->GetLinePosition();
+
+  ExpressionList* written = TreeFactory::Instance()->MakeExpressionList();
+  ExpressionList* read = TreeFactory::Instance()->MakeExpressionList();
+  const std::vector<Expression*> indices = target->GetIndices()->GetExpressions();
+  for(size_t i = 0; i < indices.size(); ++i) {
+    Expression* index = indices[i];
+    // an index that did not parse is null: its syntax error has been reported
+    if(!index) {
+      return nullptr;
+    }
+
+    if(index->GetExpressionType() == INT_LIT_EXPR && !index->GetMethodCall() && !index->GetCastType()) {
+      written->AddExpression(index);
+      read->AddExpression(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, static_cast<IntegerLiteral*>(index)->GetValue()));
+      continue;
+    }
+
+    std::wstring ident;
+    SymbolEntry* entry = AddHiddenLocal(L"guard", ident, line_num, line_pos);
+    if(!entry) {
+      return nullptr;
+    }
+    Variable* kept = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
+    Assignment* keep = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, kept, index);
+    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
+                                                                                TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, keep));
+    written->AddExpression(sequence);
+    read->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+  }
+  target->SetIndices(written);
+
+  Variable* element = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  element->SetIndices(read);
+  return element;
+}
+
+/****************************
  * if(target = Nil) { bail }
  ****************************/
 PARSER_NO_INLINE If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
@@ -8151,7 +8201,11 @@ PARSER_NO_INLINE If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
   const int line_num = target->GetLineNumber();
   const int line_pos = target->GetLinePosition();
 
-  Variable* subject = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  // a variable or a field is read again by its name; an element by its name and indices
+  Variable* subject = target->GetIndices() ? MakeNilGuardElement(target) : nullptr;
+  if(!subject) {
+    subject = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  }
   CalculatedExpression* test = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR));
   test->SetLeft(subject);
   test->SetRight(TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
