@@ -1,0 +1,209 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+A tools/call can be cancelled from the moment the server has it, not only once its arguments were
+checked (API.MCP). No process and no network: the messages are handed to the server the way the HTTP
+transport hands them over, already parsed and with the session as the connection name, from two threads.
+
+Over HTTP a cancellation is a POST of its own, so it can arrive while the call it names is still being
+looked at. The call took its place among the calls in progress only after its arguments had been checked
+against the tool's schema; a notifications/cancelled that arrived before that found no call under the
+request id and was lost, and the handler then ran as if nobody had cancelled. (On standard input and
+output the reader has always reserved the id before the call is scheduled.) The id is now reserved
+before anything about the tool is looked at, a cancellation that reaches the reservation is carried over
+to the call, and the reservation is given up on every way out.
+
+The tool here takes a list of 100,000 integers, so checking the arguments takes a while (a third of a
+second on the machine this was written on; a number as the first argument changes the length). One thread makes
+the call; the main thread sends the cancellation again and again, a millisecond apart, until the call is
+back. The handler must not run and the call must not be answered.
+~#
+use API.MCP, Data.JSON, Collection, System.Concurrency;
+
+class Caller from Thread {
+	@scope : String;
+
+	New(scope : String) {
+		Parent();
+		@scope := scope;
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		reply := McpCancelBeforeValidationTest->Service()->HandleJson(arg->As(JsonElement), Nil, @scope);
+		McpCancelBeforeValidationTest->Done(reply);
+	}
+}
+
+class McpCancelBeforeValidationTest {
+	@pass : static : Int;
+	@fail : static : Int;
+	@service : static : McpService;
+	@ran : static : Int;
+	@saw_cancel : static : Bool;
+	@done : static : Bool;
+	@reply : static : JsonElement;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Service() ~ McpService {
+		return @service;
+	}
+
+	function : Done(reply : JsonElement) ~ Nil {
+		@reply := reply;
+		@done := true;
+	}
+
+	# returns at once: whatever stops it has to come before it starts
+	function : Bulk(call : McpCall) ~ McpToolResult {
+		@ran += 1;
+		@saw_cancel := call->IsCancelled();
+		return McpToolResult->Text("ran");
+	}
+
+	function : Raises(call : McpCall) ~ McpToolResult {
+		Runtime->Raise(Error->New("the tool raised"));
+		return Nil;
+	}
+
+	function : Build() ~ McpService {
+		server := McpService->New("cancel-test", "1.0");
+		schema := "{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}},\"n\":{\"type\":\"integer\"}}}";
+		server->AddTool("bulk", "Takes a long list", schema, Func2Ref->New(McpCancelBeforeValidationTest->Bulk(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		server->AddTool("raises", "Raises", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpCancelBeforeValidationTest->Raises(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		return server;
+	}
+
+	# a tools/call for bulk with a list of `count` integers
+	function : Big(id : Int, count : Int) ~ JsonElement {
+		items := JsonElement->New(JsonElement->JsonType->ARRAY);
+		for(i := 0; i < count; i += 1;) {
+			items->Add(i);
+		};
+		arguments := JsonElement->New(JsonElement->JsonType->OBJECT);
+		arguments->Insert("items", items);
+		params := JsonElement->New(JsonElement->JsonType->OBJECT);
+		params->Insert("name", "bulk");
+		params->Insert("arguments", arguments);
+		root := JsonElement->New(JsonElement->JsonType->OBJECT);
+		root->Insert("jsonrpc", "2.0");
+		root->Insert("id", id);
+		root->Insert("method", "tools/call");
+		root->Insert("params", params);
+		return root;
+	}
+
+	function : Req(id : Int, params : String) ~ String {
+		return "{\"jsonrpc\":\"2.0\",\"id\":{$id},\"method\":\"tools/call\",\"params\":{$params}}";
+	}
+
+	function : ErrorCode(reply : JsonElement) ~ Int {
+		if(reply = Nil | <>reply->Has("error")) {
+			return 0;
+		};
+		return reply->Get("error")->Get("code")->GetInt();
+	}
+
+	function : Text(reply : JsonElement) ~ String {
+		if(reply = Nil | <>reply->Has("result")) {
+			return "";
+		};
+		return reply->Get("result")->Get("content")->Get(0)->Get("text")->GetString();
+	}
+
+	# makes the call on `call_scope` from a thread while this thread cancels request `id` on `cancel_scope`
+	# a millisecond apart until the call is back; returns how many cancellations were sent
+	function : Race(root : JsonElement, id : Int, call_scope : String, cancel_scope : String) ~ Int {
+		@ran := 0;
+		@saw_cancel := false;
+		@done := false;
+		@reply := Nil;
+		cancel := "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":{$id}}}";
+		caller := Caller->New(call_scope);
+		caller->Execute(root);
+		sent := 0;
+		while(<>@done & sent < 60000) {
+			if(cancel_scope = Nil) {
+				@service->Handle(cancel, Nil);
+			}
+			else {
+				@service->Handle(cancel, Nil, cancel_scope);
+			};
+			sent += 1;
+			Thread->Sleep(1);
+		};
+		caller->Join();
+		return sent;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@service := Build();
+		count := 100000;
+		if(args->Size() > 0) {
+			count := args[0]->ToInt();
+		};
+
+		# how long the server takes over the call when nobody cancels: nearly all of it is the check
+		root := Big(1, count);
+		timer := System.Time.Timer->New(true);
+		reply := @service->HandleJson(root, Nil, "session-a");
+		check_ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+		Check("the call runs when nobody cancels it", @ran = 1 & Text(reply)->Equals("ran"));
+
+		# the cancellation arrives while the arguments are being checked
+		sent := Race(Big(2, count), 2, "session-a", "session-a");
+		if(@ran <> 0 | @reply <> Nil) {
+			"  the check takes about {$check_ms} ms; {$sent} cancellations were sent while the call was at work"->PrintLine();
+		};
+		Check("a call cancelled while its arguments are checked does not run", @ran = 0);
+		Check("and is not answered", @done & @reply = Nil);
+
+		# the same with a caller that names no connection (Handle and HandleJson without a scope)
+		sent := Race(Big(3, count), 3, Nil, Nil);
+		Check("the same for a caller that names no connection", @ran = 0 & @done & @reply = Nil);
+
+		# another connection's cancellation is not this call's
+		sent := Race(Big(4, count), 4, "session-a", "session-b");
+		Check("a cancellation on another connection does not stop the call", @ran = 1 & <>@saw_cancel & Text(@reply)->Equals("ran"));
+		sent := Race(Big(5, count), 5, "session-a", Nil);
+		Check("nor does one that names no connection", @ran = 1 & <>@saw_cancel & Text(@reply)->Equals("ran"));
+
+		# the reservation is given up on every way out: the id can be used again at once
+		unknown := JsonParser->TextToElement(@service->Handle(Req(9, "{\"name\":\"nope\"}"), Nil, "session-a"));
+		Check("an unknown tool is still -32602", ErrorCode(unknown) = -32602);
+		missing := JsonParser->TextToElement(@service->Handle(Req(9, "{}"), Nil, "session-a"));
+		Check("a missing name is still -32602", ErrorCode(missing) = -32602);
+		shape := JsonParser->TextToElement(@service->Handle(Req(9, "{\"name\":\"bulk\",\"arguments\":[1]}"), Nil, "session-a"));
+		Check("arguments that are not an object are still -32602", ErrorCode(shape) = -32602);
+		invalid := JsonParser->TextToElement(@service->Handle(Req(9, "{\"name\":\"bulk\",\"arguments\":{\"n\":\"one\"}}"), Nil, "session-a"));
+		Check("arguments the schema rejects are still an isError result", invalid <> Nil & invalid->Has("result") & invalid->Get("result")->Get("isError")->GetBool());
+		raised := JsonParser->TextToElement(@service->Handle(Req(9, "{\"name\":\"raises\"}"), Nil, "session-a"));
+		Check("a tool that raises is still an isError result", raised <> Nil & raised->Has("result") & raised->Get("result")->Get("isError")->GetBool());
+		@ran := 0;
+		good := JsonParser->TextToElement(@service->Handle(Req(9, "{\"name\":\"bulk\",\"arguments\":{\"n\":1}}"), Nil, "session-a"));
+		Check("and after each of them the same id runs a call", @ran = 1 & Text(good)->Equals("ran"));
+
+		# a cancellation for an id that is not at work changes nothing for the next call under it
+		@service->Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":10}}", Nil, "session-a");
+		@ran := 0;
+		later := JsonParser->TextToElement(@service->Handle(Req(10, "{\"name\":\"bulk\",\"arguments\":{\"n\":1}}"), Nil, "session-a"));
+		Check("a cancellation that came before the call is not kept for it", @ran = 1 & Text(later)->Equals("ran"));
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP cancel before validation, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP cancel before validation, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

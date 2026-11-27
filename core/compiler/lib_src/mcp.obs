@@ -2613,6 +2613,36 @@ bundle API.MCP {
 		@return the reply, Nil when the client cancelled the call
 		~#
 		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
+			if(slot <> Nil) {
+				return RunTool(id, params, sink, scope, slot);
+			};
+
+			# Nobody reserved the request id (HTTP, an in-process client, Handle): it is reserved here, before
+			# anything about the tool is looked at. A cancellation is a message of its own and can arrive
+			# while the arguments are still being checked; it then finds the reservation, and RunTool carries
+			# it over to the call. On a named connection an id still at work is refused. A caller that names
+			# no connection cannot be told from another, so there the newer call takes the name, as before
+			held := Reserve(scope, id);
+			if(held = Nil) {
+				if(scope <> Nil) {
+					return InUse(id);
+				};
+				return RunTool(id, params, sink, scope, Nil);
+			};
+
+			reply : JsonElement;
+			try {
+				reply := RunTool(id, params, sink, scope, held);
+			}
+			finally {
+				# whichever way the call ended; a no-op once the call itself took the reservation's place
+				Release(scope, id, held);
+			};
+			return reply;
+		}
+
+		# tools/call with the request id reserved under `slot`, or under nothing when slot is Nil
+		method : RunTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			name := McpMessage->Str(params, "name");
 			if(name = Nil) {
 				return McpMessage->Error(id, McpProtocol->InvalidParams(), "Invalid params: name is required");
