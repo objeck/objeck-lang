@@ -1729,14 +1729,14 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
     McpPending pending;
     pending.klass = klass;
     pending.bundle = current_bundle;
-    pending.tools = mcp_tools;
+    pending.tools = std::move(mcp_tools);
     pending.uses_mcp = current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end();
     pending.is_json = is_json;
     pending.json_line = class_line_num;
     if(current_lib_uses) {
       pending.lib_uses = *current_lib_uses;
     }
-    mcp_pending.push_back(pending);
+    mcp_pending.push_back(std::move(pending));
   }
 
   symbol_table->PreviousParseScope(current_class->GetName());
@@ -7828,7 +7828,7 @@ PARSER_NO_INLINE MethodCall* Parser::ParseSpawn(int depth)
           L"method : public : Run(param : System.Base) ~ Nil { body := @body; body(); } }";
 
   Scanner* saved = scanner;
-  scanner = new Scanner(file_name, alt_syntax, text);
+  scanner = new Scanner(file_name, alt_syntax, std::move(text));
   NextToken();
   spawn_class = true;
   Expression* thread = ParseSimpleExpression(depth + 1);
@@ -11958,7 +11958,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     splice.line = from_line;
     splice.pos = from_pos;
     splice.what = what;
-    splices.push_back(splice);
+    splices.push_back(std::move(splice));
     return (int)splices.size() - 1;
   };
 
@@ -11970,7 +11970,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     splice.name = declared_name;
     splice.line = line;
     splice.pos = pos;
-    splices.push_back(splice);
+    splices.push_back(std::move(splice));
     return (int)splices.size() - 1;
   };
 
@@ -12024,7 +12024,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
     splice.line = open_line;
     splice.pos = open_pos;
     splice.what = L"the parameters of the agent '" + name + L"'";
-    splices.push_back(splice);
+    splices.push_back(std::move(splice));
     parameters_splice = (int)splices.size() - 1;
     NextToken();
   }
@@ -12135,7 +12135,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
         item.splice = piece(colon_line, colon_pos + 1, false, L"the limit '" + limit + L"' of the agent '" + name + L"'", shape, shape_name, first_line, first_pos);
         if(item.splice >= 0 && AgentLimitSetter(limit)) {
           item.name_splice = declared(L"agent__l" + std::to_wstring(items.size()), first_line, first_pos);
-          items.push_back(item);
+          items.push_back(std::move(item));
         }
         ++limits;
 
@@ -12196,7 +12196,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
           tool_class.agent_name = name;
           tool_class.line = first_line;
           tool_class.pos = first_pos;
-          agent_tool_classes.push_back(tool_class);
+          agent_tool_classes.push_back(std::move(tool_class));
           if(shape_name.compare(0, 7, L"agent__") == 0) {
             fail(first_line, first_pos, L"A class named in 'tools' may not start with 'agent__': the names the compiler writes for the agent do");
           }
@@ -12211,7 +12211,7 @@ Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
               (key == L"tools" ? L"agent__t" : key == L"mcp" ? L"agent__m" : L"agent__n") + std::to_wstring(items.size());
             item.name_splice = declared(declared_name, first_line, first_pos);
           }
-          items.push_back(item);
+          items.push_back(std::move(item));
         }
       }
 

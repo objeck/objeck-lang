@@ -526,6 +526,8 @@ namespace Runtime {
           if(read_fn && history_fn) {
             read_line = read_fn;
             add_history = history_fn;
+            // the library stays loaded for the process lifetime: the two entry points above point into it
+            // coverity[leaked_storage]
             return;
           }
           dlclose(handle);
