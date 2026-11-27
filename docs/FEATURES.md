@@ -245,7 +245,8 @@ A member's name is any String expression. A value is any expression `JsonElement
 `Insert` for (a String, Int, Float, Bool or JsonElement), a nested `{ }` or `[ ]`, or
 `Nil` for null; names and values are evaluated once, in the order written. Anything else
 is a compile error at the value: `The value of a JSON member is a String, Int, Float,
-Bool, Nil, JsonElement, or a nested { } or [ ]; this one is IntRef`. The literal is an
+Bool, Nil, JsonElement, or a nested { } or [ ]; this one is Collection.Vector`. A holder
+(`IntRef`, `FloatRef`, `BoolRef`) is unboxed, as it is for any `Insert`. The literal is an
 object at the top; an array is written inside one or built with `JsonElement->New`. It
 compiles to the `New`, `Insert` and `Add` calls shown above. `json` is a keyword only
 before `{`. Tests: `json_literal`, `bad_json_literal_*`.
@@ -1305,7 +1306,9 @@ What a block may do, and what it holds:
   each thread the loop variable's value at that turn.
 - **It follows a lambda's rules**, because that is what it is compiled to: it may call
   functions by name and methods on an object it captured (`me := @self; spawn {
-  me->Step(); }`), but not a method with no receiver.
+  me->Step(); }`), but not a method with no receiver. In an instance method the block
+  reads and writes `@fields` and names `@self` as a lambda there does (`spawn {
+  @self->Step(); }`); the thread shares the instance, so guard what both sides write.
 - **`return;` ends the thread.** A value has nowhere to go: `return 5;` is a compile
   error (`A 'spawn' block does not return a value`). Hand a result back through an object
   the block shares.

@@ -1,17 +1,18 @@
-# EXPECT_COMPILE_ERROR: (14,9): The value of a JSON member is a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]; this one is IntRef
+# EXPECT_COMPILE_ERROR: (15,9): The value of a JSON member is a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]; this one is Collection.Vector
 # EXPECT_ERROR_COUNT: 1
 #~
 A value in a JSON literal is one JsonElement has an Insert for; the error names the value's type, at the value.
+A holder (IntRef, ...) is not an error: it is unboxed as for any Insert (see interact_json_literal_boxing).
 ~#
 use Collection;
 use Data.JSON;
 
 class BadJsonLiteralValue {
 	function : Main(args : String[]) ~ Nil {
-		boxed := IntRef->New(4);
+		names := Vector->New()<String>;
 		request := json{
 			"model": "m",
-			"n": boxed
+			"n": names
 		};
 		request->ToString()->PrintLine();
 	}

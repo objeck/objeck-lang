@@ -6394,7 +6394,15 @@ Expression* Parser::ParseExpression(int depth)
       // 'E ?? return V', 'E ?? break', 'E ?? continue', 'E ?? { ...; return }': a statement
       // leaves when E is Nil. The expression stays E; the assignment that owns it adds
       // 'if(x = Nil) { ... }' after itself.
-      if(Match(TOKEN_RETURN_ID) || Match(TOKEN_BREAK_ID) || Match(TOKEN_CONTINUE_ID) || Match(TOKEN_OPEN_BRACE)) {
+      //
+      // A '{' whose first token is a literal followed by ':' is a map literal ('m ?? {"a": 1}'), which
+      // no statement of a block starts with: it is the default value, and is typed (or refused) as a
+      // map literal is anywhere inside an expression.
+      const bool map_literal_default = Match(TOKEN_OPEN_BRACE) && Match(TOKEN_COLON, THIRD_INDEX) &&
+        (Match(TOKEN_CHAR_STRING_LIT, SECOND_INDEX) || Match(TOKEN_INT_LIT, SECOND_INDEX) ||
+         Match(TOKEN_CHAR_LIT, SECOND_INDEX) || Match(TOKEN_FLOAT_LIT, SECOND_INDEX));
+      if(!map_literal_default &&
+         (Match(TOKEN_RETURN_ID) || Match(TOKEN_BREAK_ID) || Match(TOKEN_CONTINUE_ID) || Match(TOKEN_OPEN_BRACE))) {
         if(nil_guard_bail) {
           ProcessError(L"Only one '?? return' (or '?? { }') is allowed in a statement");
         }
@@ -8080,7 +8088,8 @@ StatementList* Parser::ParseNilGuardBail(int depth)
     }
   }
   if(!leaves) {
-    ProcessError(L"The block after '??' must end in return, break, continue or Runtime->Exit(..), or the variable can still be Nil");
+    // written in two pieces: "??'" in one literal is a trigraph to an older compiler (and a warning to this one)
+    ProcessError(L"The block after '?" L"?' must end in return, break, continue or Runtime->Exit(..), or the variable can still be Nil");
   }
 
   return bail;
